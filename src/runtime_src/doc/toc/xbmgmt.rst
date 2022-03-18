@@ -217,7 +217,7 @@ Revert to golden image `<video reference> <https://youtu.be/ORYSrYegX_g?t=280>`_
     
     - <management bdf> : The Bus:Device.Function of the device of interest
  
-- The ``--base`` option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. No action is performed if the card's existing base partition is already up-to-date, or in a higher version, or a different platform's partition. The option ``--base`` only works if only one base partition package is also installed on the host-system (The command shows an error if the host-system is installed with multiple base partition packages).  
+- The ``--base`` option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. No action is performed if the card's existing base partition is already up-to-date, or in a higher version, or a different platform's partition. The option ``--base`` only works if only one base partition package is also installed on the host-system. In case of multiple base partitions are installed on the system an addition ``--image`` option is required (discussed next).   
 
 - The ``--image`` option is used with ``--base`` option if multiple base partitions are installed in the system. Multiple base paritions installed on the system can be viewed by executing the command ``xbmgmt examine --device <bdf> --report platform`` (shown under **Flashable partitions installed in system** section). The user then simply pick the desired base partition name and use as ``xbmgmt program --device <bdf> --base --image <base partition name>``. 
 
