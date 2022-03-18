@@ -1,7 +1,8 @@
 #!/bin/sh
 
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022 AMD, Inc. All rights reserved.
 
 #
 # UBUNTU NOTE
@@ -25,6 +26,9 @@
 #    but postinst of 2.3.0 is run. The postinst is invoked with "2" argument.
 # 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm is NOT run but
 #    and postinst of 2.2.0 is run. The postinst is invoked with "2" argument.
+
+RED="\e[31m"
+ENDCOLOR="\e[0m"
 
 rmmodules()
 {
@@ -85,12 +89,12 @@ if [ $? -eq 0 ]; then
 fi
 
 if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@ |grep installed`" ]; then
-    echo "****************************************************************"
-    echo "* DKMS failed to install XRT drivers."
-    echo "* Please check if kernel development headers are installed for OS variant used."
-    echo "* "
-    echo "* Check build logs in /var/lib/dkms/xrt/@XRT_VERSION_STRING@"
-    echo "****************************************************************"
+    echo "${RED}****************************************************************${ENDCOLOR}"
+    echo "${RED}* DKMS failed to install XRT drivers.${ENDCOLOR}"
+    echo "${RED}* Please check if kernel development headers are installed for OS variant used.${ENDCOLOR}"
+    echo "${RED}* ${ENDCOLOR}"
+    echo "${RED}* Check build logs in /var/lib/dkms/xrt/@XRT_VERSION_STRING@${ENDCOLOR}"
+    echo "${RED}****************************************************************${ENDCOLOR}"
 fi
 
 echo "Installing MSD / MPD daemons"
@@ -113,4 +117,17 @@ if [ "$mpd_active" = "active" ]; then
     systemctl start mpd > /dev/null 2>&1
 fi
 
+echo "| Components                   |      Status        |"
+echo "|------------------------------|--------------------|"
+if [ -z "`dkms status -m xrt -v @XRT_VERSION_STRING@ |grep installed`" ]; then
+    echo "| XOCL & XCLMGMT Kernel Driver | Failed. Check build log : `find /var/lib/dkms/xrt/ -iname "make.log"`"
+else
+    echo "| XOCL & XCLMGMT Kernel Driver | Success            |"
+fi
+echo "| XRT USERSPACE                | Success            |"
+if [ -f ${systemddir}/msd.service ] && [ -f ${systemdir}/mpd.service ]; then
+    echo "| MPD/MSD                      | Failed             |"
+else
+    echo "| MPD/MSD                      | Success            |"
+fi
 exit 0
