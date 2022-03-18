@@ -183,8 +183,8 @@ show_device_conf(xrt_core::device* device)
   if (is_mfg || is_recovery)
     throw xrt_core::error(std::errc::operation_canceled, "This operation is not supported with manufacturing image.\n");
 
-  boost::format sysfs_format("  %-33s: %s\n");
-  const std::string not_supported = "Not supported";
+  boost::format node_data_format("  %-33s: %s\n");
+  std::string not_supported = "Not supported";
   std::string sec_level = not_supported;
   try {
     sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
@@ -192,7 +192,7 @@ show_device_conf(xrt_core::device* device)
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for vck5000 
   }
-  std::cout << sysfs_format % "Security level" % sec_level;
+  std::cout << node_data_format % "Security level" % sec_level;
 
   std::string scaling_enabled = not_supported;
   try {
@@ -201,7 +201,7 @@ show_device_conf(xrt_core::device* device)
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for u30 and vck5000
   }
-  std::cout << sysfs_format % "Runtime clock scaling enabled" % scaling_enabled;
+  std::cout << node_data_format % "Runtime clock scaling enabled" % scaling_enabled;
 
   std::string scaling_power_override = not_supported;
   try {
@@ -210,7 +210,7 @@ show_device_conf(xrt_core::device* device)
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for u30 and vck5000
   }
-  std::cout << sysfs_format % "Scaling threshold power override" % scaling_power_override;
+  std::cout << node_data_format % "Scaling threshold power override" % scaling_power_override;
 
   std::string scaling_temp_override = not_supported;
   try {
@@ -219,7 +219,7 @@ show_device_conf(xrt_core::device* device)
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for u30 and vck5000
   }
-  std::cout << sysfs_format % "Scaling threshold temp override" % scaling_temp_override;
+  std::cout << node_data_format % "Scaling threshold temp override" % scaling_temp_override;
 
   std::string data_retention_string = not_supported;
   try {
@@ -230,7 +230,7 @@ show_device_conf(xrt_core::device* device)
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for vck5000 
   }
-  std::cout << sysfs_format % "Data retention" % data_retention_string;
+  std::cout << node_data_format % "Data retention" % data_retention_string;
 
   std::cout << std::flush;
 }
