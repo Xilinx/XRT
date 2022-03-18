@@ -13,6 +13,8 @@ This document describes the latest ``xbmgmt`` commands. These latest commands ar
 P.S: The older version of the commands can only be executed by adding ``--legacy`` switch. The documentation link of legacy version: `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/Chunk778393017.html>`_
 
 
+For an instructive video on xbmgmt commands listed below click `here <https://www.youtube.com/watch?v=ORYSrYegX_g>`_.
+
 **Global options**: These are the global options can be used with any command. 
 
  - ``--verbose``: Turn on verbosity and shows more outputs whenever applicable
@@ -124,7 +126,7 @@ Dumping the output of programmed system image
 xbmgmt examine
 ~~~~~~~~~~~~~~
 
-The ``xbmgmt examine`` command reports detail status information of the specified device
+The ``xbmgmt examine`` command reports detail status information of the specified device `<video reference> <https://youtu.be/ORYSrYegX_g?t=137>`_.
 
 **The supported options**
 
@@ -176,7 +178,7 @@ xbmgmt program
 
 **The supported usecases and their options**
 
-Program the Base partition (applicable for 1RP platform too)
+Program the Base partition (applicable for 1RP platform too) `<video reference> <https://youtu.be/ORYSrYegX_g?t=193>`_
 
 .. code-block:: shell
 
@@ -188,7 +190,7 @@ Program the Base partition when multiple base partitions are installed in the sy
 
     xbmgmt program [--device|-d] <management bdf> [--base|-b] [--image|-i] <partition name>
 
-Program the Shell Partition for 2RP platform
+Program the Shell Partition for 2RP platform `<video reference> <https://youtu.be/ORYSrYegX_g?t=300>`_
 
 .. code-block:: shell
 
@@ -202,7 +204,7 @@ Program the user partition with an XCLBIN file
     xbmgmt program [--device| -d] <management bdf> [--user|-u] <XCLBIN file with path>  
 
 
-Revert to golden image
+Revert to golden image `<video reference> <https://youtu.be/ORYSrYegX_g?t=280>`_
 
 .. code-block:: shell
 
@@ -253,7 +255,7 @@ Revert to golden image
 xbmgmt reset
 ~~~~~~~~~~~~
 
-The ``xbmgmt reset`` command can be used to reset device. 
+The ``xbmgmt reset`` command can be used to reset device . 
 
 
 **The supported options**

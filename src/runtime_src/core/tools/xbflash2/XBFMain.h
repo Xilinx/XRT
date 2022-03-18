@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021-2022 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,24 +14,18 @@
  * under the License.
  */
 
-#ifndef _XGQ_VMR_FLASHER_H_
-#define _XGQ_VMR_FLASHER_H_
+#ifndef __XBFMgmtMain_h_
+#define __XBFMgmtMain_h_
 
-#include <iostream>
-#include "core/common/system.h"
-#include "core/common/device.h"
+// Include files
 
-class XGQ_VMR_Flasher
-{
-public:
-    /* Constructor of ospi_xgq flash */
-    XGQ_VMR_Flasher(std::shared_ptr<xrt_core::device> dev);
-    /* API of flashing binStream via ospi_xgq driver */
-    int xclUpgradeFirmware(std::istream& binStream);
-    int xclGetBoardInfo(std::map<char, std::string>& info);
-
-private:
-    std::shared_ptr<xrt_core::device> m_device;
-};
-
+// Please keep these to the bare minimum
+#include "tools/common/XBHelpMenusCore.h"
+#include <string>
+    
+// ---------------------- F U N C T I O N S ----------------------------------
+void main_(int argc, char** argv, 
+           const std::string & _executable,
+           const std::string & _description,
+           const SubCmdsCollection & _SubCmds);
 #endif

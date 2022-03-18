@@ -134,5 +134,5 @@ ReportBOStats::writeReport(const xrt_core::device* /*pDevice*/,
     bo_table.addEntry(entry_data);
   }
 
-  output << bo_table << std::endl;
+  output << boost::str(boost::format("%s\n") % bo_table);
 }

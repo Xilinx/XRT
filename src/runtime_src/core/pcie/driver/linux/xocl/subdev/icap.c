@@ -2246,7 +2246,9 @@ static bool check_mem_topo_and_data_retention(struct icap *icap,
 
 	if ((size != sizeof_sect(mem_topo, m_mem_data)) ||
 		    memcmp(((char *)xclbin)+offset, mem_topo, size)) {
-		ICAP_WARN(icap, "Incoming mem_topology doesn't match, disable data retention");
+		ICAP_WARN(icap, "Data retention is enabled. "
+			"However, the incoming mem_topology doesn't match, "
+			"data in device memory can not be retained");
 		return false;
 	}
 

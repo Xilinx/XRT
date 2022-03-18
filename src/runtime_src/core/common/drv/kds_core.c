@@ -606,16 +606,9 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		}
 		break;
 	case OP_CONFIG:
+	case OP_START_SK:
 	case OP_CLK_CALIB:
 	case OP_VALIDATE:
-		break;
-	case OP_START_SK:
-		/* KDS should select a CU and set it in cu_mask */
-		do {
-			cu_idx = acquire_scu_idx(&kds->scu_mgmt, xcmd);
-		} while(cu_idx == -EAGAIN);
-		if (cu_idx < 0)
-			return cu_idx;
 		break;
 	default:
 		kds_err(xcmd->client, "Unknown opcode");

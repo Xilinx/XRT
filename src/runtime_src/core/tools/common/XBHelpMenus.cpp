@@ -251,13 +251,13 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
         // proceed even if the platform name is not available
         platform = "<not defined>";
       }
-      std::string dev_desc = (boost::format("%d/%d [%s] : %s\n") % ++dev_idx % devices.size() % ptDevice.get<std::string>("device_id") % platform).str();
+      const std::string dev_desc = (boost::format("%d/%d [%s] : %s\n") % ++dev_idx % devices.size() % ptDevice.get<std::string>("device_id") % platform).str();
       consoleStream << std::endl;
       consoleStream << std::string(dev_desc.length(), '-') << std::endl;
       consoleStream << dev_desc;
       consoleStream << std::string(dev_desc.length(), '-') << std::endl;
 
-      auto is_ready = xrt_core::device_query<xrt_core::query::is_ready>(device);
+      const auto is_ready = xrt_core::device_query<xrt_core::query::is_ready>(device);
       bool is_recovery = false;
       try {
         is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
@@ -266,21 +266,24 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
         is_recovery = false;
       }
 
+      // Process the tests that require a device
+      // If the device is either of the following, most tests cannot be completed fully:
+      // 1. Is in factory mode and is not in recovery mode
+      // 2. Is not ready and is not in recovery mode
+      if((is_mfg || !is_ready) && !is_recovery) {
+        std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n\n";
+      }
+
       for (auto &report : reportsToProcess) {
-        if (report->isDeviceRequired() == false)
+        if (!report->isDeviceRequired())
           continue;
-        //if the device is either of the following, continue to create reports:
-        // 1. not in factory mode and is ready to use
-        // 2. is in recovery mode
-        if((!is_mfg && !is_ready) && !is_recovery)
-          continue;
+
         boost::property_tree::ptree ptReport;
         try {
           report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
         } catch (const std::exception&) {
           is_report_output_valid = false;
         }
-        
 
         // Only support 1 node on the root
         if (ptReport.size() > 1)
@@ -288,9 +291,8 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
 
         // We have 1 node, copy the child to the root property tree
         if (ptReport.size() == 1) {
-          for (const auto & ptChild : ptReport) {
+          for (const auto & ptChild : ptReport)
             ptDevice.add_child(ptChild.first, ptChild.second);
-          }
         }
       }
       if (!ptDevice.empty()) 

@@ -165,11 +165,13 @@ namespace xdp {
 
     // **** PL/Shim Counters ****
     mShimStartEvents = {
-      {"bandwidths",            {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
       {"stalls_idle",           {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
     };
     mShimEndEvents = {
-      {"bandwidths",            {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
       {"stalls_idle",           {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
     };
 
@@ -205,6 +207,11 @@ namespace xdp {
                                  "DMA_MM2S_1_FINISHED_BD_MEM"}},
       {"read_bandwidths",       {"DMA_S2MM_0_FINISHED_BD_MEM",
                                  "DMA_S2MM_1_FINISHED_BD_MEM"}}
+    };
+    mShimEventStrings = {
+      {"input_bandwidths",      {"PORT_RUNNING_0_PL", "PORT_TLAST_0_PL"}},
+      {"output_bandwidths",     {"PORT_RUNNING_0_PL", "PORT_TLAST_0_PL"}},
+      {"stalls_idle",           {"PORT_IDLE_0_PL",    "PORT_STALLED_0_PL"}}
     };
   }
 
@@ -358,7 +365,7 @@ namespace xdp {
         || ((mod == XAIE_PL_MOD) && (mShimStartEvents.find(metricSet) == mShimStartEvents.end()))) {
       std::string defaultSet = (mod == XAIE_CORE_MOD) ? "heat_map" 
                              : ((mod == XAIE_MEM_MOD) ? "conflicts" 
-                             : "bandwidths");
+                             : "input_bandwidths");
       std::stringstream msg;
       msg << "Unable to find " << moduleName << " metric set " << metricSet
           << ". Using default of " << defaultSet << ".";
@@ -412,6 +419,14 @@ namespace xdp {
           int plioCount = 0;
           auto plios = xrt_core::edge::aie::get_plios(device.get());
           for (auto& plio : plios) {
+            // Make sure it's desired polarity
+            // NOTE: input = slave (data flowing from PLIO)
+            //       output = master (data flowing to PLIO)
+            auto isMaster = plio.second.slaveOrMaster;
+            if ((isMaster && (metricsStr == "input_bandwidths"))
+                || (!isMaster && (metricsStr == "output_bandwidths")))
+              continue;
+
             tempTiles.push_back(tile_type());
             auto& t = tempTiles.at(plioCount++);
             t.col = plio.second.shimColumn;
@@ -419,8 +434,8 @@ namespace xdp {
 
             // Grab stream ID and slave/master (used in configStreamSwitchPorts() below)
             // TODO: find better way to store these values
+            t.itr_mem_col = isMaster;
             t.itr_mem_row = plio.second.streamId;
-            t.itr_mem_col = plio.second.slaveOrMaster;
           }
         }
 
@@ -517,8 +532,8 @@ namespace xdp {
                                                    const std::string metricSet)
   {
     // Currently only used to monitor trace and PL stream
-    if ((metricSet != "aie_trace") && (metricSet != "bandwidths")
-        && (metricSet != "stalls_idle"))
+    if ((metricSet != "aie_trace") && (metricSet != "input_bandwidths")
+        && (metricSet != "output_bandwidths") && (metricSet != "stalls_idle"))
       return;
 
     if (metricSet == "aie_trace") {

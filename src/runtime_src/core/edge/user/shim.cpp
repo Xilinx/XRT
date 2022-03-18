@@ -41,6 +41,7 @@
 #include <cassert>
 #include <cstdarg>
 #include <boost/filesystem.hpp>
+#include <regex>
 
 #include <fcntl.h>
 #include <poll.h>
@@ -121,10 +122,10 @@ shim(unsigned index)
 {
   xclLog(XRT_INFO, "%s", __func__);
 
-  mKernelFD = open("/dev/dri/renderD128", O_RDWR);
-  if (mKernelFD < 0) {
-    xclLog(XRT_ERROR, "%s: Cannot open /dev/dri/renderD128", __func__);
-  }
+  const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
+  mKernelFD = open(zocl_drm_device.c_str(), O_RDWR);
+  // Validity of mKernelFD is checked using handleCheck in every shim function
+
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
 }
@@ -513,9 +514,15 @@ libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path,
   uint32_t slot_id = 0;
   static const std::string dtbo_dir_path = "/configfs/device-tree/overlays/";
 
-  // get dtbo_path of slot '0' for now, in future when we support multi slot we need
-  // info about which slot this xclbin needs to be loaded
-  // TODO: read slot id from xclbin or get it as an arg to this function
+  // root privileges are needed for loading and unloading dtbo and bitstream
+  if (getuid() && geteuid())
+    throw std::runtime_error("Root privileges required");
+
+  /*
+   * get dtbo_path of slot '0' for now, in future when we support multi slot we need
+   * info about which slot this xclbin needs to be loaded
+   * TODO: read slot id from xclbin or get it as an arg to this function
+   */
   try {
     dtbo_path = xrt_core::device_query<xrt_core::query::dtbo_path>(core_dev, slot_id);
   }
@@ -523,12 +530,24 @@ libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path,
     const std::string errmsg{"Query for dtbo path failed: "};
     throw std::runtime_error(errmsg + e.what());
   }
-  if(!dtbo_path.empty()) {
+  if (!dtbo_path.empty()) {
     // remove existing libdfx node
     rmdir((dtbo_dir_path + dtbo_path).c_str());
     dtbo_path.clear();
     // close drm fd as zocl driver will be reloaded
     close(fd);
+  }
+  else {
+    // bitstream is loaded for first time
+    boost::filesystem::directory_iterator end_itr;
+    static const std::regex filter{".*_image_[0-9]+"};
+    for (boost::filesystem::directory_iterator itr( dtbo_dir_path ); itr != end_itr; ++itr) {
+      if (!std::regex_match(itr->path().filename().string(), filter))
+        continue;
+
+      // remove existing libdfx node loaded by libdfx daemon
+      rmdir((dtbo_dir_path + itr->path().filename().string()).c_str());
+    }
   }
 }
 
@@ -537,7 +556,7 @@ copyBufferToFile(const std::string& file_path, const char* buf, uint64_t size)
 {
   std::ofstream file(file_path, std::ios::out | std::ios::binary);
 
-  if(!file)
+  if (!file)
     throw std::runtime_error("Failed to open " + file_path + " for writing xclbin section");
 
   file.write(buf, size);
@@ -551,7 +570,7 @@ libdfxConfig(std::string& xclbin_dir_path, const axlf *top,
   // create a temp directory to extract bitstream and dtbo
   char dir[] = "/tmp/xclbin.XXXXXX";
   char *tmpdir = mkdtemp(dir);
-  if(tmpdir == nullptr)
+  if (tmpdir == nullptr)
     throw std::runtime_error("Failed to create tmp directory for xclbin files extraction");
 
   xclbin_dir_path = tmpdir;
@@ -571,7 +590,7 @@ static void
 libdfxClean(const std::string& file_path)
 {
   try {
-    if(boost::filesystem::exists(boost::filesystem::path(file_path)))
+    if (boost::filesystem::exists(boost::filesystem::path(file_path)))
       boost::filesystem::remove_all(boost::filesystem::path(file_path));
   }
   catch(std::exception& ex) {
@@ -583,17 +602,16 @@ static int
 libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
 	       const axlf_section_header *overlay_header, int& fd, int flags, std::string& dtbo_path)
 {
-  static const std::string ZOCL_DRM_DEVICE = "/dev/dri/renderD128";
-  static const std::string FPGA_DEVICE = "/dev/fpga0";
+  static const std::string fpga_device = "/dev/fpga0";
 
   // check BITSTREAM section
   const axlf_section_header *bit_header = xclbin::get_axlf_section(top, axlf_section_kind::BITSTREAM);
-  if(!bit_header)
+  if (!bit_header)
     throw std::runtime_error("No BITSTREAM section in xclbin");
 
   //check if xclbin is already loaded
   try {
-    if(core_dev->get_xclbin_uuid() == xrt::uuid(top->m_header.uuid) && !(flags & DRM_ZOCL_FORCE_PROGRAM)) {
+    if (core_dev->get_xclbin_uuid() == xrt::uuid(top->m_header.uuid) && !(flags & DRM_ZOCL_FORCE_PROGRAM)) {
       xclLog(XRT_WARNING, "%s: skipping as xclbin is already loaded", __func__);
       return 1;
     }
@@ -609,12 +627,12 @@ libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
   libdfxConfig(xclbin_dir_path, top, bit_header, overlay_header);
 
   // call libdfx api to load bitstream and dtbo
-  int dtbo_id = dfx_cfg_init(xclbin_dir_path.c_str(), FPGA_DEVICE.c_str(), 0);
-  if(dtbo_id <= 0) {
+  int dtbo_id = dfx_cfg_init(xclbin_dir_path.c_str(), fpga_device.c_str(), 0);
+  if (dtbo_id <= 0) {
     libdfxClean(xclbin_dir_path);
     throw std::runtime_error("Failed to initialize config with libdfx api");
   }
-  if(dfx_cfg_load(dtbo_id)){
+  if (dfx_cfg_load(dtbo_id)){
     dfx_cfg_destroy(dtbo_id);
     libdfxClean(xclbin_dir_path);
     throw std::runtime_error("Failed to load bitstream, dtbo with libdfx api");
@@ -631,14 +649,20 @@ libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
   // asynchronously check for drm device node
   const static int timeout_sec = 10;
   int count = 0;
-  while(!boost::filesystem::exists(boost::filesystem::path(ZOCL_DRM_DEVICE)) && count++ < timeout_sec)
+  const std::string render_dev_dir{"/dev/dri/"};
+  std::string zocl_drm_device;
+  while (count++ < timeout_sec) {
+    zocl_drm_device = render_dev_dir + get_render_devname();
+    if (boost::filesystem::exists(boost::filesystem::path(zocl_drm_device)))
+      break;
     std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
 
   // create drm fd
-  fd = open(ZOCL_DRM_DEVICE.c_str(), O_RDWR);
+  fd = open(zocl_drm_device.c_str(), O_RDWR);
   if (fd < 0) {
     dtbo_path.clear();
-    throw std::runtime_error("Cannot create file descriptor with device " + ZOCL_DRM_DEVICE);
+    throw std::runtime_error("Cannot create file descriptor with device " + zocl_drm_device);
   }
 
   return 0;
@@ -656,47 +680,37 @@ xclLoadAxlf(const axlf *buffer)
   int off = 0;
   std::string dtbo_path("");
 
-  /*
-   * If platform is a non-PR-platform, Following check will fail. Dont download
-   * the partial bitstream
-   *
-   * If Platform is a PR-platform, Following check passes as enable_pr value is
-   * true by default. Download the partial bitstream.
-   *
-   * If platform is a PR-platform, but v++ generated a full bitstream (using
-   * some v++ param).  User need to add enable_pr=false in xrt.ini.
-   */
 #ifndef __HWEM__
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
-  auto is_flat_platform = (buffer->m_header.m_mode == XCLBIN_FLAT ) ? true : false;
-  auto is_pr_enabled = xrt_core::config::get_enable_pr(); //default value is true
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
   auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
+  auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
 
-  if (is_pr_platform && is_pr_enabled)
+  if (is_pr_platform)
     flags = DRM_ZOCL_PLATFORM_PR;
   /*
-   * If platform is a PR-platform, Following check will fail. Dont download the
-   * full bitstream
-   *
-   * If its non-PR-platform and enable_flat=true in xrt.ini. Download the full
-   * bitstream.
+   * If its non-PR-platform and enable_flat=true in xrt.ini, download the full
+   * bitstream. But if OVERLAY section is present in xclbin, userspace apis are
+   * used to download full bitstream
    */
-  else if (is_flat_platform && is_flat_enabled)
+  else if (is_flat_enabled && !overlay_header) {
+    if (!ZYNQ::shim::handleCheck(this)) {
+      xclLog(XRT_ERROR, "%s: No DRM render device found", __func__);
+      return -ENODEV;
+    }
     flags = DRM_ZOCL_PLATFORM_FLAT;
+  }
 
   if (force_program) {
     flags = flags | DRM_ZOCL_FORCE_PROGRAM;
   }
 
 #if defined(XRT_ENABLE_LIBDFX)
-  // check OVERLAY section
-  // if present use libdfx apis to load bitstream and dtbo(overlay)
-  auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
+  // if OVERLAY section is present use libdfx apis to load bitstream and dtbo(overlay)
   if(overlay_header) {
     try {
       // if xclbin is already loaded ret val is '1', dont call ioctl in this case
-      if(libdfx::libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, flags, dtbo_path))
+      if (libdfx::libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, flags, dtbo_path))
         return 0;
     }
     catch(const std::exception& e){
@@ -830,13 +844,13 @@ isGood() const
 
 shim *
 shim::
-handleCheck(void *handle)
+handleCheck(void *handle, bool checkDrmFd /*= true*/)
 {
   // Sanity checks
   if (!handle)
     return 0;
 
-  if (!((shim *) handle)->isGood()) {
+  if (checkDrmFd && !((shim *) handle)->isGood()) {
     return 0;
   }
 
@@ -1727,10 +1741,21 @@ xclProbe()
 {
   return xdp::hal::profiling_wrapper("xclProbe", [] {
 
-  int fd = open("/dev/dri/renderD128", O_RDWR);
-  if (fd < 0) {
-    return 0;
+  const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
+  int fd;
+  if (boost::filesystem::exists(zocl_drm_device)) {
+    fd = open(zocl_drm_device.c_str(), O_RDWR);
+    if (fd < 0)
+      return 0;
   }
+  /*
+   * Zocl node is not present in some platforms static dtb, it gets loaded
+   * using overlay dtb, drm device node is not created until zocl is present
+   * So if enable_flat is set return 1 valid device
+   */
+  else if (xrt_core::config::get_enable_flat())
+    return 1;
+
   std::vector<char> name(128,0);
   std::vector<char> desc(512,0);
   std::vector<char> date(128,0);
@@ -1770,7 +1795,8 @@ xclOpen(unsigned deviceIndex, const char*, xclVerbosityLevel)
     }
 
     auto handle = new ZYNQ::shim(deviceIndex);
-    if (!ZYNQ::shim::handleCheck(handle)) {
+    bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
+    if (!ZYNQ::shim::handleCheck(handle, checkDrmFD)) {
       delete handle;
       handle = XRT_NULL_HANDLE;
     }
@@ -1965,7 +1991,8 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
   return xdp::hal::profiling_wrapper("xclLoadXclbin", [handle, buffer, meta] {
 
   try {
-    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+    bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
 
 #ifndef __HWEM__
     xdp::hal::flush_device(handle);
