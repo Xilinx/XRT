@@ -37,9 +37,13 @@ XCL_DRIVER_DLLESPEC size_t xclGetDeviceTimestamp(xclDeviceHandle handle);
 
 XCL_DRIVER_DLLESPEC double xclGetDeviceClockFreqMHz(xclDeviceHandle handle);
 
-XCL_DRIVER_DLLESPEC double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle);
 
-XCL_DRIVER_DLLESPEC double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle);
 
 XCL_DRIVER_DLLESPEC void xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
 

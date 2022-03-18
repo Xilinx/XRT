@@ -288,7 +288,7 @@ size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTrace
 }
 
 
-double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
+double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
 //  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
 //  if (!drv)
@@ -297,7 +297,25 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 }
 
 
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+//  if (!drv)
+//    return 0.0;
+  return 0.0;
+}
+
+
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+//  if (!drv)
+//    return 0.0;
+  return 0.0;
+}
+
+
+double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
 //  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
 //  if (!drv)

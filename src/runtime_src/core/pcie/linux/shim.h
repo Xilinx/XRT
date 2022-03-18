@@ -107,8 +107,10 @@ public:
     int xclGetSectionInfo(void *section_info, size_t *section_size, enum axlf_section_kind, int index);
 
     double xclGetDeviceClockFreqMHz();
-    double xclGetReadMaxBandwidthMBps();
-    double xclGetWriteMaxBandwidthMBps();
+    double xclGetHostReadMaxBandwidthMBps();
+    double xclGetHostWriteMaxBandwidthMBps();
+    double xclGetKernelReadMaxBandwidthMBps();
+    double xclGetKernelWriteMaxBandwidthMBps();
     //debug related
     uint32_t getCheckerNumberSlots(int type);
     uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,

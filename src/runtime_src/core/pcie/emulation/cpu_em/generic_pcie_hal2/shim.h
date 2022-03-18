@@ -119,8 +119,10 @@ namespace xclcpuemhal2 {
       // Performance monitoring
       // Control
       double xclGetDeviceClockFreqMHz();
-      double xclGetReadMaxBandwidthMBps();
-      double xclGetWriteMaxBandwidthMBps();
+      double xclGetHostReadMaxBandwidthMBps();
+      double xclGetHostWriteMaxBandwidthMBps();
+      double xclGetKernelReadMaxBandwidthMBps();
+      double xclGetKernelWriteMaxBandwidthMBps();
       void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
       size_t xclPerfMonClockTraining(xclPerfMonType type);
       // Counters

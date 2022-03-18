@@ -154,12 +154,18 @@ class DeviceIntf {
     XDP_EXPORT
     uint8_t  getAIETs2mmMemIndex(uint64_t index);
     
-    double getMaxBwRead() const {return mMaxReadBW;}
-    double getMaxBwWrite() const {return mMaxWriteBW;}
+    double getHostMaxBwRead() const {return mHostMaxReadBW;}
+    double getHostMaxBwWrite() const {return mHostMaxWriteBW;}
+    double getKernelMaxBwRead() const {return mKernelMaxReadBW;}
+    double getKernelMaxBwWrite() const {return mKernelMaxWriteBW;}
     XDP_EXPORT
-    void setMaxBwRead();
+    void setHostMaxBwRead();
     XDP_EXPORT
-    void setMaxBwWrite();
+    void setHostMaxBwWrite();
+    XDP_EXPORT
+    void setKernelMaxBwRead();
+    XDP_EXPORT
+    void setKernelMaxBwWrite();
 
     XDP_EXPORT
     uint32_t getDeadlockStatus();
@@ -196,17 +202,17 @@ class DeviceIntf {
     DeadlockDetector*     mDeadlockDetector  = nullptr;
 
     /*
-     * Set bandwidth number to a reasonable default
+     * Set max bandwidths to reasonable defaults
      * For PCIE Device:
-     *   bw_per_lane = 985 MB/s (Wikipedia on PCIE 3.0)
-     *   num_lanes = 16/8/4 depending on host system
-     *   total bw = bw_per_lane * num_lanes
-     *   encoding = 128b/130b
+     *   configuration: gen 3x16, gen 4x8 
+     *   encoding: 128b/130b
      * For Edge Device:
-     *  total bw = DDR4 memory bandwidth
+     *  total BW: DDR4 memory bandwidth
      */
-    double mMaxReadBW  = 15753.85;
-    double mMaxWriteBW = 15753.85;
+    double mHostMaxReadBW    = 15753.85;
+    double mHostMaxWriteBW   = 15753.85;
+    double mKernelMaxReadBW  = 21300.00;
+    double mKernelMaxWriteBW = 21300.00;
 
 }; /* DeviceIntf */
 

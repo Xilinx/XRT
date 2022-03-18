@@ -42,12 +42,13 @@ namespace xdp {
   struct PLInfo
   {
     // Max read/write bandwidth information is retrieved from either
-    //  a call to the shim functions xclGetReadMaxBandwidthMBps and
-    //  xclGetWriteMaxBandwidthMBps, or from from the higher level 
-    //  xrt_xocl::device functions getDeviceMaxRead and getDeviceMaxWrite
-    //  in OpenCL applications.
-    double maxReadBW  = 0.0 ;
-    double maxWriteBW = 0.0 ;
+    //  a call to the shim functions xclGet*MaxBandwidthMBps, or from 
+    //  the higher level xrt_xocl::device functions getHostMax* and 
+    //  getKernelMax* in OpenCL applications.
+    double hostMaxReadBW    = 0.0 ;
+    double hostMaxWriteBW   = 0.0 ;
+    double kernelMaxReadBW  = 0.0 ;
+    double kernelMaxWriteBW = 0.0 ;
 
     // By default, we assume a PL clock rate of 300 MHz.  We try to set this
     //  to the true value based on device information gotten from either the

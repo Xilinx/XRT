@@ -738,24 +738,38 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
-// Get the maximum bandwidth for host reads from the device (in MB/s)
-// NOTE: For now, this is limited to PCIe gen 3x16 or 4x8, where:
-//       Max bandwidth = 16000 * (128b/130b encoding) = 15753.85 MB/s
-double
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double 
 shim::
-xclGetReadMaxBandwidthMBps()
+xclGetHostReadMaxBandwidthMBps()
 {
   return 15753.85;
 }
 
-// Get the maximum bandwidth for host writes to the device (in MB/s)
-// NOTE: For now, this is limited to PCIe gen 3x16 or 4x8, where:
-//       Max bandwidth = 16000 * (128b/130b encoding) = 15753.85 MB/s
-double
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double 
 shim::
-xclGetWriteMaxBandwidthMBps()
+xclGetHostWriteMaxBandwidthMBps()
 {
   return 15753.85;
+}
+
+// For DDR4: Max BW = 21.3 GB/s
+double 
+shim::
+xclGetKernelReadMaxBandwidthMBps()
+{
+  return 21300.00;
+}
+
+// For DDR4: Max BW = 21.3 GB/s
+double 
+shim::
+xclGetKernelWriteMaxBandwidthMBps()
+{
+  return 21300.00;
 }
 
 int
@@ -2007,18 +2021,34 @@ xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 }
 
 double
-xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostReadMaxBandwidthMBps() : 0.0;
 }
 
 
 double
-xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostWriteMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelWriteMaxBandwidthMBps() : 0.0;
 }
 
 
