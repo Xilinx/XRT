@@ -211,7 +211,8 @@ Few examples of legacy vs new commands
 
 Here are few example use-cases of legacy vs new commands
 
-1. Getting all the information obtained from the userspace kernel driver 
+1. Getting all the information obtained from the userspace kernel driver
+************************************************************************
 
 **Legacy command**
 
@@ -235,6 +236,7 @@ or
        xbutil examine --device 0000:b3:00.1 --report all
 
 2. Validate the card
+********************
 
 **Legacy command**
 
