@@ -738,22 +738,20 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
-// For PCIe gen 3x16 or 4x8:
-// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+// For DDR4: Max BW = 21.3 GB/s
 double 
 shim::
 xclGetHostReadMaxBandwidthMBps()
 {
-  return 15753.85;
+  return 21300.00;
 }
 
-// For PCIe gen 3x16 or 4x8:
-// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+// For DDR4: Max BW = 21.3 GB/s
 double 
 shim::
 xclGetHostWriteMaxBandwidthMBps()
 {
-  return 15753.85;
+  return 21300.00;
 }
 
 // For DDR4: Max BW = 21.3 GB/s
