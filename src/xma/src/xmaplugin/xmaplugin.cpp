@@ -32,6 +32,13 @@
 #include <iostream>
 #include <thread>
 
+ // decl internal non public function
+namespace xrt_core {
+    namespace device_int {
+        std::cv_status
+            exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms);
+    }
+}
 
 using namespace std;
 
@@ -434,7 +441,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
             */
         }
     }
-    priv1->kernel_execbos[bo_idx].xrt_run = xrt::run(priv1->kernel_execbos[bo_idx].xrt_kernel);
+    //priv1->kernel_execbos[bo_idx].xrt_run = xrt::run(priv1->kernel_execbos[bo_idx].xrt_kernel);
     auto cu_cmd = reinterpret_cast<ert_start_kernel_cmd*>(priv1->kernel_execbos[bo_idx].xrt_run.get_ert_packet());
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data + cu_cmd->extra_cu_masks, src, regmap_size);
@@ -627,7 +634,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             */
         }
     }
-    priv1->kernel_execbos[bo_idx].xrt_run = xrt::run(priv1->kernel_execbos[bo_idx].xrt_kernel);
+    //priv1->kernel_execbos[bo_idx].xrt_run = xrt::run(priv1->kernel_execbos[bo_idx].xrt_kernel);
     auto cu_cmd = reinterpret_cast<ert_start_kernel_cmd*>(priv1->kernel_execbos[bo_idx].xrt_run.get_ert_packet());
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data + cu_cmd->extra_cu_masks, src, regmap_size);
@@ -803,7 +810,8 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
             } else if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
                 std::this_thread::yield();
             } else {
-                priv1->dev_handle.get_handle()->exec_wait(100); // Created CR-1120629 to handle this, supposed to use xrt::run::wait() call.
+               // priv1->dev_handle.get_handle()->exec_wait(100); // Created CR-1120629 to handle this, supposed to use xrt::run::wait() call.
+                xrt_core::device_int::exec_wait(dev_tmp1->xrt_device, 100ms);
             }
         }
     } while(!all_done);
@@ -987,7 +995,8 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
             if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
-            priv1->dev_handle.get_handle()->exec_wait(timeout1); // Created CR-1120629 to handle this, supposed to use xrt::run::wait() call.
+            //priv1->dev_handle.get_handle()->exec_wait(timeout1); // Created CR-1120629 to handle this, supposed to use xrt::run::wait() call.
+            xrt_core::device_int::exec_wait(dev_tmp1->xrt_device, std::chrono::milliseconds(timeout1));
             iter1--;
         }
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd is still pending. Cu might be stuck", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
@@ -1034,7 +1043,8 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
     
         // Wait for a notification
         if (give_up > 10) {
-            priv1->dev_handle.get_handle()->exec_wait(timeout1);
+            //priv1->dev_handle.get_handle()->exec_wait(timeout1);
+            xrt_core::device_int::exec_wait(dev_tmp1->xrt_device, std::chrono::milliseconds(timeout1));
             tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {
