@@ -383,9 +383,10 @@ namespace xdp {
   }
 
   std::vector<tile_type> 
-  AIEProfilingPlugin::getTilesForProfiling(const XAie_ModuleType mod, 
-                                           const std::string& metricsStr, 
-                                           void* handle)
+  AIEProfilingPlugin::getTilesForProfiling(void* handle,
+                                           const XAie_ModuleType mod, 
+                                           const std::string& metricsStr,
+                                           const std::string& channelId)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
@@ -419,6 +420,12 @@ namespace xdp {
           int plioCount = 0;
           auto plios = xrt_core::edge::aie::get_plios(device.get());
           for (auto& plio : plios) {
+            // If looking for specific ID, make sure it matches
+            if ((channelId >= 0) && (channelId != plioCount)) {
+              plioCount++;
+              continue;
+            }
+
             // Make sure it's desired polarity
             // NOTE: input = slave (data flowing from PLIO)
             //       output = master (data flowing to PLIO)
@@ -649,6 +656,13 @@ namespace xdp {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
 
+    auto interfaceMetricStr = xrt_core::config::get_aie_profile_interface_metrics();
+    std::vector<std::string> interfaceVec;
+    boost::split(interfaceVec, interfaceMetricStr, boost::is_any_of(":"));
+    auto interfaceMetric = interfaceVec.at(0);
+    int channelId = -1;
+    try {channelId = std::stoi(vec.at(1));} catch (...) {channelId = -1;}
+
     int numCounters[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
     XAie_ModuleType falModuleTypes[NUM_MODULES] = 
@@ -657,7 +671,7 @@ namespace xdp {
     std::string metricSettings[NUM_MODULES] = 
         {xrt_core::config::get_aie_profile_core_metrics(),
          xrt_core::config::get_aie_profile_memory_metrics(),
-         xrt_core::config::get_aie_profile_interface_metrics()};
+         interfaceMetric};
 
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
@@ -673,7 +687,7 @@ namespace xdp {
       XAie_ModuleType mod    = falModuleTypes[module];
       std::string moduleName = moduleNames[module];
       auto metricSet         = getMetricSet(mod, metricsStr);
-      auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
+      auto tiles             = getTilesForProfiling(handle, mod, metricsStr, channelId);
 
       // Ask Resource manager for resource availability
       auto numFreeCounters   = getNumFreeCtr(aieDevice, tiles, mod, metricSet);
