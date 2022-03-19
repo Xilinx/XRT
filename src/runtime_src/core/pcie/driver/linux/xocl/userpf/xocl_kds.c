@@ -984,6 +984,7 @@ int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
 	xocl_kds_fa_clear(xdev);
 
+	XDEV(xdev)->kds.bad_state = 0;
 	return 0;
 }
 
@@ -1829,11 +1830,13 @@ xocl_kds_xgq_cfg_scu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 		if (ret)
 			break;
 
-		if (xcmd->status != KDS_COMPLETED) {
-			userpf_err(xdev, "Configure XGQ ERT failed");
+		if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+			userpf_err(xdev, "Config SCU failed cstate(%d) rcode(%d)",
+				   resp.hdr.cstate, resp.rcode);
 			ret = -EINVAL;
 			break;
 		}
+		userpf_info(xdev, "Config SCU(%d) completed\n", cfg_cu->cu_idx);
 	}
 
 	return ret;
@@ -1954,11 +1957,11 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 
 	ret = xocl_kds_xgq_cfg_scu(xdev, uuid, scu_info, num_scus);
 	if (ret)
-		goto create_regular_cu;
+		goto out;
 
 	ret = xocl_kds_xgq_cfg_end(xdev);
 	if (ret)
-		goto create_regular_cu;
+		goto out;
 
 	/*
 	 * Configure XGQ ERT looks good.
@@ -2102,6 +2105,10 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		XDEV(xdev)->kds.ert_disable = true;
 	}
 
+	// Work-around to unconfigure PS kernel
+	// Will be removed once unconfigure command is there
+	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, 0, 0);
+	ret = xocl_kds_xgq_cfg_end(xdev);
 	xocl_ert_ctrl_unset_xgq(xdev);
 	kds_reset(&XDEV(xdev)->kds);
 }

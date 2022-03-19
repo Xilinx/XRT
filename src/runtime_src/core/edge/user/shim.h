@@ -117,7 +117,7 @@ public:
   int xclCloseIPInterruptNotify(int fd);
 
   bool isGood() const;
-  static shim *handleCheck(void *handle);
+  static shim *handleCheck(void *handle, bool checkDrmFd = true);
   int xclIPName2Index(const char *name);
 
   // Application debug path functionality for xbutil

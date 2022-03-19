@@ -291,37 +291,11 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 }
 
-bool
-XBUtilities::can_proceed(bool force)
-{
-  bool proceed = false;
-  std::string input;
-
-  std::cout << "Are you sure you wish to proceed? [Y/n]: ";
-
-  if (force)
-    std::cout << "Y (Force override)" << std::endl;
-  else
-    std::getline(std::cin, input);
-
-  // Ugh, the std::transform() produces windows compiler warnings due to
-  // conversions from 'int' to 'char' in the algorithm header file
-  boost::algorithm::to_lower(input);
-  //std::transform( input.begin(), input.end(), input.begin(), [](unsigned char c){ return std::tolower(c); });
-  //std::transform( input.begin(), input.end(), input.begin(), ::tolower);
-
-  // proceeds for "y", "Y" and no input
-  proceed = ((input.compare("y") == 0) || input.empty());
-  if (!proceed)
-    std::cout << "Action canceled." << std::endl;
-  return proceed;
-}
-
 void
 XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& error)
 {
   std::cout << info << "\n";
-  if (!can_proceed(getForce()))
+  if (!XBUtilities::can_proceed(getForce()))
     throw xrt_core::system_error(ECANCELED, error);
 }
 

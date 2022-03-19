@@ -75,7 +75,9 @@ namespace XBUtilities {
                                bool indentFirstLine);
 
 
-  
+  bool can_proceed(bool force = false);
+  void sudo_or_throw_err();
+
   template <typename T>
   std::vector<T> as_vector( boost::property_tree::ptree const& pt, 
                             boost::property_tree::ptree::key_type const& key) 

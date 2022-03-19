@@ -33,7 +33,6 @@
 
 namespace XBUtilities {
  
-  bool can_proceed(bool force=false);
   void can_proceed_or_throw(const std::string& info, const std::string& error);
 
   void sudo_or_throw(const std::string& msg);

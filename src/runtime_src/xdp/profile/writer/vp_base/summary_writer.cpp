@@ -591,7 +591,7 @@ namespace xdp {
          iter != (db->getStats()).getTopHostWrites().end() ;
          ++iter) {
       double durationMS = (double)((*iter).duration) / one_million ;
-      double rate = ((double)((*iter).size) / one_thousand) * durationMS ;
+      double rate = ((double)((*iter).size) / one_thousand) / durationMS ;
 
       fout << (*iter).address << ","
            << (*iter).contextId << ","
@@ -625,7 +625,7 @@ namespace xdp {
          iter != (db->getStats()).getTopHostReads().end() ;
          ++iter) {
       double durationMS = (double)((*iter).duration) / one_million ;
-      double rate = ((double)((*iter).size) / one_thousand) * durationMS ;
+      double rate = ((double)((*iter).size) / one_thousand) / durationMS ;
 
       fout << (*iter).address << "," 
            << (*iter).contextId << ","
@@ -1905,7 +1905,7 @@ namespace xdp {
       fout << (double)((iter).size) / one_thousand << "," ;
       if (getFlowMode() == HW) {
         double durationMS = (double)((iter).duration) / one_million ;
-        double rate = ((double)((iter).size) / one_thousand) * durationMS ;
+        double rate = ((double)((iter).size) / one_thousand) / durationMS ;
         fout << durationMS << "," ;
         fout << rate << "," ;
       }
@@ -1937,7 +1937,7 @@ namespace xdp {
       fout << (double)((iter).size) / one_thousand << "," ;
       if (getFlowMode() == HW) {
         double durationMS = (double)((iter).duration) / one_million ;
-        double rate = ((double)((iter).size) / one_thousand) * durationMS ;
+        double rate = ((double)((iter).size) / one_thousand) / durationMS ;
         fout << durationMS << "," ;
         fout << rate << "," ;
       }

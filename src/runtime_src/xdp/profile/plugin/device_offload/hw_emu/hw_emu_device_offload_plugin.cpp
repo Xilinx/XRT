@@ -34,8 +34,8 @@ namespace {
     constexpr int MAX_PATH_LENGTH = 512 ;
 
     char pathBuf[MAX_PATH_LENGTH] ;
-    xclGetDebugIPlayoutPath(handle, pathBuf, MAX_PATH_LENGTH) ;
-    pathBuf[MAX_PATH_LENGTH-1] = '\0' ;  // In case of too long paths
+    memset(pathBuf, 0, MAX_PATH_LENGTH);
+    xclGetDebugIPlayoutPath(handle, pathBuf, (MAX_PATH_LENGTH-1) ) ;
 
     std::string path(pathBuf) ;
 

@@ -183,48 +183,80 @@ show_device_conf(xrt_core::device* device)
   if (is_mfg || is_recovery)
     throw xrt_core::error(std::errc::operation_canceled, "This operation is not supported with manufacturing image.\n");
 
+  boost::format node_data_format("  %-33s: %s\n");
+  std::string not_supported = "Not supported";
+  std::string sec_level = not_supported;
   try {
-    auto sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
-    std::cout << boost::format("  %-33s: %s\n") % "Security level" % sec_level;
+    sec_level = std::to_string(xrt_core::device_query<xrt_core::query::sec_level>(device));
   }
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for vck5000 
   }
+  std::cout << node_data_format % "Security level" % sec_level;
 
+  std::string scaling_enabled = not_supported;
   try {
-    auto scaling_enabled = xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(device);
-    std::cout << boost::format("  %-33s: %s\n") % "Runtime clock scaling enabled" % scaling_enabled;
+    scaling_enabled = xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(device);
   }
   catch (xrt_core::query::exception&) {
-    //safe to ignore. These sysfs nodes are not present for u30
+    //safe to ignore. These sysfs nodes are not present for u30 and vck5000
   }
+  std::cout << node_data_format % "Runtime clock scaling enabled" % scaling_enabled;
 
+  std::string scaling_power_override = not_supported;
   try {
-    auto scaling_override = xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(device);
-    std::cout << boost::format("  %-33s: %s\n") % "Scaling threshold power override" % scaling_override;
+    scaling_power_override = xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(device);
   }
   catch (xrt_core::query::exception&) {
-    //safe to ignore. These sysfs nodes are not present for u30
+    //safe to ignore. These sysfs nodes are not present for u30 and vck5000
   }
+  std::cout << node_data_format % "Scaling threshold power override" % scaling_power_override;
 
+  std::string scaling_temp_override = not_supported;
   try {
-    auto scaling_override = xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(device);
-    std::cout << boost::format("  %-33s: %s\n") % "Scaling threshold temp override" % scaling_override;
+    scaling_temp_override = xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(device);
   }
   catch (xrt_core::query::exception&) {
-    //safe to ignore. These sysfs nodes are not present for u30
+    //safe to ignore. These sysfs nodes are not present for u30 and vck5000
   }
+  std::cout << node_data_format % "Scaling threshold temp override" % scaling_temp_override;
 
+  std::string data_retention_string = not_supported;
   try {
     auto value = xrt_core::device_query<xrt_core::query::data_retention>(device);
     auto data_retention = xrt_core::query::data_retention::to_bool(value);
-    std::cout << boost::format("  %-33s: %s\n") % "Data retention" % (data_retention ? "enabled" : "disabled");
+    data_retention_string = (data_retention ? "enabled" : "disabled");
   }
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for vck5000 
   }
+  std::cout << node_data_format % "Data retention" % data_retention_string;
 
   std::cout << std::flush;
+}
+
+/*
+ * helper function for option:purge
+ * remove the daemon config file
+ */
+static void 
+remove_daemon_config()
+{
+  XBU::sudo_or_throw("Removing Daemon configuration file requires sudo");
+  
+  std::cout << boost::format("Removing Daemon configuration file \"%s\"\n") % config_file;
+  if(!XBU::can_proceed(XBU::getForce()))
+    throw xrt_core::error(std::errc::operation_canceled);
+
+  try {
+    if (boost::filesystem::remove(config_file))
+      std::cout << boost::format("Succesfully removed the Daemon configuration file.\n");
+    else
+      std::cout << boost::format("WARNING: Daemon configuration file does not exist.\n");
+  } catch (const boost::filesystem::filesystem_error &e) {
+      std::cerr << boost::format("ERROR: %s\n") % e.what();
+      throw xrt_core::error(std::errc::operation_canceled);
+  }
 }
 
 /*
@@ -242,7 +274,9 @@ update_daemon_config(const std::string& host)
     throw xrt_core::system_error(std::errc::invalid_argument, "Missing '" + std::string(config_file) + "'.  Cannot update");
 
   cfg.host = host;
-  std::cout << boost::str(boost::format("%s\n") % cfg);
+  // update the configuration file
+  cfile << boost::str(boost::format("%s\n") % cfg);
+  std::cout << boost::format("Successfully updated the Daemon configuration.\n");
 }
 
 /*
@@ -296,6 +330,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     bool help = false;
     // Hidden options
     bool daemon = false;
+    bool purge  = false;
     std::string host;
     std::string security;
     std::string clk_scale;
@@ -329,6 +364,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     po::options_description configHiddenOptions("Hidden Options");
     configHiddenOptions.add_options()
         ("daemon", boost::program_options::bool_switch(&daemon), "Update the device daemon configuration")
+        ("purge", boost::program_options::bool_switch(&purge), "Remove the daemon configuration file")
         ("host", boost::program_options::value<decltype(host)>(&host), "IP or hostname for device peer")
         ("security", boost::program_options::value<decltype(security)>(&security), "Update the security level for the device")
         ("runtime_clk_scale", boost::program_options::value<decltype(clk_scale)>(&clk_scale), "Enable/disable the device runtime clock scaling")
@@ -407,6 +443,12 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     std::shared_ptr<xrt_core::device>& workingDevice = deviceCollection[0];
 
+    // If in factory mode the device is not ready for use
+    if (xrt_core::device_query<xrt_core::query::is_mfg>(workingDevice.get())) {
+      std::cout << boost::format("ERROR: Device is in factory mode and cannot be configured\n");
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+
     // Load Config commands
     // -- process "input" option -----------------------------------------------
     if (!path.empty()) {
@@ -439,6 +481,13 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
             show_daemon_conf();
 
         show_device_conf(workingDevice.get());
+        return;
+    }
+    
+    // Remove the daemon config file
+    if (purge) {
+        XBU::verbose("Sub command: --purge");
+        remove_daemon_config();
         return;
     }
 

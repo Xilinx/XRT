@@ -32,12 +32,12 @@ public:
   // query functions
   virtual void read_dma_stats(boost::property_tree::ptree& pt) const;
 
-  virtual void read(uint64_t addr, void* buf, uint64_t len) const;
-  virtual void write(uint64_t addr, const void* buf, uint64_t len) const;
-  virtual int  open(const std::string& subdev, int flag) const;
-  virtual void close(int dev_handle) const;
-  virtual void reset(query::reset_type&) const;
-  virtual void xclmgmt_load_xclbin(const char* buffer) const;
+  virtual void read(uint64_t addr, void* buf, uint64_t len) const override;
+  virtual void write(uint64_t addr, const void* buf, uint64_t len) const override;
+  virtual int  open(const std::string& subdev, int flag) const override;
+  virtual void close(int dev_handle) const override;
+  virtual void reset(query::reset_type&) const override;
+  virtual void xclmgmt_load_xclbin(const char* buffer) const override;
 
 public:
   ////////////////////////////////////////////////////////////////
@@ -70,7 +70,7 @@ public:
 private:
   // Private look up function for concrete query::request
   virtual const query::request&
-  lookup_query(query::key_type query_key) const;
+  lookup_query(query::key_type query_key) const override;
 };
 
 } // xrt_core

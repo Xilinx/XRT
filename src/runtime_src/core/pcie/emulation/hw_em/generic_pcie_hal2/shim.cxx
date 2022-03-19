@@ -204,13 +204,37 @@ namespace xclhwemhal2 {
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
   }
 
+  int HwEmShim::parseLog()
+  {
+    std::vector<std::string> myvector = {"SIM-IPC's external process can be connected to instance",
+                                         "SystemC TLM functional mode"};
+
+    std::ifstream ifs(getSimPath() + "/simulate.log");
+
+    if (ifs.is_open()) {
+      std::string line;
+      while (std::getline(ifs, line)) {
+        for (auto matchString : myvector) {
+          std::string::size_type index = line.find(matchString);
+          if (index != std::string::npos) {
+            if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
+              logMessage(line);
+              parsedMsgs.push_back(line);
+            }
+          }
+        }
+      }
+    }
+    return 0;
+  }
+
   void HwEmShim::parseString(const std::string& simPath , const std::string& searchString)
   {
     std::ifstream ifs(simPath + "/simulate.log");
     std::string lineHandle;
     while(getline(ifs, lineHandle)) {
       if(lineHandle.find(searchString, 0) != std::string::npos)
-        logMessage(lineHandle, 0);
+        logMessage(lineHandle);
     }
   }
 
@@ -224,12 +248,8 @@ namespace xclhwemhal2 {
       size_t last = content.find("detected!", first);
       // substr including the word detected!
       std::string deadlockMsg = content.substr(first , last + 9 - first);
-      logMessage(deadlockMsg, 0);
+      logMessage(deadlockMsg);
     }
-
-    //CR-1120081 Changes Start
-    parseString(simPath,"SIM-IPC's external process can be connected to instance");
-    //CR-1120081 Changes End
   }
 
   static void sigHandler(int sn, siginfo_t *si, void *sc)
@@ -674,14 +694,14 @@ namespace xclhwemhal2 {
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
-	        if (simulatorType == "xsim") {
-                cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
-                << " --protoinst " << protoFileName;
-                launcherArgs = launcherArgs + cmdLineOption.str();
-	        } else {
-                cmdLineOption << " gui ";
-                launcherArgs = launcherArgs + cmdLineOption.str();
-	        }
+          if (simulatorType == "xsim") {
+            cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
+                          << " --protoinst " << protoFileName;
+            launcherArgs = launcherArgs + cmdLineOption.str();
+          } else {
+            cmdLineOption << " gui ";
+            launcherArgs = launcherArgs + cmdLineOption.str();
+          }
         }
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -1549,13 +1569,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       size_t size = MAXPATHLEN;
       char* pPath = GetCurrentDir(path,size);
 
-      if(pPath)
-      {
+      if(pPath) {
         // Copy waveform database
         if (lWaveform != xclemulation::debug_mode::off) {
           std::string extension = "wdb";
-          if (boost::filesystem::exists(binaryDirectory+"/msim"))
-          {
+          if (boost::filesystem::exists(binaryDirectory+"/msim")) {
             extension = "wlf";
           }
           std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
@@ -1593,12 +1611,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         std::string destPath5 = "'" + std::string(path) + "/" + fileName + "_simulate.log'";
         systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5, std::to_string(__LINE__));
 
-
         // Copy xsc_report Log file
         std::string xscReportLogFilePath= binaryDirectory + "/" + "xsc_report.log";
         std::string destPath8 = "'" + std::string(path) + "/" + fileName + "_xsc_report.log'";
         systemUtil::makeSystemCall(xscReportLogFilePath, systemUtil::systemOperation::COPY, destPath8, std::to_string(__LINE__));
-
       }
       i++;
     }
@@ -1610,14 +1626,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
   }
 
-  void HwEmShim::xclClose()
-  {
+  void HwEmShim::xclClose() {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    for (auto& it: mFdToFileNameMap)
-    {
+    parseLog();
+
+    for (auto& it: mFdToFileNameMap) {
       int fd=it.first;
       int sSize = std::get<1>(it.second);
       void* addr = std::get<2>(it.second);
@@ -1684,6 +1700,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       std::string waitingMsg ="INFO: [HW-EMU 06-1] All the simulator processes exited successfully";
       logMessage(waitingMsg);
+
+      std::string consoleMsg = "INFO: [HW-EMU 07-0] Please refer the path \"" + getSimPath() + "/simulate.log\" for more detailed simulation infos, errors and warnings.";
+      logMessage(consoleMsg);
     }
 
     saveWaveDataBase();
@@ -1860,6 +1879,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     free(ci_buf);
     free(ri_buf);
     free(buf);
+    parsedMsgs.clear();
+
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
       mLogStream.close();

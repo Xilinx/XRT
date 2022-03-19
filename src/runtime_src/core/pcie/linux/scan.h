@@ -93,7 +93,7 @@ public:
   bool is_ready =             false;
 
   pci_device(const std::string& drv_name, const std::string& sysfs_name);
-  ~pci_device();
+  virtual ~pci_device();
 
   virtual void
   sysfs_get(const std::string& subdev, const std::string& entry,

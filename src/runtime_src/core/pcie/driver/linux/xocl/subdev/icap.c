@@ -2246,7 +2246,9 @@ static bool check_mem_topo_and_data_retention(struct icap *icap,
 
 	if ((size != sizeof_sect(mem_topo, m_mem_data)) ||
 		    memcmp(((char *)xclbin)+offset, mem_topo, size)) {
-		ICAP_WARN(icap, "Incoming mem_topology doesn't match, disable data retention");
+		ICAP_WARN(icap, "Data retention is enabled. "
+			"However, the incoming mem_topology doesn't match, "
+			"data in device memory can not be retained");
 		return false;
 	}
 
@@ -2310,8 +2312,10 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_create_subdev_ip_layout(pdev);
 
 	/* Create cu/scu subdev by slot */
-	xocl_register_cus(xdev, 0, &xclbin->m_header.uuid,
-			  icap->ip_layout, icap->ps_kernel);
+	err = xocl_register_cus(xdev, 0, &xclbin->m_header.uuid,
+				icap->ip_layout, icap->ps_kernel);
+	if (err)
+		goto done;
 
 	icap_create_subdev_debugip(pdev);
 
