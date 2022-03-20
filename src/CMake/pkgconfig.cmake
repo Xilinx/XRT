@@ -12,7 +12,7 @@ else ()
 endif ()
 
 configure_file (
-  ${CMAKE_SOURCE_DIR}/CMake/config/xrt.pc.in
+  ${XRT_SOURCE_DIR}/CMake/config/xrt.pc.in
   xrt.pc
   @ONLY
   )
@@ -23,7 +23,7 @@ install (
   )
 
 configure_file (
-  ${CMAKE_SOURCE_DIR}/CMake/config/libxmaapi.pc.in
+  ${XRT_SOURCE_DIR}/CMake/config/libxmaapi.pc.in
   ${CMAKE_CURRENT_BINARY_DIR}/libxmaapi.pc
   @ONLY
   )
@@ -34,7 +34,7 @@ install (
   )
 
 configure_file (
-  ${CMAKE_SOURCE_DIR}/CMake/config/libxmaplugin.pc.in
+  ${XRT_SOURCE_DIR}/CMake/config/libxmaplugin.pc.in
   ${CMAKE_CURRENT_BINARY_DIR}/libxmaplugin.pc
   @ONLY
   )
@@ -45,7 +45,7 @@ install (
   )
 
 configure_file (
-  ${CMAKE_SOURCE_DIR}/CMake/config/libxma2api.pc.in
+  ${XRT_SOURCE_DIR}/CMake/config/libxma2api.pc.in
   ${CMAKE_CURRENT_BINARY_DIR}/libxma2api.pc
   @ONLY
   )
@@ -56,7 +56,7 @@ install (
   )
 
 configure_file (
-  ${CMAKE_SOURCE_DIR}/CMake/config/libxma2plugin.pc.in
+  ${XRT_SOURCE_DIR}/CMake/config/libxma2plugin.pc.in
   ${CMAKE_CURRENT_BINARY_DIR}/libxma2plugin.pc
   @ONLY
   )
@@ -65,5 +65,3 @@ install (
   DESTINATION ${XRT_PKG_CONFIG_DIR}
   COMPONENT ${XRT_DEV_COMPONENT}
   )
-
-

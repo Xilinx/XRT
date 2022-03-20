@@ -9,7 +9,7 @@ execute_process(COMMAND "${CMAKE_COMMAND}" -E make_directory "${UNITTEST_RUN_BAS
 
 
 #------------------------------------------------------------------------------
-# Function: xrt_create_unittest_wrapper 
+# Function: xrt_create_unittest_wrapper
 #
 # This function will create the unit test wrapper script used to:
 #    1) Encapulate the entire test in 1 bash script.
@@ -31,12 +31,12 @@ function(xrt_util_create_unittest_wrapper TEST_DIRECTORY TEST_COMMAND WRAPPER_FI
   if(BASH)
     set(RUN_BASE_EXECUTABLE "${RUN_BASE_NAME}.sh")
     set(RUN_BASE_WRAPPER_FILE "testBashWrapper.sh.in")
-    set(SETUP_SCRIPT "${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}/${XRT_INSTALL_DIR}/setup.sh")
+    set(SETUP_SCRIPT "${XRT_BUILD_INSTALL_DIR}/setup.sh")
   else()
     if(WIN32)
       set(RUN_BASE_EXECUTABLE "${RUN_BASE_NAME}.bat")
       set(RUN_BASE_WRAPPER_FILE "testBatchWrapper.bat.in")
-      set(SETUP_SCRIPT "${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}/${XRT_INSTALL_DIR}/setup.bat")
+      set(SETUP_SCRIPT "${XRT_BUILD_INSTALL_DIR}/setup.bat")
     else()
       message(FATAL_ERROR "Error: No shell found.")
     endif()
@@ -56,7 +56,7 @@ function(xrt_util_create_unittest_wrapper TEST_DIRECTORY TEST_COMMAND WRAPPER_FI
 
   # Step 1b: Create the script in the temporary directory
   configure_file(
-    "${CMAKE_SOURCE_DIR}/CMake/config/testBashWrapper.sh.in"
+    "${XRT_SOURCE_DIR}/CMake/config/testBashWrapper.sh.in"
     "${TEMP_DIR}/${RUN_BASE_EXECUTABLE}"
   )
 
@@ -78,29 +78,26 @@ endfunction()
 
 function(xrt_util_create_unittest_dir TEST_SUITE_NAME TEST_NAME UNIT_TEST_DIR)
   # Create the test working directory
-    if ("${TEST_SUITE_NAME}" STREQUAL "")
-      set(${UNIT_TEST_DIR} "${UNITTEST_RUN_BASE_DIR}/${TEST_NAME}" PARENT_SCOPE)
-    else()
-      set(${UNIT_TEST_DIR} "${UNITTEST_RUN_BASE_DIR}/${TEST_SUITE_NAME}/${TEST_NAME}" PARENT_SCOPE)
-    endif()
-
-    # Create the test directory
-    execute_process(COMMAND "${CMAKE_COMMAND}" -E make_directory "${UNIT_TEST_DIR}")
+  if ("${TEST_SUITE_NAME}" STREQUAL "")
+    set(${UNIT_TEST_DIR} "${UNITTEST_RUN_BASE_DIR}/${TEST_NAME}" PARENT_SCOPE)
+  else()
+    set(${UNIT_TEST_DIR} "${UNITTEST_RUN_BASE_DIR}/${TEST_SUITE_NAME}/${TEST_NAME}" PARENT_SCOPE)
+  endif()
 endfunction()
 
 function(xrt_util_create_cmake_test_name TEST_SUITE_NAME TEST_NAME CMAKE_TEST_NAME)
   # Create the test working directory
-    if ("${TEST_SUITE_NAME}" STREQUAL "")
-      set(${CMAKE_TEST_NAME} "${TEST_NAME}" PARENT_SCOPE)
-    else()
-      set(${CMAKE_TEST_NAME} "[${TEST_SUITE_NAME}]:${TEST_NAME}" PARENT_SCOPE)
-    endif()
+  if ("${TEST_SUITE_NAME}" STREQUAL "")
+    set(${CMAKE_TEST_NAME} "${TEST_NAME}" PARENT_SCOPE)
+  else()
+    set(${CMAKE_TEST_NAME} "[${TEST_SUITE_NAME}]:${TEST_NAME}" PARENT_SCOPE)
+  endif()
 endfunction()
 
 function(xrt_helper_add_test TEST_SUITE_NAME TEST_NAME TEST_COMMAND)
   # Create the test working directory
   xrt_util_create_unittest_dir("${TEST_SUITE_NAME}" "${TEST_NAME}" TEST_WORKING_DIR)
-  
+
   # Create the test wrapper script
   xrt_util_create_unittest_wrapper("${TEST_WORKING_DIR}" "${TEST_COMMAND}" WRAPPER_FILE)
 
@@ -127,7 +124,7 @@ endfunction()
 
 
 #------------------------------------------------------------------------------
-# Function: xrt_add_test 
+# Function: xrt_add_test
 #
 #------------------------------------------------------------------------------
 function(xrt_add_test TEST_NAME TEST_EXECUTABLE TEST_OPTIONS )
