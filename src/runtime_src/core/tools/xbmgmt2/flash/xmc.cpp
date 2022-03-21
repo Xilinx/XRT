@@ -464,8 +464,8 @@ int XMC_Flasher::sendPkt(bool print_dot)
 
 int XMC_Flasher::waitTillIdle()
 {
-    // In total, wait for 500 * 10ms
-    int retry = 500;
+    // In total, wait for 5000 * 10ms
+    int retry = 5000;
     unsigned int err = 0;
 
 #if  XMC_DEBUG
