@@ -23,6 +23,7 @@
 #include "lib/xma_utils.hpp"
 #include "core/common/api/bo.h"
 #include "core/common/api/kernel_int.h"
+#include "core/common/api/device_int.h"
 #include "core/common/device.h"
 
 #include <algorithm>
@@ -31,14 +32,6 @@
 #include <cstring>
 #include <iostream>
 #include <thread>
-
- // decl internal non public function
-namespace xrt_core {
-    namespace device_int {
-        std::cv_status
-            exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms);
-    }
-}
 
 using namespace std;
 
