@@ -386,6 +386,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Utility Migration Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil">xbutil</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbmgmt">xbmgmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#few-examples-of-legacy-vs-new-commands">Few examples of legacy vs new commands</a></li>
 </ul>
 </li>
 </ul>
@@ -758,6 +759,65 @@ New</th>
 </tbody>
 </table>
 </div>
+<div class="section" id="few-examples-of-legacy-vs-new-commands">
+<h2>Few examples of legacy vs new commands<a class="headerlink" href="#few-examples-of-legacy-vs-new-commands" title="Permalink to this headline">¶</a></h2>
+<p>Here are few example use-cases of legacy vs new commands</p>
+<p><strong>1. Getting all the information obtained from the userspace kernel driver</strong></p>
+<p><strong>Legacy command</strong></p>
+<p>There were two variants of legacy commands</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil query
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil dump
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil examine --device <span class="m">0000</span>:b3:00.1 --report all
+</pre></div>
+</div>
+<p><strong>2. Validate the card</strong></p>
+<p><strong>Legacy command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil validate
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil validate --device <span class="m">0000</span>:b3:00.1
+</pre></div>
+</div>
+<p><strong>3. Obtaining platform information such as SC version, flashed partition(s) running on the card, etc.</strong></p>
+<p><strong>Legacy command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt  flash --scan
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt examine --device <span class="m">0000</span>:b3:00.0 --report platform
+</pre></div>
+</div>
+<p>You need to use a combination of <code class="docutils literal notranslate"><span class="pre">xball</span> <span class="pre">xbmgmt</span></code> command if you prefer to see information from all the cards attached to the host server. Please see <code class="docutils literal notranslate"><span class="pre">xball</span></code> page for more details.</p>
+<p><strong>4. Programming the base partition</strong></p>
+<p><strong>Legacy command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt --update --shell &lt;partition name&gt;
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program --base --device <span class="m">0000</span>:d8:00.0 --base
+</pre></div>
+</div>
+<p>or when a specific partition to choose</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program --base --device <span class="m">0000</span>:d8:00.0 --base --image &lt;partition name&gt;
+</pre></div>
+</div>
+<p><strong>5. Resetting the device</strong></p>
+<p><strong>Legacy command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil --reset
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil --reset --device <span class="m">0000</span>:d8:00.1
+</pre></div>
+</div>
+</div>
 </div>
 
 
@@ -789,7 +849,7 @@ New</th>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 17, 2022.
+        Last updated on March 21, 2022.
       </span>
 
     </p>
