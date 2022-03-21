@@ -167,12 +167,14 @@ namespace xdp {
     mShimStartEvents = {
       {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
       {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
-      {"stalls_idle",           {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
+      {"input_stalls_idle",     {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}},
+      {"output_stalls_idle",    {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
     };
     mShimEndEvents = {
       {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
       {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
-      {"stalls_idle",           {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
+      {"input_stalls_idle",     {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}},
+      {"output_stalls_idle",    {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
     };
 
     // String event values for guidance and output
@@ -211,7 +213,8 @@ namespace xdp {
     mShimEventStrings = {
       {"input_bandwidths",      {"PORT_RUNNING_0_PL", "PORT_TLAST_0_PL"}},
       {"output_bandwidths",     {"PORT_RUNNING_0_PL", "PORT_TLAST_0_PL"}},
-      {"stalls_idle",           {"PORT_IDLE_0_PL",    "PORT_STALLED_0_PL"}}
+      {"input_stalls_idle",     {"PORT_IDLE_0_PL",    "PORT_STALLED_0_PL"}},
+      {"output_stalls_idle",    {"PORT_IDLE_0_PL",    "PORT_STALLED_0_PL"}}
     };
   }
 
@@ -424,7 +427,9 @@ namespace xdp {
             //       output = master (data flowing to PLIO)
             auto isMaster = plio.second.slaveOrMaster;
             if ((isMaster && (metricsStr == "input_bandwidths"))
-                || (!isMaster && (metricsStr == "output_bandwidths")))
+                || (isMaster && (metricsStr == "input_stalls_idle"))
+                || (!isMaster && (metricsStr == "output_bandwidths"))
+                || (!isMaster && (metricsStr == "output_stalls_idle")))
               continue;
 
             tempTiles.push_back(tile_type());
@@ -533,7 +538,8 @@ namespace xdp {
   {
     // Currently only used to monitor trace and PL stream
     if ((metricSet != "aie_trace") && (metricSet != "input_bandwidths")
-        && (metricSet != "output_bandwidths") && (metricSet != "stalls_idle"))
+        && (metricSet != "output_bandwidths") && (metricSet != "input_stalls_idle")
+        && (metricSet != "output_stalls_idle"))
       return;
 
     if (metricSet == "aie_trace") {
