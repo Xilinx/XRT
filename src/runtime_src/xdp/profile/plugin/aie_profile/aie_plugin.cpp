@@ -383,10 +383,9 @@ namespace xdp {
   }
 
   std::vector<tile_type> 
-  AIEProfilingPlugin::getTilesForProfiling(void* handle,
-                                           const XAie_ModuleType mod, 
+  AIEProfilingPlugin::getTilesForProfiling(const XAie_ModuleType mod, 
                                            const std::string& metricsStr,
-                                           const short int channelId)
+                                           void* handle)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
@@ -424,7 +423,7 @@ namespace xdp {
             auto streamId = plio.second.streamId;
 
             // If looking for specific ID, make sure it matches
-            if ((channelId >= 0) && (channelId != streamId)) {
+            if ((mChannelId >= 0) && (mChannelId != streamId)) {
               plioCount++;
               continue;
             }
@@ -662,8 +661,7 @@ namespace xdp {
     std::vector<std::string> interfaceVec;
     boost::split(interfaceVec, interfaceMetricStr, boost::is_any_of(":"));
     auto interfaceMetric = interfaceVec.at(0);
-    short int channelId = -1;
-    try {channelId = std::stoi(interfaceVec.at(1));} catch (...) {channelId = -1;}
+    try {mChannelId = std::stoi(interfaceVec.at(1));} catch (...) {mChannelId = -1;}
 
     int numCounters[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
@@ -689,7 +687,7 @@ namespace xdp {
       XAie_ModuleType mod    = falModuleTypes[module];
       std::string moduleName = moduleNames[module];
       auto metricSet         = getMetricSet(mod, metricsStr);
-      auto tiles             = getTilesForProfiling(handle, mod, metricsStr, channelId);
+      auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
 
       // Ask Resource manager for resource availability
       auto numFreeCounters   = getNumFreeCtr(aieDevice, tiles, mod, metricSet);
@@ -927,11 +925,13 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
     // Create and register writer and file
-    std::string core_str = (mCoreMetricSet.empty()) ? "" : "_" + mCoreMetricSet;
+    std::string core_str = (mCoreMetricSet.empty())   ? "" : "_" + mCoreMetricSet;
     std::string mem_str  = (mMemoryMetricSet.empty()) ? "" : "_" + mMemoryMetricSet;
-    std::string shim_str = (mShimMetricSet.empty()) ? "" : "_" + mShimMetricSet;    
+    std::string shim_str = (mShimMetricSet.empty())   ? "" : "_" + mShimMetricSet;    
+    std::string chan_str = (mChannelId < 0)           ? "" : "_chan" + std::to_string(mChannelId);
 
-    std::string outputFile = "aie_profile_" + deviceName + core_str + mem_str + shim_str + ".csv";
+    std::string outputFile = "aie_profile_" + deviceName + core_str + mem_str 
+        + shim_str + chan_str + ".csv";
 
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
                                               deviceName.c_str(), mIndex);

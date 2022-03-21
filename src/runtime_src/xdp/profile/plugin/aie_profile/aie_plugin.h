@@ -60,10 +60,9 @@ namespace xdp {
 
     std::string getMetricSet(const XAie_ModuleType mod, 
                              const std::string& metricsStr);
-    std::vector<tile_type> getTilesForProfiling(void* handle,
-                                                const XAie_ModuleType mod,
+    std::vector<tile_type> getTilesForProfiling(const XAie_ModuleType mod,
                                                 const std::string& metricsStr,
-                                                const short int channelId);
+                                                void* handle);
     // Find minimum number of counters that are available across all tiles
     uint32_t getNumFreeCtr(xaiefal::XAieDev* aieDevice,
                            const std::vector<tile_type>& tiles,
@@ -96,6 +95,7 @@ namespace xdp {
 
     static bool live;
 
+    int16_t mChannelId = -1;
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
     std::string mCoreMetricSet;
