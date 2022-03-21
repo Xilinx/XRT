@@ -303,8 +303,8 @@ memory_retention(xrt_core::device* device, bool enable)
 {
   XBU::sudo_or_throw("Updating memory retention requires sudo");
   try {
-  auto value = xrt_core::query::data_retention::value_type(enable);
-  xrt_core::device_update<xrt_core::query::data_retention>(device, value);
+    auto value = xrt_core::query::data_retention::value_type(enable);
+    xrt_core::device_update<xrt_core::query::data_retention>(device, value);
   } catch (const std::exception& ex) {
     std::cerr << boost::format("ERROR: Device does not support memory retention\n\n");
     throw xrt_core::error(std::errc::operation_canceled);
