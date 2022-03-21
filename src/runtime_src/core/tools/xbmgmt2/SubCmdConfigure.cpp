@@ -45,7 +45,7 @@ enum class config_type {
 
 static
 std::string
-to_string(config_type value)
+config_to_string(config_type value)
 {
   static std::map<config_type, std::string> config_map =
   {
@@ -53,7 +53,7 @@ to_string(config_type value)
    { config_type::clk_scaling,                "runtime clock scaling" },
    { config_type::threshold_power_override,   "threshold power override" },
    { config_type::threshold_temp_override,    "threshold temp override" },
-   { config_type::reset,                      "reset" },
+   { config_type::reset,                      "clock scaling option reset" },
   };
 
   return config_map[value];
@@ -268,27 +268,27 @@ update_daemon_config(const std::string& host)
 static bool 
 update_device_conf(xrt_core::device* device, const std::string& value, config_type cfg)
 {
-  XBU::sudo_or_throw("Updating daemon configuration requires sudo");
+  XBU::sudo_or_throw("Updating device configuration requires sudo");
   try {
-  switch(cfg) {
-  case config_type::security:
-    xrt_core::device_update<xrt_core::query::sec_level>(device, value);
-    break;
-  case config_type::clk_scaling:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(device, value);
-    break;
-  case config_type::threshold_power_override:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(device, value);
-    break;
-  case config_type::threshold_temp_override:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(device, value);
-    break;
-  case config_type::reset:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_reset>(device, value);
-    break;
-  }
+    switch(cfg) {
+      case config_type::security:
+        xrt_core::device_update<xrt_core::query::sec_level>(device, value);
+        break;
+      case config_type::clk_scaling:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(device, value);
+        break;
+      case config_type::threshold_power_override:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(device, value);
+        break;
+      case config_type::threshold_temp_override:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(device, value);
+        break;
+      case config_type::reset:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_reset>(device, value);
+        break;
+    }
   } catch (const std::exception& ex) {
-    std::cerr << boost::format("ERROR: Device does not support %s\n\n") % to_string(cfg);
+    std::cerr << boost::format("ERROR: Device does not support %s\n\n") % config_to_string(cfg);
     throw xrt_core::error(std::errc::operation_canceled);
   }
   return true;
