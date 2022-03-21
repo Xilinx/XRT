@@ -43,6 +43,22 @@ enum class config_type {
     reset
 };
 
+static
+std::string
+to_string(config_type value)
+{
+  static std::map<config_type, std::string> config_map =
+  {
+   { config_type::security,                   "security" },
+   { config_type::clk_scaling,                "runtime clock scaling" },
+   { config_type::threshold_power_override,   "threshold power override" },
+   { config_type::threshold_temp_override,    "threshold temp override" },
+   { config_type::reset,                      "reset" },
+  };
+
+  return config_map[value];
+}
+
 enum class mem_type {
     unknown= 0,
     ddr,
@@ -252,6 +268,8 @@ update_daemon_config(const std::string& host)
 static bool 
 update_device_conf(xrt_core::device* device, const std::string& value, config_type cfg)
 {
+  XBU::sudo_or_throw("Updating daemon configuration requires sudo");
+  try {
   switch(cfg) {
   case config_type::security:
     xrt_core::device_update<xrt_core::query::sec_level>(device, value);
@@ -269,6 +287,10 @@ update_device_conf(xrt_core::device* device, const std::string& value, config_ty
     xrt_core::device_update<xrt_core::query::xmc_scaling_reset>(device, value);
     break;
   }
+  } catch (const std::exception& ex) {
+    std::cerr << boost::format("ERROR: Device does not support %s\n\n") % to_string(cfg);
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
   return true;
 }
 
@@ -280,8 +302,13 @@ static void
 memory_retention(xrt_core::device* device, bool enable)
 {
   XBU::sudo_or_throw("Updating memory retention requires sudo");
+  try {
   auto value = xrt_core::query::data_retention::value_type(enable);
   xrt_core::device_update<xrt_core::query::data_retention>(device, value);
+  } catch (const std::exception& ex) {
+    std::cerr << boost::format("ERROR: Device does not support memory retention\n\n");
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 }
 
 void
