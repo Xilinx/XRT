@@ -535,6 +535,7 @@ struct aie_get_freq
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& partition_id)
   {
+    result_type freq = 0;
 #if defined(XRT_ENABLE_AIE)
     const std::string zocl_device = "/dev/dri/" + get_render_devname();
     auto fd_obj = aie_get_drmfd(device, zocl_device);
@@ -549,10 +550,11 @@ struct aie_get_freq
     if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg))
       throw xrt_core::error(-errno, boost::str(boost::format("Reading clock frequency from AIE partition(%d) failed") % aie_arg.partition_id));
 
+    freq = aie_arg.freq;
 #else
     throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
 #endif
-    return boost::any_cast<result_type>(aie_arg.freq);
+    return freq;
   }
 };
 
