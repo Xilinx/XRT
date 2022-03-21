@@ -386,7 +386,7 @@ namespace xdp {
   AIEProfilingPlugin::getTilesForProfiling(void* handle,
                                            const XAie_ModuleType mod, 
                                            const std::string& metricsStr,
-                                           const std::string& channelId)
+                                           const short int channelId)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
@@ -420,8 +420,11 @@ namespace xdp {
           int plioCount = 0;
           auto plios = xrt_core::edge::aie::get_plios(device.get());
           for (auto& plio : plios) {
+            auto isMaster = plio.second.slaveOrMaster;
+            auto streamId = plio.second.streamId;
+
             // If looking for specific ID, make sure it matches
-            if ((channelId >= 0) && (channelId != plioCount)) {
+            if ((channelId >= 0) && (channelId != streamId)) {
               plioCount++;
               continue;
             }
@@ -429,7 +432,6 @@ namespace xdp {
             // Make sure it's desired polarity
             // NOTE: input = slave (data flowing from PLIO)
             //       output = master (data flowing to PLIO)
-            auto isMaster = plio.second.slaveOrMaster;
             if ((isMaster && (metricsStr == "input_bandwidths"))
                 || (!isMaster && (metricsStr == "output_bandwidths")))
               continue;
@@ -442,7 +444,7 @@ namespace xdp {
             // Grab stream ID and slave/master (used in configStreamSwitchPorts() below)
             // TODO: find better way to store these values
             t.itr_mem_col = isMaster;
-            t.itr_mem_row = plio.second.streamId;
+            t.itr_mem_row = streamId;
           }
         }
 
@@ -660,8 +662,8 @@ namespace xdp {
     std::vector<std::string> interfaceVec;
     boost::split(interfaceVec, interfaceMetricStr, boost::is_any_of(":"));
     auto interfaceMetric = interfaceVec.at(0);
-    int channelId = -1;
-    try {channelId = std::stoi(vec.at(1));} catch (...) {channelId = -1;}
+    short int channelId = -1;
+    try {channelId = std::stoi(interfaceVec.at(1));} catch (...) {channelId = -1;}
 
     int numCounters[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};

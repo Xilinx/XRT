@@ -63,7 +63,7 @@ namespace xdp {
     std::vector<tile_type> getTilesForProfiling(void* handle,
                                                 const XAie_ModuleType mod,
                                                 const std::string& metricsStr,
-                                                const std::string& channelId);
+                                                const short int channelId);
     // Find minimum number of counters that are available across all tiles
     uint32_t getNumFreeCtr(xaiefal::XAieDev* aieDevice,
                            const std::vector<tile_type>& tiles,
