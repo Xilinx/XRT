@@ -781,6 +781,19 @@ xclLoadAxlf(const axlf *buffer)
     }
   }
 
+  #ifdef __HWEM__
+    static int xclbin_count = 0;
+    xclbin_count++;
+
+    //Fix for CR- 1121993 - if xclbin is already loaded, dont call ioctl in this case
+    if (xclbin_count > 1) {
+      xclLog(XRT_WARNING, "%s: skipping as xclbin is already loaded. Only single XCLBIN load is supported for hw_emu.", __func__);
+      return 0;
+    } else {
+      xclLog(XRT_INFO, "%s: Loading the XCLBIN", __func__);
+    }
+  #endif
+
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
   xclLog(XRT_INFO, "%s: flags 0x%x, return %d", __func__, flags, ret);
