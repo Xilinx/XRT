@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (c) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,50 +33,50 @@ void
 ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
-  boost::property_tree::ptree pt;
-  pt.put("Description", "CMC");
+  boost::property_tree::ptree cmc_tree;
+  cmc_tree.put("Description", "CMC");
 
   try {
-    boost::property_tree::ptree pth;
-    pth.put("Description", "CMC heartbeat");
-    pth.put("heartbeat_err_time", xrt_core::device_query<xrt_core::query::heartbeat_err_time>(_pDevice));
-    pth.put("heartbeat_count", xrt_core::device_query<xrt_core::query::heartbeat_count>(_pDevice));
-    pth.put("heartbeat_err_code", xrt_core::device_query<xrt_core::query::heartbeat_err_code>(_pDevice));
-    pth.put("heartbeat_stall", xrt_core::device_query<xrt_core::query::heartbeat_stall>(_pDevice));
-    pth.put("status", xrt_core::utils::parse_cmc_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::heartbeat_err_code>(_pDevice))));
-    pt.add_child("cmc_heartbeat", pth);
+    boost::property_tree::ptree heartbeat_data;
+    heartbeat_data.put("Description", "CMC heartbeat");
+    heartbeat_data.put("heartbeat_err_time", xrt_core::device_query<xrt_core::query::heartbeat_err_time>(_pDevice));
+    heartbeat_data.put("heartbeat_count", xrt_core::device_query<xrt_core::query::heartbeat_count>(_pDevice));
+    heartbeat_data.put("heartbeat_err_code", xrt_core::device_query<xrt_core::query::heartbeat_err_code>(_pDevice));
+    heartbeat_data.put("heartbeat_stall", xrt_core::device_query<xrt_core::query::heartbeat_stall>(_pDevice));
+    heartbeat_data.put("status", xrt_core::utils::parse_cmc_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::heartbeat_err_code>(_pDevice))));
+    cmc_tree.add_child("cmc_heartbeat", heartbeat_data);
   }
   catch(const xrt_core::query::no_such_key&) {}
   catch(const xrt_core::query::sysfs_error&) {}
 
-  boost::property_tree::ptree pts;
-  pts.put("Description", "Runtime Clock Scaling");
+  boost::property_tree::ptree runtime_tree;
+  runtime_tree.put("Description", "Runtime Clock Scaling");
   try {
-    pts.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_pDevice));
-    pts.put("supported", xrt_core::device_query<xrt_core::query::xmc_scaling_support>(_pDevice));
-    boost::property_tree::ptree pts1;
-    pts1.put("power_watts", xrt_core::device_query<xrt_core::query::xmc_scaling_critical_pow_threshold>(_pDevice));
-    pts1.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_critical_temp_threshold>(_pDevice));
-    pts.add_child("shutdown_threshold_limits", pts1);
-    boost::property_tree::ptree pts2;
-    pts2.put("power_watts", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_power_limit>(_pDevice));
-    pts2.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_temp_limit>(_pDevice));
-    pts.add_child("override_threshold_limits", pts2);
-    boost::property_tree::ptree pts3;
-    pts3.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override_enable>(_pDevice));
-    pts3.put("power_watts", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_pDevice));
-    pts.add_child("power_threshold_override", pts3);
-    boost::property_tree::ptree pts4;
-    pts4.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override_enable>(_pDevice));
-    pts4.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_pDevice));
-    pts.add_child("temp_threshold_override", pts4);
+    runtime_tree.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_pDevice));
+    runtime_tree.put("supported", xrt_core::device_query<xrt_core::query::xmc_scaling_support>(_pDevice));
+    boost::property_tree::ptree shutdown_data;
+    shutdown_data.put("power_watts", xrt_core::device_query<xrt_core::query::xmc_scaling_critical_pow_threshold>(_pDevice));
+    shutdown_data.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_critical_temp_threshold>(_pDevice));
+    runtime_tree.add_child("shutdown_threshold_limits", shutdown_data);
+    boost::property_tree::ptree override_data;
+    override_data.put("power_watts", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_power_limit>(_pDevice));
+    override_data.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_temp_limit>(_pDevice));
+    runtime_tree.add_child("override_threshold_limits", override_data);
+    boost::property_tree::ptree power_threshold_data;
+    power_threshold_data.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override_enable>(_pDevice));
+    power_threshold_data.put("power_watts", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_pDevice));
+    runtime_tree.add_child("power_threshold_override", power_threshold_data);
+    boost::property_tree::ptree temp_threshold_data;
+    temp_threshold_data.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override_enable>(_pDevice));
+    temp_threshold_data.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_pDevice));
+    runtime_tree.add_child("temp_threshold_override", temp_threshold_data);
   }
   catch(const xrt_core::query::no_such_key&) {}
   catch(const xrt_core::query::sysfs_error&) {}
-  pt.add_child("scaling", pts);
+  cmc_tree.add_child("scaling", runtime_tree);
 
   // There can only be 1 root node
-  _pt.add_child("cmc", pt);
+  _pt.add_child("cmc", cmc_tree);
 }
 
 void
