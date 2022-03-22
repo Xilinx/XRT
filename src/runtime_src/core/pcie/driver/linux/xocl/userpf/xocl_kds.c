@@ -1393,6 +1393,7 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
 		if (krnl_info->features & KRNL_SW_RESET)
 			cu_info[i].sw_reset = true;
 
+		cu_info[i].cu_domain = 0;
 		cu_info[i].num_res = 1;
 		cu_info[i].num_args = krnl_info->anums;
 		cu_info[i].args = (struct xrt_cu_arg *)krnl_info->args;
@@ -1446,6 +1447,7 @@ xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip
 			continue;
 		}
 
+		cu_info[i].cu_domain = 1;
 		cu_info[i].size = krnl_info->range;
 		cu_info[i].sw_reset = false;
 		if (krnl_info->features & KRNL_SW_RESET)

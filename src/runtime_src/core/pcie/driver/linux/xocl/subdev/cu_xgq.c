@@ -20,6 +20,8 @@ struct xrt_cu_xgq {
 	u32			 ready;
 	void			*xgq;
 	int			 xgq_client_id;
+	int			 cu_idx;
+	int			 cu_domain;
 };
 
 static int cu_xgq_alloc_credit(void *core)
@@ -40,8 +42,12 @@ static int cu_xgq_peek_credit(void *core)
 static int cu_xgq_configure(void *core, u32 *data, size_t sz, int type)
 {
 	struct xrt_cu_xgq *cu_xgq = core;
+	struct xgq_cmd_sq_hdr *hdr;
 	int ret = 0;
 
+	hdr = (struct xgq_cmd_sq_hdr *)data;
+	hdr->cu_idx = cu_xgq->cu_idx;
+	hdr->cu_domain = cu_xgq->cu_domain;
 	ret = xocl_xgq_set_command(cu_xgq->xgq, cu_xgq->xgq_client_id, data, sz);
 	return ret;
 }
@@ -134,6 +140,8 @@ int xrt_cu_xgq_init(struct xrt_cu *xcu, int slow_path)
 
 	core->max_credits = 1;
 	core->credits = 1;
+	core->cu_idx = xcu->info.cu_idx;
+	core->cu_domain = xcu->info.cu_domain;
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_xgq_funcs;
