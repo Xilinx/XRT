@@ -43,20 +43,29 @@ enum class config_type {
     reset
 };
 
-static
-std::string
-config_to_string(config_type value)
+std::ostream&
+operator<<(std::ostream& os, const config_type& value)
 {
-  static std::map<config_type, std::string> config_map =
-  {
-   { config_type::security,                   "security" },
-   { config_type::clk_scaling,                "runtime clock scaling" },
-   { config_type::threshold_power_override,   "threshold power override" },
-   { config_type::threshold_temp_override,    "threshold temp override" },
-   { config_type::reset,                      "clock scaling option reset" },
-  };
-
-  return config_map[value];
+  switch (value) {
+    case config_type::security:
+      os << "security";
+      break;
+    case config_type::clk_scaling:
+      os << "runtime clock scaling";
+      break;
+    case config_type::threshold_power_override:
+      os << "threshold power override";
+      break;
+    case config_type::threshold_temp_override:
+      os << "threshold temp override";
+      break;
+    case config_type::reset:
+      os << "clock scaling option reset";
+      break;
+    default:
+      throw std::runtime_error("Configuration missing enumeration conversion");
+  }
+  return os;
 }
 
 enum class mem_type {
@@ -288,7 +297,7 @@ update_device_conf(xrt_core::device* device, const std::string& value, config_ty
         break;
     }
   } catch (const std::exception&) {
-    std::cerr << boost::format("ERROR: Device does not support %s\n\n") % config_to_string(cfg);
+    std::cerr << boost::format("ERROR: Device does not support %s\n\n") % cfg;
     throw xrt_core::error(std::errc::operation_canceled);
   }
   return true;
