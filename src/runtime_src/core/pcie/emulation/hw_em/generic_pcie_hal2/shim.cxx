@@ -207,7 +207,10 @@ namespace xclhwemhal2 {
   int HwEmShim::parseLog()
   {
     std::vector<std::string> myvector = {"SIM-IPC's external process can be connected to instance",
-                                         "SystemC TLM functional mode"};
+                                         "SystemC TLM functional mode",
+                                         "HLS_PRINT",
+                                         "Exiting xsim",
+                                         "FATAL_ERROR"};
 
     std::ifstream ifs(getSimPath() + "/simulate.log");
 
@@ -218,6 +221,11 @@ namespace xclhwemhal2 {
           std::string::size_type index = line.find(matchString);
           if (index != std::string::npos) {
             if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
+              if (matchString == "Exiting xsim") {
+                 #ifndef _WINDOWS
+		   xclClose();
+                 #endif 
+              }
               logMessage(line);
               parsedMsgs.push_back(line);
             }
