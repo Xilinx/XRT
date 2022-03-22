@@ -107,7 +107,8 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     boost::property_tree::ptree cmc_scale = cmc.get_child("scaling");
     _output << boost::format("  %-22s:\n") % cmc_scale.get<std::string>("Description");
     if (!cmc_scale.get<bool>("supported")) {
-      _output << "    Information unavailable\n";
+      _output << "    Not supported\n";
+
       return;
     }
     if (!cmc_scale.get<bool>("enabled")) {
