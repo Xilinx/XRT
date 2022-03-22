@@ -1028,6 +1028,12 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
   case XRT_SCU_STATE_DONE:
     scmd.cu_state = ZOCL_SCU_STATE_DONE;
     break;
+  case XRT_SCU_STATE_READY:
+    scmd.cu_state = ZOCL_SCU_STATE_READY;
+    break;
+  case XRT_SCU_STATE_CRASH:
+    scmd.cu_state = ZOCL_SCU_STATE_CRASH;
+    break;
   default:
     return -EINVAL;
   }

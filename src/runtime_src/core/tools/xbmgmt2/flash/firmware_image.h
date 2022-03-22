@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2019 Xilinx, Inc
- *
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
  * License is located at
@@ -84,12 +85,13 @@ enum imageType
     BMC_FIRMWARE,
     MCS_FIRMWARE_PRIMARY,
     MCS_FIRMWARE_SECONDARY,
+    STRIPPED_FIRMWARE
 };
 
 class firmwareImage : public std::istringstream
 {
 public:
-    firmwareImage(const char *file, imageType type);
+    firmwareImage(const std::string& file, imageType type);
     ~firmwareImage();
     static std::vector<DSAInfo> getIntalledDSAs();
 private:

@@ -189,7 +189,6 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	header = xrt_xclbin_get_section_hdr_next(axlf, EMBEDDED_METADATA, header);
 	if(header) {
 		DRM_INFO("Found EMBEDDED_METADATA section\n");
-		DRM_INFO("EMBEDDED_METADATA section size = %lld\n",header->m_sectionSize);
 	} else {
 		DRM_ERROR("EMBEDDED_METADATA section not found!\n");
 		mutex_unlock(&sk->sk_lock);

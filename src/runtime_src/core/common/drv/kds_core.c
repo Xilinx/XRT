@@ -685,12 +685,12 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	int wait_ms;
 
 	if ((cu_idx >= MAX_CUS) || (!cu_mgmt->xcus[cu_idx])) {
-		kds_err(client, "CU(%d) not found", cu_idx);
+	        kds_err(client, "Client pid(%d) CU(%d) not found", pid_nr(client->pid), cu_idx);
 		return -EINVAL;
 	}
 
 	if (!test_and_clear_bit(cu_idx, client->cu_bitmap)) {
-		kds_err(client, "CU(%d) has never been reserved", cu_idx);
+		kds_err(client, "Client pid(%d) CU(%d) has never been reserved", pid_nr(client->pid), cu_idx);
 		return -EINVAL;
 	}
 
@@ -1176,18 +1176,6 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		kds_del_context(kds, client, &info);
 	}
 
-	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
-	while (bit < MAX_CUS) {
-		/* Check whether this CU belongs to current slot */
-	        if (is_cu_in_ctx_slot(kds, cctx, bit, 0)) {
-			info.cu_idx = bit;
-			info.cu_domain = 0;
-			info.curr_ctx = cctx;
-			kds_del_context(kds, client, &info);
-		}
-		bit = find_next_bit(client->cu_bitmap, MAX_CUS, bit + 1);
-	};
-	bitmap_zero(client->cu_bitmap, MAX_CUS);
 	bit = find_first_bit(client->scu_bitmap, MAX_CUS);
 	while (bit < MAX_CUS) {
 		/* Check whether this SCU belongs to current slot */
@@ -1197,9 +1185,23 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 			info.curr_ctx = cctx;
 			kds_del_context(kds, client, &info);
 		}
+		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
 		bit = find_next_bit(client->scu_bitmap, MAX_CUS, bit + 1);
 	};
 	bitmap_zero(client->scu_bitmap, MAX_CUS);
+	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
+	while (bit < MAX_CUS) {
+		/* Check whether this CU belongs to current slot */
+	        if (is_cu_in_ctx_slot(kds, cctx, bit, 0 /* regular CUs */)) {
+			info.cu_idx = bit;
+			info.cu_domain = 0;
+			info.curr_ctx = cctx;
+			kds_del_context(kds, client, &info);
+		}
+		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
+		bit = find_next_bit(client->cu_bitmap, MAX_CUS, bit + 1);
+	};
+	bitmap_zero(client->cu_bitmap, MAX_CUS);
 	mutex_unlock(&client->lock);
 
 	WARN_ON(cctx->num_ctx);
@@ -1270,8 +1272,8 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	++cctx->num_ctx;
-	kds_info(client, "Client pid(%d) add context CU(0x%x) shared(%s)",
-		 pid_nr(client->pid), cu_idx, shared? "true" : "false");
+	kds_info(client, "Client pid(%d) add context Domain(%d) CU(0x%x) shared(%s)",
+		 pid_nr(client->pid), info->cu_domain, cu_idx, shared? "true" : "false");
 	return 0;
 }
 
@@ -1315,8 +1317,8 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	--cctx->num_ctx;
-	kds_info(client, "Client pid(%d) del context CU(0x%x)",
-		 pid_nr(client->pid), cu_idx);
+	kds_info(client, "Client pid(%d) del context Domain(%d) CU(0x%x)",
+		 pid_nr(client->pid), info->cu_domain, cu_idx);
 	return 0;
 }
 
