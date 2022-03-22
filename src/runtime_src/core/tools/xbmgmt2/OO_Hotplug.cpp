@@ -80,7 +80,7 @@ removeDevice(unsigned int index)
 
   // Remove both user_pf and mgmt_pf
   if (pcidev::shutdown(mgmt_dev, true, true))
-    throw xrt_core::error("offline device(%d) Failed.", index);
+    throw xrt_core::error((boost::format("offline device(%d) Failed.") % index).str());
 #endif
 }
 
