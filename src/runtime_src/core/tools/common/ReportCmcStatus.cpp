@@ -105,6 +105,7 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
 
   try {
     boost::property_tree::ptree cmc_scale = cmc.get_child("scaling");
+    _output << boost::format("  %-22s:\n") % cmc_scale.get<std::string>("Description");
     _output << boost::format("  %-22s :\n") % "Runtime clock scaling feature";
     if (!cmc_scale.get<bool>("supported")) {
       _output << "    Information unavailable\n";
