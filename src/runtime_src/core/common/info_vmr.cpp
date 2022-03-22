@@ -48,8 +48,8 @@ vmr_info(const xrt_core::device* device)
   std::vector<std::string> vmr_status_raw;
   try {
     vmr_status_raw = xrt_core::device_query<xq::vmr_status>(device);
-    auto vmr_version = xrt_core::device_query<xq::vmr_status>(device);
-    vmr_status_raw.insert(vmr_status_raw.end(), vmr_version.begin(), vmr_version.end());
+    auto vmr_version = xrt_core::device_query<xq::extended_vmr_status>(device);
+    vmr_status_raw.insert(vmr_status_raw.begin(), vmr_version.begin(), vmr_version.end());
   }
   catch (const xq::exception&) {
     // only available for versal

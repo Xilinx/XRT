@@ -264,6 +264,7 @@ enum class key_type
   boot_partition,
   flush_default_only,
   vmr_status,
+  extended_vmr_status,
 
   noop
 };
@@ -2864,6 +2865,15 @@ struct vmr_status : request
 {
   using result_type = std::vector<std::string>;
   static const key_type key = key_type::vmr_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct extended_vmr_status : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::extended_vmr_status;
 
   virtual boost::any
   get(const device*) const = 0;
