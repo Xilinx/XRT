@@ -21,10 +21,8 @@
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 
-// Remove linux specific code
-#ifdef __GNUC__
-#include "core/pcie/linux/scan.h"
-#endif
+#include "core/common/system.h"
+#include "core/common/query_requests.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>
@@ -33,76 +31,6 @@
 namespace po = boost::program_options;
 
 // =============================================================================
-
-// ------ L O C A L   F U N C T I O N S ---------------------------------------
-namespace {
-
-static void 
-rescan_device(void)
-{
-  std::string sysfs_path("/sys/bus/pci");
-
-  //create sysfs device rescan path
-  std::string sysfs_rescan_path = sysfs_path + "/rescan";
-  if (!boost::filesystem::exists(sysfs_rescan_path))
-    throw xrt_core::error("Invalid sysfs path.");
-
-  boost::filesystem::ofstream fRescanfile(sysfs_rescan_path);
-  try
-  {
-    if (!fRescanfile.is_open())
-      throw xrt_core::error((boost::format("Unable to open the sysfs file '%s'.") % sysfs_rescan_path).str());
-
-    // Writing "1" to /sys/bus/pci/rescan will trigger the hotplug event.
-    fRescanfile << 1;
-    fRescanfile.flush();
-    if (!fRescanfile.good()) {
-      fRescanfile.close();
-      throw std::runtime_error(boost::str(boost::format("Can't write to file %s") % sysfs_rescan_path));
-    }
-  }
-  catch(const xrt_core::error& e) {
-    std::cerr << boost::format("\nERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  fRescanfile.close();
-}
-
-static void 
-remove_device(unsigned int index)
-{
-  // To be replaced with a cleaner fix
-  // Mgmt pf needs to shutdown so that the board doesn't brick
-  // Hack: added linux specific code to shutdown mgmt pf
-#ifdef __GNUC__
-  auto mgmt_dev = pcidev::get_dev(index, false);
-
-  // Remove both user_pf and mgmt_pf
-  if (pcidev::shutdown(mgmt_dev, true, true))
-    throw xrt_core::error((boost::format("offline device(%d) Failed.") % index).str());
-#endif
-}
-
-void
-doHotplug(std::shared_ptr<xrt_core::device> & working_device, bool is_online)
-{
-  XBUtilities::sudo_or_throw("Root privileges required to perform hotplug operation");
-  std::cout << "CAUTION: Performing hotplug command. " <<
-	  "This command is going to impact both user pf and mgmt pf.\n" <<
-	  "Please make sure no application is currently running." << std::endl;
-
-  /* Get permission from user. */
-  if(!XBUtilities::can_proceed(XBUtilities::getForce()))
-    throw xrt_core::error(std::errc::operation_canceled);
-
-  if (is_online)
-    rescan_device();
-  else
-    remove_device(working_device->get_device_id());
-}
-
-} //end namespace 
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -201,11 +129,26 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(std::errc::operation_canceled, errmsg.str());
     }
 
-    // Get the device
-    auto & working_device = deviceCollection[0];
+    XBUtilities::sudo_or_throw("Root privileges required to perform hotplug operation");
+    std::cout << "CAUTION: Performing hotplug command. " <<
+	  "This command is going to impact both user pf and mgmt pf.\n" <<
+	  "Please make sure no application is currently running." << std::endl;
 
-    //Perform the hotplug action
-    doHotplug(working_device, is_online);
+    // Get permission from user.
+    if(!XBUtilities::can_proceed(XBUtilities::getForce()))
+      throw xrt_core::error(std::errc::operation_canceled);
+
+    if (is_online) {
+      // For Online we don't need any specific device. We are passing first device 
+      // just for accessing the sysfs entry i.e. /sys/bus/pci/rescan 
+      auto dev = xrt_core::get_mgmtpf_device(0);
+      xrt_core::device_query<xrt_core::query::hotplug_online>(dev);
+    }
+    else {
+      auto &dev = deviceCollection[0];
+      xrt_core::device_query<xrt_core::query::hotplug_offline>(dev);
+    }
+
     std::cout << boost::format("\nHotplug %s successfully\n") % (is_online ? "online" : "offline");
   }
   catch(const xrt_core::error& e) {
