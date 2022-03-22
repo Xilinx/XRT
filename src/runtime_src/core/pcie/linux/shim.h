@@ -3,6 +3,7 @@
 
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Author(s): Umang Parekh
  *          : Sonal Santan
  *          : Ryan Radjabi

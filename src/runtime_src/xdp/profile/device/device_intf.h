@@ -3,7 +3,7 @@
 
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
-
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Author(s): Paul Schumacher
  *          : Anurag Dubey
  *          : Tianhao Zhou
@@ -211,8 +211,8 @@ class DeviceIntf {
      */
     double mHostMaxReadBW    = 15753.85;
     double mHostMaxWriteBW   = 15753.85;
-    double mKernelMaxReadBW  = 21300.00;
-    double mKernelMaxWriteBW = 21300.00;
+    double mKernelMaxReadBW  = 19250.00;
+    double mKernelMaxWriteBW = 19250.00;
 
 }; /* DeviceIntf */
 

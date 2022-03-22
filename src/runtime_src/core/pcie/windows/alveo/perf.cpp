@@ -1,6 +1,7 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  */
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
@@ -41,12 +42,6 @@ double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
   return 15753.85;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
-double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
-{
-  return 21300.00;
-}
-
 // For PCIe gen 3x16 or 4x8:
 // Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
 double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
@@ -54,10 +49,16 @@ double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
   return 15753.85;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
+// For DDR4: Typical Max BW = 19.25 GB/s
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
 double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  return 21300.00;
+  return 19250.00;
 }
 
 #if 0

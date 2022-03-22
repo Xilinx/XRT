@@ -932,36 +932,36 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
+// For DDR4: Typical Max BW = 19.25 GB/s
 double 
 shim::
 xclGetHostReadMaxBandwidthMBps()
 {
-  return 21300.00;
+  return 19250.00;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
+// For DDR4: Typical Max BW = 19.25 GB/s
 double 
 shim::
 xclGetHostWriteMaxBandwidthMBps()
 {
-  return 21300.00;
+  return 19250.00;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
+// For DDR4: Typical Max BW = 19.25 GB/s
 double 
 shim::
 xclGetKernelReadMaxBandwidthMBps()
 {
-  return 21300.00;
+  return 19250.00;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
+// For DDR4: Typical Max BW = 19.25 GB/s
 double 
 shim::
 xclGetKernelWriteMaxBandwidthMBps()
 {
-  return 21300.00;
+  return 19250.00;
 }
 
 int

@@ -3290,16 +3290,16 @@ double HwEmShim::xclGetHostWriteMaxBandwidthMBps()
   return 15753.85;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
+// For DDR4: Typical Max BW = 19.25 GB/s
 double HwEmShim::xclGetKernelReadMaxBandwidthMBps()
 {
-  return 21300.00;
+  return 19250.00;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
+// For DDR4: Typical Max BW = 19.25 GB/s
 double HwEmShim::xclGetKernelWriteMaxBandwidthMBps()
 {
-  return 21300.00;
+  return 19250.00;
 }
 
 uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)

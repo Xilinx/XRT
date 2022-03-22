@@ -2166,16 +2166,16 @@ double shim::xclGetHostWriteMaxBandwidthMBps()
   return 15753.85;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
+// For DDR4: Typical Max BW = 19.25 GB/s
 double shim::xclGetKernelReadMaxBandwidthMBps()
 {
-  return 21300.00;
+  return 19250.00;
 }
 
-// For DDR4: Max BW = 21.3 GB/s
+// For DDR4: Typical Max BW = 19.25 GB/s
 double shim::xclGetKernelWriteMaxBandwidthMBps()
 {
-  return 21300.00;
+  return 19250.00;
 }
 
 int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
