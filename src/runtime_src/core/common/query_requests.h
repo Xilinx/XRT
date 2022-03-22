@@ -265,6 +265,7 @@ enum class key_type
 
   boot_partition,
   flush_default_only,
+  program_sc,
   vmr_status,
 
   hwmon_sdm_serial_num,
@@ -2881,6 +2882,19 @@ struct flush_default_only : request
   using result_type = uint32_t;
   using value_type = uint32_t;
   static const key_type key = key_type::flush_default_only;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct program_sc : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::program_sc;
 
   virtual boost::any
   get(const device*) const = 0;

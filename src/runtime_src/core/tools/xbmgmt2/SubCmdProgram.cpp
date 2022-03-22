@@ -142,6 +142,17 @@ update_SC(unsigned int  index, const std::string& file)
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
   auto dev = xrt_core::get_mgmtpf_device(index);
+
+  //versal flow to flash sc
+  try {
+    uint32_t val = xrt_core::query::program_sc::value_type(1);
+    xrt_core::device_update<xrt_core::query::program_sc>(dev.get(), val);
+    return;
+  }
+  catch (const xrt_core::query::exception&) { 
+    // this flow is not supported on the device
+    // continue with the other flow
+  }
   
   //if factory image, update SC
   auto is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
