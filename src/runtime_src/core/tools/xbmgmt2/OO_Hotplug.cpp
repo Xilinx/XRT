@@ -38,7 +38,7 @@ namespace po = boost::program_options;
 namespace {
 
 static void 
-rescanDevice(void)
+rescan_device(void)
 {
   std::string sysfs_path("/sys/bus/pci");
 
@@ -70,7 +70,7 @@ rescanDevice(void)
 }
 
 static void 
-removeDevice(unsigned int index)
+remove_device(unsigned int index)
 {
   // To be replaced with a cleaner fix
   // Mgmt pf needs to shutdown so that the board doesn't brick
@@ -88,18 +88,18 @@ void
 doHotplug(std::shared_ptr<xrt_core::device> & working_device, bool is_online)
 {
   XBUtilities::sudo_or_throw("Root privileges required to perform hotplug operation");
-  /* Get permission from user. */
   std::cout << "CAUTION: Performing hotplug command. " <<
 	  "This command is going to impact both user pf and mgmt pf.\n" <<
 	  "Please make sure no application is currently running." << std::endl;
 
+  /* Get permission from user. */
   if(!XBUtilities::can_proceed(XBUtilities::getForce()))
     throw xrt_core::error(std::errc::operation_canceled);
 
   if (is_online)
-    rescanDevice();
+    rescan_device();
   else
-    removeDevice(working_device->get_device_id());
+    remove_device(working_device->get_device_id());
 }
 
 } //end namespace 
@@ -107,7 +107,7 @@ doHotplug(std::shared_ptr<xrt_core::device> & working_device, bool is_online)
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_Hotplug::OO_Hotplug( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Hotplug the given device")
+    : OptionOptions(_longName, _isHidden, "Perform hotplug for the given device")
 {
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
@@ -159,7 +159,6 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
   }
 
   try {
-    
     if (!boost::iequals(m_action, "online") && !boost::iequals(m_action, "offline")) {
       std::cerr << boost::format("ERROR: Invalid action value: '%s'\n") % m_action;
       printHelp();
@@ -167,7 +166,7 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
     }
     bool is_online = boost::iequals(m_action, "online");
 
-    // Device need to spcify for offline (hotremoval) case
+    // Device BDF need to spcify for offline (hot removal) case
     if (!is_online) {
       if(m_devices.empty()) {
         std::cerr << boost::format("ERROR: A device needs to be specified.\n");
@@ -181,7 +180,7 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       }
     }
 
-    // Collect all of the devices of interest
+    // Collect all the devices of interest
     std::set<std::string> deviceNames;
     xrt_core::device_collection deviceCollection;
     for (const auto & deviceName : m_devices) 
