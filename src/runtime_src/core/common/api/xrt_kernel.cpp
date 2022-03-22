@@ -1899,7 +1899,8 @@ class run_impl
   xrt::bo
   validate_bo_at_index(size_t index, const xrt::bo& bo)
   {
-    if (validate_ip_arg_connectivity(index, xrt_core::bo::group_id(bo)))
+    xcl_bo_flags grp {xrt_core::bo::group_id(bo)};
+    if (validate_ip_arg_connectivity(index, grp.bank))
       return bo;
 
     auto fmt = boost::format
