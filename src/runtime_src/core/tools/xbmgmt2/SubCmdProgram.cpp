@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2020,2021,2022 Xilinx, Inc
- *
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * 
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
  * License is located at
@@ -92,18 +93,22 @@ update_shell(unsigned int index, std::map<std::string, std::string>& image_paths
     throw xrt_core::error("No image specified.\n Usage: xbmgmt program --device='0000:00:00.0' --base [all|sc|shell]"
                             " --image=['/path/to/flash_image'|'shell name']");
 
-  auto pri = std::make_unique<firmwareImage>(image_paths["primary"].c_str(), MCS_FIRMWARE_PRIMARY);
+  auto pri = std::make_unique<firmwareImage>(image_paths["primary"], MCS_FIRMWARE_PRIMARY);
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % image_paths["primary"]));
 
+  auto stripped = std::make_unique<firmwareImage>(image_paths["primary"], STRIPPED_FIRMWARE);
+  if (stripped->fail())
+    stripped = nullptr;
+
   std::unique_ptr<firmwareImage> sec;
   if (image_paths.size() > 1) {
-    sec = std::make_unique<firmwareImage>(image_paths["secondary"].c_str(), MCS_FIRMWARE_SECONDARY);
+    sec = std::make_unique<firmwareImage>(image_paths["secondary"], MCS_FIRMWARE_SECONDARY);
     if (sec->fail())
       throw xrt_core::error(boost::str(boost::format("Failed to read %s") % image_paths["secondary"]));
   }
   
-  if (flasher.upgradeFirmware(flash_type, pri.get(), sec.get()) != 0)
+  if (flasher.upgradeFirmware(flash_type, pri.get(), sec.get(), stripped.get()) != 0)
     throw xrt_core::error("Failed to update base");
   
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base flash image has been programmed successfully.";
@@ -146,7 +151,7 @@ update_SC(unsigned int  index, const std::string& file)
   //if factory image, update SC
   auto is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
   if (is_mfg) {
-    std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+    std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file, BMC_FIRMWARE);
     if (bmc->fail())
       throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file));
 
@@ -159,23 +164,6 @@ update_SC(unsigned int  index, const std::string& file)
   if (is_SC_fixed(index)) 
     throw xrt_core::error("SC is fixed, unable to flash image.");
 
-  //don't trigger reset for u30. let python helper handle everything
-  
-  if (xrt_core::device_query<xrt_core::query::rom_vbnv>(dev).find("_u30_") != std::string::npos) {
-    std::ostringstream os_stdout;
-    std::ostringstream os_stderr;
-    const std::string scFlashPath = "/opt/xilinx/xrt/bin/unwrapped/_scflash.py";
-    std::vector<std::string> args = { "-y", "-d", getBDF(index), "-p", file };
-    
-    int exit_code = XBU::runScript("python", scFlashPath, args, "Programming SC ", "SC Programmed", 120, os_stdout, os_stderr, false);
-
-    if (exit_code != 0) {
-      std::string err_msg = "ERROR: " + os_stdout.str() + "\n" + os_stderr.str() + "\n";
-      throw xrt_core::error(err_msg);
-    }
-    return;
-  }
-
 // To be replaced with a cleaner fix
 // Mgmt pf needs to shutdown so that the board doesn't brick
 // Hack: added linux specific code to shutdown mgmt pf
@@ -186,7 +174,7 @@ update_SC(unsigned int  index, const std::string& file)
     throw xrt_core::error("Only proceed with SC update if all user applications for the target card(s) are stopped.");
 #endif
 
-  std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+  std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file, BMC_FIRMWARE);
 
   if (bmc->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file));
@@ -938,7 +926,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(std::errc::operation_canceled);
     
     for (auto& f : flasher_list) {
-      if (!f.upgradeFirmware(flash_type, nullptr, nullptr)) {
+      if (!f.upgradeFirmware(flash_type, nullptr, nullptr, nullptr)) {
         std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "]"
                                    " is reset successfully.";
         has_reset = true;

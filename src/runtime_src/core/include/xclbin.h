@@ -1,5 +1,6 @@
 /**
  *  Copyright (C) 2015-2022, Xilinx Inc
+ *  Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -173,6 +174,7 @@ extern "C" {
         SMARTNIC               = 28,
         AIE_RESOURCES          = 29,
         OVERLAY                = 30,
+        VENDER_METADATA        = 31,
     };
 
     enum MEM_TYPE {
@@ -499,6 +501,21 @@ extern "C" {
         CST_SDBM = 1,
         CST_LAST
     };
+
+    struct vender_metadata {                   /* vender metadata section  */
+        // Prefix Syntax:
+        //   mpo - member, pointer, offset
+        //     This variable represents a zero terminated string
+        //     that is offseted from the beginning of the section.
+        //
+        //     The pointer to access the string is initialized as follows:
+        //     char * pCharString = (address_of_section) + (mpo value)
+        uint32_t mpo_name;         // Name of the the vender metadata section
+        uint32_t m_image_offset;   // Image offset
+        uint32_t m_image_size;     // Image size
+        uint8_t padding[36];       // Reserved for future use
+    };
+    XCLBIN_STATIC_ASSERT(sizeof(struct vender_metadata) == 48, "vender metadata kernel structure no longer is 48 bytes in size");
 
     /**** END : Xilinx internal section *****/
 

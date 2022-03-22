@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * This is a wrapper class that does the prep work required to program a flash
  * device. Flasher will create a specific flash object determined by the program
@@ -97,7 +98,7 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
  * upgradeFirmware
  */
 int Flasher::upgradeFirmware(E_FlasherType flash_type,
-    firmwareImage *primary, firmwareImage *secondary)
+    firmwareImage *primary, firmwareImage *secondary, firmwareImage* stripped)
 {
     int retVal = -EINVAL;
 
@@ -112,11 +113,11 @@ int Flasher::upgradeFirmware(E_FlasherType flash_type,
         }
         else if(secondary == nullptr)
         {
-            retVal = xspi.xclUpgradeFirmware1(*primary);
+            retVal = xspi.xclUpgradeFirmware1(*primary, *stripped);
         }
         else
         {
-            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary);
+            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary, *stripped);
         }
 
         // program icap controller for webstar flow. Required only for U.2

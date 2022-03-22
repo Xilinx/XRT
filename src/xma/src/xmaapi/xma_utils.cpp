@@ -127,6 +127,7 @@ namespace xma_core {
                 std::string inst_name = cu_name.substr(pos + 1);
                 std::string updated_cu_name = kernel_name + ":{" + inst_name + "}";
                 dev_execbo.xrt_kernel = xrt::kernel(priv->dev_handle, priv->dev_handle.get_xclbin_uuid(), updated_cu_name);
+                dev_execbo.xrt_run = xrt::run(dev_execbo.xrt_kernel);
             }
             return XMA_SUCCESS;
         }

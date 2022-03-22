@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -459,7 +460,106 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
     return stream;
 }
 
-firmwareImage::firmwareImage(const char *file, imageType type) :
+static void 
+remove_xsabin_mirror(void * xsabin_buffer)
+{
+  static const std::string mirror_data_start = "XCLBIN_MIRROR_DATA_START";
+  static const std::string mirror_data_end = "XCLBIN_MIRROR_DATA_END";
+
+  axlf *axlf_header = reinterpret_cast<struct axlf *>(xsabin_buffer);
+  uint64_t bufferSize = axlf_header->m_header.m_length;
+
+  std::stringstream strm;
+  strm << xsabin_buffer;
+  std::string str_xsabin_buffer = strm.str();
+
+  auto start_offset = str_xsabin_buffer.find(mirror_data_start);
+  if (start_offset == std::string::npos)
+    return; // No MIRROR DATA
+
+  auto end_offset = str_xsabin_buffer.find(mirror_data_end);
+  if (end_offset == std::string::npos)
+    return; // Badly formed mirror data (we have a start, but no end)
+
+  if (end_offset <= start_offset)
+    return;   // Tags are in the wrong order
+
+  // Zero out memory (not really needed but done for completeness)
+  uint64_t bytesRemoved = end_offset - start_offset;
+  std::memset(reinterpret_cast<unsigned char *>(xsabin_buffer) + start_offset, 0, bytesRemoved);
+
+  // Compress the image
+  uint64_t bytesToCopy = bufferSize - end_offset;
+  if (bytesToCopy != 0) 
+    std::memcpy(reinterpret_cast<unsigned char *>(xsabin_buffer) + start_offset, reinterpret_cast<unsigned char *>(xsabin_buffer) + end_offset, bytesToCopy);
+
+  // Update length of the buffer
+  axlf_header->m_header.m_length = bufferSize - bytesRemoved;
+}
+
+static void 
+remove_xsabin_section(void * xsabin_buffer, enum axlf_section_kind section_to_remove)
+{
+  // Simple DRC check
+  if (xsabin_buffer == nullptr)
+    throw std::runtime_error("ERROR: Buffer pointer is a nullptr.");
+  axlf *axlf_header = reinterpret_cast<struct axlf *>(xsabin_buffer);
+
+  // This loop does need to re-evaluate the m_numSections for it will be 
+  // reduced as sections are removed.  In addition, we need to start again from
+  // the start for there could be multiple sections of the same type that
+  // need to be removed.
+  for (uint64_t index = 0; index < axlf_header->m_header.m_numSections; ++index) {
+    axlf_section_header *sectionHeaderArray = &axlf_header->m_sections[0];
+    // Is this a section of interest, if not then go to the next section
+    if (sectionHeaderArray[index].m_sectionKind != static_cast<uint32_t>(section_to_remove))
+      continue;
+    // Record the buffer size
+    uint64_t bufferSize = axlf_header->m_header.m_length;
+
+    // Determine the data to be removed.
+    uint64_t startToOffset = sectionHeaderArray[index].m_sectionOffset;
+    uint64_t startFromOffset = ((index + 1) == axlf_header->m_header.m_numSections) ?
+                                sectionHeaderArray[index].m_sectionOffset + sectionHeaderArray[index].m_sectionSize:
+                                sectionHeaderArray[index + 1].m_sectionOffset;
+    uint64_t bytesToCopy = bufferSize - startFromOffset;
+    uint64_t bytesRemoved = startFromOffset - startToOffset;
+
+    if (bytesToCopy != 0) {
+      std::memcpy(reinterpret_cast<unsigned char *>(xsabin_buffer) + startToOffset, 
+                    reinterpret_cast<unsigned char *>(xsabin_buffer) + startFromOffset, bytesToCopy);
+    }
+    // -- Now do some incremental clean up of the data structures
+    // Update the length and offsets AFTER this entry
+    axlf_header->m_header.m_length -= bytesRemoved;
+    for (uint64_t idx = index + 1; idx < axlf_header->m_header.m_numSections; ++idx) {
+      sectionHeaderArray[idx].m_sectionOffset -= bytesRemoved;
+    }
+    // Are we removing the last section.  If so just update the count and leave
+    if (axlf_header->m_header.m_numSections == 1) {
+      axlf_header->m_header.m_numSections = 0;
+      sectionHeaderArray[0].m_sectionKind = 0;
+      sectionHeaderArray[0].m_sectionOffset = 0;
+      sectionHeaderArray[0].m_sectionSize = 0;
+      continue;
+    }
+    // Remove the array entry
+    void * ptrStartTo = &sectionHeaderArray[index];
+    void * ptrStartFrom = &sectionHeaderArray[index+1];
+    uint64_t bytesToShift = axlf_header->m_header.m_length - 
+                            (reinterpret_cast<unsigned char *>(ptrStartFrom) - reinterpret_cast<unsigned char *>(xsabin_buffer));
+    std::memcpy(reinterpret_cast<unsigned char *>(ptrStartTo), reinterpret_cast<unsigned char *>(ptrStartFrom), bytesToShift);
+
+    // Update data elements
+    axlf_header->m_header.m_numSections -= 1;
+    axlf_header->m_header.m_length -= sizeof(axlf_section_header);
+    for (uint64_t idx = 0; idx < axlf_header->m_header.m_numSections; ++idx) {
+      sectionHeaderArray[idx].m_sectionOffset -= sizeof(axlf_section_header);
+    }
+  }
+}
+
+firmwareImage::firmwareImage(const std::string& file, imageType type) :
     mType(type), mBuf(nullptr)
 {
     std::ifstream in_file(file, std::ios::binary | std::ios::ate);
@@ -531,6 +631,28 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             mBuf = new char[bufsize];
             in_file.seekg(bmcSection->m_sectionOffset + bmc->m_offset);
             in_file.read(mBuf, bufsize);
+        }
+        else if (type == STRIPPED_FIRMWARE)
+        {
+            std::vector<char> full(ap->m_header.m_length);
+            const axlf *fp = reinterpret_cast<const axlf *>(full.data());
+            try {
+                in_file.seekg(0);
+                in_file.read(full.data(), full.size());
+                remove_xsabin_section(full.data(), ASK_FLASH);
+                remove_xsabin_section(full.data(), PDI);
+                remove_xsabin_section(full.data(), MCS);
+                remove_xsabin_mirror(full.data());
+            } catch (const std::exception &e) {
+                this->setstate(failbit);
+                std::cout << "failed to remove section from "<< file << ": "
+                    << e.what() << std::endl;
+                return;
+            }
+            // Load data into stream.
+            bufsize = fp->m_header.m_length;
+            mBuf = new char[bufsize];
+            std::memcpy(mBuf, full.data(), bufsize);
         }
         else
         {
@@ -631,6 +753,12 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
     }
     else
     {
+        if (type != MCS_FIRMWARE_PRIMARY)
+        {
+            this->setstate(failbit);
+            std::cout << "non-dsabin supports only primary bitstream: " << file << std::endl;
+            return;
+        }
         // For non-dsabin file, the entire file is the image.
         mBuf = new char[bufsize];
         in_file.seekg(0);
