@@ -464,7 +464,10 @@ int XMC_Flasher::sendPkt(bool print_dot)
 
 int XMC_Flasher::waitTillIdle()
 {
-    // In total, wait for 5000 * 10ms
+    /* In total, wait for 5000 * 10ms
+     * SC in factory mode takes nearly 30 seconds to be idle
+     * We relax the waiting time here to up to 50 seconds.
+     */
     int retry = 5000;
     unsigned int err = 0;
 
