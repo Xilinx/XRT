@@ -465,6 +465,7 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
       break;
 
     case DW_TAG::_typedef:
+      evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type",""), argTags, ptArgument);
       ptArgument.put("type", ptTag.get<std::string>("DW_AT_name"));
       break;
 
