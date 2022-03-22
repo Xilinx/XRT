@@ -287,7 +287,7 @@ update_device_conf(xrt_core::device* device, const std::string& value, config_ty
         xrt_core::device_update<xrt_core::query::xmc_scaling_reset>(device, value);
         break;
     }
-  } catch (const std::exception& ex) {
+  } catch (const std::exception&) {
     std::cerr << boost::format("ERROR: Device does not support %s\n\n") % config_to_string(cfg);
     throw xrt_core::error(std::errc::operation_canceled);
   }
@@ -305,7 +305,7 @@ memory_retention(xrt_core::device* device, bool enable)
   try {
     auto value = xrt_core::query::data_retention::value_type(enable);
     xrt_core::device_update<xrt_core::query::data_retention>(device, value);
-  } catch (const std::exception& ex) {
+  } catch (const std::exception&) {
     std::cerr << boost::format("ERROR: Device does not support memory retention\n\n");
     throw xrt_core::error(std::errc::operation_canceled);
   }
