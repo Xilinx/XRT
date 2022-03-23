@@ -31,6 +31,8 @@
 #include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
 
+// System - Include Files
+#include <fstream>
 // =============================================================================
 
 // ----- H E L P E R M E T H O D S ------------------------------------------
@@ -42,7 +44,7 @@ hotplug_online()
   if (!boost::filesystem::exists(rescan_path))
     throw xrt_core::error((boost::format("Invalid sysfs file path '%s'.") % rescan_path).str());
 
-  std::ofstream rescan_file(rescan_path);
+  std::ofstream rescan_file(rescan_path, std::ofstream::out);
   try
   {
     if (!rescan_file.is_open())
