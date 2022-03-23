@@ -223,9 +223,8 @@ namespace xclhwemhal2 {
             if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
               logMessage(line);
               parsedMsgs.push_back(line);
-              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR")) {
+              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR"))
                  std::cout << "SIMULATION EXITED" << std::endl; 
-              }
             }
           }
         }
