@@ -956,17 +956,6 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     return ;
   }
 
-  auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
-  size_t totalSize = 0;
-  switch (vendor) {
-    case ARISTA_ID:
-      totalSize = 0x20000000;
-      break;
-    default:
-    case XILINX_ID:
-      break;
-  }
-
   auto is_host_mem = [](std::string tag) {
     return tag.compare(0,4,"HOST") == 0;
   };
@@ -1002,9 +991,15 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     logger(_ptTest, "Details", (boost::format("Buffer size - '%s'") % xrt_core::utils::unit_convert(block_size)).str());
 
     // check if the bank has enough memory to allocate
-    //  m_size is in KB so convert block_size (bytes) to KB for comparision
+    // m_size is in KB so convert block_size (bytes) to KB for comparison
     if(mem.m_size < (block_size/1024))
       continue;
+
+    size_t totalSize = 0;
+    if (xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev) == ARISTA_ID)
+      totalSize = 0x20000000;
+    else
+      totalSize = mem.m_size * 1024; // convert to bytes
 
     xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
     try {
