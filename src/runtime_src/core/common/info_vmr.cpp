@@ -29,7 +29,7 @@ static std::string
 pretty_label(std::string label)
 {
   std::replace(label.begin(), label.end(), '_', ' ');
-  label[0] = toupper(label[0]);
+  label[0] = static_cast<char>(toupper(label[0]));
   std::transform(label.begin()+1, label.end(), label.begin()+1, 
                   [](int c) { return static_cast<char>(::tolower(c)); });
   return label;
