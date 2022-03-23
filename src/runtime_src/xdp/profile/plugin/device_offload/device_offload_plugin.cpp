@@ -347,9 +347,12 @@ namespace xdp {
         while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
       }
       else {
-        offloader->read_trace();
-        offloader->process_trace();
-        offloader->read_trace_end();
+        if (xrt_core::config::get_data_transfer_trace() != "off" ||
+              xrt_core::config::get_device_trace() != "off") {
+          offloader->read_trace();
+          offloader->process_trace();
+          offloader->read_trace_end();
+        }
       }
     } catch (std::exception& /*e*/) {
         // Reading the trace could throw an exception if ioctls fail.
@@ -381,7 +384,10 @@ namespace xdp {
   {
     if (!(getFlowMode() == HW))
       return;
-    db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
+    if (xrt_core::config::get_data_transfer_trace() != "off" ||
+          xrt_core::config::get_device_trace() != "off") {
+      db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
+    }
   }
 
   void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
