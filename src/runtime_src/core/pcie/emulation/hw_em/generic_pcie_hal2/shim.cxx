@@ -221,11 +221,6 @@ namespace xclhwemhal2 {
           std::string::size_type index = line.find(matchString);
           if (index != std::string::npos) {
             if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
-              if (matchString == "Exiting xsim") {
-                 #ifndef _WINDOWS
-		   xclClose();
-                 #endif 
-              }
               logMessage(line);
               parsedMsgs.push_back(line);
               if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR")) {
