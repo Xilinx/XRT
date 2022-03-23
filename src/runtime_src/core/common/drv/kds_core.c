@@ -1173,6 +1173,7 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	while (cctx->virt_cu_ref) {
 		info.cu_idx = CU_CTX_VIRT_CU;
 		info.curr_ctx = cctx;
+		info.cu_domain = 0;
 		kds_del_context(kds, client, &info);
 	}
 

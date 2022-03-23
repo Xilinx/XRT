@@ -226,7 +226,6 @@ static int scu_probe(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_cu *xcu = NULL;
 	struct xrt_cu_info *info = NULL;
-	struct xrt_cu_arg *args = NULL;
 	int err = 0;
 
 	/* Not using xocl_drvinst_alloc here. Because it would quickly run out
