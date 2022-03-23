@@ -136,7 +136,6 @@ struct zocl_ctrl_ert {
 
 	size_t			zce_num_scus;
 	struct zocl_ctrl_ert_cu *zce_scus;
-	resource_size_t		zce_max_scu_size;
 
 	struct platform_device	*zce_xgq_intc;
 
@@ -210,9 +209,6 @@ static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu 
 {
 	int ret = 0;
 	struct xrt_cu_info info = {0};
-	struct zocl_scu *zcu = NULL;
-	struct xrt_cu *xcu = NULL;
-	struct xrt_cu_scu *cu_scu = NULL;
 	u32 cuidx = conf->cu_idx;
 
 	if (cuidx >= zert->zce_num_scus) {
@@ -228,8 +224,8 @@ static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu 
 		return ret;
 	}
 
-	if (conf->payload_size > zert->zce_max_scu_size)
-		zert->zce_max_scu_size = conf->payload_size;
+	if (conf->payload_size > zert->zce_max_cu_size)
+		zert->zce_max_cu_size = conf->payload_size;
 
 	ret = zocl_scu_wait_ready(zert->zce_scus[cuidx].zcec_pdev);
 	if(ret) {
@@ -339,7 +335,6 @@ static void zert_destroy_cus(struct zocl_ctrl_ert *zert)
 		}
 	}
 	zert->zce_num_scus = 0;
-	zert->zce_max_scu_size = 0;
 	kfree(zert->zce_scus);
 	zert->zce_scus = NULL;
 
@@ -456,7 +451,7 @@ static int zert_create_cu_xgqs(struct zocl_ctrl_ert *zert)
 	BUG_ON(zert->zce_cu_xgq_ring_size % alignment);
 
 	/* No need to create CU XGQ if there is no CU configured. */
-	if (zert->zce_num_cus == 0) {
+	if ((zert->zce_num_cus == 0) && (zert->zce_num_scus == 0)) {
 		zert_info(zert, "No CU is configured, skip creating XGQs");
 		return 0;
 	}

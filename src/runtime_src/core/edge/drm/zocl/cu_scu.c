@@ -235,6 +235,7 @@ void xrt_cu_scu_fini(struct xrt_cu *xcu)
 
  skip_kill:
 	// Free Command Buffer BO
+	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&core->sc_bo->gem_base);
 	zocl_drm_free_bo(core->sc_bo);
 	if (xcu->core) {
 		kfree(xcu->core);

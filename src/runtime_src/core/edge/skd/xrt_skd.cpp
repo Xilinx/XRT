@@ -227,6 +227,13 @@ namespace xrt {
     char sk_fini[PS_KERNEL_NAME_LENGTH+finiExtension.size()];
     int ret = 0;
 
+    // Check if SCU is still in running state
+    // If it is, that means it has crashed
+    if((args_from_host[0] & 0x1) == 1) {
+      args_from_host[0] = 2;
+      args_from_host[1] = -1;
+    }
+
     snprintf(sk_fini,PS_KERNEL_NAME_LENGTH+finiExtension.size(),"%s%s",sk_name,finiExtension.c_str());
     kernel_fini = (kernel_fini_t)dlsym(sk_handle, sk_fini);
     if (!kernel_fini) {
