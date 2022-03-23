@@ -17,7 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportVmrStatus.h"
-#include "XBUtilities.h"
+#include "XBUtilitiesCore.h"
 #include "core/common/info_vmr.h"
 
 #include <algorithm>
