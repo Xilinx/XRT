@@ -12,7 +12,7 @@ The ``xbtop`` command outputs card statistics including memory topology and DMA 
 The command has the following option:
 
 - The ``--device`` (or ``-d``) specifies the target device bdf
-- The ``--refresh_rate`` (or -r) specifies refresh rate in second (default 1 sec). 
+- The ``--refresh_rate`` (or ``-r``) specifies refresh rate in second (default 1 sec). 
 
 The command ``xbtop`` shows the following reports in multiple pages (pages can be changed by entering ``n`` or ``p`` key in the terminal window)
 
