@@ -331,7 +331,9 @@ namespace xdp {
       }
 
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      printTileModStats(aieDevice, tiles[tileId], mod);
+      
+      if (tiles.size() > 0)
+        printTileModStats(aieDevice, tiles[tileId], mod);
     }
 
     return numFreeCtr;
@@ -426,10 +428,8 @@ namespace xdp {
             auto streamId = plio.second.streamId;
 
             // If looking for specific ID, make sure it matches
-            if ((mChannelId >= 0) && (mChannelId != streamId)) {
-              plioCount++;
+            if ((mChannelId >= 0) && (mChannelId != streamId))
               continue;
-            }
 
             // Make sure it's desired polarity
             // NOTE: input = slave (data flowing from PLIO)
@@ -449,6 +449,12 @@ namespace xdp {
             // TODO: find better way to store these values
             t.itr_mem_col = isMaster;
             t.itr_mem_row = streamId;
+          }
+          
+          if (plioCount == 0) {
+            std::string msg = "No tiles used channel ID " + std::to_string(mChannelId)
+                              + ". Please specify a valid channel ID.";
+            xrt_core::message::send(severity_level::warning, "XRT", msg);
           }
         }
 
