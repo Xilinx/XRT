@@ -228,6 +228,9 @@ namespace xclhwemhal2 {
               }
               logMessage(line);
               parsedMsgs.push_back(line);
+              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR")) {
+                 std::cout << "SIMULATION EXITED" << std::endl; 
+              }
             }
           }
         }
@@ -250,7 +253,6 @@ namespace xclhwemhal2 {
   {
     std::string simPath = getSimPath();
     std::string content = loadFileContentsToString(simPath + "/simulate.log");
-    parseString(simPath,"HLS_PRINT");
     if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
       size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
       size_t last = content.find("detected!", first);
