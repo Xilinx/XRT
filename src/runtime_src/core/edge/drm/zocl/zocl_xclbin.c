@@ -189,7 +189,6 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	header = xrt_xclbin_get_section_hdr_next(axlf, EMBEDDED_METADATA, header);
 	if(header) {
 		DRM_INFO("Found EMBEDDED_METADATA section\n");
-		DRM_INFO("EMBEDDED_METADATA section size = %lld\n",header->m_sectionSize);
 	} else {
 		DRM_ERROR("EMBEDDED_METADATA section not found!\n");
 		mutex_unlock(&sk->sk_lock);
@@ -608,17 +607,8 @@ zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			cu_info[i].size = krnl_info->range;
 		}
 
-		krnl_info = zocl_query_kernel(slot, cu_info[i].kname);
-		if (!krnl_info) {
-			DRM_WARN("%s CU has no metadata, using default",cu_info[i].kname);
-			cu_info[i].args = NULL;
-			cu_info[i].num_args = 0;
-			cu_info[i].size = 0x10000;
-		} else {
-			cu_info[i].args = (struct xrt_cu_arg *)&krnl_info->args[i];
-			cu_info[i].num_args = krnl_info->anums;
-			cu_info[i].size = krnl_info->range;
-		}
+		if (krnl_info->features & KRNL_SW_RESET)
+			cu_info[i].sw_reset = true;
 
 		/* CU sub device is a virtual device, which means there is no
 		 * device tree nodes
@@ -1454,7 +1444,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 * Remember xclbin_uuid for opencontext.
 	 */
 	slot->slot_xclbin->zx_refcnt = 0;
-	zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path);
+	if(ZOCL_PLATFORM_ARM64)
+		zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path);
 	zocl_xclbin_set_uuid(slot, &axlf_head.m_header.uuid);
 
 	/*

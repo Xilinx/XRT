@@ -57,15 +57,15 @@ class Table2D {
 
     std::vector<ColumnData> m_table;
 
-    std::ostream& print(std::ostream& os);
+    std::ostream& print(std::ostream& os) const;
 
-    void getBlankSizes(ColumnData col_data, size_t string_size, size_t& left_blanks, size_t& right_blanks);
+    void getBlankSizes(ColumnData col_data, size_t string_size, size_t& left_blanks, size_t& right_blanks) const;
     void addHeader(const HeaderData& header);
-    void appendToOutput(std::string& output, const ColumnData& column, const std::string& data);
+    void appendToOutput(std::string& output, const ColumnData& column, const std::string& data) const;
 
  public:
     friend std::ostream&
-    operator<<(std::ostream& os, Table2D& table)
+    operator<<(std::ostream& os, const Table2D& table)
     {
         return table.print(os);
     };

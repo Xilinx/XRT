@@ -25,6 +25,7 @@
 #include <vector>
 #include <sstream>
 #include <iomanip>
+#include <map>
 #include <stdexcept>
 #include <boost/any.hpp>
 #include <boost/format.hpp>
@@ -225,6 +226,7 @@ enum class key_type
   is_offline,
   f_flash_type,
   flash_type,
+  flash_size,
   board_name,
   interface_uuids,
   logic_uuids,
@@ -264,6 +266,7 @@ enum class key_type
 
   boot_partition,
   flush_default_only,
+  program_sc,
   vmr_status,
 
   hwmon_sdm_serial_num,
@@ -1479,6 +1482,10 @@ struct p2p_config : request
   {
     return value;
   }
+
+  XRT_CORE_COMMON_EXPORT
+  static std::map<std::string, int64_t>
+  to_map(const xrt_core::query::p2p_config::result_type& config);
 };
 
 struct temp_card_top_front : request
@@ -2532,6 +2539,15 @@ struct flash_type : request
   }
 };
 
+struct flash_size : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::flash_size;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct board_name : request
 {
   using result_type = std::string;
@@ -2876,6 +2892,19 @@ struct flush_default_only : request
   using result_type = uint32_t;
   using value_type = uint32_t;
   static const key_type key = key_type::flush_default_only;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct program_sc : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::program_sc;
 
   virtual boost::any
   get(const device*) const = 0;

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -116,8 +117,10 @@ namespace xclcpuemhal2 {
       // Performance monitoring
       // Control
       double xclGetDeviceClockFreqMHz();
-      double xclGetReadMaxBandwidthMBps();
-      double xclGetWriteMaxBandwidthMBps();
+      double xclGetHostReadMaxBandwidthMBps();
+      double xclGetHostWriteMaxBandwidthMBps();
+      double xclGetKernelReadMaxBandwidthMBps();
+      double xclGetKemrnelWriteMaxBandwidthMBps();
       void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
       size_t xclPerfMonClockTraining(xclPerfMonType type);
       // Counters

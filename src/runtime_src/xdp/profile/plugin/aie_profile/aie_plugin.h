@@ -95,6 +95,7 @@ namespace xdp {
 
     static bool live;
 
+    int16_t mChannelId = -1;
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
     std::string mCoreMetricSet;

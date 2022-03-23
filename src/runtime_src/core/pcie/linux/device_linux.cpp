@@ -982,6 +982,7 @@ initialize_query_table()
   emplace_sysfs_get<query::is_offline>                         ("", "dev_offline");
   emplace_sysfs_get<query::f_flash_type>                       ("flash", "flash_type");
   emplace_sysfs_get<query::flash_type>                         ("", "flash_type");
+  emplace_sysfs_get<query::flash_size>                         ("flash", "size");
   emplace_sysfs_get<query::board_name>                         ("", "board_name");
   emplace_sysfs_get<query::logic_uuids>                        ("", "logic_uuids");
   emplace_sysfs_get<query::interface_uuids>                    ("", "interface_uuids");
@@ -1021,6 +1022,7 @@ initialize_query_table()
 
   emplace_sysfs_getput<query::boot_partition>                  ("xgq_vmr", "boot_from_backup");
   emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
+  emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();

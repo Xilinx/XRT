@@ -382,6 +382,9 @@ struct argument_info {
 	uint32_t	dir;
 };
 
+/* Kernel features macro */
+#define KRNL_SW_RESET	(1 << 0)
+
 /**
  * struct kernel_info - Kernel information
  *
@@ -394,6 +397,7 @@ struct kernel_info {
 	char                     name[64];
 	uint32_t		 range;
 	int		         anums;
+	int			 features;
 	struct argument_info	 args[];
 };
 
@@ -492,6 +496,8 @@ struct drm_zocl_sk_create {
  */
 enum drm_zocl_scu_state {
 	ZOCL_SCU_STATE_DONE,
+	ZOCL_SCU_STATE_READY,
+	ZOCL_SCU_STATE_CRASH,
 };
 
 /**

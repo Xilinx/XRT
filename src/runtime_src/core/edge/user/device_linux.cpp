@@ -544,12 +544,13 @@ struct aie_get_freq
 
     struct drm_zocl_aie_freq_scale aie_arg;
     aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
-    aie_arg.freq = freq;
+    aie_arg.freq = 0;
     aie_arg.dir = 0;
 
     if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg))
       throw xrt_core::error(-errno, boost::str(boost::format("Reading clock frequency from AIE partition(%d) failed") % aie_arg.partition_id));
 
+    freq = aie_arg.freq;
 #else
     throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
 #endif

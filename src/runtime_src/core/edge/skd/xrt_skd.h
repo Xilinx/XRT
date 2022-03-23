@@ -84,7 +84,11 @@ class skd
   void
   fini();
 
+  void report_ready();
+  void report_crash();
+
  private:
+    xclDeviceHandle parent_devHdl;
     xclDeviceHandle devHdl;
     xrtDeviceHandle xrtdHdl;
     char sk_path[XRT_MAX_PATH_LENGTH];

@@ -50,6 +50,8 @@ struct xclAIECmd {
 
 enum xrt_scu_state {
     XRT_SCU_STATE_DONE,
+    XRT_SCU_STATE_READY,
+    XRT_SCU_STATE_CRASH,
 };
 
 /**

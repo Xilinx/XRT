@@ -126,6 +126,10 @@ if(NOT WIN32)
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/BinaryImages")
   xrt_add_test("binary-images" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/BinaryImages/BinaryImages.py ${TEST_OPTIONS}")
 
+  # -- Binary Images
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SingleSubsection")
+  xrt_add_test("single-subsection" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SingleSubsection/SingleSubsection.py ${TEST_OPTIONS}")
+
 endif()
 
 

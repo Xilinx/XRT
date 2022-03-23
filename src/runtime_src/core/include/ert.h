@@ -282,11 +282,30 @@ struct ert_configure_cmd {
  *       in one config command (1024 DWs including header).
  *       So each one needs to be smaller than 8 DWs.
  *
+ * This data struct is obsoleted. Only used in legacy ERT firmware.
+ * Use 'struct config_sk_image_uuid' instead on XGQ based ERT.
+ *
  * @start_cuidx:     start index of compute units of each image
  * @num_cus:         number of compute units of each image
  * @sk_name:         symbol name of soft kernel of each image
  */
 struct config_sk_image {
+  uint32_t start_cuidx;
+  uint32_t num_cus;
+  uint32_t sk_name[5];
+};
+
+/*
+ * Note: We need to put maximum 128 soft kernel image
+ *       in one config command (1024 DWs including header).
+ *       So each one needs to be smaller than 8 DWs.
+ *
+ * @start_cuidx:     start index of compute units of each image
+ * @num_cus:         number of compute units of each image
+ * @sk_name:         symbol name of soft kernel of each image
+ * @sk_uuid:         xclbin uuid that this soft kernel image belones to
+ */
+struct config_sk_image_uuid {
   uint32_t start_cuidx;
   uint32_t num_cus;
   uint32_t sk_name[5];

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -613,15 +614,27 @@ public:
   }
 
   hal::operations_result<double>
-  getDeviceMaxRead()
+  getHostMaxRead()
   {
-    return m_hal->getDeviceMaxRead();
+    return m_hal->getHostMaxRead();
   }
 
   hal::operations_result<double>
-  getDeviceMaxWrite()
+  getHostMaxWrite()
   {
-    return m_hal->getDeviceMaxWrite();
+    return m_hal->getHostMaxWrite();
+  }
+
+  hal::operations_result<double>
+  getKernelMaxRead()
+  {
+    return m_hal->getKernelMaxRead();
+  }
+
+  hal::operations_result<double>
+  getKernelMaxWrite()
+  {
+    return m_hal->getKernelMaxWrite();
   }
 
   hal::operations_result<size_t>

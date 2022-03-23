@@ -41,6 +41,7 @@
 #include <cassert>
 #include <cstdarg>
 #include <boost/filesystem.hpp>
+#include <regex>
 
 #include <fcntl.h>
 #include <poll.h>
@@ -123,9 +124,8 @@ shim(unsigned index)
 
   const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
   mKernelFD = open(zocl_drm_device.c_str(), O_RDWR);
-  if (mKernelFD < 0) {
-    xclLog(XRT_ERROR, "%s: Cannot open %s", __func__,zocl_drm_device);
-  }
+  // Validity of mKernelFD is checked using handleCheck in every shim function
+
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
 }
@@ -514,9 +514,15 @@ libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path,
   uint32_t slot_id = 0;
   static const std::string dtbo_dir_path = "/configfs/device-tree/overlays/";
 
-  // get dtbo_path of slot '0' for now, in future when we support multi slot we need
-  // info about which slot this xclbin needs to be loaded
-  // TODO: read slot id from xclbin or get it as an arg to this function
+  // root privileges are needed for loading and unloading dtbo and bitstream
+  if (getuid() && geteuid())
+    throw std::runtime_error("Root privileges required");
+
+  /*
+   * get dtbo_path of slot '0' for now, in future when we support multi slot we need
+   * info about which slot this xclbin needs to be loaded
+   * TODO: read slot id from xclbin or get it as an arg to this function
+   */
   try {
     dtbo_path = xrt_core::device_query<xrt_core::query::dtbo_path>(core_dev, slot_id);
   }
@@ -530,6 +536,18 @@ libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path,
     dtbo_path.clear();
     // close drm fd as zocl driver will be reloaded
     close(fd);
+  }
+  else {
+    // bitstream is loaded for first time
+    boost::filesystem::directory_iterator end_itr;
+    static const std::regex filter{".*_image_[0-9]+"};
+    for (boost::filesystem::directory_iterator itr( dtbo_dir_path ); itr != end_itr; ++itr) {
+      if (!std::regex_match(itr->path().filename().string(), filter))
+        continue;
+
+      // remove existing libdfx node loaded by libdfx daemon
+      rmdir((dtbo_dir_path + itr->path().filename().string()).c_str());
+    }
   }
 }
 
@@ -662,43 +680,33 @@ xclLoadAxlf(const axlf *buffer)
   int off = 0;
   std::string dtbo_path("");
 
-  /*
-   * If platform is a non-PR-platform, Following check will fail. Dont download
-   * the partial bitstream
-   *
-   * If Platform is a PR-platform, Following check passes as enable_pr value is
-   * true by default. Download the partial bitstream.
-   *
-   * If platform is a PR-platform, but v++ generated a full bitstream (using
-   * some v++ param).  User need to add enable_pr=false in xrt.ini.
-   */
 #ifndef __HWEM__
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
-  auto is_flat_platform = (buffer->m_header.m_mode == XCLBIN_FLAT ) ? true : false;
-  auto is_pr_enabled = xrt_core::config::get_enable_pr(); //default value is true
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
   auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
+  auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
 
-  if (is_pr_platform && is_pr_enabled)
+  if (is_pr_platform)
     flags = DRM_ZOCL_PLATFORM_PR;
   /*
-   * If platform is a PR-platform, Following check will fail. Dont download the
-   * full bitstream
-   *
-   * If its non-PR-platform and enable_flat=true in xrt.ini. Download the full
-   * bitstream.
+   * If its non-PR-platform and enable_flat=true in xrt.ini, download the full
+   * bitstream. But if OVERLAY section is present in xclbin, userspace apis are
+   * used to download full bitstream
    */
-  else if (is_flat_platform && is_flat_enabled)
+  else if (is_flat_enabled && !overlay_header) {
+    if (!ZYNQ::shim::handleCheck(this)) {
+      xclLog(XRT_ERROR, "%s: No DRM render device found", __func__);
+      return -ENODEV;
+    }
     flags = DRM_ZOCL_PLATFORM_FLAT;
+  }
 
   if (force_program) {
     flags = flags | DRM_ZOCL_FORCE_PROGRAM;
   }
 
 #if defined(XRT_ENABLE_LIBDFX)
-  // check OVERLAY section
-  // if present use libdfx apis to load bitstream and dtbo(overlay)
-  auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
+  // if OVERLAY section is present use libdfx apis to load bitstream and dtbo(overlay)
   if(overlay_header) {
     try {
       // if xclbin is already loaded ret val is '1', dont call ioctl in this case
@@ -747,6 +755,10 @@ xclLoadAxlf(const axlf *buffer)
       krnl->name[sizeof(krnl->name)-1] = '\0';
       krnl->range = kernel.range;
       krnl->anums = kernel.args.size();
+
+      krnl->features = 0;
+      if (kernel.sw_reset)
+        krnl->features |= KRNL_SW_RESET;
 
       int ai = 0;
       for (auto& arg : kernel.args) {
@@ -836,13 +848,13 @@ isGood() const
 
 shim *
 shim::
-handleCheck(void *handle)
+handleCheck(void *handle, bool checkDrmFd /*= true*/)
 {
   // Sanity checks
   if (!handle)
     return 0;
 
-  if (!((shim *) handle)->isGood()) {
+  if (checkDrmFd && !((shim *) handle)->isGood()) {
     return 0;
   }
 
@@ -920,22 +932,36 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
-// Get the maximum bandwidth for host reads from the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
 shim::
-xclGetReadMaxBandwidthMBps()
+xclGetHostReadMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 19250.00;
 }
 
-// Get the maximum bandwidth for host writes to the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
 shim::
-xclGetWriteMaxBandwidthMBps()
+xclGetHostWriteMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
+shim::
+xclGetKernelReadMaxBandwidthMBps()
+{
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
+shim::
+xclGetKernelWriteMaxBandwidthMBps()
+{
+  return 19250.00;
 }
 
 int
@@ -1015,6 +1041,12 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
   switch (state) {
   case XRT_SCU_STATE_DONE:
     scmd.cu_state = ZOCL_SCU_STATE_DONE;
+    break;
+  case XRT_SCU_STATE_READY:
+    scmd.cu_state = ZOCL_SCU_STATE_READY;
+    break;
+  case XRT_SCU_STATE_CRASH:
+    scmd.cu_state = ZOCL_SCU_STATE_CRASH;
     break;
   default:
     return -EINVAL;
@@ -1728,10 +1760,20 @@ xclProbe()
   return xdp::hal::profiling_wrapper("xclProbe", [] {
 
   const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
-  int fd = open(zocl_drm_device.c_str(), O_RDWR);
-  if (fd < 0) {
-    return 0;
+  int fd;
+  if (boost::filesystem::exists(zocl_drm_device)) {
+    fd = open(zocl_drm_device.c_str(), O_RDWR);
+    if (fd < 0)
+      return 0;
   }
+  /*
+   * Zocl node is not present in some platforms static dtb, it gets loaded
+   * using overlay dtb, drm device node is not created until zocl is present
+   * So if enable_flat is set return 1 valid device
+   */
+  else if (xrt_core::config::get_enable_flat())
+    return 1;
+
   std::vector<char> name(128,0);
   std::vector<char> desc(512,0);
   std::vector<char> date(128,0);
@@ -1771,7 +1813,8 @@ xclOpen(unsigned deviceIndex, const char*, xclVerbosityLevel)
     }
 
     auto handle = new ZYNQ::shim(deviceIndex);
-    if (!ZYNQ::shim::handleCheck(handle)) {
+    bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
+    if (!ZYNQ::shim::handleCheck(handle, checkDrmFD)) {
       delete handle;
       handle = XRT_NULL_HANDLE;
     }
@@ -1966,7 +2009,8 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
   return xdp::hal::profiling_wrapper("xclLoadXclbin", [handle, buffer, meta] {
 
   try {
-    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+    bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
 
 #ifndef __HWEM__
     xdp::hal::flush_device(handle);
@@ -2188,18 +2232,34 @@ xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 }
 
 double
-xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostReadMaxBandwidthMBps() : 0.0;
 }
 
 
 double
-xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostWriteMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelWriteMaxBandwidthMBps() : 0.0;
 }
 
 
