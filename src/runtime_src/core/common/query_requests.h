@@ -276,7 +276,6 @@ enum class key_type
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
   hwmon_sdm_fan_presence,
-  hotplug_online,
   hotplug_offline,
 
   noop
@@ -2993,15 +2992,6 @@ struct hwmon_sdm_fan_presence : request
 {
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_fan_presence;
-
-  virtual boost::any
-  get(const device*) const = 0;
-};
-
-struct hotplug_online : request
-{
-  using result_type = bool;
-  static const key_type key = key_type::hotplug_online;
 
   virtual boost::any
   get(const device*) const = 0;

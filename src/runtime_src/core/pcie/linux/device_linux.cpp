@@ -350,43 +350,6 @@ struct instance
 
 };
 
-struct hotplug_online 
-{
-  using result_type = query::hotplug_online::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type)
-  {
-    static const std::string  rescan_path = "/sys/bus/pci/rescan";
-
-    if (!boost::filesystem::exists(rescan_path))
-      throw xrt_core::error((boost::format("Invalid sysfs file path '%s'.") % rescan_path).str());
-
-    boost::filesystem::ofstream rescan_file(rescan_path);
-    try
-    {
-      if (!rescan_file.is_open())
-        throw xrt_core::error((boost::format("Unable to open the sysfs file '%s'.") % rescan_path).str());
-
-      // Writing "1" to /sys/bus/pci/rescan will trigger the hotplug event.
-      rescan_file << 1;
-      rescan_file.flush();
-      if (!rescan_file.good()) {
-        rescan_file.close();
-        throw std::runtime_error(boost::str(boost::format("Can't write to file %s") % rescan_path));
-      }
-    }
-    catch(const xrt_core::error& e) {
-      std::cerr << boost::format("\nERROR: %s\n") % e.what();
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-
-    rescan_file.close();
-
-    return true;
-  }
-};
-
 struct hotplug_offline 
 {
   using result_type = query::hotplug_offline::result_type;
@@ -1065,7 +1028,6 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                       bdf>();
   emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::instance,                       instance>();
-  emplace_func0_request<query::hotplug_online,                 hotplug_online>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();

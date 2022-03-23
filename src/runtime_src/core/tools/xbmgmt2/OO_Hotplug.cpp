@@ -33,15 +33,46 @@ namespace po = boost::program_options;
 
 // =============================================================================
 
+// ----- H E L P E R M E T H O D S ------------------------------------------
+struct void
+hotplug_online()
+{
+  static const std::string  rescan_path = "/sys/bus/pci/rescan";
+
+  if (!boost::filesystem::exists(rescan_path))
+    throw xrt_core::error((boost::format("Invalid sysfs file path '%s'.") % rescan_path).str());
+
+  try
+  {
+    boost::filesystem::ofstream rescan_file(rescan_path);
+    if (!rescan_file.is_open())
+      throw xrt_core::error((boost::format("Unable to open the sysfs file '%s'.") % rescan_path).str());
+
+    // Writing "1" to /sys/bus/pci/rescan will trigger the hotplug event.
+    rescan_file << 1;
+    rescan_file.flush();
+    if (!rescan_file.good()) {
+      rescan_file.close();
+      throw std::runtime_error(boost::str(boost::format("Can't write to file %s") % rescan_path));
+    }
+  }
+  catch(const xrt_core::error& e) {
+    std::cerr << boost::format("\nERROR: %s\n") % e.what();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  rescan_file.close();
+}
+
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_Hotplug::OO_Hotplug(const std::string &_longName, bool _isHidden )
     : OptionOptions(_longName, _isHidden, "Perform hotplug for the given device")
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: online or offline")
-    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("device,d", po::value<decltype(m_devices)>(&m_devices), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("action", po::value<decltype(m_action)>(&m_action)->required(), "Action to perform: online or offline")
+    ("help", po::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.
@@ -143,10 +174,8 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(std::errc::operation_canceled);
 
     if (is_online) {
-      // For Online we don't need any specific device. We are passing first device 
-      // just for accessing the gerenic PCIe sysfs entry i.e. /sys/bus/pci/rescan 
-      auto dev = xrt_core::get_mgmtpf_device(0);
-      xrt_core::device_query<xrt_core::query::hotplug_online>(dev);
+      // For online, no device is attached with it. Hence need to implement it locally 
+      hotplug_online();
     }
     else {
       auto &dev = deviceCollection[0];
