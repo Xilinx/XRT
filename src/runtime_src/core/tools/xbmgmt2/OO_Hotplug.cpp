@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Xilinx, Inc
+ * Copyright (C) 2022 AMD, Inc
  * 
  * Licensed under the Apache License, Version
  * 2.0 (the "License"). You may not use this file except in
@@ -21,20 +21,21 @@
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 
-#include "core/common/system.h"
+// XRT - Include Files
 #include "core/common/query_requests.h"
+#include "core/common/system.h"
 
 // 3rd Party Library - Include Files
+#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 namespace po = boost::program_options;
 
 // =============================================================================
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_Hotplug::OO_Hotplug( const std::string &_longName, bool _isHidden )
+OO_Hotplug::OO_Hotplug(const std::string &_longName, bool _isHidden )
     : OptionOptions(_longName, _isHidden, "Perform hotplug for the given device")
 {
   m_optionsDescription.add_options()
@@ -54,7 +55,7 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
   XBUtilities::verbose("SubCommand option: Hotplug");
 
   XBUtilities::verbose("Option(s):");
-  for (auto & aString : _options)
+  for (const auto & aString : _options)
     XBUtilities::verbose(std::string(" ") + aString);
 
   // Honor help option first
@@ -76,13 +77,15 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  if(m_help) {
+  if (m_help) {
     printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
+    return;
   }
+
   // Exit if neither action or device specified
-  if(m_action.empty()) {
+  if (m_action.empty()) {
     printHelp();
+    std::cerr << boost::format("ERROR: Please specify an action.\n");
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -92,17 +95,18 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       printHelp();
       throw xrt_core::error(std::errc::operation_canceled);
     }
-    bool is_online = boost::iequals(m_action, "online");
+
+    const bool is_online = boost::iequals(m_action, "online");
 
     // Device BDF need to spcify for offline (hot removal) case
     if (!is_online) {
-      if(m_devices.empty()) {
-        std::cerr << boost::format("ERROR: A device needs to be specified.\n");
+      if (m_devices.empty()) {
+        std::cerr << boost::format("ERROR: A device needs to be specified for offline.\n");
         throw xrt_core::error(std::errc::operation_canceled);
       }
     }
     else {
-      if(!m_devices.empty()) {
+      if (!m_devices.empty()) {
         std::cerr << boost::format("ERROR: Please do not specify any device for online.\n");
         throw xrt_core::error(std::errc::operation_canceled);
       }
@@ -117,12 +121,12 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
     XBUtilities::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
 
     // enforce 1 device specification
-    if(deviceCollection.size() > 1) {
+    if (deviceCollection.size() > 1) {
       std::stringstream errmsg;
       errmsg << "Multiple devices are not supported. Please specify a single device using --device option\n\n";
       errmsg << "List of available devices:\n";
       boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
-      for(auto& kd : available_devices) {
+      for (const auto& kd : available_devices) {
         boost::property_tree::ptree& _dev = kd.second;
         errmsg << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
       }
@@ -135,12 +139,12 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
 	  "Please make sure no application is currently running." << std::endl;
 
     // Get permission from user.
-    if(!XBUtilities::can_proceed(XBUtilities::getForce()))
+    if (!XBUtilities::can_proceed(XBUtilities::getForce()))
       throw xrt_core::error(std::errc::operation_canceled);
 
     if (is_online) {
       // For Online we don't need any specific device. We are passing first device 
-      // just for accessing the sysfs entry i.e. /sys/bus/pci/rescan 
+      // just for accessing the gerenic PCIe sysfs entry i.e. /sys/bus/pci/rescan 
       auto dev = xrt_core::get_mgmtpf_device(0);
       xrt_core::device_query<xrt_core::query::hotplug_online>(dev);
     }
@@ -151,7 +155,7 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
 
     std::cout << boost::format("\nHotplug %s successfully\n") % (is_online ? "online" : "offline");
   }
-  catch(const xrt_core::error& e) {
+  catch (const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }

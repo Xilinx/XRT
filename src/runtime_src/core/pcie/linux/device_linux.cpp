@@ -360,7 +360,7 @@ struct hotplug_online
     static const std::string  rescan_path = "/sys/bus/pci/rescan";
 
     if (!boost::filesystem::exists(rescan_path))
-      throw xrt_core::error("Invalid sysfs path.");
+      throw xrt_core::error((boost::format("Invalid sysfs file path '%s'.") % rescan_path).str());
 
     boost::filesystem::ofstream rescan_file(rescan_path);
     try
