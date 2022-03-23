@@ -960,14 +960,24 @@ DeviceIntf::~DeviceIntf()
     return mAieTraceDmaList[index]->getMemIndex();
   }
 
-  void DeviceIntf::setMaxBwRead()
+  void DeviceIntf::setHostMaxBwRead()
   {
-    mMaxReadBW = mDevice->getMaxBwRead();
+    mHostMaxReadBW = mDevice->getHostMaxBwRead();
   }
 
-  void DeviceIntf::setMaxBwWrite()
+  void DeviceIntf::setHostMaxBwWrite()
   {
-    mMaxWriteBW = mDevice->getMaxBwWrite();
+    mHostMaxWriteBW = mDevice->getHostMaxBwWrite();
+  }
+
+  void DeviceIntf::setKernelMaxBwRead()
+  {
+    mKernelMaxReadBW = mDevice->getKernelMaxBwRead();
+  }
+
+  void DeviceIntf::setKernelMaxBwWrite()
+  {
+    mKernelMaxWriteBW = mDevice->getKernelMaxBwWrite();
   }
 
   uint32_t DeviceIntf::getDeadlockStatus()

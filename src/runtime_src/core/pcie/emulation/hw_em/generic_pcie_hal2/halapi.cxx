@@ -497,20 +497,36 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   return drv->xclGetDeviceClockFreqMHz();
 }
 
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclGetReadMaxBandwidthMBps();
+  return drv->xclGetHostReadMaxBandwidthMBps();
 }
 
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclGetWriteMaxBandwidthMBps();
+  return drv->xclGetHostWriteMaxBandwidthMBps();
+}
+
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetKernelReadMaxBandwidthMBps();
+}
+
+double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetKernelWriteMaxBandwidthMBps();
 }
 
 /*

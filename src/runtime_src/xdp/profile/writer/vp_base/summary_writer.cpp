@@ -873,7 +873,7 @@ namespace xdp {
          << "Average Time (ms)"                 << ",\n";
 
     std::string types[2] = { "READ", "WRITE" };
-    uint64_t i = 0 ;
+    uint64_t i = 0;
 
     for (auto& map : { hostReads, hostWrites }) {
       for (auto entry : map) {
@@ -907,8 +907,10 @@ namespace xdp {
           static_cast<double>(stats.totalSize / one_million);
         double transferRate  = totalSizeInMB / totalTimeInS; 
 
-        double maxReadBW = db->getStaticInfo().getMaxReadBW(deviceID);
-        double aveBWUtil = (one_hundred * transferRate) / maxReadBW;
+        double maxBW = (i == 0) ? db->getStaticInfo().getHostMaxReadBW(deviceID)
+                                : db->getStaticInfo().getHostMaxWriteBW(deviceID);
+        double aveBWUtil = (one_hundred * transferRate) / maxBW;
+        if (aveBWUtil > one_hundred) aveBWUtil = one_hundred;
 
         printNA ? (fout << "N/A,") : (fout << transferRate << ",");
         printNA ? (fout << "N/A,") : (fout << aveBWUtil << ",");
@@ -976,12 +978,11 @@ namespace xdp {
       fout << ((double)(stats.minSize) / one_thousand) << "," ;
       fout << ((double)(stats.averageSize) / one_thousand) << "," ;
       if (getFlowMode() == HW) {
-        auto totalTimeInS  = (double)(stats.totalTime / one_billion);
-        auto totalSizeInMB = (double)(stats.totalSize / one_million);
-        double transferRate  = totalSizeInMB / totalTimeInS; 
-        double maxReadBW =
-          (db->getStaticInfo()).getMaxReadBW(deviceId) ;
-        double aveBWUtil = (one_hundred * transferRate) / maxReadBW ;
+        auto totalTimeInS   = (double)(stats.totalTime / one_billion);
+        auto totalSizeInMB  = (double)(stats.totalSize / one_million);
+        double transferRate = totalSizeInMB / totalTimeInS; 
+        double maxReadBW    = (db->getStaticInfo()).getHostMaxReadBW(deviceId);
+        double aveBWUtil    = (one_hundred * transferRate) / maxReadBW;
 
         fout << transferRate << "," ;
         fout << aveBWUtil << "," ;
@@ -1040,12 +1041,11 @@ namespace xdp {
       fout << ((double)(stats.minSize) / one_thousand) << "," ;
       fout << ((double)(stats.averageSize) / one_thousand) << "," ;
       if (getFlowMode() == HW) {
-        auto totalTimeInS  = (double)(stats.totalTime / one_billion);
-        auto totalSizeInMB = (double)(stats.totalSize / one_million);
-        double transferRate  = totalSizeInMB / totalTimeInS; 
-        double maxReadBW =
-          (db->getStaticInfo()).getMaxReadBW(deviceId) ;
-        double aveBWUtil = (one_hundred * transferRate) / maxReadBW ;
+        auto totalTimeInS   = (double)(stats.totalTime / one_billion);
+        auto totalSizeInMB  = (double)(stats.totalSize / one_million);
+        double transferRate = totalSizeInMB / totalTimeInS; 
+        double maxWriteBW   = (db->getStaticInfo()).getHostMaxWriteBW(deviceId);
+        double aveBWUtil    = (one_hundred * transferRate) / maxWriteBW;
 
         fout << transferRate << "," ;
         fout << aveBWUtil << "," ;
@@ -1732,9 +1732,8 @@ namespace xdp {
           if (writeTranx > 0) {
             double transferRate = (totalWriteTime == zero) ? 0 :
               (double)(values.WriteBytes[monitorId]) / (one_thousand * totalWriteTime);
-            double aveBW =
-              (one_hundred * transferRate) / xclbin->pl.maxWriteBW ;
-            if (aveBW > one_hundred) aveBW = one_hundred ;
+            double aveBW = (one_hundred * transferRate) / xclbin->pl.kernelMaxWriteBW;
+            if (aveBW > one_hundred) aveBW = one_hundred;
             auto aveLatency =
               static_cast<double>(values.WriteLatency[monitorId]) /
               static_cast<double>(writeTranx) ;
@@ -1754,12 +1753,11 @@ namespace xdp {
           if (readTranx > 0) {
               double transferRate = (totalReadTime == zero) ? 0 :
                 (double)(values.ReadBytes[monitorId]) / (one_thousand * totalReadTime);
-              double aveBW =
-                (one_hundred * transferRate) / xclbin->pl.maxReadBW ;
-              if (aveBW > one_hundred) aveBW = one_hundred ;
+              double aveBW = (one_hundred * transferRate) / xclbin->pl.kernelMaxReadBW;
+              if (aveBW > one_hundred) aveBW = one_hundred;
               auto aveLatency =
                 static_cast<double>(values.ReadLatency[monitorId]) /
-                static_cast<double>(readTranx) ;
+                static_cast<double>(readTranx);
 
               fout << device->getUniqueDeviceName() << ","
                    << xclbin->pl.cus[monitor->cuIndex]->getName() << "/"

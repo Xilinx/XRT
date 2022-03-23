@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -288,29 +289,26 @@ size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTrace
 }
 
 
-double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
+double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return 0.0;
   return 0.0;
 }
 
 
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return 0.0;
   return 0.0;
 }
 
 
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return 0.0;
+  return 0.0;
+}
+
+
+double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
   return 0.0;
 }
 
