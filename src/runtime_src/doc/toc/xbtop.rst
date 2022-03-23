@@ -26,4 +26,4 @@ Page 2: Dynamic Region
    - Compute Usage
 Page 3: Power
 
-**Limitation in Centos**: Currently xbtop utility is not added in CentOS package. However, it is possible to use xbtop utility to use in Centos by copying xbtop python files from a supported OS.
+**Limitation in Centos**: Currently xbtop utility is not added in CentOS package. However, it is possible to use xbtop utility to use in Centos by copying xbtop python files (copying ``ReportMemory.py``, ``ReportPower.py``, ``ReportDynamicRegions.py``, ``XBUtil.py``, ``xbtop.py``, ``xbtop`` into ``/opt/xilinx/xrt/python``) from a supported OS.
