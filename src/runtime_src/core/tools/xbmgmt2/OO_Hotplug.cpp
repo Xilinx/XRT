@@ -34,7 +34,7 @@ namespace po = boost::program_options;
 // =============================================================================
 
 // ----- H E L P E R M E T H O D S ------------------------------------------
-struct void
+static void
 hotplug_online()
 {
   static const std::string  rescan_path = "/sys/bus/pci/rescan";
@@ -42,9 +42,9 @@ hotplug_online()
   if (!boost::filesystem::exists(rescan_path))
     throw xrt_core::error((boost::format("Invalid sysfs file path '%s'.") % rescan_path).str());
 
+  boost::filesystem::ofstream rescan_file(rescan_path);
   try
   {
-    boost::filesystem::ofstream rescan_file(rescan_path);
     if (!rescan_file.is_open())
       throw xrt_core::error((boost::format("Unable to open the sysfs file '%s'.") % rescan_path).str());
 
@@ -157,7 +157,7 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       errmsg << "Multiple devices are not supported. Please specify a single device using --device option\n\n";
       errmsg << "List of available devices:\n";
       boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
-      for (const auto& kd : available_devices) {
+      for (auto& kd : available_devices) {
         boost::property_tree::ptree& _dev = kd.second;
         errmsg << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
       }
@@ -174,7 +174,8 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(std::errc::operation_canceled);
 
     if (is_online) {
-      // For online, no device is attached with it. Hence need to implement it locally 
+      // For online, no specific device is attached with it. 
+      // Hence can't implement as a query. Implemented it locally 
       hotplug_online();
     }
     else {
