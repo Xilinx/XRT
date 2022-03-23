@@ -782,15 +782,8 @@ xclLoadAxlf(const axlf *buffer)
   }
 
   #ifdef __HWEM__
-    static int xclbin_count = 0;
-    xclbin_count++;
-
-    //Fix for CR- 1121993 - if xclbin is already loaded, dont call ioctl in this case
-    if (xclbin_count > 1) {
-      xclLog(XRT_WARNING, "%s: skipping as xclbin is already loaded. Only single XCLBIN load is supported for hw_emu.", __func__);
-      return 0;
-    } else {
-      xclLog(XRT_INFO, "%s: Loading the XCLBIN", __func__);
+    if (!secondXclbinLoadCheck(this->mCoreDevice, buffer)) {
+      return 0; // skipping to load the 2nd xclbin for hw_emu embedded designs
     }
   #endif
 
@@ -798,6 +791,29 @@ xclLoadAxlf(const axlf *buffer)
 
   xclLog(XRT_INFO, "%s: flags 0x%x, return %d", __func__, flags, ret);
   return ret ? -errno : ret;
+}
+
+int 
+shim::
+secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *top) {
+  try {
+    static int xclbin_hw_emu_count = 0;
+        
+    if (core_dev->get_xclbin_uuid() != xrt::uuid(top->m_header.uuid)) {
+      xclbin_hw_emu_count++;
+
+      if (xclbin_hw_emu_count > 1) {
+        xclLog(XRT_WARNING, "%s: Skipping as xclbin is already loaded. Only single XCLBIN load is supported for hw_emu embedded designs.", __func__);
+        return 0; 
+      }
+    } else {
+      xclLog(XRT_INFO, "%s: Loading the XCLBIN", __func__);
+    }
+  }
+  catch(const std::exception &e) {
+    // do nothing
+  }
+  return 1;
 }
 
 int
