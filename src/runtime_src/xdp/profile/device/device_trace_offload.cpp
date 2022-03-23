@@ -306,10 +306,6 @@ read_trace_end()
 void DeviceTraceOffload::
 read_trace_s2mm(bool force)
 {
-  if(ts2mm_info.buffers.empty()) {
-    return;
-  }
-
   debug_stream
     << "DeviceTraceOffload::read_trace_s2mm : number of ts2mm in design "
     << ts2mm_info.num_ts2mm << std::endl;
@@ -498,9 +494,6 @@ trace_buffer_full()
     return fifo_full;
   }
 
-  if(ts2mm_info.buffers.empty()) {
-    return false;
-  }
   bool isFull = false;
   for(uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
     isFull |= ts2mm_info.buffers[i].full;
