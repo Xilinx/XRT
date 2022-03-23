@@ -17,6 +17,8 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdProgram.h"
+#include "tools/common/XBHelpMenusCore.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
 #include "tools/common/ProgressBar.h"
@@ -444,8 +446,7 @@ update_default_only(xrt_core::device* device, bool value)
       if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
         // if backup is booted, then do not proceed
         if(std::stoi(vmr_stat.get<std::string>("value")) != 1) {
-          std::cout << "ERROR: Please load default boot to use this option" <<std::endl;
-          throw xrt_core::error(std::errc::operation_canceled);
+          std::cout << "Backup image booted. Action will be performed only on default image.\n";
         }
         break;
       }
@@ -630,8 +631,11 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
   for(const auto& img : image_list) {
     // Check if the passed in image is absolute path
     if (boost::filesystem::is_regular_file(img)){
-      if (boost::filesystem::extension(img).compare(".xsabin") != 0)
-        std::cout << "Warning: Development usage, this may damage the card. Proceed with caution\n";
+      if (boost::filesystem::extension(img).compare(".xsabin") != 0) {
+        std::cout << "Warning: Non-xsabin file detected. Development usage, this may damage the card\n";
+        if(!XBU::can_proceed(XBU::getForce()))
+          throw xrt_core::error(std::errc::operation_canceled);
+      }
       path_list.push_back(img);
     }
     // Search through the installed shells and get the complete path
@@ -860,8 +864,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     // All other cases have a specified image
     // Get a list of images known exist
-    const auto validated_images = find_flash_image_paths(image);
 
+    const auto validated_images = find_flash_image_paths(image);
     // Fail early here to reduce additional conditions below
     // Technically validated_images will never be empty as: if image is not empty but has a bad
     // path or bad shell name find_flash_image_paths exits early. This statement can be removed

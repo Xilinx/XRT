@@ -186,6 +186,14 @@ struct gmio_type
 };
 
 /**
+ * get_hw_gen - get aie hw_gen from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ */
+uint8_t
+get_hw_gen(const xrt_core::device* device);
+
+/**
  * get_trace_gmios() - get trace gmio data from xclbin AIE metadata
  *
  * @device: device with loaded meta data

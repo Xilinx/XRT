@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,25 +14,18 @@
  * under the License.
  */
 
-#ifndef __OOLoadConfig_h_
-#define __OOLoadConfig_h_
+#ifndef __XBFMgmtMain_h_
+#define __XBFMgmtMain_h_
 
-#include "tools/common/OptionOptions.h"
-#include "core/common/query_requests.h"
+// Include files
 
-#include <vector>
-
-class OO_LoadConfig : public OptionOptions {
- public:
-  virtual void execute( const SubCmdOptions &_options ) const;
-
- public:
-  OO_LoadConfig(const std::string &_longName, bool _isHidden = false);
-
- private:
-  std::vector<std::string> m_devices;
-  bool m_help;
-  std::string m_path;
-};
-
+// Please keep these to the bare minimum
+#include "tools/common/XBHelpMenusCore.h"
+#include <string>
+    
+// ---------------------- F U N C T I O N S ----------------------------------
+void main_(int argc, char** argv, 
+           const std::string & _executable,
+           const std::string & _description,
+           const SubCmdsCollection & _SubCmds);
 #endif

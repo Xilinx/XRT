@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -37,6 +37,7 @@
 #include "ProgressBar.h"
 #include "Process.h"
 #include "EscapeCodes.h"
+#include "XBUtilitiesCore.h"
 #include "XBUtilities.h"
 
 // 3rd Party Library - Include Files

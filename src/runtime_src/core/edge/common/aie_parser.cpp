@@ -66,6 +66,12 @@ get_driver_config(const pt::ptree& aie_meta)
   return driver_config;
 }
 
+uint8_t
+get_hw_gen(const pt::ptree& aie_meta)
+{
+  return aie_meta.get<uint8_t>("aie_metadata.driver_config.hw_gen");
+}
+
 adf::aiecompiler_options
 get_aiecompiler_options(const pt::ptree& aie_meta)
 {
@@ -563,6 +569,18 @@ get_trace_gmios(const xrt_core::device* device)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_trace_gmio(aie_meta);
+}
+/* hw_gen represents aie version 1.aie, 2.aie-ml etc */
+uint8_t
+get_hw_gen(const xrt_core::device* device)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return 1; // default is aie-1
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_hw_gen(aie_meta);
 }
 
 }}} // aie, edge, xrt_core

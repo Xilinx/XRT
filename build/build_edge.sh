@@ -46,6 +46,11 @@ install_recipes()
         echo "inherit externalsrc" > $XRT_BB
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
+        echo 'EXTRA_OECMAKE:append:versal += "-DXRT_LIBDFX=true"' >> $XRT_BB
+        echo 'EXTRA_OECMAKE:append:zynqmp += "-DXRT_LIBDFX=true"' >> $XRT_BB
+        echo 'DEPENDS += "rapidjson"' >> $XRT_BB
+        echo 'DEPENDS:append:versal += "libdfx"' >> $XRT_BB
+        echo 'DEPENDS:append:zynqmp += "libdfx"' >> $XRT_BB
         echo "FILES:\${PN} += \"\${libdir}/ps_kernels_lib\"" >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB

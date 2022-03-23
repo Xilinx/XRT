@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -568,7 +568,7 @@ namespace {
 
   static void totalKernelRunTimeMs(xdp::VPDatabase* db, std::ofstream& fout)
   {
-    if (!db->infoAvailable(xdp::info::opencl_trace)) return ;
+    if (!db->infoAvailable(xdp::info::device_offload)) return ;
 
     double firstKernelStartTime = db->getStats().getFirstKernelStartTime() ;
     double lastKernelEndTime = db->getStats().getLastKernelEndTime() ;

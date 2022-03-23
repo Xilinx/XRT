@@ -18,7 +18,7 @@
 #define core_common_unistd_h_
 
 #ifndef _WIN32
-# include <unistd.h>
+#include <unistd.h>
 #else
 #endif
 

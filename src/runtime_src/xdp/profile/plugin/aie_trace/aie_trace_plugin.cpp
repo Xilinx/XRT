@@ -448,6 +448,9 @@ namespace xdp {
         std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       }
+    } else {  
+      std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
     }
 
     if (cycles > max_cycles) {
@@ -990,9 +993,14 @@ namespace xdp {
     uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
     bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceId) ? true : false;
 
-    // Continuous Trace Offload is supported only for PLIO flow
-    if (continuousTrace && isPLIO) {
-      XDPPlugin::startWriteThread(aie_trace_file_dump_int_s, "AIE_EVENT_TRACE", false);
+    if (continuousTrace) {
+      // Continuous Trace Offload is supported only for PLIO flow
+      if (isPLIO) {
+        XDPPlugin::startWriteThread(aie_trace_file_dump_int_s, "AIE_EVENT_TRACE", false);
+      } else {
+        std::string msg("Continuous offload of AIE Trace is not supported for GMIO mode. So, AIE Trace for GMIO mode will be offloaded only at the end of application.");
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+      }
     }
 
     // First, check against memory bank size

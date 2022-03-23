@@ -714,6 +714,7 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->execbuf = (u32 *)ecmd;
 	xcmd->gem_obj = gem_obj;
+	xcmd->exec_bo_handle = args->exec_bo_handle;
 
 	//print_ecmd_info(ecmd);
 
@@ -744,6 +745,9 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		if (ret)
 			goto out1;
 		goto out;
+	case ERT_ABORT:
+		abort_ecmd2xcmd(to_abort_pkg(ecmd), xcmd);
+		break;
 	default:
 		DRM_ERROR("Unsupport command\n");
 		ret = -EINVAL;

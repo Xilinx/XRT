@@ -97,6 +97,7 @@ enum xgq_cmd_log_page_type {
 	XGQ_CMD_LOG_FW		= 0x1,
 	XGQ_CMD_LOG_INFO	= 0x2,
 	XGQ_CMD_LOG_AF_CLEAR	= 0x3,
+	XGQ_CMD_LOG_ENDPOINT	= 0x4,
 };
 
 /**
@@ -172,15 +173,15 @@ struct xgq_cmd_data_payload {
 	uint32_t size;
 	uint32_t remain_size;
 	uint32_t addr_type:4;
-	uint32_t flush_type:4;
+	uint32_t flash_type:4;
 	uint32_t rsvd1:24;
 	uint32_t pad1;
 };
 
-enum xgq_cmd_flush_type {
-	XGQ_CMD_FLUSH_DEFAULT		= 0x0,
-	XGQ_CMD_FLUSH_NO_BACKUP		= 0x1,
-	XGQ_CMD_FLUSH_TO_LEGACY		= 0x2,
+enum xgq_cmd_flash_type {
+	XGQ_CMD_FLASH_DEFAULT		= 0x0,
+	XGQ_CMD_FLASH_NO_BACKUP		= 0x1,
+	XGQ_CMD_FLASH_TO_LEGACY		= 0x2,
 };
 
 /**

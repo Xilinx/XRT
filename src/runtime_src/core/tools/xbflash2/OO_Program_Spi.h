@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,34 +14,20 @@
  * under the License.
  */
 
-#ifndef __OOConfig_h_
-#define __OOConfig_h_
+#ifndef __OO_Program_Spi_h_
+#define __OO_Program_Spi_h_
 
 #include "tools/common/OptionOptions.h"
 
-#include <vector>
-
-class OO_Config : public OptionOptions {
+class OO_Program_Spi : public OptionOptions {
  public:
   virtual void execute( const SubCmdOptions &_options ) const;
 
  public:
-  OO_Config(const std::string &_longName, bool _isHidden = true);
+  OO_Program_Spi( const std::string &_longName, bool _isHidden = false);
 
  private:
-  std::vector<std::string> m_devices;
   bool m_help;
-  bool m_daemon;
-  std::string m_host;
-  std::string m_security;
-  std::string m_clk_scale;
-  std::string m_power_override;
-  std::string m_temp_override;
-  std::string m_cs_reset;
-  bool m_show;
-  bool m_ddr;
-  bool m_hbm;
-  mutable std::string m_retention;
 };
 
 #endif

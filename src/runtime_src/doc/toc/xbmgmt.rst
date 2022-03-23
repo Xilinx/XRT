@@ -2,7 +2,7 @@
 
 ..
    comment:: SPDX-License-Identifier: Apache-2.0
-   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+   comment:: Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 
 xbmgmt
 ======
@@ -12,6 +12,8 @@ This document describes the latest ``xbmgmt`` commands. These latest commands ar
 
 P.S: The older version of the commands can only be executed by adding ``--legacy`` switch. The documentation link of legacy version: `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/Chunk778393017.html>`_
 
+
+For an instructive video on xbmgmt commands listed below click `here <https://www.youtube.com/watch?v=ORYSrYegX_g>`_.
 
 **Global options**: These are the global options can be used with any command. 
 
@@ -23,10 +25,56 @@ P.S: The older version of the commands can only be executed by adding ``--legacy
 
 Currently supported ``xbmgmt`` commands are
 
+    - ``xbmgmt configure``
     - ``xbmgmt dump``
     - ``xbmgmt examine``
     - ``xbmgmt program``
     - ``xbmgmt reset``
+
+
+xbmgmt configure
+~~~~~~~~~~~
+
+The ``xbmgmt configure`` command provides advanced options for configuring a device
+
+**The supported options**
+
+Configuring a device's memory settings with a premade image
+
+.. code-block:: shell
+
+    xbmgmt configure [--device| -d] <management bdf> [--input] <filename with .ini extension>
+
+
+Enabling/Disabling DDR memory retention on a device
+
+.. code-block:: shell
+
+    xbmgmt configure [--device| -d] <management bdf> --retention [ENABLE|DISABLE]
+
+
+**The details of the supported options**
+
+- The ``--device`` (or ``-d``) specifies the target device 
+    
+    - <management bdf> : The Bus:Device.Function of the device of interest
+
+
+- The ``--input`` specifies an INI file with the memory configuration.
+- The ``--retention`` option enables / disables DDR memory retention.
+
+
+**Example commands** 
+
+
+.. code-block:: shell
+
+
+    #Configure a device's memory settings using an image
+    xbmgmt configure --device 0000:b3:00.0 --input /tmp/memory_config.ini
+    
+    #Enable a device's DDR memory retention 
+    xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
 
 
 xbmgmt dump
@@ -78,7 +126,7 @@ Dumping the output of programmed system image
 xbmgmt examine
 ~~~~~~~~~~~~~~
 
-The ``xbmgmt examine`` command reports detail status information of the specified device
+The ``xbmgmt examine`` command reports detail status information of the specified device `<video reference> <https://youtu.be/ORYSrYegX_g?t=137>`_.
 
 **The supported options**
 
@@ -130,7 +178,7 @@ xbmgmt program
 
 **The supported usecases and their options**
 
-Program the Base partition (applicable for 1RP platform too)
+Program the Base partition (applicable for 1RP platform too) `<video reference> <https://youtu.be/ORYSrYegX_g?t=193>`_
 
 .. code-block:: shell
 
@@ -142,7 +190,7 @@ Program the Base partition when multiple base partitions are installed in the sy
 
     xbmgmt program [--device|-d] <management bdf> [--base|-b] [--image|-i] <partition name>
 
-Program the Shell Partition for 2RP platform
+Program the Shell Partition for 2RP platform `<video reference> <https://youtu.be/ORYSrYegX_g?t=300>`_
 
 .. code-block:: shell
 
@@ -156,7 +204,7 @@ Program the user partition with an XCLBIN file
     xbmgmt program [--device| -d] <management bdf> [--user|-u] <XCLBIN file with path>  
 
 
-Revert to golden image
+Revert to golden image `<video reference> <https://youtu.be/ORYSrYegX_g?t=280>`_
 
 .. code-block:: shell
 
@@ -207,7 +255,7 @@ Revert to golden image
 xbmgmt reset
 ~~~~~~~~~~~~
 
-The ``xbmgmt reset`` command can be used to reset device. 
+The ``xbmgmt reset`` command can be used to reset device . 
 
 
 **The supported options**

@@ -88,14 +88,14 @@ static const struct attribute_group scu_attrgroup = {
 	.attrs = scu_attrs,
 };
 
-static int configure_soft_kernel(u32 cuidx, char kname[64], char uuid[16])
+static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[16])
 {
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 	struct soft_krnl *sk = zdev->soft_kernel;
 	struct soft_krnl_cmd *scmd = NULL;
-	struct config_sk_image *cp = NULL;
+	struct config_sk_image_uuid *cp = NULL;
 
-	cp = kmalloc(sizeof(struct config_sk_image), GFP_KERNEL);
+	cp = kmalloc(sizeof(struct config_sk_image_uuid), GFP_KERNEL);
 	cp->start_cuidx = cuidx;
 	cp->num_cus = 1;
 	strncpy((char *)cp->sk_name,kname,PS_KERNEL_NAME_LENGTH);
@@ -179,19 +179,15 @@ err:
 
 static int scu_remove(struct platform_device *pdev)
 {
-	struct zocl_scu *zcu = NULL;
-	struct drm_zocl_dev *zdev = NULL;
-	struct xrt_cu_info *info = NULL;
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
+	struct xrt_cu_scu *cu_scu = xcu->core;
+	struct drm_zocl_dev *zdev = zocl_get_zdev();
+	struct xrt_cu_info *info = &zcu->base.info;
 
-	zcu = platform_get_drvdata(pdev);
-	if (!zcu)
-		return -EINVAL;
-
-	info = &zcu->base.info;
 	xrt_cu_scu_fini(&zcu->base);
 
-	zdev = zocl_get_zdev();
-	zocl_kds_del_cu(zdev, &zcu->base);
+	zocl_kds_del_scu(zdev, &zcu->base);
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);
@@ -254,8 +250,9 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 		/* Clear Bit 0 and set Bit 1 */
 		*vaddr = 2 | (*vaddr & ~3);
 
-	if (down_killable(&cu_scu->sc_sem))
+	if (down_interruptible(&cu_scu->sc_sem)) {
 		ret = -EINTR;
+	}
 
 	if (ret) {
 		/* We are interrupted */

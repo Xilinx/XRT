@@ -80,7 +80,7 @@ struct soft_krnl {
 struct soft_krnl_cmd {
 	struct list_head	skc_list;
 	uint32_t		skc_opcode;
-	struct config_sk_image	*skc_packet;
+	struct config_sk_image_uuid	*skc_packet;
 };
 
 int zocl_init_soft_kernel(struct drm_zocl_dev *zdev);

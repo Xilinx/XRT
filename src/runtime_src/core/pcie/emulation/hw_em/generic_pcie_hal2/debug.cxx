@@ -58,29 +58,30 @@
 #define __func__ __FUNCTION__
 #endif
 
-namespace xclhwemhal2 {
-
+namespace xclhwemhal2
+{
   void HwEmShim::readDebugIpLayout(const std::string debugFileName)
   {
     //
     // Profiling - addresses and names
     // Parsed from debug_ip_layout.rtd contained in xclbin
-    if (mLogStream.is_open()) {
+    if (mLogStream.is_open())
+    {
       mLogStream << "debug_ip_layout: reading profile addresses and names..." << std::endl;
     }
 
-    memset(mPerfmonProperties, 0, sizeof(uint8_t)*XAIM_MAX_NUMBER_SLOTS);
-    memset(mAccelmonProperties, 0, sizeof(uint8_t)*XAM_MAX_NUMBER_SLOTS);
-    memset(mStreamMonProperties, 0, sizeof(uint8_t)*XASM_MAX_NUMBER_SLOTS);
+    memset(mPerfmonProperties, 0, sizeof(uint8_t) * XAIM_MAX_NUMBER_SLOTS);
+    memset(mAccelmonProperties, 0, sizeof(uint8_t) * XAM_MAX_NUMBER_SLOTS);
+    memset(mStreamMonProperties, 0, sizeof(uint8_t) * XASM_MAX_NUMBER_SLOTS);
 
     mMemoryProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_MM_MONITOR, mPerfMonBaseAddress,
-      mPerfMonSlotName, mPerfmonProperties, XAIM_MAX_NUMBER_SLOTS);
-    
+                                                      mPerfMonSlotName, mPerfmonProperties, XAIM_MAX_NUMBER_SLOTS);
+
     mAccelProfilingNumberSlots = getIPCountAddrNames(debugFileName, ACCEL_MONITOR, mAccelMonBaseAddress,
-      mAccelMonSlotName, mAccelmonProperties, XAM_MAX_NUMBER_SLOTS);
+                                                     mAccelMonSlotName, mAccelmonProperties, XAM_MAX_NUMBER_SLOTS);
 
     mStreamProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_STREAM_MONITOR, mStreamMonBaseAddress,
-      mStreamMonSlotName, mStreamMonProperties, XASM_MAX_NUMBER_SLOTS);
+                                                      mStreamMonSlotName, mStreamMonProperties, XASM_MAX_NUMBER_SLOTS);
 
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
 
@@ -93,8 +94,9 @@ namespace xclhwemhal2 {
     uint32_t fifoFullCount = getIPCountAddrNames(debugFileName, AXI_MONITOR_FIFO_FULL, &fifoReadBaseAddr, &fifoName, nullptr, 1);
     mPerfMonFifoReadBaseAddress = fifoReadBaseAddr;
 
-    if(fifoCtrlCount != 0 && fifoFullCount != 0) {
-    	mIsTraceHubAvailable = true;
+    if (fifoCtrlCount != 0 && fifoFullCount != 0)
+    {
+      mIsTraceHubAvailable = true;
     }
 
     uint64_t traceFunnelAddr = 0x0;
@@ -103,31 +105,36 @@ namespace xclhwemhal2 {
 
     // Count accel monitors with stall monitoring turned on
     mStallProfilingNumberSlots = 0;
-    for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
+    for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i)
+    {
       if ((mAccelmonProperties[i] >> 2) & 0x1)
         mStallProfilingNumberSlots++;
     }
 
-    if (mLogStream.is_open()) {
+    if (mLogStream.is_open())
+    {
       mLogStream << "debug_ip_layout: memory slots = " << mMemoryProfilingNumberSlots << std::endl;
       mLogStream << "debug_ip_layout: accel slots  = " << mAccelProfilingNumberSlots << std::endl;
       mLogStream << "debug_ip_layout: stall slots  = " << mStallProfilingNumberSlots << std::endl;
       mLogStream << "debug_ip_layout: sspm slots   = " << mStreamProfilingNumberSlots << std::endl;
 
-      for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i) {
+      for (unsigned int i = 0; i < mMemoryProfilingNumberSlots; ++i)
+      {
         mLogStream << "debug_ip_layout: AXI_MM_MONITOR slot " << i << ": "
                    << "name = " << mPerfMonSlotName[i]
-                   << ", prop = " << static_cast <uint32_t>(mPerfmonProperties[i]) << std::endl;
+                   << ", prop = " << static_cast<uint32_t>(mPerfmonProperties[i]) << std::endl;
       }
-      for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i) {
+      for (unsigned int i = 0; i < mAccelProfilingNumberSlots; ++i)
+      {
         mLogStream << "debug_ip_layout: ACCEL_MONITOR slot " << i << ": "
                    << "name = " << mAccelMonSlotName[i]
-                   << ", prop = " << static_cast <uint32_t>(mAccelmonProperties[i]) << std::endl;
+                   << ", prop = " << static_cast<uint32_t>(mAccelmonProperties[i]) << std::endl;
       }
-      for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i) {
+      for (unsigned int i = 0; i < mStreamProfilingNumberSlots; ++i)
+      {
         mLogStream << "debug_ip_layout: STREAM_MONITOR slot " << i << ": "
                    << "name = " << mStreamMonSlotName[i]
-                   << ", prop = " << static_cast <uint32_t>(mStreamMonProperties[i]) << std::endl;
+                   << ", prop = " << static_cast<uint32_t>(mStreamMonProperties[i]) << std::endl;
       }
     }
   }
@@ -135,7 +142,8 @@ namespace xclhwemhal2 {
   // Gets the information about the specified IP from the sysfs debug_ip_table.
   // The IP types are defined in xclbin.h
   uint32_t HwEmShim::getIPCountAddrNames(const std::string debugFileName, int type, uint64_t *baseAddress,
-                                         std::string * portNames, uint8_t *properties, size_t size) {
+                                         std::string *portNames, uint8_t *properties, size_t size)
+  {
     debug_ip_layout *map;
     std::ifstream ifs(debugFileName.c_str(), std::ifstream::binary);
 
@@ -145,24 +153,33 @@ namespace xclhwemhal2 {
     uint32_t count = 0;
 
     // NOTE: host is always index 0
-    if (type == AXI_MM_MONITOR) {
+    if (type == AXI_MM_MONITOR)
+    {
       properties[0] = XAIM_HOST_PROPERTY_MASK;
       portNames[0] = "host/host";
       ++count;
     }
 
     char buffer[65536];
-    if (ifs) {
+    if (ifs)
+    {
       //debug_ip_layout max size is 65536
       ifs.read(buffer, 65536);
-      if (ifs.gcount() > 0) {
-        map = (debug_ip_layout*)(buffer);
-        for (unsigned int i = 0; i < map->m_count; i++) {
-          if (count >= size) break;
-          if (map->m_debug_ip_data[i].m_type == type) {
-            if (baseAddress) baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
-            if (portNames)   portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
-            if (properties)  properties[count]  = map->m_debug_ip_data[i].m_properties;
+      if (ifs.gcount() > 0)
+      {
+        map = (debug_ip_layout *)(buffer);
+        for (unsigned int i = 0; i < map->m_count; i++)
+        {
+          if (count >= size)
+            break;
+          if (map->m_debug_ip_data[i].m_type == type)
+          {
+            if (baseAddress)
+              baseAddress[count] = map->m_debug_ip_data[i].m_base_address;
+            if (portNames)
+              portNames[count].assign(map->m_debug_ip_data[i].m_name, 128);
+            if (properties)
+              properties[count] = map->m_debug_ip_data[i].m_properties;
             ++count;
           }
         }
@@ -173,87 +190,128 @@ namespace xclhwemhal2 {
   }
 
   //To get and print the debug messages
-  void HwEmShim::fetchAndPrintMessages() {
+  void HwEmShim::fetchAndPrintMessages()
+  {
 
-	  std::string logMsgs("");
-	  std::string warning_msgs("");
-	  std::string stopMsgs("");
-	  std::string displayMsgs("");
-	  bool ack =false;
-	  bool force =false;
-	  //Read Fifo for size of Info Messages available
+    std::string logMsgs("");
+    std::string warning_msgs("");
+    std::string stopMsgs("");
+    std::string displayMsgs("");
+    bool ack = false;
+    bool force = false;
+    //Read Fifo for size of Info Messages available
 
-	  xclGetDebugMessages_RPC_CALL(xclGetDebugMessages,ack,force,displayMsgs,logMsgs,stopMsgs);
+    xclGetDebugMessages_RPC_CALL(xclGetDebugMessages, ack, force, displayMsgs, logMsgs, stopMsgs);
 
-	  if(mDebugLogStream.is_open() && displayMsgs.empty() == false) {
-		mDebugLogStream << displayMsgs;
-		mDebugLogStream.flush();
-	  }
+    if (mDebugLogStream.is_open() && displayMsgs.empty() == false)
+    {
+      mDebugLogStream << displayMsgs;
+      mDebugLogStream.flush();
+    }
 
-	  if(mDebugLogStream.is_open() && logMsgs.empty() == false) {
-		mDebugLogStream << logMsgs;
-		mDebugLogStream.flush();
-	  }
+    if (mDebugLogStream.is_open() && logMsgs.empty() == false)
+    {
+      mDebugLogStream << logMsgs;
+      mDebugLogStream.flush();
+    }
 
-	  if(mDebugLogStream.is_open() && warning_msgs.empty() == false) {
-		mDebugLogStream << warning_msgs;
-		mDebugLogStream.flush();
-	  }
+    if (mDebugLogStream.is_open() && warning_msgs.empty() == false)
+    {
+      mDebugLogStream << warning_msgs;
+      mDebugLogStream.flush();
+    }
 
-	  if(mDebugLogStream.is_open() && stopMsgs.empty() == false) {
-		mDebugLogStream << stopMsgs;
-		mDebugLogStream.flush();
-	  }
-	  if(displayMsgs.empty() == false)
-	  {
-	 	std::cout<<displayMsgs;
-	 	std::cout.flush();
-	  }
+    if (mDebugLogStream.is_open() && stopMsgs.empty() == false)
+    {
+      mDebugLogStream << stopMsgs;
+      mDebugLogStream.flush();
+    }
+    if (displayMsgs.empty() == false)
+    {
+      std::cout << displayMsgs;
+      std::cout.flush();
+    }
 
-	  if(logMsgs.empty() == false)
-	  {
-	    std::cout<<logMsgs;
-	    std::cout.flush();
-	  }
+    if (logMsgs.empty() == false)
+    {
+      std::cout << logMsgs;
+      std::cout.flush();
+    }
 
-	  if(warning_msgs.empty() == false)
-	  {
-	    std::cout<<warning_msgs;
-	    std::cout.flush();
-	  }
+    if (warning_msgs.empty() == false)
+    {
+      std::cout << warning_msgs;
+      std::cout.flush();
+    }
 
-	  if(stopMsgs.empty() == false)
-	  {
-	    std::cout<<stopMsgs;
-	    std::cout.flush();
-	  }
+    if (stopMsgs.empty() == false)
+    {
+      std::cout << stopMsgs;
+      std::cout.flush();
+    }
   }
 
   /*
    * messagesThread()
    */
-void messagesThread(xclhwemhal2::HwEmShim* inst) {
-	if (xclemulation::config::getInstance()->isSystemDPAEnabled() == false) {
-		return;
-	}
-	static auto l_time = std::chrono::high_resolution_clock::now();
-	while (inst && inst->get_simulator_started()) {
-		sleep(10);
-		if (inst->get_simulator_started() == false) {
-			return;
-		}
-		auto l_time_end = std::chrono::high_resolution_clock::now();
-		if (std::chrono::duration<double>(l_time_end - l_time).count() > 300) {
-			l_time = std::chrono::high_resolution_clock::now();
-			inst->mPrintMessagesLock.lock();
-			if (inst->get_simulator_started() == false) {
-				inst->mPrintMessagesLock.unlock();
-				return;
-			}
-                        inst->parseSimulateLog();
-                        inst->fetchAndPrintMessages();
-                        inst->mPrintMessagesLock.unlock();
-		}
-	}
-}
+  void messagesThread(xclhwemhal2::HwEmShim *inst)
+  {
+    if (xclemulation::config::getInstance()->isSystemDPAEnabled() == false)
+    {
+      return;
+    }
+    static auto l_time = std::chrono::high_resolution_clock::now();
+    static auto start_time = std::chrono::high_resolution_clock::now();
+
+    unsigned int timeCheck = 0;
+    unsigned int parseCount = 0;
+    while (inst && inst->get_simulator_started())
+    {
+      sleep(10);
+      if (inst->get_simulator_started() == false) {
+        return;
+      }
+
+      std::string consoleMsg = "INFO: [HW-EMU 07-0] Please refer the path \"" + inst->getSimPath() + "/simulate.log\" for more detailed simulation infos, errors and warnings.";
+      if (std::find(inst->parsedMsgs.begin(), inst->parsedMsgs.end(), consoleMsg) == inst->parsedMsgs.end()) {
+        inst->logMessage(consoleMsg);
+        inst->parsedMsgs.push_back(consoleMsg);
+      }
+
+      auto l_time_end = std::chrono::high_resolution_clock::now();
+      if (std::chrono::duration<double>(l_time_end - l_time).count() > 300) {
+        l_time = std::chrono::high_resolution_clock::now();
+        inst->mPrintMessagesLock.lock();
+        if (inst->get_simulator_started() == false)
+        {
+          inst->mPrintMessagesLock.unlock();
+          return;
+        }
+        inst->parseSimulateLog();
+        inst->fetchAndPrintMessages();
+        inst->mPrintMessagesLock.unlock();
+      }
+
+      auto end_time = std::chrono::high_resolution_clock::now();
+      if (std::chrono::duration<double>(end_time - start_time).count() > timeCheck) {
+
+        start_time = std::chrono::high_resolution_clock::now();
+        inst->mPrintMessagesLock.lock();
+
+        if (inst->get_simulator_started() == false) {
+          inst->mPrintMessagesLock.unlock();
+          return;
+        }
+
+        inst->parseLog();
+        parseCount++;
+
+        if (parseCount%5 == 0 && timeCheck < 300) {
+          timeCheck += 10;
+        }
+
+        inst->mPrintMessagesLock.unlock();
+      }
+    }
+  }
 } // namespace xclhwemhal2

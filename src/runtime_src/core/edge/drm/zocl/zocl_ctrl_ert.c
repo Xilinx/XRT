@@ -175,7 +175,6 @@ static void cu_conf2info(struct xgq_cmd_config_cu *conf, struct xrt_cu_info *inf
 	else
 		info->model = XCU_HLS;
 	info->cu_domain = conf->cu_domain;
-	info->inst_idx = conf->cu_idx;
 	info->cu_idx = conf->cu_idx;
 	strcpy(info->kname, strsep(&kname_p, ":"));
 	strcpy(info->iname, strsep(&kname_p, ":"));
