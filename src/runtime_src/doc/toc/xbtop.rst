@@ -7,7 +7,7 @@
 xbtop
 =====
 
-The ``xbtop`` command outputs card statistics including memory topology and DMA transfer metrics, and CU usage data. This command is similar to the Linux top command. When running, it continues to operate until ``q`` is entered in the terminal window.
+The ``xbtop`` command outputs card statistics including memory topology and DMA transfer metrics, CU usage, and power related data. This command is similar to the Linux top command. When running, it continues to operate until ``q`` is entered in the terminal window.
 
 The command has the following option:
 
