@@ -43,6 +43,31 @@ enum class config_type {
     reset
 };
 
+std::ostream&
+operator<<(std::ostream& os, const config_type& value)
+{
+  switch (value) {
+    case config_type::security:
+      os << "security";
+      break;
+    case config_type::clk_scaling:
+      os << "runtime clock scaling";
+      break;
+    case config_type::threshold_power_override:
+      os << "threshold power override";
+      break;
+    case config_type::threshold_temp_override:
+      os << "threshold temp override";
+      break;
+    case config_type::reset:
+      os << "clock scaling option reset";
+      break;
+    default:
+      throw std::runtime_error("Configuration missing enumeration conversion");
+  }
+  return os;
+}
+
 enum class mem_type {
     unknown= 0,
     ddr,
@@ -286,22 +311,28 @@ update_daemon_config(const std::string& host)
 static bool 
 update_device_conf(xrt_core::device* device, const std::string& value, config_type cfg)
 {
-  switch(cfg) {
-  case config_type::security:
-    xrt_core::device_update<xrt_core::query::sec_level>(device, value);
-    break;
-  case config_type::clk_scaling:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(device, value);
-    break;
-  case config_type::threshold_power_override:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(device, value);
-    break;
-  case config_type::threshold_temp_override:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(device, value);
-    break;
-  case config_type::reset:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_reset>(device, value);
-    break;
+  XBU::sudo_or_throw("Updating device configuration requires sudo");
+  try {
+    switch(cfg) {
+      case config_type::security:
+        xrt_core::device_update<xrt_core::query::sec_level>(device, value);
+        break;
+      case config_type::clk_scaling:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(device, value);
+        break;
+      case config_type::threshold_power_override:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(device, value);
+        break;
+      case config_type::threshold_temp_override:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(device, value);
+        break;
+      case config_type::reset:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_reset>(device, value);
+        break;
+    }
+  } catch (const std::exception&) {
+    std::cerr << boost::format("ERROR: Device does not support %s\n\n") % cfg;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   return true;
 }
@@ -314,8 +345,13 @@ static void
 memory_retention(xrt_core::device* device, bool enable)
 {
   XBU::sudo_or_throw("Updating memory retention requires sudo");
-  auto value = xrt_core::query::data_retention::value_type(enable);
-  xrt_core::device_update<xrt_core::query::data_retention>(device, value);
+  try {
+    auto value = xrt_core::query::data_retention::value_type(enable);
+    xrt_core::device_update<xrt_core::query::data_retention>(device, value);
+  } catch (const std::exception&) {
+    std::cerr << boost::format("ERROR: Device does not support memory retention\n\n");
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 }
 
 void
