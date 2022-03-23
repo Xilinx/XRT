@@ -26,4 +26,4 @@ Page 2: Dynamic Region
    - Compute Usage
 Page 3: Power
 
-Limitation in Centos: Currently xbtop utility is not added in CentOS package. However, it is possible to xbtop utility to use in Centos by copying xtop python files from a supported OS.
+Limitation in Centos: Currently xbtop utility is not added in CentOS package. However, it is possible to use xbtop utility to use in Centos by copying xtop python files from a supported OS.
