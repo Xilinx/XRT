@@ -57,8 +57,13 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   }
 
   //list of non verbose labels
-  const std::vector<std::string> non_verbose_labels = { "build flags", "vitis version", 
-      "git hash", "git branch", "git hash date" };
+  const std::vector<std::string> non_verbose_labels = { 
+      "build flags", 
+      "vitis version", 
+      "git hash", 
+      "git branch", 
+      "git hash date" 
+    };
 
   for(auto& ks : ptree) {
     const boost::property_tree::ptree& vmr_stat = ks.second;
