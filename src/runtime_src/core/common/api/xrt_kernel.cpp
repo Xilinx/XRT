@@ -119,8 +119,15 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 
 namespace {
 
-constexpr uint32_t MAILBOX_INPUT_CTRL  = (1 << 9);
-constexpr uint32_t MAILBOX_OUTPUT_CTRL = (1 << 10);
+constexpr uint32_t MAILBOX_INPUT_CTRL = 1;
+constexpr uint32_t MAILBOX_OUTPUT_CTRL = 1;
+constexpr uint32_t MAILBOX_INPUT_ACK = 2;
+constexpr uint32_t MAILBOX_OUTPUT_ACK = 2;
+
+constexpr uint32_t MAILBOX_WRITE_REG = 0x10;
+constexpr uint32_t MAILBOX_READ_REG = 0x14;
+constexpr uint32_t MAILBOX_AUTO_RESTART_CNTR = 0x18;
+
 
 constexpr size_t max_cus = 128;
 constexpr size_t cus_per_word = 32;
@@ -2115,7 +2122,7 @@ public:
       throw xrt_core::error(ENOSYS, "No auto-restart counters found for kernel");
 
     // TODO: find offset once in meta data
-    constexpr size_t counter_offset = 0x10;
+    constexpr size_t counter_offset = MAILBOX_AUTO_RESTART_CNTR;
     uint32_t value = iterations.iterations;
     if (!value)
       value = std::numeric_limits<uint32_t>::max();
@@ -2134,7 +2141,7 @@ public:
 
     // Clear AUTO_RESTART bit if set, then wait() for completion
     // TODO: find offset once in meta data
-    constexpr size_t counter_offset = 0x10;
+    constexpr size_t counter_offset = MAILBOX_AUTO_RESTART_CNTR;
     uint32_t value = 0;
     set_offset_value(counter_offset, &value, sizeof(value));
     wait(std::chrono::milliseconds{0});
@@ -2188,6 +2195,12 @@ public:
   }
 };
 
+// enum class for mailbox operations
+enum class mailbox_operation {
+    write,
+    read
+};
+
 // class mailbox_impl - Extension of run_impl for mailbox support
 //
 // Implements an argument setter override that writes kernel arguments
@@ -2198,7 +2211,7 @@ public:
 class mailbox_impl : public run_impl
 {
   using mailbox_type = xrt_core::xclbin::kernel_properties::mailbox_type;
-
+    
   // struct hs_arg_setter - AP_CTRL_* argument setter for mailbox
   //
   // This argument setter amends base argument setter by writing and
@@ -2221,7 +2234,7 @@ class mailbox_impl : public run_impl
       run_impl::hs_arg_setter::set_offset_value(offset, value);
 
       // write single 4 byte value to mailbox
-      mbox->mailbox_wait();
+      mbox->mailbox_wait(mailbox_operation::write);
       mbox->kernel->write_register(offset, *(data32 + offset / wsize));
     }
 
@@ -2232,7 +2245,7 @@ class mailbox_impl : public run_impl
 
       // write argument value to mailbox
       // arg size is always a multiple of 4 bytes
-      mbox->mailbox_wait();
+      mbox->mailbox_wait(mailbox_operation::write);
       mbox->kernel->write_register_n(arg.offset(), arg.size() / wsize, data32 + arg.offset() / wsize);
     }
 
@@ -2241,38 +2254,83 @@ class mailbox_impl : public run_impl
     {
       // read arg size bytes from mailbox at arg offset
       // arg size is alwaus a multiple of 4 bytes
-      mbox->mailbox_wait();
+      mbox->mailbox_wait(mailbox_operation::read);
       mbox->kernel->read_register_n(arg.offset(), arg.size() / wsize, data32 + arg.offset() / wsize);
       return run_impl::hs_arg_setter::get_arg_value(arg);
     }
   };
 
   void
-  poll()
+  poll(mailbox_operation mbop)
   {
-    m_ctrlreg = kernel->read_register(0x0);
-    m_busy = m_ctrlreg & (MAILBOX_INPUT_CTRL | MAILBOX_OUTPUT_CTRL);
+    if (mbop == mailbox_operation::write) {
+        uint32_t ctrlreg_write = kernel->read_register(MAILBOX_WRITE_REG);
+        m_busy_write = ctrlreg_write & MAILBOX_INPUT_ACK; //Low - free, High - Busy 
+        return;
+    }
+    
+    if(mbop == mailbox_operation::read) { 
+        uint32_t ctrlreg_read = kernel->read_register(MAILBOX_READ_REG);
+        m_busy_read = ctrlreg_read & MAILBOX_OUTPUT_ACK;//Low - free, High - Busy
+        return;
+    }
   }
 
   void
-  mailbox_idle_or_error()
+  mailbox_idle_or_error(mailbox_operation mbop)
   {
-    if (!m_busy)
-      return;
+    if (mbop == mailbox_operation::write) {
+       if (!m_busy_write)
+          return;
 
-    poll();
+       poll(mailbox_operation::write);
 
-    if (m_busy)
-      throw xrt_core::system_error(EBUSY, "Mailbox is busy");
+       if (m_busy_write)
+          throw xrt_core::system_error(EBUSY, "Mailbox is busy, Unable to do mailbox write");
+       return;
+    }
+
+    if(mbop == mailbox_operation::read) {
+       if (!m_busy_read)
+          return;
+
+       poll(mailbox_operation::read);
+
+       if (m_busy_read)
+          throw xrt_core::system_error(EBUSY, "Mailbox is busy, Unable to do mailbox read");
+       return;
+    } 
   }
 
   void
-  mailbox_wait()
+  mailbox_wait(mailbox_operation mbop)
   {
-    while (m_busy)
-      poll();
+    if (mbop == mailbox_operation::write) {
+       if (!m_aquire_write) {
+           while (m_busy_write) //poll write done bit
+              poll(mailbox_operation::write);
+
+           uint32_t ctrlreg_write = kernel->read_register(MAILBOX_WRITE_REG);
+           kernel->write_register(MAILBOX_WRITE_REG, ctrlreg_write & ~MAILBOX_INPUT_CTRL);//0, Mailbox Aquire/Lock sync HOST -> SW          
+           m_aquire_write = true;
+        }
+       return;
+    }
+    
+    if (mbop == mailbox_operation::read) {
+        if (!m_aquire_read) {
+            while (m_busy_read) //poll read done bit
+                poll(mailbox_operation::read);
+
+            uint32_t ctrlreg_read = kernel->read_register(MAILBOX_READ_REG);
+            kernel->write_register(MAILBOX_READ_REG, ctrlreg_read & ~MAILBOX_OUTPUT_CTRL);//0, Mailbox Aquire/Lock sync HOST -> SW
+            m_aquire_read = true;
+        }
+       return;
+    }   
   }
 
+  
   // All mailboxes should be writeable otherwise nothing, not even
   // starting the kernel will work.
   void
@@ -2292,8 +2350,10 @@ class mailbox_impl : public run_impl
       throw xrt_core::system_error(EPERM, "Mailbox is write-only");
   }
 
-  uint32_t m_ctrlreg = 0;   // last CU ctrl reg read
-  bool m_busy = false;      // true after initiating write() or read()
+  bool m_busy_read = false; // Read register acknowledgement -> Low - free , High - busy
+  bool m_busy_write = false; // Write register acknowledgement -> Low - free , High - busy
+  bool m_aquire_write = false;
+  bool m_aquire_read = false;
   bool m_readonly = false;    //
   bool m_writeonly = false;   //
 
@@ -2309,14 +2369,27 @@ public:
     m_writeonly = (mtype == mailbox_type::in);
   }
 
+  //Aquring mailbox read and write.
+  ~mailbox_impl() {
+      {
+          uint32_t ctrlreg_write = kernel->read_register(MAILBOX_WRITE_REG);
+          kernel->write_register(MAILBOX_WRITE_REG, ctrlreg_write & ~MAILBOX_INPUT_CTRL);//0, Mailbox Aquire/Lock sync HOST -> SW
+      }
+
+      {
+          uint32_t ctrlreg_read = kernel->read_register(MAILBOX_READ_REG);
+          kernel->write_register(MAILBOX_READ_REG, ctrlreg_read & ~MAILBOX_OUTPUT_CTRL);//0, Mailbox Aquire/Lock sync HOST -> SW
+      }
+  }
   // write mailbox to hw
   void
   write()
   {
     mailbox_writeable_or_error();
-    mailbox_idle_or_error();
-    kernel->write_register(0x0, m_ctrlreg | MAILBOX_INPUT_CTRL);
-    m_busy = true;
+    mailbox_idle_or_error(mailbox_operation::write);
+    uint32_t ctrlreg_write = kernel->read_register(MAILBOX_WRITE_REG);
+    kernel->write_register(MAILBOX_WRITE_REG, ctrlreg_write | MAILBOX_INPUT_CTRL);//1, Mailbox Release/Unlock sync SW -> HW
+    m_aquire_write = false;
   }
 
   // read hw to mailbox
@@ -2324,9 +2397,10 @@ public:
   read()
   {
     mailbox_readable_or_error();
-    mailbox_idle_or_error();
-    kernel->write_register(0x0, m_ctrlreg | MAILBOX_OUTPUT_CTRL);
-    m_busy = true;
+    mailbox_idle_or_error(mailbox_operation::read);
+    uint32_t ctrlreg_read = kernel->read_register(MAILBOX_READ_REG);
+    kernel->write_register(MAILBOX_READ_REG, ctrlreg_read | MAILBOX_OUTPUT_CTRL);//1, Mailbox Release/Unlock sync SW -> HW
+    m_aquire_read = false;
   }
 
   // blocking read directly from mailbox
@@ -2334,7 +2408,7 @@ public:
   std::pair<const void*, size_t>
   get_arg(int index)
   {
-    mailbox_wait();
+    mailbox_wait(mailbox_operation::read);
     auto& arg = kernel->get_arg(index);
     auto val = get_arg_value(arg);
     return {val.data(), val.bytes()};
