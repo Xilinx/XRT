@@ -1022,6 +1022,7 @@ initialize_query_table()
 
   emplace_sysfs_getput<query::boot_partition>                  ("xgq_vmr", "boot_from_backup");
   emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
+  emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
