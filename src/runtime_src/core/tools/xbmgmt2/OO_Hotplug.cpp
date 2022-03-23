@@ -42,7 +42,7 @@ hotplug_online()
   if (!boost::filesystem::exists(rescan_path))
     throw xrt_core::error((boost::format("Invalid sysfs file path '%s'.") % rescan_path).str());
 
-  boost::filesystem::ofstream rescan_file(rescan_path);
+  std::ofstream rescan_file(rescan_path);
   try
   {
     if (!rescan_file.is_open())
