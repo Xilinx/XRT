@@ -997,9 +997,9 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
     size_t totalSize = 0;
     if (xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev) == ARISTA_ID)
-      totalSize = 0x20000000;
+      totalSize = 0x20000000; // 512 MB 
     else
-      totalSize = mem.m_size * 1024; // convert to bytes
+      totalSize = std::min((mem.m_size * 1024), XBU::string_to_bytes("2G")); // minimum of mem size in bytes and 2 GB
 
     xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
     try {
