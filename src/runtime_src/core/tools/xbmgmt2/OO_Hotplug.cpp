@@ -31,6 +31,8 @@
 #include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
 
+// System - Include Files
+#include <fstream>
 // =============================================================================
 
 // ----- H E L P E R M E T H O D S ------------------------------------------
