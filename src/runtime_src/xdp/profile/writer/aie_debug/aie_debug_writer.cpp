@@ -96,6 +96,7 @@ namespace xdp {
     return true;
   }
 
+  // Warn if application exits without writing valid data
   AIEDebugWriter::~AIEDebugWriter()
   {
     if (!mWroteValidData) {
@@ -175,6 +176,7 @@ namespace xdp {
     return true;
   }
 
+  // Warn if application exits without writing valid data
   AIEShimDebugWriter::~AIEShimDebugWriter()
   {
     if (!mWroteValidData) {
