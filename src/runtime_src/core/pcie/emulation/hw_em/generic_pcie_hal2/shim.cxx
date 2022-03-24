@@ -2725,7 +2725,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   }
    
   // Copy buffer thru the M2M.
-    if (deviceQuery(key_type::m2m) && getM2MAddress() != 0) {
+    if ((deviceQuery(key_type::m2m) && getM2MAddress() != 0) && !((sBO->fd >= 0) || (dBO->fd >= 0))) {
 
       char hostBuf[M2M_KERNEL_ARGS_SIZE];
       std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
