@@ -169,7 +169,7 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       hotplug_online();
     }
 
-    std::cout << boost::format("\nHotplug %s successfully\n") % (is_online ? "online" : "offline");
+    std::cout << boost::format("\nHotplug %s successfully\n") % (is_offline ? "offline" : "online");
   }
   catch (const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
