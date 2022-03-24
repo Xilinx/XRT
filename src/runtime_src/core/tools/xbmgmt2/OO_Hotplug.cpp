@@ -43,22 +43,15 @@ hotplug_online()
     throw xrt_core::error((boost::format("Invalid sysfs file path '%s'.") % rescan_path).str());
 
   std::ofstream rescan_file(rescan_path);
-  try
-  {
-    if (!rescan_file.is_open())
-      throw xrt_core::error((boost::format("Unable to open the sysfs file '%s'.") % rescan_path).str());
+  if (!rescan_file.is_open())
+    throw xrt_core::error((boost::format("Unable to open the sysfs file '%s'.") % rescan_path).str());
 
-    // Writing "1" to /sys/bus/pci/rescan will trigger the hotplug event.
-    rescan_file << 1;
-    rescan_file.flush();
-    if (!rescan_file.good()) {
-      rescan_file.close();
-      throw std::runtime_error(boost::str(boost::format("Can't write to file %s") % rescan_path));
-    }
-  }
-  catch(const xrt_core::error& e) {
-    std::cerr << boost::format("\nERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
+  // Writing "1" to /sys/bus/pci/rescan will trigger the hotplug event.
+  rescan_file << 1;
+  rescan_file.flush();
+  if (!rescan_file.good()) {
+    rescan_file.close();
+    throw std::runtime_error(boost::str(boost::format("Can't write to file %s") % rescan_path));
   }
 
   rescan_file.close();
@@ -113,13 +106,6 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // Exit if neither action or device specified
-  if (m_action.empty()) {
-    printHelp();
-    std::cerr << boost::format("ERROR: Please specify an action.\n");
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
   try {
     if (!boost::iequals(m_action, "online") && !boost::iequals(m_action, "offline")) {
       std::cerr << boost::format("ERROR: Invalid action value: '%s'\n") % m_action;
@@ -127,10 +113,10 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(std::errc::operation_canceled);
     }
 
-    const bool is_online = boost::iequals(m_action, "online");
+    const bool is_offline = boost::iequals(m_action, "offline");
 
     // Device BDF need to spcify for offline (hot removal) case
-    if (!is_online) {
+    if (is_offline) {
       if (m_devices.empty()) {
         std::cerr << boost::format("ERROR: A device needs to be specified for offline.\n");
         throw xrt_core::error(std::errc::operation_canceled);
@@ -173,14 +159,14 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
     if (!XBUtilities::can_proceed(XBUtilities::getForce()))
       throw xrt_core::error(std::errc::operation_canceled);
 
-    if (is_online) {
+    if (is_offline) {
+      auto &dev = deviceCollection[0];
+      xrt_core::device_query<xrt_core::query::hotplug_offline>(dev);
+    }
+    else {
       // For online, no specific device is attached with it. 
       // Hence can't implement as a query. Implemented it locally 
       hotplug_online();
-    }
-    else {
-      auto &dev = deviceCollection[0];
-      xrt_core::device_query<xrt_core::query::hotplug_offline>(dev);
     }
 
     std::cout << boost::format("\nHotplug %s successfully\n") % (is_online ? "online" : "offline");
