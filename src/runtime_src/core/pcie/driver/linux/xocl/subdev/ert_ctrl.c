@@ -768,10 +768,6 @@ static int ert_ctrl_xgq_ip_init(struct platform_device *pdev)
 		xgq_ip->ecxc_xgq_base = devm_ioremap(&pdev->dev, res->start, xgq_ip->ecxc_xgq_range);
 		if (!xgq_ip->ecxc_xgq_base)
 			return -ENOMEM;
-
-		/* TODO: remove this hack once XGQ IP has reset register */
-		iowrite32(0x1, xgq_ip->ecxc_xgq_base + 0xC);
-		iowrite32(0x0, xgq_ip->ecxc_xgq_base);
 	}
 
 	/* TODO: Should sort XGQ IP by address to make sure the indexing the
