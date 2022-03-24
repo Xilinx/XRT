@@ -17,7 +17,11 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportVmrStatus.h"
+#include "XBUtilitiesCore.h"
 #include "core/common/info_vmr.h"
+
+#include <algorithm>
+#include <boost/algorithm/string/predicate.hpp>
 
 void
 ReportVmrStatus::getPropertyTreeInternal(const xrt_core::device * device, 
@@ -51,10 +55,25 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     output << "  Information Unavailable" << std::endl;
     return;
   }
+
+  //list of non verbose labels
+  const std::vector<std::string> non_verbose_labels = { 
+      "build flags", 
+      "vitis version", 
+      "git hash", 
+      "git branch", 
+      "git hash date" 
+    };
+
   for(auto& ks : ptree) {
     const boost::property_tree::ptree& vmr_stat = ks.second;
-    output << fmt_basic % vmr_stat.get<std::string>("label") 
-                        % vmr_stat.get<std::string>("value");
+    const auto it = std::find_if(non_verbose_labels.begin(), non_verbose_labels.end(),
+                      [&vmr_stat](const auto& str) { return boost::iequals(vmr_stat.get<std::string>("label"), str); });
+    
+    if(XBUtilities::getVerbose())
+      output << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");
+    else if(it != std::end(non_verbose_labels))
+      output << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");
   }
   output << std::endl;
 }
