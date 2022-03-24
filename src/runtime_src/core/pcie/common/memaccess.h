@@ -190,7 +190,7 @@ namespace xcldev {
       uint64_t incr;
       auto guard = xrt_core::utils::ios_restore(std::cout);
       for (uint64_t phy = aStartAddr; phy < aStartAddr+aSize; phy += incr) {
-        incr = (count >= blockSize) ? blockSize : count;
+        incr = (count >= aSize) ? aSize : count;
         //std::cout << "Reading from addr " << std::hex << phy << " aSize = " << std::hex << incr << std::dec << std::endl;
         if (xclUnmgdPread(mHandle, 0, buf.get(), incr, phy) < 0) {
           //error
@@ -346,7 +346,7 @@ namespace xcldev {
         return -1;
       }
 
-      std::ofstream outFile(aFilename, std::ofstream::out | std::ofstream::binary);
+      std::ofstream outFile(aFilename, std::ofstream::out | std::ofstream::binary | std::ofstream::app);
 
       size_t count = size;
       for(auto it = startbank; it!=vec_banks.end(); ++it) {

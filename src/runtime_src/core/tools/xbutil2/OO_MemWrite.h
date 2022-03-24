@@ -29,8 +29,10 @@ class OO_MemWrite : public OptionOptions {
 
  private:
   std::vector<std::string> m_device;
+  std::string m_inputFile;
   std::string m_baseAddress;
   std::string m_sizeBytes;
+  int m_count;
   std::string m_fill;
   bool m_help;
 };

@@ -38,6 +38,7 @@ OO_MemRead::OO_MemRead( const std::string &_longName, bool _isHidden )
     , m_device({})
     , m_baseAddress("")
     , m_sizeBytes("")
+    , m_count(1)
     , m_outputFile("")
     , m_help(false)
 {
@@ -46,6 +47,7 @@ OO_MemRead::OO_MemRead( const std::string &_longName, bool _isHidden )
     ("output,o", boost::program_options::value<decltype(m_outputFile)>(&m_outputFile)->required(), "Output file")
     ("address", boost::program_options::value<decltype(m_baseAddress)>(&m_baseAddress)->required(), "Base address to start from")
     ("size", boost::program_options::value<decltype(m_sizeBytes)>(&m_sizeBytes)->required(), "Size (bytes) to read")
+    ("count", boost::program_options::value<decltype(m_count)>(&m_count), "Number of blocks to read")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -132,13 +134,17 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("Device: %s") % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device))));
   XBU::verbose(boost::str(boost::format("Address: %s") % addr));
   XBU::verbose(boost::str(boost::format("Size: %s") % size));
+  XBU::verbose(boost::str(boost::format("Block count: %s") % m_count));
   XBU::verbose(boost::str(boost::format("Output file: %s") % m_outputFile));
 
   //read mem
   XBU::xclbin_lock xclbin_lock(device);
   
   try{
-    xrt_core::mem_read(device.get(), addr, size, m_outputFile);
+    for(int c = 0; c < m_count; c++) {
+      xrt_core::mem_read(device.get(), addr, size, m_outputFile);
+      addr +=size;
+    }
   } catch(const xrt_core::error& e) {
     std::cerr << e.what() << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);

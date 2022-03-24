@@ -305,6 +305,26 @@ mem_write(const device* device, long long addr, long long size, unsigned int pat
     throw xrt_core::error(EINVAL, "Memory write failed");
 }
 
+void
+system_linux::
+mem_write(const device* device, long long addr, long long size, std::vector<char> buf) const
+{
+  auto get_ddr_mem_size = [device]() {
+    auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
+    auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
+    
+    // convert ddr_size from GB to bytes
+    // return the result in KB
+    return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
+  };
+
+  auto bdf_str = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+  auto handle = device->get_device_handle();
+  if(xcldev::memaccess(handle, get_ddr_mem_size(), getpagesize(), bdf_str)
+      .write(addr, size, buf.data()) < 0)
+    throw xrt_core::error(EINVAL, "Memory write failed");
+}
+
 namespace pcie_linux {
 
 std::shared_ptr<device>

@@ -220,4 +220,11 @@ mem_write(const device*, long long, long long, unsigned int) const
   throw std::runtime_error("memory write is not supported");
 }
 
+void
+system_windows::
+mem_write(const device* device, long long addr, long long size, std::vector<char> buf) const
+{
+  throw std::runtime_error("memory write is not supported");
+}
+
 } // xrt_core
