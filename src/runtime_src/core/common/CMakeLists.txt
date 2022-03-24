@@ -8,9 +8,6 @@ include_directories(
 if (NOT WIN32)
 include_directories(${DRM_INCLUDE_DIRS})
 
-pkg_check_modules(LIBFFI REQUIRED libffi)
-INCLUDE_DIRECTORIES(${LIBFFI_INCLUDEDIR})
-
 endif (NOT WIN32)
 
 file(GLOB XRT_CORE_COMMON_SRC_SHARED
