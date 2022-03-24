@@ -393,13 +393,13 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 
 	if (!strcmp(sensor_name, "Product Name"))
 		memcpy(sdm->bdinfo.bd_name, &sdm->sensor_data[repo_id][ins_index], val_len);
-	else if (!strcmp(sensor_name, "Board Serial"))
+	else if (!strcmp(sensor_name, "Serial Num"))
 		memcpy(sdm->bdinfo.serial_num, &sdm->sensor_data[repo_id][ins_index], val_len);
-	else if (!strcmp(sensor_name, "Board Part Num"))
+	else if (!strcmp(sensor_name, "Part Num"))
 		memcpy(sdm->bdinfo.bd_part_num, &sdm->sensor_data[repo_id][ins_index], val_len);
-	else if (!strcmp(sensor_name, "Board Revision"))
+	else if (!strcmp(sensor_name, "Revision"))
 		memcpy(sdm->bdinfo.revision, &sdm->sensor_data[repo_id][ins_index], val_len);
-	else if (!strcmp(sensor_name, "Board MFG Date"))
+	else if (!strcmp(sensor_name, "MFG Date"))
 		memcpy(&sdm->bdinfo.mfg_date, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "PCIE Info"))
 		memcpy(&sdm->bdinfo.pcie_info, &sdm->sensor_data[repo_id][ins_index], val_len);
@@ -409,7 +409,7 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 		memcpy(sdm->bdinfo.mac_addr0, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "MAC 1"))
 		memcpy(sdm->bdinfo.mac_addr1, &sdm->sensor_data[repo_id][ins_index], val_len);
-	else if (!strcmp(sensor_name, "Fan Presence"))
+	else if (!strcmp(sensor_name, "fpga_fan_1"))
 	{
 		char sensor_val[60];
 		memcpy(sensor_val, &sdm->sensor_data[repo_id][ins_index], val_len);
@@ -418,9 +418,9 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 		else
 			sdm->bdinfo.fan_presence = false;
 	}
-	else if (!strcmp(sensor_name, "Active SC Ver"))
+	else if (!strcmp(sensor_name, "Active SC"))
 		memcpy(sdm->bdinfo.active_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
-	else if (!strcmp(sensor_name, "Target SC Ver"))
+	else if (!strcmp(sensor_name, "Target SC"))
 		memcpy(sdm->bdinfo.target_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "OEM ID"))
 		memcpy(&sdm->bdinfo.oem_id, &sdm->sensor_data[repo_id][ins_index], val_len);
@@ -598,7 +598,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			switch(repo_type) {
 				case SDR_TYPE_TEMP:
 					memcpy(sensor_name, &in_buf[name_index], name_length);
-					if (strstr(sensor_name, "Fan")) {
+					if (strstr(sensor_name, "fan")) {
 						sprintf(sysfs_name[1], "fan%d_input", fan_index);
 						sprintf(sysfs_name[0], "fan%d_label", fan_index);
 						fan_index++;
