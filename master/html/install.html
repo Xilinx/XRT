@@ -387,6 +387,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -534,7 +535,14 @@ yum config-manager --set-enabled AppStream
 </div>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">If the XRT package is built locally, please make sure ERT firmware <code class="docutils literal notranslate"><span class="pre">sched*.bin</span></code> is built properly during build process and installed to <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code> after running the XRT installation command.</p>
+<ol class="last arabic">
+<li><p class="first">If the XRT package is built locally, please make sure ERT firmware <code class="docutils literal notranslate"><span class="pre">sched*.bin</span></code> is built properly during build process and installed to <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code> after running the XRT installation command.</p>
+</li>
+<li><p class="first">Secure boot enabled machines: Need to configure system to properly load DKMS modules.
+Please follow method-1 from following page. You do not need to disable secure boot. First time DKMS compiles XRT (or any other third party) driver it will generate a MOK key that needs to be registered with BIOS.</p>
+<p><a class="reference external" href="https://wiki.ubuntu.com/UEFI/SecureBoot/DKMS">https://wiki.ubuntu.com/UEFI/SecureBoot/DKMS</a></p>
+</li>
+</ol>
 </div>
 </div>
 </div>
@@ -568,7 +576,7 @@ yum config-manager --set-enabled AppStream
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 21, 2022.
+        Last updated on March 24, 2022.
       </span>
 
     </p>
