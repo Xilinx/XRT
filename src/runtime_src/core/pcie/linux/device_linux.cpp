@@ -361,7 +361,7 @@ struct hotplug_offline
 
     // Remove both user_pf and mgmt_pf
     if (pcidev::shutdown(mgmt_dev, true, true))
-      throw xrt_core::query::sysfs_error("Hotplug offline Failed");
+      throw xrt_core::query::sysfs_error("Hotplug offline failed");
 
     return true;
   }
