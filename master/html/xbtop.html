@@ -58,8 +58,8 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="XMA Overview" href="xma_user_guide.html" />
-    <link rel="prev" title="Host Memory Access" href="hm.html" /> 
+    <link rel="next" title="Utility Migration Guide" href="xbtools_map.html" />
+    <link rel="prev" title="xball" href="xball.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -341,17 +341,14 @@
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration File xrt.ini</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#runtime-initialization-file-format">Runtime Initialization File Format</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
 <ul>
@@ -381,12 +378,12 @@
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -418,7 +415,7 @@
             
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
-				  <li class="toctree-l1"><a href="_sources/xrt_ini.rst.txt"
+				  <li class="toctree-l1"><a href="_sources/xbtop.rst.txt"
 						rel="nofollow">Show Source</a></li>						
 				</ul>
           
@@ -464,13 +461,13 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Configuration File xrt.ini</li>
+      <li>xbtop</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/xrt_ini.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/xbtop.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -483,55 +480,31 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <span class="target" id="xrt-ini-rst"></span><div class="section" id="configuration-file-xrt-ini">
-<h1>Configuration File xrt.ini<a class="headerlink" href="#configuration-file-xrt-ini" title="Permalink to this headline">¶</a></h1>
-<p>XRT uses various parameters to control execution flow, debug, profiling, and message logging during host application and kernel execution in software emulation, hardware emulation, and system run on the acceleration board. These control parameters are optionally specified in a runtime initialization file <strong>xrt.ini</strong></p>
-<p>XRT looks for xrt.ini file in the following order:</p>
+  <span class="target" id="xbtop-rst"></span><div class="section" id="xbtop">
+<h1>xbtop<a class="headerlink" href="#xbtop" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbtop</span></code> command outputs card statistics including memory topology and DMA transfer metrics, CU usage, and power related data. This command is similar to the Linux top command. When running, it continues to operate until <code class="docutils literal notranslate"><span class="pre">q</span></code> is entered in the terminal window.</p>
+<p>The command has the following option:</p>
+<ul class="simple">
+<li>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device bdf</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">--refresh_rate</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) specifies refresh rate in second (default 1 sec).</li>
+</ul>
+<p>The command <code class="docutils literal notranslate"><span class="pre">xbtop</span></code> shows the following reports in multiple pages (pages can be changed by entering <code class="docutils literal notranslate"><span class="pre">n</span></code> or <code class="docutils literal notranslate"><span class="pre">p</span></code> key in the terminal window)</p>
+<p>Page 1: Memory</p>
 <blockquote>
 <div><ul class="simple">
-<li>The host executable path.</li>
-<li>Current directory (from where application is executed) path.</li>
+<li>Device Memory Usage</li>
+<li>Memory Topology</li>
+<li>DMA Transfer Metrics</li>
 </ul>
 </div></blockquote>
-<p>XRT stops search when an xrt.ini is found. If xrt.ini is not found, XRT built-in defaults are used.</p>
-<p>If desired, the environment variable as shown below can be used to specify a custom xrt.ini path</p>
-<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">export XRT_INI_PATH</span><span class="o">=</span><span class="s">/path/to/xrt.ini</span>
-</pre></div>
-</div>
-<div class="section" id="runtime-initialization-file-format">
-<h2>Runtime Initialization File Format<a class="headerlink" href="#runtime-initialization-file-format" title="Permalink to this headline">¶</a></h2>
-<p>The runtime initialization file is a text file with groups of keys and their values. Any line beginning with a semicolon (<strong>;</strong>) or a hash (<strong>#</strong>) is a comment. The group names, keys, and key values are all case in-sensitive.</p>
-<p>There are three group of keys as below</p>
+<p>Page 2: Dynamic Region</p>
 <blockquote>
 <div><ul class="simple">
-<li><strong>Runtime</strong>: The keys in this group impact general XRT flow</li>
-<li><strong>Debug</strong>: The keys in this group are used to generate and configure the debug related files such as profile report and timeline trace</li>
-<li><strong>Emulation</strong>: The keys in this group are related to the Emulation flow only</li>
+<li>Compute Usage</li>
 </ul>
 </div></blockquote>
-<p>The following is a simple example that turns on profile timeline trace and sends the runtime log messages to the console.</p>
-<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="c1">#Start of Runtime group</span>
-<span class="k">[Runtime]</span>
-<span class="na">runtime_log</span> <span class="o">=</span> <span class="s">console</span>
-
-<span class="c1">#Start of Debug group</span>
-<span class="k">[Debug]</span>
-<span class="na">timeline_trace</span> <span class="o">=</span> <span class="s">true</span>
-</pre></div>
-</div>
-<p><strong>API Support</strong>: From 2020.2 release the runtime configuration options can also be provided through Native XRT APIs.</p>
-<blockquote>
-<div><ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">xrt::ini::set</span></code></li>
-</ul>
-</div></blockquote>
-<p>Example</p>
-<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">xrt::ini::set(&quot;Runtime.runtime_log&quot;, &quot;console&quot;);</span>
-<span class="na">xrt::ini::set(&quot;Runtime.verbosity&quot;, 5);</span>
-</pre></div>
-</div>
-<p>For a complete list of currently supported xrt.ini keys, default value, and valid key values please refer <a class="reference external" href="https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/xrtini.html?#tpi1504034339424__section_tnh_pks_rx">Vitis Application Acceleration Development Flow Documentation</a></p>
-</div>
+<p>Page 3: Power</p>
+<p><strong>Limitation in Centos</strong>: Currently xbtop utility is not added in CentOS package. However, it is possible to use xbtop utility to use in Centos by copying xbtop python files (copying <code class="docutils literal notranslate"><span class="pre">ReportMemory.py</span></code>, <code class="docutils literal notranslate"><span class="pre">ReportPower.py</span></code>, <code class="docutils literal notranslate"><span class="pre">ReportDynamicRegions.py</span></code>, <code class="docutils literal notranslate"><span class="pre">XBUtil.py</span></code>, <code class="docutils literal notranslate"><span class="pre">xbtop.py</span></code>, <code class="docutils literal notranslate"><span class="pre">xbtop</span></code> into <code class="docutils literal notranslate"><span class="pre">/opt/xilinx/xrt/python</span></code>) from a supported OS package.</p>
 </div>
 
 
@@ -550,10 +523,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xma_user_guide.html" class="btn btn-neutral float-right" title="XMA Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xbtools_map.html" class="btn btn-neutral float-right" title="Utility Migration Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="hm.html" class="btn btn-neutral float-left" title="Host Memory Access" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xball.html" class="btn btn-neutral float-left" title="xball" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

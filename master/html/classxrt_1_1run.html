@@ -127,6 +127,10 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a516813415547dd39c27d0219277f2513"><td class="memTemplParams" colspan="2">template&lt;typename ... Args&gt; </td></tr>
 <tr class="memitem:a516813415547dd39c27d0219277f2513"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a516813415547dd39c27d0219277f2513">operator()</a> (<a class="el" href="structxrt_1_1autostart.html">autostart</a> &amp;&amp;count, Args &amp;&amp;... args)</td></tr>
 <tr class="separator:a516813415547dd39c27d0219277f2513"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a132df6dc0e490371ccb15d68211f9921"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a132df6dc0e490371ccb15d68211f9921">set_arg</a> (int index, const void *value, size_t bytes)</td></tr>
+<tr class="separator:a132df6dc0e490371ccb15d68211f9921"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ada1100dcaec6d37d228665388d53114c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#ada1100dcaec6d37d228665388d53114c">update_arg</a> (int index, const void *value, size_t bytes)</td></tr>
+<tr class="separator:ada1100dcaec6d37d228665388d53114c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classxrt_1_1run.html" title="xrt::run represents one execution of a kernel">xrt::run</a> represents one execution of a kernel </p>
@@ -409,7 +413,7 @@ template&lt;typename ... Args&gt; </div>
 </div>
 </div>
 <a id="ae480cd01d778a871d421611c380d11d8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae480cd01d778a871d421611c380d11d8">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[1/5]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ae480cd01d778a871d421611c380d11d8">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[1/6]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -456,7 +460,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="a8a86a2d453010753756d590e2032e21a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8a86a2d453010753756d590e2032e21a">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[2/5]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a8a86a2d453010753756d590e2032e21a">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[2/6]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -503,8 +507,50 @@ template&lt;typename ArgType &gt; </div>
 
 </div>
 </div>
+<a id="a132df6dc0e490371ccb15d68211f9921"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a132df6dc0e490371ccb15d68211f9921">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[3/6]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void xrt::run::set_arg </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>index</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const void *&#160;</td>
+          <td class="paramname"><em>value</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>bytes</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a6452285402383d151df1fb1bc9f44227"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6452285402383d151df1fb1bc9f44227">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[3/5]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a6452285402383d151df1fb1bc9f44227">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[4/6]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -541,7 +587,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="a00352eeb61b2c185e23c32840dfc61ea"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a00352eeb61b2c185e23c32840dfc61ea">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[4/5]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a00352eeb61b2c185e23c32840dfc61ea">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[5/6]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -578,7 +624,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="ac5f4e82835cdf8f601f2ef24e3067390"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac5f4e82835cdf8f601f2ef24e3067390">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[5/5]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ac5f4e82835cdf8f601f2ef24e3067390">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[6/6]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -714,7 +760,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="a53ee8f980ab4730a247015501feee605"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a53ee8f980ab4730a247015501feee605">&#9670;&nbsp;</a></span>update_arg() <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a53ee8f980ab4730a247015501feee605">&#9670;&nbsp;</a></span>update_arg() <span class="overload">[1/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -761,8 +807,50 @@ template&lt;typename ArgType &gt; </div>
 
 </div>
 </div>
+<a id="ada1100dcaec6d37d228665388d53114c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ada1100dcaec6d37d228665388d53114c">&#9670;&nbsp;</a></span>update_arg() <span class="overload">[2/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void xrt::run::update_arg </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>index</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const void *&#160;</td>
+          <td class="paramname"><em>value</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>bytes</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a15fa11c122834664d7d24c7c2867c834"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a15fa11c122834664d7d24c7c2867c834">&#9670;&nbsp;</a></span>update_arg() <span class="overload">[2/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a15fa11c122834664d7d24c7c2867c834">&#9670;&nbsp;</a></span>update_arg() <span class="overload">[3/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
