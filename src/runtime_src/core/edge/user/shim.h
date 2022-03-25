@@ -97,8 +97,10 @@ public:
   int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
-  double xclGetReadMaxBandwidthMBps();
-  double xclGetWriteMaxBandwidthMBps();
+  double xclGetHostReadMaxBandwidthMBps();
+  double xclGetHostWriteMaxBandwidthMBps();
+  double xclGetKernelReadMaxBandwidthMBps();
+  double xclGetKernelWriteMaxBandwidthMBps();
 
   // Bitstream/bin download
   int xclLoadXclBin(const xclBin *buffer);
@@ -133,6 +135,7 @@ public:
 
   int xclErrorInject(uint16_t num, uint16_t driver, uint16_t  severity, uint16_t module, uint16_t eclass);
   int xclErrorClear();
+  int secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *top);
 
 #ifdef XRT_ENABLE_AIE
   zynqaie::Aie* getAieArray();

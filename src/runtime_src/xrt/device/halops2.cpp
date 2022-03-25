@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -53,8 +54,10 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mGetDeviceInfo(0)
   ,mGetDeviceTime(0)
   ,mGetDeviceClock(0)
-  ,mGetDeviceMaxRead(0)
-  ,mGetDeviceMaxWrite(0)
+  ,mGetHostMaxRead(0)
+  ,mGetHostMaxWrite(0)
+  ,mGetKernelMaxRead(0)
+  ,mGetKernelMaxWrite(0)
   ,mSetProfilingSlots(0)
   ,mGetProfilingSlots(0)
   ,mGetProfilingSlotName(0)
@@ -111,8 +114,10 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   // Profiling Functions
   mGetDeviceTime = (getDeviceTimeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceTimestamp");
   mGetDeviceClock = (getDeviceClockFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceClockFreqMHz");
-  mGetDeviceMaxRead = (getDeviceMaxReadFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetReadMaxBandwidthMBps");
-  mGetDeviceMaxWrite = (getDeviceMaxWriteFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetWriteMaxBandwidthMBps");
+  mGetHostMaxRead = (getHostMaxReadFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetHostReadMaxBandwidthMBps");
+  mGetHostMaxWrite = (getHostMaxWriteFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetHostWriteMaxBandwidthMBps");
+  mGetKernelMaxRead = (getKernelMaxReadFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetKernelReadMaxBandwidthMBps");
+  mGetKernelMaxWrite = (getKernelMaxWriteFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetKernelWriteMaxBandwidthMBps");
   mSetProfilingSlots = (setSlotFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclSetProfilingNumberSlots");
   mGetProfilingSlots = (getSlotFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingNumberSlots");
   mGetProfilingSlotName = (getSlotNameFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetProfilingSlotName");

@@ -243,7 +243,7 @@ struct memory_info_collector
     pt_mem.put("tag", mem->m_tag);
     pt_mem.put("enabled", mem->m_used ? true : false);
     pt_mem.put("base_address", boost::format("0x%x") % mem->m_base_address);
-    pt_mem.put("range_bytes", boost::format("0x%x") % (mem->m_size << 10)); // magic 10
+    pt_mem.put("range_bytes", boost::format("0x%x") % (mem->m_size * 1024)); // convert KB to bytes
   }
 
   // Add mem usage info for specified mem entry.

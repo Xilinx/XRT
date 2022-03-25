@@ -503,6 +503,21 @@ public:
   get_ert_packet() const;
   /// @endcond
 
+public:
+  // Use at your own risk, prefer documented type-safe arguments
+  void
+  set_arg(int index, const void* value, size_t bytes)
+  {
+    set_arg_at_index(index, value, bytes);
+  }
+
+  // Use at your own risk, prefer documented type-safe arguments
+  void
+  update_arg(int index, const void* value, size_t bytes)
+  {
+    update_arg_at_index(index, value, bytes);
+  }
+
 private:
   std::shared_ptr<run_impl> handle;
 

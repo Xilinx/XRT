@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdAdvanced.h"
+#include "OO_Hotplug.h"
 
 #include "common/system.h"
 #include "common/device.h"
@@ -70,6 +71,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 
   // -- Define the supporting option options ----
   SubOptionOptions subOptionOptions;
+  subOptionOptions.emplace_back(std::make_shared<OO_Hotplug>("hotplug"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 

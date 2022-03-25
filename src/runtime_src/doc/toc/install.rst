@@ -56,4 +56,11 @@ Steps to reinstall XRT on Ubuntu::
 
     sudo apt install --reinstall ./xrt_<version>.deb
 
-.. Warning:: If the XRT package is built locally, please make sure ERT firmware ``sched*.bin`` is built properly during build process and installed to ``/lib/firmware/xilinx`` after running the XRT installation command.
+.. Warning::
+
+    1. If the XRT package is built locally, please make sure ERT firmware ``sched*.bin`` is built properly during build process and installed to ``/lib/firmware/xilinx`` after running the XRT installation command.
+
+    2. Secure boot enabled machines: Need to configure system to properly load DKMS modules.
+       Please follow method-1 from following page. You do not need to disable secure boot. First time DKMS compiles XRT (or any other third party) driver it will generate a MOK key that needs to be registered with BIOS.
+
+       https://wiki.ubuntu.com/UEFI/SecureBoot/DKMS

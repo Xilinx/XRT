@@ -350,6 +350,22 @@ struct instance
 
 };
 
+struct hotplug_offline 
+{
+  using result_type = query::hotplug_offline::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto mgmt_dev = pcidev::get_dev(device->get_device_id(), false);
+
+    // Remove both user_pf and mgmt_pf
+    if (pcidev::shutdown(mgmt_dev, true, true))
+      throw xrt_core::query::sysfs_error("Hotplug offline failed");
+
+    return true;
+  }
+};
 
 struct kds_scu_info
 {
@@ -982,6 +998,7 @@ initialize_query_table()
   emplace_sysfs_get<query::is_offline>                         ("", "dev_offline");
   emplace_sysfs_get<query::f_flash_type>                       ("flash", "flash_type");
   emplace_sysfs_get<query::flash_type>                         ("", "flash_type");
+  emplace_sysfs_get<query::flash_size>                         ("flash", "size");
   emplace_sysfs_get<query::board_name>                         ("", "board_name");
   emplace_sysfs_get<query::logic_uuids>                        ("", "logic_uuids");
   emplace_sysfs_get<query::interface_uuids>                    ("", "interface_uuids");
@@ -1011,6 +1028,7 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                       bdf>();
   emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::instance,                       instance>();
+  emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_func4_request<query::am_counter,                     am_counter>();
@@ -1021,7 +1039,9 @@ initialize_query_table()
 
   emplace_sysfs_getput<query::boot_partition>                  ("xgq_vmr", "boot_from_backup");
   emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
+  emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
+  emplace_sysfs_get<query::extended_vmr_status>                ("xgq_vmr", "vmr_verbose_info");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
   emplace_sysfs_get<query::hwmon_sdm_serial_num>               ("hwmon_sdm", "serial_num");

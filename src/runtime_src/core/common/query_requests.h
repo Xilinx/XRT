@@ -226,6 +226,7 @@ enum class key_type
   is_offline,
   f_flash_type,
   flash_type,
+  flash_size,
   board_name,
   interface_uuids,
   logic_uuids,
@@ -265,7 +266,9 @@ enum class key_type
 
   boot_partition,
   flush_default_only,
+  program_sc,
   vmr_status,
+  extended_vmr_status,
 
   hwmon_sdm_serial_num,
   hwmon_sdm_oem_id,
@@ -275,6 +278,7 @@ enum class key_type
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
   hwmon_sdm_fan_presence,
+  hotplug_offline,
 
   noop
 };
@@ -2537,6 +2541,15 @@ struct flash_type : request
   }
 };
 
+struct flash_size : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::flash_size;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct board_name : request
 {
   using result_type = std::string;
@@ -2889,10 +2902,32 @@ struct flush_default_only : request
   put(const device*, const boost::any&) const = 0;
 };
 
+struct program_sc : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::program_sc;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
 struct vmr_status : request
 {
   using result_type = std::vector<std::string>;
   static const key_type key = key_type::vmr_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct extended_vmr_status : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::extended_vmr_status;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -2981,6 +3016,15 @@ struct hwmon_sdm_fan_presence : request
 {
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_fan_presence;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hotplug_offline : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::hotplug_offline;
 
   virtual boost::any
   get(const device*) const = 0;

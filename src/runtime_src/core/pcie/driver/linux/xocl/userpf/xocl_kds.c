@@ -2101,8 +2101,9 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
 	if (ret) {
-		userpf_info(xdev, "ERT will be disabled, ret %d\n", ret);
+		userpf_info_once(xdev, "ERT will be disabled, ret %d\n", ret);
 		XDEV(xdev)->kds.ert_disable = true;
+		return;
 	}
 
 	// Work-around to unconfigure PS kernel

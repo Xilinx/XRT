@@ -781,10 +781,39 @@ xclLoadAxlf(const axlf *buffer)
     }
   }
 
+  #ifdef __HWEM__
+    if (!secondXclbinLoadCheck(this->mCoreDevice, buffer)) {
+      return 0; // skipping to load the 2nd xclbin for hw_emu embedded designs
+    }
+  #endif
+
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
   xclLog(XRT_INFO, "%s: flags 0x%x, return %d", __func__, flags, ret);
   return ret ? -errno : ret;
+}
+
+int 
+shim::
+secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *top) {
+  try {
+    static int xclbin_hw_emu_count = 0;
+        
+    if (core_dev->get_xclbin_uuid() != xrt::uuid(top->m_header.uuid)) {
+      xclbin_hw_emu_count++;
+
+      if (xclbin_hw_emu_count > 1) {
+        xclLog(XRT_WARNING, "%s: Skipping as xclbin is already loaded. Only single XCLBIN load is supported for hw_emu embedded designs.", __func__);
+        return 0; 
+      }
+    } else {
+      xclLog(XRT_INFO, "%s: Loading the XCLBIN", __func__);
+    }
+  }
+  catch(const std::exception &e) {
+    // do nothing
+  }
+  return 1;
 }
 
 int
@@ -932,22 +961,36 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
-// Get the maximum bandwidth for host reads from the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
 shim::
-xclGetReadMaxBandwidthMBps()
+xclGetHostReadMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 19250.00;
 }
 
-// Get the maximum bandwidth for host writes to the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
 shim::
-xclGetWriteMaxBandwidthMBps()
+xclGetHostWriteMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
+shim::
+xclGetKernelReadMaxBandwidthMBps()
+{
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
+shim::
+xclGetKernelWriteMaxBandwidthMBps()
+{
+  return 19250.00;
 }
 
 int
@@ -2218,18 +2261,34 @@ xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 }
 
 double
-xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostReadMaxBandwidthMBps() : 0.0;
 }
 
 
 double
-xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostWriteMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelWriteMaxBandwidthMBps() : 0.0;
 }
 
 

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -58,8 +59,10 @@ public:
   virtual int getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz) = 0;
   virtual int readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample) = 0;
 
-  virtual double getMaxBwRead() = 0;
-  virtual double getMaxBwWrite() = 0;
+  virtual double getHostMaxBwRead() = 0;
+  virtual double getHostMaxBwWrite() = 0;
+  virtual double getKernelMaxBwRead() = 0;
+  virtual double getKernelMaxBwWrite() = 0;
 
   virtual void* getRawDevice() = 0 ;
 

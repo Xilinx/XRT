@@ -331,7 +331,9 @@ namespace xdp {
       }
 
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      printTileModStats(aieDevice, tiles[tileId], mod);
+      
+      if (tiles.size() > 0)
+        printTileModStats(aieDevice, tiles[tileId], mod);
     }
 
     return numFreeCtr;
@@ -387,7 +389,7 @@ namespace xdp {
 
   std::vector<tile_type> 
   AIEProfilingPlugin::getTilesForProfiling(const XAie_ModuleType mod, 
-                                           const std::string& metricsStr, 
+                                           const std::string& metricsStr,
                                            void* handle)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
@@ -422,10 +424,16 @@ namespace xdp {
           int plioCount = 0;
           auto plios = xrt_core::edge::aie::get_plios(device.get());
           for (auto& plio : plios) {
+            auto isMaster = plio.second.slaveOrMaster;
+            auto streamId = plio.second.streamId;
+
+            // If looking for specific ID, make sure it matches
+            if ((mChannelId >= 0) && (mChannelId != streamId))
+              continue;
+
             // Make sure it's desired polarity
             // NOTE: input = slave (data flowing from PLIO)
             //       output = master (data flowing to PLIO)
-            auto isMaster = plio.second.slaveOrMaster;
             if ((isMaster && (metricsStr == "input_bandwidths"))
                 || (isMaster && (metricsStr == "input_stalls_idle"))
                 || (!isMaster && (metricsStr == "output_bandwidths"))
@@ -440,7 +448,13 @@ namespace xdp {
             // Grab stream ID and slave/master (used in configStreamSwitchPorts() below)
             // TODO: find better way to store these values
             t.itr_mem_col = isMaster;
-            t.itr_mem_row = plio.second.streamId;
+            t.itr_mem_row = streamId;
+          }
+          
+          if (plioCount == 0) {
+            std::string msg = "No tiles used channel ID " + std::to_string(mChannelId)
+                              + ". Please specify a valid channel ID.";
+            xrt_core::message::send(severity_level::warning, "XRT", msg);
           }
         }
 
@@ -655,6 +669,12 @@ namespace xdp {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
 
+    auto interfaceMetricStr = xrt_core::config::get_aie_profile_interface_metrics();
+    std::vector<std::string> interfaceVec;
+    boost::split(interfaceVec, interfaceMetricStr, boost::is_any_of(":"));
+    auto interfaceMetric = interfaceVec.at(0);
+    try {mChannelId = std::stoi(interfaceVec.at(1));} catch (...) {mChannelId = -1;}
+
     int numCounters[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
     XAie_ModuleType falModuleTypes[NUM_MODULES] = 
@@ -663,7 +683,7 @@ namespace xdp {
     std::string metricSettings[NUM_MODULES] = 
         {xrt_core::config::get_aie_profile_core_metrics(),
          xrt_core::config::get_aie_profile_memory_metrics(),
-         xrt_core::config::get_aie_profile_interface_metrics()};
+         interfaceMetric};
 
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
@@ -917,11 +937,13 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
     // Create and register writer and file
-    std::string core_str = (mCoreMetricSet.empty()) ? "" : "_" + mCoreMetricSet;
+    std::string core_str = (mCoreMetricSet.empty())   ? "" : "_" + mCoreMetricSet;
     std::string mem_str  = (mMemoryMetricSet.empty()) ? "" : "_" + mMemoryMetricSet;
-    std::string shim_str = (mShimMetricSet.empty()) ? "" : "_" + mShimMetricSet;    
+    std::string shim_str = (mShimMetricSet.empty())   ? "" : "_" + mShimMetricSet;    
+    std::string chan_str = (mChannelId < 0)           ? "" : "_chan" + std::to_string(mChannelId);
 
-    std::string outputFile = "aie_profile_" + deviceName + core_str + mem_str + shim_str + ".csv";
+    std::string outputFile = "aie_profile_" + deviceName + core_str + mem_str 
+        + shim_str + chan_str + ".csv";
 
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
                                               deviceName.c_str(), mIndex);

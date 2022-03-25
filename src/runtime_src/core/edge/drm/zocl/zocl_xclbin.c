@@ -1476,7 +1476,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 * Remember xclbin_uuid for opencontext.
 	 */
 	slot->slot_xclbin->zx_refcnt = 0;
-	zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path);
+	if(ZOCL_PLATFORM_ARM64)
+		zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path);
 	zocl_xclbin_set_uuid(slot, &axlf_head.m_header.uuid);
 
 	/*
