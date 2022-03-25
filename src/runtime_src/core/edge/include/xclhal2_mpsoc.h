@@ -27,7 +27,7 @@ extern "C" {
 #define	XRT_MAX_NAME_LENGTH	32
 #define	XRT_MAX_PATH_LENGTH	255
 
-#define	SOFT_KERNEL_FILE_PATH	"/home/softkernel/softkernel/"
+#define	SOFT_KERNEL_FILE_PATH	"/home/petalinux/softkernel/"
 #define	SOFT_KERNEL_FILE_NAME	"sk"
 
 #define	AIE_INFO_SIZE		4096
