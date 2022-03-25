@@ -295,6 +295,7 @@ int Flasher::getBoardInfo(BoardInfo& board)
             sdr_info[BDINFO_MAC0] : std::move(std::string("Unassigned"));
         board.mMacAddr1 = sdr_info[BDINFO_MAC1].compare(unassigned_mac) ?
             sdr_info[BDINFO_MAC1] : std::move(std::string("Unassigned"));
+        board.mConfigMode = 0;
         return 0;
     }
     if (ret != 0)

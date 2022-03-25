@@ -28,6 +28,7 @@
 #include <boost/algorithm/string.hpp>
 
 static boost::format fmtBasic("  %-20s : %s\n");
+static boost::format fmtBasicHex("  %-20s : 0x%x\n");
 
 void
 ReportPlatform::getPropertyTreeInternal( const xrt_core::device * device,
@@ -342,6 +343,9 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << "Device properties\n";
   _output << fmtBasic % "Type" % string_or_NA(dev_properties.get<std::string>("board_type"));
   _output << fmtBasic % "Name" % string_or_NA(dev_properties.get<std::string>("board_name"));
+  auto config_mode = dev_properties.get<unsigned int>("config_mode");
+  if (config_mode != 0)
+    _output << fmtBasicHex % "Config Mode" % config_mode;
   _output << fmtBasic % "Config Mode" % string_or_NA(dev_properties.get<std::string>("config_mode"));
   _output << fmtBasic % "Max Power" % string_or_NA(dev_properties.get<std::string>("max_power_watts"));
   _output << std::endl;
