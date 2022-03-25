@@ -540,8 +540,7 @@
 <h1>XRT Native APIs<a class="headerlink" href="#xrt-native-apis" title="Permalink to this headline">¶</a></h1>
 <p>From 2020.2 release XRT provides a new XRT API set in C, C++, and Python flavor.</p>
 <p>To use the native XRT APIs, the host application must link with the <strong>xrt_coreutil</strong> library.
-Compiling host code with XRT native C++ API requires C++ standard with -std=c++14 or newer.
-On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++14 is introduced to GCC from 4.9.0.</p>
+Compiling host code with XRT native C++ API requires C++ standard with -std=c++17 (or newer).</p>
 <p>Example g++ command</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>g++ -g -std<span class="o">=</span>c++14 -I<span class="nv">$XILINX_XRT</span>/include -L<span class="nv">$XILINX_XRT</span>/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 </pre></div>
@@ -1326,7 +1325,7 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 24, 2022.
+        Last updated on March 25, 2022.
       </span>
 
     </p>
