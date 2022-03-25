@@ -15,6 +15,9 @@ import pyxrt
 
 
 class ReportMemory:
+    def __init__(self, max_report_length):
+        self.report_length = max_report_length
+
     def report_name(self):
         return "Memory"
 
@@ -28,7 +31,20 @@ class ReportMemory:
 
         self._df = memory_raw
 
-    def _print_memory_usage(self, term, lock, start_x, start_y):
+        # Generate the number of pages used for the report
+        page_count = math.ceil(len(self._df['board']['memory']['memories']) / self.report_length)
+        self.memory_page_count = page_count if page_count > 0 else 1
+
+        page_count = math.ceil(len(self._df['board']['memory']['memories']) / self.report_length)
+        self.topology_page_count = page_count if page_count > 0 else 1
+
+        page_count = math.ceil(len(self._df['board']['direct_memory_accesses']['metrics']) / self.report_length)
+        self.dma_page_count = page_count if page_count > 0 else 1
+
+        self.page_count = int(self.memory_page_count + self.topology_page_count + self.dma_page_count)
+        return self.page_count
+
+    def _print_memory_usage(self, term, lock, start_x, start_y, page):
         XBUtil.print_section_heading(term, lock, "Device Memory Usage", start_y)
         table_offset = 1
 
@@ -36,26 +52,31 @@ class ReportMemory:
             XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
             return table_offset + 1
 
+        mem_usage = []
+        memories = []
         try:
             memories = self._df['board']['memory']['memories']
         except:
             XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
             return table_offset + 1
 
-        mem_usage = []
-        for memory in memories:
-            size = int(memory['range_bytes'], 16)
-            if size == 0 or memory['enabled'] == "false":
-                continue
-            name = memory['tag']
-            usage = int(memory['extended_info']['usage']['allocated_bytes'], 0)
-            mem_usage.append("%-16s %s" % (name, XBUtil.progress_bar(usage * 100 / size)))
+        for i in range(self.report_length):
+            index = i + (page * self.report_length)
+            if (index < len(memories)):
+                memory = memories[index]
+                size = int(memory['range_bytes'], 16)
+                if size == 0 or memory['enabled'] == "false":
+                    continue
+                name = memory['tag']
+                usage = int(memory['extended_info']['usage']['allocated_bytes'], 0)
+                mem_usage.append("%-16s %s" % (name, XBUtil.progress_bar(usage * 100 / size)))
+        
 
         XBUtil.indented_print(term, lock, mem_usage, 3, start_y + table_offset)
         table_offset += len(mem_usage)
         return table_offset
 
-    def _print_mem_topology(self, term, lock, start_x, start_y):
+    def _print_mem_topology(self, term, lock, start_x, start_y, page):
         XBUtil.print_section_heading(term, lock, "Memory Topology", start_y)
         table_offset = 1
 
@@ -74,16 +95,19 @@ class ReportMemory:
         data = []
 
         memories = self._df['board']['memory']['memories']
-        for i in range(len(memories)):
+        for i in range(self.report_length):
             line = []
-            line.append(str(i))
-            line.append(memories[i]['tag'])
-            line.append(memories[i]['type'])
-            line.append(memories[i]['extended_info']['temperature_C'] if 'temperature_C' in memories[i]['extended_info'] else "--")
-            line.append(XBUtil.convert_size(int(memories[i]['range_bytes'],16)))
-            line.append(XBUtil.convert_size(int(memories[i]['extended_info']['usage']['buffer_objects_count'],0)))
-            line.append(memories[i]['extended_info']['usage']['buffer_objects_count'])
-            data.append(line)
+            index = int(i + (page * self.report_length))
+            if (index < len(memories)):
+                line.append(str(index))
+                memory = memories[index]
+                line.append(memory['tag'])
+                line.append(memory['type'])
+                line.append(memory['extended_info']['temperature_C'] if 'temperature_C' in memory['extended_info'] else "--")
+                line.append(XBUtil.convert_size(int(memory['range_bytes'],16)))
+                line.append(XBUtil.convert_size(int(memory['extended_info']['usage']['buffer_objects_count'],0)))
+                line.append(memory['extended_info']['usage']['buffer_objects_count'])
+                data.append(line)
 
         table = XBUtil.Table(header, data, format)
         ascii_table = table.create_table()
@@ -92,7 +116,7 @@ class ReportMemory:
         table_offset += len(ascii_table)
         return table_offset
 
-    def _print_dma_transfer_matrics(self, term, lock, start_x, start_y):
+    def _print_dma_transfer_matrics(self, term, lock, start_x, start_y, page):
         XBUtil.print_section_heading(term, lock, "DMA Transfer Matrics", start_y)
         table_offset = 1
 
@@ -100,25 +124,27 @@ class ReportMemory:
             print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
             return table_offset + 1
 
+        header = [     "", "Channel", "Host-to-Card", "Card-to-Host"]
+        format = ["right",   "right",        "right",        "right"]
+        data = []
+
+        dma_metrics = []
         try:
             dma_metrics = self._df['board']['direct_memory_accesses']['metrics']
         except:
             XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
             return table_offset + 1
 
-
-        header = [     "", "Channel", "Host-to-Card", "Card-to-Host"]
-        format = ["right",   "right",        "right",        "right"]
-        data = []
-
-        dma_metrics = self._df['board']['direct_memory_accesses']['metrics']
-        for i in range(len(dma_metrics)):
+        for i in range(self.report_length):
             line = []
-            line.append(str(i))
-            line.append(dma_metrics[i]['channel_id'])
-            line.append(XBUtil.convert_size(int(dma_metrics[i]['host_to_card_bytes'], 16)))
-            line.append(XBUtil.convert_size(int(dma_metrics[i]['card_to_host_bytes'], 16)))
-            data.append(line)
+            index = i + (page * self.report_length)
+            if (index < len(dma_metrics)):
+                dma_metric = dma_metrics[index]
+                line.append(str(i))
+                line.append(dma_metric['channel_id'])
+                line.append(XBUtil.convert_size(int(dma_metric['host_to_card_bytes'], 16)))
+                line.append(XBUtil.convert_size(int(dma_metric['card_to_host_bytes'], 16)))
+                data.append(line)
 
         table = XBUtil.Table(header, data, format)
         ascii_table = table.create_table()
@@ -127,9 +153,13 @@ class ReportMemory:
         table_offset += len(ascii_table)
         return table_offset
 
-    def print_report(self, term, lock, start_x, start_y):
-        offset = 1 + self._print_memory_usage(term, lock, start_x, start_y)
-        offset += 1 + self._print_mem_topology(term, lock, start_x, start_y + offset)
-        offset += 1 + self._print_dma_transfer_matrics(term, lock, start_x, start_y + offset)
+    def print_report(self, term, lock, start_x, start_y, page):
+        offset = 0
+        if (page < self.memory_page_count):
+            offset = 1 + self._print_memory_usage(term, lock, start_x, start_y, page)
+        elif (page < self.memory_page_count + self.topology_page_count):
+            offset = 1 + self._print_mem_topology(term, lock, start_x, start_y + offset, page - self.memory_page_count)
+        elif (page < self.memory_page_count + self.topology_page_count + self.dma_page_count):
+            offset = 1 + self._print_dma_transfer_matrics(term, lock, start_x, start_y + offset, page - (self.memory_page_count + self.topology_page_count))
         return offset
 
