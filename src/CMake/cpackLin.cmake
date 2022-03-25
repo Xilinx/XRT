@@ -19,7 +19,14 @@ SET(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 SET(CPACK_DEB_COMPONENT_INSTALL ON)
 SET(CPACK_RPM_COMPONENT_INSTALL ON)
 
-# Force python byte compilation to use python3  
+# When the rpmbuild occurs for packaging, it uses a default version of 
+# python to perform a python byte compilation.  For the CentOS 7.x OS, this 
+# is python2.  Being that the XRT python code is for python3, this results in 
+# a bad release build. The following line overrides this default value
+# and uses python3 for the RPM package builds.
+# 
+# Note: If a python script is placed in a directory where with a parent directory
+#       is "bin" (any level of hierarchy), python byte compilation will not be performed.
 SET(CPACK_RPM_SPEC_MORE_DEFINE "%define __python python3")
 
 if (DEFINED CROSS_COMPILE)
