@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc and AMD, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -266,7 +266,7 @@ struct sdm_sensor_info
     }
 
     if (path.empty())
-      return result_type();
+      throw xrt_core::query::sysfs_error("sysfs path not found");
 
     return get_sdm_sensors(device, req_type, path);
   } //get()
