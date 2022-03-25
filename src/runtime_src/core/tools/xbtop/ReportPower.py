@@ -58,7 +58,7 @@ class ReportPower:
             return offset + 1
 
         # Create the complete power buffer
-        power_buf_total=[
+        all_data=[
             'Power     : %s Watts' % self._df['Power'],
             'Max Power : %s Watts' % self._df['Max Power'],
             'Warning   : %s' % self._df['Warning']
@@ -67,9 +67,13 @@ class ReportPower:
         # Extract the data elements to be displayed on the requested page
         page_offset = page * self.report_page_length
         # The upper offset is bounded by the size of the full power buffer
-        upper_page_offset = min(self.report_page_length + page_offset, len(power_buf_total))
-        power_buf=power_buf_total[page_offset:upper_page_offset]
+        upper_page_offset = min(self.report_page_length + page_offset, len(all_data))
+        data=all_data[page_offset:upper_page_offset]
 
-        XBUtil.indented_print(term, lock, power_buf, 3, start_y + offset)
-        offset += len(power_buf)
+        if (not data):
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable")
+            return offset + 1
+
+        XBUtil.indented_print(term, lock, data, 3, start_y + offset)
+        offset += len(data)
         return offset

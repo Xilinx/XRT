@@ -48,19 +48,19 @@ class ReportMemory:
 
     def _print_memory_usage(self, term, lock, start_x, start_y, page):
         XBUtil.print_section_heading(term, lock, "Device Memory Usage", start_y)
-        table_offset = 1
+        offset = 1
 
         if self._df == None:
-            XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
-            return table_offset + 1
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
+            return offset + 1
 
         data = []
         memories = []
         try:
             memories = self._df['board']['memory']['memories']
         except:
-            XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
-            return table_offset + 1
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
+            return offset + 1
 
         for i in range(self.report_length):
             # The current element to be parsed depends on what page has been requested
@@ -78,31 +78,34 @@ class ReportMemory:
             # last page
             else:
                 break
-        
 
-        XBUtil.indented_print(term, lock, data, 3, start_y + table_offset)
-        table_offset += len(data)
-        return table_offset
+        if (not data):
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable")
+            return offset + 1
+
+        XBUtil.indented_print(term, lock, data, 3, start_y + offset)
+        offset += len(data)
+        return offset
 
     def _print_mem_topology(self, term, lock, start_x, start_y, page):
         XBUtil.print_section_heading(term, lock, "Memory Topology", start_y)
-        table_offset = 1
+        offset = 1
 
         if self._df == None:
-            print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
-            return table_offset + 1
-
-        try:
-            memories = self._df['board']['memory']['memories']
-        except:
-            XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
-            return table_offset + 1
+            print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
+            return offset + 1
 
         header = [     "",  "Tag", "Type", "Temp (C)",  "Size", "Mem Usage", "BO Count"]
         format = ["right", "left", "left",    "right", "right",     "right",    "right"]
         data = []
 
-        memories = self._df['board']['memory']['memories']
+        memories = []
+        try:
+            memories = self._df['board']['memory']['memories']
+        except:
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
+            return offset + 1
+
         for i in range(self.report_length):
             line = []
             # The current data element to be parsed depends on what page has been requested
@@ -123,20 +126,24 @@ class ReportMemory:
             else:
                 break
 
+        if (not data):
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable")
+            return offset + 1
+
         table = XBUtil.Table(header, data, format)
         ascii_table = table.create_table()
 
-        XBUtil.indented_print(term, lock, ascii_table, 3, start_y + table_offset)
-        table_offset += len(ascii_table)
-        return table_offset
+        XBUtil.indented_print(term, lock, ascii_table, 3, start_y + offset)
+        offset += len(ascii_table)
+        return offset
 
     def _print_dma_transfer_metrics(self, term, lock, start_x, start_y, page):
         XBUtil.print_section_heading(term, lock, "DMA Transfer Metrics", start_y)
-        table_offset = 1
+        offset = 1
 
         if self._df == None:
-            print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
-            return table_offset + 1
+            print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
+            return offset + 1
 
         header = [     "", "Channel", "Host-to-Card", "Card-to-Host"]
         format = ["right",   "right",        "right",        "right"]
@@ -146,8 +153,8 @@ class ReportMemory:
         try:
             dma_metrics = self._df['board']['direct_memory_accesses']['metrics']
         except:
-            XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
-            return table_offset + 1
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
+            return offset + 1
 
         for i in range(self.report_length):
             line = []
@@ -166,12 +173,16 @@ class ReportMemory:
             else:
                 break
 
+        if (not data):
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable")
+            return offset + 1
+
         table = XBUtil.Table(header, data, format)
         ascii_table = table.create_table()
 
-        XBUtil.indented_print(term, lock, ascii_table, 3, start_y + table_offset)
-        table_offset += len(ascii_table)
-        return table_offset
+        XBUtil.indented_print(term, lock, ascii_table, 3, start_y + offset)
+        offset += len(ascii_table)
+        return offset
 
     def print_report(self, term, lock, start_x, start_y, page):
         offset = 0
@@ -191,6 +202,6 @@ class ReportMemory:
         elif (page < self.usage_page_count + self.topology_page_count + self.dma_page_count):
             offset = 1 + self._print_dma_transfer_metrics(term, lock, start_x, start_y + offset, page - (self.usage_page_count + self.topology_page_count))
         else:
-            XBUtil.print_warning(term, lock, start_y + table_offset, "Something went wrong! Please report this issue and its conditions.")
+            XBUtil.print_warning(term, lock, start_y + offset, "Something went wrong! Please report this issue and its conditions.")
         return offset
 
