@@ -16,7 +16,7 @@ import pyxrt
 
 class ReportDynamicRegions:
     def __init__(self, max_report_length):
-        self.report_length = max_report_length
+        self.report_page_length = max_report_length
 
     def report_name(self):
         return "Dynamic Region"
@@ -26,11 +26,13 @@ class ReportDynamicRegions:
         cu_json = dev.get_info(pyxrt.xrt_info_device.dynamic_regions)
         cu_raw = json.loads(cu_json) #read into a dictionary
 
-        page_count = math.ceil(len(cu_raw) / self.report_length)
-        self.dma_page_count = page_count if page_count > 0 else 1
+        # Round up the division to leave an extra page for the last batch of data
+        page_count_temp = math.ceil(len(cu_raw) / self.report_page_length)
+        # We must ensure that we always have at least one page
+        self.page_count = max(page_count_temp, 1)
 
         self._df = cu_raw
-        return self.dma_page_count
+        return self.page_count
 
     def _print_cu_info(self, term, lock, start_x, start_y, page):
         XBUtil.print_section_heading(term, lock, "Compute Usage", start_y)
@@ -55,9 +57,12 @@ class ReportDynamicRegions:
             XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
             return table_offset + 1
 
-        for i in range(self.report_length):
+        # Each page should display however many items a report page can hold
+        for i in range(self.report_page_length):
             line = []
-            index = i + (page * self.report_length)
+            # The current element to be parsed depends on what page has been requested
+            index = i + (page * self.report_page_length)
+            # Ensure that our index does not exceed the input data size. This may happen on the last page
             if(index < len(cus)):
                 line.append(str(index))
                 cus_element = cus[index]
@@ -67,6 +72,10 @@ class ReportDynamicRegions:
                 line.append(cus_element['status']['bit_mask'])
                 line.append(cus_element['type'])
                 data.append(line)
+            # If the index exceeds the input data size leave the for loop as everything is populated on the
+            # last page
+            else:
+                break
 
         if len(data) != 0:
             table = XBUtil.Table(header, data, format)

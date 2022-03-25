@@ -15,7 +15,7 @@ import pyxrt
 
 class ReportPower:
     def __init__(self, max_report_length):
-        self.report_length = max_report_length
+        self.report_page_length = max_report_length
 
     def report_name(self):
         return "Power"
@@ -28,6 +28,7 @@ class ReportPower:
         # check if xclbin is loaded
         if not electrical_raw:
             self._df.clear()
+            # If data is missing set the page count to 0!
             self.page_count = 0
             return self.page_count
 
@@ -38,7 +39,10 @@ class ReportPower:
         power_status['Warning'] = electrical_raw['power_consumption_warning']
 
         self._df = power_status
-        self.page_count = 1
+        # Round up the division to leave an extra page for the last batch of data
+        page_count_temp = math.ceil(len(power_status) / self.report_page_length)
+        # We must ensure that we always have at least one page
+        self.page_count = max(page_count_temp, 1)
         return self.page_count
 
     def print_report(self, term, lock, start_x, start_y, page):
@@ -50,14 +54,21 @@ class ReportPower:
             return offset + 1
 
         if (self.page_count == 0):
-            XBUtil.print_warning(term, lock, start_y + table_offset, "Data unavailable. Acceleration image not loaded")
-            return table_offset + 1
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
+            return offset + 1
 
-        power_buf=[
+        # Create the complete power buffer
+        power_buf_total=[
             'Power     : %s Watts' % self._df['Power'],
             'Max Power : %s Watts' % self._df['Max Power'],
             'Warning   : %s' % self._df['Warning']
             ]
+
+        # Extract the data elements to be displayed on the requested page
+        page_offset = page * self.report_page_length
+        # The upper offset is bounded by the size of the full power buffer
+        upper_page_offset = min(self.report_page_length + page_offset, len(power_buf_total))
+        power_buf=power_buf_total[page_offset:upper_page_offset]
 
         XBUtil.indented_print(term, lock, power_buf, 3, start_y + offset)
         offset += len(power_buf)

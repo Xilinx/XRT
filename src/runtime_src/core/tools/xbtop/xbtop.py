@@ -35,11 +35,11 @@ from ReportPower import ReportPower
 from ReportMemory import ReportMemory
 from ReportDynamicRegions import ReportDynamicRegions
 
-MAX_REPORT_NUMBER = 10
+MAX_REPORT_PAGE_LENGTH = 10
 g_reports = []
-g_reports.append(ReportMemory(MAX_REPORT_NUMBER))
-g_reports.append(ReportDynamicRegions(MAX_REPORT_NUMBER))
-g_reports.append(ReportPower(MAX_REPORT_NUMBER))
+g_reports.append(ReportMemory(MAX_REPORT_PAGE_LENGTH))
+g_reports.append(ReportDynamicRegions(MAX_REPORT_PAGE_LENGTH))
+g_reports.append(ReportPower(MAX_REPORT_PAGE_LENGTH))
 
 
 # Running clock thread (upper left corner)
