@@ -176,7 +176,7 @@ namespace xdp {
     return true;
   }
 
-  // Warn if application exits without writing valid data
+  // Warn if application exits without writing valid shim data
   AIEShimDebugWriter::~AIEShimDebugWriter()
   {
     if (!mWroteValidData) {
