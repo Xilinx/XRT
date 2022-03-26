@@ -15,19 +15,17 @@ import pyxrt
 
 
 class ReportDynamicRegions:
-    def __init__(self, max_report_length):
-        self.report_page_length = max_report_length
-
     def report_name(self):
         return "Dynamic Region"
 
-    def update(self, dev):
+    def update(self, dev, report_length):
+        self.report_length = report_length
         #get cu info
         cu_json = dev.get_info(pyxrt.xrt_info_device.dynamic_regions)
         cu_raw = json.loads(cu_json) #read into a dictionary
 
         # Round up the division to leave an extra page for the last batch of data
-        page_count_temp = math.ceil(len(cu_raw) / self.report_page_length)
+        page_count_temp = math.ceil(len(cu_raw) / self.report_length)
         # We must ensure that we always have at least one page
         self.page_count = max(page_count_temp, 1)
 
@@ -58,10 +56,10 @@ class ReportDynamicRegions:
             return table_offset + 1
 
         # Each page should display however many items a report page can hold
-        for i in range(self.report_page_length):
+        for i in range(self.report_length):
             line = []
             # The current element to be parsed depends on what page has been requested
-            index = i + (page * self.report_page_length)
+            index = i + (page * self.report_length)
             # Ensure that our index does not exceed the input data size. This may happen on the last page
             if(index < len(cus)):
                 line.append(str(index))

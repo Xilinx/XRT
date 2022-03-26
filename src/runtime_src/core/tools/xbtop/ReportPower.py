@@ -14,13 +14,12 @@ import XBUtil
 import pyxrt
 
 class ReportPower:
-    def __init__(self, max_report_length):
-        self.report_page_length = max_report_length
 
     def report_name(self):
         return "Power"
 
-    def update(self, dev):
+    def update(self, dev, report_length):
+        self.report_length = report_length
         #get power info
         electrical_json = dev.get_info(pyxrt.xrt_info_device.electrical)
         electrical_raw = json.loads(electrical_json) #read into a dictionary
@@ -40,7 +39,7 @@ class ReportPower:
 
         self._df = power_status
         # Round up the division to leave an extra page for the last batch of data
-        page_count_temp = math.ceil(len(power_status) / self.report_page_length)
+        page_count_temp = math.ceil(len(power_status) / self.report_length)
         # We must ensure that we always have at least one page
         self.page_count = max(page_count_temp, 1)
         return self.page_count
@@ -65,9 +64,9 @@ class ReportPower:
             ]
 
         # Extract the data elements to be displayed on the requested page
-        page_offset = page * self.report_page_length
+        page_offset = page * self.report_length
         # The upper offset is bounded by the size of the full power buffer
-        upper_page_offset = min(self.report_page_length + page_offset, len(all_data))
+        upper_page_offset = min(self.report_length + page_offset, len(all_data))
         data=all_data[page_offset:upper_page_offset]
 
         if (not data):
