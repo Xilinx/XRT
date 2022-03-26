@@ -33,17 +33,17 @@ if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
 endif()
 
 if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
-  set(XRT_WARN_OPTS 
+  set(XRT_WARN_OPTS
   -Wall -Werror
-  -Wno-mismatched-tags 
+  -Wno-mismatched-tags
   -Wno-unused-const-variable
-  -Wno-unused-private-field 
+  -Wno-unused-private-field
   -Wno-missing-braces
   -Wno-self-assign
-  -Wno-pessimizing-move 
-  -Wno-unused-function 
+  -Wno-pessimizing-move
+  -Wno-unused-function
   -Wno-unused-variable
-  -Wno-parentheses     
+  -Wno-parentheses
   # These are dangerous and should be reviewed
   -Wno-overloaded-virtual
    )
@@ -93,10 +93,10 @@ set (XRT_DEV_COMPONENT "xrt")
 
 set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
-# Version adjusted to 2.11 after u30 branch creation
-set(XRT_VERSION_RELEASE 202210)
+# Version adjusted to 2.14 for 2022.2
+set(XRT_VERSION_RELEASE 202220)
 SET(XRT_VERSION_MAJOR 2)
-SET(XRT_VERSION_MINOR 13)
+SET(XRT_VERSION_MINOR 14)
 
 if (DEFINED ENV{XRT_VERSION_PATCH})
   SET(XRT_VERSION_PATCH $ENV{XRT_VERSION_PATCH})
