@@ -15,9 +15,9 @@
  */
 
 #include <string>
-#include <version.h>
 #include <fstream>
 #include "xbmgmt.h"
+#include "gen/version.h"
 
 const char *subCmdVersionDesc = "Print out xrt build version";
 const char *subCmdVersionUsage = "(no options supported)";
@@ -41,7 +41,7 @@ int versionHandler(int argc, char *argv[])
 
     xrt::version::print(std::cout);
     std::cout.width(26); std::cout << std::internal << "XOCL: " << driver_version("xocl") << std:: endl;
-    std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << driver_version("xclmgmt") << std::endl;    
+    std::cout.width(26); std::cout << std::internal << "XCLMGMT: " << driver_version("xclmgmt") << std::endl;
 
     if ( !getenv_or_null("INTERNAL_BUILD") )
         xrt_xbmgmt_version_cmp();

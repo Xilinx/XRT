@@ -18,19 +18,19 @@ SET (DKMS_POSTINST "postinst")
 SET (DKMS_PRERM "prerm")
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/dkms-xocl/${DKMS_FILE_NAME}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/dkms-xocl/${DKMS_FILE_NAME}.in"
   ${DKMS_FILE_NAME}
   @ONLY
   )
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
   ${DKMS_POSTINST}
   @ONLY
   )
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
   ${DKMS_PRERM}
   @ONLY
   )
@@ -314,12 +314,12 @@ foreach (DKMS_FILE ${XRT_DKMS_DRIVER_SRCS})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_DRIVER_SRC_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
 endforeach()
-  
+
 foreach (DKMS_FILE ${XRT_DKMS_DRIVER_INCLUDES})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_DRIVER_INCLUDE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
 endforeach()
-  
+
 foreach (DKMS_FILE ${XRT_DKMS_CORE_INCLUDES})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
@@ -334,4 +334,3 @@ foreach (DKMS_FILE ${XRT_DKMS_COMMON_XRT_DRV_INCLUDES})
 endforeach()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})
-

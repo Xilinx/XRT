@@ -4,7 +4,7 @@
 add_custom_target(
   tags
   COMMAND ${CTAGS}
-  --root ${CMAKE_SOURCE_DIR}
+  --root ${XRT_SOURCE_DIR}
   --etags
   -f TAGS
   )

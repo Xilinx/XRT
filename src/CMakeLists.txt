@@ -1,13 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2018-2022 Xilinx, Inc. All rights reserved.
-#
-
-PROJECT(XRT)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.5.0)
-
-ENABLE_TESTING()
-
-SET(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
+cmake_minimum_required(VERSION 3.5.0)
+project(XRT)
+set(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
 # Include supporting CMake functions
 include(CMake/unitTestSupport.cmake)
@@ -16,7 +11,8 @@ include(CMake/unitTestSupport.cmake)
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
-  ${CMAKE_BINARY_DIR}/gen
+  ${XRT_BINARY_DIR}/gen
+  ${XRT_BINARY_DIR}
   )
 
 if (NOT CMAKE_CXX_STANDARD)
@@ -91,8 +87,6 @@ set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
 #set (XRT_DEV_COMPONENT "xrt-dev")
 set (XRT_DEV_COMPONENT "xrt")
 
-set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-
 # Version adjusted to 2.14 for 2022.2
 set(XRT_VERSION_RELEASE 202220)
 SET(XRT_VERSION_MAJOR 2)
@@ -108,9 +102,14 @@ endif(DEFINED ENV{XRT_VERSION_PATCH})
 set(XRT_SOVERSION ${XRT_VERSION_MAJOR})
 set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${XRT_SOURCE_DIR}/CMake/")
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  # Enable testing for this directory and below.  This command should be
+  # in the source directory root because ctest expects to find a test
+  # file in the build directory root.
+  enable_testing()
+
   # Temporary native wrapper while Linux code is being ported to windows.
   # When completed the two build flows will once again be merged into one
   # common file
