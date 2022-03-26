@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2022 Xilinx, Inc and AMD, Inc
+ * Copyright (C) 2018-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -440,7 +440,7 @@ read_electrical(const xrt_core::device * device)
     else
       return sensor_array;
   }
-  catch(const xrt_core::query::sysfs_error&) {
+  catch(const xrt_core::query::exception&) {
     is_data_driven = false;
   }
   catch(const xrt_core::query::no_such_key&) {
@@ -474,7 +474,7 @@ read_thermals(const xrt_core::device * device)
       return root;
     }
   }
-  catch(const xrt_core::query::sysfs_error&) {
+  catch(const xrt_core::query::exception&) {
     is_data_driven = false;
   }
   catch(const xrt_core::query::no_such_key&) {
@@ -509,7 +509,7 @@ read_mechanical(const xrt_core::device * device)
       return root;
     }
   }
-  catch(const xrt_core::query::sysfs_error&) {
+  catch(const xrt_core::query::exception&) {
     is_data_driven = false;
   }
   catch(const xrt_core::query::no_such_key&) {
