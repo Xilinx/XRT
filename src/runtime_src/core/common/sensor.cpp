@@ -440,10 +440,10 @@ read_electrical(const xrt_core::device * device)
     else
       return sensor_array;
   }
-  catch(const xrt_core::query::exception&) {
+  catch(const xrt_core::query::no_such_key&) {
     is_data_driven = false;
   }
-  catch(const xrt_core::query::no_such_key&) {
+  catch(const xrt_core::query::exception&) {
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
@@ -474,10 +474,10 @@ read_thermals(const xrt_core::device * device)
       return root;
     }
   }
-  catch(const xrt_core::query::exception&) {
+  catch(const xrt_core::query::no_such_key&) {
     is_data_driven = false;
   }
-  catch(const xrt_core::query::no_such_key&) {
+  catch(const xrt_core::query::exception&) {
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
@@ -509,10 +509,10 @@ read_mechanical(const xrt_core::device * device)
       return root;
     }
   }
-  catch(const xrt_core::query::exception&) {
+  catch(const xrt_core::query::no_such_key&) {
     is_data_driven = false;
   }
-  catch(const xrt_core::query::no_such_key&) {
+  catch(const xrt_core::query::exception&) {
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
