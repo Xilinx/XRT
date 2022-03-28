@@ -1467,6 +1467,10 @@ static int vmr_control_op(struct platform_device *pdev,
 	int ret = 0;
 	int id = 0;
 
+	if (xgq->xgq_halted) {
+		XGQ_WARN(xgq, "VMR XGQ service is haulted. skip.");
+		return -EIO;
+	}
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
