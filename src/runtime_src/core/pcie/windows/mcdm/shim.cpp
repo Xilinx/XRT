@@ -54,6 +54,15 @@ throw_if_error(HRESULT value, const std::string& pre = "")
   }
 }
 
+static std::string
+to_string(const LUID& luid)
+{
+  wchar_t wstr[64]= {0};
+  int wlen = StringFromGUID2(reinterpret_cast<const GUID&>(luid), wstr, sizeof(wstr));
+  std::cout << "wstr as single str: " << wstr << "\n";
+  return {wstr, wstr+wlen};
+}
+
 // Manage gdi dll loading and symbol lookup
 class gdilib
 {
@@ -235,12 +244,14 @@ class shim
   handle
   open_adapter(dxwrap::adapter adapter)
   {
-    std::cout << "Opening device for: "
+    std::cout << "Opening adapter: "
               << adapter.get_property<DXCoreAdapterProperty::DriverDescription, std::string>()
               << "\n";
+
     static auto open_adapter = gdi.get<PFND3DKMT_OPENADAPTERFROMLUID>("D3DKMTOpenAdapterFromLuid");
     D3DKMT_OPENADAPTERFROMLUID d3open = {0};
     d3open.AdapterLuid = adapter.get_property<DXCoreAdapterProperty::InstanceLuid, LUID>();
+    std::cout << "Adapter LUID:" << to_string(d3open.AdapterLuid) << "\n";
     throw_if_error(open_adapter(&d3open), "Open adapter failed");
     return d3open.hAdapter;
   }
