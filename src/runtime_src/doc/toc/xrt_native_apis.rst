@@ -11,14 +11,13 @@ XRT Native APIs
 From 2020.2 release XRT provides a new XRT API set in C, C++, and Python flavor. 
 
 To use the native XRT APIs, the host application must link with the **xrt_coreutil** library. 
-Compiling host code with XRT native C++ API requires C++ standard with -std=c++14 or newer. 
-On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++14 is introduced to GCC from 4.9.0.
+Compiling host code with XRT native C++ API requires C++ standard with -std=c++17 (or newer). 
 
 Example g++ command
 
 .. code-block:: shell
 
-    g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o host.exe host.cpp -lxrt_coreutil -pthread
+    g++ -g -std=c++17 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 
 
 The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in :doc: `xrt_native.main`.

@@ -2,6 +2,7 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
 
+pkg_check_modules(LIBFFI REQUIRED libffi)
 find_package(libffi REQUIRED)
 
 include_directories(
@@ -22,7 +23,7 @@ set(SKD_SRC
 
 add_executable(skd ${SKD_SRC})
 
-add_dependencies(skd 
+add_dependencies(skd
   xrt_core
   xrt_coreutil
   )

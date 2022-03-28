@@ -29,7 +29,7 @@ SET(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}_${XRT_VERSION_RELEASE}.${CPAC
 message("-- ${CMAKE_BUILD_TYPE} ${PACKAGE_KIND} package")
 
 # Neet to have an extention
-file(COPY "${CMAKE_SOURCE_DIR}/../LICENSE" DESTINATION "${PROJECT_BINARY_DIR}")
+file(COPY "${XRT_SOURCE_DIR}/../LICENSE" DESTINATION "${PROJECT_BINARY_DIR}")
 file(RENAME "${PROJECT_BINARY_DIR}/LICENSE" "${PROJECT_BINARY_DIR}/license.txt")
 SET(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_BINARY_DIR}/license.txt")
 
@@ -53,7 +53,7 @@ cpack_add_component(runtime_libraries
 
 
 # -- Boost shared libraries --
-file(GLOB XRT_BOOST_DLL_LIB_FILES 
+file(GLOB XRT_BOOST_DLL_LIB_FILES
   "${Boost_LIBRARY_DIRS}/boost_system*.dll"
   "${Boost_LIBRARY_DIRS}/boost_program_options*.dll"
   "${Boost_LIBRARY_DIRS}/boost_filesystem*.dll"
@@ -71,7 +71,7 @@ cpack_add_component(boost_libraries
 )
 
 # -- Khronos shared libraries --
-file(GLOB XRT_OPENCL_DLL_LIB_FILES 
+file(GLOB XRT_OPENCL_DLL_LIB_FILES
   "${KHRONOS}/bin/OpenCL.dll"
   )
   install(FILES ${XRT_OPENCL_DLL_LIB_FILES}
@@ -97,13 +97,13 @@ cpack_add_component_group(THIRD_PARTY_LIBRARIES
 # -- XCL Managment Driver --
 if (DEFINED XCL_MGMT)
   if (NOT XCL_MGMT STREQUAL "")
-    file(GLOB XCL_MGMT_DRIVER 
+    file(GLOB XCL_MGMT_DRIVER
       "${XCL_MGMT}/*"
       )
       install(FILES ${XCL_MGMT_DRIVER}
             DESTINATION xrt/drivers/xcl_mgmt
             COMPONENT xcl_mgmt_driver)
-    
+
     cpack_add_component(xcl_mgmt_driver
       DISPLAY_NAME "XclMgmt Driver"
       DESCRIPTION "XCL Managment Driver"
@@ -117,7 +117,7 @@ ENDIF(DEFINED XCL_MGMT)
 # -- XCL Managment2 Driver --
 if (DEFINED XCL_MGMT2)
   if (NOT XCL_MGMT2 STREQUAL "")
-    file(GLOB XCL_MGMT2_DRIVER 
+    file(GLOB XCL_MGMT2_DRIVER
       "${XCL_MGMT2}/*"
       )
       install(FILES ${XCL_MGMT2_DRIVER}
@@ -138,13 +138,13 @@ ENDIF(DEFINED XCL_MGMT2)
 # -- Xocl User Driver --
 if (DEFINED XOCL_USER)
   if (NOT XOCL_USER STREQUAL "")
-    file(GLOB XOCL_USER_DRIVER 
+    file(GLOB XOCL_USER_DRIVER
       "${XOCL_USER}/*"
       )
       install(FILES ${XOCL_USER_DRIVER}
             DESTINATION xrt/drivers/xocl_user
             COMPONENT xocl_user_driver)
-  
+
     cpack_add_component(xocl_user_driver
       DISPLAY_NAME "XoclUser Driver"
       DESCRIPTION "XoclUser Driver"
@@ -158,7 +158,7 @@ ENDIF(DEFINED XOCL_USER)
 # -- Xocl User2 Driver --
 if (DEFINED XOCL_USER2)
   if (NOT XOCL_USER2 STREQUAL "")
-    file(GLOB XOCL_USER2_DRIVER 
+    file(GLOB XOCL_USER2_DRIVER
       "${XOCL_USER2}/*"
       )
       install(FILES ${XOCL_USER2_DRIVER}
@@ -197,8 +197,8 @@ cpack_add_component(xrt
 # Set the Packaging directory
 SET(CPACK_PACKAGE_INSTALL_DIRECTORY "Xilinx")
 SET(CPACK_WIX_SKIP_PROGRAM_FOLDER TRUE)
-SET(CPACK_WIX_UI_BANNER "${CMAKE_SOURCE_DIR}/CMake/resources/XilinxBanner.bmp")
-SET(CPACK_WIX_UI_DIALOG "${CMAKE_SOURCE_DIR}/CMake/resources/XilinxDialog.bmp")
+SET(CPACK_WIX_UI_BANNER "${XRT_SOURCE_DIR}/CMake/resources/XilinxBanner.bmp")
+SET(CPACK_WIX_UI_DIALOG "${XRT_SOURCE_DIR}/CMake/resources/XilinxDialog.bmp")
 
 
 add_custom_target(xrtpkg

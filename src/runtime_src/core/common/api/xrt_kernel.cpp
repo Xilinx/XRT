@@ -51,7 +51,7 @@
 using namespace std::chrono_literals;
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4267 4996 4100)
+# pragma warning( disable : 4244 4267 4996 4100 4201)
 #endif
 
 ////////////////////////////////////////////////////////////////
@@ -119,8 +119,14 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 
 namespace {
 
-constexpr uint32_t MAILBOX_INPUT_CTRL  = (1 << 9);
-constexpr uint32_t MAILBOX_OUTPUT_CTRL = (1 << 10);
+constexpr size_t mailbox_input_write = 1;
+constexpr size_t mailbox_output_read = 1;
+constexpr size_t mailbox_input_ack = (1 << 1);
+constexpr size_t mailbox_output_ack = (1 << 1);
+// TODO: find offsets from meta data
+constexpr size_t mailbox_auto_restart_cntr = 0x10;
+constexpr size_t mailbox_input_ctrl_reg = 0x14;
+constexpr size_t mailbox_output_ctrl_reg = 0x18;
 
 constexpr size_t max_cus = 128;
 constexpr size_t cus_per_word = 32;
@@ -458,6 +464,7 @@ class ip_context
 
 public:
   using access_mode = xrt::kernel::cu_access_mode;
+  using slot_id = xrt_core::device::slot_id;
   static constexpr unsigned int virtual_cu_idx = std::numeric_limits<unsigned int>::max();
 
   // open() - open a context in a specific IP/CU
@@ -468,31 +475,28 @@ public:
   // @cuidx:     Index of CU used when opening context and populating cmd pkt
   // @am:        Access mode, how this CU should be opened
   static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, const xrt::xclbin& xclbin, const xrt::xclbin::ip& ip,
-       xrt_core::cuidx_type cuidx, access_mode am)
+  open(xrt_core::device* device, const xrt::xclbin& xclbin, slot_id slot, const xrt::xclbin::ip& ip, access_mode am)
   {
     // Slightly complicated handling of shared ownership of ip_context objects.
     // Contexts are managed per device.
-    // Within a device, a CU is opened in a domain.
-    // The CU index is unique within its domain.
-    // This function manages the ip_context objects per device and domain.
-    using domain_type = xrt_core::cuidx_type::domain_type;
-    using domain_ips = std::array<std::weak_ptr<ip_context>, max_cus>;
-    using domain_to_ips = std::map<domain_type, domain_ips>;
+    // Within a device, a CU is opened in a slot.
+    // This function manages the ip_context objects per device and slot.
+    using slot_ips = std::map<std::string, std::weak_ptr<ip_context>>;
+    using slot_to_ips = std::map<slot_id, slot_ips>;
     static std::mutex mutex;
-    static std::map<xrt_core::device*, domain_to_ips> dev2ips;
+    static std::map<xrt_core::device*, slot_to_ips> dev2ips;
     std::lock_guard<std::mutex> lk(mutex);
-    auto& dom2ips = dev2ips[device]; // domain -> ip_context_list
-    auto& ips = dom2ips[cuidx.domain];
-    auto ipctx = ips[cuidx.domain_index].lock();
+    auto& slot2ips = dev2ips[device]; // domain -> ip_context_list
+    auto& ips = slot2ips[slot];
+    auto ipctx = ips[ip.get_name()].lock();
     if (!ipctx) {
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
-      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin, ip, cuidx, am));
-      ips[cuidx.domain_index] = ipctx;
+      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin, slot, ip, am));
+      ips[ip.get_name()] = ipctx;
     }
 
     if (ipctx->access != am)
-      throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(cuidx.index) + ")");
+      throw std::runtime_error("Conflicting access mode for IP(" + ip.get_name() + ")");
 
     return ipctx;
   }
@@ -516,16 +520,6 @@ public:
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
       vip = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin));
     return ipctx;
-  }
-
-  // Access mode can be set only if it starts out as unspecifed (none).
-  void
-  set_access_mode(access_mode am)
-  {
-    if (access != access_mode::none)
-      throw std::runtime_error("Cannot change current access mode");
-    xrt_core::context_mgr::open_context(device, xid, idx, std::underlying_type<access_mode>::type(am));
-    access = am;
   }
 
   access_mode
@@ -557,6 +551,12 @@ public:
     return idx.domain_index; // index used for execution cumask
   }
 
+  slot_id
+  get_slot() const
+  {
+    return slot;
+  }
+
   // Check if arg is connected to specified memory bank
   bool
   valid_connection(size_t argidx, int32_t memidx)
@@ -585,19 +585,24 @@ public:
 
 private:
   // regular CU
-  ip_context(xrt_core::device* dev, const xrt::xclbin& xclbin, xrt::xclbin::ip xip,
-             xrt_core::cuidx_type cuidx, access_mode am)
+  ip_context(xrt_core::device* dev, const xrt::xclbin& xclbin, slot_id slot_idx, xrt::xclbin::ip xip, access_mode am)
     : device(dev)
     , xid(xclbin.get_uuid())
     , ip(std::move(xip))
     , args(dev, xclbin, ip)
-    , idx(cuidx)
+    , slot(slot_idx)
     , address(ip.get_base_address())
     , size(ip.get_size())
     , access(am)
   {
-    if (access != access_mode::none)
-      xrt_core::context_mgr::open_context(device, xid, idx, std::underlying_type<access_mode>::type(access));
+    if (access == access_mode::none)
+      // access_mode::none is not used anywhere
+      throw xrt_core::error("Unexpected access mode 'none'");
+
+    xrt_core::context_mgr::open_context(device, slot, xid, ip.get_name(), std::underlying_type<access_mode>::type(access));
+
+    // If open context was successful, then the cuidx is recorded in device
+    idx = dev->get_cuidx(slot, ip.get_name());
   }
 
   // virtual CU
@@ -605,6 +610,7 @@ private:
     : device(dev)
     , xid(xclbin.get_uuid())
     , idx{virtual_cu_idx}   // virtual CU is in default (0) domain
+    , slot(0)               // virtual CU is in default (0) slot
     , address(0)
     , size(0)
     , access(access_mode::shared)
@@ -617,6 +623,7 @@ private:
   xrt::xclbin::ip ip;       // the xclbin ip object
   connectivity args;        // argument memory connections
   xrt_core::cuidx_type idx; // cu domain and index
+  slot_id slot;             // xclbin slot in which this context is opened
   uint64_t address;         // cache base address for programming
   size_t size;              // cache address space size
   access_mode access;       // compute unit access mode
@@ -1216,6 +1223,7 @@ public:
   using mailbox_type = property_type::mailbox_type;
   using ipctx = std::shared_ptr<ip_context>;
   using ctxmgr_type = xrt_core::context_mgr::device_context_mgr;
+  using slot_id = xrt_core::device::slot_id;
 
 private:
   std::string name;                    // kernel name
@@ -1236,6 +1244,73 @@ private:
   size_t num_cumasks = 1;              // Required number of command cu masks
   control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                        // Internal unique id for debug
+
+
+  // Update device slot info and return list of new slots
+  // added compared to old slots
+  std::vector<slot_id>
+  get_new_xclbin_slots(const std::vector<slot_id>& old)
+  {
+    // update xclbin info to reflect changes made by driver
+    // and get new list of slots
+    auto cdevice = device->get_core_device();
+    cdevice->update_xclbin_info();
+    auto slots = cdevice->get_slots(xclbin.get_uuid());
+
+    // compare set difference returning only new slots
+    std::vector<slot_id> diff;
+    std::set_difference(slots.begin(), slots.end(), old.begin(), old.end(),
+                        std::inserter(diff, diff.begin()));
+    return diff;
+  }
+
+  // Open context of a specific compute unit.
+  //
+  // @cu:  compute unit to open
+  // @am:  access mode for the CU
+  // Return: shared ownership to the context in form of a shared_ptr
+  //
+  // This function tries to open the compute unit in all slots that
+  // match xclbin uuid from which this kernel was constructed.  If
+  // context creation fails with EAGAIN then this indicates that the
+  // driver may have re-loaded the xclbin, maybe into a different
+  // slot, and opening the context should be tried again after
+  // refreshing the slots.
+  void
+  open_cu_context(const xrt::xclbin::ip& cu, ip_context::access_mode am)
+  {
+    auto cdevice = device->get_core_device();
+    auto slots = cdevice->get_slots(xclbin.get_uuid());
+
+    while (1) {
+      bool again = false;
+      for (auto slot : slots) {
+        try {
+          // try open the cu context.  this may throw if cu in slot cannot be aquired.
+          auto ctx = ip_context::open(cdevice, xclbin, slot, cu, am); // may throw
+
+          // success, record cuidx in kernel cumask
+          auto cuidx = ctx->get_cuidx();
+          ipctxs.push_back(std::move(ctx));
+          cumask.set(cuidx);
+          num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
+        }
+        catch (const xrt_core::system_error& ex) {
+          if (ex.get_code() == EAGAIN)
+            // open context caused re-load of xclbin into a different slot
+            // must try all new slots after all current slots have been attempted
+            again = true;
+        }
+      }
+
+      // open context did not re-load any xclbin
+      if (!again)
+        break;
+
+      // update the slots
+      slots = get_new_xclbin_slots(slots);
+    }
+  }
 
   // Compute data for FAST_ADAPTER descriptor use (see ert_fa.h)
   //
@@ -1412,18 +1487,16 @@ public:
     }
 
     // Compare the matching CUs against the CU sort order to create cumask
-    const auto& kernel_cus = xkernel.get_cus(nm);  // xrt::xclbin::ip objects for matching kernel CUs
+    const auto& kernel_cus = xkernel.get_cus(nm);  // xrt::xclbin::ip objects for matching nm
     if (kernel_cus.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
+    // Initialize / open compute unit contexts
     for (const auto& cu : kernel_cus) {
       if (cu.get_control_type() == xrt::xclbin::ip::control_type::none)
         throw xrt_core::error(ENOTSUP, "AP_CTRL_NONE is only supported by XRT native API xrt::ip");
 
-      auto cuidx = device->core_device->get_cuidx(cu.get_name(), xclbin_id);
-      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin, cu, cuidx, am));
-      cumask.set(cuidx.domain_index);
-      num_cumasks = std::max<size_t>(num_cumasks, (cuidx.domain_index / cus_per_word) + 1);
+      open_cu_context(cu, am);
     }
 
     // set kernel protocol
@@ -1531,10 +1604,21 @@ public:
   int
   group_id(int argno)
   {
+    // This is a tight coupling with driver.  The group index is encoded
+    // in a uint32_t that represents BO flags used when constructing the BO.
+    // The flags are divided into 16 bits for memory bank index, 8 bits
+    // for the xclbin slot, and 8 bits reserved for bo flags.  The latter
+    // flags are populated when the xrt::bo object is constructed.
+
     // Last (for group id) connection of first ip in this kernel
     // The group id can change if cus are trimmed based on argument
     auto& ip = ipctxs.front();  // guaranteed to be non empty
-    return ip->arg_memidx(argno);
+    xcl_bo_flags grp = {0};     // xrt_mem.h
+    grp.bank = ip->arg_memidx(argno);
+    grp.slot = ip->get_slot();
+
+    // This function should return uint32_t or some same symbolic type
+    return static_cast<int>(grp.flags);
   }
 
   int
@@ -1609,7 +1693,7 @@ public:
     return arg;
   }
 
-  size_t 
+  size_t
   get_regmap_size()
   {
       return regmap_size;
@@ -1815,7 +1899,8 @@ class run_impl
   xrt::bo
   validate_bo_at_index(size_t index, const xrt::bo& bo)
   {
-    if (validate_ip_arg_connectivity(index, xrt_core::bo::group_id(bo)))
+    xcl_bo_flags grp {xrt_core::bo::group_id(bo)};
+    if (validate_ip_arg_connectivity(index, grp.bank))
       return bo;
 
     auto fmt = boost::format
@@ -2114,12 +2199,10 @@ public:
     if (!kernel->get_auto_restart_counters())
       throw xrt_core::error(ENOSYS, "No auto-restart counters found for kernel");
 
-    // TODO: find offset once in meta data
-    constexpr size_t counter_offset = 0x10;
     uint32_t value = iterations.iterations;
     if (!value)
       value = std::numeric_limits<uint32_t>::max();
-    set_offset_value(counter_offset, &value, sizeof(value));
+    set_offset_value(mailbox_auto_restart_cntr, &value, sizeof(value));
     start();
   }
 
@@ -2134,9 +2217,8 @@ public:
 
     // Clear AUTO_RESTART bit if set, then wait() for completion
     // TODO: find offset once in meta data
-    constexpr size_t counter_offset = 0x10;
     uint32_t value = 0;
-    set_offset_value(counter_offset, &value, sizeof(value));
+    set_offset_value(mailbox_auto_restart_cntr, &value, sizeof(value));
     wait(std::chrono::milliseconds{0});
   }
 
@@ -2199,6 +2281,13 @@ class mailbox_impl : public run_impl
 {
   using mailbox_type = xrt_core::xclbin::kernel_properties::mailbox_type;
 
+  // enum class for mailbox operations
+  enum class mailbox_operation {
+    write,
+    read
+  };
+
+
   // struct hs_arg_setter - AP_CTRL_* argument setter for mailbox
   //
   // This argument setter amends base argument setter by writing and
@@ -2221,7 +2310,7 @@ class mailbox_impl : public run_impl
       run_impl::hs_arg_setter::set_offset_value(offset, value);
 
       // write single 4 byte value to mailbox
-      mbox->mailbox_wait();
+      mbox->mailbox_wait(mailbox_operation::write);
       mbox->kernel->write_register(offset, *(data32 + offset / wsize));
     }
 
@@ -2232,7 +2321,7 @@ class mailbox_impl : public run_impl
 
       // write argument value to mailbox
       // arg size is always a multiple of 4 bytes
-      mbox->mailbox_wait();
+      mbox->mailbox_wait(mailbox_operation::write);
       mbox->kernel->write_register_n(arg.offset(), arg.size() / wsize, data32 + arg.offset() / wsize);
     }
 
@@ -2241,36 +2330,67 @@ class mailbox_impl : public run_impl
     {
       // read arg size bytes from mailbox at arg offset
       // arg size is alwaus a multiple of 4 bytes
-      mbox->mailbox_wait();
+      mbox->mailbox_wait(mailbox_operation::read);
       mbox->kernel->read_register_n(arg.offset(), arg.size() / wsize, data32 + arg.offset() / wsize);
       return run_impl::hs_arg_setter::get_arg_value(arg);
     }
   };
 
   void
-  poll()
+  poll(const mailbox_operation& mbop)
   {
-    m_ctrlreg = kernel->read_register(0x0);
-    m_busy = m_ctrlreg & (MAILBOX_INPUT_CTRL | MAILBOX_OUTPUT_CTRL);
+    if (mbop == mailbox_operation::write) {
+        uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
+        m_busy_write = ctrlreg_write & mailbox_input_ack; //Low - free, High - Busy 
+    }
+
+    if(mbop == mailbox_operation::read) {
+        uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
+        m_busy_read = ctrlreg_read & mailbox_output_ack;//Low - free, High - Busy
+    }
   }
 
   void
-  mailbox_idle_or_error()
+  mailbox_idle_or_error(const mailbox_operation& mbop)
   {
-    if (!m_busy)
-      return;
+    poll(mbop);
+    if (mbop == mailbox_operation::write) { 
+       if (m_busy_write)
+           throw xrt_core::system_error(EBUSY, "Mailbox is busy, Unable to do mailbox write");
+    }
 
-    poll();
-
-    if (m_busy)
-      throw xrt_core::system_error(EBUSY, "Mailbox is busy");
+    if(mbop == mailbox_operation::read) {
+       if (m_busy_read)
+           throw xrt_core::system_error(EBUSY, "Mailbox is busy, Unable to do mailbox read");
+    }
   }
 
   void
-  mailbox_wait()
+  mailbox_wait(const mailbox_operation& mbop)
   {
-    while (m_busy)
-      poll();
+    if (mbop == mailbox_operation::write) {
+        if (m_aquire_write)
+            return;
+
+       while (m_busy_write) //poll write done bit
+           poll(mailbox_operation::write);
+
+       uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
+       kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW          
+       m_aquire_write = true;
+    }
+
+    if (mbop == mailbox_operation::read) {
+        if (m_aquire_read)
+            return;
+        
+        while (m_busy_read) //poll read done bit
+            poll(mailbox_operation::read);
+
+        uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
+        kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
+        m_aquire_read = true;
+    }
   }
 
   // All mailboxes should be writeable otherwise nothing, not even
@@ -2292,8 +2412,10 @@ class mailbox_impl : public run_impl
       throw xrt_core::system_error(EPERM, "Mailbox is write-only");
   }
 
-  uint32_t m_ctrlreg = 0;   // last CU ctrl reg read
-  bool m_busy = false;      // true after initiating write() or read()
+  bool m_busy_read = false; // Read register acknowledgement -> Low - free , High - busy
+  bool m_busy_write = false; // Write register acknowledgement -> Low - free , High - busy
+  bool m_aquire_write = false;
+  bool m_aquire_read = false;
   bool m_readonly = false;    //
   bool m_writeonly = false;   //
 
@@ -2309,14 +2431,27 @@ public:
     m_writeonly = (mtype == mailbox_type::in);
   }
 
+  //Aquring mailbox read and write if not acquired already.
+  ~mailbox_impl() {
+      if (!m_aquire_write) {
+          uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
+          kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
+      }
+      if (!m_aquire_read) {
+          uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
+          kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
+      }
+  }
   // write mailbox to hw
   void
   write()
   {
     mailbox_writeable_or_error();
-    mailbox_idle_or_error();
-    kernel->write_register(0x0, m_ctrlreg | MAILBOX_INPUT_CTRL);
-    m_busy = true;
+    mailbox_idle_or_error(mailbox_operation::write);
+    // release the write mailbox, so that cu can read from mailbox
+    uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
+    kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write | mailbox_input_write);//1, Mailbox Release/Unlock sync SW -> HW
+    m_aquire_write = false;
   }
 
   // read hw to mailbox
@@ -2324,9 +2459,11 @@ public:
   read()
   {
     mailbox_readable_or_error();
-    mailbox_idle_or_error();
-    kernel->write_register(0x0, m_ctrlreg | MAILBOX_OUTPUT_CTRL);
-    m_busy = true;
+    mailbox_idle_or_error(mailbox_operation::read);
+    // release the read mailbox, so that cu can write to mailbox
+    uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
+    kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read | mailbox_output_read);//1, Mailbox Release/Unlock sync SW -> HW
+    m_aquire_read = false;
   }
 
   // blocking read directly from mailbox
@@ -2334,7 +2471,7 @@ public:
   std::pair<const void*, size_t>
   get_arg(int index)
   {
-    mailbox_wait();
+    mailbox_wait(mailbox_operation::read);
     auto& arg = kernel->get_arg(index);
     auto val = get_arg_value(arg);
     return {val.data(), val.bytes()};

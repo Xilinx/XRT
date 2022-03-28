@@ -17,6 +17,8 @@
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 #include "xdp/profile/database/database.h"
 
+#include "core/common/message.h"
+
 #include <vector>
 #include <boost/optional/optional.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -32,6 +34,7 @@ namespace xdp {
     : VPWriter(fileName)
     , mDeviceName(deviceName)
     , mDeviceIndex(deviceIndex)
+    , mWroteValidData(false)
   {
   }
 
@@ -57,6 +60,7 @@ namespace xdp {
     // Write approved AIE report to file
     refreshFile();
     fout << aieInfoStr << std::endl;
+    mWroteValidData = true;
 
     if (openNewFile)
       switchFiles();
@@ -85,10 +89,20 @@ namespace xdp {
     // Write approved AIE report to file
     refreshFile();
     fout << aieInfoStr << std::endl;
+    mWroteValidData = true;
 
     if (openNewFile)
       switchFiles();
     return true;
+  }
+
+  // Warn if application exits without writing valid data
+  AIEDebugWriter::~AIEDebugWriter()
+  {
+    if (!mWroteValidData) {
+      std::string msg("No valid data found for AIE status. Please run xbutil.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+    }
   }
 
   /*
@@ -100,6 +114,7 @@ namespace xdp {
     : VPWriter(fileName)
     , mDeviceName(deviceName)
     , mDeviceIndex(deviceIndex)
+    , mWroteValidData(false)
   {
   }
 
@@ -125,6 +140,7 @@ namespace xdp {
     // Write approved AIE shim report to file
     refreshFile();
     fout << aieShimInfoStr << std::endl;
+    mWroteValidData = true;
 
     if (openNewFile)
       switchFiles();
@@ -153,10 +169,20 @@ namespace xdp {
     // Write approved AIE shim report to file
     refreshFile();
     fout << aieShimInfoStr << std::endl;
+    mWroteValidData = true;
 
     if (openNewFile)
       switchFiles();
     return true;
+  }
+
+  // Warn if application exits without writing valid shim data
+  AIEShimDebugWriter::~AIEShimDebugWriter()
+  {
+    if (!mWroteValidData) {
+      std::string msg("No valid data found for AIE Shim status. Please run xbutil.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+    }
   }
 
 } // end namespace xdp

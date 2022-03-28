@@ -1,7 +1,5 @@
-/*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 
 #include "core/include/xrt/xrt_uuid.h"
 #include "core/common/cuidx_type.h"
@@ -22,6 +20,7 @@ class device;
 namespace context_mgr {
 
 class device_context_mgr;
+using slot_id = uint32_t;    // xrt_core::device::slot_id
 
 // Create a context manager for a specific device The manager is
 // shared and cached so that it is constructed only if necessary.  In
@@ -29,6 +28,27 @@ class device_context_mgr;
 // context manager.
 std::shared_ptr<device_context_mgr>
 create(const xrt_core::device* device);
+
+// Open a device context a specified compute unit (ip)
+//
+// @device: device to open context on
+// @slot:   slot index with xclbin
+// @uuid:   xclbin uuid with the CU
+// @ipname: name of IP
+// @shared: open in shared (true) or exclusive mode (false)
+//
+// The function blocks until the context can be acquired.  If
+// timeout, then the function throws.
+//
+// Note that the context manager is not intended to support two or
+// more threads opening a context on the same compute unit. This
+// situation must be guarded by the client (xrt::kernel) of the
+// manager.
+//
+// The function is simply a synchronization between two threads
+// simultanous use of open_context and close_context.
+void
+open_context(xrt_core::device* device, slot_id slot, const xrt::uuid& uuid, const std::string& ipname, bool shared);
 
 // Open a device context a specified compute unit (ip)
 //
@@ -59,5 +79,5 @@ open_context(xrt_core::device* device, const xrt::uuid& uuid, cuidx_type cuidx, 
 // The function throws if no context is open on specified CU.
 void
 close_context(xrt_core::device* device, const xrt::uuid& uuid, cuidx_type cuidx);
- 
+
 }} // context_mgr, xrt_core

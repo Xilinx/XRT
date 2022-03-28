@@ -44,7 +44,7 @@
 #include "ps_kernel.h"
 #include "xclbin.h"
 #include "core/common/xrt_profiling.h"
-#include <version.h>
+#include "gen/version.h"
 
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;
@@ -1568,11 +1568,11 @@ public:
 
               ostr << std::left << std::setw(60) << cu_n
                    << "@" << std::setw(18) << cu_ba
-                   << std::setw(14) << cu_s 
+                   << std::setw(14) << cu_s
                    << std::setw(14) << cu_u << std::endl;
             }
           }
-          
+
           uint32_t scu_index = 0;
           for (auto& v : sensor_tree::get_child( "board.ps_compute_unit" )) {
             int index = std::stoi(v.first);
@@ -1601,7 +1601,7 @@ public:
 
               ostr << std::left << std::setw(32) << scu_n
                    << "@" << std::setw(18) << scu_ba
-                   << std::setw(14) << scu_s 
+                   << std::setw(14) << scu_s
                    << std::setw(14) << scu_u << std::endl;
             }
           }

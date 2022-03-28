@@ -207,7 +207,10 @@ namespace xclhwemhal2 {
   int HwEmShim::parseLog()
   {
     std::vector<std::string> myvector = {"SIM-IPC's external process can be connected to instance",
-                                         "SystemC TLM functional mode"};
+                                         "SystemC TLM functional mode",
+                                         "HLS_PRINT",
+                                         "Exiting xsim",
+                                         "FATAL_ERROR"};
 
     std::ifstream ifs(getSimPath() + "/simulate.log");
 
@@ -220,6 +223,8 @@ namespace xclhwemhal2 {
             if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
               logMessage(line);
               parsedMsgs.push_back(line);
+              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR"))
+                 std::cout << "SIMULATION EXITED" << std::endl; 
             }
           }
         }
@@ -242,7 +247,6 @@ namespace xclhwemhal2 {
   {
     std::string simPath = getSimPath();
     std::string content = loadFileContentsToString(simPath + "/simulate.log");
-    parseString(simPath,"HLS_PRINT");
     if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
       size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
       size_t last = content.find("detected!", first);
@@ -2725,7 +2729,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   }
    
   // Copy buffer thru the M2M.
-    if (deviceQuery(key_type::m2m) && getM2MAddress() != 0) {
+    if ((deviceQuery(key_type::m2m) && getM2MAddress() != 0) && !((sBO->fd >= 0) || (dBO->fd >= 0))) {
 
       char hostBuf[M2M_KERNEL_ARGS_SIZE];
       std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);

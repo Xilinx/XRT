@@ -79,7 +79,7 @@ get_edgedev(const xrt_core::device* device)
   return zynq_device::get_dev();
 }
 
-struct bdf 
+struct bdf
 {
   using result_type = query::pcie_bdf::result_type;
 
@@ -91,7 +91,7 @@ struct bdf
 
 };
 
-struct board_name 
+struct board_name
 {
   using result_type = query::board_name::result_type;
 
@@ -108,7 +108,7 @@ struct board_name
   }
 };
 
-struct is_ready 
+struct is_ready
 {
   using result_type = query::is_ready::result_type;
 
@@ -181,7 +181,7 @@ struct aie_metadata
     constexpr uint32_t major = 1;
     constexpr uint32_t minor = 0;
     constexpr uint32_t patch = 0;
-    
+
     auto dev = get_edgedev(device);
 
     dev->sysfs_get(AIE_TAG, err, value);
@@ -189,7 +189,7 @@ struct aie_metadata
       throw xrt_core::query::sysfs_error(err);
 
     std::stringstream ss(value);
-    boost::property_tree::ptree pt; 
+    boost::property_tree::ptree pt;
     boost::property_tree::read_json(ss, pt);
 
     if(pt.get<uint32_t>("schema_version.major") != major ||
@@ -215,11 +215,11 @@ struct aie_core_info : aie_metadata
 
     read_aie_metadata(device, max_row, max_col);
 
-    /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */ 
+    /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
     for(int i=0;i<max_col;i++)
       for(int j=0; j<(max_row-1);j++)
         ptarray.push_back(std::make_pair(std::to_string(i)+"_"+std::to_string(j),
-                          aie_sys_parser::get_parser()->aie_sys_read(i,(j+1)))); 
+                          aie_sys_parser::get_parser()->aie_sys_read(i,(j+1))));
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_core",ptarray);
@@ -244,7 +244,7 @@ struct aie_shim_info : aie_metadata
 
     /* Loop all shim tiles and collect all dma, events, errors, locks status */
     for(int i=0;i<max_col;i++) {
-      ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser()->aie_sys_read(i,0))); 
+      ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser()->aie_sys_read(i,0)));
     }
 
     boost::property_tree::ptree pt;
@@ -344,10 +344,11 @@ struct xclbin_uuid
   }
 };
 
-struct get_xclbin_data
+struct xclbin_slots
 {
-  using result_type = query::get_xclbin_data::result_type;
-  using data_type = query::get_xclbin_data::data_type;
+  using result_type = query::xclbin_slots::result_type;
+  using slot_info = query::xclbin_slots::slot_info;
+  using slot_id = query::xclbin_slots::slot_id;
 
   static result_type
   get(const xrt_core::device* device, key_type)
@@ -371,9 +372,9 @@ struct get_xclbin_data
       if (std::distance(tokens.begin(), tokens.end()) != 2)
         throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
 
-      data_type data = { 0 };
+      slot_info data = { 0 };
       tokenizer::iterator tok_it = tokens.begin();
-      data.slot_index = std::stoi(std::string(*tok_it++));
+      data.slot = std::stoi(std::string(*tok_it++));
       data.uuid = std::string(*tok_it++);
 
       xclbin_data.push_back(std::move(data));
@@ -892,7 +893,7 @@ initialize_query_table()
 
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
   emplace_func0_request<query::instance,                instance>();
-  emplace_func0_request<query::get_xclbin_data,         get_xclbin_data>();
+  emplace_func0_request<query::xclbin_slots,            xclbin_slots>();
 
   emplace_func4_request<query::aim_counter,             aim_counter>();
   emplace_func4_request<query::am_counter,              am_counter>();
