@@ -97,10 +97,11 @@ def print_header(term, lock, dev, report_header, page_header, len_x):
     page_header = XBUtil.pad_string(page_header, padding_width, "center")
 
     with lock:
-        center_align = int((len_x - len(page_header)) / 2)
-
+        center_align = int((len_x - len(report_header)) / 2)
         term.location(center_align, 2)
         print(XBUtil.fg.blue + XBUtil.fx.bold + XBUtil.fx.italic + report_header + XBUtil.fx.reset)
+
+        center_align = int((len_x - len(page_header)) / 2)
         term.location(center_align, 3)
         print(XBUtil.fg.blue + XBUtil.fx.bold + XBUtil.fx.italic + page_header + XBUtil.fx.reset)
 
@@ -114,7 +115,7 @@ def running_reports(term, lock, dev, x_len, y_len):
 
     report_length = 0
     report_start_row = 10
-    report_end_row = 10 # From bottom
+    report_end_row = 10 # Number of lines above bottom of terminal. Must leave room for footer!
     num_lines_printed = 0
     current_report = -1
     current_page = -1
