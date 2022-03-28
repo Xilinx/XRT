@@ -169,13 +169,11 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 
 	mutex_lock(&sk->sk_lock);
 	if(!IS_ERR(&sk->sk_meta_bo)) {
-		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_meta_bo->gem_base);
 		zocl_drm_free_bo(sk->sk_meta_bo);
 	}
 	for (i = 0; i < sk->sk_nimg; i++) {
 		if (IS_ERR(&sk->sk_img[i].si_bo))
 			continue;
-		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_img[i].si_bo->gem_base);
 		zocl_drm_free_bo(sk->sk_img[i].si_bo);
 	}
 	kfree(sk->sk_img);

@@ -223,7 +223,7 @@ void xrt_cu_scu_fini(struct xrt_cu *xcu)
 		put_pid(p);
 		goto skip_kill;
 	}
-
+	
 	ret = kill_pid(p, SIGTERM, 1);
 	if (ret) {
 		DRM_WARN("Failed to terminate SCU pid %d.  Performing SIGKILL.\n",core->sc_pid);
@@ -235,8 +235,9 @@ void xrt_cu_scu_fini(struct xrt_cu *xcu)
 
  skip_kill:
 	// Free Command Buffer BO
-	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&core->sc_bo->gem_base);
-	zocl_drm_free_bo(core->sc_bo);
+	if(!IS_ERR(&core->sc_bo)) {
+		zocl_drm_free_bo(core->sc_bo);
+	}
 	if (xcu->core) {
 		kfree(xcu->core);
 	}
