@@ -199,7 +199,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   dev_prop.put("board_type", xrt_core::device_query<xrt_core::query::board_name>(device));
   dev_prop.put("board_name", info.mName.empty() ? "N/A" : info.mName);
   dev_prop.put("config_mode", info.mConfigMode);
-  dev_prop.put("max_power_watts", info.mMaxPower.empty() ? "N/A" : info.mMaxPower);
+  dev_prop.put("max_power_watts", info.mMaxPower);
   pt_platform.add_child("device_properties", dev_prop);
 
   //Flashable partition running on FPGA
@@ -346,8 +346,9 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   auto config_mode = dev_properties.get<unsigned int>("config_mode");
   if (config_mode != 0)
     _output << fmtBasicHex % "Config Mode" % config_mode;
-  _output << fmtBasic % "Config Mode" % string_or_NA(dev_properties.get<std::string>("config_mode"));
-  _output << fmtBasic % "Max Power" % string_or_NA(dev_properties.get<std::string>("max_power_watts"));
+  auto max_power_str = dev_properties.get<std::string>("max_power_watts");
+  if (!max_power_str.empty())
+    _output << fmtBasic % "Max Power" % max_power_str;
   _output << std::endl;
 
   _output << "Flashable partitions running on FPGA\n";
