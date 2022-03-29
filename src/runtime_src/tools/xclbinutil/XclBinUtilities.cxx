@@ -1096,8 +1096,13 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
   std::string result;
   std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmdLine.c_str(), "r"), pclose);
   if (!pipe) {
+    const auto errMsg = boost::format("Error: Shell command failed\n"
+                                      "       Cmd: %s %s\n")
+                                      % cmd.string() % boost::algorithm::join(args, " ");
+                                      
     if (bThrow) 
-      throw std::runtime_error("popen() failed!");
+      throw std::runtime_error(errMsg.str());
+
     return 1;
   }
 

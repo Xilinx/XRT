@@ -63,26 +63,10 @@ auto findExecutablePath(const std::string &executable)
   }
 #endif
  
-  // -- Check /usr/bin
-  if (executablePath.string().empty()) {
-    executablePath = boost::filesystem::path("usr") / "bin" / executable;
-    XUtil::TRACE("Step 3: Looking for executable at: '" + executablePath.string() + "'");
-    if (!boost::filesystem::exists(executablePath)) {
-      executablePath = "";           // Executable doesn't exist
-      XUtil::TRACE("Not found");
-    }
-  }
+  // -- Default path /usr/bin
+  if (executablePath.string().empty()) 
+    executablePath = boost::filesystem::path() / "usr" / "bin" / executable;
 
-  if (executablePath.string().empty()) {
-    auto errMsg = boost::format("Error: Could not find the helper executable: '%s'\n"
-                                "       In either the path or '/usr/bin'\n. ")
-                                % executablePath.string();
-    throw std::runtime_error(errMsg.str());
-  }
-
-  XUtil::TRACE("Found executable: '" + executablePath.string() + "'");
-  
-  
   return executablePath;
 }
 
