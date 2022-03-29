@@ -230,7 +230,7 @@ kernel_max_ctx(const ip_data& ip)
 }
 
 //Get the cu functional from kernel xml entry
-static uint32_t
+static size_t
 get_functional(const pt::ptree& xml_kernel, const std::string& element)
 {
   for (auto& elem : xml_kernel) {
