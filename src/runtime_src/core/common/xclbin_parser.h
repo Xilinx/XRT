@@ -62,6 +62,7 @@ struct kernel_properties
   mailbox_type mailbox = mailbox_type::none;
   size_t address_range = 0x10000;  // NOLINT, default address range
   bool sw_reset = false;
+  size_t functional = 0;
 
   // opencl specifics
   size_t workgroupsize = 0;
