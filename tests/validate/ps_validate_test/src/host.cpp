@@ -89,8 +89,8 @@ int main(int argc, char** argv) {
     auto uuid = device.load_xclbin(binaryFile.string());
     auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
     const size_t DATA_SIZE = COUNT * sizeof(int);
-    auto bo0 = xrt::bo(device, DATA_SIZE, 2);
-    auto bo1 = xrt::bo(device, DATA_SIZE, 2);
+    auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
+    auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));
     auto bo0_map = bo0.map<int*>();
     auto bo1_map = bo1.map<int*>();
     std::fill(bo0_map, bo0_map + COUNT, 0);
