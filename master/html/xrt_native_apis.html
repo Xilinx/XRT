@@ -542,7 +542,7 @@
 <p>To use the native XRT APIs, the host application must link with the <strong>xrt_coreutil</strong> library.
 Compiling host code with XRT native C++ API requires C++ standard with -std=c++17 (or newer).</p>
 <p>Example g++ command</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>g++ -g -std<span class="o">=</span>c++14 -I<span class="nv">$XILINX_XRT</span>/include -L<span class="nv">$XILINX_XRT</span>/lib -o host.exe host.cpp -lxrt_coreutil -pthread
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>g++ -g -std<span class="o">=</span>c++17 -I<span class="nv">$XILINX_XRT</span>/include -L<span class="nv">$XILINX_XRT</span>/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 </pre></div>
 </div>
 <p>The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in :doc: <cite>xrt_native.main</cite>.</p>
@@ -1325,7 +1325,7 @@ Compiling host code with XRT native C++ API requires C++ standard with -std=c++1
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 25, 2022.
+        Last updated on March 29, 2022.
       </span>
 
     </p>
