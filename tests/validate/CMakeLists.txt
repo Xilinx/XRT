@@ -31,3 +31,4 @@ add_subdirectory(xrt_iops_test)
 # PS Kernel tests
 add_subdirectory(ps_validate_test)
 add_subdirectory(ps_aie_test)
+add_subdirectory(ps_bandwidth_test)
