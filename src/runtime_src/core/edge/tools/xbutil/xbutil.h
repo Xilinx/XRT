@@ -35,7 +35,7 @@
 #include "core/edge/include/zynq_ioctl.h"
 #include "core/edge/user/zynq_dev.h"
 #include "xclbin.h"
-#include <version.h>
+#include "gen/version.h"
 #include <fcntl.h>
 #include <chrono>
 using Clock = std::chrono::high_resolution_clock;

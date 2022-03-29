@@ -14,19 +14,19 @@ SET (DKMS_POSTINST "postinst-edge")
 SET (DKMS_PRERM "prerm-edge")
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/dkms-zocl/${DKMS_FILE_NAME}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/dkms-zocl/${DKMS_FILE_NAME}.in"
   ${DKMS_FILE_NAME}
   @ONLY
   )
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
   "postinst"
   @ONLY
   )
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
   "prerm"
   @ONLY
   )
@@ -115,7 +115,7 @@ foreach (DKMS_FILE ${XRT_DKMS_DRIVER_SRCS})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_DRIVER_SRC_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
 endforeach()
-  
+
 foreach (DKMS_FILE ${XRT_DKMS_CORE_INCLUDES})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/${DKMS_DIR})
@@ -134,4 +134,3 @@ foreach (DKMS_FILE ${XRT_DKMS_CORE_EDGE_INCLUDES})
 endforeach()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})
-

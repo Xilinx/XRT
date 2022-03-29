@@ -7,19 +7,19 @@ set(DKMS_POSTINST "postinst-azure")
 set(DKMS_PRERM "prerm-azure")
 
 configure_file(
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_FILE_NAME}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_FILE_NAME}.in"
   "azure/${DKMS_FILE_NAME}"
   @ONLY
   )
 
 configure_file(
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
   "azure/postinst"
   @ONLY
   )
 
 configure_file(
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
   "azure/prerm"
   @ONLY
   )

@@ -7,7 +7,6 @@
 set -e
 
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
-SRCDIR=$(readlink -f $BUILDDIR/../src)
 CORE=7
 
 CMAKE="/mnt/c/Program Files/CMake/bin/cmake.exe"

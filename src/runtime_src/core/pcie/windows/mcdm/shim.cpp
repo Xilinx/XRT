@@ -3,6 +3,7 @@
 #define XCL_DRIVER_DLL_EXPORT
 
 #include "shim.h"
+#include "core/include/shim_int.h"
 #include "core/include/experimental/xrt-next.h"
 #include "core/common/dlfcn.h"
 #include "core/common/device.h"
@@ -51,6 +52,15 @@ throw_if_error(HRESULT value, const std::string& pre = "")
     std::wstring wstr{ex.message()};
     throw xrt_core::error(ex.code(), msg + std::string{wstr.begin(), wstr.end()});
   }
+}
+
+static std::string
+to_string(const LUID& luid)
+{
+  wchar_t wstr[64]= {0};
+  int wlen = StringFromGUID2(reinterpret_cast<const GUID&>(luid), wstr, sizeof(wstr));
+  std::cout << "wstr as single str: " << wstr << "\n";
+  return {wstr, wstr+wlen};
 }
 
 // Manage gdi dll loading and symbol lookup
@@ -234,12 +244,14 @@ class shim
   handle
   open_adapter(dxwrap::adapter adapter)
   {
-    std::cout << "Opening device for: "
+    std::cout << "Opening adapter: "
               << adapter.get_property<DXCoreAdapterProperty::DriverDescription, std::string>()
               << "\n";
+
     static auto open_adapter = gdi.get<PFND3DKMT_OPENADAPTERFROMLUID>("D3DKMTOpenAdapterFromLuid");
     D3DKMT_OPENADAPTERFROMLUID d3open = {0};
     d3open.AdapterLuid = adapter.get_property<DXCoreAdapterProperty::InstanceLuid, LUID>();
+    std::cout << "Adapter LUID:" << to_string(d3open.AdapterLuid) << "\n";
     throw_if_error(open_adapter(&d3open), "Open adapter failed");
     return d3open.hAdapter;
   }
@@ -363,6 +375,13 @@ xclReClock2(xclDeviceHandle handle, unsigned short region,
 // Compute Unit Execution Management APIs
 int
 xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)
+{
+  not_supported(__func__);
+  return -1;
+}
+
+int
+xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const xuid_t xclbinId, const char* cuname, bool shared)
 {
   not_supported(__func__);
   return -1;

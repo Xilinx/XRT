@@ -121,6 +121,7 @@ set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
 set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
 set (XRT_INSTALL_PYTHON_DIR    "${XRT_INSTALL_DIR}/python")
+set (XRT_BUILD_INSTALL_DIR     "${CMAKE_BINARY_DIR}${CMAKE_INSTALL_PREFIX}/${XRT_INSTALL_DIR}")
 set (XRT_VALIDATE_DIR          "${XRT_INSTALL_DIR}/test")
 set (XRT_NAMELINK_ONLY NAMELINK_ONLY)
 set (XRT_NAMELINK_SKIP NAMELINK_SKIP)
@@ -159,7 +160,7 @@ add_subdirectory(runtime_src)
 
 #XMA settings START
 set(XMA_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-set(XMA_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/xrt")
+set(XMA_INSTALL_DIR "${XRT_INSTALL_DIR}")
 set(XMA_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
 set(XMA_SOVERSION ${XRT_SOVERSION})
 add_subdirectory(xma)
@@ -208,5 +209,5 @@ include (CMake/coverity.cmake)
 # --- Find Package Support ---
 include (CMake/findpackage.cmake)
 
-set (CTAGS "${CMAKE_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
+set (CTAGS "${XRT_SOURCE_DIR}/runtime_src/tools/scripts/tags.sh")
 include (CMake/tags.cmake)

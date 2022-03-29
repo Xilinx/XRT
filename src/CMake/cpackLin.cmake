@@ -62,7 +62,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
 
   if( (${CMAKE_VERSION} VERSION_LESS "3.6.0") AND (${CPACK_DEBIAN_PACKAGE_SHLIBDEPS} STREQUAL "yes") )
     # Fix bug in CPackDeb.cmake in use of dpkg-shlibdeps
-    SET(CMAKE_MODULE_PATH ${XRT_SRC_DIR}/CMake/patch ${CMAKE_MODULE_PATH})
+    SET(CMAKE_MODULE_PATH ${XRT_SOURCE_DIR}/CMake/patch ${CMAKE_MODULE_PATH})
   endif()
 
   SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
@@ -77,7 +77,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   else()
     # xrt development package
     SET(CPACK_DEBIAN_XRT-DEV_PACKAGE_NAME ${XRT_DEV_COMPONENT})
-    SET(CPACK_DEBIAN_XRT-DEV_PACKAGE_DEPENDS 
+    SET(CPACK_DEBIAN_XRT-DEV_PACKAGE_DEPENDS
       "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}), \
       ocl-icd-opencl-dev (>= 2.2.0), \
       uuid-dev (>= 2.27.1)")
@@ -162,7 +162,7 @@ message("-- ${CMAKE_BUILD_TYPE} ${PACKAGE_KIND} package")
 SET(CPACK_PACKAGE_VENDOR "Xilinx Inc")
 SET(CPACK_PACKAGE_CONTACT "sonal.santan@xilinx.com")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Xilinx RunTime stack for use with Xilinx FPGA platforms")
-SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/../LICENSE")
+SET(CPACK_RESOURCE_FILE_LICENSE "${XRT_SOURCE_DIR}/../LICENSE")
 
 add_custom_target(xrtpkg
   echo "COMMAND ${CMAKE_CPACK_COMMAND}"
@@ -174,4 +174,3 @@ add_custom_target(xrtpkg
 )
 
 INCLUDE(CPack)
-

@@ -3,7 +3,7 @@
 #
 include_directories(
   ${Boost_INCLUDE_DIRS}
-  ${XRT_SRC_DIR}/include/1_2
+  ${XRT_SOURCE_DIR}/include/1_2
 )
 
 set(XRT_XOCL_API_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/api")
@@ -114,9 +114,9 @@ install(TARGETS xilinxopencl xilinxopencl_static
 
 # Release OpenCL extension headers
 install (FILES
-  ${XRT_SRC_DIR}/include/1_2/CL/cl_ext_xilinx.h
-  ${XRT_SRC_DIR}/include/1_2/CL/cl_ext.h
-  ${XRT_SRC_DIR}/include/1_2/CL/cl2xrt.hpp
+  ${XRT_SOURCE_DIR}/include/1_2/CL/cl_ext_xilinx.h
+  ${XRT_SOURCE_DIR}/include/1_2/CL/cl_ext.h
+  ${XRT_SOURCE_DIR}/include/1_2/CL/cl2xrt.hpp
   DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/CL
   COMPONENT ${XRT_DEV_COMPONENT}
 )

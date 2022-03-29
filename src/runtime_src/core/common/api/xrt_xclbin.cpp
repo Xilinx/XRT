@@ -52,6 +52,10 @@
 #endif
 
 namespace {
+
+// NOLINTNEXTLINE
+constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
+
 constexpr size_t max_sections = 12;
 static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
@@ -212,7 +216,7 @@ class xclbin::ip_impl
 public: // purposely not a struct to match decl in xrt_xclbin.h
   const ::ip_data* m_ip;            //
   int32_t m_ip_layout_idx;          // index in IP_LAYOUT seciton
-  size_t m_size = 0;                // address range of this ip (a kernel property)
+  size_t m_size = 64_kb;            // address range of this ip (a kernel property)
   std::vector<xclbin::arg> m_args;  // index by argument index
 
   void

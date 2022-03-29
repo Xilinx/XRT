@@ -17,6 +17,7 @@
 
 #include "xbmgmt.h"
 #include "core/pcie/linux/scan.h"
+#include "gen/version.h"
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -26,7 +27,6 @@
 #include <sstream>
 #include <algorithm>
 #include <climits>
-#include <version.h>
 #include <fstream>
 
 struct subCmd {
@@ -166,7 +166,7 @@ void printSubCmdHelp(const std::string& subCmd, bool show_expert)
     }
 }
 
-int xrt_xbmgmt_version_cmp() 
+int xrt_xbmgmt_version_cmp()
 {
     /* Check XRT libs and driver versions. */
     std::string xrt = std::string(xrt_build_version) + "," + std::string(xrt_build_version_hash);
@@ -181,8 +181,8 @@ int xrt_xbmgmt_version_cmp()
 }
 
 bool getenv_or_null(const char* env)
-{ 
-    return getenv(env) ? true : false; 
+{
+    return getenv(env) ? true : false;
 }
 
 int main(int argc, char *argv[])
@@ -195,10 +195,10 @@ int main(int argc, char *argv[])
     std::string subCmd(argv[1]);
     auto cmd = subCmdList.find(subCmd);
 
-    //do not proceed if xbmgmt and xrt versions don't match 
+    //do not proceed if xbmgmt and xrt versions don't match
     //unless cmd is version or help or INTERNAL_BUILD is set
-    if ( subCmd.find("version") == std::string::npos && subCmd.compare("help") != 0 
-            && !getenv_or_null("INTERNAL_BUILD") ) { 
+    if ( subCmd.find("version") == std::string::npos && subCmd.compare("help") != 0
+            && !getenv_or_null("INTERNAL_BUILD") ) {
         if ( xrt_xbmgmt_version_cmp() != 0 )
         return -EINVAL;
     }
