@@ -21,7 +21,10 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
-static const int COUNT = 1024;
+
+#define WIDTH 8
+#define HEIGHT 8 
+#define SIZE (WIDTH * HEIGHT)
 
 static void printHelp() {
     std::cout << "usage: %s <options>\n";
@@ -34,7 +37,7 @@ static void printHelp() {
 int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
-    std::string b_file = "/ps_validate_bandwidth.xclbin";
+    std::string b_file = "/ps_aie.xclbin";
     bool flag_s = false;
     for (int i = 1; i < argc; i++) {
         if ((strcmp(argv[i], "-p") == 0) || (strcmp(argv[i], "--path") == 0)) {
@@ -86,46 +89,55 @@ int main(int argc, char** argv) {
         device = xrt::device(dev_id);
     }
 
-    auto uuid = device.load_xclbin(binaryFile.string());
-    auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
-    const size_t DATA_SIZE = COUNT * sizeof(int);
-    auto bo0 = xrt::bo(device, DATA_SIZE, 2);
-    auto bo1 = xrt::bo(device, DATA_SIZE, 2);
-    auto bo0_map = bo0.map<int*>();
-    auto bo1_map = bo1.map<int*>();
-    std::fill(bo0_map, bo0_map + COUNT, 0);
-    std::fill(bo1_map, bo1_map + COUNT, 0);
+    const int input_size_in_bytes = SIZE * sizeof(float);
+    const int output_size_in_bytes = SIZE * sizeof(float);
+    const int input_size_allocated = ((input_size_in_bytes / 4096) + ((input_size_in_bytes % 4096) > 0)) * 4096;
+    const int output_size_allocated = ((output_size_in_bytes / 4096) + ((output_size_in_bytes % 4096) > 0)) * 4096;
 
-    // Fill our data sets with pattern
-    int bufReference[COUNT];
-    bo0_map[0] = 'h';
-    bo0_map[1] = 'e';
-    bo0_map[2] = 'l';
-    bo0_map[3] = 'l';
-    bo0_map[4] = 'o';
-    for (int i = 5; i < COUNT; ++i) {
-      bo0_map[i] = 0;
-      bo1_map[i] = i;
-      bufReference[i] = i;
+    auto uuid = device.load_xclbin(binaryFile.string());
+    auto aie_kernel = xrt::kernel(device,uuid.get(), "aie_kernel");
+    auto out_bo= xrt::bo(device, output_size_allocated, aie_kernel.group_id(2));
+    auto out_bomapped = out_bo.map<float*>();
+    memset(out_bomapped, 0, output_size_in_bytes);
+
+    auto in_boA = xrt::bo(device, input_size_allocated, aie_kernel.group_id(0));
+    auto in_bomappedA = in_boA.map<float*>();
+    auto in_boB = xrt::bo(device, input_size_allocated, aie_kernel.group_id(1));
+    auto in_bomappedB = in_boB.map<float*>();
+	
+    //setting input data
+    float *golden = (float*)malloc(output_size_in_bytes);
+    for(int i = 0; i < SIZE; i++){
+        in_bomappedA[i] = rand() % SIZE;
+        in_bomappedB[i] = rand() % SIZE;
     }
-    
-    bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
-    bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
-    
-    auto run = hello_world(bo0, bo1, COUNT);
+    for(int i = 0; i < HEIGHT ; i++) {
+        for(int j = 0; j < WIDTH ; j++){
+            golden[i*WIDTH+j] = 0;
+            for(int k=0; k <WIDTH; k++) golden[i*WIDTH+j] += in_bomappedA[i*WIDTH + k] * in_bomappedB[k+WIDTH * j];
+        }
+    } 
+
+    in_boA.sync(XCL_BO_SYNC_BO_TO_DEVICE, input_size_in_bytes, 0);
+    in_boB.sync(XCL_BO_SYNC_BO_TO_DEVICE, input_size_in_bytes, 0);
+
+    int rval;
+
+    auto run = aie_kernel(in_boA, in_boB, out_bo, input_size_in_bytes, output_size_in_bytes);
     run.wait();
+
+    out_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, output_size_in_bytes, 0);
     
-    //Get the output;
-    bo1.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
-    
-    // Validate our results
-    if (std::memcmp(bo1_map, bo0_map, DATA_SIZE)) {
-      for(int i=0;i< COUNT;i++) {
-	std::cout << "bo0[" << i << "] = " << bo0_map[i] << ", bo1[" << i << "] = " << bo1_map[i] << std::endl;
-      }
-      throw std::runtime_error("Value read back does not match reference");
-      return EXIT_FAILURE;
+    int match = 0;
+    for (int i = 0; i < SIZE; i++) {
+        if (out_bomapped[i] != golden[i]) {
+            printf("ERROR: Test failed! Error found in sample %d: golden: %f, hardware: %f\n", i, golden[i], out_bomapped[i]);
+            match = 1;
+            break;
+        }
     }
-    std::cout << "TEST PASSED\n";
-    return 0;
+
+    std::cout << "TEST " << (match ? "FAILED" : "PASSED") << std::endl; 
+
+    return (match ? EXIT_FAILURE :  EXIT_SUCCESS);
 }
