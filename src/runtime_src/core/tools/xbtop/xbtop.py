@@ -156,7 +156,7 @@ def running_reports(term, lock, dev, x_len, y_len):
             print_header(term, lock, dev, report_header, page_header, x_len)
         # Just update the report if no changes have occurred
         else:
-            page_count = g_reports[current_report].update(dev)
+            page_count = g_reports[current_report].update(dev, report_length)
 
         # Clear the previous reports
         XBUtil.clear_rows(term, lock, report_start_row, num_lines_printed)
@@ -228,7 +228,7 @@ def main():
         t1.start()
 
         # Running reports
-        t2 = threading.Thread(target=running_reports, args=(term, lock, dev, x_len))
+        t2 = threading.Thread(target=running_reports, args=(term, lock, dev, x_len, y_len))
         t2.daemon = True
         t2.start()
 

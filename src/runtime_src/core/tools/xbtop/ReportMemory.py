@@ -30,15 +30,21 @@ class ReportMemory:
         self._df = memory_raw
 
         # Generate the number of pages used for the report
-        # Round up the division to leave an extra page for the last batch of data
-        page_count = math.ceil(len(self._df['board']['memory']['memories']) / report_length)
-        # We must ensure that we always have at least one page
-        self.topology_page_count = max(page_count, 1)
+        try:
+            # Round up the division to leave an extra page for the last batch of data
+            page_count = math.ceil(len(self._df['board']['memory']['memories']) / report_length)
+            # We must ensure that we always have at least one page
+            self.topology_page_count = max(page_count, 1)
+        except:
+            self.topology_page_count = 0
 
-        page_count = math.ceil(len(self._df['board']['direct_memory_accesses']['metrics']) / report_length)
-        self.dma_page_count = max(page_count, 1)
+        try:
+            page_count = math.ceil(len(self._df['board']['direct_memory_accesses']['metrics']) / report_length)
+            self.dma_page_count = max(page_count, 1)
+        except:
+            self.dma_page_count = 0
 
-        self.page_count = self.topology_page_count + self.dma_page_count
+        self.page_count = max(self.topology_page_count + self.dma_page_count, 1)
         return self.page_count
 
     def _print_memory_usage(self, term, lock, start_x, start_y, page):
@@ -120,7 +126,7 @@ class ReportMemory:
                     line.append("N/A")
                 else:
                     usage = int(memory['extended_info']['usage']['allocated_bytes'], 0)
-                    line.append(str(usage * 100 / size))
+                    line.append(XBUtil.get_percentage(usage, size))
 
                 
                 line.append(memory['extended_info']['usage']['buffer_objects_count'])
@@ -200,7 +206,7 @@ class ReportMemory:
         # page parameter into the appropriate print function
         if (page < self.topology_page_count):
             offset = 1 + self._print_mem_topology(term, lock, start_x, start_y + offset, page)
-        elif (page < self.topology_page_count + self.dma_page_count):
+        elif (page < self.page_count):
             offset = 1 + self._print_dma_transfer_metrics(term, lock, start_x, start_y + offset, page - self.topology_page_count)
         else:
             XBUtil.print_warning(term, lock, start_y + offset, "Something went wrong! Please report this issue and its conditions.")

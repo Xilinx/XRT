@@ -29,6 +29,7 @@
 #include <stdexcept>
 #include <boost/any.hpp>
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 
 struct debug_ip_data;
 
@@ -698,6 +699,12 @@ struct xclbin_uuid : request
 
   virtual boost::any
   get(const device*) const = 0;
+  
+  static bool
+  is_empty(const std::string& uuid) 
+  {
+    return (boost::equals(uuid, "00000000-0000-0000-0000-000000000000") || boost::equals(uuid, ""));
+  }
 };
 
 // dtbo_path is unique path used by libdfx library to load bitstream and device tree

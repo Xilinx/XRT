@@ -135,6 +135,14 @@ def pad_string(padded_string, padding_width, alignment):
 
     return padded_string
 
+def get_percentage(usage, size):
+    if usage == 0:
+        return "0 %"
+
+    percent = usage * 100 / size
+
+    return "%.2f %" % percent
+
 def convert_size(size_bytes):
     if size_bytes == 0:
         return "0  B"
