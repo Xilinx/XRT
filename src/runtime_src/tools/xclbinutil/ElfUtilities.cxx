@@ -65,7 +65,7 @@ auto findExecutablePath(const std::string &executable)
  
   // -- Default path /usr/bin
   if (executablePath.string().empty()) 
-    executablePath = boost::filesystem::path() / "usr" / "bin" / executable;
+    executablePath = boost::filesystem::path("/usr") / "bin" / executable;
 
   return executablePath;
 }
