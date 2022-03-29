@@ -90,7 +90,7 @@ namespace XBUtilities {
   enum class unit
   {
     bytes,
-    hertz
+    Hertz
   };
   uint64_t
   string_to_base_units(std::string str, const unit& conversion_unit);

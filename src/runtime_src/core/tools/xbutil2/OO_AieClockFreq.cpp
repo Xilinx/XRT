@@ -65,7 +65,7 @@ set_aie_part_freq(const std::shared_ptr<xrt_core::device>& device, uint32_t part
   uint64_t freq = 0;
   try {
     //convert freq to hertz(Hz)
-    freq = XBUtilities::string_to_base_units(setFreq, XBUtilities::unit::hertz);
+    freq = XBUtilities::string_to_base_units(setFreq, XBUtilities::unit::Hertz);
   }
   catch(const xrt_core::error&) {
     std::cerr << "Freq value provided with 'set' option is invalid. Please specify proper units and rerun" << std::endl;

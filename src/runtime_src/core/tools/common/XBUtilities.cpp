@@ -510,7 +510,7 @@ XBUtilities::string_to_base_units(std::string str, const unit& conversion_unit)
     case unit::bytes :
       factor = 1024;
       break;
-    case unit::hertz :
+    case unit::Hertz :
       factor = 1000;
       break;
     default :
