@@ -538,8 +538,8 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
     try {
       std::cout << std::endl;
       // 1) Flash the Satellite Controller image
-      if (xrt_core::device_query<xrt_core::query::is_mfg>(working_device.get()))
-        report_stream << boost::format("  [%s] : Factory image detected. Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
+      if (xrt_core::device_query<xrt_core::query::is_mfg>(working_device.get()) || xrt_core::device_query<xrt_core::query::is_recovery>(working_device.get()))
+        report_stream << boost::format("  [%s] : Factory or Recovery image detected. Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
       else {
         if (update_sc(p.first, p.second) == true)  {
           report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n") % getBDF(p.first);
