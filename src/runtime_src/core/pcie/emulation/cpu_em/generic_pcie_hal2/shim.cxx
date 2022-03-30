@@ -1274,7 +1274,7 @@ namespace xclcpuemhal2 {
             if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
               parsedMsgs.push_back(line);
               std::cout << "Received request to end simulation from connected initiator. Press Cntrl+C to exit the application. " << std::endl; 
-			  //xclClose(); TO-DO : final solution is to call xclclose
+	      //xclClose(); TO-DO : final solution is to call xclclose
             }
           }
         }
@@ -1358,7 +1358,7 @@ namespace xclcpuemhal2 {
 
   CpuemShim::~CpuemShim()
   {
-	parsedMsgs.clear();
+    parsedMsgs.clear();
     if (mIsKdsSwEmu && mSWSch && mCore)
     {
       mSWSch->fini_scheduler_thread();
@@ -1385,7 +1385,7 @@ namespace xclcpuemhal2 {
     {
       mLogStream.close();
     }
-	closemMessengerThread();
+    closemMessengerThread();
   }
 
   /**********************************************HAL2 API's START HERE **********************************************/
