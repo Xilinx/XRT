@@ -29,7 +29,6 @@
 #include <stdexcept>
 #include <boost/any.hpp>
 #include <boost/format.hpp>
-#include <boost/algorithm/string.hpp>
 
 struct debug_ip_data;
 
