@@ -53,8 +53,8 @@ int main(int argc, char** argv) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
-    auto binaryFile = boost::filesystem::path(test_path) / b_file;
-    std::ifstream infile(binaryFile.string());
+    auto binaryfile = boost::filesystem::path(test_path) / b_file;
+    std::ifstream infile(binaryfile.string());
     if (flag_s) {
         if (!infile.good()) {
             std::cout << "\nNOT SUPPORTED" << std::endl;
@@ -72,21 +72,9 @@ int main(int argc, char** argv) {
 
     auto num_devices = xrt::system::enumerate_devices();
 
-    xrt::device device;
-    auto pos = dev_id.find(":");
-    if (pos == std::string::npos) {
-        uint32_t device_index = stoi(dev_id);
-        if (device_index >= num_devices) {
-            std::cout << "The device_index provided using -d flag is outside the range of "
-                         "available devices\n";
-            return EXIT_FAILURE;
-        }
-        device = xrt::device(device_index);
-    } else {
-        device = xrt::device(dev_id);
-    }
+    auto device = xrt::device {dev_id};
 
-    auto uuid = device.load_xclbin(binaryFile.string());
+    auto uuid = device.load_xclbin(binaryfile.string());
     auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
     const size_t DATA_SIZE = COUNT * sizeof(int);
     auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
@@ -120,7 +108,7 @@ int main(int argc, char** argv) {
     
     // Validate our results
     if (std::memcmp(bo1_map, bo0_map, DATA_SIZE)) {
-      for(int i=0;i< COUNT;i++) {
+      for (int i=0;i< COUNT;i++) {
 	std::cout << "bo0[" << i << "] = " << bo0_map[i] << ", bo1[" << i << "] = " << bo1_map[i] << std::endl;
       }
       throw std::runtime_error("Value read back does not match reference");

@@ -58,8 +58,8 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    auto binaryFile = boost::filesystem::path(test_path) / b_file;
-    std::ifstream infile(binaryFile.string());
+    auto binaryfile = boost::filesystem::path(test_path) / b_file;
+    std::ifstream infile(binaryfile.string());
     if (flag_s) {
         if (!infile.good()) {
             std::cout << "\nNOT SUPPORTED" << std::endl;
@@ -80,22 +80,10 @@ int main(int argc, char** argv) {
 
     auto num_devices = xrt::system::enumerate_devices();
 
-    xrt::device device;
-    auto pos = dev_id.find(":");
-    if (pos == std::string::npos) {
-        uint32_t device_index = stoi(dev_id);
-        if (device_index >= num_devices) {
-            std::cout << "The device_index provided using -d flag is outside the range of "
-                         "available devices\n";
-            return EXIT_FAILURE;
-        }
-        device = xrt::device(device_index);
-    } else {
-        device = xrt::device(dev_id);
-    }
+    auto device = xrt::device {dev_id};
 
-    auto uuid = device.load_xclbin(binaryFile.string());
-    auto bandwidth_kernel = xrt::kernel(device, uuid.get(), "bandwidth_kernel");
+    auto uuid = device.load_xclbin(binaryfile.string());
+    auto bandwidth_kernel = xrt::kernel(device, uuid, "bandwidth_kernel");
 
     auto max_throughput_bo = xrt::bo(device, 4096, bandwidth_kernel.group_id(1));
     auto max_throughput = max_throughput_bo.map<double*>();

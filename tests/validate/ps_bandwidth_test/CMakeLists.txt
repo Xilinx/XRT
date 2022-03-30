@@ -30,31 +30,3 @@ endif()
 install(TARGETS ${TESTNAME}
   RUNTIME DESTINATION ${XRT_VALIDATE_DIR}
   ) 
-
-if (XRT_STATIC_BUILD)
-  set(TESTNAME_STATIC "ps_bandwidth_static.exe")
-  add_executable(${TESTNAME_STATIC}
-    ../common/includes/cmdparser/cmdlineparser.cpp
-    ../common/includes/logger/logger.cpp src/host.cpp
-    )
-  # Specify path directory with boost static libraries. The boost link dir
-  # should be same as the one used to build XRT. In most case this is the
-  # default /usr/lib, but if XRT was built with -with-static-boost, then
-  # the libraries cannot be located without specified the link path.
-  target_link_options(${TESTNAME_STATIC} PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
-  target_link_libraries(${TESTNAME_STATIC}
-    PRIVATE
-    # force linking of whole archive to enable static globals
-    -Wl,--whole-archive xilinxopencl_static xrt++_static xrt_core_static xrt_coreutil_static -Wl,--no-whole-archive
-    -Wl,--whole-archive rt pthread -Wl,--no-whole-archive
-    )
-  target_link_libraries(${TESTNAME_STATIC}
-    PRIVATE
-    xrt++_static
-    xrt_core_static
-    xrt_coreutil_static
-    )
-  set_target_properties(${TESTNAME_STATIC} PROPERTIES INSTALL_RPATH "")
-  install(TARGETS ${TESTNAME_STATIC} RUNTIME DESTINATION ${XRT_VALIDATE_DIR})
-endif()
-  
