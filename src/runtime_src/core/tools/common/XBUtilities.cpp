@@ -498,12 +498,24 @@ XBUtilities::parse_clock_id(const std::string& id)
 }
 
 uint64_t
-XBUtilities::string_to_bytes(std::string str)
+XBUtilities::string_to_base_units(std::string str, const unit& conversion_unit)
 {
   boost::algorithm::trim(str);
 
   if(str.empty())
     throw xrt_core::error(std::errc::invalid_argument);
+
+  int factor;
+  switch(conversion_unit) {
+    case unit::bytes :
+      factor = 1024;
+      break;
+    case unit::Hertz :
+      factor = 1000;
+      break;
+    default :
+      throw xrt_core::error(std::errc::invalid_argument);
+  }
 
   std::string units = "B";
   if(std::isalpha(str.back())) {
@@ -511,16 +523,16 @@ XBUtilities::string_to_bytes(std::string str)
     str.pop_back();
   }
 
-  uint64_t unit_bytes = 0;
+  uint64_t unit_value = 0;
   boost::to_upper(units);
   if(units.compare("B") == 0)
-    unit_bytes = 1;
+    unit_value = 1;
   else if(units.compare("K") == 0)
-    unit_bytes = 1024;
+    unit_value = factor;
   else if(units.compare("M") == 0)
-    unit_bytes = 1024*1024;
+    unit_value = factor * factor;
   else if(units.compare("G") == 0)
-    unit_bytes = 1024*1024*1024;
+    unit_value = factor * factor * factor;
   else
     throw xrt_core::error(std::errc::invalid_argument);
 
@@ -534,7 +546,7 @@ XBUtilities::string_to_bytes(std::string str)
     throw xrt_core::error(std::errc::invalid_argument);
   }
 
-  size *= unit_bytes;
+  size *= unit_value;
   return size;
 }
 
