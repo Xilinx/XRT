@@ -51,16 +51,16 @@ qspipsCommand(po::variables_map& vm)
     //optional command line args
     std::string flash_type = vm.count("flash-part") ? vm["flash-part"].as<std::string>() : "";
     std::string soffset = vm.count("offset") ? vm["offset"].as<std::string>() : "";
-    size_t offset = !soffset.empty() ? std::stoul(soffset) : 0;
+    size_t offset = !soffset.empty() ? std::stoul(soffset, nullptr, 0) : 0;
     bool force = vm.count("force") ? true : false;
     std::string sBar = vm.count("bar") ? vm["bar"].as<std::string>() : "";
-    int bar = !sBar.empty() ? std::stoi(sBar) : 0;
+    int bar = !sBar.empty() ? std::stoi(sBar, nullptr, 0) : 0;
     std::string sBarOffset = vm.count("bar-offset") ? vm["bar-offset"].as<std::string>() : "";
-    size_t baroff = !sBarOffset.empty() ? std::stoul(sBarOffset) : INVALID_OFFSET;   
+    size_t baroff = !sBarOffset.empty() ? std::stoul(sBarOffset, nullptr, 0) : INVALID_OFFSET;
 
     if (vm.count("erase")) { //qspips erase
         std::string slength = vm.count("length") ? vm["length"].as<std::string>() : "";
-        size_t len = !slength.empty()  ? std::stoi(slength) : GOLDEN_BASE;    
+        size_t len = !slength.empty()  ? std::stoi(slength, nullptr, 0) : GOLDEN_BASE;
 
         std::cout << "About to erase flash"
             << boost::format(" [0x%x, 0x%x] on device %s\n") % offset % (offset + len) % bdf;
