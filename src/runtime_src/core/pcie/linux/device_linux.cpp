@@ -266,7 +266,7 @@ struct sdm_sensor_info
     }
 
     if (path.empty())
-      throw xrt_core::query::sysfs_error("sysfs path not found");
+      throw xrt_core::query::sysfs_error("target hwmon_sdm sysfs path /sys/bus/pci/devices/<bdf>/hwmon/hwmon*/ not found");
 
     return get_sdm_sensors(device, req_type, path);
   } //get()
