@@ -429,6 +429,11 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType f
   boost::format programFmt("[%s] : %s...\n");
   std::cout << programFmt % flasher.sGetDBDF() % "Updating base (e.g., shell) flash image";
   std::map<std::string, std::string> validated_image = {{"primary", candidate.file}};
+  std::unique_ptr<firmwareImage> sec;
+  sec = std::make_unique<firmwareImage>(candidate.file, MCS_FIRMWARE_SECONDARY);
+  if (sec->good())
+    validated_image["secondary"] = candidate.file;
+
   update_shell(boardIdx, validated_image, flash_type);
   return true;
 }
