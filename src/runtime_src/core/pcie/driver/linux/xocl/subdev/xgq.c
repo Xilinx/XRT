@@ -765,7 +765,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
-		XGQ_INFO(xgq, "ret %d", cmd->xgq_cmd_rcode);
+		XGQ_INFO(xgq, "ret: %d, check VMR log for more info.", cmd->xgq_cmd_rcode);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
 		ret = len;
