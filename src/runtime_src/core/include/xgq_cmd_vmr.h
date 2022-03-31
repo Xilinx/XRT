@@ -287,10 +287,11 @@ struct xgq_cmd_cq_vmr_payload {
 	uint16_t ps_is_ready:1;
 	uint16_t pl_is_ready:1;
 	uint16_t resvd1:5;
-	uint16_t multi_boot_offset;
+	uint16_t current_multi_boot_offset;
 	uint32_t debug_level:3;
 	uint32_t program_progress:7;
-	uint32_t resvd2:22;
+	uint16_t resvd2:6;
+	uint16_t boot_on_offset;
 };
 
 /*
