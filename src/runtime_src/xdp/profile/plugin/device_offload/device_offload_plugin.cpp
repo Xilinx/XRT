@@ -229,9 +229,17 @@ namespace xdp {
         if (devInterface->hasTs2mm()) {
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
         }
-        delete offloader ;
-        delete logger ;
-        return ;
+        if (xrt_core::config::get_device_counters()) {
+          /* As device_counters is enabled, the offloader object is required for reading counters.
+           * So do not delete offlader and logger.
+           * As trace infrastructure could not be initialized, disable device_trace to avoid further issue.
+           */
+          device_trace = false;
+        } else {
+          delete offloader ;
+          delete logger ;
+          return ;
+        }
       }
     }
 
