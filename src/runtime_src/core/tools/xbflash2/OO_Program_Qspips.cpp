@@ -119,6 +119,7 @@ OO_Program_Qspips::OO_Program_Qspips( const std::string &_longName, bool _isHidd
       ("flash-part,p", po::value<std::string>(), "qspips-flash-type, default is qspi_ps_x2_single.\n")
       ("bar,b", po::value<std::string>(), "BAR-index, default is 0.\n")
       ("bar-offset,s", po::value<std::string>(), "BAR-offset-for-QSPIPS, default is 0x40000.\n")
+      ("length,l", po::value<std::string>(), "length-to-erase, default is 96MB.\n")
       ("image,i", po::value<std::vector<std::string>>(), "Specifies MCS or BOOT.BIN image path to update the persistent device.\n")
       ("erase,e", "Erase flash on the device.\n")
       ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
