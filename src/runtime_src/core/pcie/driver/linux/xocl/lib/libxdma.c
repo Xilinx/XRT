@@ -838,7 +838,6 @@ static void xdma_request_release(struct xdma_dev *xdev,
 	if (!req->dma_mapped) {
 		pci_unmap_sg(xdev->pdev, sgt->sgl, sgt->orig_nents,
 			     req->dir);
-		sgt->nents = 0;
 	}
 
 	xdma_request_free(req);
@@ -3354,7 +3353,6 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 	if (!dma_mapped) {
                 pci_unmap_sg(xdev->pdev, sgt->sgl, sgt->orig_nents,
                              engine->dir);
-                sgt->nents = 0;
         }
 
 	if (ret < 0)
