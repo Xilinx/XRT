@@ -1440,13 +1440,13 @@ static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
 
 	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
 		XOCL_XGQ_DOWNLOAD_TIME);
-
 	if (ret != len) {
 		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
 		ret = -EIO;
 	}
 
-	return ret;
+	XGQ_INFO(xgq, "successfully download len %ld", len);
+	return 0;
 }
 
 /* read firmware from /lib/firmware/xilinx, load via xgq */
@@ -1465,7 +1465,6 @@ static int xgq_download_apu_firmware(struct platform_device *pdev)
 		return ret;
 	}
 
-	XGQ_INFO(xgq, "start requesting apu firmware");
 	ret = xocl_request_firmware(&pcidev->dev, apu_bin,
 			&apu_bin_buf, &apu_bin_len);
 	if (ret)
