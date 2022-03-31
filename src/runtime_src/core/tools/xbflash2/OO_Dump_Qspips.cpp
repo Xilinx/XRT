@@ -54,13 +54,13 @@ qspips_readback(po::variables_map& vm)
     //Optional arguments
     std::string flash_type = vm.count("flash-part") ? vm["flash-part"].as<std::string>() : "";
     std::string soffset = vm.count("offset") ? vm["offset"].as<std::string>() : "";
-    size_t offset = !soffset.empty() ? std::stoul(soffset) : 0;
+    size_t offset = !soffset.empty() ? std::stoul(soffset, nullptr, 0) : 0;
     std::string slength = vm.count("length") ? vm["length"].as<std::string>() : "";
-    size_t len = !slength.empty() ? std::stoul(slength) : FLASH_SIZE;
+    size_t len = !slength.empty() ? std::stoul(slength, nullptr, 0) : FLASH_SIZE;
     std::string sBar = vm.count("bar") ? vm["bar"].as<std::string>() : "";
-    int bar = !sBar.empty() ? std::stoi(sBar) : 0;
+    int bar = !sBar.empty() ? std::stoi(sBar, nullptr, 0) : 0;
     std::string sBarOffset = vm.count("bar-offset") ? vm["bar-offset"].as<std::string>() : "";
-    size_t baroff = !sBarOffset.empty() ? std::stoul(sBarOffset) : INVALID_OFFSET;    
+    size_t baroff = !sBarOffset.empty() ? std::stoul(sBarOffset, nullptr, 0) : INVALID_OFFSET;
 
     std::cout << "Read out flash"
         << boost::format("[0x%x, 0x%x] on device %s to %s\n") % offset % (offset + len) % bdf % output;

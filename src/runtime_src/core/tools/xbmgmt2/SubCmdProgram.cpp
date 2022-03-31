@@ -429,6 +429,10 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType f
   boost::format programFmt("[%s] : %s...\n");
   std::cout << programFmt % flasher.sGetDBDF() % "Updating base (e.g., shell) flash image";
   std::map<std::string, std::string> validated_image = {{"primary", candidate.file}};
+  std::unique_ptr<firmwareImage> sec = std::make_unique<firmwareImage>(candidate.file, MCS_FIRMWARE_SECONDARY);
+  if (sec->good())
+    validated_image["secondary"] = candidate.file;
+
   update_shell(boardIdx, validated_image, flash_type);
   return true;
 }
@@ -731,10 +735,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the partition.")
-    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Value values:\n"
+    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
                                                                          "  ALL   - All images will be updated\n"
                                                                          "  SHELL - Platform image\n"
-                                                                         "  SC    - Satellite controller\n"
+                                                                         "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
                                                                          "  NO-BACKUP   - Backup boot remains unchanged")
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
