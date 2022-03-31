@@ -68,7 +68,7 @@ def running_counter(term, lock, len_x):
 def print_footer(term, lock, y_len):
     footer_buf = [
         XBUtil.fg.yellow + "'p'/'n' - Previous/Next Report" + XBUtil.fg.reset,
-        XBUtil.fg.yellow + "'<'/'>' - Previous/Next Report Page" + XBUtil.fg.reset,
+        XBUtil.fg.yellow + "'<'/'>' - Dec/Inc Page" + XBUtil.fg.reset,
         XBUtil.fg.yellow + "    'q' - Quit" + XBUtil.fg.reset
     ]
     XBUtil.indented_print(term, lock, footer_buf, 5, y_len - len(footer_buf))

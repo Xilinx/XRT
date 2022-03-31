@@ -123,7 +123,7 @@ class ReportMemory:
                 
                 size = int(memory['range_bytes'], 16)
                 if size == 0 or memory['enabled'] == "false":
-                    line.append("N/A")
+                    line.append("--  ")
                 else:
                     usage = int(memory['extended_info']['usage']['allocated_bytes'], 0)
                     line.append(XBUtil.get_percentage(usage, size))
