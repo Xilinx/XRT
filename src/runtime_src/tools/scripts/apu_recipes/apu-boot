@@ -1,5 +1,6 @@
 #!/bin/sh
 if [ -e /sys/bus/platform/devices/rpu-channel/ready ]; then
 	echo 1 > /sys/bus/platform/devices/rpu-channel/ready
+	useradd softkernel
 	chmod 666 /dev/aie0
 fi
