@@ -7,7 +7,9 @@
 xbflash2
 ========
 
-The Xilinx (R) Board Flash utility (xbflash2) is a standalone command line utility  to flash a custom image onto given device. This document describes the latest ``xbflash2`` commands. This is EA feature in 2022.1 release.
+The Xilinx (R) Board Flash utility (xbflash2) is a standalone command line utility to flash a custom image onto given device. This document describes the latest ``xbflash2`` commands.
+
+In 2022.1 release, this utility is Early Access with limited validation.
 
 This tool supported for all Alveo platforms, U2 and U30 platforms.
 
