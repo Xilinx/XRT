@@ -845,6 +845,12 @@ void zocl_destroy_client(void *client_hdl)
 	struct drm_zocl_slot *slot = NULL;
 	int pid = pid_nr(client->pid);
 
+	if (!zdev) {
+		zocl_info(client->dev, "client exits pid(%d)\n", pid);
+		kfree(client);
+		return;
+	}
+
 	kds = &zdev->kds;
 
 	/* kds_fini_client should released resources hold by the client.

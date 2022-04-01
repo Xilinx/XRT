@@ -605,10 +605,10 @@ zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			cu_info[i].args = (struct xrt_cu_arg *)&krnl_info->args[i];
 			cu_info[i].num_args = krnl_info->anums;
 			cu_info[i].size = krnl_info->range;
-		}
 
-		if (krnl_info->features & KRNL_SW_RESET)
-			cu_info[i].sw_reset = true;
+			if (krnl_info->features & KRNL_SW_RESET)
+				cu_info[i].sw_reset = true;
+		}
 
 		/* CU sub device is a virtual device, which means there is no
 		 * device tree nodes
@@ -1705,10 +1705,12 @@ zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path)
         }
 
 	if(dtbo_path) {
-		path = vmalloc(strlen(dtbo_path) + 1);
+		uint32_t len = strlen(dtbo_path);
+		path = vmalloc(len + 1);
 		if (!path)
 			return -ENOMEM;
-		copy_from_user(path, dtbo_path, strlen(dtbo_path));
+		copy_from_user(path, dtbo_path, len);
+		path[len] = '\0';
 	}
 
         slot->slot_xclbin->zx_dtbo_path = path;
