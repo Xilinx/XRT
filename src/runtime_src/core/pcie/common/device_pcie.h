@@ -17,7 +17,7 @@
 #ifndef DEVICE_PCIE_H
 #define DEVICE_PCIE_H
 
-#include "common/device.h"
+#include "core/common/device.h"
 
 namespace xrt_core {
 
