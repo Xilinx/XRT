@@ -200,40 +200,6 @@ err:
 void xrt_cu_scu_fini(struct xrt_cu *xcu)
 {
 	struct xrt_cu_scu *core = xcu->core;
-	struct pid *p = NULL;
-	struct task_struct *task = NULL;
-	int ret = 0;
-
-	// Wait for PS Kernel Process to finish
-	p = find_get_pid(core->sc_pid);
-	if(!p) {
-		// Process already gone
-		goto skip_kill;
-	}
-
-	task = pid_task(p, PIDTYPE_PID);
-	if(!task) {
-		DRM_WARN("Failed to get task for pid %d\n",core->sc_pid);
-		put_pid(p);
-		goto skip_kill;
-	}
-
-	if(core->sc_parent_pid != task_ppid_nr(task)) {
-		DRM_WARN("Parent pid does not match\n");
-		put_pid(p);
-		goto skip_kill;
-	}
-
-	ret = kill_pid(p, SIGTERM, 1);
-	if (ret) {
-		DRM_WARN("Failed to terminate SCU pid %d.  Performing SIGKILL.\n",core->sc_pid);
-		kill_pid(p, SIGKILL, 1);
-	}
-	// Wait for process with pid to finish
-	p = find_get_pid(core->sc_pid);
-	while (p) {
-		p = find_get_pid(core->sc_pid);
-	}
 
 	xrt_cu_fini(xcu);
 

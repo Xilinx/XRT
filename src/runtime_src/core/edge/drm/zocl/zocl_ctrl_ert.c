@@ -329,6 +329,7 @@ static void zert_destroy_cus(struct zocl_ctrl_ert *zert)
 	// TO-DO: Will need to make this more robust in future
 	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
 		if (cu->zcec_pdev) {
+			zocl_scu_sk_shutdown(cu->zcec_pdev);
 			zlib_destroy_subdev(cu->zcec_pdev);
 			cu->zcec_pdev = NULL;
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
