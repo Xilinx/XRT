@@ -230,8 +230,7 @@ namespace xrt {
     // Check if SCU is still in running state
     // If it is, that means it has crashed
     if((args_from_host[0] & 0x1) == 1) {
-      args_from_host[0] = 2;
-      args_from_host[1] = -1;
+      report_crash();  // Function to report crash to kernel - not implemented yet in kernel space
     }
     // Unmap command BO
     if(cmd_boh >= 0) {

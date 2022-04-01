@@ -316,8 +316,8 @@ static int
 zocl_read_sect_kernel(enum axlf_section_kind kind, void *sect,
 		      struct axlf *axlf_full, char *xclbin_ptr)
 {
-	uint64_t offset;
-	uint64_t size;
+	uint64_t offset = 0;
+	uint64_t size = 0;
 	void **sect_tmp = (void *)sect;
 	int err = 0;
 
