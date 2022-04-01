@@ -39,6 +39,7 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_DONE  = 2;
   const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
   const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
+  void messagesThread(xclcpuemhal2::CpuemShim* inst);
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
@@ -215,6 +216,7 @@ namespace xclcpuemhal2 {
     {
       message_size = 0x800000;
     }
+    mMessengerThreadStarted = false;
     mCloseAll = false;
     bUnified = _unified;
     bXPR = _xpr;
@@ -649,6 +651,11 @@ namespace xclcpuemhal2 {
 
     std::string binaryDirectory("");
     launchDeviceProcess(debuggable,binaryDirectory);
+    //Check if device_process.log already exists. Remove if exits.
+    std::string extIoTxtFile = deviceDirectory + "/../../../device_process.log";
+    FILE* fp = fopen(extIoTxtFile.c_str(), "rb");
+    if (fp != NULL)
+      systemUtil::makeSystemCall(extIoTxtFile, systemUtil::systemOperation::REMOVE); 
 
     if(header)
     {
@@ -823,6 +830,11 @@ namespace xclcpuemhal2 {
       if(mLogStream.is_open())
         verbose = true;
       xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
+      //Thread to fetch messages from Device to display on host	  
+      if(mMessengerThreadStarted == false) {
+        mMessengerThread = std::thread(xclcpuemhal2::messagesThread,this);
+        mMessengerThreadStarted = true;
+      }
       if(!ack)
         return -1;
     }
@@ -1460,9 +1472,61 @@ namespace xclcpuemhal2 {
       xclClose_RPC_CALL(xclClose,this);
 #endif
     }
+   closemMessengerThread();
    saveDeviceProcessOutput();
   }
 
+  void CpuemShim::closemMessengerThread()
+  {
+    if (mMessengerThreadStarted) {
+      mMessengerThread.join();
+      mMessengerThreadStarted = false;
+    }
+  }
+
+  void messagesThread(xclcpuemhal2::CpuemShim *inst)
+  {  
+    static auto start_time = std::chrono::high_resolution_clock::now();
+    unsigned int timeCheck = 0;
+    unsigned int parseCount = 0;
+    while (inst)
+    {
+      sleep(50);
+      auto end_time = std::chrono::high_resolution_clock::now();
+      if (std::chrono::duration<double>(end_time - start_time).count() > timeCheck) {
+        start_time = std::chrono::high_resolution_clock::now();
+        inst->parseLog();
+        parseCount++;
+        if (parseCount%5 == 0 && timeCheck < 300) {
+          timeCheck += 10;
+        }
+      }
+    }
+  }
+  
+  int CpuemShim::parseLog()
+  {
+    std::vector<std::string> myvector = {"received request to end simulation from connected initiator"};
+    std::ifstream ifs(deviceDirectory + "/../../../device_process.log");
+	std::string logparse = deviceDirectory + "/../../../device_process.log";
+    if (ifs.is_open()) {
+      std::string line;
+      while (std::getline(ifs, line)) {
+        for (auto matchString : myvector) {
+          std::string::size_type index = line.find(matchString);
+          if (index != std::string::npos) {
+            if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
+              parsedMsgs.push_back(line);
+              std::cout << "Received request to end simulation from connected initiator. Press Cntrl+C to exit the application. " << std::endl; 
+			  //xclClose(); TO-DO : final solution is to call xclclose
+            }
+          }
+        }
+      }
+    }
+    return 0;
+  }
+  
   void CpuemShim::xclClose()
   {
     std::lock_guard<std::mutex> lk(mApiMtx);
@@ -1537,6 +1601,7 @@ namespace xclcpuemhal2 {
 
   CpuemShim::~CpuemShim()
   {
+    parsedMsgs.clear();
     if (mIsKdsSwEmu && mSWSch && mCore)
     {
       mSWSch->fini_scheduler_thread();
@@ -1568,6 +1633,7 @@ namespace xclcpuemhal2 {
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
       memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
     }
+    closemMessengerThread();
   }
 
   /**********************************************HAL2 API's START HERE **********************************************/
