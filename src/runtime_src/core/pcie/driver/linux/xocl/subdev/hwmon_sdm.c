@@ -293,6 +293,11 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	uint32_t uval = 0;
 	ssize_t sz = 0;
 
+	if (repo_id >= SDR_TYPE_MAX) {
+		xocl_dbg(&sdm->pdev->dev, "repo_id: 0x%x is corrupted or not supported\n", repo_id);
+		return sprintf(buf, "%d\n", 0);
+	}
+
 	mutex_lock(&sdm->sdm_lock);
 	get_sensors_data(sdm->pdev, repo_id);
 
