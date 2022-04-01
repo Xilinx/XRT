@@ -287,7 +287,10 @@ struct platform_device *zocl_find_pdev(char *name);
 static inline struct drm_zocl_dev *
 zocl_get_zdev(void)
 {
-	return platform_get_drvdata(zocl_find_pdev("zyxclmm_drm"));
+	struct platform_device *pdev = zocl_find_pdev("zyxclmm_drm");
+	if(!pdev)
+		return NULL;
+	return platform_get_drvdata(pdev);
 }
 int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr);
 int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx);

@@ -291,7 +291,8 @@ static int cu_remove(struct platform_device *pdev)
 		free_irq(zcu->irq, zcu);
 
 	zdev = zocl_get_zdev();
-	zocl_kds_del_cu(zdev, &zcu->base);
+	if(zdev)
+		zocl_kds_del_cu(zdev, &zcu->base);
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);
