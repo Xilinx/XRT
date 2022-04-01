@@ -335,9 +335,8 @@ xclGetErrorStatus(xclDeviceHandle handle, struct xclErrorStatus *info);
  * @buffer:        Pointer to device image (xclbin) in memory
  * Return:         0 on success or appropriate error number
  *
- * Download FPGA image (AXLF) to the device. The PR bitstream is
- * encapsulated inside xclbin as a section. xclbin may also contains
- * other sections which are suitably handled by the driver.
+ * | Download FPGA image (AXLF) to the device. The PR bitstream is encapsulated inside xclbin as a section. xclbin may also contains other sections which are suitably handled by the driver.
+ * | **NOTE**: This api also downloads OVERLAY(dtbo) section (Applicable only for Edge Platforms)
  */
 XCL_DRIVER_DLLESPEC
 int
