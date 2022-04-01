@@ -13,9 +13,9 @@
 * License for the specific language governing permissions and limitations
 * under the License.
 */
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/filesystem.hpp>
+#include <cstring>
+#include <fstream>
+#include <iostream>
 // XRT includes
 #include "experimental/xrt_system.h"
 #include "xrt/xrt_device.h"
@@ -58,8 +58,8 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    auto binaryfile = boost::filesystem::path(test_path) / b_file;
-    std::ifstream infile(binaryfile.string());
+    std::string binaryfile = test_path + b_file;
+    std::ifstream infile(binaryfile);
     if (flag_s) {
         if (!infile.good()) {
             std::cout << "\nNOT SUPPORTED" << std::endl;
@@ -70,9 +70,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::string filename = "/platform.json";
-    auto platform_json = boost::filesystem::path(test_path) / filename;
-
     if (!infile.good()) {
         std::cout << "\nNOT SUPPORTED" << std::endl;
         return EOPNOTSUPP;
@@ -82,7 +79,7 @@ int main(int argc, char** argv) {
 
     auto device = xrt::device {dev_id};
 
-    auto uuid = device.load_xclbin(binaryfile.string());
+    auto uuid = device.load_xclbin(binaryfile);
     auto bandwidth_kernel = xrt::kernel(device, uuid, "bandwidth_kernel");
 
     auto max_throughput_bo = xrt::bo(device, 4096, bandwidth_kernel.group_id(1));

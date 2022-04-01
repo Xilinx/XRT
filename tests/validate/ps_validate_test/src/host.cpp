@@ -13,8 +13,10 @@
 * License for the specific language governing permissions and limitations
 * under the License.
 */
-#include <boost/filesystem.hpp>
 #include <algorithm>
+#include <cstring>
+#include <fstream>
+#include <iostream>
 #include <vector>
 // XRT includes
 #include "experimental/xrt_system.h"
@@ -53,8 +55,8 @@ int main(int argc, char** argv) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
-    auto binaryfile = boost::filesystem::path(test_path) / b_file;
-    std::ifstream infile(binaryfile.string());
+    std::string binaryfile = test_path + b_file;
+    std::ifstream infile(binaryfile);
     if (flag_s) {
         if (!infile.good()) {
             std::cout << "\nNOT SUPPORTED" << std::endl;
@@ -74,7 +76,7 @@ int main(int argc, char** argv) {
 
     auto device = xrt::device {dev_id};
 
-    auto uuid = device.load_xclbin(binaryfile.string());
+    auto uuid = device.load_xclbin(binaryfile);
     auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
     const size_t DATA_SIZE = COUNT * sizeof(int);
     auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
