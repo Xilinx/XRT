@@ -467,8 +467,8 @@ scheduler_update_stat(const xrt_core::device *device)
   try {
     // lock xclbin
     std::string xclbin_uuid = xrt_core::device_query<xq::xclbin_uuid>(dev);
-    // dont open a context if xclbin_uuid is empty
-    if(xclbin_uuid.empty())
+    // dont open a context if xclbin_uuid is empty or is all zeros
+    if (xclbin_uuid.empty() || !xrt::uuid(xclbin_uuid))
       return;
     auto uuid = xrt::uuid(xclbin_uuid);
     dev->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);
