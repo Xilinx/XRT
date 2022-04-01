@@ -438,9 +438,12 @@ read_electrical(const xrt_core::device * device)
     if (!current.empty() || !voltage.empty() || !power.empty())
       return read_data_driven_electrical(current, voltage, power);
     else
-      is_data_driven = false;
+      return sensor_array;
   }
   catch(const xrt_core::query::no_such_key&) {
+    is_data_driven = false;
+  }
+  catch(const xrt_core::query::exception&) {
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
@@ -465,10 +468,16 @@ read_thermals(const xrt_core::device * device)
   //Check if requested sensor data can be retrieved in data driven model.
   try {
     output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::thermal);
-    if (output.empty())
-      is_data_driven = false;
+    if (output.empty()) {
+      thermal_array.put("error_msg", "Information unavailable");
+      root.add_child("thermals", thermal_array);
+      return root;
+    }
   }
   catch(const xrt_core::query::no_such_key&) {
+    is_data_driven = false;
+  }
+  catch(const xrt_core::query::exception&) {
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
@@ -494,10 +503,16 @@ read_mechanical(const xrt_core::device * device)
   //Check if requested sensor data can be retrieved in data driven model.
   try {
     output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::mechanical);
-    if (output.empty())
-      is_data_driven = false;
+    if (output.empty()) {
+      fan_array.put("error_msg", "Information unavailable");
+      root.add_child("fans", fan_array);
+      return root;
+    }
   }
   catch(const xrt_core::query::no_such_key&) {
+    is_data_driven = false;
+  }
+  catch(const xrt_core::query::exception&) {
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
