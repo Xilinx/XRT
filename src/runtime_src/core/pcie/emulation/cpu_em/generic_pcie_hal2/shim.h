@@ -175,7 +175,10 @@ namespace xclcpuemhal2 {
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
-      
+
+      int parseLog();
+      std::vector<std::string> parsedMsgs;
+
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
@@ -411,7 +414,7 @@ namespace xclcpuemhal2 {
       // */
       // int
       //   xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size);
-
+    
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;
@@ -434,6 +437,7 @@ namespace xclcpuemhal2 {
       std::string dec2bin(uint32_t n);
       std::string dec2bin(uint32_t n, unsigned bits);
 
+      void closemMessengerThread();
       std::mutex mtx;
       unsigned int message_size;
       bool simulator_started;
@@ -444,6 +448,8 @@ namespace xclcpuemhal2 {
       std::vector<std::string> mTempdlopenfilenames;
       std::string deviceName;
       std::string deviceDirectory;
+      std::thread mMessengerThread;
+      bool mMessengerThreadStarted;
       std::list<xclemulation::DDRBank> mDdrBanks;
       std::map<uint64_t,std::pair<std::string,unsigned int>> kernelArgsInfo;
       xclDeviceInfo2 mDeviceInfo;
