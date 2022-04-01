@@ -161,6 +161,8 @@ namespace xclcpuemhal2 {
       int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
       int xclExecWait(int timeoutMilliSec);
       int xclExecBuf(unsigned int cmdBO);
+      std::vector<std::string> parsedMsgs;
+      int parseLog();
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
       //Get CU index from IP_LAYOUT section for corresponding kernel name
       int xclIPName2Index(const char *name);
@@ -326,6 +328,7 @@ namespace xclcpuemhal2 {
       uint32_t getPerfMonByteScaleFactor(xclPerfMonType type);
       uint8_t  getPerfMonShowIDS(xclPerfMonType type);
       uint8_t  getPerfMonShowLEN(xclPerfMonType type);
+      void closemMessengerThread();
       size_t resetFifos(xclPerfMonType type);
       uint32_t bin2dec(std::string str, int start, int number);
       uint32_t bin2dec(const char * str, int start, int number);
@@ -342,6 +345,8 @@ namespace xclcpuemhal2 {
       std::vector<std::string> mTempdlopenfilenames;
       std::string deviceName;
       std::string deviceDirectory;
+      std::thread mMessengerThread;
+      bool mMessengerThreadStarted;
       std::list<xclemulation::DDRBank> mDdrBanks;
       std::map<uint64_t,std::pair<std::string,unsigned int>> kernelArgsInfo;
       xclDeviceInfo2 mDeviceInfo;
