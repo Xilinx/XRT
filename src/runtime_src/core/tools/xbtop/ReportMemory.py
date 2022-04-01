@@ -15,6 +15,9 @@ import pyxrt
 
 
 class ReportMemory:
+    # Python value used as second parameter for int() to convert hexadecimal strings into ints
+    hexadecimal_converion = 16
+
     def report_name(self):
         return "Memory"
 
@@ -69,7 +72,7 @@ class ReportMemory:
             # Ensure that our index does not exceed the input data size. This may happen on the last page
             if (index < len(memories)):
                 memory = memories[index]
-                size = int(memory['range_bytes'], 16)
+                size = int(memory['range_bytes'], self.hexadecimal_converion)
                 if size == 0 or memory['enabled'] == "false":
                     continue
                 name = memory['tag']
@@ -118,10 +121,10 @@ class ReportMemory:
                 line.append(memory['tag'])
                 line.append(memory['type'])
                 line.append(memory['extended_info']['temperature_C'] if 'temperature_C' in memory['extended_info'] else "--")
-                line.append(XBUtil.convert_size(int(memory['range_bytes'],16)))
+                line.append(XBUtil.convert_size(int(memory['range_bytes'], self.hexadecimal_converion)))
                 line.append(XBUtil.convert_size(int(memory['extended_info']['usage']['buffer_objects_count'],0)))
                 
-                size = int(memory['range_bytes'], 16)
+                size = int(memory['range_bytes'], self.hexadecimal_converion)
                 if size == 0 or memory['enabled'] == "false":
                     line.append("--  ")
                 else:
@@ -175,8 +178,8 @@ class ReportMemory:
                 dma_metric = dma_metrics[index]
                 line.append(str(i))
                 line.append(dma_metric['channel_id'])
-                line.append(XBUtil.convert_size(int(dma_metric['host_to_card_bytes'], 16)))
-                line.append(XBUtil.convert_size(int(dma_metric['card_to_host_bytes'], 16)))
+                line.append(XBUtil.convert_size(int(dma_metric['host_to_card_bytes'], self.hexadecimal_converion)))
+                line.append(XBUtil.convert_size(int(dma_metric['card_to_host_bytes'], self.hexadecimal_converion)))
                 data.append(line)
             # If the index exceeds the input data size leave the for loop as everything is populated on the
             # last page
