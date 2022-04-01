@@ -1250,9 +1250,12 @@ namespace xclcpuemhal2 {
 
     for (auto& it: mFdToFileNameMap) {
       int fd = it.first;
-      uint64_t sSize = std::get<1>(it.second);
-      void* addr = std::get<2>(it.second);
-      munmap(addr,sSize);
+      // CR-1123001 munmap() call is not required while exiting the application
+      // OS will take care of cleaning once file descriptor close call is performed.
+      
+      //uint64_t sSize = std::get<1>(it.second);
+      //void* addr = std::get<2>(it.second);
+      //munmap(addr,sSize);
       close(fd);
     }
     mFdToFileNameMap.clear();
