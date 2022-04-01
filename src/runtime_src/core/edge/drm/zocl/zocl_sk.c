@@ -207,7 +207,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 int

@@ -229,6 +229,11 @@ void xrt_cu_scu_fini(struct xrt_cu *xcu)
 		DRM_WARN("Failed to terminate SCU pid %d.  Performing SIGKILL.\n",core->sc_pid);
 		kill_pid(p, SIGKILL, 1);
 	}
+	// Wait for process with pid to finish
+	p = find_get_pid(core->sc_pid);
+	while(p) {
+		p = find_get_pid(core->sc_pid);
+	}
 	put_pid(p);
 
 	xrt_cu_fini(xcu);
