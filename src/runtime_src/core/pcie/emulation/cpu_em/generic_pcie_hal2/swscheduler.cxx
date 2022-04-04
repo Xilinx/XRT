@@ -1099,10 +1099,9 @@ namespace xclcpuemhal2 {
     //int retval = pthread_join(mScheduler->scheduler_thread,NULL);
     int retval = 0;
     
-    if(mScheduler->scheduler_thread.joinable()){
+    if (mScheduler->scheduler_thread.joinable())
       mScheduler->scheduler_thread.join();
-    }
-    
+   
     pending_cmds.clear();
     mScheduler->command_queue.clear();
     free_cmds.clear();
