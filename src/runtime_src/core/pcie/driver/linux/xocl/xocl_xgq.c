@@ -168,7 +168,6 @@ int xocl_xgq_check_response(void *xgq_handle, int id)
 	xocl_xgq_handle_resp(xgq, target_id, addr);
 
 	xgq_notify_peer_consumed(&xgq->xx_xgq);
-	printk("minm id %d got target id %d\n", id, target_id);
 	if (id != target_id)
 		ret = -ENOENT;
 unlock_and_out:
