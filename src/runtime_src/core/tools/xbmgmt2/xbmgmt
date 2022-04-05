@@ -22,8 +22,8 @@ XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
     case "$1" in
     # Indicates that the legacy was specified
-	-legacy|--legacy)
-	    echo "--------------------------------------------------"
+    -legacy|--legacy)
+        echo "--------------------------------------------------"
         echo "Error: Obsoleted option"
         echo "       The --legacy option is no longer supported."
         echo "--------------------------------------------------"
