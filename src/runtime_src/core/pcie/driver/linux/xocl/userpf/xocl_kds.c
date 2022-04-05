@@ -463,6 +463,8 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 
 		scmd = (struct ert_start_kernel_cmd *)ecmd;
 		scmd->return_code = xcmd->rcode;
+
+		client_stat_inc(client, scu_c_cnt[xcmd->cu_idx]);
 	}
 
 	if (status == KDS_COMPLETED)
@@ -490,7 +492,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 	kfree(xcmd->execbuf);
 
-	if (xcmd->cu_idx >= 0)
+	if (xcmd->opcode == OP_START)
 		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {

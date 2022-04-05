@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo CU Sub-device Driver
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2020-2022 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -397,9 +397,6 @@ static int cu_probe(struct platform_device *pdev)
 	case XCU_HLS:
 		err = xrt_cu_hls_init(&xcu->base);
 		break;
-	case XCU_PLRAM:
-		err = xrt_cu_plram_init(&xcu->base);
-		break;
 	case XCU_FA:
 		err = xrt_cu_fa_init(&xcu->base);
 		break;
@@ -469,9 +466,6 @@ static int cu_remove(struct platform_device *pdev)
 	switch (info->model) {
 	case XCU_HLS:
 		xrt_cu_hls_fini(&xcu->base);
-		break;
-	case XCU_PLRAM:
-		xrt_cu_plram_fini(&xcu->base);
 		break;
 	case XCU_FA:
 		xrt_cu_fa_fini(&xcu->base);
