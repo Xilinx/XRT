@@ -765,7 +765,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
-		XGQ_INFO(xgq, "ret %d", cmd->xgq_cmd_rcode);
+		XGQ_INFO(xgq, "ret: %d, check VMR log for more info.", cmd->xgq_cmd_rcode);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
 		ret = len;
@@ -1401,61 +1401,85 @@ static uint64_t xgq_get_data(struct platform_device *pdev,
 	return target;
 }
 
-static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
-	size_t len)
+static bool vmr_check_apu_is_ready(struct xocl_xgq_vmr *xgq)
 {
-	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xgq_cmd_cq_vmr_payload *vmr_status =
 		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
-	int ret = 0;
+
+	if (vmr_status_query(xgq->xgq_pdev))
+		return false;
+
+	return vmr_status->ps_is_ready ? true : false;
+}
+
+static int vmr_wait_apu_is_ready(struct xocl_xgq_vmr *xgq)
+{
+	bool is_ready = false;
 	int i = 0;
-
-	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
-		XOCL_XGQ_DOWNLOAD_TIME);
-
-	if (ret != len) {
-		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
-		return -EIO;
-	}
 
 	/*
 	 * We wait till the apu is back online or report EBUSY after a
 	 * certain time.
 	 */
 	for (i = 0; i < MAX_WAIT; i++) {
-
-		if (vmr_status_query(xgq->xgq_pdev)) {
-			ret = -EIO;
+		is_ready = vmr_check_apu_is_ready(xgq);
+		if (is_ready)
 			break;
-		}
-		if (vmr_status->ps_is_ready) {
-			break;
-		}
 
 		msleep(WAIT_INTERVAL);
 	}
 
-	XGQ_INFO(xgq, "wait %d seconds for PS ready value: %d", i, vmr_status->ps_is_ready);
-	return vmr_status->ps_is_ready ? 0 : -ETIME;
+	XGQ_INFO(xgq, "wait %d seconds for PS ready value: %d", i, is_ready);
+	return is_ready ? 0 : -ETIME;
+}
+
+static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
+	size_t len)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
+		XOCL_XGQ_DOWNLOAD_TIME);
+	if (ret != len) {
+		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
+		ret = -EIO;
+	}
+
+	XGQ_INFO(xgq, "successfully download len %ld", len);
+	return 0;
 }
 
 /* read firmware from /lib/firmware/xilinx, load via xgq */
 static int xgq_download_apu_firmware(struct platform_device *pdev)
 {
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
 	char *apu_bin = "xilinx/xrt-versal-apu.xsabin";
 	char *apu_bin_buf = NULL;
 	size_t apu_bin_len = 0;
 	int ret = 0;
 
+	/* APU is ready, no dup download */
+	if (vmr_check_apu_is_ready(xgq)) {
+		XGQ_INFO(xgq, "apu is ready, skip download");
+		return ret;
+	}
+
 	ret = xocl_request_firmware(&pcidev->dev, apu_bin,
 			&apu_bin_buf, &apu_bin_len);
 	if (ret)
 		return ret;
+
+	XGQ_INFO(xgq, "start vmr-downloading apu firmware");
 	ret = xgq_download_apu_bin(pdev, apu_bin_buf, apu_bin_len);
 	vfree(apu_bin_buf);
+	if (ret) 
+		return ret;
 
-	return ret;
+	XGQ_INFO(xgq, "start waiting apu becomes ready");
+	/* wait till apu is ready or return -ETIME */
+	return vmr_wait_apu_is_ready(xgq);
 }
 
 static int vmr_control_op(struct platform_device *pdev,
@@ -1468,6 +1492,10 @@ static int vmr_control_op(struct platform_device *pdev,
 	int ret = 0;
 	int id = 0;
 
+	if (xgq->xgq_halted) {
+		XGQ_WARN(xgq, "VMR XGQ service is haulted. skip.");
+		return -EIO;
+	}
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
@@ -1844,7 +1872,8 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "BOOT_ON_DEFAULT:%d\n", vmr_status->boot_on_default);
 	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n", vmr_status->boot_on_backup);
 	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n", vmr_status->boot_on_recovery);
-	cnt += sprintf(buf + cnt, "MULTI_BOOT_OFFSET:0x%x\n", vmr_status->multi_boot_offset);
+	cnt += sprintf(buf + cnt, "CURRENT_MULTI_BOOT_OFFSET:0x%x\n", vmr_status->current_multi_boot_offset);
+	cnt += sprintf(buf + cnt, "BOOT_ON_OFFSET:0x%x\n", vmr_status->boot_on_offset);
 	cnt += sprintf(buf + cnt, "HAS_EXTFPT:%d\n", vmr_status->has_extfpt);
 	cnt += sprintf(buf + cnt, "HAS_EXT_META_XSABIN:%d\n", vmr_status->has_ext_xsabin);
 	cnt += sprintf(buf + cnt, "HAS_EXT_SC_FW:%d\n", vmr_status->has_ext_scfw);
