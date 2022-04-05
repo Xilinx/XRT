@@ -1,5 +1,5 @@
 /*
- * Partial Copyright (C) 2019-2021 Xilinx, Inc
+ * Partial Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Microsoft provides sample code how RESTful APIs are being called
  *
@@ -225,6 +225,8 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
 int AzureDev::azureLoadXclBin(const xclBin *buffer)
 {
     char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
+    bool allow_unattested_xclbin = false;
+
     if (memcmp(xclbininmemory, "xclbin2", 8) != 0)
         return -1;
     std::string fpgaSerialNumber;
@@ -234,8 +236,13 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
         return -E_EMPTY_SN;
     std::cout << "LoadXclBin FPGA serial No: " << fpgaSerialNumber << std::endl;
 
+    char* env = getenv("AZURE_UNATTESTED_XCLBIN");
+    if (env && !strcmp(env, "true"))
+        allow_unattested_xclbin = true;
+
     // check if the xclbin is valid
-    if (xclbin::get_axlf_section(buffer, BITSTREAM) != nullptr) {
+    if (!allow_unattested_xclbin &&
+        (xclbin::get_axlf_section(buffer, BITSTREAM) != nullptr)) {
         std::cout << "xclbin is invalid, please provide azure xclbin" << std::endl;
         return -E_INVALID_XCLBIN;
     }
