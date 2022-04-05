@@ -225,7 +225,6 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
 int AzureDev::azureLoadXclBin(const xclBin *buffer)
 {
     char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
-    bool allow_unattested_xclbin = false;
 
     if (memcmp(xclbininmemory, "xclbin2", 8) != 0)
         return -1;
@@ -236,7 +235,8 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
         return -E_EMPTY_SN;
     std::cout << "LoadXclBin FPGA serial No: " << fpgaSerialNumber << std::endl;
 
-    char* env = getenv("AZURE_UNATTESTED_XCLBIN");
+    bool allow_unattested_xclbin = false;
+    char* env = getenv("ALLOW_UNATTESTED_XCLBIN");
     if (env && !strcmp(env, "true"))
         allow_unattested_xclbin = true;
 
