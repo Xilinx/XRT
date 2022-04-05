@@ -13,13 +13,6 @@ message("----XRT_BINARY_DIR=${XRT_BINARY_DIR}")
 message("----XRT_INSTALL_DIR=${XRT_INSTALL_DIR}")
 message("----XRT_BUILD_INSTALL_DIR=${XRT_BUILD_INSTALL_DIR}")
 #enable_testing()
-add_test(NAME xbmgmt
-  COMMAND ${XRT_BINARY_DIR}/runtime_src/core/pcie/tools/xbmgmt/xbmgmt scan
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-
-add_test(NAME xbutil
-  COMMAND ${XRT_BINARY_DIR}/runtime_src/core/pcie/tools/xbutil/xbutil scan
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_test(NAME xbutil2
   COMMAND ${XRT_BINARY_DIR}/runtime_src/core/tools/xbutil2/xbutil2 examine
@@ -35,5 +28,3 @@ add_test(NAME python_binding
 
 set_tests_properties(python_binding PROPERTIES ENVIRONMENT
   "PYTHONPATH=${XRT_BUILD_INSTALL_DIR}/python;XILINX_XRT=${XRT_BUILD_INSTALL_DIR}")
-
-set_tests_properties(xbutil xbmgmt PROPERTIES ENVIRONMENT INTERNAL_BUILD=1)
