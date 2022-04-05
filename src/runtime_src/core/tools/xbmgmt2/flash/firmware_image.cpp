@@ -753,7 +753,7 @@ firmwareImage::firmwareImage(const std::string& file, imageType type) :
     }
     else
     {
-        if (type != BMC_FIRMWARE && type != MCS_FIRMWARE_PRIMARY)
+        if ((type != BMC_FIRMWARE) && (type != MCS_FIRMWARE_PRIMARY))
         {
             this->setstate(failbit);
             std::cout << "non-dsabin supports only primary bitstream: " << file << std::endl;
