@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdDump.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -138,7 +139,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration, requires a .ini output file by -o option")
     ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image, requires a .bin output file by -o option")
     ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
-    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
@@ -147,11 +148,13 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
+  po::positional_options_description positionals;
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;

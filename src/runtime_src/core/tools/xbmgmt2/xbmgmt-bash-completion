@@ -50,6 +50,10 @@ _command_word_xbmgmt_completion()
       _filedir
       options=""
       ;;
+    --input)
+      ;;
+    --retention)
+      ;;
     *)
       # Default to using the passed in options if no particular option is used
       options=$1
@@ -72,7 +76,8 @@ _xbmgmt_completion()
   case ${COMP_CWORD} in
     # Case for command after xbutil
     1)
-      options="dump examine program reset ${commonSubCommands}"
+      commandWordOptions="configure dump examine program reset ${commonSubCommands}"
+      _command_word_xbmgmt_completion "${commandWordOptions}"
       ;;
     # Case for options after the above command is entered
     *)
@@ -82,6 +87,10 @@ _xbmgmt_completion()
       commonSubCommands="--device -d ${commonSubCommands}"
       # Once a command is identified the options will always be the same
       case ${commandWord} in
+        "configure")
+          configureOptions="--input --retention ${commonSubCommands}"
+          _command_word_xbmgmt_completion "${configureOptions}"
+          ;;
         "dump")
           options="--flash -f --config -c --output -o ${commonSubCommands}"
           ;;

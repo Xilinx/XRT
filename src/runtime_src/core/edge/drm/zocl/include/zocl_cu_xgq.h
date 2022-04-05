@@ -19,10 +19,8 @@
 /*
  * Resources for one cu xgq device.
  */
-/* Producer pointer reg. Use in-mem version, if not provided. */
-#define	ZCX_RES_SQ_PROD		"ZOCL_CU_XGQ_SQ_PRODUDER"
-/* Consumer pointer reg. Use in-mem version, if not provided. */
-#define	ZCX_RES_CQ_PROD		"ZOCL_CU_XGQ_CQ_PRODUDER"
+/* XGQ IP reg. Use in-mem version, if not provided. */
+#define	ZCX_RES_XGQ_IP		"ZOCL_CU_XGQ_IP"
 /* Reg to trigger interrupt to peer. Use prod/con pointer regs, if not provided. */
 #define	ZCX_RES_CQ_PROD_INT	"ZOCL_CU_XGQ_CQ_PRODUCER_INT"
 /* Shared ring buffer. */
@@ -37,7 +35,7 @@ struct zocl_cu_xgq_info {
 	struct platform_device *zcxi_intc_pdev;
 };
 
-int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx);
-int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx);
+int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain);
+int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain);
 
 #endif /* _ZOCL_CU_XGQ_H_ */

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,7 +17,9 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportHost.h"
+#include "XBUtilitiesCore.h"
 #include "XBUtilities.h"
+#include "Table2D.h"
 #include "core/common/system.h"
 
 // 3rd Party Library - Include Files
@@ -57,7 +59,6 @@ ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
   // There can only be 1 root node
   _pt.add_child("host", pt);
 }
-
 
 void
 ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
@@ -109,13 +110,26 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   _output << "Devices present\n";
   const boost::property_tree::ptree& available_devices = _pt.get_child("host.devices", empty_ptree);
 
-  if(available_devices.empty())
+  if (available_devices.empty())
     _output << "  0 devices found" << std::endl;
-  
-  for(auto& kd : available_devices) {
+
+  const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::right};
+  const Table2D::HeaderData colon = {":", Table2D::Justification::right};
+  const Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::right};
+  const Table2D::HeaderData id = {"Platform UUID", Table2D::Justification::right};
+  const Table2D::HeaderData instance = {"Device ID", Table2D::Justification::right};
+  const Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::right};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance, ready};
+  Table2D device_table(table_headers);
+
+  for (const auto& kd : available_devices) {
     const boost::property_tree::ptree& dev = kd.second;
-    std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
-    _output << boost::format("  [%s] : %s %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % dev.get<std::string>("instance", "") % note;
+    const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
+    const std::string ready_string = dev.get<bool>("is_ready", false) ? "Yes" : "No";
+    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("vbnv", "n/a"), dev.get<std::string>("id", "n/a"), dev.get<std::string>("instance", "n/a"), ready_string};
+    device_table.addEntry(entry_data);
   }
-  _output << std::endl;
+
+  _output << boost::str(boost::format("%s\n") % device_table);
+  _output << "* Devices that are not ready will have reduced functionality when using XRT tools\n";
 }

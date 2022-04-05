@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,6 +36,9 @@ namespace xdp {
 extern "C"
 void native_function_start(const char* functionName, unsigned long long int functionID)
 {
+  if (!xdp::VPDatabase::alive() || !xdp::NativeProfilingPlugin::alive())
+    return;
+
   // Don't include the profiling overhead in the time that we show.
   //  That means there will be "empty gaps" in the timeline trace when
   //  the profiling overhead exists.
@@ -55,6 +58,9 @@ void native_function_start(const char* functionName, unsigned long long int func
 extern "C"
 void native_function_end(const char* functionName, unsigned long long int functionID, unsigned long long int timestamp)
 {
+  if (!xdp::VPDatabase::alive() || !xdp::NativeProfilingPlugin::alive())
+    return;
+
   xdp::VPDatabase* db = xdp::nativePluginInstance.getDatabase() ;
   db->getStats().logFunctionCallEnd(functionName, static_cast<double>(timestamp)) ;
 
@@ -71,6 +77,9 @@ void native_function_end(const char* functionName, unsigned long long int functi
 extern "C"
 void native_sync_start(const char* functionName, unsigned long long int functionID, bool isWrite)
 {
+  if (!xdp::VPDatabase::alive() || !xdp::NativeProfilingPlugin::alive())
+    return;
+
   // Don't include the profiling overhead in the time that we show.
   //  That means there will be "empty gaps" in the timeline trace when
   //  the profiling overhead exists.
@@ -107,6 +116,9 @@ void native_sync_start(const char* functionName, unsigned long long int function
 extern "C"
 void native_sync_end(const char* functionName, unsigned long long int functionID, unsigned long long int timestamp, bool isWrite, unsigned long long int size)
 {
+  if (!xdp::VPDatabase::alive() || !xdp::NativeProfilingPlugin::alive())
+    return;
+
   xdp::VPDatabase* db = xdp::nativePluginInstance.getDatabase() ;
   db->getStats().logFunctionCallEnd(functionName, static_cast<double>(timestamp)) ;
 

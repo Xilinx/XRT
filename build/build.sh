@@ -48,6 +48,7 @@ usage()
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
     echo "[-clangtidy]                Run clang-tidy as part of build"
     echo "[-pskernel]                 Enable building of POC ps kernel"
+    echo "[-cppstd]                   Cpp standard (default: 17)"
     echo "[-docs]                     Enable documentation generation with sphinx"
     echo "[-j <n>]                    Compile parallel (default: system cores)"
     echo "[-ccache]                   Build using RDI's compile cache"
@@ -134,6 +135,11 @@ while [ $# -gt 0 ]; do
         -ccache)
             cmake_flags+=" -DRDI_CCACHE=1"
             ccache=1
+            shift
+            ;;
+        -cppstd)
+            shift
+            cmake_flags+=" -DCMAKE_CXX_STANDARD=$1"
             shift
             ;;
         -toolchain)
@@ -287,8 +293,8 @@ if [[ $opt == 1 ]]; then
   if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
-    echo "make -C usr/src/xrt-2.13.0/driver/xocl"
-    make -C usr/src/xrt-2.13.0/driver/xocl
+    echo "make -C usr/src/xrt-2.14.0/driver/xocl"
+    make -C usr/src/xrt-2.14.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
@@ -318,7 +324,7 @@ fi
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.13.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.14.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`

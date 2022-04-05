@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
@@ -14,19 +14,19 @@ SET (DKMS_POSTINST "postinst-edge")
 SET (DKMS_PRERM "prerm-edge")
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/dkms-zocl/${DKMS_FILE_NAME}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/dkms-zocl/${DKMS_FILE_NAME}.in"
   ${DKMS_FILE_NAME}
   @ONLY
   )
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
   "postinst"
   @ONLY
   )
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
   "prerm"
   @ONLY
   )
@@ -57,7 +57,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/cu.c
   zocl/LICENSE
   zocl/Makefile
-  zocl/sched_exec.c
   zocl/zocl_aie.c
   zocl/zocl_bo.c
   zocl/zocl_cu.c
@@ -65,7 +64,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/zocl_drv.c
   zocl/zocl_error.c
   zocl/zocl_ert.c
-  zocl/zocl_generic_cu.c
   zocl/zocl_ioctl.c
   zocl/zocl_kds.c
   zocl/zocl_mailbox.c
@@ -117,7 +115,7 @@ foreach (DKMS_FILE ${XRT_DKMS_DRIVER_SRCS})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_DRIVER_SRC_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
 endforeach()
-  
+
 foreach (DKMS_FILE ${XRT_DKMS_CORE_INCLUDES})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/zocl/${DKMS_DIR})
@@ -136,4 +134,3 @@ foreach (DKMS_FILE ${XRT_DKMS_CORE_EDGE_INCLUDES})
 endforeach()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})
-

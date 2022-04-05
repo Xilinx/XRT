@@ -34,8 +34,8 @@ namespace {
     constexpr int MAX_PATH_LENGTH = 512 ;
 
     char pathBuf[MAX_PATH_LENGTH] ;
-    xclGetDebugIPlayoutPath(handle, pathBuf, MAX_PATH_LENGTH) ;
-    pathBuf[MAX_PATH_LENGTH-1] = '\0' ;  // In case of too long paths
+    memset(pathBuf, 0, MAX_PATH_LENGTH);
+    xclGetDebugIPlayoutPath(handle, pathBuf, (MAX_PATH_LENGTH-1) ) ;
 
     std::string path(pathBuf) ;
 
@@ -69,7 +69,7 @@ namespace xdp {
     if (VPDatabase::alive()) {
       readTrace() ;
       readCounters() ;
-      XDPPlugin::endWrite(false) ;
+      XDPPlugin::endWrite() ;
       db->unregisterPlugin(this) ;
     }
 
@@ -172,8 +172,10 @@ namespace xdp {
 
     // Once the device has been set up, add additional information to 
     //  the static database
-    (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
-    (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
+    (db->getStaticInfo()).setHostMaxReadBW(deviceId, devInterface->getHostMaxBwRead()) ;
+    (db->getStaticInfo()).setHostMaxWriteBW(deviceId, devInterface->getHostMaxBwWrite());
+    (db->getStaticInfo()).setKernelMaxReadBW(deviceId, devInterface->getKernelMaxBwRead()) ;
+    (db->getStaticInfo()).setKernelMaxWriteBW(deviceId, devInterface->getKernelMaxBwWrite());
   }
 
 } // end namespace xdp

@@ -1,0 +1,13 @@
+{
+    "ip_layout": {
+        "m_count": "1",
+        "m_ip_data": [
+            {
+                "m_type": "IP_PS_KERNEL",
+                "properties": "0x0",
+                "m_base_address": "not_used",
+                "m_name": "kernel0:scu_0"
+            }
+        ]
+    }
+}

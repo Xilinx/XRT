@@ -1,7 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
- * Author(s): Hem C. Neema
- *          : Min Ma
+ * Copyright (C) 2016-2022 Xilinx, Inc
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -78,10 +76,11 @@ public:
   int xclExecWait(int timeoutMilliSec);
 
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
+  int xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared);
   int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
   int xclSKGetCmd(xclSKCmd *cmd);
-  int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
+  int xclSKCreate(int *boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
 
   int xclAIEGetCmd(xclAIECmd *cmd);
@@ -97,8 +96,10 @@ public:
   int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
 
-  double xclGetReadMaxBandwidthMBps();
-  double xclGetWriteMaxBandwidthMBps();
+  double xclGetHostReadMaxBandwidthMBps();
+  double xclGetHostWriteMaxBandwidthMBps();
+  double xclGetKernelReadMaxBandwidthMBps();
+  double xclGetKernelWriteMaxBandwidthMBps();
 
   // Bitstream/bin download
   int xclLoadXclBin(const xclBin *buffer);
@@ -115,7 +116,7 @@ public:
   int xclCloseIPInterruptNotify(int fd);
 
   bool isGood() const;
-  static shim *handleCheck(void *handle);
+  static shim *handleCheck(void *handle, bool checkDrmFd = true);
   int xclIPName2Index(const char *name);
 
   // Application debug path functionality for xbutil
@@ -133,6 +134,7 @@ public:
 
   int xclErrorInject(uint16_t num, uint16_t driver, uint16_t  severity, uint16_t module, uint16_t eclass);
   int xclErrorClear();
+  int secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *top);
 
 #ifdef XRT_ENABLE_AIE
   zynqaie::Aie* getAieArray();

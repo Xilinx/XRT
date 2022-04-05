@@ -28,11 +28,11 @@ void hal_generic_cb(bool isStart, const char* name, unsigned long long int id) ;
 // Specialization start/stop callbacks
 XDP_EXPORT
 void buffer_transfer_cb(bool isWrite, 
-			bool isStart,
-			const char* name,
-			unsigned long long int id,
-			unsigned long long int bufferId,
-			unsigned long long int size) ;
+                        bool isStart,
+                        const char* name,
+                        unsigned long long int id,
+                        unsigned long long int bufferId,
+                        unsigned long long int size) ;
 }
 
 #endif

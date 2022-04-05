@@ -66,6 +66,10 @@ class pipeline
   {
     struct stage_holder
     {
+      virtual
+      ~stage_holder()
+      {}
+
       virtual xrt::event
       enqueue(xrt::event_queue& q, const std::vector<xrt::event>& deps) = 0;
     };

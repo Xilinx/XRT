@@ -1,5 +1,7 @@
 /**
- * Copyright (C) 2021 Licensed under the Apache License, Version
+ * Copyright (C) 2021-2022 Xilinx, Inc
+ * 
+ * Licensed under the Apache License, Version
  * 2.0 (the "License"). You may not use this file except in
  * compliance with the License. A copy of the License is located
  * at
@@ -16,6 +18,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "OO_HostMem.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 
 // 3rd Party Library - Include Files
@@ -47,7 +50,7 @@ OO_HostMem::OO_HostMem( const std::string &_longName, bool _isHidden )
     ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: ENABLE or DISABLE")
     ("size,s", boost::program_options::value<decltype(m_size)>(&m_size), "Size of host memory (bytes) to be enabled (e.g. 256M, 1G)")
-    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.
@@ -93,28 +96,28 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
   if(m_devices.empty()) {
-    printHelp();
+    std::cerr << boost::format("ERROR: A device needs to be specified.\n");
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   uint64_t size = 0;
   try {
     if(!m_size.empty())
-      size = XBUtilities::string_to_bytes(m_size);
+      size = XBUtilities::string_to_base_units(m_size, XBUtilities::unit::bytes);
   } 
   catch(const xrt_core::error&) {
     std::cerr << "Value supplied to --size option is invalid. Please specify a memory size between 4M and 1G." << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  bool enable = false;
   try {
-    if ((boost::iequals(m_action, "ENABLE") != 0) && (boost::iequals(m_action, "DISABLE") != 0)) {
+    
+    if (!boost::iequals(m_action, "ENABLE") && !boost::iequals(m_action, "DISABLE")) {
       std::cerr << boost::format("ERROR: Invalid action value: '%s'\n") % m_action;
       printHelp();
       throw xrt_core::error(std::errc::operation_canceled);
     }
-    enable =  boost::iequals(m_action, "ENABLE");
+    bool enable = boost::iequals(m_action, "ENABLE");
 
     // Exit if ENABLE action is specified and 
     // size is not 0 or size is not a power of 2
@@ -144,7 +147,8 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
 
     //Set host-mem
     host_mem(deviceCollection[0].get(), enable, size);
-  } 
+    std::cout << boost::format("\nHost-mem %s successfully\n") % (enable ? "enabled" : "disabled");
+  }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
@@ -153,6 +157,4 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-
-  std::cout << boost::format("\nHost-mem %s successfully\n") % (enable ? "enabled" : "disabled");
 }

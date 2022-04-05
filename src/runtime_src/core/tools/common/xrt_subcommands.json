@@ -1,0 +1,81 @@
+{
+    "schema_version" : {
+        "major" : "1",
+        "minor" : "0"
+     },
+    "xbutil": {
+        "sub_commands": {
+            "kria": {
+                "description" : "SOM board management command",
+                "options": [
+                    {
+                        "option":"boardid",
+                        "description": "print EEPROM info",
+                        "application": "/usr/bin/fru-print.py",
+                        "default_args": ""
+                    },
+                    {
+                        "option": "bootfw_status",
+                        "description": "Prints Qspi MFG version and date info",
+                        "application": "/usr/bin/image_update",
+                        "default_args": "-p"
+                    },
+                    {
+                        "option": "bootfw_update",
+                        "description": "Updates the primary boot device with a new BOOT.BIN in the inactive partition (either A or B)",
+                        "application": "/usr/bin/image_update",
+                        "default_args": "" 
+                    },
+                    {
+                        "option": "getpkgs",
+                        "description": "Queries Xilinx package feeds and provides summary to CLI with relevant packages",
+                        "application": "/usr/bin/dnf",
+                        "default_args": ""
+                    },
+                    {
+                        "option": "listapps",
+                        "description": "Queries on target HW resource manager daemon of pre-built apps available on the platform and provides summary to CLI",
+                        "application": "dfx-mgr-client",
+                        "default_args": "-listPackage"
+                    },
+                    {
+                        "option": "loadapp",
+                        "description": "Loads integrated HW+SW application inclusive of bitstream and starts the corresponding pre-built app SW executable",
+                        "application": "dfx-mgr-client",
+                        "default_args": "-load"
+                    },
+                    {
+                        "option": "unloadapp",
+                        "description": "Removes accelerated application inclusive of unloading its bitstream",
+                        "application": "dfx-mgr-client",
+                        "default_args": "-remove"
+                    },
+                    {
+                        "option": "platformstats",
+                        "description": "Reads and prints a summary of performance related information",
+                        "application": "/usr/bin/platformstats",
+                        "default_args": ""
+                    },
+                    {
+                        "option": "ddrqos",
+                        "description": "Set QOS value for DDR slots on zynqmp platform",
+                        "application": "/usr/bin/ddr-qos",
+                        "default_args": ""
+                    },
+                    {
+                        "option": "axiqos",
+                        "description": "Set QOS value for AXI ports on zynqmp platform",
+                        "application": "/usr/bin/axi-qos",
+                        "default_args": ""  
+                    },
+                    {
+                        "option": "pwrctl",
+                        "description": "PL power control utility",
+                        "application": "/usr/bin/som-pwrctl",
+                        "default_args": ""
+                    }
+                ]
+            }
+        }
+    }
+}

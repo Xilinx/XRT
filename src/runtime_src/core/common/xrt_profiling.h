@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019, Xilinx Inc - All rights reserved
+ * Copyright (C) 2019, Xilinx Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -37,9 +38,13 @@ XCL_DRIVER_DLLESPEC size_t xclGetDeviceTimestamp(xclDeviceHandle handle);
 
 XCL_DRIVER_DLLESPEC double xclGetDeviceClockFreqMHz(xclDeviceHandle handle);
 
-XCL_DRIVER_DLLESPEC double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle);
 
-XCL_DRIVER_DLLESPEC double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle);
+XCL_DRIVER_DLLESPEC double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle);
+
+XCL_DRIVER_DLLESPEC double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle);
 
 XCL_DRIVER_DLLESPEC void xclGetDebugIpLayout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
 

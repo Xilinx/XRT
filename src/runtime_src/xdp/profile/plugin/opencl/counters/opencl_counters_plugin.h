@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -28,12 +28,16 @@ namespace xdp {
   private:
     std::shared_ptr<xocl::platform> platform ;
 
+    static bool live;
+
   protected:
     virtual void emulationSetup() ;
 
   public:
     OpenCLCountersProfilingPlugin() ;
     ~OpenCLCountersProfilingPlugin() ;
+
+    static bool alive() { return OpenCLCountersProfilingPlugin::live; }
 
     // For emulation based flows we need to convert real time into
     //  estimated device time to match what we reported previously

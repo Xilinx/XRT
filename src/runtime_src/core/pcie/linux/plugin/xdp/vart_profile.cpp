@@ -24,8 +24,8 @@ namespace profile {
   void load()
   {
     static xrt_core::module_loader xdp_vart_loader("xdp_vart_plugin",
-						    register_callbacks,
-						    warning_callbacks) ;
+                                                    register_callbacks,
+                                                    warning_callbacks) ;
   }
 
   void register_callbacks(void* /*handle*/)

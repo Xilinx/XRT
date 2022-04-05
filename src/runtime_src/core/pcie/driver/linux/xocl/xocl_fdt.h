@@ -160,6 +160,8 @@
 #define RESNAME_INTC_CU_02	NODE_INTC_CU_02
 #define RESNAME_INTC_CU_03	NODE_INTC_CU_03
 #define RESNAME_ERT_CQ_USER    NODE_ERT_CQ_USER
+#define RESNAME_XGQ_USER_SQ	"ep_xgq_user_to_apu_sq_pi"
+#define RESNAME_XGQ_USER_RING	"ep_xgq_payload_user"
 
 #define ERT_SCHED_INTR_ALIAS_00	"interrupt_cu_bank_00"
 #define ERT_SCHED_INTR_ALIAS_01	"interrupt_cu_bank_01"

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -37,6 +37,7 @@
 #include "ProgressBar.h"
 #include "Process.h"
 #include "EscapeCodes.h"
+#include "XBUtilitiesCore.h"
 #include "XBUtilities.h"
 
 // 3rd Party Library - Include Files
@@ -164,7 +165,7 @@ XBUtilities::runScript( const std::string & env,
 
   is_done = true;
   bool passed = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
-  bool skipped = (os_stdout.str().find("EOPNOTSUPP") != std::string::npos) ? true : false;
+  bool skipped = (os_stdout.str().find("NOT SUPPORTED") != std::string::npos) ? true : false;
   run_test.get()->finish(passed, final_description);
   // Workaround: Clear the default progress bar output so as to print the Error: before printing [FAILED]
   // Remove this once busybar is implemented

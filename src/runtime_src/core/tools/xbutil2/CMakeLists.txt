@@ -1,17 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 # Collect files outside of this directory
 file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
   "../common/XBMain.cpp"
+  "../common/XBUtilitiesCore.cpp"
   "../common/XBUtilities.cpp"
   "../common/SubCmd.cpp"
   "../common/OptionOptions.cpp"
+  "../common/XBHelpMenusCore.cpp"
   "../common/XBHelpMenus.cpp"
   "../common/Report*.cpp"
   "../common/ProgressBar.cpp"
   "../common/Process.cpp"
+  "../common/Table2D.cpp"
+  "../common/SubCmdJSON.cpp"
 )
 
 # Collect local directory files
@@ -28,6 +32,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_MemWrite.cpp"
   "OO_P2P.cpp"
   "OO_AieRegRead.cpp"
+  "OO_AieClockFreq.cpp"
   "OO_HostMem.cpp"
 )
 
@@ -85,6 +90,13 @@ target_link_libraries(${XBUTIL2_NAME}
 
 if (NOT WIN32)
   target_link_libraries(${XBUTIL2_NAME} PRIVATE pthread uuid dl)
+endif()
+
+# Package xrt sub commands json file for embedded builds
+# This file acts as sample json file and will be removed in future releases
+if (${XRT_NATIVE_BUILD} STREQUAL "no")
+  set(XRT_SUBCOMMANDS_JSON ../common/xrt_subcommands.json)
+  install(FILES ${XRT_SUBCOMMANDS_JSON} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 endif()
 
 # Install our built executable

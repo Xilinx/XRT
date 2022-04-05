@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -31,7 +32,6 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
-#include "experimental/xrt_profile.h"
 
 // Anonymous namespace for helper functions
 namespace {
@@ -86,13 +86,19 @@ namespace {
 namespace xdp {
 
   DeviceOffloadPlugin::DeviceOffloadPlugin() :
-    XDPPlugin(), continuous_trace(false), trace_buffer_offload_interval_ms(10)
+    XDPPlugin(),
+    device_trace(false), continuous_trace(false), trace_buffer_offload_interval_ms(10)
   {
     db->registerPlugin(this) ;
 
     // Since OpenCL device offload doesn't actually add device offload info,
     //  setting the available information has to be pushed down to both
     //  the HAL or HWEmu plugin
+
+    if (xrt_core::config::get_data_transfer_trace() != "off" ||
+          xrt_core::config::get_device_trace() != "off") {
+      device_trace = true;
+    }
 
     // Get the profiling continuous offload options from xrt.ini
     //  Device offload continuous offload and dumping is only supported
@@ -107,7 +113,7 @@ namespace xdp {
     }
     else {
       if (xrt_core::config::get_continuous_trace()) {
-	xrt_core::message::send(xrt_core::message::severity_level::warning,
+        xrt_core::message::send(xrt_core::message::severity_level::warning,
                                 "XRT",
                                 "Continuous offload and dumping of device data is not supported in emulation and has been disabled.");
       }
@@ -215,8 +221,7 @@ namespace xdp {
 
     // If trace is enabled, set up trace.  Otherwise just keep the offloader
     //  for reading the counters.
-    if (xrt_core::config::get_data_transfer_trace() != "off" ||
-        xrt_core::config::get_device_trace() != "off") {
+    if (device_trace) {
       bool init_successful =
         offloader->read_trace_init(m_enable_circular_buffer, buf_sizes) ;
 
@@ -224,9 +229,17 @@ namespace xdp {
         if (devInterface->hasTs2mm()) {
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
         }
-        delete offloader ;
-        delete logger ;
-        return ;
+        if (xrt_core::config::get_device_counters()) {
+          /* As device_counters is enabled, the offloader object is required for reading counters.
+           * So do not delete offlader and logger.
+           * As trace infrastructure could not be initialized, disable device_trace to avoid further issue.
+           */
+          device_trace = false;
+        } else {
+          delete offloader ;
+          delete logger ;
+          return ;
+        }
       }
     }
 
@@ -275,8 +288,8 @@ namespace xdp {
               std::to_string(requested_offload_rate);
             xrt_core::message::send(xrt_core::message::severity_level::warning,
                                     "XRT", msg);
-	  }
-	}
+          }
+        }
       }
     }
     else {
@@ -348,9 +361,11 @@ namespace xdp {
         while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
       }
       else {
-        offloader->read_trace();
-        offloader->process_trace();
-        offloader->read_trace_end();
+        if (device_trace) {
+          offloader->read_trace();
+          offloader->process_trace();
+          offloader->read_trace_end();
+        }
       }
     } catch (std::exception& /*e*/) {
         // Reading the trace could throw an exception if ioctls fail.
@@ -360,7 +375,7 @@ namespace xdp {
     return true;
   }
 
-  void DeviceOffloadPlugin::writeAll(bool openNewFiles)
+  void DeviceOffloadPlugin::writeAll(bool /*openNewFiles*/)
   {
     // This function gets called if the database is destroyed before
     //  the plugin object.  At this time, the information in the database
@@ -375,26 +390,15 @@ namespace xdp {
     // Also, store away the counter results
     readCounters() ;
 
-    XDPPlugin::endWrite(openNewFiles);
+    XDPPlugin::endWrite();
   }
 
   void DeviceOffloadPlugin::checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId)
   {
     if (!(getFlowMode() == HW))
       return;
-
-    db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
-
-    if (offloader->has_fifo() && offloader->trace_buffer_full()) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", FIFO_WARN_MSG);
-      xrt::profile::user_event events;
-      events.mark("Trace FIFO Full");
-    }
-
-    if (offloader->has_ts2mm() && offloader->trace_buffer_full()) {
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUF_FULL);
-        xrt::profile::user_event events;
-        events.mark("Trace Buffer Full");
+    if (device_trace) {
+      db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
     }
   }
 
@@ -414,7 +418,7 @@ namespace xdp {
       break ;
     case VPDatabase::DUMP_TRACE:
       {
-	XDPPlugin::forceWrite(true) ;
+        XDPPlugin::trySafeWrite("VP_TRACE", true);
       }
       break ;
     default:

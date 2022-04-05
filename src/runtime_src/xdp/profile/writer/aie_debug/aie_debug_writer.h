@@ -30,12 +30,15 @@ namespace xdp {
   public:
     AIEDebugWriter(const char* fileName, const char* deviceName,
                    uint64_t deviceIndex);
+    ~AIEDebugWriter();
 
     virtual bool write(bool openNewFile);
+    virtual bool write(bool openNewFile, void* handle);
 
   private:
     std::string mDeviceName;
     uint64_t mDeviceIndex;
+    bool mWroteValidData;
   };
 
   /*
@@ -46,12 +49,15 @@ namespace xdp {
   public:
     AIEShimDebugWriter(const char* fileName, const char* deviceName,
                        uint64_t deviceIndex);
+    ~AIEShimDebugWriter();
 
     virtual bool write(bool openNewFile);
+    virtual bool write(bool openNewFile, void* handle);
 
   private:
     std::string mDeviceName;
     uint64_t mDeviceIndex;
+    bool mWroteValidData;
   };
 
 } // end namespace xdp

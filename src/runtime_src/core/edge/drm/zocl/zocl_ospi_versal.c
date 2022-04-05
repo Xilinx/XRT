@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu <yliu@xilinx.com>
@@ -237,8 +237,10 @@ static int zocl_ov_recieve(struct zocl_ov_dev *ov)
  */
 static int zocl_ov_get_xclbin(struct zocl_ov_dev *ov)
 {
+	struct drm_zocl_dev *zdev = NULL;
+	struct drm_zocl_slot *slot = NULL;
 	struct axlf *xclbin = NULL;
-	void *pdrv;
+	void *pdrv = NULL;
 	int ret = 0;
 
 	ov_info(ov->pdev, "xclbin is being downloaded...");
@@ -277,7 +279,15 @@ static int zocl_ov_get_xclbin(struct zocl_ov_dev *ov)
 	}
 
 	write_unlock(&ov->att_rwlock);
-	ret = zocl_xclbin_load_pdi(pdrv, xclbin);
+	zdev = (struct drm_zocl_dev *)pdrv;
+	if (!zdev) {
+		ret = -ENXIO;
+		goto out;
+	}
+
+	/* For OSPI device use default slot i.e. 0 */
+	slot = zdev->pr_slot[0];
+	ret = zocl_xclbin_load_pdi(pdrv, xclbin, slot);
 	if (ret) {
 		set_status(ov, XRT_XFR_PKT_STATUS_FAIL);
 		goto out;

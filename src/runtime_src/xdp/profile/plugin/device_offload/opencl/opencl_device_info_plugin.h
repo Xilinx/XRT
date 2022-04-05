@@ -43,18 +43,18 @@ namespace xdp {
     void updateOpenCLInfo(uint64_t deviceId) ;
     void updateSWEmulationGuidance() ;
 
-    XDP_EXPORT virtual void readTrace() ;
+    XDP_EXPORT virtual void readTrace() override;
 
   public:
     XDP_EXPORT OpenCLDeviceInfoPlugin() ;
     XDP_EXPORT virtual ~OpenCLDeviceInfoPlugin() override ;
 
     // Virtual functions from XDPPlugin
-    XDP_EXPORT virtual void writeAll(bool openNewFiles) ;
+    XDP_EXPORT virtual void writeAll(bool openNewFiles) override;
 
     // Virtual functions from DeviceOffloadPlugin
-    XDP_EXPORT virtual void flushDevice(void* device) ;
-    XDP_EXPORT virtual void updateDevice(void* device) ;
+    XDP_EXPORT virtual void flushDevice(void* device) override;
+    XDP_EXPORT virtual void updateDevice(void* device) override;
   } ;
 
 } // end namespace xdp

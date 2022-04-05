@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Licensed under the Apache License, 
+ * Copyright (C) 2020-2022 Licensed under the Apache License, 
  * Version 2.0 (the "License"). You may not use this file except 
  * in compliance with the License. A copy of the License is 
  * located at 
@@ -16,6 +16,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "OO_P2P.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "core/common/error.h"
 #include "core/common/unistd.h"
@@ -264,7 +265,7 @@ OO_P2P::OO_P2P( const std::string &_longName, bool _isHidden )
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: ENABLE, DISABLE, or VALIDATE")
-    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.

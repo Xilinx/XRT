@@ -15,58 +15,56 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include "shim.h"  // This file implements shim.h
+#include "xrt.h"   // This file implements xrt.h
 
-#include "shim.h"
+#include "ert.h"
 #include "scan.h"
 #include "system_linux.h"
-#include "core/common/message.h"
-#include "core/common/xclbin_parser.h"
-#include "core/common/scheduler.h"
+#include "xclbin.h"
+
+#include "core/include/shim_int.h"
+
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 #include "core/common/query_requests.h"
+#include "core/common/scheduler.h"
+#include "core/common/xclbin_parser.h"
 #include "core/common/AlignedAllocator.h"
 
-#include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
-#include "plugin/xdp/aie_trace.h"
+#include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/pl_deadlock.h"
-
-#include "xclbin.h"
-#include "ert.h"
-#include "shim_int.h"
 
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 
+#include <cassert>
+#include <cerrno>
+#include <chrono>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
+#include <condition_variable>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include <sstream>
-#include <vector>
-#include <cstring>
 #include <thread>
-#include <chrono>
-#include <cstdio>
-#include <cstdarg>
-#include <cerrno>
-#include <condition_variable>
+#include <vector>
 
 #include <unistd.h>
 #include <poll.h>
 
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/uio.h>
 #include <sys/syscall.h>
-#include <sys/file.h>
-#include <linux/aio_abi.h>
+#include <sys/uio.h>
 #include <asm/mman.h>
-
-#ifdef NDEBUG
-# undef NDEBUG
-# include<cassert>
-#endif
+#include <linux/aio_abi.h>
 
 #if defined(__GNUC__)
 #define SHIM_UNUSED __attribute__((unused))
@@ -1754,6 +1752,14 @@ int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool share
     return ret ? -errno : ret;
 }
 
+int shim::
+xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared) const
+{
+  // Alveo Linux PCIE does not yet support multiple xclbins.
+  // Call regular flow
+  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
+}
+
 /*
  * xclCloseContext
  */
@@ -2152,17 +2158,30 @@ double shim::xclGetDeviceClockFreqMHz()
   return ((double)clockFreq);
 }
 
-// Get the maximum bandwidth for host reads from the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double shim::xclGetReadMaxBandwidthMBps()
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double shim::xclGetHostReadMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 15753.85;
 }
 
-// Get the maximum bandwidth for host writes to the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double shim::xclGetWriteMaxBandwidthMBps() {
-  return 9600.0;
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double shim::xclGetHostWriteMaxBandwidthMBps()
+{
+  return 15753.85;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double shim::xclGetKernelReadMaxBandwidthMBps()
+{
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double shim::xclGetKernelWriteMaxBandwidthMBps()
+{
+  return 19250.00;
 }
 
 int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
@@ -2226,11 +2245,11 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
       cumap.first = static_cast<uint32_t*>(p);
       cumap.second = size;
     }
-  }
 
-  if (cumap.first == nullptr) {
-    xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
-    return -EINVAL;
+    if (cumap.first == nullptr) {
+      xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
+      return -EINVAL;
+    }
   }
 
   if (offset >= cumap.second || (offset & (sizeof(uint32_t) - 1)) != 0) {
@@ -2788,6 +2807,23 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
   }) ;
 }
 
+int
+xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
+{
+  try {
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclOpenContext(slot, xclbin_uuid, cuname, shared) : -ENODEV;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
+}
+
 int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   return xdp::hal::profiling_wrapper("xclCloseContext",
@@ -2942,17 +2978,28 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
 }
 
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostReadMaxBandwidthMBps() : 0.0;
 }
 
-
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostWriteMaxBandwidthMBps() : 0.0;
+}
+
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelReadMaxBandwidthMBps() : 0.0;
+}
+
+double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelWriteMaxBandwidthMBps() : 0.0;
 }
 
 int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,

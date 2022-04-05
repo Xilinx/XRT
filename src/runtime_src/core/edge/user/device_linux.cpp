@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <boost/format.hpp>
@@ -55,6 +56,21 @@ using key_type = query::key_type;
 xclDeviceHandle handle;
 xclDeviceInfo2 deviceInfo;
 
+struct drm_fd
+{
+  int fd;
+  drm_fd(const std::string& file_path, int flags)
+  {
+    fd = open(file_path.c_str(),flags);
+  }
+  ~drm_fd()
+  {
+    if(fd > 0) {
+      close(fd);
+    }
+  }
+};
+
 static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
 static zynq_device*
@@ -63,7 +79,7 @@ get_edgedev(const xrt_core::device* device)
   return zynq_device::get_dev();
 }
 
-struct bdf 
+struct bdf
 {
   using result_type = query::pcie_bdf::result_type;
 
@@ -75,7 +91,7 @@ struct bdf
 
 };
 
-struct board_name 
+struct board_name
 {
   using result_type = query::board_name::result_type;
 
@@ -92,7 +108,7 @@ struct board_name
   }
 };
 
-struct is_ready 
+struct is_ready
 {
   using result_type = query::is_ready::result_type;
 
@@ -165,7 +181,7 @@ struct aie_metadata
     constexpr uint32_t major = 1;
     constexpr uint32_t minor = 0;
     constexpr uint32_t patch = 0;
-    
+
     auto dev = get_edgedev(device);
 
     dev->sysfs_get(AIE_TAG, err, value);
@@ -173,7 +189,7 @@ struct aie_metadata
       throw xrt_core::query::sysfs_error(err);
 
     std::stringstream ss(value);
-    boost::property_tree::ptree pt; 
+    boost::property_tree::ptree pt;
     boost::property_tree::read_json(ss, pt);
 
     if(pt.get<uint32_t>("schema_version.major") != major ||
@@ -199,11 +215,11 @@ struct aie_core_info : aie_metadata
 
     read_aie_metadata(device, max_row, max_col);
 
-    /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */ 
+    /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */
     for(int i=0;i<max_col;i++)
       for(int j=0; j<(max_row-1);j++)
         ptarray.push_back(std::make_pair(std::to_string(i)+"_"+std::to_string(j),
-                          aie_sys_parser::get_parser()->aie_sys_read(i,(j+1)))); 
+                          aie_sys_parser::get_parser()->aie_sys_read(i,(j+1))));
 
     boost::property_tree::ptree pt;
     pt.add_child("aie_core",ptarray);
@@ -228,7 +244,7 @@ struct aie_shim_info : aie_metadata
 
     /* Loop all shim tiles and collect all dma, events, errors, locks status */
     for(int i=0;i<max_col;i++) {
-      ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser()->aie_sys_read(i,0))); 
+      ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser()->aie_sys_read(i,0)));
     }
 
     boost::property_tree::ptree pt;
@@ -263,19 +279,20 @@ struct kds_cu_info
 
     result_type cuStats;
     // stats e.g.
-    // 0,vadd:vadd_1,0x1400000,0x4,0
-    // 1,vadd:vadd_2,0x1500000,0x4,0
-    // 2,mult:mult_1,0x1800000,0x4,0
+    // 0,0,vadd:vadd_1,0x1400000,0x4,0
+    // 0,1,vadd:vadd_2,0x1500000,0x4,0
+    // 0.2,mult:mult_1,0x1800000,0x4,0
     for (auto& line : stats) {
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 5)
+      if (std::distance(tokens.begin(), tokens.end()) != 6)
         throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
-      data_type data;
+      data_type data = { 0 };
       constexpr int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
+      data.slot_index = std::stoi(std::string(*tok_it++));
       data.index     = std::stoi(std::string(*tok_it++));
       data.name      = std::string(*tok_it++);
       data.base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
@@ -286,6 +303,84 @@ struct kds_cu_info
     }
 
     return cuStats;
+  }
+};
+
+
+struct xclbin_uuid
+{
+
+  using result_type = query::xclbin_uuid::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> xclbin_info;
+    std::string errmsg;
+    auto edev = get_edgedev(device);
+    edev->sysfs_get("xclbinid", errmsg, xclbin_info);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    // xclbin_uuid e.g.
+    // <slot_id> <uuid_slot_0>
+    //	   0	 <uuid_slot_0>
+    //	   1	 <uuid_slot_1>
+    for (auto& line : xclbin_info) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 2)
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+
+      tokenizer::iterator tok_it = tokens.begin();
+      unsigned int slot_index = std::stoi(std::string(*tok_it++));
+      //return the first slot uuid always for backward compatibility
+      return std::string(*tok_it);
+    }
+
+    return "";
+  }
+};
+
+struct xclbin_slots
+{
+  using result_type = query::xclbin_slots::result_type;
+  using slot_info = query::xclbin_slots::slot_info;
+  using slot_id = query::xclbin_slots::slot_id;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> xclbin_info;
+    std::string errmsg;
+    auto edev = get_edgedev(device);
+    edev->sysfs_get("xclbinid", errmsg, xclbin_info);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    result_type xclbin_data;
+    // xclbin_uuid e.g.
+    // 0 <uuid_slot_0>
+    // 1 <uuid_slot_1>
+    for (auto& line : xclbin_info) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 2)
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+
+      slot_info data = { 0 };
+      tokenizer::iterator tok_it = tokens.begin();
+      data.slot = std::stoi(std::string(*tok_it++));
+      data.uuid = std::string(*tok_it++);
+
+      xclbin_data.push_back(std::move(data));
+    }
+
+    return xclbin_data;
   }
 };
 
@@ -327,8 +422,8 @@ struct aie_reg_read
 
 #ifdef XRT_ENABLE_AIE
 #ifndef __AIESIM__
-  const static std::string AIE_TAG = "aie_metadata";
-  const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
+  const static std::string aie_tag = "aie_metadata";
+  const std::string zocl_device = "/dev/dri/" + get_render_devname();
   const uint32_t major = 1;
   const uint32_t minor = 0;
   const uint32_t patch = 0;
@@ -337,7 +432,7 @@ struct aie_reg_read
   std::string value;
 
   // Reading the aie_metadata sysfs.
-  dev->sysfs_get(AIE_TAG, err, value);
+  dev->sysfs_get(aie_tag, err, value);
   if (!err.empty())
     throw xrt_core::query::sysfs_error
       (err + ", The loading xclbin acceleration image doesn't use the Artificial "
@@ -355,9 +450,9 @@ struct aie_reg_read
                                                              % pt.get<uint32_t>("schema_version.minor")
                                                              % pt.get<uint32_t>("schema_version.patch")));
 
-  int mKernelFD = open(ZOCL_DEVICE.c_str(), O_RDWR);
+  int mKernelFD = open(zocl_device.c_str(), O_RDWR);
   if (!mKernelFD)
-    throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
+    throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
 
   XAie_DevInst* devInst;         // AIE Device Instance
 
@@ -413,6 +508,82 @@ struct aie_reg_read
 #endif
 #endif
     return val;
+  }
+};
+
+static std::unique_ptr<drm_fd>
+aie_get_drmfd(const xrt_core::device* device, const std::string& dev_path)
+{
+  const static std::string aie_tag = "aie_metadata";
+  std::string err;
+  std::string value;
+
+  auto dev = get_edgedev(device);
+  // Reading the aie_metadata sysfs.
+  dev->sysfs_get(aie_tag, err, value);
+  if (!err.empty())
+    throw xrt_core::query::sysfs_error
+    (err + ", The loading xclbin acceleration image doesn't use the Artificial "
+     + "Intelligent Engines (AIE). No action will be performed.");
+
+  return std::make_unique<drm_fd>(dev_path, O_RDWR);
+}
+
+struct aie_get_freq
+{
+  using result_type = query::aie_get_freq::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& partition_id)
+  {
+    result_type freq = 0;
+#if defined(XRT_ENABLE_AIE)
+    const std::string zocl_device = "/dev/dri/" + get_render_devname();
+    auto fd_obj = aie_get_drmfd(device, zocl_device);
+    if (fd_obj->fd < 0)
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
+
+    struct drm_zocl_aie_freq_scale aie_arg;
+    aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
+    aie_arg.freq = 0;
+    aie_arg.dir = 0;
+
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg))
+      throw xrt_core::error(-errno, boost::str(boost::format("Reading clock frequency from AIE partition(%d) failed") % aie_arg.partition_id));
+
+    freq = aie_arg.freq;
+#else
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+#endif
+    return freq;
+  }
+};
+
+struct aie_set_freq
+{
+  using result_type = query::aie_set_freq::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& partition_id, const boost::any& freq)
+  {
+#if defined(XRT_ENABLE_AIE)
+    const std::string zocl_device = "/dev/dri/" + get_render_devname();
+    auto fd_obj = aie_get_drmfd(device, zocl_device);
+    if (fd_obj->fd < 0)
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
+
+    struct drm_zocl_aie_freq_scale aie_arg;
+    aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
+    aie_arg.freq = boost::any_cast<uint64_t>(freq);
+    aie_arg.dir = 1;
+
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg))
+      throw xrt_core::error(-errno, boost::str(boost::format("Setting clock frequency for AIE partition (%d) failed") % aie_arg.partition_id));
+
+#else
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+#endif
+    return true;
   }
 };
 
@@ -491,6 +662,46 @@ struct accel_deadlock_status
     const auto dbg_ip_data = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(dbg_ip_dt);
 
     return xrt_core::debug_ip::get_accel_deadlock_status(device, dbg_ip_data);
+  }
+};
+
+struct dtbo_path
+{
+  using result_type = query::dtbo_path::result_type;
+  using slot_id_type = query::dtbo_path::slot_id_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& slot_id)
+  {
+    std::vector<std::string> dtbo_path_vec;
+    std::string errmsg;
+    auto edev = get_edgedev(device);
+    edev->sysfs_get("dtbo_path", errmsg, dtbo_path_vec);
+    if (!errmsg.empty() || dtbo_path_vec.empty()) {
+      // sysfs node is not accessible when bitstream is not loaded
+      return {};
+    }
+
+    // sysfs node data eg:
+    // <slot_id> <dtbo_path>
+    //     0     <path 0>
+    //     1     <path 1>
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    for(auto &line : dtbo_path_vec) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 2)
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+
+      tokenizer::iterator tok_it = tokens.begin();
+
+      uint32_t slotId = static_cast<slot_id_type>(std::stoi(std::string(*tok_it++)));
+      if(slotId == boost::any_cast<slot_id_type>(slot_id))
+        return std::string(*tok_it);
+    }
+    //if we reach here no matching slot is found
+    throw xrt_core::query::sysfs_error("no matching slot is found");
   }
 };
 
@@ -575,6 +786,17 @@ struct function0_get : QueryRequestType
 };
 
 template <typename QueryRequestType, typename Getter>
+struct function2_get : QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, const boost::any& arg1, const boost::any& arg2) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1, arg2);
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
 struct function3_get : QueryRequestType
 {
   boost::any
@@ -614,6 +836,14 @@ emplace_func0_request()
 
 template <typename QueryRequestType, typename Getter>
 static void
+emplace_func2_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function2_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
 emplace_func3_request()
 {
   auto k = QueryRequestType::key;
@@ -643,9 +873,11 @@ initialize_query_table()
   emplace_func0_request<query::aie_core_info,		aie_core_info>();
   emplace_func0_request<query::aie_shim_info,		aie_shim_info>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
+  emplace_func4_request<query::aie_get_freq,		aie_get_freq>();
+  emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
 
-  emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
+  emplace_sysfs_get<query::group_topology>            ("mem_topology");
   emplace_sysfs_get<query::ip_layout_raw>             ("ip_layout");
   emplace_sysfs_get<query::debug_ip_layout_raw>       ("debug_ip_layout");
   emplace_sysfs_get<query::aie_metadata>              ("aie_metadata");
@@ -657,9 +889,11 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();
+  emplace_func0_request<query::xclbin_uuid ,            xclbin_uuid>();
 
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
   emplace_func0_request<query::instance,                instance>();
+  emplace_func0_request<query::xclbin_slots,            xclbin_slots>();
 
   emplace_func4_request<query::aim_counter,             aim_counter>();
   emplace_func4_request<query::am_counter,              am_counter>();
@@ -667,6 +901,7 @@ initialize_query_table()
   emplace_func4_request<query::lapc_status,             lapc_status>();
   emplace_func4_request<query::spc_status,              spc_status>();
   emplace_func4_request<query::accel_deadlock_status,   accel_deadlock_status>();
+  emplace_func4_request<query::dtbo_path,               dtbo_path>();
 }
 
 struct X { X() { initialize_query_table(); } };

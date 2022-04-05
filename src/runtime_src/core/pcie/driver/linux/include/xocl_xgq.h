@@ -17,15 +17,20 @@
 #ifndef _XOCL_XGQ_H_
 #define _XOCL_XGQ_H_
 
+#include "xgq_xocl_plat.h"
+
 struct xocl_xgq_info {
 	int			 xi_id;
 	u64			 xi_addr;
+	void __iomem		*xi_sq_prod;
 	void __iomem		*xi_sq_prod_int;
+	void __iomem		*xi_cq_prod;
 };
 
+ssize_t xocl_xgq_dump_info(void *xgq_handle, char *buf, int count);
 int xocl_xgq_set_command(void *xgq_handle, int id, u32 *cmd, size_t sz);
 void xocl_xgq_notify(void *xgq_handle);
-int xocl_xgq_get_response(void *xgq_handle, int id);
+int xocl_xgq_get_response(void *xgq_handle, int id, struct xgq_com_queue_entry *resp);
 int xocl_xgq_attach(void *xgq_handle, void *client, int *client_id);
 
 void *xocl_xgq_init(struct xocl_xgq_info *info);

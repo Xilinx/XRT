@@ -439,10 +439,11 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	xocl_xdev_dbg(xdev, "alloc bo from bank%u, flag %x, host bank %d",
 		memidx, xobj->flags, drm_p->cma_bank_idx);
 
-	err = xocl_mm_insert_node_range(drm_p, memidx, xobj->mm_node,
+	err = xocl_mm_insert_node(drm_p, memidx, xobj->mm_node,
 		xobj->base.size);
 	if (err)
 		goto failed;
+
 	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);
@@ -736,6 +737,10 @@ int xocl_userptr_bo_ioctl(
 		goto out1;
 	}
 
+	ret = drm_gem_create_mmap_offset(&xobj->base);
+	if (ret < 0)
+		goto out1;
+
 	ret = drm_gem_handle_create(filp, &xobj->base, &args->handle);
 	if (ret)
 		goto out1;
@@ -774,14 +779,9 @@ int xocl_map_bo_ioctl(struct drm_device *dev,
 	}
 
 	BO_ENTER("xobj %p", xobj);
-	if (xocl_bo_userptr(xobj)) {
-		ret = -EPERM;
-		goto out;
-	}
 	/* The mmap offset was set up at BO allocation time. */
 	args->offset = drm_vma_node_offset_addr(&obj->vma_node);
 	xocl_describe(to_xocl_bo(obj));
-out:
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 	return ret;
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,6 +20,8 @@
 #include "core/common/error.h"
 
 // Utilities
+#include "tools/common/XBHelpMenusCore.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
 
@@ -55,28 +57,30 @@ namespace po = boost::program_options;
 #include "tools/common/ReportMailbox.h"
 #include "tools/common/ReportQspiStatus.h"
 #include "tools/common/ReportCmcStatus.h"
+#include "tools/common/ReportBOStats.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
   static ReportCollection fullReportCollection = {
   // Common reports
     std::make_shared<ReportAie>(),
     std::make_shared<ReportAieShim>(),
-    std::make_shared<ReportMemory>(),
-    std::make_shared<ReportHost>(),
-    std::make_shared<ReportDynamicRegion>(),
-    std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportAsyncError>(),
+    std::make_shared<ReportBOStats>(),
+    std::make_shared<ReportDebugIpStatus>(),
+    std::make_shared<ReportDynamicRegion>(),
+    std::make_shared<ReportHost>(),
+    std::make_shared<ReportMemory>(),
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
+    std::make_shared<ReportCmcStatus>(),
     std::make_shared<ReportElectrical>(),
+    std::make_shared<ReportFirewall>(),
     std::make_shared<ReportMailbox>(),
     std::make_shared<ReportMechanical>(),
-    std::make_shared<ReportFirewall>(),
-    std::make_shared<ReportThermal>(),
     std::make_shared<ReportQspiStatus>(),
-    std::make_shared<ReportCmcStatus>(),
+    std::make_shared<ReportThermal>(),
   #endif
   };
 
@@ -93,6 +97,7 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+  setIsDefaultDevValid(false);
 }
 
 void
@@ -119,7 +124,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
-    ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
@@ -131,11 +136,13 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
+  po::positional_options_description positionals;
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
@@ -190,50 +197,69 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   ReportCollection reportsToProcess;            // Reports of interest
   xrt_core::device_collection deviceCollection;  // The collection of devices to examine
 
-  try {
-    // Collect the reports to be processed
-    XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
+  bool is_report_output_valid = true;
+  // Collect the reports to be processed
+  XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
 
-    // Collect all of the devices of interest
-    std::set<std::string> deviceNames;
-    if (!sDevice.empty()) 
-      deviceNames.insert(boost::algorithm::to_lower_copy(sDevice));
+  // Collect all of the devices of interest
+  std::set<std::string> deviceNames;
+  if (!sDevice.empty())
+    deviceNames.insert(boost::algorithm::to_lower_copy(sDevice));
 
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
+  XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
 
-    // DRC check on devices and reports
-    if (deviceCollection.empty()) {
-      std::vector<std::string> missingReports;
-      for (const auto & report : reportsToProcess) {
-        if (report->isDeviceRequired())
-          missingReports.push_back(report->getReportName());
-      }
-      if (!missingReports.empty()) {
+  // enforce 1 device specification
+  if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)) {
+    std::cerr << "\nERROR: Programming multiple device is not supported. Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    const boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
+    for(const auto& kd : available_devices) {
+      const boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 
-        auto dev_pt = XBU::get_available_devices(true);
-        if(dev_pt.empty())
-          std::cout << "0 devices found" << std::endl;
-        else
-          std::cout << "Device list" << std::endl;
+  // DRC check on devices and reports
+  if (deviceCollection.empty()) {
+    std::vector<std::string> missingReports;
+    for (const auto & report : reportsToProcess) {
+      if (report->isDeviceRequired())
+        missingReports.push_back(report->getReportName());
+    }
 
-        for(auto& kd : dev_pt) {
-          boost::property_tree::ptree& dev = kd.second;
-          std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
-          std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
-        }
+    if (!missingReports.empty()) {
+      // Exception is thrown at the end of this function to allow for report writing
+      is_report_output_valid = false;
+      // Print error message
+      std::cerr << boost::format("Error: The following report(s) require specifying a device using the --device option:\n");
+      for (const auto & report : missingReports)
+        std::cout << boost::format("         - %s\n") % report;
 
-        std::cout << boost::format("Warning: Due to missing device, the following reports will not be generated:\n");
-        for (const auto & report : missingReports)
-          std::cout << boost::format("         - %s\n") % report;
+      // Print available devices
+      const auto dev_pt = XBU::get_available_devices(true);
+      if(dev_pt.empty())
+        std::cout << "0 devices found" << std::endl;
+      else
+        std::cout << "Device list" << std::endl;
+
+      for(auto& kd : dev_pt) {
+        const boost::property_tree::ptree& dev = kd.second;
+        const std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
+        std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
       }
     }
-  } catch (const std::runtime_error& e) {
-    XBU::print_exception_and_throw_cancel(e);
   }
 
   // Create the report
   std::ostringstream oSchemaOutput;
-  XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+  try {
+    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+  } catch (const std::exception&) {
+    // Exception is thrown at the end of this function to allow for report writing
+    is_report_output_valid = false;
+  }
 
   // -- Write output file ----------------------------------------------
   if (!sOutput.empty()) {
@@ -248,4 +274,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
     std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
   }
+
+  if (!is_report_output_valid)
+    throw xrt_core::error(std::errc::operation_canceled);
 }

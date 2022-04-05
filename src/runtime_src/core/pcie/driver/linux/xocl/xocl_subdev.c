@@ -1718,12 +1718,10 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		xocl_xdev_dbg(xdev, "xdev flash_type %s", core->priv.flash_type);
 
 		ret = xocl_subdev_create(xdev, &subdev_info);
-		if (ret) {
-			xocl_xdev_err(xdev, "Create VMR subdev failed. %d", ret);
+		if (ret)
 			goto done;
-		}
 
-		xocl_xdev_dbg(xdev, "VSEC VMR created.");
+		xocl_xdev_info(xdev, "VSEC VMR created.");
 	}
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset, NULL);
@@ -1792,6 +1790,10 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		xocl_xdev_info(xdev_hdl, "found vsec cap, platform type %d",
 				ptype);
 		xocl_fetch_dynamic_platform(core, &in, ptype);
+		vsec = true;
+	} else if (ret == -ENOENT) {
+		/* VSEC is found but PLATFORM_INFO does not exist. (versal) */
+		xocl_fetch_dynamic_platform(core, &in, -1);
 		vsec = true;
 	}
 		
@@ -1905,15 +1907,28 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
  *       if any of this procedure fails due to fatal error, a hot reset warning
  *       will be reported.
  */
-void xocl_reinit_vmr(xdev_handle_t xdev)
+int xocl_enable_vmr_boot(xdev_handle_t xdev)
 {
-	int rc = 0;
+	int err = 0;
 
-	rc = xocl_pmc_enable_reset(xdev);
-	if (rc == -ENODEV)
-		xocl_vmr_enable_multiboot(xdev);
+	/*
+	 * set reboot config to expected offset (A/B boot).
+	 */
+	err = xocl_vmr_enable_multiboot(xdev);
+	if (err && err != -ENODEV) {
+		xocl_xdev_info(xdev, "config vmr multi-boot failed. err: %d. continue to reset.", err);
+	} 
 
-	(void) xocl_download_apu_firmware(xdev);
+	/*
+	 * set reset signal 
+	 */
+	err = xocl_pmc_enable_reset(xdev);
+	if (err && err != -ENODEV) {
+		xocl_xdev_err(xdev, "config pmc reset register failed. err: %d", err);
+		return err;
+	}
+
+	return 0;
 }
 
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
@@ -1994,25 +2009,47 @@ failed:
 
 static struct resource *__xocl_get_res_byname(struct platform_device *pdev,
 						unsigned int type,
-						const char *name)
+						const char *name, int idx)
 {
 	int i = 0;
 	struct resource *res;
+	int count = -1;
+
+	if (idx < 0)
+		return NULL;
 
 	for (res = platform_get_resource(pdev, type, i);
 		res;
 		res = platform_get_resource(pdev, type, ++i)) {
 		if (!strncmp(res->name, name, strlen(name)))
+			count++;
+		if (count == idx)
 			return res;
 	}
 
 	return NULL;
 }
 
+int xocl_count_iores_byname(struct platform_device *pdev, char *name)
+{
+	int nr = 0;
+
+	while (__xocl_get_res_byname(pdev, IORESOURCE_MEM, name, nr))
+		nr++;
+
+	return nr;
+}
+
+struct resource *xocl_get_iores_with_idx_byname(struct platform_device *pdev,
+				       char *name, int idx)
+{
+	return __xocl_get_res_byname(pdev, IORESOURCE_MEM, name, idx);
+}
+
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 				       char *name)
 {
-	return __xocl_get_res_byname(pdev, IORESOURCE_MEM, name);
+	return __xocl_get_res_byname(pdev, IORESOURCE_MEM, name, 0);
 }
 
 void __iomem *xocl_devm_ioremap_res(struct platform_device *pdev,
@@ -2029,7 +2066,7 @@ void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
 {
 	struct resource *res;
 
-	res = __xocl_get_res_byname(pdev, IORESOURCE_MEM, name);
+	res = __xocl_get_res_byname(pdev, IORESOURCE_MEM, name, 0);
 	return devm_ioremap_resource(&pdev->dev, res);
 }
 
@@ -2037,7 +2074,7 @@ int xocl_get_irq_byname(struct platform_device *pdev, char *name)
 {
 	struct resource *r;
 
-	r = __xocl_get_res_byname(pdev, IORESOURCE_IRQ, name);
+	r = __xocl_get_res_byname(pdev, IORESOURCE_IRQ, name, 0);
 	return r? r->start : -ENXIO;
 }
 

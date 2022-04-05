@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,14 +14,10 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-/**
- * Copyright (C) 2015 Xilinx, Inc
- */
-
 #include "shim.h"
-#include "core/common/system.h"
+#include "core/include/shim_int.h"
 #include "core/common/device.h"
+#include "core/common/system.h"
 #include "xcl_graph.h"
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
@@ -288,29 +285,26 @@ size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTrace
 }
 
 
-double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
+double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return 0.0;
   return 0.0;
 }
 
 
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return 0.0;
   return 0.0;
 }
 
 
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return 0.0;
+  return 0.0;
+}
+
+
+double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
   return 0.0;
 }
 
@@ -589,6 +583,22 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
 
+int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
+{
+  try {
+    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+    return drv ? drv->xclOpenContextByName(slot, xclbinId, cuname, shared) : -ENODEV;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
+}
+
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
@@ -608,16 +618,16 @@ int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIn
 }
 
 // Restricted read/write on IP register space
-int xclRegWrite(xclDeviceHandle, uint32_t, uint32_t, uint32_t)
+int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data)
 {
-  std::cerr << "ERROR: xclRegWrite/xclRegRead calls not supported for sw emulation." << std::endl;
-  return -1;
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclRegWrite(cu_index, offset, data) : -ENODEV;
 }
 
-int xclRegRead(xclDeviceHandle, uint32_t, uint32_t, uint32_t*)
+int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap)
 {
-  std::cerr << "ERROR: xclRegWrite/xclRegRead calls not supported for sw emulation." << std::endl;
-  return -1;
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
 }
 
 int xclCreateProfileResults(xclDeviceHandle handle, ProfileResults** results)
@@ -661,7 +671,7 @@ xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t force)
   return -ENOSYS;
 }
 
-int 
+int
 xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return -ENOSYS;
@@ -910,7 +920,7 @@ xclResetAIEArray(xclDeviceHandle handle)
 int
 xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  try { 
+  try {
     if (handle) {
       xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
       return drv ? drv->xrtSyncBOAIENB(bo, gmioName, dir, size, offset) : -1;

@@ -204,17 +204,42 @@ namespace xclhwemhal2 {
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
   }
 
-  void HwEmShim::parseHLSPrintf(const std::string& simPath)
+  int HwEmShim::parseLog()
+  {
+    std::vector<std::string> myvector = {"SIM-IPC's external process can be connected to instance",
+                                         "SystemC TLM functional mode",
+                                         "HLS_PRINT",
+                                         "Exiting xsim",
+                                         "FATAL_ERROR"};
+
+    std::ifstream ifs(getSimPath() + "/simulate.log");
+
+    if (ifs.is_open()) {
+      std::string line;
+      while (std::getline(ifs, line)) {
+        for (auto matchString : myvector) {
+          std::string::size_type index = line.find(matchString);
+          if (index != std::string::npos) {
+            if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
+              logMessage(line);
+              parsedMsgs.push_back(line);
+              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR"))
+                 std::cout << "SIMULATION EXITED" << std::endl; 
+            }
+          }
+        }
+      }
+    }
+    return 0;
+  }
+
+  void HwEmShim::parseString(const std::string& simPath , const std::string& searchString)
   {
     std::ifstream ifs(simPath + "/simulate.log");
-    std::string word = "HLS_PRINT";
-    std::string line;
-    while( getline(ifs, line ))
-    {
-      size_t pos = line.find(word);
-      if ( pos != std::string::npos) {
-        logMessage(line, 0);
-      }
+    std::string lineHandle;
+    while(getline(ifs, lineHandle)) {
+      if(lineHandle.find(searchString, 0) != std::string::npos)
+        logMessage(lineHandle);
     }
   }
 
@@ -222,19 +247,13 @@ namespace xclhwemhal2 {
   {
     std::string simPath = getSimPath();
     std::string content = loadFileContentsToString(simPath + "/simulate.log");
-    parseHLSPrintf(simPath);
     if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
       size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
       size_t last = content.find("detected!", first);
       // substr including the word detected!
       std::string deadlockMsg = content.substr(first , last + 9 - first);
-      logMessage(deadlockMsg, 0);
+      logMessage(deadlockMsg);
     }
-  }
-
-  static size_t convert(const std::string& str)
-  {
-    return str.empty() ? 0 : std::stoul(str,0,0);
   }
 
   static void sigHandler(int sn, siginfo_t *si, void *sc)
@@ -304,12 +323,12 @@ namespace xclhwemhal2 {
     ssize_t pdiSize = 0;
     ssize_t emuDataSize = 0;
 
-    char* zipFile = nullptr;
-    char* xmlFile = nullptr;
-    char* debugFile = nullptr;
-    char* memTopology = nullptr;
-    char* pdi = nullptr;
-    char* emuData = nullptr;
+    std::unique_ptr<char[]> zipFile;
+    std::unique_ptr<char[]> xmlFile;
+    std::unique_ptr<char[]> debugFile;
+    std::unique_ptr<char[]> memTopology;
+    std::unique_ptr<char[]>  pdi;
+    std::unique_ptr<char[]> emuData;
 
     if (std::memcmp(bitstreambin, "xclbin2", 7)) {
       PRINTENDFUNC;
@@ -321,87 +340,49 @@ namespace xclhwemhal2 {
     auto top = reinterpret_cast<const axlf*>(header);
     if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
       xmlFileSize = sec->m_sectionSize;
-      xmlFile = new char[xmlFileSize];
-      memcpy(xmlFile, bitstreambin + sec->m_sectionOffset, xmlFileSize);
+      xmlFile = std::make_unique<char[]>(xmlFileSize);
+      memcpy(xmlFile.get(), bitstreambin + sec->m_sectionOffset, xmlFileSize);
     }
     if (auto sec = xclbin::get_axlf_section(top, BITSTREAM)) {
       zipFileSize = sec->m_sectionSize;
-      zipFile = new char[zipFileSize];
-      memcpy(zipFile, bitstreambin + sec->m_sectionOffset, zipFileSize);
+      zipFile = std::make_unique<char[]>(zipFileSize);
+      memcpy(zipFile.get(), bitstreambin + sec->m_sectionOffset, zipFileSize);
     }
     if (auto sec = xclbin::get_axlf_section(top, DEBUG_IP_LAYOUT)) {
       debugFileSize = sec->m_sectionSize;
-      debugFile = new char[debugFileSize];
-      memcpy(debugFile, bitstreambin + sec->m_sectionOffset, debugFileSize);
+      debugFile = std::make_unique<char[]>(debugFileSize);
+      memcpy(debugFile.get(), bitstreambin + sec->m_sectionOffset, debugFileSize);
     }
     if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
       memTopologySize = sec->m_sectionSize;
-      memTopology = new char[memTopologySize];
-      memcpy(memTopology, bitstreambin + sec->m_sectionOffset, memTopologySize);
+      memTopology = std::make_unique<char[]>(memTopologySize);
+      memcpy(memTopology.get(), bitstreambin + sec->m_sectionOffset, memTopologySize);
     }
     if (auto sec = xclbin::get_axlf_section(top, PDI)) {
       pdiSize = sec->m_sectionSize;
-      pdi = new char[pdiSize];
-      memcpy(pdi, bitstreambin + sec->m_sectionOffset, pdiSize);
+      pdi = std::make_unique<char[]>(pdiSize);
+      memcpy(pdi.get(), bitstreambin + sec->m_sectionOffset, pdiSize);
     }
     if (auto sec = xclbin::get_axlf_section(top, EMULATION_DATA)) {
       emuDataSize = sec->m_sectionSize;
-      emuData = new char[emuDataSize];
-      memcpy(emuData, bitstreambin + sec->m_sectionOffset, emuDataSize);
-    }
-
-    if(!zipFile || !xmlFile)
-    {
-      //deallocate all allocated memories to fix memory leak
-      if(zipFile)
-      {
-        delete[] zipFile;
-        zipFile = nullptr;
-      }
-
-      if(debugFile)
-      {
-        delete[] debugFile;
-        debugFile = nullptr;
-      }
-
-      if(xmlFile)
-      {
-        delete[] xmlFile;
-        xmlFile = nullptr;
-      }
-
-      if(memTopology)
-      {
-        delete[] memTopology;
-        memTopology = nullptr;
-      }
-
-      if (pdi) {
-        delete[] pdi;
-        pdi = nullptr;
-      }
-
-      if (emuData) {
-        delete[] emuData;
-        emuData = nullptr;
-      }
-      return -1;
+      emuData = std::make_unique<char[]>(emuDataSize);
+      memcpy(emuData.get(), bitstreambin + sec->m_sectionOffset, emuDataSize);
     }
 
     bitStreamArg loadBitStreamArgs;
-    loadBitStreamArgs.m_zipFile = zipFile;
+    loadBitStreamArgs.m_zipFile = zipFile.get();
     loadBitStreamArgs.m_zipFileSize = zipFileSize;
-    loadBitStreamArgs.m_xmlfile = xmlFile;
+    loadBitStreamArgs.m_xmlfile = xmlFile.get();
     loadBitStreamArgs.m_xmlFileSize = xmlFileSize;
-    loadBitStreamArgs.m_debugFile = debugFile;
+    loadBitStreamArgs.m_debugFile = debugFile.get();
     loadBitStreamArgs.m_debugFileSize = debugFileSize;
-    loadBitStreamArgs.m_memTopology = memTopology;
+    loadBitStreamArgs.m_memTopology = memTopology.get();
     loadBitStreamArgs.m_memTopologySize = memTopologySize;
-    loadBitStreamArgs.m_pdi = pdi;
+    loadBitStreamArgs.m_pdi = pdi.get();
     loadBitStreamArgs.m_pdiSize = pdiSize;
-    loadBitStreamArgs.m_emuData = emuData;
+    loadBitStreamArgs.m_emuData = emuData.get();
     loadBitStreamArgs.m_emuDataSize = emuDataSize;
+    loadBitStreamArgs.m_top = top;
 
     int returnValue = xclLoadBitstreamWorker(loadBitStreamArgs);
 
@@ -421,20 +402,13 @@ namespace xclhwemhal2 {
     } else if (xclemulation::config::getInstance()->isXgqMode()) {
         m_xgq = new hwemu::xocl_xgq(this);
         if (m_xgq && pdi && pdiSize > 0) {
-            returnValue = m_xgq->load_xclbin(pdi, pdiSize);
+            returnValue = m_xgq->load_xclbin(pdi.get(), pdiSize);
         }
     } else {
         mCore = new exec_core;
         mMBSch = new MBScheduler(this);
         mMBSch->init_scheduler_thread();
     }
-
-    delete[] zipFile;
-    delete[] debugFile;
-    delete[] xmlFile;
-    delete[] memTopology;
-    delete[] pdi;
-    delete[] emuData;
 
     PRINTENDFUNC;
     return returnValue;
@@ -465,6 +439,10 @@ namespace xclhwemhal2 {
       resetProgram();
     }
 
+    //CR-1116870 changes. Clearing "mOffsetInstanceStreamMap" for each kernel in case of multiple kernels with different xclbin's
+    //required for sys_opt/kernel_swap example
+    mOffsetInstanceStreamMap.clear();
+    
     std::stringstream ss;
     ss << deviceDirectory << "/binary_" << binaryCounter;
     std::string binaryDirectory = ss.str();
@@ -579,44 +557,14 @@ namespace xclhwemhal2 {
       }
     }
 
-    pt::ptree xml_project;
-    std::string sXmlFile;
-    sXmlFile.assign(args.m_xmlfile, args.m_xmlFileSize);
-    std::stringstream xml_stream;
-    xml_stream << sXmlFile;
-    pt::read_xml(xml_stream, xml_project);
+    //CR-1116870 Changes Start
 
-    // iterate platforms
-    int count = 0;
-    for (auto& xml_platform : xml_project.get_child("project"))
-    {
-      if (xml_platform.first != "platform")
-        continue;
-      if (++count > 1)
-      {
-        //Give error and return from here
-      }
-    }
-
-    std::string fpgaDevice="";
-
-    // iterate devices
-    count = 0;
-    for (auto& xml_device : xml_project.get_child("project.platform"))
-    {
-      if (xml_device.first != "device")
-        continue;
-
-      fpgaDevice = xml_device.second.get<std::string>("<xmlattr>.fpgaDevice");
-
-      if (++count > 1)
-      {
-        //Give error and return from here
-      }
-    }
+    auto projectName = xrt_core::xclbin::get_project_name(args.m_top);
+    xrt::xclbin xclbin_object{args.m_top};
+    auto fpgaDeviceName = xclbin_object.get_fpga_device_name();
 
     //New DRC check for Versal Platforms
-    if (fpgaDevice != "" && fpgaDevice.find("versal:") != std::string::npos) {
+    if (!fpgaDeviceName.empty() && fpgaDeviceName.find("versal:") != std::string::npos) {
       mVersalPlatform=true;
       if ((args.m_emuData == nullptr) && (args.m_emuDataSize <= 0)) {
         std::string dMsg = "ERROR: [HW-EMU 09] EMULATION_DATA section is missing in XCLBIN. This is a mandatory section required for Versal platforms. Please ensure the design is built with 'v++ -package' step, which inserts EMULATION_DATA into the XCLBIN.";
@@ -627,102 +575,52 @@ namespace xclhwemhal2 {
     if (xclemulation::config::getInstance()->isSharedFmodel() && !mVersalPlatform) {
       setenv("SDX_USE_SHARED_MEMORY","true",true);
     }
-    // iterate cores
-    count = 0;
-    for (auto& xml_core : xml_project.get_child("project.platform.device"))
+
+    std::string instance_name = "";
+    //CR-1122692:'auto' is treated as 32 bit int.But 'uint64_t' is needed
+    uint64_t base_address = 0;
+    for (const auto& kernel : xclbin_object.get_kernels())
     {
-      if (xml_core.first != "core")
-        continue;
-      if (++count > 1)
+      // get properties of each kernel object
+      auto props = xrt_core::xclbin_int::get_properties(kernel);
+      //get CU's of each kernel object
+      //iterate over CU's to get arguments
+      for (const auto& cu : kernel.get_cus())
       {
-        //Give error and return from here
-      }
-    }
-
-    std::vector<std::string> kernels;
-
-    // iterate kernels
-    for (auto& xml_kernel : xml_project.get_child("project.platform.device.core"))
-    {
-      if (xml_kernel.first != "kernel")
-        continue;
-
-      std::string kernelName = xml_kernel.second.get<std::string>("<xmlattr>.name");
-      kernels.push_back(kernelName);
-      int address_range = 0;
-      std::string instanceName;
-
-      if (mLogStream.is_open())
-         mLogStream << __func__ << " Filling kernel " << kernelName << " info from xclbin.xml" << std::endl;
-
-      for (auto& xml_kernel_info : xml_kernel.second)
-      {
-        std::map<uint64_t, KernelArg> kernelArgInfo;
-        if (xml_kernel_info.first == "arg")
-        {
-          std::string name = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
-          std::string id = xml_kernel_info.second.get<std::string>("<xmlattr>.id");
-          std::string port = xml_kernel_info.second.get<std::string>("<xmlattr>.port");
-          uint64_t offset = convert(xml_kernel_info.second.get<std::string>("<xmlattr>.offset"));
-          uint64_t size = convert(xml_kernel_info.second.get<std::string>("<xmlattr>.size"));
-          KernelArg kArg;
-          kArg.name = kernelName + ":" + name;
-          kArg.size = size;
-          kernelArgInfo[offset] = kArg;
-
-          if (mLogStream.is_open())
-            mLogStream << __func__ << " Filling kernel Args name: " << name << " id: " << id << " port: " << port << " info from xclbin.xml" << std::endl;
-        }
-
-        if (xml_kernel_info.first == "port") {
-          std::string mode = xml_kernel_info.second.get<std::string>("<xmlattr>.mode");
-          if (mode == "slave") {
-            address_range = convert(xml_kernel_info.second.get<std::string>("<xmlattr>.range"));
-            if (mLogStream.is_open())
-              mLogStream << __func__ << " Getting the Address Range of mode : " << mode << " info from xclbin.xml" << std::endl;
-          }
-        }
-
-        if (xml_kernel_info.first == "instance")
-        {
-          instanceName = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
-          for (auto& xml_remap : xml_kernel_info.second)
+        base_address = cu.get_base_address();
+        //CR-1122692: Adding checks to validate base_address and adding 'mVersalPlatform' check
+        if (base_address != (uint64_t)-1 && mVersalPlatform) {
+          mCuBaseAddress = base_address & 0xFFFFFFFF00000000;
+          //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
+          if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
           {
-            if (xml_remap.first != "addrRemap")
-              continue;
-
-            if (mLogStream.is_open())
-              mLogStream << __func__ << " Filling kernel Instance info from xclbin.xml" << std::endl;
-
-            uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
-            mCuBaseAddress = base & 0xFFFFFFFF00000000;
-
-            std::string vbnv  = mDeviceInfo.mName;
-            //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
-            if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1) {
-              mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
-            } else if(mVersalPlatform) {
-              mCuBaseAddress = 0x20200000000;
-            }
-            mKernelOffsetArgsInfoMap[base] = kernelArgInfo;
-            if (xclemulation::config::getInstance()->isMemLogsEnabled())
-            {
-              std::ofstream* controlStream = new std::ofstream;
-              controlStream->open(instanceName + "_control.mem");
-              mOffsetInstanceStreamMap[base] = controlStream;
-            }
-            break;
+            mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+          }
+          else if(mVersalPlatform)
+          {
+            mCuBaseAddress = 0x20200000000;
           }
         }
+        //fetch instance name
+        instance_name = cu.get_name();
+        if (xclemulation::config::getInstance()->isMemLogsEnabled())
+        {
+          //trim instance_name to get actual instance name
+          auto position = instance_name.find(":");
+          auto trimmed_instance_name = instance_name.substr(position+1);
+          mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,new std::ofstream(trimmed_instance_name + "_control.mem")));
+        }
 
-        if (address_range != 0 && !kernelName.empty() && !instanceName.empty() ) {
-          std::string kernelInstanceStr = kernelName + ":" + instanceName;
-          mCURangeMap[kernelInstanceStr] = address_range;
+        if (props.address_range != 0 && !props.name.empty() && !instance_name.empty())
+        {
+          mCURangeMap[instance_name] = props.address_range;
         }
       }
     }
+    std::string xclBinName = projectName;
 
-    std::string xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
+    //CR-1116870 Changes End
+
     set_simulator_started(true);
 
     //Thread to fetch messages from Device to display on host
@@ -800,14 +698,14 @@ namespace xclhwemhal2 {
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
-	        if (simulatorType == "xsim") {
-                cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
-                << " --protoinst " << protoFileName;
-                launcherArgs = launcherArgs + cmdLineOption.str();
-	        } else {
-                cmdLineOption << " gui ";
-                launcherArgs = launcherArgs + cmdLineOption.str();
-	        }
+          if (simulatorType == "xsim") {
+            cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
+                          << " --protoinst " << protoFileName;
+            launcherArgs = launcherArgs + cmdLineOption.str();
+          } else {
+            cmdLineOption << " gui ";
+            launcherArgs = launcherArgs + cmdLineOption.str();
+          }
         }
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -1273,40 +1171,10 @@ namespace xclhwemhal2 {
        case XCL_ADDR_KERNEL_CTRL:
          {
            std::map<uint64_t,std::pair<std::string,unsigned int>> offsetArgInfo;
-           unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
 
            std::string kernelName("");
            uint32_t *hostBuf32 = ((uint32_t*)hostBuf);
           // if(hostBuf32[0] & CONTROL_AP_START)
-           {
-             auto offsetKernelArgInfoItr = mKernelOffsetArgsInfoMap.find(offset);
-             if(offsetKernelArgInfoItr != mKernelOffsetArgsInfoMap.end())
-             {
-               unsigned char* axibuf=((unsigned char*) hostBuf);
-               std::map<uint64_t, KernelArg> kernelArgInfo = (*offsetKernelArgInfoItr).second;
-               for (auto i : kernelArgInfo)
-               {
-                 uint64_t argOffset = i.first;
-                 KernelArg kArg = i.second;
-                 uint64_t argPointer = 0;
-                 std::memcpy(&argPointer,axibuf+ argOffset,kArg.size);
-                 std::map<uint64_t,uint64_t>::iterator it = mAddrMap.find(argPointer);
-                 if(it != mAddrMap.end())
-                 {
-                   uint64_t offsetSize =  (*it).second;
-                   uint64_t padding = (paddingFactor == 0) ? 0 : offsetSize/(1+(paddingFactor*2));
-                   std::pair<std::string,unsigned int> sizeNamePair(kArg.name,offsetSize);
-                   if(hostBuf32[0] & CONTROL_AP_START)
-                     offsetArgInfo[argPointer-padding] = sizeNamePair;
-                   size_t pos = kArg.name.find(":");
-                   if(pos != std::string::npos)
-                   {
-                     kernelName = kArg.name.substr(0,pos);
-                   }
-                 }
-               }
-             }
-           }
 
            auto controlStreamItr = mOffsetInstanceStreamMap.find(offset);
            if(controlStreamItr != mOffsetInstanceStreamMap.end())
@@ -1705,13 +1573,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       size_t size = MAXPATHLEN;
       char* pPath = GetCurrentDir(path,size);
 
-      if(pPath)
-      {
+      if(pPath) {
         // Copy waveform database
         if (lWaveform != xclemulation::debug_mode::off) {
           std::string extension = "wdb";
-          if (boost::filesystem::exists(binaryDirectory+"/msim"))
-          {
+          if (boost::filesystem::exists(binaryDirectory+"/msim")) {
             extension = "wlf";
           }
           std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
@@ -1749,12 +1615,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         std::string destPath5 = "'" + std::string(path) + "/" + fileName + "_simulate.log'";
         systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5, std::to_string(__LINE__));
 
-
         // Copy xsc_report Log file
         std::string xscReportLogFilePath= binaryDirectory + "/" + "xsc_report.log";
         std::string destPath8 = "'" + std::string(path) + "/" + fileName + "_xsc_report.log'";
         systemUtil::makeSystemCall(xscReportLogFilePath, systemUtil::systemOperation::COPY, destPath8, std::to_string(__LINE__));
-
       }
       i++;
     }
@@ -1766,14 +1630,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
   }
 
-  void HwEmShim::xclClose()
-  {
+  void HwEmShim::xclClose() {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    for (auto& it: mFdToFileNameMap)
-    {
+    parseLog();
+
+    for (auto& it: mFdToFileNameMap) {
       int fd=it.first;
       int sSize = std::get<1>(it.second);
       void* addr = std::get<2>(it.second);
@@ -1840,6 +1704,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       std::string waitingMsg ="INFO: [HW-EMU 06-1] All the simulator processes exited successfully";
       logMessage(waitingMsg);
+
+      std::string consoleMsg = "INFO: [HW-EMU 07-0] Please refer the path \"" + getSimPath() + "/simulate.log\" for more detailed simulation infos, errors and warnings.";
+      logMessage(consoleMsg);
     }
 
     saveWaveDataBase();
@@ -2016,6 +1883,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     free(ci_buf);
     free(ri_buf);
     free(buf);
+    parsedMsgs.clear();
+
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
       mLogStream.close();
@@ -2815,7 +2684,6 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
   auto itr = mFdToFileNameMap.find(boGlobalHandle);
   if(itr != mFdToFileNameMap.end())
   {
-    const std::string& fileName = std::get<0>((*itr).second);
     int size = std::get<1>((*itr).second);
     unsigned boFlags = std::get<3>((*itr).second);
 
@@ -2828,11 +2696,6 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
     }
     mImportedBOs.insert(importedBo);
     bo->fd = boGlobalHandle;
-    bool ack;
-    xclImportBO_RPC_CALL(xclImportBO,fileName,bo->base,size);
-    PRINTENDFUNC;
-    if(!ack)
-      return -1;
     return importedBo;
   }
   PRINTENDFUNC;
@@ -2865,10 +2728,8 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     return -1;
   }
    
-  // Enabling the copy buffer thru the M2M under the INI option enable_m2m and its default is false.
-  // Once the issues regarding this is resolved from the sim_m2m kernel, we will remove this ini option.
-  if (xclemulation::config::getInstance()->isM2MEnabled()) {
-    if (deviceQuery(key_type::m2m) && getM2MAddress() != 0) {
+  // Copy buffer thru the M2M.
+    if ((deviceQuery(key_type::m2m) && getM2MAddress() != 0) && !((sBO->fd >= 0) || (dBO->fd >= 0))) {
 
       char hostBuf[M2M_KERNEL_ARGS_SIZE];
       std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
@@ -2902,7 +2763,6 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       PRINTENDFUNC;
       return 0;
     }
-  }
 
   // source buffer is host_only and destination buffer is device_only
   if (isHostOnlyBuffer(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
@@ -2930,20 +2790,49 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       return -1;
     }
   }
-  else if(dBO->fd >= 0){  //destination p2p buffer
-    int ack = false;
-    auto fItr = mFdToFileNameMap.find(dBO->fd);
-    if (fItr != mFdToFileNameMap.end()) {
-      const std::string& sFileName = std::get<0>((*fItr).second);
-      xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
+  else if((sBO->fd >=0) && (dBO->fd >= 0)) {  //Both source & destination P2P buffer
+    // CR-1113695 Copy data from source P2P to Dest P2P
+    std::vector<char> temp_buffer(size);
+    lseek(sBO->fd, src_offset, SEEK_SET);
+    int bytes_read = read(sBO->fd, temp_buffer.data(), size);
+    if (bytes_read) {
+      if (mLogStream.is_open())
+      {
+        mLogStream << __func__ << ", data read successfully from the src fd to local buffer." << std::endl;
+      }
     }
-    if (!ack)
+
+    lseek(dBO->fd, dst_offset, SEEK_SET);
+    int bytes_write = write(dBO->fd, temp_buffer.data(), size);
+    if (bytes_write) {
+      if (mLogStream.is_open())
+      {
+        mLogStream << __func__ << ", data written successfully from local buffer to dest fd." << std::endl;
+      }
+    }
+  }
+  else if(dBO->fd >= 0){  //destination p2p buffer
+    // CR-1113695 Copy data from temp buffer to exported fd
+    std::vector<char> temp_buffer(size);
+    if (xclCopyBufferDevice2Host((void*)temp_buffer.data(), sBO->base, size, src_offset, sBO->topology) != size) {
+      std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
       return -1;
+    }
+    lseek(dBO->fd, dst_offset, SEEK_SET);
+    int bytes_write = write(dBO->fd, temp_buffer.data(), size);
+
+    if (bytes_write) {
+      if (mLogStream.is_open())
+      {
+        mLogStream << __func__ << ", data written successfully from local buffer to dest fd." << std::endl;
+      }
+    }
   } 
-  else if (sBO->fd >= 0) {
+  else if (sBO->fd >= 0) {  //source p2p buffer
     // CR-1112934 Copy data from exported fd to temp buffer using read API
-    unsigned char temp_buffer[size];
-    int bytes_read = read(sBO->fd, temp_buffer, size);
+    std::vector<char> temp_buffer(size);
+    lseek(sBO->fd, src_offset, SEEK_SET);
+    int bytes_read = read(sBO->fd, temp_buffer.data(), size);
 
     if (bytes_read) {
       if (mLogStream.is_open())
@@ -2953,7 +2842,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     }
 
     // copy data from temp buffer to destination buffer
-    if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer, size, dst_offset, dBO->topology) != size) {
+    if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer.data(), size, dst_offset, dBO->topology) != size) {
       std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;
       return -1;
     }
@@ -3394,18 +3283,30 @@ double HwEmShim::xclGetDeviceClockFreqMHz()
   return clockSpeed;
 }
 
-// Get the maximum bandwidth for host reads from the device (in MB/sec)
-// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
-double HwEmShim::xclGetReadMaxBandwidthMBps()
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double HwEmShim::xclGetHostReadMaxBandwidthMBps()
 {
-  return 8000.0;
+  return 15753.85;
 }
 
-// Get the maximum bandwidth for host writes to the device (in MB/sec)
-// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
-double HwEmShim::xclGetWriteMaxBandwidthMBps()
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double HwEmShim::xclGetHostWriteMaxBandwidthMBps()
 {
-  return 8000.0;
+  return 15753.85;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double HwEmShim::xclGetKernelReadMaxBandwidthMBps()
+{
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double HwEmShim::xclGetKernelWriteMaxBandwidthMBps()
+{
+  return 19250.00;
 }
 
 uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,6 +39,7 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_DONE  = 2;
   const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
   const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
+  void messagesThread(xclcpuemhal2::CpuemShim* inst);
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
@@ -129,7 +130,7 @@ namespace xclcpuemhal2 {
       {
         //Give error and return from here
       }
-    }   
+    }
     // iterate devices
     count = 0;
     for (auto& xml_device : xml_project.get_child("project.platform"))
@@ -215,6 +216,7 @@ namespace xclcpuemhal2 {
     {
       message_size = 0x800000;
     }
+    mMessengerThreadStarted = false;
     mCloseAll = false;
     bUnified = _unified;
     bXPR = _xpr;
@@ -520,7 +522,7 @@ namespace xclcpuemhal2 {
             xilinxInstall = std::string(installEnvvar);
           }
         }
-        
+
         char *xilinxHLSEnvVar = getenv("XILINX_HLS");
         char *xilinxVivadoEnvVar = getenv("XILINX_VIVADO");
 
@@ -607,7 +609,7 @@ namespace xclcpuemhal2 {
   }
 
   int CpuemShim::xclLoadXclBin(const xclBin *header)
-  { 
+  {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
     std::string xclBinName = "";
     if (!xclcpuemhal2::validateXclBin(header, xclBinName, mDeviceProcessInQemu, mFpgaDevice)) {
@@ -619,7 +621,7 @@ namespace xclcpuemhal2 {
 
     if (!mDeviceProcessInQemu){
       return xclLoadXclBinNewFlow(header);
-    }  
+    }
 
     std::string xmlFile = "" ;
     int result = dumpXML(header, xmlFile) ;
@@ -649,6 +651,11 @@ namespace xclcpuemhal2 {
 
     std::string binaryDirectory("");
     launchDeviceProcess(debuggable,binaryDirectory);
+    //Check if device_process.log already exists. Remove if exits.
+    std::string extIoTxtFile = deviceDirectory + "/../../../device_process.log";
+    FILE* fp = fopen(extIoTxtFile.c_str(), "rb");
+    if (fp != NULL)
+      systemUtil::makeSystemCall(extIoTxtFile, systemUtil::systemOperation::REMOVE); 
 
     if(header)
     {
@@ -676,7 +683,7 @@ namespace xclcpuemhal2 {
       size_t emuDataSize = 0;
       std::unique_ptr<char[]> connectvitybuf;
       ssize_t connectvitybufsize = 0;
-     
+
       //check header
       if (!memcmp(xclbininmemory, "xclbin0", 8))
       {
@@ -697,13 +704,13 @@ namespace xclcpuemhal2 {
           memTopology = std::unique_ptr<char[]>(new char[memTopologySize]);
           memcpy(memTopology.get(), xclbininmemory + sec->m_sectionOffset, memTopologySize);
         }
-        //Extract EMULATION_DATA from XCLBIN       
+        //Extract EMULATION_DATA from XCLBIN
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {
           emuDataSize = sec->m_sectionSize;
           emuData = std::unique_ptr<char[]>(new char[emuDataSize]);
           memcpy(emuData.get(), xclbininmemory + sec->m_sectionOffset, emuDataSize);
         }
-	      //Extract CONNECTIVITY section from XCLBIN       
+	      //Extract CONNECTIVITY section from XCLBIN
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, CONNECTIVITY)) {
           connectvitybufsize = sec->m_sectionSize;
           connectvitybuf = std::unique_ptr<char[]>(new char[connectvitybufsize]);
@@ -766,7 +773,7 @@ namespace xclcpuemhal2 {
               return -1;
             uint64_t route_id = m_mem->m_mem_data[memdata_idx].route_id;
             uint64_t arg_id = m_conn->m_connection[conn_idx].arg_index;
-            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo 
+            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo
             uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
             if (mLogStream.is_open())
               mLogStream << __func__ << " flow_id : " << flow_id << " route_id : " << route_id << " inst addr : " << instanceBaseAddr << " arg_id : " << arg_id << std::endl;
@@ -823,6 +830,11 @@ namespace xclcpuemhal2 {
       if(mLogStream.is_open())
         verbose = true;
       xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
+      //Thread to fetch messages from Device to display on host	  
+      if(mMessengerThreadStarted == false) {
+        mMessengerThread = std::thread(xclcpuemhal2::messagesThread,this);
+        mMessengerThreadStarted = true;
+      }
       if(!ack)
         return -1;
     }
@@ -875,7 +887,7 @@ namespace xclcpuemhal2 {
 
   int CpuemShim::xclLoadXclBinNewFlow(const xclBin *header)
   {
-    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;  
+    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
 
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
@@ -894,22 +906,22 @@ namespace xclcpuemhal2 {
         auto top = reinterpret_cast<const axlf*>(header);
         auto sec = xclbin::get_axlf_section(top, DEBUG_DATA);
         if (sec)
-        {         
+        {
           debugMode = "Yes";
         }
       }
     }
-    //Create thread for TCP socket connection    
+    //Create thread for TCP socket connection
     std::thread tcpSockThread = std::thread(&CpuemShim::socketConnection, this, true);
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if (!simDontRun) {
       if (!xclcpuemhal2::isRemotePortMapped) {
         xclcpuemhal2::initRemotePortMap(mFpgaDevice);
-      }      
+      }
       //Send the LoadXclBin
       PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
-      cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID); 
+      cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
       cmd->addArg(debugMode.c_str());
       uint32_t length;
       uint8_t* buff = cmd->generateBuffer(&length);
@@ -919,7 +931,7 @@ namespace xclcpuemhal2 {
       }
       //Send the end of packet
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
-      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);     
+      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
     }
 
     std::string xmlFile = "";
@@ -933,7 +945,7 @@ namespace xclcpuemhal2 {
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
     binaryCounter++;
-   
+
     //Join tcp socket thread.
     if (tcpSockThread.joinable()) {
        tcpSockThread.join();
@@ -963,7 +975,7 @@ namespace xclcpuemhal2 {
       size_t sharedliblength = 0;
       char* emuData;
       size_t emuDataSize = 0;
-    
+
       //check header
       if (!memcmp(xclbininmemory, "xclbin0", 8))
       {
@@ -974,25 +986,25 @@ namespace xclcpuemhal2 {
         return -1;
       }
       else if (!memcmp(xclbininmemory, "xclbin2", 7)) {
-        auto top = reinterpret_cast<const axlf*>(header);        
+        auto top = reinterpret_cast<const axlf*>(header);
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
           memTopologySize = sec->m_sectionSize;
           memTopology = std::unique_ptr<char[]>(new char[memTopologySize]);
           memcpy(memTopology.get(), xclbininmemory + sec->m_sectionOffset, memTopologySize);
         }
-        //Extract CONNECTIVITY section from XCLBIN       
+        //Extract CONNECTIVITY section from XCLBIN
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, CONNECTIVITY)) {
           connectvitybufsize = sec->m_sectionSize;
           connectvitybuf = std::unique_ptr<char[]>(new char[connectvitybufsize]);
           memcpy(connectvitybuf.get(), xclbininmemory + sec->m_sectionOffset, connectvitybufsize);
         }
-        //Extract BITSTREAM from XCLBIN  
+        //Extract BITSTREAM from XCLBIN
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, BITSTREAM)) {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
         }
-        //Extract EMULATION_DATA from XCLBIN       
-        if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {          
+        //Extract EMULATION_DATA from XCLBIN
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {
           emuData = xclbininmemory + sec->m_sectionOffset;
           emuDataSize = sec->m_sectionSize;
         }
@@ -1031,7 +1043,7 @@ namespace xclcpuemhal2 {
               return -1;
             uint64_t route_id = m_mem->m_mem_data[memdata_idx].route_id;
             uint64_t arg_id = m_conn->m_connection[conn_idx].arg_index;
-            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo 
+            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo
             uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
             if (mLogStream.is_open())
               mLogStream << __func__ << " flow_id : " << flow_id << " route_id : " << route_id << " inst addr : " << instanceBaseAddr << " arg_id : " << arg_id << std::endl;
@@ -1460,9 +1472,61 @@ namespace xclcpuemhal2 {
       xclClose_RPC_CALL(xclClose,this);
 #endif
     }
+   closemMessengerThread();
    saveDeviceProcessOutput();
   }
 
+  void CpuemShim::closemMessengerThread()
+  {
+    if (mMessengerThreadStarted) {
+      mMessengerThread.join();
+      mMessengerThreadStarted = false;
+    }
+  }
+
+  void messagesThread(xclcpuemhal2::CpuemShim *inst)
+  {  
+    static auto start_time = std::chrono::high_resolution_clock::now();
+    unsigned int timeCheck = 0;
+    unsigned int parseCount = 0;
+    while (inst)
+    {
+      sleep(50);
+      auto end_time = std::chrono::high_resolution_clock::now();
+      if (std::chrono::duration<double>(end_time - start_time).count() > timeCheck) {
+        start_time = std::chrono::high_resolution_clock::now();
+        inst->parseLog();
+        parseCount++;
+        if (parseCount%5 == 0 && timeCheck < 300) {
+          timeCheck += 10;
+        }
+      }
+    }
+  }
+  
+  int CpuemShim::parseLog()
+  {
+    std::vector<std::string> myvector = {"received request to end simulation from connected initiator"};
+    std::ifstream ifs(deviceDirectory + "/../../../device_process.log");
+	std::string logparse = deviceDirectory + "/../../../device_process.log";
+    if (ifs.is_open()) {
+      std::string line;
+      while (std::getline(ifs, line)) {
+        for (auto matchString : myvector) {
+          std::string::size_type index = line.find(matchString);
+          if (index != std::string::npos) {
+            if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
+              parsedMsgs.push_back(line);
+              std::cout << "Received request to end simulation from connected initiator. Press Cntrl+C to exit the application. " << std::endl; 
+			  //xclClose(); TO-DO : final solution is to call xclclose
+            }
+          }
+        }
+      }
+    }
+    return 0;
+  }
+  
   void CpuemShim::xclClose()
   {
     std::lock_guard<std::mutex> lk(mApiMtx);
@@ -1537,6 +1601,7 @@ namespace xclcpuemhal2 {
 
   CpuemShim::~CpuemShim()
   {
+    parsedMsgs.clear();
     if (mIsKdsSwEmu && mSWSch && mCore)
     {
       mSWSch->fini_scheduler_thread();
@@ -1568,6 +1633,7 @@ namespace xclcpuemhal2 {
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
       memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
     }
+    closemMessengerThread();
   }
 
   /**********************************************HAL2 API's START HERE **********************************************/
@@ -2255,6 +2321,11 @@ int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool 
   return 0;
 }
 
+int CpuemShim::xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const
+{
+  return 0;
+}
+
 /*
 * xclExecWait
 */
@@ -2307,7 +2378,7 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
 
 //Get CU index from IP_LAYOUT section for corresponding kernel name
 int CpuemShim::xclIPName2Index(const char *name)
-{ 
+{
   //Get IP_LAYOUT buffer from xclbin
   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
   return xclemulation::getIPName2Index(name, buffer.first);
@@ -2540,7 +2611,7 @@ int CpuemShim::xrtSyncBOAIENB(xrt::bo& bo, const char *gmioname, enum xclBOSyncD
     return -1;
 
   if (mLogStream.is_open())
-    mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl; 
+    mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl;
 
   auto boBase = bo.address();
   xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);

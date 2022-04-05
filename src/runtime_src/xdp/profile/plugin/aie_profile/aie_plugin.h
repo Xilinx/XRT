@@ -51,6 +51,9 @@ namespace xdp {
     XDP_EXPORT
     void endPollforDevice(void* handle);
 
+    XDP_EXPORT
+    static bool alive();
+
   private:
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
@@ -79,7 +82,8 @@ namespace xdp {
                                  const XAie_LocType loc,
                                  const XAie_Events event,
                                  const std::string metricSet);
-    uint32_t getCounterPayload(XAie_DevInst* aieDevInst, 
+    uint32_t getCounterPayload(XAie_DevInst* aieDevInst,
+                               const tile_type& tile,
                                uint16_t column, 
                                uint16_t row, 
                                uint16_t startEvent);
@@ -88,6 +92,10 @@ namespace xdp {
     void endPoll();
 
   private:
+
+    static bool live;
+
+    int16_t mChannelId = -1;
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
     std::string mCoreMetricSet;

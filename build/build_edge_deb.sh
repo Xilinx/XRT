@@ -128,7 +128,7 @@ cp -rf $DEBIAN $DEBIAN_ARTIFACTS
 sed -i "1d" $DEBIAN_ARTIFACTS/debian/changelog
 sed -i "1s/^/xrt (${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}) experimental;urgency=medium\n/" $DEBIAN_ARTIFACTS/debian/changelog
 
-time sbuild --no-run-lintian -d focal --arch=arm64 -c $SYSROOT -s
+time sbuild --no-run-lintian -d focal --arch=arm64 -c $SYSROOT -s -n
 
 cd $THIS_SCRIPT_DIR/$BUILD_FOLDER
 # rename the packages created for consistency

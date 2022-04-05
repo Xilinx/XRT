@@ -237,8 +237,8 @@ struct sched_cmd {
 	struct sched_client_ctx *client;
 	enum ert_cmd_state state;
 	int cu_idx; /* running cu, initialized to -1 */
-	int slot_idx;
-	int cq_slot_idx;
+	uint32_t slot_idx;
+	uint32_t cq_slot_idx;
 	void *buffer;
 	void (*free_buffer)(struct sched_cmd *xcmd);
 

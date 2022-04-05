@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -28,7 +28,7 @@ boost::property_tree::ptree
 memory_topology(const xrt_core::device * device);
 
 boost::property_tree::ptree
-xclbin_info(const xrt_core::device * device);
+dynamic_regions(const xrt_core::device * device);
 
 }} // memory, xrt
 

@@ -20,13 +20,16 @@
 #include "error.h"
 #include "xcl_graph.h"
 #include "xrt.h"
+#include "core/include/shim_int.h"
 
-#include "experimental/xrt_aie.h"
-#include "experimental/xrt_bo.h"
-#include "experimental/xrt_graph.h"
+#include "xrt/xrt_aie.h"
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_graph.h"
+
 #include "experimental/xrt-next.h"
 
 #include <stdexcept>
+#include <condition_variable>
 
 // Internal shim function forward declarations
 int xclUpdateSchedulerStat(xclDeviceHandle handle);
@@ -48,6 +51,9 @@ struct ishim
 
   virtual void
   open_context(const xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
+
+  virtual void
+  open_context(uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared) = 0;
 
   virtual void
   close_context(const xuid_t xclbin_uuid, unsigned int ip_index) = 0;
@@ -160,6 +166,10 @@ struct ishim
   virtual void
   wait_ip_interrupt(xclInterruptNotifyHandle)
   { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
+
+  virtual std::cv_status
+  wait_ip_interrupt(xclInterruptNotifyHandle, int32_t)
+  { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
   ////////////////////////////////////////////////////////////////
 
 #ifdef XRT_ENABLE_AIE
@@ -246,6 +256,13 @@ struct shim : public DeviceType
   open_context(const xuid_t xclbin_uuid , unsigned int ip_index, bool shared) override
   {
     if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index, shared))
+      throw system_error(ret, "failed to open ip context");
+  }
+
+  void
+  open_context(uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared) override
+  {
+    if (auto ret = xclOpenContextByName(DeviceType::get_device_handle(), slot, xclbin_uuid, cuname, shared))
       throw system_error(ret, "failed to open ip context");
   }
 

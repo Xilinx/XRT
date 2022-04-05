@@ -134,11 +134,11 @@ namespace xclcpuemhal2 {
       return;
 
     // acknowledge done directly to CU (xcu->addr)
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)&CpuemShim::CONTROL_AP_CONTINUE,4);
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)&CpuemShim::CONTROL_AP_CONTINUE, 4);
 
     // in ert_poll mode acknowlegde done to ERT
     if (xcu->polladdr && xcu->run_cnt) {
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->polladdr, (void*)&CpuemShim::CONTROL_AP_CONTINUE,4);
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->polladdr, (void*)&CpuemShim::CONTROL_AP_CONTINUE, 4);
     }
   }
 
@@ -556,11 +556,11 @@ namespace xclcpuemhal2 {
     slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(xcmd->exec);
 
     /* TODO write packet minus header */
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data,(packet_size(xcmd)-1)*sizeof(uint32_t));
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data, (packet_size(xcmd)-1)*sizeof(uint32_t));
     //memcpy_toio(xcmd->exec->base + slot_addr + 4,xcmd->packet->data,(packet_size(xcmd)-1)*sizeof(uint32_t));
 
     /* TODO write header */
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr, (void*)(&xcmd->packet->header) ,4);
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr, (void*)(&xcmd->packet->header), 4);
     //iowrite32(xcmd->packet->header,xcmd->exec->base + slot_addr);
 
     /* trigger interrupt to embedded scheduler if feature is enabled */
@@ -568,7 +568,7 @@ namespace xclcpuemhal2 {
       uint32_t cq_int_addr = ERT_CQ_STATUS_REGISTER_ADDR + (slot_mask_idx(xcmd->slot_idx)<<2);
       uint32_t mask = 1<<slot_idx_in_mask(xcmd->slot_idx);
       //TODO
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcmd->exec->base + cq_int_addr, (void*)(&mask) ,4);
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcmd->exec->base + cq_int_addr, (void*)(&mask), 4);
         //iowrite32(mask,xcmd->exec->base + cq_int_addr);
     }
 #ifdef EM_DEBUG_KDS
@@ -1098,7 +1098,10 @@ namespace xclcpuemhal2 {
     
     //int retval = pthread_join(mScheduler->scheduler_thread,NULL);
     int retval = 0;
-    mScheduler->scheduler_thread.join();
+    
+    if (mScheduler->scheduler_thread.joinable())
+      mScheduler->scheduler_thread.join();
+   
     pending_cmds.clear();
     mScheduler->command_queue.clear();
     free_cmds.clear();

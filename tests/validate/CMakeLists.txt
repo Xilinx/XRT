@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 
-set(CMAKE_CXX_STANDARD 14)
+if (NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif (NOT CMAKE_CXX_STANDARD)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(MODE hw)
@@ -25,3 +27,8 @@ add_subdirectory(hostmemory_test)
 add_subdirectory(xcl_iops_test)
 add_subdirectory(xcl_vcu_test)
 add_subdirectory(xrt_iops_test)
+
+# PS Kernel tests
+add_subdirectory(ps_validate_test)
+add_subdirectory(ps_aie_test)
+add_subdirectory(ps_bandwidth_test)

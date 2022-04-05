@@ -838,7 +838,6 @@ static void xdma_request_release(struct xdma_dev *xdev,
 	if (!req->dma_mapped) {
 		pci_unmap_sg(xdev->pdev, sgt->sgl, sgt->orig_nents,
 			     req->dir);
-		sgt->nents = 0;
 	}
 
 	xdma_request_free(req);
@@ -3351,6 +3350,11 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			       (unsigned long)(&engine->regs->control_w1c) -
 			       (unsigned long)(&engine->regs));
 	}
+	if (!dma_mapped) {
+                pci_unmap_sg(xdev->pdev, sgt->sgl, sgt->orig_nents,
+                             engine->dir);
+        }
+
 	if (ret < 0)
 		return ret;
 
@@ -4336,6 +4340,9 @@ MODULE_AUTHOR("Xilinx, Inc.");
 MODULE_DESCRIPTION(DRV_MODULE_DESC);
 MODULE_VERSION(DRV_MODULE_VERSION);
 MODULE_LICENSE("GPL v2");
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+MODULE_IMPORT_NS(DMA_BUF);
+#endif
 
 static int __init xdma_base_init(void)
 {

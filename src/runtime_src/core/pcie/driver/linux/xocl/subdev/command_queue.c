@@ -669,6 +669,11 @@ static int command_queue_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, cmd_queue);
 
 	priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	if (!priv) {
+		xocl_err(&pdev->dev, "Cannot get subdev priv");
+		err = -EINVAL;
+		goto done;
+	}
 	cmd_queue->cq_range = priv->cq_range;
 	cmd_queue->cq_base = priv->cq_base;
 

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -291,7 +291,8 @@ static int cu_remove(struct platform_device *pdev)
 		free_irq(zcu->irq, zcu);
 
 	zdev = zocl_get_zdev();
-	zocl_kds_del_cu(zdev, &zcu->base);
+	if(zdev)
+		zocl_kds_del_cu(zdev, &zcu->base);
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);
@@ -318,7 +319,6 @@ struct platform_driver cu_driver = {
 	},
 	.id_table	= cu_id_table,
 };
-
 u32 zocl_cu_get_status(struct platform_device *pdev)
 {
 	struct zocl_cu *zcu = platform_get_drvdata(pdev);

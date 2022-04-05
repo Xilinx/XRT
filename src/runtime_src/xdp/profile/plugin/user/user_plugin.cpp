@@ -20,8 +20,12 @@
 
 namespace xdp {
 
+  bool UserEventsPlugin::live = false;
+
   UserEventsPlugin::UserEventsPlugin() : XDPPlugin()
   {
+    UserEventsPlugin::live = true;
+
     db->registerPlugin(this) ;
     db->registerInfo(info::user) ;
 
@@ -36,11 +40,12 @@ namespace xdp {
       // We were destroyed before the database, so write the writers
       //  and unregister ourselves from the database
       for (auto w : writers) {
-	w->write(false) ;
+        w->write(false) ;
         db->getStaticInfo().addOpenedFile(w->getcurrentFileName(), "VP_TRACE");
       }
       db->unregisterPlugin(this) ;
     }
+    UserEventsPlugin::live = false;
   }
 
   void UserEventsPlugin::writeAll(bool openNewFiles)

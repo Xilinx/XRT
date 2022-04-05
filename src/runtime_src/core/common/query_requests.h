@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,16 +16,19 @@
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
+#include "error.h"
+#include "query.h"
+#include "uuid.h"
 
 #include "core/include/xclerr_int.h"
-#include "query.h"
-#include "error.h"
-#include "uuid.h"
-#include <string>
-#include <vector>
-#include <sstream>
+
 #include <iomanip>
+#include <map>
+#include <string>
+#include <sstream>
 #include <stdexcept>
+#include <vector>
+
 #include <boost/any.hpp>
 #include <boost/format.hpp>
 
@@ -82,6 +85,7 @@ enum class key_type
   clock_freq_topology_raw,
   dma_stream,
   kds_cu_info,
+  sdm_sensor_info,
   kds_scu_info,
   ps_kernel,
   xocl_errors,
@@ -224,6 +228,7 @@ enum class key_type
   is_offline,
   f_flash_type,
   flash_type,
+  flash_size,
   board_name,
   interface_uuids,
   logic_uuids,
@@ -256,6 +261,26 @@ enum class key_type
   lapc_status,
   spc_status,
   accel_deadlock_status,
+  xclbin_slots,
+  aie_get_freq,
+  aie_set_freq,
+  dtbo_path,
+
+  boot_partition,
+  flush_default_only,
+  program_sc,
+  vmr_status,
+  extended_vmr_status,
+
+  hwmon_sdm_serial_num,
+  hwmon_sdm_oem_id,
+  hwmon_sdm_board_name,
+  hwmon_sdm_active_msp_ver,
+  hwmon_sdm_mac_addr0,
+  hwmon_sdm_mac_addr1,
+  hwmon_sdm_revision,
+  hwmon_sdm_fan_presence,
+  hotplug_offline,
 
   noop
 };
@@ -265,7 +290,7 @@ enum class key_type
 // Provides granularity for calling code to catch errors specific to
 // query request which are often acceptable errors because some
 // devices may not support all types of query requests.
-//  
+//
 // Other non query exceptions signal a different kind of error which
 // should maybe not be caught.
 //
@@ -680,6 +705,20 @@ struct xclbin_uuid : request
   get(const device*) const = 0;
 };
 
+// dtbo_path is unique path used by libdfx library to load bitstream and device tree
+// overlay(dtbo), this query reads dtbo_path from sysfs node
+// Applicable only for embedded platforms
+struct dtbo_path : request
+{
+  using result_type = std::string;
+  using slot_id_type = uint32_t;
+
+  static const key_type key = key_type::dtbo_path;
+
+  virtual boost::any
+  get(const device*, const boost::any& slot_id) const = 0;
+};
+
 struct group_topology : request
 {
   using result_type = std::vector<char>;
@@ -793,6 +832,27 @@ struct aie_reg_read : request
   get(const device*, const boost::any& row, const boost::any& col, const boost::any& reg) const = 0;
 };
 
+struct aie_get_freq : request
+{
+  using result_type = uint64_t;
+  using partition_id_type = uint32_t;
+  static const key_type key = key_type::aie_get_freq;
+
+  virtual boost::any
+  get(const device*, const boost::any& partition_id) const = 0;
+};
+
+struct aie_set_freq : request
+{
+  using result_type = bool;
+  using partition_id_type = uint32_t;
+  using freq_type = uint64_t;
+  static const key_type key = key_type::aie_set_freq;
+
+  virtual boost::any
+  get(const device*, const boost::any& partition_id, const boost::any& freq) const = 0;
+};
+
 struct graph_status : request
 {
   using result_type = std::vector<std::string>;
@@ -820,9 +880,51 @@ struct debug_ip_layout_raw : request
   get(const device*) const = 0;
 };
 
+struct sdm_sensor_info : request
+{
+  /**
+   * enum class sdr_req_type - request ids for specific sensor query requests
+   *
+   * Use request ids in this table to identify the desired sensor query request.
+   */
+  enum class sdr_req_type
+  {
+    current     = 0,
+    voltage     = 1,
+    power       = 2,
+    thermal     = 3,
+    mechanical  = 4,
+  };
+
+  /*
+   * struct sensor_data: used to store sensor information and
+   * each sensor contains following information.
+   *  label    : name
+   *  input    : instantaneous value
+   *  max      : maximum value
+   *  average  : average value
+   *  highest  : highest value (used for temperature sensors)
+   */
+  struct sensor_data {
+    std::string label;
+    uint32_t input {};
+    uint32_t max {};
+    uint32_t average {};
+    uint32_t highest {};
+  };
+  using result_type = std::vector<sensor_data>;
+  using req_type = sdr_req_type;
+  using data_type = sensor_data;
+  static const key_type key = key_type::sdm_sensor_info;
+
+  virtual boost::any
+  get(const device*, const boost::any& req_type) const = 0;
+};
+
 struct kds_cu_info : request
 {
   struct data {
+    uint32_t slot_index;
     uint32_t index;
     std::string name;
     uint64_t base_addr;
@@ -849,6 +951,7 @@ struct ps_kernel : request
 struct kds_scu_info : request
 {
   struct data {
+    uint32_t slot_index;
     uint32_t index;
     std::string name;
     uint32_t status;
@@ -897,7 +1000,7 @@ struct instance : request
   virtual boost::any
   get(const device*) const = 0;
 
-  static std::string 
+  static std::string
   to_string(const result_type& value)
   {
     return std::to_string(value);
@@ -1250,7 +1353,7 @@ struct aie_core_info : request
 {
   using result_type = std::string;
   static const key_type key = key_type::aie_core_info;
-  
+
   virtual boost::any
   get(const device*) const = 0;
 };
@@ -1259,7 +1362,7 @@ struct aie_shim_info : request
 {
   using result_type = std::string;
   static const key_type key = key_type::aie_shim_info;
-  
+
   virtual boost::any
   get(const device*) const = 0;
 };
@@ -1383,6 +1486,10 @@ struct p2p_config : request
   {
     return value;
   }
+
+  XRT_CORE_COMMON_EXPORT
+  static std::map<std::string, int64_t>
+  to_map(const xrt_core::query::p2p_config::result_type& config);
 };
 
 struct temp_card_top_front : request
@@ -2436,6 +2543,15 @@ struct flash_type : request
   }
 };
 
+struct flash_size : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::flash_size;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct board_name : request
 {
   using result_type = std::string;
@@ -2758,6 +2874,168 @@ struct accel_deadlock_status : request
 
   virtual boost::any
   get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
+};
+
+struct boot_partition : request
+{
+  // default: 0
+  // backup : 1
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::boot_partition;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct flush_default_only : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::flush_default_only;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct program_sc : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::program_sc;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct vmr_status : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::vmr_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct extended_vmr_status : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::extended_vmr_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrieve xclbin slot information.  This is a mapping
+// from xclbin uuid to the slot index created by the driver
+struct xclbin_slots : request
+{
+  using slot_id = uint32_t;
+
+  struct slot_info {
+    slot_id slot;
+    std::string uuid;
+  };
+
+  using result_type = std::vector<slot_info>;
+  static const key_type key = key_type::xclbin_slots;
+
+  // Convert raw data to associative map
+  static std::map<slot_id, xrt::uuid>
+  to_map(const result_type& value);
+
+  virtual boost::any
+  get(const xrt_core::device* device) const = 0;
+};
+
+struct hwmon_sdm_serial_num : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_serial_num;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_oem_id : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_oem_id;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_board_name : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_board_name;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_active_msp_ver : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_active_msp_ver;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_mac_addr0 : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_mac_addr0;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_mac_addr1 : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_mac_addr1;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_revision : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_revision;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_fan_presence : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_fan_presence;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hotplug_offline : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::hotplug_offline;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 } // query

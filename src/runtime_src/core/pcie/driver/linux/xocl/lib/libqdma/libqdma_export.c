@@ -2116,6 +2116,9 @@ MODULE_AUTHOR("Xilinx, Inc.");
 MODULE_DESCRIPTION(DRV_MODULE_DESC);
 MODULE_VERSION(DRV_MODULE_VERSION);
 MODULE_LICENSE("Dual BSD/GPL");
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+MODULE_IMPORT_NS(DMA_BUF);
+#endif
 
 /*****************************************************************************/
 /**

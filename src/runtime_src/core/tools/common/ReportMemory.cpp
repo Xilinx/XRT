@@ -119,7 +119,7 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
     int index = 0;
     _output << std::endl;
     _output << "  Memory Topology" << std::endl;
-    _output << boost::format("    %-17s%-12s%-9s%-10s%-16s\n") % "     Tag" % "Type"
+    _output << boost::format("    %-25s%-17s%-9s%-10s%-16s\n") % "     Tag" % "Type"
         % "Temp(C)" % "Size" % "Base Address";
     try {
       for (auto& v : _pt.get_child("mem_topology.board.memory.memories",empty_ptree)) {
@@ -138,7 +138,7 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
             base_addr = subv.second.get_value<std::string>();
           }
         }
-        _output << boost::format("    [%2d] %-12s%-12s%-9s%-10s%-16s\n") % index
+        _output << boost::format("    [%2d] %-20s%-17s%-9s%-10s%-16s\n") % index
             % tag % type % temp % size % base_addr;
         index++;
       }

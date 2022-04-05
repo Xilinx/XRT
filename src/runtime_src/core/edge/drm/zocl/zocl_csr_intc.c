@@ -11,14 +11,16 @@
 
 #include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
-#include "zocl_util.h"
+#include "zocl_lib.h"
 #include "zocl_ert_intc.h"
 
+#define WORD_BITS			32
 /* ERT INTC driver name. */
 #define ZINTC_NAME			"zocl_csr_intc"
-/* The CSR IP provided 128 bit status. We only support the first 32 bit here since, in practice,
- * it's unlikely to create a design with more than 32 units. */
-#define ZINTC_MAX_VECTORS		32
+/* The CSR IP provided 128 bit status. */
+#define ZINTC_MAX_VECTORS		128
+/* Every 32 status bits requires one irq */
+#define ZINTC_MAX_IRQS			(ZINTC_MAX_VECTORS / WORD_BITS)
 
 #define ZINTC2PDEV(zintc)		((zintc)->zei_pdev)
 #define ZINTC2DEV(zintc)		(&ZINTC2PDEV(zintc)->dev)
@@ -28,7 +30,8 @@
 
 struct zocl_csr_intc {
 	struct platform_device		*zei_pdev;
-	u32				zei_irq;
+	int				zei_num_irqs;
+	u32				zei_irqs[ZINTC_MAX_IRQS];
 	struct zocl_ert_intc_status_reg	*zei_status;
 
 	spinlock_t			zei_lock;
@@ -45,42 +48,25 @@ static inline u32 reg_read(void __iomem *addr)
 	return ioread32(addr);
 }
 
-static void __iomem *zintc_map_res(struct zocl_csr_intc *zintc, const char *name, size_t *szp)
-{
-	struct resource *res;
-	void __iomem *map;
-
-	res = platform_get_resource_byname(ZINTC2PDEV(zintc), IORESOURCE_MEM, name);
-	if (!res) {
-		zintc_err(zintc, "res not found: %s", name);
-		return NULL;
-	}
-	zintc_info(zintc, "%s range: %pR", name, res);
-
-	map = devm_ioremap_resource(ZINTC2DEV(zintc), res);
-	if (IS_ERR(map)) {
-		zintc_err(zintc, "Failed to map res: %s: %ld", name, PTR_ERR(map));
-		return NULL;
-	}
-
-	if (szp)
-		*szp = res->end - res->start + 1;
-	return map;
-}
-
 static irqreturn_t zintc_isr(int irq, void *arg)
 {
 	unsigned long irqflags;
 	const u32 lastbit = 0x1;
-	int i;
+	int word_idx, i;
 	u32 intr;
 	struct zocl_csr_intc *zintc = (struct zocl_csr_intc *)arg;
 	struct zocl_ert_intc_handler *h;
 
 	spin_lock_irqsave(&zintc->zei_lock, irqflags);
-	/* Only fetch first 32 status bits. */
-	intr = reg_read(&zintc->zei_status->zeisr_status[0]);
-	for (i = 0; i < ZINTC_MAX_VECTORS && intr; i++, intr >>= 1) {
+	/* Find out status word based on irq. */
+	for (word_idx = 0; word_idx < zintc->zei_num_irqs; word_idx++) {
+		if (zintc->zei_irqs[word_idx] == irq)
+			break;
+	}
+	BUG_ON(word_idx >= zintc->zei_num_irqs);
+
+	intr = reg_read(&zintc->zei_status->zeisr_status[i]);
+	for (i = word_idx * WORD_BITS; i < (word_idx + 1) * WORD_BITS && intr; i++, intr >>= 1) {
 		if ((intr & lastbit) == 0) 
 			continue;
 		h = &zintc->zei_handler[i];
@@ -97,23 +83,23 @@ static int zintc_probe(struct platform_device *pdev)
 {
 	int ret;
 	int i;
-	struct resource *res;
-	struct zocl_csr_intc *zintc = devm_kzalloc(&pdev->dev, sizeof(*zintc), GFP_KERNEL);
+	struct zocl_csr_intc *zintc = NULL;
+	int num_irqs = platform_irq_count(pdev);
 
+	if (num_irqs <= 0 || num_irqs > ZINTC_MAX_IRQS) {
+		zocl_err(&pdev->dev, "invalid num of IRQ: %d\n", num_irqs); 
+		return -EINVAL;
+	}
+
+	zintc = devm_kzalloc(&pdev->dev, sizeof(*zintc), GFP_KERNEL);
 	if (!zintc)
 		return -ENOMEM;
 	zintc->zei_pdev = pdev;
+	zintc->zei_num_irqs = num_irqs;
+	spin_lock_init(&zintc->zei_lock);
+	platform_set_drvdata(pdev, zintc);
 
-	res = platform_get_resource_byname(ZINTC2PDEV(zintc), IORESOURCE_IRQ, ZEI_RES_IRQ);
-	if (!res) {
-		zintc_err(zintc, "failed to find IRQ"); 
-		return -EINVAL;
-	}
-	/* We expect only one irq. */
-	zintc->zei_irq = res->start;
-	zintc_info(zintc, "managing IRQ: %d", zintc->zei_irq); 
-
-	zintc->zei_status = zintc_map_res(zintc, ZEI_RES_STATUS, NULL);
+	zintc->zei_status = zlib_map_res_by_name(pdev, ZEI_RES_STATUS, NULL, NULL);
 	if (!zintc->zei_status) {
 		zintc_err(zintc, "failed to find INTC Status registers"); 
 		return -EINVAL;
@@ -121,22 +107,27 @@ static int zintc_probe(struct platform_device *pdev)
 	/* Disable interrupt till we are ready to handle it. */
 	reg_write(&zintc->zei_status->zeisr_enable, 0);
 
-	spin_lock_init(&zintc->zei_lock);
-	platform_set_drvdata(pdev, zintc);
+	for (i = 0; i < num_irqs; i++) {
+		struct resource *res = platform_get_resource(pdev, IORESOURCE_IRQ, i);
+		u32 irq = res->start;
+
+		zintc->zei_irqs[i] = irq;
+		ret = devm_request_irq(&pdev->dev, irq, zintc_isr, 0, ZINTC_NAME, zintc);
+		if (ret)
+			zintc_err(zintc, "failed to add isr for IRQ: %d: %d", irq, ret); 
+		else
+			zintc_info(zintc, "managing IRQ %d", irq); 
+	}
 
 	for (i = 0; i < ZINTC_MAX_VECTORS; i++) {
 		struct zocl_ert_intc_handler *h = &zintc->zei_handler[i];
 
 		h->zeih_pdev = pdev;
-		h->zeih_irq = zintc->zei_irq;
+		h->zeih_irq = zintc->zei_irqs[i / WORD_BITS];
 	}
 
 	/* Ready to turn on interrupts! */
-	ret = devm_request_irq(ZINTC2DEV(zintc), zintc->zei_irq, zintc_isr, 0, ZINTC_NAME, zintc);
-	if (ret)
-		zintc_err(zintc, "failed to add isr for IRQ: %d: %d", zintc->zei_irq, ret); 
-	else
-		reg_write(&zintc->zei_status->zeisr_enable, 1);
+	reg_write(&zintc->zei_status->zeisr_enable, 1);
 	return 0;
 }
 
@@ -163,6 +154,9 @@ static void zocl_csr_intc_add(struct platform_device *pdev, u32 id, irq_handler_
 	spin_lock_irqsave(&zintc->zei_lock, irqflags);
 
 	h = &zintc->zei_handler[id];
+	if (h->zeih_irq == 0)
+		zintc_err(zintc, "vector %d has no matching irq", id);
+
 	BUG_ON(h->zeih_cb);
 	h->zeih_cb = cb;
 	h->zeih_arg = arg;
@@ -194,8 +188,7 @@ static struct zocl_ert_intc_drv_data zocl_csr_intc_drvdata = {
 };
 
 static const struct platform_device_id zocl_csr_intc_id_match[] = {
-	{ ERT_CQ_INTC_DEV_NAME, (kernel_ulong_t)&zocl_csr_intc_drvdata },
-	{ ERT_CU_INTC_DEV_NAME, (kernel_ulong_t)&zocl_csr_intc_drvdata },
+	{ ERT_CSR_INTC_DEV_NAME, (kernel_ulong_t)&zocl_csr_intc_drvdata },
 	{ /* end of table */ },
 };
 

@@ -75,20 +75,31 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using module_type = xrt_core::edge::aie::module_type;
 
+  constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0;
+
+  bool AieTracePlugin::live = false;
+
   AieTracePlugin::AieTracePlugin()
                 : XDPPlugin(),
                   continuousTrace(false),
                   offloadIntervalms(0)
   {
+    AieTracePlugin::live = true;
+
     db->registerPlugin(this);
     db->registerInfo(info::aie_trace);
 
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
-    continuousTrace = xrt_core::config::get_continuous_trace();
+    continuousTrace = xrt_core::config::get_aie_trace_periodic_offload();
     if (continuousTrace) {
-      offloadIntervalms = xrt_core::config::get_trace_buffer_offload_interval_ms();
+      offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
     }
+
+    // Set Delay parameters
+    // Update delay with clock cycles when we get device handle later
+    mDelayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(nullptr));
+    mUseDelay = (mDelayCycles > 0) ? true : false;
 
     // Pre-defined metric sets
     metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};
@@ -132,6 +143,10 @@ namespace xdp {
     //         to produce events before hitting the bug. For example, sync packets 
     //         occur after 1024 cycles and with no events, is incorrectly repeated.
     auto counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
+    // ES1 is more stable for delay usecase
+    if (mUseDelay)
+      counterScheme = "es1";
+
     if (counterScheme == "es1") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
       coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
@@ -153,6 +168,18 @@ namespace xdp {
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
       memoryCounterEventValues = {1020, 1020*1020};
     }
+    else if (counterScheme == "es2") {
+      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
+      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
+      memoryCounterEventValues = {0x3FF00};
+    }
+
+    //Process the file dump interval
+    aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
+    if (aie_trace_file_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S){
+      aie_trace_file_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
+    }
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -172,6 +199,7 @@ namespace xdp {
     for(auto h : deviceHandles) {
       xclClose(h);
     }
+    AieTracePlugin::live = false;
   }
 
   // Convert broadcast ID to event ID
@@ -201,7 +229,7 @@ namespace xdp {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
   }
 
-  bool AieTracePlugin::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet, bool useDelay)
+  bool AieTracePlugin::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet)
   {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
     uint32_t available = 0;
@@ -211,7 +239,7 @@ namespace xdp {
     // Core Module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
     required = coreCounterStartEvents.size();
-    if (useDelay)
+    if (mUseDelay)
       required += 1;
     if (available < required) {
       msg << "Available core module performance counters for aie trace : " << available << std::endl
@@ -361,6 +389,11 @@ namespace xdp {
     return metricSet;
   }
 
+  bool AieTracePlugin::alive()
+  {
+    return AieTracePlugin::live;
+  }
+
   std::vector<tile_type> AieTracePlugin::getTilesForTracing(void* handle)
   {
     std::vector<tile_type> tiles;
@@ -388,13 +421,17 @@ namespace xdp {
 
   uint64_t AieTracePlugin::getTraceStartDelayCycles(void* handle)
   {
-    auto device = xrt_core::get_userpf_device(handle);
-    auto freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+    double freqMhz = AIE_DEFAULT_FREQ_MHZ;
+
+    if (handle != nullptr) {
+      auto device = xrt_core::get_userpf_device(handle);
+      freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+    }
 
     std::smatch pieces_match;
     uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * 1e6);
     const uint64_t max_cycles = 0xffffffff;
-    std::string size_str = xrt_core::config::get_aie_trace_start_delay();
+    std::string size_str = xrt_core::config::get_aie_trace_start_time();
 
     // Catch cases like "1Ms" "1NS"
     std::transform(size_str.begin(), size_str.end(), size_str.begin(),
@@ -403,25 +440,32 @@ namespace xdp {
     // Default is 0 cycles
     uint64_t cycles = 0;
     // Regex can parse values like : "1s" "1ms" "1ns"
-    const std::regex size_regex("\\s*([0-9]+)\\s*(s|ms|us|ns|)\\s*");
+    const std::regex size_regex("\\s*(\\d+\\.?\\d*)\\s*(s|ms|us|ns|)\\s*");
     if (std::regex_match(size_str, pieces_match, size_regex)) {
       try {
         if (pieces_match[2] == "s") {
-          cycles = std::stoull(pieces_match[1]) * cycles_per_sec;
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec);
         } else if (pieces_match[2] == "ms") {
-          cycles = (std::stoull(pieces_match[1]) * cycles_per_sec) /  1e3;
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e3);
         } else if (pieces_match[2] == "us") {
-          cycles = (std::stoull(pieces_match[1]) * cycles_per_sec) /  1e6;
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e6);
         } else if (pieces_match[2] == "ns") {
-          cycles = (std::stoull(pieces_match[1]) * cycles_per_sec) /  1e9;
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e9);
         } else {
-          cycles = std::stoull(pieces_match[1]);
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]));
         }
+        
+        std::string msg("Parsed aie_trace_start_time: " + std::to_string(cycles) + " cycles.");
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+
       } catch (const std::exception& ) {
         // User specified number cannot be parsed
-        std::string msg("Unable to parse aie_trace_delay. Setting delay to 0.");
+        std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       }
+    } else {  
+      std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
     }
 
     if (cycles > max_cycles) {
@@ -453,10 +497,8 @@ namespace xdp {
       return false;
     }
     auto tiles = getTilesForTracing(handle);
-    
     // getTraceStartDelayCycles is 32 bit for now
-    uint32_t delayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(handle));
-    bool useDelay = (delayCycles > 0) ? true : false;
+    mDelayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(handle));
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -482,7 +524,7 @@ namespace xdp {
 
       // Check Resource Availability
       // For now only counters are checked
-      if (!tileHasFreeRsc(aieDevice, loc, metricSet, useDelay)) {
+      if (!tileHasFreeRsc(aieDevice, loc, metricSet)) {
         xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
         printTileStats(aieDevice, tile);
         return false;
@@ -607,7 +649,7 @@ namespace xdp {
         if (xrt_core::config::get_aie_trace_user_control()) {
           coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
           coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
-        } else if (useDelay) {
+        } else if (mUseDelay) {
           auto perfCounter = core.perfCounter();
           if (perfCounter->initialize(mod, XAIE_EVENT_ACTIVE_CORE,
                                       mod, XAIE_EVENT_DISABLED_CORE) != XAIE_OK) 
@@ -615,7 +657,7 @@ namespace xdp {
           if (perfCounter->reserve() != XAIE_OK) 
             break;
 
-          perfCounter->changeThreshold(delayCycles);
+          perfCounter->changeThreshold(mDelayCycles);
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
 
@@ -964,9 +1006,14 @@ namespace xdp {
     uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
     bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceId) ? true : false;
 
-    // Continuous Trace Offload is supported only for PLIO flow
-    if (continuousTrace && isPLIO) {
-      XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "AIE_EVENT_TRACE");
+    if (continuousTrace) {
+      // Continuous Trace Offload is supported only for PLIO flow
+      if (isPLIO) {
+        XDPPlugin::startWriteThread(aie_trace_file_dump_int_s, "AIE_EVENT_TRACE", false);
+      } else {
+        std::string msg("Continuous offload of AIE Trace is not supported for GMIO mode. So, AIE Trace for GMIO mode will be offloaded only at the end of application.");
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+      }
     }
 
     // First, check against memory bank size
@@ -1260,7 +1307,7 @@ namespace xdp {
     
   }
 
-  void AieTracePlugin::writeAll(bool openNewFiles)
+  void AieTracePlugin::writeAll(bool /*openNewFiles*/)
   {
     // read the trace data from device and wrie to the output file
     for(auto o : aieOffloaders) {
@@ -1283,7 +1330,7 @@ namespace xdp {
     }
     aieOffloaders.clear();
 
-    XDPPlugin::endWrite(openNewFiles);
+    XDPPlugin::endWrite();
   }
 
 } // namespace xdp

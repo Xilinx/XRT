@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,19 +30,22 @@
 
 namespace xdp {
 
+  bool HALAPIInterface::live = false;
+
   HALAPIInterface::HALAPIInterface() 
   {
+    HALAPIInterface::live = true;
   }
 
   HALAPIInterface::~HALAPIInterface()
   {
-    endProfiling();
-    
     for(auto &itr : devices) {
       delete itr.second;
       itr.second = nullptr;
     }
-    devices.clear();  
+    devices.clear();
+
+    HALAPIInterface::live = false;
   }
 
   void HALAPIInterface::startProfiling(xclDeviceHandle handle)
@@ -69,24 +72,12 @@ namespace xdp {
     dev->readDebugIPlayout();
     
     dev->startCounters();
-}
-
-  void HALAPIInterface::endProfiling()
-  {
-    stopCounters();
   }
 
   void HALAPIInterface::startCounters()
   {
     for(auto itr : devices) {
       itr.second->startCounters();
-    }
-  }
-
-  void HALAPIInterface::stopCounters()
-  {
-    for(auto itr : devices) {
-      itr.second->stopCounters();
     }
   }
 
@@ -99,7 +90,7 @@ namespace xdp {
   }
 
   void HALAPIInterface::createProfileResults(xclDeviceHandle deviceHandle, 
-					     void* ret)
+                                             void* ret)
   {
     ProfileResults** retResults = static_cast<ProfileResults**>(ret);
     
@@ -141,12 +132,12 @@ namespace xdp {
       results->kernelTransferData = (KernelTransferData*)calloc(results->numAIM, sizeof(KernelTransferData));
       
       for(unsigned int i=0; i < results->numAIM ; ++i) {
-	std::string monName = currDevice->getMonitorName(XCL_PERF_MON_MEMORY, i);
-	results->kernelTransferData[i].cuPortName = (char*)malloc(monName.length()+1);
-	strcpy(results->kernelTransferData[i].cuPortName, monName.c_str());
-	
-	// argname
-	// memoryname
+        std::string monName = currDevice->getMonitorName(XCL_PERF_MON_MEMORY, i);
+        results->kernelTransferData[i].cuPortName = (char*)malloc(monName.length()+1);
+        strcpy(results->kernelTransferData[i].cuPortName, monName.c_str());
+
+        // argname
+        // memoryname
       }
     }
     
@@ -154,10 +145,10 @@ namespace xdp {
       results->cuExecData = (CuExecData*)calloc(results->numAM, sizeof(CuExecData));
       
       for(unsigned int i=0; i < results->numAM ; ++i) {
-	std::string monName = currDevice->getMonitorName(XCL_PERF_MON_ACCEL, i);
-	results->cuExecData[i].cuName = (char*)malloc((monName.length()+1)*sizeof(char));
-	strcpy(results->cuExecData[i].cuName, monName.c_str());
-	// kernel name
+        std::string monName = currDevice->getMonitorName(XCL_PERF_MON_ACCEL, i);
+        results->cuExecData[i].cuName = (char*)malloc((monName.length()+1)*sizeof(char));
+        strcpy(results->cuExecData[i].cuName, monName.c_str());
+        // kernel name
       }
     }      
     
@@ -166,101 +157,32 @@ namespace xdp {
       results->streamData = (StreamTransferData*)calloc(results->numASM, sizeof(StreamTransferData));
       
       for(unsigned int i=0; i < results->numASM ; ++i) {
-	std::string monName = currDevice->getMonitorName(XCL_PERF_MON_STR, i);
-	std::size_t sepPos  = monName.find(IP_LAYOUT_SEP);
-	if(sepPos == std::string::npos)
-	  continue;
-	
-	std::string masterPort = monName.substr(0, sepPos);
-	std::string slavePort  = monName.substr(sepPos + 1);
-	
-	results->streamData[i].masterPortName = (char*)malloc((masterPort.length()+1));
-	strcpy(results->streamData[i].masterPortName, masterPort.c_str());
-	
-	results->streamData[i].slavePortName = (char*)malloc((slavePort.length()+1));
-	strcpy(results->streamData[i].slavePortName, slavePort.c_str());
+        std::string monName = currDevice->getMonitorName(XCL_PERF_MON_STR, i);
+        std::size_t sepPos  = monName.find(IP_LAYOUT_SEP);
+        if(sepPos == std::string::npos)
+          continue;
+
+        std::string masterPort = monName.substr(0, sepPos);
+        std::string slavePort  = monName.substr(sepPos + 1);
+
+        results->streamData[i].masterPortName = (char*)malloc((masterPort.length()+1));
+        strcpy(results->streamData[i].masterPortName, masterPort.c_str());
+
+        results->streamData[i].slavePortName = (char*)malloc((slavePort.length()+1));
+        strcpy(results->streamData[i].slavePortName, slavePort.c_str());
       }
     }
   }
-  
-  void HALAPIInterface::calculateAIMRolloverResult(const std::string& key, unsigned int numAIM, xclCounterResults& counterResult, bool firstReadAfterProgram)
-  {
-    xclCounterResults& loggedResult = mFinalCounterResultsMap[key];
-    xclCounterResults& rollOverCount = mRolloverCountsMap[key];
-    xclCounterResults& rollOverCounterResult = mRolloverCounterResultsMap[key];
-    
-    for(unsigned int i=0; i < numAIM ; ++i) {
-      // Check for rollover of byte counters; if detected, add 2^32
-      // Otherwise, if first read after program with binary, then capture bytes from previous xclbin
-      if (!firstReadAfterProgram) {
-	// Update "RollOverCount"
-	if(counterResult.WriteBytes[i]      < loggedResult.WriteBytes[i])      rollOverCount.WriteBytes[i]++;
-	if(counterResult.ReadBytes[i]       < loggedResult.ReadBytes[i])       rollOverCount.ReadBytes[i]++;
-	if(counterResult.WriteTranx[i]      < loggedResult.WriteTranx[i])      rollOverCount.WriteTranx[i]++;
-	if(counterResult.ReadTranx[i]       < loggedResult.ReadTranx[i])       rollOverCount.ReadTranx[i]++;
-	if(counterResult.WriteLatency[i]    < loggedResult.WriteLatency[i])    rollOverCount.WriteLatency[i]++;
-	if(counterResult.ReadLatency[i]     < loggedResult.ReadLatency[i])     rollOverCount.ReadLatency[i]++;
-	if(counterResult.ReadBusyCycles[i]  < loggedResult.ReadBusyCycles[i])  rollOverCount.ReadBusyCycles[i]++;
-	if(counterResult.WriteBusyCycles[i] < loggedResult.WriteBusyCycles[i]) rollOverCount.WriteBusyCycles[i]++;
-      } else {
-	// Update "RollOverCounterResults" with logged data
-	rollOverCounterResult.WriteBytes[i]      += loggedResult.WriteBytes[i];
-	rollOverCounterResult.ReadBytes[i]       += loggedResult.ReadBytes[i];
-	rollOverCounterResult.WriteTranx[i]      += loggedResult.WriteTranx[i];
-	rollOverCounterResult.ReadTranx[i]       += loggedResult.ReadTranx[i];
-	rollOverCounterResult.WriteLatency[i]    += loggedResult.WriteLatency[i];
-	rollOverCounterResult.ReadLatency[i]     += loggedResult.ReadLatency[i];
-	rollOverCounterResult.ReadBusyCycles[i]  += loggedResult.ReadBusyCycles[i];
-	rollOverCounterResult.WriteBusyCycles[i] += loggedResult.WriteBusyCycles[i];
-      }
-    }
-  }
-  
-  void HALAPIInterface::calculateAMRolloverResult(const std::string& key, unsigned int numAM, xclCounterResults& counterResult, bool firstReadAfterProgram)
-  {
-    xclCounterResults& loggedResult = mFinalCounterResultsMap[key];
-    xclCounterResults& rollOverCount = mRolloverCountsMap[key];
-    xclCounterResults& rollOverCounterResult = mRolloverCounterResultsMap[key];
-    
-    for(unsigned int i = 0; i < numAM ; ++i) {
-      // Update "RollOverCount" 
-      if (!firstReadAfterProgram) {
-	if(counterResult.CuExecCycles[i]     < loggedResult.CuExecCycles[i])     rollOverCount.CuExecCycles[i]++;
-	if(counterResult.CuBusyCycles[i]     < loggedResult.CuBusyCycles[i])     rollOverCount.CuBusyCycles[i]++;
-	if(counterResult.CuStallExtCycles[i] < loggedResult.CuStallExtCycles[i]) rollOverCount.CuStallExtCycles[i]++;
-	if(counterResult.CuStallIntCycles[i] < loggedResult.CuStallIntCycles[i]) rollOverCount.CuStallIntCycles[i]++;
-	if(counterResult.CuStallStrCycles[i] < loggedResult.CuStallStrCycles[i]) rollOverCount.CuStallStrCycles[i]++;
-      } else {
-	// Update "RollOverCounterResults" with logged data
-	rollOverCounterResult.CuExecCount[i]      += loggedResult.CuExecCount[i];
-	rollOverCounterResult.CuExecCycles[i]     += loggedResult.CuExecCycles[i];
-	rollOverCounterResult.CuBusyCycles[i]     += loggedResult.CuBusyCycles[i];
-	rollOverCounterResult.CuStallExtCycles[i] += loggedResult.CuStallExtCycles[i];
-	rollOverCounterResult.CuStallIntCycles[i] += loggedResult.CuStallIntCycles[i];
-	rollOverCounterResult.CuStallStrCycles[i] += loggedResult.CuStallStrCycles[i];
-      }
-      
-    }
-  }
-  
+ 
   void HALAPIInterface::recordAMResult(ProfileResults* results, DeviceIntf* /*currDevice*/, const std::string& key)
   {
-    //    bool deviceDataExists = (mDeviceBinaryCuSlotsMap.find(key) == mDeviceBinaryCuSlotsMap.end()) ? false : true;
-    
-    
     xclCounterResults& counterResults = mFinalCounterResultsMap[key];
-    xclCounterResults& rollOverCount = mRolloverCountsMap[key];
-    xclCounterResults& rollOverCounterResult = mRolloverCounterResultsMap[key];
     
     for(unsigned int i = 0; i < results->numAM ; ++i) {
       
-      // if counterResults.CuMaxParallelIter[i] > 0)
-      
-      results->cuExecData[i].cuExecCount = counterResults.CuExecCount[i] + rollOverCounterResult.CuExecCount[i];
-      results->cuExecData[i].cuExecCycles = counterResults.CuExecCycles[i] + rollOverCounterResult.CuExecCycles[i]
-	+ (rollOverCount.CuExecCycles[i] * 4294967296UL);
-      results->cuExecData[i].cuBusyCycles = counterResults.CuBusyCycles[i] + rollOverCounterResult.CuBusyCycles[i]
-	+ (rollOverCount.CuBusyCycles[i] * 4294967296UL);
+      results->cuExecData[i].cuExecCount = counterResults.CuExecCount[i];
+      results->cuExecData[i].cuExecCycles = counterResults.CuExecCycles[i];
+      results->cuExecData[i].cuBusyCycles = counterResults.CuBusyCycles[i];
       
       results->cuExecData[i].cuMaxExecCycles = counterResults.CuMaxExecCycles[i];
       results->cuExecData[i].cuMinExecCycles = counterResults.CuMinExecCycles[i];
@@ -274,23 +196,22 @@ namespace xdp {
   void HALAPIInterface::recordAIMResult(ProfileResults* results, DeviceIntf* currDevice, const std::string& key)
   {
     xclCounterResults& counterResults = mFinalCounterResultsMap[key];
-    xclCounterResults& rollOverCount  = mRolloverCountsMap[key];
-    
+   
     for(unsigned int i = 0; i < results->numAIM ; ++i) {
       if(currDevice->isHostAIM(i)) {
-	continue;
+        continue;
       }
       
-      results->kernelTransferData[i].totalReadBytes = counterResults.ReadBytes[i] + (rollOverCount.ReadBytes[i] * 4294967296UL);
-      results->kernelTransferData[i].totalReadTranx = counterResults.ReadTranx[i] + (rollOverCount.ReadTranx[i] * 4294967296UL);
-      results->kernelTransferData[i].totalReadLatency = counterResults.ReadLatency[i] + (rollOverCount.ReadLatency[i] * 4294967296UL);
-      results->kernelTransferData[i].totalReadBusyCycles = counterResults.ReadBusyCycles[i] + (rollOverCount.ReadBusyCycles[i] * 4294967296UL);
+      results->kernelTransferData[i].totalReadBytes = counterResults.ReadBytes[i];
+      results->kernelTransferData[i].totalReadTranx = counterResults.ReadTranx[i];
+      results->kernelTransferData[i].totalReadLatency = counterResults.ReadLatency[i];
+      results->kernelTransferData[i].totalReadBusyCycles = counterResults.ReadBusyCycles[i];
       // min max readLatency
       
-      results->kernelTransferData[i].totalWriteBytes = counterResults.WriteBytes[i] + (rollOverCount.WriteBytes[i] * 4294967296UL);
-      results->kernelTransferData[i].totalWriteTranx = counterResults.WriteTranx[i] + (rollOverCount.WriteTranx[i] * 4294967296UL);
-      results->kernelTransferData[i].totalWriteLatency = counterResults.WriteLatency[i] + (rollOverCount.WriteLatency[i] * 4294967296UL);
-      results->kernelTransferData[i].totalWriteBusyCycles = counterResults.WriteBusyCycles[i] + (rollOverCount.WriteBusyCycles[i] * 4294967296UL);
+      results->kernelTransferData[i].totalWriteBytes = counterResults.WriteBytes[i];
+      results->kernelTransferData[i].totalWriteTranx = counterResults.WriteTranx[i];
+      results->kernelTransferData[i].totalWriteLatency = counterResults.WriteLatency[i];
+      results->kernelTransferData[i].totalWriteBusyCycles = counterResults.WriteBusyCycles[i];
       // min max readLatency
     }
   }
@@ -312,7 +233,7 @@ namespace xdp {
   void HALAPIInterface::getProfileResults(xclDeviceHandle deviceHandle, void* res)
   {
     // Step 1: read counters from device
-    // Step 2: log the data into counter and rollover results data-structure
+    // Step 2: log the data into counter results data-structure
     // Step 3: populate ProfileResults
     
     // check one device for now
@@ -346,26 +267,10 @@ namespace xdp {
     
     std::string key = deviceName + "|" + binaryName;
     
-    // Step 2: log the data into counter and rollover results data-structure
+    // Step 2: log the data into counter results data-structure
     
-    // If not already defined, zero out rollover values for this device
-    if (mFinalCounterResultsMap.find(key) == mFinalCounterResultsMap.end()) {
-      mFinalCounterResultsMap[key] = counterResults;
-      
-      xclCounterResults rolloverResults;
-      memset(&rolloverResults, 0, sizeof(xclCounterResults));
-      mRolloverCounterResultsMap[key] = rolloverResults;
-      mRolloverCountsMap[key] = rolloverResults;
-    } else {
-      
-      calculateAIMRolloverResult(key, results->numAIM, counterResults, true /*firstReadAfterProgram*/);
-      calculateAMRolloverResult (key, results->numAM,  counterResults, true /*firstReadAfterProgram*/);
-      
-      // Streaming IP Counters are 64 bit and unlikely to roll over
-      
-      // Log current counter result
-      mFinalCounterResultsMap[key] = counterResults;
-    }
+    // Log current counter result
+    mFinalCounterResultsMap[key] = counterResults;
     
     // record is per device
     

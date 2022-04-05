@@ -50,6 +50,9 @@ namespace xdp {
     XDP_EXPORT
     void endPollforDevice(void* handle);
 
+    XDP_EXPORT
+    static bool alive();
+
   private:
     void getTilesForDebug(void* handle);
     void endPoll();
@@ -60,6 +63,9 @@ namespace xdp {
     void writeDebug(uint64_t index, void* handle, VPWriter* aieWriter, VPWriter* aieshimWriter);
 
   private:
+
+    static bool live;
+
     uint32_t mPollingInterval;
 
     // Thread control flags for each device handle

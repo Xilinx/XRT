@@ -50,6 +50,9 @@
 // Read data only if it's more than 512B unless forced
 #define TS2MM_MIN_READ_SIZE      0x200
 #define DEFAULT_TRACE_OFFLOAD_INTERVAL_MS 10
+// Throw warning when too much trace in processing pipeline
+// Use some arbitrary large number here
+#define TS2MM_QUEUE_SZ_WARN_THRESHOLD 5000
 
 #define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Device trace could be incomplete. Suggested fixes:\n\
 1. Use larger FIFO size or DDR/HBM bank as 'trace_memory' in linking options.\n\
@@ -67,12 +70,15 @@ Please increase trace_buffer_size or use 'coarse' option for device_trace or tur
 buffer size and/or reduce trace_buffer_offload_interval."
 #define TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE   "Circular buffer overwrite was detected in device trace. Timeline trace could be incomplete."
 #define TS2MM_WARN_MSG_BIG_BUF         "Processing large amount of device trace. It could take a while before application ends."
+#define TS2MM_WARN_MSG_QUEUE_SZ        "Too much trace in processing queue. This could have negative impact on host memory utilization. \
+Please increase trace_buffer_size and trace_buffer_offload_interval together or use 'coarse' option for device_trace."
 
 #define AIE_TS2MM_WARN_MSG_BUF_FULL       "AIE Trace Buffer is full. Device trace could be incomplete."
 
 // Trace file Dump Settings and Warnings
 #define MIN_TRACE_DUMP_INTERVAL_S 1
 #define TRACE_DUMP_INTERVAL_WARN_MSG "Setting trace file dump interval to minimum supported value of 1 second."
+#define AIE_TRACE_DUMP_INTERVAL_WARN_MSG "Setting AIE trace file dump interval to minimum supported value of 1 second."
 #define TRACE_DUMP_FILE_COUNT_WARN 10
 #define TRACE_DUMP_FILE_COUNT_WARN_MSG "Continuous Trace might create a large number of trace files. Please use trace_file_dump_interval \
 to control how often trace data is written."

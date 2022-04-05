@@ -54,6 +54,9 @@ namespace xdp {
       XDP_EXPORT
       virtual void writeAll(bool openNewFiles);
 
+      XDP_EXPORT
+      static bool alive();
+
     private:
       inline uint32_t bcIdToEvent(int bcId);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
@@ -62,7 +65,7 @@ namespace xdp {
       uint64_t getTraceStartDelayCycles(void* handle);
 
       // Aie resource manager utility functions
-      bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet, bool useDelay);
+      bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
 
       // Utility functions
@@ -70,11 +73,20 @@ namespace xdp {
       std::vector<tile_type> getTilesForTracing(void* handle);
 
     private:
+
+      // Indicate whether the Aie Trace Plugin is in valid state
+      static bool live;
+
       // Runtime or compile-time specified trace metrics?
       bool runtimeMetrics = true;
 
+      // These flags are used to decide configuration at various points
+      bool mUseDelay = false;
+      uint32_t mDelayCycles = 0;
+
       bool continuousTrace;
       uint64_t offloadIntervalms;
+      unsigned int aie_trace_file_dump_int_s;
 
       // Trace Runtime Status
       AieRC mConfigStatus = XAIE_OK;

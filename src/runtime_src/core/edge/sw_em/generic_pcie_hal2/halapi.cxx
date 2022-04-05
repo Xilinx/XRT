@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,16 +13,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-/**
- * Copyright (C) 2015 Xilinx, Inc
- */
-
 #include "shim.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "xcl_graph.h"
- 
+
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
   xclDeviceInfo2 info;
@@ -313,27 +308,30 @@ size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTrace
 
 double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 {
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return 0.0;
   return 0.0;
 }
 
 
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return 0.0;
   return 0.0;
 }
 
 
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
-//  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-//  if (!drv)
-//    return 0.0;
+  return 0.0;
+}
+
+
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  return 0.0;
+}
+
+
+double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
   return 0.0;
 }
 
@@ -398,7 +396,7 @@ unsigned xclProbe()
       mVBNV >> deviceName;
     }
     mVBNV.close();
-  }  
+  }
 
   for(auto &it: devicesInfo)
   {
@@ -607,7 +605,7 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
   return -ENOSYS;
 }
 
-int 
+int
 xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return -ENOSYS;
@@ -654,6 +652,12 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+}
+
+int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
+{
+  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  return drv ? drv->xclOpenContext(slot, xclbinId, cuname, shared) : -ENODEV;
 }
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
@@ -951,7 +955,7 @@ xclResetAIEArray(xclDeviceHandle handle)
 int
 xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  try { 
+  try {
     if (handle) {
       xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
       return drv ? drv->xrtSyncBOAIENB(bo, gmioName, dir, size, offset) : -1;
@@ -1013,4 +1017,3 @@ xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer)
 {
   return 0;
 }
-

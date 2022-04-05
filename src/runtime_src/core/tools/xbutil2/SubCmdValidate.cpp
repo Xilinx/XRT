@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,6 +19,8 @@
 #include "SubCmdValidate.h"
 #include "tools/common/Report.h"
 #include "tools/common/ReportPlatforms.h"
+#include "tools/common/XBHelpMenusCore.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
 #include "core/common/utils.h"
@@ -68,6 +70,17 @@ enum class test_status
 static const std::string test_token_skipped = "SKIPPED";
 static const std::string test_token_failed = "FAILED";
 static const std::string test_token_passed = "PASSED";
+
+
+void
+doesTestExist(const std::string& userTestName, const XBU::VectorPairStrings& testNameDescription)
+{
+  const auto iter = std::find_if( testNameDescription.begin(), testNameDescription.end(),
+    [&userTestName](const std::pair<std::string, std::string>& pair){ return pair.first == userTestName;} );
+
+  if (iter == testNameDescription.end())
+    throw xrt_core::error((boost::format("Invalid test name: '%s'") % userTestName).str());
+}
 
 /*
  * mini logger to log errors, warnings and details produced by the test cases
@@ -252,12 +265,14 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     return;
   }
 
-  // log xclbin path for debugging purposes
-  logger(_ptTest, "Xclbin", xclbinPath);
-  auto json_exists = [xclbinPath]() {
+  // log xclbin test dir for debugging purposes
+  boost::filesystem::path xclbin_path(xclbinPath);
+  auto test_dir = xclbin_path.parent_path().string();
+  logger(_ptTest, "Xclbin", test_dir);
+
+  auto json_exists = [test_dir]() {
     const static std::string platform_metadata = "/platform.json";
-    boost::filesystem::path test_dir(xclbinPath);
-    std::string platform_json_path(test_dir.parent_path().string() + platform_metadata);
+    std::string platform_json_path(test_dir + platform_metadata);
     return boost::filesystem::exists(platform_json_path) ? true : false;
   };
 
@@ -294,8 +309,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     // log testcase path for debugging purposes
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
-    boost::filesystem::path test_dir(xclbinPath);
-    std::vector<std::string> args = { "-p", test_dir.parent_path().string(),
+    std::vector<std::string> args = { "-p", test_dir,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     try {
       int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
@@ -942,17 +956,6 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     return ;
   }
 
-  auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
-  size_t totalSize = 0;
-  switch (vendor) {
-    case ARISTA_ID:
-      totalSize = 0x20000000;
-      break;
-    default:
-    case XILINX_ID:
-      break;
-  }
-
   auto is_host_mem = [](std::string tag) {
     return tag.compare(0,4,"HOST") == 0;
   };
@@ -971,10 +974,32 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     std::stringstream run_details;
     size_t block_size = 16 * 1024 * 1024; // Default block size 16MB
 
+    //check custom argument from user
+    const auto& str_block_size = _ptTest.get<std::string>("block-size", "");
+    if (!str_block_size.empty()) {
+      try {
+        block_size = static_cast<size_t>(std::stoll(str_block_size, nullptr, 0));
+      }
+      catch(const std::invalid_argument&) {
+        std::cerr << boost::format(
+          "ERROR: The parameter '%s' value '%s' is invalid for the test '%s'. Please specify and integer byte block-size.'\n") 
+          % "block-size" % str_block_size % "dma" ;
+        throw xrt_core::error(std::errc::operation_canceled);
+      }
+    }
+
+    logger(_ptTest, "Details", (boost::format("Buffer size - '%s'") % xrt_core::utils::unit_convert(block_size)).str());
+
     // check if the bank has enough memory to allocate
-    //  m_size is in KB so convert block_size (bytes) to KB for comparision
+    // m_size is in KB so convert block_size (bytes) to KB for comparison
     if(mem.m_size < (block_size/1024))
       continue;
+
+    size_t totalSize = 0;
+    if (xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev) == ARISTA_ID)
+      totalSize = 0x20000000; // 512 MB 
+    else
+      totalSize = std::min((mem.m_size * 1024), XBU::string_to_base_units("2G", XBUtilities::unit::bytes)); // minimum of mem size in bytes and 2 GB
 
     xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
     try {
@@ -1106,7 +1131,14 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   }
 
   XBU::xclbin_lock xclbin_lock(_dev);
-  uint32_t m2m_enabled = xrt_core::device_query<xrt_core::query::kds_numcdmas>(_dev);
+  // Assume m2m is not enabled
+  uint32_t m2m_enabled = 0;
+  try {
+    m2m_enabled = xrt_core::device_query<xrt_core::query::m2m>(_dev);
+  } catch (const xrt_core::query::exception&) {
+    // Ignore the catch! Let the below logic handle the notification as we want to skip this test
+    // If we end up here this means the m2m sysfs node was not found and we skip the test.
+  }
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
 
   // Workaround:
@@ -1204,8 +1236,6 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
   if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
     _ptTest.put("status", test_token_failed);
 
-  runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
-
   _ptTest.put("status", test_token_passed);
 }
 
@@ -1295,7 +1325,9 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
                        std::ostream & _ostream, const std::string& bdf)
 {
-  if (test.get<std::string>("status", "").compare(test_token_skipped)) {
+  // If the status is anything other than skipped print the test name
+  auto _status = test.get<std::string>("status", "");
+  if (!boost::equals(_status, test_token_skipped)) {
     std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
     // Only use the long name option when displaying the test
     _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name", "<unknown>");
@@ -1328,7 +1360,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if not supported: verbose
   auto redirect_log = [&](std::string tag, std::string log_str) {
     std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
-    if((_status.compare(test_token_skipped)) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
+    if(boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
       if(XBU::getVerbose())
         XBU::message(log_str, false, _ostream);
       else
@@ -1456,7 +1488,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"Verify kernel", "Bandwidth kernel", "iops", "vcu"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
@@ -1559,6 +1591,48 @@ getTestNameDescriptions(bool addAdditionOptions)
   return reportDescriptionCollection;
 }
 
+/*
+ * Extended keys helper struct
+ */
+struct ExtendedKeysStruct {
+  std::string test_name;
+  std::string param_name;
+  std::string description;
+};
+
+static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
+  {"dma", "block-size", "Memory transfer size (bytes)"}
+};
+
+std::string
+extendedKeysOptions()
+{
+  static unsigned int m_maxColumnWidth = 100;
+  std::stringstream fmt_output;
+  // Formatting color parameters
+  // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
+  const std::string fgc_header     = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_HEADER).string();
+  const std::string fgc_optionName = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION).string();
+  const std::string fgc_optionBody = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor(EscapeCodes::FGC_OPTION_BODY).string();
+  const std::string fgc_reset      = XBU::is_escape_codes_disabled() ? "" : EscapeCodes::fgcolor::reset();
+
+  // Report option group name (if defined)
+  boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
+  fmt_output << fmtHeader % "EXTENDED KEYS";
+
+  // Report the options
+  boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
+  unsigned int optionDescTab = 23;
+
+  for (auto& param : extendedKeysCollection) {
+    const auto key_desc = (boost::format("%s:<value> - %s") % param.param_name % param.description).str();
+    const auto& formattedString = XBU::wrap_paragraphs(key_desc, optionDescTab, m_maxColumnWidth - optionDescTab, false);
+    fmt_output << fmtOption % param.test_name % formattedString;
+  }
+
+  return fmt_output.str();
+}
+
 void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 
@@ -1573,7 +1647,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   std::vector<std::string> device;
   std::vector<std::string> testsToRun = {"all"};
   std::string sFormat = "JSON";
-  std::string sOutput = "";
+  std::string sOutput;
+  std::string sParam;
   std::string xclbin_location;
   bool help = false;
 
@@ -1584,8 +1659,9 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("run,r", boost::program_options::value<decltype(testsToRun)>(&testsToRun)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
+    ("param", boost::program_options::value<decltype(sParam)>(&sParam), "Extended parameter for a given test. Format: <test-name>:<key>:<value>")
     ("path,p", boost::program_options::value<decltype(xclbin_location)>(&xclbin_location), "Path to the directory containing validate xclbins")
-    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
@@ -1594,26 +1670,29 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
+  po::positional_options_description positionals;
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
     return;
   }
 
   // -- Process the options --------------------------------------------
   Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
+  std::vector<std::string> param;
   try {
     // Output Format
     schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
@@ -1638,17 +1717,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
         throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
 
       // Verify the current user test request exists in the test suite
-      bool nameFound = false;
-      for (auto &test : testNameDescription) {
-        if (userTestName.compare(test.first) == 0) {
-          nameFound = true;
-          break;
-        }
-      }
-
-      if (nameFound == false) {
-        throw xrt_core::error((boost::format("Invalid test name: '%s'") % userTestName).str());
-      }
+      doesTestExist(userTestName, testNameDescription);
     }
 
     // check if xclbin folder path is provided
@@ -1662,10 +1731,29 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
         xclbin_location.append("/");
     }
 
+    //check if param option is provided
+    if (!sParam.empty()) {
+      XBU::verbose("Sub command: --param");
+      boost::split(param, sParam, boost::is_any_of(":")); // eg: dma:block-size:1024
+
+      //check parameter format
+      if (param.size() != 3)
+        throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % sParam).str());
+
+      //check test case name
+      doesTestExist(param[0], testNameDescription);
+
+      //check parameter name
+      auto iter = std::find_if( extendedKeysCollection.begin(), extendedKeysCollection.end(), 
+          [&param](const ExtendedKeysStruct& collection){ return collection.param_name == param[1];} );
+      if (iter == extendedKeysCollection.end())
+        throw xrt_core::error((boost::format("Unsupported parameter name '%s' for validation test '%s'") % param[1] % param[2]).str());
+    }
+
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -1702,12 +1790,17 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   // Iterate through the test suites and compare them against the desired user tests
   // If a match is found enqueue the test suite to be executed
   for (size_t index = 0; index < testSuite.size(); ++index) {
+    std::string testSuiteName = get_test_name(testSuite[index].ptTest.get("name","<unknown>"));
     // The all option enqueues all test suites not marked explicit
     if (testsToRun[0] == "all") {
       // Do not queue test suites that must be explicitly passed in
       if(testSuite[index].ptTest.get<bool>("explicit"))
         continue;
       testObjectsToRun.push_back(&testSuite[index]);
+      // add custom param to the ptree if available
+      if (!param.empty() && boost::equals(param[0], testSuiteName)) {
+        testSuite[index].ptTest.put(param[1], param[2]);
+      }
       if(!xclbin_location.empty())
         testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
       continue;
@@ -1724,10 +1817,13 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
     // Logic for individually defined tests
     // Enqueue the matching test suites to be executed
-    std::string testSuiteName = get_test_name(testSuite[index].ptTest.get("name","<unknown>"));
     for (const auto & testName : testsToRun) {
-      if (testName.compare(testSuiteName) == 0) {
+      if (boost::equals(testName, testSuiteName)) {
         testObjectsToRun.push_back(&testSuite[index]);
+        // add custom param to the ptree if available
+        if (!param.empty() && boost::equals(param[0], testSuiteName)) {
+          testSuite[index].ptTest.put(param[1], param[2]);
+        }
         if(!xclbin_location.empty())
           testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
         break;

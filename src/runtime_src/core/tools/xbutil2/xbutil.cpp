@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,29 +15,31 @@
  */
 
 // Sub Commands
+#include "SubCmdAdvanced.h"
+#include "SubCmdConfigure.h"
 #include "SubCmdExamine.h"
 #include "SubCmdProgram.h"
 #include "SubCmdReset.h"
 #include "SubCmdValidate.h"
-#include "SubCmdAdvanced.h"
-#include "SubCmdConfigure.h"
 
 // Supporting tools
-#include "tools/common/XBMain.h"
-#include "tools/common/SubCmd.h"
 #include "common/error.h"
+#include "tools/common/SubCmd.h"
+#include "tools/common/SubCmdJSON.h"
+#include "tools/common/XBMain.h"
 
 // System include files
 #include <boost/filesystem.hpp>
-#include <string>
-#include <iostream>
 #include <exception>
+#include <iostream>
+#include <string>
 
 // Program entry
 int main( int argc, char** argv )
 {
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
+  const std::string executable = "xbutil";
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
@@ -46,14 +48,15 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false,  false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false,  false, false));
 
+    // Parse sub commands from json files
+    populateSubCommandsFromJSON(subCommands, executable);
+
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false));
 #endif
 
     subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true,  false, true ));
   }
-
-  const std::string executable = "xbutil";
 
   for (auto & subCommand : subCommands) {
     subCommand->setExecutableName(executable);

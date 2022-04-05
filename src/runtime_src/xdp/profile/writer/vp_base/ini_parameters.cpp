@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,6 +33,9 @@ namespace xdp {
     addParameter("device_counters",
                  xrt_core::config::get_device_counters(),
                  "Hardware counters added to summary file");
+    addParameter("host_trace",
+                 xrt_core::config::get_host_trace(),
+                 "Enable the top level of host trace");
     addParameter("native_xrt_trace", xrt_core::config::get_native_xrt_trace(),
                  "Generation of Native XRT API function trace");
     addParameter("xrt_trace", xrt_core::config::get_xrt_trace(),
@@ -60,6 +63,9 @@ namespace xdp {
     addParameter("trace_buffer_offload_interval_ms",
                  xrt_core::config::get_trace_buffer_offload_interval_ms(),
                  "Interval for reading of device data to host (in ms)");
+    addParameter("trace_file_dump_interval_s",
+                 xrt_core::config::get_trace_file_dump_interval_s(),
+                 "Interval for dumping files to host (in s)");              
     addParameter("lop_trace", xrt_core::config::get_lop_trace(),
                  "Generation of lower overhead OpenCL trace. Should not be used with other OpenCL options.");
     addParameter("debug_mode", xrt_core::config::get_launch_waveform(),
@@ -72,6 +78,14 @@ namespace xdp {
     addParameter("aie_trace_metrics",
                  xrt_core::config::get_aie_trace_metrics(),
                  "Configuration level used for AI Engine trace");
+    addParameter("aie_trace_periodic_offload", xrt_core::config::get_aie_trace_periodic_offload(),
+                 "Periodic offloading of aie trace from memory to host");
+    addParameter("aie_trace_buffer_offload_interval_ms",
+                 xrt_core::config::get_aie_trace_buffer_offload_interval_ms(),
+                 "Interval for reading of device aie trace data to host (in ms)");
+    addParameter("aie_trace_file_dump_interval_s",
+                 xrt_core::config::get_aie_trace_file_dump_interval_s(),
+                 "Interval for dumping aie trace files to host (in s)");  
     addParameter("aie_profile", xrt_core::config::get_aie_profile(),
                  "Generation of AI Engine profiling");
     addParameter("aie_profile_interval_us",
@@ -83,6 +97,9 @@ namespace xdp {
     addParameter("aie_profile_memory_metrics",
                  xrt_core::config::get_aie_profile_memory_metrics(),
                  "Metric set for AI Engine memory modules");
+    addParameter("aie_profile_interface_metrics",
+                 xrt_core::config::get_aie_profile_interface_metrics(),
+                 "Metric set for AI Engine interface tiles");             
     addParameter("aie_status", xrt_core::config::get_aie_status(),
                  "Generation of AI Engine debug/status");
     addParameter("aie_status_interval_us",

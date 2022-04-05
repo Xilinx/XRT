@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -62,6 +62,7 @@
 #include <linux/firmware.h>
 #include "kds_core.h"
 #include "xclerr_int.h"
+#include "ps_kernel.h"
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
 #include <linux/sched/signal.h>
@@ -611,6 +612,7 @@ struct xocl_dev_core {
 	 */
 	int			ksize;
 	char			*kernels;
+	struct drm_xocl_kds	kds_cfg;
 
 	/*
 	 * Store information about pci bar mappings of CPM.
@@ -1025,7 +1027,7 @@ struct xocl_ps_funcs {
 	(PS_CB(xdev, check_healthy) ? PS_OPS(xdev)->check_healthy(PS_DEV(xdev)) : true)
 
 #define xocl_ps_sched_on(xdev)	\
-	(!xocl_mb_sched_on(xdev) && (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)))
+	(!XOCL_DSA_MB_SCHE_OFF(xdev) && (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)))
 
 /* dna callbacks */
 struct xocl_dna_funcs {
@@ -1546,12 +1548,14 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 #define XOCL_IS_STREAM(topo, idx)					\
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
 	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
+#define XOCL_IS_PS_KERNEL_MEM(topo, idx)				\
+	(topo->m_mem_data[idx].m_type == MEM_PS_KERNEL) 
 #define XOCL_IS_P2P_MEM(topo, idx)					\
 	((topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
 	 topo->m_mem_data[idx].m_type == MEM_HBM) &&			\
-	!IS_HOST_MEM(topo->m_mem_data[i].m_tag))
+	!IS_HOST_MEM(topo->m_mem_data[idx].m_tag))
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
@@ -1974,6 +1978,7 @@ struct xocl_ert_ctrl_funcs {
 	       int (* is_version)(struct platform_device *pdev, u32 major, u32 minor);
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
+	       void (* unset_xgq)(struct platform_device *pdev);
 	};
 
 #define ERT_CTRL_DEV(xdev)     \
@@ -2003,6 +2008,9 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_setup_xgq(xdev, id, offset) \
 	(ERT_CTRL_CB(xdev, setup_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->setup_xgq(ERT_CTRL_DEV(xdev), id, offset) : NULL)
+#define xocl_ert_ctrl_unset_xgq(xdev) \
+	(ERT_CTRL_CB(xdev, unset_xgq) ? \
+	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev)) : NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2116,6 +2124,7 @@ struct xocl_xgq_vmr_funcs {
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
+	int (*xgq_clear_firewall)(struct platform_device *pdev);
 	int (*xgq_freq_scaling)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
 	int (*xgq_freq_scaling_by_topo)(struct platform_device *pdev,
@@ -2124,8 +2133,9 @@ struct xocl_xgq_vmr_funcs {
 		enum data_kind kind);
 	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 	int (*vmr_enable_multiboot)(struct platform_device *pdev);
-	int (*xgq_collect_bdinfo_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
-	int (*xgq_collect_temp_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
+	int (*xgq_collect_sensors_by_id)(struct platform_device *pdev, char *buf,
+                                     uint8_t id, uint32_t len);
+	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
 };
 #define	XGQ_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR) ? 			\
@@ -2141,6 +2151,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_xgq_check_firewall(xdev)				\
 	(XGQ_CB(xdev, xgq_check_firewall) ?			\
 	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : 0)
+#define	xocl_xgq_clear_firewall(xdev)				\
+	(XGQ_CB(xdev, xgq_clear_firewall) ?			\
+	XGQ_OPS(xdev)->xgq_clear_firewall(XGQ_DEV(xdev)) : 0)
 #define	xocl_xgq_freq_scaling(xdev, freqs, num_freqs, verify) 	\
 	(XGQ_CB(xdev, xgq_freq_scaling) ?			\
 	XGQ_OPS(xdev)->xgq_freq_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
@@ -2156,16 +2169,20 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_vmr_enable_multiboot(xdev) 			\
 	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
 	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_bdinfo_sensors(xdev, buf, len)		\
-	(XGQ_CB(xdev, xgq_collect_bdinfo_sensors) ?		\
-	XGQ_OPS(xdev)->xgq_collect_bdinfo_sensors(XGQ_DEV(xdev), buf, len) : -ENODEV)
-#define	xocl_xgq_collect_temp_sensors(xdev, buf, len)		\
-	(XGQ_CB(xdev, xgq_collect_temp_sensors) ?		\
-	XGQ_OPS(xdev)->xgq_collect_temp_sensors(XGQ_DEV(xdev), buf, len) : -ENODEV)
+#define	xocl_xgq_collect_sensors_by_id(xdev, buf, id, len)		\
+	(XGQ_CB(xdev, xgq_collect_sensors_by_id) ?		\
+	XGQ_OPS(xdev)->xgq_collect_sensors_by_id(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
+#define	xocl_vmr_load_firmware(xdev, fw, fw_size)		\
+	(XGQ_CB(xdev, vmr_load_firmware) ?			\
+	XGQ_OPS(xdev)->vmr_load_firmware(XGQ_DEV(xdev), fw, fw_size) : -ENODEV)
 
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev);
+	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev, bool create_sysfs);
+	int (*hwmon_sdm_get_sensors)(struct platform_device *pdev, char *resp,
+                                 enum xcl_group_kind repo_type);
+	int (*hwmon_sdm_create_sensors_sysfs)(struct platform_device *pdev, char *in_buf,
+                                          size_t len, enum xcl_group_kind kind);
 };
 #define	SDM_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
@@ -2175,9 +2192,15 @@ struct xocl_sdm_funcs {
 	(struct xocl_sdm_funcs *)SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM)->ops : NULL)
 #define	SDM_CB(xdev, cb)					\
 	(SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
-#define	xocl_hwmon_sdm_get_sensors_list(xdev)			\
+#define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
-	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev)) : -ENODEV)
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)
+#define	xocl_hwmon_sdm_get_sensors(xdev, resp, repo_type)		\
+	(SDM_CB(xdev, hwmon_sdm_get_sensors) ?			\
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors(SDM_DEV(xdev), resp, repo_type) : -ENODEV)
+#define	xocl_hwmon_sdm_create_sensors_sysfs(xdev, buf, size, kind)		\
+	(SDM_CB(xdev, hwmon_sdm_create_sensors_sysfs) ?			\
+	SDM_OPS(xdev)->hwmon_sdm_create_sensors_sysfs(SDM_DEV(xdev), buf, size, kind) : -ENODEV)
  
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
@@ -2355,8 +2378,11 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
-void xocl_reinit_vmr(xdev_handle_t xdev_hdl);
+int xocl_enable_vmr_boot(xdev_handle_t xdev_hdl);
 
+int xocl_count_iores_byname(struct platform_device *pdev, char *name);
+struct resource *xocl_get_iores_with_idx_byname(struct platform_device *pdev,
+				       char *name, int idx);
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 				       char *name);
 int xocl_get_irq_byname(struct platform_device *pdev, char *name);
@@ -2427,6 +2453,24 @@ static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
 {
 	return kds_fini_ert(&XDEV(xdev)->kds);
 }
+
+#if PF == MGMTPF
+static inline int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
+		      struct ip_layout *ip_layout,
+		      struct ps_kernel_node *ps_kernel)
+{
+	return 0;
+}
+static inline void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
+{
+	return;
+}
+#else
+int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
+		      struct ip_layout *ip_layout,
+		      struct ps_kernel_node *ps_kernel);
+void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
+#endif
 
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;

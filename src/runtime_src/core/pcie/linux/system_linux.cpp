@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -167,6 +167,11 @@ get_os_info(boost::property_tree::ptree &pt)
   boost::property_tree::ptree _ptLibInfo;
   _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
   pt.put_child("libraries", _ptLibInfo);
+
+  char hostname[256] = {0};
+  gethostname(hostname, 256);
+  std::string hn(hostname);
+  pt.put("hostname", hn);
 }
 
 device::id_type

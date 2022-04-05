@@ -866,7 +866,9 @@ static void queue_req_free(struct qdma_stream_queue *queue,
 static void inline cmpl_aio(struct kiocb *kiocb, unsigned int done_bytes,
 		int error)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+	kiocb->ki_complete(kiocb, done_bytes);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
 	kiocb->ki_complete(kiocb, done_bytes, error);
 #else
 	struct qdma_stream_iocb *iocb;

@@ -63,7 +63,7 @@ static inline uint32_t cmd_is_valid(struct sched_cmd *cu_cmd)
 	return cu_cmd->cc_header.hdr.state;
 }
 
-/* Parsing XRT_CMD_OP_START_PL_CUIDX cmd to find start address and size for args. */
+/* Parsing XRT_CMD_OP_START_CUIDX cmd to find start address and size for args. */
 static inline void cmd_args(struct sched_cmd *cu_cmd, uint64_t *start, uint32_t *size)
 {
 	struct xgq_cmd_start_cuidx *cmd = (struct xgq_cmd_start_cuidx *)(uintptr_t)cu_cmd->cc_addr;
@@ -73,17 +73,27 @@ static inline void cmd_args(struct sched_cmd *cu_cmd, uint64_t *start, uint32_t 
 		sizeof(struct xgq_cmd_sq_hdr) - sizeof(cmd->data));
 }
 
-/* Parsing XRT_CMD_OP_START_PL_CUIDX cmd to load CU index. Expensive! */
+/* Parsing XRT_CMD_OP_START_CUIDX cmd to find start address and size for args. */
+static inline void cmd_kv_args(struct sched_cmd *cu_cmd, uint64_t *start, uint32_t *size)
+{
+	struct xgq_cmd_start_cuidx_kv *cmd = (struct xgq_cmd_start_cuidx_kv *)(uintptr_t)cu_cmd->cc_addr;
+
+	*start = (uint64_t)(uintptr_t)cmd->data;
+	*size = cmd_payload_size(cu_cmd) - (sizeof(struct xgq_cmd_start_cuidx_kv) -
+		sizeof(struct xgq_cmd_sq_hdr) - sizeof(cmd->data));
+}
+
+/* Parsing XRT_CMD_OP_*_CUIDX* cmd to load CU index. Expensive! */
 static inline uint32_t cmd_load_cu_index(struct sched_cmd *cu_cmd)
 {
-	struct xgq_cmd_start_cuidx *cmd = (struct xgq_cmd_start_cuidx *)(uintptr_t)cu_cmd->cc_addr;
+	struct xgq_sub_queue_entry *ch = (struct xgq_sub_queue_entry *)(uintptr_t)cu_cmd->cc_addr;
 
 	if (!cu_cmd->cached) {
-		cu_cmd->cc_header.hdr.header[1] =reg_read((uint32_t)(uintptr_t)&cmd->hdr.header[1]);
+		cu_cmd->cc_header.hdr.header[1] =reg_read((uint32_t)(uintptr_t)&ch->hdr.header[1]);
 		cu_cmd->cached = 1;
     }
 
-	return cu_cmd->start_cu_cmd.hdr.cu_idx;
+	return cu_cmd->cc_header.hdr.cu_idx;
 }
 
 #endif /* __SCHED_CMD_H__ */
