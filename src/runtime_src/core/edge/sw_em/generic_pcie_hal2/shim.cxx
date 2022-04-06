@@ -618,7 +618,7 @@ namespace xclcpuemhal2 {
       for (const auto& cu : kernel.get_cus()) {
         auto instance_name = cu.get_name();
         if (!instance_name.empty())
-          mCURangeMap[instance_name] = props.address_range;
+          mCURangeMap.emplace(std::move(instance_name), props.address_range);
       }
     }
   }
