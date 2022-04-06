@@ -907,21 +907,14 @@ namespace xclcpuemhal2 {
     uint64_t cuAddRange = getCuAddRange(cu_index);
 
     if (!isValidOffset(offset, cuAddRange))
-      return -EINVAL;	
+      return -EINVAL;
 
-    const unsigned REG_BUFF_SIZE = 0x4;
-    std::array<char, REG_BUFF_SIZE> buff;
     uint64_t baseAddr = cuidx2addr[cu_index];
+    size_t size = 4;
     if (rd) {
-      size_t size=4;
-      xclRegRead_RPC_CALL(xclRegRead,baseAddr,offset,buff.data(),size,0,0);
-      auto tmp_buff = reinterpret_cast<uint32_t*>(buff.data());
-      *datap = tmp_buff[0];
-    }
-    else {
-      uint32_t * tmp_buff = reinterpret_cast<uint32_t*>(buff.data());
-      tmp_buff[0] = *datap;
-      xclRegWrite_RPC_CALL(xclRegWrite,baseAddr,offset,tmp_buff,0,0);
+      xclRegRead_RPC_CALL(xclRegRead, baseAddr, offset, datap, size, 0, 0);
+    } else {
+      xclRegWrite_RPC_CALL(xclRegWrite, baseAddr, offset, datap, 0, 0);
     }
     return 0;
   }
