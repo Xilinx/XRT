@@ -2106,6 +2106,9 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		return;
 	}
 
+	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
+		return;
+
 	// Work-around to unconfigure PS kernel
 	// Will be removed once unconfigure command is there
 	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, 0, 0);

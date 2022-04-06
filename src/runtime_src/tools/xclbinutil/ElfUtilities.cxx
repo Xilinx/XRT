@@ -225,9 +225,12 @@ enum_DW_TAG_to_string(enum DW_TAG eTag)
 }
 
 static std::string
-get_DW_AT_value(const std::string& entry, const std::string& tag)
+get_DW_AT_value(const std::string& entry, 
+                const std::string& tag,
+                bool findFirst = false)
 //    <434>   DW_AT_name        : (indirect string, offset: 0xa7): nullptr_t
 //    <c8d>   DW_AT_name        : (strp) (offset: 0x3e4): kernel0_fini
+//    <e71>   DW_AT_type        : (ref4) <0xdec>, __shared_ptr_access<pscontext::impl, (__gnu_cxx::_Lock_policy)2, false, false>
 {
   // If the tag is not found return an empty string
   if (entry.find(tag) == std::string::npos)
@@ -235,7 +238,8 @@ get_DW_AT_value(const std::string& entry, const std::string& tag)
 
   // Get the last value after the colon
   const std::string searchString = ":";
-  size_t valueIndex = entry.find_last_of(searchString);
+
+  size_t valueIndex = findFirst ? entry.find(searchString) : entry.find_last_of(searchString);
   if (valueIndex == std::string::npos)
     throw std::runtime_error("ERROR: Cannot find DW_AT value in the entry: '" + entry + "'");
 
@@ -274,7 +278,7 @@ if_exist_add_DW_AT_type(const std::string& entry,
 //    <d52>   DW_AT_type        : (ref4) <0x55f>, float
 {
   const auto tag = "DW_AT_type";
-  const auto& tagValue = get_DW_AT_value(entry, tag);
+  const auto& tagValue = get_DW_AT_value(entry, tag, true);
   if (tagValue.empty())
     return;
 

@@ -26,6 +26,7 @@ import XBUtil
 g_refresh_rate = 0
 g_refresh_counter = 0
 g_report_number = 0
+g_page_number = 0
 
 # Initialize the avaible reports
 # Note: Once the report is added to the g_report array, it will automaticaly
@@ -66,7 +67,8 @@ def running_counter(term, lock, len_x):
 # Key table
 def print_footer(term, lock, y_len):
     footer_buf = [
-        XBUtil.fg.yellow + "'n'/'p' - Next/Previous Report" + XBUtil.fg.reset,
+        XBUtil.fg.yellow + "'p'/'n' - Previous/Next Report" + XBUtil.fg.reset,
+        XBUtil.fg.yellow + "'<'/'>' - Dec/Inc Page" + XBUtil.fg.reset,
         XBUtil.fg.yellow + "    'q' - Quit" + XBUtil.fg.reset
     ]
     XBUtil.indented_print(term, lock, footer_buf, 5, y_len - len(footer_buf))
@@ -88,34 +90,43 @@ def bdf_header(term, lock, dev):
     XBUtil.indented_print(term, lock, header_buf, 0, 4)
 
 # Prints both the BDF table and the current report being displayed
-def print_header(term, lock, dev, report_name, len_x):
+def print_header(term, lock, dev, report_header, page_header, len_x):
     # Add padding to overwrite previous report
-    padding_width = 30
-    report_name = XBUtil.pad_string(report_name, padding_width, "center")
+    padding_width = 35
+    report_header = XBUtil.pad_string(report_header, padding_width, "center")
+    page_header = XBUtil.pad_string(page_header, padding_width, "center")
 
     with lock:
-        center_align = int((len_x - len(report_name)) / 2)
-
+        center_align = int((len_x - len(report_header)) / 2)
         term.location(center_align, 2)
-        print(XBUtil.fg.blue + XBUtil.fx.bold + XBUtil.fx.italic + report_name + XBUtil.fx.reset)
+        print(XBUtil.fg.blue + XBUtil.fx.bold + XBUtil.fx.italic + report_header + XBUtil.fx.reset)
+
+        center_align = int((len_x - len(page_header)) / 2)
+        term.location(center_align, 3)
+        print(XBUtil.fg.blue + XBUtil.fx.bold + XBUtil.fx.italic + page_header + XBUtil.fx.reset)
 
     bdf_header(term, lock, dev)
 
 # Running thread used to driver the reports.
-def running_reports(term, lock, dev, x_len):
+def running_reports(term, lock, dev, x_len, y_len):
     global g_report_number
+    global g_reports
+    global g_page_number
 
+    report_length = 0
     report_start_row = 10
+    report_end_row = 10 # Number of lines above bottom of terminal. Must leave room for footer!
     num_lines_printed = 0
     current_report = -1
+    current_page = -1
     while True:
         global g_refresh_counter
-        global g_reports
         global g_refresh_rate
 
         g_refresh_counter += 1
+        page_count = 0
         # Determine if our report has changed
-        if current_report != g_report_number:
+        if (current_report != g_report_number) or (current_page != g_page_number):
             g_refresh_counter = 0
 
             # Clear the previous reports
@@ -128,15 +139,28 @@ def running_reports(term, lock, dev, x_len):
                 g_report_number = 0
             current_report = g_report_number
 
+            report_length = y_len - report_start_row - report_end_row
+            page_count = g_reports[current_report].update(dev, report_length)
+
+            # Point to the next page if overflowing
+            if g_page_number < 0:
+                g_page_number = page_count - 1
+            if g_page_number >= page_count:
+                g_page_number = 0
+            current_page = g_page_number
+
             # Update the report header on which report that is currently being displayed
             report_name = g_reports[current_report].report_name()
             report_header = "%s (%d/%d)" % (report_name, current_report + 1, len(g_reports))
-            print_header(term, lock, dev, report_header, x_len)
+            page_header = "Page (%d/%d)" % (current_page + 1, page_count)
+            print_header(term, lock, dev, report_header, page_header, x_len)
+        # Just update the report if no changes have occurred
+        else:
+            page_count = g_reports[current_report].update(dev, report_length)
 
-        g_reports[current_report].update(dev)
         # Clear the previous reports
         XBUtil.clear_rows(term, lock, report_start_row, num_lines_printed)
-        num_lines_printed = g_reports[current_report].print_report(term, lock, 0, report_start_row)
+        num_lines_printed = g_reports[current_report].print_report(term, lock, 0, report_start_row, current_page)
 
         # Wait for either for the refresh time to expire or for a new report
         counter = 0
@@ -160,6 +184,7 @@ def options_parser():
 def main():
     global g_refresh_rate
     global g_report_number
+    global g_page_number
 
     # Get and validate the options
     opt = options_parser()
@@ -203,7 +228,7 @@ def main():
         t1.start()
 
         # Running reports
-        t2 = threading.Thread(target=running_reports, args=(term, lock, dev, x_len))
+        t2 = threading.Thread(target=running_reports, args=(term, lock, dev, x_len, y_len))
         t2.daemon = True
         t2.start()
 
@@ -213,11 +238,19 @@ def main():
             if key in ['q', 'Q']:
                 break
 
+            if key in ['<', ',']:
+                g_page_number -= 1
+
+            if key in ['>', '.']:
+                g_page_number += 1
+
             if key in ['n', 'N']:
                 g_report_number += 1
+                g_page_number = 0
 
             if key in ['p', 'P']:
                 g_report_number -= 1
+                g_page_number = 0
 
             if key in ['+']:             # Hidden option
                 g_refresh_rate += 1

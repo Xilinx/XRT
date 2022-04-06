@@ -71,7 +71,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -mcdm)
-            cmake_flags+=" -DMCDM=1"
+            cmake_flags+=" -DMCDM=1 -DMCDM_IN_XRT=1"
             shift
             ;;
 	-boost)
