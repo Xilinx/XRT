@@ -388,7 +388,6 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 	int ret = 0;
 	u32 i = 0;
 	u32 idx = 0;
-	struct platform_device *xgqpdev = NULL;
 	u32 xgqidx = 0;
 	struct zocl_ctrl_ert_cu *cu = &zert->zce_cus[0];
 
@@ -402,6 +401,8 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 	}
 
 	for (i = 0; i < zert->zce_num_cus; i++, cu++) {
+		struct platform_device *xgqpdev = NULL;
+
 		if (cu->zcec_pdev) {
 			/* Find next enabled XGQ, we are guaranteed to have one. */
 			while (xgqpdev == NULL) {
@@ -418,9 +419,10 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 		}
 	}
 
-	xgqpdev = NULL;
 	cu = &zert->zce_scus[0];
 	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
+		struct platform_device *xgqpdev = NULL;
+
 		if (cu->zcec_pdev) {
 			/* Find next enabled XGQ, we are guaranteed to have one. */
 			while (xgqpdev == NULL) {
