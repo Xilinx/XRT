@@ -26,7 +26,7 @@ _command_word_xbmgmt_completion()
   # All other cases default to using `compgen` output to format COMPREPLY
   case ${prev} in
     -d|--device)
-      options=$(xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p')
+      options=""
       ;;
     -u|--user)
       _filedir
@@ -40,7 +40,7 @@ _command_word_xbmgmt_completion()
       options=""
       ;;
     -r|--report)
-      options=$(xbmgmt examine --help | sed -n '/--report/,/--format/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
+      options=""
       ;;
     --shell)
       _filedir
@@ -74,10 +74,9 @@ _xbmgmt_completion()
   # 0 is the first argument (xbmgmt), 1 is the desired command for xbmgmt,
   # 2 is an option for the command, etc.
   case ${COMP_CWORD} in
-    # Case for command after xbutil
+    # Case for command after xbmgmt
     1)
-      commandWordOptions="configure dump examine program reset ${commonSubCommands}"
-      _command_word_xbmgmt_completion "${commandWordOptions}"
+      options="configure dump examine program reset ${commonSubCommands}"
       ;;
     # Case for options after the above command is entered
     *)
@@ -88,8 +87,7 @@ _xbmgmt_completion()
       # Once a command is identified the options will always be the same
       case ${commandWord} in
         "configure")
-          configureOptions="--input --retention ${commonSubCommands}"
-          _command_word_xbmgmt_completion "${configureOptions}"
+          options="--input --retention ${commonSubCommands}"
           ;;
         "dump")
           options="--flash -f --config -c --output -o ${commonSubCommands}"
@@ -112,13 +110,7 @@ _xbmgmt_completion()
   _command_word_xbmgmt_completion "${options}"
 }
 
-COMP_FILE="/usr/share/bash-completion/bash_completion"
-if [ -f "${COMP_FILE}" ]; then
-  bash /usr/share/bash-completion/bash_completion
-  complete -F _xbmgmt_completion xbmgmt
-  echo Autocomplete enabled for the xbmgmt command
-else
-  echo ${COMP_FILE} missing! Autocomplete disabled for the xbmgmt command
-fi
+complete -F _xbmgmt_completion xbmgmt
+echo Autocomplete enabled for the xbmgmt command
 
 # ex: filetype=sh

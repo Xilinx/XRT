@@ -33,9 +33,15 @@ if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
     return 1
 fi
 
-# Enable autocompletion for the xbutil and xbmgmt commands
-source $XILINX_XRT/share/completions/xbutil-bash-completion
-source $XILINX_XRT/share/completions/xbmgmt-bash-completion
+COMP_FILE="/usr/share/bash-completion/bash_completion"
+if [ -f "${COMP_FILE}" ]; then
+    # Enable autocompletion for the xbutil and xbmgmt commands
+    source $COMP_FILE
+    source $XILINX_XRT/share/completions/xbutil-bash-completion
+    source $XILINX_XRT/share/completions/xbmgmt-bash-completion
+else
+  echo ${COMP_FILE} missing! Autocomplete disabled for the xbutil command
+fi
 
 # To use the newest version of the XRT tools, either uncomment or set 
 # the following environment variable in your profile:
