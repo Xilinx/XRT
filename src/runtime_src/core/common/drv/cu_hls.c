@@ -70,7 +70,7 @@ static inline void cu_write32(struct xrt_cu_hls *cu, u32 reg, u32 val)
 
 static inline void cu_move_to_complete(struct xrt_cu_hls *cu, int status)
 {
-	struct kds_command *xcmd;
+	struct kds_command *xcmd = NULL;
 
 	if (unlikely(list_empty(&cu->submitted)))
 		return;
@@ -408,7 +408,7 @@ static int cu_hls_submit_config(void *core, struct kds_command *xcmd)
 static struct kds_command *cu_hls_get_complete(void *core)
 {
 	struct xrt_cu_hls *cu_hls = core;
-	struct kds_command *xcmd;
+	struct kds_command *xcmd = NULL;
 
 	if (list_empty(&cu_hls->completed))
 		return NULL;
@@ -423,12 +423,12 @@ static int cu_hls_abort(void *core, void *cond,
 			bool (*match)(struct kds_command *xcmd, void *cond))
 {
 	struct xrt_cu_hls *cu_hls = core;
-	struct kds_command *xcmd;
-	struct kds_command *next;
+	struct kds_command *xcmd = NULL;
+	struct kds_command *next = NULL;
 	int ret = -EBUSY;
 
 	if (cu_hls->sw_reset) {
-		int time = 10 * 1000 * 1000;
+		int time = 10 * 1000 * 1000; /* 10 second */
 		cu_hls_reset(core);
 
 		do {

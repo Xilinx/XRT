@@ -50,7 +50,7 @@ static inline void cu_write32(struct xrt_cu_fa *cu, u32 reg, u32 val)
 
 static inline void cu_move_to_complete(struct xrt_cu_fa *cu, int status)
 {
-	struct kds_command *xcmd;
+	struct kds_command *xcmd = NULL;
 
 	if (unlikely(list_empty(&cu->submitted)))
 		return;
@@ -138,9 +138,9 @@ static void cu_fa_start(void *core)
 static void cu_fa_check(void *core, struct xcu_status *status, bool force)
 {
 	struct xrt_cu_fa *cu_fa = core;
-	u32 task_count;
+	u32 task_count = 0;
 	u32 done = 0;
-	int i;
+	int i = 0;
 
 	if (kds_echo || !cu_fa->cmdmem) {
 		cu_fa->run_cnts--;
@@ -222,7 +222,7 @@ static int cu_fa_submit_config(void *core, struct kds_command *xcmd)
 static struct kds_command *cu_fa_get_complete(void *core)
 {
 	struct xrt_cu_fa *cu_fa = core;
-	struct kds_command *xcmd;
+	struct kds_command *xcmd = NULL;
 
 	if (list_empty(&cu_fa->completed))
 		return NULL;
@@ -237,8 +237,8 @@ static int cu_fa_abort(void *core, void *cond,
 		       bool (*match)(struct kds_command *xcmd, void *cond))
 {
 	struct xrt_cu_fa *cu_fa = core;
-	struct kds_command *xcmd;
-	struct kds_command *next;
+	struct kds_command *xcmd = NULL;
+	struct kds_command *next = NULL;
 	int ret = -EBUSY;
 
 	list_for_each_entry_safe(xcmd, next, &cu_fa->submitted, list) {

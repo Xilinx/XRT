@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR

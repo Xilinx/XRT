@@ -121,7 +121,7 @@ static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int id, u64 resp_addr)
 {
 	struct xgq_com_queue_entry *resp = (struct xgq_com_queue_entry *)resp_addr;
 	struct xocl_xgq_client *client = &xgq->xx_clients[id];
-	struct kds_command *xcmd;
+	struct kds_command *xcmd = NULL;
 	unsigned long flags = 0;
 
 	spin_lock_irqsave(&client->xxc_lock, flags);
@@ -179,7 +179,7 @@ struct kds_command *xocl_xgq_get_command(void *xgq_handle, int id)
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
 	struct xocl_xgq_client *client = &xgq->xx_clients[id];
-	struct kds_command *xcmd;
+	struct kds_command *xcmd = NULL;
 	unsigned long flags = 0;
 
 	spin_lock_irqsave(&client->xxc_lock, flags);
@@ -201,8 +201,8 @@ int xocl_xgq_abort(void *xgq_handle, int id, void *cond,
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
 	struct xocl_xgq_client *client = &xgq->xx_clients[id];
-	struct kds_command *xcmd;
-	struct kds_command *next;
+	struct kds_command *xcmd = NULL;
+	struct kds_command *next = NULL;
 	unsigned long flags = 0;
 	int ret = 0;
 

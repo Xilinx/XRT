@@ -845,9 +845,8 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 		goto skip;
 
 	if (kds->xgq_enable) {
-		int wait_ms;
+		int wait_ms = 500;
 
-		wait_ms = 500;
 		xrt_cu_abort(scu_mgmt->xcus[cu_idx], client);
 
 		/* sub-device that handle command should do abort with a timeout */

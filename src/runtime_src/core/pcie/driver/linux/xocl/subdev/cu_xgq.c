@@ -88,8 +88,8 @@ static bool cu_xgq_reset_done(void *core)
 static int cu_xgq_submit_config(void *core, struct kds_command *xcmd)
 {
 	struct xrt_cu_xgq *cu_xgq = core;
-	struct xgq_cmd_sq_hdr *hdr;
-	int ret;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int ret = 0;
 
 	hdr = (struct xgq_cmd_sq_hdr *)xcmd->info;
 	hdr->cu_idx = cu_xgq->cu_idx;
