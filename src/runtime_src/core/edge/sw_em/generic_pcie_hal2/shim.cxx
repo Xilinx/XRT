@@ -616,7 +616,7 @@ namespace xclcpuemhal2 {
       if (props.address_range != 0 && !props.name.empty())
         continue;       
       for (const auto& cu : kernel.get_cus()) {
-        instance_name = cu.get_name();
+        auto instance_name = cu.get_name();
         if (!instance_name.empty())
           mCURangeMap[instance_name] = props.address_range;
       }
