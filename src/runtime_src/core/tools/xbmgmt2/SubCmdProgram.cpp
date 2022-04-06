@@ -305,7 +305,7 @@ report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device)
   if (!pt_device.get<bool>("platform.status.shell"))
     action_list << boost::format("  [%s] : Program base (FLASH) image\n") % pt_device.get<std::string>("platform.bdf");
 
-  if (!pt_device.get<bool>("platform.status.sc") && !pt_device.get<bool>("platform.status.is_factory"))
+  if (!pt_device.get<bool>("platform.status.sc") && !pt_device.get<bool>("platform.status.is_factory") && !pt_device.get<bool>("platform.status.is_recovery"))
     action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt_device.get<std::string>("platform.bdf");
   
   if (!action_list.str().empty()) {
