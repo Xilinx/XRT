@@ -30,9 +30,9 @@
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
-#include "swscheduler.h"
 #include "core/common/api/xclbin_int.h"
 #include "core/include/experimental/xrt_xclbin.h"
+#include "swscheduler.h"
 
 #include <stdarg.h>
 #include <sys/mman.h>
@@ -168,9 +168,13 @@ namespace xclcpuemhal2 {
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
       //Get CU index from IP_LAYOUT section for corresponding kernel name
       int xclIPName2Index(const char *name);
+      //Check if its a valid CU by comparing with sorted cu list
       bool isValidCu(uint32_t cu_index);
+      //get Address Range for a particular cu from mCURangeMap
       uint64_t getCuAddRange(uint32_t cu_index);
+      //Check if the offset is valid and within the cuAddRange limit
       bool isValidOffset(uint32_t offset, uint64_t cuAddRange);
+      //common proc which calls xclRegRead/xclRegWrite RPC calls based on read/write
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
