@@ -1,40 +1,36 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${DRM_INCLUDE_DIRS}
-  ${CURSES_INCLUDE_DIRS}
-  ${CMAKE_BINARY_DIR}
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+add_subdirectory(plugin/xdp)
+
+add_library(core_pcielinux_objects OBJECT
+  debug.cpp
+  device_linux.cpp
+  scan.cpp
+  shim.cpp
+  system_linux.cpp
   )
 
-file(GLOB XRT_PCIE_LINUX_PLUGIN_XDP_FILES
-  "plugin/xdp/*.h"
-  "plugin/xdp/*.cpp"
+target_compile_definitions(core_pcielinux_objects
+  PRIVATE
+  XCLHAL_MAJOR_VER=2
+  XCLHAL_MINOR_VER=1
   )
 
-file(GLOB XRT_PCIE_LINUX_FILES
-  "*.h"
-  "*.cpp"
-  "../common/aie_stubs.cpp"
-  "../common/system_pcie.cpp"
-  "../common/device_pcie.cpp"
+target_include_directories(core_pcielinux_objects
+  PRIVATE
+  ${XRT_SOURCE_DIR}/runtime_src
+  ${XRT_BINARY_DIR}/gen
   )
 
-set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS "-DXCLHAL_MINOR_VER=1 ${CMAKE_CXX_FLAGS}")
 
-add_library(core_pcielinux_plugin_xdp_objects OBJECT ${XRT_PCIE_LINUX_PLUGIN_XDP_FILES})
-add_library(core_pcielinux_objects OBJECT ${XRT_PCIE_LINUX_FILES})
-
-add_library(xrt_core SHARED ""
+add_library(xrt_core SHARED
   $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_pcielinux_objects>
   $<TARGET_OBJECTS:core_pciecommon_objects>
   $<TARGET_OBJECTS:core_common_objects>
   )
 
-add_library(xrt_core_static STATIC ""
+add_library(xrt_core_static STATIC
   $<TARGET_OBJECTS:core_pcielinux_plugin_xdp_objects>
   $<TARGET_OBJECTS:core_pcielinux_objects>
   $<TARGET_OBJECTS:core_pciecommon_objects>
