@@ -609,7 +609,6 @@ namespace xclcpuemhal2 {
   }
 
   void CpuemShim::getCuRangeIdx() {
-    std::string instance_name = "";
     for (const auto& kernel : m_xclbin.get_kernels()) {
       // get properties of each kernel object
       const auto& props = xrt_core::xclbin_int::get_properties(kernel);
