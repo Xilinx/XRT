@@ -1296,10 +1296,12 @@ private:
           num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
         }
         catch (const xrt_core::system_error& ex) {
-          if (ex.get_code() == EAGAIN)
+          if (ex.get_code() == EAGAIN) {
             // open context caused re-load of xclbin into a different slot
-            // must try all new slots after all current slots have been attempted
+            // stop current iteration, re-fresh slots, and try the new ones
             again = true;
+            break; // stop current iteration, re-fresh, and try new slots
+          }
         }
       }
 
@@ -2341,7 +2343,7 @@ class mailbox_impl : public run_impl
   {
     if (mbop == mailbox_operation::write) {
         uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
-        m_busy_write = ctrlreg_write & mailbox_input_ack; //Low - free, High - Busy 
+        m_busy_write = ctrlreg_write & mailbox_input_ack; //Low - free, High - Busy
     }
 
     if(mbop == mailbox_operation::read) {
@@ -2354,7 +2356,7 @@ class mailbox_impl : public run_impl
   mailbox_idle_or_error(const mailbox_operation& mbop)
   {
     poll(mbop);
-    if (mbop == mailbox_operation::write) { 
+    if (mbop == mailbox_operation::write) {
        if (m_busy_write)
            throw xrt_core::system_error(EBUSY, "Mailbox is busy, Unable to do mailbox write");
     }
@@ -2376,14 +2378,14 @@ class mailbox_impl : public run_impl
            poll(mailbox_operation::write);
 
        uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
-       kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW          
+       kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
        m_aquire_write = true;
     }
 
     if (mbop == mailbox_operation::read) {
         if (m_aquire_read)
             return;
-        
+
         while (m_busy_read) //poll read done bit
             poll(mailbox_operation::read);
 
