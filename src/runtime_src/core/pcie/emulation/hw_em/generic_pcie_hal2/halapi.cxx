@@ -365,12 +365,13 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #else
   xdp::hw_emu::flush_device(handle);
   auto ret = drv->xclLoadXclBin(buffer);
-  xdp::hw_emu::update_device(handle);
 #endif
   if (!ret) {
     auto device = xrt_core::get_userpf_device(drv);
     device->register_axlf(buffer);
 #ifndef DISABLE_DOWNLOAD_XCLBIN
+    // Call update_device only when xclbin is loaded and registered successfully
+    xdp::hw_emu::update_device(handle);
     ret = xrt_core::scheduler::init(handle, buffer);
 #endif
   }
