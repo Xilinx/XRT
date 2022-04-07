@@ -173,8 +173,7 @@ struct aie_metadata
   // Function to read aie_metadata sysfs, and parse max rows and max
   // columns from it.
   static void
-  read_aie_metadata(const xrt_core::device* device, uint32_t &min_col, uint32_t &min_row
-		    , uint32_t &max_col , uint32_t &max_row)
+  read_aie_metadata(const xrt_core::device* device, uint32_t &row, uint32_t &col)
   {
     std::string err;
     std::string value;
@@ -200,43 +199,9 @@ struct aie_metadata
                                                              % pt.get<uint32_t>("schema_version.major")
                                                              % pt.get<uint32_t>("schema_version.minor")
                                                              % pt.get<uint32_t>("schema_version.patch")));
-    min_col = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
-    min_row = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
-    max_col = 0;
-    max_row = 0;
-    boost::property_tree::ptree empty_pt;
-
-    for (auto& gr: pt.get_child("aie_metadata.graphs", empty_pt)) {
-      auto row_it = gr.second.get_child("core_rows").begin();
-      for (const auto& column_it: gr.second.get_child("core_columns", empty_pt)) {
-        boost::property_tree::ptree tile;
-	unsigned int column = std::stoul(column_it.second.data());
-	unsigned int row = std::stoul(row_it->second.data());
-
-	min_col = std::min(min_col, column);
-	max_col = std::max(max_col, column);
-
-	min_row = std::min(min_row, row);
-	max_row = std::max(max_row, row);
-        row_it++;
-      }
-    }
-
-    for (const auto& g_node : pt.get_child("aie_metadata.EventGraphs", empty_pt)) {
-      auto dma_row_it = g_node.second.get_child("dma_rows", empty_pt).begin();
-      for (const auto& column_it : g_node.second.get_child("dma_columns", empty_pt)) {
-	unsigned int column = std::stoul(column_it.second.data());
-	unsigned int row = std::stoul(dma_row_it->second.data());
-	min_col = std::min(min_col, column);
-	max_col = std::max(max_col, column);
-
-	min_row = std::min(min_row, row);
-	max_row = std::max(max_row, row);
-	if (dma_row_it != g_node.second.end())
-	  dma_row_it++;
-        }
-      }
-    }
+    col = pt.get<uint32_t>("aie_metadata.driver_config.num_columns");
+    row = pt.get<uint32_t>("aie_metadata.driver_config.num_rows");
+  }
 };
 
 struct aie_core_info : aie_metadata
@@ -247,13 +212,12 @@ struct aie_core_info : aie_metadata
   {
     boost::property_tree::ptree ptarray;
     uint32_t max_col = 0, max_row = 0;
-    uint32_t min_col = 0, min_row = 0;
 
-    read_aie_metadata(device, min_col,min_row,max_col, max_row);
+    read_aie_metadata(device, max_row, max_col);
 
     /* Loop each all aie core tiles and collect core, dma, events, errors, locks status. */ 
-    for(int i = min_col;i <= max_col; i++)
-      for(int j = min_row; j <= max_row; j++)
+    for(int i=0;i<max_col;i++)
+      for(int j=0; j<(max_row-1);j++)
         ptarray.push_back(std::make_pair(std::to_string(i)+"_"+std::to_string(j),
                           aie_sys_parser::get_parser()->aie_sys_read(i,(j+1)))); 
 
@@ -275,12 +239,11 @@ struct aie_shim_info : aie_metadata
   {
     boost::property_tree::ptree ptarray;
     uint32_t max_col = 0, max_row = 0;
-    uint32_t min_col = 0, min_row = 0;
 
-    read_aie_metadata(device, min_col,min_row, max_col, max_row);
+    read_aie_metadata(device, max_row, max_col);
 
     /* Loop all shim tiles and collect all dma, events, errors, locks status */
-    for(int i = min_col; i <= max_col; i++) {
+    for(int i=0;i<max_col;i++) {
       ptarray.push_back(std::make_pair("", aie_sys_parser::get_parser()->aie_sys_read(i,0))); 
     }
 
