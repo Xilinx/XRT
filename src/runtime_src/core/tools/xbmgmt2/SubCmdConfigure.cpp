@@ -461,8 +461,6 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // Update daemon
     if (daemon) {
         XBU::verbose("Sub command: --daemon");
-        if(host.empty())
-            throw xrt_core::error("Please specify ip or hostname for peer");
 
         update_daemon_config(host);
         return;
