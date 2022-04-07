@@ -24,7 +24,7 @@ namespace xrt_core {
 inline int
 posix_memalign(void **memptr, size_t alignment, size_t size)
 {
-#if defined(__GNUC__)
+#if defined(__linux__)
   return ::posix_memalign(memptr,alignment,size);
 #elif defined(_WINDOWS)
   // this is not good, _aligned_malloc requires _aligned_free
