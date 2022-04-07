@@ -141,7 +141,7 @@ def get_percentage(usage, size):
 
     percent = usage * 100 / size
 
-    return "%.2f %" % percent
+    return "%.2f %%" % percent
 
 def convert_size(size_bytes):
     if size_bytes == 0:
