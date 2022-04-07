@@ -289,7 +289,7 @@ remove_daemon_config()
  * change host name in config
  */
 static void 
-update_daemon_config(const std::string& host)
+update_daemon_config(const std::string& host = "")
 {
   XBU::sudo_or_throw("Updating daemon configuration requires sudo");
   auto cfg = get_daemon_conf();
@@ -298,7 +298,8 @@ update_daemon_config(const std::string& host)
   if (!cfile)
     throw xrt_core::system_error(std::errc::invalid_argument, "Missing '" + std::string(config_file) + "'.  Cannot update");
 
-  cfg.host = host;
+  if(host.empty())
+    cfg.host = host;
   // update the configuration file
   cfile << boost::str(boost::format("%s\n") % cfg);
   std::cout << boost::format("Successfully updated the Daemon configuration.\n");
@@ -449,6 +450,24 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         return;
     }
 
+    // Non-device options
+    // Remove the daemon config file
+    if (purge) {
+        XBU::verbose("Sub command: --purge");
+        remove_daemon_config();
+        return;
+    }
+
+    // Update daemon
+    if (daemon) {
+        XBU::verbose("Sub command: --daemon");
+        if(host.empty())
+            throw xrt_core::error("Please specify ip or hostname for peer");
+
+        update_daemon_config(host);
+        return;
+    }
+
     // -- process "device" option -----------------------------------------------
     if(devices.empty()) {
         std::cerr << "ERROR: Please specify a single device using --device option" << "\n";
@@ -517,23 +536,6 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
             show_daemon_conf();
 
         show_device_conf(workingDevice.get());
-        return;
-    }
-    
-    // Remove the daemon config file
-    if (purge) {
-        XBU::verbose("Sub command: --purge");
-        remove_daemon_config();
-        return;
-    }
-
-    // Update daemon
-    if (daemon) {
-        XBU::verbose("Sub command: --daemon");
-        if(host.empty())
-            throw xrt_core::error("Please specify ip or hostname for peer");
-
-        update_daemon_config(host);
         return;
     }
 
