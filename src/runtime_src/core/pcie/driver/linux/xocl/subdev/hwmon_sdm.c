@@ -423,9 +423,9 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 		else
 			sdm->bdinfo.fan_presence = false;
 	}
-	else if (!strcmp(sensor_name, "Active SC"))
+	else if (!strcmp(sensor_name, "Active SC Ver"))
 		memcpy(sdm->bdinfo.active_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
-	else if (!strcmp(sensor_name, "Target SC"))
+	else if (!strcmp(sensor_name, "Target SC Ver"))
 		memcpy(sdm->bdinfo.target_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "OEM ID"))
 		memcpy(&sdm->bdinfo.oem_id, &sdm->sensor_data[repo_id][ins_index], val_len);
