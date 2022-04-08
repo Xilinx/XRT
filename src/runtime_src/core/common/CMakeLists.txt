@@ -1,15 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-#
-include_directories(
-  ${CMAKE_BINARY_DIR} # includes version.h
-  )
 
 if (NOT WIN32)
 include_directories(${DRM_INCLUDE_DIRS})
-
-pkg_check_modules(LIBFFI REQUIRED libffi)
-INCLUDE_DIRECTORIES(${LIBFFI_INCLUDEDIR})
 
 endif (NOT WIN32)
 

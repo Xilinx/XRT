@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -52,9 +52,74 @@ using device_collection = std::vector<std::shared_ptr<xrt_core::device>>;
  */
 class device : public ishim
 {
+  // class xclbin_map - container for loaded xclbins
+  //
+  // Manages xclbins loaded into specific slots
+  class xclbin_map
+  {
+  public:
+    using slot_id = uint32_t;
+
+  private:
+    std::map<slot_id, xrt::uuid> m_slot2uuid;
+    std::map<xrt::uuid, xrt::xclbin> m_xclbins;
+
+  public:
+    // Reset the slot -> uuid mapping based on quieried slot info data
+    void
+    reset(std::map<slot_id, xrt::uuid>&& slot2uuid)
+    {
+      m_slot2uuid = std::move(slot2uuid);
+    }
+
+    // Cache an xclbin
+    void
+    insert(xrt::xclbin xclbin)
+    {
+      m_xclbins[xclbin.get_uuid()] = std::move(xclbin);
+    }
+
+    // Get an xclbin with specified uuid
+    const xrt::xclbin&
+    get(const xrt::uuid& uuid) const
+    {
+      auto itr = m_xclbins.find(uuid);
+      if (itr == m_xclbins.end())
+        throw error("No xclbin with uuid '" + uuid.to_string() + "'");
+
+      return (*itr).second;
+    }
+
+    // Get the xclbin stored in specified slot
+    // It is an error if the xclbin has not been explicitly loaded.
+    const xrt::xclbin&
+    get(slot_id slot) const
+    {
+      auto itr = m_slot2uuid.find(slot);
+      if (itr == m_slot2uuid.end())
+        throw error("No xclbin in slot '" + std::to_string(slot) + "'");
+
+      return get((*itr).second);
+    }
+
+    // Return slot indices sorted
+    std::vector<slot_id>
+    get_slots(const xrt::uuid& uuid) const
+    {
+      std::vector<slot_id> slots;
+      for (auto& su : m_slot2uuid)
+        if (su.second == uuid)
+          slots.push_back(su.first);
+
+      std::sort(slots.begin(), slots.end());
+      return slots;
+    }
+  };
+
 public:
   // device index type
   using id_type = unsigned int;
+  using slot_id = xclbin_map::slot_id;
   using handle_type = xclDeviceHandle;
   using memory_type = xrt::xclbin::mem::memory_type;
 
@@ -205,21 +270,31 @@ public:
   void
   load_xclbin(const uuid& xclbin_id);
 
-
   // Get the currently loaded xclbin
   // Throws if xclbin uuid does match
   XRT_CORE_COMMON_EXPORT
   xrt::xclbin
   get_xclbin(const uuid& xclbin_id) const;
 
-  /**
-   * register_axlf() - Callback from shim after AXLF succesfully loaded
-   *
-   * This function is called after an axlf has been succesfully loaded
-   * by the shim layer API xclLoadXclBin().  Since xclLoadXclBin() can
-   * be called explicitly by end-user code, the callback is necessary
-   * in order to register current axlf with the device object
-   */
+  // Get all slots that match xclbin uuid
+  std::vector<xclbin_map::slot_id>
+  get_slots(const uuid& xclbin_id) const
+  {
+    return m_xclbins.get_slots(xclbin_id);
+  }
+
+  // Updates cached xclbin data based in data queried from driver
+  void
+  update_xclbin_info();
+
+  // Updates cached compute unit data based in data queried from driver
+  void
+  update_cu_info();
+
+  // This function is called after an axlf has been succesfully loaded
+  // by the shim layer API xclLoadXclBin().  Since xclLoadXclBin() can
+  // be called explicitly by end-user code, the callback is necessary
+  // in order to register current axlf with the device object
   XRT_CORE_COMMON_EXPORT
   void
   register_axlf(const axlf*);
@@ -292,23 +367,31 @@ public:
   memory_type
   get_memory_type(size_t memidx) const;
 
-  // get_cus() - Get list cu base addresses sorted by cu inidex
+  // get_cus() - Get list cu base addresses sorted by cu indices
+  // This is a legacy single slot function.
+  // An exception is thrown if called in multi-xclbin flow
   XRT_CORE_COMMON_EXPORT
   const std::vector<uint64_t>&
-  get_cus(const uuid& xclbin_id = uuid()) const;
+  get_cus() const;
 
-  // get_cuidx() - Get index of cu identified by name
+  // get_cuidx() - Get index of cu identified by name and slot
   //
-  // @return
-  //  The index of the CU represented as cuidx_type per
-  //  defintion in xrt_core::xclbin
+  // slot:   Slot for CU
+  // cuname:  Name of CU
+  // Return:  The index of the CU represented as cuidx_type per
+  //          defintion in xrt_core::xclbin
   //
   // The index is used when opening a context on this device
   // and it is used to specify the cumask in commands send
   // for execution
   XRT_CORE_COMMON_EXPORT
   cuidx_type
-  get_cuidx(const std::string& cuname, const uuid& xclbin_id = uuid()) const;
+  get_cuidx(slot_id slot, const std::string& cuname) const;
+
+  // get_cuidx() - As const version, but update cu indices if necessary
+  XRT_CORE_COMMON_EXPORT
+  cuidx_type
+  get_cuidx(slot_id slot, const std::string& cuname);
 
   /**
    * get_ert_slots() - Get number of ERT CQ slots
@@ -373,9 +456,11 @@ public:
   id_type m_device_id;
   mutable boost::optional<bool> m_nodma = boost::none;
 
-  std::map<std::string, cuidx_type> m_cu2idx; // cu name mapping to cuidx
-  std::vector<uint64_t> m_cus;           // cu base addresses in expeced sort order
-  xrt::xclbin m_xclbin;                  // currently loaded xclbin
+  using name2idx_type = std::map<std::string, cuidx_type>;
+  std::map<slot_id, name2idx_type> m_cu2idx;  // slot -> cu name mapping to cuidx
+  std::vector<uint64_t> m_cus;                // cu base addresses in expeced sort order
+  xrt::xclbin m_xclbin;                       // currently loaded xclbin  (single-slot, default)
+  xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
 };
 
 /**

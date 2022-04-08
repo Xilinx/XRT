@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -85,13 +86,19 @@ namespace {
 namespace xdp {
 
   DeviceOffloadPlugin::DeviceOffloadPlugin() :
-    XDPPlugin(), continuous_trace(false), trace_buffer_offload_interval_ms(10)
+    XDPPlugin(),
+    device_trace(false), continuous_trace(false), trace_buffer_offload_interval_ms(10)
   {
     db->registerPlugin(this) ;
 
     // Since OpenCL device offload doesn't actually add device offload info,
     //  setting the available information has to be pushed down to both
     //  the HAL or HWEmu plugin
+
+    if (xrt_core::config::get_data_transfer_trace() != "off" ||
+          xrt_core::config::get_device_trace() != "off") {
+      device_trace = true;
+    }
 
     // Get the profiling continuous offload options from xrt.ini
     //  Device offload continuous offload and dumping is only supported
@@ -214,8 +221,7 @@ namespace xdp {
 
     // If trace is enabled, set up trace.  Otherwise just keep the offloader
     //  for reading the counters.
-    if (xrt_core::config::get_data_transfer_trace() != "off" ||
-        xrt_core::config::get_device_trace() != "off") {
+    if (device_trace) {
       bool init_successful =
         offloader->read_trace_init(m_enable_circular_buffer, buf_sizes) ;
 
@@ -223,9 +229,17 @@ namespace xdp {
         if (devInterface->hasTs2mm()) {
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
         }
-        delete offloader ;
-        delete logger ;
-        return ;
+        if (xrt_core::config::get_device_counters()) {
+          /* As device_counters is enabled, the offloader object is required for reading counters.
+           * So do not delete offlader and logger.
+           * As trace infrastructure could not be initialized, disable device_trace to avoid further issue.
+           */
+          device_trace = false;
+        } else {
+          delete offloader ;
+          delete logger ;
+          return ;
+        }
       }
     }
 
@@ -347,9 +361,11 @@ namespace xdp {
         while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
       }
       else {
-        offloader->read_trace();
-        offloader->process_trace();
-        offloader->read_trace_end();
+        if (device_trace) {
+          offloader->read_trace();
+          offloader->process_trace();
+          offloader->read_trace_end();
+        }
       }
     } catch (std::exception& /*e*/) {
         // Reading the trace could throw an exception if ioctls fail.
@@ -381,7 +397,9 @@ namespace xdp {
   {
     if (!(getFlowMode() == HW))
       return;
-    db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
+    if (device_trace) {
+      db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
+    }
   }
 
   void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)

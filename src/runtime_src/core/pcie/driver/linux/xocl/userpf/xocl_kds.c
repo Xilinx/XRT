@@ -463,6 +463,8 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 
 		scmd = (struct ert_start_kernel_cmd *)ecmd;
 		scmd->return_code = xcmd->rcode;
+
+		client_stat_inc(client, scu_c_cnt[xcmd->cu_idx]);
 	}
 
 	if (status == KDS_COMPLETED)
@@ -490,7 +492,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 	kfree(xcmd->execbuf);
 
-	if (xcmd->cu_idx >= 0)
+	if (xcmd->opcode == OP_START)
 		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
@@ -1393,6 +1395,7 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
 		if (krnl_info->features & KRNL_SW_RESET)
 			cu_info[i].sw_reset = true;
 
+		cu_info[i].cu_domain = 0;
 		cu_info[i].num_res = 1;
 		cu_info[i].num_args = krnl_info->anums;
 		cu_info[i].args = (struct xrt_cu_arg *)krnl_info->args;
@@ -1446,6 +1449,7 @@ xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip
 			continue;
 		}
 
+		cu_info[i].cu_domain = 1;
 		cu_info[i].size = krnl_info->range;
 		cu_info[i].sw_reset = false;
 		if (krnl_info->features & KRNL_SW_RESET)
@@ -2101,9 +2105,13 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
 	if (ret) {
-		userpf_info(xdev, "ERT will be disabled, ret %d\n", ret);
+		userpf_info_once(xdev, "ERT will be disabled, ret %d\n", ret);
 		XDEV(xdev)->kds.ert_disable = true;
+		return;
 	}
+
+	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
+		return;
 
 	// Work-around to unconfigure PS kernel
 	// Will be removed once unconfigure command is there

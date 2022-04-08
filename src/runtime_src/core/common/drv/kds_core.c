@@ -826,6 +826,7 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 	u32 cu_idx = info->cu_idx;
 	unsigned long submitted = 0;
 	unsigned long completed = 0;
+	bool bad_state = false;
 
 	if ((cu_idx >= MAX_CUS) || (!scu_mgmt->xcus[cu_idx])) {
 		kds_err(client, "SCU(%d) not found", cu_idx);
@@ -842,6 +843,28 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 	completed = client_stat_read(client, scu_c_cnt[cu_idx]);
 	if (submitted == completed)
 		goto skip;
+
+	if (kds->xgq_enable) {
+		int wait_ms = 500;
+
+		xrt_cu_abort(scu_mgmt->xcus[cu_idx], client);
+
+		/* sub-device that handle command should do abort with a timeout */
+		do {
+			kds_warn(client, "%ld outstanding command(s) on SCU(%d)",
+				 submitted - completed, cu_idx);
+			msleep(wait_ms);
+			submitted = client_stat_read(client, scu_s_cnt[cu_idx]);
+			completed = client_stat_read(client, scu_c_cnt[cu_idx]);
+		} while (submitted != completed);
+
+		bad_state = xrt_cu_abort_done(scu_mgmt->xcus[cu_idx], client);
+	}
+
+	if (bad_state) {
+		kds->bad_state = 1;
+		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
+	}
 
 skip:
 	/* scu_mgmt->cu_refs is the critical section of multiple clients */
@@ -1173,6 +1196,7 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	while (cctx->virt_cu_ref) {
 		info.cu_idx = CU_CTX_VIRT_CU;
 		info.curr_ctx = cctx;
+		info.cu_domain = 0;
 		kds_del_context(kds, client, &info);
 	}
 

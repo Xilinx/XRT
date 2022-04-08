@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -45,6 +46,7 @@ namespace xdp {
   private:
     // These are the continuous offload configuration parameters as read
     //  from xrt.ini.
+    bool device_trace;
     bool continuous_trace ;
     unsigned int trace_buffer_offload_interval_ms ;
     bool m_enable_circular_buffer = false;

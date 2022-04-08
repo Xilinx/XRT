@@ -87,8 +87,13 @@ namespace XBUtilities {
   std::string
   string_to_UUID(std::string str);
 
-  uint64_t 
-  string_to_bytes(std::string str);
+  enum class unit
+  {
+    bytes,
+    Hertz
+  };
+  uint64_t
+  string_to_base_units(std::string str, const unit& conversion_unit);
 
   inline bool 
   is_power_of_2(const uint64_t x)

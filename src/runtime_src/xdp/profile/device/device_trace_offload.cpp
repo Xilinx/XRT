@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -493,6 +494,7 @@ trace_buffer_full()
     }
     return fifo_full;
   }
+
   bool isFull = false;
   for(uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
     isFull |= ts2mm_info.buffers[i].full;

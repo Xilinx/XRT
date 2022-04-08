@@ -1,6 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
- * Author: Larry Liu
+ * Copyright (C) 2022 AMD, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,21 +14,22 @@
  * under the License.
  */
 
-#ifndef _XOSPIVERSAL_H_
-#define _XOSPIVERSAL_H_
+#ifndef __OO_Hotplug_h_
+#define __OO_Hotplug_h_
 
-#include <iostream>
-#include "core/pcie/linux/scan.h"
+#include "tools/common/OptionOptions.h"
 
-class XOSPIVER_Flasher
-{
-public:
-    XOSPIVER_Flasher(std::shared_ptr<pcidev::pci_device> dev);
-    ~XOSPIVER_Flasher();
-    int xclUpgradeFirmware(std::istream& binStream);
+class OO_Hotplug : public OptionOptions {
+ public:
+  virtual void execute( const SubCmdOptions &_options ) const;
 
-private:
-    std::shared_ptr<pcidev::pci_device> mDev;
+ public:
+  OO_Hotplug( const std::string &_longName, bool _isHidden = false);
+
+ private:
+  std::vector<std::string> m_devices;
+  std::string m_action;
+  bool m_help;
 };
 
 #endif

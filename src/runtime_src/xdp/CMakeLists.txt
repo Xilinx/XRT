@@ -5,7 +5,7 @@ if (NOT WIN32)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${XRT_SRC_DIR}/include/1_2
+  ${XRT_SOURCE_DIR}/include/1_2
   )
 
 else()
@@ -14,7 +14,7 @@ else()
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${Boost_INCLUDE_DIRS}
-  ${XRT_SRC_DIR}/include/1_2
+  ${XRT_SOURCE_DIR}/include/1_2
   ${KHRONOS}/include
   )
 endif()

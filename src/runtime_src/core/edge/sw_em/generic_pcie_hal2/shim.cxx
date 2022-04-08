@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -129,7 +129,7 @@ namespace xclcpuemhal2 {
       {
         //Give error and return from here
       }
-    }   
+    }
     // iterate devices
     count = 0;
     for (auto& xml_device : xml_project.get_child("project.platform"))
@@ -520,7 +520,7 @@ namespace xclcpuemhal2 {
             xilinxInstall = std::string(installEnvvar);
           }
         }
-        
+
         char *xilinxHLSEnvVar = getenv("XILINX_HLS");
         char *xilinxVivadoEnvVar = getenv("XILINX_VIVADO");
 
@@ -606,8 +606,23 @@ namespace xclcpuemhal2 {
     sock = new unix_socket;
   }
 
+  void CpuemShim::getCuRangeIdx() {
+    for (const auto& kernel : m_xclbin.get_kernels()) {
+      // get properties of each kernel object
+      const auto& props = xrt_core::xclbin_int::get_properties(kernel);
+      //get CU's of each kernel object.iterate over CU's to get arguments
+      if (props.address_range != 0 && !props.name.empty())
+        continue;       
+      for (const auto& cu : kernel.get_cus()) {
+        auto instance_name = cu.get_name();
+        if (!instance_name.empty())
+          mCURangeMap.emplace(std::move(instance_name), props.address_range);
+      }
+    }
+  }
+  
   int CpuemShim::xclLoadXclBin(const xclBin *header)
-  { 
+  {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
     std::string xclBinName = "";
     if (!xclcpuemhal2::validateXclBin(header, xclBinName, mDeviceProcessInQemu, mFpgaDevice)) {
@@ -619,7 +634,7 @@ namespace xclcpuemhal2 {
 
     if (!mDeviceProcessInQemu){
       return xclLoadXclBinNewFlow(header);
-    }  
+    }
 
     std::string xmlFile = "" ;
     int result = dumpXML(header, xmlFile) ;
@@ -676,7 +691,7 @@ namespace xclcpuemhal2 {
       size_t emuDataSize = 0;
       std::unique_ptr<char[]> connectvitybuf;
       ssize_t connectvitybufsize = 0;
-     
+
       //check header
       if (!memcmp(xclbininmemory, "xclbin0", 8))
       {
@@ -688,6 +703,7 @@ namespace xclcpuemhal2 {
       }
       else if (!memcmp(xclbininmemory,"xclbin2",7)) {
         auto top = reinterpret_cast<const axlf*>(header);
+        m_xclbin = xrt::xclbin{top};
         if (auto sec = xclbin::get_axlf_section(top,BITSTREAM)) {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
@@ -697,13 +713,14 @@ namespace xclcpuemhal2 {
           memTopology = std::unique_ptr<char[]>(new char[memTopologySize]);
           memcpy(memTopology.get(), xclbininmemory + sec->m_sectionOffset, memTopologySize);
         }
-        //Extract EMULATION_DATA from XCLBIN       
+        //Extract EMULATION_DATA from XCLBIN
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {
           emuDataSize = sec->m_sectionSize;
           emuData = std::unique_ptr<char[]>(new char[emuDataSize]);
           memcpy(emuData.get(), xclbininmemory + sec->m_sectionOffset, emuDataSize);
+          getCuRangeIdx();
         }
-	      //Extract CONNECTIVITY section from XCLBIN       
+	      //Extract CONNECTIVITY section from XCLBIN
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, CONNECTIVITY)) {
           connectvitybufsize = sec->m_sectionSize;
           connectvitybuf = std::unique_ptr<char[]>(new char[connectvitybufsize]);
@@ -766,7 +783,7 @@ namespace xclcpuemhal2 {
               return -1;
             uint64_t route_id = m_mem->m_mem_data[memdata_idx].route_id;
             uint64_t arg_id = m_conn->m_connection[conn_idx].arg_index;
-            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo 
+            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo
             uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
             if (mLogStream.is_open())
               mLogStream << __func__ << " flow_id : " << flow_id << " route_id : " << route_id << " inst addr : " << instanceBaseAddr << " arg_id : " << arg_id << std::endl;
@@ -829,6 +846,82 @@ namespace xclcpuemhal2 {
     return 0;
   }
 
+   bool CpuemShim::isValidCu(uint32_t cu_index) {  
+    // get sorted cu addresses to match up with cu_index
+    const auto& cuidx2addr = mCoreDevice->get_cus();
+    if (cu_index >= cuidx2addr.size()) {
+      std::string strMsg = "ERROR: [SW-EMU 20] invalid CU index: " + std::to_string(cu_index);
+      mLogStream << __func__ << strMsg << std::endl;
+      return false;
+    }
+    return true;
+  }
+
+  uint64_t CpuemShim::getCuAddRange(uint32_t cu_index) {
+    uint64_t cuAddRange = 64 * 1024;
+    for (const auto& cuInfo : mCURangeMap) {
+      std::string instName = cuInfo.first;
+      int cuIdx = static_cast<int>(cu_index);
+      int tmpCuIdx = xclIPName2Index(instName.c_str());
+      mLogStream << __func__ << " , instName :  " << instName  << " cuIdx : " << cuIdx << " tmpCuIdx: " << tmpCuIdx << std::endl;
+      if (tmpCuIdx == cuIdx) {
+        cuAddRange = cuInfo.second;
+        mLogStream << __func__ << " , cuAddRange :  " << cuAddRange << std::endl;
+      }  
+    }
+    return cuAddRange;	  
+  }
+
+  bool CpuemShim::isValidOffset(uint32_t offset, uint64_t cuAddRange) { 
+    if (offset >= cuAddRange || (offset & (sizeof(uint32_t) - 1)) != 0) {
+      std::string strMsg = "ERROR: [SW-EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
+      mLogStream << __func__ << strMsg << std::endl;
+      return false;
+    }
+    return true;
+  }
+
+  int CpuemShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
+  {
+    if (mLogStream.is_open())
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << (*datap) << std::endl;
+
+    if (!isValidCu(cu_index))
+      return -EINVAL;
+
+    const auto& cuidx2addr = mCoreDevice->get_cus();
+
+    uint64_t cuAddRange = getCuAddRange(cu_index);
+
+    if (!isValidOffset(offset, cuAddRange))
+      return -EINVAL;
+
+    uint64_t baseAddr = cuidx2addr[cu_index];
+    size_t size = 4;
+    if (rd) {
+      xclRegRead_RPC_CALL(xclRegRead, baseAddr, offset, datap, size, 0, 0);
+    } else {
+      xclRegWrite_RPC_CALL(xclRegWrite, baseAddr, offset, datap, 0, 0);
+    }
+    return 0;
+  }
+
+  int CpuemShim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
+  {
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << (*datap)  << std::endl;
+    }
+    return xclRegRW(true, cu_index, offset, datap);
+  }
+
+  int CpuemShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
+  {
+    if (mLogStream.is_open()) {
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << data << std::endl;
+    }
+    return xclRegRW(false, cu_index, offset, &data);
+  }
+
   bool CpuemShim::isAieEnabled(const xclBin* header)
   {
     bool aieFlag = false;
@@ -875,7 +968,7 @@ namespace xclcpuemhal2 {
 
   int CpuemShim::xclLoadXclBinNewFlow(const xclBin *header)
   {
-    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;  
+    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
 
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
@@ -894,22 +987,22 @@ namespace xclcpuemhal2 {
         auto top = reinterpret_cast<const axlf*>(header);
         auto sec = xclbin::get_axlf_section(top, DEBUG_DATA);
         if (sec)
-        {         
+        {
           debugMode = "Yes";
         }
       }
     }
-    //Create thread for TCP socket connection    
+    //Create thread for TCP socket connection
     std::thread tcpSockThread = std::thread(&CpuemShim::socketConnection, this, true);
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if (!simDontRun) {
       if (!xclcpuemhal2::isRemotePortMapped) {
         xclcpuemhal2::initRemotePortMap(mFpgaDevice);
-      }      
+      }
       //Send the LoadXclBin
       PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
-      cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID); 
+      cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
       cmd->addArg(debugMode.c_str());
       uint32_t length;
       uint8_t* buff = cmd->generateBuffer(&length);
@@ -919,7 +1012,7 @@ namespace xclcpuemhal2 {
       }
       //Send the end of packet
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
-      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);     
+      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
     }
 
     std::string xmlFile = "";
@@ -933,7 +1026,7 @@ namespace xclcpuemhal2 {
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
     binaryCounter++;
-   
+
     //Join tcp socket thread.
     if (tcpSockThread.joinable()) {
        tcpSockThread.join();
@@ -963,7 +1056,7 @@ namespace xclcpuemhal2 {
       size_t sharedliblength = 0;
       char* emuData;
       size_t emuDataSize = 0;
-    
+
       //check header
       if (!memcmp(xclbininmemory, "xclbin0", 8))
       {
@@ -974,27 +1067,29 @@ namespace xclcpuemhal2 {
         return -1;
       }
       else if (!memcmp(xclbininmemory, "xclbin2", 7)) {
-        auto top = reinterpret_cast<const axlf*>(header);        
+        auto top = reinterpret_cast<const axlf*>(header);
+        m_xclbin = xrt::xclbin{top};
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
           memTopologySize = sec->m_sectionSize;
           memTopology = std::unique_ptr<char[]>(new char[memTopologySize]);
           memcpy(memTopology.get(), xclbininmemory + sec->m_sectionOffset, memTopologySize);
         }
-        //Extract CONNECTIVITY section from XCLBIN       
+        //Extract CONNECTIVITY section from XCLBIN
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, CONNECTIVITY)) {
           connectvitybufsize = sec->m_sectionSize;
           connectvitybuf = std::unique_ptr<char[]>(new char[connectvitybufsize]);
           memcpy(connectvitybuf.get(), xclbininmemory + sec->m_sectionOffset, connectvitybufsize);
         }
-        //Extract BITSTREAM from XCLBIN  
+        //Extract BITSTREAM from XCLBIN
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, BITSTREAM)) {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
         }
-        //Extract EMULATION_DATA from XCLBIN       
-        if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {          
+        //Extract EMULATION_DATA from XCLBIN
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {
           emuData = xclbininmemory + sec->m_sectionOffset;
           emuDataSize = sec->m_sectionSize;
+          getCuRangeIdx();
         }
         //Extract EMBEDDED_METADATA from XCLBIN
         if (auto sec = xclbin::get_axlf_section(top, EMBEDDED_METADATA)) {
@@ -1031,7 +1126,7 @@ namespace xclcpuemhal2 {
               return -1;
             uint64_t route_id = m_mem->m_mem_data[memdata_idx].route_id;
             uint64_t arg_id = m_conn->m_connection[conn_idx].arg_index;
-            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo 
+            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo
             uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
             if (mLogStream.is_open())
               mLogStream << __func__ << " flow_id : " << flow_id << " route_id : " << route_id << " inst addr : " << instanceBaseAddr << " arg_id : " << arg_id << std::endl;
@@ -2255,6 +2350,11 @@ int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool 
   return 0;
 }
 
+int CpuemShim::xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const
+{
+  return 0;
+}
+
 /*
 * xclExecWait
 */
@@ -2307,7 +2407,7 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
 
 //Get CU index from IP_LAYOUT section for corresponding kernel name
 int CpuemShim::xclIPName2Index(const char *name)
-{ 
+{
   //Get IP_LAYOUT buffer from xclbin
   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
   return xclemulation::getIPName2Index(name, buffer.first);
@@ -2540,7 +2640,7 @@ int CpuemShim::xrtSyncBOAIENB(xrt::bo& bo, const char *gmioname, enum xclBOSyncD
     return -1;
 
   if (mLogStream.is_open())
-    mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl; 
+    mLogStream << __func__ << ", bo.address() " << bo.address() << std::endl;
 
   auto boBase = bo.address();
   xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);

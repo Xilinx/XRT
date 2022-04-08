@@ -7,7 +7,6 @@
 set -e
 
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
-SRCDIR=$(readlink -f $BUILDDIR/../src)
 CORE=7
 
 CMAKE="/mnt/c/Program Files/CMake/bin/cmake.exe"
@@ -72,7 +71,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -mcdm)
-            cmake_flags+=" -DMCDM=1"
+            cmake_flags+=" -DMCDM=1 -DMCDM_IN_XRT=1"
             shift
             ;;
 	-boost)

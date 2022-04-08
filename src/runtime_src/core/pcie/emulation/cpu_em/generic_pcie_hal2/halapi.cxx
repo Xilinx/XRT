@@ -14,14 +14,10 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-/**
- * Copyright (C) 2015 Xilinx, Inc
- */
-
 #include "shim.h"
-#include "core/common/system.h"
+#include "core/include/shim_int.h"
 #include "core/common/device.h"
+#include "core/common/system.h"
 #include "xcl_graph.h"
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
@@ -587,6 +583,22 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
 
+int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
+{
+  try {
+    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+    return drv ? drv->xclOpenContextByName(slot, xclbinId, cuname, shared) : -ENODEV;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
+}
+
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
@@ -659,7 +671,7 @@ xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t force)
   return -ENOSYS;
 }
 
-int 
+int
 xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return -ENOSYS;
@@ -908,7 +920,7 @@ xclResetAIEArray(xclDeviceHandle handle)
 int
 xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  try { 
+  try {
     if (handle) {
       xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
       return drv ? drv->xrtSyncBOAIENB(bo, gmioName, dir, size, offset) : -1;
