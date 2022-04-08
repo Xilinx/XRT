@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 PROJECT(enqueue)
 set(TESTNAME "enqueue")
 
 include(../../CMake/utils.cmake)
 
-add_executable(enqueue enqueue.cpp)
+add_executable(enqueue enqueue2.cpp)
 target_link_libraries(enqueue PRIVATE ${xrt_coreutil_LIBRARY})
 
 if (NOT WIN32)
