@@ -3,6 +3,7 @@
 #define XCL_DRIVER_DLL_EXPORT
 
 #include "shim.h"
+#include "core/include/shim_int.h"
 #include "core/include/experimental/xrt-next.h"
 #include "core/common/dlfcn.h"
 #include "core/common/device.h"
@@ -51,6 +52,20 @@ throw_if_error(HRESULT value, const std::string& pre = "")
     std::wstring wstr{ex.message()};
     throw xrt_core::error(ex.code(), msg + std::string{wstr.begin(), wstr.end()});
   }
+}
+
+// Convert a LUID to a string using GUID conversion
+// sizeof(GUID) == 16 {uint32_t, uint16_t, uint16_t, uchar[8]}
+// sizeof(LUID) == 8  {uint32_t, int32_t}
+// Don't convert garbage bytes, so copy LUID to first 8 bytes of GUID
+static std::string
+to_string(const LUID& luid)
+{
+  wchar_t wstr[64] = {0};
+  GUID guid = {0};
+  std::memcpy(&guid, &luid, sizeof(LUID));
+  int wlen = StringFromGUID2(guid, wstr, 64);
+  return {wstr, wstr+wlen};
 }
 
 // Manage gdi dll loading and symbol lookup
@@ -180,7 +195,6 @@ public:
   {
     return m_adapters.at(idx);
   }
-
 };
 
 } // dxwrap
@@ -196,13 +210,13 @@ class shim
   using handle = D3DKMT_HANDLE;
 
   // RAII for adapter handle
-  struct adapter_handle_guard
+  struct adapter
   {
     handle m_handle;
 
-    adapter_handle_guard(handle h) : m_handle(h) {}
+    adapter(handle h) : m_handle(h) {}
 
-    ~adapter_handle_guard()
+    ~adapter()
     {
       static auto close_adapter = gdi.get<PFND3DKMT_CLOSEADAPTER>("D3DKMTCloseAdapter");
       D3DKMT_CLOSEADAPTER d3close;
@@ -210,22 +224,41 @@ class shim
       close_adapter(&d3close);
     }
 
+    template<KMTQUERYADAPTERINFOTYPE type, typename DataType>
+    void
+    query(DataType* data)
+    {
+      D3DKMT_QUERYADAPTERINFO d3query = {0};
+      d3query.hAdapter = m_handle;
+      d3query.Type = type;
+      d3query.pPrivateDriverData = data;
+      d3query.PrivateDriverDataSize = sizeof(DataType);
+      static auto query_adapter_info = gdi.get<PFND3DKMT_QUERYADAPTERINFO>("D3DKMTQueryAdapterInfo");
+      throw_if_error(query_adapter_info(&d3query), "adapter query failed");
+    }
+
     operator handle() const { return m_handle; }
   };
 
   // RAII for device handle: merge with adapter guard
-  struct device_handle_guard
+  struct device
   {
     handle m_handle;
 
-    device_handle_guard(handle h) : m_handle(h) {}
+    device(handle h) : m_handle(h) {}
 
-    ~device_handle_guard()
+    ~device()
     {
       static auto destroy_device = gdi.get<PFND3DKMT_DESTROYDEVICE>("D3DKMTDestroyDevice");
       D3DKMT_DESTROYDEVICE d3ddestroy{0};
       d3ddestroy.hDevice = m_handle;
       destroy_device(&d3ddestroy);
+    }
+
+    void
+    send_escape()
+    {
+
     }
 
     operator handle() const { return m_handle; }
@@ -234,12 +267,14 @@ class shim
   handle
   open_adapter(dxwrap::adapter adapter)
   {
-    std::cout << "Opening device for: "
+    std::cout << "Opening adapter: "
               << adapter.get_property<DXCoreAdapterProperty::DriverDescription, std::string>()
               << "\n";
+
     static auto open_adapter = gdi.get<PFND3DKMT_OPENADAPTERFROMLUID>("D3DKMTOpenAdapterFromLuid");
     D3DKMT_OPENADAPTERFROMLUID d3open = {0};
     d3open.AdapterLuid = adapter.get_property<DXCoreAdapterProperty::InstanceLuid, LUID>();
+    std::cout << "Adapter LUID:" << to_string(d3open.AdapterLuid) << "\n";
     throw_if_error(open_adapter(&d3open), "Open adapter failed");
     return d3open.hAdapter;
   }
@@ -254,16 +289,33 @@ class shim
     return d3dcreate.hDevice;
   }
 
-  adapter_handle_guard m_adapter;
-  device_handle_guard m_device;
+  adapter m_adapter;
+  device m_device;
   std::shared_ptr<xrt_core::device> m_core_device;
+
+public:
+  void
+  self_test()
+  {
+    D3DKMT_DRIVER_DESCRIPTION d3desc {0};
+    m_adapter.query<KMTQAITYPE_DRIVER_DESCRIPTION>(&d3desc);
+    std::wcout << "Driver Description: " << d3desc.DriverDescription << '\n';
+
+    D3DKMT_ADAPTERTYPE d3type {0};
+    m_adapter.query<KMTQAITYPE_ADAPTERTYPE>(&d3type);
+    std::cout << "Adapter Type: 0x" << std::hex << d3type.Value << '\n';
+
+  }
+
 
 public:
   shim(unsigned int idx)
     : m_adapter(open_adapter(s_adapters[idx]))
     , m_device(create_device(m_adapter))
     , m_core_device(xrt_core::get_userpf_device(this, idx))
-  {}
+  {
+    self_test();
+  }
 
   ~shim()
   {}
@@ -363,6 +415,13 @@ xclReClock2(xclDeviceHandle handle, unsigned short region,
 // Compute Unit Execution Management APIs
 int
 xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)
+{
+  not_supported(__func__);
+  return -1;
+}
+
+int
+xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const xuid_t xclbinId, const char* cuname, bool shared)
 {
   not_supported(__func__);
   return -1;

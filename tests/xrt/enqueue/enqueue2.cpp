@@ -1,8 +1,6 @@
-/**
- * Copyright (C) 2022 Xilinx, Inc
- * SPDX-License-Identifier: Apache-2.0
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 /****************************************************************
 Enqueue example illustrating use of xrt::queue APIs
 
@@ -114,6 +112,7 @@ q5: (r[6]) a[5]
 
 #include "experimental/xrt_queue.h"
 
+#include <array>
 #include <atomic>
 #include <cstdlib>
 #include <fstream>

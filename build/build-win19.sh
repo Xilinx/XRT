@@ -7,8 +7,7 @@
 set -e
 
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
-SRCDIR=$(readlink -f $BUILDDIR/../src)
-CORE=7
+CORE=`grep -c ^processor /proc/cpuinfo`
 
 CMAKE="/mnt/c/Program Files/CMake/bin/cmake.exe"
 XRT=/mnt/c/Xilinx/xrt
@@ -28,6 +27,7 @@ usage()
     echo "[-xrt]                     XRT root directory (default: $XRT)"
     echo "[-boost]                   BOOST libaries root directory (default: $BOOST)"
     echo "[-nocmake]                 Do not rerun cmake generation, just build"
+    echo "[-noabi]                   Do compile with ABI version check"
     echo "[-mcdm]                    Build mcdm subset"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-dbg]                     Build debug library (default: optimized)"
@@ -39,6 +39,7 @@ usage()
 clean=0
 jcore=$CORE
 nocmake=0
+noabi=0
 dbg=0
 release=1
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
@@ -72,7 +73,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -mcdm)
-            cmake_flags+=" -DMCDM=1"
+            cmake_flags+=" -DMCDM=1 -DMCDM_IN_XRT=1"
             shift
             ;;
 	-boost)
@@ -87,6 +88,10 @@ while [ $# -gt 0 ]; do
             ;;
         -nocmake)
             nocmake=1
+            shift
+            ;;
+        -noabi)
+            cmake_flags+=" -DDISABLE_ABI_CHECK=1"
             shift
             ;;
         *)

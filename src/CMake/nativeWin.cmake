@@ -60,9 +60,8 @@ set (XRT_INSTALL_PYTHON_DIR    "${XRT_INSTALL_DIR}/python")
 file(GLOB XRT_EULA
   "license/*.txt"
   )
-#install (FILES ${XRT_EULA} DESTINATION ${XRT_INSTALL_DIR}/license)
-install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/license)
-message("-- XRT EA eula files  ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE")
+install (FILES ${XRT_SOURCE_DIR}/../LICENSE DESTINATION ${XRT_INSTALL_DIR}/license)
+message("-- XRT EA eula files  ${XRT_SOURCE_DIR}/../LICENSE")
 
 # -- CPack
 include (CMake/cpackWin.cmake)
