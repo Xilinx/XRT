@@ -142,7 +142,8 @@ namespace xclcpuemhal2 {
 
       void set_messagesize( unsigned int messageSize ) { message_size = messageSize; }
       unsigned int get_messagesize(){ return message_size; }
-
+      void setDeviceProcessStarted(bool devProcess) { mDeviceProcess = devProcess; }
+      bool getDeviceProcessStarted() const { return mDeviceProcess; }
 
       ~CpuemShim();
       CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified,
@@ -174,7 +175,8 @@ namespace xclcpuemhal2 {
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
-
+      int parseLog();
+      std::vector<std::string> parsedMsgs;
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
@@ -432,6 +434,7 @@ namespace xclcpuemhal2 {
       uint32_t bin2dec(const char * str, int start, int number);
       std::string dec2bin(uint32_t n);
       std::string dec2bin(uint32_t n, unsigned bits);
+      void closemMessengerThread();
 
       std::mutex mtx;
       unsigned int message_size;
@@ -443,6 +446,8 @@ namespace xclcpuemhal2 {
       std::vector<std::string> mTempdlopenfilenames;
       std::string deviceName;
       std::string deviceDirectory;
+      std::thread mMessengerThread;
+      bool mMessengerThreadStarted;
       std::list<xclemulation::DDRBank> mDdrBanks;
       std::map<uint64_t,std::pair<std::string,unsigned int>> kernelArgsInfo;
       xclDeviceInfo2 mDeviceInfo;
@@ -494,6 +499,7 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
+      bool mDeviceProcess;
   };
 
   class GraphType {
