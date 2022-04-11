@@ -86,6 +86,7 @@ class skd
 
   void report_ready();
   void report_crash();
+  void report_fini();
 
  private:
     xclDeviceHandle parent_devHdl;

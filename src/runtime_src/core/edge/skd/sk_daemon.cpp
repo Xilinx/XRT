@@ -57,13 +57,10 @@ xrt::skd* skd_inst = nullptr;
 /* Define a signal handler for the child to handle signals */
 static void sigLog(const int sig)
 {
-  if(sig != SIGTERM)
+  if(sig != SIGTERM) {
     stacktrace_logger(sig);
-  if(skd_inst != nullptr) {
-    syslog(LOG_INFO,"Terminating PS kernel\n");
-    delete skd_inst;
   }
-  exit(EXIT_SUCCESS);
+  syslog(LOG_INFO,"Terminating PS kernel\n");
 }
 
 #define PNAME_LEN	(16)

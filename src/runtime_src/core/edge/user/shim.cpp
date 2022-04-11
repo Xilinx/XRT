@@ -1077,6 +1077,9 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
   case XRT_SCU_STATE_CRASH:
     scmd.cu_state = ZOCL_SCU_STATE_CRASH;
     break;
+  case XRT_SCU_STATE_FINI:
+    scmd.cu_state = ZOCL_SCU_STATE_FINI;
+    break;
   default:
     return -EINVAL;
   }
