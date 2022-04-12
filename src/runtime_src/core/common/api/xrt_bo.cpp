@@ -1201,6 +1201,11 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 ////////////////////////////////////////////////////////////////
 namespace xrt { namespace aie {
 
+async_bo_hdl::
+async_bo_hdl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
+  : detail::pimpl<async_bo_impl>(std::make_shared<async_bo_impl>(bo, bd_num, gmio_name))
+{}
+
 void
 async_bo_hdl::
 wait()
