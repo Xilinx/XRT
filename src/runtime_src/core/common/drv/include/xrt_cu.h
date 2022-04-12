@@ -561,42 +561,7 @@ struct xrt_cu_fa {
 int xrt_cu_fa_init(struct xrt_cu *xcu);
 void xrt_cu_fa_fini(struct xrt_cu *xcu);
 
-#define to_cu_scu(core) ((struct xrt_cu_scu *)(core))
-struct xrt_cu_scu {
-	u64			 paddr;
-	u32			 slot_sz;
-	u32			 num_slots;
-	u32			 head_slot;
-	u32			 desc_msw;
-	u32			 task_cnt;
-	int			 max_credits;
-	int			 credits;
-	int			 run_cnts;
-	u64			 check_count;
-	void			*vaddr;
-	struct drm_zocl_bo	*sc_bo;
-	spinlock_t		 cu_lock;
-
-	/*
-	 * This semaphore is used for each soft kernel
-	 * CU to wait for next command. When new command
-	 * for this CU comes in or we are told to abort
-	 * a CU, ert will up this semaphore.
-	 */
-	struct semaphore	sc_sem;
-
-	uint32_t		sc_flags;
-	uint64_t		usage;
-
-	/*
-	 * soft cu pid and parent pid. This can be used to identify if the
-	 * soft cu is still running or not. The parent should never crash
-	 */
-	uint32_t		sc_pid;
-	uint32_t		sc_parent_pid;
-};
-
-int xrt_cu_scu_init(struct xrt_cu *xcu);
+int xrt_cu_scu_init(struct xrt_cu *xcu, void *vaddr, struct semaphore *sem);
 void xrt_cu_scu_fini(struct xrt_cu *xcu);
 
 #endif /* _XRT_CU_H */
