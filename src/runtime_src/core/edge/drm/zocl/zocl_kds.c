@@ -842,6 +842,7 @@ void zocl_destroy_client(void *client_hdl)
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_sched  *kds = NULL;
 	struct kds_client_ctx *curr = NULL;
+	struct kds_client_ctx *tmp = NULL;
 	struct drm_zocl_slot *slot = NULL;
 	int pid = pid_nr(client->pid);
 
@@ -862,7 +863,7 @@ void zocl_destroy_client(void *client_hdl)
 	/* Delete all the existing context associated to this device for this
 	 * client.
 	 */
-	list_for_each_entry(curr, &client->ctx_list, link) {
+	list_for_each_entry_safe(curr, tmp, &client->ctx_list, link) {
 		/* Get the corresponding slot for this xclbin */
 		slot = zocl_get_slot(zdev, curr->xclbin_id);
 		if (!slot)
@@ -871,6 +872,7 @@ void zocl_destroy_client(void *client_hdl)
 		/* Unlock this slot specific xclbin */
 		zocl_unlock_bitstream(slot, curr->xclbin_id);
 		vfree(curr->xclbin_id);
+		list_del(&curr->link);
 		vfree(curr);
 	}
 
