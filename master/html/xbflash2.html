@@ -58,8 +58,8 @@
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Memory-to-Memory (M2M)" href="m2m.html" />
-    <link rel="prev" title="Multi-Process Support" href="multiprocess.html" /> 
+    <link rel="next" title="xball" href="xball.html" />
+    <link rel="prev" title="xbmgmt" href="xbmgmt.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -341,35 +341,11 @@
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
-<ul class="current">
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">PCIe Peer-to-Peer (P2P)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#bios-setup">BIOS Setup</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#note">Note</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#warning">Warning</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#enable-disable-p2p">Enable/Disable P2P</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#current-p2p-configuration">Current P2P Configuration</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#enable-p2p">Enable P2P</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#disable-p2p">Disable P2P</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#pcie-topology-considerations">PCIe Topology Considerations</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#p2p-data-transfer-between-fpga-cards">P2P Data Transfer between FPGA Cards</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#opencl-coding-style">OpenCL coding style</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#profile-report">Profile Report</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#p2p-data-transfer-between-fpga-card-and-nvme-device">P2P Data Transfer between FPGA Card and NVMe Device</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">OpenCL coding style</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id2">Profile Report</a></li>
-</ul>
-</li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
@@ -402,11 +378,18 @@
 <li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">xbflash2</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#xbflash2-program">xbflash2 program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbflash2-program-spi">xbflash2 program –spi</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbflash2-program-qspips">xbflash2 program –qspips</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbflash2-dump">xbflash2 dump</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbflash2-dump-qspips">xbflash2 dump –qspips</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
@@ -440,7 +423,7 @@
             
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
-				  <li class="toctree-l1"><a href="_sources/p2p.rst.txt"
+				  <li class="toctree-l1"><a href="_sources/xbflash2.rst.txt"
 						rel="nofollow">Show Source</a></li>						
 				</ul>
           
@@ -486,13 +469,13 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>PCIe Peer-to-Peer (P2P)</li>
+      <li>xbflash2</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/p2p.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/xbflash2.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -505,330 +488,186 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <span class="target" id="p2p-rst"></span><div class="section" id="pcie-peer-to-peer-p2p">
-<h1>PCIe Peer-to-Peer (P2P)<a class="headerlink" href="#pcie-peer-to-peer-p2p" title="Permalink to this headline">¶</a></h1>
-<p>PCIe peer-to-peer communication (P2P) is a PCIe feature which enables two PCIe devices to directly transfer data between each other without using host RAM as a temporary storage. The latest version of Alveo PCIe platforms support P2P feature via PCIe Resizeable BAR Capability.</p>
-<ol class="arabic simple">
-<li>Data can be directly transferred between the DDR/HBM of one Alveo PCIe device and DDR/HBM of a second Alveo PCIe device.</li>
-<li>A thirdparty peer device like NVMe can directly read/write data from/to DDR/HBM of Alveo PCIe device.</li>
-</ol>
-<div class="align-center figure" id="id3">
-<img alt="_images/PCIe-P2P.svg" src="_images/PCIe-P2P.svg" /><p class="caption"><span class="caption-text">PCIe peer-to-peer topology and data transfer</span></p>
-</div>
-<p>To use P2P, the DDR/HBM on a Alveo PCIe platform need to be mapped to host IO memory space. The total size of DDR/HBM on most Alveo PCIe platforms is 64 GB all of which needs to mapped to the host IO memory space. Partial mapping a smaller range of device DDR is not supported in this release of XRT. Considering not all host systems (CPU/BIOS/chipset) support 64 GB IO memory space, P2P feature is off by default after a cold reboot or power cycle. The feature needs to be explicitly enabled after a cold boot.</p>
-<p>Note that in addition to BIOS, host CPU should be capable of supporting a very large physical address space. Most desktop class processors do not support very large address space required for supporting 64 GB BAR together with host RAM and address space of all peripherals.</p>
-<div class="section" id="bios-setup">
-<h2>BIOS Setup<a class="headerlink" href="#bios-setup" title="Permalink to this headline">¶</a></h2>
-<ol class="arabic simple">
-<li>Before turning on P2P, please make sure 64-bit IO is enabled and the maximium host supported IO memory space is greater than total size of DDRs on Alveo PCIe platform in host BIOS setup.</li>
-<li>Enable large BAR support in BIOS. This is variously called as <em>Above 4G decoding</em>, <em>PCI 64-bit resource handing above 4G</em> or <em>Memory mapped I/O above 4GB</em> and may be found under PCIe configuration or Boot configuration.</li>
-</ol>
-<div class="section" id="note">
-<h3>Note<a class="headerlink" href="#note" title="Permalink to this headline">¶</a></h3>
-<p>It may be necessary to update to the latest BIOS release before enabling P2P.  Not doing so may cause the system to continuously reboot during the boot process.  If this occurs, power-cycle the system to disable P2P and allow the system to boot normally.</p>
-</div>
-<div class="section" id="warning">
-<h3>Warning<a class="headerlink" href="#warning" title="Permalink to this headline">¶</a></h3>
-<p>Mother board vendors have different implementations of large PCIe BAR support in BIOS. If the host system does not support large IO memory well or if host Linux kernel does not support this feature, the host could stop responding after P2P is enabled. Please note that in some cases a warm reboot may not recover the system. Power cycle is required to recover the system in this scenario. As previosuly noted Alveo PCIe platforms turn off P2P after a power cycle.</p>
-<p>Some Mother board BIOS setup allows administrator to set IO Memory base address and some do not. Having large IO Memory base could possibly cause OS kernel crash during warm reboot. Warm reboot crash has been observed on Ubuntu running with kernel 4.15 plus IO memory base been set to 56T in BIOS. To avoid this crash, setting IO memory base to 12T in BIOS is recommended. Per our test, the highest P2P BAR physical address has to be less than 32T. And not all Linux kernels have this issue.</p>
-</div>
-</div>
-<div class="section" id="enable-disable-p2p">
-<h2>Enable/Disable P2P<a class="headerlink" href="#enable-disable-p2p" title="Permalink to this headline">¶</a></h2>
-<p>XRT <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> is used to enable/disable P2P feature and check current configuration. P2P configuration is persistent across warm reboot. Enabling or disabling P2P requires root privilege.</p>
-<p>Enabling P2P after cold boot is likly to fail because it resizes an exisitng P2P PCIe BAR to a large size and usually Linux will not reserve large IO memory for the PCIe bridges. XRT driver checks the maximum IO memory allowed by host BIOS setup and returns error if there is not enough IO memory for P2P. A warm reboot is required in this scenario after which BIOS and Linux will reassign the required expanded IO memory resource for P2P BAR.
-If a system stops responding after enabling P2P and warm reboot does not recover the host then power cycle is required to recover the host.</p>
-<p>Disabling P2P takes effect immediately. Currently XRT does not check if the P2P memory is in use. Administrator needs to make sure P2P is not in use before disabling it. The result of disabling P2P while it is in use is undefined.</p>
-<p>The IO memory region will not be completely released after disabling P2P. Thus, re-enabling P2P does not need reboot.</p>
-<div class="section" id="current-p2p-configuration">
-<h3>Current P2P Configuration<a class="headerlink" href="#current-p2p-configuration" title="Permalink to this headline">¶</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">P2P</span> <span class="pre">Enabled</span></code> is shown within <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code> output as below.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># xbutil examine --device 0000:03:00.1
-
- . . .
- P2P Status             : disabled
-</pre></div>
-</div>
-<p>There are three possible values for <code class="docutils literal notranslate"><span class="pre">P2P</span> <span class="pre">Status</span></code> field above.</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="17%" />
-<col width="83%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Value</th>
-<th class="head">Remarks</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">enabled</span></code></td>
-<td>P2P is enabled</td>
-</tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">disabled</span></code></td>
-<td>P2P is disabled</td>
-</tr>
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">iomem</span></code></td>
-<td>P2P is enabled in device but system could not allocate IO
-memory, warm reboot is needed</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="section" id="enable-p2p">
-<h3>Enable P2P<a class="headerlink" href="#enable-p2p" title="Permalink to this headline">¶</a></h3>
-<p>The command for enabling p2p is as below</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># sudo xbutil configure --device 0000:b3:00.1 --p2p enable
-</pre></div>
-</div>
-<p>When trying to enable p2p, it is possible that the Pcie Bar increase cannot happen without an warm reboot. In those situation when trying to enable the P2P, you will see a message for warm reboot request. You can also verify this through <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code> that would show P2P status is <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">iomem</span></code></p>
-</div>
-<div class="section" id="disable-p2p">
-<h3>Disable P2P<a class="headerlink" href="#disable-p2p" title="Permalink to this headline">¶</a></h3>
-<p>The commands for disabling p2p is as below</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># sudo xbutil configure --device 0000:b3:00.1 --p2p disable
-</pre></div>
-</div>
-<p>Disabling and re-enabling P2P work without a warm reboot in-between.</p>
-</div>
-<div class="section" id="pcie-topology-considerations">
-<h3>PCIe Topology Considerations<a class="headerlink" href="#pcie-topology-considerations" title="Permalink to this headline">¶</a></h3>
-<p>For best performance peer devices wanting to exchange data should be under the same PCIe switch.</p>
-<p>If IOMMU is enabled then all peer-to-peer transfers are routed through the root complex which will degrade performance significantly.</p>
-<p>To measure peak P2P performance with two Alveo cards, it needs to use indentical configuration of both them. This means same type of Alveo and running same verson of shell. Also both card should be under the same PCIe switch. Second, it has been known that P2P read has better throughput comparing to P2P write. Thus, P2P read should be used in benchmark to get the peak performance.</p>
-</div>
-</div>
-<div class="section" id="p2p-data-transfer-between-fpga-cards">
-<h2>P2P Data Transfer between FPGA Cards<a class="headerlink" href="#p2p-data-transfer-between-fpga-cards" title="Permalink to this headline">¶</a></h2>
-<div class="section" id="opencl-coding-style">
-<h3>OpenCL coding style<a class="headerlink" href="#opencl-coding-style" title="Permalink to this headline">¶</a></h3>
-<p>Consider the example situation as below:</p>
+  <span class="target" id="xbflash2-rst"></span><div class="section" id="xbflash2">
+<h1>xbflash2<a class="headerlink" href="#xbflash2" title="Permalink to this headline">¶</a></h1>
+<p>The Xilinx (R) Board Flash utility (xbflash2) is a standalone command line utility to flash a custom image onto given device. This document describes the latest <code class="docutils literal notranslate"><span class="pre">xbflash2</span></code> commands.</p>
+<p>In 2022.1 release, this utility is Early Access with limited validation.</p>
+<p>This tool supported for all Alveo platforms, U2 and U30 platforms.</p>
+<p>This tool doesn’t come with XRT package, it comes as separate xbflash package.</p>
+<p><strong>Global options</strong>: These are the global options can be used with any command.</p>
 <blockquote>
 <div><ul class="simple">
-<li>P2P data transfer from Card1 to Card2</li>
-<li>Source buffer (<cite>buf_src</cite>) is OpenCL buffer resident of Card1’s DDR</li>
-<li>Destination buffer (<cite>buf_dst</cite>) is OpenCL buffer resident of Card2’s DDR</li>
+<li><code class="docutils literal notranslate"><span class="pre">--help</span></code> : Get help message to use this application.</li>
+<li><code class="docutils literal notranslate"><span class="pre">--verbose</span></code>: Turn on verbosity and shows more outputs whenever applicable.</li>
+<li><code class="docutils literal notranslate"><span class="pre">--batch</span></code>: Enable batch mode.</li>
+<li><code class="docutils literal notranslate"><span class="pre">--force</span></code>: When possible, force an operation.</li>
 </ul>
 </div></blockquote>
-<p>Typical coding style:</p>
-<blockquote>
-<div><ol class="arabic">
-<li><p class="first">In the OpenCL host code, create separate <cite>cl_context</cite> for each <cite>cl_device_id</cite></p>
-</li>
-<li><p class="first">Define <cite>buf_src</cite> as regular buffer</p>
-</li>
-<li><p class="first">Define <cite>buf_dst</cite> as P2P buffer</p>
-</li>
-<li><p class="first">Import the P2P buffer or <cite>buf_dst</cite> to the context of <cite>buf_src</cite>. Use the following APIs</p>
+<p>Currently supported <code class="docutils literal notranslate"><span class="pre">xbflash2</span></code> commands are</p>
 <blockquote>
 <div><ul class="simple">
-<li><cite>xclGetMemObjectFd</cite></li>
-<li><cite>xclGetMemObjectFromFd</cite></li>
+<li><code class="docutils literal notranslate"><span class="pre">xbflash2</span> <span class="pre">program</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">xbflash2</span> <span class="pre">dump</span></code></li>
+</ul>
+</div></blockquote>
+<div class="section" id="xbflash2-program">
+<h2>xbflash2 program<a class="headerlink" href="#xbflash2-program" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbflash2</span> <span class="pre">program</span></code> command programs the given acceleration image into the device’s shell.</p>
+<p><strong>The supported options</strong></p>
+<p>Updates the image(s) for a given device.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbflash2 program <span class="o">[</span>--help<span class="p">|</span>-h<span class="o">]</span> --<span class="o">[</span> spi <span class="p">|</span> qspips <span class="o">]</span> <span class="o">[</span>commandArgs<span class="o">]</span>
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul class="simple">
+<li>The <code class="docutils literal notranslate"><span class="pre">--help</span></code> (or <code class="docutils literal notranslate"><span class="pre">-h</span></code>) gets help message tp use this sub-command.</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">--spi</span></code> option is used for spi flash type.</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">--qspips</span></code> option is used for qspips flash type.</li>
+</ul>
+</div>
+<div class="section" id="xbflash2-program-spi">
+<h2>xbflash2 program –spi<a class="headerlink" href="#xbflash2-program-spi" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbflash2</span> <span class="pre">program</span> <span class="pre">--spi</span></code> command programs the given acceleration image into the device’s shell for spi flash type.</p>
+<p><strong>The supported usecases and their options</strong></p>
+<p>Program the image(.mcs) to the device’s shell.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbflash2 program --spi <span class="o">[</span>--image<span class="p">|</span>-i<span class="o">]</span> &lt;.mcs file path&gt; <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--dual-flash<span class="p">|</span>-u<span class="o">]</span> <span class="o">[</span>--bar<span class="p">|</span>-b<span class="o">]</span> &lt;BAR index&gt; <span class="o">[</span>--bar-offset<span class="p">|</span>-s<span class="o">]</span> &lt;BAR offset&gt;
+</pre></div>
+</div>
+<p>Revert to golden image. Resets the FPGA PROM back to the factory image.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbflash2 program --spi <span class="o">[</span>--revert-to-golden<span class="p">|</span>-r<span class="o">]</span> <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--dual-flash<span class="p">|</span>-u<span class="o">]</span> <span class="o">[</span>--bar<span class="p">|</span>-b<span class="o">]</span> &lt;BAR index&gt; <span class="o">[</span>--bar-offset<span class="p">|</span>-s<span class="o">]</span> &lt;BAR offset&gt;
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</li>
 </ul>
 </div></blockquote>
 </li>
-<li><p class="first">Perform the copy operation from <cite>buf_src</cite> to <cite>imported_dst_buf</cite></p>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--dual-flash</span></code> (or <code class="docutils literal notranslate"><span class="pre">-u</span></code>)  option specifies if the card is dual flash supported.</p>
 </li>
-</ol>
-</div></blockquote>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Source Buffer (regular) in source context</span>
-<span class="n">cl_mem</span> <span class="n">src_buf</span><span class="p">;</span>
-<span class="n">src_buf</span> <span class="o">=</span> <span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">src_context</span><span class="p">,</span> <span class="n">CL_MEM_WRITE_ONLY</span><span class="p">,</span> <span class="n">buffersize</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">err</span><span class="p">);</span>
-<span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel_1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cl_mem</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">src_buf</span><span class="p">);</span>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--bar</span></code> (or <code class="docutils literal notranslate"><span class="pre">-b</span></code>)  option specifies BAR-index, default is 0.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--bar-offset</span></code> (or <code class="docutils literal notranslate"><span class="pre">-s</span></code>)  option specifies BAR-offset, default is 0x40000.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--image</span></code> (or <code class="docutils literal notranslate"><span class="pre">-i</span></code>)  option Specifies MCS image path to update the persistent device.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--revert-to-golden</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>)  command is used to reverts the flash image back to the golden version of the card.</p>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Program the mcs image.</span>
+xbflash2 program --spi --device <span class="m">0000</span>:3b:00.0 --image &lt;mcs path&gt;
 
-<span class="c1">// Note: Handling of err is not shown throughout the code example. However, it is recommended</span>
-<span class="c1">// to check error for most of the OpenCL APIs</span>
+<span class="c1">#Program the mcs image.</span>
+xbflash2 program --spi --device <span class="m">0000</span>:3b:00.0 --image &lt;mcs path&gt; --bar <span class="m">0</span> --bar-offset 0x10000
 
-<span class="c1">// Destination buffer (P2P) in destination context</span>
-<span class="n">cl_mem</span> <span class="n">dst_buf</span><span class="p">;</span>
-<span class="n">cl_mem_ext_ptr_t</span> <span class="n">dst_buf_ext</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
-<span class="n">dst_buf_ext</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">XCL_MEM_EXT_P2P_BUFFER</span><span class="p">;</span>
-<span class="n">dst_buf</span> <span class="o">=</span> <span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">dst_context</span><span class="p">,</span> <span class="n">CL_MEM_READ_ONLY</span> <span class="o">|</span> <span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span> <span class="n">buffersize</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">dst_buf_ext</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">err</span><span class="p">);</span>
-<span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel_2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cl_mem</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">dst_buf</span><span class="p">);</span>
+<span class="c1">#Program the image for dual-flash type.</span>
+xbflash2 program --spi --device <span class="m">0000</span>:5e:00.1 --image &lt;primary.mcs path&gt; --image &lt;secondary.mcs path&gt; --bar <span class="m">0</span> --bar-offset 0x40000 --dual-flash
 
-<span class="c1">// Import Destination P2P buffer to the source context</span>
-<span class="n">err</span> <span class="o">=</span> <span class="n">xclGetMemObjectFd</span><span class="p">(</span><span class="n">dst_buf</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">fd</span><span class="p">);</span>
-
-<span class="n">cl_mem</span> <span class="n">imported_dst_buf</span><span class="p">;</span>
-
-<span class="n">err</span> <span class="o">=</span> <span class="n">xclGetMemObjectFromFd</span><span class="p">(</span><span class="n">src_context</span><span class="p">,</span> <span class="n">device_id</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">imported_dst_buf</span><span class="p">);</span> <span class="c1">// Import</span>
-
-<span class="c1">// Copy Operation: Local Source buffer -&gt; Imported Destination Buffer</span>
-
-<span class="n">err</span> <span class="o">=</span> <span class="n">clEnqueueCopyBuffer</span><span class="p">(</span><span class="n">src_command_queue</span><span class="p">,</span> <span class="n">src_buf</span><span class="p">,</span> <span class="n">imported_dst_buf</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">data_t</span><span class="p">)</span><span class="o">*</span><span class="n">LENGTH</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">event</span><span class="p">);</span>
+<span class="c1">#Revert to golden image</span>
+xbflash2 program --spi --device <span class="m">0000</span>:d8:00.0 --revert-to-golden --bar <span class="m">0</span> --bar-offset 0x40000 --dual-flash
 </pre></div>
 </div>
 </div>
-<div class="section" id="profile-report">
-<h3>Profile Report<a class="headerlink" href="#profile-report" title="Permalink to this headline">¶</a></h3>
-<p>In the Profile Summary report file the P2P transfer is shown under <strong>Data Transfer: DMA Bypass</strong></p>
-<p><strong>Data Transfer: DMA Bypass</strong></p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="8%" />
-<col width="18%" />
-<col width="12%" />
-<col width="13%" />
-<col width="12%" />
-<col width="11%" />
-<col width="11%" />
-<col width="14%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Device</th>
-<th class="head">Transfer Type</th>
-<th class="head">Number of
-Transfer</th>
-<th class="head">Transfer
-Rate(MB/s)</th>
-<th class="head">Total Data
-Transfer</th>
-<th class="head">Total
-Time (ms)</th>
-<th class="head">Average
-Size (Kb)</th>
-<th class="head">Average
-Latency(ns)</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>…</td>
-<td>IN</td>
-<td>4096</td>
-<td>N/A</td>
-<td>0.262</td>
-<td>N/A</td>
-<td>0.064</td>
-<td>N/A</td>
-</tr>
-</tbody>
-</table>
-<p>The report shows the P2P transfer corresponding to the receiving device (i.e. transfer type IN).</p>
+<div class="section" id="xbflash2-program-qspips">
+<h2>xbflash2 program –qspips<a class="headerlink" href="#xbflash2-program-qspips" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbflash2</span> <span class="pre">program</span> <span class="pre">--qspips</span></code> command programs the given acceleration image into the device’s shell for qspips flash type.</p>
+<p><strong>The supported usecases and their options</strong></p>
+<p>Program the image(boot.bin) to the device’s shell.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbflash2 program --qspips <span class="o">[</span>--image<span class="p">|</span>-i<span class="o">]</span> &lt;boot.bin path&gt; <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>-offset<span class="p">|</span>-a<span class="o">]</span> &lt;offset on flash&gt; <span class="o">[</span>--flash-part<span class="p">|</span>-p<span class="o">]</span> &lt;qspips-flash-type&gt; <span class="o">[</span>--bar<span class="p">|</span>-b<span class="o">]</span> &lt;BAR index&gt; <span class="o">[</span>--bar-offset<span class="p">|</span>-s<span class="o">]</span> &lt;BAR offset&gt;
+</pre></div>
 </div>
+<p>Erase flash on the device.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbflash2 program --qspips <span class="o">[</span>--erase<span class="p">|</span>-e<span class="o">]</span> <span class="o">[</span>--length<span class="p">|</span>-l<span class="o">]</span> &lt;length&gt; <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>-offset<span class="p">|</span>-a<span class="o">]</span> &lt;offset on flash&gt; <span class="o">[</span>--flash-part<span class="p">|</span>-p<span class="o">]</span> &lt;qspips-flash-type&gt; <span class="o">[</span>--bar<span class="p">|</span>-b<span class="o">]</span> &lt;BAR index&gt; <span class="o">[</span>--bar-offset<span class="p">|</span>-s<span class="o">]</span> &lt;BAR offset&gt;
+</pre></div>
 </div>
-<div class="section" id="p2p-data-transfer-between-fpga-card-and-nvme-device">
-<h2>P2P Data Transfer between FPGA Card and NVMe Device<a class="headerlink" href="#p2p-data-transfer-between-fpga-card-and-nvme-device" title="Permalink to this headline">¶</a></h2>
-<p>Using the P2P enabled device the data can be transferred between the FPGA device and another NVMe Device, such as SMART SSD, without migrating the data via host memory space.</p>
-<div class="section" id="id1">
-<h3>OpenCL coding style<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
-<p>Typical coding style</p>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
 <blockquote>
-<div><ol class="arabic simple">
-<li>Create P2P buffer</li>
-<li>Map P2P buffer to the host space</li>
-<li>Access the SSD location through Linux File System, the file needs to be opened with <cite>O_DIRECT</cite>.</li>
-<li>Read/Write through Linux <cite>pread</cite>/<cite>pwrite</cite> function</li>
-</ol>
+<div><ul class="simple">
+<li>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</li>
+</ul>
 </div></blockquote>
-<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Creating P2P buffer</span>
-<span class="n">cl_mem_ext_ptr_t</span> <span class="n">p2pBOExt</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--offset</span></code> (or <code class="docutils literal notranslate"><span class="pre">-a</span></code>)  option specifies offset on flash to start, default is 0.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--flash-part</span></code> (or <code class="docutils literal notranslate"><span class="pre">-p</span></code>)  option specifies qspips-flash-type, default is qspi_ps_x2_single.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--bar</span></code> (or <code class="docutils literal notranslate"><span class="pre">-b</span></code>)  option specifies BAR-index for qspips, default is 0.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--bar-offset</span></code> (or <code class="docutils literal notranslate"><span class="pre">-s</span></code>)  option specifies BAR-offset for qspips, default is 0x40000.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--length</span></code> (or <code class="docutils literal notranslate"><span class="pre">-l</span></code>)  option specifies length-to-erase, default is 96MB.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--image</span></code> (or <code class="docutils literal notranslate"><span class="pre">-i</span></code>)  option specifies boot.bin image path to update the persistent device.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--erase</span></code> (or <code class="docutils literal notranslate"><span class="pre">-e</span></code>)  command is used to erase flash on the device.</p>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Program the boot.bin image.</span>
+xbflash2 program --qspips --device <span class="m">0000</span>:3b:00.0 --image &lt;boot.bin path&gt;
 
-<span class="n">p2pBOExt</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">XCL_MEM_EXT_P2P_BUFFER</span><span class="p">;</span>
+<span class="c1">#Program the boot.bin image.</span>
+xbflash2 program --qspips --device <span class="m">0000</span>:3b:00.0 --image &lt;boot.bin path&gt; --offset 0x0 --bar-offset 0x10000 --bar <span class="m">0</span>
 
-<span class="n">p2pBO</span> <span class="o">=</span> <span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">CL_MEM_READ_ONLY</span> <span class="o">|</span> <span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">p2pBOExt</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
-
-<span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">cl_mem</span><span class="p">),</span> <span class="n">p2pBO</span><span class="p">);</span>
-
-<span class="c1">// Map P2P Buffer into the host space</span>
-
-<span class="n">p2pPtr</span> <span class="o">=</span> <span class="p">(</span><span class="kt">char</span> <span class="o">*</span><span class="p">)</span> <span class="n">clEnqueueMapBuffer</span><span class="p">(</span><span class="n">command_queue</span><span class="p">,</span> <span class="n">p2pBO</span><span class="p">,</span> <span class="n">CL_TRUE</span><span class="p">,</span> <span class="n">CL_MAP_WRITE</span> <span class="o">|</span> <span class="n">CL_MAP_READ</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
-
-<span class="n">filename</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">full</span> <span class="n">path</span> <span class="n">to</span> <span class="n">SSD</span><span class="o">&gt;</span>
-<span class="n">fd</span> <span class="o">=</span> <span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">O_RDWR</span> <span class="o">|</span> <span class="n">O_DIRECT</span><span class="p">);</span>
-
-<span class="c1">// Read chunk_size bytes starting at offset 0 from fd into p2pPtr</span>
-<span class="n">pread</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">p2pPtr</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
-
-<span class="c1">// Wrtie chunk_size bytes starting at offset 0 from p2pPtr into fd</span>
-<span class="n">pwrite</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">p2pPtr</span><span class="p">,</span> <span class="n">chunk_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<span class="c1">#Erase flash on the device</span>
+xbflash2 program --spi --device <span class="m">0000</span>:d8:00.0 --erase --length 0x06000000 --offset 0x0 --bar <span class="m">0</span> --bar-offset 0x40000
 </pre></div>
 </div>
 </div>
-<div class="section" id="id2">
-<h3>Profile Report<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
-<p>Sample Profile report from FPGA to NVMe Device transfer via P2P</p>
-<p><strong>Data Transfer: DMA Bypass</strong></p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="7%" />
-<col width="18%" />
-<col width="11%" />
-<col width="14%" />
-<col width="14%" />
-<col width="11%" />
-<col width="11%" />
-<col width="14%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Device</th>
-<th class="head">Transfer Type</th>
-<th class="head">Number of
-Transfer</th>
-<th class="head">Transfer
-Rate(MB/s)</th>
-<th class="head">Total Data
-Transfer</th>
-<th class="head">Total
-Time (ms)</th>
-<th class="head">Average
-Size (Kb)</th>
-<th class="head">Average
-Latency(ns)</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>…</td>
-<td>OUT</td>
-<td>8388608</td>
-<td>N/A</td>
-<td>1073.740</td>
-<td>N/A</td>
-<td>0.128</td>
-<td>297.141</td>
-</tr>
-</tbody>
-</table>
-<p>Sample Profile report from NVMe Device to FPGA transfer via P2P</p>
-<p><strong>Data Transfer: DMA Bypass</strong></p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="7%" />
-<col width="18%" />
-<col width="11%" />
-<col width="14%" />
-<col width="14%" />
-<col width="11%" />
-<col width="11%" />
-<col width="14%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Device</th>
-<th class="head">Transfer Type</th>
-<th class="head">Number of
-Transfer</th>
-<th class="head">Transfer
-Rate(MB/s)</th>
-<th class="head">Total Data
-Transfer</th>
-<th class="head">Total
-Time (ms)</th>
-<th class="head">Average
-Size (Kb)</th>
-<th class="head">Average
-Latency(ns)</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>…</td>
-<td>IN</td>
-<td>4194304</td>
-<td>N/A</td>
-<td>1073.740</td>
-<td>N/A</td>
-<td>0.256</td>
-<td>237.344</td>
-</tr>
-</tbody>
-</table>
+<div class="section" id="xbflash2-dump">
+<h2>xbflash2 dump<a class="headerlink" href="#xbflash2-dump" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbflash2</span> <span class="pre">dump</span></code> command reads the image(s) for a given device for a given length and outputs the same to given file. It is applicable for only QSPIPS flash..</p>
+<p><strong>The supported options</strong></p>
+<p>Reads the image(s) for a given device and dump out content of the specified option.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbflash2 dump <span class="o">[</span>--help<span class="p">|</span>-h<span class="o">]</span> --<span class="o">[</span> qspips <span class="o">]</span> <span class="o">[</span>commandArgs<span class="o">]</span>
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul class="simple">
+<li>The <code class="docutils literal notranslate"><span class="pre">--help</span></code> (or <code class="docutils literal notranslate"><span class="pre">-h</span></code>) gets help message tp use this sub-command.</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">--qspips</span></code> option is used for qspips flash type.</li>
+</ul>
+</div>
+<div class="section" id="xbflash2-dump-qspips">
+<h2>xbflash2 dump –qspips<a class="headerlink" href="#xbflash2-dump-qspips" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbflash2</span> <span class="pre">dump</span> <span class="pre">--qspips</span></code> command dump out content to the given ouput file.</p>
+<p><strong>The supported usecases and their options</strong></p>
+<p>Reads the image(s) for a given device for a given length and outputs the same to given file.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbflash2 dump --qspips <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>-offset<span class="p">|</span>-a<span class="o">]</span> &lt;offset on flash&gt; <span class="o">[</span>--length<span class="p">|</span>-l<span class="o">]</span> &lt;length to read&gt; <span class="o">[</span>--flash-part<span class="p">|</span>-p<span class="o">]</span> &lt;qspips-flash-type&gt; <span class="o">[</span>--bar<span class="p">|</span>-b<span class="o">]</span> &lt;BAR index&gt; <span class="o">[</span>--bar-offset<span class="p">|</span>-s<span class="o">]</span> &lt;BAR offset&gt; <span class="o">[</span>--output<span class="p">|</span>-o<span class="o">]</span> &lt;output file path&gt;
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--offset</span></code> (or <code class="docutils literal notranslate"><span class="pre">-a</span></code>)  option specifies offset on flash to start, default is 0.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--length</span></code> (or <code class="docutils literal notranslate"><span class="pre">-l</span></code>)  option specifies length-to-read, default is 128MB.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--flash-part</span></code> (or <code class="docutils literal notranslate"><span class="pre">-p</span></code>)  option specifies qspips-flash-type, default is qspi_ps_x2_single.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--bar</span></code> (or <code class="docutils literal notranslate"><span class="pre">-b</span></code>)  option specifies BAR-index for qspips, default is 0.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--bar-offset</span></code> (or <code class="docutils literal notranslate"><span class="pre">-s</span></code>)  option specifies BAR-offset for qspips, default is 0x40000.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>)  option to specify output file path to save read contents..</p>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Dump out content to the given ouput file</span>
+xbflash2 dump --qspips --device <span class="m">0000</span>:3b:00.0 --offset 0x0 --length 0x08000000 --bar-offset 0x10000 --bar <span class="m">0</span> --output /tmp/flash_dump.txt
+</pre></div>
 </div>
 </div>
 </div>
@@ -849,10 +688,10 @@ Latency(ns)</th>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="m2m.html" class="btn btn-neutral float-right" title="Memory-to-Memory (M2M)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xball.html" class="btn btn-neutral float-right" title="xball" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="multiprocess.html" class="btn btn-neutral float-left" title="Multi-Process Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xbmgmt.html" class="btn btn-neutral float-left" title="xbmgmt" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

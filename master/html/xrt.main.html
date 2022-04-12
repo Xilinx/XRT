@@ -382,6 +382,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
@@ -596,8 +597,9 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xclLoadXclBin</code><span class="
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>Download FPGA image (AXLF) to the device. The PR bitstream is
-encapsulated inside xclbin as a section. xclbin may also contains
-other sections which are suitably handled by the driver.</p>
+encapsulated inside xclbin as a section.  The xclbin may also
+contain other sections, which are suitably handled by the driver.</p>
+<p>This API also downloads OVERLAY (dtbo) section (Edge only).</p>
 <dl class="function">
 <dt id="c.xclGetSectionInfo">
 XCL_DRIVER_DLLESPEC int <code class="descname">xclGetSectionInfo</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, void *<em>&nbsp;info</em>, size_t *<em>&nbsp;size</em>, enum axlf_section_kind<em>&nbsp;kind</em>, int<em>&nbsp;index</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetSectionInfo" title="Permalink to this definition">¶</a></dt>
@@ -1099,7 +1101,7 @@ different threads.</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 29, 2022.
+        Last updated on April 12, 2022.
       </span>
 
     </p>
