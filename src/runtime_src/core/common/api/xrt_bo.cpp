@@ -367,6 +367,13 @@ public:
   {
     device->sync_aie_bo(bo, port.c_str(), dir, sz, offset);
   }
+
+  xrt::aie::async_bo_hdl
+  async(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
+  {
+    device->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
+    return xrt::aie::async_bo_hdl{bo, 0, port};
+  }
 #endif
 
   virtual void
@@ -1193,6 +1200,38 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 // xrt_aie_bo C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt { namespace aie {
+
+void
+async_bo_hdl::
+wait()
+{
+  handle->wait();
+}
+
+void
+async_bo_impl::
+wait()
+{
+  auto dev = m_bo.get_handle()->get_device();
+
+  //In future wait only for specific m_bd_num
+  dev->wait_gmio(m_gmio_name.c_str());
+
+  /*
+  auto drv = ZYNQ::shim::handleCheck(dev->get_device_handle());
+
+  if (!drv->isAieRegistered())
+    throw xrt_core::error(-EINVAL, "No AIE presented");
+  auto aieArray = drv->getAieArray();
+
+  if (!aieArray->is_context_set()) {
+    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
+  }
+
+  //In future wait only for specific m_bd_num
+  aieArray->wait_gmio(m_gmio_name);
+  */
+}
 
 void
 bo::

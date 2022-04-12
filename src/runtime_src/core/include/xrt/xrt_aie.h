@@ -24,6 +24,7 @@
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_graph.h"
+#include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
 # include <cstdint>
@@ -92,6 +93,55 @@ private:
   open_context(access_mode mode);
 };
 
+class async_bo_impl;
+class async_bo_hdl : public detail::pimpl<async_bo_impl>
+{
+public:
+  async_bo_hdl()
+  {}
+
+  XCL_DRIVER_DLLESPEC
+  async_bo_hdl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name);
+
+  XCL_DRIVER_DLLESPEC
+  void
+  wait();
+};
+
+/*!
+ * @class async_bo_obj
+ * 
+ * @brief
+ * Class associated with async bo which allows to wait for completion
+ *
+ * @details
+ * xrt::bo:async return this object
+ */
+class async_bo_impl
+{
+private:
+  size_t m_bd_num; //For future use
+  std::string m_gmio_name;
+  xrt::bo m_bo;
+
+public:
+
+  /**
+   * async_bo_impl() - Construct async_bo_obj
+   */
+  async_bo_impl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
+    : m_bd_num(bd_num),
+      m_gmio_name(gmio_name),
+      m_bo(bo)
+  {
+  }
+
+  /**
+   * wait() - Wait for async to complete
+   */
+  void wait();
+};
+
 class bo : public xrt::bo
 {
 public:
@@ -105,6 +155,23 @@ public:
   bo(Args&&... args)
     : xrt::bo(std::forward<Args>(args)...)
   {}
+
+  /**
+   * async() - Async transfer of data between BO and Shim DMA channel.
+   *
+   * @param port
+   *  GMIO port name.
+   * @param dir
+   *  GM to AIE or AIE to GM
+   * @param sz
+   *  Size of data to transfer
+   * @param offset
+   *  Offset within BO
+   *
+   * Asynchronously transfer the buffer contents from BO offset to offset + sz
+   * between GMIO and AIE.
+   */
+  xrt::aie::async_bo_hdl async(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
 
   /**
    * sync() - Transfer data between BO and Shim DMA channel.
