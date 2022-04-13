@@ -28,7 +28,9 @@
 
 #ifdef __cplusplus
 # include <cstdint>
+#include <mutex>
 # include <string>
+#include <unordered_map>
 #endif
 
 #ifdef __cplusplus
@@ -53,6 +55,7 @@ namespace xrt { namespace aie {
  * By default the AIE array is opened in primary access mode.
  */
 enum class access_mode : uint8_t { exclusive = 0, primary = 1, shared = 2, none = 3 };
+class async_bo_impl;
 
 class device : public xrt::device
 {
@@ -89,19 +92,24 @@ public:
   reset_array();
 
 private:
+  //Map of gmio -> list of async handles
+  std::unordered_map<std::string, std::vector<std::shared_ptr<async_bo_impl>>> async_bo_hdls;
+  std::mutex async_bo_hdls_mutex;//Mutex for use with above map
+
   void
   open_context(access_mode mode);
 };
 
-class async_bo_impl;
 class async_bo_hdl : public detail::pimpl<async_bo_impl>
 {
 public:
   async_bo_hdl()
   {}
 
-  XCL_DRIVER_DLLESPEC
-  async_bo_hdl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name);
+  explicit
+  async_bo_hdl(std::shared_ptr<async_bo_impl> handle)
+    : detail::pimpl<async_bo_impl>(std::move(handle))
+  {}
 
   XCL_DRIVER_DLLESPEC
   void

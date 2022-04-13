@@ -372,7 +372,7 @@ public:
   async(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
   {
     device->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
-    return xrt::aie::async_bo_hdl{bo, 0, port};
+    return xrt::aie::async_bo_hdl{std::make_shared<xrt::aie::async_bo_impl>(bo, 0, port)};
   }
 #endif
 
@@ -1201,11 +1201,6 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 ////////////////////////////////////////////////////////////////
 namespace xrt { namespace aie {
 
-async_bo_hdl::
-async_bo_hdl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
-  : detail::pimpl<async_bo_impl>(std::make_shared<async_bo_impl>(bo, bd_num, gmio_name))
-{}
-
 void
 async_bo_hdl::
 wait()
@@ -1217,7 +1212,7 @@ void
 async_bo_impl::
 wait()
 {
-  auto dev = m_bo.get_handle()->get_device();
+  auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
 
   //In future wait only for specific m_bd_num
   dev->wait_gmio(m_gmio_name.c_str());
