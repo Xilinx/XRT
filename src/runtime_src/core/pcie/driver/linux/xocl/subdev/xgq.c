@@ -1102,13 +1102,14 @@ static int vmr_info_query_op(struct platform_device *pdev,
 			XGQ_WARN(xgq, "info size is zero");
 			ret = -EINVAL;
 		} else {
-			char *info_data = vmalloc(info_size);
+			char *info_data = vmalloc(info_size + 1);
 			if (info_data == NULL) {
 				XGQ_ERR(xgq, "vmalloc failed");
 				ret = -ENOMEM;
 				goto done;
 			}
 			memcpy_from_device(xgq, address, info_data, info_size);
+			info_data[info_size] = '\0'; /* terminate the string */
 			*cnt += sprintf(buf, "%s", info_data);
 			vfree(info_data);
 		}
