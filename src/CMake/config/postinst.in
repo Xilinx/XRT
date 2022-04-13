@@ -60,7 +60,13 @@ fi
 echo "Unloading old XRT Linux kernel modules"
 rmmod xocl
 rmmod xclmgmt
-XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
+. /etc/os-release
+if [ $ID = "ubuntu" ] || [ $ID = "debian" ]; then
+    XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
+else
+    XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $1}' | awk -F/ '{print $2}'`
+fi
+
 for OLD in $XRT_VERSION_STRING_OLD; do
     echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
     dkms remove -m xrt -v $OLD --all
