@@ -298,7 +298,7 @@ update_daemon_config(const std::string& host = "")
   if (!cfile)
     throw xrt_core::system_error(std::errc::invalid_argument, "Missing '" + std::string(config_file) + "'.  Cannot update");
 
-  if(host.empty())
+  if (!host.empty())
     cfg.host = host;
   // update the configuration file
   cfile << boost::str(boost::format("%s\n") % cfg);
