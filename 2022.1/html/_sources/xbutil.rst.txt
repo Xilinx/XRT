@@ -11,8 +11,6 @@ xbutil
 This document describes the latest ``xbutil`` commands. These latest commands are default from 21.1 release.  
 
 
-P.S: The older version of the commands can only be executed by adding ``--legacy`` switch . The documentation link of legacy version: `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/Chunk778393017.html>`_
-
 For an instructive video on xbutil commands listed below click `here <https://www.youtube.com/watch?v=nvU2ZBnAaz4>`_.
 
 
