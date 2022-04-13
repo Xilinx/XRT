@@ -25,7 +25,7 @@
 #include "../xocl_drv.h"
 #include "xclfeatures.h"
 
-#define SYSFS_COUNT_PER_SENSOR          4
+#define SYSFS_COUNT_PER_SENSOR          5
 #define SYSFS_NAME_LEN                  30
 #define HWMON_SDM_DEFAULT_EXPIRE_SECS   1
 
@@ -40,6 +40,7 @@ enum sysfs_sdr_field_ids {
     SYSFS_SDR_INS_VAL,
     SYSFS_SDR_MAX_VAL,
     SYSFS_SDR_AVG_VAL,
+    SYSFS_SDR_STATUS_VAL,
 };
 
 struct xocl_sdr_bdinfo {
@@ -318,6 +319,25 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 		}
 		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
 		sz = sprintf(buf, "%u\n", uval);
+	} else if (field_id == SYSFS_SDR_STATUS_VAL) {
+		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
+		switch(uval) {
+		case 0x00:
+			sz = sprintf(buf, "%s\n", "Sensor Not Present");
+			break;
+		case 0x01:
+			sz = sprintf(buf, "%s\n", "Sensor Present and Valid");
+			break;
+		case 0x02:
+			sz = sprintf(buf, "%s\n", "Data Not Available");
+			break;
+		case 0x7F:
+			sz = sprintf(buf, "%s\n", "Not Applicable or Default Value");
+			break;
+		default:
+			sz = sprintf(buf, "%s\n", "Reserved");
+			break;
+		}
 	} else {
 		xocl_dbg(&sdm->pdev->dev, "field_id: 0x%x is corrupted or not supported\n", field_id);
 		sz = sprintf(buf, "%d\n", 0);
@@ -446,7 +466,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	uint8_t name_length, name_type_length, sys_index, fan_index;
 	uint8_t val_len, value_type_length, threshold_support_byte;
 	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
-	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0;
+	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0, status_index;
 
 	completion_code = in_buf[SDR_COMPLETE_IDX];
 
@@ -572,6 +592,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			}
 		}
 
+		status_index = buf_index;
 		status = in_buf[buf_index++];
 
 		/* Parse Max and Avg sensor */
@@ -604,10 +625,12 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 				case SDR_TYPE_TEMP:
 					memcpy(sensor_name, &in_buf[name_index], name_length);
 					if (strstr(sensor_name, "fan")) {
+						sprintf(sysfs_name[4], "fan%d_status", fan_index);
 						sprintf(sysfs_name[1], "fan%d_input", fan_index);
 						sprintf(sysfs_name[0], "fan%d_label", fan_index);
 						fan_index++;
 					} else {
+						sprintf(sysfs_name[4], "temp%d_status", sys_index);
 						sprintf(sysfs_name[3], "temp%d_average", sys_index);
 						sprintf(sysfs_name[2], "temp%d_max", sys_index);
 						sprintf(sysfs_name[1], "temp%d_input", sys_index);
@@ -617,6 +640,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					create = true;
 					break;
 				case SDR_TYPE_VOLTAGE:
+					sprintf(sysfs_name[4], "in%d_status", sys_index);
 					sprintf(sysfs_name[3], "in%d_average", sys_index);
 					sprintf(sysfs_name[2], "in%d_max", sys_index);
 					sprintf(sysfs_name[1], "in%d_input", sys_index);
@@ -625,6 +649,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					create = true;
 					break;
 				case SDR_TYPE_CURRENT:
+					sprintf(sysfs_name[4], "curr%d_status", sys_index);
 					sprintf(sysfs_name[3], "curr%d_average", sys_index);
 					sprintf(sysfs_name[2], "curr%d_max", sys_index);
 					sprintf(sysfs_name[1], "curr%d_input", sys_index);
@@ -633,6 +658,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					create = true;
 					break;
 				case SDR_TYPE_POWER:
+					sprintf(sysfs_name[4], "power%d_status", sys_index);
 					sprintf(sysfs_name[3], "power%d_average", sys_index);
 					sprintf(sysfs_name[2], "power%d_max", sys_index);
 					sprintf(sysfs_name[1], "power%d_input", sys_index);
@@ -685,6 +711,14 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 											SYSFS_SDR_AVG_VAL, avg_index, val_len);
 					if (err) {
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[3], err);
+					}
+				}
+
+				//Create *_status sysfs node
+				if(strlen(sysfs_name[4]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[4], repo_id, SYSFS_SDR_STATUS_VAL, status_index, 1);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[4], err);
 					}
 				}
 			}

@@ -148,7 +148,7 @@ struct sdm_sensor_info
     result_type output;
     //sensors are stored in hwmon sysfs dir with name starts & ends with as follows.
     std::array<std::string, 5> sname_start = {"curr", "in", "power", "temp", "fan"};
-    std::array<std::string, 5> sname_end = {"label", "input", "max", "average", "highest"};
+    std::array<std::string, 6> sname_end = {"label", "input", "max", "average", "highest", "status"};
     int max_end_types = sname_end.size();
     bool next_id = false;
     //All sensor sysfs nodes starts with 1 as starting index.
@@ -188,6 +188,18 @@ struct sdm_sensor_info
             continue;
           }
           data.label = label;
+        }
+        else if (end_id == 5)
+        {
+          std::string errmsg;
+          std::string status;
+          pdev->sysfs_get("", path + tmp + sname_end[end_id], errmsg, status);
+          if (!errmsg.empty())
+          {
+            data.status = "";
+            continue;
+          }
+          data.status= status;
         }
         else
         {
