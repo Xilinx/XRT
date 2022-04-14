@@ -61,13 +61,13 @@ echo "Unloading old XRT Linux kernel modules"
 rmmod xocl
 rmmod xclmgmt
 
-# Dkms status o/p differs in Ubuntu and CentOS/RHEL
+# Dkms status o/p differs with different versions
 # So we need different way of parsing old xrt version string.
-. /etc/os-release
-if [ $ID = "ubuntu" ] || [ $ID = "debian" ]; then
-    XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
-else
+dkms_major=`dkms --version | tr -d " "[a-z-:] | awk -F. '{print $1}'`
+if [ $dkms_major -ge 3 ]; then
     XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $1}' | awk -F/ '{print $2}'`
+else
+    XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
 fi
 
 for OLD in $XRT_VERSION_STRING_OLD; do
