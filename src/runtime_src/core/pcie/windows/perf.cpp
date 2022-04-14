@@ -59,16 +59,16 @@ double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
   return 15753.85;
 }
 
-// For DDR4: Typical Max BW = 19.25 GB/s
+// For DDR4: Typical Max BW = 16 GB/s
 double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  return 19250.00;
+  return 16000.00;
 }
 
-// For DDR4: Typical Max BW = 19.25 GB/s
+// For DDR4: Typical Max BW = 16 GB/s
 double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  return 19250.00;
+  return 16000.00;
 }
 
 #if 0

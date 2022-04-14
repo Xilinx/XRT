@@ -210,8 +210,8 @@ class DeviceIntf {
      */
     double mHostMaxReadBW  = 15753.85;
     double mHostMaxWriteBW = 15753.85;
-    double mKernelMaxReadBW  = 19250.00;
-    double mKernelMaxWriteBW = 19250.00;
+    double mKernelMaxReadBW  = 16000.00;
+    double mKernelMaxWriteBW = 16000.00;
 
 }; /* DeviceIntf */
 
