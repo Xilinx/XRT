@@ -2172,17 +2172,30 @@ double shim::xclGetDeviceClockFreqMHz()
   return ((double)clockFreq);
 }
 
-// Get the maximum bandwidth for host reads from the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double shim::xclGetReadMaxBandwidthMBps()
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double shim::xclGetHostReadMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 15753.85;
 }
 
-// Get the maximum bandwidth for host writes to the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double shim::xclGetWriteMaxBandwidthMBps() {
-  return 9600.0;
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double shim::xclGetHostWriteMaxBandwidthMBps()
+{
+  return 15753.85;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double shim::xclGetKernelReadMaxBandwidthMBps()
+{
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double shim::xclGetKernelWriteMaxBandwidthMBps()
+{
+  return 19250.00;
 }
 
 int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
@@ -2924,17 +2937,30 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   return drv ? drv->xclGetDeviceClockFreqMHz() : 0.0;
 }
 
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostReadMaxBandwidthMBps() : 0.0;
 }
 
 
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
   xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostWriteMaxBandwidthMBps() : 0.0;
+}
+
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetHostReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclGetHostWriteMaxBandwidthMBps() : 0.0;
 }
 
 int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,

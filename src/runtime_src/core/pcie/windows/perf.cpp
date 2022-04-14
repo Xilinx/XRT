@@ -45,14 +45,30 @@ xclGetDeviceTimestamp(xclDeviceHandle handle)
   return 0;
 }
 
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  return 9600.0;
+  return 15753.85;
 }
 
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  return 9600.0;
+  return 15753.85;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  return 19250.00;
 }
 
 #if 0

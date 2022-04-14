@@ -277,8 +277,10 @@ class aie_cfg_tile
 
   struct XclbinInfo {
     // Choose reasonable defaults
-    double maxReadBW = 0.0 ;
-    double maxWriteBW = 0.0 ;
+    double hostMaxReadBW = 0.0;
+    double hostMaxWriteBW = 0.0;
+    double kernelMaxReadBW = 0.0;
+    double kernelMaxWriteBW = 0.0;
     double clockRateMHz = 300 ;
     bool usesTs2mm = false ;
     bool hasFloatingAIMwithTrace = false;
@@ -816,36 +818,53 @@ class aie_cfg_tile
       return deviceInfo[deviceId]->kdmaCount; 
     }
 
-    void setMaxReadBW(uint64_t deviceId, double bw)
+    void setHostMaxReadBW(uint64_t deviceId, double bw)
     {
-      if (deviceInfo.find(deviceId) == deviceInfo.end()) return ;
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return ;
-      deviceInfo[deviceId]->loadedXclbins.back()->maxReadBW = bw ;
-      //deviceInfo[deviceId]->maxReadBW = bw ;
+      deviceInfo[deviceId]->loadedXclbins.back()->hostMaxReadBW = bw ;
     }
-
-    double getMaxReadBW(uint64_t deviceId)
+    double getHostMaxReadBW(uint64_t deviceId)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return 0 ;
-      return deviceInfo[deviceId]->loadedXclbins.back()->maxReadBW ;
-      //return deviceInfo[deviceId]->maxReadBW ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->hostMaxReadBW ;
     }
-
-    void setMaxWriteBW(uint64_t deviceId, double bw)
+    void setHostMaxWriteBW(uint64_t deviceId, double bw)
     {
-      if (deviceInfo.find(deviceId) == deviceInfo.end()) return ;
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return ;
-      deviceInfo[deviceId]->loadedXclbins.back()->maxWriteBW = bw ;
-      //deviceInfo[deviceId]->maxWriteBW = bw ;
+      deviceInfo[deviceId]->loadedXclbins.back()->hostMaxWriteBW = bw ;
     }
-
-    double getMaxWriteBW(uint64_t deviceId)
+    double getHostMaxWriteBW(uint64_t deviceId)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return 0 ;
-      return deviceInfo[deviceId]->loadedXclbins.back()->maxWriteBW ;
-      //return deviceInfo[deviceId]->maxWriteBW ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->hostMaxWriteBW ;
+    }
+    void setKernelMaxReadBW(uint64_t deviceId, double bw)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return ;
+      deviceInfo[deviceId]->loadedXclbins.back()->kernelMaxReadBW = bw ;
+    }
+    double getKernelMaxReadBW(uint64_t deviceId)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return 0 ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->kernelMaxReadBW ;
+    }
+    void setKernelMaxWriteBW(uint64_t deviceId, double bw)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return ;
+      deviceInfo[deviceId]->loadedXclbins.back()->kernelMaxWriteBW = bw ;
+    }
+    double getKernelMaxWriteBW(uint64_t deviceId)
+    {
+      if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
+      if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return 0 ;
+      return deviceInfo[deviceId]->loadedXclbins.back()->kernelMaxWriteBW ;
     }
 
     std::string getXclbinName(uint64_t deviceId) { 

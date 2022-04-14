@@ -731,7 +731,7 @@ namespace xdp {
         double transferRate  = totalSizeInMB / totalTimeInS; 
 
 	double maxReadBW =
-	  (db->getStaticInfo()).getMaxReadBW(read.first.second) ;
+	  (db->getStaticInfo()).getHostMaxReadBW(read.first.second) ;
 	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
 
 	fout << contextName << ":" << numDevices << ","
@@ -769,7 +769,7 @@ namespace xdp {
         double transferRate  = totalSizeInMB / totalTimeInS; 
 
 	double maxWriteBW =
-	  (db->getStaticInfo()).getMaxWriteBW(write.first.second);
+	  (db->getStaticInfo()).getHostMaxWriteBW(write.first.second);
 	double aveBWUtil = (100.0 * transferRate) / maxWriteBW ;
 
 	fout << contextName << ":" << numDevices << "," 
@@ -856,7 +856,7 @@ namespace xdp {
 	    double transferRate = (totalWriteTime == 0.0) ? 0 :
 	      (double)(values.WriteBytes[monitorId]) / (1000.0 * totalWriteTime);
 	    double aveBW =
-	      (100.0 * transferRate) / xclbin->maxWriteBW ;
+	      (100.0 * transferRate) / xclbin->kernelMaxWriteBW ;
 	    if (aveBW > 100.0) aveBW = 100.0 ;
 
 	    fout << device->getUniqueDeviceName() << ","
@@ -876,7 +876,7 @@ namespace xdp {
 	      double transferRate = (totalReadTime == 0.0) ? 0 :
 		(double)(values.ReadBytes[monitorId]) / (1000.0 * totalReadTime);
 	      double aveBW =
-		(100.0 * transferRate) / xclbin->maxReadBW ;
+		(100.0 * transferRate) / xclbin->kernelMaxReadBW ;
 	      if (aveBW > 100.0) aveBW = 100.0 ;
 
 	      fout << device->getUniqueDeviceName() << ","

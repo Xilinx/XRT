@@ -140,14 +140,24 @@ uint64_t XrtDevice::getDeviceAddr(size_t xdpBoHandle)
   return mXrtDevice->getDeviceAddr(m_bos[idx]);
 }
 
-double XrtDevice::getMaxBwRead()
+double XrtDevice::getHostMaxBwRead()
 {
-  return mXrtDevice->getDeviceMaxRead().get();
+  return mXrtDevice->getHostMaxRead().get();
 }
 
-double XrtDevice::getMaxBwWrite()
+double XrtDevice::getHostMaxBwWrite()
 {
-  return mXrtDevice->getDeviceMaxWrite().get();
+  return mXrtDevice->getHostMaxWrite().get();
+}
+
+double XrtDevice::getKernelMaxBwRead()
+{
+  return mXrtDevice->getKernelMaxRead().get();
+}
+
+double XrtDevice::getKernelMaxBwWrite()
+{
+  return mXrtDevice->getKernelMaxWrite().get();
 }
 
 std::string XrtDevice::getSubDevicePath(std::string& subdev, uint32_t index)

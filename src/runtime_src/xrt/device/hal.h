@@ -509,13 +509,25 @@ public:
   }
 
   virtual operations_result<double>
-  getDeviceMaxRead()
+  getHostMaxRead()
   {
     return operations_result<double>();
   }
 
   virtual operations_result<double>
-  getDeviceMaxWrite()
+  getHostMaxWrite()
+  {
+    return operations_result<double>();
+  }
+
+  virtual operations_result<double>
+  getKernelMaxRead()
+  {
+    return operations_result<double>();
+  }
+
+  virtual operations_result<double>
+  getKernelMaxWrite()
   {
     return operations_result<double>();
   }
