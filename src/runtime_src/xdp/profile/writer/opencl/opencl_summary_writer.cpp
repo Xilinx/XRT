@@ -733,6 +733,7 @@ namespace xdp {
 	double maxReadBW =
 	  (db->getStaticInfo()).getHostMaxReadBW(read.first.second) ;
 	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
+        if (aveBWUtil > 100.0) aveBWUtil = 100.0 ;
 
 	fout << contextName << ":" << numDevices << ","
 	     << "READ" << ","
@@ -771,6 +772,7 @@ namespace xdp {
 	double maxWriteBW =
 	  (db->getStaticInfo()).getHostMaxWriteBW(write.first.second);
 	double aveBWUtil = (100.0 * transferRate) / maxWriteBW ;
+        if (aveBWUtil > 100.0) aveBWUtil = 100.0 ;
 
 	fout << contextName << ":" << numDevices << "," 
 	     << "WRITE" << ","

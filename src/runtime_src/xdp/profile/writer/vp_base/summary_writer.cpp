@@ -982,6 +982,7 @@ namespace xdp {
 	double maxReadBW =
 	  (db->getStaticInfo()).getHostMaxReadBW(deviceId) ;
 	double aveBWUtil = (one_hundred * transferRate) / maxReadBW ;
+        if (aveBWUtil > 100.0) aveBWUtil = 100.0;
 
 	fout << transferRate << "," ;
 	fout << aveBWUtil << "," ;
@@ -1046,6 +1047,7 @@ namespace xdp {
 	double maxReadBW =
 	  (db->getStaticInfo()).getHostMaxReadBW(deviceId) ;
 	double aveBWUtil = (one_hundred * transferRate) / maxReadBW ;
+        if (aveBWUtil > 100.0) aveBWUtil = 100.0;
 
 	fout << transferRate << "," ;
 	fout << aveBWUtil << "," ;
