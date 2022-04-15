@@ -1521,7 +1521,7 @@ namespace xdp {
 	 ++iter)
     {
       double durationMS = (double)((*iter).duration) / 1.0e6 ;
-      double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+      double rate = ((double)((*iter).size) / 1000.0) / durationMS ;
 
       fout << (*iter).address << ","
 	   << (*iter).contextId << ","
@@ -1558,7 +1558,7 @@ namespace xdp {
 	 ++iter)
     {
       double durationMS = (double)((*iter).duration) / 1.0e6 ;
-      double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+      double rate = ((double)((*iter).size) / 1000.0) / durationMS ;
 
       fout << (*iter).address << "," 
 	   << (*iter).contextId << ","
