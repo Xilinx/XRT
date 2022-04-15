@@ -40,7 +40,7 @@ static void printHelp() {
 int main(int argc, char* argv[]) {
     std::string dev_id = "0";
     std::string test_path;
-    std::string b_file = "/validate_aie_pl.xclbin";
+    std::string b_file = "/vck5000_pcie_pl_controller.xclbin.xclbin";
     bool flag_s = false;
     for (int i = 1; i < argc; i++) {
         if ((strcmp(argv[i], "-p") == 0) || (strcmp(argv[i], "--path") == 0)) {
@@ -85,7 +85,11 @@ int main(int argc, char* argv[]) {
 
 
     // instance of plController
-    xf::plctrl::plController m_pl_ctrl("aie_control_config.json", "dma_lock_report.json");
+    std::string aie_control_file = "/aie_control_config.json";
+    std::string dma_lock_file = "/dma_lock_report.json";
+    std::string aie_control = test_path + aie_control_file;
+    std::string dma_lock = test_path + dma_lock_file;
+    xf::plctrl::plController m_pl_ctrl(aie_control.c_str(), dma_lock.c_str());
 
     int num_iter = 1;
     int num_sample = 16;
