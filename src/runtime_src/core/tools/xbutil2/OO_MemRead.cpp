@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Licensed under the Apache License, Version
+ * Copyright (C) 2020-2022 Licensed under the Apache License, Version
  * 2.0 (the "License"). You may not use this file except in
  * compliance with the License. A copy of the License is located
  * at
@@ -18,6 +18,7 @@
 #include "OO_MemRead.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -45,7 +46,7 @@ OO_MemRead::OO_MemRead( const std::string &_longName, bool _isHidden )
     ("output,o", boost::program_options::value<decltype(m_outputFile)>(&m_outputFile)->required(), "Output file")
     ("address", boost::program_options::value<decltype(m_baseAddress)>(&m_baseAddress)->required(), "Base address to start from")
     ("size", boost::program_options::value<decltype(m_sizeBytes)>(&m_sizeBytes)->required(), "Size (bytes) to read")
-    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.

@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo CU Sub-device Driver
  *
- * Copyright (C) 2021 Xilinx, Inc.
+ * Copyright (C) 2021-2022 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -20,6 +20,8 @@ struct xrt_cu_xgq {
 	u32			 ready;
 	void			*xgq;
 	int			 xgq_client_id;
+	int			 cu_idx;
+	int			 cu_domain;
 };
 
 static int cu_xgq_alloc_credit(void *core)
@@ -39,11 +41,7 @@ static int cu_xgq_peek_credit(void *core)
 
 static int cu_xgq_configure(void *core, u32 *data, size_t sz, int type)
 {
-	struct xrt_cu_xgq *cu_xgq = core;
-	int ret = 0;
-
-	ret = xocl_xgq_set_command(cu_xgq->xgq, cu_xgq->xgq_client_id, data, sz);
-	return ret;
+	return 0;
 }
 
 static void cu_xgq_start(void *core)
@@ -58,10 +56,7 @@ static void cu_xgq_check(void *core, struct xcu_status *status, bool force)
 	struct xrt_cu_xgq *cu_xgq = core;
 
 	status->num_ready = 1;
-	status->num_done = 0;
-	while (!xocl_xgq_get_response(cu_xgq->xgq, cu_xgq->xgq_client_id)) {
-		status->num_done += 1;
-	}
+	while (!xocl_xgq_check_response(cu_xgq->xgq, cu_xgq->xgq_client_id));
 	status->new_status = 0x4;
 }
 
@@ -90,6 +85,34 @@ static bool cu_xgq_reset_done(void *core)
 	return true;
 }
 
+static int cu_xgq_submit_config(void *core, struct kds_command *xcmd)
+{
+	struct xrt_cu_xgq *cu_xgq = core;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int ret = 0;
+
+	hdr = (struct xgq_cmd_sq_hdr *)xcmd->info;
+	hdr->cu_idx = cu_xgq->cu_idx;
+	hdr->cu_domain = cu_xgq->cu_domain;
+	ret = xocl_xgq_set_command(cu_xgq->xgq, cu_xgq->xgq_client_id, xcmd);
+	return ret;
+}
+
+static struct kds_command *cu_xgq_get_complete(void *core)
+{
+	struct xrt_cu_xgq *cu_xgq = core;
+
+	return xocl_xgq_get_command(cu_xgq->xgq, cu_xgq->xgq_client_id);
+}
+
+static int cu_xgq_abort(void *core, void *cond,
+			bool (*match)(struct kds_command *xcmd, void *cond))
+{
+	struct xrt_cu_xgq *cu_xgq = core;
+
+	return xocl_xgq_abort(cu_xgq->xgq, cu_xgq->xgq_client_id, cond, match);
+}
+
 static struct xcu_funcs xrt_cu_xgq_funcs = {
 	.alloc_credit	= cu_xgq_alloc_credit,
 	.free_credit	= cu_xgq_free_credit,
@@ -102,24 +125,33 @@ static struct xcu_funcs xrt_cu_xgq_funcs = {
 	.clear_intr	= cu_xgq_clear_intr,
 	.reset		= cu_xgq_reset,
 	.reset_done	= cu_xgq_reset_done,
+	.submit_config  = cu_xgq_submit_config,
+	.get_complete   = cu_xgq_get_complete,
+	.abort		= cu_xgq_abort,
 };
 
-int xrt_cu_xgq_init(struct xrt_cu *xcu)
+int xrt_cu_xgq_init(struct xrt_cu *xcu, int slow_path)
 {
 	struct xrt_cu_xgq *core = NULL;
+	u32 prot = 0;
 	int err = 0;
 
 	core = kzalloc(sizeof(struct xrt_cu_xgq), GFP_KERNEL);
 	if (!core)
 		return -ENOMEM;
 
+	if (slow_path)
+		prot = XGQ_PROT_NEED_RESP;
+
 	core->xgq = xcu->info.xgq;
-	err = xocl_xgq_attach(core->xgq, (void *)core, &core->xgq_client_id);
+	err = xocl_xgq_attach(core->xgq, (void *)core, prot, &core->xgq_client_id);
 	if (err)
 		return err;
 
 	core->max_credits = 1;
 	core->credits = 1;
+	core->cu_idx = xcu->info.cu_idx;
+	core->cu_domain = xcu->info.cu_domain;
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_xgq_funcs;

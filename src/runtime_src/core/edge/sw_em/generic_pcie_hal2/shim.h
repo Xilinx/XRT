@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #ifndef _SW_EMU_SHIM_H_
 #define _SW_EMU_SHIM_H_
 
@@ -31,6 +30,8 @@
 #include "core/common/scheduler.h"
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/api/xclbin_int.h"
+#include "core/include/experimental/xrt_xclbin.h"
 #include "swscheduler.h"
 
 #include <stdarg.h>
@@ -66,6 +67,7 @@ namespace xclcpuemhal2 {
       bool isAieEnabled(const xclBin* header);
       bool parseIni(unsigned int& debugPort) ;
       static std::map<std::string, std::string> mEnvironmentNameValueMap;
+      void getCuRangeIdx();
   public:
       // HAL2 RELATED member functions start
       unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
@@ -116,8 +118,10 @@ namespace xclcpuemhal2 {
       // Performance monitoring
       // Control
       double xclGetDeviceClockFreqMHz();
-      double xclGetReadMaxBandwidthMBps();
-      double xclGetWriteMaxBandwidthMBps();
+      double xclGetHostReadMaxBandwidthMBps();
+      double xclGetHostWriteMaxBandwidthMBps();
+      double xclGetKernelReadMaxBandwidthMBps();
+      double xclGetKemrnelWriteMaxBandwidthMBps();
       void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
       size_t xclPerfMonClockTraining(xclPerfMonType type);
       // Counters
@@ -156,11 +160,22 @@ namespace xclcpuemhal2 {
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
       int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
       int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+      int xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const;
       int xclExecWait(int timeoutMilliSec);
       int xclExecBuf(unsigned int cmdBO);
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
       //Get CU index from IP_LAYOUT section for corresponding kernel name
       int xclIPName2Index(const char *name);
+      //Check if its a valid CU by comparing with sorted cu list
+      bool isValidCu(uint32_t cu_index);
+      //get Address Range for a particular cu from mCURangeMap
+      uint64_t getCuAddRange(uint32_t cu_index);
+      //Check if the offset is valid and within the cuAddRange limit
+      bool isValidOffset(uint32_t offset, uint64_t cuAddRange);
+      //common proc which calls xclRegRead/xclRegWrite RPC calls based on read/write
+      int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
+      int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
+      int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
@@ -171,7 +186,7 @@ namespace xclcpuemhal2 {
       SWScheduler* getScheduler() { return mSWSch; }
       //******************************* XRT Graph API's **************************************************//
       /**
-      * xrtGraphInit() - Initialize graph 
+      * xrtGraphInit() - Initialize graph
       *
       * @gh:             Handle to graph previously opened with xrtGraphOpen.
       * Return:          0 on success, -1 on error
@@ -180,7 +195,7 @@ namespace xclcpuemhal2 {
       */
       int
         xrtGraphInit(void * gh);
-      
+
       /**
       * xrtGraphRun() - Start a graph execution
       *
@@ -207,7 +222,7 @@ namespace xclcpuemhal2 {
       * forever or graph that has multi-rate core(s).
       */
       int
-        xrtGraphWait(void * gh);          
+        xrtGraphWait(void * gh);
 
       /**
       * xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
@@ -215,7 +230,7 @@ namespace xclcpuemhal2 {
       *                 is done before end the graph. If graph already run more
       *                 than the given cycle, stop the graph immediately and end it.
       *
-      * @gh:              Handle to graph previously opened with xrtGraphOpen.      
+      * @gh:              Handle to graph previously opened with xrtGraphOpen.
       *
       * Return:          0 on success, -1 on timeout.
       *
@@ -381,6 +396,8 @@ namespace xclcpuemhal2 {
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
+      std::map<std::string, uint64_t> mCURangeMap;
+      xrt::xclbin m_xclbin;
 
       std::set<unsigned int > mImportedBOs;
       exec_core* mCore;
@@ -407,7 +424,7 @@ namespace xclcpuemhal2 {
     xclcpuemhal2::CpuemShim*  getDeviceHandle() {  return _deviceHandle;  }
     const char*  getGraphName() { return _graph; }
     unsigned int  getGraphHandle() { return graphHandle; }
-  private: 
+  private:
     xclcpuemhal2::CpuemShim*  _deviceHandle;
     //const uuid_t _xclbin_uuid;
     const char* _graph;
@@ -422,7 +439,7 @@ namespace xclcpuemhal2 {
     };
     graph_state _state;
     std::string _name;
-    uint64_t _startTime;  
+    uint64_t _startTime;
     /* This is the collections of rtps that are used. */
     std::vector<std::string> rtps;
     static unsigned int mGraphHandle;

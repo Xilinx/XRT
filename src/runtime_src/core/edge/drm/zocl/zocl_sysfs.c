@@ -81,6 +81,31 @@ static ssize_t xclbinid_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(xclbinid);
 
+static ssize_t dtbo_path_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct drm_zocl_slot *zocl_slot = NULL;
+	const char *raw_fmt = "%d %s\n";
+	ssize_t size = 0;
+	ssize_t count = 0;
+	int i = 0;
+
+	for (i = 0; i < zdev->num_pr_slot; i++) {
+		zocl_slot = zdev->pr_slot[i];
+		if (!zocl_slot || !zocl_slot->slot_xclbin ||
+		    !zocl_slot->slot_xclbin->zx_dtbo_path)
+			continue;
+
+		count = sprintf(buf+size, raw_fmt, zocl_slot->slot_idx,
+				zocl_slot->slot_xclbin->zx_dtbo_path);
+		size += count;
+	}
+
+	return size;
+}
+static DEVICE_ATTR_RO(dtbo_path);
+
 static ssize_t kds_numcus_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -179,17 +204,12 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 	size_t memory_usage = 0;
 	unsigned int bo_count = 0;
 	const char *txt_fmt = "[%s] 0x%012llx\t(%4lluMB):\t%lluKB\t%dBOs\n";
-	const char *raw_fmt = "%llu %d\n";
+	const char *raw_fmt = "%llu %d %llu\n";
 
 	if (!zdev)
 		return 0;
 
 	read_lock(&zdev->attr_rwlock);
-
-	if (!zdev || !zdev->mem) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
-	}
 
         list_for_each_entry(memp, &zdev->zm_list_head, link) {
 		if (memp->zm_type == ZOCL_MEM_TYPE_STREAMING)
@@ -199,7 +219,7 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 		bo_count = memp->zm_stat.bo_count;
 
 		if (raw)
-			count = sprintf(buf, raw_fmt, memory_usage, bo_count);
+			count = sprintf(buf, raw_fmt, memory_usage, bo_count, 0);
 		else {
 			count = sprintf(buf, txt_fmt,
 			    memp->zm_used ? "IN-USE" : "UNUSED",
@@ -378,6 +398,7 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_errors.attr,
 	&dev_attr_graph_status.attr,
+	&dev_attr_dtbo_path.attr,
 	NULL,
 };
 

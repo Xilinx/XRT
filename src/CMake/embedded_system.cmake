@@ -108,7 +108,7 @@ message("-- Preparing XRT pkg-config")
 set(XRT_PKG_CONFIG_DIR "/usr/lib/pkgconfig")
 
 configure_file (
-  ${CMAKE_SOURCE_DIR}/CMake/config/xrt.pc.in
+  ${XRT_SOURCE_DIR}/CMake/config/xrt.pc.in
   xrt.pc
   @ONLY
   )

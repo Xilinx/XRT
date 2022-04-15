@@ -79,7 +79,7 @@ namespace xdp {
 
       readTrace() ;
       readCounters() ;
-      XDPPlugin::endWrite(false);
+      XDPPlugin::endWrite();
       db->unregisterPlugin(this) ;
     }
 
@@ -199,8 +199,10 @@ namespace xdp {
 
     // Once the device has been set up, add additional information to 
     //  the static database
-    (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
-    (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
+    (db->getStaticInfo()).setHostMaxReadBW(deviceId, devInterface->getHostMaxBwRead()) ;
+    (db->getStaticInfo()).setHostMaxWriteBW(deviceId, devInterface->getHostMaxBwWrite());
+    (db->getStaticInfo()).setKernelMaxReadBW(deviceId, devInterface->getKernelMaxBwRead()) ;
+    (db->getStaticInfo()).setKernelMaxWriteBW(deviceId, devInterface->getKernelMaxBwWrite());
   }
   
 } // end namespace xdp

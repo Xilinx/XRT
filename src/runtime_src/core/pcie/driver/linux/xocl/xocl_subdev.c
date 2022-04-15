@@ -1718,12 +1718,10 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		xocl_xdev_dbg(xdev, "xdev flash_type %s", core->priv.flash_type);
 
 		ret = xocl_subdev_create(xdev, &subdev_info);
-		if (ret) {
-			xocl_xdev_err(xdev, "Create VMR subdev failed. %d", ret);
+		if (ret)
 			goto done;
-		}
 
-		xocl_xdev_dbg(xdev, "VSEC VMR created.");
+		xocl_xdev_info(xdev, "VSEC VMR created.");
 	}
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset, NULL);
@@ -1792,6 +1790,10 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		xocl_xdev_info(xdev_hdl, "found vsec cap, platform type %d",
 				ptype);
 		xocl_fetch_dynamic_platform(core, &in, ptype);
+		vsec = true;
+	} else if (ret == -ENOENT) {
+		/* VSEC is found but PLATFORM_INFO does not exist. (versal) */
+		xocl_fetch_dynamic_platform(core, &in, -1);
 		vsec = true;
 	}
 		
@@ -1905,12 +1907,6 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
  *       if any of this procedure fails due to fatal error, a hot reset warning
  *       will be reported.
  */
-void xocl_reload_vmr(xdev_handle_t xdev)
-{
-	if (!xocl_enable_vmr_boot(xdev))
-		(void) xocl_download_apu_firmware(xdev);
-}
-
 int xocl_enable_vmr_boot(xdev_handle_t xdev)
 {
 	int err = 0;

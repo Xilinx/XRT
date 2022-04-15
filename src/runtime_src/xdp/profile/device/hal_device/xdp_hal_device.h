@@ -55,8 +55,10 @@ public:
   virtual uint64_t getDeviceAddr(size_t xdpBoHandle);
   virtual void* getRawDevice() { return mHalDevice ; }
 
-  virtual double getMaxBwRead();
-  virtual double getMaxBwWrite();
+  virtual double getHostMaxBwRead();
+  virtual double getHostMaxBwWrite();
+  virtual double getKernelMaxBwRead();
+  virtual double getKernelMaxBwWrite();
 
   virtual std::string getSubDevicePath(std::string& subdev, uint32_t index);
 };

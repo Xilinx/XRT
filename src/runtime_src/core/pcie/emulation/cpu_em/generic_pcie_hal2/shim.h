@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,7 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #ifndef _SW_EMU_SHIM_H_
 #define _SW_EMU_SHIM_H_
 
@@ -50,6 +49,7 @@
 
 namespace xclcpuemhal2 {
   using key_type = xrt_core::query::key_type;
+  const uint64_t MEMSIZE = 0x0000000080000000;
   // XDMA Shim
   class CpuemShim {
     public:
@@ -118,8 +118,10 @@ namespace xclcpuemhal2 {
       // Performance monitoring
       // Control
       double xclGetDeviceClockFreqMHz();
-      double xclGetReadMaxBandwidthMBps();
-      double xclGetWriteMaxBandwidthMBps();
+      double xclGetHostReadMaxBandwidthMBps();
+      double xclGetHostWriteMaxBandwidthMBps();
+      double xclGetKernelReadMaxBandwidthMBps();
+      double xclGetKernelWriteMaxBandwidthMBps();
       void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
       size_t xclPerfMonClockTraining(xclPerfMonType type);
       // Counters
@@ -143,7 +145,7 @@ namespace xclcpuemhal2 {
 
 
       ~CpuemShim();
-      CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified, 
+      CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified,
         bool bXPR, FeatureRomHeader &featureRom, const boost::property_tree::ptree & platformData);
 
       static CpuemShim *handleCheck(void *handle);
@@ -159,6 +161,7 @@ namespace xclcpuemhal2 {
       ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
       int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
       int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+      int xclOpenContextByName(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const;
       int xclExecWait(int timeoutMilliSec);
       int xclExecBuf(unsigned int cmdBO);
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
@@ -171,7 +174,7 @@ namespace xclcpuemhal2 {
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
-      
+
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
@@ -187,7 +190,7 @@ namespace xclcpuemhal2 {
 
       //******************************* XRT Graph API's **************************************************//
       /**
-      * xrtGraphInit() - Initialize graph 
+      * xrtGraphInit() - Initialize graph
       *
       * @gh:             Handle to graph previously opened with xrtGraphOpen.
       * Return:          0 on success, -1 on error
@@ -196,7 +199,7 @@ namespace xclcpuemhal2 {
       */
       int
         xrtGraphInit(void * gh);
-      
+
       /**
       * xrtGraphRun() - Start a graph execution
       *
@@ -223,7 +226,7 @@ namespace xclcpuemhal2 {
       * forever or graph that has multi-rate core(s).
       */
       int
-        xrtGraphWait(void * gh);          
+        xrtGraphWait(void * gh);
 
       /**
       * xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
@@ -231,7 +234,7 @@ namespace xclcpuemhal2 {
       *                 is done before end the graph. If graph already run more
       *                 than the given cycle, stop the graph immediately and end it.
       *
-      * @gh:              Handle to graph previously opened with xrtGraphOpen.      
+      * @gh:              Handle to graph previously opened with xrtGraphOpen.
       *
       * Return:          0 on success, -1 on timeout.
       *
@@ -325,7 +328,7 @@ namespace xclcpuemhal2 {
 
       // //******************************* XRT Graph API's **************************************************//
       // /**
-      // * xrtGraphInit() - Initialize graph 
+      // * xrtGraphInit() - Initialize graph
       // *
       // * @gh:             Handle to graph previously opened with xrtGraphOpen.
       // * Return:          0 on success, -1 on error
@@ -334,7 +337,7 @@ namespace xclcpuemhal2 {
       // */
       // int
       //   xrtGraphInit(void * gh);
-      // 
+      //
       // /**
       // * xrtGraphRun() - Start a graph execution
       // *
@@ -346,7 +349,7 @@ namespace xclcpuemhal2 {
       // */
       // int
       //   xrtGraphRun(void * gh, uint32_t iterations);
-      // 
+      //
       // /**
       // * xrtGraphWait() -  Wait a given AIE cycle since the last xrtGraphRun and
       // *                   then stop the graph. If cycle is 0, busy wait until graph
@@ -361,15 +364,15 @@ namespace xclcpuemhal2 {
       // * forever or graph that has multi-rate core(s).
       // */
       // int
-      //   xrtGraphWait(void * gh);          
-      // 
+      //   xrtGraphWait(void * gh);
+      //
       // /**
       // * xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
       // *                 then end the graph. busy wait until graph
       // *                 is done before end the graph. If graph already run more
       // *                 than the given cycle, stop the graph immediately and end it.
       // *
-      // * @gh:              Handle to graph previously opened with xrtGraphOpen.      
+      // * @gh:              Handle to graph previously opened with xrtGraphOpen.
       // *
       // * Return:          0 on success, -1 on timeout.
       // *
@@ -378,7 +381,7 @@ namespace xclcpuemhal2 {
       // */
       // int
       //   xrtGraphEnd(void * gh);
-      // 
+      //
       // /**
       // * xrtGraphUpdateRTP() - Update RTP value of port with hierarchical name
       // *
@@ -391,7 +394,7 @@ namespace xclcpuemhal2 {
       // */
       // int
       //   xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char *buffer, size_t size);
-      // 
+      //
       // /**
       // * xrtGraphUpdateRTP() - Read RTP value of port with hierarchical name
       // *
@@ -478,9 +481,9 @@ namespace xclcpuemhal2 {
       // HAL2 RELATED member variables start
       std::map<int, xclemulation::drm_xocl_bo*> mXoclObjMap;
       static unsigned int mBufferCount;
-      static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
+      static std::map<int, std::tuple<std::string, uint64_t, void*> > mFdToFileNameMap;
       // HAL2 RELATED member variables end
-      std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
+      std::list<std::tuple<uint64_t, void*, std::map<uint64_t, uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
       boost::property_tree::ptree mPlatformData;
@@ -510,7 +513,7 @@ namespace xclcpuemhal2 {
     xclcpuemhal2::CpuemShim*  getDeviceHandle() {  return _deviceHandle;  }
     const char*  getGraphName() { return _graph; }
     unsigned int  getGraphHandle() { return graphHandle; }
-  private: 
+  private:
     xclcpuemhal2::CpuemShim*  _deviceHandle;
     //const uuid_t _xclbin_uuid;
     const char* _graph;
@@ -525,7 +528,7 @@ namespace xclcpuemhal2 {
     };
     graph_state _state;
     std::string _name;
-    uint64_t _startTime;  
+    uint64_t _startTime;
     /* This is the collections of rtps that are used. */
     std::vector<std::string> rtps;
     static unsigned int mGraphHandle;

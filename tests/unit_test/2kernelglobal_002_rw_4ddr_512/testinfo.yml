@@ -11,7 +11,7 @@ user:
   host_args: {all: bandwidth.xclbin}
   host_cflags: ' -DDSA64 -DTYPESIZE=512 -DTYPE=uint16 -DTYPEISVECTOR=1 -DRUNMODE=2'
   host_exe: host.exe
-  host_src: main.c
+  host_src: main.cpp
   kernels:
   - {cflags: {all: ' -I.'}, file: bandwidth1.xo, ksrc: kernel.cl, name: bandwidth1, type: C}
   - {cflags: {all: ' -I.'}, file: bandwidth2.xo, ksrc: kernel.cl, name: bandwidth2, type: C}

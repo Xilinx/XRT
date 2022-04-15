@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -140,14 +141,24 @@ uint64_t XrtDevice::getDeviceAddr(size_t xdpBoHandle)
   return mXrtDevice->getDeviceAddr(m_bos[idx]);
 }
 
-double XrtDevice::getMaxBwRead()
+double XrtDevice::getHostMaxBwRead()
 {
-  return mXrtDevice->getDeviceMaxRead().get();
+  return mXrtDevice->getHostMaxRead().get();
 }
 
-double XrtDevice::getMaxBwWrite()
+double XrtDevice::getHostMaxBwWrite()
 {
-  return mXrtDevice->getDeviceMaxWrite().get();
+  return mXrtDevice->getHostMaxWrite().get();
+}
+
+double XrtDevice::getKernelMaxBwRead()
+{
+  return mXrtDevice->getKernelMaxRead().get();
+}
+
+double XrtDevice::getKernelMaxBwWrite()
+{
+  return mXrtDevice->getKernelMaxWrite().get();
 }
 
 std::string XrtDevice::getSubDevicePath(std::string& subdev, uint32_t index)

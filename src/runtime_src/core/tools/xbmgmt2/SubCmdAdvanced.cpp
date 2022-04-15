@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,13 +17,13 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdAdvanced.h"
-#include "OO_Config.h"
-#include "OO_LoadConfig.h"
+#include "OO_Hotplug.h"
 
 #include "common/system.h"
 #include "common/device.h"
 #include "common/xclbin_parser.h"
 
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -64,15 +64,14 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options"); 
   commonOptions.add_options()
-    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
 
   // -- Define the supporting option options ----
   SubOptionOptions subOptionOptions;
-  subOptionOptions.emplace_back(std::make_shared<OO_Config>("config"));
-  subOptionOptions.emplace_back(std::make_shared<OO_LoadConfig>("load-config"));
+  subOptionOptions.emplace_back(std::make_shared<OO_Hotplug>("hotplug"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 

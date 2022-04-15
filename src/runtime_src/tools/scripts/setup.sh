@@ -25,7 +25,7 @@ if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "redhat"* ]]; then
     fi
 fi
 
-XILINX_XRT=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
+XILINX_XRT=$(readlink -f $(dirname ${BASH_SOURCE[0]:-${(%):-%x}}))
 
 if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
     echo "Invalid location: $XILINX_XRT"

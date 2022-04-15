@@ -1,78 +1,71 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
-include_directories(
-  ${CMAKE_BINARY_DIR} # includes version.h
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+add_subdirectory(api)
+
+add_library(core_common_library_objects OBJECT
+  config_reader.cpp
+  debug.cpp
+  debug_ip.cpp
+  device.cpp
+  error.cpp
+  info_aie.cpp
+  info_memory.cpp
+  info_platform.cpp
+  info_vmr.cpp
+  message.cpp
+  module_loader.cpp
+  query_requests.cpp
+  sensor.cpp
+  system.cpp
+  thread.cpp
+  time.cpp
+  utils.cpp
+  xclbin_parser.cpp
+  xclbin_swemu.cpp
   )
 
-if (NOT WIN32)
-include_directories(${DRM_INCLUDE_DIRS})
-
-pkg_check_modules(LIBDW REQUIRED libdw)
-INCLUDE_DIRECTORIES(${LIBDW_INCLUDEDIR})
-
-pkg_check_modules(LIBELF REQUIRED libelf)
-INCLUDE_DIRECTORIES(${LIBELF_INCLUDEDIR})
-
-pkg_check_modules(LIBFFI REQUIRED libffi)
-INCLUDE_DIRECTORIES(${LIBFFI_INCLUDEDIR})
-
-endif (NOT WIN32)
-
-file(GLOB XRT_CORE_COMMON_SRC_SHARED
-  "config_reader.cpp"
-  "debug.cpp"
-  "debug_ip.cpp"
-  "device.cpp"
-  "error.cpp"
-  "info_*.cpp"
-  "message.cpp"
-  "module_loader.cpp"
-  "query_requests.cpp"
-  "sensor.cpp"
-  "system.cpp"
-  "thread.cpp"
-  "time.cpp"
-  "utils.cpp"
-  "xclbin_parser.cpp"
-  "xclbin_swemu.cpp"
-  "api/*.cpp"
+target_include_directories(core_common_library_objects
+  PRIVATE
+  ${XRT_SOURCE_DIR}/runtime_src
   )
 
-if (DEFINED XRT_AIE_BUILD)
-  message("-- enabling api aie build")
-  list(APPEND XRT_CORE_COMMON_SRC_SHARED "api/aie/xrt_graph.cpp")
-endif()
-
-# The static library files may not contain dependencies on dwarf/elf/ffi
-# so can't include ps kernel sources
-set(XRT_CORE_COMMON_SRC_STATIC ${XRT_CORE_COMMON_SRC_SHARED})
-
-if (DEFINED XRT_PSKERNEL_BUILD)
-  message("-- enabling api ps build")
-  list(APPEND XRT_CORE_COMMON_SRC_SHARED "pskernel_parse.cpp")
-  list(APPEND XRT_CORE_COMMON_SRC_SHARED "api/pskernel/xrt_pskernel.cpp")
-endif()
-
-# Files to include in object list
-file(GLOB XRT_CORE_COMMON_SRC_OBJ
-  "scheduler.cpp"
+target_compile_definitions(core_common_library_objects
+  PRIVATE
+  XRT_VERSION_MAJOR="${XRT_VERSION_MAJOR}"
   )
 
-add_compile_options("-DXRT_VERSION_MAJOR=\"${XRT_VERSION_MAJOR}\"")
+# The scheduler object files are for auto config of scheduler. These
+# files reference xrt_core symbols, hence are excluded from
+# xrt_corecommon shared library and instead linked explicitly into
+# client (core) libraries
+add_library(core_common_objects OBJECT scheduler.cpp)
+target_include_directories(core_common_objects
+  PRIVATE
+  ${XRT_SOURCE_DIR}/runtime_src
+  )
 
-add_library(xrt_coreutil SHARED ${XRT_CORE_COMMON_SRC_SHARED})
-add_library(xrt_coreutil_static STATIC ${XRT_CORE_COMMON_SRC_STATIC})
+add_library(xrt_coreutil SHARED
+  $<TARGET_OBJECTS:core_common_library_objects>
+  $<TARGET_OBJECTS:core_common_api_library_objects>
+  )
+
+add_library(xrt_coreutil_static STATIC
+  $<TARGET_OBJECTS:core_common_library_objects>
+  $<TARGET_OBJECTS:core_common_api_library_objects>
+  )
 
 set_target_properties(xrt_coreutil PROPERTIES
   VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_SOVERSION})
+  SOVERSION ${XRT_SOVERSION}
+  )
 
 # Private dependencies for fully resolved dynamic xrt_coreutil
 target_link_libraries(xrt_coreutil
   PRIVATE
   ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY})
+  ${Boost_SYSTEM_LIBRARY}
+  )
 
 # Targets linking with xrt_coreutil_static must also link with boost
 # libraries used by coreutil.  These type of link dependencies are
@@ -82,7 +75,8 @@ target_link_libraries(xrt_coreutil
 target_link_libraries(xrt_coreutil_static
   INTERFACE
   boost_filesystem
-  boost_system)
+  boost_system
+  )
 
 if (NOT WIN32)
   # Additional link dependencies for xrt_coreutil
@@ -92,11 +86,6 @@ if (NOT WIN32)
   # Targets of xrt_coreutil_static must link with these additional
   # system libraries
   target_link_libraries(xrt_coreutil_static INTERFACE uuid dl rt pthread)
-
-  if (DEFINED XRT_PSKERNEL_BUILD)
-    target_link_libraries(xrt_coreutil PRIVATE ${LIBDW_LDFLAGS} ${LIBELF_LDFLAGS} ${LIBFFI_LDFLAGS})
-  endif()
-  
 endif()
 
 install(TARGETS xrt_coreutil
@@ -110,9 +99,3 @@ install(TARGETS xrt_coreutil xrt_coreutil_static
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
-
-# The scheduler object files are for auto config of scheduler. These
-# files reference xrt_core symbols, hence are excluded from
-# xrt_corecommon shared library and instead linked explicitly into
-# client (core) libraries
-add_library(core_common_objects OBJECT ${XRT_CORE_COMMON_SRC_OBJ})

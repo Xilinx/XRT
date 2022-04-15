@@ -43,7 +43,8 @@ memtype2str(MEM_TYPE mt)
    {MEM_HBM,                  "MEM_HBM"},
    {MEM_BRAM,                 "MEM_BRAM"},
    {MEM_URAM,                 "MEM_URAM"},
-   {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
+   {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"},
+   {MEM_PS_KERNEL,            "MEM_PS_KERNEL"}
   };
 
   auto itr = memtype_map.find(mt);
@@ -242,7 +243,7 @@ struct memory_info_collector
     pt_mem.put("tag", mem->m_tag);
     pt_mem.put("enabled", mem->m_used ? true : false);
     pt_mem.put("base_address", boost::format("0x%x") % mem->m_base_address);
-    pt_mem.put("range_bytes", boost::format("0x%x") % (mem->m_size << 10)); // magic 10
+    pt_mem.put("range_bytes", boost::format("0x%x") % (mem->m_size * 1024)); // convert KB to bytes
   }
 
   // Add mem usage info for specified mem entry.
@@ -466,8 +467,8 @@ scheduler_update_stat(const xrt_core::device *device)
   try {
     // lock xclbin
     std::string xclbin_uuid = xrt_core::device_query<xq::xclbin_uuid>(dev);
-    // dont open a context if xclbin_uuid is empty
-    if(xclbin_uuid.empty())
+    // dont open a context if xclbin_uuid is empty or is all zeros
+    if (xclbin_uuid.empty() || !xrt::uuid(xclbin_uuid))
       return;
     auto uuid = xrt::uuid(xclbin_uuid);
     dev->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);

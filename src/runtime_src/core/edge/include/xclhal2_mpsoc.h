@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2015-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -30,7 +30,6 @@ extern "C" {
 #define	SOFT_KERNEL_FILE_PATH	"/home/softkernel/softkernel/"
 #define	SOFT_KERNEL_FILE_NAME	"sk"
 
-#define	SOFT_KERNEL_REG_SIZE	4096
 #define	AIE_INFO_SIZE		4096
 
 struct xclSKCmd {
@@ -39,6 +38,8 @@ struct xclSKCmd {
     uint32_t	cu_nums;
     char	krnl_name[XRT_MAX_NAME_LENGTH];
     int		bohdl;
+    int		meta_bohdl;
+    unsigned char uuid[16];
 };
 
 struct xclAIECmd {
@@ -49,6 +50,9 @@ struct xclAIECmd {
 
 enum xrt_scu_state {
     XRT_SCU_STATE_DONE,
+    XRT_SCU_STATE_READY,
+    XRT_SCU_STATE_CRASH,
+    XRT_SCU_STATE_FINI,
 };
 
 /**
@@ -99,7 +103,7 @@ XCL_DRIVER_DLLESPEC int xclAIEPutCmd(xclDeviceHandle handle, xclAIECmd *cmd);
  * @cu_idx:        CU index
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclSKCreate(xclDeviceHandle handle, unsigned int boHandle, uint32_t cu_idx);
+XCL_DRIVER_DLLESPEC int xclSKCreate(xclDeviceHandle handle, int *boHandle, uint32_t cu_idx);
 
 /**
  * xclSKReport() - Report a soft kernel compute unit state change

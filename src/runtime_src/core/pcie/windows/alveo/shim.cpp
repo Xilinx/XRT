@@ -17,8 +17,10 @@
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "shim.h"
-#include "xrt_mem.h"
+#include "core/include/shim_int.h"
+
 #include "xclfeatures.h"
+#include "xrt_mem.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/device.h"
@@ -410,6 +412,14 @@ done:
     }
 
     return 0;
+  }
+
+  int
+  open_context(uint32_t slot, const xuid_t xclbin_id, const char* cuname, bool shared)
+  {
+    // Alveo Windows PCIE does not yet support multiple xclbins.
+    // Call regular flow
+    return open_context(xclbin_id, m_core_device->get_cuidx(slot, cuname).index, shared);
   }
 
   int
@@ -1745,7 +1755,25 @@ xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipInd
 	  : shim->open_context(xclbinId, ipIndex, shared);
 }
 
-int xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
+int
+xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared)
+{
+  try {
+    auto shim = get_shim_object(handle);
+    return shim->open_context(slot, xclbin_uuid, cuname, shared);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
+}
+
+int
+xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclCloseContext()");
@@ -2047,9 +2075,8 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
   return 1; // -ENOSYS;
 }
 
-int 
+int
 xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return 1; // -ENOSYS;
 }
-

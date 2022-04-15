@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * This is a wrapper class that does the prep work required to program a flash
  * device. Flasher will create a specific flash object determined by the program
@@ -79,7 +80,7 @@ public:
 
     Flasher(unsigned int index);
     E_FlasherType getFlashType(std::string typeStr = "");
-    int upgradeFirmware(E_FlasherType flash_type, firmwareImage* primary, firmwareImage* secondary);
+    int upgradeFirmware(E_FlasherType flash_type, firmwareImage* primary, firmwareImage* secondary, firmwareImage* stripped);
     int upgradeBMCFirmware(firmwareImage* bmc);
     void readBack(const std::string& output);
     bool isValid(void) { return m_device != nullptr; }

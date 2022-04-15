@@ -125,8 +125,7 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 {
 	struct XHwIcap_Bit_Header bit_header = { 0 };
 	char *data = NULL;
-	unsigned int i = 0;
-	char temp;
+	size_t i;
 
 	memset(&bit_header, 0, sizeof(bit_header));
 	if (xrt_xclbin_parse_header(buffer, DMA_HWICAP_BITFILE_BUFFER_SIZE,
@@ -141,27 +140,17 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 	}
 
 	/*
-	 * Can we do this more efficiently by APIs from byteorder.h?
+	 * Swap bytes to big endian
 	 */
 	data = buffer + bit_header.HeaderLength;
-	for (i = 0; i < bit_header.BitstreamLength ; i = i+4) {
-		temp = data[i];
-		data[i] = data[i+3];
-		data[i+3] = temp;
-
-		temp = data[i+1];
-		data[i+1] = data[i+2];
-		data[i+2] = temp;
-	}
+	for (i = 0; i < (bit_header.BitstreamLength / 4) ; ++i)
+		cpu_to_be32s((u32*)(data) + i);
 
 	/* On pr platofrm load partial bitstream and on Flat platform load full bitstream */
 	if (slot->pr_isolation_addr)
-		return zocl_load_partial(zdev, data, bit_header.BitstreamLength,
-					 slot);
-	else {
-		/* 0 is for full bitstream */
-		return zocl_fpga_mgr_load(zdev, buffer, length, 0);
-	}
+		return zocl_load_partial(zdev, data, bit_header.BitstreamLength, slot);
+	/* 0 is for full bitstream */
+	return zocl_fpga_mgr_load(zdev, buffer, length, 0);
 }
 
 static int
@@ -179,24 +168,49 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	}
 
 	mutex_lock(&sk->sk_lock);
+	if(!IS_ERR(&sk->sk_meta_bo)) {
+		zocl_drm_free_bo(sk->sk_meta_bo);
+	}
 	for (i = 0; i < sk->sk_nimg; i++) {
 		if (IS_ERR(&sk->sk_img[i].si_bo))
 			continue;
-		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_img[i].si_bo->gem_base);
+		zocl_drm_free_bo(sk->sk_img[i].si_bo);
 	}
 	kfree(sk->sk_img);
 	sk->sk_nimg = 0;
 	sk->sk_img = NULL;
-	mutex_unlock(&sk->sk_lock);
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
-	if (count == 0)
+	if (count == 0) {
+		mutex_unlock(&sk->sk_lock);
 		return 0;
+	}
 
-	mutex_lock(&sk->sk_lock);
 
 	sk->sk_nimg = count;
 	sk->sk_img = kzalloc(sizeof(struct scu_image) * count, GFP_KERNEL);
+	header = xrt_xclbin_get_section_hdr_next(axlf, EMBEDDED_METADATA, header);
+	if(header) {
+		DRM_INFO("Found EMBEDDED_METADATA section\n");
+	} else {
+		DRM_ERROR("EMBEDDED_METADATA section not found!\n");
+		mutex_unlock(&sk->sk_lock);
+		return -EINVAL;
+	}
+	sk->sk_meta_bo = zocl_drm_create_bo(zdev->ddev, header->m_sectionSize,
+					    ZOCL_BO_FLAGS_CMA);
+	if (IS_ERR(sk->sk_meta_bo)) {
+		ret = PTR_ERR(sk->sk_meta_bo);
+		DRM_ERROR("Failed to allocate BO: %d\n", ret);
+		mutex_unlock(&sk->sk_lock);
+		return ret;
+	}
+
+	sk->sk_meta_bo->flags = ZOCL_BO_FLAGS_CMA;
+	sk->sk_meta_bohdl = -1;
+	DRM_INFO("Caching EMBEDDED_METADATA\n");
+	memcpy(sk->sk_meta_bo->cma_base.vaddr, xclbin + header->m_sectionOffset,
+	       header->m_sectionSize);
 
 	header = xrt_xclbin_get_section_hdr_next(axlf, SOFT_KERNEL, header);
 	while (header) {
@@ -205,6 +219,7 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 		char *begin = (char *)sp;
 		struct scu_image *sip = &sk->sk_img[sec_idx++];
 
+		DRM_INFO("Found soft kernel %d\n",sec_idx);
 		sip->si_start = scu_idx;
 		sip->si_end = scu_idx + sp->m_num_instances - 1;
 		if (sip->si_end >= MAX_SOFT_KERNEL) {
@@ -227,6 +242,9 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 		memcpy(sip->si_bo->cma_base.vaddr, begin + sp->m_image_offset,
 		    sp->m_image_size);
 
+		strncpy(sip->scu_name,
+		    begin + sp->mpo_symbol_name,
+		    PS_KERNEL_NAME_LENGTH - 1);
 		scu_idx += sp->m_num_instances;
 
 		header = xrt_xclbin_get_section_hdr_next(axlf, SOFT_KERNEL,
@@ -288,6 +306,33 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 		sect = NULL;
 		return 0;
 	}
+
+	return size;
+}
+
+/* Read XCLBIN sections in kernel space */
+/* zocl_read_sect will alloc memory for sect, callers will call vfree */
+static int
+zocl_read_sect_kernel(enum axlf_section_kind kind, void *sect,
+		      struct axlf *axlf_full, char *xclbin_ptr)
+{
+	uint64_t offset = 0;
+	uint64_t size = 0;
+	void **sect_tmp = (void *)sect;
+	int err = 0;
+
+	err = xrt_xclbin_section_info(axlf_full, kind, &offset, &size);
+	if (err) {
+		DRM_INFO("skip kind %d(%s) return code: %d", kind,
+		    xrt_xclbin_kind_to_string(kind), err);
+		return 0;
+	} else {
+		DRM_INFO("found kind %d(%s)", kind,
+		    xrt_xclbin_kind_to_string(kind));
+	}
+
+	*sect_tmp = vmalloc(size);
+	memcpy(*sect_tmp, &xclbin_ptr[offset], size);
 
 	return size;
 }
@@ -590,18 +635,9 @@ zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			cu_info[i].args = (struct xrt_cu_arg *)&krnl_info->args[i];
 			cu_info[i].num_args = krnl_info->anums;
 			cu_info[i].size = krnl_info->range;
-		}
 
-		krnl_info = zocl_query_kernel(slot, cu_info[i].kname);
-		if (!krnl_info) {
-			DRM_WARN("%s CU has no metadata, using default",cu_info[i].kname);
-			cu_info[i].args = NULL;
-			cu_info[i].num_args = 0;
-			cu_info[i].size = 0x10000;
-		} else {
-			cu_info[i].args = (struct xrt_cu_arg *)&krnl_info->args[i];
-			cu_info[i].num_args = krnl_info->anums;
-			cu_info[i].size = krnl_info->range;
+			if (krnl_info->features & KRNL_SW_RESET)
+				cu_info[i].sw_reset = true;
 		}
 
 		/* CU sub device is a virtual device, which means there is no
@@ -655,6 +691,67 @@ zocl_get_slot(struct drm_zocl_dev *zdev, uuid_t *id)
 	}
 
 	return NULL;
+}
+
+/*
+ * Cache the xclbin blob so that it can be shared by processes.
+ *
+ * Note: currently, we only cache xclbin blob for AIE only xclbin to
+ *       support AIE multi-processes. For AIE only xclbin, we load
+ *       the PDI to AIE even it has been loaded. But if a process is
+ *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
+ *       So that a shared AIE context can load AIE metadata without
+ *       reload the hardware and can do non-destructive operations.
+ */
+static int
+zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
+		char __user *xclbin_ptr)
+{
+	int ret = 0;
+	size_t size = axlf->m_header.m_length;
+
+	slot->axlf = vmalloc(size);
+	if (!slot->axlf)
+		return -ENOMEM;
+
+	ret = copy_from_user(slot->axlf, xclbin_ptr, size);
+	if (ret) {
+		vfree(slot->axlf);
+		return ret;
+	}
+
+	slot->axlf_size = size;
+
+	return 0;
+}
+
+/*
+ * Cache the xclbin blob so that it can be shared by processes.
+ *
+ * Note: currently, we only cache xclbin blob for AIE only xclbin to
+ *       support AIE multi-processes. For AIE only xclbin, we load
+ *       the PDI to AIE even it has been loaded. But if a process is
+ *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
+ *       So that a shared AIE context can load AIE metadata without
+ *       reload the hardware and can do non-destructive operations.
+ */
+static int
+zocl_kernel_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
+		char *xclbin_ptr)
+{
+	size_t size = axlf->m_header.m_length;
+
+	slot->axlf = vmalloc(size);
+	if (!slot->axlf) {
+		DRM_ERROR("%s cannot allocate slot->axlf memory!",__func__);
+		return -ENOMEM;
+	}
+
+	memcpy(slot->axlf, xclbin_ptr, size);
+
+	slot->axlf_size = size;
+
+	return 0;
 }
 
 /*
@@ -734,7 +831,12 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
-		ret = zocl_load_pskernel(zdev, axlf);
+		ret = zocl_cache_xclbin(slot, axlf, xclbin);
+		if (ret) {
+			DRM_ERROR("%s cannot cache xclbin",__func__);
+			goto out;
+		}
+		ret = zocl_load_pskernel(zdev, slot->axlf);
 		if (ret)
 			goto out;
 	}
@@ -750,38 +852,6 @@ out:
 		ret);
 	mutex_unlock(&slot->slot_xclbin_lock);
 	return ret;
-}
-
-/*
- * Cache the xclbin blob so that it can be shared by processes.
- *
- * Note: currently, we only cache xclbin blob for AIE only xclbin to
- *       support AIE multi-processes. For AIE only xclbin, we load
- *       the PDI to AIE even it has been loaded. But if a process is
- *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
- *       So that a shared AIE context can load AIE metadata without
- *       reload the hardware and can do non-destructive operations.
- */
-static int
-zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
-		char __user *xclbin_ptr)
-{
-	int ret;
-	size_t size = axlf->m_header.m_length;
-
-	slot->axlf = vmalloc(size);
-	if (!slot->axlf)
-		return -ENOMEM;
-
-	ret = copy_from_user(slot->axlf, xclbin_ptr, size);
-	if (ret) {
-		vfree(slot->axlf);
-		return ret;
-	}
-
-	slot->axlf_size = size;
-
-	return 0;
 }
 
 /*
@@ -830,7 +900,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = axlf_head->m_header.m_numSections-1;
-	xclbin = (char __user *)axlf;
+	xclbin = (char *)axlf;
 	if (zocl_xclbin_get_uuid(slot) != NULL) {
 		if (zdev->aie) {
 			/*
@@ -850,16 +920,21 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
 	 * such a section.
 	 */
-	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
+	zocl_read_sect_kernel(AIE_RESOURCES, &aie_res, axlf, xclbin);
 
 	// Cache full xclbin
 	write_unlock(&zdev->attr_rwlock);
-	zocl_create_aie(zdev, axlf, aie_res);
+	//last argument represents aie generation. 1. aie, 2. aie-ml ...
+	zocl_create_aie(zdev, axlf, aie_res,1);
 	write_lock(&zdev->attr_rwlock);
-	zocl_cache_xclbin(slot, axlf, xclbin);
-	
+
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
+		ret = zocl_kernel_cache_xclbin(slot, axlf, xclbin);
+		if (ret) {
+			DRM_ERROR("%s cannot cache xclbin",__func__);
+			goto out;
+		}
 		ret = zocl_load_pskernel(zdev, slot->axlf);
 		if (ret)
 			goto out;
@@ -885,9 +960,9 @@ static int
 zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 			char __user *xclbin, struct sched_client_ctx *client)
 {
-	uint64_t size;
+	uint64_t size = 0;
 	char *pdi_buf = NULL;
-	int ret;
+	int ret = 0;
 
 	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
 		DRM_ERROR("%s Shared context can not load xclbin", __func__);
@@ -1097,6 +1172,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
 	int slot_id = axlf_obj->za_slot_id;
+	uint8_t hw_gen = axlf_obj->hw_gen;
 
 	if (slot_id > zdev->num_pr_slot) {
 		DRM_ERROR("Invalid Slot[%d]", slot_id);
@@ -1172,7 +1248,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 					DRM_WARN("read xclbin: fail to load AIE");
 				else {
 					write_unlock(&zdev->attr_rwlock);
-					zocl_create_aie(zdev, axlf, aie_res);
+					zocl_create_aie(zdev, axlf, aie_res,hw_gen);
 					write_lock(&zdev->attr_rwlock);
 					zocl_cache_xclbin(slot, axlf, xclbin);
 				}
@@ -1391,13 +1467,15 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* Createing AIE Partition */
 	write_unlock(&zdev->attr_rwlock);
-	zocl_create_aie(zdev, axlf, aie_res);
+	zocl_create_aie(zdev, axlf, aie_res,hw_gen);
 	write_lock(&zdev->attr_rwlock);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.
 	 */
 	slot->slot_xclbin->zx_refcnt = 0;
+	if(ZOCL_PLATFORM_ARM64)
+		zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path);
 	zocl_xclbin_set_uuid(slot, &axlf_head.m_header.uuid);
 
 	/*
@@ -1493,7 +1571,7 @@ zocl_xclbin_hold(struct drm_zocl_slot *slot, const uuid_t *id)
  */
 int zocl_lock_bitstream(struct drm_zocl_slot *slot, const uuid_t *id)
 {
-	int ret;
+	int ret = 0;
 
 	mutex_lock(&slot->slot_xclbin_lock);
 	ret = zocl_xclbin_hold(slot, id);
@@ -1550,7 +1628,7 @@ zocl_xclbin_release(struct drm_zocl_slot *slot, const uuid_t *id)
  */
 int zocl_unlock_bitstream(struct drm_zocl_slot *slot, const uuid_t *id)
 {
-	int ret;
+	int ret = 0;
 
 	mutex_lock(&slot->slot_xclbin_lock);
 	ret = zocl_xclbin_release(slot, id);
@@ -1606,6 +1684,7 @@ zocl_xclbin_init(struct drm_zocl_slot *slot)
 	}
 
 	z_xclbin->zx_refcnt = 0;
+	z_xclbin->zx_dtbo_path = NULL;
 	z_xclbin->zx_uuid = NULL;
 
 	slot->slot_xclbin = z_xclbin;
@@ -1635,4 +1714,35 @@ zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 
 	/* Delete CU devices if exist for this slot */
 	zocl_destroy_cu_slot(zdev, slot->slot_idx);
+}
+
+/*
+ * Set dtbo path for this slot.
+ *
+ * @param       slot:   slot specific structure
+ * @param       dtbo_path: path that stores device tree overlay
+ *
+ * @return      0 on success Error code on failure.
+ */
+int
+zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path)
+{
+        char *path = slot->slot_xclbin->zx_dtbo_path;
+
+        if (path) {
+                vfree(path);
+                path = NULL;
+        }
+
+	if(dtbo_path) {
+		uint32_t len = strlen(dtbo_path);
+		path = vmalloc(len + 1);
+		if (!path)
+			return -ENOMEM;
+		copy_from_user(path, dtbo_path, len);
+		path[len] = '\0';
+	}
+
+        slot->slot_xclbin->zx_dtbo_path = path;
+        return 0;
 }

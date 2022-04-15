@@ -41,18 +41,20 @@ namespace xdp {
     std::atomic<bool> is_write_thread_active;
     std::thread write_thread;
     // Trace dump thread control
-    bool stop_writer = false;
-    std::mutex mtx_writer;
-    std::condition_variable cv_writer;
+    bool stop_writer_thread = false;
+    std::mutex mtx_writer_thread;
+    std::condition_variable cv_writer_thread;
     // Returns false if stop_trace_dump == true.
     // Stops trace writing thread when host program is ending
     // even if the thread is asleep
     template<class Duration>
     bool writeCondWaitFor(Duration duration) {
-      std::unique_lock<std::mutex> lk(mtx_writer);
-      return !cv_writer.wait_for(lk, duration, [this]() { return stop_writer; });
+      std::unique_lock<std::mutex> lk(mtx_writer_thread);
+      return !cv_writer_thread.wait_for(lk, duration, [this]() { return stop_writer_thread; });
     }
-    void writeContinuous(unsigned int interval, std::string type);
+    void writeContinuous(unsigned int interval, std::string type, bool openNewFiles);
+    // Mutex to access writer list
+    std::mutex mtx_writer_list;
 
   protected:
     // A link to the single instance of the database that all plugins
@@ -66,9 +68,9 @@ namespace xdp {
     //  dealing with emulation flows.
     XDP_EXPORT virtual void emulationSetup() ;
 
-    XDP_EXPORT void startWriteThread(unsigned int interval, std::string type);
-    XDP_EXPORT void endWrite(bool openNewFiles);
-    XDP_EXPORT void forceWrite(bool openNewFiles) ;
+    XDP_EXPORT void startWriteThread(unsigned int interval, std::string type, bool openNewFiles = true);
+    XDP_EXPORT void endWrite();
+    XDP_EXPORT void trySafeWrite(const std::string& type, bool openNewFiles);
 
   public:
     XDP_EXPORT XDPPlugin() ;

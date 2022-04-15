@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2021 Xilinx, Inc
+* Copyright (C) 2021-2022 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "OO_AieRegRead.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
@@ -387,7 +388,7 @@ OO_AieRegRead::OO_AieRegRead( const std::string &_longName, bool _isHidden )
     ("row", po::value<decltype(m_row)>(&m_row)->required(), "Row of core tile")
     ("col", po::value<decltype(m_col)>(&m_col)->required(), "Column of core tile")
     ("reg", po::value<decltype(m_reg)>(&m_reg)->required(), "Register name to read from core tile")
-    ("help,h", po::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", po::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.

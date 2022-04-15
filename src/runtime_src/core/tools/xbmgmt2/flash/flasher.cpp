@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * This is a wrapper class that does the prep work required to program a flash
  * device. Flasher will create a specific flash object determined by the program
@@ -97,7 +98,7 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
  * upgradeFirmware
  */
 int Flasher::upgradeFirmware(E_FlasherType flash_type,
-    firmwareImage *primary, firmwareImage *secondary)
+    firmwareImage *primary, firmwareImage *secondary, firmwareImage* stripped)
 {
     int retVal = -EINVAL;
 
@@ -112,11 +113,11 @@ int Flasher::upgradeFirmware(E_FlasherType flash_type,
         }
         else if(secondary == nullptr)
         {
-            retVal = xspi.xclUpgradeFirmware1(*primary);
+            retVal = xspi.xclUpgradeFirmware1(*primary, *stripped);
         }
         else
         {
-            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary);
+            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary, *stripped);
         }
 
         // program icap controller for webstar flow. Required only for U.2
@@ -267,6 +268,7 @@ std::string int2PowerString(unsigned int lvl)
 int Flasher::getBoardInfo(BoardInfo& board)
 {
     std::map<char, std::vector<char>> info;
+    std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     XMC_Flasher flasher(m_device->get_device_id());
 
     if (!flasher.probingErrMsg().empty())
@@ -276,10 +278,29 @@ int Flasher::getBoardInfo(BoardInfo& board)
     }
 
     int ret = flasher.xclGetBoardInfo(info);
+    if (ret == -EOPNOTSUPP) {
+        //Check if we can get data from vmr
+        std::map<char, std::string> sdr_info;
+        XGQ_VMR_Flasher xgq_flasher(m_device);
+        ret = xgq_flasher.xclGetBoardInfo(sdr_info);
+        if (ret != 0)
+            return ret;
+        board.mBMCVer = sdr_info[BDINFO_BMC_VER];
+        board.mSerialNum = sdr_info[BDINFO_SN];
+        board.mName = sdr_info[BDINFO_NAME];
+        board.mRev = sdr_info[BDINFO_REV];
+        board.mFanPresence = sdr_info[BDINFO_FAN_PRESENCE][0];
+        board.mMacAddr0 = sdr_info[BDINFO_MAC0].compare(unassigned_mac) ?
+            sdr_info[BDINFO_MAC0] : std::move(std::string("Unassigned"));
+        board.mMacAddr1 = sdr_info[BDINFO_MAC1].compare(unassigned_mac) ?
+            sdr_info[BDINFO_MAC1] : std::move(std::string("Unassigned"));
+        board.mConfigMode = 0;
+        board.mMaxPower = "";
+        return 0;
+    }
     if (ret != 0)
         return ret;
 
-    std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
     if (flasher.fixedSC())
         board.mBMCVer += "(FIXED)";

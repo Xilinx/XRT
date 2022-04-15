@@ -2,7 +2,7 @@
 /*
  * Xilinx Unify CU Model
  *
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -109,30 +109,23 @@ done:
 static inline void
 move_to_queue(struct kds_command *xcmd, struct list_head *dst_q, u32 *dst_len)
 {
-	list_move_tail(&xcmd->list, dst_q);
+	if (dst_q)
+		list_move_tail(&xcmd->list, dst_q);
 	++(*dst_len);
 }
 
-static inline bool
-sw_reset_cu(struct xrt_cu *xcu)
+static bool abort_client(struct kds_command *xcmd, void *cond)
 {
-	int time = 10 * 1000 * 1000;
-	xrt_cu_reset(xcu);
+	void *client = cond;
 
-	do {
-		usleep_range(1000, 1500);
-		time -= 1000;
-		if (xrt_cu_reset_done(xcu))
-			break;
-	} while (time > 0);
+	return (xcmd->client == client)? true : false;
+}
 
-	if (time < 0) {
-		xcu_info(xcu, "CU(%d) Reset timeout", xcu->info.cu_idx);
-		return false;
-	}
+static bool abort_handle(struct kds_command *xcmd, void *cond)
+{
+	u32 handle = *(u32 *)cond;
 
-	xcu_info(xcu, "CU(%d) SW Reset done", xcu->info.cu_idx);
-	return true;
+	return (xcmd->exec_bo_handle == handle)? true : false;
 }
 
 /**
@@ -171,10 +164,8 @@ static inline void process_cq(struct xrt_cu *xcu)
 static inline void __process_sq(struct xrt_cu *xcu)
 {
 	struct kds_command *xcmd;
-	struct kds_command *next;
 	struct kds_client *ev_client = NULL;
 	unsigned int tick;
-	u64 time;
 
 	/* CU is ready to accept more commands
 	 * Return credits to allow submit more commands
@@ -184,63 +175,36 @@ static inline void __process_sq(struct xrt_cu *xcu)
 		xcu->ready_cnt = 0;
 	}
 
-	if (xcu->run_timeout && !xcu->done_cnt && xcu->num_sq) {
-		xcmd = list_first_entry(&xcu->sq, struct kds_command, list);
-		if (!xcu->old_cmd || xcu->old_cmd != xcmd) {
-			xcmd->start = ktime_get_raw_fast_ns();
-			xcu->old_cmd = xcmd;
-			return;
-		}
-
-		time = ktime_get_raw_fast_ns();
-		if (time - xcmd->start > xcu->run_timeout)
-			xcu->bad_state = 1;
-		return;
-	}
-
 	/* Sometimes a CU done but it doesn't ready for new command.
 	 * In this case, sq could be empty.
 	 */
 	if (!xcu->num_sq)
 		return;
 
-	BUG_ON(xcu->num_sq < xcu->done_cnt);
-
 	ev_client = first_event_client_or_null(xcu);
-	list_for_each_entry_safe(xcmd, next, &xcu->sq, list) {
-		if (xcu->done_cnt) {
-			/* Done command has priority */
-			xcmd->status = KDS_COMPLETED;
-			--xcu->done_cnt;
-			xrt_cu_circ_produce(xcu, CU_LOG_STAGE_SQ, (uintptr_t)xcmd);
-		} else if (unlikely(ev_client)) {
-			/* Client event happens rarely */
-			if (xcmd->client != ev_client)
-				continue;
+	if (unlikely(ev_client)) {
+		tick = atomic_read(&xcu->tick);
+		if (xcu->start_tick == 0) {
+			xcu->start_tick = tick;
+			goto get_complete_and_out;
+		}
 
-			tick = atomic_read(&xcu->tick);
-			/* Record CU tick to start timeout counting */
-			if (!xcmd->tick) {
-				xcmd->tick = tick;
-				continue;
-			}
+		if (tick - xcu->start_tick < CU_EXEC_DEFAULT_TTL)
+			goto get_complete_and_out;
 
-			/* If xcmd haven't timeout */
-			if (tick - xcmd->tick < CU_EXEC_DEFAULT_TTL)
-				continue;
+		if (xrt_cu_cmd_abort(xcu, ev_client, abort_client))
+			xcu->bad_state = true;
 
-			xcmd->status = KDS_TIMEOUT;
+		xcu->start_tick = 0;
+	}
 
-			if (xcu->info.sw_reset) {
-				if (!sw_reset_cu(xcu))
-					xcu->bad_state = true;
-			} else
-				xcu->bad_state = true;
-		} else
-			break;
-
+get_complete_and_out:
+	xcmd = xrt_cu_get_complete(xcu);
+	while (xcmd) {
+		xrt_cu_circ_produce(xcu, CU_LOG_STAGE_SQ, (uintptr_t)xcmd);
 		move_to_queue(xcmd, &xcu->cq, &xcu->num_cq);
 		--xcu->num_sq;
+		xcmd = xrt_cu_get_complete(xcu);
 	}
 }
 
@@ -296,7 +260,7 @@ static inline int process_rq(struct xrt_cu *xcu)
 		return 0;
 
 	/* if successfully get credit, you must start cu */
-	if (xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type)) {
+	if (xrt_cu_submit_config(xcu, xcmd)) {
 		xrt_cu_put_credit(xcu, 1);
 		return 0;
 	}
@@ -304,7 +268,7 @@ static inline int process_rq(struct xrt_cu *xcu)
 	set_xcmd_timestamp(xcmd, KDS_RUNNING);
 	xrt_cu_circ_produce(xcu, CU_LOG_STAGE_RQ, (uintptr_t)xcmd);
 
-	dst_q = &xcu->sq;
+	dst_q = NULL;
 	dst_len = &xcu->num_sq;
 	/* ktime_get_* is still heavy. This impact ~20% of IOPS on echo mode.
 	 * For some sort of CU, which usually has a relative long execute time,
@@ -371,43 +335,21 @@ try_abort_cmd(struct xrt_cu *xcu, struct kds_command *abort_cmd)
 		return;
 	}
 
-	list_for_each_entry_safe(xcmd, tmp, &xcu->sq, list) {
-		if (xcmd->exec_bo_handle != handle)
-			continue;
+	if (!xcu->num_sq)
+		return;
 
-		xcu_info(xcu, "Abort command(%d) on submitted queue", handle);
-		/* Found the xcmd to abort! */
-		if (!xcu->info.sw_reset) {
-			xcu_warn(xcu, "No sw resset. Device goto bad state");
-			abort_cmd->status = KDS_ABORT;
-			xcu->bad_state = true;
-		} else {
-			xcu_info(xcu, "Try reset CU(%d)", xcu->info.cu_idx);
-			/* TODO: Not support CU with hardware queue.
-			 *
-			 * Since we only abort one command, not sure
-			 * what to do when this command is in hardware
-			 * queue with other commands.
-			 * In this case, if we still want to reset CU,
-			 * we need abort all of the commands on sq.
-			 * Not support this use case until we know what to do.
-			 */
-			if (sw_reset_cu(xcu)) {
-				/* re-initial this cu */
-				xrt_cu_put_credit(xcu, 1);
+	if (xrt_cu_cmd_abort(xcu, &handle, abort_handle)) {
+		xcu->bad_state = true;
+		abort_cmd->status = KDS_TIMEOUT;
+	} else {
+		abort_cmd->status = KDS_COMPLETED;
+	}
 
-				abort_cmd->status = KDS_COMPLETED;
-			} else {
-				abort_cmd->status = KDS_TIMEOUT;
-				xcu->bad_state = true;
-			}
-		}
-
-		xcmd->status = KDS_ABORT;
+	xcmd = xrt_cu_get_complete(xcu);
+	while (xcmd) {
 		move_to_queue(xcmd, &xcu->cq, &xcu->num_cq);
 		--xcu->num_sq;
-
-		return;
+		xcmd = xrt_cu_get_complete(xcu);
 	}
 }
 
@@ -644,7 +586,7 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 		return -ENOSYS;
 
 	if (xrt_cu_get_protocol(xcu) == CTRL_NONE) {
-		xcu_err(xcu, "Interrupt enabled value should be false for ap_ctrl_none cu\n");
+		xcu_warn(xcu, "Interrupt enabled value should be false for ap_ctrl_none cu\n");
 		return -ENOSYS;
 	}
 
@@ -789,15 +731,11 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	spin_lock_init(&xcu->pq_lock);
 	/* Initialize run queue */
 	INIT_LIST_HEAD(&xcu->rq);
-	/* Initialize submitted queue */
-	INIT_LIST_HEAD(&xcu->sq);
 	/* Initialize completed queue */
 	INIT_LIST_HEAD(&xcu->cq);
 
 	mutex_init(&xcu->ev_lock);
 	INIT_LIST_HEAD(&xcu->events);
-	/* default timeout, 0 means infinity */
-	xcu->run_timeout = 0;
 	sema_init(&xcu->sem, 0);
 	sema_init(&xcu->sem_cu, 0);
 
@@ -816,8 +754,10 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	timer_setup(&xcu->timer, cu_timer, 0);
 #endif
 	atomic_set(&xcu->tick, 0);
+	xcu->start_tick = 0;
 	xcu->thread = NULL;
 
+	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	return err;
 }
 
@@ -833,6 +773,7 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 	if (xcu->thread && !IS_ERR(xcu->thread))
 		(void) kthread_stop(xcu->thread);
 
+	del_timer_sync(&xcu->timer);
 	return;
 }
 

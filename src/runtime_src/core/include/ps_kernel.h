@@ -25,6 +25,7 @@
  */
 
 #define	PS_KERNEL_NAME_LENGTH	20
+#define	PS_KERNEL_REG_OFFSET	4
 
 struct ps_kernel_data {
 	char		pkd_sym_name[PS_KERNEL_NAME_LENGTH];

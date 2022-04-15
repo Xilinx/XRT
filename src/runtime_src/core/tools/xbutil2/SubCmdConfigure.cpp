@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -58,7 +58,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options"); 
   commonOptions.add_options()
-    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options"); 
@@ -119,6 +119,13 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
   // No suboption print help
   if (!optionOption) {
+    if (help) {
+      printHelp(commonOptions, hiddenOptions, subOptionOptions);
+      return;
+    }
+    // If help was not requested and additional options dont match we must throw to prevent
+    // invalid positional arguments from passing through without warnings
+    std::cerr << "ERROR: Suboption missing" << std::endl;
     printHelp(commonOptions, hiddenOptions, subOptionOptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }

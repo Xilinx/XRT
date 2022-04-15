@@ -55,7 +55,7 @@ namespace xdp {
       (db->getStaticInfo()).setApplicationStartTime(xrt_core::time_ns()) ;
       // If we are the first plugin, check to see if we should add xocl.log
       if (xrt_core::config::get_xocl_debug()) {
-	std::string logFileName =
+        std::string logFileName =
           xrt_core::config::detail::get_string_value("Debug.xocl_log",
                                                      "xocl.log") ;
         db->getStaticInfo().addOpenedFile(logFileName, "XOCL_EVENTS") ;
@@ -91,11 +91,11 @@ namespace xdp {
     }
   }
 
-  void XDPPlugin::writeAll(bool openNewFiles)
+  void XDPPlugin::writeAll(bool /*openNewFiles*/)
   {
     // Base functionality is just to have all writers write.  Derived
     //  classes might have to do more.
-    endWrite(openNewFiles);
+    endWrite();
   }
 
   void XDPPlugin::broadcast(VPDatabase::MessageType /*msg*/, void* /*blob*/)
@@ -109,59 +109,56 @@ namespace xdp {
     */
   }
 
-  void XDPPlugin::writeContinuous(unsigned int interval, std::string type)
+  void XDPPlugin::writeContinuous(unsigned int interval, std::string type, bool openNewFiles)
   {
     is_write_thread_active = true;
-    while (writeCondWaitFor(std::chrono::seconds(interval))) {
-      for (auto w : writers) {
-        if (0 != type.compare("AIE_EVENT_TRACE")) {
-          if (w->write(true)) {
-            (db->getStaticInfo()).addOpenedFile(w->getcurrentFileName().c_str(), type) ;
-          }
-        } else {
-          w->write(false);
-        }
-      }
-    }
+
+    while (writeCondWaitFor(std::chrono::seconds(interval)))
+      trySafeWrite(type, openNewFiles);
 
     // Do a final write
-    for (auto w : writers) {
-        w->write(false) ;
-    }
+    mtx_writer_list.lock();
+    for (auto w : writers)
+      w->write(false);
+    mtx_writer_list.unlock();
   }
 
-  void XDPPlugin::startWriteThread(unsigned int interval, std::string type)
+  void XDPPlugin::startWriteThread(unsigned int interval, std::string type, bool openNewFiles)
   {
     if (is_write_thread_active)
       return;
-    write_thread = std::thread(&XDPPlugin::writeContinuous, this, interval, type);
+    write_thread = std::thread(&XDPPlugin::writeContinuous, this, interval, type, openNewFiles);
   }
 
-  void XDPPlugin::endWrite(bool openNewFiles)
+  void XDPPlugin::endWrite()
   {
     if (is_write_thread_active) {
       // Ask writer thread to quit
       {
-        std::lock_guard<std::mutex> l(mtx_writer);
-        stop_writer = true;
+        std::lock_guard<std::mutex> l(mtx_writer_thread);
+        stop_writer_thread = true;
       }
-      cv_writer.notify_one();
+      cv_writer_thread.notify_one();
       write_thread.join();
       is_write_thread_active = false;
     } else {
-      for (auto w : writers)
-        w->write(openNewFiles) ;
+      trySafeWrite(std::string(), false);
     }
   }
 
-  void XDPPlugin::forceWrite(bool openNewFiles)
+  void XDPPlugin::trySafeWrite(const std::string& type, bool openNewFiles)
   {
-    if (is_write_thread_active) {
-      // Continuous offload will write shortly, so don't force the write
-      return ;
-    }
-    for (auto w : writers) {
-      w->write(openNewFiles) ;
+    if (type.empty() && openNewFiles)
+      return;
+
+    // If a writer is already writing, then don't do anything
+    if (mtx_writer_list.try_lock()) {
+      for (auto w : writers) {
+        bool success = w->write(openNewFiles);
+        if (openNewFiles && success)
+          (db->getStaticInfo()).addOpenedFile(w->getcurrentFileName().c_str(), type);
+      }
+      mtx_writer_list.unlock();
     }
   }
 

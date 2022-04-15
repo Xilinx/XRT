@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -80,7 +80,7 @@ namespace xdp {
                        VTFEventType type, uint64_t mask) ;
     void addKernelDataTransferEvent(VTFEventType ty, uint64_t trace,
                                     uint32_t slot, int32_t cuId,
-                                    double hostTimestamp) ;
+                                    double hostTimestamp, uint64_t memStrId) ;
 
     void addCUEndEvent(double hostTimestamp, uint64_t deviceTimestamp,
                        uint32_t s, int32_t cuId);
@@ -92,12 +92,14 @@ namespace xdp {
     void addApproximateStreamEndEvents();
     void addApproximateStallEndEvents(uint64_t trace, double hostTimestamp, uint32_t slot, uint64_t monTraceId, int32_t cuId) ;
 
-    void addApproximateDataTransferEvent(VTFEventType type, uint64_t aimTraceID, int32_t amId, int32_t cuId);
+    void addApproximateDataTransferEvent(VTFEventType type, uint64_t aimTraceID, int32_t amId, int32_t cuId, uint64_t memStrId);
     void addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType,
                                       int32_t cuId, int32_t  amId, uint64_t cuLastTimestamp,
                                       uint64_t &asmAppxLastTransTimeStamp, bool &unfinishedASMevents);
 
     uint64_t firstTimestamp = 0 ;
+    // Used to mark timeline trace if trace buffer gets full
+    double mLatestHostTimestampMs = 0;
 
   public:
 
@@ -106,6 +108,7 @@ namespace xdp {
 
     XDP_EXPORT void processTraceData(void* data, uint64_t numBytes) ;
     XDP_EXPORT void endProcessTraceData();
+    XDP_EXPORT void addEventMarkers(bool isFIFOFull, bool isTS2MMFull);
   } ;
 
 }

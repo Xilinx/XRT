@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu <yliu@xilinc.com>
@@ -225,7 +225,7 @@ done:
 }
 
 int
-zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res)
+zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uint8_t hw_gen)
 {
 	uint64_t offset;
 	uint64_t size;
@@ -279,7 +279,9 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res)
 	/* TODO figure out the partition id and uid from xclbin or PDI */
 	req.partition_id = 1;
 	req.uid = 0;
-	req.meta_data = (u64)aie_res;
+	/* only aie-1 supports resources */
+	if (hw_gen == 1)
+		req.meta_data = (u64)aie_res;
 
 	if (zdev->aie->aie_dev) {
 		DRM_INFO("Partition %d already requested\n",
@@ -300,9 +302,11 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res)
 	zdev->aie->uid = req.uid;
 
 	/* Register AIE error call back function. */
-	rval = aie_register_error_notification(zdev->aie->aie_dev,
-	    zocl_aie_error_cb, zdev);
-
+	/* only aie-1 supports error management*/
+	if (hw_gen == 1) {
+		rval = aie_register_error_notification(zdev->aie->aie_dev,
+		zocl_aie_error_cb, zdev);
+	}
 	mutex_unlock(&zdev->aie_lock);
 
 	zocl_init_aie(zdev);
@@ -433,6 +437,52 @@ zocl_aie_reset(struct drm_zocl_dev *zdev)
 	mutex_unlock(&zdev->aie_lock);
 
 	return 0;
+}
+
+int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data)
+{
+	struct drm_zocl_aie_freq_scale *args= data;
+	int ret = 0;
+
+	mutex_lock(&zdev->aie_lock);
+
+	if (!zdev->aie) {
+		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("AIE image is not loaded.\n");
+		return -ENODEV;
+	}
+
+	if (!zdev->aie->aie_dev) {
+		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("No available AIE partition.\n");
+		return -ENODEV;
+	}
+
+	if (zdev->aie->partition_id != args->partition_id) {
+		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("AIE partition %d does not exist.\n",
+		    args->partition_id);
+		return -ENODEV;
+	}
+
+	if(!args->dir) {
+		// Read frequency from requested aie partition
+		ret = aie_partition_get_freq(zdev->aie->aie_dev, &args->freq);
+		mutex_unlock(&zdev->aie_lock);
+		if(ret)
+			DRM_ERROR("Reading clock frequency from AIE partition(%d) failed with error %d\n",
+				args->partition_id, ret);
+		return ret;
+	} else {
+		// Send Set frequency request for aie partition
+		ret = aie_partition_set_freq_req(zdev->aie->aie_dev, args->freq);
+		mutex_unlock(&zdev->aie_lock);
+		if(ret)
+			DRM_ERROR("Setting clock frequency for AIE partition(%d) failed with error %d\n",
+				args->partition_id, ret);
+		return ret;
+
+	}
 }
 
 int

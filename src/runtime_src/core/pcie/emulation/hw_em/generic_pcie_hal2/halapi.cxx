@@ -13,14 +13,11 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-/**
- * Copyright (C) 2015 Xilinx, Inc
- */
-
 #include "shim.h"
-#include "core/common/system.h"
+#include "core/include/shim_int.h"
+
 #include "core/common/device.h"
+#include "core/common/system.h"
 #include "plugin/xdp/device_offload.h"
 #include "plugin/xdp/hal_trace.h"
 
@@ -179,14 +176,18 @@ int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
     xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-    if (!drv) 
+    if (!drv)
       return -1;
     return drv->xclExecBuf(cmdBO,num_bo_in_wait_list,bo_wait_list);
 }
 
 //defining following two functions as they gets called in scheduler init call
 int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
+{
+  return 0;
+}
 
+int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
 {
   return 0;
 }
@@ -364,12 +365,13 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #else
   xdp::hw_emu::flush_device(handle);
   auto ret = drv->xclLoadXclBin(buffer);
-  xdp::hw_emu::update_device(handle);
 #endif
   if (!ret) {
     auto device = xrt_core::get_userpf_device(drv);
     device->register_axlf(buffer);
 #ifndef DISABLE_DOWNLOAD_XCLBIN
+    // Call update_device only when xclbin is loaded and registered successfully
+    xdp::hw_emu::update_device(handle);
     ret = xrt_core::scheduler::init(handle, buffer);
 #endif
   }
@@ -497,20 +499,36 @@ double xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
   return drv->xclGetDeviceClockFreqMHz();
 }
 
-double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclGetReadMaxBandwidthMBps();
+  return drv->xclGetHostReadMaxBandwidthMBps();
 }
 
-double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+double xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
-  return drv->xclGetWriteMaxBandwidthMBps();
+  return drv->xclGetHostWriteMaxBandwidthMBps();
+}
+
+double xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetKernelReadMaxBandwidthMBps();
+}
+
+double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
+  if (!drv)
+    return -1;
+  return drv->xclGetKernelWriteMaxBandwidthMBps();
 }
 
 /*
@@ -583,7 +601,7 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 {
   return 0;
 }
-//Mapped CU register space for xclRegRead/Write()  
+//Mapped CU register space for xclRegRead/Write()
 int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data)
 {
   return xdp::hw_emu::trace::profiling_wrapper("xclRegWrite", [=] {
@@ -612,7 +630,7 @@ xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t force)
   return -ENOSYS;
 }
 
-int 
+int
 xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return -ENOSYS;

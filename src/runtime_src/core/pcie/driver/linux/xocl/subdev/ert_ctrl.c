@@ -52,6 +52,8 @@
 #define XGQ_SQ_REG		0x0
 #define XGQ_CQ_REG		0x100
 
+#define SHELL_NOT_SUPP_LEGACY(ec) (ec->ec_xgq_ips != NULL)
+
 static uint16_t	g_ctrl_xgq_cid;
 struct xocl_drv_private ert_ctrl_xgq_drv_priv;
 
@@ -616,6 +618,10 @@ static int ert_ctrl_connect(struct platform_device *pdev)
 		err = ert_ctrl_xgq_init(ec);
 		break;
 	default:
+		if (SHELL_NOT_SUPP_LEGACY(ec)) {
+			err = -ENODEV;
+			break;
+		}
 		EC_INFO(ec, "Connect Legacy ERT firmware");
 		err = ert_ctrl_legacy_init(ec);
 	}
@@ -762,10 +768,6 @@ static int ert_ctrl_xgq_ip_init(struct platform_device *pdev)
 		xgq_ip->ecxc_xgq_base = devm_ioremap(&pdev->dev, res->start, xgq_ip->ecxc_xgq_range);
 		if (!xgq_ip->ecxc_xgq_base)
 			return -ENOMEM;
-
-		/* TODO: remove this hack once XGQ IP has reset register */
-		iowrite32(0x1, xgq_ip->ecxc_xgq_base + 0xC);
-		iowrite32(0x0, xgq_ip->ecxc_xgq_base);
 	}
 
 	/* TODO: Should sort XGQ IP by address to make sure the indexing the

@@ -20,6 +20,7 @@ usage()
     echo "          -setup                          setup file to use"
     echo "          -clean, clean                   Remove build directories"
     echo "          -full, full                     Full Petalinux build which builds images along with XRT RPMs"
+    echo "          -archiver                       Generate archiver of the project. This is needed to generate LICENSE"
     echo ""
 }
 
@@ -45,6 +46,11 @@ install_recipes()
         echo "inherit externalsrc" > $XRT_BB
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
+        echo 'EXTRA_OECMAKE:append:versal += "-DXRT_LIBDFX=true"' >> $XRT_BB
+        echo 'EXTRA_OECMAKE:append:zynqmp += "-DXRT_LIBDFX=true"' >> $XRT_BB
+        echo 'DEPENDS += "rapidjson"' >> $XRT_BB
+        echo 'DEPENDS:append:versal += "libdfx"' >> $XRT_BB
+        echo 'DEPENDS:append:zynqmp += "libdfx"' >> $XRT_BB
         echo "FILES:\${PN} += \"\${libdir}/ps_kernels_lib\"" >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
@@ -171,6 +177,7 @@ PLATFROM=""
 XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
 full=0
+archiver=0
 SSTATE_CACHE=""
 SETTINGS_FILE="petalinux.build"
 while [ $# -gt 0 ]; do
@@ -191,6 +198,9 @@ while [ $# -gt 0 ]; do
 			;;
 		-full | full )
 			full=1
+			;;
+		-archiver | archiver )
+			archiver=1
 			;;
 		-cache )
                         shift
@@ -300,6 +310,9 @@ cd $ORIGINAL_DIR/$PETALINUX_NAME
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\""
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/config 
 
+#Uncomment the following 2 lines to change TMP_DIR location
+#echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\""
+#echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\"" >> project-spec/configs/config 
 
 if [ ! -z $SSTATE_CACHE ] && [ -d $SSTATE_CACHE ]; then
     echo "SSTATE-CACHE:${SSTATE_CACHE} added"
@@ -329,6 +342,10 @@ else
   $PETA_BIN/petalinux-build -c zocl
   echo "[CMD]: petalinux-build -c xrt"
   $PETA_BIN/petalinux-build -c xrt
+fi
+
+if [[ $archiver == 1 ]]; then
+  $PETA_BIN/petalinux-build --archiver
 fi
 
 if [ $? != 0 ]; then

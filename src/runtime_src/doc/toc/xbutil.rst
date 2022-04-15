@@ -2,16 +2,16 @@
 
 ..
    comment:: SPDX-License-Identifier: Apache-2.0
-   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+   comment:: Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 
 
 xbutil
 ======
 
-This document describes the latest ``xbutil`` commands. These latest commands are default from 21.1 release.   
+This document describes the latest ``xbutil`` commands. These latest commands are default from 21.1 release.  
 
 
-P.S: The older version of the commands can only be executed by adding ``--legacy`` switch . The documentation link of legacy version: `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/Chunk778393017.html>`_
+For an instructive video on xbutil commands listed below click `here <https://www.youtube.com/watch?v=nvU2ZBnAaz4>`_.
 
 
 **Global options**: These are the global options can be used with any command. 
@@ -34,7 +34,7 @@ Currently supported ``xbutil`` commands are
 xbutil program
 ~~~~~~~~~~~~~~
 
-The ``xbutil program`` command downloads a specified xclbin binary to the programmable region on the card.
+The ``xbutil program`` command downloads a specified xclbin binary to the programmable region on the card `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=245>`_.
 
 **The supported options**
 
@@ -66,14 +66,14 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 xbutil validate
 ~~~~~~~~~~~~~~~
 
-The command ``xbutil validate`` validates the installed card by running precompiled basic tests. 
+The command ``xbutil validate`` validates the installed card by running precompiled basic tests `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=110>`_.
 
 **The supported options**
 
 
 .. code-block:: shell
 
-   xbutil validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format> [--output| -o] <filename>
+   xbutil validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format> [--output| -o] <filename> [--param] <test>:<key>:<value>
  
  
 
@@ -107,6 +107,12 @@ The command ``xbutil validate`` validates the installed card by running precompi
     
 - The ``--output`` (or ``-o``) specifies the output file to direct the output
 
+- The ``--param`` specifies the extended parameters that can be passed to a test. Valid values:
+        
+    - ``test``: dma
+    - ``key``: block-size
+    - ``value``: value in bytes
+
 
 **Example commands**
 
@@ -122,11 +128,14 @@ The command ``xbutil validate`` validates the installed card by running precompi
     # Run "DMA" and "Validate Kernel" test and generates Json format
     xbutil validate --device 0000:b3:00.1 --run DMA "Verify Kernel" --format JSON --output xyz.json
 
+    # Pass in a custom block size to dma test
+    xbutil validate --device 0000:b3:00.1 --run DMA --param dma:block-size:1024
+
 
 xbutil examine 
 ~~~~~~~~~~~~~~
 
-The command ``xbutil examine``  can be used to find the details of the specific device,
+The command ``xbutil examine``  can be used to find the details of the specific device `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=80>`_.
 
 
 **The supported options**
@@ -191,7 +200,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
  
 xbutil configure
 ~~~~~~~~~~~~~~~~
-Command ``xbutil configure`` is used to configure specific settings based on the need of user application (requires sudo). 
+Command ``xbutil configure`` is used to configure specific settings based on the need of user application (requires sudo) `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=280>`_.
 
 
 **The supported options**
@@ -240,7 +249,7 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 
 xbutil reset
 ~~~~~~~~~~~~
-This ``xbutil reset`` command can be used to reset device. 
+This ``xbutil reset`` command can be used to reset device `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=350>`_.
 
 **The supported options**
 

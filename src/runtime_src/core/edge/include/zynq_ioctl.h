@@ -120,6 +120,8 @@ enum drm_zocl_ops {
 	DRM_ZOCL_AIE_GETCMD,
 	/* Put the aie info command */
 	DRM_ZOCL_AIE_PUTCMD,
+	/* Set/Get freq of AIE partition */
+	DRM_ZOCL_AIE_FREQSCALE,
 	DRM_ZOCL_NUM_IOCTLS
 };
 
@@ -315,6 +317,12 @@ struct drm_zocl_aie_reset {
 	uint32_t partition_id;
 };
 
+struct drm_zocl_aie_freq_scale {
+	uint32_t partition_id;
+	uint64_t freq;
+	bool dir;
+};
+
 /**
  * Opcodes for the embedded scheduler provided by the client to the driver
  */
@@ -374,6 +382,9 @@ struct argument_info {
 	uint32_t	dir;
 };
 
+/* Kernel features macro */
+#define KRNL_SW_RESET	(1 << 0)
+
 /**
  * struct kernel_info - Kernel information
  *
@@ -386,6 +397,7 @@ struct kernel_info {
 	char                     name[64];
 	uint32_t		 range;
 	int		         anums;
+	int			 features;
 	struct argument_info	 args[];
 };
 
@@ -407,6 +419,8 @@ struct drm_zocl_kds {
  * @za_flags:   platform flags
  * @za_ksize:	size of kernels in bytes
  * @za_kernels:	pointer of argument array
+ * @za_slot_id:	xclbin slot
+ * @hw_gen:	aie generation
  **/
 struct drm_zocl_axlf {
 	struct axlf		*za_xclbin_ptr;
@@ -414,6 +428,8 @@ struct drm_zocl_axlf {
 	int			za_ksize;
 	char			*za_kernels;
 	uint32_t		za_slot_id;
+	char			*za_dtbo_path;
+	uint8_t		        hw_gen;
 	struct drm_zocl_kds	kds_cfg;
 };
 
@@ -432,13 +448,17 @@ struct drm_zocl_axlf {
  * @paddr        : soft kernel image's physical address (little endian)
  * @name         : symbol name of soft kernel
  * @bohdl        : BO to hold soft kernel image
+ * @meta_bohdl   : BO to hold metadata
+ * @uuid         : UUID for the xclbin
  */
 struct drm_zocl_sk_getcmd {
 	uint32_t	opcode;
 	uint32_t	start_cuidx;
 	uint32_t	cu_nums;
 	char		name[ZOCL_MAX_NAME_LENGTH];
-	uint32_t	bohdl;
+	int		bohdl;
+	int		meta_bohdl;
+	unsigned char	uuid[16];
 };
 
 enum aie_info_code {
@@ -468,7 +488,7 @@ struct drm_zocl_aie_cmd {
  */
 struct drm_zocl_sk_create {
 	uint32_t	cu_idx;
-	uint32_t	handle;
+	int		handle;
 };
 
 /**
@@ -476,6 +496,9 @@ struct drm_zocl_sk_create {
  */
 enum drm_zocl_scu_state {
 	ZOCL_SCU_STATE_DONE,
+	ZOCL_SCU_STATE_READY,
+	ZOCL_SCU_STATE_CRASH,
+	ZOCL_SCU_STATE_FINI,
 };
 
 /**
@@ -487,6 +510,7 @@ enum drm_zocl_scu_state {
  */
 struct drm_zocl_sk_report {
 	uint32_t		cu_idx;
+	uint32_t		cu_domain;
 	enum drm_zocl_scu_state	cu_state;
 };
 
@@ -548,4 +572,6 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_AIE_GETCMD, struct drm_zocl_aie_cmd)
 #define DRM_IOCTL_ZOCL_AIE_PUTCMD      DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_AIE_PUTCMD, struct drm_zocl_aie_cmd)
+#define DRM_IOCTL_ZOCL_AIE_FREQSCALE   DRM_IOWR(DRM_COMMAND_BASE + \
+				       DRM_ZOCL_AIE_FREQSCALE, struct drm_zocl_aie_freq_scale)
 #endif

@@ -19,10 +19,10 @@
 namespace xdp {
 
   HALHostTraceWriter::HALHostTraceWriter(const char* filename, 
-					 const std::string& version,
-					 const std::string& creationTime,
-					 const std::string& xrtV,
-					 const std::string& toolV)
+                                         const std::string& version,
+                                         const std::string& creationTime,
+                                         const std::string& xrtV,
+                                         const std::string& toolV)
     : VPTraceWriter(filename, version, creationTime, 6 /* us */),
       xrtVersion(xrtV),
       toolVersion(toolV)
@@ -78,12 +78,12 @@ namespace xdp {
     fout << "EVENTS" << std::endl ;
     std::vector<VTFEvent*> HALAPIEvents = 
       (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
-					   {
-					     return e->isHostEvent()  &&
-					            !e->isOpenCLAPI() &&
-					            !e->isLOPHostEvent() ;
-					   }
-					 ) ;
+                                           {
+                                             return e->isHostEvent()  &&
+                                                    !e->isOpenCLAPI() &&
+                                                    !e->isLOPHostEvent() ;
+                                           }
+                                         ) ;
     for (auto e : HALAPIEvents)
     {
       VTFEventType eventType = e->getEventType();

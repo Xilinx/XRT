@@ -22,6 +22,8 @@
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
 #include "core/common/api/bo.h"
+#include "core/common/api/kernel_int.h"
+#include "core/common/api/device_int.h"
 #include "core/common/device.h"
 
 #include <algorithm>
@@ -30,7 +32,6 @@
 #include <cstring>
 #include <iostream>
 #include <thread>
-
 
 using namespace std;
 
@@ -190,35 +191,7 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    auto priv1 = reinterpret_cast<XmaHwSessionPrivate*>(s_handle.hw_session.private_do_not_use);
     uint32_t ddr_bank = ddr_index;
-    //Use this lambda func to print ddr info
-    auto print_ddrs = [&](XmaLogLevelType log_level, XmaHwDevice* device) {
-        uint32_t tmp_int1 = 0;
-        for (auto& ddr : device->ddrs) {
-            if (ddr.in_use) {
-                xma_logmsg(log_level, XMAPLUGIN_MOD, "\tMEM# %d - %s - size: %lu KB", tmp_int1, (char*)ddr.name, ddr.size_kb);
-            }
-            else {
-                xma_logmsg(log_level, XMAPLUGIN_MOD, "\tMEM# %d - %s - size: UnUsed", tmp_int1, (char*)ddr.name);
-            }
-            tmp_int1++;
-        }
-        return;
-    };
-
-    if ((uint32_t)ddr_index >= priv1->device->ddrs.size() || ddr_index < 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. Invalid DDR index.Available DDRs are:");
-        print_ddrs(XMA_ERROR_LOG, priv1->device);
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
-    if (!priv1->device->ddrs[ddr_bank].in_use) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. This DDR is UnUsed.Available DDRs are:");
-        print_ddrs(XMA_ERROR_LOG, priv1->device);
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
     return create_xma_buffer_object(s_handle, size, device_only_buffer, ddr_bank, return_code);
 }
 
@@ -410,19 +383,9 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. regmap_size of %d is not a multiple of four bytes", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), regmap_size);
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
-    }
-    if (kernel_tmp1->regmap_size > 0) {
-        if (regmap_size > kernel_tmp1->regmap_size) {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), kernel_tmp1->regmap_size, regmap_size);
-            /*Sarab TODO
-            if (return_code) *return_code = XMA_ERROR;
-            return cmd_obj_error;
-            */
-        }
-    }
+    }   
 
-    uint8_t *src = (uint8_t*)regmap;
-    
+    uint8_t *src = (uint8_t*)regmap;    
     bool expected = false;
     bool desired = true;
     int32_t bo_idx = -1;
@@ -431,7 +394,6 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         std::unique_lock<std::mutex> lk(priv1->m_mutex);
         priv1->kernel_done_or_free.wait_for(lk, std::chrono::milliseconds(1));
     }
-
     // Find an available execBO buffer
     uint32_t itr = 0;
     while (true) {
@@ -460,9 +422,18 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         priv1->execbo_is_free.wait(lk);
         lk.unlock();
         itr++;
-    }
-            
-    priv1->kernel_execbos[bo_idx].xrt_run =  xrt::run(priv1->kernel_execbos[bo_idx].xrt_kernel);
+    }      
+        
+    auto xrt_kernel_reg_map = (xrt_core::kernel_int::get_regmap_size(priv1->kernel_execbos[bo_idx].xrt_kernel)) * 4;
+    if (xrt_kernel_reg_map > 0) {
+        if (regmap_size > (int32_t) xrt_kernel_reg_map) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xrt_kernel_reg_map, regmap_size);
+            /*TODO
+            if (return_code) *return_code = XMA_ERROR;
+            return cmd_obj_error;
+            */
+        }
+    }    
     auto cu_cmd = reinterpret_cast<ert_start_kernel_cmd*>(priv1->kernel_execbos[bo_idx].xrt_run.get_ert_packet());
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data + cu_cmd->extra_cu_masks, src, regmap_size);
@@ -580,21 +551,6 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             return cmd_obj_error;
         }
         kernel_tmp1 = &priv1->device->kernels[cu_index];
-    
-        if (!kernel_tmp1->soft_kernel && !kernel_tmp1->in_use && !kernel_tmp1->context_opened) {
-	    //Obtain lock only for a) singleton changes & b) kernel_info changes
-            std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
-            //Singleton lock acquired
-            try {
-                dev_tmp1->xrt_device.get_handle()->open_context(dev_tmp1->uuid, kernel_tmp1->cu_index_ert, true);
-            }
-            catch (const xrt_core::system_error&) {
-                xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Failed to open context to CU %s for this session", kernel_tmp1->name);
-                if (return_code) *return_code = XMA_ERROR;
-                return cmd_obj_error;
-            }
-            kernel_tmp1->in_use = true;
-        }
         xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "xma_plg_schedule_cu_cmd: Using admin session with CU %s", kernel_tmp1->name);
     }
 
@@ -619,18 +575,8 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         if (return_code) *return_code = XMA_ERROR;
         return cmd_obj_error;
     }
-    if (kernel_tmp1->regmap_size > 0) {
-        if (regmap_size > kernel_tmp1->regmap_size) {
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), kernel_tmp1->regmap_size, regmap_size);
-            /*Sarab TODO
-            if (return_code) *return_code = XMA_ERROR;
-            return cmd_obj_error;
-            */
-        }
-    }
 
-    uint8_t *src = (uint8_t*)regmap;
-    
+    uint8_t *src = (uint8_t*)regmap;    
     bool expected = false;
     bool desired = true;
     int32_t bo_idx = -1;
@@ -669,8 +615,17 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         lk.unlock();
         itr++;
     }
-
-    priv1->kernel_execbos[bo_idx].xrt_run = xrt::run(priv1->kernel_execbos[bo_idx].xrt_kernel);
+        
+    auto xrt_kernel_reg_map = (xrt_core::kernel_int::get_regmap_size(priv1->kernel_execbos[bo_idx].xrt_kernel)) * 4;
+    if (xrt_kernel_reg_map > 0) {
+        if (regmap_size > (int32_t) xrt_kernel_reg_map) {
+            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Can not exceed kernel register_map size. Kernel regamp_size: %d, trying to use size: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xrt_kernel_reg_map, regmap_size);
+            /*TODO
+            if (return_code) *return_code = XMA_ERROR;
+            return cmd_obj_error;
+            */
+        }
+    }    
     auto cu_cmd = reinterpret_cast<ert_start_kernel_cmd*>(priv1->kernel_execbos[bo_idx].xrt_run.get_ert_packet());
     // Copy reg_map into execBO buffer 
     memcpy(&cu_cmd->data + cu_cmd->extra_cu_masks, src, regmap_size);
@@ -846,7 +801,7 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
             } else if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
                 std::this_thread::yield();
             } else {
-                priv1->dev_handle.get_handle()->exec_wait(100); // Created CR-1120629 to handle this, supposed to use xrt::run::wait() call.
+                xrt_core::device_int::exec_wait(dev_tmp1->xrt_device, 100ms);
             }
         }
     } while(!all_done);
@@ -1030,7 +985,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
             if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
-            priv1->dev_handle.get_handle()->exec_wait(timeout1); // Created CR-1120629 to handle this, supposed to use xrt::run::wait() call.
+            xrt_core::device_int::exec_wait(dev_tmp1->xrt_device, std::chrono::milliseconds(timeout1));
             iter1--;
         }
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd is still pending. Cu might be stuck", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
@@ -1077,7 +1032,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
     
         // Wait for a notification
         if (give_up > 10) {
-            priv1->dev_handle.get_handle()->exec_wait(timeout1);
+            xrt_core::device_int::exec_wait(dev_tmp1->xrt_device, std::chrono::milliseconds(timeout1));
             tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {

@@ -3,7 +3,7 @@
 /**
  * Pybind11 module for XRT C++ APIs
  *
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Authors: graham.schelle@xilinx.com
  *          sonal.santan@xilinx.com
@@ -77,7 +77,8 @@ PYBIND11_MODULE(pyxrt, m) {
         .value("platform", xrt::info::device::platform)
         .value("pcie_info", xrt::info::device::pcie_info)
         .value("host", xrt::info::device::host)
-        .value("dynamic_regions", xrt::info::device::dynamic_regions);
+        .value("dynamic_regions", xrt::info::device::dynamic_regions)
+        .value("vmr", xrt::info::device::vmr);
 /*
  *
  * XRT:: UUID (needed since UUID classes passed outside of objects)
@@ -140,6 +141,8 @@ PYBIND11_MODULE(pyxrt, m) {
                                  return d.get_info<xrt::info::device::host>();
                              case xrt::info::device::dynamic_regions:
                                  return d.get_info<xrt::info::device::dynamic_regions>();
+                             case xrt::info::device::vmr:
+                                 return d.get_info<xrt::info::device::vmr>();
                              default:
                                  return std::string("NA");
                              }
@@ -184,6 +187,9 @@ PYBIND11_MODULE(pyxrt, m) {
     pyker.def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n,
                           xrt::kernel::cu_access_mode m) {
                            return new xrt::kernel(d, u, n, m);
+                       }))
+  	.def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n) {
+                           return new xrt::kernel(d, u, n);
                        }))
         .def("__call__", [](xrt::kernel& k, py::args args) -> xrt::run {
                              int i = 0;

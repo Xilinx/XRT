@@ -263,7 +263,7 @@ DeviceIntf::~DeviceIntf()
 //    readDebugIPlayout();
 
     if (!mIsDeviceProfiling)
-   	  return 0;
+      return 0;
 
     size_t size = 0;
 
@@ -291,7 +291,7 @@ DeviceIntf::~DeviceIntf()
     }
 
     if (!mIsDeviceProfiling)
-   	  return 0;
+      return 0;
 
     size_t size = 0;
 
@@ -328,7 +328,7 @@ DeviceIntf::~DeviceIntf()
     memset(&counterResults, 0, sizeof(xclCounterResults));
 
     if (!mIsDeviceProfiling)
-   	  return 0;
+      return 0;
 
     size_t size = 0;
 
@@ -431,7 +431,7 @@ DeviceIntf::~DeviceIntf()
     }
 
     if (!mIsDeviceProfiling || !mFifoCtrl)
-   	  return 0;
+      return 0;
 
     return mFifoCtrl->reset();
   }
@@ -443,7 +443,7 @@ DeviceIntf::~DeviceIntf()
     }
 
     if (!mIsDeviceProfiling || !mFifoCtrl)
-   	  return 0;
+      return 0;
 
     return mFifoCtrl->getNumTraceSamples();
   }
@@ -960,14 +960,24 @@ DeviceIntf::~DeviceIntf()
     return mAieTraceDmaList[index]->getMemIndex();
   }
 
-  void DeviceIntf::setMaxBwRead()
+  void DeviceIntf::setHostMaxBwRead()
   {
-    mMaxReadBW = mDevice->getMaxBwRead();
+    mHostMaxReadBW = mDevice->getHostMaxBwRead();
   }
 
-  void DeviceIntf::setMaxBwWrite()
+  void DeviceIntf::setHostMaxBwWrite()
   {
-    mMaxWriteBW = mDevice->getMaxBwWrite();
+    mHostMaxWriteBW = mDevice->getHostMaxBwWrite();
+  }
+
+  void DeviceIntf::setKernelMaxBwRead()
+  {
+    mKernelMaxReadBW = mDevice->getKernelMaxBwRead();
+  }
+
+  void DeviceIntf::setKernelMaxBwWrite()
+  {
+    mKernelMaxWriteBW = mDevice->getKernelMaxBwWrite();
   }
 
   uint32_t DeviceIntf::getDeadlockStatus()

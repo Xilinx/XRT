@@ -942,7 +942,9 @@ static void chan_worker(struct work_struct *work)
 			 * and achieve fastest transfer speed, then we can do busy
 			 * poll for Rx also when there is data. 
 			 */
+#if PF == USERPF
 			if (is_rx_chan(ch))
+#endif
 				chan_sleep(ch, false);
 		} else {
 			/*

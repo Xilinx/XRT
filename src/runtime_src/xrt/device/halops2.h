@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -94,8 +95,10 @@ private:
 
   typedef size_t (* getDeviceTimeFuncType)(xclDeviceHandle handle);
   typedef double (* getDeviceClockFuncType)(xclDeviceHandle handle);
-  typedef double (* getDeviceMaxReadFuncType)(xclDeviceHandle handle);
-  typedef double (* getDeviceMaxWriteFuncType)(xclDeviceHandle handle);
+  typedef double (* getHostMaxReadFuncType)(xclDeviceHandle handle);
+  typedef double (* getHostMaxWriteFuncType)(xclDeviceHandle handle);
+  typedef double (* getKernelMaxReadFuncType)(xclDeviceHandle handle);
+  typedef double (* getKernelMaxWriteFuncType)(xclDeviceHandle handle);
   typedef void (* setSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots);
   typedef uint32_t (* getSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef void (* getSlotNameFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
@@ -173,8 +176,10 @@ public:
 
   getDeviceTimeFuncType mGetDeviceTime;
   getDeviceClockFuncType mGetDeviceClock;
-  getDeviceMaxReadFuncType mGetDeviceMaxRead;
-  getDeviceMaxWriteFuncType mGetDeviceMaxWrite;
+  getHostMaxReadFuncType mGetHostMaxRead;
+  getHostMaxWriteFuncType mGetHostMaxWrite;
+  getKernelMaxReadFuncType mGetKernelMaxRead;
+  getKernelMaxWriteFuncType mGetKernelMaxWrite;
   setSlotFuncType mSetProfilingSlots;
   getSlotFuncType mGetProfilingSlots;
   getSlotNameFuncType mGetProfilingSlotName;

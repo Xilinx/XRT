@@ -140,7 +140,7 @@ class bo_impl
 {
 public:
   static constexpr uint64_t no_addr = std::numeric_limits<uint64_t>::max();
-  static constexpr int32_t no_group = std::numeric_limits<int32_t>::max();
+  static constexpr uint32_t no_group = std::numeric_limits<uint32_t>::max();
   static constexpr bo::flags no_flags = static_cast<bo::flags>(std::numeric_limits<uint32_t>::max());
   static constexpr xclBufferHandle null_bo = XRT_NULL_BO;
   static constexpr xclBufferExportHandle null_export = XRT_NULL_BO_EXPORT;
@@ -169,7 +169,7 @@ protected:
   xclBufferHandle handle = null_bo;             // NOLINT driver bo handle
   size_t size = 0;                              // NOLINT size of buffer
   mutable uint64_t addr = no_addr;              // NOLINT bo device address
-  mutable int32_t grpid = no_group;             // NOLINT memory group index
+  mutable uint32_t grpid = no_group;             // NOLINT memory group index
   mutable bo::flags flags = no_flags;           // NOLINT flags per bo properties
   mutable xclBufferExportHandle export_handle = null_export; // NOLINT export handle if exported
   bool free_bo;                                 // NOLINT should dtor free bo
@@ -395,7 +395,7 @@ public:
     return addr;
   }
 
-  virtual uint64_t
+  virtual uint32_t
   get_group_id() const
   {
     if (grpid == no_group)
@@ -988,7 +988,7 @@ address(xrtBufferHandle handle)
   return get_boh(handle)->get_address();
 }
 
-int32_t
+uint32_t
 group_id(const xrt::bo& bo)
 {
   return bo.get_handle()->get_group_id();

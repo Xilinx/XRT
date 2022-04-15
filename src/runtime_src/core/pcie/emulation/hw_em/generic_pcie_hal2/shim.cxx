@@ -204,13 +204,42 @@ namespace xclhwemhal2 {
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
   }
 
+  int HwEmShim::parseLog()
+  {
+    std::vector<std::string> myvector = {"SIM-IPC's external process can be connected to instance",
+                                         "SystemC TLM functional mode",
+                                         "HLS_PRINT",
+                                         "Exiting xsim",
+                                         "FATAL_ERROR"};
+
+    std::ifstream ifs(getSimPath() + "/simulate.log");
+
+    if (ifs.is_open()) {
+      std::string line;
+      while (std::getline(ifs, line)) {
+        for (auto matchString : myvector) {
+          std::string::size_type index = line.find(matchString);
+          if (index != std::string::npos) {
+            if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
+              logMessage(line);
+              parsedMsgs.push_back(line);
+              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR"))
+                 std::cout << "SIMULATION EXITED" << std::endl; 
+            }
+          }
+        }
+      }
+    }
+    return 0;
+  }
+
   void HwEmShim::parseString(const std::string& simPath , const std::string& searchString)
   {
     std::ifstream ifs(simPath + "/simulate.log");
     std::string lineHandle;
     while(getline(ifs, lineHandle)) {
       if(lineHandle.find(searchString, 0) != std::string::npos)
-        logMessage(lineHandle, 0);
+        logMessage(lineHandle);
     }
   }
 
@@ -218,18 +247,13 @@ namespace xclhwemhal2 {
   {
     std::string simPath = getSimPath();
     std::string content = loadFileContentsToString(simPath + "/simulate.log");
-    parseString(simPath,"HLS_PRINT");
     if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
       size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
       size_t last = content.find("detected!", first);
       // substr including the word detected!
       std::string deadlockMsg = content.substr(first , last + 9 - first);
-      logMessage(deadlockMsg, 0);
+      logMessage(deadlockMsg);
     }
-
-    //CR-1120081 Changes Start
-    parseString(simPath,"SIM-IPC's external process can be connected to instance");
-    //CR-1120081 Changes End
   }
 
   static void sigHandler(int sn, siginfo_t *si, void *sc)
@@ -553,7 +577,8 @@ namespace xclhwemhal2 {
     }
 
     std::string instance_name = "";
-    auto base_address = 0;
+    //CR-1122692:'auto' is treated as 32 bit int.But 'uint64_t' is needed
+    uint64_t base_address = 0;
     for (const auto& kernel : xclbin_object.get_kernels())
     {
       // get properties of each kernel object
@@ -563,37 +588,21 @@ namespace xclhwemhal2 {
       for (const auto& cu : kernel.get_cus())
       {
         base_address = cu.get_base_address();
-        mCuBaseAddress = base_address & 0xFFFFFFFF00000000;
-        //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
-        if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
-        {
-          mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+        //CR-1122692: Adding checks to validate base_address and adding 'mVersalPlatform' check
+        if (base_address != (uint64_t)-1 && mVersalPlatform) {
+          mCuBaseAddress = base_address & 0xFFFFFFFF00000000;
+          //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
+          if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
+          {
+            mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+          }
+          else if(mVersalPlatform)
+          {
+            mCuBaseAddress = 0x20200000000;
+          }
         }
-        else if(mVersalPlatform)
-        {
-          mCuBaseAddress = 0x20200000000;
-        }
-
         //fetch instance name
         instance_name = cu.get_name();
-        //iterate over arguments and populate kernelArg structure
-        std::map<uint64_t, KernelArg> kernelArgInfo;
-        for (const auto& arg : cu.get_args())
-        {
-          auto arg_name = arg.get_name();
-          auto arg_port = arg.get_port();
-          auto arg_offset = arg.get_offset();
-          auto arg_size = arg.get_size();
-          auto arg_index = arg.get_index();
-          KernelArg k_arg;
-          k_arg.name = props.name + ":" + arg_name;
-          k_arg.size = arg_size;
-          kernelArgInfo[arg_offset] = k_arg;
-          if (mLogStream.is_open())
-            mLogStream << __func__ << " Filling kernel Args name: " << arg_name << " index: " << arg_index << " port: " <<
-            arg_port << " info from xrt_xclbin API's" << std::endl;
-        }
-        mKernelOffsetArgsInfoMap[base_address] = std::move(kernelArgInfo);
         if (xclemulation::config::getInstance()->isMemLogsEnabled())
         {
           //trim instance_name to get actual instance name
@@ -689,14 +698,14 @@ namespace xclhwemhal2 {
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
-	        if (simulatorType == "xsim") {
-                cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
-                << " --protoinst " << protoFileName;
-                launcherArgs = launcherArgs + cmdLineOption.str();
-	        } else {
-                cmdLineOption << " gui ";
-                launcherArgs = launcherArgs + cmdLineOption.str();
-	        }
+          if (simulatorType == "xsim") {
+            cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
+                          << " --protoinst " << protoFileName;
+            launcherArgs = launcherArgs + cmdLineOption.str();
+          } else {
+            cmdLineOption << " gui ";
+            launcherArgs = launcherArgs + cmdLineOption.str();
+          }
         }
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -1162,40 +1171,10 @@ namespace xclhwemhal2 {
        case XCL_ADDR_KERNEL_CTRL:
          {
            std::map<uint64_t,std::pair<std::string,unsigned int>> offsetArgInfo;
-           unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
 
            std::string kernelName("");
            uint32_t *hostBuf32 = ((uint32_t*)hostBuf);
           // if(hostBuf32[0] & CONTROL_AP_START)
-           {
-             auto offsetKernelArgInfoItr = mKernelOffsetArgsInfoMap.find(offset);
-             if(offsetKernelArgInfoItr != mKernelOffsetArgsInfoMap.end())
-             {
-               unsigned char* axibuf=((unsigned char*) hostBuf);
-               std::map<uint64_t, KernelArg> kernelArgInfo = (*offsetKernelArgInfoItr).second;
-               for (auto i : kernelArgInfo)
-               {
-                 uint64_t argOffset = i.first;
-                 KernelArg kArg = i.second;
-                 uint64_t argPointer = 0;
-                 std::memcpy(&argPointer,axibuf+ argOffset,kArg.size);
-                 std::map<uint64_t,uint64_t>::iterator it = mAddrMap.find(argPointer);
-                 if(it != mAddrMap.end())
-                 {
-                   uint64_t offsetSize =  (*it).second;
-                   uint64_t padding = (paddingFactor == 0) ? 0 : offsetSize/(1+(paddingFactor*2));
-                   std::pair<std::string,unsigned int> sizeNamePair(kArg.name,offsetSize);
-                   if(hostBuf32[0] & CONTROL_AP_START)
-                     offsetArgInfo[argPointer-padding] = sizeNamePair;
-                   size_t pos = kArg.name.find(":");
-                   if(pos != std::string::npos)
-                   {
-                     kernelName = kArg.name.substr(0,pos);
-                   }
-                 }
-               }
-             }
-           }
 
            auto controlStreamItr = mOffsetInstanceStreamMap.find(offset);
            if(controlStreamItr != mOffsetInstanceStreamMap.end())
@@ -1594,13 +1573,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       size_t size = MAXPATHLEN;
       char* pPath = GetCurrentDir(path,size);
 
-      if(pPath)
-      {
+      if(pPath) {
         // Copy waveform database
         if (lWaveform != xclemulation::debug_mode::off) {
           std::string extension = "wdb";
-          if (boost::filesystem::exists(binaryDirectory+"/msim"))
-          {
+          if (boost::filesystem::exists(binaryDirectory+"/msim")) {
             extension = "wlf";
           }
           std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
@@ -1638,12 +1615,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         std::string destPath5 = "'" + std::string(path) + "/" + fileName + "_simulate.log'";
         systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5, std::to_string(__LINE__));
 
-
         // Copy xsc_report Log file
         std::string xscReportLogFilePath= binaryDirectory + "/" + "xsc_report.log";
         std::string destPath8 = "'" + std::string(path) + "/" + fileName + "_xsc_report.log'";
         systemUtil::makeSystemCall(xscReportLogFilePath, systemUtil::systemOperation::COPY, destPath8, std::to_string(__LINE__));
-
       }
       i++;
     }
@@ -1655,14 +1630,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
   }
 
-  void HwEmShim::xclClose()
-  {
+  void HwEmShim::xclClose() {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    for (auto& it: mFdToFileNameMap)
-    {
+    parseLog();
+
+    for (auto& it: mFdToFileNameMap) {
       int fd=it.first;
       int sSize = std::get<1>(it.second);
       void* addr = std::get<2>(it.second);
@@ -1729,6 +1704,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       std::string waitingMsg ="INFO: [HW-EMU 06-1] All the simulator processes exited successfully";
       logMessage(waitingMsg);
+
+      std::string consoleMsg = "INFO: [HW-EMU 07-0] Please refer the path \"" + getSimPath() + "/simulate.log\" for more detailed simulation infos, errors and warnings.";
+      logMessage(consoleMsg);
     }
 
     saveWaveDataBase();
@@ -1905,6 +1883,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     free(ci_buf);
     free(ri_buf);
     free(buf);
+    parsedMsgs.clear();
+
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
       mLogStream.close();
@@ -2749,7 +2729,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   }
    
   // Copy buffer thru the M2M.
-    if (deviceQuery(key_type::m2m) && getM2MAddress() != 0) {
+    if ((deviceQuery(key_type::m2m) && getM2MAddress() != 0) && !((sBO->fd >= 0) || (dBO->fd >= 0))) {
 
       char hostBuf[M2M_KERNEL_ARGS_SIZE];
       std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
@@ -2812,8 +2792,9 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   }
   else if((sBO->fd >=0) && (dBO->fd >= 0)) {  //Both source & destination P2P buffer
     // CR-1113695 Copy data from source P2P to Dest P2P
-    unsigned char temp_buffer[size];
-    int bytes_read = read(sBO->fd, temp_buffer, size);
+    std::vector<char> temp_buffer(size);
+    lseek(sBO->fd, src_offset, SEEK_SET);
+    int bytes_read = read(sBO->fd, temp_buffer.data(), size);
     if (bytes_read) {
       if (mLogStream.is_open())
       {
@@ -2821,23 +2802,24 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       }
     }
 
-    int bytes_write = write(dBO->fd, temp_buffer, size);
+    lseek(dBO->fd, dst_offset, SEEK_SET);
+    int bytes_write = write(dBO->fd, temp_buffer.data(), size);
     if (bytes_write) {
       if (mLogStream.is_open())
       {
         mLogStream << __func__ << ", data written successfully from local buffer to dest fd." << std::endl;
       }
     }
-
   }
   else if(dBO->fd >= 0){  //destination p2p buffer
     // CR-1113695 Copy data from temp buffer to exported fd
-    unsigned char temp_buffer[size];
-    if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
+    std::vector<char> temp_buffer(size);
+    if (xclCopyBufferDevice2Host((void*)temp_buffer.data(), sBO->base, size, src_offset, sBO->topology) != size) {
       std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
       return -1;
     }
-    int bytes_write = write(dBO->fd, temp_buffer, size);
+    lseek(dBO->fd, dst_offset, SEEK_SET);
+    int bytes_write = write(dBO->fd, temp_buffer.data(), size);
 
     if (bytes_write) {
       if (mLogStream.is_open())
@@ -2848,8 +2830,9 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   } 
   else if (sBO->fd >= 0) {  //source p2p buffer
     // CR-1112934 Copy data from exported fd to temp buffer using read API
-    unsigned char temp_buffer[size];
-    int bytes_read = read(sBO->fd, temp_buffer, size);
+    std::vector<char> temp_buffer(size);
+    lseek(sBO->fd, src_offset, SEEK_SET);
+    int bytes_read = read(sBO->fd, temp_buffer.data(), size);
 
     if (bytes_read) {
       if (mLogStream.is_open())
@@ -2859,7 +2842,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     }
 
     // copy data from temp buffer to destination buffer
-    if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer, size, dst_offset, dBO->topology) != size) {
+    if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer.data(), size, dst_offset, dBO->topology) != size) {
       std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;
       return -1;
     }
@@ -3300,18 +3283,30 @@ double HwEmShim::xclGetDeviceClockFreqMHz()
   return clockSpeed;
 }
 
-// Get the maximum bandwidth for host reads from the device (in MB/sec)
-// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
-double HwEmShim::xclGetReadMaxBandwidthMBps()
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double HwEmShim::xclGetHostReadMaxBandwidthMBps()
 {
-  return 8000.0;
+  return 15753.85;
 }
 
-// Get the maximum bandwidth for host writes to the device (in MB/sec)
-// NOTE: for now, just return 8.0 GBps (the max achievable for PCIe Gen3)
-double HwEmShim::xclGetWriteMaxBandwidthMBps()
+// For PCIe gen 3x16 or 4x8:
+// Max BW = 16.0 * (128b/130b encoding) = 15.75385 GB/s
+double HwEmShim::xclGetHostWriteMaxBandwidthMBps()
 {
-  return 8000.0;
+  return 15753.85;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double HwEmShim::xclGetKernelReadMaxBandwidthMBps()
+{
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double HwEmShim::xclGetKernelWriteMaxBandwidthMBps()
+{
+  return 19250.00;
 }
 
 uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)

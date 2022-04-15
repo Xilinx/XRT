@@ -56,8 +56,12 @@ class Report {
   const std::string & getReportName() const { return m_reportName; };
   const std::string & getShortDescription() const { return m_shortDescription; };
   bool isDeviceRequired() const { return m_isDeviceRequired; };
+  bool isHidden() const { return m_isHidden; };
 
   void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
+
+ // Needs a virtual destructor
+  virtual ~Report() {};
 
  // Child methods that need to be implemented
  protected:
@@ -68,6 +72,7 @@ class Report {
  // Child class Helper methods
  protected:
   Report(const std::string & _reportName, const std::string & _shortDescription, bool _deviceRequired);
+  Report(const std::string & _reportName, const std::string & _shortDescription, bool _deviceRequired, bool _isHidden);
 
  private:
   Report() = delete;
@@ -77,6 +82,8 @@ class Report {
    std::string m_reportName;
    std::string m_shortDescription;
    bool m_isDeviceRequired;
+
+   bool m_isHidden;
 };
 
 

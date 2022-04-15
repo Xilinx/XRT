@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 set(XRT_XRT_HEADER_SRC
   xrt_aie.h
   xrt_bo.h
@@ -15,6 +15,7 @@ install (FILES ${XRT_XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR}/xrt 
 set(XRT_XRT_DETAIL_HEADER_SRC
   detail/abi.h
   detail/any.h
+  detail/config.h
   detail/param_traits.h
   detail/pimpl.h)
 

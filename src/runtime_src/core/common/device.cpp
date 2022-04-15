@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -81,6 +81,8 @@ uuid
 device::
 get_xclbin_uuid() const
 {
+  // This function assumes only one xclbin loaded into the
+  // default slot 0.
   try {
     auto uuid_str =  device_query<query::xclbin_uuid>(this);
     return uuid(uuid_str);
@@ -145,10 +147,79 @@ xrt::xclbin
 device::
 get_xclbin(const uuid& xclbin_id) const
 {
-  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
-    throw error(EINVAL, "xclbin id mismatch");
+  // Allow access to xclbin in process of loading via device::load_xclbin
+  if (xclbin_id && xclbin_id == m_xclbin.get_uuid())
+    return m_xclbin;
+  if (xclbin_id)
+    return m_xclbins.get(xclbin_id);
 
   return m_xclbin;
+}
+
+// Update cached xclbin data based on data queried from driver. This
+// function can be called by multiple threads. One entry point is
+// via register_axlf, another is through open_context.  For the latter,
+// opening a CU context on the device can update the xclbin cached data,
+// when/if driver determines that the requested xclbin cannot be
+// shared and must be loaded into a new slot.
+void
+device::
+update_xclbin_info()
+{
+  // Update cached slot xclbin uuid mapping
+  try {
+    // [slot, xclbin_uuid]+
+    auto xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(this);
+    m_xclbins.reset(xrt_core::query::xclbin_slots::to_map(xclbin_slot_info));
+  }
+  catch (const query::no_such_key&) {
+    // device does not support multiple xclbins, assume slot 0
+    // for current loaded xclbin
+    m_xclbins.reset(std::map<slot_id, xrt::uuid>{{0, get_xclbin_uuid()}});
+  }
+}
+
+void
+device::
+update_cu_info()
+{
+  // Compute CU sort order, kernel driver zocl and xocl now assign and
+  // control the sort order, which is accessible via a query request.
+  // For emulation old xclbin_parser::get_cus is used.
+  m_cus.clear();
+  m_cu2idx.clear();
+  try {
+    // Regular CUs
+    auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_info>(this);
+
+    // TODO: m_cus is legacy, need to fix for multiple slots
+    std::sort(cudata.begin(), cudata.end(), [](const auto& d1, const auto& d2) { return d1.index < d2.index; });
+    std::transform(cudata.begin(), cudata.end(), std::back_inserter(m_cus), [](const auto& d) { return d.base_addr; });
+
+    for (const auto& d : cudata) {
+      auto& cu2idx = m_cu2idx[d.slot_index];
+      cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+    }
+
+    // Soft kernels, not an error if query doesn't exist (edge)
+    try {
+      auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_info>(this);
+      for (const auto& d : scudata) {
+        auto& cu2idx = m_cu2idx[d.slot_index];
+        cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+      }
+    }
+    catch (const query::no_such_key&) {
+    }
+  }
+  catch (const query::no_such_key&) {
+    auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
+    auto& cu2idx = m_cu2idx[0]; // default slot 0
+    if (ip_layout != nullptr) {
+      m_cus = xclbin::get_cus(ip_layout);
+      cu2idx = xclbin::get_cu_indices(ip_layout);
+    }
+  }
 }
 
 // This function is called after an axlf has been succesfully loaded
@@ -159,48 +230,38 @@ void
 device::
 register_axlf(const axlf* top)
 {
-  if (!m_xclbin || m_xclbin.get_uuid() != uuid(top->m_header.uuid))
-      m_xclbin = xrt::xclbin{top};
+  xrt::uuid xid{top->m_header.uuid};
 
-  // Compute CU sort order, kernel driver zocl and xocl now assign and
-  // control the sort order, which is accessible via a query request.
-  // For emulation old xclbin_parser::get_cus is used.
-  m_cus.clear();
-  try {
-    // Regular CUs
-    auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_info>(this);
-    std::sort(cudata.begin(), cudata.end(), [](const auto& d1, const auto& d2) { return d1.index < d2.index; });
-    std::transform(cudata.begin(), cudata.end(), std::back_inserter(m_cus), [](const auto& d) { return d.base_addr; });
-    for (const auto& d : cudata)
-      m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+  // Update xclbin caching from [slot, xclbin_uuid]+ data
+  update_xclbin_info();
 
-    // Soft kernels, not an error if query doesn't exist (edge)
-    try {
-      auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_info>(this);
-      for (const auto& d : scudata)
-        m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
-    }
-    catch (const query::no_such_key&) {
-    }
-  }
-  catch (const query::no_such_key&) {
-    auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
-    m_cus = xclbin::get_cus(ip_layout);
-    m_cu2idx = xclbin::get_cu_indices(ip_layout);
-  }
+  // Update cu caching from [slot, uuid, cuidx]+ data
+  update_cu_info();
+
+  // Do not recreate the xclbin if m_xclbin is set, which implies the
+  // xclbin is loaded via xrt::device::load_xclbin where the user
+  // application constructed the xclbin.  For all pratical purposes
+  // m_xclbin is a temporary 'global' variable to work-around dual
+  // entry points for xclbin loading.  However, for backwards
+  // compatibility m_xclbin represents the last loaded xclbin and
+  // will continue to work for single xclbin use-cases.
+  if (!m_xclbin || m_xclbin.get_uuid() != xid)
+    m_xclbin = xrt::xclbin{top};
+
+  // Record the xclbin
+  m_xclbins.insert(m_xclbin);
 }
 
 std::pair<const char*, size_t>
 device::
 get_axlf_section(axlf_section_kind section, const uuid& xclbin_id) const
 {
-  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
-    throw error(EINVAL, "xclbin id mismatch");
+  auto xclbin = get_xclbin(xclbin_id);
 
-  if (!m_xclbin)
+  if (!xclbin)
     return {nullptr, 0};
 
-  return xrt_core::xclbin_int::get_axlf_section(m_xclbin, section);
+  return xrt_core::xclbin_int::get_axlf_section(xclbin, section);
 }
 
 std::pair<const char*, size_t>
@@ -217,14 +278,12 @@ std::vector<std::pair<const char*, size_t>>
 device::
 get_axlf_sections(axlf_section_kind section, const uuid& xclbin_id) const
 {
+  auto xclbin = get_xclbin(xclbin_id);
 
-  if (xclbin_id && (xclbin_id != m_xclbin.get_uuid()))
-    throw error(EINVAL, "xclbin id mismatch");
-
-  if (!m_xclbin)
+  if (!xclbin)
     return std::vector<std::pair<const char*, size_t>>();
 
-  return xrt_core::xclbin_int::get_axlf_sections(m_xclbin, section);
+  return xrt_core::xclbin_int::get_axlf_sections(xclbin, section);
 }
 
 std::vector<std::pair<const char*, size_t>>
@@ -256,25 +315,42 @@ get_memory_type(size_t memidx) const
 
 const std::vector<uint64_t>&
 device::
-get_cus(const uuid& xclbin_id) const
+get_cus() const
 {
-  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
-    throw error(EINVAL, "xclbin id mismatch");
+  if (m_cu2idx.size() > 1)
+    throw error(std::errc::not_supported, "multiple xclbins not supported");
 
   return m_cus;
 }
 
 cuidx_type
 device::
-get_cuidx(const std::string& cuname, const uuid& xclbin_id) const
+get_cuidx(slot_id slot, const std::string& cuname) const
 {
-  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
-    throw error(EINVAL, "xclbin id mismatch");
-
-  auto itr = m_cu2idx.find(cuname);
-  if (itr == m_cu2idx.end())
+  auto slot_itr = m_cu2idx.find(slot);
+  if (slot_itr == m_cu2idx.end())
     throw error(EINVAL, "No such compute unit '" + cuname + "'");
-  return (*itr).second;
+
+  const auto& cu2idx = (*slot_itr).second;
+  auto cu_itr = cu2idx.find(cuname);
+  if (cu_itr == cu2idx.end())
+    throw error(EINVAL, "No such compute unit '" + cuname + "'");
+  return (*cu_itr).second;
+}
+
+cuidx_type
+device::
+get_cuidx(slot_id slot, const std::string& cuname)
+{
+  // Leverage const member function
+  const auto cdev = static_cast<const device*>(this);
+  try {
+    return cdev->get_cuidx(slot, cuname);
+  }
+  catch (const xrt_core::error&) {
+    update_cu_info();
+    return cdev->get_cuidx(slot, cuname);
+  }
 }
 
 std::pair<size_t, size_t>

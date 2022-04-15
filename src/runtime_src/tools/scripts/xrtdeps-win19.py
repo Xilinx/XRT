@@ -23,7 +23,7 @@
 #             |  +--OpenCL-Headers
 #             |  +--OpenCL-ICD-Loader
 #             +--include
-#             |  +--boost-1_78
+#             |  +--boost-1_75
 #             |  +--CL
 #             +--lib
 # =============================================================================
@@ -573,7 +573,7 @@ class ICDLibrary:
 
     # -- Create the release library
     if verbose == True:
-      print ("Invoking cmake build the release library...")
+      print ("Invoking cmake to build the release library...")
 
     cmd = "cmake --build . --verbose --config Release"
     print (cmd)
@@ -581,7 +581,7 @@ class ICDLibrary:
 
     # -- Install the library
     if verbose == True:
-      print ("Invoking cmake build to install the library...")
+      print ("Invoking cmake to install the library...")
 
     cmd = "cmake --build . --verbose --config Release --target install"
     print (cmd)
@@ -685,22 +685,6 @@ class GTestLibrary:
       print ("       Google-Test clone directory missing: " + gitDir)
       return True
 
-    # -- Copy the header files
-    srcDir = os.path.join(gitDir, "googletest", "include", "gtest")
-    dstDir = os.path.join(XRT_LIBRARY_INSTALL_DIR, "include", "gtest")
-
-    if verbose == True:
-      print ("Creating destination directory: " + dstDir)
-
-    pathlib.Path(dstDir).mkdir(parents=True, exist_ok=True) 
-
-    if verbose == True:
-      print ("Copying header directory.")
-      print ("   Source      : " + srcDir)
-      print ("   Destination : " + dstDir)
-
-    distutils.dir_util.copy_tree(srcDir, dstDir)
-
     # -- Build the library
     buildingDir = pathlib.Path(gitDir, "build")
 
@@ -714,47 +698,25 @@ class GTestLibrary:
     if verbose == True:
       print ("Invoking cmake to create the build scripts...")
 
-    cmd = "cmake -G \"Visual Studio 16 2019\" .."
+    cmd = "cmake -G \"Visual Studio 16 2019\" -Dgtest_force_shared_crt=ON -DCMAKE_INSTALL_PREFIX=" + self.install_dir + " .."
     print (cmd)
     os.system(cmd)
 
-	# -- Copying cmake files (GTestConfig, GTestConfigVersion)
-    srcDir = os.path.join(buildingDir, "googletest", "generated")
-    dstDir = os.path.join(XRT_LIBRARY_INSTALL_DIR, "lib", "cmake", "gtest")
-    pathlib.Path(dstDir).mkdir(parents=True, exist_ok=True)
-    distutils.dir_util.copy_tree(srcDir, dstDir)
-
     # -- Create the release library
     if verbose == True:
-      print ("Invoking cmake build the release library...")
+      print ("Invoking cmake to build the release library...")
 
     cmd = "cmake --build . --verbose --config Release"
     print (cmd)
     os.system(cmd)
 
-	# -- Create the Debug library
+    # -- Install the library
     if verbose == True:
-      print ("Invoking cmake build the Debug library...")
+      print ("Invoking cmake to install the library...")
 
-    cmd = "cmake --build . --verbose --config Debug"
+    cmd = "cmake --build . --verbose --config Release --target install"
     print (cmd)
     os.system(cmd)
-
-    # -- Copying Release .lib files
-    if verbose == True:
-      print ("Copying Release libraries...")
-
-    srcDir = os.path.join(buildingDir, "lib", "Release")
-    dstDir = os.path.join(XRT_LIBRARY_INSTALL_DIR, "lib")
-    distutils.dir_util.copy_tree(srcDir, dstDir)
-
-	# -- Copying Debug .lib files
-    if verbose == True:
-      print ("Copying Debug libraries...")
-
-    srcDir = os.path.join(buildingDir, "lib", "Debug")
-    dstDir = os.path.join(XRT_LIBRARY_INSTALL_DIR, "lib")
-    distutils.dir_util.copy_tree(srcDir, dstDir)
 
     return False;
 

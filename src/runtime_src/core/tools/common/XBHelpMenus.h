@@ -19,7 +19,6 @@
 
 // Include files
 // Please keep these to the bare minimum
-#include "SubCmd.h"
 #include "Report.h"
 
 #include <string>
@@ -27,48 +26,7 @@
 #include <utility> // Pair template
 #include <boost/program_options.hpp>
 
-// ----------------------- T Y P E D E F S -----------------------------------
-using SubCmdsCollection = std::vector<std::shared_ptr<SubCmd>>;
-
 namespace XBUtilities {
-  void 
-    report_commands_help( const std::string &_executable, 
-                          const std::string &_description,
-                          const boost::program_options::options_description& _optionDescription,
-                          const boost::program_options::options_description& _optionHidden,
-                          const SubCmdsCollection &_subCmds );
-  void 
-    report_subcommand_help( const std::string &_executableName,
-                            const std::string &_subCommand,
-                            const std::string &_description, 
-                            const std::string &_extendedHelp,
-                            const boost::program_options::options_description & _optionDescription,
-                            const boost::program_options::options_description &_optionHidden,
-                            const boost::program_options::positional_options_description & _positionalDescription,
-                            const boost::program_options::options_description &_globalOptions,
-                            bool removeLongOptDashes = false);
-
-  void 
-    report_subcommand_help( const std::string &_executableName,
-                            const std::string &_subCommand,
-                            const std::string &_description, 
-                            const std::string &_extendedHelp,
-                            const boost::program_options::options_description &_optionDescription,
-                            const boost::program_options::options_description &_optionHidden,
-                            const SubCmd::SubOptionOptions & _subOptionOptions,
-                            const boost::program_options::options_description &_globalOptions);
-
-  void 
-    report_option_help( const std::string & _groupName, 
-                        const boost::program_options::options_description& _optionDescription,
-                        const boost::program_options::positional_options_description & _positionalDescription,
-                        bool _bReportParameter = true,
-                        bool removeLongOptDashes = false);
-
-  std::string 
-    create_usage_string( const boost::program_options::options_description &_od,
-                         const boost::program_options::positional_options_description & _pod,
-                         bool removeLongOptDashes = false);
 
   using VectorPairStrings = std::vector< std::pair< std::string, std::string > >;
 

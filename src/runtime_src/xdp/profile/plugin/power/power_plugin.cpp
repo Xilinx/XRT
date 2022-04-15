@@ -78,9 +78,9 @@ namespace xdp {
       std::vector<std::string> paths ;
       for (auto f : powerFiles)
       {
-	char sysfsPath[512] ;
-	xclGetSysfsPath(handle, "xmc", f, sysfsPath, 512) ;
-	paths.push_back(sysfsPath) ;
+        char sysfsPath[512] ;
+        xclGetSysfsPath(handle, "xmc", f, sysfsPath, 512) ;
+        paths.push_back(sysfsPath) ;
       }
       filePaths.push_back(paths) ;
 
@@ -103,7 +103,7 @@ namespace xdp {
                                                   index) ;
       writers.push_back(writer) ;
       (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), 
-					  "XRT_POWER_PROFILE") ;
+                                          "XRT_POWER_PROFILE") ;
 
       // Move on to the next device
       xclClose(handle) ;
@@ -125,7 +125,7 @@ namespace xdp {
     {
       for (auto w : writers)
       {
-	w->write(false) ;
+        w->write(false) ;
       }
 
       db->unregisterPlugin(this) ;
@@ -141,27 +141,27 @@ namespace xdp {
       uint64_t index = 0 ;
       for (auto device : filePaths)
       {
-	std::vector<uint64_t> values ;
-	for (auto file : device)
-	{
-	  std::ifstream fs(file) ;
-	  if (!fs)
-	  {
-	    // When we tried to get the path to this file, we got a bad
-	    //  result (like empty string).  So all devices are aligned and
-	    //  have the same amount of information we'll just record this
-	    //  data element as 0.
-	    values.push_back(0) ;
-	    continue ;
-	  }
-	  std::string data ;
-	  std::getline(fs, data) ;
-	  uint64_t dp = data.empty() ? 0 : std::stoul(data) ;
-	  values.push_back(dp) ;
-	  fs.close() ;
-	}
-	(db->getDynamicInfo()).addPowerSample(index, timestamp, values) ;
-	++index ;	
+        std::vector<uint64_t> values ;
+        for (auto file : device)
+        {
+          std::ifstream fs(file) ;
+          if (!fs)
+          {
+            // When we tried to get the path to this file, we got a bad
+            //  result (like empty string).  So all devices are aligned and
+            //  have the same amount of information we'll just record this
+            //  data element as 0.
+            values.push_back(0) ;
+            continue ;
+          }
+          std::string data ;
+          std::getline(fs, data) ;
+          uint64_t dp = data.empty() ? 0 : std::stoul(data) ;
+          values.push_back(dp) ;
+          fs.close() ;
+        }
+        (db->getDynamicInfo()).addPowerSample(index, timestamp, values) ;
+        ++index ;	
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(pollingInterval)) ;

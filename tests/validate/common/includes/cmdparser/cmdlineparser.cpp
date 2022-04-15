@@ -93,12 +93,12 @@ bool CmdLineParser::addSwitch(const CmdSwitch &s) {
 
   if (cmd.shortcut.length() == 0) {
 
-    string temp = "-" + cmd.key[2];
+    string temp = string("-") + cmd.key[2];
 
     int i = 3;
     while (m_mapShortcutKeys.find(temp) != m_mapShortcutKeys.end() &&
            (size_t)i < cmd.key.length()) {
-      temp = "-" + s.key[i];
+      temp = string("-") + s.key[i];
       i++;
     }
 

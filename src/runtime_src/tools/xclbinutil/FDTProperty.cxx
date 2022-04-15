@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -507,6 +507,7 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
     case DF_au64:
     case DF_u64:
       {
+        errno = 0; 
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
         if (errno == ERANGE) {
           std::string err = XUtil::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint64_t storage space.", m_name.c_str(), _sData.c_str());

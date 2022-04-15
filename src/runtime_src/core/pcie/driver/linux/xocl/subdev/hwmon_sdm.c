@@ -26,8 +26,11 @@
 #include "xclfeatures.h"
 
 #define SYSFS_COUNT_PER_SENSOR          4
-#define SYSFS_NAME_LEN                  20
+#define SYSFS_NAME_LEN                  30
 #define HWMON_SDM_DEFAULT_EXPIRE_SECS   1
+
+#define SDR_BDINFO_ENTRY_LEN_MAX	256
+#define SDR_BDINFO_ENTRY_LEN		32
 
 //TODO: fix it by issuing sensor size request to vmr.
 #define RESP_LEN 4096
@@ -39,6 +42,22 @@ enum sysfs_sdr_field_ids {
     SYSFS_SDR_AVG_VAL,
 };
 
+struct xocl_sdr_bdinfo {
+	char bd_name[SDR_BDINFO_ENTRY_LEN_MAX];
+	char serial_num[SDR_BDINFO_ENTRY_LEN_MAX];
+	char bd_part_num[SDR_BDINFO_ENTRY_LEN];
+	char revision[SDR_BDINFO_ENTRY_LEN_MAX];
+	uint64_t mfg_date;
+	uint64_t pcie_info;
+	uint64_t uuid;
+	char mac_addr0[SDR_BDINFO_ENTRY_LEN_MAX];
+	char mac_addr1[SDR_BDINFO_ENTRY_LEN_MAX];
+	char active_msp_ver[SDR_BDINFO_ENTRY_LEN_MAX];
+	char target_msp_ver[SDR_BDINFO_ENTRY_LEN_MAX];
+	uint64_t oem_id;
+	bool fan_presence;
+};
+
 struct xocl_hwmon_sdm {
 	struct platform_device  *pdev;
 	struct device           *hwmon_dev;
@@ -48,10 +67,11 @@ struct xocl_hwmon_sdm {
 	/* Keep sensor data for maitaining hwmon sysfs nodes */
 	char                    *sensor_data[SDR_TYPE_MAX];
 	bool                    sensor_data_avail[SDR_TYPE_MAX];
+	struct xocl_sdr_bdinfo	bdinfo;
 
 	struct mutex            sdm_lock;
 	u64                     cache_expire_secs;
-	ktime_t                 cache_expires;
+	ktime_t                 cache_expires[SDR_TYPE_MAX];
 };
 
 #define SDM_BUF_IDX_INCR(buf_index, len, buf_len) \
@@ -68,6 +88,7 @@ static int hwmon_sdm_update_sensors(struct platform_device *pdev,
 static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
                                             enum xgq_sdr_repo_type repo_type,
                                             bool create_sysfs);
+static void destroy_hwmon_sysfs(struct platform_device *pdev);
 
 static int to_sensor_repo_type(int repo_id)
 {
@@ -159,10 +180,10 @@ static int get_sdr_type(enum xcl_group_kind kind)
 	return type;
 }
 
-static void update_cache_expiry_time(struct xocl_hwmon_sdm *sdm)
+static void update_cache_expiry_time(struct xocl_hwmon_sdm *sdm, uint8_t repo_id)
 {
-	sdm->cache_expires = ktime_add(ktime_get_boottime(),
-                                   ktime_set(sdm->cache_expire_secs, 0));
+	sdm->cache_expires[repo_id] = ktime_add(ktime_get_boottime(),
+                                      ktime_set(sdm->cache_expire_secs, 0));
 }
 
 /*
@@ -225,7 +246,7 @@ static int get_sensors_data(struct platform_device *pdev, uint8_t repo_id)
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	ktime_t now = ktime_get_boottime();
 
-	if (ktime_compare(now, sdm->cache_expires) > 0)
+	if (ktime_compare(now, sdm->cache_expires[repo_id]) > 0)
 		return hwmon_sdm_update_sensors(pdev, repo_id);
 
 	return 0;
@@ -253,47 +274,58 @@ static struct sensor_device_attribute name_attr =
 
 /*
  * hwmon_sensor_show(): This API is called when hwmon sysfs node is read
+ * It uses index to identify the right sensor from sensor_data list
+ * repo_id     : uint8_t  | 8 bits  (0xFF)   | [0:7]
+ * field_id    : uint8_t  | 4 bits  (0xF)    | [8:11]
+ * buf_index   : uint32_t | 12 bits (0xFFF)  | [12:23]
+ * buf_len     : uint8_t  | 8 bits  (0xFF)   | [24:31]
  */
 static ssize_t hwmon_sensor_show(struct device *dev,
                                  struct device_attribute *da, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 	int index = to_sensor_dev_attr(da)->index;
-	uint8_t repo_id = index & 0xF;
-	uint8_t field_id = (index >> 4) & 0xF;
-	uint32_t buf_index = (index >> 8) & 0xFFF;
-	uint8_t buf_len = (index >> 20) & 0xFF;
+	uint8_t repo_id = index & 0xFF;
+	uint8_t field_id = (index >> 8) & 0xF;
+	uint32_t buf_index = (index >> 12) & 0xFFF;
+	uint8_t buf_len = (index >> 24) & 0xFF;
 	char output[64];
 	uint32_t uval = 0;
+	ssize_t sz = 0;
 
+	if (repo_id >= SDR_TYPE_MAX) {
+		xocl_dbg(&sdm->pdev->dev, "repo_id: 0x%x is corrupted or not supported\n", repo_id);
+		return sprintf(buf, "%d\n", 0);
+	}
+
+	mutex_lock(&sdm->sdm_lock);
 	get_sensors_data(sdm->pdev, repo_id);
 
 	if ((sdm->sensor_data[repo_id] == NULL) || (!sdm->sensor_data_avail[repo_id])) {
-		xocl_err(&sdm->pdev->dev, "sensor_data is empty for repo_id: 0x%x\n", repo_id);
-		return sprintf(buf, "%d\n", 0);
+		xocl_dbg(&sdm->pdev->dev, "sensor_data is empty for repo_id: 0x%x\n", repo_id);
+		sz = sprintf(buf, "%d\n", 0);
 	}
 
 	if (field_id == SYSFS_SDR_NAME) {
 		memcpy(output, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return snprintf(buf, buf_len + 2, "%s\n", output);
-	}
-
-	if (field_id == SYSFS_SDR_INS_VAL) {
+		sz = snprintf(buf, buf_len + 2, "%s\n", output);
+	} else if ((field_id == SYSFS_SDR_INS_VAL) ||
+               (field_id == SYSFS_SDR_AVG_VAL) ||
+               (field_id == SYSFS_SDR_MAX_VAL)) {
+		if (buf_len > 4) {
+			//TODO: fix this case
+			buf_len = 4;
+		}
 		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return sprintf(buf, "%u\n", uval);
+		sz = sprintf(buf, "%u\n", uval);
+	} else {
+		xocl_dbg(&sdm->pdev->dev, "field_id: 0x%x is corrupted or not supported\n", field_id);
+		sz = sprintf(buf, "%d\n", 0);
 	}
 
-	if (field_id == SYSFS_SDR_AVG_VAL) {
-		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return sprintf(buf, "%u\n", uval);
-	}
+	mutex_unlock(&sdm->sdm_lock);
 
-	if (field_id == SYSFS_SDR_MAX_VAL) {
-		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return sprintf(buf, "%u\n", uval);
-	}
-
-	return sprintf(buf, "N/A\n");
+	return sz;
 }
 
 static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
@@ -306,18 +338,23 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
 					 GFP_KERNEL);
 	int err = 0;
 	iter->dev_attr.attr.name = (char*)devm_kzalloc(&sdm->pdev->dev,
-                                sizeof(char) * strlen(sysfs_name), GFP_KERNEL);
+                                sizeof(char) * strlen(sysfs_name) + 1, GFP_KERNEL);
 	strcpy((char*)iter->dev_attr.attr.name, sysfs_name);
 	iter->dev_attr.attr.mode = S_IRUGO;
 	iter->dev_attr.show = hwmon_sensor_show;
-	iter->index = repo_id | (field_id << 4) | (buf_index << 8) | (len << 20);
+	/*
+	 * repo_id     : uint8_t  | 8 bits  (0xFF)   | [0:7]
+	 * field_id    : uint8_t  | 4 bits  (0xF)    | [8:11]
+	 * buf_index   : uint32_t | 12 bits (0xFFF)  | [12:23]
+	 * len         : uint8_t  | 8 bits  (0xFF)   | [24:31]
+	 */
+	iter->index = repo_id | (field_id << 8) | (buf_index << 12) | (len << 24);
 
 	sysfs_attr_init(&iter->dev_attr.attr);
 	err = device_create_file(sdm->hwmon_dev, &iter->dev_attr);
 	if (err) {
 		iter->dev_attr.attr.name = NULL;
-		xocl_err(&sdm->pdev->dev, "unabled to create sensors_list0 hwmon sysfs file ret: 0x%x",
-				 err);
+		xocl_err(&sdm->pdev->dev, "unabled to create sysfs file, err: 0x%x", err);
 	}
 
 	return err;
@@ -351,6 +388,49 @@ static int sdr_get_id(int repo_type)
 	return id;
 }
 
+static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
+                                  uint32_t name_index, uint8_t name_length,
+                                  uint32_t ins_index, uint8_t val_len)
+{
+	char sensor_name[60];
+
+	memcpy(sensor_name, &sdm->sensor_data[repo_id][name_index], name_length);
+
+	if (!strcmp(sensor_name, "Product Name"))
+		memcpy(sdm->bdinfo.bd_name, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "Serial Num"))
+		memcpy(sdm->bdinfo.serial_num, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "Part Num"))
+		memcpy(sdm->bdinfo.bd_part_num, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "Revision"))
+		memcpy(sdm->bdinfo.revision, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "MFG Date"))
+		memcpy(&sdm->bdinfo.mfg_date, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "PCIE Info"))
+		memcpy(&sdm->bdinfo.pcie_info, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "UUID"))
+		memcpy(&sdm->bdinfo.uuid, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "MAC 0"))
+		memcpy(sdm->bdinfo.mac_addr0, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "MAC 1"))
+		memcpy(sdm->bdinfo.mac_addr1, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "fpga_fan_1"))
+	{
+		char sensor_val[60];
+		memcpy(sensor_val, &sdm->sensor_data[repo_id][ins_index], val_len);
+		if (!strcmp(sensor_val, "A"))
+			sdm->bdinfo.fan_presence = true;
+		else
+			sdm->bdinfo.fan_presence = false;
+	}
+	else if (!strcmp(sensor_name, "Active SC Ver"))
+		memcpy(sdm->bdinfo.active_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "Target SC Ver"))
+		memcpy(sdm->bdinfo.target_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "OEM ID"))
+		memcpy(&sdm->bdinfo.oem_id, &sdm->sensor_data[repo_id][ins_index], val_len);
+}
+
 /*
  * parse_sdr_info(): Parse the received buffer and creates sysfs node under hwmon driver
  * This API parses the buffer received from XGQ driver.
@@ -363,7 +443,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	uint8_t status;
 	int buf_index, err, repo_id;
 	uint8_t remaining_records, completion_code, repo_type;
-	uint8_t name_length, name_type_length;
+	uint8_t name_length, name_type_length, sys_index, fan_index;
 	uint8_t val_len, value_type_length, threshold_support_byte;
 	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
 	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0;
@@ -401,6 +481,13 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	buf_index = SDR_NUM_BYTES_IDX + 1;
 	//buf_size is only payload size. So, add header bytes for total in_buf buffer size
 	buf_size = buf_size + SDR_HEADER_SIZE;
+
+	//sysfs name indexing starts with 1 except for voltage.
+	//example; curr1_*, temp1_*. For voltage, it will be in0_*
+	sys_index = 1;
+	fan_index = 1;
+	if (repo_type == SDR_TYPE_VOLTAGE)
+		sys_index = 0;
 
 	while((remaining_records > 0) && (buf_index < buf_size))
 	{
@@ -502,37 +589,55 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 				goto abort;
 		}
 
+		if ((repo_type == SDR_TYPE_BDINFO) && create_sysfs) {
+			hwmon_sdm_load_bdinfo(sdm, repo_id, name_index, name_length, ins_index, val_len);
+			remaining_records--;
+			continue;
+		}
+
 		if ((base_unit_type_length != SDR_NULL_BYTE) && create_sysfs) {
 			char sysfs_name[SYSFS_COUNT_PER_SENSOR][SYSFS_NAME_LEN] = {{0}};
+			char sensor_name[60];
 			create = false;
 
 			switch(repo_type) {
 				case SDR_TYPE_TEMP:
-					sprintf(sysfs_name[3], "temp%d_average", remaining_records);
-					sprintf(sysfs_name[2], "temp%d_max", remaining_records);
-					sprintf(sysfs_name[1], "temp%d_input", remaining_records);
-					sprintf(sysfs_name[0], "temp%d_label", remaining_records);
+					memcpy(sensor_name, &in_buf[name_index], name_length);
+					if (strstr(sensor_name, "fan")) {
+						sprintf(sysfs_name[1], "fan%d_input", fan_index);
+						sprintf(sysfs_name[0], "fan%d_label", fan_index);
+						fan_index++;
+					} else {
+						sprintf(sysfs_name[3], "temp%d_average", sys_index);
+						sprintf(sysfs_name[2], "temp%d_max", sys_index);
+						sprintf(sysfs_name[1], "temp%d_input", sys_index);
+						sprintf(sysfs_name[0], "temp%d_label", sys_index);
+						sys_index++;
+					}
 					create = true;
 					break;
 				case SDR_TYPE_VOLTAGE:
-					sprintf(sysfs_name[3], "in%d_average", remaining_records);
-					sprintf(sysfs_name[2], "in%d_max", remaining_records);
-					sprintf(sysfs_name[1], "in%d_input", remaining_records);
-					sprintf(sysfs_name[0], "in%d_label", remaining_records);
+					sprintf(sysfs_name[3], "in%d_average", sys_index);
+					sprintf(sysfs_name[2], "in%d_max", sys_index);
+					sprintf(sysfs_name[1], "in%d_input", sys_index);
+					sprintf(sysfs_name[0], "in%d_label", sys_index);
+					sys_index++;
 					create = true;
 					break;
 				case SDR_TYPE_CURRENT:
-					sprintf(sysfs_name[3], "curr%d_average", remaining_records);
-					sprintf(sysfs_name[2], "curr%d_max", remaining_records);
-					sprintf(sysfs_name[1], "curr%d_input", remaining_records);
-					sprintf(sysfs_name[0], "curr%d_label", remaining_records);
+					sprintf(sysfs_name[3], "curr%d_average", sys_index);
+					sprintf(sysfs_name[2], "curr%d_max", sys_index);
+					sprintf(sysfs_name[1], "curr%d_input", sys_index);
+					sprintf(sysfs_name[0], "curr%d_label", sys_index);
+					sys_index++;
 					create = true;
 					break;
 				case SDR_TYPE_POWER:
-					sprintf(sysfs_name[3], "power%d_average", remaining_records);
-					sprintf(sysfs_name[2], "power%d_max", remaining_records);
-					sprintf(sysfs_name[1], "power%d_input", remaining_records);
-					sprintf(sysfs_name[0], "power%d_label", remaining_records);
+					sprintf(sysfs_name[3], "power%d_average", sys_index);
+					sprintf(sysfs_name[2], "power%d_max", sys_index);
+					sprintf(sysfs_name[1], "power%d_input", sys_index);
+					sprintf(sysfs_name[0], "power%d_label", sys_index);
+					sys_index++;
 					create = true;
 					break;
 				case SDR_TYPE_QSFP:
@@ -602,22 +707,6 @@ abort:
 	return -EINVAL;
 }
 
-static void destroy_hwmon_sysfs(struct platform_device *pdev)
-{
-	struct xocl_hwmon_sdm *sdm;
-
-	sdm = platform_get_drvdata(pdev);
-
-	if (!sdm->supported)
-		return;
-
-	if (sdm->hwmon_dev) {
-		device_remove_file(sdm->hwmon_dev, &name_attr.dev_attr);
-		hwmon_device_unregister(sdm->hwmon_dev);
-		sdm->hwmon_dev = NULL;
-	}
-}
-
 static int create_hwmon_sysfs(struct platform_device *pdev)
 {
 	struct xocl_hwmon_sdm *sdm;
@@ -675,9 +764,173 @@ static int hwmon_sdm_remove(struct platform_device *pdev)
 	if (sdm->sysfs_created)
 		destroy_hwmon_sysfs(pdev);
 
+	mutex_destroy(&sdm->sdm_lock);
 	platform_set_drvdata(pdev, NULL);
 
 	return 0;
+}
+
+static ssize_t
+bd_name_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%s\n", sdm->bdinfo.bd_name);
+};
+static DEVICE_ATTR_RO(bd_name);
+
+static ssize_t
+serial_num_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%s\n", sdm->bdinfo.serial_num);
+};
+static DEVICE_ATTR_RO(serial_num);
+
+static ssize_t
+bd_part_num_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%s\n", sdm->bdinfo.bd_part_num);
+};
+static DEVICE_ATTR_RO(bd_part_num);
+
+static ssize_t
+revision_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%s\n", sdm->bdinfo.revision);
+};
+static DEVICE_ATTR_RO(revision);
+
+static ssize_t
+mfg_date_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.mfg_date);
+};
+static DEVICE_ATTR_RO(mfg_date);
+
+static ssize_t
+pcie_info_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.pcie_info);
+};
+static DEVICE_ATTR_RO(pcie_info);
+
+static ssize_t
+uuid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.uuid);
+};
+static DEVICE_ATTR_RO(uuid);
+
+static ssize_t
+mac_addr0_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX\n",
+				   sdm->bdinfo.mac_addr0[0], sdm->bdinfo.mac_addr0[1], sdm->bdinfo.mac_addr0[2],
+				   sdm->bdinfo.mac_addr0[3], sdm->bdinfo.mac_addr0[4], sdm->bdinfo.mac_addr0[5]);
+};
+static DEVICE_ATTR_RO(mac_addr0);
+
+static ssize_t
+mac_addr1_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX\n",
+				   sdm->bdinfo.mac_addr1[0], sdm->bdinfo.mac_addr1[1], sdm->bdinfo.mac_addr1[2],
+				   sdm->bdinfo.mac_addr1[3], sdm->bdinfo.mac_addr1[4], sdm->bdinfo.mac_addr1[5]);
+};
+static DEVICE_ATTR_RO(mac_addr1);
+
+static ssize_t
+fan_presence_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", sdm->bdinfo.fan_presence);
+};
+static DEVICE_ATTR_RO(fan_presence);
+
+static ssize_t
+active_msp_ver_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d.%d.%d\n", sdm->bdinfo.active_msp_ver[0],
+				   sdm->bdinfo.active_msp_ver[1], sdm->bdinfo.active_msp_ver[2]);
+};
+static DEVICE_ATTR_RO(active_msp_ver);
+
+static ssize_t
+target_msp_ver_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d.%d.%d\n", sdm->bdinfo.target_msp_ver[0],
+				   sdm->bdinfo.target_msp_ver[1], sdm->bdinfo.target_msp_ver[2]);
+};
+static DEVICE_ATTR_RO(target_msp_ver);
+
+static ssize_t
+oem_id_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.oem_id);
+};
+static DEVICE_ATTR_RO(oem_id);
+
+
+static struct attribute *bdinfo_attrs[] = {
+	&dev_attr_bd_name.attr,
+	&dev_attr_serial_num.attr,
+	&dev_attr_bd_part_num.attr,
+	&dev_attr_revision.attr,
+	&dev_attr_mfg_date.attr,
+	&dev_attr_pcie_info.attr,
+	&dev_attr_uuid.attr,
+	&dev_attr_mac_addr0.attr,
+	&dev_attr_mac_addr1.attr,
+	&dev_attr_fan_presence.attr,
+	&dev_attr_active_msp_ver.attr,
+	&dev_attr_target_msp_ver.attr,
+	&dev_attr_oem_id.attr,
+	NULL,
+};
+
+static const struct attribute_group hwmon_sdm_bdinfo_attrgroup = {
+	.attrs = bdinfo_attrs,
+};
+
+static void destroy_hwmon_sysfs(struct platform_device *pdev)
+{
+	struct xocl_hwmon_sdm *sdm;
+
+	sdm = platform_get_drvdata(pdev);
+
+	if (!sdm->supported)
+		return;
+
+	if (sdm->hwmon_dev) {
+		device_remove_file(sdm->hwmon_dev, &name_attr.dev_attr);
+		hwmon_device_unregister(sdm->hwmon_dev);
+		sdm->hwmon_dev = NULL;
+	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup);
 }
 
 static int hwmon_sdm_probe(struct platform_device *pdev)
@@ -712,6 +965,9 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 		sdm->privileged = true;
 	}
 
+	if (sysfs_create_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup))
+		xocl_err(&pdev->dev, "unable to create sysfs group for bdinfo");
+
 	xocl_info(&pdev->dev, "hwmon_sdm driver probe is successful");
 
 	return err;
@@ -733,8 +989,6 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int repo_id, ret;
-	//TODO: request vmc/vmr for bdinfo resp size
-	uint32_t resp_size = RESP_LEN;
 
 	repo_id = sdr_get_id(repo_type);
 	if (repo_id < 0) {
@@ -745,10 +999,12 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
 	if (!sdm->privileged)
 		return hwmon_sdm_read_from_peer(pdev, repo_type);
 
-	sdm->sensor_data[repo_id] = (char*)kzalloc(sizeof(char) * resp_size,
-                                               GFP_KERNEL);
+	if (!sdm->sensor_data[repo_id])
+		sdm->sensor_data[repo_id] = (char*)devm_kzalloc(&sdm->pdev->dev, sizeof(char) * RESP_LEN, GFP_KERNEL);
+
 	ret = xocl_xgq_collect_sensors_by_id(xdev, sdm->sensor_data[repo_id],
-                                         repo_id, resp_size);
+                                         repo_id, RESP_LEN);
+
 	if (!ret) {
 		ret = parse_sdr_info(sdm->sensor_data[repo_id], sdm, create_sysfs);
 		if (!ret)
@@ -768,10 +1024,11 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
  */
 static void hwmon_sdm_get_sensors_list(struct platform_device *pdev, bool create_sysfs)
 {
-	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_BDINFO, false);
+	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_BDINFO, create_sysfs);
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_TEMP, create_sysfs);
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_CURRENT, create_sysfs);
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_POWER, create_sysfs);
+	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_VOLTAGE, create_sysfs);
 }
 
 /*
@@ -794,7 +1051,7 @@ static int hwmon_sdm_update_sensors(struct platform_device *pdev, uint8_t repo_i
 		ret = hwmon_sdm_read_from_peer(pdev, repo_type);
 
 	if (!ret)
-		update_cache_expiry_time(sdm);
+		update_cache_expiry_time(sdm, repo_id);
 
 	return ret;
 }
@@ -807,7 +1064,6 @@ static int hwmon_sdm_get_sensors(struct platform_device *pdev,
                                  char *resp, enum xcl_group_kind kind)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
-	uint32_t resp_size = RESP_LEN;
 	int repo_type, repo_id;
 	int ret = 0;
 
@@ -825,7 +1081,7 @@ static int hwmon_sdm_get_sensors(struct platform_device *pdev,
 
 	ret = hwmon_sdm_update_sensors_by_type(pdev, repo_type, false);
 	if (!ret)
-		memcpy(resp, sdm->sensor_data[repo_id], resp_size);
+		memcpy(resp, sdm->sensor_data[repo_id], RESP_LEN);
 
 	return ret;
 }
@@ -841,7 +1097,6 @@ static int hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	int repo_type, repo_id;
 	int ret = 0;
-	bool create_sysfs = (kind != XCL_SDR_BDINFO) ? true : false;
 
 	repo_type = get_sdr_type(kind);
 	if (repo_type < 0) {
@@ -855,12 +1110,13 @@ static int hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	ret = parse_sdr_info(in_buf, sdm, create_sysfs);
-	if (!ret) {
+	if (!sdm->sensor_data[repo_id])
+		sdm->sensor_data[repo_id] = (char*)devm_kzalloc(&sdm->pdev->dev, sizeof(char) * RESP_LEN, GFP_KERNEL);
+	memcpy(sdm->sensor_data[repo_id], in_buf, len);
+
+	ret = parse_sdr_info(in_buf, sdm, true);
+	if (!ret)
 		sdm->sensor_data_avail[repo_id] = true;
-		sdm->sensor_data[repo_id] = (char*)kzalloc(sizeof(char) * RESP_LEN, GFP_KERNEL);
-		memcpy(sdm->sensor_data[repo_id], in_buf, len);
-	}
 
 	return ret;
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,8 +16,9 @@
 
 #include <iostream>
 #include <sstream>
-#include <fstream>
 #include <cstring>
+#include <boost/filesystem.hpp>
+#include <regex>
 #include "zynq_dev.h"
 
 static std::fstream sysfs_open_path(const std::string& path, std::string& err,
@@ -142,12 +143,40 @@ void zynq_device::sysfs_get(const std::string& entry, std::string& err_msg,
 zynq_device *zynq_device::get_dev()
 {
     // This is based on the fact that on edge devices, we only have one DRM
-    // device, which is named renderD128.
+    // device, which is named as renderD* (eg: renderD128).
     // This path is reliable. It is the same for ARM32 and ARM64.
-    static zynq_device dev("/sys/class/drm/renderD128/device/");
+    static zynq_device dev("/sys/class/drm/" + get_render_devname() + "/device/");
     return &dev;
 }
 
 zynq_device::zynq_device(const std::string& root) : sysfs_root(root)
 {
+}
+
+std::string
+get_render_devname()
+{
+    static const std::string render_dir{"/dev/dri/"};
+    static const std::string render_dev_sym_dir = render_dir + "by-path/";
+    std::string render_devname;
+
+    // On Edge platforms 'zyxclmm_drm' is the name of zocl node in device tree
+    // A symlink to render device is created based on this node name
+    static const std::regex filter{"platform.*zyxclmm_drm-render"};
+
+    boost::filesystem::directory_iterator end_itr;
+    for( boost::filesystem::directory_iterator itr( render_dev_sym_dir ); itr != end_itr; ++itr) {
+        if (!std::regex_match(itr->path().filename().string(), filter))
+	    continue;
+
+	if (boost::filesystem::is_symlink(itr->path()))
+	    render_devname = boost::filesystem::read_symlink(itr->path()).filename().string();
+
+	break;
+    }
+
+    if (render_devname.empty())
+        render_devname = "renderD128";
+
+    return render_devname;
 }

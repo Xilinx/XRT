@@ -89,6 +89,10 @@ XRT_CORE_COMMON_EXPORT
 void
 pop_callback(const xrt::run& run);
 
+XRT_CORE_COMMON_EXPORT
+size_t
+get_regmap_size(const xrt::kernel& kernel);
+
 }} // kernel_int, xrt_core
 
 #endif

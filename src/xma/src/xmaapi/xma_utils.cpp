@@ -120,13 +120,14 @@ namespace xma_core {
                 std::string cu_name{ reinterpret_cast<char*>(priv->kernel_info->name) };
                 auto pos = cu_name.find(":");
                 if (pos == std::string::npos) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "create_session_execbo - Invalid cu name %s\n", cu_name);
+                    xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "create_session_execbo - Invalid cu name %s\n", cu_name.c_str());
                     return XMA_ERROR;
                 }
                 std::string kernel_name = cu_name.substr(0, pos);
                 std::string inst_name = cu_name.substr(pos + 1);
                 std::string updated_cu_name = kernel_name + ":{" + inst_name + "}";
                 dev_execbo.xrt_kernel = xrt::kernel(priv->dev_handle, priv->dev_handle.get_xclbin_uuid(), updated_cu_name);
+                dev_execbo.xrt_run = xrt::run(dev_execbo.xrt_kernel);
             }
             return XMA_SUCCESS;
         }
@@ -154,7 +155,6 @@ namespace xma_core { namespace utils {
 
 constexpr std::uint64_t cu_base_min = 0x1800000;
 namespace bfs = boost::filesystem;
-
 
 static const char*
 emptyOrValue(const char* cstr)

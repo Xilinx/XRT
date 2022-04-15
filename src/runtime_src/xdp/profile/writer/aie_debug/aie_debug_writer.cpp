@@ -15,10 +15,13 @@
  */
 
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
+#include "xdp/profile/database/database.h"
+
+#include "core/common/message.h"
 
 #include <vector>
-
-#include "xdp/profile/database/database.h"
+#include <boost/optional/optional.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 namespace xdp {
 
@@ -31,16 +34,33 @@ namespace xdp {
     : VPWriter(fileName)
     , mDeviceName(deviceName)
     , mDeviceIndex(deviceIndex)
+    , mWroteValidData(false)
   {
   }
 
   bool AIEDebugWriter::write(bool openNewFile)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device((int)mDeviceIndex);
     auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
+
+    // Make sure report is not empty and no error occurred
+    // NOTE: catch json parser errors (e.g., non-UTF-8 characters)
+    if (aieInfoStr.empty())
+      return true;
+    try {
+      std::stringstream ss(aieInfoStr);
+      boost::property_tree::ptree pt_aie;
+      boost::property_tree::read_json(ss, pt_aie);
+      if (!pt_aie.get_child_optional("graphs"))
+        return true;
+    } catch (...) {
+      return true;
+    }
+
+    // Write approved AIE report to file
+    refreshFile();
     fout << aieInfoStr << std::endl;
+    mWroteValidData = true;
 
     if (openNewFile)
       switchFiles();
@@ -49,15 +69,40 @@ namespace xdp {
 
   bool AIEDebugWriter::write(bool openNewFile, void* handle)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device(handle);
     auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
+
+    // Make sure report is not empty and no error occurred
+    // NOTE: catch json parser errors (e.g., non-UTF-8 characters)
+    if (aieInfoStr.empty())
+      return true;
+    try {
+      std::stringstream ss(aieInfoStr);
+      boost::property_tree::ptree pt_aie;
+      boost::property_tree::read_json(ss, pt_aie);
+      if (!pt_aie.get_child_optional("graphs")) 
+        return true;
+    } catch (...) {
+      return true;
+    }
+
+    // Write approved AIE report to file
+    refreshFile();
     fout << aieInfoStr << std::endl;
+    mWroteValidData = true;
 
     if (openNewFile)
       switchFiles();
     return true;
+  }
+
+  // Warn if application exits without writing valid data
+  AIEDebugWriter::~AIEDebugWriter()
+  {
+    if (!mWroteValidData) {
+      std::string msg("No valid data found for AIE status. Please run xbutil.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+    }
   }
 
   /*
@@ -69,16 +114,33 @@ namespace xdp {
     : VPWriter(fileName)
     , mDeviceName(deviceName)
     , mDeviceIndex(deviceIndex)
+    , mWroteValidData(false)
   {
   }
 
   bool AIEShimDebugWriter::write(bool openNewFile)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device((int)mDeviceIndex);
     auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
+    
+    // Make sure report is not empty and no error occurred
+    // NOTE: catch json parser errors (e.g., non-UTF-8 characters)
+    if (aieShimInfoStr.empty())
+      return true;
+    try {
+      std::stringstream ss(aieShimInfoStr);
+      boost::property_tree::ptree pt_aie;
+      boost::property_tree::read_json(ss, pt_aie);
+      if (!pt_aie.get_child_optional("tiles"))
+        return true;   
+    } catch (...) {
+      return true;
+    }
+
+    // Write approved AIE shim report to file
+    refreshFile();
     fout << aieShimInfoStr << std::endl;
+    mWroteValidData = true;
 
     if (openNewFile)
       switchFiles();
@@ -87,15 +149,40 @@ namespace xdp {
 
   bool AIEShimDebugWriter::write(bool openNewFile, void* handle)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device(handle);
     auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
+    
+    // Make sure report is not empty and no error occurred
+    // NOTE: catch json parser errors (e.g., non-UTF-8 characters)
+    if (aieShimInfoStr.empty())
+      return true;
+    try {
+      std::stringstream ss(aieShimInfoStr);
+      boost::property_tree::ptree pt_aie;
+      boost::property_tree::read_json(ss, pt_aie);
+      if (!pt_aie.get_child_optional("tiles"))
+        return true;
+    } catch (...) {
+      return true;
+    }
+
+    // Write approved AIE shim report to file
+    refreshFile();
     fout << aieShimInfoStr << std::endl;
+    mWroteValidData = true;
 
     if (openNewFile)
       switchFiles();
     return true;
+  }
+
+  // Warn if application exits without writing valid shim data
+  AIEShimDebugWriter::~AIEShimDebugWriter()
+  {
+    if (!mWroteValidData) {
+      std::string msg("No valid data found for AIE Shim status. Please run xbutil.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+    }
   }
 
 } // end namespace xdp

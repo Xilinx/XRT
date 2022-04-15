@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -146,9 +146,9 @@ namespace xdp {
       {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
                                  XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}},
       {"write_bandwidths",      {XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
-	                               XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
-	    {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
-	                               XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
+                                 XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
+      {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
+                                 XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
     };
     mMemoryEndEvents = {
       {"conflicts",             {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
@@ -158,19 +158,23 @@ namespace xdp {
       {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
                                  XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}},
       {"write_bandwidths",      {XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
-	                               XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
-	    {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
-	                               XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
+                                 XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
+      {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
+                                 XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
     };
 
     // **** PL/Shim Counters ****
     mShimStartEvents = {
-      {"bandwidths",            {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
-      {"stalls_idle",           {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
+      {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"input_stalls_idle",     {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}},
+      {"output_stalls_idle",    {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
     };
     mShimEndEvents = {
-      {"bandwidths",            {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
-      {"stalls_idle",           {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
+      {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"input_stalls_idle",     {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}},
+      {"output_stalls_idle",    {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
     };
 
     // String event values for guidance and output
@@ -205,6 +209,12 @@ namespace xdp {
                                  "DMA_MM2S_1_FINISHED_BD_MEM"}},
       {"read_bandwidths",       {"DMA_S2MM_0_FINISHED_BD_MEM",
                                  "DMA_S2MM_1_FINISHED_BD_MEM"}}
+    };
+    mShimEventStrings = {
+      {"input_bandwidths",      {"PORT_RUNNING_0_PL", "PORT_TLAST_0_PL"}},
+      {"output_bandwidths",     {"PORT_RUNNING_0_PL", "PORT_TLAST_0_PL"}},
+      {"input_stalls_idle",     {"PORT_IDLE_0_PL",    "PORT_STALLED_0_PL"}},
+      {"output_stalls_idle",    {"PORT_IDLE_0_PL",    "PORT_STALLED_0_PL"}}
     };
   }
 
@@ -242,7 +252,7 @@ namespace xdp {
     auto loc = XAie_TileLoc(col, row);
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "Core" 
                            : ((mod == XAIE_MEM_MOD) ? "Memory" 
-                           : "Shim");
+                           : "Interface Tile");
     const std::string groups[3] = {
       XAIEDEV_DEFAULT_GROUP_GENERIC,
       XAIEDEV_DEFAULT_GROUP_STATIC,
@@ -275,7 +285,7 @@ namespace xdp {
     uint32_t tileId = 0;
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
                            : ((mod == XAIE_MEM_MOD) ? "memory" 
-                           : "shim");
+                           : "interface tile");
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
 
     // Calculate number of free counters based on minimum available across tiles
@@ -321,7 +331,9 @@ namespace xdp {
       }
 
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      printTileModStats(aieDevice, tiles[tileId], mod);
+      
+      if (tiles.size() > 0)
+        printTileModStats(aieDevice, tiles[tileId], mod);
     }
 
     return numFreeCtr;
@@ -350,7 +362,7 @@ namespace xdp {
     std::string metricSet  = vec.at( vec.size()-1 );
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
                            : ((mod == XAIE_MEM_MOD) ? "memory" 
-                           : "shim");
+                           : "interface tile");
     
     // Ensure requested metric set is supported (if not, use default)
     if (((mod == XAIE_CORE_MOD) && (mCoreStartEvents.find(metricSet) == mCoreStartEvents.end()))
@@ -358,7 +370,7 @@ namespace xdp {
         || ((mod == XAIE_PL_MOD) && (mShimStartEvents.find(metricSet) == mShimStartEvents.end()))) {
       std::string defaultSet = (mod == XAIE_CORE_MOD) ? "heat_map" 
                              : ((mod == XAIE_MEM_MOD) ? "conflicts" 
-                             : "bandwidths");
+                             : "input_bandwidths");
       std::stringstream msg;
       msg << "Unable to find " << moduleName << " metric set " << metricSet
           << ". Using default of " << defaultSet << ".";
@@ -377,7 +389,7 @@ namespace xdp {
 
   std::vector<tile_type> 
   AIEProfilingPlugin::getTilesForProfiling(const XAie_ModuleType mod, 
-                                           const std::string& metricsStr, 
+                                           const std::string& metricsStr,
                                            void* handle)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
@@ -412,6 +424,22 @@ namespace xdp {
           int plioCount = 0;
           auto plios = xrt_core::edge::aie::get_plios(device.get());
           for (auto& plio : plios) {
+            auto isMaster = plio.second.slaveOrMaster;
+            auto streamId = plio.second.streamId;
+
+            // If looking for specific ID, make sure it matches
+            if ((mChannelId >= 0) && (mChannelId != streamId))
+              continue;
+
+            // Make sure it's desired polarity
+            // NOTE: input = slave (data flowing from PLIO)
+            //       output = master (data flowing to PLIO)
+            if ((isMaster && (metricsStr == "input_bandwidths"))
+                || (isMaster && (metricsStr == "input_stalls_idle"))
+                || (!isMaster && (metricsStr == "output_bandwidths"))
+                || (!isMaster && (metricsStr == "output_stalls_idle")))
+              continue;
+
             tempTiles.push_back(tile_type());
             auto& t = tempTiles.at(plioCount++);
             t.col = plio.second.shimColumn;
@@ -419,8 +447,14 @@ namespace xdp {
 
             // Grab stream ID and slave/master (used in configStreamSwitchPorts() below)
             // TODO: find better way to store these values
-            t.itr_mem_row = plio.second.streamId;
-            t.itr_mem_col = plio.second.slaveOrMaster;
+            t.itr_mem_col = isMaster;
+            t.itr_mem_row = streamId;
+          }
+          
+          if (plioCount == 0) {
+            std::string msg = "No tiles used channel ID " + std::to_string(mChannelId)
+                              + ". Please specify a valid channel ID.";
+            xrt_core::message::send(severity_level::warning, "XRT", msg);
           }
         }
 
@@ -476,7 +510,7 @@ namespace xdp {
     {
       std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
                              : ((mod == XAIE_MEM_MOD) ? "memory" 
-                             : "shim");
+                             : "interface tile");
       std::stringstream msg;
       msg << "Tiles used for AIE " << moduleName << " profile counters: ";
       for (auto& tile : tiles) {
@@ -517,8 +551,9 @@ namespace xdp {
                                                    const std::string metricSet)
   {
     // Currently only used to monitor trace and PL stream
-    if ((metricSet != "aie_trace") && (metricSet != "bandwidths")
-        && (metricSet != "stalls_idle"))
+    if ((metricSet != "aie_trace") && (metricSet != "input_bandwidths")
+        && (metricSet != "output_bandwidths") && (metricSet != "input_stalls_idle")
+        && (metricSet != "output_stalls_idle"))
       return;
 
     if (metricSet == "aie_trace") {
@@ -560,9 +595,17 @@ namespace xdp {
 
   // Get reportable payload specific for this tile and/or counter
   uint32_t AIEProfilingPlugin::getCounterPayload(XAie_DevInst* aieDevInst, 
-      uint16_t column, uint16_t row, uint16_t startEvent)
+      const tile_type& tile, uint16_t column, uint16_t row, uint16_t startEvent)
   {
-    // For now, only used for DMA BD sizes
+    // First, catch stream ID for PLIO metrics
+    // NOTE: value = ((master or slave) << 8) & (stream ID)
+    if ((startEvent == XAIE_EVENT_PORT_RUNNING_0_PL)
+        || (startEvent == XAIE_EVENT_PORT_TLAST_0_PL)
+        || (startEvent == XAIE_EVENT_PORT_IDLE_0_PL)
+        || (startEvent == XAIE_EVENT_PORT_STALLED_0_PL))
+      return ((tile.itr_mem_col << 8) | tile.itr_mem_row);
+
+    // Second, send DMA BD sizes
     if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
         && (startEvent != XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM)
         && (startEvent != XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM)
@@ -623,25 +666,35 @@ namespace xdp {
     constexpr int NUM_MODULES = 3;
 
     // Get AIE clock frequency
-	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+
+    auto interfaceMetricStr = xrt_core::config::get_aie_profile_interface_metrics();
+    std::vector<std::string> interfaceVec;
+    boost::split(interfaceVec, interfaceMetricStr, boost::is_any_of(":"));
+    auto interfaceMetric = interfaceVec.at(0);
+    try {mChannelId = std::stoi(interfaceVec.at(1));} catch (...) {mChannelId = -1;}
 
     int numCounters[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
     XAie_ModuleType falModuleTypes[NUM_MODULES] = 
         {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
-    std::string moduleNames[NUM_MODULES] = {"core", "memory", "shim"};
+    std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
     std::string metricSettings[NUM_MODULES] = 
         {xrt_core::config::get_aie_profile_core_metrics(),
          xrt_core::config::get_aie_profile_memory_metrics(),
-         xrt_core::config::get_aie_profile_interface_metrics()};
+         interfaceMetric};
 
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
       std::string metricsStr = metricSettings[module];
-      if (metricsStr.empty())
+      if (metricsStr.empty()){
+        std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
+        std::string metricMsg = "No metric set specified for " + modName + " module. "
+        "Please specify the aie_profile_" + modName + "_metrics setting in your xrt.ini.";
+        xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
-
+      }
       int NUM_COUNTERS       = numCounters[module];
       XAie_ModuleType mod    = falModuleTypes[module];
       std::string moduleName = moduleNames[module];
@@ -710,7 +763,7 @@ namespace xdp {
                                  : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
                                  : (tmpEnd + BASE_SHIM_COUNTER));
 
-          auto payload = getCounterPayload(aieDevInst, col, row, startEvent);
+          auto payload = getCounterPayload(aieDevInst, tile, col, row, startEvent);
 
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
@@ -859,13 +912,14 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", msg);
           (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
           return;
-	}
+        }
         else {
           XAie_DevInst* aieDevInst =
             static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
           for (auto& counter : counters) {
-            auto payload = getCounterPayload(aieDevInst, counter.column, counter.row, 
+            tile_type tile;
+            auto payload = getCounterPayload(aieDevInst, tile, counter.column, counter.row, 
                                              counter.startEvent);
 
             (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,
@@ -883,11 +937,13 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
     // Create and register writer and file
-    std::string core_str = (mCoreMetricSet.empty()) ? "" : "_" + mCoreMetricSet;
+    std::string core_str = (mCoreMetricSet.empty())   ? "" : "_" + mCoreMetricSet;
     std::string mem_str  = (mMemoryMetricSet.empty()) ? "" : "_" + mMemoryMetricSet;
-    std::string shim_str = (mShimMetricSet.empty()) ? "" : "_" + mShimMetricSet;    
+    std::string shim_str = (mShimMetricSet.empty())   ? "" : "_" + mShimMetricSet;    
+    std::string chan_str = (mChannelId < 0)           ? "" : "_chan" + std::to_string(mChannelId);
 
-    std::string outputFile = "aie_profile_" + deviceName + core_str + mem_str + shim_str + ".csv";
+    std::string outputFile = "aie_profile_" + deviceName + core_str + mem_str 
+        + shim_str + chan_str + ".csv";
 
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
                                               deviceName.c_str(), mIndex);

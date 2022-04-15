@@ -12,13 +12,13 @@ string(TOLOWER ${PROJECT_NAME} LOWER_NAME)
 # For use by xrt consumers (using cmake) to import xrt libraries
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   configure_package_config_file (
-    ${CMAKE_SOURCE_DIR}/CMake/config/xrt.fp.in
+    ${XRT_SOURCE_DIR}/CMake/config/xrt.fp.in
     ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config.cmake
     INSTALL_DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
     )
 else()
   configure_package_config_file (
-    ${CMAKE_SOURCE_DIR}/CMake/config/xrt-edge.fp.in
+    ${XRT_SOURCE_DIR}/CMake/config/xrt-edge.fp.in
     ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config.cmake
     INSTALL_DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
     )

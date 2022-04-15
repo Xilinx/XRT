@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,34 +18,36 @@
 #ifndef XDP_PROFILE_DEVICE_TRACE_OFFLOAD_H_
 #define XDP_PROFILE_DEVICE_TRACE_OFFLOAD_H_
 
-#include <fstream>
-#include <mutex>
-#include <iostream>
-#include <thread>
-#include <chrono>
-#include <queue>
-#include <functional>
-#include <memory>
-#include <cstring>
-#include <atomic>
-
+#include "core/common/message.h"
 #include "xdp/config.h"
 #include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/device_trace_logger.h"
+#include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
+
+#include <atomic>
+#include <chrono>
+#include <cstring>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <thread>
 
 namespace xdp {
 
 enum class OffloadThreadStatus {
-    IDLE,
-    RUNNING,
-    STOPPING,
-    STOPPED
+  IDLE,
+  RUNNING,
+  STOPPING,
+  STOPPED
 };
 
 enum class OffloadThreadType {
-    TRACE,
-    CLOCK_TRAIN
+  TRACE,
+  CLOCK_TRAIN
 };
 
 struct TraceBufferInfo {
@@ -106,111 +109,101 @@ if(!m_debug); else std::cout
 
 class DeviceTraceOffload {
 public:
-    XDP_EXPORT
-    DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
-                       uint64_t offload_sleep_ms, uint64_t trbuf_sz);
-    XDP_EXPORT
-    virtual ~DeviceTraceOffload();
-    XDP_EXPORT
-    void start_offload(OffloadThreadType type);
-    XDP_EXPORT
-    void stop_offload();
+  XDP_EXPORT
+  DeviceTraceOffload(DeviceIntf* dInt, DeviceTraceLogger* dTraceLogger,
+                     uint64_t offload_sleep_ms, uint64_t trbuf_sz);
+  XDP_EXPORT
+  virtual ~DeviceTraceOffload();
+  XDP_EXPORT
+  void start_offload(OffloadThreadType type);
+  XDP_EXPORT
+  void stop_offload();
+  XDP_EXPORT
+  virtual bool read_trace_init(bool circ_buf, const std::vector<uint64_t>&);
+  XDP_EXPORT
+  virtual void read_trace_end();
+  XDP_EXPORT
+  void train_clock();
+  XDP_EXPORT
+  void process_trace();
+  XDP_EXPORT
+  bool trace_buffer_full();
 
-    XDP_EXPORT
-    virtual bool read_trace_init(bool circ_buf, const std::vector<uint64_t>&);
-    XDP_EXPORT
-    virtual void read_trace_end();
-    XDP_EXPORT
-    void train_clock();
-    XDP_EXPORT
-    void process_trace();
+public:
+  bool has_fifo() {
+    return dev_intf->hasFIFO();
+  };
 
-    bool has_fifo() {
-      return dev_intf->hasFIFO();
-    };
+  bool has_ts2mm() {
+    return dev_intf->hasTs2mm();
+  };
 
-    bool has_ts2mm() {
-      return dev_intf->hasTs2mm();
-    };
+  void read_trace() {
+    m_read_trace(true);
+  };
 
-    bool trace_buffer_full() {
-      if (has_fifo()) {
-        return fifo_full;
-      }
-      bool isFull = false;
-      for(uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
-        isFull |= ts2mm_info.buffers[i].full;
-      }
-      return isFull;
-    }
+  bool using_circular_buffer( uint64_t& min_offload_rate,
+                              uint64_t& requested_offload_rate) {
+    min_offload_rate = ts2mm_info.circ_buf_min_rate;
+    requested_offload_rate = ts2mm_info.circ_buf_cur_rate;
+    return ts2mm_info.use_circ_buf;
+  };
 
-    void read_trace() {
-      m_read_trace(true);
-    };
+  inline OffloadThreadStatus get_status() {
+    std::lock_guard<std::mutex> lock(status_lock);
+    return status;
+  };
 
-    bool using_circular_buffer( uint64_t& min_offload_rate,
-                                uint64_t& requested_offload_rate) {
-      min_offload_rate = ts2mm_info.circ_buf_min_rate;
-      requested_offload_rate = ts2mm_info.circ_buf_cur_rate;
-      return ts2mm_info.use_circ_buf;
-    };
-    inline OffloadThreadStatus get_status() {
-      std::lock_guard<std::mutex> lock(status_lock);
-      return status;
-    };
-    inline bool continuous_offload() { return continuous ; }
-    inline void set_continuous(bool value = true) { continuous = value ; }
+  inline bool continuous_offload() { return continuous ; }
+  inline void set_continuous(bool value = true) { continuous = value ; }
 
 private:
-    void read_trace_fifo(bool force=true);
-
-    void read_trace_s2mm(bool force=true);
-    uint64_t read_trace_s2mm_partial();
-    bool config_s2mm_reader(uint64_t i, uint64_t wordCount);
-    bool init_s2mm(bool circ_buf, const std::vector<uint64_t> &);
-    void reset_s2mm();
-
-    bool should_continue();
-    void train_clock_continuous();
-    void offload_device_continuous();
-    void offload_finished();
-    void process_trace_continuous();
-    
-    void read_leftover_circular_buf();
+  void read_trace_fifo(bool force=true);
+  void read_trace_s2mm(bool force=true);
+  uint64_t read_trace_s2mm_partial();
+  bool config_s2mm_reader(uint64_t i, uint64_t wordCount);
+  bool init_s2mm(bool circ_buf, const std::vector<uint64_t> &);
+  void reset_s2mm();
+  bool should_continue();
+  void train_clock_continuous();
+  void offload_device_continuous();
+  void offload_finished();
+  void process_trace_continuous();
+  void read_leftover_circular_buf();
 
 protected:
-    DeviceIntf* dev_intf;
-    bool m_initialized = false;
-    // Default dma chunk size
-//    uint64_t m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
-    bool m_debug = false; /* Enable Output stream for log */
+  DeviceIntf* dev_intf;
+  bool m_initialized = false;
+  bool m_debug = false; /* Enable Output stream for log */
 
 private:
-    DeviceTraceLogger* deviceTraceLogger;
-    std::function<void(bool)> m_read_trace;
+  DeviceTraceLogger* deviceTraceLogger;
+  std::function<void(bool)> m_read_trace;
+  Ts2mmInfo ts2mm_info;
 
-    // When using a FIFO for offload, if the FIFO fills up, we cannot
-    //  read from it again (circular buffer in FIFO is not supported).
-    //  The fifo_full flag will keep track if we have seen the FIFO full.
-    bool fifo_full = false;
+  // fifo doesn't support circular buffer mode
+  bool fifo_full = false;
 
-    uint64_t sleep_interval_ms;
-    Ts2mmInfo ts2mm_info;
+  // Continuous offload
+  std::mutex status_lock;
+  uint64_t sleep_interval_ms;
+  OffloadThreadStatus status = OffloadThreadStatus::IDLE;
+  std::thread offload_thread;
+  std::thread process_thread;
+  bool continuous = false;
 
-    // Continuous offload
-    std::mutex status_lock;
-    OffloadThreadStatus status = OffloadThreadStatus::IDLE;
-    std::thread offload_thread;
-    std::thread process_thread;
-    bool continuous = false ;
+  // Clock Training Params
+  bool m_force_clk_train = true;
+  std::chrono::time_point<std::chrono::system_clock> m_prev_clk_train_time;
 
-    // Clock Training Params
-    bool m_force_clk_train = true;
-    std::chrono::time_point<std::chrono::system_clock> m_prev_clk_train_time;
+  // Internal flags to end trace processing thread
+  std::atomic<bool> m_process_trace;
+  std::atomic<bool> m_process_trace_done;
 
-    // Internal flag to end trace processing thread
-    std::atomic<bool> m_process_trace;
-    std::atomic<bool> m_process_trace_done;
+  // Internal flags to keep track of warnings
+  std::once_flag ts2mm_queue_warning_flag;
+  std::once_flag fifo_full_warning_flag;
+  std::once_flag ts2mm_full_warning_flag;
 };
 
 }

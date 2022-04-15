@@ -257,6 +257,14 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			return;
 		}
 
+		if (XOCL_DSA_IS_VERSAL_ES3(xdev)) {
+			ret = xocl_hwmon_sdm_init(xdev);
+			if (ret) {
+				userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
+				return;
+			}
+		}
+
 		xocl_kds_reset(xdev, xclbin_id);
 		XOCL_PUT_XCLBIN_ID(xdev);
 		if (!xdev->core.drm) {
@@ -948,10 +956,13 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		goto failed;
 	}
 
-	ret = xocl_hwmon_sdm_init(xdev);
-	if (ret) {
-		userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
-		ret = 0;
+	if (XOCL_DSA_IS_VERSAL_ES3(xdev)) {
+		//probe & initialize hwmon_sdm driver only on versal
+		ret = xocl_hwmon_sdm_init(xdev);
+		if (ret) {
+			userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
+			goto failed;
+		}
 	}
 
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
@@ -1073,8 +1084,9 @@ int xocl_hwmon_sdm_init(struct xocl_dev *xdev)
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_TEMP);
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_CURRENT);
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_POWER);
+	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_VOLTAGE);
 
-	return ret;
+	return 0;
 }
 
 /*

@@ -32,15 +32,15 @@ uint64_t
 address(xrtBufferHandle handle);
 
 // group_id() - Get memory bank index of argument bo
-int32_t
+uint32_t
 group_id(const xrt::bo& bo);
 
-// xcl_device_handle() - Get xcl device handle from BO 
+// xcl_device_handle() - Get xcl device handle from BO
 xclDeviceHandle
 device_handle(const xrt::bo& bo);
 
 // get_flags() - Get the flags used when BO was created
-xrt::bo::flags 
+xrt::bo::flags
 get_flags(const xrt::bo& bo);
 
 // clone() - Clone src bo into target memory bank

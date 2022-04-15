@@ -82,7 +82,8 @@ namespace xdp {
                                  const XAie_LocType loc,
                                  const XAie_Events event,
                                  const std::string metricSet);
-    uint32_t getCounterPayload(XAie_DevInst* aieDevInst, 
+    uint32_t getCounterPayload(XAie_DevInst* aieDevInst,
+                               const tile_type& tile,
                                uint16_t column, 
                                uint16_t row, 
                                uint16_t startEvent);
@@ -94,6 +95,7 @@ namespace xdp {
 
     static bool live;
 
+    int16_t mChannelId = -1;
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
     std::string mCoreMetricSet;

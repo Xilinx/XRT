@@ -1548,12 +1548,14 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 #define XOCL_IS_STREAM(topo, idx)					\
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
 	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
+#define XOCL_IS_PS_KERNEL_MEM(topo, idx)				\
+	(topo->m_mem_data[idx].m_type == MEM_PS_KERNEL) 
 #define XOCL_IS_P2P_MEM(topo, idx)					\
 	((topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
 	 topo->m_mem_data[idx].m_type == MEM_HBM) &&			\
-	!IS_HOST_MEM(topo->m_mem_data[i].m_tag))
+	!IS_HOST_MEM(topo->m_mem_data[idx].m_tag))
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
@@ -2122,6 +2124,7 @@ struct xocl_xgq_vmr_funcs {
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
+	int (*xgq_clear_firewall)(struct platform_device *pdev);
 	int (*xgq_freq_scaling)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
 	int (*xgq_freq_scaling_by_topo)(struct platform_device *pdev,
@@ -2148,6 +2151,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_xgq_check_firewall(xdev)				\
 	(XGQ_CB(xdev, xgq_check_firewall) ?			\
 	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : 0)
+#define	xocl_xgq_clear_firewall(xdev)				\
+	(XGQ_CB(xdev, xgq_clear_firewall) ?			\
+	XGQ_OPS(xdev)->xgq_clear_firewall(XGQ_DEV(xdev)) : 0)
 #define	xocl_xgq_freq_scaling(xdev, freqs, num_freqs, verify) 	\
 	(XGQ_CB(xdev, xgq_freq_scaling) ?			\
 	XGQ_OPS(xdev)->xgq_freq_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
@@ -2185,7 +2191,7 @@ struct xocl_sdm_funcs {
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
 	(struct xocl_sdm_funcs *)SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM)->ops : NULL)
 #define	SDM_CB(xdev, cb)					\
-	(XGQ_DEV(xdev) && SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
+	(SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
 #define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
 	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)
@@ -2373,7 +2379,6 @@ int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
 int xocl_enable_vmr_boot(xdev_handle_t xdev_hdl);
-void xocl_reload_vmr(xdev_handle_t xdev_hdl);
 
 int xocl_count_iores_byname(struct platform_device *pdev, char *name);
 struct resource *xocl_get_iores_with_idx_byname(struct platform_device *pdev,

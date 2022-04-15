@@ -278,7 +278,7 @@ out:
 	return ret;
 }
 
-int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 flags)
+int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 flags, u32 cu_domain)
 {
 	int ret = 0;
 	struct kds_ctx_info info = { 0 };
@@ -296,6 +296,7 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 	}
 	uuid_copy(cctx->xclbin_id, &uuid_null);
 
+	info.cu_domain = cu_domain;
 	info.cu_idx = cu_idx;
 	info.flags = flags;
 	info.curr_ctx = cctx;
@@ -308,13 +309,14 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 	return ret;
 }
 
-int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx)
+int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 cu_domain)
 {
 	int ret = 0;
 	struct kds_ctx_info info = { 0 };
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_client_ctx *cctx = NULL;
 
+	info.cu_domain = cu_domain;
 	info.cu_idx = cu_idx;
 	mutex_lock(&client->lock);
 	cctx = zocl_check_exists_context(client, &uuid_null);
@@ -712,6 +714,7 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	xcmd->cb.notify_host = notify_execbuf;
 	xcmd->execbuf = (u32 *)ecmd;
 	xcmd->gem_obj = gem_obj;
+	xcmd->exec_bo_handle = args->exec_bo_handle;
 
 	//print_ecmd_info(ecmd);
 
@@ -742,6 +745,9 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		if (ret)
 			goto out1;
 		goto out;
+	case ERT_ABORT:
+		abort_ecmd2xcmd(to_abort_pkg(ecmd), xcmd);
+		break;
 	default:
 		DRM_ERROR("Unsupport command\n");
 		ret = -EINVAL;
@@ -836,8 +842,15 @@ void zocl_destroy_client(void *client_hdl)
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_sched  *kds = NULL;
 	struct kds_client_ctx *curr = NULL;
+	struct kds_client_ctx *tmp = NULL;
 	struct drm_zocl_slot *slot = NULL;
 	int pid = pid_nr(client->pid);
+
+	if (!zdev) {
+		zocl_info(client->dev, "client exits pid(%d)\n", pid);
+		kfree(client);
+		return;
+	}
 
 	kds = &zdev->kds;
 
@@ -850,7 +863,7 @@ void zocl_destroy_client(void *client_hdl)
 	/* Delete all the existing context associated to this device for this
 	 * client.
 	 */
-	list_for_each_entry(curr, &client->ctx_list, link) {
+	list_for_each_entry_safe(curr, tmp, &client->ctx_list, link) {
 		/* Get the corresponding slot for this xclbin */
 		slot = zocl_get_slot(zdev, curr->xclbin_id);
 		if (!slot)
@@ -859,6 +872,7 @@ void zocl_destroy_client(void *client_hdl)
 		/* Unlock this slot specific xclbin */
 		zocl_unlock_bitstream(slot, curr->xclbin_id);
 		vfree(curr->xclbin_id);
+		list_del(&curr->link);
 		vfree(curr);
 	}
 

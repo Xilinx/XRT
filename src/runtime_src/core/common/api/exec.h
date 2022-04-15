@@ -1,19 +1,5 @@
-/**
- * Copyright (C) 2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #ifndef xrt_core_exec_h_
 #define xrt_core_exec_h_
 
@@ -51,6 +37,9 @@ unmanaged_wait(const command* cmd, const std::chrono::milliseconds&)
   return std::cv_status::no_timeout;
 }
 
+std::cv_status
+exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms);
+
 void
 start();
 
@@ -78,6 +67,9 @@ unmanaged_wait(const command* cmd);
 
 std::cv_status
 unmanaged_wait(const command* cmd, const std::chrono::milliseconds& timeout_ms);
+
+std::cv_status
+exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms);
 
 void
 start();
@@ -124,6 +116,12 @@ unmanaged_wait(const command* cmd);
 XRT_CORE_COMMON_EXPORT
 std::cv_status
 unmanaged_wait(const command* cmd, const std::chrono::milliseconds& timeout_ms);
+
+// Wait for one call to exec_wait to return either from
+// some command completing or from a timeout.
+XRT_CORE_COMMON_EXPORT
+std::cv_status
+exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms);
 
 void
 start();

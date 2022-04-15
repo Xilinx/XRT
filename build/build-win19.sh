@@ -7,8 +7,7 @@
 set -e
 
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
-SRCDIR=$(readlink -f $BUILDDIR/../src)
-CORE=7
+CORE=`grep -c ^processor /proc/cpuinfo`
 
 CMAKE="/mnt/c/Program Files/CMake/bin/cmake.exe"
 XRT=/mnt/c/Xilinx/xrt
@@ -28,26 +27,22 @@ usage()
     echo "[-xrt]                     XRT root directory (default: $XRT)"
     echo "[-boost]                   BOOST libaries root directory (default: $BOOST)"
     echo "[-nocmake]                 Do not rerun cmake generation, just build"
+    echo "[-noabi]                   Do compile with ABI version check"
+    echo "[-mcdm]                    Build mcdm subset"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-dbg]                     Build debug library (default: optimized)"
     echo "[-all]                     Build debug and optimized library (default: optimized)"
-    echo "[-driver]                  Include building driver code"
-    echo "[-verbose]                 Turn on verbosity when compiling"
-    echo ""
-    echo "Compile caching is enabled with '-ccache' but requires access to internal network."
 
     exit 1
 }
 
 clean=0
-ccache=0
-docs=0
-verbose=""
-driver=0
 jcore=$CORE
 nocmake=0
+noabi=0
 dbg=0
 release=1
+cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -77,6 +72,10 @@ while [ $# -gt 0 ]; do
             release=1
             shift
             ;;
+        -mcdm)
+            cmake_flags+=" -DMCDM=1 -DMCDM_IN_XRT=1"
+            shift
+            ;;
 	-boost)
 	    shift
 	    BOOST="$1"
@@ -87,32 +86,12 @@ while [ $# -gt 0 ]; do
             jcore=$1
             shift
             ;;
-        -ccache)
-            ccache=1
-            shift
-            ;;
-        -checkpatch)
-            checkpatch=1
-            shift
-            ;;
-	docs|-docs)
-            docs=1
-            shift
-            ;;
-        -driver)
-            driver=1
-            shift
-            ;;
-        -clangtidy)
-            clangtidy=1
-            shift
-            ;;
-        -verbose)
-            verbose="VERBOSE=1"
-            shift
-            ;;
         -nocmake)
             nocmake=1
+            shift
+            ;;
+        -noabi)
+            cmake_flags+=" -DDISABLE_ABI_CHECK=1"
             shift
             ;;
         *)
@@ -132,26 +111,35 @@ if [[ $clean == 1 ]]; then
     exit 0
 fi
 
-mkdir -p WDebug WRelease
+cmake_flags+=" -DMSVC_PARALLEL_JOBS=$jcore"
+cmake_flags+=" -DKHRONOS=$KHRONOS"
+cmake_flags+=" -DBOOST_ROOT=$BOOST"
+
+echo "${cmake_flags[@]}"
 
 if [ $dbg == 1 ]; then
-cd WDebug
-if [ $nocmake == 0 ]; then
-  "$CMAKE" -G "Visual Studio 16 2019" -DMSVC_PARALLEL_JOBS=$jcore -DKHRONOS=$KHRONOS -DBOOST_ROOT=$BOOST -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-fi
-"$CMAKE" --build . --verbose --config Debug
-"$CMAKE" --build . --verbose --config Debug --target install
-cd $BUILDDIR
+    cmake_flags+=" -DCMAKE_BUILD_TYPE=Debug"
+    mkdir -p WDebug
+    cd WDebug
+
+    if [ $nocmake == 0 ]; then
+        "$CMAKE" -G "Visual Studio 16 2019" $cmake_flags ../../src
+    fi
+    "$CMAKE" --build . --verbose --config Debug
+    "$CMAKE" --build . --verbose --config Debug --target install
+    cd $BUILDDIR
 fi
 
 if [ $release == 1 ]; then
-cd WRelease
-if [ $nocmake == 0 ]; then
-  "$CMAKE" -G "Visual Studio 16 2019" -DMSVC_PARALLEL_JOBS=$jcore -DKHRONOS=$KHRONOS -DBOOST_ROOT=$BOOST -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
-fi
-"$CMAKE" --build . --verbose --config Release
-"$CMAKE" --build . --verbose --config Release --target install
-cd $BUILDDIR
+    cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
+    mkdir -p WRelease
+    cd WRelease
+    if [ $nocmake == 0 ]; then
+        "$CMAKE" -G "Visual Studio 16 2019" $cmake_flags ../../src
+    fi
+    "$CMAKE" --build . --verbose --config Release
+    "$CMAKE" --build . --verbose --config Release --target install
+    cd $BUILDDIR
 fi
 
 cd $here

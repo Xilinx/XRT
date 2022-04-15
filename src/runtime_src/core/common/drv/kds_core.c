@@ -83,7 +83,7 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	char *cu_fmt = "%d,%d,%s,0x%x,%u\n";
+	char *cu_fmt = "%d,%d,%s:%s,0x%x,%u\n";
 	struct xrt_cu *xcu = NULL;
 	ssize_t sz = 0;
 	int i;
@@ -115,8 +115,8 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 				continue;
 
 			sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, j,
-					(i | SCU_DOMAIN), scu_mgmt->name[i],
-					scu_mgmt->status[i],
+					(i | SCU_DOMAIN), xcu->info.kname,xcu->info.iname,
+					xcu->status,
 					cu_stat_read(scu_mgmt,usage[i]));
 		}
 	}
@@ -139,7 +139,7 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 			"CU to host interrupt capability: %d\n",
 			kds->cu_intr_cap);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Interrupt mode: %s\n",
-			(kds->cu_intr)? "cu" : "ert");
+			(KDS_SETTING(kds->cu_intr))? "cu" : "ert");
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Number of CUs: %d\n",
 			cu_mgmt->num_cus);
 	for (i = 0; i < MAX_CUS; ++i) {
@@ -176,7 +176,9 @@ static int kds_polling_thread(void *data)
 {
 	struct kds_sched *kds = (struct kds_sched *)data;
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
 	struct xrt_cu **xcus = cu_mgmt->xcus;
+	struct xrt_cu **xscus = scu_mgmt->xcus;
 	int busy_cnt = 0;
 	int loop_cnt = 0;
 	int cu_idx = 0;
@@ -188,6 +190,12 @@ static int kds_polling_thread(void *data)
 				continue;
 
 			if (xrt_cu_process_queues(xcus[cu_idx]) == XCU_BUSY)
+				busy_cnt += 1;
+		}
+		for (cu_idx = 0; cu_idx < MAX_CUS; cu_idx++) {
+			if (!xscus[cu_idx])
+				continue;
+			if (xrt_cu_process_queues(xscus[cu_idx]) == XCU_BUSY)
 				busy_cnt += 1;
 		}
 
@@ -343,7 +351,7 @@ out:
 }
 
 /**
- * acquire_scu_idx - Get ready CU index
+ * acquire_scu_idx - Get ready SCU index
  *
  * @xcmd: Command
  *
@@ -353,7 +361,59 @@ out:
 static int
 acquire_scu_idx(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 {
-	return 0;
+	struct kds_client *client = xcmd->client;
+	/* User marked CUs */
+	uint8_t user_cus[MAX_CUS];
+	int num_marked;
+	/* After validation */
+	uint8_t valid_cus[MAX_CUS];
+	int num_valid = 0;
+	uint8_t index;
+	u64 usage;
+	u64 min_usage;
+	int i;
+
+	num_marked = cu_mask_to_cu_idx(xcmd, user_cus);
+	if (unlikely(num_marked > scu_mgmt->num_cus)) {
+		kds_err(client, "Too many CUs in CU mask");
+		return -EINVAL;
+	}
+
+	/* Check if CU is added in the context */
+	for (i = 0; i < num_marked; ++i) {
+		if (test_bit(user_cus[i], client->scu_bitmap)) {
+			valid_cus[num_valid] = user_cus[i];
+			++num_valid;
+		}
+	}
+
+	if (num_valid == 1) {
+		index = valid_cus[0];
+		goto out;
+	} else if (num_valid == 0) {
+		kds_err(client, "All CUs in mask are out of context");
+		return -EINVAL;
+	}
+
+	/* Find out the CU with minimum usage */
+	for (i = 1, index = valid_cus[0]; i < num_valid; ++i) {
+		usage = cu_stat_read(scu_mgmt, usage[valid_cus[i]]);
+		min_usage = cu_stat_read(scu_mgmt, usage[index]);
+		if (usage < min_usage)
+			index = valid_cus[i];
+	}
+
+out:
+	cu_stat_inc(scu_mgmt, usage[index]);
+	client_stat_inc(client, scu_s_cnt[index]);
+	xcmd->cu_idx = index;
+	/* Before it go, make sure selected CU is still opening. */
+	if (unlikely(!test_bit(index, client->scu_bitmap))) {
+		client_stat_dec(client, scu_s_cnt[index]);
+		index = -EAGAIN;
+	}
+
+	return index;
 }
 
 static int
@@ -368,6 +428,22 @@ kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 		return cu_idx;
 
 	xrt_cu_submit(cu_mgmt->xcus[cu_idx], xcmd);
+	set_xcmd_timestamp(xcmd, KDS_QUEUED);
+	return 0;
+}
+
+static int
+kds_scu_dispatch(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
+{
+	int cu_idx = 0;
+
+	do {
+		cu_idx = acquire_scu_idx(scu_mgmt, xcmd);
+	} while(cu_idx == -EAGAIN);
+	if (cu_idx < 0)
+		return cu_idx;
+
+	xrt_cu_submit(scu_mgmt->xcus[cu_idx], xcmd);
 	set_xcmd_timestamp(xcmd, KDS_QUEUED);
 	return 0;
 }
@@ -392,6 +468,38 @@ kds_cu_abort_cmd(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 
 		if (xcmd->status == KDS_TIMEOUT) {
 			kds = container_of(cu_mgmt, struct kds_sched, cu_mgmt);
+			kds->bad_state = 1;
+			kds_info(xcmd->client, "CU(%d) hangs, reset device", i);
+		}
+
+		xcmd->cb.notify_host(xcmd, xcmd->status);
+		xcmd->cb.free(xcmd);
+		return;
+	}
+
+	/* Command is not found in any CUs and any queues */
+	xcmd->status = KDS_ERROR;
+	xcmd->cb.notify_host(xcmd, xcmd->status);
+	xcmd->cb.free(xcmd);
+}
+
+static void
+kds_scu_abort_cmd(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
+{
+	struct kds_sched *kds;
+	int i;
+
+	/* Broadcast abort command to each CU and let CU finds out how to abort
+	 * the target command.
+	 */
+	for (i = 0; i < scu_mgmt->num_cus; i++) {
+		xrt_cu_hpq_submit(scu_mgmt->xcus[i], xcmd);
+
+		if (xcmd->status == KDS_NEW)
+			continue;
+
+		if (xcmd->status == KDS_TIMEOUT) {
+			kds = container_of(scu_mgmt, struct kds_sched, scu_mgmt);
 			kds->bad_state = 1;
 			kds_info(xcmd->client, "CU(%d) hangs, reset device", i);
 		}
@@ -438,6 +546,36 @@ kds_submit_cu(struct kds_sched *kds, struct kds_command *xcmd)
 }
 
 static int
+kds_submit_scu(struct kds_sched *kds, struct kds_command *xcmd)
+{
+	int ret = 0;
+
+	switch (xcmd->opcode) {
+	case OP_START_SK:
+		ret = kds_scu_dispatch(&kds->scu_mgmt, xcmd);
+		if (!ret && (kds->ert_disable || kds->xgq_enable)) {
+			kds->polling_start = 1;
+			wake_up_interruptible(&kds->wait_queue);
+		}
+		break;
+	case OP_CONFIG:
+		break;
+	case OP_GET_STAT:
+		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
+		xcmd->cb.free(xcmd);
+		break;
+	case OP_ABORT:
+		kds_scu_abort_cmd(&kds->scu_mgmt, xcmd);
+		break;
+	default:
+		ret = -EINVAL;
+		kds_err(xcmd->client, "Unknown opcode");
+	}
+
+	return ret;
+}
+
+static int
 kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	struct kds_ert *ert = kds->ert;
@@ -468,16 +606,9 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		}
 		break;
 	case OP_CONFIG:
+	case OP_START_SK:
 	case OP_CLK_CALIB:
 	case OP_VALIDATE:
-		break;
-	case OP_START_SK:
-		/* KDS should select a CU and set it in cu_mask */
-		do {
-			cu_idx = acquire_scu_idx(&kds->scu_mgmt, xcmd);
-		} while(cu_idx == -EAGAIN);
-		if (cu_idx < 0)
-			return cu_idx;
 		break;
 	default:
 		kds_err(xcmd->client, "Unknown opcode");
@@ -554,12 +685,12 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	int wait_ms;
 
 	if ((cu_idx >= MAX_CUS) || (!cu_mgmt->xcus[cu_idx])) {
-		kds_err(client, "CU(%d) not found", cu_idx);
+	        kds_err(client, "Client pid(%d) CU(%d) not found", pid_nr(client->pid), cu_idx);
 		return -EINVAL;
 	}
 
 	if (!test_and_clear_bit(cu_idx, client->cu_bitmap)) {
-		kds_err(client, "CU(%d) has never been reserved", cu_idx);
+		kds_err(client, "Client pid(%d) CU(%d) has never been reserved", pid_nr(client->pid), cu_idx);
 		return -EINVAL;
 	}
 
@@ -569,7 +700,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	if (submitted == completed)
 		goto skip;
 
-	if (kds->ert_disable) {
+	if (kds->ert_disable || kds->xgq_enable) {
 		wait_ms = 500;
 		xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
 
@@ -639,17 +770,10 @@ kds_add_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	u32 cu_idx = 0;
+	u32 cu_idx = info->cu_idx;
 	u32 prop = 0;
 	bool shared;
 	int ret = 0;
-
-	if (info->cu_idx < MAX_CUS) {
-		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
-		return -EINVAL;
-	} else {
-		cu_idx = info->cu_idx & ~(SCU_DOMAIN);
-	}
 
 	if ((cu_idx >= MAX_CUS) || (!scu_mgmt->xcus[cu_idx])) {
 		kds_err(client, "SCU(%d) not found", cu_idx);
@@ -699,16 +823,10 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	u32 cu_idx = 0;
+	u32 cu_idx = info->cu_idx;
 	unsigned long submitted = 0;
 	unsigned long completed = 0;
-
-	if (info->cu_idx < MAX_CUS) {
-		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
-		return -EINVAL;
-	} else {
-		cu_idx = info->cu_idx & ~(SCU_DOMAIN);
-	}
+	bool bad_state = false;
 
 	if ((cu_idx >= MAX_CUS) || (!scu_mgmt->xcus[cu_idx])) {
 		kds_err(client, "SCU(%d) not found", cu_idx);
@@ -725,6 +843,28 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 	completed = client_stat_read(client, scu_c_cnt[cu_idx]);
 	if (submitted == completed)
 		goto skip;
+
+	if (kds->xgq_enable) {
+		int wait_ms = 500;
+
+		xrt_cu_abort(scu_mgmt->xcus[cu_idx], client);
+
+		/* sub-device that handle command should do abort with a timeout */
+		do {
+			kds_warn(client, "%ld outstanding command(s) on SCU(%d)",
+				 submitted - completed, cu_idx);
+			msleep(wait_ms);
+			submitted = client_stat_read(client, scu_s_cnt[cu_idx]);
+			completed = client_stat_read(client, scu_c_cnt[cu_idx]);
+		} while (submitted != completed);
+
+		bad_state = xrt_cu_abort_done(scu_mgmt->xcus[cu_idx], client);
+	}
+
+	if (bad_state) {
+		kds->bad_state = 1;
+		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
+	}
 
 skip:
 	/* scu_mgmt->cu_refs is the critical section of multiple clients */
@@ -952,11 +1092,14 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 	BUG_ON(!xcmd->cb.free);
 
 	/* TODO: Check if command is blocked */
-
+	
 	/* Command is good to submit */
 	switch (xcmd->type) {
 	case KDS_CU:
 		err = kds_submit_cu(kds, xcmd);
+		break;
+	case KDS_SCU:
+		err = kds_submit_scu(kds, xcmd);
 		break;
 	case KDS_ERT:
 		err = kds_submit_ert(kds, xcmd);
@@ -1024,14 +1167,14 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
  * per the kds context argument.
  */
 static bool
-is_cu_in_ctx_slot(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit)
+is_cu_in_ctx_slot(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit, u32 cu_domain)
 {
 	struct xrt_cu *xcu = NULL;
 
-	if (bit < MAX_CUS)
-		xcu = kds->cu_mgmt.xcus[bit];
-	else
+	if (cu_domain == (SCU_DOMAIN>>16))
 		xcu = kds->scu_mgmt.xcus[bit];
+	else
+		xcu = kds->cu_mgmt.xcus[bit];
 
 	if (xcu && (xcu->info.slot_idx == cctx->slot_idx))
 		return true;
@@ -1053,31 +1196,36 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	while (cctx->virt_cu_ref) {
 		info.cu_idx = CU_CTX_VIRT_CU;
 		info.curr_ctx = cctx;
+		info.cu_domain = 0;
 		kds_del_context(kds, client, &info);
 	}
 
-	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
-	while (bit < MAX_CUS) {
-		/* Check whether this CU belongs to current slot */
-		if (is_cu_in_ctx_slot(kds, cctx, bit)) {
-			info.cu_idx = bit;
-			info.curr_ctx = cctx;
-			kds_del_context(kds, client, &info);
-		}
-		bit = find_next_bit(client->cu_bitmap, MAX_CUS, bit + 1);
-	};
-	bitmap_zero(client->cu_bitmap, MAX_CUS);
 	bit = find_first_bit(client->scu_bitmap, MAX_CUS);
 	while (bit < MAX_CUS) {
 		/* Check whether this SCU belongs to current slot */
-		if (is_cu_in_ctx_slot(kds, cctx, bit + MAX_CUS)) {
-			info.cu_idx = bit + MAX_CUS;
+	        if (is_cu_in_ctx_slot(kds, cctx, bit, (SCU_DOMAIN>>16))) {
+			info.cu_idx = bit;
+			info.cu_domain = (SCU_DOMAIN>>16);
 			info.curr_ctx = cctx;
 			kds_del_context(kds, client, &info);
 		}
+		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
 		bit = find_next_bit(client->scu_bitmap, MAX_CUS, bit + 1);
 	};
 	bitmap_zero(client->scu_bitmap, MAX_CUS);
+	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
+	while (bit < MAX_CUS) {
+		/* Check whether this CU belongs to current slot */
+	        if (is_cu_in_ctx_slot(kds, cctx, bit, 0 /* regular CUs */)) {
+			info.cu_idx = bit;
+			info.cu_domain = 0;
+			info.curr_ctx = cctx;
+			kds_del_context(kds, client, &info);
+		}
+		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
+		bit = find_next_bit(client->cu_bitmap, MAX_CUS, bit + 1);
+	};
+	bitmap_zero(client->cu_bitmap, MAX_CUS);
 	mutex_unlock(&client->lock);
 
 	WARN_ON(cctx->num_ctx);
@@ -1128,6 +1276,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 			return -EINVAL;
 		}
 		/* a special handling for m2m cu :( */
+		/* SAIF TODO */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			test_and_set_bit(i, client->cu_bitmap);
@@ -1137,7 +1286,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		}
 		++cctx->virt_cu_ref;
 	} else {
-	     if (cu_idx >= MAX_CUS) {
+	     if (info->cu_domain == (SCU_DOMAIN>>16)) {
 		if (kds_add_scu_context(kds, client, info))
 			return -EINVAL;
 	     } else {
@@ -1147,8 +1296,8 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	++cctx->num_ctx;
-	kds_info(client, "Client pid(%d) add context CU(0x%x) shared(%s)",
-		 pid_nr(client->pid), cu_idx, shared? "true" : "false");
+	kds_info(client, "Client pid(%d) add context Domain(%d) CU(0x%x) shared(%s)",
+		 pid_nr(client->pid), info->cu_domain, cu_idx, shared? "true" : "false");
 	return 0;
 }
 
@@ -1170,6 +1319,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		}
 		--cctx->virt_cu_ref;
 		/* a special handling for m2m cu :( */
+		/* SAIF TODO */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			if (!test_and_clear_bit(i, client->cu_bitmap)) {
@@ -1181,7 +1331,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 			mutex_unlock(&kds->cu_mgmt.lock);
 		}
 	} else {
-	     if (cu_idx >= MAX_CUS) {
+	     if (info->cu_domain == (SCU_DOMAIN>>16)) {
 		if (kds_del_scu_context(kds, client, info))
 			return -EINVAL;
 	     } else {
@@ -1191,8 +1341,8 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	--cctx->num_ctx;
-	kds_info(client, "Client pid(%d) del context CU(0x%x)",
-		 pid_nr(client->pid), cu_idx);
+	kds_info(client, "Client pid(%d) del context Domain(%d) CU(0x%x)",
+		 pid_nr(client->pid), info->cu_domain, cu_idx);
 	return 0;
 }
 
@@ -1273,6 +1423,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 			continue;
 
 		cu_mgmt->xcus[i] = NULL;
+		cu_mgmt->cu_intr[i] = 0;
 		--cu_mgmt->num_cus;
 		cu_stat_write(cu_mgmt, usage[i], 0);
 		break;
@@ -1290,8 +1441,8 @@ int kds_add_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
 	int i;
 
-	if (scu_mgmt->num_cus >= MAX_CUS)
-		return -ENOMEM;
+	if (xcu->info.cu_idx >= MAX_CUS)
+		return -EINVAL;
 
 	/* Get a free slot in kds for this CU */
 	for (i = 0; i < MAX_CUS; i++) {
@@ -1310,7 +1461,7 @@ int kds_add_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 int kds_del_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	int i;
+	int i = 0;
 
 	if (scu_mgmt->num_cus == 0)
 		return -EINVAL;
@@ -1319,14 +1470,13 @@ int kds_del_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 		if (scu_mgmt->xcus[i] != xcu)
 			continue;
 
-		--scu_mgmt->num_cus;
 		scu_mgmt->xcus[i] = NULL;
+		--scu_mgmt->num_cus;
 		cu_stat_write(scu_mgmt, usage[i], 0);
-
-		return 0;
+		break;
 	}
 
-	return -ENODEV;
+	return 0;
 }
 
 /* Do not use this function when xclbin can be changed */
@@ -1505,17 +1655,31 @@ int kds_cfg_update(struct kds_sched *kds)
 
 	/* Update CU interrupt mode */
 	if (kds->cu_intr_cap) {
+		//run polling thread if there is any cu without interrupt support
+		for (i = 0; i < MAX_CUS; i++) {
+			xcu = cu_mgmt->xcus[i];
+			if (!xcu)
+				continue;
+			if (!xcu->info.intr_enable) {
+				u32 cu_idx = xcu->info.cu_idx;
+
+				kds->cu_intr = false;
+				xcu_info(xcu, "CU(%d) doesnt support interrupt, running polling thread for all cus", cu_idx);
+				goto run_polling;
+			}
+		}
+
 		for (i = 0; i < MAX_CUS; i++) {
 			xcu = cu_mgmt->xcus[i];
 			if (!xcu)
 				continue;
 
-			if (cu_mgmt->cu_intr[i] == kds->cu_intr)
+			if (cu_mgmt->cu_intr[i] == KDS_SETTING(kds->cu_intr))
 				continue;
 
-			ret = xrt_cu_cfg_update(xcu, kds->cu_intr);
+			ret = xrt_cu_cfg_update(xcu, KDS_SETTING(kds->cu_intr));
 			if (!ret)
-				cu_mgmt->cu_intr[i] = kds->cu_intr;
+				cu_mgmt->cu_intr[i] = KDS_SETTING(kds->cu_intr);
 			else if (ret == -ENOSYS) {
 				/* CU doesn't support interrupt */
 				cu_mgmt->cu_intr[i] = 0;
@@ -1524,8 +1688,8 @@ int kds_cfg_update(struct kds_sched *kds)
 		}
 	}
 
-	if (!kds->cu_intr) {
-		BUG_ON(kds->polling_thread);
+run_polling:
+	if (!KDS_SETTING(kds->cu_intr) && !kds->polling_thread) {
 		kds->polling_stop = 0;
 		kds->polling_thread = kthread_run(kds_polling_thread, kds, "kds_poll");
 		if (IS_ERR(kds->polling_thread)) {
@@ -1715,6 +1879,54 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 			 */
 			break;
 		}
+	}
+
+	return num_cus;
+}
+
+/*
+ * This function would parse ip_layout and return a sorted CU info array.
+ * But ip_layout only provides a portion of CU info. The caller would need to
+ * fetch and fill the missing info.
+ *
+ * This function determines CU indexing for all supported platforms.
+ */
+int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_info[], int num_info)
+{
+	struct xrt_cu_info info = {0};
+	struct ip_data *ip;
+	char kname[64] = {0};
+	char *kname_p = NULL;
+	int num_cus = 0;
+	int i = 0;
+
+	for(i = 0; i < ip_layout->m_count; ++i) {
+		ip = &ip_layout->m_ip_data[i];
+
+		if (ip->m_type != IP_PS_KERNEL)
+			continue;
+
+		memset(&info, 0, sizeof(info));
+
+		/* ip_data->m_name format "<kernel name>:<instance name>",
+		 * where instance name is so called CU name.
+		 */
+		strncpy(kname, ip->m_name, sizeof(kname));
+		kname[sizeof(kname)-1] = '\0';
+		kname_p = &kname[0];
+		strncpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
+		info.kname[sizeof(info.kname)-1] = '\0';
+		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
+		info.iname[sizeof(info.kname)-1] = '\0';
+
+		info.addr = 0;
+		info.intr_enable = 0;
+		info.protocol = CTRL_HS;
+		info.intr_id = 0;
+
+		memcpy(&cu_info[num_cus], &info, sizeof(info));
+		cu_info[num_cus].cu_idx = num_cus;
+		num_cus++;
 	}
 
 	return num_cus;
