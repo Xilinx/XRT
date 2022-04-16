@@ -117,10 +117,8 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   }
 
   // 2) Process the top level options
-  std::vector<std::string> topOptions = po::collect_unrecognized(parsedCommonTop.options, po::include_positional);
-  if (help) {
+  if (help)
     topOptions.push_back("--help");
-  }
 
   optionOption->setGlobalOptions(getGlobalOptions());
 

@@ -596,6 +596,7 @@ XBUtilities::process_arguments( po::variables_map& vm,
       throw boost::program_options::error(error_str);
     }
   }
+  // If no validation has been requested ignore the positional arguments or the argument processing below will fail
   else {
     parsed_options = po::command_line_parser(_options).options(options).allow_unregistered().run();
   }
