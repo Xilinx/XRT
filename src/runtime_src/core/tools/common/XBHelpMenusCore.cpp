@@ -558,7 +558,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   }
 }
 
-bool
+void
 XBUtilities::process_arguments( po::variables_map& vm,
                                 const std::vector<std::string>& _options,
                                 const po::options_description& options,
@@ -569,10 +569,13 @@ XBUtilities::process_arguments( po::variables_map& vm,
   po::positional_options_description _positionals(positionals);
   _positionals.add("__unreg", -1);
 
+  // Parse the given options and hold onto the results
   auto parsed_options = po::command_line_parser(_options).options(options).positional(_positionals).allow_unregistered().run();
+  // This variables holds options denoted with a '-' or '--' that were not registered
   auto unrecognized_options = po::collect_unrecognized(parsed_options.options, po::exclude_positional);
 
   // Parse out all extra positional arguments from the boost results
+  // This variable holds arguments that do not have a '-' or '--' that did not have a registered positional space
   std::vector<std::string> extra_positionals;
   for (auto option : parsed_options.options) {
     if (boost::equals(option.string_key, "__unreg"))
@@ -587,16 +590,11 @@ XBUtilities::process_arguments( po::variables_map& vm,
       std::cerr << boost::format("  %s\n") % option;
     for (auto option : extra_positionals)
       std::cerr << boost::format("  %s\n") % option;
-    return false;
+    throw boost::program_options::error("Invalid arguments");
   }
 
-  try {
-    po::store(parsed_options, vm);
-    po::notify(vm); // Can throw
-  }
-  catch (boost::program_options::error& e) {
-    std::cerr << "ERROR: " << e.what() << "\n\n";
-    return false;
-  }
-  return true;
+  // Parse the options into the variable map
+  // If an exception occurs let it bubble up and be handled elsewhere
+  po::store(parsed_options, vm);
+  po::notify(vm);
 }

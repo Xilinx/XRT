@@ -69,7 +69,10 @@ SubCmd::process_arguments( po::variables_map& vm,
   all_options.add(common_options);
   all_options.add(hidden_options);
 
-  if(!XBU::process_arguments(vm, _options, all_options, positionals)){
+  try {
+    XBU::process_arguments(vm, _options, all_options, positionals);
+  } catch(boost::program_options::error& e) {
+    std::cerr << boost::format("ERROR: %s\n\n") % e.what();
     printHelp(common_options, hidden_options);
     throw xrt_core::error(std::errc::operation_canceled);
   }
