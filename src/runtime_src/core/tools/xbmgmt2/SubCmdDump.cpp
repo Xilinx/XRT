@@ -142,29 +142,19 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
-  po::options_description hiddenOptions("Hidden Options");
-
   po::options_description allOptions("All Options");
   allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
 
   po::positional_options_description positionals;
 
   // Parse sub-command ...
   po::variables_map vm;
 
-  try {
-    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
-    po::notify(vm); // Can throw
-  } catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(commonOptions, hiddenOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options, commonOptions);
 
   // Check to see if help was requested or no command was found
   if (help == true)  {
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(commonOptions);
     return;
   }
 
@@ -178,7 +168,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   if(devices.empty()) {
     std::cerr << "ERROR: Please specify a single device using --device option" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(commonOptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -199,7 +189,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   // enforce 1 device specification
   if(deviceCollection.size() != 1) {
     std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(commonOptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -211,7 +201,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   if (output.empty()) {
     std::cerr << "ERROR: Please specify an output file using --output option" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(commonOptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }
   if (!output.empty() && boost::filesystem::exists(output) && !XBU::getForce()) {
@@ -230,6 +220,6 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   }
 
   std::cerr << "ERROR: Please specify a valid option to determine the type of dump" << "\n\n";
-  printHelp(commonOptions, hiddenOptions);
+  printHelp(commonOptions);
   throw xrt_core::error(std::errc::operation_canceled);
 }

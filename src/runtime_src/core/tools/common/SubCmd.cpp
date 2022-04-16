@@ -17,12 +17,12 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmd.h"
-#include "XBHelpMenusCore.h"
-#include "XBHelpMenus.h"
 #include <iostream>
 #include <boost/format.hpp>
 
+#include "core/common/error.h"
 #include "XBUtilitiesCore.h"
+#include "XBHelpMenusCore.h"
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 

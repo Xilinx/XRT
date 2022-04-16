@@ -421,14 +421,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // Parse sub-command ...
     po::variables_map vm;
 
-    try {
-        po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
-        po::notify(vm); // Can throw
-    } catch (po::error& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-        printHelp(commonOptions, hiddenOptions);
-        throw xrt_core::error(std::errc::operation_canceled);
-    }
+    process_arguments(vm, _options, commonOptions, hiddenOptions);
 
     // Ensure mutual exclusion amongst the load config and config options
     // TODO Once all of the config options are incorporated into the load config file

@@ -20,9 +20,9 @@
 #include <iostream>
 #include <boost/format.hpp>
 
+#include "core/common/error.h"
 #include "XBUtilitiesCore.h"
 #include "XBHelpMenusCore.h"
-#include "XBHelpMenus.h"
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
