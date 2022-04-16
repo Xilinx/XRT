@@ -75,7 +75,6 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-
   process_arguments(vm, _options);
 
   if(m_help) {

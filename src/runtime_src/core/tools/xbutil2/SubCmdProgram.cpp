@@ -70,7 +70,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-
   process_arguments(vm, _options, commonOptions);
 
   // Check to see if help was requested or no command was found

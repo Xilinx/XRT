@@ -84,18 +84,15 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
   po::positional_options_description positionals;
 
   // =========== Process the options ========================================
-
   po::variables_map vm;
-
   // Used for the suboption arguments
   auto topOptions = process_arguments(vm, _options, commonOptions, hiddenOptions, positionals, subOptionOptions, false);
 
   // Mutual DRC
-  for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1) {
-    for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2) {
+  for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1)
+    for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2)
       conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
-    }
-  }
+
 
   // Find the subOption;
   std::shared_ptr<OptionOptions> optionOption;

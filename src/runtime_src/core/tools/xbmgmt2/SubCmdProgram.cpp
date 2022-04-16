@@ -761,14 +761,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     "  BACKUP  - Reboot RPU to partition B\n")
   ;
 
-  po::options_description allOptions("All Options");  
-
-  allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
-
   // Parse sub-command ...
   po::variables_map vm;
-
   process_arguments(vm, _options, commonOptions, hiddenOptions);
 
   // Check to see if help was requested or no command was found

@@ -125,13 +125,8 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
                                                                         "  ecc          - Reset ecc memory\n"
                                                                         "  soft-kernel  - Reset soft kernel");
 
-  po::options_description allOptions("All Options");
-  allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
-
   // Parse sub-command ...
   po::variables_map vm;
-
   process_arguments(vm, _options, commonOptions, hiddenOptions);
 
   // Check to see if help was requested or no command was found

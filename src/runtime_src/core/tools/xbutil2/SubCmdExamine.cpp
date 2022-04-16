@@ -134,7 +134,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-
   process_arguments(vm, _options, commonOptions, hiddenOptions);
 
   // Check to see if help was requested

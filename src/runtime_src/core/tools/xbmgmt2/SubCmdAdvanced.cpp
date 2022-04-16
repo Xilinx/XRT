@@ -87,32 +87,19 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
+  po::positional_options_description positionals;
+
   // =========== Process the options ========================================
 
   // 1) Process the common top level options 
-  po::parsed_options parsedCommonTop = 
-    po::command_line_parser(_options).
-    options(allOptions).          
-    allow_unregistered().           // Allow for unregistered options
-    run();                          // Parse the options
-
   po::variables_map vm;
+  // Used for the suboption arguments
+  auto topOptions = process_arguments(vm, _options, commonOptions, hiddenOptions, positionals, subOptionOptions, false);
 
-  try {
-    po::store(parsedCommonTop, vm);  // Can throw
-    po::notify(vm);                  // Can throw (but really isn't used)
-
-    // Multual DRC
-    for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1) {
-      for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2) {
-        conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
-      }
-    }
-  } catch (const std::exception & e) {
-    std::cerr << "ERROR: " << e.what() << std::endl;
-    printHelp(commonOptions, hiddenOptions, subOptionOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  // DRC check between suboptions
+  for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1)
+    for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2)
+      conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
 
   // Find the subOption;
   std::shared_ptr<OptionOptions> optionOption;

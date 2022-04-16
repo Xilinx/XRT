@@ -411,17 +411,10 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         ("showx", boost::program_options::bool_switch(&showx), "Display the device configuration settings")
     ;
 
-    po::options_description hiddenOptions("Hidden Options");
-    hiddenOptions.add(configHiddenOptions);
-
-    po::options_description allOptions("All Options");
-    allOptions.add(commonOptions);
-    allOptions.add(hiddenOptions);
-
     // Parse sub-command ...
     po::variables_map vm;
 
-    process_arguments(vm, _options, commonOptions, hiddenOptions);
+    process_arguments(vm, _options, commonOptions, configHiddenOptions);
 
     // Ensure mutual exclusion amongst the load config and config options
     // TODO Once all of the config options are incorporated into the load config file
@@ -439,7 +432,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // Check the options
     // -- process "help" option -----------------------------------------------
     if (help) {
-        printHelp(commonOptions, hiddenOptions);
+        printHelp(commonOptions, configHiddenOptions);
         return;
     }
 
@@ -461,7 +454,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // -- process "device" option -----------------------------------------------
     if(devices.empty()) {
         std::cerr << "ERROR: Please specify a single device using --device option" << "\n";
-        printHelp(commonOptions, hiddenOptions);
+        printHelp(commonOptions, configHiddenOptions);
         throw xrt_core::error(std::errc::operation_canceled);
     }
 
@@ -482,7 +475,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // enforce 1 device specification
     if(deviceCollection.size() != 1) {
         std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
-        printHelp(commonOptions, hiddenOptions);
+        printHelp(commonOptions, configHiddenOptions);
         throw xrt_core::error(std::errc::operation_canceled);
     }
 
@@ -560,7 +553,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         bool disableRetention = boost::iequals(retention, "DISABLE");
         if (!enableRetention && !disableRetention) {
             std::cerr << "ERROR: Invalidate '--retention' option: " << retention << std::endl;
-            printHelp(commonOptions, hiddenOptions);
+            printHelp(commonOptions, configHiddenOptions);
             throw xrt_core::error(std::errc::operation_canceled);
         }
 
@@ -571,7 +564,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     if (!is_something_updated) {
         std::cerr << "ERROR: Please specify a valid option to configure the device" << "\n\n";
-        printHelp(commonOptions, hiddenOptions);
+        printHelp(commonOptions, configHiddenOptions);
         throw xrt_core::error(std::errc::operation_canceled);
     }
 }
