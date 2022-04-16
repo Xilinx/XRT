@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "SubCmd.h"
 #include "XBHelpMenusCore.h"
+#include "XBHelpMenus.h"
 #include <iostream>
 #include <boost/format.hpp>
 
@@ -55,6 +56,26 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
                    const SubOptionOptions & _subOptionOptions) const
 {
  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions, m_globalOptions);
+}
+
+void 
+SubCmd::process_arguments( po::variables_map& vm,
+                           const SubCmdOptions& _options,
+                           const po::options_description& common_options,
+                           const po::options_description& hidden_options,
+                           const po::positional_options_description& positionals) const
+{
+  po::options_description all_options("All Options");
+  all_options.add(common_options);
+  all_options.add(hidden_options);
+
+  try {
+    XBU::process_arguments(vm, _options, all_options, positionals);
+  }
+  catch (const std::exception& ex) {
+    printHelp(common_options, hidden_options);
+    throw ex;
+  }
 }
 
 

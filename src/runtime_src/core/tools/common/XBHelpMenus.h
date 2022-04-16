@@ -44,6 +44,12 @@ namespace XBUtilities {
                                   const std::vector<std::string> &reportNamesToAdd,
                                   ReportCollection & reportsToUse);
 
+  void
+    process_arguments( boost::program_options::variables_map& vm,
+                       const std::vector<std::string>& _options,
+                       const boost::program_options::options_description& options,
+                       const boost::program_options::positional_options_description& positionals);
+
   void 
      produce_reports( xrt_core::device_collection devices, 
                       const ReportCollection & reportsToProcess, 

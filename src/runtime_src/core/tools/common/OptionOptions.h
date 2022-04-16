@@ -52,6 +52,8 @@ class OptionOptions {
   OptionOptions(const std::string & _longName, bool _isHidden, const std::string & _description);
   void setExtendedHelp(const std::string &_extendedHelp) { m_extendedHelp = _extendedHelp; };
   void printHelp() const;
+  void process_arguments( boost::program_options::variables_map& vm,
+                          const SubCmdOptions& _options) const;
 
  private:
   OptionOptions() = delete;

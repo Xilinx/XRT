@@ -95,17 +95,17 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
   try {
     po::store(parsedCommonTop, vm);  // Can throw
     po::notify(vm);                  // Can throw (but really isn't used)
-
-    // Mutual DRC
-    for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1) {
-      for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2) {
-        conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
-      }
-    }
   } catch (const std::exception & e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     printHelp(commonOptions, hiddenOptions, subOptionOptions);
     throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  // Mutual DRC
+  for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1) {
+    for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2) {
+      conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
+    }
   }
 
   // Find the subOption;

@@ -150,6 +150,48 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
   }
 }
 
+void
+XBUtilities::process_arguments( po::variables_map& vm,
+                                const std::vector<std::string>& _options,
+                                const po::options_description& options,
+                                const po::positional_options_description& positionals
+                                )
+{
+  // Add unregistered positional that will catch all extra positional arguments
+  po::positional_options_description _positionals(positionals);
+  _positionals.add("__unreg", -1);
+
+  auto parsed_options = po::command_line_parser(_options).options(options).positional(_positionals).allow_unregistered().run();
+  auto unrecognized_options = po::collect_unrecognized(parsed_options.options, po::exclude_positional);
+
+  // Parse out all extra positional arguments from the boost results
+  std::vector<std::string> extra_positionals;
+  for (auto option : parsed_options.options) {
+    if (boost::equals(option.string_key, "__unreg"))
+      for (auto bad_option : option.value)
+        extra_positionals.push_back(bad_option);
+  }
+
+  // Throw an exception if we have any unknown options or extra positionals
+  if (!unrecognized_options.empty() || !extra_positionals.empty()) {
+    std::cerr << "ERROR: Unrecognized arguments:\n";
+    for (auto option : unrecognized_options)
+      std::cerr << boost::format("  %s\n") % option;
+    for (auto option : extra_positionals)
+      std::cerr << boost::format("  %s\n") % option;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  try {
+    po::store(parsed_options, vm);
+    po::notify(vm); // Can throw
+  }
+  catch (boost::program_options::error& e) {
+    std::cerr << "ERROR: " << e.what() << "\n\n";
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+}
+
 
 void 
 XBUtilities::produce_reports( xrt_core::device_collection devices, 

@@ -65,12 +65,17 @@ public:
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
   void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
   void printHelp(const boost::program_options::options_description & _optionDescription,
-                 const boost::program_options::options_description & _optionHidden,
+                 const boost::program_options::options_description & _optionHidden = boost::program_options::options_description(),
                  bool removeLongOptDashes = false,
                  const std::string& customHelpSection = "") const;
   void printHelp( const boost::program_options::options_description & _optionDescription,
                   const boost::program_options::options_description & _optionHidden,
                   const SubOptionOptions & _subOptionOptions) const;
+  void process_arguments( boost::program_options::variables_map& vm,
+                           const SubCmdOptions& _options,
+                           const boost::program_options::options_description& common_options,
+                           const boost::program_options::options_description& hidden_options = boost::program_options::options_description(),
+                           const boost::program_options::positional_options_description& positionals = boost::program_options::positional_options_description()) const;
   void conflictingOptions( const boost::program_options::variables_map& _vm, 
                            const std::string &_opt1, const std::string &_opt2) const;
 

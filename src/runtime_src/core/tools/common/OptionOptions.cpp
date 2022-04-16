@@ -22,6 +22,7 @@
 
 #include "XBUtilitiesCore.h"
 #include "XBHelpMenusCore.h"
+#include "XBHelpMenus.h"
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
@@ -46,5 +47,18 @@ OptionOptions::printHelp() const
                                m_description, m_extendedHelp, 
                                m_optionsDescription, m_optionsHidden, 
                                m_positionalOptions, m_globalOptions);
+}
+
+void 
+OptionOptions::process_arguments( boost::program_options::variables_map& vm,
+                                  const SubCmdOptions& _options) const
+{
+  try {
+    XBU::process_arguments(vm, _options, m_optionsDescription, m_positionalOptions);
+  }
+  catch (const std::exception& ex) {
+    printHelp();
+    throw ex;
+  }
 }
 

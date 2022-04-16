@@ -268,9 +268,7 @@ OO_P2P::OO_P2P( const std::string &_longName, bool _isHidden )
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
-  m_positionalOptions.
-    add("action", 1 /* max_count */)
-  ;
+  m_positionalOptions.add("action", 1);
 }
 
 void
@@ -291,16 +289,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   // Parse sub-command ...
   po::variables_map vm;
 
-  try {
-    po::store(po::command_line_parser(_options).options(m_optionsDescription).positional(m_positionalOptions).run(), vm);
-    po::notify(vm); // Can throw
-  }
-  catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << "\n\n";
-
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options);
 
   if (m_help) {
     printHelp();
