@@ -53,12 +53,9 @@ void
 OptionOptions::process_arguments( boost::program_options::variables_map& vm,
                                   const SubCmdOptions& _options) const
 {
-  try {
-    XBU::process_arguments(vm, _options, m_optionsDescription, m_positionalOptions);
-  }
-  catch (const std::exception& ex) {
+  if(!XBU::process_arguments(vm, _options, m_optionsDescription, m_positionalOptions)) {
     printHelp();
-    throw ex;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 }
 

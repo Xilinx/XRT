@@ -69,6 +69,12 @@ namespace XBUtilities {
     create_usage_string( const boost::program_options::options_description &_od,
                          const boost::program_options::positional_options_description & _pod,
                          bool removeLongOptDashes = false);
+
+  bool
+    process_arguments( boost::program_options::variables_map& vm,
+                       const std::vector<std::string>& _options,
+                       const boost::program_options::options_description& options,
+                       const boost::program_options::positional_options_description& positionals);
 };
 
 #endif

@@ -69,12 +69,9 @@ SubCmd::process_arguments( po::variables_map& vm,
   all_options.add(common_options);
   all_options.add(hidden_options);
 
-  try {
-    XBU::process_arguments(vm, _options, all_options, positionals);
-  }
-  catch (const std::exception& ex) {
+  if(!XBU::process_arguments(vm, _options, all_options, positionals)){
     printHelp(common_options, hidden_options);
-    throw ex;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 }
 
