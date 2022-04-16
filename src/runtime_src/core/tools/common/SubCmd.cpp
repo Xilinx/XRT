@@ -58,22 +58,24 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions, m_globalOptions);
 }
 
-void 
+std::vector<std::string> 
 SubCmd::process_arguments( po::variables_map& vm,
                            const SubCmdOptions& _options,
                            const po::options_description& common_options,
                            const po::options_description& hidden_options,
-                           const po::positional_options_description& positionals) const
+                           const po::positional_options_description& positionals,
+                           const SubOptionOptions& suboptions,
+                           bool validate_arguments) const
 {
   po::options_description all_options("All Options");
   all_options.add(common_options);
   all_options.add(hidden_options);
 
   try {
-    XBU::process_arguments(vm, _options, all_options, positionals);
+    return XBU::process_arguments(vm, _options, all_options, positionals, validate_arguments);
   } catch(boost::program_options::error& e) {
-    std::cerr << boost::format("ERROR: %s\n\n") % e.what();
-    printHelp(common_options, hidden_options);
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    printHelp(common_options, hidden_options, suboptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }
 }

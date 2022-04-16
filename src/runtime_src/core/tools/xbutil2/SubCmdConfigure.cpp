@@ -81,25 +81,14 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
-  // =========== Process the options ========================================
+  po::positional_options_description positionals;
 
-  // 1) Process the common top level options 
-  po::parsed_options parsedCommonTop = 
-    po::command_line_parser(_options).
-    options(allOptions).          
-    allow_unregistered().           // Allow for unregistered options
-    run();                          // Parse the options
+  // =========== Process the options ========================================
 
   po::variables_map vm;
 
-  try {
-    po::store(parsedCommonTop, vm);  // Can throw
-    po::notify(vm);                  // Can throw (but really isn't used)
-  } catch (const std::exception & e) {
-    std::cerr << "ERROR: " << e.what() << std::endl;
-    printHelp(commonOptions, hiddenOptions, subOptionOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  // Used for the suboption arguments
+  auto topOptions = process_arguments(vm, _options, commonOptions, hiddenOptions, positionals, subOptionOptions, false);
 
   // Mutual DRC
   for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1) {
@@ -131,7 +120,6 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
   }
 
   // 2) Process the top level options
-  std::vector<std::string> topOptions = po::collect_unrecognized(parsedCommonTop.options, po::include_positional);
   if (help)
     topOptions.push_back("--help");
 

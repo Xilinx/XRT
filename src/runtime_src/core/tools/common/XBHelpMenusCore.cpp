@@ -558,11 +558,12 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   }
 }
 
-void
+std::vector<std::string>
 XBUtilities::process_arguments( po::variables_map& vm,
                                 const std::vector<std::string>& _options,
                                 const po::options_description& options,
-                                const po::positional_options_description& positionals
+                                const po::positional_options_description& positionals,
+                                bool validate_arguments
                                 )
 {
   // Add unregistered positional that will catch all extra positional arguments
@@ -571,30 +572,39 @@ XBUtilities::process_arguments( po::variables_map& vm,
 
   // Parse the given options and hold onto the results
   auto parsed_options = po::command_line_parser(_options).options(options).positional(_positionals).allow_unregistered().run();
-  // This variables holds options denoted with a '-' or '--' that were not registered
-  auto unrecognized_options = po::collect_unrecognized(parsed_options.options, po::exclude_positional);
+  if (validate_arguments) {
+    // This variables holds options denoted with a '-' or '--' that were not registered
+    auto unrecognized_options = po::collect_unrecognized(parsed_options.options, po::exclude_positional);
 
-  // Parse out all extra positional arguments from the boost results
-  // This variable holds arguments that do not have a '-' or '--' that did not have a registered positional space
-  std::vector<std::string> extra_positionals;
-  for (auto option : parsed_options.options) {
-    if (boost::equals(option.string_key, "__unreg"))
-      for (auto bad_option : option.value)
-        extra_positionals.push_back(bad_option);
+    // Parse out all extra positional arguments from the boost results
+    // This variable holds arguments that do not have a '-' or '--' that did not have a registered positional space
+    std::vector<std::string> extra_positionals;
+    for (auto option : parsed_options.options) {
+      if (boost::equals(option.string_key, "__unreg"))
+        for (auto bad_option : option.value)
+          extra_positionals.push_back(bad_option);
+    }
+
+    // Throw an exception if we have any unknown options or extra positionals
+    if (!unrecognized_options.empty() || !extra_positionals.empty()) {
+      std::string error_str;
+      error_str.append("Unrecognized arguments:\n");
+      for (auto option : unrecognized_options)
+        error_str.append(boost::str(boost::format("  %s\n") % option));
+      for (auto option : extra_positionals)
+        error_str.append(boost::str(boost::format("  %s\n") % option));
+      throw boost::program_options::error(error_str);
+    }
   }
-
-  // Throw an exception if we have any unknown options or extra positionals
-  if (!unrecognized_options.empty() || !extra_positionals.empty()) {
-    std::cerr << "ERROR: Unrecognized arguments:\n";
-    for (auto option : unrecognized_options)
-      std::cerr << boost::format("  %s\n") % option;
-    for (auto option : extra_positionals)
-      std::cerr << boost::format("  %s\n") % option;
-    throw boost::program_options::error("Invalid arguments");
+  else {
+    parsed_options = po::command_line_parser(_options).options(options).allow_unregistered().run();
   }
 
   // Parse the options into the variable map
   // If an exception occurs let it bubble up and be handled elsewhere
   po::store(parsed_options, vm);
   po::notify(vm);
+
+  // Return all the unrecognized arguments for use in a lower level command if needed
+  return po::collect_unrecognized(parsed_options.options, po::include_positional);;
 }

@@ -49,18 +49,19 @@ OptionOptions::printHelp() const
                                m_positionalOptions, m_globalOptions);
 }
 
-void 
+std::vector<std::string> 
 OptionOptions::process_arguments( boost::program_options::variables_map& vm,
-                                  const SubCmdOptions& _options) const
+                                  const SubCmdOptions& _options,
+                                  bool validate_arguments) const
 {
   po::options_description all_options("All Options");
   all_options.add(m_optionsDescription);
   all_options.add(m_optionsHidden);
 
   try {
-    XBU::process_arguments(vm, _options, all_options, m_positionalOptions);
+    return XBU::process_arguments(vm, _options, all_options, m_positionalOptions, validate_arguments);
   } catch(boost::program_options::error& e) {
-    std::cerr << boost::format("ERROR: %s\n\n") % e.what();
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
