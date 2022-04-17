@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -44,7 +44,7 @@ public:
   virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
   virtual bool supportsSubSection(const std::string &_sSubSectionName) const;
   virtual bool subSectionExists(const std::string &_sSubSectionName) const;
-  virtual void readXclBinBinary(std::fstream& _istream, const struct axlf_section_header& _sectionHeader);
+  virtual void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader);
 
  protected:
   virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;

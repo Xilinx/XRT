@@ -196,6 +196,7 @@ int main_(int argc, const char** argv) {
   bool bResetBankGrouping = false;
   bool bSignatureDebug = false;
   bool bSkipBankGrouping = false;
+  bool bSkipAIEPartitionInsertion = false;
   bool bSkipUUIDInsertion = false;
   bool bTrace = false;
   boost::program_options::options_description hidden("Hidden options");
@@ -211,6 +212,7 @@ int main_(int argc, const char** argv) {
     ("dump-signature", boost::program_options::value<decltype(sSignatureOutputFile)>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
     ("reset-bank-grouping", boost::program_options::bool_switch(&bResetBankGrouping), "Resets the memory bank grouping section(s).")
     ("signature-debug", boost::program_options::bool_switch(&bSignatureDebug), "Dump section debug data.")
+    ("skip-aie-partition-insertion", boost::program_options::bool_switch(&bSkipAIEPartitionInsertion), "Disables creating an AIE partition section.")
     ("skip-bank-grouping", boost::program_options::bool_switch(&bSkipBankGrouping), "Disables creating the memory bank grouping section(s).")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
@@ -524,6 +526,11 @@ int main_(int argc, const char** argv) {
       (xclBin.findSection(ASK_GROUP_CONNECTIVITY) == nullptr) &&
       (xclBin.findSection(MEM_TOPOLOGY) != nullptr))
     XUtil::createMemoryBankGrouping(xclBin);
+
+  if ((bSkipAIEPartitionInsertion == false) && 
+      (xclBin.findSection(AIE_METADATA) != nullptr) &&
+      (xclBin.findSection(AIE_PARTITION) == nullptr)) 
+    XUtil::createAIEPartition(xclBin);
 
   // -- Remove Keys --
   for (const auto &key : keysToRemove) 

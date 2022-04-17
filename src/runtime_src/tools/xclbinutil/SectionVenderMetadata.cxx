@@ -325,7 +325,7 @@ SectionVenderMetadata::writeSubPayload(const std::string& _sSubSectionName,
 }
 
 void
-SectionVenderMetadata::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader)
+SectionVenderMetadata::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader)
 {
   Section::readXclBinBinary(_istream, _sectionHeader);
 

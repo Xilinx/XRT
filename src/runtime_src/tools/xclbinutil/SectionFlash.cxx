@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 - 2021 Xilinx, Inc
+ * Copyright (C) 2019 - 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -498,7 +498,7 @@ SectionFlash::writeSubPayload(const std::string& _sSubSectionName,
 }
 
 void
-SectionFlash::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader) {
+SectionFlash::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader) {
   Section::readXclBinBinary(_istream, _sectionHeader);
 
   // Extract the binary data as a JSON string

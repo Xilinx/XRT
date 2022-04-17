@@ -1,0 +1,14 @@
+{
+    "aie_partition": {
+        "schema_version": "0",
+        "name": "acme",
+        "partition_info": {
+            "column_width": "1",
+            "start_columns": [
+                "1",
+                "2",
+                "5"
+            ]
+        }
+    }
+}
