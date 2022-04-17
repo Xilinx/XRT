@@ -109,24 +109,24 @@ SectionAIEPartition::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
   // -- Start Column
   const uint32_t startColumnsOffset = sizeof(aie_partition);
   std::vector<uint16_t> startColumns = XUtil::as_vector_simple<uint16_t>(ptAIEPartition, "partition_info.start_columns");
-  size_t startColumnsRawSize = sizeof(uint16_t) * startColumns.size();
+  uint32_t startColumnsRawSize = static_cast<uint32_t>(sizeof(uint16_t) * startColumns.size());
   XUtil::TRACE(boost::format("start_column_offset: 0x%x, raw size: 0x%x, aligned_size: 0x%x")
                % startColumnsOffset % startColumnsRawSize
                % (startColumnsRawSize + XUtil::bytesToAlign(startColumnsRawSize)));
 
   // -- String Block
-  const uint32_t stringBlockOffset = startColumnsOffset + startColumnsRawSize + XUtil::bytesToAlign(startColumnsRawSize);
+  const uint32_t stringBlockOffset = static_cast<uint32_t>(startColumnsOffset + startColumnsRawSize + XUtil::bytesToAlign(startColumnsRawSize));
   XUtil::TRACE(boost::format("staring_block_offset: 0x%x") % stringBlockOffset);
 
   // -- Name
   auto partitionName = ptAIEPartition.get<std::string>("name");
-  aie_partitionHdr.mpo_name = stringBlockOffset + stringBlock.tellp();
+  aie_partitionHdr.mpo_name = static_cast<uint32_t>(stringBlockOffset + stringBlock.tellp());
   stringBlock << partitionName << '\0';
 
   // -- Partition Info
   const boost::property_tree::ptree& ptParitionInfo = ptAIEPartition.get_child("partition_info");
   aie_partitionHdr.info.column_width = ptParitionInfo.get<uint16_t>("column_width");
-  aie_partitionHdr.info.start_columns_count = startColumns.size();
+  aie_partitionHdr.info.start_columns_count = static_cast<uint32_t>(startColumns.size());
   if (startColumns.size())
     aie_partitionHdr.info.mpo_auint16_start_columns = startColumnsOffset;
 
