@@ -97,6 +97,7 @@
     enum { XLCBIN_ASSERT_CONCAT(assert_line_, __LINE__) = 1/(int)(!!(e)) }
 #endif
 
+// *** Helper macro ***
 // Reports a size of structure via an error
 #define SIZE_OF_STRUCT(s) \
    char (*__fail)[sizeof(struct s)] = 1
@@ -175,6 +176,7 @@ extern "C" {
         AIE_RESOURCES          = 29,
         OVERLAY                = 30,
         VENDER_METADATA        = 31,
+        AIE_PARTITION          = 32,
     };
 
     enum MEM_TYPE {
@@ -516,6 +518,25 @@ extern "C" {
         uint8_t padding[36];       // Reserved for future use
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct vender_metadata) == 48, "vender metadata kernel structure no longer is 48 bytes in size");
+
+    struct partition_info {
+        uint16_t column_width;         // Width of the partition
+        uint8_t padding[6];              //   Byte alignment
+        uint32_t start_columns_count;    // The number of elements in the start_columns array
+        uint32_t mpo_auint16_start_columns;  // Offset pointer to an array uint16_t values
+        uint8_t reserved[72];            //   Resevered
+    };
+    XCLBIN_STATIC_ASSERT(sizeof(struct partition_info) == 88, "partition_info structure no longer is 88 bytes in size");
+    
+    struct aie_partition {
+        uint8_t schema_version;          // Group schema version (default 0)
+        uint8_t padding0[3];             //   Byte alignment          
+        uint32_t mpo_name;               // Name of the aie_partition 
+        struct partition_info info;      // Partition information
+        uint8_t reserved[64];            //   Reservered
+    };
+    XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 160, "aie_partition structure no longer is 160 bytes in size");
+
 
     /**** END : Xilinx internal section *****/
 

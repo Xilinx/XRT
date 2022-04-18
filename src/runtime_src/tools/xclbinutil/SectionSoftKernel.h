@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,20 +41,20 @@ public:
   };
 
  public:
-  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
-  virtual bool supportsSubSection(const std::string &_sSubSectionName) const;
-  virtual bool subSectionExists(const std::string &_sSubSectionName) const;
-  virtual void readXclBinBinary(std::fstream& _istream, const struct axlf_section_header& _sectionHeader);
+  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
+  bool supportsSubSection(const std::string &_sSubSectionName) const override;
+  bool subSectionExists(const std::string &_sSubSectionName) const override;
+  void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader) override;
 
 
  protected:
-  virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
+  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const override;
+  void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
 
  protected:
    enum SubSection getSubSectionEnum(const std::string _sSubSectionName) const;
    void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, std::ostringstream &_buffer) const;
    void createDefaultImage(std::istream & _istream, std::ostringstream &_buffer) const;
-   virtual void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const;
    void writeObjImage(std::ostream& _oStream) const;
    void writeMetadata(std::ostream& _oStream) const;
 
