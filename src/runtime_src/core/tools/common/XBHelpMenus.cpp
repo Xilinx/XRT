@@ -150,6 +150,7 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
   }
 }
 
+
 void 
 XBUtilities::produce_reports( xrt_core::device_collection devices, 
                               const ReportCollection & reportsToProcess, 

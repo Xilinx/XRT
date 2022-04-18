@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc 
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -88,7 +89,7 @@ void  main_(int argc, char** argv,
   // Parse the command line arguments
   po::variables_map vm;
   po::command_line_parser parser(argc, argv);
-  std::vector<std::string> unrecognized_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
+  auto subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
 
   if(bVersion) {
     std::cout << XBU::get_xrt_pretty_version();
@@ -121,27 +122,25 @@ void  main_(int argc, char** argv,
     }
   }
 
-  if ( !subCommand) {
+  if (!subCommand) {
     std::cerr << "ERROR: " << "Unknown command: '" << sCommand << "'" << std::endl;
     XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // -- Prepare the data
-  unrecognized_options.erase(unrecognized_options.begin());
+  subcmd_options.erase(subcmd_options.begin());
 
-  if (bHelp == true) 
-    unrecognized_options.push_back("--help");
+  if (bHelp)
+    subcmd_options.push_back("--help");
 
   #ifdef ENABLE_DEFAULT_ONE_DEVICE_OPTION
   // If the user has NOT specified a device AND the command to be executed
   // is not the examine command, then automatically add the device.
   // Note: "examine" produces different reports depending if the user has
   //       specified the --device option or not.
-  if ( sDevice.empty() &&
-       (subCommand->isDefaultDeviceValid())) {
+  if (sDevice.empty() && (subCommand->isDefaultDeviceValid()))
     sDevice = "default";
-  }
   #endif
 
   // Was default device requested?
@@ -174,14 +173,14 @@ void  main_(int argc, char** argv,
 
   // If there is a device value, pass it to the sub commands.
   if (!sDevice.empty()) {
-    unrecognized_options.push_back("-d");
-    unrecognized_options.push_back(sDevice);
+    subcmd_options.push_back("-d");
+    subcmd_options.push_back(sDevice);
   }
 
   subCommand->setGlobalOptions(globalSubCmdOptions);
 
   // -- Execute the sub-command
-  subCommand->execute(unrecognized_options);
+  subCommand->execute(subcmd_options);
 }
 
 

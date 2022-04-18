@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc 
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -566,7 +567,7 @@ XBUtilities::process_arguments( po::variables_map& vm,
                                 bool validate_arguments
                                 )
 {
-  // Add unregistered positional that will catch all extra positional arguments
+  // Add unregistered "option"" that will catch all extra positional arguments
   po::options_description _options(options);
   _options.add_options()("__unreg", po::value<std::vector<std::string> >(), "Holds all unregistered options");
   po::positional_options_description _positionals(positionals);
