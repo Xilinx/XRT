@@ -17,12 +17,18 @@
 #include "SectionGroupTopology.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 #include <iostream>
 
-// Static Variables / Classes
-SectionGroupTopology::_init SectionGroupTopology::_initializer;
+namespace XUtil = XclBinUtilities;
 
+// Static Variables / Classes
+SectionGroupTopology::init SectionGroupTopology::initializer;
+
+SectionGroupTopology::init::init() 
+{ 
+  registerSectionCtor(ASK_GROUP_TOPOLOGY, "GROUP_TOPOLOGY", "group_topology", false, false, boost::factory<SectionGroupTopology*>()); 
+}
 
 const std::string
 SectionGroupTopology::getMemTypeStr(enum MEM_TYPE _memType) const {

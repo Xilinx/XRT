@@ -17,11 +17,18 @@
 #include "SectionGroupConnectivity.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 #include <iostream>
 
+namespace XUtil = XclBinUtilities;
+
 // Static Variables / Classes
-SectionGroupConnectivity::_init SectionGroupConnectivity::_initializer;
+SectionGroupConnectivity::init SectionGroupConnectivity::initializer;
+
+SectionGroupConnectivity::init::init() 
+{ 
+  registerSectionCtor(ASK_GROUP_CONNECTIVITY, "GROUP_CONNECTIVITY", "group_connectivity", false, false, boost::factory<SectionGroupConnectivity*>()); 
+}
 
 void
 SectionGroupConnectivity::marshalToJSON(char* _pDataSection,

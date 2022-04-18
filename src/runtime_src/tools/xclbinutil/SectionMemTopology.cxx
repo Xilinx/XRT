@@ -17,21 +17,18 @@
 #include "SectionMemTopology.h"
 
 #include "XclBinUtilities.h"
-
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 #include <iostream>
 
+namespace XUtil = XclBinUtilities;
+
 // Static Variables / Classes
-SectionMemTopology::_init SectionMemTopology::_initializer;
+SectionMemTopology::init SectionMemTopology::initializer;
 
-SectionMemTopology::SectionMemTopology() {
-  // Empty
+SectionMemTopology::init::init() 
+{ 
+  registerSectionCtor(MEM_TOPOLOGY, "MEM_TOPOLOGY", "mem_topology", false, false, boost::factory<SectionMemTopology*>()); 
 }
-
-SectionMemTopology::~SectionMemTopology() {
-  // Empty
-}
-
 
 const std::string
 SectionMemTopology::getMemTypeStr(enum MEM_TYPE _memType) const {

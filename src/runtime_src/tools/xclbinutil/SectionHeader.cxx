@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,9 +26,6 @@ SectionHeader::SectionHeader()
   // Empty
 }
 
-SectionHeader::~SectionHeader() {
-  // Empty
-}
 
 void
 SectionHeader::readXclBinBinarySection(std::fstream& _istream, unsigned int _section) {

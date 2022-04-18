@@ -18,22 +18,11 @@
 #define __SectionSoftKernel_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
 
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
-// --------------- C L A S S :   S e c t i o n B M C -------------------------
-
+// ---------- C L A S S :   S e c t i o n S o f t K e r n e l ----------------
 class SectionSoftKernel : public Section {
  public:
-  SectionSoftKernel();
-  virtual ~SectionSoftKernel();
-
-public:
   enum SubSection{
     SS_UNKNOWN,
     SS_OBJ,
@@ -45,7 +34,6 @@ public:
   bool supportsSubSection(const std::string &_sSubSectionName) const override;
   bool subSectionExists(const std::string &_sSubSectionName) const override;
   void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader) override;
-
 
  protected:
   void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const override;
@@ -59,16 +47,11 @@ public:
    void writeMetadata(std::ostream& _oStream) const;
 
  private:
-  // Purposefully private and undefined ctors...
-  SectionSoftKernel(const SectionSoftKernel& obj);
-  SectionSoftKernel& operator=(const SectionSoftKernel& obj);
-
- private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(SOFT_KERNEL, "SOFT_KERNEL", "", true, true, boost::factory<SectionSoftKernel*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

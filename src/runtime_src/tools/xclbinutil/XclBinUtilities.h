@@ -112,7 +112,7 @@ public:
     }
 
     // Use are version of what() and not runtime_error's
-    virtual const char* what() const noexcept {
+    const char* what() const noexcept override{
       return m_msg.c_str();
     }
 

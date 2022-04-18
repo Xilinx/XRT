@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,20 +16,18 @@
 
 #include "SectionKeyValueMetadata.h"
 
+#include "XclBinUtilities.h"
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionKeyValueMetadata::_init SectionKeyValueMetadata::_initializer;
+SectionKeyValueMetadata::init SectionKeyValueMetadata::initializer;
 
-SectionKeyValueMetadata::SectionKeyValueMetadata() {
-  // Empty
-}
-
-SectionKeyValueMetadata::~SectionKeyValueMetadata() {
-  // Empty
+SectionKeyValueMetadata::init::init() 
+{ 
+  registerSectionCtor(KEYVALUE_METADATA, "KEYVALUE_METADATA", "keyvalue_metadata", false, false, boost::factory<SectionKeyValueMetadata*>()); 
 }
 
 void 

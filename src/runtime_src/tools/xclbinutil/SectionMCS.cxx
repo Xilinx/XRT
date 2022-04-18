@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018-2021 Xilinx, Inc
+ * Copyright (C) 2018-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,6 +18,7 @@
 
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/functional/factory.hpp>
 
 // Disable windows compiler warnings
 #ifdef _WIN32
@@ -28,18 +29,11 @@
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionMCS::_init SectionMCS::_initializer;
+SectionMCS::init SectionMCS::initializer;
 
-// --------------------------------------------------------------------------
-
-SectionMCS::SectionMCS() {
-  // Empty
-}
-
-// --------------------------------------------------------------------------
-
-SectionMCS::~SectionMCS() {
-  // Empty
+SectionMCS::init::init() 
+{ 
+  registerSectionCtor(MCS, "MCS", "", true, false, boost::factory<SectionMCS*>()); 
 }
 
 // --------------------------------------------------------------------------

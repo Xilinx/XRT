@@ -17,11 +17,12 @@
 #include "SectionFlash.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
-
 #include <boost/algorithm/string.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
+namespace XUtil = XclBinUtilities;
 
 // Disable windows compiler warnings
 #ifdef _WIN32
@@ -29,18 +30,11 @@ namespace XUtil = XclBinUtilities;
 #endif
 
 // Static Variables / Classes
-SectionFlash::_init SectionFlash::_initializer;
+SectionFlash::init SectionFlash::initializer;
 
-// -------------------------------------------------------------------------
-
-SectionFlash::SectionFlash() {
-  // Empty
-}
-
-// -------------------------------------------------------------------------
-
-SectionFlash::~SectionFlash() {
-  // Empty
+SectionFlash::init::init() 
+{ 
+  registerSectionCtor(ASK_FLASH, "FLASH", "", true, true, boost::factory<SectionFlash*>()); 
 }
 
 // -------------------------------------------------------------------------

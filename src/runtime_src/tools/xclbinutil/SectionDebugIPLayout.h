@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,44 +18,28 @@
 #define __SectionDebugIPLayout_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
-
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
 
 // ------ C L A S S :   S e c t i o n D e b u g I P L a y o u t --------------
-
 class SectionDebugIPLayout : public Section {
- private:
-  // Purposefully private and undefined ctors...
-  SectionDebugIPLayout(const SectionDebugIPLayout& obj);
-  SectionDebugIPLayout& operator=(const SectionDebugIPLayout& obj);
-
  public:
-  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
-  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
+  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
 
  protected:
-  virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
-  virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
+  void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
+  void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  protected:
   const std::string getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const;
   enum DEBUG_IP_TYPE getDebugIPType(std::string& _sDebugIPType) const;
 
- public:
-  SectionDebugIPLayout();
-  virtual ~SectionDebugIPLayout();
-
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", "debug_ip_layout", false, false, boost::factory<SectionDebugIPLayout*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

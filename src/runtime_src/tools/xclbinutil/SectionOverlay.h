@@ -18,27 +18,16 @@
 #define __SectionOverlay_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
 
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
-// --------------- C L A S S :   S e c t i o n P D I -------------------------
-
+// --------------- C L A S S :   S e c t i o n O v e r l a y -----------------
 class SectionOverlay : public Section {
- public:
-  SectionOverlay();
-  virtual ~SectionOverlay();
-
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(OVERLAY, "OVERLAY", "", false, false, boost::factory<SectionOverlay*>()); }
-  } _initializer;
+    init();
+  } initializer; 
 };
 
 #endif

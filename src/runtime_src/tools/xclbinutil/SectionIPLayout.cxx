@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020 Xilinx, Inc
+ * Copyright (C) 2018, 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,19 +17,17 @@
 #include "SectionIPLayout.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
-
+#include <boost/functional/factory.hpp>
 #include <iostream>
 
+namespace XUtil = XclBinUtilities;
+
 // Static Variables / Classes
-SectionIPLayout::_init SectionIPLayout::_initializer;
+SectionIPLayout::init SectionIPLayout::initializer;
 
-SectionIPLayout::SectionIPLayout() {
-  // Empty
-}
-
-SectionIPLayout::~SectionIPLayout() {
-  // Empty
+SectionIPLayout::init::init() 
+{ 
+  registerSectionCtor(IP_LAYOUT, "IP_LAYOUT", "ip_layout", false, false, boost::factory<SectionIPLayout*>()); 
 }
 
 

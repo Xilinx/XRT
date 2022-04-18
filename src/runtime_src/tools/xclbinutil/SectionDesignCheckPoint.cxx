@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,18 +16,14 @@
 
 #include "SectionDesignCheckPoint.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionDesignCheckPoint::_init SectionDesignCheckPoint::_initializer;
+SectionDesignCheckPoint::init SectionDesignCheckPoint::initializer;
 
-SectionDesignCheckPoint::SectionDesignCheckPoint() {
-  // Empty
-}
-
-SectionDesignCheckPoint::~SectionDesignCheckPoint() {
-  // Empty
+SectionDesignCheckPoint::init::init() 
+{ 
+  registerSectionCtor(DESIGN_CHECK_POINT, "DESIGN_CHECKPOINT", "", false, false, boost::factory<SectionDesignCheckPoint*>()); 
 }
 
 
