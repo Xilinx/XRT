@@ -1046,7 +1046,7 @@ XclBinUtilities::createAIEPartition(XclBin & xclbin)
 
   // -- DRC checks
   const auto pAIEMetadataSection = xclbin.findSection(AIE_METADATA);
-  if (pAIEMetadataSection == nullptr)
+  if (!pAIEMetadataSection)
     throw std::runtime_error("ERROR: AIE_METADATA section does not exist.  Unable to auto create the AIE Partition.");
 
   if (xclbin.findSection(AIE_PARTITION))

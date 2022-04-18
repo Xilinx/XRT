@@ -21,35 +21,29 @@ namespace XUtil = XclBinUtilities;
 #include <iostream>
 
 // Static Variables / Classes
-SectionAIEPartition::_init SectionAIEPartition::_initializer;
+SectionAIEPartition::init SectionAIEPartition::initializer;
 
-SectionAIEPartition::SectionAIEPartition()
-{
-  // Empty
-}
-
-SectionAIEPartition::~SectionAIEPartition()
-{
-  // Empty
+SectionAIEPartition::init::init() {
+  registerSectionCtor(AIE_PARTITION, "AIE_PARTITION", "aie_partition", false, false, boost::factory<SectionAIEPartition*>()); 
 }
 
 void
-SectionAIEPartition::marshalToJSON(char* _pDataSection,
-                                   unsigned int _sectionSize,
-                                   boost::property_tree::ptree& _ptree) const
+SectionAIEPartition::marshalToJSON(char* pDataSection,
+                                   unsigned int sectionSize,
+                                   boost::property_tree::ptree& ptReturn) const
 {
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: AIE_PARTITION");
-  XUtil::TRACE_BUF("Section Buffer", reinterpret_cast<const char*>(_pDataSection), _sectionSize);
+  XUtil::TRACE_BUF("Section Buffer", reinterpret_cast<const char*>(pDataSection), sectionSize);
 
   // Do we have enough room to overlay the header structure
-  if (_sectionSize < sizeof(aie_partition)) {
+  if (sectionSize < sizeof(aie_partition)) {
     auto errMsg = boost::format("ERROR: Section size (%d) is smaller than the size of the aie_partition structure (%d)")
-                                 % _sectionSize % sizeof(aie_partition);
+                                 % sectionSize % sizeof(aie_partition);
     throw std::runtime_error(errMsg.str());
   }
 
-  aie_partition* pHdr = (aie_partition*)_pDataSection;
+  aie_partition* pHdr = (aie_partition*)pDataSection;
   boost::property_tree::ptree ptAIEPartition;
 
   // -- schema version
@@ -86,18 +80,18 @@ SectionAIEPartition::marshalToJSON(char* _pDataSection,
   }
   ptAIEPartition.add_child("partition_info", ptPartitionInfo);
 
-  _ptree.add_child("aie_partition", ptAIEPartition);
+  ptReturn.add_child("aie_partition", ptAIEPartition);
   XUtil::TRACE("-----------------------------");
 }
 
 void
-SectionAIEPartition::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
-                                     std::ostringstream& _buf) const
+SectionAIEPartition::marshalFromJSON(const boost::property_tree::ptree& ptSection,
+                                     std::ostringstream& buf) const
 {
   const boost::property_tree::ptree ptEmpty;
   std::ostringstream stringBlock;              // Contains variable length strings
 
-  const boost::property_tree::ptree& ptAIEPartition = _ptSection.get_child("aie_partition");
+  const boost::property_tree::ptree& ptAIEPartition = ptSection.get_child("aie_partition");
   XUtil::TRACE_PrintTree("AIE_PARTITION", ptAIEPartition);
   aie_partition aie_partitionHdr = aie_partition{0};
 
@@ -132,41 +126,34 @@ SectionAIEPartition::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
 
   // -- Copy the output to the output buffer.
   // Header
-  _buf.write(reinterpret_cast<const char*>(&aie_partitionHdr), sizeof(aie_partitionHdr));
+  buf.write(reinterpret_cast<const char*>(&aie_partitionHdr), sizeof(aie_partitionHdr));
 
   // Start columns
   auto bufferSize = sizeof(uint16_t) * startColumns.size();
   if (bufferSize) {
-    _buf.write(reinterpret_cast<const char*>(startColumns.data()), bufferSize);
+    buf.write(reinterpret_cast<const char*>(startColumns.data()), bufferSize);
 
     // Align the buffer on the 64 bit boundary
-    auto numAlignBytes = XUtil::alignBytes(_buf, sizeof(uint64_t));
+    auto numAlignBytes = XUtil::alignBytes(buf, sizeof(uint64_t));
     if (numAlignBytes != XUtil::bytesToAlign(startColumnsRawSize))
       throw std::runtime_error("ERROR: Buffer alignment mismatch. Number of padding bytes written does not match expectation");
   }
 
   // String block
   std::string sStringBlock = stringBlock.str();
-  _buf.write(sStringBlock.c_str(), sStringBlock.size());
+  buf.write(sStringBlock.c_str(), sStringBlock.size());
 }
 
 bool
-SectionAIEPartition::doesSupportAddFormatType(FormatType _eFormatType) const
+SectionAIEPartition::doesSupportAddFormatType(FormatType eFormatType) const
 {
-  if (_eFormatType == FT_JSON) {
-    return true;
-  }
-  return false;
+  return (eFormatType == FT_JSON); 
 }
 
 bool
-SectionAIEPartition::doesSupportDumpFormatType(FormatType _eFormatType) const
+SectionAIEPartition::doesSupportDumpFormatType(FormatType eFormatType) const
 {
-  if ((_eFormatType == FT_JSON) ||
-      (_eFormatType == FT_HTML) ||
-      (_eFormatType == FT_RAW)) {
-    return true;
-  }
-
-  return false;
+  return ((eFormatType == FT_JSON) ||
+          (eFormatType == FT_HTML) ||
+          (eFormatType == FT_RAW));
 }

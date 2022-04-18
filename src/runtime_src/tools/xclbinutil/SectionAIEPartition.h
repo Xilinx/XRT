@@ -27,23 +27,19 @@
 
 class SectionAIEPartition : public Section {
  public:
-  SectionAIEPartition();
-  virtual ~SectionAIEPartition();
-
- public:
-  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
-  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
+  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
 
  protected:
-  virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
-  virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
+  void marshalToJSON(char* pDataSection, unsigned int sectionSize, boost::property_tree::ptree& ptReturn) const override;
+  void marshalFromJSON(const boost::property_tree::ptree& ptSection, std::ostringstream& buf) const override;
 
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(AIE_PARTITION, "AIE_PARTITION", "aie_partition", false, false, boost::factory<SectionAIEPartition*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif
