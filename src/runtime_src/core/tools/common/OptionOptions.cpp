@@ -59,7 +59,8 @@ OptionOptions::process_arguments( boost::program_options::variables_map& vm,
   all_options.add(m_optionsHidden);
 
   try {
-    return XBU::process_arguments(vm, _options, all_options, m_positionalOptions, validate_arguments);
+    po::command_line_parser parser(_options);
+    return XBU::process_arguments(vm, parser, all_options, m_positionalOptions, validate_arguments);
   } catch(boost::program_options::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();

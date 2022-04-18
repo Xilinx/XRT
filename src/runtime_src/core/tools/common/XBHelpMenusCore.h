@@ -72,7 +72,7 @@ namespace XBUtilities {
 
   std::vector<std::string>
     process_arguments( boost::program_options::variables_map& vm,
-                       const std::vector<std::string>& _options,
+                       boost::program_options::command_line_parser& parser,
                        const boost::program_options::options_description& options,
                        const boost::program_options::positional_options_description& positionals,
                        bool validate_arguments);
