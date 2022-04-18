@@ -22,6 +22,8 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/lexical_cast.hpp>
 #include <inttypes.h>
+#include <filesystem>
+#include <cctype>
 
 #define DEBUG_MSGS(format, ...)
 //#define DEBUG_MSGS(format, ...) printf(format, ##__VA_ARGS__)
@@ -39,7 +41,6 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
   const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
-  void messagesThread(xclcpuemhal2::CpuemShim* inst);
 
   namespace bf = boost::filesystem;
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
@@ -102,7 +103,6 @@ namespace xclcpuemhal2 {
     {
       message_size = 0x800000;
     }
-    mMessengerThreadStarted = false;
     mCloseAll = false;
     bUnified = _unified;
     bXPR = _xpr;
@@ -562,11 +562,10 @@ namespace xclcpuemhal2 {
     
     //Check if device_process.log already exists. Remove if exists.
     std::string extIoTxtFile = deviceDirectory + "/../../../device_process.log";
-    FILE* fp = fopen(extIoTxtFile.c_str(), "rb");
-    if (fp != NULL)
-      systemUtil::makeSystemCall(extIoTxtFile, systemUtil::systemOperation::REMOVE);
 
-    fclose(fp);
+    if(std::filesystem::exists(extIoTxtFile))
+      std::filesystem::remove(extIoTxtFile); 
+    
     launchDeviceProcess(debuggable,binaryDirectory);
 
     if(header)
@@ -749,12 +748,12 @@ namespace xclcpuemhal2 {
       if ( mLogStream.is_open() ) {
         verbose = true;
       }
+
       setDeviceProcessStarted(true);
-      //Thread to fetch messages from Device to display on host
-      if(mMessengerThreadStarted == false) {
-        mMessengerThread = std::thread(xclcpuemhal2::messagesThread,this);
-        mMessengerThreadStarted = true;
+      if(not mMessengerThread.joinable()) {
+        mMessengerThread = std::thread([this](){messagesThread();});      
       }
+
       xclLoadBitstream_RPC_CALL(xclLoadBitstream, xmlFile, tempdlopenfilename, deviceDirectory, binaryDirectory, verbose);
       if (!ack) {
         return -1;
@@ -1235,53 +1234,46 @@ namespace xclcpuemhal2 {
       xclClose_RPC_CALL(xclClose,this);
 #endif
     }
-   closemMessengerThread();
+   closeMessengerThread();
    saveDeviceProcessOutput();
   }
 
-  void CpuemShim::closemMessengerThread()
+  void CpuemShim::closeMessengerThread()
   {
-    if (mMessengerThreadStarted) {
+    if (mMessengerThread.joinable()) {
       mMessengerThread.join();
-      mMessengerThreadStarted = false;
+      
     }
   }
 
-  void messagesThread(xclcpuemhal2::CpuemShim *inst)
+  void CpuemShim::messagesThread()
   {
     static auto start_time = std::chrono::high_resolution_clock::now();
-    unsigned int timeCheck = 0;
-    unsigned int parseCount = 0;
-    while (inst && inst->getDeviceProcessStarted())
+    std::string lpath = std::string(this->deviceDirectory+ "/../../../device_process.log");
+    sParseLog lParseLog(lpath);
+    while (getDeviceProcessStarted())
     {
-      auto end_time = std::chrono::high_resolution_clock::now();
-      if (std::chrono::duration<double>(end_time - start_time).count() > timeCheck) {
-        start_time = std::chrono::high_resolution_clock::now();
-        inst->parseLog();
-        parseCount++;
-        if (parseCount%5 == 0 && timeCheck < 300)
-          timeCheck += 10;
-      }
-    }
-  }
+      // I may not get ParseLog() all the times, So Let's optimize myself.
+      // Let's sleep for 10,20,30 seconds....etc until it is < 300 seconds
+      // After that I may not get extensive parseLog() statements.
+      // So I want to call it for each interval of 300 seconds
 
-  int CpuemShim::parseLog()
-  {
-    std::string matchString = "received request to end simulation from connected initiator";
-    std::ifstream ifs(deviceDirectory + "/../../../device_process.log");
-    if (ifs.is_open()) {
-      std::string line;
-      while (std::getline(ifs, line)) {
-        if (line.find(matchString) != std::string::npos) {
-          if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
-            std::cout << "Received request to end the application. Press Cntrl+C to exit the application." << std::endl;
-            parsedMsgs.push_back(line);
-            return 0;
+      auto end_time = std::chrono::high_resolution_clock::now();
+
+      if( std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= 300){  
+        static int count =0;
+        lParseLog.parseLog(); 
+        ++count;
+        if(count%5 == 0){
+          std::this_thread::sleep_for(std::chrono::seconds(10*(count/5)));
           }
         }
+
+      if( std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() >= 300){  
+        std::this_thread::sleep_for(std::chrono::seconds(300));
+        lParseLog.parseLog();
       }
     }
-    return 0;
   }
 
   void CpuemShim::xclClose()
@@ -1388,7 +1380,7 @@ namespace xclcpuemhal2 {
     {
       mLogStream.close();
     }
-    closemMessengerThread();
+    closeMessengerThread();
   }
 
   /**********************************************HAL2 API's START HERE **********************************************/

@@ -33,7 +33,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/api/xclbin_int.h"
 #include "core/include/experimental/xrt_xclbin.h"
-
+#include<atomic>
 #include "swscheduler.h"
 #include <stdarg.h>
 #include <sys/mman.h>
@@ -43,6 +43,7 @@
 #include <thread>
 #include <tuple>
 #include <sys/wait.h>
+#include<filesystem>
 #ifndef _WINDOWS
 #include <dlfcn.h>
 #endif
@@ -50,6 +51,49 @@
 namespace xclcpuemhal2 {
   using key_type = xrt_core::query::key_type;
   const uint64_t MEMSIZE = 0x0000000080000000;
+  struct sParseLog
+  {
+    std::ifstream file;
+    std::string mFileName;
+    std::atomic_bool mFileExists;
+
+    sParseLog(const std::string& iDeviceLog):mFileName(iDeviceLog) {
+      mFileExists.store(false);    
+    }  
+
+    ~sParseLog() = default;
+    //**********************************************************************************//
+    /**
+    * SearchString(std::string&) - Searches for a string 
+    *
+    * @matchString:    string to match
+    * 
+    */
+    void SearchString(std::string &matchString) {
+      std::string line;
+      while (std::getline(file, line)){
+        if (line.find(matchString) != std::string::npos)
+          std::cout << "Received request to end the application. Press Cntrl+C to exit the application." << std::endl; 
+      }
+    }
+
+    void parseLog() {
+      if (not mFileExists.load()) {
+        if (std::filesystem::exists(mFileName)) {
+          file.open(mFileName);
+          if (file.is_open())
+            mFileExists.store(true);
+        }
+      }
+
+      if(mFileExists.load()) {
+        std::string matchString = "received request to end simulation from connected initiator";
+        SearchString(matchString);
+      }
+      
+    }
+  };
+
   // XDMA Shim
   class CpuemShim {
     public:
@@ -142,8 +186,8 @@ namespace xclcpuemhal2 {
 
       void set_messagesize( unsigned int messageSize ) { message_size = messageSize; }
       unsigned int get_messagesize(){ return message_size; }
-      void setDeviceProcessStarted(bool devProcess) { mDeviceProcess = devProcess; }
-      bool getDeviceProcessStarted() const { return mDeviceProcess; }
+      void setDeviceProcessStarted(bool devProcess) { mDeviceProcess.store(devProcess); }
+      bool getDeviceProcessStarted() const { return mDeviceProcess.load(); }
 
       ~CpuemShim();
       CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified,
@@ -175,7 +219,6 @@ namespace xclcpuemhal2 {
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
-      int parseLog();
       std::vector<std::string> parsedMsgs;
       bool isImported(unsigned int _bo)
       {
@@ -189,6 +232,7 @@ namespace xclcpuemhal2 {
       // New API's for m2m and no-dma
       void constructQueryTable();
       int deviceQuery(key_type queryKey);
+      void messagesThread();
 
       //******************************* XRT Graph API's **************************************************//
       /**
@@ -434,7 +478,7 @@ namespace xclcpuemhal2 {
       uint32_t bin2dec(const char * str, int start, int number);
       std::string dec2bin(uint32_t n);
       std::string dec2bin(uint32_t n, unsigned bits);
-      void closemMessengerThread();
+      void closeMessengerThread();
 
       std::mutex mtx;
       unsigned int message_size;
@@ -447,7 +491,6 @@ namespace xclcpuemhal2 {
       std::string deviceName;
       std::string deviceDirectory;
       std::thread mMessengerThread;
-      bool mMessengerThreadStarted;
       std::list<xclemulation::DDRBank> mDdrBanks;
       std::map<uint64_t,std::pair<std::string,unsigned int>> kernelArgsInfo;
       xclDeviceInfo2 mDeviceInfo;
@@ -499,7 +542,7 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
-      bool mDeviceProcess;
+      std::atomic_bool mDeviceProcess;
   };
 
   class GraphType {
