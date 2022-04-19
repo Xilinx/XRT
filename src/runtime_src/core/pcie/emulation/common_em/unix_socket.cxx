@@ -119,6 +119,11 @@ ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
       if (errno == EINTR || errno == EAGAIN) {
         continue;
       }
+      if (EBADF == errno){
+        std::cout<<"\n file descriptor pointing to invalid file.\n";
+        break;
+      }
+       
       return -1;
     }
     wlen += r;

@@ -403,7 +403,7 @@ using addr_type = uint64_t;
       bool     mVersalPlatform;
       //For Emulation specific messages on host from Device
 
-      void closemMessengerThread();
+      void closeMessengerThread();
       bool mIsTraceHubAvailable;
       uint32_t mCuIndx;
       std::map<std::string, uint64_t> mCURangeMap;

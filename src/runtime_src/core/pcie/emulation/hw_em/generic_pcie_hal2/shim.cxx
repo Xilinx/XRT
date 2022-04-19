@@ -846,7 +846,6 @@ namespace xclhwemhal2 {
     }
 
     if(mHostMemAccessThreadStarted == false) {
-  	  //mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
       mHostMemAccessThread = std::thread([this](){hostMemAccessThread();});
     }
 
@@ -1843,7 +1842,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 #ifndef _WINDOWS
       xclClose_RPC_CALL(xclClose,this);
 #endif
-      closemMessengerThread();
+      closeMessengerThread();
       //clean up directories which are created inside the driver
       systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
     }
@@ -1956,7 +1955,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       delete mDataSpace;
       mDataSpace = NULL;
     }
-    closemMessengerThread();
+    closeMessengerThread();
   }
 
   void HwEmShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
@@ -3662,19 +3661,20 @@ int HwEmShim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* forma
     return 0;
 }
 
-void HwEmShim::closemMessengerThread()
+void HwEmShim::closeMessengerThread()
 {
-  //set_simulator_started has to be false in order to see proper exit of joinable thread.
-  if (mMessengerThread.joinable()) {
+  // set_simulator_started has to be false in order to see proper exit of joinable thread.
+  //set_simulator_started(false);
+  if (mMessengerThread.joinable())
+  {
     mMessengerThreadStarted = false;
     mMessengerThread.join();
   }
 
-  if (mHostMemAccessThreadStarted) {
+  if (mHostMemAccessThread.joinable())
+  {
     mHostMemAccessThreadStarted = false;
-    if (mHostMemAccessThread.joinable()) {
-      mHostMemAccessThread.join();
-    }
+    mHostMemAccessThread.join();
   }
 }
 
