@@ -46,7 +46,6 @@
 #endif
 
 namespace {
-//sarab
   //Map of gmio -> list of async handles
   static std::unordered_map<std::string, std::vector<std::shared_ptr<xrt::aie::async_bo_impl>>> async_bo_hdls;
   //std::mutex async_bo_hdls_mutex;//Mutex for use with above map
@@ -379,11 +378,6 @@ public:
     auto a_bo_impl = std::make_shared<xrt::aie::async_bo_impl>(bo, 0, port);
     auto a_bo_hdl = xrt::aie::async_bo_hdl{a_bo_impl};
     ::async_bo_hdls[port].emplace_back(a_bo_impl);
-    /*
-    auto itr = async_bo_hdls.find(port);
-    if (itr != async_bo_hdls.end())
-      return (*itr).second.lock();
-      */
 
     return a_bo_hdl;
   }
@@ -1213,6 +1207,38 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 // xrt_aie_bo C++ API implmentations (xrt_aie.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt { namespace aie {
+
+/*!
+ * @class async_bo_impl
+ * 
+ * @brief
+ * Impl Class associated with async bo which allows to wait for completion
+ *
+ */
+class async_bo_impl
+{
+private:
+  size_t m_bd_num; //For future use
+  std::string m_gmio_name;
+  xrt::bo m_bo;
+
+public:
+
+  /**
+   * async_bo_impl() - Construct async_bo_obj
+   */
+  async_bo_impl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
+    : m_bd_num(bd_num),
+      m_gmio_name(gmio_name),
+      m_bo(bo)
+  {
+  }
+
+  /**
+   * wait() - Wait for async to complete
+   */
+  void wait(std::shared_ptr<async_bo_impl> handle);
+};
 
 void
 async_bo_hdl::
