@@ -104,49 +104,6 @@ using addr_type = uint64_t;
    unsigned int size;
  } KernelArg;
 
- struct sParseLog
- {
-   std::ifstream file;
-   std::string mFileName;
-   std::atomic_bool mFileExists;
-
-   sParseLog(const std::string &iDeviceLog) : mFileName(iDeviceLog) {
-     mFileExists.store(false);
-   }
-
-   ~sParseLog() = default;
-   //******************************* XRT Graph API's **************************************************//
-   /**
-    * SearchString(std::string&) - Searches for a string
-    *
-    * @gh:             Handle to graph previously opened with xrtGraphOpen.
-    * Return:          0 on success, -1 on error
-    *
-    * Note: Run by enable tiles and disable tile reset
-    */
-   void SearchString(std::string &matchString) {
-     std::string line;
-     while (std::getline(file, line)) {
-       if (line.find(matchString) != std::string::npos)
-         std::cout << "Received request to end the application. Press Cntrl+C to exit the application." << std::endl;
-     }
-   }
-
-   void parseLog() {
-     if (not mFileExists.load()) {
-       if (std::filesystem::exists(mFileName)) {
-         file.open(mFileName);
-         if (file.is_open())
-           mFileExists.store(true);
-       }
-     }
-
-     if (mFileExists.load()) {
-       std::string matchString = "received request to end simulation from connected initiator";
-       SearchString(matchString);
-     }
-   }
- };
 
   class HwEmShim {
 

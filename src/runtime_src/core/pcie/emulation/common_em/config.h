@@ -9,6 +9,8 @@
 #include <vector>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <atomic>
+#include <filesystem>
 
 #ifdef _MSC_VER
 #include <boost/config/compiler/visualc.hpp>
@@ -88,6 +90,81 @@ namespace xclemulation{
  
   const int VIVADO_MIN_VERSION = 2000;
   const int VIVADO_MAX_VERSION = 2100;
+//sparse log utility
+enum class eEmulationType{
+  eSw_Emu,
+  eHw_Emu
+};
+
+struct sParseLog
+{
+  std::ifstream file;
+  std::string mFileName;
+  std::atomic_bool mFileExists;
+  std::vector<std::string> mMatchedStrings;
+  eEmulationType mEmuType;
+
+  sParseLog(const std::string &iDeviceLog, eEmulationType iType, std::vector<std::string> &iMatchedStrings)
+      : mFileName(iDeviceLog), mMatchedStrings(iMatchedStrings), mEmuType(iType)
+  {
+
+    mFileExists.store(false);
+  }
+
+  ~sParseLog() = default;
+
+  void SearchString()
+  {
+    std::string line;
+    while (std::getline(file, line))
+    {
+      for (const auto &StringData : mMatchedStrings)
+      {
+        if (line.find(StringData) != std::string::npos)
+        {
+          if (eEmulationType::eSw_Emu == mEmuType)
+            print();
+          else if (eEmulationType::eHw_Emu == mEmuType)
+          {
+            if (!StringData.compare("Exiting xsim") || !StringData.compare("FATAL_ERROR"))
+              print();
+            else
+              std::cout << line << std::endl;
+          }
+        }
+      }
+    }
+  }
+  void print()
+  {
+    switch (mEmuType)
+    {
+    case eEmulationType::eSw_Emu:
+      std::cout << "Received request to end the application. Press Cntrl+C to exit the application." << std::endl;
+      break;
+    case eEmulationType::eHw_Emu:
+      std::cout << "SIMULATION EXITED" << std::endl;
+      break;
+    }
+  }
+  void parseLog()
+  {
+    if (not mFileExists.load())
+    {
+      if (std::filesystem::exists(mFileName))
+      {
+        file.open(mFileName);
+        if (file.is_open())
+          mFileExists.store(true);
+      }
+    }
+
+    if (mFileExists.load())
+    {
+      SearchString();
+    }
+  }
+};
 
   //this class has only one member now. This will be extended to use all the parameters specific to each ddr.
   class DDRBank 

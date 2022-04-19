@@ -35,6 +35,7 @@
 #include "shim.h"
 #include "xclbin.h"
 #include "xcl_perfmon_parameters.h"
+#include "config.h"
 
 #include <iostream>
 #include <cstdio>
@@ -265,22 +266,23 @@ namespace xclhwemhal2
     static auto l_time = std::chrono::high_resolution_clock::now();
     static auto start_time = std::chrono::high_resolution_clock::now();
 
-    unsigned int timeCheck = 0;
+    //unsigned int timeCheck = 0;
     unsigned int parseCount = 0;
+    std::vector<std::string> lMatchedStrings = {"SIM-IPC's external process can be connected to instance",
+                                      "SystemC TLM functional mode",
+                                      "HLS_PRINT",
+                                      "Exiting xsim",
+                                      "FATAL_ERROR"};
+    xclemulation::sParseLog lParseLog(std::string(getSimPath() + "/simulate.log"), xclemulation::eEmulationType::eHw_Emu, lMatchedStrings);
     while (get_simulator_started())
     {
       sleep(10);
       if (not get_simulator_started())
        break;
-      std::string consoleMsg = "INFO: [HW-EMU 07-0] Please refer the path \"" + getSimPath() + "/simulate.log\" for more detailed simulation infos, errors and warnings.";
-      if (std::find(parsedMsgs.begin(), parsedMsgs.end(), consoleMsg) == parsedMsgs.end()) {
-        logMessage(consoleMsg);
-        parsedMsgs.push_back(consoleMsg);
-      }
 
       auto l_time_end = std::chrono::high_resolution_clock::now();
-      if (std::chrono::duration_cast<std::chrono::seconds>(l_time_end - l_time).count() > 60) {
-        l_time = std::chrono::high_resolution_clock::now();
+      if (std::chrono::duration_cast<std::chrono::seconds>(l_time_end - l_time).count() > 300) {
+       // l_time = std::chrono::high_resolution_clock::now();
         std::lock_guard<std::mutex> guard(mPrintMessagesLock);
         if (get_simulator_started() == false)
           return;
@@ -290,15 +292,14 @@ namespace xclhwemhal2
       }
 
       auto end_time = std::chrono::high_resolution_clock::now();
-      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() > timeCheck) {
+      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= 300) {
 
-        start_time = std::chrono::high_resolution_clock::now();
         std::lock_guard<std::mutex> guard(mPrintMessagesLock);
 
         if (get_simulator_started() == false) 
           return;
 
-        parseLog();
+        lParseLog.parseLog();
         parseCount++;
         if (parseCount%5 == 0) {
             std::this_thread::sleep_for(std::chrono::seconds(10*(parseCount/5)));
