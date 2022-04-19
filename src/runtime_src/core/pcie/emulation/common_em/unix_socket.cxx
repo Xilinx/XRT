@@ -22,7 +22,7 @@
 unix_socket::unix_socket(const std::string& env, const std::string& sock_id, double timeout_insec, bool fatal_error)
 {
   std::string socket = sock_id;
-  server_started = false;
+  server_started.store(false);
   fd = -1;
   char* cUser = getenv("USER");
 
@@ -63,7 +63,8 @@ void unix_socket::start_server(double timeout_insec, bool fatal_error)
   strncpy(server.sun_path, name.c_str(),STR_MAX_LEN);
   if (connect(sock, (struct sockaddr*)&server, sizeof(server)) >= 0){
     fd = sock;
-    server_started = true;
+    std::cout<<"\n server socket name is\t"<<name<<"\n";
+    server_started.store(true);
     return;
   }
   unlink(server.sun_path);
@@ -99,13 +100,17 @@ void unix_socket::start_server(double timeout_insec, bool fatal_error)
     perror("socket acceptance failed");
     exit(1);
   } else {
-    server_started = true;
+    server_started.store(true);
   }
   return;
 }
 
 ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
 {
+  if (not server_started) {
+    std::cout<<"\n unix_socket::sk_write failed, no socket connection established.\n";
+    return -1;
+  }
   ssize_t r;
   ssize_t wlen = 0;
   const unsigned char *buf = (const unsigned char*)(wbuf);
@@ -123,6 +128,10 @@ ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
 
 ssize_t unix_socket::sk_read(void *rbuf, size_t count)
 {
+  if (not server_started) {
+    std::cout<<"\n unix_socket::sk_read failed, no socket connection established.\n";
+    return -1;
+  }
   ssize_t r;
   ssize_t rlen = 0;
   unsigned char *buf = (unsigned char*)(rbuf);

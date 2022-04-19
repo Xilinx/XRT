@@ -26,7 +26,8 @@ mtx.lock(); \
 mtx.unlock();
 
 #define RPC_PROLOGUE(func_name) \
-    unix_socket* _s_inst = sock; \
+    /*unix_socket* _s_inst = sock; */ \
+    auto _s_inst = sock;  \
     func_name##_call c_msg; \
     func_name##_response r_msg; \
     AQUIRE_MUTEX()

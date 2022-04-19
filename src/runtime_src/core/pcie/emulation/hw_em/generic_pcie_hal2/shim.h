@@ -52,6 +52,7 @@
 #include <fcntl.h>
 #include <tuple>
 #include <cstdarg>
+#include <filesystem>
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
@@ -102,6 +103,50 @@ using addr_type = uint64_t;
    std::string name;
    unsigned int size;
  } KernelArg;
+
+ struct sParseLog
+ {
+   std::ifstream file;
+   std::string mFileName;
+   std::atomic_bool mFileExists;
+
+   sParseLog(const std::string &iDeviceLog) : mFileName(iDeviceLog) {
+     mFileExists.store(false);
+   }
+
+   ~sParseLog() = default;
+   //******************************* XRT Graph API's **************************************************//
+   /**
+    * SearchString(std::string&) - Searches for a string
+    *
+    * @gh:             Handle to graph previously opened with xrtGraphOpen.
+    * Return:          0 on success, -1 on error
+    *
+    * Note: Run by enable tiles and disable tile reset
+    */
+   void SearchString(std::string &matchString) {
+     std::string line;
+     while (std::getline(file, line)) {
+       if (line.find(matchString) != std::string::npos)
+         std::cout << "Received request to end the application. Press Cntrl+C to exit the application." << std::endl;
+     }
+   }
+
+   void parseLog() {
+     if (not mFileExists.load()) {
+       if (std::filesystem::exists(mFileName)) {
+         file.open(mFileName);
+         if (file.is_open())
+           mFileExists.store(true);
+       }
+     }
+
+     if (mFileExists.load()) {
+       std::string matchString = "received request to end simulation from connected initiator";
+       SearchString(matchString);
+     }
+   }
+ };
 
   class HwEmShim {
 
@@ -273,8 +318,8 @@ using addr_type = uint64_t;
       // Restricted read/write on IP register space
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
-      volatile bool get_mHostMemAccessThreadStarted();
-      volatile void set_mHostMemAccessThreadStarted(bool val);
+      //volatile bool get_mHostMemAccessThreadStarted();
+      //volatile void set_mHostMemAccessThreadStarted(bool val);
       bool device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size);
       bool device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size);
       bool device2xrt_irq_trans_cb(uint32_t,unsigned long int);
@@ -301,6 +346,13 @@ using addr_type = uint64_t;
       bool readEmuSettingsJsonFile(const std::string& emuSettingsFilePath);
 
     private:
+      std::thread mMessengerThread;
+      std::thread mHostMemAccessThread;
+      std::atomic_bool mMessengerThreadStarted;
+      std::atomic_bool mHostMemAccessThreadStarted;
+      void messagesThread(); 
+      void hostMemAccessThread();
+
       std::shared_ptr<xrt_core::device> mCoreDevice;
       bool simulator_started;
       uint64_t mRAMSize;
@@ -343,7 +395,8 @@ using addr_type = uint64_t;
       static std::ofstream mDebugLogStream;
       static bool mFirstBinary;
       unsigned int binaryCounter;
-      unix_socket* sock;
+      //unix_socket* sock;
+      std::shared_ptr<unix_socket> sock;
       std::string deviceName;
       xclDeviceInfo2 mDeviceInfo;
       unsigned int mDeviceIndex;
@@ -392,10 +445,7 @@ using addr_type = uint64_t;
       uint64_t mCuBaseAddress;
       bool     mVersalPlatform;
       //For Emulation specific messages on host from Device
-      std::thread mMessengerThread;
-      std::thread mHostMemAccessThread;
-      bool mMessengerThreadStarted;
-      bool mHostMemAccessThreadStarted;
+
       void closemMessengerThread();
       bool mIsTraceHubAvailable;
       uint32_t mCuIndx;
