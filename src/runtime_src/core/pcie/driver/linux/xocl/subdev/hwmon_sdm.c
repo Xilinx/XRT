@@ -35,12 +35,19 @@
 //TODO: fix it by issuing sensor size request to vmr.
 #define RESP_LEN 4096
 
+enum sensor_data_status {
+	SD_NOT_PRESENT		= 0,
+	SD_PRESENT		= 0x01,
+	SD_DATA_NOT_AVAILABLE	= 0x02,
+	SD_DEFAULT_VALUE	= 0x7F
+};
+
 enum sysfs_sdr_field_ids {
-    SYSFS_SDR_NAME,
-    SYSFS_SDR_INS_VAL,
-    SYSFS_SDR_MAX_VAL,
-    SYSFS_SDR_AVG_VAL,
-    SYSFS_SDR_STATUS_VAL,
+	SYSFS_SDR_NAME		= 0,
+	SYSFS_SDR_INS_VAL	= 1,
+	SYSFS_SDR_MAX_VAL	= 2,
+	SYSFS_SDR_AVG_VAL	= 3,
+	SYSFS_SDR_STATUS_VAL	= 4,
 };
 
 struct xocl_sdr_bdinfo {
@@ -322,16 +329,16 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	} else if (field_id == SYSFS_SDR_STATUS_VAL) {
 		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
 		switch(uval) {
-		case 0x00:
+		case SD_NOT_PRESENT:
 			sz = sprintf(buf, "%s\n", "Sensor Not Present");
 			break;
-		case 0x01:
+		case SD_PRESENT:
 			sz = sprintf(buf, "%s\n", "Sensor Present and Valid");
 			break;
-		case 0x02:
+		case SD_DATA_NOT_AVAILABLE:
 			sz = sprintf(buf, "%s\n", "Data Not Available");
 			break;
-		case 0x7F:
+		case SD_DEFAULT_VALUE:
 			sz = sprintf(buf, "%s\n", "Not Applicable or Default Value");
 			break;
 		default:
@@ -625,44 +632,44 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 				case SDR_TYPE_TEMP:
 					memcpy(sensor_name, &in_buf[name_index], name_length);
 					if (strstr(sensor_name, "fan")) {
-						sprintf(sysfs_name[4], "fan%d_status", fan_index);
-						sprintf(sysfs_name[1], "fan%d_input", fan_index);
-						sprintf(sysfs_name[0], "fan%d_label", fan_index);
+						sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "fan%d_status", fan_index);
+						sprintf(sysfs_name[SYSFS_SDR_INS_VAL], "fan%d_input", fan_index);
+						sprintf(sysfs_name[SYSFS_SDR_NAME], "fan%d_label", fan_index);
 						fan_index++;
 					} else {
-						sprintf(sysfs_name[4], "temp%d_status", sys_index);
-						sprintf(sysfs_name[3], "temp%d_average", sys_index);
-						sprintf(sysfs_name[2], "temp%d_max", sys_index);
-						sprintf(sysfs_name[1], "temp%d_input", sys_index);
-						sprintf(sysfs_name[0], "temp%d_label", sys_index);
+						sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "temp%d_status", sys_index);
+						sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "temp%d_average", sys_index);
+						sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "temp%d_max", sys_index);
+						sprintf(sysfs_name[SYSFS_SDR_INS_VAL], "temp%d_input", sys_index);
+						sprintf(sysfs_name[SYSFS_SDR_NAME], "temp%d_label", sys_index);
 						sys_index++;
 					}
 					create = true;
 					break;
 				case SDR_TYPE_VOLTAGE:
-					sprintf(sysfs_name[4], "in%d_status", sys_index);
-					sprintf(sysfs_name[3], "in%d_average", sys_index);
-					sprintf(sysfs_name[2], "in%d_max", sys_index);
-					sprintf(sysfs_name[1], "in%d_input", sys_index);
-					sprintf(sysfs_name[0], "in%d_label", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "in%d_status", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "in%d_average", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "in%d_max", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_INS_VAL], "in%d_input", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_NAME], "in%d_label", sys_index);
 					sys_index++;
 					create = true;
 					break;
 				case SDR_TYPE_CURRENT:
-					sprintf(sysfs_name[4], "curr%d_status", sys_index);
-					sprintf(sysfs_name[3], "curr%d_average", sys_index);
-					sprintf(sysfs_name[2], "curr%d_max", sys_index);
-					sprintf(sysfs_name[1], "curr%d_input", sys_index);
-					sprintf(sysfs_name[0], "curr%d_label", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "curr%d_status", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "curr%d_average", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "curr%d_max", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_INS_VAL], "curr%d_input", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_NAME], "curr%d_label", sys_index);
 					sys_index++;
 					create = true;
 					break;
 				case SDR_TYPE_POWER:
-					sprintf(sysfs_name[4], "power%d_status", sys_index);
-					sprintf(sysfs_name[3], "power%d_average", sys_index);
-					sprintf(sysfs_name[2], "power%d_max", sys_index);
-					sprintf(sysfs_name[1], "power%d_input", sys_index);
-					sprintf(sysfs_name[0], "power%d_label", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "power%d_status", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "power%d_average", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "power%d_max", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_INS_VAL], "power%d_input", sys_index);
+					sprintf(sysfs_name[SYSFS_SDR_NAME], "power%d_label", sys_index);
 					sys_index++;
 					create = true;
 					break;
@@ -678,47 +685,47 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			}
 			if (create) {
 				//Create *_label sysfs node
-				if(strlen(sysfs_name[0]) != 0) {
-					err = hwmon_sysfs_create(sdm, sysfs_name[0], repo_id,
+				if(strlen(sysfs_name[SYSFS_SDR_NAME]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_NAME], repo_id,
                                           SYSFS_SDR_NAME, name_index, name_length);
 					if (err) {
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n",
-								 sysfs_name[0], err);
+								 sysfs_name[SYSFS_SDR_NAME], err);
 					}
 				}
 
 				//Create *_ins sysfs node
-				if(strlen(sysfs_name[1]) != 0) {
-					err = hwmon_sysfs_create(sdm, sysfs_name[1], repo_id,
+				if(strlen(sysfs_name[SYSFS_SDR_INS_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_INS_VAL], repo_id,
 											 SYSFS_SDR_INS_VAL, ins_index, val_len);
 					if (err) {
-						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[1], err);
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_INS_VAL], err);
 					}
 				}
 
 				//Create *_max sysfs node
-				if(strlen(sysfs_name[2]) != 0) {
-					err = hwmon_sysfs_create(sdm, sysfs_name[2], repo_id,
+				if(strlen(sysfs_name[SYSFS_SDR_MAX_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_MAX_VAL], repo_id,
 											SYSFS_SDR_MAX_VAL, max_index, val_len);
 					if (err) {
-						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[2], err);
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_MAX_VAL], err);
 					}
 				}
 
 				//Create *_avg sysfs node
-				if(strlen(sysfs_name[3]) != 0) {
-					err = hwmon_sysfs_create(sdm, sysfs_name[3], repo_id,
+				if(strlen(sysfs_name[SYSFS_SDR_AVG_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_AVG_VAL], repo_id,
 											SYSFS_SDR_AVG_VAL, avg_index, val_len);
 					if (err) {
-						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[3], err);
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_AVG_VAL], err);
 					}
 				}
 
 				//Create *_status sysfs node
-				if(strlen(sysfs_name[4]) != 0) {
-					err = hwmon_sysfs_create(sdm, sysfs_name[4], repo_id, SYSFS_SDR_STATUS_VAL, status_index, 1);
+				if(strlen(sysfs_name[SYSFS_SDR_STATUS_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_STATUS_VAL], repo_id, SYSFS_SDR_STATUS_VAL, status_index, 1);
 					if (err) {
-						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[4], err);
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_STATUS_VAL], err);
 					}
 				}
 			}

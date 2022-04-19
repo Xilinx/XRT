@@ -148,7 +148,7 @@ struct sdm_sensor_info
     //sensors are stored in hwmon sysfs dir with name ends with as follows.
     std::array<std::string, 6> sname_end = {"label", "input", "max", "average", "highest", "status"};
     int max_end_types = sname_end.size();
-    data_type data;
+    data_type data = { 0 };
 
     for (int end_id = 0; end_id < max_end_types; end_id++)
     {
@@ -163,36 +163,37 @@ struct sdm_sensor_info
           //go and read next sysfs node
           *next_id = true;
           end_id = max_end_types;
-          continue;
         }
-        data.label = label;
+        else {
+          data.label = label;
+        }
+        continue;
       }
-      else if (end_id == 5)
+
+      if (end_id == 5)
       {
         std::string errmsg;
         std::string status;
         pdev->sysfs_get("", target_snode, errmsg, status);
-        if (!errmsg.empty())
-          continue;
-        data.status = status;
+        if (errmsg.empty())
+          data.status = status;
+        continue;
       }
-      else
-      {
-        std::string errmsg;
-        uint32_t input = 0;
-        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, input, EINVAL);
-        if (!errmsg.empty())
-          continue;
 
-        if (end_id == 1)
-          data.input = input;
-        else if (end_id == 2)
-          data.max = input;
-        else if (end_id == 3)
-          data.average = input;
-        else
-          data.highest = input;
-      }
+      std::string errmsg;
+      uint32_t input = 0;
+      pdev->sysfs_get<uint32_t>("", target_snode, errmsg, input, EINVAL);
+      if (!errmsg.empty())
+        continue;
+
+      if (end_id == 1)
+        data.input = input;
+      else if (end_id == 2)
+        data.max = input;
+      else if (end_id == 3)
+        data.average = input;
+      else
+        data.highest = input;
     }
     return data;
   }
