@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020-2021 Xilinx, Inc
+ * Copyright (C) 2018, 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,7 @@
 #include "xclbin.h"
 
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <fstream>
 #include <iostream>
@@ -65,6 +66,19 @@ std::vector<T> as_vector(boost::property_tree::ptree const& pt,
         r.push_back(item.second);
       }
     }
+    return r;
+}
+
+// This template will eventually replace "as_vector"
+// The issue is that the code needs to be refactored to use this new template
+template <typename T>
+std::vector<T> as_vector_simple(const boost::property_tree::ptree& pt, 
+                                const boost::property_tree::ptree::key_type& key)
+{
+    std::vector<T> r;
+
+    for (auto& item : pt.get_child(key))
+        r.push_back(item.second.get_value<T>());
     return r;
 }
 
@@ -142,6 +156,7 @@ bool isQuiet();
 
 void QUIET(const std::string& _msg);
 void TRACE(const std::string& _msg, bool _endl = true);
+void TRACE(const boost::format & fmt, bool _endl = true);
 void TRACE_PrintTree(const std::string& _msg, const boost::property_tree::ptree& _pt);
 void TRACE_BUF(const std::string& _msg, const char* _pData, uint64_t _size);
 
@@ -159,6 +174,7 @@ int exec(const boost::filesystem::path &cmd, const std::vector<std::string> &arg
 void write_htonl(std::ostream & _buf, uint32_t _word32);
 
 void createMemoryBankGrouping(XclBin & xclbin);
+void createAIEPartition(XclBin & xclbin);
 };
 
 #endif

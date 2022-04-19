@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020-2021 Xilinx, Inc
+ * Copyright (C) 2018, 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -96,6 +96,11 @@ XclBinUtilities::TRACE(const std::string& _msg, bool _endl) {
 
   if (_endl)
     std::cout << std::endl << std::flush;
+}
+
+void 
+XclBinUtilities::TRACE(const boost::format &fmt, bool endl) {
+  TRACE(boost::str(fmt), endl);
 }
 
 
@@ -1033,6 +1038,76 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   }
 }
 
+
+void 
+XclBinUtilities::createAIEPartition(XclBin & xclbin)
+{
+  const boost::property_tree::ptree ptEmpty;
+
+  // -- DRC checks
+  const auto pAIEMetadataSection = xclbin.findSection(AIE_METADATA);
+  if (!pAIEMetadataSection)
+    throw std::runtime_error("ERROR: AIE_METADATA section does not exist.  Unable to auto create the AIE Partition.");
+
+  if (xclbin.findSection(AIE_PARTITION))
+    throw std::runtime_error("ERROR: AIE_PARTITION section arleady exist.  Unable to auto create the AIE Partition from the AIE_METADATA.");
+
+  // -- Get and examine the AIE metadata
+  boost::property_tree::ptree ptAIEMetadata;
+  pAIEMetadataSection->getPayload(ptAIEMetadata);
+
+  XUtil::TRACE_PrintTree("AIE_METADATA", ptAIEMetadata);
+  const auto & ptDriverConfig = ptAIEMetadata.get_child("aie_metadata.driver_config", ptEmpty);
+
+  // The AIE partition information in the in driver_config node.
+  if (ptDriverConfig.empty()) {
+    XUtil::TRACE("aie_partition section not created: driver_config node not found aie_metadata");
+    return;
+  }
+    
+  // Check to see if this data is present
+  auto numColumns = ptDriverConfig.get<uint32_t>("partition_num_cols", 0);
+  auto & ptPartitionStartColumns = ptDriverConfig.get_child("partition_overlay_start_cols", ptEmpty);
+  if ((numColumns == 0 ) || (ptPartitionStartColumns.empty())) {
+      XUtil::TRACE("aie_partition section not created: No overlay start columns.");
+      return;
+  }
+
+  // Build the AIE PARTITION JSON
+  XUtil::TRACE("Creating AIE_PARTITION property tree");
+  
+  boost::property_tree::ptree ptAIEPartition;
+  ptAIEPartition.put("schema_version", 0);
+  ptAIEPartition.put("name", "xclbinutil-generated");
+
+  boost::property_tree::ptree ptPartitionInfo;
+  ptPartitionInfo.put("column_width", std::to_string(numColumns));
+  ptPartitionInfo.add_child("start_columns", ptPartitionStartColumns);
+
+  ptAIEPartition.add_child("partition_info", ptPartitionInfo);
+  
+  boost::property_tree::ptree ptRoot;
+  ptRoot.add_child("aie_partition", ptAIEPartition);
+
+  XUtil::TRACE_PrintTree("AIE_PARTITION to be added", ptRoot);
+
+  // Create and add the section
+  XUtil::TRACE("Creating AIE_PARTITION section");
+  auto pSection = Section::createSectionObjectOfKind(AIE_PARTITION);
+
+  std::ostringstream buffer;
+  boost::property_tree::write_json(buffer, ptRoot);
+  std::istringstream iSectionMetadata(buffer.str());
+  pSection->readPayload(iSectionMetadata, Section::FT_JSON);
+
+  // -- Now add the section to the collection and report our successful status
+  XUtil::TRACE("Adding AIE_PARTITION section to xclbin");
+  xclbin.addSection(pSection);
+  std::string sSectionAddedName = pSection->getSectionKindAsString();
+
+  XUtil::QUIET("");
+  XUtil::QUIET("Section: AIE_PARTITION was successfully added.");
+}
 
 
 #if (BOOST_VERSION >= 106400)

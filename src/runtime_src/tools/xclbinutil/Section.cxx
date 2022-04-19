@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -258,7 +258,7 @@ Section::writeXclBinSectionBuffer(std::ostream& _ostream) const
 }
 
 void
-Section::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader) {
+Section::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader) {
   // Some error checking
   if ((enum axlf_section_kind)_sectionHeader.m_sectionKind != getSectionKind()) {
     std::string errMsg = XUtil::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d", getSectionKind(), _sectionHeader.m_sectionKind);
@@ -319,7 +319,7 @@ Section::readJSONSectionImage(const boost::property_tree::ptree& _ptSection)
 }
 
 void
-Section::readXclBinBinary(std::fstream& _istream,
+Section::readXclBinBinary(std::istream& _istream,
                           const boost::property_tree::ptree& _ptSection) {
   // Some error checking
   enum axlf_section_kind eKind = (enum axlf_section_kind)_ptSection.get<unsigned int>("Kind");
@@ -416,7 +416,7 @@ Section::getPathAndName() const
 
 
 void 
-Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
+Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
 {
     switch (_eFormatType) {
     case FT_RAW:

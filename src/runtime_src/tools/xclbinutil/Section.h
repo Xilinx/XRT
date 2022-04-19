@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -74,10 +74,10 @@ class Section {
 
  public:
   // Xclbin Binary helper methods - child classes can override them if they choose
-  virtual void readXclBinBinary(std::fstream& _istream, const struct axlf_section_header& _sectionHeader);
-  virtual void readXclBinBinary(std::fstream& _istream, const boost::property_tree::ptree& _ptSection);
+  virtual void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader);
+  virtual void readXclBinBinary(std::istream& _istream, const boost::property_tree::ptree& _ptSection);
   void readJSONSectionImage(const boost::property_tree::ptree& _ptSection);
-  void readPayload(std::fstream& _istream, enum FormatType _eFormatType);
+  void readPayload(std::istream& _istream, enum FormatType _eFormatType);
   void printHeader(std::ostream &_ostream) const;
   bool getSubPayload(std::ostringstream &_buf, const std::string _sSubSection, enum Section::FormatType _eFormatType) const;
   void readSubPayload(std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType);
