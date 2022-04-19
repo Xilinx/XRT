@@ -142,6 +142,10 @@ private:
 
     std::vector<EventRecord> eventRecords;
 
+
+    //Map of gmio -> list of async handles
+    std::unordered_map<std::string, std::vector<std::shared_ptr<xrt::aie::async_bo_impl>>> async_bo_hdls;
+
     void
     submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio, adf::gmio_config& gmio_config, enum xclBOSyncDirection dir, size_t size, size_t offset);
 

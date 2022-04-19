@@ -46,6 +46,10 @@
 #endif
 
 namespace {
+//sarab
+  //Map of gmio -> list of async handles
+  static std::unordered_map<std::string, std::vector<std::shared_ptr<xrt::aie::async_bo_impl>>> async_bo_hdls;
+  //std::mutex async_bo_hdls_mutex;//Mutex for use with above map
 
 XRT_CORE_UNUSED
 static bool
@@ -372,7 +376,16 @@ public:
   async(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
   {
     device->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
-    return xrt::aie::async_bo_hdl{std::make_shared<xrt::aie::async_bo_impl>(bo, 0, port)};
+    auto a_bo_impl = std::make_shared<xrt::aie::async_bo_impl>(bo, 0, port);
+    auto a_bo_hdl = xrt::aie::async_bo_hdl{a_bo_impl};
+    ::async_bo_hdls[port].emplace_back(a_bo_impl);
+    /*
+    auto itr = async_bo_hdls.find(port);
+    if (itr != async_bo_hdls.end())
+      return (*itr).second.lock();
+      */
+
+    return a_bo_hdl;
   }
 #endif
 
@@ -1205,32 +1218,25 @@ void
 async_bo_hdl::
 wait()
 {
-  handle->wait();
+  handle->wait(handle);
 }
 
 void
 async_bo_impl::
-wait()
+wait(std::shared_ptr<async_bo_impl> handle)
 {
   auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
 
+  auto itr = ::async_bo_hdls.find(m_gmio_name);
+  if (itr == ::async_bo_hdls.end())
+    throw std::runtime_error("Unexpected error");
+
+  if (std::find((*itr).second.begin(), (*itr).second.end(), handle) == (*itr).second.end())
+    return;//This DMA has already finished
+
   //In future wait only for specific m_bd_num
   dev->wait_gmio(m_gmio_name.c_str());
-
-  /*
-  auto drv = ZYNQ::shim::handleCheck(dev->get_device_handle());
-
-  if (!drv->isAieRegistered())
-    throw xrt_core::error(-EINVAL, "No AIE presented");
-  auto aieArray = drv->getAieArray();
-
-  if (!aieArray->is_context_set()) {
-    aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
-  }
-
-  //In future wait only for specific m_bd_num
-  aieArray->wait_gmio(m_gmio_name);
-  */
+  (*itr).second.clear();//All outstanding DMAs for this gmio_name have finished
 }
 
 void

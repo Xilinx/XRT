@@ -92,10 +92,6 @@ public:
   reset_array();
 
 private:
-  //Map of gmio -> list of async handles
-  std::unordered_map<std::string, std::vector<std::shared_ptr<async_bo_impl>>> async_bo_hdls;
-  std::mutex async_bo_hdls_mutex;//Mutex for use with above map
-
   void
   open_context(access_mode mode);
 };
@@ -147,7 +143,7 @@ public:
   /**
    * wait() - Wait for async to complete
    */
-  void wait();
+  void wait(std::shared_ptr<async_bo_impl> handle);
 };
 
 class bo : public xrt::bo
