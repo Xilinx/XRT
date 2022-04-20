@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <atomic>
-#include <filesystem>
+//#include <filesystem>
 
 #ifdef _MSC_VER
 #include <boost/config/compiler/visualc.hpp>
@@ -90,6 +90,14 @@ namespace xclemulation{
  
   const int VIVADO_MIN_VERSION = 2000;
   const int VIVADO_MAX_VERSION = 2100;
+
+inline bool file_exists(const std::string& fnm)
+{
+  struct stat statBuf;
+  return stat(fnm.c_str(), &statBuf) == 0;
+}
+
+
 //sparse log utility
 enum class eEmulationType{
   eSw_Emu,
@@ -123,11 +131,11 @@ struct sParseLog
         if (line.find(StringData) != std::string::npos)
         {
           if (eEmulationType::eSw_Emu == mEmuType)
-            print();
+            printMsg();
           else if (eEmulationType::eHw_Emu == mEmuType)
           {
             if (!StringData.compare("Exiting xsim") || !StringData.compare("FATAL_ERROR"))
-              print();
+              printMsg();
             else
               std::cout << line << std::endl;
           }
@@ -135,7 +143,7 @@ struct sParseLog
       }
     }
   }
-  void print()
+  void printMsg()
   {
     switch (mEmuType)
     {
@@ -151,7 +159,7 @@ struct sParseLog
   {
     if (not mFileExists.load())
     {
-      if (std::filesystem::exists(mFileName))
+      if (file_exists(mFileName))
       {
         file.open(mFileName);
         if (file.is_open())

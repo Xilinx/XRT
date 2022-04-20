@@ -14,24 +14,27 @@
  * under the License.
  */
 
+#include "core/common/AlignedAllocator.h"
+#include "core/common/xclbin_parser.h"
+#include "plugin/xdp/device_offload.h"
 #include "shim.h"
 #include "system_hwemu.h"
 #include "xclbin.h"
-#include "core/common/xclbin_parser.h"
-#include "core/common/AlignedAllocator.h"
 #include "xcl_perfmon_parameters.h"
-#include <fstream>
-#include <boost/property_tree/xml_parser.hpp>
+
 #include <unistd.h>
+
+#include <boost/property_tree/xml_parser.hpp>
 #include <array>
 #include <cctype>
 #include <cerrno>
 #include <cstring>
+#include <fstream>
 #include <mutex>
 #include <set>
 #include <vector>
 
-#include "plugin/xdp/device_offload.h"
+
 
 #define SEND_RESP2QDMA() \
     { \
@@ -45,16 +48,7 @@
     }
 
 
-namespace {
 
-inline bool
-file_exists(const std::string& fnm)
-{
-  struct stat statBuf;
-  return stat(fnm.c_str(), &statBuf) == 0;
-}
-
-}
 
 namespace xclhwemhal2 {
     //Thread for which pooling for transaction from SIM_QDMA
@@ -988,7 +982,7 @@ namespace xclhwemhal2 {
         if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
-        if (!file_exists(sim_file))
+        if (!xclemulation::file_exists(sim_file))
           sim_file = "simulate.sh";
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);

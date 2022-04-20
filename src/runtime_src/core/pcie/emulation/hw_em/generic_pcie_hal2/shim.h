@@ -18,41 +18,41 @@
 #define _HW_EM_SHIM_H_
 
 #ifndef _WINDOWS
-#include "unix_socket.h"
 #include "config.h"
+#include "core/common/api/xclbin_int.h"
+#include "core/common/device.h"
+#include "core/common/message.h"
+#include "core/common/query_requests.h"
+#include "core/common/scheduler.h"
+#include "core/common/xrt_profiling.h"
+#include "core/include/experimental/xrt_xclbin.h"
 #include "em_defines.h"
+#include "mbscheduler.h"
 #include "memorymanager.h"
+#include "mbscheduler_hwemu.h"
+#include "mem_model.h"
 #include "rpc_messages.pb.h"
-
+#include "xgq_hwemu.h"
+#include "xclbin.h"
 #include "xclperf.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
-#include "xclbin.h"
-#include "core/common/device.h"
-#include "core/common/scheduler.h"
-#include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
-#include "core/common/query_requests.h"
-#include "core/common/api/xclbin_int.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "unix_socket.h"
 
-#include "mem_model.h"
-#include "mbscheduler.h"
-#include "mbscheduler_hwemu.h"
-#include "xgq_hwemu.h"
 #endif
 
-#include <sys/param.h>
-#include <sys/wait.h>
-#include <thread>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/mman.h>
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <tuple>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <cstdarg>
-#include <filesystem>
+#include <thread>
+#include <tuple>
+
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
