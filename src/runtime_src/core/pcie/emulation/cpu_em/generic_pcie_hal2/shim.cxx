@@ -1228,7 +1228,8 @@ namespace xclcpuemhal2 {
 
     setDeviceProcessStarted(false);
     std::string socketName = sock->get_name();
-    if(socketName.empty() == false)// device is active if socketName is non-empty
+    // device is active if socketName is non-empty
+    if (!socketName.empty())
     {
 #ifndef _WINDOWS
       xclClose_RPC_CALL(xclClose,this);
