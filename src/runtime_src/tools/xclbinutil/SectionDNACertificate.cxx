@@ -17,6 +17,7 @@
 #include "SectionDNACertificate.h"
 
 #include "XclBinUtilities.h"
+#include <boost/format.hpp>
 #include <boost/functional/factory.hpp>
 #include <string>
 
@@ -51,14 +52,14 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
   XUtil::TRACE_BUF("Section Buffer", reinterpret_cast<const char*>(_pDataSection), _sectionSize);
 
   if ((_sectionSize % dnaByteAlignment ) != 0) {
-    std::string errMsg = XUtil::format("ERROR: The DNA_CERTIFICATE section size doesn't align to 64 byte boundaries.  Current size: %ld", _sectionSize).c_str();
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: The DNA_CERTIFICATE section size doesn't align to 64 byte boundaries.  Current size: %ld") % _sectionSize;
+    throw std::runtime_error(errMsg.str());
   }
 
   static const int minimumSectionSizeBytes = signatureSizeBytes + dnaByteAlignment;
   if (_sectionSize < minimumSectionSizeBytes ) {
-    std::string errMsg = XUtil::format("ERROR: The DNA_CERTIFICATE section size (%ld) is smaller then the minimum section permitted (%ld).", _sectionSize, minimumSectionSizeBytes).c_str();
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: The DNA_CERTIFICATE section size (%ld) is smaller then the minimum section permitted (%ld).") % _sectionSize % minimumSectionSizeBytes;
+    throw std::runtime_error(errMsg.str());
   }
 
   // Get the dnsSignature
@@ -76,13 +77,13 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
 
   // Instead of dividing by 8 we multiple the other side by 8
   if ((dnaEntriesBitSize % (8 * dnaEntrySizeBytes)) != 0) {
-    std::string errMsg = XUtil::format("ERROR: The DNA_CERTIFICATE reserved DNA entries bit size (0x%lx) does not align with the byte boundary (0x%lx)", dnaEntriesBitSize, dnaEntrySizeBytes).c_str();
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: The DNA_CERTIFICATE reserved DNA entries bit size (0x%lx) does not align with the byte boundary (0x%lx)") % dnaEntriesBitSize % dnaEntrySizeBytes;
+    throw std::runtime_error(errMsg.str());
   }
 
   if (((dnaEntriesBitSize / 8) > _sectionSize)) {
-    std::string errMsg = XUtil::format("ERROR: The message DNA length (0x%x bytes) exceeds the DNA_CERTIFICATE size (0x%x bytes).", dnaEntriesBitSize / 8, _sectionSize).c_str();
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: The message DNA length (0x%x bytes) exceeds the DNA_CERTIFICATE size (0x%x bytes).") % (dnaEntriesBitSize / 8) % _sectionSize;
+    throw std::runtime_error(errMsg.str());
   }
 
   uint64_t dnaEntryCount = (dnaEntriesBitSize / 8) / dnaEntrySizeBytes;

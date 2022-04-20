@@ -16,8 +16,12 @@
 
 #include "XclBinSignature.h"
 
+#include "XclBinUtilities.h"
+#include <boost//format.hpp>
 #include <iostream>
 #include <vector>
+
+namespace XUtil = XclBinUtilities;
 
 #ifndef _WIN32
   #include <openssl/cms.h>
@@ -30,13 +34,11 @@
 # pragma warning ( disable : 4100 4505 )
 #endif
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
 
 static bool
 copyFile(const std::string & _src, const std::string _dest)
 {
-  XUtil::TRACE(XUtil::format("Copying file '%s' to '%s'", _src.c_str(), _dest.c_str()).c_str());
+  XUtil::TRACE(boost::format("Copying file '%s' to '%s'") % _src % _dest);
 
   std::ifstream src(_src.c_str(), std::ios::binary);
   std::ofstream dest(_dest.c_str(), std::ios::binary);
@@ -47,7 +49,7 @@ copyFile(const std::string & _src, const std::string _dest)
 static void
 writeImageToFile(const char * _pBuffer, uint64_t _size, const std::string _sFile)
 {
-  XUtil::TRACE(XUtil::format("Writing 0x%lx bytes to the file: '%s'", _size, _sFile.c_str()).c_str());
+  XUtil::TRACE(boost::format("Writing 0x%lx bytes to the file: '%s'") % _size % _sFile);
 
   std::fstream oFile;
   oFile.open(_sFile, std::ifstream::out | std::ifstream::binary);
@@ -98,15 +100,15 @@ getXclBinPKCSStats( const std::string& _xclBinFile,
 
   // Error reading in the header
   if (ifXclBin.gcount() != expectBufferSize) {
-    std::string errMsg = XUtil::format("ERROR: Occurred reading in the xclbin header.  Expected: 0x%lx, Actual: 0x%lx", expectBufferSize, ifXclBin.gcount());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Occurred reading in the xclbin header.  Expected: 0x%lx, Actual: 0x%lx") % expectBufferSize % ifXclBin.gcount();
+    throw std::runtime_error(errMsg.str());
   }
 
   // -- Validate magic number
-  std::string sMagicValue = XUtil::format("%s", xclBinHeader.m_magic).c_str();
+  std::string sMagicValue = (boost::format("%s") % xclBinHeader.m_magic).str();
   if (sMagicValue.compare("xclbin2") != 0) {
-    std::string errMsg = XUtil::format("ERROR: The XCLBIN appears to be corrupted.  Expected magic value: 'xclbin2', actual: '%s'", sMagicValue.c_str());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: The XCLBIN appears to be corrupted.  Expected magic value: 'xclbin2', actual: '%s'") % sMagicValue;
+    throw std::runtime_error(errMsg.str());
   }
 
   // We know it is an xclbin archive
@@ -130,8 +132,8 @@ getXclBinPKCSStats( const std::string& _xclBinFile,
   uint64_t expectedFileSize = xclBinHeader.m_header.m_length;
 
   if (expectedFileSize != _xclBinPKCSImageStats.file_size) {
-    std::string errMsg = XUtil::format("ERROR: Expected files size (0x%lx) does not match actual (0x%lx)", expectedFileSize, _xclBinPKCSImageStats.file_size);
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Expected files size (0x%lx) does not match actual (0x%lx)") % expectedFileSize % _xclBinPKCSImageStats.file_size;
+    throw std::runtime_error(errMsg.str());
   }
 
   // We are done
@@ -227,8 +229,8 @@ void signXclBinImage(const std::string& _fileOnDisk,
   const EVP_MD* digestAlgorithm = EVP_get_digestbyname(_sDigestAlgorithm.c_str());
 
   if (digestAlgorithm == nullptr) {
-    std::string errMsg = XUtil::format("ERROR: Invalid digest algorithm: '%s'", _sDigestAlgorithm.c_str());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Invalid digest algorithm: '%s'") % _sDigestAlgorithm;
+    throw std::runtime_error(errMsg.str());
   }
 
   // -- Prepare CMS content and signer info --
@@ -289,12 +291,12 @@ void signXclBinImage(const std::string& _fileOnDisk,
 
     // Update the signature length
     xclBinHeader.m_signature_length = bufMem->length;
-    XUtil::TRACE(XUtil::format("Setting the signature length to: 0x%x", xclBinHeader.m_signature_length).c_str());
+    XUtil::TRACE(boost::format("Setting the signature length to: 0x%x") % xclBinHeader.m_signature_length);
 
     // Update header
-    XUtil::TRACE(XUtil::format("Header length prior to signature: 0x%x", xclBinHeader.m_header.m_length ).c_str());
+    XUtil::TRACE(boost::format("Header length prior to signature: 0x%x") % xclBinHeader.m_header.m_length);
     xclBinHeader.m_header.m_length += (uint64_t) xclBinHeader.m_signature_length;
-    XUtil::TRACE(XUtil::format("Header length with signature: 0x%x", xclBinHeader.m_header.m_length ).c_str());
+    XUtil::TRACE(boost::format("Header length with signature: 0x%x") % xclBinHeader.m_header.m_length);
 
     // All is good, write out the new header
     iofXclBin.seekg(0);
@@ -326,8 +328,8 @@ void signXclBinImage(const std::string& _fileOnDisk,
     uint64_t fileSize = iofXclBin.tellg();
 
     if (fileSize != xclBinHeader.m_header.m_length) {
-      std::string errMsg = XUtil::format("ERROR: xclbin file size (0x%lx) doesn't match expected header size length (0x%lx).", fileSize, xclBinHeader.m_header.m_length);
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: xclbin file size (0x%lx) doesn't match expected header size length (0x%lx).") % fileSize % xclBinHeader.m_header.m_length;
+      throw std::runtime_error(errMsg.str());
     }
 
     // And we are done
@@ -355,7 +357,7 @@ dumpSignatureFile(const std::string & _fileOnDisk,
     throw std::runtime_error("ERROR: Xclbin image is not signed. File: '" + _fileOnDisk + "'");
   }
 
-  XUtil::TRACE(XUtil::format("Signature offset: 0x%lx, length: 0x%lx", xclBinPKCSStats.signature_offset, xclBinPKCSStats.signature_size).c_str());
+  XUtil::TRACE(boost::format("Signature offset: 0x%lx, length: 0x%lx") % xclBinPKCSStats.signature_offset % xclBinPKCSStats.signature_size);
 
   //-- Read just the signature
   std::ifstream ifs(_fileOnDisk, std::ios::binary | std::ios::ate);
@@ -433,11 +435,11 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
 
   // -- Change the header length to its original size when signed
   uint32_t signatureSize = pXclBinHeader->m_signature_length;
-  XUtil::TRACE(XUtil::format("Signature length: 0x%x", pXclBinHeader->m_signature_length).c_str());
+  XUtil::TRACE(boost::format("Signature length: 0x%x") % pXclBinHeader->m_signature_length);
 
-  XUtil::TRACE(XUtil::format("Header length prior to signature length removal: 0x%x", pXclBinHeader->m_header.m_length).c_str());
+  XUtil::TRACE(boost::format("Header length prior to signature length removal: 0x%x") % pXclBinHeader->m_header.m_length);
   pXclBinHeader->m_header.m_length -= pXclBinHeader->m_signature_length;
-  XUtil::TRACE(XUtil::format("Header length prior after signature length removal: 0x%x", pXclBinHeader->m_header.m_length).c_str());
+  XUtil::TRACE(boost::format("Header length prior after signature length removal: 0x%x") % pXclBinHeader->m_header.m_length);
 
   // -- Change the signature length to -1 (since this was its signed value)
   pXclBinHeader->m_signature_length = -1;
@@ -490,8 +492,8 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
   // -- Read in signature --
   PKCS7* p7 = d2i_PKCS7_bio(bmSignature, NULL);
   if (p7 == NULL) {
-    std::string errMsg = XUtil::format("ERROR: Signature at offset 0x%lx is not valid.", pXclBinHeader->m_header.m_length);
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Signature at offset 0x%lx is not valid.") % pXclBinHeader->m_header.m_length;
+    throw std::runtime_error(errMsg.str());
   }
 
   STACK_OF(X509) * ca_stack = sk_X509_new_null();
