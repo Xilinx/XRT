@@ -568,7 +568,7 @@ namespace xclcpuemhal2 {
     
     launchDeviceProcess(debuggable,binaryDirectory);
 
-    if(header)
+    if (header)
     {
       resetProgram();
       std::string logFilePath = xrt_core::config::get_hal_logging();
