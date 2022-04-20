@@ -561,9 +561,9 @@ namespace xclcpuemhal2 {
     std::string binaryDirectory("");
     
     //Check if device_process.log already exists. Remove if exists.
-    std::string extIoTxtFile = deviceDirectory + "/../../../device_process.log";
+    auto extIoTxtFile = deviceDirectory + "/../../../device_process.log";
 
-    if(std::filesystem::exists(extIoTxtFile))
+    if (std::filesystem::exists(extIoTxtFile))
       std::filesystem::remove(extIoTxtFile); 
     
     launchDeviceProcess(debuggable,binaryDirectory);
