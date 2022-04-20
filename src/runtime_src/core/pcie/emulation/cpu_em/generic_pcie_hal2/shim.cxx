@@ -750,7 +750,7 @@ namespace xclcpuemhal2 {
       }
 
       setDeviceProcessStarted(true);
-      if(not mMessengerThread.joinable()) {
+      if (!mMessengerThread.joinable())
         mMessengerThread = std::thread([this] { messagesThread(); });
       }
 
