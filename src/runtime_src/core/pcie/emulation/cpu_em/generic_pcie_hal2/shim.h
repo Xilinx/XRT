@@ -82,7 +82,7 @@ namespace xclcpuemhal2 {
         if (std::filesystem::exists(mFileName)) {
           file.open(mFileName);
           if (file.is_open())
-            mFileExists.store(true);
+            mFileExists = true;
         }
       }
 
