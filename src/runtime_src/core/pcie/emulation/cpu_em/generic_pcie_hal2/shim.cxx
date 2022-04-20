@@ -1265,7 +1265,7 @@ namespace xclcpuemhal2 {
         static int count =0;
         lParseLog.parseLog(); 
         ++count;
-        if(count%5 == 0){
+        if (count%5 == 0) {
           std::this_thread::sleep_for(std::chrono::seconds(10*(count/5)));
           }
         }
