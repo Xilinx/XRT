@@ -71,7 +71,7 @@ namespace xclcpuemhal2 {
     */
     void SearchString(std::string &matchString) {
       std::string line;
-      while (std::getline(file, line)){
+      while (std::getline(file, line)) {
         if (line.find(matchString) != std::string::npos)
           std::cout << "Received request to end the application. Press Cntrl+C to exit the application." << std::endl; 
       }
