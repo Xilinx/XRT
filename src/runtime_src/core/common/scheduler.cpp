@@ -29,7 +29,7 @@
 #include <cstring>
 #include <iostream>
 
-#ifdef __GNUC__
+#ifdef __linux__
 #include <sys/mman.h>
 #endif
 
