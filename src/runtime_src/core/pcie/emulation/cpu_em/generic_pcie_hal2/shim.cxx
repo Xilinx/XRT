@@ -1250,7 +1250,7 @@ namespace xclcpuemhal2 {
   void CpuemShim::messagesThread()
   {
     static auto start_time = std::chrono::high_resolution_clock::now();
-    std::string lpath = std::string(this->deviceDirectory+ "/../../../device_process.log");
+    auto lpath = this->deviceDirectory + "/../../../device_process.log";
     sParseLog lParseLog(lpath);
     while (getDeviceProcessStarted())
     {
