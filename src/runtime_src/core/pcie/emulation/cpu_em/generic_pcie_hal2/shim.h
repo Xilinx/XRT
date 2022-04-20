@@ -78,7 +78,7 @@ namespace xclcpuemhal2 {
     }
 
     void parseLog() {
-      if (not mFileExists.load()) {
+      if (!mFileExists) {
         if (std::filesystem::exists(mFileName)) {
           file.open(mFileName);
           if (file.is_open())
