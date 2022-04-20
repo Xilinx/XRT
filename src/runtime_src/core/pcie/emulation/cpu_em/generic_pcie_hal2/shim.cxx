@@ -1270,7 +1270,7 @@ namespace xclcpuemhal2 {
           }
         }
 
-      if( std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() >= 300){  
+      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() >= 300) {  
         std::this_thread::sleep_for(std::chrono::seconds(300));
         lParseLog.parseLog();
       }
