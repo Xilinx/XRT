@@ -751,7 +751,7 @@ namespace xclcpuemhal2 {
 
       setDeviceProcessStarted(true);
       if(not mMessengerThread.joinable()) {
-        mMessengerThread = std::thread([this](){messagesThread();});      
+        mMessengerThread = std::thread([this] { messagesThread(); });
       }
 
       xclLoadBitstream_RPC_CALL(xclLoadBitstream, xmlFile, tempdlopenfilename, deviceDirectory, binaryDirectory, verbose);
