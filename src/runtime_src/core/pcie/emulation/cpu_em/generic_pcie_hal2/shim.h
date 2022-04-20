@@ -186,8 +186,8 @@ namespace xclcpuemhal2 {
 
       void set_messagesize( unsigned int messageSize ) { message_size = messageSize; }
       unsigned int get_messagesize(){ return message_size; }
-      void setDeviceProcessStarted(bool devProcess) { mDeviceProcess.store(devProcess); }
-      bool getDeviceProcessStarted() const { return mDeviceProcess.load(); }
+      void setDeviceProcessStarted(bool devProcess) { mDeviceProcess = devProcess; }
+      bool getDeviceProcessStarted() const { return mDeviceProcess; }
 
       ~CpuemShim();
       CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified,
