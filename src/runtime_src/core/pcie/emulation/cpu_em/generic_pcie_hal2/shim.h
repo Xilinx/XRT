@@ -86,7 +86,7 @@ namespace xclcpuemhal2 {
         }
       }
 
-      if(mFileExists.load()) {
+      if (mFileExists) {
         std::string matchString = "received request to end simulation from connected initiator";
         SearchString(matchString);
       }
