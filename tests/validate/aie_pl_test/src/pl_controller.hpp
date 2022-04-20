@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2019-2021 Xilinx, Inc
+* Copyright (C) 2019-2022 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -140,28 +140,6 @@ class plController {
     void enqueue_loop_end();
 
     void enqueue_set_and_enqueue_dma_bd(const std::string& portName, int idx, int dma_bd_value);
-    // void enqueue_graph_run(const std::string& graphName, int num_iter);
-
-    // void enqueue_graph_wait(const std::string& graphName);
-
-    // void enqueue_graph_rtp_update(const std::string& rtpPort, int rtpVal);
-
-    // void enqueue_graph_rtp_read(const std::string& rtpPort);
-
-    // void enqueue_wait_for_dma_idle(int dma_channel, bool dma_s2mm);
-    // void enqueue_wait_for_dma_idle(const std::string& portName, int idx);
-
-    // void enqueue_set_dma_bd_length(int dma_bd_number, int dma_bd_length);
-    // void enqueue_set_dma_bd_length(const std::string& portName, int idx, int
-    // dma_bd_length);
-
-    // void enqueue_enqueue_dma_bd(int dma_bd_number, int dma_channel, int
-    // dma_s2mm);
-    // void enqueue_enqueue_dma_bd(const std::string& portName, int idx);
-
-    // void enqueue_load_aie_pm(uint32_t pm_addr, uint32_t* elf_ptr, int length);
-    // void enqueue_load_aie_pm(uint32_t pm_addr, const std::string&
-    // elf_file_name);
 
     void enqueue_sleep(unsigned int num_cycles);
 
@@ -203,7 +181,6 @@ class plController {
     std::vector<buffer_type> get_buffers(const std::string& port_name);
 
     std::vector<char> m_axlf;
-    // const axlf* m_top;
     std::unordered_map<std::string, rtp_type> rtps;
     dynBuffer* opcodeBuffer;
     dynBuffer* metadata;
