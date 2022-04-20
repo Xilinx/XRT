@@ -53,7 +53,6 @@ namespace xrt { namespace aie {
  * By default the AIE array is opened in primary access mode.
  */
 enum class access_mode : uint8_t { exclusive = 0, primary = 1, shared = 2, none = 3 };
-class async_bo_impl;
 
 class device : public xrt::device
 {
@@ -94,6 +93,7 @@ private:
   open_context(access_mode mode);
 };
 
+class async_bo_impl;
 class async_bo_hdl : public detail::pimpl<async_bo_impl>
 {
 public:
@@ -139,7 +139,8 @@ public:
    * Asynchronously transfer the buffer contents from BO offset to offset + sz
    * between GMIO and AIE.
    */
-  xrt::aie::async_bo_hdl async(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
+  xrt::aie::async_bo_hdl 
+  async(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
 
   /**
    * sync() - Transfer data between BO and Shim DMA channel.
