@@ -1242,8 +1242,6 @@ namespace xclcpuemhal2 {
   {
     if (mMessengerThread.joinable())
       mMessengerThread.join();
-      
-    }
   }
 
   void CpuemShim::messagesThread()
