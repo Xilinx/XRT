@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,13 +16,20 @@
 
 #include "SectionAIEMetadata.h"
 
+#include "XclBinUtilities.h"
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionAIEMetadata::_init SectionAIEMetadata::_initializer;
+// ----------------------------------------------------------------------------
+SectionAIEMetadata::init SectionAIEMetadata::initializer;
+
+SectionAIEMetadata::init::init() {
+  registerSectionCtor(AIE_METADATA, "AIE_METADATA", "", false, false, boost::factory<SectionAIEMetadata*>()); 
+}
+// ----------------------------------------------------------------------------
 
 void 
 SectionAIEMetadata::marshalToJSON( char* _pDataSection, 

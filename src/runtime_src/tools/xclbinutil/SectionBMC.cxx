@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020-2021 Xilinx, Inc
+ * Copyright (C) 2018, 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,6 +20,7 @@
 namespace XUtil = XclBinUtilities;
 
 #include <boost/algorithm/string.hpp>
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
 // Disable windows compiler warnings
@@ -28,20 +29,12 @@ namespace XUtil = XclBinUtilities;
 #endif
 
 // Static Variables / Classes
-SectionBMC::_init SectionBMC::_initializer;
+SectionBMC::init SectionBMC::initializer;
 
-// -------------------------------------------------------------------------
-
-SectionBMC::SectionBMC() {
-  // Empty
+SectionBMC::init::init() 
+{
+  registerSectionCtor(BMC, "BMC", "", true, false, boost::factory<SectionBMC*>()); 
 }
-
-// -------------------------------------------------------------------------
-
-SectionBMC::~SectionBMC() {
-  // Empty
-}
-
 // -------------------------------------------------------------------------
 
 bool 

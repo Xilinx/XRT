@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,12 +15,14 @@
  */
 
 #include "SectionPartitionMetadata.h"
+
 #include "DTC.h"
+#include "XclBinUtilities.h"
 #include <algorithm>
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
 template <typename T>
@@ -34,8 +36,12 @@ std::vector<T> as_vector(boost::property_tree::ptree const& pt,
 }
 
 // Static Variables / Classes
-SectionPartitionMetadata::_init SectionPartitionMetadata::_initializer;
+SectionPartitionMetadata::init SectionPartitionMetadata::initializer;
 
+SectionPartitionMetadata::init::init() 
+{ 
+  registerSectionCtor(PARTITION_METADATA, "PARTITION_METADATA", "partition_metadata", false, false, boost::factory<SectionPartitionMetadata *>()); 
+}
 
 // Variable name to data size mapping table
 const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFormat = {
@@ -770,16 +776,6 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
   SchemaTransform_subNode( "partition_info", false /*required*/, 
                            SchemaTransformToPM_partition_info,
                            _ptOriginal, _ptTransformed);
-}
-
-
-
-SectionPartitionMetadata::SectionPartitionMetadata() {
-  // Empty
-}
-
-SectionPartitionMetadata::~SectionPartitionMetadata() {
-  // Empty
 }
 
 bool 

@@ -17,8 +17,10 @@
 #include "SectionAIEPartition.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 #include <iostream>
+
+namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
 SectionAIEPartition::init SectionAIEPartition::initializer;

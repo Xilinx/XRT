@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,20 +15,19 @@
  */
 
 #include "SectionDNACertificate.h"
-#include <string>
 
 #include "XclBinUtilities.h"
+#include <boost/functional/factory.hpp>
+#include <string>
+
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionDNACertificate::_init SectionDNACertificate::_initializer;
+SectionDNACertificate::init SectionDNACertificate::initializer;
 
-SectionDNACertificate::SectionDNACertificate() {
-  // Empty
-}
-
-SectionDNACertificate::~SectionDNACertificate() {
-  // Empty
+SectionDNACertificate::init::init() 
+{ 
+  registerSectionCtor(DNA_CERTIFICATE, "DNA_CERTIFICATE", "", false, false, boost::factory<SectionDNACertificate*>()); 
 }
 
 #define signatureSizeBytes 512

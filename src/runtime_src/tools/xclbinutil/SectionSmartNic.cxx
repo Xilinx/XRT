@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,26 +20,28 @@
 
 #include "SectionSmartNic.h"
 
-#include "XclBinUtilities.h"
 #include "CBOR.h"
 #include "RapidJsonUtilities.h"
 #include "ResourcesSmartNic.h"
-
-namespace XUtil = XclBinUtilities;
-
-#include <boost/property_tree/json_parser.hpp>
+#include "XclBinUtilities.h"
 #include <boost/algorithm/hex.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
-
-// Need to convert between boost property trees and rapid json
+#include <boost/functional/factory.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <fstream>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
-#include <fstream>
+namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionSmartNic::_init SectionSmartNic::_initializer;
+SectionSmartNic::init SectionSmartNic::initializer;
+
+SectionSmartNic::init::init() 
+{ 
+  registerSectionCtor(SMARTNIC, "SMARTNIC", "smartnic", false, false, boost::factory<SectionSmartNic*>()); 
+}
 
 
 bool

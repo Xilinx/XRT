@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,19 +17,18 @@
 #include "SectionClockFrequencyTopology.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 #include <iostream>
 #include <stdint.h>
 
+namespace XUtil = XclBinUtilities;
+
 // Static Variables / Classes
-SectionClockFrequencyTopology::_init SectionClockFrequencyTopology::_initializer;
+SectionClockFrequencyTopology::init SectionClockFrequencyTopology::initializer;
 
-SectionClockFrequencyTopology::SectionClockFrequencyTopology() {
-  // Empty
-}
-
-SectionClockFrequencyTopology::~SectionClockFrequencyTopology() {
-  // Empty
+SectionClockFrequencyTopology::init::init() 
+{ 
+  registerSectionCtor(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", "clock_freq_topology", false, false, boost::factory<SectionClockFrequencyTopology*>()); 
 }
 
 const std::string

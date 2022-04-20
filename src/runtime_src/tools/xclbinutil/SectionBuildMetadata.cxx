@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020 Xilinx, Inc
+ * Copyright (C) 2018, 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,23 +16,19 @@
 
 #include "SectionBuildMetadata.h"
 
-#include <boost/property_tree/json_parser.hpp>
-
-#include "XclBinUtilities.h"
-
 #include "version.h" // Globally included from main
+#include "XclBinUtilities.h"
+#include <boost/functional/factory.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionBuildMetadata::_init SectionBuildMetadata::_initializer;
+SectionBuildMetadata::init SectionBuildMetadata::initializer;
 
-SectionBuildMetadata::SectionBuildMetadata() {
-  // Empty
-}
-
-SectionBuildMetadata::~SectionBuildMetadata() {
-  // Empty
+SectionBuildMetadata::init::init() 
+{ 
+  registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", "build_metadata", false, false, boost::factory<SectionBuildMetadata*>()); 
 }
 
 void 

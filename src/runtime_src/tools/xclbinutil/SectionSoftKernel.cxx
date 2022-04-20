@@ -17,11 +17,12 @@
 #include "SectionSoftKernel.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
-
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
+
+namespace XUtil = XclBinUtilities;
 
 // Disable windows compiler warnings
 #ifdef _WIN32
@@ -29,18 +30,11 @@ namespace XUtil = XclBinUtilities;
 #endif
 
 // Static Variables / Classes
-SectionSoftKernel::_init SectionSoftKernel::_initializer;
+SectionSoftKernel::init SectionSoftKernel::initializer;
 
-// -------------------------------------------------------------------------
-
-SectionSoftKernel::SectionSoftKernel() {
-  // Empty
-}
-
-// -------------------------------------------------------------------------
-
-SectionSoftKernel::~SectionSoftKernel() {
-  // Empty
+SectionSoftKernel::init::init() 
+{ 
+  registerSectionCtor(SOFT_KERNEL, "SOFT_KERNEL", "", true, true, boost::factory<SectionSoftKernel*>()); 
 }
 
 // -------------------------------------------------------------------------

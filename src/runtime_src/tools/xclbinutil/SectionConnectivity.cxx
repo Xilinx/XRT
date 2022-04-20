@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020 Xilinx, Inc
+ * Copyright (C) 2018, 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,18 +17,17 @@
 #include "SectionConnectivity.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 #include <iostream>
 
+namespace XUtil = XclBinUtilities;
+
 // Static Variables / Classes
-SectionConnectivity::_init SectionConnectivity::_initializer;
+SectionConnectivity::init SectionConnectivity::initializer;
 
-SectionConnectivity::SectionConnectivity() {
-  // Empty
-}
-
-SectionConnectivity::~SectionConnectivity() {
-  // Empty
+SectionConnectivity::init::init() 
+{ 
+  registerSectionCtor(CONNECTIVITY, "CONNECTIVITY", "connectivity", false, false, boost::factory<SectionConnectivity*>()); 
 }
 
 void

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,32 +18,16 @@
 #define __SectionClearBitstream_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
-
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
 
 // ------ C L A S S :   S e c t i o n C l e a r B i t s t r e a m ------------
-
 class SectionClearBitstream : public Section {
- public:
-  SectionClearBitstream();
-  virtual ~SectionClearBitstream();
-
- private:
-  // Purposefully private and undefined ctors...
-  SectionClearBitstream(const SectionClearBitstream& obj);
-  SectionClearBitstream& operator=(const SectionClearBitstream& obj);
-
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", "", false, false, boost::factory<SectionClearBitstream*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

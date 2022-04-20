@@ -18,22 +18,11 @@
 #define __SectionFlash_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
 
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
-// --------------- C L A S S :   S e c t i o n B M C -------------------------
-
+// ----------- C L A S S :   S e c t i o n F l a s h -------------------------
 class SectionFlash : public Section {
  public:
-  SectionFlash();
-  virtual ~SectionFlash();
-
-public:
   enum SubSection{
     SS_UNKNOWN,
     SS_DATA,
@@ -58,15 +47,11 @@ public:
    void writeMetadata(std::ostream& _oStream) const;
 
  private:
-  SectionFlash(const SectionFlash& obj) = delete;
-  SectionFlash& operator=(const SectionFlash& obj) = delete;
-
- private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(ASK_FLASH, "FLASH", "", true, true, boost::factory<SectionFlash*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,32 +18,25 @@
 #define __SectionAIEMetadata_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
 
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
-// ------ C L A S S :   S e c t i o n C l e a r B i t s t r e a m ------------
-
+// ------ C L A S S :   S e c t i o n A I E M e t a d a t a ------------------
 class SectionAIEMetadata : public Section {
 
 public:
-  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
-  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
+  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
+  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
 
  protected:
-  virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
-  virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
+  void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
+  void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(AIE_METADATA, "AIE_METADATA", "", false, false, boost::factory<SectionAIEMetadata*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

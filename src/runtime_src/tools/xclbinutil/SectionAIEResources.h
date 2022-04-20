@@ -18,24 +18,16 @@
 #define __SectionAIEResources_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
 
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
-// --------------- C L A S S :   S e c t i o n P D I -------------------------
-
+// --------- C L A S S :  S e c t i o n A I E R e s o u r c e s --------------
 class SectionAIEResources : public Section {
- 
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(AIE_RESOURCES, "AIE_RESOURCES", "", false, false, boost::factory<SectionAIEResources*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif
