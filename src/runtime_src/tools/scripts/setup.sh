@@ -33,7 +33,7 @@ if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
     return 1
 fi
 
-COMP_FILE="bash_completion"
+COMP_FILE="/usr/share/bash-completion/bash_completion"
 # This is a hack to get around set -e
 # The issue is chaining conditionals with actual commands and is
 # documented here: http://mywiki.wooledge.org/BashFAQ/105\
@@ -42,12 +42,9 @@ COMP_FILE="bash_completion"
 # will fail the script due to the issues documented in the FAQ above.
 # If set -e is removed from the pipeline then check can be removed
 if [[ $- != *e* ]] && [ -f "${COMP_FILE}" ]; then
-    echo ${COMP_FILE} found! Sourcing file!
     # Enable autocompletion for the xbutil and xbmgmt commands
     source $COMP_FILE
-    echo Sourcing xbutil
     source $XILINX_XRT/share/completions/xbutil-bash-completion
-    echo Sourcing xbmgmt
     source $XILINX_XRT/share/completions/xbmgmt-bash-completion
 else
   echo Autocomplete not enabled for XRT tools
