@@ -48,7 +48,6 @@ target_link_libraries(common_em
   xrt_coreutil
   dl
   pthread
-  stdc++fs
   crypt
   rt
   )
