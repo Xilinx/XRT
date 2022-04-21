@@ -13,16 +13,16 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
+#include "core/common/xclbin_parser.h"
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
-#include "core/common/xclbin_parser.h"
 #include <errno.h>
-#include <unistd.h>
-#include <boost/property_tree/xml_parser.hpp>
-#include <boost/lexical_cast.hpp>
 #include <inttypes.h>
-#include <filesystem>
+#include <unistd.h>
+#include <boost/lexical_cast.hpp>
+#include <boost/property_tree/xml_parser.hpp>
 #include <cctype>
 
 #define DEBUG_MSGS(format, ...)
@@ -53,7 +53,7 @@ namespace xclcpuemhal2 {
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
     ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
-    ,mDeviceProcess(false)
+    ,mIsDeviceProcessStarted(false)
   {
     binaryCounter = 0;
     mReqCounter = 0;
@@ -562,10 +562,8 @@ namespace xclcpuemhal2 {
     
     //Check if device_process.log already exists. Remove if exists.
     auto extIoTxtFile = deviceDirectory + "/../../../device_process.log";
-
-    if (std::filesystem::exists(extIoTxtFile))
-      std::filesystem::remove(extIoTxtFile); 
-    
+    if (boost::filesystem::exists(extIoTxtFile))
+      boost::filesystem::remove(extIoTxtFile);
     launchDeviceProcess(debuggable,binaryDirectory);
 
     if (header)
@@ -1246,9 +1244,10 @@ namespace xclcpuemhal2 {
 
   void CpuemShim::messagesThread()
   {
-    static auto start_time = std::chrono::high_resolution_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();
     auto lpath = this->deviceDirectory + "/../../../device_process.log";
-    sParseLog lParseLog(lpath);
+    sParseLog deviceProcessLog(lpath);
+    int count = 0;
     while (getDeviceProcessStarted())
     {
       // I may not get ParseLog() all the times, So Let's optimize myself.
@@ -1259,8 +1258,7 @@ namespace xclcpuemhal2 {
       auto end_time = std::chrono::high_resolution_clock::now();
 
       if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= 300) {  
-        static int count =0;
-        lParseLog.parseLog(); 
+        deviceProcessLog.parseLog(); 
         ++count;
         if (count%5 == 0) {
           std::this_thread::sleep_for(std::chrono::seconds(10*(count/5)));
@@ -1269,7 +1267,7 @@ namespace xclcpuemhal2 {
 
       if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() >= 300) {  
         std::this_thread::sleep_for(std::chrono::seconds(300));
-        lParseLog.parseLog();
+        deviceProcessLog.parseLog();
       }
     }
   }
