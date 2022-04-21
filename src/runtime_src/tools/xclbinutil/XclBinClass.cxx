@@ -711,7 +711,7 @@ XclBin::addMergeSection(ParameterSectionData& _PSD)
   XUtil::QUIET("");
   XUtil::QUIET(boost::format("Section: '%s'(%d) merged successfully with\nFile: '%s'")
                              % pSection->getSectionKindAsString()
-                             % pSection->getSectionKind()
+                             % (unsigned int)  pSection->getSectionKind()
                              % _PSD.getFile());
 }
 
@@ -725,7 +725,7 @@ XclBin::removeSection(const Section* _pSection)
 
   for (unsigned int index = 0; index < m_sections.size(); ++index) {
     if ((void*)m_sections[index] == (void*)_pSection) {
-      XUtil::TRACE(boost::format("Removing and deleting section '%s' (%d).") % _pSection->getSectionKindAsString() % _pSection->getSectionKind());
+      XUtil::TRACE(boost::format("Removing and deleting section '%s' (%d).") % _pSection->getSectionKindAsString() % (unsigned int) _pSection->getSectionKind());
       m_sections.erase(m_sections.begin() + index);
       delete _pSection;
       m_xclBinHeader.m_header.m_numSections = (uint32_t)m_sections.size();
@@ -733,7 +733,7 @@ XclBin::removeSection(const Section* _pSection)
     }
   }
 
-  auto errMsg = boost::format("ERROR: Section '%s' (%d) not found") % _pSection->getSectionKindAsString() % _pSection->getSectionKind();
+  auto errMsg = boost::format("ERROR: Section '%s' (%d) not found") % _pSection->getSectionKindAsString() % (unsigned int) _pSection->getSectionKind();
   throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg.str());
 }
 
@@ -849,10 +849,10 @@ XclBin::replaceSection(ParameterSectionData& _PSD)
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 
-  XUtil::TRACE(boost::format("Section '%s' (%d) successfully added.") % pSection->getSectionKindAsString() % pSection->getSectionKind());
+  XUtil::TRACE(boost::format("Section '%s' (%d) successfully added.") % pSection->getSectionKindAsString() % (unsigned int)  pSection->getSectionKind());
   XUtil::QUIET("");
   XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'")
-                             % pSection->getSectionKindAsString() % pSection->getSectionKind()
+                             % pSection->getSectionKindAsString() % (unsigned int)  pSection->getSectionKind()
                              % pSection->getSize()
                              % _PSD.getFormatTypeAsStr() % sSectionFileName);
 }
@@ -981,7 +981,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
                           "Section '%s%s%s' (%d) successfully added.")
                           % sSectionAddedName
                           % (sSubSection.empty() ? "" : "-")
-                          % sSubSection % pSection->getSectionKind()));
+                          % sSubSection % (unsigned int)  pSection->getSectionKind()));
   std::string optionalIndex;
   if (!(pSection->getSectionIndexName().empty())) 
     optionalIndex = (boost::format("[%s]") % pSection->getSectionIndexName()).str();
@@ -992,7 +992,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
                          % sSectionAddedName
                          % optionalIndex
                          % (sSubSection.empty() ? "" : "-")
-                         % sSubSection.c_str() % pSection->getSectionKind()
+                         % sSubSection.c_str() % (unsigned int) pSection->getSectionKind()
                          % pSection->getSize()
                          % _PSD.getFormatTypeAsStr() % sSectionFileName));
 }
@@ -1061,7 +1061,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
     XUtil::QUIET(boost::str(boost::format(
                             "Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'")
                              % pSection->getSectionKindAsString()
-                             % pSection->getSectionKind()
+                             % (unsigned int) pSection->getSectionKind()
                              % _PSD.getFormatTypeAsStr() % sSectionFileName));
     delete pSection;
     pSection = nullptr;
@@ -1073,11 +1073,11 @@ XclBin::addSection(ParameterSectionData& _PSD)
 
   std::string sSectionAddedName = pSection->getSectionKindAsString();
 
-  XUtil::TRACE(boost::str(boost::format("Section '%s' (%d) successfully added.") % sSectionAddedName % pSection->getSectionKind()));
+  XUtil::TRACE(boost::str(boost::format("Section '%s' (%d) successfully added.") % sSectionAddedName % (unsigned int) pSection->getSectionKind()));
   XUtil::QUIET("");
   XUtil::QUIET(boost::str(boost::format(
                          "Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'")
-                          % sSectionAddedName % pSection->getSectionKind()
+                          % sSectionAddedName % (unsigned int) pSection->getSectionKind()
                           % pSection->getSize()
                           % _PSD.getFormatTypeAsStr() % sSectionFileName));
 }
@@ -1156,7 +1156,7 @@ XclBin::addSections(ParameterSectionData& _PSD)
       XUtil::QUIET("");
       XUtil::QUIET(boost::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'")
                                  % pSection->getSectionKindAsString()
-                                 % pSection->getSectionKind()
+                                 % (unsigned int) pSection->getSectionKind()
                                  % _PSD.getFormatTypeAsStr() % sectionName);
       delete pSection;
       pSection = nullptr;
@@ -1164,11 +1164,11 @@ XclBin::addSections(ParameterSectionData& _PSD)
     }
     addSection(pSection);
     updateHeaderFromSection(pSection);
-    XUtil::TRACE(boost::format("Section '%s' (%d) successfully added.") % pSection->getSectionKindAsString() % pSection->getSectionKind());
+    XUtil::TRACE(boost::format("Section '%s' (%d) successfully added.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
     XUtil::QUIET("");
     XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully added.\nFormat : %s\nFile   : '%s'") 
                                % pSection->getSectionKindAsString()
-                               % pSection->getSectionKind()
+                               % (unsigned int) pSection->getSectionKind()
                                % _PSD.getFormatTypeAsStr() % sectionName);
   }
 }
@@ -1243,11 +1243,11 @@ XclBin::appendSections(ParameterSectionData& _PSD)
     pSection->readJSONSectionImage(ptPayload);
 
 
-    XUtil::TRACE(boost::format("Section '%s' (%d) successfully appended to.") % pSection->getSectionKindAsString() % pSection->getSectionKind());
+    XUtil::TRACE(boost::format("Section '%s' (%d) successfully appended to.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
     XUtil::QUIET("");
     XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully appended to.\nFormat : %s\nFile   : '%s'")
                                % pSection->getSectionKindAsString()
-                               % pSection->getSectionKind()
+                               % (unsigned int) pSection->getSectionKind()
                                % _PSD.getFormatTypeAsStr() % sectionName);
   }
 }
@@ -1299,7 +1299,7 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
   }
 
   pSection->dumpSubSection(oDumpFile, sSubSection, _PSD.getFormatType());
-  XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % pSection->getSectionKind());
+  XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
   XUtil::QUIET("");
 
   std::string optionalIndex;
@@ -1310,7 +1310,7 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
                              % pSection->getSectionKindAsString()
                              % optionalIndex
                              % (sSubSection.empty() ? "" : "-")
-                             % sSubSection % pSection->getSectionKind()
+                             % sSubSection % (unsigned int) pSection->getSectionKind()
                              % _PSD.getFormatTypeAsStr() % sDumpFileName);
 }
 
@@ -1367,11 +1367,11 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
   }
 
   pSection->dumpContents(oDumpFile, _PSD.getFormatType());
-  XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % pSection->getSectionKind());
+  XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
   XUtil::QUIET("");
   XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'")
                              % pSection->getSectionKindAsString()
-                             % pSection->getSectionKind()
+                             % (unsigned int) pSection->getSectionKind()
                              % _PSD.getFormatTypeAsStr() % sDumpFileName);
 }
 

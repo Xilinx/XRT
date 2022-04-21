@@ -18,7 +18,7 @@
 
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
-#include <boost//format.hpp>
+#include <boost/format.hpp>
 #include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -179,7 +179,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   std::string sImageName = ptBMC.get<std::string>("m_image_name");
   if ( sImageName.length() >= sizeof(bmc::m_image_name) ) {
     auto errMsg = boost::format("ERROR: The m_image_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
-                                % (unsigned int) sImageName.length() % (unsigned int) sizeof(bmc::m_image_name) % sImageName;
+                                % (int) sImageName.length() % (unsigned int) sizeof(bmc::m_image_name) % sImageName;
     throw std::runtime_error(errMsg.str());
   }
   memcpy( pHdr->m_image_name, sImageName.c_str(), sImageName.length() + 1);
@@ -188,7 +188,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   std::string sDeviceName = ptBMC.get<std::string>("m_device_name");
   if ( sDeviceName.length() >= sizeof(bmc::m_device_name) ) {
     auto errMsg = boost::format("ERROR: The m_device_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
-                                % (unsigned int) sDeviceName.length() % (unsigned int) sizeof(bmc::m_device_name) % sDeviceName;
+                                % (int) sDeviceName.length() % (unsigned int) sizeof(bmc::m_device_name) % sDeviceName;
     throw std::runtime_error(errMsg.str());
   }
   memcpy( pHdr->m_device_name, sDeviceName.c_str(), sDeviceName.length() + 1);
@@ -197,7 +197,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   std::string sVersion = ptBMC.get<std::string>("m_version");
   if ( sVersion.length() >= sizeof(bmc::m_version) ) {
     auto errMsg = boost::format("ERROR: The m_version entry length (%d), exceeds the allocated space (%d).  Version: '%s'")
-                                % (unsigned int) sVersion.length() % (unsigned int) sizeof(bmc::m_version) % sVersion;
+                                % (int) sVersion.length() % (unsigned int) sizeof(bmc::m_version) % sVersion;
     throw std::runtime_error(errMsg.str());
   }
   memcpy( pHdr->m_version, sVersion.c_str(), sVersion.length() + 1);
@@ -206,7 +206,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   std::string sMD5Value = ptBMC.get<std::string>("m_md5value");
   if ( sMD5Value.length() >= sizeof(bmc::m_md5value) ) {
     auto errMsg = boost::format("ERROR: The m_md5value entry length (%d), exceeds the allocated space (%d).  Value: '%s'")
-                                % (unsigned int) sMD5Value.length() % (unsigned int) sizeof(bmc::m_md5value) % sMD5Value;
+                                % (int) sMD5Value.length() % (unsigned int) sizeof(bmc::m_md5value) % sMD5Value;
     throw std::runtime_error(errMsg.str());
   }
   memcpy( pHdr->m_md5value, sMD5Value.c_str(), sMD5Value.length() + 1);
@@ -328,7 +328,7 @@ SectionBMC::writeFWImage(std::ostream& _oStream) const {
   // Overlay the structure
   // Do we have enough room to overlay the header structure
   if ( m_bufferSize < sizeof(bmc) ) {
-    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)") % m_bufferSize % sizeof(bmc);
+    auto errMsg = boost::format("ERROR: Segment size (%u) is smaller than the size of the bmc structure (%d)") % m_bufferSize % sizeof(bmc);
     throw std::runtime_error(errMsg.str());
   }
 

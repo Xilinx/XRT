@@ -66,11 +66,11 @@ SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
     boost::property_tree::ptree connection;
 
 
-    XUtil::TRACE(boost::format("[%d]: arg_index: %d, m_ip_layout_index: %d, mem_data_index: %d")
+    XUtil::TRACE(boost::format("[%d]: arg_index: %u, m_ip_layout_index: %u, mem_data_index: %u")
                                % index
-                               % (unsigned int)pHdr->m_connection[index].arg_index
-                               % (unsigned int)pHdr->m_connection[index].m_ip_layout_index
-                               % (unsigned int)pHdr->m_connection[index].mem_data_index);
+                               % (unsigned int) pHdr->m_connection[index].arg_index
+                               % (unsigned int) pHdr->m_connection[index].m_ip_layout_index
+                               % (unsigned int) pHdr->m_connection[index].mem_data_index);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("connection", reinterpret_cast<const char*>(&(pHdr->m_connection[index])), sizeof(connection));

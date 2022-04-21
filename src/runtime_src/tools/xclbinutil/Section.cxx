@@ -93,7 +93,7 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
 
   if (m_mapIdToName.find(_eKind) != m_mapIdToName.end()) {
     auto errMsg = boost::format("ERROR: Attempting to register (%d : %s). Constructor enum of kind (%d) already registered.")
-                                %(unsigned int)_eKind % _sKindStr % (unsigned int)_eKind;
+                                % (unsigned int)_eKind % _sKindStr % (unsigned int)_eKind;
     throw std::runtime_error(errMsg.str());
   }
 
@@ -108,7 +108,7 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
     if (m_mapJSONNameToKind.find(_sHeaderJSONName) != m_mapJSONNameToKind.end()) {
       auto errMsg = boost::format("ERROR: Attempting to register: (%d : %s). JSON mapping name '%s' already registered to eKind (%d).")
                                   % (unsigned int) _eKind % _sKindStr.c_str()
-                                  % _sHeaderJSONName % (unsigned int) m_mapJSONNameToKind[_sHeaderJSONName];;
+                                  % _sHeaderJSONName % (unsigned int) m_mapJSONNameToKind[_sHeaderJSONName];
       throw std::runtime_error(errMsg.str());
     }
     m_mapJSONNameToKind[_sHeaderJSONName] = _eKind;
@@ -324,7 +324,7 @@ Section::readXclBinBinary(std::istream& _istream,
   enum axlf_section_kind eKind = (enum axlf_section_kind)_ptSection.get<unsigned int>("Kind");
 
   if (eKind != getSectionKind()) {
-    auto errMsg = boost::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d") % getSectionKind() % (unsigned int) eKind;
+    auto errMsg = boost::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d") % (unsigned int) getSectionKind() % (unsigned int) eKind;
     throw std::runtime_error(errMsg.str());
   }
 
@@ -502,9 +502,9 @@ Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) cons
       boost::property_tree::ptree pt;
       marshalToJSON(m_pBuffer, m_bufferSize, pt);
 
-      _ostream << boost::format("<!DOCTYPE html><html><body><h1>Section: %s (%d)</h1><pre>") % getSectionKindAsString() % getSectionKind() << std::endl;
+      _ostream << boost::format("<!DOCTYPE html><html><body><h1>Section: %s (%d)</h1><pre>\n") % getSectionKindAsString() % (unsigned int) getSectionKind();
       boost::property_tree::write_json(_ostream, pt, true /*Pretty print*/);
-      _ostream << "</pre></body></html>" << std::endl;
+      _ostream << "</pre></body></html>\n";
       break;
     }
   case FT_UNKNOWN:
@@ -531,9 +531,9 @@ void
 Section::printHeader(std::ostream &_ostream) const
 {
   _ostream << "Section Header\n";
-  _ostream << "  Type    : '" << getSectionKindAsString() << "'" << std::endl;
-  _ostream << "  Name    : '" << getName() << "'" << std::endl;
-  _ostream << "  Size    : '" << getSize() << "' bytes" << std::endl;
+  _ostream << boost::format("  Type    : '%s'\n") % getSectionKindAsString();
+  _ostream << boost::format("  Name    : '%s'\n") % getName();
+  _ostream << boost::format("  Size    : '%d'\n") % getSize();
 }
 
 bool 

@@ -230,36 +230,36 @@ int main_(int argc, const char** argv) {
 
     if ((vm.count("help")) ||
         (argc == 1)) {
-      std::cout << "This utility operates on a xclbin produced by v++." << std::endl << std::endl;
-      std::cout << "For example:" << std::endl;
-      std::cout << "  1) Reporting xclbin information  : xclbinutil --info --input binary_container_1.xclbin" << std::endl;
-      std::cout << "  2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin" << std::endl;
-      std::cout << "  3) Extracting the build metadata : xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin" << std::endl;
-      std::cout << "  4) Removing a section            : xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin" << std::endl;
-      std::cout << "  5) Signing xclbin                : xclbinutil --private-key key.priv --certificate cert.pem --input binary_container_1.xclbin --output signed.xclbin" << std::endl;
+      std::cout << "This utility operates on a xclbin produced by v++.\n\n";
+      std::cout << "For example:\n";
+      std::cout << "  1) Reporting xclbin information  : xclbinutil --info --input binary_container_1.xclbin\n";
+      std::cout << "  2) Extracting the bitstream image: xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin\n";
+      std::cout << "  3) Extracting the build metadata : xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin\n";
+      std::cout << "  4) Removing a section            : xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin\n";
+      std::cout << "  5) Signing xclbin                : xclbinutil --private-key key.priv --certificate cert.pem --input binary_container_1.xclbin --output signed.xclbin\n";
 
       std::cout << std::endl
-                << "Command Line Options" << std::endl
+                << "Command Line Options\n"
                 << desc
                 << std::endl;
 
-      std::cout << "Addition Syntax Information" << std::endl;
-      std::cout << "---------------------------" << std::endl;
-      std::cout << "Syntax: <section>:<format>:<file>" << std::endl;
-      std::cout << "    <section> - The section to add or dump (e.g., BUILD_METADATA, BITSTREAM, etc.)"  << std::endl;
-      std::cout << "                Note: If a JSON format is being used, this value can be empty.  If so, then" << std::endl;
-      std::cout << "                      the JSON metadata will determine the section it is associated with." << std::endl;
-      std::cout << "                      In addition, only sections that are found in the JSON file will be reported." << std::endl;
-      std::cout << std::endl;
-      std::cout << "    <format>  - The format to be used.  Currently, there are three formats available: " << std::endl;
-      std::cout << "                RAW: Binary Image; JSON: JSON file format; and HTML: Browser visible." << std::endl;
-      std::cout << std::endl;
-      std::cout << "                Note: Only selected operations and sections supports these file types."  << std::endl;
-      std::cout << std::endl;
-      std::cout << "    <file>    - The name of the input/output file to use." << std::endl;
-      std::cout << std::endl;
-      std::cout << "  Used By: --add_section and --dump_section" << std::endl;
-      std::cout << "  Example: xclbinutil --add-section BITSTREAM:RAW:mybitstream.bit"  << std::endl;
+      std::cout << "Addition Syntax Information\n";
+      std::cout << "---------------------------\n";
+      std::cout << "Syntax: <section>:<format>:<file>\n";
+      std::cout << "    <section> - The section to add or dump (e.g., BUILD_METADATA, BITSTREAM, etc.)\n";
+      std::cout << "                Note: If a JSON format is being used, this value can be empty.  If so, then\n";
+      std::cout << "                      the JSON metadata will determine the section it is associated with.\n";
+      std::cout << "                      In addition, only sections that are found in the JSON file will be reported.\n";
+      std::cout << "\n";
+      std::cout << "    <format>  - The format to be used.  Currently, there are three formats available:\n";
+      std::cout << "                RAW: Binary Image; JSON: JSON file format; and HTML: Browser visible.\n";
+      std::cout << "\n";
+      std::cout << "                Note: Only selected operations and sections supports these file types.\n";
+      std::cout << "\n";
+      std::cout << "    <file>    - The name of the input/output file to use.\n";
+      std::cout << "\n";
+      std::cout << "  Used By: --add_section and --dump_section\n";
+      std::cout << "  Example: xclbinutil --add-section BITSTREAM:RAW:mybitstream.bit\n";
       std::cout << std::endl;
 
 

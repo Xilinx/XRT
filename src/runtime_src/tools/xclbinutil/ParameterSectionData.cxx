@@ -125,7 +125,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
       
       // We need to have an end delimiter
       if (sectionIndexEndDelimiter != sSection.back()) {
-        auto errMsg = boost::format("Error: Expected format <section>[<section_index>]:<format>:<file> when using a section index.  Received: %s.") %  _formattedString;
+        auto errMsg = boost::format("Error: Expected format <section>[<section_index>]:<format>:<file> when using a section index.  Received: %s.") % _formattedString;
         throw std::runtime_error(errMsg.str());
       }
 

@@ -167,8 +167,8 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
 
     std::string sm_name = ptClockFreq.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(clock_freq::m_name)) {
-      auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
-                                  % (unsigned int)sm_name.length() % (unsigned int)sizeof(clock_freq::m_name) % sm_name;
+      auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d). Name: '%s'")
+                                  % (int) sm_name.length() % (unsigned int) sizeof(clock_freq::m_name) % sm_name;
       throw std::runtime_error(errMsg.str());
     }
 

@@ -17,7 +17,7 @@
 #include "XclBinSignature.h"
 
 #include "XclBinUtilities.h"
-#include <boost//format.hpp>
+#include <boost/format.hpp>
 #include <iostream>
 #include <vector>
 
@@ -154,11 +154,11 @@ void signXclBinImage(const std::string& _fileOnDisk,
 }
 #else
 {
-  std::cout << "----------------------------------------------------------------------" << std::endl;
-  std::cout << "Signing the archive file: '" + _fileOnDisk + "'" << std::endl;
-  std::cout << "        Private key file: '" + _sPrivateKey + "'" << std::endl;
-  std::cout << "        Certificate file: '" + _sCertificate + "'" << std::endl;
-  std::cout << "        Digest Algorithm: '" + _sDigestAlgorithm + "'" << std::endl;
+  std::cout << "----------------------------------------------------------------------\n";
+  std::cout << boost::format("Signing the archive file: '%s'\n") % _fileOnDisk;
+  std::cout << boost::format("        Private key file: '%s'\n") % _sPrivateKey;
+  std::cout << boost::format("        Certificate file: '%s'\n") % _sCertificate;
+  std::cout << boost::format("        Digest Algorithm: '%s'\n") % _sDigestAlgorithm;
 
 
   XUtil::TRACE("SignXclBinImage");
@@ -336,8 +336,8 @@ void signXclBinImage(const std::string& _fileOnDisk,
     iofXclBin.close();
   }
 
-  std::cout << "Signature calculated and added successfully to the file: '" << _fileOnDisk << "'" << std::endl;
-  std::cout << "----------------------------------------------------------------------" << std::endl;
+  std::cout << boost::format("Signature calculated and added successfully to the file: '%s'\n") %  _fileOnDisk;
+  std::cout << "----------------------------------------------------------------------\n";
 }
 #endif
 
@@ -389,9 +389,9 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
 }
 #else
 {
-  std::cout << "----------------------------------------------------------------------" << std::endl;
-  std::cout << "Verifying signature for archive file: '" + _fileOnDisk + "'" << std::endl;
-  std::cout << "                    Certificate file: '" + _sCertificate + "'" << std::endl;
+  std::cout << "----------------------------------------------------------------------\n";
+  std::cout << boost::format("Verifying signature for archive file: '%s'\n") % _fileOnDisk;
+  std::cout << boost::format("                    Certificate file: '%s'\n") % _sCertificate;
 
   XUtil::TRACE("SignXclBinImage");
   XUtil::TRACE("File On Disk: '" + _fileOnDisk + "'");
@@ -507,6 +507,6 @@ void verifyXclBinImage(const std::string& _fileOnDisk,
   } else {
     std::cout << "Signed xclbin archive verification [SUCCESSFUL]" << std::endl;
   }
-  std::cout << "----------------------------------------------------------------------" << std::endl;
+  std::cout << "----------------------------------------------------------------------\n";
 }
 #endif
