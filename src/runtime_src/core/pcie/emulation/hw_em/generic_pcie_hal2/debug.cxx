@@ -266,7 +266,6 @@ namespace xclhwemhal2
     static auto l_time = std::chrono::high_resolution_clock::now();
     static auto start_time = std::chrono::high_resolution_clock::now();
 
-    //unsigned int timeCheck = 0;
     unsigned int parseCount = 0;
     std::vector<std::string> lMatchedStrings = {"SIM-IPC's external process can be connected to instance",
                                       "SystemC TLM functional mode",
@@ -282,7 +281,7 @@ namespace xclhwemhal2
 
       auto l_time_end = std::chrono::high_resolution_clock::now();
       if (std::chrono::duration_cast<std::chrono::seconds>(l_time_end - l_time).count() > 300) {
-       // l_time = std::chrono::high_resolution_clock::now();
+       
         std::lock_guard<std::mutex> guard(mPrintMessagesLock);
         if (get_simulator_started() == false)
           return;

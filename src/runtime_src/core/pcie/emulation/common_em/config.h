@@ -10,7 +10,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <atomic>
-//#include <filesystem>
 
 #ifdef _MSC_VER
 #include <boost/config/compiler/visualc.hpp>

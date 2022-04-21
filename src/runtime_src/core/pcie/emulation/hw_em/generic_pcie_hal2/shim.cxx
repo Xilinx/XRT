@@ -52,7 +52,6 @@
 
 namespace xclhwemhal2 {
     //Thread for which pooling for transaction from SIM_QDMA
-   // void hostMemAccessThread(xclhwemhal2::HwEmShim* inst);
 
     /**
       * helper class for transactions from SIM_QDMA to XRT
@@ -64,7 +63,6 @@ namespace xclhwemhal2 {
         std::unique_ptr<response_packet_info> response_header;
 	    size_t  i_len;
 	    size_t  ri_len;
-        //unix_socket* Q2h_sock;
         std::shared_ptr<unix_socket> Q2h_sock;
         xclhwemhal2::HwEmShim* inst;
 
@@ -96,8 +94,7 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::REG_BUFF_SIZE = 0x4;
   const unsigned HwEmShim::M2M_KERNEL_ARGS_SIZE = 36;
 
-  //void messagesThread(xclhwemhal2::HwEmShim* inst);
-
+  
   // Maintain a list of all currently open device handles.
   //
   // xclClose removes a handle from the list.  At static destruction
@@ -616,18 +613,7 @@ namespace xclhwemhal2 {
 
     //CR-1116870 Changes End
 
-    //set_simulator_started(true);
-
-    //Thread to fetch messages from Device to display on host
-    /*
-    if(mMessengerThreadStarted == false) {
-      mMessengerThread = std::thread(xclhwemhal2::messagesThread,this);
-      mMessengerThreadStarted = true;
-    }
     
-    if (mLogStream.is_open())
-       mLogStream << __func__ << " mMessengerThreadStarted " << std::endl;
-*/
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -840,7 +826,7 @@ namespace xclhwemhal2 {
     }
 
     if(mHostMemAccessThreadStarted == false) {
-      mHostMemAccessThread = std::thread([this](){hostMemAccessThread();});
+      mHostMemAccessThread = std::thread([this]() { hostMemAccessThread(); } );
     }
 
     if (deviceDirectory.empty() == false)
@@ -1001,12 +987,12 @@ namespace xclhwemhal2 {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
     
-    //sock = new unix_socket;
     sock.reset(new unix_socket);
     set_simulator_started(true);
+    //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
       std::cout<<"\n messages Thread is created\n";
-      mMessengerThread = std::thread([this](){messagesThread();});
+      mMessengerThread = std::thread([this]() { messagesThread(); } );
       mMessengerThreadStarted = true;
     }
 
@@ -1824,12 +1810,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       std::cout<<"\n unable to get lock::"<<ex.what();
     }
     
-    /*
-    mPrintMessagesLock.lock();
-    fetchAndPrintMessages();
-    simulator_started = false;
-    mPrintMessagesLock.unlock();
-    */
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
@@ -1866,8 +1846,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       saveWaveDataBase();
     }
     //ProfilerStop();
-    //delete sock;
-    //sock = NULL;
+    
     sock.reset();
 
     PRINTENDFUNC;
@@ -3747,8 +3726,6 @@ int HwEmShim::xclIPName2Index(const char *name)
 }
 
 
-//volatile bool HwEmShim::get_mHostMemAccessThreadStarted() { return mHostMemAccessThreadStarted; }
-//volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAccessThreadStarted = val; }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 
@@ -3865,10 +3842,7 @@ Q2H_helper :: Q2H_helper(xclhwemhal2::HwEmShim* _inst) {
     ri_len          = response_header->ByteSizeLong();
 #endif
 }
-Q2H_helper::~Q2H_helper() {
-    //delete Q2h_sock;
-    //Q2h_sock = 0;
-}
+Q2H_helper::~Q2H_helper() = default;
 
 /**
  * Pooling on socket for any memory or interrupt requests from SIM_QDMA
@@ -3946,8 +3920,7 @@ bool Q2H_helper::connect_sock() {
     } else {
       sock_name = "D2X_unix_sock";
     }
-    if(Q2h_sock == nullptr) {
-      //Q2h_sock = new unix_socket("EMULATION_SOCKETID", sock_name, 5, false);
+    if (Q2h_sock == nullptr) {
       Q2h_sock = std::make_shared<unix_socket>("EMULATION_SOCKETID", sock_name, 5, false);
     }
     else if (!Q2h_sock->server_started) {

@@ -275,8 +275,7 @@ using addr_type = uint64_t;
       // Restricted read/write on IP register space
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
-      //volatile bool get_mHostMemAccessThreadStarted();
-      //volatile void set_mHostMemAccessThreadStarted(bool val);
+      
       bool device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size);
       bool device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size);
       bool device2xrt_irq_trans_cb(uint32_t,unsigned long int);
@@ -352,7 +351,7 @@ using addr_type = uint64_t;
       static std::ofstream mDebugLogStream;
       static bool mFirstBinary;
       unsigned int binaryCounter;
-      //unix_socket* sock;
+
       std::shared_ptr<unix_socket> sock;
       std::string deviceName;
       xclDeviceInfo2 mDeviceInfo;
