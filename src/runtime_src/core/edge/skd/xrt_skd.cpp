@@ -220,6 +220,8 @@ namespace xrt {
 	munmap(bos[i],boSize[i]);
 	xclFreeBO(devHdl,boHandles[i]);
       }
+      bo_list.clear();
+
     }
 
   }
