@@ -380,11 +380,10 @@ XclBinUtilities::stringToUInt64(const std::string& _sInteger, bool _bForceHex) {
 
 void
 XclBinUtilities::printKinds() {
-  std::vector< std::string > kinds;
-  Section::getKinds(kinds);
+  auto supportedKinds = Section::getSupportedKinds();
   std::cout << "All supported section names supported by this tool:\n";
-  for (auto & kind : kinds) {
-    std::cout << "  " << kind << "\n";
+  for (auto & entry : supportedKinds) {
+    std::cout << "  " << entry << "\n";
   }
 }
 
