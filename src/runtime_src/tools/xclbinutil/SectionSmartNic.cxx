@@ -143,7 +143,7 @@ void rename_file_node(const std::string & fileNodeName,
 
   newKey.replace(index, removeSubName.size(), "");
 
-  XUtil::TRACE(boost::str(boost::format("Renaming node '%s' to '%s'") % fileNodeName % newKey));
+  XUtil::TRACE(boost::format("Renaming node '%s' to '%s'") % fileNodeName % newKey);
 
   // Rename keys by swapping their values
   rapidjson::Value::MemberIterator itrOldKey = value.FindMember(fileNodeName.c_str());
@@ -158,7 +158,7 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
                                     const XclBinUtilities::KeyTypeCollection& keyTypeCollection,
                                     rapidjson::Document::AllocatorType& allocator,
                                     const std::string& relativeFromDir) {
-  XUtil::TRACE((boost::format("BScope: %s") % scope).str());
+  XUtil::TRACE(boost::format("BScope: %s") % scope);
 
   // A dictionary
   if (itrObject->value.IsObject()) {
@@ -298,11 +298,13 @@ validateGenericTree( const boost::property_tree::ptree & primary,
 
   // If there are no more child graphs, then we are at a graph end node
   if (primary.empty()) {
-    XUtil::TRACE(XUtil::format("  Primary Data   : '%s'", primary.data().c_str()).c_str());
-    XUtil::TRACE(XUtil::format("  Secondary Data : '%s'", secondary.data().c_str()).c_str());
+    XUtil::TRACE(boost::format("  Primary Data   : '%s'") % primary.data());
+    XUtil::TRACE(boost::format("  Secondary Data : '%s'") % secondary.data());
 
-    if (primary.data() != secondary.data()) 
-      throw std::runtime_error(std::string("Error: Data mismatch: P('") + primary.data() + "); S('" + secondary.data() + "')");
+    if (primary.data() != secondary.data()) {
+      auto errMsg = boost::format("Error: Data mismatch: P('%s'); S('%s')") % primary.data() % secondary.data();
+      throw std::runtime_error(errMsg.str()); 
+    }
 
     return;
   }
@@ -310,7 +312,7 @@ validateGenericTree( const boost::property_tree::ptree & primary,
   // Compare the keys (order independent)
   for (const auto &it: primary) {
     const std::string & key = it.first;
-    XUtil::TRACE(XUtil::format("Examining node: '%s'", key.c_str()).c_str());
+    XUtil::TRACE(boost::format("Examining node: '%s'") % key);
     
     const boost::property_tree::ptree &ptSecondary = secondary.get_child(key);
     validateGenericTree(it.second, ptSecondary);
@@ -371,7 +373,7 @@ merge_node( boost::property_tree::ptree &ptParent,
             const std::string &appendPath,
             const boost::property_tree::ptree &ptAppend,
             const NodeCallBackFuncs &nodeCallBackFuncs) {
-  XUtil::TRACE(XUtil::format("Current append path: '%s'", appendPath.c_str()).c_str());
+  XUtil::TRACE(boost::format("Current append path: '%s'") % appendPath);
 
   // Are we at a graph end node
   if (!appendPath.empty() && ptAppend.empty()) {
@@ -382,10 +384,10 @@ merge_node( boost::property_tree::ptree &ptParent,
     if (!parentValue.empty()) {
       // Check to see if the data is the same, if not produce an error
       if (parentValue.compare(appendValue) != 0) {
-        std::string errMsg = XUtil::format("Error: The JSON path's '%s' existing value is not the same as the value being merged.\n"
+        auto errMsg = boost::format("Error: The JSON path's '%s' existing value is not the same as the value being merged.\n"
                                            "Existing value    : '%s'\n"
-                                           "Value being merged: '%s'", appendPath.c_str(), parentValue.c_str(), appendValue.c_str());
-        throw std::runtime_error(errMsg);
+                                           "Value being merged: '%s'") % appendPath % parentValue % appendValue;
+        throw std::runtime_error(errMsg.str());
       }
     } else {
       // Entry does not exist add it
@@ -438,8 +440,8 @@ merge_node_array( const std::string &nodeName,
      if (!key.empty()) {
        const std::string & keyValue = item.second.get<std::string>(key, "");
        if (keyValue.empty()) {
-         const std::string errMsg = XUtil::format("Error: Missing key '%s' entry.", key.c_str());
-         throw std::runtime_error(errMsg);
+         auto errMsg = boost::format("Error: Missing key '%s' entry.") % key;
+         throw std::runtime_error(errMsg.str());
        }
 
        // Look for an existing entry that matches the key value (if used0

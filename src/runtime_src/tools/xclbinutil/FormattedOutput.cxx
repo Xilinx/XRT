@@ -9,50 +9,47 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or 
+ * implied. See the License for the specific language governing 
+ * permissions and limitations under the License. 
  */
 
 #include "FormattedOutput.h"
 #include "Section.h"
 #include "SectionBitstream.h"
+#include "version.h"
 #include "XclBinSignature.h"
-#include  <set>
-
-#include <iostream>
-#include <boost/uuid/uuid.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/uuid/uuid_io.hpp>
-#include <boost/property_tree/json_parser.hpp>
+#include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <iostream>
+#include  <set>
 
-// Generated include files
-#include "version.h"
-
-#include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
 std::string
 FormattedOutput::getTimeStampAsString(const axlf &_xclBinHeader) {
-  return XUtil::format("%ld", _xclBinHeader.m_header.m_timeStamp);
+  return boost::str(boost::format("%ld") % _xclBinHeader.m_header.m_timeStamp);
 }
 
 std::string
 FormattedOutput::getFeatureRomTimeStampAsString(const axlf &_xclBinHeader) {
-  return XUtil::format("%d", _xclBinHeader.m_header.m_featureRomTimeStamp);
+  return boost::str(boost::format("%d") % _xclBinHeader.m_header.m_featureRomTimeStamp);
 }
 
 std::string
 FormattedOutput::getVersionAsString(const axlf &_xclBinHeader) {
-  return XUtil::format("%d.%d.%d", _xclBinHeader.m_header.m_versionMajor, _xclBinHeader.m_header.m_versionMinor, _xclBinHeader.m_header.m_versionPatch);
+  return boost::str(boost::format("%d.%d.%d") % _xclBinHeader.m_header.m_versionMajor % _xclBinHeader.m_header.m_versionMinor % _xclBinHeader.m_header.m_versionPatch);
 }
 
 // String Getters
 std::string 
 FormattedOutput::getMagicAsString(const axlf &_xclBinHeader) { 
-  return XUtil::format("%s", _xclBinHeader.m_magic); 
+  return boost::str(boost::format("%s") % _xclBinHeader.m_magic); 
 }
 
 std::string 
@@ -78,13 +75,13 @@ FormattedOutput::getUniqueIdAsString(const axlf &_xclBinHeader) {
 
 std::string
 getSizeAsString(const axlf &_xclBinHeader) {
-  return XUtil::format("%ld", _xclBinHeader.m_header.m_length);
+  return boost::str(boost::format("%ld") % _xclBinHeader.m_header.m_length);
 }
 
 
 std::string
 FormattedOutput::getModeAsString(const axlf &_xclBinHeader) {
-  return XUtil::format("%d", _xclBinHeader.m_header.m_mode);
+  return boost::str(boost::format("%d") %  _xclBinHeader.m_header.m_mode);
 }
 
 std::string
@@ -123,7 +120,7 @@ FormattedOutput::getFeatureRomUuidAsString(const axlf &_xclBinHeader) {
 
 std::string
 FormattedOutput::getPlatformVbnvAsString(const axlf &_xclBinHeader) {
-  return XUtil::format("%s", _xclBinHeader.m_header.m_platformVBNV);
+  return boost::str(boost::format("%s") % _xclBinHeader.m_header.m_platformVBNV);
 }
 
 std::string
@@ -135,7 +132,7 @@ FormattedOutput::getXclBinUuidAsString(const axlf &_xclBinHeader) {
 
 std::string
 FormattedOutput::getDebugBinAsString(const axlf &_xclBinHeader) {
-  return XUtil::format("%s", _xclBinHeader.m_header.m_debug_bin);
+  return boost::str(boost::format("%s") % _xclBinHeader.m_header.m_debug_bin);
 }
 
 
@@ -212,9 +209,9 @@ FormattedOutput::getKernelDDRMemory(const std::string _sKernelInstanceName,
 void
 reportBuildVersion( std::ostream & _ostream)
 {
-  _ostream << XUtil::format("%17s: %s (%s)", "XRT Build Version", xrt_build_version, xrt_build_version_branch).c_str() << std::endl;
-  _ostream << XUtil::format("%17s: %s", "Build Date", xrt_build_version_date).c_str() << std::endl;
-  _ostream << XUtil::format("%17s: %s", "Hash ID", xrt_build_version_hash).c_str() << std::endl;
+  _ostream << boost::format("%17s: %s (%s)\n") % "XRT Build Version" % xrt_build_version % xrt_build_version_branch;
+  _ostream << boost::format("%17s: %s\n") % "Build Date" % xrt_build_version_date;
+  _ostream << boost::format("%17s: %s\n") % "Hash ID" % xrt_build_version_hash;
 }
 
 void
@@ -243,7 +240,7 @@ reportXclbinInfo( std::ostream & _ostream,
       getXclBinPKCSStats(_sInputFile, xclBinPKCSStats);
   
       if (xclBinPKCSStats.is_PKCS_signed) {
-        sSignatureState = XUtil::format("Present - Signed PKCS - Offset: 0x%lx, Size: 0x%lx", xclBinPKCSStats.signature_offset, xclBinPKCSStats.signature_size);
+        sSignatureState = (boost::format("Present - Signed PKCS - Offset: 0x%lx, Size: 0x%lx") % xclBinPKCSStats.signature_offset % xclBinPKCSStats.signature_size).str();
       }
     } catch (...) {
       // Do nothing
@@ -268,24 +265,24 @@ reportXclbinInfo( std::ostream & _ostream,
   }
 
 
-  _ostream << "xclbin Information" << std::endl;
-  _ostream << "------------------" << std::endl;
+  _ostream << "xclbin Information\n";
+  _ostream << "------------------\n";
 
   // Generated By:
   { 
     std::string sTool = _ptMetaData.get<std::string>("xclbin.generated_by.name","");
     std::string sVersion = _ptMetaData.get<std::string>("xclbin.generated_by.version", "");
     std::string sTimeStamp = _ptMetaData.get<std::string>("xclbin.generated_by.time_stamp", "");
-    std::string sGeneratedBy = XUtil::format("%s (%s) on %s", sTool.c_str(), sVersion.c_str(), sTimeStamp.c_str());
+    std::string sGeneratedBy = (boost::format("%s (%s) on %s") % sTool % sVersion % sTimeStamp).str();
     if ( sTool.empty() ) {
       sGeneratedBy = "<unknown>";
     }
 
-    _ostream << XUtil::format("   %-23s %s", "Generated by:", sGeneratedBy.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-23s %s") % "Generated by:\n" % sGeneratedBy;
   }
 
   // Version:
-  _ostream << XUtil::format("   %-23s %d.%d.%d", "Version:", _xclBinHeader.m_header.m_versionMajor, _xclBinHeader.m_header.m_versionMinor, _xclBinHeader.m_header.m_versionPatch).c_str() << std::endl;
+  _ostream << boost::format("   %-23s %d.%d.%d") % "Version:\n" % _xclBinHeader.m_header.m_versionMajor % _xclBinHeader.m_header.m_versionMinor % _xclBinHeader.m_header.m_versionPatch;
 
   // Kernels
   {
@@ -309,19 +306,19 @@ reportXclbinInfo( std::ostream & _ostream,
     } else {
       sKernels = "<unknown>";
     }
-    _ostream << XUtil::format("   %-23s %s", "Kernels:", sKernels.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-23s %s") % "Kernels:\n" % sKernels;
   }
  
   // Signature
   {
-    _ostream << XUtil::format("   %-23s %s", "Signature:", sSignatureState.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-23s %s") % "Signature:\n" % sSignatureState;
   }
 
   // Action Masks
   {
     // Are there any masks set
     if (_xclBinHeader.m_header.m_actionMask) {
-      _ostream << XUtil::format("   %-23s ", "Action Mask(s):");
+      _ostream << boost::format("   %-23s ") % "Action Mask(s):";
       if (_xclBinHeader.m_header.m_actionMask & AM_LOAD_AIE) {
         _ostream << "LOAD_AIE ";
       }
@@ -339,12 +336,12 @@ reportXclbinInfo( std::ostream & _ostream,
         break;
       }
     }
-    _ostream << XUtil::format("   %-23s %s", "Content:", sContent.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-23s %s") % "Content:\n" % sContent;
   }
    
   {
     std::string sUUID = XUtil::getUUIDAsString(_xclBinHeader.m_header.uuid);
-    _ostream << XUtil::format("   %-23s %s", "UUID (xclbin):", sUUID.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-23s %s") % "UUID (xclbin):\n" % sUUID;
   }
 
   {
@@ -378,7 +375,7 @@ reportXclbinInfo( std::ostream & _ostream,
         boost::property_tree::ptree ptInterface = kv.second;
         std::string sUUID = ptInterface.get<std::string>("interface_uuid", "");
         if (!sUUID.empty()) {
-          _ostream << XUtil::format("   %-23s %s", "UUID (IINTF):", sUUID.c_str()).c_str() << std::endl;
+          _ostream << boost::format("   %-23s %s") % "UUID (IINTF):\n" % sUUID;
         }
       }
     }
@@ -434,9 +431,9 @@ reportXclbinInfo( std::ostream & _ostream,
 
     for (unsigned index = 0; index < sections.size(); ++index) {
       if (index == 0) {
-        _ostream << XUtil::format("   %-23s %s", "Sections:", sections[index].c_str()).c_str() << std::endl;
+        _ostream << boost::format("   %-23s %s\n") % "Sections:" % sections[index];
       } else {
-        _ostream << XUtil::format("   %-23s %s", "", sections[index].c_str()).c_str() << std::endl;
+        _ostream << boost::format("   %-23s %s\n") % "" % sections[index];
       }
     }
   }
@@ -461,26 +458,26 @@ reportHardwarePlatform( std::ostream & _ostream,
                   const axlf &_xclBinHeader,
                   boost::property_tree::ptree &_ptMetaData)
 {
-  _ostream << "Hardware Platform (Shell) Information" << std::endl;
-  _ostream << "-------------------------------------" << std::endl;
+  _ostream << "Hardware Platform (Shell) Information\n";
+  _ostream << "-------------------------------------\n";
 
   if (!_ptMetaData.empty()) {
     // Vendor
     {
       std::string sVendor = getPTreeValue(_ptMetaData, "vendor");
-      _ostream << XUtil::format("   %-23s %s", "Vendor:", sVendor.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s\n") % "Vendor:" % sVendor;
     }
 
     // Board
     {
       std::string sName = getPTreeValue(_ptMetaData, "board_id");
-      _ostream << XUtil::format("   %-23s %s", "Board:", sName.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s\n") % "Board:" % sName;
     }
 
     // Name
     {
       std::string sName = getPTreeValue(_ptMetaData, "name");
-      _ostream << XUtil::format("   %-23s %s", "Name:", sName.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s\n") % "Name:" % sName;
     }
 
     // Version
@@ -488,7 +485,7 @@ reportHardwarePlatform( std::ostream & _ostream,
       std::string sVersion = getPTreeValue(_ptMetaData, "version_major") 
                            + "." 
                            + getPTreeValue(_ptMetaData, "version_minor");
-      _ostream << XUtil::format("   %-23s %s", "Version:", sVersion.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s\n") % "Version:" % sVersion;
     }
 
     // Generated Version
@@ -503,13 +500,13 @@ reportHardwarePlatform( std::ostream & _ostream,
       }
       sGeneratedVersion += ")";
 
-      _ostream << XUtil::format("   %-23s %s", "Generated Version:", sGeneratedVersion.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s\n") % "Generated Version:" % sGeneratedVersion;
     }
 
     // Created
     {
       std::string sCreated = getPTreeValue(_ptMetaData, "generated_by.time_stamp");
-      _ostream << XUtil::format("   %-23s %s", "Created:", sCreated.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s") % "Created:\n" % sCreated;
     }
 
     // FPGA Device
@@ -525,25 +522,25 @@ reportHardwarePlatform( std::ostream & _ostream,
         }
       }
 
-      _ostream << XUtil::format("   %-23s %s", "FPGA Device:", sFPGADevice.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s\n") % "FPGA Device:" % sFPGADevice;
     }
 
     // Board Vendor
     {
        std::string sBoardVendor = getPTreeValue(_ptMetaData, "board.vendor");
-      _ostream << XUtil::format("   %-23s %s", "Board Vendor:", sBoardVendor.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s\n") % "Board Vendor:" % sBoardVendor;
     }
 
     // Board Name
     {
        std::string sBoardName = getPTreeValue(_ptMetaData, "board.name");
-      _ostream << XUtil::format("   %-23s %s", "Board Name:", sBoardName.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s\n") % "Board Name:" % sBoardName;
     }
 
     // Board Part
     {
        std::string sBoardPart = getPTreeValue(_ptMetaData, "board.board_part");
-      _ostream << XUtil::format("   %-23s %s", "Board Part:", sBoardPart.c_str()).c_str() << std::endl;
+      _ostream << boost::format("   %-23s %s\n") % "Board Part:" % sBoardPart;
     }
   }
 
@@ -553,18 +550,18 @@ reportHardwarePlatform( std::ostream & _ostream,
     if (sPlatformVBNV.empty()) {
       sPlatformVBNV = "<not defined>";
     }
-    _ostream << XUtil::format("   %-23s %s", "Platform VBNV:", sPlatformVBNV.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-23s %s\n") % "Platform VBNV:" % sPlatformVBNV;
   }
 
   // Static UUID
   {
     std::string sStaticUUID = XUtil::getUUIDAsString(_xclBinHeader.m_header.rom_uuid);
-    _ostream << XUtil::format("   %-23s %s", "Static UUID:", sStaticUUID.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-23s %s\n") % "Static UUID:" % sStaticUUID;
   }
 
   // TimeStamp
   {
-     _ostream << XUtil::format("   %-23s %ld", "Feature ROM TimeStamp:", _xclBinHeader.m_header.m_featureRomTimeStamp).c_str() << std::endl;
+     _ostream << boost::format("   %-23s %ld\n") % "Feature ROM TimeStamp:" % _xclBinHeader.m_header.m_featureRomTimeStamp;
   }
  
 
@@ -577,8 +574,8 @@ reportClocks( std::ostream & _ostream,
 {
   boost::property_tree::ptree ptEmpty;
 
-  _ostream << "Scalable Clocks" << std::endl;
-  _ostream << "------" << std::endl;
+  _ostream << "Scalable Clocks\n";
+  _ostream << "---------------\n";
 
   boost::property_tree::ptree ptClockFreqTopology;
   for (Section * pSection : _sections) {
@@ -593,7 +590,7 @@ reportClocks( std::ostream & _ostream,
   }
 
   if (ptClockFreqTopology.empty()) {
-    _ostream << "   No scalable clock data available."  << std::endl;
+    _ostream << "   No scalable clock data available.\n";
   }
 
   auto clockFreqs = XUtil::as_vector<boost::property_tree::ptree>(ptClockFreqTopology,"m_clock_freq");
@@ -603,10 +600,10 @@ reportClocks( std::ostream & _ostream,
     std::string sType = ptClockFreq.get<std::string>("m_type");
     std::string sFreqMhz = ptClockFreq.get<std::string>("m_freq_Mhz");
 
-    _ostream << XUtil::format("   %-10s %s", "Name:", sName.c_str()).c_str() << std::endl;
-    _ostream << XUtil::format("   %-10s %d", "Index:", index).c_str() << std::endl;
-    _ostream << XUtil::format("   %-10s %s", "Type:", sType.c_str()).c_str() << std::endl;
-    _ostream << XUtil::format("   %-10s %s MHz", "Frequency:", sFreqMhz.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-10s %s\n") % "Name:" % sName;
+    _ostream << boost::format("   %-10s %d\n") % "Index:" % index;
+    _ostream << boost::format("   %-10s %s\n") % "Type:" % sType;
+    _ostream << boost::format("   %-10s %s MHz\n") % "Frequency:" % sFreqMhz;
 
     if (&ptClockFreq != &clockFreqs.back()) {
       _ostream << std::endl;
@@ -689,8 +686,8 @@ void
 reportMemoryConfiguration( std::ostream & _ostream,
                            const std::vector<Section*> _sections)
 {
-  _ostream << "Memory Configuration" << std::endl;
-  _ostream << "--------------------" << std::endl;
+  _ostream << "Memory Configuration\n";
+  _ostream << "--------------------\n";
 
   boost::property_tree::ptree ptMemTopology;
   for (Section * pSection : _sections) {
@@ -705,7 +702,7 @@ reportMemoryConfiguration( std::ostream & _ostream,
   }
 
   if (ptMemTopology.empty()) {
-    _ostream << "   No memory configuration data available."  << std::endl;
+    _ostream << "   No memory configuration data available.\n";
     return;
   }
 
@@ -726,12 +723,12 @@ reportMemoryConfiguration( std::ostream & _ostream,
       sBankUsed = "Yes";
     }
 
-    _ostream << XUtil::format("   %-13s %s", "Name:", sName.c_str()).c_str() << std::endl;
-    _ostream << XUtil::format("   %-13s %d", "Index:", index).c_str() << std::endl;
-    _ostream << XUtil::format("   %-13s %s", "Type:", sType.c_str()).c_str() << std::endl;
-    _ostream << XUtil::format("   %-13s %s", "Base Address:", sBaseAddress.c_str()).c_str() << std::endl;
-    _ostream << XUtil::format("   %-13s 0x%lx", "Address Size:", addressSize).c_str() << std::endl;
-    _ostream << XUtil::format("   %-13s %s", "Bank Used:", sBankUsed.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-13s %s\n") % "Name:" % sName;
+    _ostream << boost::format("   %-13s %d\n") % "Index:" % index;
+    _ostream << boost::format("   %-13s %s\n") % "Type:" % sType;
+    _ostream << boost::format("   %-13s %s\n") % "Base Address:" % sBaseAddress;
+    _ostream << boost::format("   %-13s 0x%lx\n") % "Address Size:" % addressSize;
+    _ostream << boost::format("   %-13s %s\n") % "Bank Used:" % sBankUsed;
 
     if (&ptMemData != &memDatas.back()) {
       _ostream << std::endl;
@@ -745,7 +742,7 @@ reportKernels( std::ostream & _ostream,
                const std::vector<Section*> _sections)
 {
   if (_ptMetaData.empty()) {
-    _ostream << "   No kernel metadata available."  << std::endl;
+    _ostream << "   No kernel metadata available.\n";
     return;
   }
 
@@ -773,13 +770,13 @@ reportKernels( std::ostream & _ostream,
   for (auto & userRegion : userRegions) {
     auto kernels = XUtil::as_vector<boost::property_tree::ptree>(userRegion,"kernels");
     if (kernels.size() == 0) 
-      _ostream << "Kernel(s): <None Found>" << std::endl;
+      _ostream << "Kernel(s): <None Found>\n";
 
     for (auto &ptKernel : kernels) {
       XUtil::TRACE_PrintTree("Kernel", ptKernel);
 
       std::string sKernel = ptKernel.get<std::string>("name");
-      _ostream << XUtil::format("%s %s", "Kernel:", sKernel.c_str()).c_str() << std::endl;
+      _ostream << boost::format("%s %s\n") % "Kernel:" % sKernel;
 
       auto ports = XUtil::as_vector<boost::property_tree::ptree>(ptKernel,"ports");
       auto arguments = XUtil::as_vector<boost::property_tree::ptree>(ptKernel,"arguments");
@@ -789,8 +786,8 @@ reportKernels( std::ostream & _ostream,
 
       // Definition
       {
-        _ostream << "Definition" << std::endl;
-        _ostream << "----------" << std::endl;
+        _ostream << "Definition\n";
+        _ostream << "----------\n";
 
         _ostream << "   Signature: " << sKernel << " (";
         for (auto & ptArgument : arguments) {
@@ -801,15 +798,15 @@ reportKernels( std::ostream & _ostream,
           if (&ptArgument != &arguments.back())
             _ostream << ", ";
         }
-        _ostream << ")" << std::endl;
+        _ostream << ")\n";
       }
 
       _ostream << std::endl;
 
       // Ports
       {
-        _ostream << "Ports" << std::endl;
-        _ostream << "-----" << std::endl;
+        _ostream << "Ports\n";
+        _ostream << "-----\n";
 
         for (auto & ptPort : ports) {
           std::string sPort = ptPort.get<std::string>("name");
@@ -818,11 +815,11 @@ reportKernels( std::ostream & _ostream,
           std::string sDataWidthBits = ptPort.get<std::string>("data_width");
           std::string sPortType = ptPort.get<std::string>("port_type");
 
-          _ostream << XUtil::format("   %-14s %s", "Port:", sPort.c_str()).c_str() << std::endl;
-          _ostream << XUtil::format("   %-14s %s", "Mode:", sMode.c_str()).c_str() << std::endl;
-          _ostream << XUtil::format("   %-14s %s", "Range (bytes):", sRangeBytes.c_str()).c_str() << std::endl;
-          _ostream << XUtil::format("   %-14s %s bits", "Data Width:", sDataWidthBits.c_str()).c_str() << std::endl;
-          _ostream << XUtil::format("   %-14s %s", "Port Type:", sPortType.c_str()).c_str() << std::endl;
+          _ostream << boost::format("   %-14s %s\n") % "Port:" % sPort;
+          _ostream << boost::format("   %-14s %s\n") % "Mode:" % sMode;
+          _ostream << boost::format("   %-14s %s\n") % "Range (bytes):" % sRangeBytes;
+          _ostream << boost::format("   %-14s %s bits\n") % "Data Width:" % sDataWidthBits;
+          _ostream << boost::format("   %-14s %s\n") % "Port Type:" % sPortType;
 
           if (&ptPort != &ports.back()) {
             _ostream << std::endl;
@@ -834,9 +831,9 @@ reportKernels( std::ostream & _ostream,
 
       // Instance
       for (auto & ptInstance : instances) {
-        _ostream << "--------------------------" << std::endl;
+        _ostream << "--------------------------\n";
         std::string sInstance = ptInstance.get<std::string>("name");
-        _ostream << XUtil::format("%-16s %s", "Instance:", sInstance.c_str()).c_str() << std::endl;
+        _ostream << boost::format("%-16s %s\n") % "Instance:" % sInstance;
 
         std::string sKernelInstance = sKernel + ":" + sInstance;
 
@@ -849,7 +846,7 @@ reportKernels( std::ostream & _ostream,
               break;
             }
           }
-          _ostream << XUtil::format("   %-13s %s", "Base Address:", sBaseAddress.c_str()).c_str() << std::endl;
+          _ostream << boost::format("   %-13s %s\n") % "Base Address:" % sBaseAddress;
         }
 
         _ostream << std::endl;
@@ -861,9 +858,9 @@ reportKernels( std::ostream & _ostream,
           std::string sOffset = ptArgument.get<std::string>("offset");
           std::string sPort = ptArgument.get<std::string>("port");
 
-          _ostream << XUtil::format("   %-18s %s", "Argument:", sArgument.c_str()).c_str() << std::endl;
-          _ostream << XUtil::format("   %-18s %s", "Register Offset:", sOffset.c_str()).c_str() << std::endl;
-          _ostream << XUtil::format("   %-18s %s", "Port:", sPort.c_str()).c_str() << std::endl;
+          _ostream << boost::format("   %-18s %s\n") % "Argument:" % sArgument;
+          _ostream << boost::format("   %-18s %s\n") % "Register Offset:" % sOffset;
+          _ostream << boost::format("   %-18s %s\n") % "Port:" % sPort;
 
           // Find the memory connections
           bool bFoundMemConnection = false;
@@ -871,8 +868,8 @@ reportKernels( std::ostream & _ostream,
             unsigned int ipIndex = ptConnection.get<unsigned int>("m_ip_layout_index");
 
             if (ipIndex >= ipLayout.size()) {
-              std::string errMsg = XUtil::format("ERROR: connectivity section 'm_ip_layout_index' (%d) exceeds the number of 'ip_layout' elements (%d).  This is usually an indication of curruptions in the xclbin archive.", ipIndex, ipLayout.size());
-              throw std::runtime_error(errMsg);
+              auto errMsg = boost::format("ERROR: connectivity section 'm_ip_layout_index' (%d) exceeds the number of 'ip_layout' elements (%d).  This is usually an indication of curruptions in the xclbin archive.") % ipIndex % ipLayout.size();
+              throw std::runtime_error(errMsg.str());
             }
 
             if (ipLayout[ipIndex].get<std::string>("m_name") == sKernelInstance) {
@@ -881,19 +878,19 @@ reportKernels( std::ostream & _ostream,
 
                 unsigned int memIndex = ptConnection.get<unsigned int>("mem_data_index");
                 if (memIndex >= memTopology.size()) {
-                  std::string errMsg = XUtil::format("ERROR: connectivity section 'mem_data_index' (%d) exceeds the number of 'mem_topology' elements (%d).  This is usually an indication of curruptions in the xclbin archive.", memIndex, memTopology.size());
-                  throw std::runtime_error(errMsg);
+                  auto errMsg = boost::format("ERROR: connectivity section 'mem_data_index' (%d) exceeds the number of 'mem_topology' elements (%d).  This is usually an indication of curruptions in the xclbin archive.") % memIndex % memTopology.size();
+                  throw std::runtime_error(errMsg.str());
                 }
 
                 std::string sMemName = memTopology[memIndex].get<std::string>("m_tag");
                 std::string sMemType = memTopology[memIndex].get<std::string>("m_type");
 
-                _ostream << XUtil::format("   %-18s %s (%s)", "Memory:", sMemName.c_str(), sMemType.c_str()).c_str() << std::endl;
+                _ostream << boost::format("   %-18s %s (%s)\n") % "Memory:" % sMemName.c_str() % sMemType;
               }
             }
           }
           if (!bFoundMemConnection) {
-            _ostream << XUtil::format("   %-18s <not applicable>", "Memory:").c_str() << std::endl;
+            _ostream << boost::format("   %-18s <not applicable>\n") % "Memory:";
           }
           if (argumentIndex != (arguments.size()-1)) {
             _ostream << std::endl;
@@ -912,22 +909,22 @@ reportXOCC( std::ostream & _ostream,
             boost::property_tree::ptree &_ptMetaData)
 {
   if (_ptMetaData.empty()) {
-    _ostream << "   No information regarding the creation of the xclbin acceleration image."  << std::endl;
+    _ostream << "   No information regarding the creation of the xclbin acceleration image.\n";
     return;
   }
 
-  _ostream << "Generated By" << std::endl;
-  _ostream << "------------" << std::endl;
+  _ostream << "Generated By\n";
+  _ostream << "------------\n";
 
   // Command
   std::string sCommand = _ptMetaData.get<std::string>("xclbin.generated_by.name","");
 
   if (sCommand.empty()) {
-    _ostream << "   < Data not available >" << std::endl;
+    _ostream << "   < Data not available >\n";
     return;
   }
 
-  _ostream << XUtil::format("   %-14s %s", "Command:", sCommand.c_str()).c_str() << std::endl;
+  _ostream << boost::format("   %-14s %s\n") % "Command:" % sCommand;
 
 
   // Version
@@ -936,7 +933,7 @@ reportXOCC( std::ostream & _ostream,
     std::string sCL = _ptMetaData.get<std::string>("xclbin.generated_by.cl","--");
     std::string sTimeStamp = _ptMetaData.get<std::string>("xclbin.generated_by.time_stamp","--");
 
-    _ostream << XUtil::format("   %-14s %s - %s (SW BUILD: %s)", "Version:", sVersion.c_str(), sTimeStamp.c_str(), sCL.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-14s %s - %s (SW BUILD: %s)\n") % "Version:" % sVersion % sTimeStamp % sCL;
   }
 
   std::string sCommandLine = _ptMetaData.get<std::string>("xclbin.generated_by.options","");
@@ -951,7 +948,7 @@ reportXOCC( std::ostream & _ostream,
       sOptions = sCommandLine.substr(pos+1);
     }
 
-    _ostream << XUtil::format("   %-14s %s %s", "Command Line:", sCommand.c_str(), sOptions.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %-14s %s %s\n") % "Command Line:" % sCommand % sOptions;
   }
   
   // Options  
@@ -980,11 +977,10 @@ reportXOCC( std::ostream & _ostream,
     }
 
     for (unsigned int index = 1; index < commandAndOptions.size(); ++index) {
-      if (index == 1) {
-        _ostream << XUtil::format("   %-14s %s", "Options:", commandAndOptions[index].c_str()).c_str() << std::endl;
-      } else {
-        _ostream << XUtil::format("   %-14s %s", "", commandAndOptions[index].c_str()).c_str() << std::endl;
-      }
+      if (index == 1) 
+        _ostream << boost::format("   %-14s %s\n") % "Options:" % commandAndOptions[index];
+      else 
+        _ostream << boost::format("   %-14s %s\n") % "" % commandAndOptions[index];
     }
   }
 }
@@ -993,8 +989,8 @@ void
 reportKeyValuePairs( std::ostream & _ostream,
                      const std::vector<Section*> _sections)
 {
-  _ostream << "User Added Key Value Pairs" << std::endl;
-  _ostream << "--------------------------" << std::endl;
+  _ostream << "User Added Key Value Pairs\n";
+  _ostream << "--------------------------\n";
 
  std::vector<boost::property_tree::ptree> keyValues;
 
@@ -1008,14 +1004,14 @@ reportKeyValuePairs( std::ostream & _ostream,
   }
 
   if (keyValues.empty()) {
-    _ostream << "   <empty>" << std::endl;
+    _ostream << "   <empty>\n";
     return;
   }
 
   for (unsigned int index = 0; index < keyValues.size(); ++index) {
     std::string sKey = keyValues[index].get<std::string>("key");
     std::string sValue = keyValues[index].get<std::string>("value");
-    _ostream << XUtil::format("   %d) '%s' = '%s'", index+1, sKey.c_str(), sValue.c_str()).c_str() << std::endl;
+    _ostream << boost::format("   %d) '%s' = '%s'\n") % (index+1) %  sKey % sValue;
   }
 }
 
@@ -1023,8 +1019,8 @@ void
 reportAllJsonMetadata( std::ostream & _ostream,
                       const std::vector<Section*> _sections)
 {
-  _ostream << "JSON Metadata for Supported Sections" << std::endl;
-  _ostream << "------------------------------------" << std::endl;
+  _ostream << "JSON Metadata for Supported Sections\n";
+  _ostream << "------------------------------------\n";
 
   boost::property_tree::ptree pt;
   for (Section * pSection : _sections) {
@@ -1061,7 +1057,7 @@ FormattedOutput::reportInfo(std::ostream &_ostream,
   _ostream << std::string(78,'=') << std::endl;
 
   if (ptMetaData.empty()) {
-    _ostream << "The BUILD_METADATA section is not present. Reports will be limited." << std::endl;
+    _ostream << "The BUILD_METADATA section is not present. Reports will be limited.\n";
     _ostream << std::string(78,'=') << std::endl;
   }
 

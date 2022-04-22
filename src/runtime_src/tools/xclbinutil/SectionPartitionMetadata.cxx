@@ -20,6 +20,7 @@
 #include "XclBinUtilities.h"
 #include <algorithm>
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/format.hpp>
 #include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -268,8 +269,8 @@ SchemaTransformToDTC_interrupt_endpoint( const std::string _sEndPointName,
   // -- Transform array to 'interrupts' array
   // Validate the count id is correct
   if (_ptOriginal.size() % 2 != 0) {
-    std::string errMsg =  XUtil::format("Error: The interrupt count (%d) for the interrupt '%s' needs to be a paired (e.g. even) set.", _ptOriginal.size(), _sEndPointName.c_str());
-    throw std::runtime_error(errMsg);
+    auto errMsg =  boost::format("Error: The interrupt count (%d) for the interrupt '%s' needs to be a paired (e.g. even) set.") % _ptOriginal.size() % _sEndPointName;
+    throw std::runtime_error(errMsg.str());
   }
 
   // -- Move the array down to an interrupt array
@@ -308,7 +309,7 @@ SchemaTransformToDTC_interfaces( const boost::property_tree::ptree& _ptOriginal,
 
     SchemaTransform_nameValue("interface_uuid", "", true  /*required*/, interface.second, ptInterface);
 
-    std::string sIndex = XUtil::format("@%d", index++);
+    std::string sIndex = (boost::format("@%d") % index++).str();
     _ptTransformed.add_child(sIndex.c_str(), ptInterface);
   }
 }

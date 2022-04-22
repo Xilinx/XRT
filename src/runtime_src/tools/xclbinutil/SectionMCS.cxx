@@ -18,6 +18,7 @@
 
 #include "XclBinUtilities.h"
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 #include <boost/functional/factory.hpp>
 
 // Disable windows compiler warnings
@@ -47,15 +48,15 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
 
   // Do we have enough room to overlay the header structure
   if (_segmentSize < sizeof(mcs)) {
-    throw std::runtime_error(XUtil::format("ERROR: Segment size (%d) is smaller than the size of the mcs structure (%d)",
-                                           _segmentSize, sizeof(mcs)));
+    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the mcs structure (%d)") % _segmentSize % sizeof(mcs);
+    throw std::runtime_error(errMsg.str());
   }
 
   mcs* pHdr = (mcs*)_pDataSegment;
 
   boost::property_tree::ptree pt_mcs;
 
-  XUtil::TRACE(XUtil::format("m_count: %d", (uint32_t)pHdr->m_count));
+  XUtil::TRACE(boost::format("m_count: %d") % (uint32_t)pHdr->m_count);
   XUtil::TRACE_BUF("mcs", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_chunk[0]) - (uint64_t)pHdr));
 
   // Do we have something to extract.  Note: This should never happen.
@@ -64,24 +65,24 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
     return;
   }
 
-  pt_mcs.put("count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
+  pt_mcs.put("count", (boost::format("%d") % (unsigned int)pHdr->m_count).str());
 
   // Check to make sure that the array did not exceed its bounds
   uint64_t arraySize = ((uint64_t)&(pHdr->m_chunk[0]) - (uint64_t)pHdr) + (sizeof(mcs_chunk) * pHdr->m_count);
 
   if (arraySize > _segmentSize) {
-    throw std::runtime_error(XUtil::format("ERROR: m_chunk array size (0x%lx) exceeds segment size (0x%lx).",
-                                           arraySize, _segmentSize));
+    auto errMsg = boost::format("ERROR: m_chunk array size (0x%lx) exceeds segment size (0x%lx).") % arraySize % _segmentSize;
+    throw std::runtime_error(errMsg.str());
   }
 
   // Examine and extract the data
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree pt_mcs_chunk;
-    XUtil::TRACE(XUtil::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx",
-                               index,
-                               getMCSTypeStr((enum MCS_TYPE)pHdr->m_chunk[index].m_type).c_str(),
-                               pHdr->m_chunk[index].m_offset,
-                               pHdr->m_chunk[index].m_size));
+    XUtil::TRACE(boost::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx")
+                               % index
+                               % getMCSTypeStr((enum MCS_TYPE)pHdr->m_chunk[index].m_type)
+                               % pHdr->m_chunk[index].m_offset
+                               % pHdr->m_chunk[index].m_size);
 
     XUtil::TRACE_BUF("m_chunk", reinterpret_cast<const char*>(&(pHdr->m_chunk[index])), sizeof(mcs_chunk));
 
@@ -90,16 +91,18 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
 
     // Check to make sure that the MCS image is partially looking good
     if ((uint64_t)ptrImageBase > ((uint64_t)_pDataSegment) + _segmentSize) {
-      throw std::runtime_error(XUtil::format("ERROR: MCS image %d start offset exceeds MCS segment size.", index));
+      auto errMsg = boost::format("ERROR: MCS image %d start offset exceeds MCS segment size.") % index;
+      throw std::runtime_error(errMsg.str());
     }
 
     if (((uint64_t)ptrImageBase) + pHdr->m_chunk[index].m_size > ((uint64_t)_pDataSegment) + _segmentSize) {
-      throw std::runtime_error(XUtil::format("ERROR: MCS image %d size exceeds the MCS segment size.", index));
+      auto errMsg = boost::format("ERROR: MCS image %d size exceeds the MCS segment size.") % index;
+      throw std::runtime_error(errMsg.str());
     }
 
     pt_mcs_chunk.put("m_type", getMCSTypeStr((enum MCS_TYPE)pHdr->m_chunk[index].m_type).c_str());
-    pt_mcs_chunk.put("m_offset", XUtil::format("0x%ld", pHdr->m_chunk[index].m_offset).c_str());
-    pt_mcs_chunk.put("m_size", XUtil::format("0x%ld", pHdr->m_chunk[index].m_size).c_str());
+    pt_mcs_chunk.put("m_offset", (boost::format("0x%ld") % pHdr->m_chunk[index].m_offset).str());
+    pt_mcs_chunk.put("m_size", (boost::format("0x%ld") % pHdr->m_chunk[index].m_size).str());
   }
 
   // TODO: Add support to write out this data
@@ -126,14 +129,14 @@ SectionMCS::getSubPayload(char* _pDataSection,
                           enum Section::FormatType _eFormatType) const {
   // Make sure we support the subsystem
   if (supportsSubSection(_sSubSectionName) == false) {
-    std::string errMsg = XUtil::format("ERROR: For section '%s' the subsystem '%s' is not supported.", getSectionKindAsString().c_str(), _sSubSectionName.c_str());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: For section '%s' the subsystem '%s' is not supported.") % getSectionKindAsString() % _sSubSectionName;
+    throw std::runtime_error(errMsg.str());
   }
 
   // Make sure we support the format type
   if (_eFormatType != FT_RAW) {
-    std::string errMsg = XUtil::format("ERROR: For section '%s' the format type (%d) is not supported.", getSectionKindAsString().c_str(), _eFormatType);
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: For section '%s' the format type (%d) is not supported.") % getSectionKindAsString() % (unsigned int) _eFormatType;
+    throw std::runtime_error(errMsg.str());
   }
 
   // Get the payload
@@ -163,13 +166,13 @@ SectionMCS::extractBuffers(const char* _pDataSection,
 
   // Do we have enough room to overlay the header structure
   if (_sectionSize < sizeof(mcs)) {
-    std::string errMsg = XUtil::format("ERROR: Section size (%d) is smaller than the size of the mcs structure (%d)", _sectionSize, sizeof(mcs));
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Section size (%d) is smaller than the size of the mcs structure (%d)") % _sectionSize % sizeof(mcs);
+    throw std::runtime_error(errMsg.str());
   }
 
   mcs* pHdr = (mcs*)_pDataSection;
 
-  XUtil::TRACE(XUtil::format("m_count: %d", (uint32_t)pHdr->m_count));
+  XUtil::TRACE(boost::format("m_count: %d") % (uint32_t) pHdr->m_count);
   XUtil::TRACE_BUF("mcs", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_chunk[0]) - (uint64_t)pHdr));
 
   // Do we have something to extract.  Note: This should never happen.
@@ -182,17 +185,17 @@ SectionMCS::extractBuffers(const char* _pDataSection,
   uint64_t arraySize = ((uint64_t)&(pHdr->m_chunk[0]) - (uint64_t)pHdr) + (sizeof(mcs_chunk) * pHdr->m_count);
 
   if (arraySize > _sectionSize) {
-    std::string errMsg = XUtil::format("ERROR: m_chunk array size (0x%lx) exceeds segment size (0x%lx).", arraySize, _sectionSize);
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: m_chunk array size (0x%lx) exceeds segment size (0x%lx).") % arraySize % _sectionSize;
+    throw std::runtime_error(errMsg.str());
   }
 
   // Examine and extract the data
   for (int index = 0; index < pHdr->m_count; ++index) {
-    XUtil::TRACE(XUtil::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx",
-                               index,
-                               getMCSTypeStr((enum MCS_TYPE)pHdr->m_chunk[index].m_type).c_str(),
-                               pHdr->m_chunk[index].m_offset,
-                               pHdr->m_chunk[index].m_size));
+    XUtil::TRACE(boost::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx")
+                               % index
+                               % getMCSTypeStr((enum MCS_TYPE)pHdr->m_chunk[index].m_type)
+                               % pHdr->m_chunk[index].m_offset
+                               % pHdr->m_chunk[index].m_size);
 
     XUtil::TRACE_BUF("m_chunk", reinterpret_cast<const char*>(&(pHdr->m_chunk[index])), sizeof(mcs_chunk));
 
@@ -200,13 +203,13 @@ SectionMCS::extractBuffers(const char* _pDataSection,
 
     // Check to make sure that the MCS image is partially looking good
     if ((uint64_t)ptrImageBase > ((uint64_t)_pDataSection) + _sectionSize) {
-      std::string errMsg = XUtil::format("ERROR: MCS image %d start offset exceeds MCS segment size.", index);
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: MCS image %d start offset exceeds MCS segment size.") % index;
+      throw std::runtime_error(errMsg.str());
     }
 
     if (((uint64_t)ptrImageBase) + pHdr->m_chunk[index].m_size > ((uint64_t)_pDataSection) + _sectionSize) {
-      std::string errMsg = XUtil::format("ERROR: MCS image %d size exceeds the MCS segment size.", index);
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: MCS image %d size exceeds the MCS segment size.") % index;
+      throw std::runtime_error(errMsg.str());
     }
 
     std::ostringstream* pBuffer = new std::ostringstream;
@@ -231,7 +234,7 @@ SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
   mcs mcsHdr = mcs {0};
   mcsHdr.m_count = (int8_t)count;
 
-  XUtil::TRACE(XUtil::format("m_count: %d", (int)mcsHdr.m_count).c_str());
+  XUtil::TRACE(boost::format("m_count: %d") % (int) mcsHdr.m_count);
 
   // Write out the entire structure except for the mcs structure
   XUtil::TRACE_BUF("mcs - minus mcs_chunk", reinterpret_cast<const char*>(&mcsHdr), (sizeof(mcs) - sizeof(mcs_chunk)));
@@ -262,11 +265,11 @@ SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
   {
     int index = 0;
     for (auto mcsChunk : mcsChunks) {
-      XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_offset: 0x%lx, m_size: 0x%lx",
-                                 index++,
-                                 mcsChunk.m_type,
-                                 mcsChunk.m_offset,
-                                 mcsChunk.m_size));
+      XUtil::TRACE(boost::format("[%d]: m_type: %d, m_offset: 0x%lx, m_size: 0x%lx")
+                                 % index++
+                                 % mcsChunk.m_type
+                                 % mcsChunk.m_offset
+                                 % mcsChunk.m_size);
       XUtil::TRACE_BUF("mcs_chunk", reinterpret_cast<const char*>(&mcsChunk), sizeof(mcs_chunk));
       _buffer.write(reinterpret_cast<const char*>(&mcsChunk), sizeof(mcs_chunk));
     }
@@ -294,14 +297,14 @@ SectionMCS::readSubPayload(const char* _pOrigDataSection,
   enum MCS_TYPE eMCSType = getMCSTypeEnum(_sSubSection);
 
   if (eMCSType == MCS_UNKNOWN) {
-    std::string errMsg = XUtil::format("ERROR: Not support subsection '%s' for section '%s',", _sSubSection.c_str(), getSectionKindAsString().c_str());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Not support subsection '%s' for section '%s',") % _sSubSection % getSectionKindAsString();
+    throw std::runtime_error(errMsg.str());
   }
 
   // Validate format type
   if (_eFormatType != Section::FT_RAW) {
-      std::string errMsg = XUtil::format("ERROR: Section '%s' only supports 'RAW' subsections.", getSectionKindAsString().c_str());
-    throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: Section '%s' only supports 'RAW' subsections.") % getSectionKindAsString();
+    throw std::runtime_error(errMsg.str());
   }
 
   // Get any previous sections
@@ -314,8 +317,8 @@ SectionMCS::readSubPayload(const char* _pOrigDataSection,
   // Check to see if subsection already exists
   for (auto mcsEntry : mcsBuffers) {
     if (mcsEntry.first == eMCSType) {
-      std::string errMsg = XUtil::format("ERROR: Subsection '%s' already exists for section '%s',", _sSubSection.c_str(), getSectionKindAsString().c_str());
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: Subsection '%s' already exists for section '%s',") % _sSubSection % getSectionKindAsString();
+      throw std::runtime_error(errMsg.str());
     }
   }
 
@@ -379,7 +382,7 @@ SectionMCS::getMCSTypeStr(enum MCS_TYPE _mcsType) const {
       return "MCS_SECONDARY";
     case MCS_UNKNOWN:
     default:
-      return XUtil::format("UNKNOWN (%d)", (unsigned int)_mcsType);
+      return (boost::format("UNKNOWN (%d)") % (unsigned int)_mcsType).str();
   }
 }
 
@@ -406,8 +409,8 @@ SectionMCS::writeSubPayload(const std::string & _sSubSectionName,
                             std::fstream&  _oStream) const {
   // Validate format type
   if (_eFormatType != Section::FT_RAW) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' only supports 'RAW' subsections.", getSectionKindAsString().c_str());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Section '%s' only supports 'RAW' subsections.") % getSectionKindAsString();
+    throw std::runtime_error(errMsg.str());
   }
 
   // Obtain the collection of MCS buffers
@@ -427,8 +430,8 @@ SectionMCS::writeSubPayload(const std::string & _sSubSectionName,
   }
 
   // No collection entry
-  std::string errMsg = XUtil::format("ERROR: Subsection '%s' of section '%s' does not exist", _sSubSectionName.c_str(), getSectionKindAsString().c_str());
-  throw std::runtime_error(errMsg);
+  auto errMsg = boost::format("ERROR: Subsection '%s' of section '%s' does not exist") % _sSubSectionName %getSectionKindAsString();
+  throw std::runtime_error(errMsg.str());
 }
 
 
