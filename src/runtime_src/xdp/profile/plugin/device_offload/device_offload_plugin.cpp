@@ -188,7 +188,7 @@ namespace xdp {
 
       trace_buffer_size = GetTS2MMBufSize();
 
-      uint64_t each_buffer_size = (1 == num_ts2mm) ? trace_buffer_size : ((trace_buffer_size / num_ts2mm) % 0xfffffffffffff000);
+      uint64_t each_buffer_size = (1 == num_ts2mm) ? trace_buffer_size : ((trace_buffer_size / num_ts2mm) & 0xfffffffffffff000);
       buf_sizes.resize(num_ts2mm, each_buffer_size);
       for(size_t i = 0; i < num_ts2mm; i++) {
         Memory* memory = (db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex(i));
