@@ -190,7 +190,7 @@ namespace xdp {
       trace_buffer_size = GetTS2MMBufSize();
 
       uint64_t each_buffer_size = (num_ts2mm == 1) ? trace_buffer_size : ((trace_buffer_size / num_ts2mm) & TRACE_BUFFER_4K_MASK);
-      if (each_buffer_size == 0)
+      if (each_buffer_size < TS2MM_MIN_BUF_SIZE)
         each_buffer_size = TS2MM_MIN_BUF_SIZE;
 
       buf_sizes.resize(num_ts2mm, each_buffer_size);

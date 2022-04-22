@@ -59,7 +59,7 @@ AIETraceOffload::AIETraceOffload(void* handle, uint64_t id,
                  offloadStatus(AIEOffloadThreadStatus::IDLE)
 {
   bufAllocSz = (totalSz / numStream) & TRACE_BUFFER_4K_MASK;
-  if (bufAllocSz == 0)
+  if (bufAllocSz < TS2MM_MIN_BUF_SIZE)
     bufAllocSz = TS2MM_MIN_BUF_SIZE;
 }
 
