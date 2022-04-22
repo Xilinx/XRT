@@ -29,41 +29,36 @@ _command_word_xbutil_completion()
       options=""
       ;;
     -u|--user)
+      # The _filedir function is defined in the bash-completion script typically found in
+      # /usr/share/bash-completion/bash_completions. This populates the COMP_REPLY with 
+      # All files and directories are specified by the last argument in the command line
+      # when a tab completion event is triggered.
       _filedir
       options=""
       ;;
     -f|--format)
-      options="JSON JSON-2020.2"
+      options=""
       ;;
     -o|--output)
       _filedir
       options=""
       ;;
     -t|--type)
-      options="hot"
+      options=""
       ;;
     -p|--path)
       _filedir
       options=""
       ;;
     --p2p)
-      options="ENABLE DISABLE VALIDATE"
+      options=""
       ;;
     --host-mem)
-      options="ENABLE DISABLE"
+      options=""
       ;;
     # The -r option is used for multiple commands so extra processing is needed in here
     -r|--report|--run)
-      # Command word is used to specify further options as the command expands
-      local commandWord=${COMP_WORDS[1]}
-      case ${commandWord} in
-        "validate")
-          options=""
-          ;;
-        "examine")
-          options=""
-          ;;
-      esac
+      options=""
       ;;
     *)
       # Default to using the passed in options if no particular option is used
@@ -73,7 +68,7 @@ _command_word_xbutil_completion()
   # The format of the compgen commands options is seperated from the current word using a --.
   # The -- character signifies the end of command options. All following arguments are positional.
   COMPREPLY+=($(compgen -W "$options" -- $cur))
-  # 2nd part of getting aroudn colons in the suggested keywords
+  # 2nd part of getting around colons in the suggested keywords
   __ltrim_colon_completions "$cur"
 }
 

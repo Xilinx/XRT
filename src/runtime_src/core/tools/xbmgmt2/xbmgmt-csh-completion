@@ -63,7 +63,7 @@ else
       breaksw
     case "format":
     case "f":
-      set programOptions="JSON JSON-2020.2"
+      set programOptions=""
       breaksw
     case "report":
     case "r":

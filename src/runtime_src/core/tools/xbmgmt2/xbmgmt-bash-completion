@@ -33,7 +33,7 @@ _command_word_xbmgmt_completion()
       options=""
       ;;
     -f|--format)
-      options="JSON JSON-2020.2"
+      options=""
       ;;
     -o|--output)
       _filedir
@@ -62,7 +62,7 @@ _command_word_xbmgmt_completion()
   # The format of the compgen commands options is seperated from the current word using a --.
   # The -- character signifies the end of command options. All following arguments are positional.
   COMPREPLY+=($(compgen -W "$options" -- $cur))
-  # 2nd part of getting aroudn colons in the suggested keywords
+  # 2nd part of getting around colons in the suggested keywords
   __ltrim_colon_completions "$cur"
 }
 

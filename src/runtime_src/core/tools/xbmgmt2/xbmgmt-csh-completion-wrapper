@@ -5,5 +5,14 @@
 
 # Enable autocompletion for the xbutil and xbmgmt commands
 alias __xbmgmt_completion_csh tcsh $XILINX_XRT/share/completions/xbmgmt-csh-completion
+# TCSH is very unfriendly when performing file completions inside the aliased script
+# to get around this we add certain options that default to file/directory searches here
+# The options that bypass the completion script are identified (using the n as the first parameter) by their name
+# (the middle parameter) and return available file (the f parameter) options.
+# Ex:
+# n/--test/-f -> A tab completion event following the --test option will display available files in the current directory
+# 
+# The options that bypass the script parsing are as follows:
+# -u, --user, -o, --output, -p, --path
 complete xbmgmt 'n/-u/f/' 'n/--user/f/' 'n/-o/f/' 'n/--output/f/' 'n/--shell/f/' 'n/--image/f/' 'p/*/`__xbmgmt_completion_csh`/'
 echo Autocomplete enabled for the xbmgmt command

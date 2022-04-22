@@ -62,30 +62,24 @@ else
       breaksw
     case "format":
     case "f":
-      set programOptions="JSON JSON-2020.2"
+      set programOptions=""
       breaksw
     case "type":
     case "t":
-      set programOptions="hot"
+      set programOptions=""
       breaksw
     case "p2p":
-      set programOptions="ENABLE DISABLE VALIDATE"
+      set programOptions=""
       breaksw
     case "hostmem":
-      set programOptions="ENABLE DISABLE"
+      set programOptions=""
       breaksw
     # -r shorthand applies to multiple commands under xbutil and requires additional processing
     # Assuming we want to add something here one day
     case "report":
     case "run":
     case "r":
-      if ($commandWord == "validate") then
-        set programOptions=""
-      else if ($commandWord == "examine") then
-        set programOptions=""
-      else
-        set programOptions=""
-      endif
+      set programOptions=""
       breaksw
     # do not modify the option list if the argument is not required
     default:
