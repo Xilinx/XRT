@@ -40,14 +40,17 @@ SectionSmartNic::init SectionSmartNic::initializer;
 
 SectionSmartNic::init::init() 
 { 
-  registerSectionCtor(SMARTNIC, "SMARTNIC", "smartnic", false, false, boost::factory<SectionSmartNic*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(SMARTNIC, "SMARTNIC", boost::factory<SectionSmartNic*>()); 
+  sectionInfo->nodeName = "smartnic";
+
+  addSectionType(std::move(sectionInfo));
 }
 
 
 bool
 SectionSmartNic::doesSupportAddFormatType(FormatType _eFormatType) const {
-  if ((_eFormatType == FT_JSON) ||
-      (_eFormatType == FT_RAW))
+  if ((_eFormatType == FormatType::JSON) ||
+      (_eFormatType == FormatType::RAW))
     return true;
 
   return false;
@@ -55,9 +58,9 @@ SectionSmartNic::doesSupportAddFormatType(FormatType _eFormatType) const {
 
 bool
 SectionSmartNic::doesSupportDumpFormatType(FormatType _eFormatType) const {
-  if ((_eFormatType == FT_JSON) ||
-      (_eFormatType == FT_HTML) ||
-      (_eFormatType == FT_RAW))
+  if ((_eFormatType == FormatType::JSON) ||
+      (_eFormatType == FormatType::HTML) ||
+      (_eFormatType == FormatType::RAW))
     return true;
 
   return false;

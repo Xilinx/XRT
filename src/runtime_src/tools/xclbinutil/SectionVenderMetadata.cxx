@@ -34,7 +34,11 @@ SectionVenderMetadata::init SectionVenderMetadata::initializer;
 
 SectionVenderMetadata::init::init() 
 { 
-  registerSectionCtor(VENDER_METADATA, "VENDER_METADATA", "", true, true, boost::factory<SectionVenderMetadata*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(VENDER_METADATA, "VENDER_METADATA", boost::factory<SectionVenderMetadata*>()); 
+  sectionInfo->supportsSubSections = true;
+  sectionInfo->supportsIndexing = true;
+
+  addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
@@ -42,7 +46,7 @@ SectionVenderMetadata::init::init()
 bool
 SectionVenderMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  // The Vender Metadata top-level section does support any add syntax.
+  // The Vender Metadata top-level section doesn't support any add syntax.
   // Must use sub-sections
   return false;
 }
@@ -224,7 +228,7 @@ SectionVenderMetadata::readSubPayload(const char* _pOrigDataSection,
     throw std::runtime_error(errMsg);
   }
 
-  if (_eFormatType != Section::FT_RAW) {
+  if (_eFormatType != Section::FormatType::RAW) {
     std::string errMsg = "ERROR: Vendor Metadata only supports the RAW format.";
     throw std::runtime_error(errMsg);
   }
@@ -308,7 +312,7 @@ SectionVenderMetadata::writeSubPayload(const std::string& _sSubSectionName,
   }
 
   // Some basic DRC checks
-  if (_eFormatType != Section::FT_RAW) {
+  if (_eFormatType != Section::FormatType::RAW) {
     std::string errMsg = "ERROR: Vendor Metadata section only supports the RAW format.";
     throw std::runtime_error(errMsg);
   }

@@ -34,14 +34,18 @@ SectionSoftKernel::init SectionSoftKernel::initializer;
 
 SectionSoftKernel::init::init() 
 { 
-  registerSectionCtor(SOFT_KERNEL, "SOFT_KERNEL", "", true, true, boost::factory<SectionSoftKernel*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(SOFT_KERNEL, "SOFT_KERNEL", boost::factory<SectionSoftKernel*>()); 
+  sectionInfo->supportsSubSections = true;
+  sectionInfo->supportsIndexing = true;
+
+  addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
 
 bool
 SectionSoftKernel::doesSupportAddFormatType(FormatType _eFormatType) const {
-  // The Soft Kernel top-level section does support any add syntax.
+  // The Soft Kernel top-level section doesn't support any add syntax.
   // Must use sub-sections
   return false;
 }
@@ -337,7 +341,7 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
         throw std::runtime_error(errMsg);
       }
 
-      if (_eFormatType != Section::FT_RAW) {
+      if (_eFormatType != Section::FormatType::RAW) {
         std::string errMsg = "ERROR: Soft kernel's object only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -352,7 +356,7 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
           throw std::runtime_error(errMsg);
         }
 
-        if (_eFormatType != Section::FT_JSON) {
+        if (_eFormatType != Section::FormatType::JSON) {
           std::string errMsg = "ERROR: SOFT_KERNEL-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -451,7 +455,7 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
   switch (eSubSection) {
     case SS_OBJ:
       // Some basic DRC checks
-      if (_eFormatType != Section::FT_RAW) {
+      if (_eFormatType != Section::FormatType::RAW) {
         std::string errMsg = "ERROR: SOFT_KERNEL-OBJ only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -460,7 +464,7 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
       break;
 
     case SS_METADATA: {
-        if (_eFormatType != Section::FT_JSON) {
+        if (_eFormatType != Section::FormatType::JSON) {
           std::string errMsg = "ERROR: SOFT_KERNEL-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }

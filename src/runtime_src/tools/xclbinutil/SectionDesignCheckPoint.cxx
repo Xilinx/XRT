@@ -23,7 +23,9 @@ SectionDesignCheckPoint::init SectionDesignCheckPoint::initializer;
 
 SectionDesignCheckPoint::init::init() 
 { 
-  registerSectionCtor(DESIGN_CHECK_POINT, "DESIGN_CHECKPOINT", "", false, false, boost::factory<SectionDesignCheckPoint*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(DESIGN_CHECK_POINT, "DESIGN_CHECKPOINT", boost::factory<SectionDesignCheckPoint*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
 
 

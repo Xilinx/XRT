@@ -25,8 +25,12 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionAIEPartition::init SectionAIEPartition::initializer;
 
-SectionAIEPartition::init::init() {
-  registerSectionCtor(AIE_PARTITION, "AIE_PARTITION", "aie_partition", false, false, boost::factory<SectionAIEPartition*>()); 
+SectionAIEPartition::init::init() 
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(AIE_PARTITION, "AIE_PARTITION", boost::factory<SectionAIEPartition*>());
+  sectionInfo->nodeName = "aie_partition";
+
+  addSectionType(std::move(sectionInfo));
 }
 
 void
@@ -149,13 +153,13 @@ SectionAIEPartition::marshalFromJSON(const boost::property_tree::ptree& ptSectio
 bool
 SectionAIEPartition::doesSupportAddFormatType(FormatType eFormatType) const
 {
-  return (eFormatType == FT_JSON); 
+  return (eFormatType == FormatType::JSON); 
 }
 
 bool
 SectionAIEPartition::doesSupportDumpFormatType(FormatType eFormatType) const
 {
-  return ((eFormatType == FT_JSON) ||
-          (eFormatType == FT_HTML) ||
-          (eFormatType == FT_RAW));
+  return ((eFormatType == FormatType::JSON) ||
+          (eFormatType == FormatType::HTML) ||
+          (eFormatType == FormatType::RAW));
 }

@@ -27,7 +27,10 @@ SectionKeyValueMetadata::init SectionKeyValueMetadata::initializer;
 
 SectionKeyValueMetadata::init::init() 
 { 
-  registerSectionCtor(KEYVALUE_METADATA, "KEYVALUE_METADATA", "keyvalue_metadata", false, false, boost::factory<SectionKeyValueMetadata*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(KEYVALUE_METADATA, "KEYVALUE_METADATA", boost::factory<SectionKeyValueMetadata*>()); 
+  sectionInfo->nodeName = "keyvalue_metadata";
+
+  addSectionType(std::move(sectionInfo));
 }
 
 void 
@@ -94,7 +97,7 @@ SectionKeyValueMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptS
 bool 
 SectionKeyValueMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_JSON) {
+  if (_eFormatType == FormatType::JSON) {
     return true;
   }
   return false;
@@ -103,8 +106,8 @@ SectionKeyValueMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionKeyValueMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML))
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML))
     {
       return true;
     }

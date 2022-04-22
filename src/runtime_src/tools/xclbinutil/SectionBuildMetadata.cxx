@@ -28,7 +28,10 @@ SectionBuildMetadata::init SectionBuildMetadata::initializer;
 
 SectionBuildMetadata::init::init() 
 { 
-  registerSectionCtor(BUILD_METADATA, "BUILD_METADATA", "build_metadata", false, false, boost::factory<SectionBuildMetadata*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(BUILD_METADATA, "BUILD_METADATA", boost::factory<SectionBuildMetadata*>()); 
+  sectionInfo->nodeName = "build_metadata";
+
+  addSectionType(std::move(sectionInfo));
 }
 
 void 
@@ -75,8 +78,8 @@ SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSect
 bool 
 SectionBuildMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if ((_eFormatType == FT_JSON) ||
-      (_eFormatType == FT_RAW)){
+  if ((_eFormatType == FormatType::JSON) ||
+      (_eFormatType == FormatType::RAW)){
     return true;
   }
   return false;
@@ -85,8 +88,8 @@ SectionBuildMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionBuildMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML))
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML))
     {
       return true;
     }

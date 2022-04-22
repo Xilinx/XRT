@@ -23,7 +23,9 @@ SectionPDI::init SectionPDI::initializer;
 
 SectionPDI::init::init() 
 { 
-  registerSectionCtor(PDI, "PDI", "", false, false, boost::factory<SectionPDI*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(PDI, "PDI", boost::factory<SectionPDI*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
 
 

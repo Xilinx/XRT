@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,7 +23,7 @@
 namespace XUtil = XclBinUtilities;
 
 ParameterSectionData::ParameterSectionData(const std::string &_formattedString)
-  : m_formatType(Section::FT_UNKNOWN)
+  : m_formatType(Section::FormatType::UNKNOWN)
   , m_formatTypeStr("")
   , m_file("")
   , m_section("")
@@ -98,7 +98,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   // -- Retrieve the section --
   std::string sSection = tokens[0];
   
-  if ( sSection.empty() && (m_formatType != Section::FT_JSON)) {
+  if ( sSection.empty() && (m_formatType != Section::FormatType::JSON)) {
     std::string errMsg = "Error: Empty sections names are only permitted with JSON format files.";
     throw std::runtime_error(errMsg);
   }
