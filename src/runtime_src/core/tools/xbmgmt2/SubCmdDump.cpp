@@ -143,13 +143,15 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
+  po::options_description hiddenOptions("Hidden Options");
+
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions);
+  process_arguments(vm, _options, commonOptions, hiddenOptions);
 
   // Check to see if help was requested or no command was found
-  if (help == true)  {
-    printHelp(commonOptions);
+  if (help)  {
+    printHelp(commonOptions, hiddenOptions);
     return;
   }
 
@@ -163,7 +165,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   if(devices.empty()) {
     std::cerr << "ERROR: Please specify a single device using --device option" << "\n\n";
-    printHelp(commonOptions);
+    printHelp(commonOptions, hiddenOptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -184,7 +186,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   // enforce 1 device specification
   if(deviceCollection.size() != 1) {
     std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
-    printHelp(commonOptions);
+    printHelp(commonOptions, hiddenOptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -196,7 +198,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   if (output.empty()) {
     std::cerr << "ERROR: Please specify an output file using --output option" << "\n\n";
-    printHelp(commonOptions);
+    printHelp(commonOptions, hiddenOptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }
   if (!output.empty() && boost::filesystem::exists(output) && !XBU::getForce()) {
@@ -215,6 +217,6 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   }
 
   std::cerr << "ERROR: Please specify a valid option to determine the type of dump" << "\n\n";
-  printHelp(commonOptions);
+  printHelp(commonOptions, hiddenOptions);
   throw xrt_core::error(std::errc::operation_canceled);
 }

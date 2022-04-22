@@ -104,13 +104,15 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     ("help", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
+  po::options_description hiddenOptions("Hidden Options");
+
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions);
+  process_arguments(vm, _options, commonOptions, hiddenOptions);
 
   // Check to see if help was requested 
-  if (bHelp == true) {
-    printHelp(commonOptions);
+  if (bHelp) {
+    printHelp(commonOptions, hiddenOptions);
     return;
   }
 
