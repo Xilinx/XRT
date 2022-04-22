@@ -39,25 +39,15 @@ class Section {
     SectionInfo() = delete;
 
    public:
-    SectionInfo(enum axlf_section_kind eKind, const std::string & secondName, Section_factory sectionCtor);   
-    void setNodeName(const std::string& sNodeName);
-    void setSupportsSubSections(bool bValue);
-    void setSupportsIndexing(bool bValue);
+    SectionInfo(enum axlf_section_kind eKind, std::string sectionName, Section_factory sectionCtor);   
 
-    enum axlf_section_kind getType() const;
-    const std::string &getSectionName() const;
-    Section_factory getCtor() const;
-    const std::string &getNodeName() const;
-    bool getSupportsSubSections() const;
-    bool getSupportsIndexing() const;
-
-   private:
-    enum axlf_section_kind m_eKind;       // The section enumeration value
-    std::string m_sectionName;            // Name of the section 
-    Section_factory m_sectionCtor;        // Section constructor
-    std::string m_nodeName;               // JSON node name
-    bool m_bSupportsSubSections;          // Support subsections
-    bool m_bSupportsIndexing;             // Supports indexing
+   public:
+    enum axlf_section_kind eKind;       // The section enumeration value
+    std::string name;                   // Name of the section 
+    Section_factory sectionCtor;        // Section constructor
+    std::string nodeName;               // JSON node name
+    bool supportsSubSections;           // Support subsections
+    bool supportsIndexing;              // Supports indexing
   };
 
  public:
@@ -77,7 +67,7 @@ class Section {
   static std::vector<std::unique_ptr<SectionInfo>> & getSectionTypes();
 
  public:
-  static void getKinds(std::vector< std::string > & kinds);
+  static std::vector<std::string> getSupportedKinds();
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind, const std::string _sIndexName = "");
   static void translateSectionKindStrToKind(const std::string & sKind, enum axlf_section_kind & eKind);
   static axlf_section_kind getKindOfJSON(const std::string & nodeName);

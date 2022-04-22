@@ -33,73 +33,17 @@ namespace XUtil = XclBinUtilities;
 
 
 Section::SectionInfo::SectionInfo( enum axlf_section_kind eKind,
-                                   const std::string & sectionName,
+                                   std::string sectionName,
                                    Section_factory sectionCtor)
-  : m_eKind(eKind)
-  , m_sectionName(sectionName)
-  , m_sectionCtor(sectionCtor)
-  , m_nodeName("")
-  , m_bSupportsSubSections(false)
-  , m_bSupportsIndexing(false)
+  : eKind(eKind)
+  , name(std::move(sectionName))
+  , sectionCtor(sectionCtor)
+  , nodeName("")
+  , supportsSubSections(false)
+  , supportsIndexing(false)
 {
   // Empty
 }
-
-void 
-Section::SectionInfo::setNodeName(const std::string& sNodeName)
-{
-  m_nodeName = sNodeName;
-}
-
-void 
-Section::SectionInfo::setSupportsSubSections(bool bValue)
-{
-  m_bSupportsSubSections = bValue;
-}
-
-void 
-Section::SectionInfo::setSupportsIndexing(bool bValue)
-{
-  m_bSupportsIndexing = bValue;
-}
-
-enum axlf_section_kind 
-  Section::SectionInfo::getType() const
-{
-  return m_eKind;
-}
-
-const std::string &
-Section::SectionInfo::getSectionName() const
-{
-  return m_sectionName;
-}
-
-Section::Section_factory
-Section::SectionInfo::getCtor() const
-{
-  return m_sectionCtor;
-}
-
-
-const std::string &
-Section::SectionInfo::getNodeName() const
-{
-  return m_nodeName;
-}
-
-bool 
-Section::SectionInfo::getSupportsSubSections() const
-{
-  return m_bSupportsSubSections;
-}
-
-bool 
-Section::SectionInfo::getSupportsIndexing() const
-{
-  return m_bSupportsIndexing;
-}
-
 
 // Singleton collection of sections 
 std::vector<std::unique_ptr<Section::SectionInfo>> &
@@ -138,10 +82,15 @@ Section::setName(const std::string &_sSectionName)
    m_name = _sSectionName;
 }
 
-void
-Section::getKinds(std::vector< std::string > & kinds) {
+std::vector<std::string>
+Section::getSupportedKinds() 
+{
+  std::vector<std::string> supportedKinds;
+
   for (auto & item : getSectionTypes()) 
-    kinds.push_back(item->getSectionName());
+    supportedKinds.push_back(item->name);
+
+  return supportedKinds;
 }
 
 
@@ -165,7 +114,7 @@ Section::registerSectionCtor(enum axlf_section_kind eKind,
   auto & sections = getSectionTypes();
 
   // Is the enumeration type already registered
-  if (std::any_of(sections.begin(), sections.end(), [&](const auto &entry) { return entry->getType() ==eKind; })) {
+  if (std::any_of(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; })) {
     auto errMsg = boost::format("ERROR: Attempting to register (%d : %s). Constructor enum of kind (%d) already registered.")
                                 % eKind % cmdName % eKind;
     throw std::runtime_error(errMsg.str());
@@ -173,30 +122,30 @@ Section::registerSectionCtor(enum axlf_section_kind eKind,
 
   // Is the cmd name already registered
   {
-    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->getSectionName() == cmdName; });
+    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->name == cmdName; });
     if (iter != sections.end()) {
       auto errMsg = boost::format("ERROR: Attempting to register: (%d : %s). Constructor name '%s' already registered to eKind (%d).")
                                   % eKind % cmdName
-                                  % cmdName % iter->get()->getType();
+                                  % cmdName % iter->get()->eKind;
       throw std::runtime_error(errMsg.str());
     }
   }
 
   // Is the header name already registered
   if (!nodeName.empty()) {
-    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->getNodeName() == nodeName; });
+    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->nodeName == nodeName; });
     if (iter != sections.end()) {
       auto errMsg = boost::format("ERROR: Attempting to register: (%d : %s). JSON mapping name '%s' already registered to eKind (%d).")
                                     % eKind % cmdName
-                                    % nodeName % iter->get()->getType();
+                                    % nodeName % iter->get()->eKind;
         throw std::runtime_error(errMsg.str());
     }
   }
 
   auto sectionInfo = std::make_unique<SectionInfo>(eKind, cmdName, sectionCtor);
-  sectionInfo->setNodeName(nodeName);
-  sectionInfo->setSupportsSubSections(bSupportsSubSections);
-  sectionInfo->setSupportsIndexing(bSupportsIndexing);
+  sectionInfo->nodeName = nodeName;
+  sectionInfo->supportsSubSections = bSupportsSubSections;
+  sectionInfo->supportsIndexing = bSupportsIndexing;
 
   sections.push_back(std::move(sectionInfo));
 }
@@ -206,12 +155,12 @@ Section::translateSectionKindStrToKind(const std::string & sectionName,
                                        enum axlf_section_kind & eKind)
 {
   auto & sections = getSectionTypes();
-  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->getSectionName() == sectionName; });
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->name == sectionName; });
   if (iter == sections.end()) {
     auto errMsg = boost::format("ERROR: Section '%s' isn't a valid section name.") % sectionName;
     throw std::runtime_error(errMsg.str());
   }
-  eKind = iter->get()->getType();
+  eKind = iter->get()->eKind;
 }
 
 bool
@@ -219,14 +168,14 @@ Section::supportsSubSections(enum axlf_section_kind &eKind)
 {
   auto &sections = getSectionTypes();
 
-  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->getType() == eKind; });
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
 
   if (iter == sections.end()) {
     auto errMsg = boost::format("ERROR: The section kind value '%d' does not exist.") % eKind;
     throw std::runtime_error(errMsg.str());
   }
 
-  return iter->get()->getSupportsSubSections();
+  return iter->get()->supportsSubSections;
 }
 
 bool
@@ -234,14 +183,14 @@ Section::supportsSectionIndex(enum axlf_section_kind &eKind)
 {
   auto & sections = getSectionTypes();
 
-  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->getType() == eKind; });
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
 
   if (iter == sections.end()) {
     auto errMsg = boost::format("ERROR: The section kind value '%d' does not exist.") % eKind;
     throw std::runtime_error(errMsg.str());
   }
 
-  return iter->get()->getSupportsIndexing();
+  return iter->get()->supportsIndexing;
 }
 
 // -------------------------------------------------------------------------
@@ -271,27 +220,27 @@ Section::getFormatType(const std::string _sFormatType)
 enum axlf_section_kind 
 Section::getKindOfJSON(const std::string &nodeName) {
   auto & sections = getSectionTypes();
-  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->getNodeName() == nodeName; });
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->nodeName == nodeName; });
 
   if (iter == sections.end()) {
     auto errMsg = boost::format("ERROR: Node name '%s' does not map to a given section type.") % nodeName;
     throw std::runtime_error(errMsg.str());
   }
 
-  return iter->get()->getType();
+  return iter->get()->eKind;
 }
 
 std::string
 Section::getJSONOfKind(enum axlf_section_kind eKind) {
   auto & sections = getSectionTypes();
-  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->getType() == eKind; });
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
 
   if (iter == sections.end()) {
     auto errMsg = boost::format("ERROR: The given enum kind (%d) does not exist.") % eKind;
     throw std::runtime_error(errMsg.str());
   }
 
-  return iter->get()->getNodeName();
+  return iter->get()->nodeName;
 }
 
 Section*
@@ -300,16 +249,16 @@ Section::createSectionObjectOfKind( enum axlf_section_kind eKind,
   Section* pSection = nullptr;
 
   auto & sections = getSectionTypes();
-  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->getType() == eKind; });
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
 
   if (iter == sections.end()) {
     auto errMsg = boost::format("ERROR: Section constructor for the archive section ID '%d' does not exist.  This error is most likely the result of examining a newer version of an archive image than this version of software supports.") % eKind;
     throw std::runtime_error(errMsg.str());
   }
 
-  pSection = iter->get()->getCtor()();
+  pSection = iter->get()->sectionCtor();
   pSection->m_eKind = eKind;
-  pSection->m_sKindName = iter->get()->getSectionName();
+  pSection->m_sKindName = iter->get()->name;
   pSection->m_sIndexName = sIndexName;
 
   XUtil::TRACE(boost::format("Created segment: %s (%d), index: '%s'")
