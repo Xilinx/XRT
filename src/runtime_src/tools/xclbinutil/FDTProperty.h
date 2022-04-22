@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019,2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,17 +18,14 @@
 #define __FDTProperty_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
-#include <string>
-#include <map>
 #include <boost/property_tree/ptree.hpp>
+#include <map>
+#include <string>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
 class DTCStringsBlock;
 
-// ------------------- C L A S S :   S e c t i o n ---------------------------
+// -------------- C L A S S :   F D T P r o p e r t y ------------------------
 
 class FDTProperty {
  public: 
@@ -48,6 +45,9 @@ class FDTProperty {
 
  public:
   typedef std::map<const std::string, DataFormat> PropertyNameFormat;
+
+ private:
+  FDTProperty();
 
  public:
   FDTProperty(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock & _dtcStringsBlock, unsigned int & _bytesExamined, const PropertyNameFormat & _propertyNameFormat);
@@ -82,12 +82,6 @@ class FDTProperty {
   const std::string & getDataFormatPrettyName(DataFormat _eDataFormat) const;
   unsigned int getWordLength(DataFormat _eDataFormat) const;
   bool isDataFormatArray(DataFormat _eDataFormat) const;
-
- private:
-  // Purposefully private and undefined ctors...
-  FDTProperty();
-  FDTProperty(const FDTProperty& obj);
-  FDTProperty& operator=(const FDTProperty& obj);
 
  private:
   uint32_t m_dataLength;      // The length of the data buffer

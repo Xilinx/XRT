@@ -17,11 +17,12 @@
 #include "SectionVenderMetadata.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
-
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
+
+namespace XUtil = XclBinUtilities;
 
 // Disable windows compiler warnings
 #ifdef _WIN32
@@ -29,20 +30,11 @@ namespace XUtil = XclBinUtilities;
 #endif
 
 // Static Variables / Classes
-SectionVenderMetadata::_init SectionVenderMetadata::_initializer;
+SectionVenderMetadata::init SectionVenderMetadata::initializer;
 
-// -------------------------------------------------------------------------
-
-SectionVenderMetadata::SectionVenderMetadata()
-{
-  // Empty
-}
-
-// -------------------------------------------------------------------------
-
-SectionVenderMetadata::~SectionVenderMetadata()
-{
-  // Empty
+SectionVenderMetadata::init::init() 
+{ 
+  registerSectionCtor(VENDER_METADATA, "VENDER_METADATA", "", true, true, boost::factory<SectionVenderMetadata*>()); 
 }
 
 // -------------------------------------------------------------------------
@@ -325,7 +317,7 @@ SectionVenderMetadata::writeSubPayload(const std::string& _sSubSectionName,
 }
 
 void
-SectionVenderMetadata::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader)
+SectionVenderMetadata::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader)
 {
   Section::readXclBinBinary(_istream, _sectionHeader);
 

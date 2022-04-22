@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,19 +16,14 @@
 
 #include "SectionClearBitstream.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionClearBitstream::_init SectionClearBitstream::_initializer;
+SectionClearBitstream::init SectionClearBitstream::initializer;
 
-SectionClearBitstream::SectionClearBitstream() {
-  // Empty
+SectionClearBitstream::init::init() 
+{ 
+  registerSectionCtor(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", "", false, false, boost::factory<SectionClearBitstream*>()); 
 }
-
-SectionClearBitstream::~SectionClearBitstream() {
-  // Empty
-}
-
 
 

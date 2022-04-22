@@ -322,7 +322,7 @@ XSPI_Flasher::XSPI_Flasher(std::shared_ptr<xrt_core::device> dev)
         flash_base = FLASH_BASE;
 
     mFlashDev = nullptr;
-#ifdef __GNUC__
+#ifdef __linux__
     if (std::getenv("FLASH_VIA_USER") == NULL) {
         int fd = mDev->open("flash", O_RDWR);
         if (fd >= 0)
@@ -1853,7 +1853,7 @@ static int writeToFlash(std::FILE *flashDev, int secondary,
     return ret;
 }
 
-static int 
+static int
 readFromFlash(std::FILE *flashDev, int secondary,
   const unsigned int address, unsigned char *buf, size_t len)
 {
@@ -2215,7 +2215,7 @@ int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream, std::istream& str
     ret = installBitstreamGuard(mDev.get(), mFlashDev, bsGuardAddr);
     if (ret)
         return ret;
-    
+
     // Persist non-bitstream part of firmware, should happen before we
     // start writing bitstream, so that we don't corrupt bitstream.
     if (stripped) {
@@ -2257,7 +2257,7 @@ int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
     ret = installBitstreamGuard(mDev.get(), mFlashDev, bsGuardAddr);
     if (ret)
         return ret;
-    
+
     // Persist non-bitstream part of firmware, should happen before we
     // start writing bitstream, so that we don't corrupt bitstream.
     if (stripped) {
@@ -2295,7 +2295,7 @@ struct flash_data_header {
     struct flash_data_ident fdh_id_end;
 };
 
-static inline uint32_t 
+static inline uint32_t
 flash_xrt_data_get_parity32(const unsigned char *buf, size_t n)
 {
 	uint32_t parity = 0;
@@ -2392,14 +2392,14 @@ xclReadData(std::vector<unsigned char>& data)
         std::cout << boost::format("ERROR: Failed to read header from flash: %d\n") %ret;
         return ret;
     }
-    
+
     // Sanity check header
     flash_data_ident ident = header.fdh_id_end;
     const size_t magiclen = sizeof(ident.fdi_magic);
     if (std::memcmp(ident.fdi_magic, magic.c_str(), magiclen)) {
         char tmp[sizeof(ident.fdi_magic) + 1] = { 0 };
         std::memcpy(tmp, ident.fdi_magic, magiclen);
-        std::cout << boost::format("ERROR: corrupted meta data detected on flash, bad header magic: %s. Expected header magic: %s\n") 
+        std::cout << boost::format("ERROR: corrupted meta data detected on flash, bad header magic: %s. Expected header magic: %s\n")
                     % tmp % magic;
         return -EINVAL;
     } else if (ident.fdi_version != 0) {

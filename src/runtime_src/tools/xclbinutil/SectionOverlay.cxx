@@ -16,19 +16,13 @@
 
 #include "SectionOverlay.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionOverlay::_init SectionOverlay::_initializer;
+SectionOverlay::init SectionOverlay::initializer;
 
-SectionOverlay::SectionOverlay() {
-  // Empty
+SectionOverlay::init::init() 
+{ 
+  registerSectionCtor(OVERLAY, "OVERLAY", "", false, false, boost::factory<SectionOverlay*>()); 
 }
-
-SectionOverlay::~SectionOverlay() {
-  // Empty
-}
-
-
 

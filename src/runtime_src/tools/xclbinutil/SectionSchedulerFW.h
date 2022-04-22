@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,32 +18,16 @@
 #define __SectionSchedulerFW_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
-
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
 
 // ------ C L A S S :   S e c t i o n S c h e d u l e r F W ------------------
-
 class SectionSchedulerFW : public Section {
- public:
-  SectionSchedulerFW();
-  virtual ~SectionSchedulerFW();
-
- private:
-  // Purposefully private and undefined ctors...
-  SectionSchedulerFW(const SectionSchedulerFW& obj);
-  SectionSchedulerFW& operator=(const SectionSchedulerFW& obj);
-
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(SCHED_FIRMWARE, "SCHED_FIRMWARE", "", false, false, boost::factory<SectionSchedulerFW*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

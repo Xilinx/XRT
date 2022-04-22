@@ -29,7 +29,7 @@
 #include <algorithm>
 #include <cstdarg>
 #include <climits>
-#ifdef __GNUC__
+#ifdef __linux__
 # include <syslog.h>
 # include <linux/limits.h>
 # include <sys/stat.h>
@@ -66,7 +66,7 @@ get_userid()
 static std::string
 get_exe_path()
 {
-#ifdef __GNUC__
+#ifdef __linux__
   char buf[PATH_MAX] = {0};
   auto len = ::readlink("/proc/self/exe", buf, PATH_MAX);
   return std::string(buf, (len>0) ? len : 0);
@@ -273,9 +273,9 @@ void
 sendv(severity_level l, const char* tag, const char* format, va_list args)
 {
   static auto verbosity = xrt_core::config::get_verbosity();
-  if (l > (xrt_core::message::severity_level)verbosity) 
+  if (l > (xrt_core::message::severity_level)verbosity)
     return;
-  
+
   va_list args_bak;
   // vsnprintf will mutate va_list so back it up
   va_copy(args_bak, args);
@@ -293,5 +293,5 @@ sendv(severity_level l, const char* tag, const char* format, va_list args)
   std::vsnprintf(buf.data(), len, format, args);
   send(l, tag, buf.data());
 }
-  
+
 }} // message,xrt

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 -2019 Xilinx, Inc
+ * Copyright (C) 2018-2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,29 +18,18 @@
 #define __SectionIPLayout_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
-
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
 
 // --------- C L A S S :   S e c t i o n I P L a y o u t ---------------------
-
 class SectionIPLayout : public Section {
  public:
-  SectionIPLayout();
-  virtual ~SectionIPLayout();
-
-public:
-  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
-  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
-  virtual void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo);
+  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
+  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
+  void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo) override;
 
  protected:
-  virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
-  virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
+  void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
+  void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  protected:
   const std::string getIPTypeStr(enum IP_TYPE _ipType) const;
@@ -49,16 +38,11 @@ public:
   enum IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
 
  private:
-  // Purposefully private and undefined ctors...
-  SectionIPLayout(const SectionIPLayout& obj);
-  SectionIPLayout& operator=(const SectionIPLayout& obj);
-
- private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(IP_LAYOUT, "IP_LAYOUT", "ip_layout", false, false, boost::factory<SectionIPLayout*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

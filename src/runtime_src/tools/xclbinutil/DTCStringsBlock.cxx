@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,6 +17,8 @@
 #include "DTCStringsBlock.h"
 
 #include "XclBinUtilities.h"
+#include <boost/format.hpp>
+
 namespace XUtil = XclBinUtilities;
 
 
@@ -64,12 +66,12 @@ DTCStringsBlock::parseDTCStringsBlock(const char* _pBuffer, const unsigned int _
       int bufferLen = (index - lastIndex);
       std::string dtcString(&_pBuffer[lastIndex], bufferLen);
 
-      XUtil::TRACE(XUtil::format("Adding DTCString: %s", dtcString.c_str()).c_str());
+      XUtil::TRACE(boost::format("Adding DTCString: %s") % dtcString);
       unsigned int offset = addString(dtcString);
       
       if (offset != lastIndex) {
-        std::string err = XUtil::format("ERROR: DTC string offset mismatch.  Expected: 0x%x, Actual: 0x%x", lastIndex, offset);
-        throw std::runtime_error(err);
+        auto errMsg = boost::format("ERROR: DTC string offset mismatch.  Expected: 0x%x, Actual: 0x%x") % lastIndex % offset;
+        throw std::runtime_error(errMsg.str());
       }
 
       ++index;
@@ -109,8 +111,8 @@ DTCStringsBlock::getString(unsigned int _offset) const
   std::string blockString = m_pDTCStringBlock->str();
 
   if (_offset > blockString.size()) {
-    std::string err = XUtil::format("ERROR: Offset (0x%x) is greater then the string buffer (0x%x).", _offset, blockString.size());
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: Offset (0x%x) is greater then the string buffer (0x%x).") %  _offset % blockString.size();
+    throw std::runtime_error(errMsg.str());
   }
 
   std::string returnString(blockString.c_str()+_offset);
