@@ -109,7 +109,7 @@ get_boot_info(const xrt_core::device * dev)
   const auto pt = xrt_core::vmr::vmr_info(dev).get_child("vmr", pt_empty);
   for (auto& ks : pt) {
     const boost::property_tree::ptree& vmr_stat = ks.second;
-    if (boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
+    if (boost::iequals(vmr_stat.get<std::string>("label", ""), "Boot on default")) {
       auto is_default_boot = std::stoi(vmr_stat.get<std::string>("value"));
       ptree.add("default", is_default_boot ? "ACTIVE" : "INACTIVE");
       ptree.add("backup", is_default_boot ? "INACTIVE" : "ACTIVE");
