@@ -22,20 +22,44 @@
 // #includes here - please keep these to a bare minimum!
 #include "xclbin.h"
 
-#include <string>
-#include <fstream>
-#include <map>
-#include <functional>
-#include <vector>
-
 #include <boost/property_tree/ptree.hpp>
-
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
+#include <fstream>
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 // ------------------- C L A S S :   S e c t i o n ---------------------------
 
 class Section {
+ typedef std::function<Section*()> Section_factory;
+
+ protected:
+  class SectionInfo {
+    SectionInfo() = delete;
+
+   public:
+    SectionInfo(enum axlf_section_kind eKind, const std::string & secondName, Section_factory sectionCtor);   
+    void setNodeName(const std::string& sNodeName);
+    void setSupportsSubSections(bool bValue);
+    void setSupportsIndexing(bool bValue);
+
+    enum axlf_section_kind getType() const;
+    const std::string &getSectionName() const;
+    Section_factory getCtor() const;
+    const std::string &getNodeName() const;
+    bool getSupportsSubSections() const;
+    bool getSupportsIndexing() const;
+
+   private:
+    enum axlf_section_kind m_eKind;       // The section enumeration value
+    std::string m_sectionName;            // Name of the section 
+    Section_factory m_sectionCtor;        // Section constructor
+    std::string m_nodeName;               // JSON node name
+    bool m_bSupportsSubSections;          // Support subsections
+    bool m_bSupportsIndexing;             // Supports indexing
+  };
+
  public:
   enum FormatType{
     FT_UNDEFINED,
@@ -48,12 +72,15 @@ class Section {
 
  public:
   virtual ~Section();
+ 
+ private:
+  static std::vector<std::unique_ptr<SectionInfo>> & getSectionTypes();
 
  public:
   static void getKinds(std::vector< std::string > & kinds);
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind, const std::string _sIndexName = "");
   static void translateSectionKindStrToKind(const std::string & sKind, enum axlf_section_kind & eKind);
-  static bool getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind);
+  static axlf_section_kind getKindOfJSON(const std::string & nodeName);
   static std::string getJSONOfKind(enum axlf_section_kind _eKind);
   static enum FormatType getFormatType(const std::string _sFormatType);
   static bool supportsSubSections(enum axlf_section_kind &_eKind);
@@ -106,7 +133,6 @@ class Section {
   Section();
 
  protected:
-  typedef std::function<Section*()> Section_factory;
   static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, const std::string& _sHeaderJSONName, bool _bSupportsSubSections, bool _bSupportsIndexing, Section_factory _Section_factory);
 
  protected:
@@ -119,15 +145,6 @@ class Section {
   std::string m_name;
 
   std::string m_pathAndName;
-
- private:
-  static std::map<enum axlf_section_kind, std::string> m_mapIdToName;
-  static std::map<std::string, enum axlf_section_kind> m_mapNameToId;
-  static std::map<enum axlf_section_kind, Section_factory> m_mapIdToCtor;
-  static std::map<std::string, enum axlf_section_kind> m_mapJSONNameToKind;
-  static std::map<enum axlf_section_kind, std::string> m_mapKindToJSONName;
-  static std::map<enum axlf_section_kind, bool> m_mapIdToSubSectionSupport;
-  static std::map<enum axlf_section_kind, bool> m_mapIdToSectionIndexSupport;
 
  private:
   Section(const Section& obj) = delete;

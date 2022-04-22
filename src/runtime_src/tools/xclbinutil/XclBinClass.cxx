@@ -1128,11 +1128,7 @@ XclBin::addSections(ParameterSectionData& _PSD)
 
     XUtil::TRACE("Processing: '" + sectionName + "'");
 
-    enum axlf_section_kind eKind;
-    if (Section::getKindOfJSON(sectionName, eKind) == false) {
-      auto errMsg = boost::format("ERROR: Unknown JSON section '%s' in file: %s") % sectionName % sJSONFileName;
-      throw std::runtime_error(errMsg.str());
-    }
+    auto eKind = Section::getKindOfJSON(sectionName);    // Can throw
 
     Section* pSection = findSection(eKind);
     if (pSection != nullptr) {
@@ -1204,11 +1200,7 @@ XclBin::appendSections(ParameterSectionData& _PSD)
 
     XUtil::TRACE("Processing: '" + sectionName + "'");
 
-    enum axlf_section_kind eKind;
-    if (Section::getKindOfJSON(sectionName, eKind) == false) {
-      auto errMsg = boost::format("ERROR: Unknown JSON section '%s' in file: %s") % sectionName % sJSONFileName;
-      throw std::runtime_error(errMsg.str());
-    }
+    auto eKind = Section::getKindOfJSON(sectionName);  // Can throw
 
     Section* pSection = findSection(eKind);
 
