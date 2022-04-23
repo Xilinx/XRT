@@ -2439,12 +2439,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xdp::aie::flush_device(handle);
     xdp::pl_deadlock::flush_device(handle);
 
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-    int ret = 0;
-#else
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
-#endif
-
     if (!ret) {
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
@@ -2453,7 +2448,6 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       xdp::aie::update_device(handle);
       xdp::pl_deadlock::update_device(handle);
 
-#ifndef DISABLE_DOWNLOAD_XCLBIN
       //scheduler::init can not be skipped even for same_xclbin
       //as in multiple process stress tests it fails as
       //below init step is without a lock with above driver load xclbin step.
@@ -2462,7 +2456,6 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       //is ignored
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
-#endif
     }
     return ret;
   }
@@ -2797,13 +2790,8 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
 {
   return xdp::hal::profiling_wrapper("xclOpenContext",
   [handle, xclbinId, ipIndex, shared] {
-
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-  return 0;
-#endif
-
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
   }) ;
 }
 
@@ -2828,13 +2816,8 @@ int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIn
 {
   return xdp::hal::profiling_wrapper("xclCloseContext",
   [handle, xclbinId, ipIndex] {
-
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-  return 0;
-#endif
-
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
   });
 }
 
