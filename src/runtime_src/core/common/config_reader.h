@@ -831,6 +831,15 @@ get_flag_sw_emu_kernel_debug()
   return value;
 }
 
+// This flag is added to exit device offline status check loop forcibly.
+// By default, device offline status loop runs for 60 seconds.
+inline bool
+get_device_offline_timer()
+{
+  static unsigned int value = detail::get_uint_value("Runtime.dev_offline_timer", 60);
+  return value;
+}
+
 }} // config,xrt_core
 
 #endif
