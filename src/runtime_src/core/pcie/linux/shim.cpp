@@ -1110,17 +1110,23 @@ int shim::resetDevice(xclResetKind kind)
 
     dev_fini();
 
-    unsigned int timer = xrt_core::config::get_device_offline_timer();
-    std::chrono::time_point<std::chrono::system_clock> start, end;
-    start = std::chrono::system_clock::now();
+    /*
+     * This loop used to wait for device come online and ready to use. It uses "dev_offline"
+     * sysfs node to retrieve latest status of device in the interval of 500 milli sec.
+     * In certain testing environement, reset never complete and waits indefinitely
+     * in this loop for dev_offline status to be false. To overcome this infinite loop issue,
+     * added loop_timer (default value set to 60 sec) which is used to exit the loop.
+     */
+    unsigned int loop_timer = xrt_core::config::get_device_offline_timer();
+    auto start = std::chrono::system_clock::now();
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
             "dev_offline", err, dev_offline, -1);
-        end = std::chrono::system_clock::now();
+        auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
-        if (elapsed_seconds.count() > timer) {
-            xrt_logmsg(XRT_WARNING, "%s: device unable to come online, so exiting", __func__);
+        if (elapsed_seconds.count() > loop_timer) {
+            xrt_logmsg(XRT_WARNING, "%s: device unable to come online during reset, try again", __func__);
             break;
         }
     }
