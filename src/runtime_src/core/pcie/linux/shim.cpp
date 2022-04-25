@@ -1111,14 +1111,16 @@ int shim::resetDevice(xclResetKind kind)
     dev_fini();
 
     unsigned int timer = xrt_core::config::get_device_offline_timer();
-    std::chrono::steady_clock::timepoint future = std::chrono::steady_clock::now() +
-                                                  std::chrono::seconds(timer);
+    std::chrono::time_point<std::chrono::system_clock> start, end;
+    start = std::chrono::system_clock::now();
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
             "dev_offline", err, dev_offline, -1);
-        if (std::chrono::steady_clock::now() > future) {
-            xrt_logmsg(XRT_DEBUG, "%s: device unable to come online, so exiting", __func__);
+        end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        if (elapsed_seconds.count() > timer) {
+            xrt_logmsg(XRT_WARNING, "%s: device unable to come online, so exiting", __func__);
             break;
         }
     }
