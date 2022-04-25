@@ -50,18 +50,12 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree pt_empty;
   const boost::property_tree::ptree& ptree = pt.get_child("vmr", pt_empty);
 
-  //Only vck5000 cards support vmr
+
+  output << "Vmr Status" << std::endl;
   if (ptree.empty()) {
     output << "  Information Unavailable" << std::endl;
     return;
   }
-
-  //vmr should be supported, but info was unavailable
-  const boost::property_tree::ptree& version_ptree = pt.get_child("vmr.vmr_version", pt_empty);
-  if (version_ptree.empty())
-    throw std::runtime_error("Information Unavailable");
-
-  output << "Vmr Status" << std::endl;
 
   //list of non verbose labels
   const std::vector<std::string> non_verbose_labels = { 
@@ -72,7 +66,7 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
       "git hash date" 
     };
 
-  for(auto& ks : version_ptree) {
+  for(auto& ks : ptree) {
     const boost::property_tree::ptree& vmr_stat = ks.second;
     const auto it = std::find_if(non_verbose_labels.begin(), non_verbose_labels.end(),
                       [&vmr_stat](const auto& str) { return boost::iequals(vmr_stat.get<std::string>("label"), str); });
