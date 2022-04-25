@@ -77,11 +77,13 @@ offload_device_continuous()
 
   while (should_continue()) {
     train_clock();
+    // Can't flush datamover in middle of offload
     m_read_trace(false);
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
 
   // Do final forced reads
+  // Note : Passing "true" also flushes and resets the datamover
   m_read_trace(true);
   read_leftover_circular_buf();
 
@@ -312,7 +314,7 @@ read_trace_s2mm(bool force)
     << ts2mm_info.num_ts2mm << std::endl;
 
   for(uint64_t i = 0; i < ts2mm_info.num_ts2mm; i++) {
-  auto wordcount = dev_intf->getWordCountTs2mm(i);
+  auto wordcount = dev_intf->getWordCountTs2mm(i, force);
   auto bytes_written = (wordcount - ts2mm_info.buffers[i].prv_wordcount) * TRACE_PACKET_SIZE;
 
   // Don't read data if there's less than 512B trace

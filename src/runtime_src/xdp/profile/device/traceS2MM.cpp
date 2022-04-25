@@ -29,10 +29,16 @@ TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
       major_version(0),
       minor_version(0)
 {
-    if(data) {
+    if (data) {
         properties = data->m_properties;
         major_version = data->m_major;
         minor_version = data->m_minor;
+    }
+    if (major_version >= 2) {
+        mIsVersion2 = true;
+        mBurstLen = mVersion2BurstLen;
+    } else {
+        mBurstLen = 1;
     }
 }
 
@@ -95,17 +101,27 @@ void TraceS2MM::reset()
     mclockTrainingdone = false;
 }
 
-uint64_t TraceS2MM::getWordCount()
+uint64_t TraceS2MM::getWordCount(bool final)
 {
     if(out_stream)
         (*out_stream) << " TraceS2MM::getWordCount " << std::endl;
 
+    // Call flush on V2 datamover to ensure all data is written
+    if (final && isVersion2())
+        reset();
+
     uint32_t regValue = 0;
     read(TS2MM_WRITTEN_LOW, 4, &regValue);
-    uint64_t retValue = static_cast<uint64_t>(regValue);
+    uint64_t wordCount = static_cast<uint64_t>(regValue);
     read(TS2MM_WRITTEN_HIGH, 4, &regValue);
-    retValue |= static_cast<uint64_t>(regValue) << 32;
-    return retValue;
+    wordCount |= static_cast<uint64_t>(regValue) << 32;
+
+    // V2 datamover only writes data in bursts
+    // Only the final write can be a non multiple of burst length
+    if (!final)
+        wordCount -= wordCount % mBurstLen;
+
+    return wordCount;
 }
 
 uint8_t TraceS2MM::getMemIndex()

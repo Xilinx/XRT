@@ -106,6 +106,8 @@ class DeviceIntf {
     void* syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes);
     XDP_EXPORT
     uint64_t getDeviceAddr(size_t bufHandle);
+    XDP_EXPORT
+    uint64_t getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks);
 
     // Trace FIFO Management
     bool hasFIFO() {return (mFifoCtrl != nullptr);};
@@ -138,7 +140,7 @@ class DeviceIntf {
     void initTS2MM(uint64_t index, uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
 
     XDP_EXPORT
-    uint64_t getWordCountTs2mm(uint64_t index);
+    uint64_t getWordCountTs2mm(uint64_t index, bool final);
     XDP_EXPORT
     uint8_t  getTS2MmMemIndex(uint64_t index);
     XDP_EXPORT
@@ -150,7 +152,7 @@ class DeviceIntf {
     void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index);
 
     XDP_EXPORT
-    uint64_t getWordCountAIETs2mm(uint64_t index);
+    uint64_t getWordCountAIETs2mm(uint64_t index, bool final);
     XDP_EXPORT
     uint8_t  getAIETs2mmMemIndex(uint64_t index);
     

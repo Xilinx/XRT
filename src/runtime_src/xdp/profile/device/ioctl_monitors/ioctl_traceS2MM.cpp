@@ -95,19 +95,27 @@ void IOCtlTraceS2MM::reset()
   mclockTrainingdone = false;
 }
 
-uint64_t IOCtlTraceS2MM::getWordCount()
+uint64_t IOCtlTraceS2MM::getWordCount(bool final)
 {
-  if(!isOpened()) {
+  if (!isOpened()) {
     return 0;
   }
- 
-  if(out_stream)
+
+  if (out_stream)
     (*out_stream) << " IOCtlTraceS2MM::getWordCount " << std::endl;
 
-  uint64_t wordCnt = 0;
-  ioctl(driver_FD, TR_S2MM_IOC_GET_WORDCNT, &wordCnt);
+  // Call flush on V2 datamover to ensure all data is written
+  if (final && mIsVersion2)
+    reset();
 
-  return wordCnt;
+  uint64_t wordCount = 0;
+  ioctl(driver_FD, TR_S2MM_IOC_GET_WORDCNT, &wordCount);
+
+  // V2 datamover only writes data in bursts
+  if (!final)
+      wordCount -= wordCount % mBurstLen;
+
+  return wordCount;
 }
 
 int IOCtlTraceS2MM::read(uint64_t /*offset*/, size_t size, void* /*data*/)
