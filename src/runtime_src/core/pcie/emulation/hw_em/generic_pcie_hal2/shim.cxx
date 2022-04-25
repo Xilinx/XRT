@@ -968,7 +968,8 @@ namespace xclhwemhal2 {
         if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
-        if (!xclemulation::file_exists(sim_file))
+        //if (!xclemulation::file_exists(sim_file))
+        if (!boost::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);

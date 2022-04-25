@@ -18,15 +18,18 @@
 
 #ifndef __XCLHOST_UNIXSOCKET__
 #define __XCLHOST_UNIXSOCKET__
+// Local/XRT headers
+#include "em_defines.h"
+#include "system_utils.h"
+#include "xclhal2.h"
+// c-style system headers
 #include <sys/socket.h>
-#include <sys/un.h>
 #include <sys/stat.h>
+#include <sys/un.h>
+// C++ headers
+#include <atomic>
 #include <boost/algorithm/string.hpp>
 #include <iostream>
-#include <atomic>
-#include "system_utils.h"
-#include "em_defines.h"
-#include "xclhal2.h"
 
 class unix_socket {
   private:

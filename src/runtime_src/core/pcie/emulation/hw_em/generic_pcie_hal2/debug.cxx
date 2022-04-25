@@ -32,21 +32,22 @@
  * under the License.
  */
 
+// Local/XRT headers
+#include "config.h"
 #include "shim.h"
 #include "xclbin.h"
 #include "xcl_perfmon_parameters.h"
-#include "config.h"
-
-#include <iostream>
+// C++ headers
+#include <algorithm>
+#include <cassert>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
-#include <cassert>
-#include <algorithm>
+#include <ctime>
+#include <iostream>
+#include <string>
 #include <thread>
 #include <vector>
-#include <ctime>
-#include <string>
-#include <chrono>
 
 #ifndef _WINDOWS
 // TODO: Windows build support
@@ -61,6 +62,13 @@
 
 namespace xclhwemhal2
 {
+  const std::vector<std::string> kSimProcessStatus = {"SIM-IPC's external process can be connected to instance",
+                                              "SystemC TLM functional mode",
+                                              "HLS_PRINT",
+                                              "Exiting xsim",
+                                              "FATAL_ERROR"};
+  const auto kMaxTimeToConnectSimulator = 300;  // in seconds
+
   void HwEmShim::readDebugIpLayout(const std::string debugFileName)
   {
     //
@@ -253,26 +261,25 @@ namespace xclhwemhal2
   }
 
   /*
-   * messagesThread()
+   * messagesThread(): This thread Prints several messages on to console with a conditional 
+   * sleep time.
+   * Task 1:
+   *  Calls parseLog() with a sleep time of 10,20,30...etc if elapsed time is falls < 300 seconds
+   * Task 2: 
+   *  Otherwise parseSimulateLog,fetchAndPrintMessages called continuously.
    */
   void HwEmShim::messagesThread()
   {
-
- //..........................................   
     if (xclemulation::config::getInstance()->isSystemDPAEnabled() == false)
     {
       return;
     }
-    static auto l_time = std::chrono::high_resolution_clock::now();
-    static auto start_time = std::chrono::high_resolution_clock::now();
+    auto l_time = std::chrono::high_resolution_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     unsigned int parseCount = 0;
-    std::vector<std::string> lMatchedStrings = {"SIM-IPC's external process can be connected to instance",
-                                      "SystemC TLM functional mode",
-                                      "HLS_PRINT",
-                                      "Exiting xsim",
-                                      "FATAL_ERROR"};
-    xclemulation::sParseLog lParseLog(std::string(getSimPath() + "/simulate.log"), xclemulation::eEmulationType::eHw_Emu, lMatchedStrings);
+
+    xclemulation::sParseLog lParseLog(std::string(getSimPath() + "/simulate.log"), xclemulation::eEmulationType::eHw_Emu, kSimProcessStatus);
     while (get_simulator_started())
     {
       sleep(10);
@@ -280,27 +287,29 @@ namespace xclhwemhal2
        break;
 
       auto l_time_end = std::chrono::high_resolution_clock::now();
-      if (std::chrono::duration_cast<std::chrono::seconds>(l_time_end - l_time).count() > 300) {
+      // My wait time > 300 seconds, Let's fetch the exact details behind late connection with Simulator.
+      if (std::chrono::duration_cast<std::chrono::seconds>(l_time_end - l_time).count() > kMaxTimeToConnectSimulator) {
        
         std::lock_guard<std::mutex> guard(mPrintMessagesLock);
         if (get_simulator_started() == false)
           return;
-        
+        // Possibility of deadlock detection?
         parseSimulateLog();
         fetchAndPrintMessages();
       }
 
       auto end_time = std::chrono::high_resolution_clock::now();
-      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= 300) {
+      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= kMaxTimeToConnectSimulator) {
 
         std::lock_guard<std::mutex> guard(mPrintMessagesLock);
 
         if (get_simulator_started() == false) 
           return;
-
-        lParseLog.parseLog();
+        // Any status message found in parse log file?
+        lParseLog.parseLog();         
         parseCount++;
         if (parseCount%5 == 0) {
+            // Sleep for 10, 20, 30 ...etc
             std::this_thread::sleep_for(std::chrono::seconds(10*(parseCount/5)));
         }
       }

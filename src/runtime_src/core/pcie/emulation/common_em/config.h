@@ -1,34 +1,34 @@
 #ifndef __EM_CONFIG_READER__
 #define __EM_CONFIG_READER__
 
-#include <cstring>
-#include <sstream>
-#include <list>
-#include <map>
-#include <tuple>
-#include <vector>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <atomic>
-
+//XRT/Local includes
+#include "em_defines.h"
+#include "xbar_sys_parameters.h"
+#include "xclbin.h"
+#include "xclfeatures.h"
+#include "xclhal2.h"
+//std includes
 #ifdef _MSC_VER
 #include <boost/config/compiler/visualc.hpp>
 #endif
+#include <atomic>
 #include <boost/algorithm/string.hpp>
-#include <boost/locale.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ini_parser.hpp>
-#include <boost/foreach.hpp>
 #include <boost/filesystem.hpp>
-
 #include "boost/filesystem/path.hpp"
-#include "xbar_sys_parameters.h"
-#include "xclhal2.h"
-#include "xclfeatures.h"
-#include "em_defines.h"
-#include "xclbin.h"
+#include <boost/foreach.hpp>
+#include <boost/locale.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <chrono>
+#include <cstring>
+#include <list>
+#include <map>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sstream>
+#include <tuple>
+#include <vector>
 
 namespace xclemulation{
 
@@ -90,13 +90,6 @@ namespace xclemulation{
   const int VIVADO_MIN_VERSION = 2000;
   const int VIVADO_MAX_VERSION = 2100;
 
-inline bool file_exists(const std::string& fnm)
-{
-  struct stat statBuf;
-  return stat(fnm.c_str(), &statBuf) == 0;
-}
-
-
 //sparse log utility
 enum class eEmulationType{
   eSw_Emu,
@@ -105,70 +98,77 @@ enum class eEmulationType{
 
 struct sParseLog
 {
-  std::ifstream file;
+  std::ifstream mFileStream;
   std::string mFileName;
   std::atomic_bool mFileExists;
   std::vector<std::string> mMatchedStrings;
   eEmulationType mEmuType;
 
-  sParseLog(const std::string &iDeviceLog, eEmulationType iType, std::vector<std::string> &iMatchedStrings)
-      : mFileName(iDeviceLog), mMatchedStrings(iMatchedStrings), mEmuType(iType)
+  sParseLog(const std::string& iDeviceLog, eEmulationType iType, const std::vector<std::string>& iMatchedStrings)
+      : mFileName(iDeviceLog)
+      , mFileExists{false}
+      , mMatchedStrings(iMatchedStrings)
+      , mEmuType(iType)
   {
 
-    mFileExists.store(false);
   }
 
-  ~sParseLog() = default;
-
-  void SearchString()
+  void check_simulator_status()
   {
     std::string line;
-    while (std::getline(file, line))
+    while (std::getline(mFileStream, line))
     {
       for (const auto &StringData : mMatchedStrings)
       {
         if (line.find(StringData) != std::string::npos)
         {
           if (eEmulationType::eSw_Emu == mEmuType)
-            printMsg();
+            print_user_msg();
           else if (eEmulationType::eHw_Emu == mEmuType)
           {
             if (!StringData.compare("Exiting xsim") || !StringData.compare("FATAL_ERROR"))
-              printMsg();
+              print_user_msg();
             else
-              std::cout << line << std::endl;
+              std::cout << line << '\n';
           }
         }
       }
     }
   }
-  void printMsg()
+
+  void print_user_msg()
   {
-    switch (mEmuType)
-    {
-    case eEmulationType::eSw_Emu:
-      std::cout << "Received request to end the application. Press Cntrl+C to exit the application." << std::endl;
-      break;
-    case eEmulationType::eHw_Emu:
-      std::cout << "SIMULATION EXITED" << std::endl;
-      break;
+    switch (mEmuType) {
+      case eEmulationType::eSw_Emu:
+        std::cout << "Received request to end the application. Press Cntrl+C to exit the application." << std::endl;
+        break;
+      case eEmulationType::eHw_Emu:
+        std::cout << "SIMULATION EXITED" << std::endl;
+        break;
     }
   }
+  /*********************************************************************************
+   *  The function traverse the log file (simulate.log) and prints an actionable 
+   *  user message if anyline of log file matches exactly with an user defined
+   *  vector of strings. The log file might be updated by a separate process. So ensuring
+   *  file existence before opening it would eliminate several exceptions.
+   *  
+   * */
   void parseLog()
   {
     if (not mFileExists.load())
     {
-      if (file_exists(mFileName))
+      if (boost::filesystem::exists(mFileName))
       {
-        file.open(mFileName);
-        if (file.is_open())
+        mFileStream.open(mFileName);
+        if (mFileStream.is_open())
           mFileExists.store(true);
       }
     }
 
     if (mFileExists.load())
     {
-      SearchString();
+      check_simulator_status();
     }
   }
 };
