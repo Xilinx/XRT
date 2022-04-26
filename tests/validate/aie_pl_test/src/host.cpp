@@ -40,7 +40,6 @@ int main(int argc, char* argv[])
   std::string test_path;
   std::string dev_id = "0";
   bool flag_s = false;
-  bool bHelp = false;
 
   // -- Retrieve and parse the subcommand options -----------------------------
 
@@ -49,7 +48,7 @@ int main(int argc, char* argv[])
     ("path,p", boost::program_options::value<decltype(test_path)>(&test_path)->required(), "Platform test path")
     ("device,d", boost::program_options::value<decltype(dev_id)>(&dev_id), "Device ID")
     ("supported,s", boost::program_options::bool_switch(&flag_s), "Supported")
-    ("help", boost::program_options::bool_switch(&bHelp), "Prints this help menu.")
+    ("help,h", "Prints this help menu.")
   ;
 
   po::positional_options_description positionals;
@@ -59,7 +58,7 @@ int main(int argc, char* argv[])
   try {
     po::store(po::command_line_parser(argc, argv).options(desc).positional(positionals).run(), vm);
     // Print out the help menu
-    if (vm.count("help")) {
+    if (vm.count("help") != 0) {
       std::cout << desc << "\n";
       return EXIT_SUCCESS;
     }
