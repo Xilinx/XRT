@@ -23,7 +23,9 @@ SectionBitstreamPartialPDI::init SectionBitstreamPartialPDI::initializer;
 
 SectionBitstreamPartialPDI::init::init() 
 { 
-  registerSectionCtor(BITSTREAM_PARTIAL_PDI, "BITSTREAM_PARTIAL_PDI", "", false, false, boost::factory<SectionBitstreamPartialPDI*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(BITSTREAM_PARTIAL_PDI, "BITSTREAM_PARTIAL_PDI", boost::factory<SectionBitstreamPartialPDI*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
 
 

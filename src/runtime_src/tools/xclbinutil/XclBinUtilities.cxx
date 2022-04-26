@@ -1100,7 +1100,7 @@ XclBinUtilities::createAIEPartition(XclBin & xclbin)
   std::ostringstream buffer;
   boost::property_tree::write_json(buffer, ptRoot);
   std::istringstream iSectionMetadata(buffer.str());
-  pSection->readPayload(iSectionMetadata, Section::FT_JSON);
+  pSection->readPayload(iSectionMetadata, Section::FormatType::JSON);
 
   // -- Now add the section to the collection and report our successful status
   XUtil::TRACE("Adding AIE_PARTITION section to xclbin");

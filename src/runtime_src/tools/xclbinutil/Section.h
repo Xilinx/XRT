@@ -34,6 +34,16 @@
 class Section {
  typedef std::function<Section*()> Section_factory;
 
+ public:
+  enum class FormatType{
+    UNDEFINED,
+    UNKNOWN,
+    RAW,
+    JSON,
+    HTML,
+    TXT
+  };
+
  protected:
   class SectionInfo {
     SectionInfo() = delete;
@@ -48,16 +58,8 @@ class Section {
     std::string nodeName;               // JSON node name
     bool supportsSubSections;           // Support subsections
     bool supportsIndexing;              // Supports indexing
-  };
-
- public:
-  enum FormatType{
-    FT_UNDEFINED,
-    FT_UNKNOWN,
-    FT_RAW,
-    FT_JSON,
-    FT_HTML,
-    FT_TXT
+    std::vector<FormatType> supportedAddFormats;  // Supported add format
+    std::vector<FormatType> supportedDumpFormats; // Supported dump formats
   };
 
  public:
@@ -66,13 +68,16 @@ class Section {
  private:
   static std::vector<std::unique_ptr<SectionInfo>> & getSectionTypes();
 
+ protected:
+  static void addSectionType(std::unique_ptr<SectionInfo> sectionInfo);
+
  public:
   static std::vector<std::string> getSupportedKinds();
   static Section* createSectionObjectOfKind(enum axlf_section_kind _eKind, const std::string _sIndexName = "");
   static void translateSectionKindStrToKind(const std::string & sKind, enum axlf_section_kind & eKind);
   static axlf_section_kind getKindOfJSON(const std::string & nodeName);
   static std::string getJSONOfKind(enum axlf_section_kind _eKind);
-  static enum FormatType getFormatType(const std::string _sFormatType);
+  static enum FormatType getFormatType(const std::string & sFormatType);
   static bool supportsSubSections(enum axlf_section_kind &_eKind);
   static bool supportsSectionIndex(enum axlf_section_kind &_eKind);
 
@@ -121,9 +126,6 @@ class Section {
 
  protected:
   Section();
-
- protected:
-  static void registerSectionCtor(enum axlf_section_kind _eKind, const std::string& _sKindStr, const std::string& _sHeaderJSONName, bool _bSupportsSubSections, bool _bSupportsIndexing, Section_factory _Section_factory);
 
  protected:
   enum axlf_section_kind m_eKind;

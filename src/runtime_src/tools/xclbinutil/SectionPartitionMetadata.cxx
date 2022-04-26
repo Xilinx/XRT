@@ -26,6 +26,18 @@
 
 namespace XUtil = XclBinUtilities;
 
+// Static Variables / Classes
+SectionPartitionMetadata::init SectionPartitionMetadata::initializer;
+
+SectionPartitionMetadata::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(PARTITION_METADATA, "PARTITION_METADATA", boost::factory<SectionPartitionMetadata *>()); 
+  sectionInfo->nodeName = "partition_metadata";
+
+  addSectionType(std::move(sectionInfo));
+}
+
+
 template <typename T>
 std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
                          boost::property_tree::ptree::key_type const& key)
@@ -36,13 +48,6 @@ std::vector<T> as_vector(boost::property_tree::ptree const& pt,
     return r;
 }
 
-// Static Variables / Classes
-SectionPartitionMetadata::init SectionPartitionMetadata::initializer;
-
-SectionPartitionMetadata::init::init() 
-{ 
-  registerSectionCtor(PARTITION_METADATA, "PARTITION_METADATA", "partition_metadata", false, false, boost::factory<SectionPartitionMetadata *>()); 
-}
 
 // Variable name to data size mapping table
 const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFormat = {
@@ -782,8 +787,8 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
 bool 
 SectionPartitionMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (( _eFormatType == FT_JSON ) ||
-      ( _eFormatType == FT_RAW )) {
+  if (( _eFormatType == FormatType::JSON ) ||
+      ( _eFormatType == FormatType::RAW )) {
     return true;
   }
   return false;
@@ -792,9 +797,9 @@ SectionPartitionMetadata::doesSupportAddFormatType(FormatType _eFormatType) cons
 bool 
 SectionPartitionMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML) ||
-        (_eFormatType == FT_RAW))
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML) ||
+        (_eFormatType == FormatType::RAW))
     {
       return true;
     }

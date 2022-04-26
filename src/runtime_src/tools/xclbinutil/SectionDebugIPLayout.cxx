@@ -28,7 +28,10 @@ SectionDebugIPLayout::init SectionDebugIPLayout::initializer;
 
 SectionDebugIPLayout::init::init() 
 { 
-  registerSectionCtor(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", "debug_ip_layout", false, false, boost::factory<SectionDebugIPLayout*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", boost::factory<SectionDebugIPLayout*>()); 
+  sectionInfo->nodeName = "debug_ip_layout";
+
+  addSectionType(std::move(sectionInfo));
 }
 
 const std::string
@@ -303,7 +306,7 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
 bool 
 SectionDebugIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_JSON) {
+  if (_eFormatType == FormatType::JSON) {
     return true;
   }
   return false;
@@ -312,9 +315,9 @@ SectionDebugIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionDebugIPLayout::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML) ||
-        (_eFormatType == FT_RAW))
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML) ||
+        (_eFormatType == FormatType::RAW))
     {
       return true;
     }
