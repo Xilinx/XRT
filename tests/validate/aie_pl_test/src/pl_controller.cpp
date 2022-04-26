@@ -51,7 +51,7 @@ void plController::enqueue_set_aie_iteration(const std::string& graphName, int n
 {
   auto tiles = get_tiles(graphName);
 
-  unsigned int metadata_offset = metadata.usedSize;
+  unsigned int metadata_offset = metadata.size();
 
   unsigned int itr_mem_addr = 0;
   unsigned int num_tile = 0;
@@ -66,44 +66,44 @@ void plController::enqueue_set_aie_iteration(const std::string& graphName, int n
     }
     std::cout << boost::format("enqueue_graph_run(): INFO: tile: %u, itr_mem_addr: %u\n") % (num_tile - 1) % tile.itr_mem_addr;
   }
-  unsigned int metadata_num = num_tile;
-  opcodeBuffer.add(SET_AIE_ITERATION);
-  opcodeBuffer.add(num_iter);
-  opcodeBuffer.add(itr_mem_addr);
+  uint32_t metadata_num = num_tile;
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SET_AIE_ITERATION));
+  opcodeBuffer.push_back(num_iter);
+  opcodeBuffer.push_back(itr_mem_addr);
   std::cout << boost::format("enqueue_set_aie_iteration: INFO: num_iter: %u, itr_mem_addr: %u\n") % num_iter % itr_mem_addr;
 }
 
 void plController::enqueue_enable_aie_cores()
 {
-  opcodeBuffer.add(ENABLE_AIE_CORES);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::ENABLE_AIE_CORES));
 }
 
 void plController::enqueue_disable_aie_cores()
 {
-  opcodeBuffer.add(DISABLE_AIE_CORES);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::DISABLE_AIE_CORES));
 }
 
 void plController::enqueue_sync(uint32_t pld)
 {
-  opcodeBuffer.add(SYNC);
-  opcodeBuffer.add(pld);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SYNC));
+  opcodeBuffer.push_back(pld);
 }
 
 void plController::enqueue_loop_begin(int trip_count)
 {
-  opcodeBuffer.add(LOOP_BEGIN);
-  opcodeBuffer.add(trip_count);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::LOOP_BEGIN));
+  opcodeBuffer.push_back(trip_count);
 }
 
 void plController::enqueue_loop_end()
 {
-  opcodeBuffer.add(LOOP_END);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::LOOP_END));
 }
 
 void plController::enqueue_set_and_enqueue_dma_bd(const std::string& portName, int idx, int dma_bd_len)
 {
   auto buffers = get_buffers(portName);
-  if (buffers.size() == 0)
+  if (buffers.empty())
     throw std::runtime_error("Cannot find port: '" + portName + "'");
 
   if (idx > buffers.size() - 1)
@@ -112,14 +112,14 @@ void plController::enqueue_set_and_enqueue_dma_bd(const std::string& portName, i
   auto buffer = buffers.at(idx);
 
   uint32_t dma_bd_value = 0x83FC0000 + dma_bd_len - 1;
-  opcodeBuffer.add(SET_DMA_BD);
-  opcodeBuffer.add(buffer.bd_num);
-  opcodeBuffer.add(dma_bd_value);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SET_DMA_BD));
+  opcodeBuffer.push_back(buffer.bd_num);
+  opcodeBuffer.push_back(dma_bd_value);
 
-  opcodeBuffer.add(ENQUEUE_DMA_BD);
-  opcodeBuffer.add(buffer.bd_num);
-  opcodeBuffer.add(buffer.ch_num);
-  opcodeBuffer.add(buffer.s2mm);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::ENQUEUE_DMA_BD));
+  opcodeBuffer.push_back(buffer.bd_num);
+  opcodeBuffer.push_back(buffer.ch_num);
+  opcodeBuffer.push_back(buffer.s2mm);
 } 
 void plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal)
 {
@@ -134,12 +134,12 @@ void plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal
   if (!rtp.is_input)
     throw std::runtime_error("Can't update RTP port '" + rtpPort + "' is not input");
 
-  opcodeBuffer.add(UPDATE_AIE_RTP);
-  opcodeBuffer.add(rtpVal);
-  opcodeBuffer.add(ping_pong ? rtp.ping_addr : rtp.pong_addr);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::UPDATE_AIE_RTP));
+  opcodeBuffer.push_back(rtpVal);
+  opcodeBuffer.push_back(ping_pong ? rtp.ping_addr : rtp.pong_addr);
 
-  opcodeBuffer.add(rtp.selector_addr);
-  opcodeBuffer.add(ping_pong);
+  opcodeBuffer.push_back(rtp.selector_addr);
+  opcodeBuffer.push_back(ping_pong);
 
   ping_pong = ~ping_pong;
   std::cout << boost::format("enqueue_graph_rtp_update(): INFO: ping_addr = %u"
@@ -149,43 +149,15 @@ void plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal
                              % rtp.ping_lock_id % rtp.pong_lock_id;
 }
 
-void plController::enqueue_sleep(unsigned int num_cycles)
+void plController::enqueue_sleep(uint32_t num_cycles)
 {
-  opcodeBuffer.add(SLEEP);
-  opcodeBuffer.add(num_cycles);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SLEEP));
+  opcodeBuffer.push_back(num_cycles);
 }
 
 void plController::enqueue_halt()
 {
-  opcodeBuffer.add(HALT);
-}
-
-// re-use this code from "src/runtime_src/core/common/api/xrt_xclbin.cpp"
-std::vector<char> plController::read_xclbin(const std::string& fnm)
-{
-  if (fnm.empty())
-    throw std::runtime_error("read_xclbin():ERROR:No xclbin specified");
-
-  // load the file
-  std::ifstream stream(fnm);
-  if (!stream)
-    throw std::runtime_error("read_xclbin():Failed to open file '" + fnm + "' for reading");
-
-  stream.seekg(0, stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0, stream.beg);
-
-  std::vector<char> header(size);
-  stream.read(header.data(), size);
-  return header;
-}
-
-// re-use this code from "core/edge/common/aie_parser.cpp"
-void plController::read_aie_metadata(const char* data, size_t size, ptree& aie_project)
-{
-  std::stringstream aie_stream;
-  aie_stream.write(data, size);
-  read_json(aie_stream, aie_project);
+  opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::HALT));
 }
 
 // re-use this code from "core/edge/common/aie_parser.cpp"
@@ -240,7 +212,8 @@ std::vector<tile_type> plController::get_tiles(const std::string& graph_name)
   std::vector<tile_type> tiles;
 
   for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
-    if (graph.second.get<std::string>("name") != graph_name) continue;
+    if (graph.second.get<std::string>("name") != graph_name)
+      continue;
 
     int count = 0;
     for (auto& node : graph.second.get_child("core_columns")) {
@@ -296,7 +269,8 @@ std::vector<buffer_type> plController::get_buffers(const std::string& port_name)
 
   for (auto& buffer : dma_meta.get_child("S2MM")) {
     for (auto& node : buffer.second.get_child("KernelPort")) {
-      if (node.second.get_value<std::string>() != port_name) continue;
+      if (node.second.get_value<std::string>() != port_name)
+	continue;
       int count = 0;
       for (auto& buff_info : buffer.second.get_child("BufferInfo")) {
         for (auto& field : buff_info.second.get_child("BD")) {
@@ -314,7 +288,8 @@ std::vector<buffer_type> plController::get_buffers(const std::string& port_name)
   }
   for (auto& buffer : dma_meta.get_child("MM2S")) {
     for (auto& node : buffer.second.get_child("KernelPort")) {
-      if (node.second.get_value<std::string>() != port_name) continue;
+      if (node.second.get_value<std::string>() != port_name)
+	continue;
       int count = 0;
       for (auto& buff_info : buffer.second.get_child("BufferInfo")) {
         for (auto& field : buff_info.second.get_child("BD")) {

@@ -70,7 +70,8 @@ double runTest(std::vector<xrt::run>& cmds, unsigned int total, arg_t &arg)
 
   for (auto& cmd : cmds) {
     cmd.start();
-    if (++issued == total)
+    issued++;
+    if (issued == total)
       break;
   }
 
@@ -83,7 +84,8 @@ double runTest(std::vector<xrt::run>& cmds, unsigned int total, arg_t &arg)
       issued++;
     }
 
-    if (++i == cmds.size())
+    i++;
+    if (i == cmds.size())
       i = 0;
   }
 

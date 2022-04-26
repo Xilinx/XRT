@@ -79,48 +79,6 @@ struct buffer_type {
   bool s2mm;
 };
 
-class dynBuffer {
- public:
-  uint32_t* data;
-  uint32_t size;
-  uint32_t usedSize;
-  dynBuffer()
-  {
-    data = nullptr;
-    size = 0;
-    usedSize = 0;
-  }
-  void add(uint32_t m_data)
-  {
-    if (size == 0) {
-      size = 128;
-      data = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * size));
-      memset(data, 0, sizeof(uint32_t) * size);
-    }
-    if (size == usedSize) {
-      size += 128;
-      data = static_cast<uint32_t*>(realloc(data, size * sizeof(uint32_t)));
-    }
-    data[usedSize] = m_data;
-    usedSize++;
-  }
-  void add(uint32_t* m_data, int blk_size)
-  {
-    if (size == 0) {
-      size = std::max(blk_size + (128 - blk_size % 128), 128);
-      data = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * size));
-      memset(data, 0, sizeof(uint32_t) * size);
-    }
-    if (size == usedSize) {
-      size += std::max(blk_size + (128 - blk_size % 128), 128);
-      data = static_cast<uint32_t*>(realloc(data, size * sizeof(uint32_t)));
-    }
-    memcpy(data + usedSize, m_data, sizeof(uint32_t) * blk_size);
-    usedSize += blk_size;
-  }
-  ~dynBuffer() { free(data); }
-};
-
 class plController {
  public:
   /* Constructor
@@ -153,30 +111,22 @@ class plController {
   /* return local metadata buffer size, user use allocate device buffer based on
    * this size.
    */
-  unsigned int get_metadata_size() const { return metadata.usedSize; };
+  unsigned int get_metadata_size() const { return metadata.size(); };
 
   /* return local microcode buffer size, user use allocate device buffer based
    * on this size.
    */
-  unsigned int get_microcode_size() const { return opcodeBuffer.usedSize; };
+  unsigned int get_microcode_size() const { return opcodeBuffer.size(); };
 
   /* copy local buffer to device buffer
    */
   void copy_to_device_buff(uint32_t* dst_op) const
   {
-    memcpy(dst_op, opcodeBuffer.data, opcodeBuffer.usedSize * sizeof(uint32_t));
+    memcpy(dst_op, opcodeBuffer.data(), opcodeBuffer.size() * sizeof(uint32_t));
   }
 
  private:
-  std::vector<char> read_xclbin(const std::string& fnm);
-
-  void init_axlf();
-
-  std::pair<const char*, size_t> get_aie_section();
-
-  void read_aie_metadata(const char* data, size_t size, ptree& aie_project);
-
-  int read_elf_to_mem(std::string file_name, dynBuffer* m_buff);
+  int read_elf_to_mem(std::string file_name, std::vector<uint32_t> m_buff);
   // re-use this code from "core/edge/common/aie_parser.cpp"
   void get_rtp();
 
@@ -186,8 +136,8 @@ class plController {
 
   std::vector<char> m_axlf;
   std::unordered_map<std::string, rtp_type> rtps;
-  dynBuffer opcodeBuffer;
-  dynBuffer metadata;
+  std::vector<uint32_t> opcodeBuffer;
+  std::vector<uint32_t> metadata;
   uint32_t outputSize;
 
   std::string dma_info_path;

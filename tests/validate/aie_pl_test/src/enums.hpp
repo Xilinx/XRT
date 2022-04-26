@@ -19,12 +19,7 @@
 namespace xf {
 namespace plctrl {
 namespace enums {
-enum {
-  SYNC_REQ = 0, 
-  SYNC_ACK = 1 
-};
-
-enum {
+enum class aie_cmd {
   ADF_GRAPH_RUN = 0,
   ADF_GRAPH_WAIT = 1,
   ADF_GRAPH_RTP_UPDATE = 2,
@@ -45,7 +40,7 @@ enum {
   UPDATE_AIE_RTP = 17
 };
 } // end of namespace enums
-using namespace enums;
+  using namespace enums;
 } // end of namespace plctrl
 } // end of pl
 #endif
