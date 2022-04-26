@@ -43,29 +43,17 @@ SectionSmartNic::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(SMARTNIC, "SMARTNIC", boost::factory<SectionSmartNic*>()); 
   sectionInfo->nodeName = "smartnic";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
 
-
-bool
-SectionSmartNic::doesSupportAddFormatType(FormatType _eFormatType) const {
-  if ((_eFormatType == FormatType::JSON) ||
-      (_eFormatType == FormatType::RAW))
-    return true;
-
-  return false;
-}
-
-bool
-SectionSmartNic::doesSupportDumpFormatType(FormatType _eFormatType) const {
-  if ((_eFormatType == FormatType::JSON) ||
-      (_eFormatType == FormatType::HTML) ||
-      (_eFormatType == FormatType::RAW))
-    return true;
-
-  return false;
-}
-
+// ----------------------------------------------------------------------------
 
 void
 SectionSmartNic::marshalToJSON(char* _pDataSection,

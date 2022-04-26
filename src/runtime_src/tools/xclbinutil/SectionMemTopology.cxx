@@ -31,8 +31,16 @@ SectionMemTopology::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(MEM_TOPOLOGY, "MEM_TOPOLOGY", boost::factory<SectionMemTopology*>()); 
   sectionInfo->nodeName = "mem_topology";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
+
+// ----------------------------------------------------------------------------
 
 const std::string
 SectionMemTopology::getMemTypeStr(enum MEM_TYPE _memType) const {
@@ -278,26 +286,4 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
     std::cout << errMsg << std::endl;
     // throw std::runtime_error(errMsg);
   }
-}
-
-bool 
-SectionMemTopology::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (_eFormatType == FormatType::JSON) {
-    return true;
-  }
-  return false;
-}
-
-bool 
-SectionMemTopology::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
 }

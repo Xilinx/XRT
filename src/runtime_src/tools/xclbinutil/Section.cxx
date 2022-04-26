@@ -181,6 +181,21 @@ Section::supportsSectionIndex(enum axlf_section_kind &eKind)
   return iter->get()->supportsIndexing;
 }
 
+bool 
+Section::supportsSubSectionName(enum axlf_section_kind eKind, const std::string & sSubSectionName)
+{
+  auto& sections = getSectionTypes();
+  auto sectionIter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+
+  if (sectionIter == sections.end())
+    return false;
+
+  auto subSections = sectionIter->get()->subSections;
+
+  return std::any_of(subSections.begin(), subSections.end(), [&](const auto &entry) { return boost::iequals(entry, sSubSectionName); });
+}
+
+
 // -------------------------------------------------------------------------
 
 const std::string & 
@@ -301,6 +316,7 @@ Section::writeXclBinSectionBuffer(std::ostream& _ostream) const
 void
 Section::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader) {
   // Some error checking
+  XUtil::TRACE("ReadXclBinBinary...");
   if ((enum axlf_section_kind)_sectionHeader.m_sectionKind != getSectionKind()) {
     auto errMsg = boost::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d") % getSectionKind() % _sectionHeader.m_sectionKind;
     throw std::runtime_error(errMsg.str());
@@ -579,27 +595,29 @@ Section::printHeader(std::ostream &_ostream) const
 }
 
 bool 
-Section::doesSupportAddFormatType(FormatType _eFormatType) const
+Section::doesSupportAddFormatType(enum axlf_section_kind eKind, FormatType eFormatType)
 {
-  if (_eFormatType == FormatType::RAW) {
-    return true;
-  }
-  return false;
+  auto & sections = getSectionTypes();
+
+  auto sectionIter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+  if (sectionIter == sections.end())
+    return false;
+
+  auto & addFormats = sectionIter->get()->supportedAddFormats;
+  return std::any_of(addFormats.begin(), addFormats.end(), [&](const auto &entry){return entry == eFormatType; });
 }
 
 bool 
-Section::doesSupportDumpFormatType(FormatType _eFormatType) const
+Section::doesSupportDumpFormatType(enum axlf_section_kind eKind, FormatType eFormatType)
 {
-  if (_eFormatType == FormatType::RAW) {
-    return true;
-  }
-  return false;
-}
+  auto & sections = getSectionTypes();
 
-bool 
-Section::supportsSubSection(const std::string &_sSubSectionName) const
-{
-  return false;
+  auto sectionIter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+  if (sectionIter == sections.end())
+    return false;
+
+  auto & addFormats = sectionIter->get()->supportedDumpFormats;
+  return std::any_of(addFormats.begin(), addFormats.end(), [&](const auto &entry){return entry == eFormatType; });
 }
 
 bool 
@@ -608,7 +626,7 @@ Section::getSubPayload(std::ostringstream &_buf,
                        enum Section::FormatType _eFormatType) const
 {
   // Make sure we support this subsection
-  if (supportsSubSection(_sSubSection) == false) {
+  if (supportsSubSectionName(m_eKind, _sSubSection) == false) {
     return false;
   }
 
@@ -643,7 +661,7 @@ Section::readSubPayload(std::istream& _istream,
                         enum Section::FormatType _eFormatType)
 {
   // Make sure we support this subsection
-  if (supportsSubSection(_sSubSection) == false) {
+  if (supportsSubSectionName(m_eKind, _sSubSection) == false) {
     return;
   }
 

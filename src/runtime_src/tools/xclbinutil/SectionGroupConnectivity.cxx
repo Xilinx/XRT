@@ -31,8 +31,16 @@ SectionGroupConnectivity::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(ASK_GROUP_CONNECTIVITY, "GROUP_CONNECTIVITY", boost::factory<SectionGroupConnectivity*>()); 
   sectionInfo->nodeName = "group_connectivity";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
+
+// ----------------------------------------------------------------------------
 
 void
 SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
@@ -154,24 +162,3 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
   }
 }
 
-bool 
-SectionGroupConnectivity::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (_eFormatType == FormatType::JSON) {
-    return true;
-  }
-  return false;
-}
-
-bool 
-SectionGroupConnectivity::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
-}

@@ -25,6 +25,10 @@ SectionOverlay::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(OVERLAY, "OVERLAY", boost::factory<SectionOverlay*>()); 
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
 

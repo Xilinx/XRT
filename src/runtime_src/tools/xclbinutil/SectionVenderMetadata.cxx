@@ -36,19 +36,19 @@ SectionVenderMetadata::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(VENDER_METADATA, "VENDER_METADATA", boost::factory<SectionVenderMetadata*>()); 
   sectionInfo->supportsSubSections = true;
+
+  // There is only one-subsection that is supported.  By default it is not named.
+  sectionInfo->subSections.push_back("");
+
   sectionInfo->supportsIndexing = true;
 
-  addSectionType(std::move(sectionInfo));
-}
-
-// -------------------------------------------------------------------------
-
-bool
-SectionVenderMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  // The Vender Metadata top-level section doesn't support any add syntax.
+  // Add format support empty (no support)
+  // The top-level section doesn't support any add syntax.
   // Must use sub-sections
-  return false;
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+
+  addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
@@ -61,14 +61,6 @@ SectionVenderMetadata::subSectionExists(const std::string& _sSubSectionName) con
 }
 
 // -------------------------------------------------------------------------
-
-bool
-SectionVenderMetadata::supportsSubSection(const std::string& _sSubSectionName) const
-{
-  // There is only one-subsection that is supported.  By default it is not named.
-  return _sSubSectionName.empty();
-}
-
 
 // -------------------------------------------------------------------------
 void
@@ -262,8 +254,7 @@ SectionVenderMetadata::writeObjImage(std::ostream& _oStream) const
 void
 SectionVenderMetadata::writeMetadata(std::ostream& _oStream) const
 {
-  XUtil::TRACE("VENDER_METADATA -METADATA");
-
+  XUtil::TRACE("VENDER_METADATA writeMetadata");
   // Overlay the structure
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(vender_metadata)) {
@@ -273,7 +264,6 @@ SectionVenderMetadata::writeMetadata(std::ostream& _oStream) const
   }
 
   vender_metadata* pHdr = reinterpret_cast<vender_metadata*>(m_pBuffer);
-
   XUtil::TRACE(boost::str(boost::format(
                               "Original: \n"
                               "  mpo_name (0x%lx): '%s'\n"

@@ -24,14 +24,15 @@
 class SectionSoftKernel : public Section {
  public:
   enum SubSection{
-    SS_UNKNOWN,
-    SS_OBJ,
-    SS_METADATA
+    UNKNOWN,
+    OBJ,
+    METADATA
   };
+ public:
+  static enum SubSection getSubSectionEnum(const std::string _sSubSectionName);
+  static const std::string & getSubSectionName(enum SubSection eSubSection);
 
  public:
-  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
-  bool supportsSubSection(const std::string &_sSubSectionName) const override;
   bool subSectionExists(const std::string &_sSubSectionName) const override;
   void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader) override;
 
@@ -40,7 +41,6 @@ class SectionSoftKernel : public Section {
   void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
 
  protected:
-   enum SubSection getSubSectionEnum(const std::string _sSubSectionName) const;
    void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, std::ostringstream &_buffer) const;
    void createDefaultImage(std::istream & _istream, std::ostringstream &_buffer) const;
    void writeObjImage(std::ostream& _oStream) const;

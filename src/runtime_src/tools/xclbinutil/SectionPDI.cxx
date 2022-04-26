@@ -25,6 +25,10 @@ SectionPDI::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(PDI, "PDI", boost::factory<SectionPDI*>()); 
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
 

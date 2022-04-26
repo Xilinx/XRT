@@ -31,9 +31,16 @@ SectionIPLayout::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(IP_LAYOUT, "IP_LAYOUT", boost::factory<SectionIPLayout*>()); 
   sectionInfo->nodeName = "ip_layout";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
 
+// ----------------------------------------------------------------------------
 
 const std::string
 SectionIPLayout::getIPTypeStr(enum IP_TYPE _ipType) const {
@@ -374,28 +381,6 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   }
 }
 
-
-bool 
-SectionIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (_eFormatType == FormatType::JSON) {
-    return true;
-  }
-  return false;
-}
-
-bool 
-SectionIPLayout::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-  if ((_eFormatType == FormatType::JSON) ||
-      (_eFormatType == FormatType::HTML) ||
-      (_eFormatType == FormatType::RAW))
-  {
-    return true;
-  }
-
-  return false;
-}
 
 template <typename T>
 std::vector<T> as_vector(boost::property_tree::ptree const& pt, 

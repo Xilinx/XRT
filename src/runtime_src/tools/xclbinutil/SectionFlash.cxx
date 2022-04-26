@@ -36,19 +36,59 @@ SectionFlash::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(ASK_FLASH, "FLASH", boost::factory<SectionFlash*>()); 
   sectionInfo->supportsSubSections = true;
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::DATA));
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::METADATA));
+
   sectionInfo->supportsIndexing = true;
+
+  // Add format support empty (no support)
+  // The top-level section doesn't support any add syntax.
+  // Must use sub-sections
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
 
   addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
-
-bool
-SectionFlash::doesSupportAddFormatType(FormatType _eFormatType) const {
-  // The FLASH top-level section doesn't support any add syntax.
-  // Must use sub-sections
-  return false;
+using SubSectionTableCollection = std::vector<std::pair<std::string, enum SectionFlash::SubSection>>;
+static const SubSectionTableCollection & 
+  getSubSectionTable() 
+{
+  static SubSectionTableCollection subSectionTable = {
+    std::make_pair("UNKNOWN", SectionFlash::SubSection::UNKNOWN),
+    std::make_pair("DATA", SectionFlash::SubSection::DATA),
+    std::make_pair("METADATA", SectionFlash::SubSection::METADATA)
+  };
+  return subSectionTable;
 }
+
+
+enum SectionFlash::SubSection 
+SectionFlash::getSubSectionEnum(const std::string sSubSectionName){
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
+
+  if (iter == subSectionTable.end())
+    return SubSection::UNKNOWN;
+
+  return iter->second; 
+}
+
+// -------------------------------------------------------------------------
+
+const std::string &
+SectionFlash::getSubSectionName(enum SectionFlash::SubSection eSubSection){
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
+
+  if (iter == subSectionTable.end())
+    return getSubSectionName(SubSection::UNKNOWN);
+
+  return iter->first; 
+}
+
+
 
 // -------------------------------------------------------------------------
 
@@ -67,7 +107,7 @@ SectionFlash::subSectionExists(const std::string& _sSubSectionName) const {
   // Extract the sub-section entry type
   const SubSection eSS = getSubSectionEnum(_sSubSectionName);
 
-  if (eSS == SS_METADATA) {
+  if (eSS == SubSection::METADATA) {
     // Extract the binary data as a JSON string
     std::ostringstream buffer;
     writeMetadata(buffer);
@@ -97,36 +137,6 @@ SectionFlash::subSectionExists(const std::string& _sSubSectionName) const {
 }
 
 // -------------------------------------------------------------------------
-
-bool
-SectionFlash::supportsSubSection(const std::string& _sSubSectionName) const {
-  if (getSubSectionEnum(_sSubSectionName) == SS_UNKNOWN) {
-    return false;
-  }
-
-  return true;
-}
-
-// -------------------------------------------------------------------------
-
-enum SectionFlash::SubSection
-SectionFlash::getSubSectionEnum(const std::string _sSubSectionName) const {
-
-  // Case-insensitive
-  std::string sSubSection = _sSubSectionName;
-  boost::to_upper(sSubSection);
-
-  // Convert string to the enumeration value
-  if (sSubSection == "DATA") {
-    return SS_DATA;
-  }
-
-  if (sSubSection == "METADATA") {
-    return SS_METADATA;
-  }
-
-  return SS_UNKNOWN;
-}
 
 static std::string
 getFlashTypeAsString(enum FLASH_TYPE _eFT) {
@@ -349,7 +359,7 @@ SectionFlash::readSubPayload(const char* _pOrigDataSection,
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_DATA:
+    case SubSection::DATA:
       // Some basic DRC checks
       if (_pOrigDataSection != nullptr) {
         std::string errMsg = "ERROR: Flash DATA image already exists.";
@@ -364,7 +374,7 @@ SectionFlash::readSubPayload(const char* _pOrigDataSection,
       createDefaultImage(_istream, _buffer);
       break;
 
-    case SS_METADATA: {
+    case SubSection::METADATA: {
         // Some basic DRC checks
         if (_pOrigDataSection == nullptr) {
           std::string errMsg = "ERROR: Missing FLASH data image.  Add the FLASH[]-DATA image prior to changing its metadata.";
@@ -380,7 +390,7 @@ SectionFlash::readSubPayload(const char* _pOrigDataSection,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::UNKNOWN:
     default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());
@@ -466,7 +476,7 @@ SectionFlash::writeSubPayload(const std::string& _sSubSectionName,
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_DATA:
+    case SubSection::DATA:
       // Some basic DRC checks
       if (_eFormatType != Section::FormatType::RAW) {
         std::string errMsg = "ERROR: FLASH[]-DATA only supports the RAW format.";
@@ -476,7 +486,7 @@ SectionFlash::writeSubPayload(const std::string& _sSubSectionName,
       writeObjImage(_oStream);
       break;
 
-    case SS_METADATA: {
+    case SubSection::METADATA: {
         if (_eFormatType != Section::FormatType::JSON) {
           std::string errMsg = "ERROR: FLASH[]-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
@@ -486,7 +496,7 @@ SectionFlash::writeSubPayload(const std::string& _sSubSectionName,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::UNKNOWN:
     default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());

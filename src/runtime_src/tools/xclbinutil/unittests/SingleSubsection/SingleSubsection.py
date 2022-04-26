@@ -45,7 +45,8 @@ def main():
   cmd = [xclbinutil, "--add-section", "VENDER_METADATA[" + inputVenderMetadata1Name + "]:RAW:" + inputVenderMetadata1, 
                      "--add-section", "VENDER_METADATA[" + inputVenderMetadata2Name + "]:RAW:" + inputVenderMetadata2, 
                      "--output", workingXCLBIN, 
-                     "--force"]
+                     "--force" 
+                     ]
   execCmd(step, cmd)
 
 

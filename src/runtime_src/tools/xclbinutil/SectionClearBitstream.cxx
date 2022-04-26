@@ -25,6 +25,10 @@ SectionClearBitstream::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", boost::factory<SectionClearBitstream*>()); 
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
 

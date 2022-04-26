@@ -30,8 +30,16 @@ SectionDNACertificate::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(DNA_CERTIFICATE, "DNA_CERTIFICATE", boost::factory<SectionDNACertificate*>()); 
 
+  // Add format support empty (no support)
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
+
+// ----------------------------------------------------------------------------
 
 #define signatureSizeBytes 512
 
@@ -122,16 +130,3 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
   _ptree.add_child("dna_certificate", ptDNACertificate);
 }
 
-
-bool 
-SectionDNACertificate::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
-}

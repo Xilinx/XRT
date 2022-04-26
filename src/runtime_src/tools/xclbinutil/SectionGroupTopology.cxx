@@ -31,8 +31,16 @@ SectionGroupTopology::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(ASK_GROUP_TOPOLOGY, "GROUP_TOPOLOGY", boost::factory<SectionGroupTopology*>()); 
   sectionInfo->nodeName = "group_topology";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
+
+// ----------------------------------------------------------------------------
 
 const std::string
 SectionGroupTopology::getMemTypeStr(enum MEM_TYPE _memType) const {
@@ -279,24 +287,4 @@ SectionGroupTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSect
   }
 }
 
-bool 
-SectionGroupTopology::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (_eFormatType == FormatType::JSON) {
-    return true;
-  }
-  return false;
-}
 
-bool 
-SectionGroupTopology::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
-}

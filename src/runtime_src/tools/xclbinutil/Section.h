@@ -52,14 +52,15 @@ class Section {
     SectionInfo(enum axlf_section_kind eKind, std::string sectionName, Section_factory sectionCtor);   
 
    public:
-    enum axlf_section_kind eKind;       // The section enumeration value
-    std::string name;                   // Name of the section 
-    Section_factory sectionCtor;        // Section constructor
-    std::string nodeName;               // JSON node name
-    bool supportsSubSections;           // Support subsections
-    bool supportsIndexing;              // Supports indexing
+    enum axlf_section_kind eKind;         // The section enumeration value
+    std::string name;                     // Name of the section 
+    Section_factory sectionCtor;          // Section constructor
+    std::string nodeName;                 // JSON node name
+    bool supportsSubSections;             // Support subsections
+    bool supportsIndexing;                // Supports indexing
     std::vector<FormatType> supportedAddFormats;  // Supported add format
     std::vector<FormatType> supportedDumpFormats; // Supported dump formats
+    std::vector<std::string> subSections; // Supported subsections
   };
 
  public:
@@ -80,12 +81,12 @@ class Section {
   static enum FormatType getFormatType(const std::string & sFormatType);
   static bool supportsSubSections(enum axlf_section_kind &_eKind);
   static bool supportsSectionIndex(enum axlf_section_kind &_eKind);
+  static bool doesSupportAddFormatType(enum axlf_section_kind eKind, FormatType eFormatType);
+  static bool doesSupportDumpFormatType(enum axlf_section_kind eKind, FormatType eFormatType);
+  static bool supportsSubSectionName(enum axlf_section_kind eKind, const std::string &_sSubSectionName);
 
  public:
-  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
-  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
-  virtual bool supportsSubSection(const std::string &_sSubSectionName) const;
-  virtual bool subSectionExists(const std::string &_sSubSectionName) const;
+  virtual bool subSectionExists(const std::string & sSubSectionName) const;
 
  public:
   enum axlf_section_kind getSectionKind() const;

@@ -30,8 +30,16 @@ SectionAIEPartition::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(AIE_PARTITION, "AIE_PARTITION", boost::factory<SectionAIEPartition*>());
   sectionInfo->nodeName = "aie_partition";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
+
+// ----------------------------------------------------------------------------
 
 void
 SectionAIEPartition::marshalToJSON(char* pDataSection,
@@ -150,16 +158,3 @@ SectionAIEPartition::marshalFromJSON(const boost::property_tree::ptree& ptSectio
   buf.write(sStringBlock.c_str(), sStringBlock.size());
 }
 
-bool
-SectionAIEPartition::doesSupportAddFormatType(FormatType eFormatType) const
-{
-  return (eFormatType == FormatType::JSON); 
-}
-
-bool
-SectionAIEPartition::doesSupportDumpFormatType(FormatType eFormatType) const
-{
-  return ((eFormatType == FormatType::JSON) ||
-          (eFormatType == FormatType::HTML) ||
-          (eFormatType == FormatType::RAW));
-}

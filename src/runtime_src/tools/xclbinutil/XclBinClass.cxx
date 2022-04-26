@@ -312,8 +312,9 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
       pt_sectionHeader.put("Size", (boost::format("0x%lx") % sectionHeader[index].m_sectionSize).str());
 
       boost::property_tree::ptree pt_Payload;
-      if (m_sections[index]->doesSupportAddFormatType(Section::FormatType::JSON) &&
-          m_sections[index]->doesSupportDumpFormatType(Section::FormatType::JSON)) {
+
+      if (Section::doesSupportAddFormatType(m_sections[index]->getSectionKind(), Section::FormatType::JSON) &&
+          Section::doesSupportDumpFormatType(m_sections[index]->getSectionKind(), Section::FormatType::JSON)) {
         m_sections[index]->getPayload(pt_Payload);
       }
 
@@ -931,7 +932,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
   bool bNewSection = false;
   if (pSection != nullptr) {
     // Check to see if the subsection is supported
-    if (pSection->supportsSubSection(sSubSection) == false) {
+    if (Section::supportsSubSectionName(pSection->getSectionKind(), sSubSection) == false) {
       auto errMsg = boost::format("ERROR: Section '%s' does not support the subsection: '%s'") % pSection->getSectionKindAsString() % sSubSection;
       throw std::runtime_error(boost::str(errMsg));
     }
@@ -947,7 +948,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
     bNewSection = true;
 
     // Check to see if the subsection is supported
-    if (pSection->supportsSubSection(sSubSection) == false) {
+    if (Section::supportsSubSectionName(pSection->getSectionKind(), sSubSection) == false) {
       auto errMsg = boost::format("ERROR: Section '%s' does not support the subsection: '%s'") % pSection->getSectionKindAsString() % sSubSection;
       throw std::runtime_error(boost::str(errMsg));
     }
@@ -1012,7 +1013,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
     std::unique_ptr<Section> pSection(Section::createSectionObjectOfKind(eKind));
 
     if (!_PSD.getSubSectionName().empty() ||       // A subsection name has been added
-        pSection.get()->supportsSubSection("")) {  // The section supports default empty subsection 
+        Section::supportsSubSectionName(pSection->getSectionKind(), "")) {  // The section supports default empty subsection 
       addSubSection(_PSD);
       return;
     }
@@ -1037,7 +1038,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
   pSection = Section::createSectionObjectOfKind(eKind);
 
   // Check to see if the given format type is supported
-  if (pSection->doesSupportAddFormatType(_PSD.getFormatType()) == false) {
+  if (Section::doesSupportAddFormatType(pSection->getSectionKind(), _PSD.getFormatType()) == false) {
     auto errMsg = boost::format("ERROR: The %s section does not support reading the %s file type.")
                                 % pSection->getSectionKindAsString()
                                 % _PSD.getFormatTypeAsStr();
@@ -1268,7 +1269,7 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
   }
 
   // Check to see if the subsection is supported
-  if (pSection->supportsSubSection(sSubSection) == false) {
+  if (Section::supportsSubSectionName(pSection->getSectionKind(), sSubSection) == false) {
     auto errMsg = boost::format("ERROR: Section '%s' does not support the subsection: '%s'") % pSection->getSectionKindAsString() % sSubSection;
     throw std::runtime_error(boost::str(errMsg));
   }
@@ -1320,7 +1321,7 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
     std::unique_ptr<Section> pSection(Section::createSectionObjectOfKind(eKind));
 
     if (!_PSD.getSubSectionName().empty() ||       // A subsection name has been added
-        pSection.get()->supportsSubSection("")) {  // The section supports default empty subsection 
+        Section::supportsSubSectionName(pSection.get()->getSectionKind(), "")) {  // The section supports default empty subsection 
       dumpSubSection(_PSD);
       return;
     }
@@ -1342,7 +1343,7 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
     throw std::runtime_error(errMsg);
   }
 
-  if (pSection->doesSupportDumpFormatType(_PSD.getFormatType()) == false) {
+  if (Section::doesSupportDumpFormatType(pSection->getSectionKind(),_PSD.getFormatType()) == false) {
     auto errMsg = boost::format("ERROR: The %s section does not support writing to a %s file type.")
                                 % pSection->getSectionKindAsString()
                                 % _PSD.getFormatTypeAsStr();

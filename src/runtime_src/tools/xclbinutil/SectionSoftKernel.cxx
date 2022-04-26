@@ -36,18 +36,56 @@ SectionSoftKernel::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(SOFT_KERNEL, "SOFT_KERNEL", boost::factory<SectionSoftKernel*>()); 
   sectionInfo->supportsSubSections = true;
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::OBJ));
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::METADATA));
+
   sectionInfo->supportsIndexing = true;
+
+  // Add format support empty (no support)
+  // The top-level section doesn't support any add syntax.
+  // Must use sub-sections
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
 
   addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
 
-bool
-SectionSoftKernel::doesSupportAddFormatType(FormatType _eFormatType) const {
-  // The Soft Kernel top-level section doesn't support any add syntax.
-  // Must use sub-sections
-  return false;
+using SubSectionTableCollection = std::vector<std::pair<std::string, enum SectionSoftKernel::SubSection>>;
+static const SubSectionTableCollection & 
+  getSubSectionTable() 
+{
+  static SubSectionTableCollection subSectionTable = {
+                 std::make_pair("UNKNOWN", SectionSoftKernel::SubSection::UNKNOWN),
+                 std::make_pair("OBJ", SectionSoftKernel::SubSection::OBJ),
+                 std::make_pair("METADATA", SectionSoftKernel::SubSection::METADATA)
+  };
+  return subSectionTable;
+}
+
+enum SectionSoftKernel::SubSection 
+SectionSoftKernel::getSubSectionEnum(const std::string sSubSectionName){
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
+
+  if (iter == subSectionTable.end())
+    return SubSection::UNKNOWN;
+
+  return iter->second; 
+}
+
+// -------------------------------------------------------------------------
+
+const std::string &
+SectionSoftKernel::getSubSectionName(enum SectionSoftKernel::SubSection eSubSection){
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
+
+  if (iter == subSectionTable.end()) 
+    return getSubSectionName(SubSection::UNKNOWN);
+
+  return iter->first; 
 }
 
 // -------------------------------------------------------------------------
@@ -68,7 +106,7 @@ SectionSoftKernel::subSectionExists(const std::string& _sSubSectionName) const {
   // Extract the sub-section entry type
   SubSection eSS = getSubSectionEnum(_sSubSectionName);
 
-  if (eSS == SS_METADATA) {
+  if (eSS == SubSection::METADATA) {
     // Extract the binary data as a JSON string
     std::ostringstream buffer;
     writeMetadata(buffer);
@@ -99,33 +137,6 @@ SectionSoftKernel::subSectionExists(const std::string& _sSubSectionName) const {
 
 // -------------------------------------------------------------------------
 
-bool
-SectionSoftKernel::supportsSubSection(const std::string& _sSubSectionName) const {
-  if (getSubSectionEnum(_sSubSectionName) == SS_UNKNOWN) {
-    return false;
-  }
-
-  return true;
-}
-
-// -------------------------------------------------------------------------
-
-enum SectionSoftKernel::SubSection
-SectionSoftKernel::getSubSectionEnum(const std::string _sSubSectionName) const {
-
-  // Case-insensitive
-  std::string sSubSection = _sSubSectionName;
-  boost::to_upper(sSubSection);
-
-  // Convert string to the enumeration value
-  if (sSubSection == "OBJ") {return SS_OBJ;}
-  if (sSubSection == "METADATA") {return SS_METADATA;}
-
-  return SS_UNKNOWN;
-}
-
-
-// -------------------------------------------------------------------------
 void
 SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
                                             unsigned int _origSectionSize,
@@ -334,7 +345,7 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_OBJ:
+    case SubSection::OBJ:
       // Some basic DRC checks
       if (_pOrigDataSection != nullptr) {
         std::string errMsg = "ERROR: Soft kernel object image already exists.";
@@ -349,7 +360,7 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
       createDefaultImage(_istream, _buffer);
       break;
 
-    case SS_METADATA: {
+    case SubSection::METADATA: {
         // Some basic DRC checks
         if (_pOrigDataSection == nullptr) {
           std::string errMsg = "ERROR: Missing soft kernel object image.  Add the SOFT_KERNEL-OBJ image prior to changing its metadata.";
@@ -365,7 +376,7 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::UNKNOWN:
     default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());
@@ -453,7 +464,7 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_OBJ:
+    case SubSection::OBJ:
       // Some basic DRC checks
       if (_eFormatType != Section::FormatType::RAW) {
         std::string errMsg = "ERROR: SOFT_KERNEL-OBJ only supports the RAW format.";
@@ -463,7 +474,7 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
       writeObjImage(_oStream);
       break;
 
-    case SS_METADATA: {
+    case SubSection::METADATA: {
         if (_eFormatType != Section::FormatType::JSON) {
           std::string errMsg = "ERROR: SOFT_KERNEL-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
@@ -473,7 +484,7 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::UNKNOWN:
     default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());

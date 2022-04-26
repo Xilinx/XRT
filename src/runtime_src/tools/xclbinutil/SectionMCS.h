@@ -23,7 +23,10 @@
 // --------------- C L A S S :   S e c t i o n M C S -------------------------
 class SectionMCS : public Section {
  public:
-  bool supportsSubSection(const std::string &_sSubSectionName) const override;
+  static enum MCS_TYPE getSubSectionEnum(const std::string &_sSubSectionName);
+  static const std::string & getSubSectionName(enum MCS_TYPE eSubSection);
+
+ public:
   bool subSectionExists(const std::string &_sSubSectionName) const override;
 
  protected:
@@ -31,10 +34,6 @@ class SectionMCS : public Section {
   void marshalToJSON(char* _buffer, unsigned int _pDataSegment, boost::property_tree::ptree& _ptree) const override;
   void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const override;
   void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
-
- protected:
-  enum MCS_TYPE getMCSTypeEnum(const std::string & _sSubSectionType) const;
-  const std::string getMCSTypeStr(enum MCS_TYPE _mcsType) const;
 
   typedef std::pair< enum MCS_TYPE, std::ostringstream *> mcsBufferPair;
   void extractBuffers(const char* _pDataSection, unsigned int _sectionSize, std::vector<mcsBufferPair> &_mcsBuffers) const;

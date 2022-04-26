@@ -36,17 +36,55 @@ SectionBMC::init::init()
 {
   auto sectionInfo = std::make_unique<SectionInfo>(BMC, "BMC", boost::factory<SectionBMC*>()); 
   sectionInfo->supportsSubSections = true;
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::FW));
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::METADATA));
+
+  // Add format support empty (no support)
+  // The top-level section doesn't support any add syntax.
+  // Must use sub-sections
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
 
   addSectionType(std::move(sectionInfo));
 }
+
+using SubSectionTableCollection = std::vector<std::pair<std::string, enum SectionBMC::SubSection>>;
+static const SubSectionTableCollection & 
+  getSubSectionTable() 
+{
+  static SubSectionTableCollection subSectionTable = {
+    std::make_pair("UNKNOWN", SectionBMC::SubSection::UNKNOWN),
+    std::make_pair("FW", SectionBMC::SubSection::FW),
+    std::make_pair("METADATA", SectionBMC::SubSection::METADATA)
+  };
+
+  return subSectionTable;
+}
+
+
+enum SectionBMC::SubSection 
+SectionBMC::getSubSectionEnum(const std::string sSubSectionName)
+{
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
+
+  if (iter == subSectionTable.end())
+    return SubSection::UNKNOWN;
+
+  return iter->second; 
+}
+
 // -------------------------------------------------------------------------
 
-bool 
-SectionBMC::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  // The BMC top-level section doesn't support any add syntax.  
-  // Must use sub-sections
-  return false;
+const std::string &
+SectionBMC::getSubSectionName(enum SectionBMC::SubSection eSubSection) {
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
+
+  if (iter == subSectionTable.end())
+    return getSubSectionName(SubSection::UNKNOWN);
+
+  return iter->first; 
 }
 
 // -------------------------------------------------------------------------
@@ -60,7 +98,7 @@ SectionBMC::subSectionExists(const std::string& _sSubSectionName) const {
 
   SubSection eSS = getSubSectionEnum(_sSubSectionName);
 
-  if (eSS == SS_METADATA) {
+  if (eSS == SubSection::METADATA) {
      std::ostringstream buffer;
      writeMetadata(buffer);
 
@@ -85,33 +123,6 @@ SectionBMC::subSectionExists(const std::string& _sSubSectionName) const {
 
 // -------------------------------------------------------------------------
 
-bool
-SectionBMC::supportsSubSection(const std::string& _sSubSectionName) const {
-
-  if (getSubSectionEnum(_sSubSectionName) == SS_UNKNOWN) {
-    return false;
-  }
-  
-  return true;
-}
-
-// -------------------------------------------------------------------------
-
-enum SectionBMC::SubSection 
-SectionBMC::getSubSectionEnum(const std::string _sSubSectionName) const {
-  // Case-insensitive
-  std::string sSubSection = _sSubSectionName;
-  boost::to_upper(sSubSection);
-
-  if (sSubSection == "FW") {return SS_FW;}
-  if (sSubSection == "METADATA") {return SS_METADATA;}
-
-  return SS_UNKNOWN;
-}
-
-
-
-// -------------------------------------------------------------------------
 void
 SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection, 
                                      unsigned int _origSectionSize,  
@@ -284,7 +295,7 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_FW:
+    case SubSection::FW:
       // Some basic DRC checks
       if (_pOrigDataSection != nullptr) {
         std::string errMsg = "ERROR: Firmware image already exists.";
@@ -299,7 +310,7 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
       createDefaultFWImage(_istream, _buffer);
       break;
 
-    case SS_METADATA:
+    case SubSection::METADATA:
       {
         // Some basic DRC checks
         if (_pOrigDataSection == nullptr) {
@@ -316,7 +327,7 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::UNKNOWN:
     default:
       {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
@@ -391,7 +402,7 @@ SectionBMC::writeSubPayload(const std::string & _sSubSectionName,
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_FW:
+    case SubSection::FW:
       // Some basic DRC checks
       if (_eFormatType != Section::FormatType::RAW) {
         std::string errMsg = "ERROR: BMC-FW only supports the RAW format.";
@@ -401,7 +412,7 @@ SectionBMC::writeSubPayload(const std::string & _sSubSectionName,
       writeFWImage(_oStream);
       break;
 
-    case SS_METADATA:
+    case SubSection::METADATA:
       {
         if (_eFormatType != Section::FormatType::JSON) {
           std::string errMsg = "ERROR: BMC-METADATA only supports the JSON format.";
@@ -412,7 +423,7 @@ SectionBMC::writeSubPayload(const std::string & _sSubSectionName,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::UNKNOWN:
     default:
       {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName.c_str() % getSectionKindAsString();

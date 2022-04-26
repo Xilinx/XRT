@@ -22,10 +22,6 @@
 
 // - C L A S S :   S e c t i o n C l o c k F r e q u e n c y T o p o l o g y -
 class SectionClockFrequencyTopology : public Section {
- public:
-  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
-  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
-
  protected:
   void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;

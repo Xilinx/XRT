@@ -31,8 +31,16 @@ SectionConnectivity::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(CONNECTIVITY, "CONNECTIVITY", boost::factory<SectionConnectivity*>());  
   sectionInfo->nodeName = "connectivity";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
+
+// ----------------------------------------------------------------------------
 
 void
 SectionConnectivity::marshalToJSON(char* _pDataSection,
@@ -156,24 +164,4 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
   }
 }
 
-bool 
-SectionConnectivity::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (_eFormatType == FormatType::JSON) {
-    return true;
-  }
-  return false;
-}
 
-bool 
-SectionConnectivity::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
-}

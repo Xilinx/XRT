@@ -23,8 +23,6 @@
 // --------- C L A S S :   S e c t i o n I P L a y o u t ---------------------
 class SectionIPLayout : public Section {
  public:
-  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
-  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
   void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo) override;
 
  protected:

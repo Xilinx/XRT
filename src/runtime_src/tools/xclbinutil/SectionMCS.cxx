@@ -36,8 +36,54 @@ SectionMCS::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(MCS, "MCS", boost::factory<SectionMCS*>());
   sectionInfo->supportsSubSections = true;
+  sectionInfo->subSections.push_back(getSubSectionName(MCS_PRIMARY));
+  sectionInfo->subSections.push_back(getSubSectionName(MCS_SECONDARY));
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
 
   addSectionType(std::move(sectionInfo));
+}
+
+// --------------------------------------------------------------------------
+
+using SubSectionTableCollection = std::vector<std::pair<std::string, enum MCS_TYPE>>;
+static const SubSectionTableCollection& 
+  getSubSectionTable() {
+  static SubSectionTableCollection subSectionTable = {
+    std::make_pair("UNKNOWN", MCS_UNKNOWN),
+    std::make_pair("PRIMARY", MCS_PRIMARY),
+    std::make_pair("SECONDARY", MCS_SECONDARY)
+  };
+
+  return subSectionTable;
+}
+
+
+enum MCS_TYPE 
+SectionMCS::getSubSectionEnum(const std::string & sSubSectionName) 
+{
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
+
+  if (iter == subSectionTable.end())
+    return MCS_UNKNOWN;
+
+  return iter->second; 
+}
+
+// -------------------------------------------------------------------------
+
+const std::string &
+SectionMCS::getSubSectionName(enum MCS_TYPE eSubSection)
+{
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
+
+  if (iter == subSectionTable.end())
+    return getSubSectionName(MCS_UNKNOWN);
+  return iter->first; 
 }
 
 // --------------------------------------------------------------------------
@@ -83,7 +129,7 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
     boost::property_tree::ptree pt_mcs_chunk;
     XUtil::TRACE(boost::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx")
                                % index
-                               % getMCSTypeStr((enum MCS_TYPE)pHdr->m_chunk[index].m_type)
+                               % getSubSectionName((enum MCS_TYPE)pHdr->m_chunk[index].m_type)
                                % pHdr->m_chunk[index].m_offset
                                % pHdr->m_chunk[index].m_size);
 
@@ -103,23 +149,12 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
       throw std::runtime_error(errMsg.str());
     }
 
-    pt_mcs_chunk.put("m_type", getMCSTypeStr((enum MCS_TYPE)pHdr->m_chunk[index].m_type).c_str());
+    pt_mcs_chunk.put("m_type", getSubSectionName((enum MCS_TYPE)pHdr->m_chunk[index].m_type).c_str());
     pt_mcs_chunk.put("m_offset", (boost::format("0x%ld") % pHdr->m_chunk[index].m_offset).str());
     pt_mcs_chunk.put("m_size", (boost::format("0x%ld") % pHdr->m_chunk[index].m_size).str());
   }
 
   // TODO: Add support to write out this data
-}
-
-// --------------------------------------------------------------------------
-
-bool
-SectionMCS::supportsSubSection(const std::string& _sSubSectionName) const {
-  if (getMCSTypeEnum(_sSubSectionName) != MCS_UNKNOWN) {
-    return true;
-  }
-
-  return false;
 }
 
 // --------------------------------------------------------------------------
@@ -131,7 +166,7 @@ SectionMCS::getSubPayload(char* _pDataSection,
                           const std::string& _sSubSectionName,
                           enum Section::FormatType _eFormatType) const {
   // Make sure we support the subsystem
-  if (supportsSubSection(_sSubSectionName) == false) {
+  if (Section::supportsSubSectionName(m_eKind, _sSubSectionName) == false) {
     auto errMsg = boost::format("ERROR: For section '%s' the subsystem '%s' is not supported.") % getSectionKindAsString() % _sSubSectionName;
     throw std::runtime_error(errMsg.str());
   }
@@ -149,7 +184,7 @@ SectionMCS::getSubPayload(char* _pDataSection,
     extractBuffers(m_pBuffer, m_bufferSize, mcsBuffers);
   }
 
-  enum MCS_TYPE eMCSType = getMCSTypeEnum(_sSubSectionName);
+  enum MCS_TYPE eMCSType = getSubSectionEnum(_sSubSectionName);
 
   for (auto mcsBuffer : mcsBuffers) {
     if (mcsBuffer.first == eMCSType) {
@@ -196,7 +231,7 @@ SectionMCS::extractBuffers(const char* _pDataSection,
   for (int index = 0; index < pHdr->m_count; ++index) {
     XUtil::TRACE(boost::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx")
                                % index
-                               % getMCSTypeStr((enum MCS_TYPE)pHdr->m_chunk[index].m_type)
+                               % getSubSectionName((enum MCS_TYPE)pHdr->m_chunk[index].m_type)
                                % pHdr->m_chunk[index].m_offset
                                % pHdr->m_chunk[index].m_size);
 
@@ -297,7 +332,7 @@ SectionMCS::readSubPayload(const char* _pOrigDataSection,
                            enum Section::FormatType _eFormatType,
                            std::ostringstream& _buffer) const {
   // Determine subsection name
-  enum MCS_TYPE eMCSType = getMCSTypeEnum(_sSubSection);
+  enum MCS_TYPE eMCSType = getSubSectionEnum(_sSubSection);
 
   if (eMCSType == MCS_UNKNOWN) {
     auto errMsg = boost::format("ERROR: Not support subsection '%s' for section '%s',") % _sSubSection % getSectionKindAsString();
@@ -363,7 +398,7 @@ SectionMCS::subSectionExists(const std::string& _sSubSectionName) const {
   }
 
   // Search for the given section
-  enum MCS_TYPE eMCSType = getMCSTypeEnum(_sSubSectionName);
+  enum MCS_TYPE eMCSType = getSubSectionEnum(_sSubSectionName);
   for (auto mcsBuffer : mcsBuffers) {
     if (mcsBuffer.first == eMCSType) {
       return true;
@@ -372,36 +407,6 @@ SectionMCS::subSectionExists(const std::string& _sSubSectionName) const {
 
   // If we get here, then the section of interest doesn't exist
   return false;
-}
-
-// --------------------------------------------------------------------------
-
-const std::string
-SectionMCS::getMCSTypeStr(enum MCS_TYPE _mcsType) const {
-  switch (_mcsType) {
-    case MCS_PRIMARY:
-      return "MCS_PRIMARY";
-    case MCS_SECONDARY:
-      return "MCS_SECONDARY";
-    case MCS_UNKNOWN:
-    default:
-      return (boost::format("UNKNOWN (%d)") % (unsigned int)_mcsType).str();
-  }
-}
-
-// --------------------------------------------------------------------------
-
-enum MCS_TYPE
-SectionMCS::getMCSTypeEnum(const std::string& _sSubSectionType) const {
-  // Case-insensitive
-  std::string sSubSection = _sSubSectionType;
-  boost::to_upper(sSubSection);
-
-  enum MCS_TYPE eMCSType = MCS_UNKNOWN;
-  if (sSubSection == "PRIMARY") {eMCSType = MCS_PRIMARY;} 
-  if (sSubSection == "SECONDARY") {eMCSType = MCS_SECONDARY;}
-
-  return eMCSType;
 }
 
 // --------------------------------------------------------------------------
@@ -423,7 +428,7 @@ SectionMCS::writeSubPayload(const std::string & _sSubSectionName,
   }
 
   // Search for the collection of interest
-  enum MCS_TYPE eMCSType = getMCSTypeEnum(_sSubSectionName);
+  enum MCS_TYPE eMCSType = getSubSectionEnum(_sSubSectionName);
   for (auto mcsBuffer : mcsBuffers) {
     if (mcsBuffer.first == eMCSType) {
       const std::string &buffer = mcsBuffer.second->str();

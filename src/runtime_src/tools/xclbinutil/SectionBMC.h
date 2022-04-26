@@ -23,15 +23,16 @@
 // --------------- C L A S S :   S e c t i o n B M C -------------------------
 class SectionBMC : public Section {
  public:
-  enum SubSection{
-    SS_UNKNOWN,
-    SS_FW,
-    SS_METADATA
+  enum class SubSection {
+    UNKNOWN,
+    FW,
+    METADATA
   };
+ public:
+  static enum SubSection getSubSectionEnum(const std::string _sSubSectionName);
+  static const std::string & getSubSectionName(enum SubSection eSubSection);
 
  public:
-  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
-  bool supportsSubSection(const std::string &_sSubSectionName) const override;
   bool subSectionExists(const std::string &_sSubSectionName) const override;
 
  protected:
@@ -39,7 +40,6 @@ class SectionBMC : public Section {
   void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
 
  protected:
-   enum SubSection getSubSectionEnum(const std::string _sSubSectionName) const;
    void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, std::ostringstream &_buffer) const;
    void createDefaultFWImage(std::istream & _istream, std::ostringstream &_buffer) const;
    void writeFWImage(std::ostream& _oStream) const;

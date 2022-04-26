@@ -34,9 +34,17 @@ SectionPartitionMetadata::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(PARTITION_METADATA, "PARTITION_METADATA", boost::factory<SectionPartitionMetadata *>()); 
   sectionInfo->nodeName = "partition_metadata";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+
   addSectionType(std::move(sectionInfo));
 }
 
+// ----------------------------------------------------------------------------
 
 template <typename T>
 std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
@@ -782,29 +790,6 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
   SchemaTransform_subNode( "partition_info", false /*required*/, 
                            SchemaTransformToPM_partition_info,
                            _ptOriginal, _ptTransformed);
-}
-
-bool 
-SectionPartitionMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (( _eFormatType == FormatType::JSON ) ||
-      ( _eFormatType == FormatType::RAW )) {
-    return true;
-  }
-  return false;
-}
-
-bool 
-SectionPartitionMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
 }
 
 void
