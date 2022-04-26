@@ -16,15 +16,15 @@
 
 #include "Section.h"
 
-#include <iostream>
+#include "XclBinUtilities.h"
+#include <algorithm>
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <iostream>
 #include <sstream>
 
-
-#include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
-
 
 // Disable windows compiler warnings
 #ifdef _WIN32
@@ -32,15 +32,25 @@ namespace XUtil = XclBinUtilities;
 #endif
 
 
+Section::SectionInfo::SectionInfo( enum axlf_section_kind eKind,
+                                   std::string sectionName,
+                                   Section_factory sectionCtor)
+  : eKind(eKind)
+  , name(std::move(sectionName))
+  , sectionCtor(sectionCtor)
+  , nodeName("")
+  , supportsSubSections(false)
+  , supportsIndexing(false)
+{
+  // Empty
+}
 
-// Static Variables Initialization
-std::map<enum axlf_section_kind, std::string> Section::m_mapIdToName;
-std::map<std::string, enum axlf_section_kind> Section::m_mapNameToId;
-std::map<enum axlf_section_kind, Section::Section_factory> Section::m_mapIdToCtor;
-std::map<std::string, enum axlf_section_kind> Section::m_mapJSONNameToKind;
-std::map<enum axlf_section_kind, std::string> Section::m_mapKindToJSONName;
-std::map<enum axlf_section_kind, bool> Section::m_mapIdToSubSectionSupport;
-std::map<enum axlf_section_kind, bool> Section::m_mapIdToSectionIndexSupport;
+// Singleton collection of sections 
+std::vector<std::unique_ptr<Section::SectionInfo>> &
+Section::getSectionTypes() {
+  static std::vector<std::unique_ptr<SectionInfo>> sections;
+  return sections;
+}
 
 Section::Section()
     : m_eKind(BITSTREAM)
@@ -72,87 +82,103 @@ Section::setName(const std::string &_sSectionName)
    m_name = _sSectionName;
 }
 
-void
-Section::getKinds(std::vector< std::string > & kinds) {
-  for (auto & item : m_mapNameToId) {
-    kinds.push_back(item.first);
-  }
+std::vector<std::string>
+Section::getSupportedKinds() 
+{
+  std::vector<std::string> supportedKinds;
+
+  for (auto & item : getSectionTypes()) 
+    supportedKinds.push_back(item->name);
+
+  return supportedKinds;
 }
 
+
 void
-Section::registerSectionCtor(enum axlf_section_kind _eKind,
-                             const std::string& _sKindStr,
-                             const std::string& _sHeaderJSONName,
-                             bool _bSupportsSubSections,
-                             bool _bSupportsIndexing,
-                             Section_factory _Section_factory) {
+Section::addSectionType(std::unique_ptr<SectionInfo> sectionInfo)
+{
   // Some error checking
-  if (_sKindStr.empty()) {
-    std::string errMsg = XUtil::format("ERROR: Kind (%d) pretty print name is missing.", _eKind);
-    throw std::runtime_error(errMsg);
+  if (sectionInfo->name.empty()) {
+    auto errMsg = boost::format("ERROR: CMD name for the section kind (%d) is empty. This needs to be defined.") % sectionInfo->eKind;
+    throw std::runtime_error(errMsg.str());
   }
 
-  if (m_mapIdToName.find(_eKind) != m_mapIdToName.end()) {
-    std::string errMsg = XUtil::format("ERROR: Attempting to register (%d : %s). Constructor enum of kind (%d) already registered.",
-                                       (unsigned int)_eKind, _sKindStr.c_str(), (unsigned int)_eKind);
-    throw std::runtime_error(errMsg);
+  // Get the collection of sections
+  auto & sections = getSectionTypes();
+
+  // Is the enumeration type already registered
+  if (std::any_of(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == sectionInfo->eKind; })) {
+    auto errMsg = boost::format("ERROR: Attempting to register (%d : %s). Constructor enum of kind (%d) already registered.")
+                                % sectionInfo->eKind % sectionInfo->name % sectionInfo->eKind;
+    throw std::runtime_error(errMsg.str());
   }
 
-  if (m_mapNameToId.find(_sKindStr) != m_mapNameToId.end()) {
-    std::string errMsg = XUtil::format("ERROR: Attempting to register: (%d : %s). Constructor name '%s' already registered to eKind (%d).",
-                                       (unsigned int)_eKind, _sKindStr.c_str(),
-                                       _sKindStr.c_str(), (unsigned int)m_mapNameToId[_sKindStr]);
-    throw std::runtime_error(errMsg);
-  }
-
-  if (!_sHeaderJSONName.empty()) {
-    if (m_mapJSONNameToKind.find(_sHeaderJSONName) != m_mapJSONNameToKind.end()) {
-      std::string errMsg = XUtil::format("ERROR: Attempting to register: (%d : %s). JSON mapping name '%s' already registered to eKind (%d).",
-                                         (unsigned int)_eKind, _sKindStr.c_str(),
-                                         _sHeaderJSONName.c_str(), (unsigned int)m_mapJSONNameToKind[_sHeaderJSONName]);
-      throw std::runtime_error(errMsg);
+  // Is the cmd name already registered
+  {
+    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->name == sectionInfo->name; });
+    if (iter != sections.end()) {
+      auto errMsg = boost::format("ERROR: Attempting to register: (%d : %s). Constructor name '%s' already registered to eKind (%d).")
+                                  % sectionInfo->eKind % sectionInfo->name
+                                  % sectionInfo->name % iter->get()->eKind;
+      throw std::runtime_error(errMsg.str());
     }
-    m_mapJSONNameToKind[_sHeaderJSONName] = _eKind;
   }
 
-  
-  // At this point we know we are good, lets initialize the arrays
-  // TODO: These mappings are no longer scalable. 
-  //       Please refactor to a cleaner solution at the next earliest possibility.
-  m_mapKindToJSONName[_eKind] = _sHeaderJSONName;
-  m_mapIdToName[_eKind] = _sKindStr;
-  m_mapNameToId[_sKindStr] = _eKind;
-  m_mapIdToCtor[_eKind] = _Section_factory;
-  m_mapIdToSubSectionSupport[_eKind] = _bSupportsSubSections;
-  m_mapIdToSectionIndexSupport[_eKind] = _bSupportsIndexing;
+  // Is the header name already registered
+  if (!sectionInfo->nodeName.empty()) {
+    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->nodeName == sectionInfo->nodeName; });
+    if (iter != sections.end()) {
+      auto errMsg = boost::format("ERROR: Attempting to register: (%d : %s). JSON mapping name '%s' already registered to eKind (%d).")
+                                    % sectionInfo->eKind % sectionInfo->name
+                                    % sectionInfo->nodeName % iter->get()->eKind;
+        throw std::runtime_error(errMsg.str());
+    }
+  }
+
+  sections.push_back(std::move(sectionInfo));
 }
 
 void
-Section::translateSectionKindStrToKind(const std::string & sKind, enum axlf_section_kind & eKind)
+Section::translateSectionKindStrToKind(const std::string & sectionName, 
+                                       enum axlf_section_kind & eKind)
 {
-  if (m_mapNameToId.find(sKind) == m_mapNameToId.end()) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", sKind.c_str());
-    throw std::runtime_error(errMsg);
+  auto & sections = getSectionTypes();
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->name == sectionName; });
+  if (iter == sections.end()) {
+    auto errMsg = boost::format("ERROR: Section '%s' isn't a valid section name.") % sectionName;
+    throw std::runtime_error(errMsg.str());
   }
-  eKind = m_mapNameToId[sKind];
+  eKind = iter->get()->eKind;
 }
 
 bool
-Section::supportsSubSections(enum axlf_section_kind &_eKind)
+Section::supportsSubSections(enum axlf_section_kind &eKind)
 {
-  if (m_mapIdToSubSectionSupport.find(_eKind) == m_mapIdToSubSectionSupport.end()) {
-    return false;   
+  auto &sections = getSectionTypes();
+
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+
+  if (iter == sections.end()) {
+    auto errMsg = boost::format("ERROR: The section kind value '%d' does not exist.") % eKind;
+    throw std::runtime_error(errMsg.str());
   }
-  return m_mapIdToSubSectionSupport[_eKind];
+
+  return iter->get()->supportsSubSections;
 }
 
 bool
-Section::supportsSectionIndex(enum axlf_section_kind &_eKind)
+Section::supportsSectionIndex(enum axlf_section_kind &eKind)
 {
-  if (m_mapIdToSectionIndexSupport.find(_eKind) == m_mapIdToSectionIndexSupport.end()) {
-    return false;   
+  auto & sections = getSectionTypes();
+
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+
+  if (iter == sections.end()) {
+    auto errMsg = boost::format("ERROR: The section kind value '%d' does not exist.") % eKind;
+    throw std::runtime_error(errMsg.str());
   }
-  return m_mapIdToSectionIndexSupport[_eKind];
+
+  return iter->get()->supportsIndexing;
 }
 
 // -------------------------------------------------------------------------
@@ -163,57 +189,72 @@ Section::getSectionIndexName() const
   return m_sIndexName;
 }
 
+static const std::vector<std::pair<std::string, Section::FormatType>> formatTypeTable = {
+                         std::make_pair("",    Section::FormatType::UNDEFINED),
+                         std::make_pair("RAW",  Section::FormatType::RAW),
+                         std::make_pair("JSON", Section::FormatType::JSON),
+                         std::make_pair("HTML", Section::FormatType::HTML),
+                         std::make_pair("TXT",  Section::FormatType::TXT)
+};
+
 enum Section::FormatType 
-Section::getFormatType(const std::string _sFormatType)
+Section::getFormatType(const std::string & sFormatType)
 {
-  std::string sFormatType = _sFormatType;
+  auto iter = std::find_if(formatTypeTable.begin(), formatTypeTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sFormatType); });
+  if (iter == formatTypeTable.end())
+    return FormatType::UNDEFINED;
 
-  boost::to_upper(sFormatType);
-
-  if (sFormatType == "") { return FT_UNDEFINED; }
-  if (sFormatType == "RAW") { return FT_RAW; }
-  if (sFormatType == "JSON") { return FT_JSON; }
-  if (sFormatType == "HTML") { return FT_HTML; }
-  if (sFormatType == "TXT") { return FT_TXT; }
-  
-  return FT_UNKNOWN;
+  return iter->second;
 }
 
-bool 
-Section::getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind) {
-  if (_sJSONStr.empty() ||
-     (m_mapJSONNameToKind.find(_sJSONStr) == m_mapJSONNameToKind.end()) ) {
-    return false;
+enum axlf_section_kind 
+Section::getKindOfJSON(const std::string &nodeName) {
+  auto & sections = getSectionTypes();
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->nodeName == nodeName; });
+
+  if (iter == sections.end()) {
+    auto errMsg = boost::format("ERROR: Node name '%s' does not map to a given section type.") % nodeName;
+    throw std::runtime_error(errMsg.str());
   }
 
-  _eKind = m_mapJSONNameToKind[_sJSONStr];
-  return true;
+  return iter->get()->eKind;
 }
 
 std::string
-Section::getJSONOfKind(enum axlf_section_kind _eKind) {
-  return m_mapKindToJSONName[_eKind];
+Section::getJSONOfKind(enum axlf_section_kind eKind) {
+  auto & sections = getSectionTypes();
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+
+  if (iter == sections.end()) {
+    auto errMsg = boost::format("ERROR: The given enum kind (%d) does not exist.") % eKind;
+    throw std::runtime_error(errMsg.str());
+  }
+
+  return iter->get()->nodeName;
 }
 
 Section*
-Section::createSectionObjectOfKind( enum axlf_section_kind _eKind, 
-                                    const std::string _sIndexName) {
+Section::createSectionObjectOfKind( enum axlf_section_kind eKind, 
+                                    const std::string sIndexName) {
   Section* pSection = nullptr;
 
-  if (m_mapIdToCtor.find(_eKind) == m_mapIdToCtor.end()) {
-    std::string errMsg = XUtil::format("ERROR: Section constructor for the archive section ID '%d' does not exist.  This error is most likely the result of examining a newer version of an archive image than this version of software supports.", (unsigned int)_eKind);
-    throw std::runtime_error(errMsg);
+  auto & sections = getSectionTypes();
+  auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+
+  if (iter == sections.end()) {
+    auto errMsg = boost::format("ERROR: Section constructor for the archive section ID '%d' does not exist.  This error is most likely the result of examining a newer version of an archive image than this version of software supports.") % eKind;
+    throw std::runtime_error(errMsg.str());
   }
 
-  pSection = m_mapIdToCtor[_eKind]();
-  pSection->m_eKind = _eKind;
-  pSection->m_sKindName = m_mapIdToName[_eKind];
-  pSection->m_sIndexName = _sIndexName;
+  pSection = iter->get()->sectionCtor();
+  pSection->m_eKind = eKind;
+  pSection->m_sKindName = iter->get()->name;
+  pSection->m_sIndexName = sIndexName;
 
-  XUtil::TRACE(XUtil::format("Created segment: %s (%d), index: '%s'",
-                             pSection->getSectionKindAsString().c_str(),
-                             (unsigned int)pSection->getSectionKind(),
-                             pSection->getSectionIndexName().c_str()));
+  XUtil::TRACE(boost::format("Created segment: %s (%d), index: '%s'")
+                             % pSection->getSectionKindAsString()
+                             % pSection->getSectionKind()
+                             % pSection->getSectionIndexName());
   return pSection;
 }
 
@@ -261,8 +302,8 @@ void
 Section::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader) {
   // Some error checking
   if ((enum axlf_section_kind)_sectionHeader.m_sectionKind != getSectionKind()) {
-    std::string errMsg = XUtil::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d", getSectionKind(), _sectionHeader.m_sectionKind);
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d") % getSectionKind() % _sectionHeader.m_sectionKind;
+    throw std::runtime_error(errMsg.str());
   }
 
   if (m_pBuffer != nullptr) {
@@ -290,9 +331,9 @@ Section::readXclBinBinary(std::istream& _istream, const axlf_section_header& _se
     throw std::runtime_error(errMsg);
   }
 
-  XUtil::TRACE(XUtil::format("Section: %s (%d)", getSectionKindAsString().c_str(), (unsigned int)getSectionKind()));
-  XUtil::TRACE(XUtil::format("  m_name: %s", m_name.c_str()));
-  XUtil::TRACE(XUtil::format("  m_size: %ld", m_bufferSize));
+  XUtil::TRACE(boost::format("Section: %s (%d)") % getSectionKindAsString() % (unsigned int) getSectionKind());
+  XUtil::TRACE(boost::format("  m_name: %s") % m_name);
+  XUtil::TRACE(boost::format("  m_size: %ld") % m_bufferSize);
 }
 
 
@@ -309,8 +350,8 @@ Section::readJSONSectionImage(const boost::property_tree::ptree& _ptSection)
   m_bufferSize = (unsigned int) buffer.tellp();
 
   if (m_bufferSize == 0) {
-    std::string errMsg = XUtil::format("WARNING: Section '%s' content is empty.  No data in the given JSON file.", getSectionKindAsString().c_str());
-    std::cout << errMsg.c_str() << std::endl;
+    auto errMsg = boost::format("WARNING: Section '%s' content is empty.  No data in the given JSON file.") % getSectionKindAsString();
+    std::cout << errMsg << std::endl;
     return;
   }
 
@@ -325,11 +366,12 @@ Section::readXclBinBinary(std::istream& _istream,
   enum axlf_section_kind eKind = (enum axlf_section_kind)_ptSection.get<unsigned int>("Kind");
 
   if (eKind != getSectionKind()) {
-    std::string errMsg = XUtil::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d", getSectionKind(), eKind);
+    auto errMsg = boost::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d") % (unsigned int) getSectionKind() % (unsigned int) eKind;
+    throw std::runtime_error(errMsg.str());
   }
 
   if (m_pBuffer != nullptr) {
-    std::string errMsg = "ERROR: Binary buffer already exists.";
+    auto errMsg = "ERROR: Binary buffer already exists.";
     throw std::runtime_error(errMsg);
   }
 
@@ -339,11 +381,11 @@ Section::readXclBinBinary(std::istream& _istream,
   boost::optional<const boost::property_tree::ptree&> ptPayload = _ptSection.get_child_optional("payload");
 
   if (ptPayload.is_initialized()) {
-    XUtil::TRACE(XUtil::format("Reading in the section '%s' (%d) via metadata.", getSectionKindAsString().c_str(), (unsigned int)getSectionKind()));
+    XUtil::TRACE(boost::format("Reading in the section '%s' (%d) via metadata.") % getSectionKindAsString() % (unsigned int) getSectionKind());
     readJSONSectionImage(ptPayload.get());
   } else {
     // We don't initialize the buffer via any metadata.  Just read in the section as is
-    XUtil::TRACE(XUtil::format("Reading in the section '%s' (%d) as a image.", getSectionKindAsString().c_str(), (unsigned int)getSectionKind()));
+    XUtil::TRACE(boost::format("Reading in the section '%s' (%d) as a image.") % getSectionKindAsString() % (unsigned int) getSectionKind());
 
     uint64_t imageSize = XUtil::stringToUInt64(_ptSection.get<std::string>("Size"));
     if (imageSize > UINT64_MAX) {
@@ -365,9 +407,9 @@ Section::readXclBinBinary(std::istream& _istream,
     }
   }
 
-  XUtil::TRACE(XUtil::format("Adding Section: %s (%d)", getSectionKindAsString().c_str(), (unsigned int)getSectionKind()));
-  XUtil::TRACE(XUtil::format("  m_name: %s", m_name.c_str()));
-  XUtil::TRACE(XUtil::format("  m_size: %ld", m_bufferSize));
+  XUtil::TRACE(boost::format("Adding Section: %s (%d)") % getSectionKindAsString() % (unsigned int) getSectionKind());
+  XUtil::TRACE(boost::format("  m_name: %s") % m_name);
+  XUtil::TRACE(boost::format("  m_size: %ld") % m_bufferSize);
 }
 
 
@@ -398,8 +440,8 @@ void
 Section::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
                          std::ostringstream& _buf) const {
   XUtil::TRACE_PrintTree("Payload", _ptSection);
-  std::string errMsg = XUtil::format("ERROR: Section '%s' (%d) missing payload parser.", getSectionKindAsString().c_str(), (unsigned int)getSectionKind());
-  throw std::runtime_error(errMsg);
+  auto errMsg = boost::format("ERROR: Section '%s' (%d) missing payload parser.") % getSectionKindAsString() % (unsigned int) getSectionKind();
+  throw std::runtime_error(errMsg.str());
 }
 
 void 
@@ -419,7 +461,7 @@ void
 Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
 {
     switch (_eFormatType) {
-    case FT_RAW:
+    case FormatType::RAW:
       {
         axlf_section_header sectionHeader = axlf_section_header {0};
         sectionHeader.m_sectionKind = getSectionKind();
@@ -432,7 +474,7 @@ Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
         readXclBinBinary(_istream, sectionHeader);
         break;
       }
-    case FT_JSON:
+    case FormatType::JSON:
       {
         // Bring the file into memory
         _istream.seekg(0, _istream.end);
@@ -465,16 +507,16 @@ Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
         }
         break;
       }
-    case FT_HTML:
+    case FormatType::HTML:
       // Do nothing
       break;
-    case FT_TXT:
+    case FormatType::TXT:
       // Do nothing
       break;
-    case FT_UNKNOWN:
+    case FormatType::UNKNOWN:
       // Do nothing
       break;
-    case FT_UNDEFINED:
+    case FormatType::UNDEFINED:
       // Do nothing
       break;
     }
@@ -484,12 +526,12 @@ void
 Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) const
 {
   switch (_eFormatType) {
-  case FT_RAW:
+  case FormatType::RAW:
     {
       writeXclBinSectionBuffer(_ostream);
       break;
     }
-  case FT_JSON:
+  case FormatType::JSON:
     {
       boost::property_tree::ptree pt;
       marshalToJSON(m_pBuffer, m_bufferSize, pt);
@@ -497,23 +539,23 @@ Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) cons
       boost::property_tree::write_json(_ostream, pt, true /*Pretty print*/);
       break;
     }
-  case FT_HTML:
+  case FormatType::HTML:
     {
       boost::property_tree::ptree pt;
       marshalToJSON(m_pBuffer, m_bufferSize, pt);
 
-      _ostream << XUtil::format("<!DOCTYPE html><html><body><h1>Section: %s (%d)</h1><pre>", getSectionKindAsString().c_str(), getSectionKind()) << std::endl;
+      _ostream << boost::format("<!DOCTYPE html><html><body><h1>Section: %s (%d)</h1><pre>\n") % getSectionKindAsString() % (unsigned int) getSectionKind();
       boost::property_tree::write_json(_ostream, pt, true /*Pretty print*/);
-      _ostream << "</pre></body></html>" << std::endl;
+      _ostream << "</pre></body></html>\n";
       break;
     }
-  case FT_UNKNOWN:
+  case FormatType::UNKNOWN:
     // Do nothing;
     break;
-  case FT_TXT:
+  case FormatType::TXT:
     // Do nothing;
     break;
-  case FT_UNDEFINED:
+  case FormatType::UNDEFINED:
     break;
   }
 }
@@ -531,15 +573,15 @@ void
 Section::printHeader(std::ostream &_ostream) const
 {
   _ostream << "Section Header\n";
-  _ostream << "  Type    : '" << getSectionKindAsString() << "'" << std::endl;
-  _ostream << "  Name    : '" << getName() << "'" << std::endl;
-  _ostream << "  Size    : '" << getSize() << "' bytes" << std::endl;
+  _ostream << boost::format("  Type    : '%s'\n") % getSectionKindAsString();
+  _ostream << boost::format("  Name    : '%s'\n") % getName();
+  _ostream << boost::format("  Size    : '%d'\n") % getSize();
 }
 
 bool 
 Section::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_RAW) {
+  if (_eFormatType == FormatType::RAW) {
     return true;
   }
   return false;
@@ -548,7 +590,7 @@ Section::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 Section::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_RAW) {
+  if (_eFormatType == FormatType::RAW) {
     return true;
   }
   return false;
@@ -571,7 +613,7 @@ Section::getSubPayload(std::ostringstream &_buf,
   }
 
   // Make sure we support the format type
-  if (_eFormatType != FT_RAW) {
+  if (_eFormatType != FormatType::RAW) {
     return false;
   }
 
@@ -619,8 +661,8 @@ Section::readSubPayload(std::istream& _istream,
   m_bufferSize = (unsigned int) buffer.tellp();
 
   if (m_bufferSize == 0) {
-    std::string errMsg = XUtil::format("WARNING: Section '%s' content is empty.", getSectionKindAsString().c_str());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("WARNING: Section '%s' content is empty.") % getSectionKindAsString();
+    throw std::runtime_error(errMsg.str());
   }
 
   m_pBuffer = new char[m_bufferSize];
@@ -635,8 +677,8 @@ Section::readSubPayload(const char* _pOrigDataSection,
                         enum Section::FormatType _eFormatType, 
                         std::ostringstream &_buffer) const
 {
-   std::string errMsg = XUtil::format("FATAL ERROR: Section '%s' virtual method readSubPayLoad() not defined.", getSectionKindAsString().c_str());
-   throw std::runtime_error(errMsg);
+   auto errMsg = boost::format("FATAL ERROR: Section '%s' virtual method readSubPayLoad() not defined.") % getSectionKindAsString();
+   throw std::runtime_error(errMsg.str());
 }
 
 bool 
@@ -650,7 +692,7 @@ Section::writeSubPayload(const std::string & _sSubSectionName,
                          FormatType _eFormatType, 
                          std::fstream&  _oStream) const
 {
-  std::string errMsg = XUtil::format("FATAL ERROR: Section '%s' virtual method writeSubPayload() not defined.", getSectionKindAsString().c_str());
-  throw std::runtime_error(errMsg);
+  auto errMsg = boost::format("FATAL ERROR: Section '%s' virtual method writeSubPayload() not defined.") % getSectionKindAsString();
+  throw std::runtime_error(errMsg.str());
 }
 

@@ -17,17 +17,11 @@
 #ifndef __SectionVenderMetadata_h_
 #define __SectionVenderMetadata_h_
 
-// #includes here - please keep these to a bare minimum!
+// ----------------------- I N C L U D E S -----------------------------------
 #include "Section.h"
-#include <boost/functional/factory.hpp>
 
-
-
+// -------- C L A S S :   S e c t i o n V e n d e r M e t a d a t a ----------
 class SectionVenderMetadata : public Section {
- public:
-  SectionVenderMetadata();
-  virtual ~SectionVenderMetadata();
-
  public:
   bool doesSupportAddFormatType(FormatType _eFormatType) const override;
   bool supportsSubSection(const std::string& _sSubSectionName) const override;
@@ -45,15 +39,11 @@ class SectionVenderMetadata : public Section {
   void writeMetadata(std::ostream& _oStream) const;
 
  private:
-  SectionVenderMetadata(const SectionVenderMetadata& obj) = delete;
-  SectionVenderMetadata& operator=(const SectionVenderMetadata& obj) = delete;
-
- private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(VENDER_METADATA, "VENDER_METADATA", "", true, true, boost::factory<SectionVenderMetadata*>()); }
-  } _initializer;
+    init();
+  } initializer; 
 };
 
 #endif

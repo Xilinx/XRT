@@ -18,21 +18,16 @@
 #define __DTCStringsBlock_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
-#include <string>
 #include <sstream>
+#include <string>
 
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
-// ------------------- C L A S S :   S e c t i o n ---------------------------
+// ----------- C L A S S :   D T C S t r i n g s B l o c k -------------------
 
 class DTCStringsBlock {
 
  public:
   DTCStringsBlock();
-  virtual ~DTCStringsBlock();
+  ~DTCStringsBlock();
 
  public:
   uint32_t addString(const std::string _dtcString);
@@ -40,11 +35,6 @@ class DTCStringsBlock {
 
   void parseDTCStringsBlock(const char* _pBuffer, const unsigned int _size);
   void marshalToDTC(std::ostream& _buf) const;
-
- private:
-  // Purposefully private and undefined ctors...
-  DTCStringsBlock(const DTCStringsBlock& obj);
-  DTCStringsBlock& operator=(const DTCStringsBlock& obj);
 
  private:
    std::ostringstream * m_pDTCStringBlock;

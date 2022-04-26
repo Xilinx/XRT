@@ -18,13 +18,9 @@
 #define __SectionAIEPartitions_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
 
 // -------- C L A S S :   S e c t i o n A I E P a r t i t i o n --------------
-
 class SectionAIEPartition : public Section {
  public:
   bool doesSupportAddFormatType(FormatType _eFormatType) const override;

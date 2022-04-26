@@ -18,36 +18,20 @@
 #define __SectionSystemMetadata_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
-
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
 
 // ------ C L A S S :   S e c t i o n C l e a r B i t s t r e a m ------------
-
 class SectionSystemMetadata : public Section {
- public:
-  SectionSystemMetadata();
-  virtual ~SectionSystemMetadata();
-
  protected:
-  virtual void marshalToJSON(char* _DataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
-  virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
-
- private:
-  // Purposefully private and undefined ctors...
-  SectionSystemMetadata(const SectionSystemMetadata& obj);
-  SectionSystemMetadata& operator=(const SectionSystemMetadata& obj);
+  void marshalToJSON(char* _DataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
+  void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(SYSTEM_METADATA, "SYSTEM_METADATA", "", false, false, boost::factory<SectionSystemMetadata*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

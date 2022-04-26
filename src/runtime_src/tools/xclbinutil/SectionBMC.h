@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2021, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,22 +18,11 @@
 #define __SectionBMC_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
-
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
 
 // --------------- C L A S S :   S e c t i o n B M C -------------------------
-
 class SectionBMC : public Section {
  public:
-  SectionBMC();
-  virtual ~SectionBMC();
-
-public:
   enum SubSection{
     SS_UNKNOWN,
     SS_FW,
@@ -41,32 +30,27 @@ public:
   };
 
  public:
-  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
-  virtual bool supportsSubSection(const std::string &_sSubSectionName) const;
-  virtual bool subSectionExists(const std::string &_sSubSectionName) const;
+  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
+  bool supportsSubSection(const std::string &_sSubSectionName) const override;
+  bool subSectionExists(const std::string &_sSubSectionName) const override;
 
  protected:
-  virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
+  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const override;
+  void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
 
  protected:
    enum SubSection getSubSectionEnum(const std::string _sSubSectionName) const;
    void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, std::ostringstream &_buffer) const;
    void createDefaultFWImage(std::istream & _istream, std::ostringstream &_buffer) const;
-   virtual void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const;
    void writeFWImage(std::ostream& _oStream) const;
    void writeMetadata(std::ostream& _oStream) const;
 
  private:
-  // Purposefully private and undefined ctors...
-  SectionBMC(const SectionBMC& obj);
-  SectionBMC& operator=(const SectionBMC& obj);
-
- private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(BMC, "BMC", "", true, false, boost::factory<SectionBMC*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

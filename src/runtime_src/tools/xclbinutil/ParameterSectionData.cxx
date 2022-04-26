@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,10 +18,12 @@
 #include "ParameterSectionData.h"
 
 #include "XclBinUtilities.h"
+#include <boost/format.hpp>
+
 namespace XUtil = XclBinUtilities;
 
 ParameterSectionData::ParameterSectionData(const std::string &_formattedString)
-  : m_formatType(Section::FT_UNKNOWN)
+  : m_formatType(Section::FormatType::UNKNOWN)
   , m_formatTypeStr("")
   , m_file("")
   , m_section("")
@@ -84,8 +86,8 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   }
 
   if (tokens.size() != 3) {
-    std::string errMsg = XUtil::format("Error: Expected format <section>:<format>:<file> when using adding a section.  Received: %s.", _formattedString.c_str());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("Error: Expected format <section>:<format>:<file> when using adding a section.  Received: %s.") % _formattedString;
+    throw std::runtime_error(errMsg.str());
   }
 
   m_file = tokens[2];
@@ -96,7 +98,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   // -- Retrieve the section --
   std::string sSection = tokens[0];
   
-  if ( sSection.empty() && (m_formatType != Section::FT_JSON)) {
+  if ( sSection.empty() && (m_formatType != Section::FormatType::JSON)) {
     std::string errMsg = "Error: Empty sections names are only permitted with JSON format files.";
     throw std::runtime_error(errMsg);
   }
@@ -123,8 +125,8 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
       
       // We need to have an end delimiter
       if (sectionIndexEndDelimiter != sSection.back()) {
-        std::string errMsg = XUtil::format("Error: Expected format <section>[<section_index>]:<format>:<file> when using a section index.  Received: %s.", _formattedString.c_str());
-        throw std::runtime_error(errMsg);
+        auto errMsg = boost::format("Error: Expected format <section>[<section_index>]:<format>:<file> when using a section index.  Received: %s.") % _formattedString;
+        throw std::runtime_error(errMsg.str());
       }
 
       // Extract the index name
@@ -138,8 +140,8 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
     }
 
     if (m_section.empty()) {
-      std::string errMsg = XUtil::format("Error: Missing section name. Expected format <section>[<section_index]:<format>:<file> when using a section index.  Received: %s.", _formattedString.c_str());
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("Error: Missing section name. Expected format <section>[<section_index]:<format>:<file> when using a section index.  Received: %s.") % _formattedString;
+      throw std::runtime_error(errMsg.str());
     }
 
     // Is the section name is valid
@@ -148,14 +150,14 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
 
     // Does the section support subsections
     if (!m_subSection.empty() && (Section::supportsSubSections(eKind) == false)) {
-      std::string errMsg = XUtil::format("Error: The section '%s' doesn't support subsections (e.g., '%s').", m_section.c_str(), m_subSection.c_str());
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("Error: The section '%s' doesn't support subsections (e.g., '%s').") % m_section % m_subSection;
+      throw std::runtime_error(errMsg.str());
     }
 
     // Does the section support section indexes
     if (!m_sectionIndex.empty() && (Section::supportsSectionIndex(eKind) == false)) {
-      std::string errMsg = XUtil::format("Error: The section '%s' doesn't support section indexes (e.g., '%s').", m_section.c_str(), m_sectionIndex.c_str());
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("Error: The section '%s' doesn't support section indexes (e.g., '%s').") % m_section % m_sectionIndex;
+      throw std::runtime_error(errMsg.str());
     }
   }
 }

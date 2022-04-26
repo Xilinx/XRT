@@ -28,6 +28,9 @@ if (DEFINED XRT_AIE_BUILD)
     aie/xrt_graph.cpp)
 endif()
 
+if (MCDM)
+  target_compile_definitions(core_common_api_library_objects PRIVATE MCDM)
+endif()
 
 target_include_directories(core_common_api_library_objects
   PRIVATE

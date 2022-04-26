@@ -43,16 +43,6 @@ typedef enum {
 
 namespace XclBinUtilities {
 
-template<typename ... Args>
-
-std::string format(const std::string& format, Args ... args) {
-  size_t size = 1 + snprintf(nullptr, 0, format.c_str(), args ...);
-  std::unique_ptr<char[]> buf(new char[size]);
-  snprintf(buf.get(), size, format.c_str(), args ...);
-
-  return std::string(buf.get(), buf.get() + size);
-}
-
 template <typename T>
 std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
                          boost::property_tree::ptree::key_type const& key)
@@ -112,7 +102,7 @@ public:
     }
 
     // Use are version of what() and not runtime_error's
-    virtual const char* what() const noexcept {
+    const char* what() const noexcept override{
       return m_msg.c_str();
     }
 
@@ -155,6 +145,7 @@ void setQuiet(bool _bQuiet);
 bool isQuiet();
 
 void QUIET(const std::string& _msg);
+void QUIET(const boost::format & fmt);
 void TRACE(const std::string& _msg, bool _endl = true);
 void TRACE(const boost::format & fmt, bool _endl = true);
 void TRACE_PrintTree(const std::string& _msg, const boost::property_tree::ptree& _pt);
