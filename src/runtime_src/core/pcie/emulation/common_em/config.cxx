@@ -598,6 +598,47 @@ namespace xclemulation{
     memMap["128TB"]  = xclemulation::MEMSIZE_128T;
     memMap["256TB"]  = xclemulation::MEMSIZE_256T;
 
+    memMap["1.00KB"]    = xclemulation::MEMSIZE_1K;
+    memMap["4.00KB"]    = xclemulation::MEMSIZE_4K;
+    memMap["8.00KB"]    = xclemulation::MEMSIZE_8K;
+    memMap["16.00KB"]   = xclemulation::MEMSIZE_16K;
+    memMap["32.00KB"]   = xclemulation::MEMSIZE_32K;
+    memMap["64.00KB"]   = xclemulation::MEMSIZE_64K;
+    memMap["128.00KB"]  = xclemulation::MEMSIZE_128K;
+    memMap["256.00KB"]  = xclemulation::MEMSIZE_256K;
+    memMap["512.00KB"]  = xclemulation::MEMSIZE_512K;
+
+    memMap["1.00MB"]    = xclemulation::MEMSIZE_1M;
+    memMap["2.00MB"]    = xclemulation::MEMSIZE_2M;
+    memMap["4.00MB"]    = xclemulation::MEMSIZE_4M;
+    memMap["8.00MB"]    = xclemulation::MEMSIZE_8M;
+    memMap["16.00MB"]   = xclemulation::MEMSIZE_16M;
+    memMap["32.00MB"]   = xclemulation::MEMSIZE_32M;
+    memMap["64.00MB"]   = xclemulation::MEMSIZE_64M;
+    memMap["128.00MB"]  = xclemulation::MEMSIZE_128M;
+    memMap["256.00MB"]  = xclemulation::MEMSIZE_256M;
+    memMap["512.00MB"]  = xclemulation::MEMSIZE_512M;
+
+    memMap["1.00GB"]    = xclemulation::MEMSIZE_1G;
+    memMap["2.00GB"]    = xclemulation::MEMSIZE_2G;
+    memMap["4.00GB"]    = xclemulation::MEMSIZE_4G;
+    memMap["8.00GB"]    = xclemulation::MEMSIZE_8G;
+    memMap["16.00GB"]   = xclemulation::MEMSIZE_16G;
+    memMap["32.00GB"]   = xclemulation::MEMSIZE_32G;
+    memMap["64.00GB"]   = xclemulation::MEMSIZE_64G;
+    memMap["128.00GB"]  = xclemulation::MEMSIZE_128G;
+    memMap["256.00GB"]  = xclemulation::MEMSIZE_256G;
+    memMap["512.00GB"]  = xclemulation::MEMSIZE_512G;
+
+    memMap["1.00TB"]    = xclemulation::MEMSIZE_1T;
+    memMap["2.00TB"]    = xclemulation::MEMSIZE_2T;
+    memMap["4.00TB"]    = xclemulation::MEMSIZE_4T;
+    memMap["8.00TB"]    = xclemulation::MEMSIZE_8T;
+    memMap["16.00TB"]   = xclemulation::MEMSIZE_16T;
+    memMap["32.00TB"]   = xclemulation::MEMSIZE_32T;
+    memMap["64.00TB"]   = xclemulation::MEMSIZE_64T;
+    memMap["128.00TB"]  = xclemulation::MEMSIZE_128T;
+    memMap["256.00TB"]  = xclemulation::MEMSIZE_256T;
   }
 
   static void populateDDRBankInfo(boost::property_tree::ptree const& ddrBankTree, xclDeviceInfo2& info, std::list<DDRBank>& DDRBankList, std::map<std::string, uint64_t>& memMap)
