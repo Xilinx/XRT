@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,21 @@
  * @brief This file contains the declarations for QDMA PCIe device
  *
  */
-#include <linux/version.h>
 #include <linux/types.h>
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
 #include <linux/pci.h>
 
 #include "libqdma_export.h"
-#include "qdma_qconf_mgr.h"
+#include "qdma_mbox.h"
+#include "qdma_access/qdma_access_errors.h"
 #ifdef DEBUGFS
 #include "qdma_debugfs.h"
+
+extern struct dentry *qdma_debugfs_root;
 #endif
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
-#define ioremap_nocache         ioremap
-#endif
+#define DEFAULT_USER_BAR			2
 
 /**
  * QDMA bars
@@ -48,6 +48,10 @@
  * QDMA config bar size - 64MB
  */
 #define QDMA_MAX_BAR_LEN_MAPPED		0x4000000
+/**
+ * Min QDMA config bar size - 16K
+ */
+#define QDMA_MIN_BAR_LEN_MAPPED		0x4000
 
 /*
  *module_param_array:
@@ -73,12 +77,15 @@
 #define VF_PF_IDENTIFIER_MASK	0xF
 #define VF_PF_IDENTIFIER_SHIFT  8
 
+#define QDMA_MAGIC_DEVICE		0xEEEEEEEEUL
+
 enum qdma_pf_devices {
 	PF_DEVICE_0 = 0,
 	PF_DEVICE_1,
 	PF_DEVICE_2,
 	PF_DEVICE_3
 };
+
 /**
  * number of bits to describe the DMA transfer descriptor
  */
@@ -117,6 +124,14 @@ struct xlnx_dma_dev;
 #define XDEV_NUM_IRQ_MAX	8
 
 /**
+ * Macro to indicate FLR flow is active
+ */
+#define XDEV_FLR_ACTIVE 1
+/**
+ * Macro to indicate FLR flow is not active
+ */
+#define XDEV_FLR_INACTIVE 0
+/**
  * interrupt call back function handlers
  */
 typedef irqreturn_t (*f_intr_handler)(int irq_index, int irq, void *dev_id);
@@ -132,11 +147,11 @@ struct intr_coal_conf {
 	u16 intr_rng_num_entries;
 	/**< interrupt ring base address */
 	dma_addr_t intr_ring_bus;
-	struct qdma_intr_ring *intr_ring_base;
+	union qdma_intr_ring *intr_ring_base;
 	/**< color value indicates the valid entry in the interrupt ring */
 	u8 color;
-	/**< interrupt ring consumer index */
-	unsigned int cidx;
+	/**< Interrupt cidx info to be written to INTR CIDX register */
+	struct qdma_intr_cidx_reg_info intr_cidx_info;
 };
 
 /**
@@ -146,8 +161,6 @@ struct intr_coal_conf {
 #define RTL2_VERSION                      1
 #define VIVADO_RELEASE_2018_3             0
 #define VIVADO_RELEASE_2018_2             1
-#define EVEREST_SOFT_IP                   0
-#define EVEREST_HARD_IP                   1
 
 /**
  * intr_type_list - interrupt types
@@ -156,10 +169,23 @@ enum intr_type_list {
 	INTR_TYPE_ERROR,	/**< error interrupt */
 	INTR_TYPE_USER,		/**< user interrupt */
 	INTR_TYPE_DATA,		/**< data interrupt */
+	INTR_TYPE_MBOX,		/**< mail box interrupt */
 	INTR_TYPE_MAX		/**< max interrupt */
 };
 
-#define QDMA_USER_INTR_NUM	8
+/**
+ * reset_state - Keep track of state during FLR
+ */
+enum reset_state_t {
+	RESET_STATE_IDLE,
+	RESET_STATE_RECV_PF_RESET_REQ,
+	RESET_STATE_PF_WAIT_FOR_BYES,
+	RESET_STATE_RECV_PF_RESET_DONE,
+	RESET_STATE_RECV_PF_OFFLINE_REQ,
+	RESET_STATE_PF_OFFLINE_REQ_PROCESSING,
+	RESET_STATE_INVALID,
+};
+
 
 /**
  * @struct - intr_vec_map_type
@@ -181,6 +207,8 @@ struct intr_info_t {
 	int intr_list_cnt;
 	/**< interrupt vector map */
 	struct intr_vec_map_type intr_vec_map;
+	/**< interrupt lock per vector */
+	spinlock_t vec_q_list;
 };
 
 /**
@@ -188,10 +216,25 @@ struct intr_info_t {
  * @brief	Xilinx DMA device details
  */
 struct xlnx_dma_dev {
+	unsigned long magic;	/* structure ID for sanity checks */
 	/**< Xilinx DMA device name */
 	char mod_name[QDMA_DEV_NAME_MAXLEN];
+	/**< Board id this device belongs to*/
+	u32 dma_device_index;
+	/**< Keeping track of last updated descq
+	 * Used only in case of auto and intr aggr driver mode
+	 * This is required because HW might prematurely raise interrupt
+	 * without actual new entries in the aggr ring and we need to
+	 * provide some update to the sw_cidx of aggr ring so that
+	 * interrupt gets triggered again
+	 */
+	struct qdma_descq *prev_descq;
 	/**< DMA device configuration */
 	struct qdma_dev_conf conf;
+	/**< csr info */
+	struct global_csr_conf csr_info;
+	/**< sorted c2h counter indexes */
+	uint8_t sorted_c2h_cntr_idx[QDMA_GLOBAL_CSR_ARRAY_SZ];
 	/**< DMA device list */
 	struct list_head list_head;
 	/**< DMA device lock to protects concurrent access */
@@ -200,20 +243,26 @@ struct xlnx_dma_dev {
 	spinlock_t hw_prg_lock;
 	/**< device flags */
 	unsigned int flags;
-	u8 flr_prsnt:1;
-	/**< flag to indicate the FLR present status */
-	u8 st_mode_en:1;
-	/**< flag to indicate the streaming mode enabled status */
-	u8 mm_mode_en:1;
-	/**< flag to indicate the memory mapped mode enabled status */
-	u8 stm_en:1;
-	/**< flag to indicate the presence of STM */
+	/**< device capabilities */
+	struct qdma_dev_attributes dev_cap;
 	/**< sriov info */
 	void *vf_info;
 	/**< number of virtual functions */
-	u8 vf_count;
+	u16 vf_count;
+	/**< number of online virtual functions */
+	u8 vf_count_online;
+#ifdef __QDMA_VF__
+	/** work queue */
+	struct workqueue_struct *workq;
+	/** work_struct to pass work to reset thread */
+	struct work_struct reset_work;
+#endif
+	/** Reset state */
+	enum reset_state_t reset_state;
+	/**< wait q for vf offline */
+	qdma_wait_queue wq;
 	/**< function id */
-	u16 func_id;
+	u8 func_id;
 #ifdef __QDMA_VF__
 	/**< parent function id, valid only for virtual function */
 	u8 func_id_parent;
@@ -221,14 +270,8 @@ struct xlnx_dma_dev {
 	/**< number of physical functions */
 	u8 pf_count;
 #endif
-	/**< max mm channels */
-	u8 mm_channel_max;
-	u8 stm_rev;
 	/**< PCIe config. bar */
 	void __iomem *regs;
-	/** PCIe Bar for STM config */
-	void __iomem *stm_regs;
-
 	/**< number of MSI-X interrupt vectors per device */
 	int num_vecs;
 	/**< msix_entry list for all MSIx vectors associated for device */
@@ -239,29 +282,53 @@ struct xlnx_dma_dev {
 	int dvec_start_idx;
 	/**< DMA private device to hold the qdma que details */
 	void *dev_priv;
-	/**< dsa configured max pkt size that STM can support */
-	u32 pipe_stm_max_pkt_size;
 	/**< list of interrupt coalescing configuration for each vector */
 	struct intr_coal_conf  *intr_coal_list;
 	/**< legacy interrupt vector */
 	int vector_legacy;
-
+	/**< error lock */
+	spinlock_t err_lock;
+	/**< flag to indicate the error minitor status */
+	u8 err_mon_cancel;
+	/**< error minitor work handler */
+	struct delayed_work err_mon;
 #ifdef DEBUGFS
 	/** debugfs device root */
 	struct dentry *dbgfs_dev_root;
 	/** debugfs queue root */
 	struct dentry *dbgfs_queues_root;
+	/** debugfs intr ring root */
+	struct dentry *dbgfs_intr_root;
 	/* lock for creating qidx directory */
 	spinlock_t qidx_lock;
 #endif
 
 	/** number of packets processed in pf */
+	struct qdma_mbox mbox;
 	unsigned long long total_mm_h2c_pkts;
 	unsigned long long total_mm_c2h_pkts;
 	unsigned long long total_st_h2c_pkts;
 	unsigned long long total_st_c2h_pkts;
+	/** max ping_pong latency */
+	u64 ping_pong_lat_max;
+	/** min ping_pong latency */
+	u64 ping_pong_lat_min;
+	/** avg ping_pong latency */
+	u64 ping_pong_lat_total;
 	/**< for upper layer calling function */
 	unsigned int dev_ulf_extra[0];
+
+	/* qdma_hw_access structure */
+	struct qdma_hw_access hw;
+	/* qdma_hw_version_info structure */
+	struct qdma_hw_version_info version_info;
+};
+
+struct qdma_vf_info {
+	unsigned short func_id;
+	unsigned short qbase;
+	unsigned short qmax;
+	unsigned short filler;
 };
 
 /*****************************************************************************/
@@ -307,10 +374,9 @@ static inline int xlnx_dma_device_flag_test_n_set(struct xlnx_dma_dev *xdev,
 	int rv = 0;
 
 	spin_lock_irqsave(&xdev->lock, flags);
-	if (xdev->flags & f) {
-		spin_unlock_irqrestore(&xdev->lock, flags);
+	if (xdev->flags & f)
 		rv = 1;
-	} else
+	else
 		xdev->flags |= f;
 	spin_unlock_irqrestore(&xdev->lock, flags);
 	return rv;
@@ -411,14 +477,15 @@ int xdev_list_dump(char *buf, int buflen);
 /**
  * xdev_check_hndl() - helper function to validate the device handle
  *
- * @param[in]	f:		device name
+ * @param[in]	fname:		device name
  * @param[in]	pdev:	pointer to struct pci_dev
  * @param[in]	hndl:	device handle
  *
  * @return	0: success
  * @return	EINVAL: on failure
  *****************************************************************************/
-int xdev_check_hndl(const char *f, struct pci_dev *pdev, unsigned long hndl);
+int xdev_check_hndl(const char *fname,
+			struct pci_dev *pdev, unsigned long hndl);
 
 
 #ifdef __QDMA_VF__
@@ -433,6 +500,18 @@ int xdev_check_hndl(const char *f, struct pci_dev *pdev, unsigned long hndl);
  * @return	-1: on failure
  *****************************************************************************/
 int xdev_sriov_vf_offline(struct xlnx_dma_dev *xdev, u8 func_id);
+
+/*****************************************************************************/
+/**
+ * xdev_sriov_vf_reset_offline() - API to set the virtual function to
+ *				offline mode in FLR flow initiated by PF
+ *
+ * @param[in]	xdev:		pointer to xdev
+ *
+ * @return	0: success
+ * @return	-1: on failure
+ *****************************************************************************/
+int xdev_sriov_vf_reset_offline(struct xlnx_dma_dev *xdev);
 
 /*****************************************************************************/
 /**
@@ -506,6 +585,8 @@ int xdev_sriov_vf_online(struct xlnx_dma_dev *xdev, u8 func_id);
  *****************************************************************************/
 int xdev_sriov_vf_fmap(struct xlnx_dma_dev *xdev, u8 func_id,
 			unsigned short qbase, unsigned short qmax);
+
+#define xdev_sriov_vf_reset_offline(xdev)
 #else
 /** dummy declaration for xdev_sriov_disable()
  *  When virtual function is not enabled
@@ -523,6 +604,7 @@ int xdev_sriov_vf_fmap(struct xlnx_dma_dev *xdev, u8 func_id,
  *  When virtual function is not enabled
  */
 #define xdev_sriov_vf_online(xdev, func_id)
+#define xdev_sriov_vf_reset_offline(xdev)
 #endif
 
 #endif /* XDMA_LIB_H */

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018-2021, Xilinx Inc
+ *  Copyright (C) 2018-2022, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -223,7 +223,6 @@ enum {
 #define	XOCL_IORES2		"iores2"
 #define	XOCL_IORES3		"iores3"
 #define	XOCL_XDMA		"dma.xdma"
-#define	XOCL_QDMA4		"dma.qdma4"
 #define	XOCL_QDMA		"dma.qdma"
 #define	XOCL_XVC_PUB		"xvc_pub"
 #define	XOCL_XVC_PRI		"xvc_pri"

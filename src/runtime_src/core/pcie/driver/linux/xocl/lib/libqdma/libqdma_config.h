@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -30,48 +30,19 @@
 #include <linux/types.h>
 
 /**
- * Maximum number of physical functions
+ * QDMA config bar number
  */
-#define QDMA_PF_MAX		4	/* 4 PFs */
-/**
- * Maximum number of virtual functions
- */
-#define QDMA_VF_MAX		252
+#define QDMA_CONFIG_BAR			0
 
 /**
- * Maximum number of queues per physical function
+ * STM bar
  */
-#define QDMA_Q_PER_PF_MAX	512
+#define STM_BAR		2
 
 /**
  * Maximum number of QDMA devices in the system
  */
 #define MAX_DMA_DEV 32
-
-/**
- * Total number of qdma qs
- */
-#define TOTAL_QDMA_QS	(QDMA_PF_MAX * QDMA_Q_PER_PF_MAX)
-
-/**
- * Maximum number of queues per virtual function
- */
-#define QDMA_Q_PER_VF_MAX	1
-
-/**
- * Total number of qs for all VF
- */
-#define TOTAL_VF_QS	0
-
-/**
- * Total number of qs for all PFs
- */
-#define TOTAL_PF_QS (TOTAL_QDMA_QS - TOTAL_VF_QS)
-
-/**
- * Maximum number of qs for PF
- */
-#define MAX_QS_PER_PF   (TOTAL_PF_QS/QDMA_PF_MAX)
 
 /**
  * Shift for bus 'B' in B:D:F
@@ -103,14 +74,6 @@
  */
 #define QDMA_INTR_COAL_RING_SIZE INTR_RING_SZ_4KB
 
-/** Maximum data vectors to be used for each function
- * TODO: Please note that for 2018.2 only one vector would be used
- * per pf and only one ring would be created for this vector
- * It is also assumed that all functions have the same number of data vectors
- * and currently different number of vectors per PF is not supported
- */
-#define QDMA_NUM_DATA_VEC_FOR_INTR_CXT  1
-
 /*****************************************************************************
  * Function Declaration
  *****************************************************************************/
@@ -121,12 +84,12 @@
  *
  * @param[in]	dev_hndl:	qdma device handle
  * @param[in]	qsets_max:	qmax configuration value
- *
+ * @param[in]	forced:		flag to force qmax change
  *
  * @return	QDMA_OPERATION_SUCCESSFUL on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
-int qdma_set_qmax(unsigned long dev_hndl, u32 qsets_max, bool forced);
+int qdma_set_qmax(unsigned long dev_hndl, int qbase, u32 qsets_max);
 
 /*****************************************************************************/
 /**
@@ -144,12 +107,12 @@ unsigned int qdma_get_qmax(unsigned long dev_hndl);
  * qdma_set_intr_rngsz() - Handler function to set the intr_ring_size value
  *
  * @param[in]	dev_hndl:	qdma device handle
- * @param[in]	rngsz:		interrupt aggregation ring size
+ * @param[in]	intr_rngsz:	interrupt aggregation ring size
  *
  * @return	QDMA_OPERATION_SUCCESSFUL on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
-int qdma_set_intr_rngsz(unsigned long dev_hndl, u32 rngsz);
+int qdma_set_intr_rngsz(unsigned long dev_hndl, u32 intr_rngsz);
 
 /*****************************************************************************/
 /**
@@ -159,11 +122,12 @@ int qdma_set_intr_rngsz(unsigned long dev_hndl, u32 rngsz);
  *
  *
  * @return	interrupt ring size on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 unsigned int qdma_get_intr_rngsz(unsigned long dev_hndl);
 
 #ifndef __QDMA_VF__
+#ifdef QDMA_CSR_REG_UPDATE
 /*****************************************************************************/
 /**
  * qdma_set_cmpl_status_acc() -  Handler function to set the cmpl_status_acc
@@ -173,9 +137,10 @@ unsigned int qdma_get_intr_rngsz(unsigned long dev_hndl);
  * @param[in]	cmpl_status_acc:	Writeback Accumulation value
  *
  * @return	QDMA_OPERATION_SUCCESSFUL on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 int qdma_set_cmpl_status_acc(unsigned long dev_hndl, u32 cmpl_status_acc);
+#endif
 
 /*****************************************************************************/
 /**
@@ -187,10 +152,11 @@ int qdma_set_cmpl_status_acc(unsigned long dev_hndl, u32 cmpl_status_acc);
  * Handler function to get the writeback accumulation value
  *
  * @return	cmpl_status_acc on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
-unsigned int qdma_get_cmpl_status_acc(unsigned long dev_hndl);
+unsigned int qdma_get_wb_intvl(unsigned long dev_hndl);
 
+#ifdef QDMA_CSR_REG_UPDATE
 /*****************************************************************************/
 /**
  * qdma_set_buf_sz() - Handler function to set the buf_sz value
@@ -199,9 +165,10 @@ unsigned int qdma_get_cmpl_status_acc(unsigned long dev_hndl);
  * @param[in]	buf_sz:		buf sizes
  *
  * @return	QDMA_OPERATION_SUCCESSFUL on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 int qdma_set_buf_sz(unsigned long dev_hndl, u32 *buf_sz);
+#endif
 
 /*****************************************************************************/
 /**
@@ -211,10 +178,11 @@ int qdma_set_buf_sz(unsigned long dev_hndl, u32 *buf_sz);
  * @param[in]	buf_sz:		buf sizes
  *
  * @return	buf sizes on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 unsigned int qdma_get_buf_sz(unsigned long dev_hndl, u32 *buf_sz);
 
+#ifdef QDMA_CSR_REG_UPDATE
 /*****************************************************************************/
 /**
  * qdma_set_glbl_rng_sz() - Handler function to set the glbl_rng_sz value
@@ -223,9 +191,10 @@ unsigned int qdma_get_buf_sz(unsigned long dev_hndl, u32 *buf_sz);
  * @param[in]	glbl_rng_sz:		glbl_rng_sizes
  *
  * @return	QDMA_OPERATION_SUCCESSFUL on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 int qdma_set_glbl_rng_sz(unsigned long dev_hndl, u32 *glbl_rng_sz);
+#endif
 
 /*****************************************************************************/
 /**
@@ -235,10 +204,11 @@ int qdma_set_glbl_rng_sz(unsigned long dev_hndl, u32 *glbl_rng_sz);
  * @param[in]	glbl_rng_sz:		glbl_rng sizes
  *
  * @return	glbl_rng_sz on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 unsigned int qdma_get_glbl_rng_sz(unsigned long dev_hndl, u32 *glbl_rng_sz);
 
+#ifdef QDMA_CSR_REG_UPDATE
 /*****************************************************************************/
 /**
  * qdma_set_timer_cnt() - Handler function to set the buf_sz value
@@ -247,9 +217,10 @@ unsigned int qdma_get_glbl_rng_sz(unsigned long dev_hndl, u32 *glbl_rng_sz);
  * @param[in]	tmr_cnt:		Array of 16 timer count values
  *
  * @return	QDMA_OPERATION_SUCCESSFUL on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 int qdma_set_timer_cnt(unsigned long dev_hndl, u32 *tmr_cnt);
+#endif
 
 /*****************************************************************************/
 /**
@@ -259,10 +230,11 @@ int qdma_set_timer_cnt(unsigned long dev_hndl, u32 *tmr_cnt);
  *
  *
  * @return	timer_cnt  on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 unsigned int qdma_get_timer_cnt(unsigned long dev_hndl, u32 *tmr_cnt);
 
+#ifdef QDMA_CSR_REG_UPDATE
 /*****************************************************************************/
 /**
  * qdma_set_cnt_thresh() - Handler function to set the counter threshold value
@@ -271,9 +243,10 @@ unsigned int qdma_get_timer_cnt(unsigned long dev_hndl, u32 *tmr_cnt);
  * @param[in]	cnt_th:		Array of 16 timer count values
  *
  * @return	QDMA_OPERATION_SUCCESSFUL on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 int qdma_set_cnt_thresh(unsigned long dev_hndl, unsigned int *cnt_th);
+#endif
 
 /*****************************************************************************/
 /**
@@ -283,7 +256,7 @@ int qdma_set_cnt_thresh(unsigned long dev_hndl, unsigned int *cnt_th);
  *
  *
  * @return	counter threshold values  on success
- * @return	-1 on failure
+ * @return	<0 on failure
  *****************************************************************************/
 unsigned int qdma_get_cnt_thresh(unsigned long dev_hndl, u32 *cnt_th);
 #endif

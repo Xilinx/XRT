@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,13 @@ struct qdma_descq;
 /*****************************************************************************/
 /**
  * qdma_threads_create() - create qdma threads
- * This functions creates two threads for each cpu in the system
- * and assigns the thread handlers
+ * This functions creates two threads for each cpu in the system or number of
+ * number of thread requested by param num_threads and assigns the
+ * thread handlers
  * 1: queue processing thread
  * 2: queue completion handler thread
+ *
+ * @param[in] num_threads - number of threads to be created
  *
  * @return	0: success
  * @return	<0: failure

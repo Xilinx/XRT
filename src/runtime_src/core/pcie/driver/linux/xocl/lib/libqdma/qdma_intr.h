@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -33,10 +33,54 @@
 struct xlnx_dma_dev;
 
 /**
- * @struct - qdma_intr_ring
+ * @struct - qdma_intr_ring_cpm
+ * @brief	Interrupt ring entry definition for 2018.2 CPM release
+ */
+struct qdma_intr_ring_cpm {
+	/** producer index. This is from Interrupt source.
+	 *  Cumulative pointer of total interrupt Aggregation
+	 *  Ring entry written
+	 */
+	__be64 pidx:16;
+	/** consumer index. This is from Interrupt source.
+	 *  Cumulative consumed pointer
+	 */
+	__be64 cidx:16;
+	/** source color. This is from Interrupt source.
+	 *  This bit inverts every time pidx wraps around
+	 *  and this field gets copied to color field of descriptor.
+	 */
+	__be64 s_color:1;
+	/** This is from Interrupt source.
+	 * Interrupt state, 0: CMPT_INT_ISR; 1: CMPT_INT_TRIG; 2: CMPT_INT_ARMED
+	 */
+	__be64 intr_satus:2;
+	/** error. This is from interrupt source
+	 *  {C2h_err[1:0], h2c_err[1:0]}
+	 */
+	__be64 error:4;
+	/**  11 reserved bits*/
+	__be64 rsvd:11;
+	/**  Is the interrupt raised due to error ?
+	 *   1: error interrupt; 0: non-error interrupt
+	 */
+	__be64 error_int:1;
+	/**  interrupt type, 0: H2C; 1: C2H*/
+	__be64 intr_type:1;
+	/**  This is from Interrupt source. Queue ID*/
+	__be64 qid:11;
+	/**  The color bit of the Interrupt Aggregation Ring.
+	 *   This bit inverts every time pidx wraps around on the
+	 *   Interrupt Aggregation Ring.
+	 */
+	__be64 coal_color:1;
+};
+
+/**
+ * @struct - qdma_intr_ring_generic
  * @brief	Interrupt ring entry definition
  */
-struct qdma_intr_ring {
+struct qdma_intr_ring_generic {
 	/** producer index. This is from Interrupt source.
 	 *  Cumulative pointer of total interrupt Aggregation
 	 *  Ring entry written
@@ -71,6 +115,12 @@ struct qdma_intr_ring {
 	 */
 	__be64 coal_color:1;
 };
+
+union qdma_intr_ring {
+	struct qdma_intr_ring_cpm ring_cpm;
+	struct qdma_intr_ring_generic ring_generic;
+};
+
 
 /*****************************************************************************/
 /**
@@ -127,13 +177,6 @@ int intr_ring_setup(struct xlnx_dma_dev *xdev);
 
 /*****************************************************************************/
 /**
- * intr_legacy_init() - legacy interrupt init
- *
- *****************************************************************************/
-void intr_legacy_init(void);
-
-/*****************************************************************************/
-/**
  * intr_legacy_setup() - setup the legacy interrupt handler
  *
  * @param[in]	descq:	descq on which the interrupt needs to be setup
@@ -170,11 +213,10 @@ void intr_work(struct work_struct *work);
  * qdma_err_intr_setup() - set up the error interrupt
  *
  * @param[in]	xdev:		pointer to xdev
- * @param[in]	rearm:		flag to control the error interrupt arming
  *
  * @return	none
  *****************************************************************************/
-void qdma_err_intr_setup(struct xlnx_dma_dev *xdev, u8 rearm);
+int qdma_err_intr_setup(struct xlnx_dma_dev *xdev);
 
 /*****************************************************************************/
 /**
@@ -189,7 +231,7 @@ void qdma_enable_hw_err(struct xlnx_dma_dev *xdev, u8 hw_err_type);
 
 /*****************************************************************************/
 /**
- * qdma_enable_hw_err() - get the interrupt ring index based on vector index
+ * get_intr_ring_index() - get the interrupt ring index based on vector index
  *
  * @param[in]	xdev:		pointer to xdev
  * @param[in]	vector_index:	vector index
@@ -200,20 +242,17 @@ void qdma_enable_hw_err(struct xlnx_dma_dev *xdev, u8 hw_err_type);
 int get_intr_ring_index(struct xlnx_dma_dev *xdev, u32 vector_index);
 
 #ifndef __QDMA_VF__
-//#ifdef ERR_DEBUG
+#ifdef ERR_DEBUG
 /*****************************************************************************/
 /**
  * err_stat_handler() - error interrupt handler
  *
  * @param[in]	xdev:		pointer to xdev
- * @param[in]	buf:		output buffer, if set to NULL, display status
- * 				to dmesg
- * @param[in]	buflen:		length of buf, 0 means unlimitted
  *
  * @return	none
  *****************************************************************************/
-int err_stat_handler(struct xlnx_dma_dev *xdev, char *buf, int buflen);
-//#endif
+void err_stat_handler(struct xlnx_dma_dev *xdev);
+#endif
 #endif
 
 #endif /* LIBQDMA_QDMA_DEVICE_H_ */

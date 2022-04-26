@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -38,41 +38,39 @@
 struct qdma_kthread {
 	/**  thread lock*/
 	spinlock_t lock;
-	/**  name of the thread*/
-	char name[16];
-	/**  cpu number for which the thread associated with*/
+	/**  name of the thread */
+	char name[26];
+	/**  cpu number for which the thread associated with */
 	unsigned short cpu;
-	/**  thread id*/
+	/**  thread id */
 	unsigned short id;
-	/**  thread timeout value*/
-	unsigned int timeout;
-	/**  flags for thread*/
+	/**  thread sleep timeout value */
+	unsigned int kth_timeout;
+	/**  flags for thread */
 	unsigned long flag;
-	/**  thread wait handler*/
+	/**  thread wait queue */
 	qdma_wait_queue waitq;
 	/* flag to indicate scheduling of thread */
 	unsigned int schedule;
 	/**  kernel task structure associated with thread*/
 	struct task_struct *task;
-	/**  thread work list count*/
+	/**  thread work list count */
 	unsigned int work_cnt;
-	/**  thread work list count*/
+	/**  thread work list count */
 	struct list_head work_list;
-	/**  thread initialization handler*/
-	int (*finit)(struct qdma_kthread *);
-	/**  thread pending handler*/
-	int (*fpending)(struct list_head *);
-	/**  thread peocessing handler*/
-	int (*fproc)(struct list_head *);
-	/**  thread test handler*/
-	int (*ftest)(struct qdma_kthread *);
-	/**  thread done handler*/
-	int (*fdone)(struct qdma_kthread *);
+	/**  thread initialization handler */
+	int (*finit)(struct qdma_kthread *thp);
+	/**  thread pending handler */
+	int (*fpending)(struct list_head *work_item);
+	/**  thread peocessing handler */
+	int (*fproc)(struct list_head *work_item);
+	/**  thread done handler */
+	int (*fdone)(struct qdma_kthread *thp);
 };
 
 /*****************************************************************************/
 /**
- * qdma_kthread_dump() - handler to dump the therad information
+ * qdma_kthread_dump() - handler to dump the thread information
  *
  * @param[in]	thp:		pointer to qdma_kthread
  * @param[in]	detail:		flag to indicate whether details required or not
@@ -100,15 +98,16 @@ int qdma_kthread_dump(struct qdma_kthread *thp, char *buf, int buflen,
 #define qdma_kthread_wakeup(thp)	\
 	do { \
 		pr_debug("signaling thp %s ...\n", (thp)->name); \
-		wake_up_process((thp)->task); \
+		thp->schedule = 1; \
+		qdma_waitq_wakeup(&thp->waitq); \
 	} while (0)
 
 #define pr_debug_thread(fmt, ...) pr_debug(fmt, __VA_ARGS__)
 
 #else
-/** lock therad macro */
+/** lock thread macro */
 #define lock_thread(thp)		spin_lock(&(thp)->lock)
-/** un lock therad macro */
+/** un lock thread macro */
 #define unlock_thread(thp)		spin_unlock(&(thp)->lock)
 /** macro to wake up the qdma k thread */
 #define qdma_kthread_wakeup(thp) \
@@ -125,8 +124,8 @@ int qdma_kthread_dump(struct qdma_kthread *thp, char *buf, int buflen,
  * qdma_kthread_start() - handler to start the kernel thread
  *
  * @param[in]	thp:	pointer to qdma_kthread
- * @param[in]	name:	name for the therad
- * @param[in]	id:		therad id
+ * @param[in]	name:	name for the thread
+ * @param[in]	id:		thread id
  *
  * @return	0: success
  * @return	<0: failure

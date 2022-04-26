@@ -57,7 +57,6 @@ xocl-y := \
 	../xocl_xgq.o \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
-	../subdev/qdma4.o \
 	../subdev/feature_rom.o \
 	../subdev/mailbox.o \
 	../subdev/xvc.o \
@@ -126,6 +125,9 @@ endif
 ifeq ($(SYMBOL),1)
 ccflags-y += -g
 endif
+
+QDMA_PATH := $(src)/../lib/libqdma/
+ccflags-y += -I$(QDMA_PATH) -I$(QDMA_PATH)/qdma_access/ -I$(QDMA_PATH)/qdma_access/qdma_soft_access/ -I$(QDMA_PATH)/qdma_access/qdma_s80_hard_access -I$(QDMA_PATH)/qdma_access/eqdma_soft_access
 
 all:
 	@echo $(PWD)

@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -29,48 +29,81 @@
 #include "qdma_compat.h"
 #include "libqdma_export.h"
 #include "qdma_regs.h"
+#ifdef ERR_DEBUG
+#include "qdma_nl.h"
+#endif
+#include "qdma_ul_ext.h"
 
-enum q_state_t {
-	Q_STATE_DISABLED = 0,	/** Queue is not taken */
-	Q_STATE_ENABLED,	/** Assigned/taken. Partial config is done */
-	Q_STATE_ONLINE,		/** Resource/context is initialized for the
-				 * queue and is available for data consumption
-				 */
+/**
+ * struct q_state_name - Structure to hold the q state and name
+ *
+ * A queue can be in one of these states
+ *
+ */
+struct q_state_name {
+	/** @q_state : Current state of the queue. */
+	enum q_state_t q_state;
+	/** @state     : Q state Name */
+	char name[20];
 };
 
-enum qdma_req_state {
-	QDMA_REQ_NOT_SUBMITTED,
-	QDMA_REQ_SUBMIT_PARTIAL,
-	QDMA_REQ_SUBMITTED,
-	QDMA_REQ_COMPLETE
-};
+extern struct q_state_name q_state_list[];
 
-#define QDMA_FLQ_SIZE 80
+#define QDMA_FLQ_SIZE 124
 
 /**
  * @struct - qdma_descq
  * @brief	qdma software descriptor book keeping fields
  */
 struct qdma_descq {
+	/** qdma queue configuration */
+	struct qdma_queue_conf conf;
+	/** lock to protect access to software descriptor */
 	spinlock_t lock;
-	struct qdma_queue_conf conf; /** qdma queue configuration */
-	struct xlnx_dma_dev *xdev; /** pointer to dma device */
-	u8 channel;			/** MM channel # */
+	/** pointer to dma device */
+	struct xlnx_dma_dev *xdev;
+	/** number of channels */
+	u8 channel;
 	/** flag to indicate error on the Q, in halted state */
 	u8 err:1;
-	u8 color:1;	/** color bit for the queue */
+	/** color bit for the queue */
+	u8 color:1;
+	/** cpu attached */
 	u8 cpu_assigned:1;
+	/** state of the proc req */
 	u8 proc_req_running;
-	enum q_state_t q_state; /** Indicate q state */
-	unsigned int qidx_hw; /** hw qidx associated for this queue */
+	/* rx_time in CPU timestamp of ping_pong pkt for
+	 * measuring H2C-C2H loopback latency
+	 */
+	u64 ping_pong_rx_time;
+	/* tx_time in CPU timestamp of ping_pong pkt for
+	 * measuring H2C-C2H loopback latency
+	 */
+	u64 ping_pong_tx_time;
+	/** Indicate q state */
+	enum q_state_t q_state;
+	/** hw qidx associated for this queue */
+	unsigned int qidx_hw;
+	/** cpu attached to intr_work */
 	unsigned int intr_work_cpu;
-	unsigned int cancel_cnt;	/* # of qdma_request to be cancelled */
+	/** @q_hndl: Q handle */
+	unsigned long q_hndl;
+	/** queue handler */
 	struct work_struct work;
-	struct list_head intr_list; /** interrupt list */
-	struct list_head legacy_intr_q_list; /** leagcy interrupt list */
-	int intr_id; /** interrupt id associated for this queue */
-	struct list_head work_list; /** qdma_request need to be worked on */
-	struct qdma_kthread *cmplthp; /** completion thread */
+	/** interrupt list */
+	struct list_head intr_list;
+	/** leagcy interrupt list */
+	struct list_head legacy_intr_q_list;
+	/** interrupt id associated for this queue */
+	int intr_id;
+	/** work  list for the queue */
+	struct list_head work_list;
+	/** current req count */
+	unsigned int work_req_pend;
+	/* lock to synchonize  work queue access*/
+	spinlock_t work_list_lock;
+	/** write back therad list */
+	struct qdma_kthread *cmplthp;
 	/** completion status thread list for the queue */
 	struct list_head cmplthp_list;
 	/** pending qork thread list */
@@ -81,11 +114,8 @@ struct qdma_descq {
 	unsigned int pend_list_empty;
 	/* flag to indicate wwaiting for transfers to complete before q stop*/
 	unsigned int q_stop_wait;
-
 	/** availed count */
 	unsigned int avail;
-	/** IO batching cunt */
-	unsigned int io_batch_cnt;
 	/** current req count */
 	unsigned int pend_req_desc;
 	/** current producer index */
@@ -102,7 +132,6 @@ struct qdma_descq {
 	u8 *desc_cmpl_status;
 
 	/* ST C2H */
-	struct work_struct req_work;
 	/** programming order of the data in ST c2h mode*/
 	unsigned char fl_pg_order;
 	/** cmpt entry length*/
@@ -121,21 +150,39 @@ struct qdma_descq {
 	unsigned int pidx_cmpt;
 	/** completion cidx */
 	unsigned int cidx_cmpt;
-	/** pending writeback cidx */
-	unsigned int cidx_cmpt_pend;
 	/** number of packets processed in q */
 	unsigned long long total_cmpl_descs;
 	/** descriptor writeback, data type depends on the cmpt_entry_len */
 	void *desc_cmpt_cur;
+	/* descriptor list to be provided for ul extenstion call */
+	struct qdma_q_desc_list *desc_list;
 	/** pointer to completion entry */
 	u8 *desc_cmpt;
 	/** descriptor dma bus address*/
 	dma_addr_t desc_cmpt_bus;
 	/** descriptor writeback dma bus address*/
 	u8 *desc_cmpt_cmpl_status;
-	/** statistics **/
-	struct qdma_queue_stats stat;
-
+	/** @desc_pend: pending desc to be updated processed by hw */
+	unsigned char desc_pend;
+	/** pidx info to be written to PIDX regiser*/
+	struct qdma_q_pidx_reg_info pidx_info;
+	/** cmpt cidx info to be written to CMPT CIDX regiser*/
+	struct qdma_q_cmpt_cidx_reg_info cmpt_cidx_info;
+	/** @c2h_pend_pkt_moving_avg: average rate of packets received */
+	unsigned int c2h_pend_pkt_moving_avg;
+	/** @c2h_pend_pkt_avg_thr_hi: higher average threshold */
+	unsigned int c2h_pend_pkt_avg_thr_hi;
+	/** @c2h_pend_pkt_avg_thr_lo: lower average threshold */
+	unsigned int c2h_pend_pkt_avg_thr_lo;
+	/** @sorted_c2h_cntr_idx: sorted c2h counter index */
+	unsigned char sorted_c2h_cntr_idx;
+	/** @c2h_cntr_monitor_cnt: c2h counter stagnant monitor count */
+	unsigned char c2h_cntr_monitor_cnt;
+#ifdef ERR_DEBUG
+	/** flag to indicate error inducing */
+	u64 induce_err;
+	u64 ecc_err;
+#endif
 #ifdef DEBUGFS
 	/** debugfs queue index root */
 	struct dentry *dbgfs_qidx_root;
@@ -145,7 +192,6 @@ struct qdma_descq {
 	struct dentry *dbgfs_cmpt_queue_root;
 #endif
 };
-
 #ifdef DEBUG_THREADS
 #define lock_descq(descq)	\
 	do { \
@@ -224,16 +270,6 @@ int qdma_descq_config_complete(struct qdma_descq *descq);
 
 /*****************************************************************************/
 /**
- * qdma_descq_cleanup() - clean up the resources assigned to a request
- *
- * @param[in]	descq:		pointer to qdma_descq
- *
- * @return	none
- *****************************************************************************/
-void qdma_descq_cleanup(struct qdma_descq *descq);
-
-/*****************************************************************************/
-/**
  * qdma_descq_alloc_resource() - allocate the resources for a request
  *
  * @param[in]	descq:		pointer to qdma_descq
@@ -264,20 +300,6 @@ void qdma_descq_free_resource(struct qdma_descq *descq);
  *****************************************************************************/
 int qdma_descq_prog_hw(struct qdma_descq *descq);
 
-#ifndef __QDMA_VF__
-/*****************************************************************************/
-/**
- * qdma_descq_prog_stm() - program the STM
- *
- * @param[in]	descq:		pointer to qdma_descq
- * @param[in]   clear:		flag to program/clear stm context
- *
- * @return	0: success
- * @return	<0: failure
- *****************************************************************************/
-int qdma_descq_prog_stm(struct qdma_descq *descq, bool clear);
-#endif
-
 /*****************************************************************************/
 /**
  * qdma_descq_context_cleanup() - clean up the queue context
@@ -297,9 +319,9 @@ int qdma_descq_context_cleanup(struct qdma_descq *descq);
  * @param[in]	budget:		number of descriptors to process
  * @param[in]	c2h_upd_cmpl:	C2H only: if update completion needed
  *
- * @return	none
+ * @return	0 - success, < 0 for failure
  *****************************************************************************/
-void qdma_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
+int qdma_descq_service_cmpl_update(struct qdma_descq *descq, int budget,
 			bool c2h_upd_cmpl);
 
 /*****************************************************************************/
@@ -372,27 +394,28 @@ void incr_cmpl_desc_cnt(struct qdma_descq *descq, unsigned int cnt);
  * @brief	qdma_sgt_req_cb fits in qdma_request.opaque
  */
 struct qdma_sgt_req_cb {
-	struct list_head list; /** qdma read/write request list */
-	int status;		/** status of the request*/
-
-	u8 cancel:1;	
-	u8 canceled:1;
-	u8 pending:1;
-	u8 unmap_needed:1; /** indicates whether to unmap the kernel pages*/
-	u8 c2h_eot:1; /** indicates whether tlast is received on c2h side */
-	u8 done:1; /** indicates whether request processing is done or not*/
-
-	enum qdma_req_state req_state; /* request state */
-
-	qdma_wait_queue wq;	/** request wait queue */
-
-	unsigned int desc_nr;	/** # descriptors used */
-	unsigned int offset;	/** offset in the page*/
-	unsigned int left;	/** number of descriptors yet to be proccessed*/
-
-	void *sg;		/** sg entry being worked on currently */
-	unsigned int sg_idx;	/** sg's index */
-	unsigned int sg_offset; /** offset into the sg's data buffer */
+	/** qdma read/write request list*/
+	struct list_head list;
+	/** request wait queue */
+	qdma_wait_queue wq;
+	/** number of descriptors to proccess*/
+	unsigned int desc_nr;
+	/** offset in the page*/
+	unsigned int offset;
+	/** offset in the scatter gather list*/
+	unsigned int sg_offset;
+	/** next sg to be processed */
+	void *sg;
+	/** scatter gather ebtry index*/
+	unsigned int sg_idx;
+	/** number of data byte not yet proccessed*/
+	unsigned int left;
+	/** status of the request*/
+	int status;
+	/** indicates whether request processing is done or not*/
+	u8 done;
+	/** indicates whether to unmap the kernel pages*/
+	u8 unmap_needed:1;
 };
 
 /** macro to get the request call back data */
@@ -425,6 +448,35 @@ void qdma_sgt_req_done(struct qdma_descq *descq, struct qdma_sgt_req_cb *cb,
 
 /*****************************************************************************/
 /**
+ * sgl_map() - handler to map the scatter gather list to kernel pages
+ *
+ * @param[in]	pdev:	pointer to struct pci_dev
+ * @param[in]	sgl:	scatter gather list
+ * @param[in]	sgcnt:	number of entries in scatter gather list
+ * @param[in]	dir:	direction of the request
+ *
+ * @return	none
+ *****************************************************************************/
+int sgl_map(struct pci_dev *pdev, struct qdma_sw_sg *sgl, unsigned int sgcnt,
+		enum dma_data_direction dir);
+
+/*****************************************************************************/
+/**
+ * sgl_unmap() - handler to unmap the scatter gather list and free
+ *				the kernel pages
+ *
+ * @param[in]	pdev:	pointer to struct pci_dev
+ * @param[in]	sg:		scatter gather list
+ * @param[in]	sgcnt:	number of entries in scatter gather list
+ * @param[in]	dir:	direction of the request
+ *
+ * @return	none
+ *****************************************************************************/
+void sgl_unmap(struct pci_dev *pdev, struct qdma_sw_sg *sg, unsigned int sgcnt,
+		enum dma_data_direction dir);
+
+/*****************************************************************************/
+/**
  * descq_flq_free_resource() - handler to free the pages for the request
  *
  * @param[in]	descq:		pointer to qdma_descq
@@ -435,44 +487,127 @@ void descq_flq_free_resource(struct qdma_descq *descq);
 
 /*****************************************************************************/
 /**
- * descq_h2c_pidx_update() - inline function to update the h2c pidx
+ * descq_flq_free_page_resource() - handler to free the pages for the request
  *
- * @param[in]	descq:	pointer to qdma_descq
- * @param[in]	pidx:	c2h producer index
- *
- * @return	none
- *****************************************************************************/
-static inline void descq_h2c_pidx_update(struct qdma_descq *descq,
-					unsigned int pidx)
-{
-	pr_debug("%s: pidx %u -> 0x%x, reg 0x%x.\n", descq->conf.name, pidx,
-		pidx | (descq->conf.irq_en << S_CMPL_STATUS_PIDX_UPD_EN_INT),
-		QDMA_REG_H2C_PIDX_BASE + descq->conf.qidx * QDMA_REG_PIDX_STEP);
-
-	__write_reg(descq->xdev,
-		QDMA_REG_H2C_PIDX_BASE + descq->conf.qidx * QDMA_REG_PIDX_STEP,
-		pidx | (descq->conf.irq_en << S_CMPL_STATUS_PIDX_UPD_EN_INT));
-}
-
-/*****************************************************************************/
-/**
- * descq_c2h_pidx_update() - inline function to update the c2h pidx
- *
- * @param[in]	descq:	pointer to qdma_descq
- * @param[in]	pidx:	c2h producer index
+ * @param[in]	descq:		pointer to qdma_descq
  *
  * @return	none
  *****************************************************************************/
-static inline void descq_c2h_pidx_update(struct qdma_descq *descq,
-					unsigned int pidx)
-{
-	pr_debug("%s: pidx 0x%x -> 0x%x, reg 0x%x.\n", descq->conf.name, pidx,
-		pidx | (descq->conf.irq_en << S_CMPL_STATUS_PIDX_UPD_EN_INT),
-		QDMA_REG_C2H_PIDX_BASE + descq->conf.qidx * QDMA_REG_PIDX_STEP);
+void descq_flq_free_page_resource(struct qdma_descq *descq);
+int rcv_udd_only(struct qdma_descq *descq, struct qdma_ul_cmpt_info *cmpl);
+int parse_cmpl_entry(struct qdma_descq *descq, struct qdma_ul_cmpt_info *cmpl);
+void cmpt_next(struct qdma_descq *descq);
 
-	__write_reg(descq->xdev,
-		QDMA_REG_C2H_PIDX_BASE + descq->conf.qidx * QDMA_REG_PIDX_STEP,
-		pidx | (descq->conf.irq_en << S_CMPL_STATUS_PIDX_UPD_EN_INT));
+/* CIDX/PIDX update macros */
+#ifndef __QDMA_VF__
+#define queue_pidx_update(xdev, qid, is_c2h, pidx_info) \
+	(xdev->hw.qdma_queue_pidx_update(xdev, QDMA_DEV_PF, qid, is_c2h,\
+					pidx_info))
+#else
+#define queue_pidx_update(xdev, qid, is_c2h, pidx_info) \
+	(xdev->hw.qdma_queue_pidx_update(xdev, QDMA_DEV_VF, qid, is_c2h, \
+					pidx_info))
+#endif
+
+#ifndef __QDMA_VF__
+#define queue_cmpt_cidx_update(xdev, qid, cmpt_cidx_info) \
+	(xdev->hw.qdma_queue_cmpt_cidx_update(xdev, QDMA_DEV_PF, qid, \
+						cmpt_cidx_info))
+#else
+#define queue_cmpt_cidx_update(xdev, qid, cmpt_cidx_info) \
+	(xdev->hw.qdma_queue_cmpt_cidx_update(xdev, QDMA_DEV_VF, qid, \
+					     cmpt_cidx_info))
+#endif
+
+#ifndef __QDMA_VF__
+#define queue_cmpt_cidx_read(xdev, qid, cmpt_cidx_info) \
+	(xdev->hw.qdma_queue_cmpt_cidx_read(xdev, QDMA_DEV_PF, qid, \
+					   cmpt_cidx_info))
+#else
+#define queue_cmpt_cidx_read(xdev, qid, cmpt_cidx_info) \
+	(xdev->hw.qdma_queue_cmpt_cidx_read(xdev, QDMA_DEV_VF, qid, \
+					   cmpt_cidx_info))
+#endif
+
+#ifndef __QDMA_VF__
+#define queue_intr_cidx_update(xdev, qid, intr_cidx_info) \
+	(xdev->hw.qdma_queue_intr_cidx_update(xdev, QDMA_DEV_PF, qid, \
+						intr_cidx_info))
+#else
+#define queue_intr_cidx_update(xdev, qid, intr_cidx_info) \
+	(xdev->hw.qdma_queue_intr_cidx_update(xdev, QDMA_DEV_VF, qid, \
+						intr_cidx_info))
+#endif
+
+u64 rdtsc_gettime(void);
+static inline unsigned int get_next_powof2(unsigned int value)
+{
+	unsigned int num_bits, mask, f_value;
+
+	num_bits = fls(value) - 1;
+	mask = (1 << num_bits) - 1;
+	f_value = ((value + mask) >> num_bits) << num_bits;
+
+	return f_value;
 }
 
+//#define QDMA_SPIN_LOCK_GRANULAR
+
+static inline void qdma_work_queue_add(struct qdma_descq *descq,
+				struct qdma_sgt_req_cb *cb)
+{
+#ifdef QDMA_SPIN_LOCK_GRANULAR
+	spin_lock_bh(&descq->work_list_lock);
+	list_add_tail(&cb->list, &descq->work_list);
+	descq->work_req_pend++;
+	spin_unlock_bh(&descq->work_list_lock);
+#else
+	list_add_tail(&cb->list, &descq->work_list);
+	descq->work_req_pend++;
+#endif
+}
+
+static inline void qdma_work_queue_del(struct qdma_descq *descq,
+				struct qdma_sgt_req_cb *cb)
+{
+#ifdef QDMA_SPIN_LOCK_GRANULAR
+	spin_lock_bh(&descq->work_list_lock);
+	list_del(&cb->list);
+	descq->work_req_pend--;
+	spin_unlock_bh(&descq->work_list_lock);
+#else
+	list_del(&cb->list);
+	descq->work_req_pend--;
+#endif
+}
+
+static inline int qdma_work_queue_len(struct qdma_descq *descq)
+{
+	int count = 0;
+
+#ifdef QDMA_SPIN_LOCK_GRANULAR
+	spin_lock_bh(&descq->work_list_lock);
+	count = descq->work_req_pend;
+	spin_unlock_bh(&descq->work_list_lock);
+#else
+	count = descq->work_req_pend;
+#endif
+	return count;
+}
+
+static inline struct qdma_request *qdma_work_queue_first_entry(
+			struct qdma_descq *descq)
+{
+	struct qdma_request *req;
+#ifdef QDMA_SPIN_LOCK_GRANULAR
+	spin_lock_bh(&descq->work_list_lock);
+	req = (struct qdma_request *) list_first_entry(&descq->work_list,
+					struct qdma_sgt_req_cb, list);
+	spin_unlock_bh(&descq->work_list_lock);
+#else
+	req = (struct qdma_request *) list_first_entry(&descq->work_list,
+						struct qdma_sgt_req_cb, list);
+#endif
+	return req;
+}
 #endif /* ifndef __QDMA_DESCQ_H__ */

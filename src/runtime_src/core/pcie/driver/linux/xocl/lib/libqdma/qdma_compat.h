@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,7 @@
  * if linux kernel version is < 3.19.0
  * then define the dma_rmb and dma_wmb
  */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 19, 0)
+#if KERNEL_VERSION(3, 19, 0) > LINUX_VERSION_CODE
 
 #ifndef dma_rmb
 #define dma_rmb		rmb
@@ -45,16 +45,38 @@
 
 #endif
 
+#ifdef RHEL_RELEASE_VERSION
+#define qdma_wait_queue                 wait_queue_head_t
+#define qdma_waitq_init                 init_waitqueue_head
+#define qdma_waitq_wakeup               wake_up_interruptible
+#define qdma_waitq_wait_event           wait_event_interruptible
+#define qdma_waitq_wait_event_timeout   wait_event_interruptible_timeout
+#else
+/* use simple wait queue (swaitq) with kernels > 4.6.0 but < 4.19.0  */
+#if ((KERNEL_VERSION(4, 6, 0) <= LINUX_VERSION_CODE) && \
+		(KERNEL_VERSION(4, 19, 0) >= LINUX_VERSION_CODE))
+#include <linux/swait.h>
+
+#define qdma_wait_queue                 struct swait_queue_head
+#define qdma_waitq_init                 init_swait_queue_head
+#define qdma_waitq_wakeup               swake_up
+#define qdma_waitq_wait_event           swait_event_interruptible
+#define qdma_waitq_wait_event_timeout   swait_event_interruptible_timeout
+
+#else
 #include <linux/wait.h>
 
-#define qdma_wait_queue			wait_queue_head_t
-#define qdma_waitq_init			init_waitqueue_head
-#define qdma_waitq_wakeup		wake_up_interruptible
-#define qdma_waitq_wait_event		wait_event_interruptible
-#define qdma_waitq_wait_event_timeout	wait_event_interruptible_timeout
+#define qdma_wait_queue                 wait_queue_head_t
+#define qdma_waitq_init                 init_waitqueue_head
+#define qdma_waitq_wakeup               wake_up_interruptible
+#define qdma_waitq_wait_event           wait_event_interruptible
+#define qdma_waitq_wait_event_timeout   wait_event_interruptible_timeout
+
+#endif  /* swaitq */
+#endif
 
 /* timer */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
 #define qdma_timer_setup(timer, fp_handler, data) \
 		timer_setup(timer, fp_handler, 0)
 

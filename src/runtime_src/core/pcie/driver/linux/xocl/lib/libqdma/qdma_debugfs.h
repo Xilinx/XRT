@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -23,12 +23,11 @@
 #include <linux/pci.h>
 #include <linux/debugfs.h>
 #include <linux/fs.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
 
 #define DBGFS_DBG_FNAME_SZ  (64)
-#define DBGFS_CTXT_ENTRY_NAME_SZ  (64)
 #define QDMA_DEV_NAME_SZ	(64)
 
 /*****************************************************************************/

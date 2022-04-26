@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
  */
 #include <linux/spinlock_types.h>
 #include "libqdma_export.h"
+#include "qdma_access/qdma_access_common.h"
 
 /**
  * forward declaration for qdma descriptor
@@ -51,14 +52,12 @@ struct qdma_dev {
 	unsigned short qbase;
 	/** qdma_dev lock */
 	spinlock_t lock;
-	/** number of h2c queues for this function */
-	unsigned short h2c_qcnt;
-	/** number of c2h queues for this function */
-	unsigned short c2h_qcnt;
 	/** h2c descq list */
 	struct qdma_descq *h2c_descq;
 	/** c2h descq list */
 	struct qdma_descq *c2h_descq;
+	/** cmpt descq list */
+	struct qdma_descq *cmpt_descq;
 };
 
 /**
@@ -158,75 +157,41 @@ struct qdma_descq *qdma_device_get_descq_by_hw_qid(struct xlnx_dma_dev *xdev,
  *****************************************************************************/
 int qdma_device_prep_q_resource(struct xlnx_dma_dev *xdev);
 
-#ifndef __QDMA_VF__
 /*****************************************************************************/
 /**
- * qdma_csr_read_cmpl_status_acc() - Read the completion status
- * accumulation value
+ * qdma_device_interrupt_setup() - Setup device itnerrupts
  *
  * @param[in]	xdev:		pointer to xdev
- * @param[out]	cs_acc:		cs_acc value
  *
- * @return	none
+ * @return	0: success
+ * @return	<0: failure
  *****************************************************************************/
-void qdma_csr_read_cmpl_status_acc(struct xlnx_dma_dev *xdev,
-		unsigned int *cs_acc);
+int qdma_device_interrupt_setup(struct xlnx_dma_dev *xdev);
 
 /*****************************************************************************/
 /**
- * qdma_csr_read_rngsz() - Read the queue ring size
+ * qdma_device_interrupt_cleanup() - Celanup device interrupts
  *
  * @param[in]	xdev:		pointer to xdev
- * @param[out]	rngsz:		queue ring size
  *
- * @return	none
+ * @return	0: success
+ * @return	<0: failure
  *****************************************************************************/
-void qdma_csr_read_rngsz(struct xlnx_dma_dev *xdev, unsigned int *rngsz);
+void qdma_device_interrupt_cleanup(struct xlnx_dma_dev *xdev);
 
-/*****************************************************************************/
-/**
- * qdma_csr_read_bufsz() - Read the buffer size
- *
- * @param[in]	xdev:		pointer to xdev
- * @param[out]	bufsz:		buffer size
- *
- * @return	none
- *****************************************************************************/
-void qdma_csr_read_bufsz(struct xlnx_dma_dev *xdev, unsigned int *bufsz);
-
-/*****************************************************************************/
-/**
- * qdma_csr_read_timer_cnt() - Read the timer count
- *
- * @param[in]	xdev:		pointer to xdev
- * @param[out]	cnt:		timer count
- *
- * @return	none
- *****************************************************************************/
-void qdma_csr_read_timer_cnt(struct xlnx_dma_dev *xdev, unsigned int *cnt);
-
-/*****************************************************************************/
-/**
- * qdma_csr_read_timer_cnt() - Read the timer threshold
- *
- * @param[in]	xdev:		pointer to xdev
- * @param[out]	th:			timer threshold
- *
- * @return	none
- *****************************************************************************/
-void qdma_csr_read_cnt_thresh(struct xlnx_dma_dev *xdev, unsigned int *th);
-#else
+#ifdef __QDMA_VF__
 /*****************************************************************************/
 /**
  * device_set_qconf() - set device conf
  *
  * @param[in]	xdev:		pointer to xdev
  * @param[in]	qmax:		maximum request qsize for VF instance
+ * @param[in]	qbase:		queue base
  *
  * @return  0: success
  * @return  < 0: failure
  *****************************************************************************/
-int device_set_qconf(struct xlnx_dma_dev *xdev, int qmax, u32 *qbase);
+int device_set_qconf(struct xlnx_dma_dev *xdev, int *qmax, int *qbase);
 
 #endif
 
@@ -241,36 +206,61 @@ enum csr_type {
 	QDMA_CSR_TYPE_MAX
 };
 
-/**
- * @struct - descq_csr_info
- * @brief	qdma Q csr register settings
- */
-struct qdma_csr_info {
-	enum csr_type type;	/** one csr register array */
-	u32 array[QDMA_GLOBAL_CSR_ARRAY_SZ];
-	u8 idx_rngsz;		/** 1x index-value pair for each type */
-	u8 idx_bufsz;
-	u8 idx_timer_cnt;
-	u8 idx_cnt_th;
-	u32 rngsz;
-	u32 bufsz;
-	u32 timer_cnt;
-	u32 cnt_th;
-	u32 cmpl_status_acc;
-};
-
 /*****************************************************************************/
 /**
  * qdma_csr_read() - Read specific global csr registers
  *
  * @param[in]   xdev:           pointer to xdev
- * @param[in]   csr:            csr type & index
  * @param[out]  csr:            csr value
  *
  * @return      0: success
  * @return      <0: failure
  *****************************************************************************/
-int qdma_csr_read(struct xlnx_dma_dev *xdev, struct qdma_csr_info *csr_info,
-		unsigned int timeout_ms);
+int qdma_csr_read(struct xlnx_dma_dev *xdev, struct global_csr_conf *csr);
 
+/*****************************************************************************/
+/**
+ * qdma_set_ring_sizes() - Wrapper function to set the ring sizes values
+ *
+ * @param[in]   xdev:           pointer to xdev
+ * @param[in]   index: Index from where the values needs to written
+ * @param[in]   count: number of entries to be written
+ * @param[in]	glbl_rng_sz: pointer to array of global ring sizes
+ *
+ * @return	0 on success
+ * @return	<0 on failure
+ *****************************************************************************/
+int qdma_set_ring_sizes(struct xlnx_dma_dev *xdev, u8 index,
+		u8 count, u32 *glbl_rng_sz);
+
+/*****************************************************************************/
+/**
+ * qdma_set_ring_sizes() - Wrapper function to set the ring sizes values
+ *
+ * @param[in]   xdev:  pointer to xdev
+ * @param[in]   index: Index from where the values needs to written
+ * @param[in]   count: number of entries to be written
+ * @param[out]	glbl_rng_sz: pointer to array of global ring sizes
+ *
+ * @return	0 on success
+ * @return	<0 on failure
+ *****************************************************************************/
+int qdma_get_ring_sizes(struct xlnx_dma_dev *xdev, u8 index,
+		u8 count, u32 *glbl_rng_sz);
+
+
+/*****************************************************************************/
+/**
+ * qdma_pf_trigger_vf_reset() - Function to trigger FLR of all the VFs on PF
+ *
+ * @param[in]	dev_hndl:	Handle of the xdev
+ *****************************************************************************/
+void qdma_pf_trigger_vf_reset(unsigned long dev_hndl);
+
+/**
+ * qdma_pf_trigger_vf_offline() - Function to trigger offline of all the VFs
+ *
+ * @param[in]	dev_hndl:	Handle of the xdev
+ *****************************************************************************/
+void qdma_pf_trigger_vf_offline(unsigned long dev_hndl);
 #endif /* LIBQDMA_QDMA_DEVICE_H_ */

@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -80,10 +80,8 @@
 #define NODE_MSIX_USER "ep_msix_user_00"
 #define NODE_MSIX_MGMT "ep_msix_mgmt_00"
 #define NODE_QDMA "ep_qdma_00"
-#define NODE_QDMA4 "ep_qdma4_00"
-#define NODE_QDMA4_CSR "ep_qdma4_csr_00"
+#define NODE_QDMA_CSR "ep_qdma_csr_00"
 #define NODE_STM "ep_stream_traffic_manager_00"
-#define NODE_STM4 "ep_stream_traffic_manager4_00"
 #define NODE_CLK_SHUTDOWN "ep_aclk_shutdown_00"
 #define NODE_ERT_BASE "ep_ert_base_address_00"
 #define NODE_ERT_RESET "ep_ert_reset_00"

@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -19,184 +19,18 @@
 
 #define pr_fmt(fmt)	KBUILD_MODNAME ":%s: " fmt, __func__
 
-#include "qdma_intr.h"
-
 #include <linux/kernel.h>
 #include "qdma_descq.h"
 #include "qdma_device.h"
 #include "qdma_regs.h"
 #include "thread.h"
 #include "version.h"
-#include "qdma_regs.h"
-
-struct qdma_err_info {
-	u32 intr_mask;
-	char **stat;
-};
-
-struct qdma_err_stat_info {
-	char *err_name;
-	u32 stat_reg_addr;
-	u32 mask_reg_addr;
-	struct qdma_err_info err_info;
-};
-
-/** List shall be from Bit 0 - Bit31 */
-char *glbl_err_info[] = {
-	"err_ram_sbe",
-	"err_ram_dbe",
-	"err_dsc",
-	"err_trq",
-	"err_h2c_mm_0",
-	"err_h2c_mm_1",
-	"err_c2h_mm_0",
-	"err_c2h_mm_1",
-	"err_c2h_st",
-	"ind_ctxt_cmd_err",
-	"err_bdg",
-	"err_h2c_st"
-};
-
-char *dsc_err_info[] = {
-	"poison",
-	"ur_ca",
-	"param",
-	"addr",
-	"tag",
-	"flr",
-	"timeout",
-	"dat_poison",
-	"flr_cancel",
-	"dma",
-	"dsc",
-	"rq_cancel",
-	"dbe",
-	"sbe"
-};
-
-char *trq_err_info[] = {
-	"unmapped",
-	"qid_range",
-	"vf_access_err",
-	"tcp_timeout"
-};
-
-char *c2h_err_info[] = {
-	"mty_mismatch",
-	"len_mismatch",
-	"qid_mismatch",
-	"desc_rsp_err",
-	"eng_wpl_data_par_err",
-	"msi_int_fail",
-	"err_desc_cnt",
-	"portid_ctxt_mismatch",
-	"portid_byp_in_mismatch",
-	"cmpt_inv_q_err",
-	"cmpt_qfull_err",
-	"cmpt_cidx_err",
-	"cmpt_prty_err"
-};
-
-char *c2h_fatal_err_info[] = {
-	"mty_mismatch",
-	"len_mismatch",
-	"qid_mismatch",
-	"timer_fifo_ram_rdbe",
-	"eng_wpl_data_par_err",
-	"pfch_II_ram_rdbe",
-	"cmpt_ctxt_ram_rdbe",
-	"pfch_ctxt_ram_rdbe",
-	"desc_req_fifo_ram_rdbe",
-	"int_ctxt_ram_rdbe",
-	"cmpt_coal_data_ram_rdbe",
-	"tuser_fifo_ram_rdbe",
-	"qid_fifo_ram_rdbe",
-	"payload_fifo_ram_rdbe",
-	"wpl_data_par_err"
-};
-
-char *h2c_err_info[] = {
-	"zero_len_desc_err",
-	"sdi_mrkr_req_mop_err",
-	"no_dma_dsc_err",
-};
-
-/** ECC Single bit errors from Bit 0 -Bit 31 */
-char *ecc_sb_err_info[] = {
-	"mi_h2c0_dat",
-	"mi_c2h0_dat",
-	"h2c_rd_brg_dat",
-	"h2c_wr_brg_dat",
-	"c2h_rd_brg_dat",
-	"c2h_wr_brg_dat",
-	"func_map",
-	"dsc_hw_ctxt",
-	"dsc_crd_rcv",
-	"dsc_sw_ctxt",
-	"dsc_cpli",
-	"dsc_cpld",
-	"pasid_ctxt_ram",
-	"timer_fifo_ram",
-	"payload_fifo_ram",
-	"qid_fifo_ram",
-	"tuser_fifo_ram",
-	"wrb_coal_data_ram",
-	"int_qid2vec_ram",
-	"int_ctxt_ram",
-	"desc_req_fifo_ram",
-	"pfch_ctxt_ram",
-	"wrb_ctxt_ram",
-	"pfch_ll_ram",
-	"h2c_pend_fifo"
-};
-
-/** ECC Double bit errors from Bit 0 -Bit 31 */
-char *ecc_db_err_info[] = {
-	"mi_h2c0_dat",
-	"mi_c2h0_dat",
-	"h2c_rd_brg_dat",
-	"h2c_wr_brg_dat",
-	"c2h_rd_brg_dat",
-	"c2h_wr_brg_dat",
-	"func_map",
-	"dsc_hw_ctxt",
-	"dsc_crd_rcv",
-	"dsc_sw_ctxt",
-	"dsc_cpli",
-	"dsc_cpld",
-	"pasid_ctxt_ram",
-	"timer_fifo_ram",
-	"payload_fifo_ram",
-	"qid_fifo_ram",
-	"tuser_fifo_ram",
-	"wrb_coal_data_ram",
-	"int_qid2vec_ram",
-	"int_ctxt_ram",
-	"desc_req_fifo_ram",
-	"pfch_ctxt_ram",
-	"wrb_ctxt_ram",
-	"pfch_ll_ram",
-	"h2c_pend_fifo",
-};
-
-struct qdma_err_stat_info err_stat_info[HW_ERRS] = {
-	{ "glbl_err", QDMA_REG_GLBL_ERR_STAT, QDMA_REG_GLBL_ERR_MASK,
-			{ QDMA_REG_GLBL_ERR_MASK_VALUE, glbl_err_info } },
-	{ "dsc_err", QDMA_GLBL_DSC_ERR_STS, QDMA_GLBL_DSC_ERR_MSK,
-			{ QDMA_GLBL_DSC_ERR_MSK_VALUE, dsc_err_info } },
-	{ "trq_err", QDMA_GLBL_TRQ_ERR_STS, QDMA_GLBL_TRQ_ERR_MSK,
-			{ QDMA_GLBL_TRQ_ERR_MSK_VALUE, trq_err_info } },
-	{ "c2h_err", QDMA_REG_C2H_ERR_STAT, QDMA_REG_C2H_ERR_MASK,
-			{ QDMA_REG_C2H_ERR_MASK_VALUE, c2h_err_info } },
-	{ "c2h_fatal_err", QDMA_C2H_FATAL_ERR_STAT, QDMA_C2H_FATAL_ERR_MASK,
-			{ QDMA_C2H_FATAL_ERR_MASK_VALUE, c2h_fatal_err_info } },
-	{ "h2c_err", QDMA_H2C_ERR_STAT, QDMA_H2C_ERR_MASK,
-			{ QDMA_H2C_ERR_MASK_VALUE, h2c_err_info } },
-	{ "ecc_sb_err", QDMA_RAM_SBE_STAT_A, QDMA_RAM_SBE_MASK_A,
-			{ QDMA_RAM_SBE_MASK_VALUE, ecc_sb_err_info } },
-	{ "ecc_sb_err", QDMA_RAM_DBE_STAT_A, QDMA_RAM_DBE_MASK_A,
-			{ QDMA_RAM_DBE_MASK_VALUE, ecc_db_err_info } },
-};
+#include "qdma_access/qdma_mbox_protocol.h"
+#include "qdma_intr.h"
+#ifdef DUMP_ON_ERROR_INTERRUPT
+#include "qdma_reg_dump.h"
+#endif
+#include "qdma_access/qdma_access_common.h"
 
 #ifndef __QDMA_VF__
 static LIST_HEAD(legacy_intr_q_list);
@@ -206,122 +40,138 @@ static unsigned long legacy_intr_flags = IRQF_SHARED;
 #endif
 
 
-int err_stat_handler(struct xlnx_dma_dev *xdev, char *buf, int buflen)
+#ifndef __QDMA_VF__
+#ifdef DUMP_ON_ERROR_INTERRUPT
+#define REG_BANNER_LEN (81 * 5)
+static int dump_qdma_regs(struct xlnx_dma_dev *xdev)
 {
-	u32 i;
-	u32 err_stat;
-	u32 glb_err_stat = 0;
-	int blen = 0;
+	int len = 0, dis_len = 0;
+	int rv;
+	char *buf = NULL, *tbuff = NULL;
+	int buflen;
+	char temp_buf[512];
 
-	for (i = 0; i < HW_ERRS; i++) {
-		err_stat = __read_reg(xdev, err_stat_info[i].stat_reg_addr);
-		if ((i == 0) && err_stat_info[i].err_info.intr_mask)
-			glb_err_stat = err_stat;
-		if (err_stat & err_stat_info[i].err_info.intr_mask) {
-			uint8_t bit = 0;
-			uint32_t intr_mask =
-					err_stat_info[i].err_info.intr_mask;
-			uint32_t chk_mask = 0x01;
-
-			if (buf) { 
-				blen += sprintf(buf + blen,
-					"%s[0x%x] : 0x%x",
-					err_stat_info[i].err_name,
-					err_stat_info[i].stat_reg_addr,
-					err_stat);
-
-				if (buflen && blen >= buflen)
-					break;
-			} else {
-				pr_info("%s[0x%x] : 0x%x",
-					err_stat_info[i].err_name,
-					err_stat_info[i].stat_reg_addr,
-					err_stat);
-			}
-
-			while (intr_mask) {
-				if (((intr_mask & 0x01)) &&
-					(err_stat & chk_mask))
-					pr_err("\t%s detected",
-					err_stat_info[i].err_info.stat[bit]);
-
-				if (intr_mask & 0x01)
-					bit++;
-				intr_mask >>= 1;
-				chk_mask <<= 1;
-			}
-			__write_reg(xdev, err_stat_info[i].stat_reg_addr,
-				err_stat);
-		}
-	}
-	if (glb_err_stat) {
-		__write_reg(xdev, err_stat_info[0].stat_reg_addr,
-			    glb_err_stat);
-		qdma_err_intr_setup(xdev, 1);
+	if (!xdev) {
+		pr_err("Invalid device\n");
+		return -EINVAL;
 	}
 
-	return buf ? blen : 0;
+	rv = qdma_reg_dump_buf_len((void *)xdev,
+			xdev->version_info.ip_type, &buflen);
+	if (rv < 0) {
+		pr_err("Failed to get reg dump buffer length\n");
+		return rv;
+	}
+	buflen += REG_BANNER_LEN;
+
+	/** allocate memory */
+	tbuff = (char *) kzalloc(buflen, GFP_KERNEL);
+	if (!tbuff)
+		return -ENOMEM;
+
+	buf = tbuff;
+	rv = qdma_dump_config_regs(xdev, buf + len, buflen - len);
+	if (rv < 0) {
+		pr_warn("Failed to dump Config Bar register values\n");
+		goto free_buf;
+	}
+	len += rv;
+
+	*data = buf;
+	*data_len = buflen;
+
+	buf[++len] = '\0';
+	memset(temp_buf, '\0', 512);
+	for (dis_len = 0; dis_len < len; dis_len += 512) {
+		memcpy(temp_buf, buf, 512);
+		pr_info("\n%s", temp_buf);
+		memset(temp_buf, '\0', 512);
+		buf += 512;
+	}
+
+free_buf:
+	kfree(tbuf);
+	return 0;
 }
+#endif
+#endif
 
-int qdma_device_error_stat_dump(unsigned long dev_hndl, char *buf, int len)
-{
-	return err_stat_handler((struct xlnx_dma_dev *)dev_hndl, buf, len);
-}
-
-
-static irqreturn_t user_intr_handler(int irq_index, int irq, void *dev_id)
+#ifndef MBOX_INTERRUPT_DISABLE
+static irqreturn_t mbox_intr_handler(int irq_index, int irq, void *dev_id)
 {
 	struct xlnx_dma_dev *xdev = dev_id;
+	struct qdma_mbox *mbox = &xdev->mbox;
 
-	pr_debug("User IRQ fired on PF#%d: index=%d, vector=%d\n",
+	pr_debug("Mailbox IRQ fired on Funtion#%d: index=%d, vector=%d\n",
 		xdev->func_id, irq_index, irq);
 
-	if (xdev->conf.fp_user_isr_handler)
-		xdev->conf.fp_user_isr_handler((unsigned long)xdev, irq_index,
-						xdev->conf.uld);
-
-	return IRQ_HANDLED;
-}
-
-#ifndef __QDMA_VF__
-static irqreturn_t error_intr_handler(int irq_index, int irq, void *dev_id)
-{
-	struct xlnx_dma_dev *xdev = dev_id;
-	unsigned long flags;
-
-	pr_info("Error IRQ fired on PF#%d: index=%d, vector=%d\n",
-			xdev->func_id, irq_index, irq);
-
-	spin_lock_irqsave(&xdev->lock, flags);
-
-	err_stat_handler(xdev, NULL, 0);
-
-	spin_unlock_irqrestore(&xdev->lock, flags);
+	queue_work(mbox->workq, &mbox->rx_work);
 
 	return IRQ_HANDLED;
 }
 #endif
 
-static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
+#ifndef USER_INTERRUPT_DISABLE
+static irqreturn_t user_intr_handler(int irq_index, int irq, void *dev_id)
+{
+	struct xlnx_dma_dev *xdev = dev_id;
+
+	pr_info("User IRQ fired on Funtion#%d: index=%d, vector=%d\n",
+		xdev->func_id, irq_index, irq);
+
+	if (xdev->conf.fp_user_isr_handler)
+		xdev->conf.fp_user_isr_handler((unsigned long)xdev,
+						xdev->conf.uld);
+
+	return IRQ_HANDLED;
+}
+#endif
+
+#ifndef __QDMA_VF__
+static irqreturn_t error_intr_handler(int irq_index, int irq, void *dev_id)
+{
+	struct xlnx_dma_dev *xdev = dev_id;
+
+	pr_info("Error IRQ fired on Funtion#%d: index=%d, vector=%d\n",
+			xdev->func_id, irq_index, irq);
+
+	xdev->hw.qdma_hw_error_process(xdev);
+
+	xdev->hw.qdma_hw_error_intr_rearm(xdev);
+#ifdef DUMP_ON_ERROR_INTERRUPT
+	dump_qdma_regs(xdev);
+#endif
+	return IRQ_HANDLED;
+}
+#endif
+
+static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq,
+		u64 timestamp)
 {
 	struct qdma_descq *descq = NULL;
 	u32 counter = 0;
-	int ring_index = 0;
 	struct intr_coal_conf *coal_entry =
 			(xdev->intr_coal_list + vidx - xdev->dvec_start_idx);
-	struct qdma_intr_ring *ring_entry;
+	union qdma_intr_ring *ring_entry;
+	struct qdma_intr_cidx_reg_info *intr_cidx_info;
+	uint8_t color = 0;
+	uint8_t intr_type = 0;
+	uint32_t qid = 0;
+	uint32_t num_entries_processed = 0;
+
 
 	if (!coal_entry) {
 		pr_err("Failed to locate the coalescing entry for vector = %d\n",
 			vidx);
 		return;
 	}
+	intr_cidx_info = &coal_entry->intr_cidx_info;
 	pr_debug("INTR_COAL: msix[%d].vector=%d, msix[%d].entry=%d, rngsize=%d, cidx = %d\n",
 		vidx, xdev->msix[vidx].vector,
 		vidx,
 		xdev->msix[vidx].entry,
 		coal_entry->intr_rng_num_entries,
-		coal_entry->cidx);
+		intr_cidx_info->sw_cidx);
 
 	pr_debug("vidx = %d, dvec_start_idx = %d\n", vidx,
 		 xdev->dvec_start_idx);
@@ -334,31 +184,49 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
 		return;
 	}
 
-	counter = coal_entry->cidx;
+	counter = intr_cidx_info->sw_cidx;
 	ring_entry = (coal_entry->intr_ring_base + counter);
 	if (!ring_entry) {
 		pr_err("Failed to locate the ring entry for vector = %d\n",
 			vidx);
 		return;
 	}
-	while (ring_entry->coal_color == coal_entry->color) {
-		pr_debug("IRQ[%d]: IVE[%d], Qid = %d, e_color = %d, c_color = %d, intr_type = %d\n",
-				irq, vidx, ring_entry->qid, coal_entry->color,
-				ring_entry->coal_color, ring_entry->intr_type);
 
-		descq = qdma_device_get_descq_by_hw_qid(xdev, ring_entry->qid,
-				ring_entry->intr_type);
-		if (!descq) {
-			pr_err("IRQ[%d]: IVE[%d], Qid = %d: desc not found\n",
-					irq, vidx, ring_entry->qid);
-			return;
+	do {
+		if (xdev->version_info.ip_type == QDMA_VERSAL_HARD_IP) {
+			color = ring_entry->ring_cpm.coal_color;
+			intr_type = ring_entry->ring_cpm.intr_type;
+			qid = ring_entry->ring_cpm.qid;
+		} else {
+			color = ring_entry->ring_generic.coal_color;
+			intr_type = ring_entry->ring_generic.intr_type;
+			qid = ring_entry->ring_generic.qid;
 		}
 
-		if (descq->conf.fp_descq_isr_top) {
-			struct qdma_dev *qdev = xdev_2_qdev(xdev);
+		if (color != coal_entry->color)
+			break;
+		pr_debug("IRQ[%d]: IVE[%d], Qid = %d, e_color = %d, c_color = %d, intr_type = %d\n",
+				irq, vidx, qid, coal_entry->color,
+				color, intr_type);
 
-			descq->conf.fp_descq_isr_top(descq->conf.qidx +
-					(descq->conf.c2h ? qdev->qmax : 0),
+		descq = qdma_device_get_descq_by_hw_qid(xdev, qid,
+				intr_type);
+		if (!descq) {
+			pr_err("IRQ[%d]: IVE[%d], Qid = %d: desc not found\n",
+					irq, vidx, qid);
+			return;
+		}
+		xdev->prev_descq = descq;
+		pr_debug("IRQ[%d]: IVE[%d], Qid = %d, e_color = %d, c_color = %d, intr_type = %d\n",
+				irq, vidx, qid, coal_entry->color,
+				color, intr_type);
+
+		if (descq->conf.ping_pong_en &&
+			descq->conf.q_type == Q_C2H && descq->conf.st)
+			descq->ping_pong_rx_time = timestamp;
+
+		if (descq->conf.fp_descq_isr_top) {
+			descq->conf.fp_descq_isr_top(descq->q_hndl,
 					descq->conf.quld);
 		} else {
 			if (descq->cpu_assigned)
@@ -368,35 +236,55 @@ static void data_intr_aggregate(struct xlnx_dma_dev *xdev, int vidx, int irq)
 				schedule_work(&descq->work);
 		}
 
-		if (++coal_entry->cidx == coal_entry->intr_rng_num_entries) {
+		if (++intr_cidx_info->sw_cidx ==
+				coal_entry->intr_rng_num_entries) {
 			counter = 0;
 			xdev->intr_coal_list->color =
 				(xdev->intr_coal_list->color) ? 0 : 1;
-			coal_entry->cidx = 0;
+			intr_cidx_info->sw_cidx = 0;
 		} else
 			counter++;
-
+		num_entries_processed++;
 		ring_entry = (coal_entry->intr_ring_base + counter);
-	}
+	} while (1);
 
 	if (descq) {
-		ring_index = get_intr_ring_index(descq->xdev,
-						 coal_entry->vec_id);
-		intr_cidx_update(descq, coal_entry->cidx, ring_index);
+		queue_intr_cidx_update(descq->xdev,
+			descq->conf.qidx, &coal_entry->intr_cidx_info);
+	} else if (num_entries_processed == 0) {
+		pr_warn("No entries processed\n");
+		descq = xdev->prev_descq;
+		if (descq) {
+			pr_warn("Doing stale update\n");
+			queue_intr_cidx_update(descq->xdev,
+				descq->conf.qidx, &coal_entry->intr_cidx_info);
+		}
 	}
+
 }
 
-static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq)
+static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq,
+			u64 timestamp)
 {
 	struct qdma_descq *descq;
+	unsigned long flags;
+	struct list_head *descq_list =
+			&xdev->dev_intr_info_list[vidx].intr_list;
+	struct list_head *entry, *tmp;
 
-	list_for_each_entry(descq, &xdev->dev_intr_info_list[vidx].intr_list,
-			    intr_list)
+	spin_lock_irqsave(&xdev->dev_intr_info_list[vidx].vec_q_list,
+			  flags);
+	list_for_each_safe(entry, tmp, descq_list) {
+		descq = container_of(entry, struct qdma_descq, intr_list);
+		if (!descq)
+			continue;
+
+		if (descq->conf.ping_pong_en &&
+				descq->conf.q_type == Q_C2H && descq->conf.st)
+			descq->ping_pong_rx_time = timestamp;
+
 		if (descq->conf.fp_descq_isr_top) {
-			struct qdma_dev *qdev = xdev_2_qdev(xdev);
-
-			descq->conf.fp_descq_isr_top(descq->conf.qidx +
-					(descq->conf.c2h ? qdev->qmax : 0),
+			descq->conf.fp_descq_isr_top(descq->q_hndl,
 					descq->conf.quld);
 		} else {
 			if (descq->cpu_assigned)
@@ -405,23 +293,25 @@ static void data_intr_direct(struct xlnx_dma_dev *xdev, int vidx, int irq)
 			else
 				schedule_work(&descq->work);
 		}
+	}
+	spin_unlock_irqrestore(&xdev->dev_intr_info_list[vidx].vec_q_list,
+			    flags);
 }
 
 static irqreturn_t data_intr_handler(int vector_index, int irq, void *dev_id)
 {
 	struct xlnx_dma_dev *xdev = dev_id;
-	unsigned long flags;
+	u64 timestamp;
 
-	pr_debug("Data IRQ fired on PF#%d: index=%d, vector=%d\n",
-		xdev->func_id, vector_index, irq);
+	pr_debug("%s: Data IRQ fired on Funtion#%05x: index=%d, vector=%d\n",
+		xdev->mod_name, xdev->func_id, vector_index, irq);
+	timestamp = rdtsc_gettime();
 
-	spin_lock_irqsave(&xdev->lock, flags);
 	if ((xdev->conf.qdma_drv_mode == INDIRECT_INTR_MODE) ||
 			(xdev->conf.qdma_drv_mode == AUTO_MODE))
-		data_intr_aggregate(xdev, vector_index, irq);
+		data_intr_aggregate(xdev, vector_index, irq, timestamp);
 	else
-		data_intr_direct(xdev, vector_index, irq);
-	spin_unlock_irqrestore(&xdev->lock, flags);
+		data_intr_direct(xdev, vector_index, irq, timestamp);
 
 	return IRQ_HANDLED;
 }
@@ -458,49 +348,83 @@ static void *intr_ring_alloc(struct xlnx_dma_dev *xdev, int ring_sz,
 	return p;
 }
 
-void intr_ring_teardown(struct xlnx_dma_dev *xdev)
+#ifdef __QDMA_VF__
+static void intr_context_invalidate(struct xlnx_dma_dev *xdev)
 {
 	int i = 0;
+	struct mbox_msg *m;
+	int rv = 0;
+	struct mbox_msg_intr_ctxt ictxt;
 	struct intr_coal_conf  *ring_entry;
 
+	m = qdma_mbox_msg_alloc();
+	if (!m)
+		return;
+	memset(&ictxt, 0, sizeof(struct mbox_msg_intr_ctxt));
+	ictxt.num_rings = QDMA_NUM_DATA_VEC_FOR_INTR_CXT;
 
-#ifndef __QDMA_VF__
-	int rv = 0;
-	unsigned int ring_index = 0;
-#endif
+	for (i = 0; i < QDMA_NUM_DATA_VEC_FOR_INTR_CXT; i++) {
+		ictxt.ring_index_list[i] =
+			get_intr_ring_index(xdev, xdev->dvec_start_idx + i);
+	}
+	qdma_mbox_compose_vf_intr_ctxt_invalidate(xdev->func_id,
+			&ictxt, m->raw);
+	rv = qdma_mbox_msg_send(xdev, m, 1, QDMA_MBOX_MSG_TIMEOUT_MS);
+	if (rv < 0) {
+		pr_err("%s invalidate interrupt context failed %d.\n",
+			xdev->conf.name, rv);
+	}
 
-	while (i < QDMA_NUM_DATA_VEC_FOR_INTR_CXT) {
-#ifndef __QDMA_VF__
-		ring_index = get_intr_ring_index(xdev,
-				(i + xdev->dvec_start_idx));
-#endif
+	qdma_mbox_msg_free(m);
+
+	for (i = 0; i < QDMA_NUM_DATA_VEC_FOR_INTR_CXT; i++) {
 		ring_entry = (xdev->intr_coal_list + i);
 		if (ring_entry) {
 			intr_ring_free(xdev,
 				ring_entry->intr_rng_num_entries,
-				sizeof(struct qdma_intr_ring),
+				sizeof(union qdma_intr_ring),
 				(u8 *)ring_entry->intr_ring_base,
 				ring_entry->intr_ring_bus);
-#ifndef __QDMA_VF__
-			pr_debug("Clearing intr_ctxt for ring_index =%d\n",
-				ring_index);
-			/* clear interrupt context (0x8) */
-			rv = hw_indirect_ctext_prog(xdev, ring_index,
-						QDMA_CTXT_CMD_CLR,
-						QDMA_CTXT_SEL_COAL,
-						NULL, 0, 0, 1);
-			if (rv < 0) {
-				pr_err("Failed to clear interrupt context, rv = %d\n",
-					rv);
-			}
-#endif
+		}
+	}
+
+}
+#else
+static void intr_context_invalidate(struct xlnx_dma_dev *xdev)
+{
+	int i = 0;
+	unsigned int ring_index = 0;
+	struct intr_coal_conf  *ring_entry;
+	int rv = 0;
+
+	while (i < QDMA_NUM_DATA_VEC_FOR_INTR_CXT) {
+		ring_index = get_intr_ring_index(xdev,
+				(i + xdev->dvec_start_idx));
+		rv = xdev->hw.qdma_indirect_intr_ctx_conf(xdev, ring_index,
+				NULL, QDMA_HW_ACCESS_INVALIDATE);
+		if (rv < 0) {
+			pr_err("Intr ctxt invalidate failed, err = %d",
+						rv);
+			return;
+		}
+		ring_entry = (xdev->intr_coal_list + i);
+		if (ring_entry) {
+			intr_ring_free(xdev,
+				ring_entry->intr_rng_num_entries,
+				sizeof(union qdma_intr_ring),
+				(u8 *)ring_entry->intr_ring_base,
+				ring_entry->intr_ring_bus);
 		}
 		i++;
 	}
 
+}
+#endif
+
+void intr_ring_teardown(struct xlnx_dma_dev *xdev)
+{
+	intr_context_invalidate(xdev);
 	kfree(xdev->intr_coal_list);
-	pr_debug("dev %s interrupt coalescing ring teardown successful\n",
-				dev_name(&xdev->conf.pdev->dev));
 }
 
 static void data_vector_handler(int irq, struct xlnx_dma_dev *xdev)
@@ -562,30 +486,39 @@ static int intr_vector_setup(struct xlnx_dma_dev *xdev, int idx,
 		snprintf(xdev->dev_intr_info_list[idx].msix_name,
 			 QDMA_DEV_NAME_MAXLEN + 16, "%s-error",
 			 xdev->conf.name);
-	else if (type == INTR_TYPE_USER)
+
+	if (type == INTR_TYPE_USER)
+#ifndef USER_INTERRUPT_DISABLE
 		snprintf(xdev->dev_intr_info_list[idx].msix_name,
 			 QDMA_DEV_NAME_MAXLEN + 16, "%s-user", xdev->conf.name);
-	else if (type == INTR_TYPE_DATA)
+#else
+		return -EINVAL;
+#endif
+	if (type == INTR_TYPE_DATA)
 		snprintf(xdev->dev_intr_info_list[idx].msix_name,
 			 QDMA_DEV_NAME_MAXLEN + 16, "%s-data", xdev->conf.name);
-	else
+	if (type == INTR_TYPE_MBOX)
+#ifndef MBOX_INTERRUPT_DISABLE
 		snprintf(xdev->dev_intr_info_list[idx].msix_name,
-			 QDMA_DEV_NAME_MAXLEN + 16, "%s", xdev->conf.name);
+			 QDMA_DEV_NAME_MAXLEN + 16, "%s-mbox", xdev->conf.name);
+#else
+		return -EINVAL;
+#endif
 
 	xdev->dev_intr_info_list[idx].intr_vec_map.intr_type = type;
 	xdev->dev_intr_info_list[idx].intr_vec_map.intr_vec_index = idx;
 	xdev->dev_intr_info_list[idx].intr_vec_map.intr_handler = handler;
 
-	if (type == INTR_TYPE_DATA)
+	if ((type == INTR_TYPE_DATA) || (type == INTR_TYPE_MBOX)) {
 		rv = request_irq(xdev->msix[idx].vector, irq_bottom, 0,
 				 xdev->dev_intr_info_list[idx].msix_name, xdev);
-	else
+	} else
 		rv = request_threaded_irq(xdev->msix[idx].vector, irq_top,
 					  irq_bottom, 0,
 				  xdev->dev_intr_info_list[idx].msix_name,
 				  xdev);
 
-	pr_info("%s requesting IRQ vector #%d: vec %d, type %d, %s.\n",
+	pr_debug("%s requesting IRQ vector #%d: vec %d, type %d, %s.\n",
 			xdev->conf.name, idx, xdev->msix[idx].vector,
 			type, xdev->dev_intr_info_list[idx].msix_name);
 
@@ -616,19 +549,65 @@ static int pci_msix_vec_count(struct pci_dev *dev)
 int intr_setup(struct xlnx_dma_dev *xdev)
 {
 	int rv = 0;
-	int i, tmp;
+	int i = 0;
+	int num_vecs = 0;
+	int num_vecs_req = 0;
+#ifndef USER_INTERRUPT_DISABLE
+	int intr_count = 0;
+#endif
 
 	if ((xdev->conf.qdma_drv_mode == POLL_MODE) ||
 			(xdev->conf.qdma_drv_mode == LEGACY_INTR_MODE)) {
 		goto exit;
 	}
-	xdev->num_vecs = pci_msix_vec_count(xdev->conf.pdev);
+	num_vecs = pci_msix_vec_count(xdev->conf.pdev);
 	pr_debug("dev %s, xdev->num_vecs = %d\n",
 			dev_name(&xdev->conf.pdev->dev), xdev->num_vecs);
 
-	if (!xdev->num_vecs) {
+	if (num_vecs == 0) {
 		pr_warn("MSI-X not supported, running in polled mode\n");
 		return 0;
+	}
+
+	if (xdev->conf.data_msix_qvec_max == 0) {
+		pr_err("At least 1 data vector is required. input invalid: data_masix_qvec_max(%u)",
+			xdev->conf.data_msix_qvec_max);
+		return -EINVAL;
+	}
+
+	xdev->num_vecs = min_t(int, num_vecs, xdev->conf.msix_qvec_max);
+	if (xdev->num_vecs < xdev->conf.msix_qvec_max)
+		pr_info("current device supports only (%u) msix vectors per function. ignoring input for (%u) vectors",
+			xdev->num_vecs,
+			xdev->conf.msix_qvec_max);
+
+	/** Make sure the total supported vectors =
+	 *  (user vectors + data vectors + 1 error vectors
+	 *  + 1 mailbox vectors)
+	 *  find the requested vectors and check the available vectors
+	 *  can satisfy the request
+	 */
+	num_vecs_req = xdev->conf.user_msix_qvec_max +
+					xdev->conf.data_msix_qvec_max;
+
+	/** Dedicate 1 vector for error interrupts */
+	if (xdev->conf.master_pf)
+		num_vecs_req++;
+
+#ifndef MBOX_INTERRUPT_DISABLE
+	/** Dedicate 1 vector for mailbox interrupts */
+	if ((xdev->version_info.device_type == QDMA_DEVICE_SOFT) &&
+	(xdev->version_info.vivado_release >= QDMA_VIVADO_2019_1))
+		num_vecs_req++;
+#endif
+
+	if (num_vecs_req > xdev->num_vecs) {
+		pr_warn("Available vectors(%u) is less than Requested vectors(%u) [u:%u|d:%u]\n",
+				xdev->num_vecs,
+				num_vecs_req,
+				xdev->conf.user_msix_qvec_max,
+				xdev->conf.data_msix_qvec_max);
+		return -EINVAL;
 	}
 
 	xdev->msix = kzalloc((sizeof(struct msix_entry) * xdev->num_vecs),
@@ -653,9 +632,10 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 	for (i = 0; i < xdev->num_vecs; i++) {
 		xdev->msix[i].entry = i;
 		INIT_LIST_HEAD(&xdev->dev_intr_info_list[i].intr_list);
+		spin_lock_init(&xdev->dev_intr_info_list[i].vec_q_list);
 	}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
+#if KERNEL_VERSION(4, 12, 0) <= LINUX_VERSION_CODE
 	rv = pci_enable_msix_exact(xdev->conf.pdev, xdev->msix, xdev->num_vecs);
 #else
 	rv = pci_enable_msix(xdev->conf.pdev, xdev->msix, xdev->num_vecs);
@@ -665,31 +645,49 @@ int intr_setup(struct xlnx_dma_dev *xdev)
 		goto free_intr_info;
 	}
 
-	/** On master PF0, vector#0 is dedicated for Error interrupts and
+	/** On master PF0, vector#2 is dedicated for Error interrupts and
 	 * vector #1 is dedicated for User interrupts
 	 * For all other PFs and VFs, vector#0 is dedicated for User interrupts
 	 * The remaining vectors are for Data interrupts
 	 */
-	i = 0;
+	i = 0; /* This is mandatory, do not delete */
 
-	/* user interrupt */
-	for (tmp = 0; tmp < QDMA_USER_INTR_NUM; tmp++) {
-		rv = intr_vector_setup(xdev, i, INTR_TYPE_USER, user_intr_handler);
-		if (rv)
-			goto cleanup_irq;
-		i++;
-	}
-
-#ifndef __QDMA_VF__
-	/* global error interrupt */
-	if (xdev->conf.master_pf) {
-		rv = intr_vector_setup(xdev, i, INTR_TYPE_ERROR,
-					error_intr_handler);
+#ifndef MBOX_INTERRUPT_DISABLE
+	if ((xdev->version_info.device_type == QDMA_DEVICE_SOFT) &&
+	(xdev->version_info.vivado_release >= QDMA_VIVADO_2019_1)) {
+		/* Mail box interrupt */
+		rv = intr_vector_setup(xdev, i, INTR_TYPE_MBOX,
+				mbox_intr_handler);
 		if (rv)
 			goto cleanup_irq;
 		i++;
 	}
 #endif
+
+#ifndef USER_INTERRUPT_DISABLE
+	for (intr_count = 0;
+		intr_count < xdev->conf.user_msix_qvec_max;
+		intr_count++) {
+		/* user interrupt */
+		rv = intr_vector_setup(xdev, i, INTR_TYPE_USER,
+				user_intr_handler);
+		if (rv)
+			goto cleanup_irq;
+		i++;
+	}
+#endif
+
+#ifndef __QDMA_VF__
+	/* global error interrupt */
+	if (xdev->conf.master_pf) {
+		rv = intr_vector_setup(xdev, i, INTR_TYPE_ERROR,
+				error_intr_handler);
+		if (rv)
+			goto cleanup_irq;
+		i++;
+	}
+#endif
+
 	/* data interrupt */
 	xdev->dvec_start_idx = i;
 	for (; i < xdev->num_vecs; i++) {
@@ -716,11 +714,13 @@ exit:
 	return rv;
 }
 
+
+
 #ifndef __QDMA_VF__
-static irqreturn_t irq_legacy(int irq, void *param)
+static irqreturn_t irq_legacy(int irq, void *irq_data)
 {
 	struct list_head *entry, *tmp;
-	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)param;
+	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)irq_data;
 	irqreturn_t ret = IRQ_NONE;
 
 	if (!xdev) {
@@ -729,8 +729,7 @@ static irqreturn_t irq_legacy(int irq, void *param)
 	}
 
 	spin_lock_irqsave(&legacy_intr_lock, legacy_intr_flags);
-	if (__read_reg(xdev, QDMA_GLBL_INTERRUPT_CFG) &
-			QDMA_GLBL_INTERRUPT_LGCY_INTR_PEND) {
+	if (!xdev->hw.qdma_is_legacy_intr_pend(xdev)) {
 
 		list_for_each_safe(entry, tmp, &legacy_intr_q_list) {
 			struct qdma_descq *descq =
@@ -740,9 +739,8 @@ static irqreturn_t irq_legacy(int irq, void *param)
 
 			qdma_descq_service_cmpl_update(descq, 0, 1);
 		}
-		__write_reg(xdev, QDMA_GLBL_INTERRUPT_CFG,
-			    QDMA_GLBL_INTERRUPT_CFG_EN_LGCY_INTR |
-			    QDMA_GLBL_INTERRUPT_LGCY_INTR_PEND);
+		xdev->hw.qdma_clear_pend_legacy_intr(xdev);
+		xdev->hw.qdma_legacy_intr_conf(xdev, ENABLE);
 		ret = IRQ_HANDLED;
 	}
 	spin_unlock_irqrestore(&legacy_intr_lock, legacy_intr_flags);
@@ -764,8 +762,9 @@ void intr_legacy_clear(struct qdma_descq *descq)
 
 		pr_info("un-registering legacy interrupt from qdma%05x\n",
 			descq->xdev->conf.bdf);
-		__write_reg(descq->xdev, QDMA_GLBL_INTERRUPT_CFG,
-			    QDMA_GLBL_INTERRUPT_LGCY_INTR_PEND);
+
+		descq->xdev->hw.qdma_legacy_intr_conf(descq->xdev, DISABLE);
+
 		free_irq(descq->xdev->conf.pdev->irq, descq->xdev);
 	}
 }
@@ -788,8 +787,13 @@ int intr_legacy_setup(struct qdma_descq *descq)
 		spin_lock_init(&legacy_intr_lock);
 		pr_debug("registering legacy interrupt for irq-%d from qdma%05x\n",
 			descq->xdev->conf.pdev->irq, descq->xdev->conf.bdf);
-		__write_reg(descq->xdev, QDMA_GLBL_INTERRUPT_CFG,
-			    QDMA_GLBL_INTERRUPT_LGCY_INTR_PEND);
+
+		if (descq->xdev->hw.qdma_legacy_intr_conf(descq->xdev,
+								DISABLE)) {
+			spin_unlock(&legacy_q_add_lock);
+			return -EINVAL;
+		}
+
 		rv = request_threaded_irq(descq->xdev->conf.pdev->irq, irq_top,
 					  irq_legacy, legacy_intr_flags,
 					  "qdma legacy intr",
@@ -802,8 +806,11 @@ int intr_legacy_setup(struct qdma_descq *descq)
 				      &legacy_intr_q_list);
 			rv = 0;
 		}
-		__write_reg(descq->xdev, QDMA_GLBL_INTERRUPT_CFG,
-			    QDMA_GLBL_INTERRUPT_CFG_EN_LGCY_INTR);
+		if (descq->xdev->hw.qdma_legacy_intr_conf(descq->xdev,
+								ENABLE)) {
+			spin_unlock(&legacy_q_add_lock);
+			return -EINVAL;
+		}
 	} else
 		list_add_tail(&descq->legacy_intr_q_list,
 			      &legacy_intr_q_list);
@@ -829,26 +836,25 @@ int intr_ring_setup(struct xlnx_dma_dev *xdev)
 		return 0;
 	}
 
-	/** For master_pf, vec0 and vec1 is used for
+	/** For master_pf, vec1 and vec2 is used for
 	 *  error and user interrupts
 	 *  for other pfs, vec0 is used for user interrupts
 	 */
-	if ((xdev->num_vecs != 0) &&
-	    ((xdev->num_vecs - xdev->dvec_start_idx) < xdev->conf.qsets_max)) {
+	if (xdev->num_vecs != 0) {
 		pr_debug("dev %s num_vectors[%d] < num_queues [%d]\n",
 					dev_name(&xdev->conf.pdev->dev),
 					xdev->num_vecs,
 					xdev->conf.qsets_max);
 		pr_debug("Enabling Interrupt aggregation\n");
 
-		/* obtain the number of queue entries
+		/** obtain the number of queue entries
 		 * in each inr_ring based on ring size
 		 */
 		num_entries = ((xdev->conf.intr_rngsz + 1) * 512);
 
 		pr_debug("%s interrupt coalescing ring with %d entries\n",
 			dev_name(&xdev->conf.pdev->dev), num_entries);
-		/*
+		/**
 		 * Initially assuming that each vector has the same size of the
 		 * ring, In practical it is possible to have different ring
 		 * size of different vectors (?)
@@ -872,7 +878,7 @@ int intr_ring_setup(struct xlnx_dma_dev *xdev)
 							num_entries;
 			intr_coal_list_entry->intr_ring_base = intr_ring_alloc(
 					xdev, num_entries,
-					sizeof(struct qdma_intr_ring),
+					sizeof(union qdma_intr_ring),
 					&intr_coal_list_entry->intr_ring_bus);
 			if (!intr_coal_list_entry->intr_ring_base) {
 				pr_err("dev %s, sz %u, intr_desc ring OOM.\n",
@@ -883,8 +889,11 @@ int intr_ring_setup(struct xlnx_dma_dev *xdev)
 
 			intr_coal_list_entry->vec_id =
 			xdev->msix[counter + xdev->dvec_start_idx].entry;
-			intr_coal_list_entry->cidx = 0;
+			intr_coal_list_entry->intr_cidx_info.sw_cidx = 0;
 			intr_coal_list_entry->color = 1;
+			intr_coal_list_entry->intr_cidx_info.rng_idx =
+					get_intr_ring_index(xdev,
+					    intr_coal_list_entry->vec_id);
 			pr_debug("ring_number = %d, vector_index = %d, ring_size = %d, ring_base = 0x%08x",
 			    counter, intr_coal_list_entry->vec_id,
 			    intr_coal_list_entry->intr_rng_num_entries,
@@ -902,6 +911,8 @@ int intr_ring_setup(struct xlnx_dma_dev *xdev)
 			xdev->conf.qsets_max);
 
 		xdev->intr_coal_list = NULL;
+		/* Fallback from indirect interrupt mode */
+		xdev->conf.qdma_drv_mode = POLL_MODE;
 	}
 	return 0;
 
@@ -909,7 +920,7 @@ err_out:
 	while (--counter >= 0) {
 		intr_coal_list_entry = (intr_coal_list + counter);
 		intr_ring_free(xdev, intr_coal_list_entry->intr_rng_num_entries,
-				sizeof(struct qdma_intr_ring),
+				sizeof(union qdma_intr_ring),
 				(u8 *)intr_coal_list_entry->intr_ring_base,
 				intr_coal_list_entry->intr_ring_bus);
 	}
@@ -925,22 +936,36 @@ void intr_work(struct work_struct *work)
 	qdma_descq_service_cmpl_update(descq, 0, 1);
 }
 
-/*
+/**
  * qdma_queue_service - service the queue
  * in the case of irq handler is registered by the user, the user should
  * call qdma_queue_service() in its interrupt handler to service the queue
  * @dev_hndl: hndl retured from qdma_device_open()
  * @qhndl: hndl retured from qdma_queue_add()
  */
-void qdma_queue_service(unsigned long dev_hndl, unsigned long id, int budget,
+int qdma_queue_service(unsigned long dev_hndl, unsigned long id, int budget,
 			bool c2h_upd_cmpl)
 {
 	struct xlnx_dma_dev *xdev = (struct xlnx_dma_dev *)dev_hndl;
-	struct qdma_descq *descq = qdma_device_get_descq_by_id(xdev, id,
-							NULL, 0, 1);
+	struct qdma_descq *descq;
 
+	/** make sure that the dev_hndl passed is Valid */
+	if (!xdev) {
+		pr_err("dev_hndl is NULL");
+		return -EINVAL;
+	}
+
+	if (xdev_check_hndl(__func__, xdev->conf.pdev, dev_hndl) < 0) {
+		pr_err("Invalid dev_hndl passed");
+		return -EINVAL;
+	}
+
+	descq = qdma_device_get_descq_by_id(xdev, id, NULL, 0, 0);
 	if (descq)
-		qdma_descq_service_cmpl_update(descq, budget, c2h_upd_cmpl);
+		return qdma_descq_service_cmpl_update(descq,
+					budget, c2h_upd_cmpl);
+
+	return -EINVAL;
 }
 
 static u8 get_intr_vec_index(struct xlnx_dma_dev *xdev, u8 intr_type)
@@ -949,65 +974,31 @@ static u8 get_intr_vec_index(struct xlnx_dma_dev *xdev, u8 intr_type)
 
 	for (i = 0; i < xdev->num_vecs; i++) {
 		if (xdev->dev_intr_info_list[i].intr_vec_map.intr_type ==
-		    intr_type)
-			return xdev->dev_intr_info_list[i].intr_vec_map.intr_vec_index;
+		    intr_type) {
+			struct intr_info_t *dev_intr_info_list =
+					&xdev->dev_intr_info_list[i];
+			return dev_intr_info_list->intr_vec_map.intr_vec_index;
+		}
 	}
 	return 0;
 }
 
-void qdma_err_intr_setup(struct xlnx_dma_dev *xdev, u8 rearm)
+int qdma_err_intr_setup(struct xlnx_dma_dev *xdev)
 {
-	u32 val = 0;
+	int rv = 0;
 	u8  err_intr_index = 0;
-	u8 i;
 
-	val = xdev->func_id;
 	err_intr_index = get_intr_vec_index(xdev, INTR_TYPE_ERROR);
-	val |= V_QDMA_C2H_ERR_INT_VEC(err_intr_index);
 
-	val |= (1 << S_QDMA_C2H_ERR_INT_F_ERR_INT_ARM);
-
-	__write_reg(xdev, QDMA_C2H_ERR_INT, val);
-
-	if (rearm)
-		return;
-
-	pr_debug("Error interrupt setup: val = 0x%08x,  readback =  0x%08x err_intr_index = %d func_id = %d\n",
-			val, __read_reg(xdev, QDMA_C2H_ERR_INT),
-			err_intr_index, xdev->func_id);
-
-	for (i = 0; i < HW_ERRS; i++)
-		qdma_enable_hw_err(xdev, i);
-}
-
-
-void qdma_enable_hw_err(struct xlnx_dma_dev *xdev, u8 hw_err_type)
-{
-
-	switch (hw_err_type) {
-	case GLBL_ERR:
-	case GLBL_DSC_ERR:
-	case GLBL_TRQ_ERR:
-	case C2H_ERR:
-	case C2H_FATAL_ERR:
-	case H2C_ERR:
-	case ECC_SB_ERR:
-	case ECC_DB_ERR:
-		break;
-	default:
-		hw_err_type = 0;
-		break;
+	rv = xdev->hw.qdma_hw_error_intr_setup(xdev, xdev->func_id,
+					    err_intr_index);
+	if (rv < 0) {
+		pr_err("Failed to setup error interrupt, err = %d", rv);
+		return -EINVAL;
 	}
 
-	__write_reg(xdev,
-	    err_stat_info[hw_err_type].mask_reg_addr,
-		err_stat_info[hw_err_type].err_info.intr_mask);
-	pr_info("%s interrupts enabled: reg -> 0x%08x,  value =  0x%08x\n",
-		 err_stat_info[hw_err_type].err_name,
-		 err_stat_info[hw_err_type].mask_reg_addr,
-		 __read_reg(xdev, err_stat_info[hw_err_type].mask_reg_addr));
+	return 0;
 }
-
 
 int get_intr_ring_index(struct xlnx_dma_dev *xdev, u32 vector_index)
 {

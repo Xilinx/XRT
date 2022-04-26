@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -67,41 +67,20 @@ int qdma_descq_context_setup(struct qdma_descq *descq);
 
 /*****************************************************************************/
 /**
- * qdma_descq_stm_setup() - handler to set the qdma stm
- *
- * @param[in]	descq:		pointer to qdma_descq
- *
- * @return	0: success
- * @return	<0: failure
- *****************************************************************************/
-int qdma_descq_stm_setup(struct qdma_descq *descq);
-
-/*****************************************************************************/
-/**
- * qdma_descq_stm_clear() - handler to clear the qdma stm
- *
- * @param[in]	descq:		pointer to qdma_descq
- *
- * @return	0: success
- * @return	<0: failure
- *****************************************************************************/
-int qdma_descq_stm_clear(struct qdma_descq *descq);
-
-/*****************************************************************************/
-/**
  * qdma_descq_context_clear() - handler to clear the qdma sw descriptor context
  *
  * @param[in]	xdev:	pointer to xdev
  * @param[in]	qid_hw:	hw qidx
  * @param[in]	st:		indicated whether the mm mode or st mode
- * @param[in]	c2h:	indicates whether the h2c or c2h direction
+ * @param[in]	c2h:		indicates whether the h2c or c2h direction
+ * @param[in]	mm_cmpt_en:	indicates whether cmpt is enabled for mm or not
  * @param[in]	clr:	flag to indicate whether to clear the context or not
  *
  * @return	0: success
  * @return	<0: failure
  *****************************************************************************/
 int qdma_descq_context_clear(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
-				bool st, bool c2h, bool clr);
+				bool st, u8 type, bool clr);
 
 /*****************************************************************************/
 /**
@@ -110,15 +89,29 @@ int qdma_descq_context_clear(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
  * @param[in]	xdev:	pointer to xdev
  * @param[in]	qid_hw:	hw qidx
  * @param[in]	st:		indicated whether the mm mode or st mode
- * @param[in]	c2h:	indicates whether the h2c or c2h direction
+ * @param[in]	c2h:		indicates whether the h2c or c2h direction
+ * @param[in]	mm_cmpt_en:	indicates whether cmpt is enabled for mm or not
  * @param[out]	ctxt:	pointer to context data
  *
  * @return	0: success
  * @return	<0: failure
  *****************************************************************************/
 int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
-				bool st, bool c2h,
-				struct hw_descq_context *ctxt);
+			bool st, u8 type, struct qdma_descq_context *context);
+
+/*****************************************************************************/
+/**
+ * qdma_descq_context_dump() - handler to dump the queue context
+ *
+ *
+ * @param[in]	descq:		pointer to qdma_descq
+ * @param[out]	buflen:		length of the input buffer
+ * @param[out]	buf:		message buffer
+ *
+ * @return	0: success
+ * @return	<0: failure
+ *****************************************************************************/
+int qdma_descq_context_dump(struct qdma_descq *descq, char *buf, int buflen);
 
 /*****************************************************************************/
 /**
@@ -133,8 +126,7 @@ int qdma_descq_context_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
  * @return	<0: failure
  *****************************************************************************/
 int qdma_intr_context_read(struct xlnx_dma_dev *xdev,
-				int ring_index, unsigned int ctxt_sz,
-				u32 *context);
+	int ring_index, struct qdma_indirect_intr_ctxt *ctxt);
 
 #ifndef __QDMA_VF__
 /*****************************************************************************/
@@ -144,54 +136,15 @@ int qdma_intr_context_read(struct xlnx_dma_dev *xdev,
  * @param[in]	xdev:	pointer to xdev
  * @param[in]	qid_hw:	hw qidx
  * @param[in]	st:		indicated whether the mm mode or st mode
- * @param[in]	c2h:	indicates whether the h2c or c2h direction
+ * @param[in]	c2h:		indicates whether the h2c or c2h direction
+ * @param[in]	mm_cmpt_en:	indicates whether cmpt is enabled for mm or not*
  * @param[out]	ctxt:	pointer to context data
  *
  * @return	0: success
  * @return	<0: failure
  *****************************************************************************/
 int qdma_descq_context_program(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
-				bool st, bool c2h,
-				struct hw_descq_context *ctxt);
-
-
-/*****************************************************************************/
-/**
- * qdma_descq_stm_read() - handler to read stm context, can, maps
- *
- * @param[in]	xdev:	pointer to xdev
- * @param[in]	qid_hw:	hw qidx
- * @param[in]	pipe_flow_id: pipe_flow_id for queue
- * @param[in]	c2h:	indicates whether the h2c or c2h direction
- * @param[in]	map:	indicates whether to read map or ctxt/can
- * @param[in]   ctxt:	indicates whether to read ctxt or can
- * @param[out]  context: pointer to context data
- *
- * @return	0: success
- * @return	<0: failure
- *****************************************************************************/
-int qdma_descq_stm_read(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
-			u8 pipe_flow_id, bool c2h, bool map, bool ctxt,
-			struct stm_descq_context *context);
-
-
-/*****************************************************************************/
-/**
- * qdma_descq_stm_program() - handler to program the stm
- *
- * @param[in]	xdev:	pointer to xdev
- * @param[in]	qid_hw:	hw qidx
- * @param[in]	pipe_flow_id:	flow id for pipe
- * @param[in]	c2h:	indicates whether the h2c or c2h direction
- * @param[in]   clear:  flag to prog/clear stm context/maps
- * @param[out]	stm:	pointer to stm data
- *
- * @return	0: success
- * @return	<0: failure
- *****************************************************************************/
-int qdma_descq_stm_program(struct xlnx_dma_dev *xdev, unsigned int qid_hw,
-			   uint8_t pipe_flow_id, bool c2h, bool clear,
-			   struct stm_descq_context *context);
+			bool st, u8 type, struct qdma_descq_context *context);
 
 #endif
 

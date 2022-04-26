@@ -1,7 +1,7 @@
 /*
  * This file is part of the Xilinx DMA IP Core driver for Linux
  *
- * Copyright (c) 2017-present,  Xilinx, Inc.
+ * Copyright (c) 2017-2020,  Xilinx, Inc.
  * All rights reserved.
  *
  * This source code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 /**
  * qdma_debugfs_init() - function to initialize debugfs
  *
+ * param[in]: qdma_debugfs_root - debugfs root
+ *
  * @return	0: success
  * @return	<0: error
  *****************************************************************************/
@@ -35,16 +37,16 @@ int qdma_debugfs_init(struct dentry **qdma_debugfs_root)
 	 * /sys/kernel/debugfs
 	 */
 #ifndef __QDMA_VF__
-	debugfs_root = debugfs_create_dir("qdma_pf", NULL);
+	debugfs_root = debugfs_create_dir("qdma-pf", NULL);
 	if (!debugfs_root)
 		return -ENOENT;
-	pr_debug("created qdma_pf dir in Linux debug file system\n");
+	pr_debug("created qdma-pf dir in Linux debug file system\n");
 
 #else
-	debugfs_root = debugfs_create_dir("qdma_vf", NULL);
+	debugfs_root = debugfs_create_dir("qdma-vf", NULL);
 	if (!debugfs_root)
 		return -ENOENT;
-	pr_debug("created qdma_vf dir in Linux debug file system\n");
+	pr_debug("created qdma-vf dir in Linux debug file system\n");
 
 #endif
 
@@ -55,6 +57,8 @@ int qdma_debugfs_init(struct dentry **qdma_debugfs_root)
 /*****************************************************************************/
 /**
  * qdma_debugfs_exit() - function to cleanup debugfs
+ *
+ * param[in]: qdma_debugfs_root - debugfs root
  *
  * @return	0: success
  * @return	<0: error

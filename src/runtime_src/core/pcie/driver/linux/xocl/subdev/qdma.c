@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2018 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020- Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -18,6 +18,7 @@
 
 #include <linux/version.h>
 #include <linux/eventfd.h>
+#include <linux/debugfs.h>
 #include <linux/anon_inodes.h>
 #include <linux/dma-buf.h>
 #include <linux/aio.h>
@@ -26,8 +27,10 @@
 #include "../xocl_drv.h"
 #include "../xocl_drm.h"
 #include "../lib/libqdma/libqdma_export.h"
+#include "../lib/libqdma/qdma_ul_ext.h"
 #include "qdma_ioctl.h"
 
+#define XOCL_FILE_PAGE_OFFSET   0x100000
 #ifndef VM_RESERVED
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif
@@ -41,26 +44,28 @@
 /* streaming defines */
 #define	MINOR_NAME_MASK		0xffffffff
 
-#define	STREAM_FLOWID_MASK	0xff
-#define	STREAM_SLRID_SHIFT	16
-#define	STREAM_SLRID_MASK	0xff
-#define	STREAM_TDEST_MASK	0xffff
-
 #define	STREAM_DEFAULT_H2C_RINGSZ_IDX		0
 #define	STREAM_DEFAULT_C2H_RINGSZ_IDX		0
 #define	STREAM_DEFAULT_WRB_RINGSZ_IDX		0
 
-#define	QUEUE_POST_TIMEOUT	10000
 #define QDMA_MAX_INTR		16
 #define QDMA_USER_INTR_MASK	0xff
 
 #define QDMA_QSETS_MAX		256
+#define QDMA_QSETS_BASE		0
+
+#define QDMA_REQ_TIMEOUT_MS	10000
 
 /* Module Parameters */
 unsigned int qdma_max_channel = 16;
 module_param(qdma_max_channel, uint, 0644);
 MODULE_PARM_DESC(qdma_max_channel, "Set number of channels for qdma, default is 16");
 
+static unsigned int qdma_interrupt_mode = DIRECT_INTR_MODE;
+module_param(qdma_interrupt_mode, uint, 0644);
+MODULE_PARM_DESC(interrupt_mode, "0:auto, 1:poll, 2:direct, 3:intr_ring, default is 2");
+
+struct dentry *qdma_debugfs_root;
 
 static dev_t	str_dev;
 
@@ -101,6 +106,7 @@ struct qdma_stream_iocb {
 	/* dma request list */
 	struct qdma_stream_req_cb	*reqcb;
 	struct qdma_request	*reqv;
+	struct qdma_sw_sg	*sgl;
 };
 
 struct qdma_stream_ioreq {
@@ -122,8 +128,9 @@ struct qdma_stream_queue {
 	spinlock_t		qlock;
 	unsigned long		refcnt;
 	wait_queue_head_t 	wq;
-	int			flowid;
-	int			routeid;
+	unsigned int		flowid;
+	unsigned int		routeid;
+
 	struct file		*file;
 	int			qfd;
 	kuid_t			uid;
@@ -138,10 +145,8 @@ struct qdma_stream_queue {
 };
 
 struct xocl_qdma {
-	void			*dma_handle;
-
+	unsigned long 		dma_hndl;
 	struct qdma_dev_conf	dev_conf;
-
 	struct platform_device	*pdev;
 	/* Number of bidirectional channels */
 	u32			channel;
@@ -218,14 +223,12 @@ static ssize_t qinfo_show(struct device *dev, struct device_attribute *da,
 	__SHOW_MEMBER(qconf, pipe);
 	__SHOW_MEMBER(qconf, irq_en);
 	__SHOW_MEMBER(qconf, desc_rng_sz_idx);
-	__SHOW_MEMBER(qconf, cmpl_status_en);
+	__SHOW_MEMBER(qconf, wb_status_en);
 	__SHOW_MEMBER(qconf, cmpl_status_acc_en);
 	__SHOW_MEMBER(qconf, cmpl_status_pend_chk);
 	__SHOW_MEMBER(qconf, desc_bypass);
 	__SHOW_MEMBER(qconf, pfetch_en);
 	__SHOW_MEMBER(qconf, st_pkt_mode);
-	__SHOW_MEMBER(qconf, c2h_use_fl);
-	__SHOW_MEMBER(qconf, c2h_buf_sz_idx);
 	__SHOW_MEMBER(qconf, cmpl_rng_sz_idx);
 	__SHOW_MEMBER(qconf, cmpl_desc_sz);
 	__SHOW_MEMBER(qconf, cmpl_stat_en);
@@ -234,11 +237,13 @@ static ssize_t qinfo_show(struct device *dev, struct device_attribute *da,
 	__SHOW_MEMBER(qconf, cmpl_cnt_th_idx);
 	__SHOW_MEMBER(qconf, cmpl_trig_mode);
 	__SHOW_MEMBER(qconf, cmpl_en_intr);
+#if 0
 	__SHOW_MEMBER(qconf, cdh_max);
 	__SHOW_MEMBER(qconf, pipe_gl_max);
 	__SHOW_MEMBER(qconf, pipe_flow_id);
 	__SHOW_MEMBER(qconf, pipe_slr_id);
 	__SHOW_MEMBER(qconf, pipe_tdest);
+#endif
 	__SHOW_MEMBER(qconf, quld);
 	__SHOW_MEMBER(qconf, rngsz);
 	__SHOW_MEMBER(qconf, rngsz_cmpt);
@@ -249,26 +254,28 @@ static ssize_t qinfo_show(struct device *dev, struct device_attribute *da,
 static DEVICE_ATTR_RO(qinfo);
 
 static ssize_t stat_show(struct device *dev, struct device_attribute *da,
-	char *buf)
+			char *buf)
 {
-	struct mm_channel *channel = dev_get_drvdata(dev);
 	int off = 0;
+#if 0
+	struct mm_channel *channel = dev_get_drvdata(dev);
 	struct qdma_queue_stats stat, *pstat;
 
 	if (qdma_queue_get_stats((unsigned long)channel->qdma->dma_handle,
-				channel->queue, &stat) < 0)
-		return sprintf(buf, "Input invalid\n");
+                                channel->queue, &stat) < 0)
+                return sprintf(buf, "Input invalid\n");
 
-	pstat = &stat;
+        pstat = &stat;
 
-	__SHOW_MEMBER(pstat, pending_bytes);
-	__SHOW_MEMBER(pstat, pending_requests);
-	__SHOW_MEMBER(pstat, complete_bytes);
-	__SHOW_MEMBER(pstat, complete_requests);
-
-	return off;
+        __SHOW_MEMBER(pstat, pending_bytes);
+        __SHOW_MEMBER(pstat, pending_requests);
+        __SHOW_MEMBER(pstat, complete_bytes);
+        __SHOW_MEMBER(pstat, complete_requests);
+#endif
+        return off;
 }
 static DEVICE_ATTR_RO(stat);
+
 
 static struct attribute *queue_attributes[] = {
 	&dev_attr_stat.attr,
@@ -305,7 +312,7 @@ static int channel_sysfs_create(struct mm_channel *channel)
 	channel->dev.release = device_release;
 	dev_set_drvdata(&channel->dev, channel);
 	dev_set_name(&channel->dev, "%sq%d",
-		qconf->c2h ? "r" : "w",
+		qconf->q_type == Q_C2H ? "r" : "w",
 		qconf->qidx);
 	ret = device_register(&channel->dev);
 	if (ret) {
@@ -334,7 +341,7 @@ static void qdma_stream_sysfs_destroy(struct qdma_stream_queue *queue)
 	struct platform_device	*pdev = queue->qdma->pdev;
 	char			name[32];
 
-	if (queue->qconf.c2h)
+	if (queue->qconf.q_type == Q_C2H)
 		snprintf(name, sizeof(name) - 1, "flow%d", queue->flowid);
 	else
 		snprintf(name, sizeof(name) - 1, "route%d", queue->routeid);
@@ -361,7 +368,7 @@ static int qdma_stream_sysfs_create(struct qdma_stream_queue *queue)
 
 #if 0
 	queue->dev = device_create(NULL, &pdev->dev,
-		0, queue, "%sq%d", queue->qconf.c2h ? "r" : "w",
+		0, queue, "%sq%d", queue->qconf.q_type == Q_C2H ? "r" : "w",
 		queue->qconf.qidx);
 #endif
 
@@ -369,15 +376,17 @@ static int qdma_stream_sysfs_create(struct qdma_stream_queue *queue)
 		temp_q = queue->qdma->queues[i];
 		if (!temp_q)
 		       continue;
-		if (temp_q->qconf.c2h && queue->qconf.c2h &&
-			temp_q->flowid == queue->flowid) {
+		if ((temp_q->qconf.q_type == Q_C2H) &&
+		    (queue->qconf.q_type == Q_C2H) &&
+		    (temp_q->flowid == queue->flowid)) {
 			xocl_err(&pdev->dev,
 				"flowid overlapped with queue %d", i);
 			return -EINVAL;
 		}
 
-		 if (!(temp_q->qconf.c2h) && !(queue->qconf.c2h) &&
-			temp_q->routeid == queue->routeid) {
+		 if (!(temp_q->qconf.q_type == Q_C2H) &&
+		     !(queue->qconf.q_type == Q_C2H) &&
+		     (temp_q->routeid == queue->routeid)) {
 			 xocl_err(&pdev->dev,
 				"routeid overlapped with queue %d", i);
 			 return -EINVAL;
@@ -388,7 +397,7 @@ static int qdma_stream_sysfs_create(struct qdma_stream_queue *queue)
 	queue->dev.release = qdma_stream_device_release;
 	dev_set_drvdata(&queue->dev, queue);
 	dev_set_name(&queue->dev, "%sq%d",
-		queue->qconf.c2h ? "r" : "w",
+		queue->qconf.q_type == Q_C2H ? "r" : "w",
 		queue->qconf.qidx);
 	ret = device_register(&queue->dev);
 	if (ret) {
@@ -402,7 +411,7 @@ static int qdma_stream_sysfs_create(struct qdma_stream_queue *queue)
 		goto failed;
 	}
 
-	if (queue->qconf.c2h)
+	if (queue->qconf.q_type == Q_C2H)
 		snprintf(name, sizeof(name) - 1, "flow%d", queue->flowid);
 	else
 		snprintf(name, sizeof(name) - 1, "route%d", queue->routeid);
@@ -428,13 +437,16 @@ failed:
 static ssize_t error_show(struct device *dev, struct device_attribute *da,
 	char *buf)
 {
+#if 0
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_qdma *qdma;
 
 	qdma = platform_get_drvdata(pdev);
 
-	return qdma_device_error_stat_dump((unsigned long)qdma->dma_handle,
-						buf, 0);
+	return qdma_device_error_stat_dump(qdma->dma_hndl, buf, 0);
+#else
+	return 0;
+#endif
 }
 static DEVICE_ATTR_RO(error);
 
@@ -467,13 +479,32 @@ static const struct attribute_group qdma_attrgroup = {
 
 /* end of sysfs */
 
+static void fill_qdma_request_sgl(struct qdma_request *req, struct sg_table *sgt)
+{
+	int i;
+	struct scatterlist *sg;
+	struct qdma_sw_sg *sgl = req->sgl;
+	unsigned int sgcnt = sgt->nents;
+
+	req->sgcnt = sgcnt;
+	for_each_sg(sgt->sgl, sg, sgcnt, i) {
+		sgl->next = sgl + 1;
+		sgl->pg = sg_page(sg);
+		sgl->offset = sg->offset;
+		sgl->len = sg_dma_len(sg);
+		sgl->dma_addr = sg_dma_address(sg);
+		sgl++;
+	}
+	req->sgl[sgcnt - 1].next = NULL;
+}
+
 static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	struct sg_table *sgt, u32 write, u64 paddr, u32 channel, u64 len)
 {
 	struct mm_channel *chan;
 	struct xocl_qdma *qdma;
 	xdev_handle_t xdev;
-	struct qdma_request req;
+	struct qdma_request *req;
 	enum dma_data_direction dir;
 	u32 nents;
 	pid_t pid = current->pid;
@@ -494,28 +525,36 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	}
 	sgt->nents = nents;
 
-	memset(&req, 0, sizeof(struct qdma_request));
-	req.write = write;
-	req.count = len;
-	req.use_sgt = 1;
-	req.ep_addr = paddr;
-	req.sgt = sgt;
+	req = kzalloc(sizeof(struct qdma_request) +
+		      nents * sizeof(struct qdma_sw_sg),
+			GFP_KERNEL);
+	if (!req) {
+		xocl_err(&pdev->dev, "qdma req. OOM, sgl %u.\n", nents);
+		return -ENOMEM;
+	}
+	req->write = write;
+	req->count = len;
+	req->ep_addr = paddr;
+	req->timeout_ms = QDMA_REQ_TIMEOUT_MS;
 
-	req.dma_mapped = 1;
+	req->dma_mapped = 1;
+	req->sgl = (struct qdma_sw_sg *)(req + 1);
+	fill_qdma_request_sgl(req, sgt);
 
-	ret = qdma_request_submit((unsigned long)qdma->dma_handle, chan->queue,
-				&req);
+	ret = qdma_request_submit(qdma->dma_hndl, chan->queue, req);
 
 	if (ret >= 0) {
 		chan->total_trans_bytes += ret;
 	} else  {
-		xocl_err(&pdev->dev, "DMA failed, Dumping SG Page Table");
+		xocl_err(&pdev->dev, "DMA failed %ld, Dumping SG Page Table",
+			ret);
 		dump_sgtable(&pdev->dev, sgt);
 	}
 
 	pci_unmap_sg(XDEV(xdev)->pdev, sgt->sgl, nents, dir);
+	kfree(req);
 
-	return len;
+	return ret;
 }
 
 static void release_channel(struct platform_device *pdev, u32 dir, u32 channel)
@@ -583,14 +622,12 @@ static void free_channels(struct platform_device *pdev)
 
 		channel_sysfs_destroy(chan);
 
-		ret = qdma_queue_stop((unsigned long)qdma->dma_handle,
-				chan->queue, NULL, 0);
+		ret = qdma_queue_stop(qdma->dma_hndl, chan->queue, NULL, 0);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Stopping queue for "
 				"channel %d failed, ret %x", qidx, ret);
 		}
-		ret = qdma_queue_remove((unsigned long)qdma->dma_handle,
-				chan->queue, NULL, 0);
+		ret = qdma_queue_remove(qdma->dma_hndl, chan->queue, NULL, 0);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
 				"channel %d failed, ret %x", qidx, ret);
@@ -652,7 +689,7 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 
 		memset(qconf, 0, sizeof (struct qdma_queue_conf));
 		memset(&ebuf, 0, sizeof (ebuf));
-		qconf->cmpl_status_en =1;
+		qconf->wb_status_en =1;
 		qconf->cmpl_status_acc_en=1;
 		qconf->cmpl_status_pend_chk=1;
 		qconf->fetch_credit=1;
@@ -661,18 +698,19 @@ static int set_max_chan(struct xocl_qdma *qdma, u32 count)
 		qconf->desc_rng_sz_idx = MM_DEFAULT_RINGSZ_IDX;
 
 		qconf->st = 0; /* memory mapped */
-		qconf->c2h = write ? 0 : 1;
+		qconf->q_type = write ? Q_H2C : Q_C2H;
 		qconf->qidx = qidx;
-		qconf->irq_en = 1;
+		qconf->irq_en = (qdma->dev_conf.qdma_drv_mode == POLL_MODE) ?
+					0 : 1;
 
-		ret = qdma_queue_add((unsigned long)qdma->dma_handle, qconf,
-				&chan->queue, ebuf, MM_EBUF_LEN);
+		ret = qdma_queue_add(qdma->dma_hndl, qconf, &chan->queue,
+					ebuf, MM_EBUF_LEN);
 		if (ret < 0) {
 			pr_err("Creating queue failed, ret=%d, %s\n", ret, ebuf);
 			goto failed_create_queue;
 		}
-		ret = qdma_queue_start((unsigned long)qdma->dma_handle,
-				chan->queue, ebuf, MM_EBUF_LEN);
+		ret = qdma_queue_start(qdma->dma_hndl, chan->queue, ebuf,
+					MM_EBUF_LEN);
 		if (ret < 0) {
 			pr_err("Starting queue failed, ret=%d %s.\n", ret, ebuf);
 			goto failed_create_queue;
@@ -821,6 +859,8 @@ static void qdma_isr(unsigned long dma_handle, int irq, unsigned long arg)
 	irq_entry = &qdma->user_msix_table[irq];
 	if (irq_entry->in_use)
 		irq_entry->handler(irq, irq_entry->arg);
+	else
+		xocl_info(&qdma->pdev->dev, "user irq %d not in use", irq);
 }
 
 static struct xocl_dma_funcs qdma_ops = {
@@ -901,11 +941,12 @@ static void queue_req_release_resource(struct qdma_stream_queue *queue,
 		xdev_handle_t xdev = xocl_get_xdev(queue->qdma->pdev);
 
 		pci_unmap_sg(XDEV(xdev)->pdev, reqcb->unmgd.sgt->sgl,
-			     reqcb->nsg, queue->qconf.c2h ?  DMA_FROM_DEVICE :
+			     reqcb->nsg, queue->qconf.q_type == Q_C2H ?  DMA_FROM_DEVICE :
 			    				     DMA_TO_DEVICE);
 		xocl_finish_unmgd(&reqcb->unmgd);
 	} else {
 		BUG_ON(!reqcb->xobj);
+
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&reqcb->xobj->base);
 	}
 
@@ -913,20 +954,20 @@ static void queue_req_release_resource(struct qdma_stream_queue *queue,
 }
 
 
-static int queue_req_complete(unsigned long priv, unsigned int done_bytes,
-	int error)
+static int queue_req_complete(struct qdma_request *req, unsigned int done_bytes,
+				int error)
 {
-	struct qdma_stream_req_cb *reqcb = (struct qdma_stream_req_cb *)priv;
+	struct qdma_stream_req_cb *reqcb =
+				(struct qdma_stream_req_cb *)req->uld_data;
 	struct qdma_stream_iocb *iocb = reqcb->iocb;
 	struct qdma_stream_queue *queue = iocb->queue;
 	bool free_req = false;
 
 	xocl_dbg(&queue->qdma->pdev->dev,
-		"%s, q 0x%lx, reqcb 0x%p,err %d, %u,%u, %u,%u, pend %u.\n",
-		__func__, queue->queue, reqcb, error,
-		queue->req_submit_cnt, queue->req_cmpl_cnt,
-		queue->req_cancel_cnt, queue->req_cancel_cmpl_cnt,
-		queue->req_pend_cnt);
+		"q 0x%lx, reqcb 0x%p,err %d, %u,%u, %u,%u, pend %u.\n",
+		queue->queue, reqcb, error, queue->req_submit_cnt,
+		queue->req_cmpl_cnt, queue->req_cancel_cnt,
+		queue->req_cancel_cmpl_cnt, queue->req_pend_cnt);
 
 	queue_req_release_resource(queue, reqcb);
 
@@ -986,7 +1027,8 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 
 	ioreq = kzalloc(sizeof(struct qdma_stream_ioreq) +
 			reqcnt * (sizeof(struct qdma_request) +
-				    sizeof(struct qdma_stream_req_cb)),
+				    sizeof(struct qdma_stream_req_cb) +
+				sizeof(struct qdma_sw_sg)),
 			GFP_KERNEL);
 	if (!ioreq) {
 		xocl_err(&qdma->pdev->dev,
@@ -1014,6 +1056,7 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 	iocb->req_count = reqcnt;
 	iocb->reqcb = reqcb = (struct qdma_stream_req_cb *)(ioreq + 1);
 	iocb->reqv = req = (struct qdma_request *)(iocb->reqcb + reqcnt);
+	iocb->sgl = (struct qdma_sw_sg *)(iocb->reqv + reqcnt);
 	if (kiocb)
 		kiocb->private = ioreq;
 
@@ -1024,6 +1067,9 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
                 size_t sz;
 		u32 nents;
 		struct xocl_qdma_req_header header = {.flags = 0UL};
+
+		req->sgl = iocb->sgl + i;
+		req->dma_mapped = 1;
 
 		if (iov->iov_base && copy_from_user((void *)&header,
 					iov->iov_base,
@@ -1044,12 +1090,11 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 		req->uld_data = (unsigned long)reqcb;
 		req->write = write;
 		req->count = sz;
-		req->use_sgt = 1;
-		req->dma_mapped = 1;
+
 		if (kiocb)
 			req->fp_done = queue_req_complete;
 		if (eot)
-			req->eot = 1;
+			req->h2c_eot = 1;
 
 		if (sz == 0)
 			continue;
@@ -1077,7 +1122,7 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 			XOCL_DRM_GEM_OBJECT_GET(gem_obj);
 			xobj = to_xocl_bo(gem_obj);
 
-			req->sgt = xobj->sgt;
+			fill_qdma_request_sgl(req, xobj->sgt);
 
 			reqcb->xobj = xobj;
 			reqcb->is_unmgd = false;
@@ -1101,8 +1146,16 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 			ret = -EFAULT;
 			goto error_out;
 		}
+if (nents != 1) {
+	xocl_err(&qdma->pdev->dev, "sgcnt %d > 1", nents);
+	xocl_finish_unmgd(&unmgd);
+	ret = -EFAULT;
+	goto error_out;
+}
 
-		req->sgt = unmgd.sgt;
+		req->sgl = iocb->sgl + i;
+		req->dma_mapped = 1;
+		fill_qdma_request_sgl(req, unmgd.sgt);
 
 		memcpy(&reqcb->unmgd, &unmgd, sizeof (unmgd));
 		reqcb->is_unmgd = true;
@@ -1117,19 +1170,20 @@ static ssize_t queue_rw(struct xocl_qdma *qdma, struct qdma_stream_queue *queue,
 
 	xocl_dbg(&qdma->pdev->dev,
 		"%s, ST %s req 0x%p, hndl 0x%lx,0x%lx.\n",
-		__func__, write ? "W":"R", ioreq,
-		(unsigned long)qdma->dma_handle, queue->queue);
+		__func__, write ? "W":"R", ioreq, qdma->dma_hndl, queue->queue);
 
+#if 0
 	if (reqcnt > 1)
-		ret = qdma_batch_request_submit((unsigned long)qdma->dma_handle,
-					queue->queue, reqcnt, iocb->reqv);
+		ret = qdma_batch_request_submit(qdma->dma_hndl, queue->queue,
+						reqcnt, iocb->reqv);
 	else
-		ret = qdma_request_submit((unsigned long)qdma->dma_handle,
-					queue->queue, iocb->reqv);
+#endif
+		ret = qdma_request_submit(qdma->dma_hndl, queue->queue,
+					  iocb->reqv);
 
 error_out:
 	if (ret < 0 || !kiocb) {
-		xocl_warn(&qdma->pdev->dev, "%s ret %ld, kiocb 0x%p.\n",
+		xocl_dbg(&qdma->pdev->dev, "%s ret %ld, kiocb 0x%p.\n",
 			  __func__, ret, (void *)kiocb);
 
 		for (i = 0, reqcb = iocb->reqcb; i < reqcnt; i++, reqcb++)
@@ -1173,9 +1227,9 @@ static int queue_wqe_cancel(struct kiocb *kiocb)
 
 	xocl_dbg(&qdma->pdev->dev,
 		"%s cancel ST req 0x%p/0x%lu hndl 0x%lx,0x%lx, %s %u.\n",
-		__func__, iocb->reqv, iocb->req_count,
-		(unsigned long)qdma->dma_handle, queue->queue,
-		queue->qconf.c2h ? "R":"W", reqcb->req->count);
+		__func__, iocb->reqv, iocb->req_count, qdma->dma_hndl,
+		queue->queue,
+		(queue->qconf.q_type == Q_C2H) ? "R":"W", reqcb->req->count);
 
 	spin_lock_irqsave(&queue->req_lock, flags);
 	iocb->cancel = 1;
@@ -1186,8 +1240,10 @@ static int queue_wqe_cancel(struct kiocb *kiocb)
 	INIT_WORK(&iocb->work, cmpl_aio_cancel);
 	schedule_work(&iocb->work);
 
-	qdma_request_cancel((unsigned long)qdma->dma_handle, queue->queue,
-		iocb->reqv, iocb->req_count);
+#if 0 //not supported on cpm4
+	qdma4_request_cancel(qdma->dma_hndl, queue->queue, iocb->reqv,
+				iocb->req_count);
+#endif
 
 	return -EINPROGRESS;
 }
@@ -1249,7 +1305,7 @@ static ssize_t queue_write_iter(struct kiocb *kiocb, struct iov_iter *io)
 	qdma = queue->qdma;
 
 	nr = io->nr_segs;
-	if (!iter_is_iovec(io) || (nr & 0x1)) {
+	if (!iter_is_iovec(io) || nr != 2) {
 		xocl_err(&qdma->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}
@@ -1271,7 +1327,7 @@ static ssize_t queue_read_iter(struct kiocb *kiocb, struct iov_iter *io)
 	qdma = queue->qdma;
 
 	nr = io->nr_segs;
-	if (!iter_is_iovec(io) || (nr & 0x1)) {
+	if (!iter_is_iovec(io) || nr != 2) {
 		xocl_err(&qdma->pdev->dev, "Invalid request nr = %ld", nr);
 		return -EINVAL;
 	}
@@ -1305,21 +1361,20 @@ static int queue_flush(struct qdma_stream_queue *queue)
 
 	mutex_lock(&qdma->str_dev_lock);
 	qdma_stream_sysfs_destroy(queue);
-	if (queue->qconf.c2h)
+	if (queue->qconf.q_type == Q_C2H)
 		qdma->queues[queue->qconf.qidx] = NULL;
 	else
 		qdma->queues[QDMA_QSETS_MAX + queue->qconf.qidx] = NULL;
 	mutex_unlock(&qdma->str_dev_lock);
 
-	ret = qdma_queue_stop((unsigned long)qdma->dma_handle, queue->queue,
-		NULL, 0);
+	ret = qdma_queue_stop(qdma->dma_hndl, queue->queue, NULL, 0);
 	if (ret < 0) {
 		xocl_err(&qdma->pdev->dev,
 			"Stop queue failed ret = %ld", ret);
 		return ret;
 	}
-	ret = qdma_queue_remove((unsigned long)qdma->dma_handle, queue->queue,
-		NULL, 0);
+
+	ret = qdma_queue_remove(qdma->dma_hndl, queue->queue, NULL, 0);
 	if (ret < 0) {
 		xocl_err(&qdma->pdev->dev,
 			"Destroy queue failed ret = %ld", ret);
@@ -1342,7 +1397,7 @@ static int queue_flush(struct qdma_stream_queue *queue)
 				"Queue 0x%lx, cancel ioreq 0x%p,%d/%lu,0x%p, 0x%x",
 				queue->queue, ioreq, i, iocb->req_count,
 				reqcb->req, reqcb->req->count);
-			queue_req_complete((unsigned long)reqcb, 0, -ECANCELED);
+			queue_req_complete(reqcb->req, 0, -ECANCELED);
 		}
 		spin_lock_bh(&queue->req_lock);
 	}
@@ -1431,68 +1486,67 @@ static long qdma_stream_ioctl_create_queue(struct xocl_qdma *qdma,
 	init_waitqueue_head(&queue->wq);
 
 	qconf = &queue->qconf;
+	qconf->quld = (unsigned long)queue;
 	qconf->st = 1; /* stream queue */
 	qconf->qidx = QDMA_QUEUE_IDX_INVALID; /* request libqdma to alloc */
-	qconf->cmpl_status_en =1;
-	qconf->cmpl_status_acc_en=1;
-	qconf->cmpl_status_pend_chk=1;
-	qconf->fetch_credit=1;
-	qconf->cmpl_stat_en=1;
-	qconf->cmpl_trig_mode=1;
-	qconf->irq_en = (req.flags & XOCL_QDMA_QUEUE_FLAG_POLLING) ? 0 : 1;
 
 	if (!req.write) {
 		/* C2H */
-		qconf->pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
-		qconf->pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) &
-		STREAM_SLRID_MASK;
-		qconf->pipe_tdest = req.rid & STREAM_TDEST_MASK;
-		qconf->c2h = 1;
+		qconf->cmpl_desc_sz = DESC_SZ_8B;
+		qconf->c2h_buf_sz_idx = 0;	/* 4K */
+		qconf->cmpl_trig_mode = TRIG_MODE_ANY;
+		qconf->cmpl_en_intr = (qdma->dev_conf.qdma_drv_mode == POLL_MODE) ?  0 : 1;
+
+		qconf->q_type = Q_C2H;
 		qconf->desc_rng_sz_idx = qdma->c2h_ringsz_idx;
 		qconf->cmpl_rng_sz_idx = qdma->wrb_ringsz_idx;
+
+		qconf->init_pidx_dis = 1;
 	} else {
 		/* H2C */
+		qconf->q_type = Q_H2C;
 		qconf->desc_bypass = 1;
-		qconf->pipe_flow_id = req.flowid & STREAM_FLOWID_MASK;
-		qconf->pipe_slr_id = (req.rid >> STREAM_SLRID_SHIFT) &
-		STREAM_SLRID_MASK;
-		qconf->pipe_tdest = req.rid & STREAM_TDEST_MASK;
-		qconf->pipe_gl_max = 1;
 		qconf->desc_rng_sz_idx = qdma->h2c_ringsz_idx;
 	}
+	qconf->wb_status_en =1;
+	qconf->fetch_credit=1;
+	qconf->cmpl_status_acc_en=1;
+	qconf->cmpl_status_pend_chk=1;
+	qconf->cmpl_stat_en=1;
+	qconf->cmpl_trig_mode=1;
+	qconf->irq_en = (qdma->dev_conf.qdma_drv_mode == POLL_MODE) ?  0 : 1;
+	qconf->init_pidx_dis = 1;
+
+
 	queue->flowid = req.flowid;
 	queue->routeid = req.rid;
-	xocl_info(&qdma->pdev->dev, "Creating %s queue with tdest %d, flow %d, "
-		"slr %d", qconf->c2h ? "C2H" : "H2C",
-		qconf->pipe_tdest, qconf->pipe_flow_id,
-		qconf->pipe_slr_id);
 
-	ret = qdma_queue_add((unsigned long)qdma->dma_handle, qconf,
-		&queue->queue, NULL, 0);
+	ret = qdma_queue_add(qdma->dma_hndl, qconf, &queue->queue, NULL, 0);
 	if (ret < 0) {
 		xocl_err(&qdma->pdev->dev, "Adding Queue failed ret = %ld",
 			ret);
 		goto failed;
 	}
 
-	ret = qdma_queue_start((unsigned long)qdma->dma_handle, queue->queue,
-		NULL, 0);
+	ret = qdma_queue_start(qdma->dma_hndl, queue->queue, NULL, 0);
 	if (ret < 0) {
 		xocl_err(&qdma->pdev->dev, "Starting Queue failed ret = %ld",
 			ret);
 		goto failed;
 	}
 
-	ret = qdma_queue_prog_stm((unsigned long)qdma->dma_handle, queue->queue,
-		NULL, 0);
-	if (ret < 0) {
-		xocl_err(&qdma->pdev->dev, "STM prog. Queue failed ret = %ld",
-			ret);
-		goto failed;
+	/* update pidx/cidx for C2H */
+	if (qconf->q_type == Q_C2H) {
+		ret = qdma_q_init_pointers(qdma->dma_hndl);//, queue->queue);
+		if (ret < 0) {
+			xocl_err(&qdma->pdev->dev,
+				"%s update pidx/cidx failed = %ld",
+				qconf->name, ret);
+			goto failed;
+		}
 	}
 
-	ret = qdma_queue_get_config((unsigned long)qdma->dma_handle,
-		queue->queue, qconf, NULL, 0);
+	ret = qdma_queue_get_config(qdma->dma_hndl, queue->queue, qconf, NULL, 0);
 	if (ret < 0) {
 		xocl_err(&qdma->pdev->dev, "Get Q conf. failed ret = %ld", ret);
 		goto failed;
@@ -1500,7 +1554,7 @@ static long qdma_stream_ioctl_create_queue(struct xocl_qdma *qdma,
 
 	xocl_info(&qdma->pdev->dev,
 		"Created %s Queue handle 0x%lx, idx %d, sz %d",
-		qconf->c2h ? "C2H" : "H2C",
+		qconf->q_type == Q_C2H ? "C2H" : "H2C",
 		queue->queue, queue->qconf.qidx, queue->qconf.rngsz);
 
 	queue->file = anon_inode_getfile("qdma_queue", &queue_fops, queue,
@@ -1535,7 +1589,7 @@ static long qdma_stream_ioctl_create_queue(struct xocl_qdma *qdma,
 	}
 
 	queue->uid = current_uid();
-	if (queue->qconf.c2h)
+	if (queue->qconf.q_type == Q_C2H)
 		qdma->queues[queue->qconf.qidx] = queue;
 	else
 		qdma->queues[QDMA_QSETS_MAX + queue->qconf.qidx] = queue;
@@ -1559,10 +1613,8 @@ failed:
 		devm_kfree(&qdma->pdev->dev, queue);
 	}
 
-	qdma_queue_stop((unsigned long)qdma->dma_handle, queue->queue,
-		NULL, 0);
-	qdma_queue_remove((unsigned long)qdma->dma_handle, queue->queue,
-		NULL, 0);
+	qdma_queue_stop(qdma->dma_hndl, queue->queue, NULL, 0);
+	qdma_queue_remove(qdma->dma_hndl, queue->queue, NULL, 0);
 	queue->queue = 0UL;
 
 	return ret;
@@ -1742,6 +1794,44 @@ static const struct file_operations qdma_stream_fops = {
 	.unlocked_ioctl = qdma_stream_ioctl,
 };
 
+static int qdma_csr_prog_ta(struct pci_dev *pdev, int bar,
+				resource_size_t base)
+{
+	resource_size_t bar_start;
+	void __iomem    *regs;
+
+	bar_start = pci_resource_start(pdev, bar);
+        regs = ioremap_nocache(bar_start + base, 0x4000);
+        if (!regs) {
+                pr_warn("%s unable to map csr bar %d, base 0x%lx.\n",
+			dev_name(&pdev->dev), bar, (unsigned long)base);
+                return -EINVAL;
+        }
+
+	/* To enable slave bridge:
+	 * First entry of the BDF table programming.
+	 * Offset	Program Value	Register info
+	 * 0x2420	0x0	Address translation value Low
+	 * 0x2424	0x0	Address translation value High
+	 * 0x2428	0x0	PASID
+	 * 0x242C	0x1	[11:0]: Function Number
+	 * 0x2430	0xC2000000	[31:30] Read/Write Access permission
+	 *				[25:0] Window Size
+	 * 				([25:0]*4K  = actual size of the window)
+	 * 0x2434	0x0	SMID
+	 */
+
+	writel(0, regs + 0x2420);
+	writel(0, regs + 0x2424);
+	writel(0, regs + 0x2428);
+	writel(1, regs + 0x242C);
+	writel(0xC2000000, regs + 0x2430);
+	writel(0, regs + 0x2434);
+
+	iounmap(regs);
+	return 0;
+}
+
 static int qdma_probe(struct platform_device *pdev)
 {
 	struct xocl_qdma *qdma = NULL;
@@ -1749,7 +1839,9 @@ static int qdma_probe(struct platform_device *pdev)
 	xdev_handle_t	xdev;
 	struct resource *res = NULL;
 	int	i, ret = 0, dma_bar = -1, stm_bar = -1;
+	int csr_bar = -1;
 	resource_size_t stm_base = -1;
+	resource_size_t csr_base = -1;
 
 	xdev = xocl_get_xdev(pdev);
 
@@ -1767,22 +1859,25 @@ static int qdma_probe(struct platform_device *pdev)
 		res;
 		res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		if (!strncmp(res->name, NODE_QDMA, strlen(NODE_QDMA))) {
-			ret = xocl_ioaddr_to_baroff(xdev, res->start, &dma_bar, NULL);
+			ret = xocl_ioaddr_to_baroff(xdev, res->start, &dma_bar,
+							NULL);
 			if (ret) {
-				xocl_err(&pdev->dev, "Invalid resource %pR", res);
+				xocl_err(&pdev->dev,
+					"Invalid resource %pR", res);
 				return -EINVAL;
 			}
-		} else if (!strncmp(res->name, NODE_STM, strlen(NODE_STM))) {
-			ret = xocl_ioaddr_to_baroff(xdev, res->start, &stm_bar, NULL);
+		} else if (!strncmp(res->name, NODE_QDMA_CSR,
+					strlen(NODE_QDMA_CSR))) {
+			ret = xocl_ioaddr_to_baroff(xdev, res->start, &csr_bar,
+							NULL);
 			if (ret) {
-				xocl_err(&pdev->dev, "Invalid resource %pR", res);
+				xocl_err(&pdev->dev,
+					 "CSR: Invalid resource %pR", res);
 				return -EINVAL;
 			}
-			if (stm_bar == -1)
-				return -EINVAL;
 
-			stm_base = res->start -
-				pci_resource_start(XDEV(xdev)->pdev, stm_bar);
+			csr_base = res->start -
+				pci_resource_start(XDEV(xdev)->pdev, csr_bar);
 		} else {
 			xocl_err(&pdev->dev, "Unknown resource: %s", res->name);
 			return -EINVAL;
@@ -1790,32 +1885,55 @@ static int qdma_probe(struct platform_device *pdev)
 	}
 
 	if (dma_bar == -1) {
-		xocl_err(&pdev->dev, "missing resource");
+		xocl_err(&pdev->dev,
+			"missing resource, dma_bar %d, stm_bar %d, stm_base 0x%lx.",
+			dma_bar, stm_bar, (unsigned long)stm_base);
 		return -EINVAL;
 	}
-
-	if (stm_base == -1 || stm_bar == -1)
-		xocl_warn(&pdev->dev, "STM is not found");
 
 	conf = &qdma->dev_conf;
 	memset(conf, 0, sizeof(*conf));
 	conf->pdev = XDEV(xdev)->pdev;
-	conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
-	conf->master_pf = XOCL_DSA_IS_SMARTN(xdev) ? 0 : 1;
+	//conf->intr_rngsz = QDMA_INTR_COAL_RING_SIZE;
+	//conf->master_pf = XOCL_DSA_IS_SMARTN(xdev) ? 0 : 1;
+	conf->master_pf = 1;
+	conf->qsets_base = QDMA_QSETS_BASE;
 	conf->qsets_max = QDMA_QSETS_MAX;
 	conf->bar_num_config = dma_bar;
-	conf->bar_num_stm = stm_bar;
-	conf->stm_reg_base = stm_base;
+	conf->bar_num_user = -1;
+	conf->bar_num_bypass = -1;
+	conf->data_msix_qvec_max = 1;
+	conf->user_msix_qvec_max = 8;
+	conf->msix_qvec_max = 16;
+	conf->qdma_drv_mode = qdma_interrupt_mode;
 
 	conf->fp_user_isr_handler = qdma_isr;
 	conf->uld = (unsigned long)qdma;
 
-	ret = qdma_device_open(XOCL_MODULE_NAME, conf, (unsigned long *)
-			(&qdma->dma_handle));
+	xocl_info(&pdev->dev, "dma %d, mode 0x%x.\n",
+		dma_bar, conf->qdma_drv_mode);
+	ret = qdma_device_open(XOCL_MODULE_NAME, conf, &qdma->dma_hndl);
 	if (ret < 0) {
 		xocl_err(&pdev->dev, "QDMA Device Open failed");
 		goto failed;
 	}
+
+	if (csr_bar >= 0) {
+		xocl_info(&pdev->dev, "csr bar %d, base 0x%lx.",
+			csr_bar, (unsigned long)csr_base);
+
+		ret = qdma_csr_prog_ta(XDEV(xdev)->pdev, csr_bar, csr_base);
+		if (ret < 0)
+			xocl_err(&pdev->dev,
+				"Host memory BDF program failed (%d,0x%lx).",
+				csr_bar, (unsigned long)csr_base);
+		else
+			xocl_info(&pdev->dev,
+				"Host memory BDF programmed (%d,0x%lx).",
+				csr_bar, (unsigned long)csr_base);
+	}
+
+	xocl_info(&pdev->dev, "QDMA Device STM-C not present");
 
 	if (!XOCL_DSA_IS_SMARTN(xdev)) {
 		ret = set_max_chan(qdma, qdma_max_channel);
@@ -1825,8 +1943,7 @@ static int qdma_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = qdma_device_get_config((unsigned long)qdma->dma_handle,
-			&qdma->dev_conf, NULL, 0);
+	ret = qdma_device_get_config(qdma->dma_hndl, &qdma->dev_conf, NULL, 0);
 	if (ret) {
 		xocl_err(&pdev->dev, "Failed to get device info");
 		goto failed;
@@ -1853,9 +1970,8 @@ failed:
 	if (qdma) {
 		free_channels(qdma->pdev);
 
-		if (qdma->dma_handle)
-			qdma_device_close(XDEV(xdev)->pdev,
-					(unsigned long)qdma->dma_handle);
+		if (qdma->dma_hndl)
+			qdma_device_close(XDEV(xdev)->pdev, qdma->dma_hndl);
 
 		xocl_drvinst_release(qdma, NULL);
 	}
@@ -1885,7 +2001,7 @@ static int qdma_remove(struct platform_device *pdev)
 
 	free_channels(pdev);
 
-	qdma_device_close(XDEV(xdev)->pdev, (unsigned long)qdma->dma_handle);
+	qdma_device_close(XDEV(xdev)->pdev, qdma->dma_hndl);
 
 	for (i = 0; i < ARRAY_SIZE(qdma->user_msix_table); i++) {
 		irq_entry = &qdma->user_msix_table[i];
@@ -1931,7 +2047,13 @@ int __init xocl_init_qdma(void)
 {
 	int		err = 0;
 
-	err = libqdma_init(0);
+	qdma_debugfs_root = debugfs_create_dir("qdma_dev", NULL);
+	if (!qdma_debugfs_root) {
+		pr_err("%s: Failed to create debugfs\n", __func__);
+		return -ENODEV;
+	}
+
+	err = libqdma_init(0, qdma_debugfs_root);
 	if (err)
 		return err;
 	err = alloc_chrdev_region(&str_dev, 0, XOCL_CHARDEV_REG_COUNT,
@@ -1949,6 +2071,12 @@ err_drv_reg:
 	unregister_chrdev_region(str_dev, XOCL_CHARDEV_REG_COUNT);
 err_reg_chrdev:
 	libqdma_exit();
+
+	if (qdma_debugfs_root) {
+		debugfs_remove_recursive(qdma_debugfs_root);
+		qdma_debugfs_root = NULL;
+	}
+
 	return err;
 }
 
@@ -1957,4 +2085,8 @@ void xocl_fini_qdma(void)
 	unregister_chrdev_region(str_dev, XOCL_CHARDEV_REG_COUNT);
 	platform_driver_unregister(&qdma_driver);
 	libqdma_exit();
+	if (qdma_debugfs_root) {
+		debugfs_remove_recursive(qdma_debugfs_root);
+		qdma_debugfs_root = NULL;
+	}
 }
