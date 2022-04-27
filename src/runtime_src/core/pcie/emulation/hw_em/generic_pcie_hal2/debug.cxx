@@ -67,7 +67,7 @@ namespace xclhwemhal2
                                               "HLS_PRINT",
                                               "Exiting xsim",
                                               "FATAL_ERROR"};
-  const auto kMaxTimeToConnectSimulator = 300;  // in seconds
+  constexpr auto kMaxTimeToConnectSimulator = 300;  // in seconds
 
   void HwEmShim::readDebugIpLayout(const std::string debugFileName)
   {

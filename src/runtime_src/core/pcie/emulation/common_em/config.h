@@ -31,7 +31,7 @@
 #include <vector>
 
 namespace xclemulation{
-
+  
   // KB
   const uint64_t MEMSIZE_1K   =   0x0000000000000400;
   const uint64_t MEMSIZE_4K   =   0x0000000000001000;
@@ -78,7 +78,7 @@ namespace xclemulation{
   const uint64_t MEMSIZE_128T =   0x0000800000000000;
   const uint64_t MEMSIZE_256T =   0x0001000000000000;
   const uint64_t MEMSIZE_512T =   0x0002000000000000;
-  
+
   //For Profiling Offsets
   const uint64_t FIFO_INFO_MESSAGES     = 0x0000000000100000;
   const uint64_t FIFO_WARNING_MESSAGES  = 0x0000000000200000;
@@ -86,7 +86,7 @@ namespace xclemulation{
   const uint64_t FIFO_CTRL_INFO_SIZE    = 0x64;
   const uint64_t FIFO_CTRL_WARNING_SIZE = 0x68;
   const uint64_t FIFO_CTRL_ERROR_SIZE   = 0x6C;
- 
+
   const int VIVADO_MIN_VERSION = 2000;
   const int VIVADO_MAX_VERSION = 2100;
 
@@ -103,7 +103,7 @@ struct sParseLog
   std::atomic_bool mFileExists;
   std::vector<std::string> mMatchedStrings;
   eEmulationType mEmuType;
-
+  
   sParseLog(const std::string& iDeviceLog, eEmulationType iType, const std::vector<std::string>& iMatchedStrings)
       : mFileName(iDeviceLog)
       , mFileExists{false}
@@ -112,7 +112,10 @@ struct sParseLog
   {
 
   }
-
+  /* The function displays user actionable message by calling print_user_msg(),
+  *  if any user list of strings found in mFileName otherwise the content of 
+  *  mFileName will be displayed.
+  */
   void check_simulator_status()
   {
     std::string line;
@@ -126,7 +129,7 @@ struct sParseLog
             print_user_msg();
           else if (eEmulationType::eHw_Emu == mEmuType)
           {
-            if (!StringData.compare("Exiting xsim") || !StringData.compare("FATAL_ERROR"))
+            if (StringData == "Exiting xsim" || StringData == "FATAL_ERROR")
               print_user_msg();
             else
               std::cout << line << '\n';
@@ -156,6 +159,7 @@ struct sParseLog
    * */
   void parseLog()
   {
+    // mFileName might be created/updated by xsim, check its existence always.
     if (not mFileExists.load())
     {
       if (boost::filesystem::exists(mFileName))
@@ -165,11 +169,10 @@ struct sParseLog
           mFileExists.store(true);
       }
     }
-
+    // Now, check for user list of strings, display actionable message incase matched.
     if (mFileExists.load())
-    {
       check_simulator_status();
-    }
+    
   }
 };
 

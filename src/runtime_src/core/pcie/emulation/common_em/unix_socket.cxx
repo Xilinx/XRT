@@ -113,7 +113,7 @@ ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
   }
   ssize_t r;
   ssize_t wlen = 0;
-  auto *buf = reinterpret_cast<const unsigned char*>(wbuf);
+  auto buf = reinterpret_cast<const unsigned char*>(wbuf);
   do {
     if ((r = write(fd, buf + wlen, count - wlen)) < 0) {
       if (errno == EINTR || errno == EAGAIN) {
@@ -139,7 +139,7 @@ ssize_t unix_socket::sk_read(void *rbuf, size_t count)
   }
   ssize_t r;
   ssize_t rlen = 0;
-  auto *buf = reinterpret_cast<unsigned char*>(rbuf);
+  auto buf = reinterpret_cast<unsigned char*>(rbuf);
 
   do {
     if ((r = read(fd, buf + rlen, count - rlen)) < 0) {

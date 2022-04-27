@@ -61,9 +61,9 @@ namespace xclhwemhal2 {
         private:
         std::unique_ptr<call_packet_info> header;
         std::unique_ptr<response_packet_info> response_header;
-	    size_t  i_len;
-	    size_t  ri_len;
-        std::shared_ptr<unix_socket> Q2h_sock;
+        size_t  i_len;
+        size_t  ri_len;
+        std::unique_ptr<unix_socket> Q2h_sock;
         xclhwemhal2::HwEmShim* inst;
 
         public:
@@ -988,7 +988,7 @@ namespace xclhwemhal2 {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
     
-    sock.reset(new unix_socket);
+    sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
@@ -3922,7 +3922,7 @@ bool Q2H_helper::connect_sock() {
       sock_name = "D2X_unix_sock";
     }
     if (Q2h_sock == nullptr) {
-      Q2h_sock = std::make_shared<unix_socket>("EMULATION_SOCKETID", sock_name, 5, false);
+      Q2h_sock = std::make_unique<unix_socket>("EMULATION_SOCKETID", sock_name, 5, false);
     }
     else if (!Q2h_sock->server_started) {
       Q2h_sock->start_server(5,false);
