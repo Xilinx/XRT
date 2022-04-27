@@ -74,7 +74,12 @@ public:
     void parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector);
 
     void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
-    bool supportsCircBuf() { return isVersion2(); }
+
+    /**
+     * All datamovers after 1.0 support circular buffer
+     * Remove code that depends on this check in future
+     */
+    bool supportsCircBuf() { return true; }
 
     /**
      *  Version 2 Features and Requirements :
@@ -83,7 +88,7 @@ public:
      * Reset process involves flushing of leftover data to memory
      * Datamover count could be in terms of 128/64 bits
      */
-    bool isVersion2() { return mIsVersion2;}
+    bool isVersion2() {return mIsVersion2;}
 
 private:
     uint8_t properties;
@@ -112,8 +117,6 @@ protected:
     // Members specific to version 2 datamover
     bool mIsVersion2 = false;
     uint32_t mBurstLen = 1;
-    // Todo : Read this from debug IP Layout?
-    const uint32_t mVersion2BurstLen = 32;
 };
 
 } //  xdp

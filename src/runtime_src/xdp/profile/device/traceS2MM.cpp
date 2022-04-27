@@ -22,6 +22,9 @@
 
 namespace xdp {
 
+// Todo : Read this from debug IP Layout?
+constexpr uint64_t TS2MM_V2_BURST_LEN = 32;
+
 TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
                      uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
@@ -36,8 +39,9 @@ TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
     }
     if (major_version >= 2) {
         mIsVersion2 = true;
-        mBurstLen = mVersion2BurstLen;
+        mBurstLen = TS2MM_V2_BURST_LEN;
     } else {
+      // Old PL datamover had burstlength of 1
         mBurstLen = 1;
     }
 }
