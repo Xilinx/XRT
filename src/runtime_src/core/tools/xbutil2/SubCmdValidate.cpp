@@ -1321,9 +1321,9 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
-  { create_init_test("ps-aie", "Needs desc", "verify.xclbin"), psAieTest },
-  { create_init_test("ps-bw", "Needs desc", "bandwidth.xclbin"), psBandwidthTest },
-  { create_init_test("ps-validate", "Needs desc", "verify.xclbin"), psValidateTest }
+  { create_init_test("ps-aie", "Needs desc", "ps_aie.xclbin"), psAieTest },
+  { create_init_test("ps-bw", "Needs desc", "ps_bandwidth.xclbin"), psBandwidthTest },
+  { create_init_test("ps-validate", "Needs desc", "ps_validate_bandwidth.xclbin"), psValidateTest }
 };
 
 
@@ -1521,7 +1521,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "ps-aie", "ps-bw", "ps-validate"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
