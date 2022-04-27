@@ -27,3 +27,6 @@ add_subdirectory(hostmemory_test)
 add_subdirectory(xcl_iops_test)
 add_subdirectory(xcl_vcu_test)
 add_subdirectory(xrt_iops_test)
+
+# AIE PL Kernel test
+add_subdirectory(aie_pl_test)
