@@ -1263,18 +1263,7 @@ iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
 void
 aiePlTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  std::cout << "The aie pl test!\n";
-    // runTestCase(_dev, "aie_pl.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
-}
-
-/*
- * TEST #14
- */
-void
-psIopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
-{
-  std::cout << "The ps iops test!\n";
-    // runTestCase(_dev, "ps_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+    runTestCase(_dev, "aie_pl.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
 }
 
 /*
@@ -1306,7 +1295,6 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("dma", "Run dma test", "verify.xclbin"), dmaTest },
   { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin"), iopsTest },
   { create_init_test("aie-pl", "Needs description", "verify.xclbin"), aiePlTest },
-  { create_init_test("ps-iops", "Needs description", "verify.xclbin"), psIopsTest },
   { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("p2p", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("m2m", "Run M2M test", "bandwidth.xclbin"), m2mTest },
