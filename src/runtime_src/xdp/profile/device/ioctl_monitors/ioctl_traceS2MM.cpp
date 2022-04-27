@@ -40,13 +40,13 @@ IOCtlTraceS2MM::IOCtlTraceS2MM(Device* handle, uint64_t index, uint64_t instIdx,
     
   driver_FD = open(driverFileName.c_str(), O_RDWR);
   uint32_t tries = 0;
-  while(-1 == driver_FD && tries < 5) {
+  while (-1 == driver_FD && tries < 5) {
     std::this_thread::sleep_for(std::chrono::microseconds(1));
     driver_FD = open(driverFileName.c_str(), O_RDWR);
     tries++;
   }
 
-  if(-1 == driver_FD) {
+  if (-1 == driver_FD) {
     showWarning("Could not open device file.");
     return;
   }
@@ -59,7 +59,7 @@ IOCtlTraceS2MM::~IOCtlTraceS2MM()
 
 bool IOCtlTraceS2MM::isOpened()
 {
-  if(-1 == driver_FD) {
+  if (-1 == driver_FD) {
     return false;
   }
   return true;
@@ -67,11 +67,11 @@ bool IOCtlTraceS2MM::isOpened()
 
 void IOCtlTraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
-  if(!isOpened()) {
+  if (!isOpened()) {
     return;
   }
  
-  if(out_stream)
+  if (out_stream)
     (*out_stream) << " IOCtlTraceS2MM::init " << std::endl;
 
   struct ts2mm_config cfg = { bo_size, static_cast<uint64_t>(bufaddr), circular };
@@ -80,11 +80,11 @@ void IOCtlTraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 
 void IOCtlTraceS2MM::reset()
 {
-  if(!isOpened()) {
+  if (!isOpened()) {
     return;
   }
  
-  if(out_stream)
+  if (out_stream)
     (*out_stream) << " IOCtlTraceS2MM::reset " << std::endl;
 
   ioctl(driver_FD, TR_S2MM_IOC_RESET);

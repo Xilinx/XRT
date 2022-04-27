@@ -53,7 +53,7 @@ inline void TraceS2MM::write32(uint64_t offset, uint32_t val)
 
 void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
-    if(out_stream) {
+    if (out_stream) {
         (*out_stream) << " TraceS2MM::init " << std::endl;
     }
 
@@ -81,7 +81,7 @@ void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 
 bool TraceS2MM::isActive()
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::isActive " << std::endl;
 
     uint32_t regValue = 0;
@@ -91,7 +91,7 @@ bool TraceS2MM::isActive()
 
 void TraceS2MM::reset()
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::reset " << std::endl;
 
     // Init Sw Reset
@@ -107,7 +107,7 @@ void TraceS2MM::reset()
 
 uint64_t TraceS2MM::getWordCount(bool final)
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::getWordCount " << std::endl;
 
     // Call flush on V2 datamover to ensure all data is written
@@ -130,7 +130,7 @@ uint64_t TraceS2MM::getWordCount(bool final)
 
 uint8_t TraceS2MM::getMemIndex()
 {
-    if(out_stream) {
+    if (out_stream) {
         (*out_stream) << " TraceS2MM::getMemIndex " << std::endl;
     }
 
@@ -191,7 +191,7 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet)
 
 void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result)
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::parsePacket " << std::endl;
 
     result.Timestamp = (packet & 0x1FFFFFFFFFFF) - firstTimestamp;
@@ -224,7 +224,7 @@ void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceRe
 
 uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
 {
-  if(out_stream)
+  if (out_stream)
       (*out_stream) << " TraceS2MM::seekClockTraining " << std::endl;
 
   uint64_t n = 8;
@@ -247,7 +247,7 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
 
 void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector)
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::parseTraceBuf " << std::endl;
 
     uint32_t packetSizeBytes = 8;

@@ -40,13 +40,13 @@ IOCtlAIETraceS2MM::IOCtlAIETraceS2MM(Device* handle, uint64_t index, uint64_t in
     
   driver_FD = open(driverFileName.c_str(), O_RDWR);
   uint32_t tries = 0;
-  while(-1 == driver_FD && tries < 5) {
+  while (-1 == driver_FD && tries < 5) {
     std::this_thread::sleep_for(std::chrono::microseconds(1));
     driver_FD = open(driverFileName.c_str(), O_RDWR);
     tries++;
   }
 
-  if(-1 == driver_FD) {
+  if (-1 == driver_FD) {
     showWarning("Could not open device file.");
     return;
   }
@@ -59,7 +59,7 @@ IOCtlAIETraceS2MM::~IOCtlAIETraceS2MM()
 
 bool IOCtlAIETraceS2MM::isOpened()
 {
-  if(-1 == driver_FD) {
+  if (-1 == driver_FD) {
     return false;
   }
   return true;
@@ -67,11 +67,11 @@ bool IOCtlAIETraceS2MM::isOpened()
 
 void IOCtlAIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
-  if(!isOpened()) {
+  if (!isOpened()) {
     return;
   }
  
-  if(out_stream)
+  if (out_stream)
     (*out_stream) << " IOCtlAIETraceS2MM::init " << std::endl;
 
   struct ts2mm_config cfg = { bo_size, static_cast<uint64_t>(bufaddr), circular };
@@ -80,11 +80,11 @@ void IOCtlAIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 
 void IOCtlAIETraceS2MM::reset()
 {
-  if(!isOpened()) {
+  if (!isOpened()) {
     return;
   }
  
-  if(out_stream)
+  if (out_stream)
     (*out_stream) << " IOCtlAIETraceS2MM::reset " << std::endl;
 
   ioctl(driver_FD, TR_S2MM_IOC_RESET);
@@ -97,11 +97,11 @@ void IOCtlAIETraceS2MM::reset()
 
 uint64_t IOCtlAIETraceS2MM::getWordCount(bool final)
 {
-  if(!isOpened()) {
+  if (!isOpened()) {
     return 0;
   }
  
-  if(out_stream)
+  if (out_stream)
     (*out_stream) << " IOCtlAIETraceS2MM::getWordCount " << std::endl;
 
   // Call flush on V2 datamover to ensure all data is written
