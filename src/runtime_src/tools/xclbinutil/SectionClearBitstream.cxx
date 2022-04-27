@@ -23,7 +23,9 @@ SectionClearBitstream::init SectionClearBitstream::initializer;
 
 SectionClearBitstream::init::init() 
 { 
-  registerSectionCtor(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", "", false, false, boost::factory<SectionClearBitstream*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", boost::factory<SectionClearBitstream*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
 
 

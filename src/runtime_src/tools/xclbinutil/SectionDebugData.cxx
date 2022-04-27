@@ -23,7 +23,9 @@ SectionDebugData::init SectionDebugData::initializer;
 
 SectionDebugData::init::init() 
 { 
-  registerSectionCtor(DEBUG_DATA, "DEBUG_DATA", "", false, false, boost::factory<SectionDebugData*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_DATA, "DEBUG_DATA", boost::factory<SectionDebugData*>());
+
+  addSectionType(std::move(sectionInfo));
 }
 
 

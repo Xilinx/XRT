@@ -28,7 +28,9 @@ SectionSystemMetadata::init SectionSystemMetadata::initializer;
 
 SectionSystemMetadata::init::init() 
 { 
-    registerSectionCtor(SYSTEM_METADATA, "SYSTEM_METADATA", "", false, false, boost::factory<SectionSystemMetadata*>()); 
+    auto sectionInfo = std::make_unique<SectionInfo>(SYSTEM_METADATA, "SYSTEM_METADATA", boost::factory<SectionSystemMetadata*>()); 
+
+    addSectionType(std::move(sectionInfo));
 }
 
 void

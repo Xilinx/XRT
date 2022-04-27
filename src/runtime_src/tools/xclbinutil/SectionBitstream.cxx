@@ -26,7 +26,9 @@ SectionBitstream::init SectionBitstream::initializer;
 
 SectionBitstream::init::init() 
 { 
-  registerSectionCtor(BITSTREAM, "BITSTREAM", "", false, false, boost::factory<SectionBitstream*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(BITSTREAM, "BITSTREAM", boost::factory<SectionBitstream*>());
+
+  addSectionType(std::move(sectionInfo));
 }
 
 std::string

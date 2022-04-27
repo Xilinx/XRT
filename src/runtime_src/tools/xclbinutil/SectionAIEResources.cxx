@@ -23,7 +23,8 @@ SectionAIEResources::init SectionAIEResources::initializer;
 
 SectionAIEResources::init::init() 
 { 
-  registerSectionCtor(AIE_RESOURCES, "AIE_RESOURCES", "", false, false, boost::factory<SectionAIEResources*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(AIE_RESOURCES, "AIE_RESOURCES", boost::factory<SectionAIEResources*>());
+  addSectionType(std::move(sectionInfo));
 }
 
 

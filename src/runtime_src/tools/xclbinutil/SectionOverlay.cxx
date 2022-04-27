@@ -23,6 +23,8 @@ SectionOverlay::init SectionOverlay::initializer;
 
 SectionOverlay::init::init() 
 { 
-  registerSectionCtor(OVERLAY, "OVERLAY", "", false, false, boost::factory<SectionOverlay*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(OVERLAY, "OVERLAY", boost::factory<SectionOverlay*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
 

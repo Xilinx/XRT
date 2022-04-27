@@ -27,7 +27,9 @@ SectionEmbeddedMetadata::init SectionEmbeddedMetadata::initializer;
 
 SectionEmbeddedMetadata::init::init() 
 { 
-  registerSectionCtor(EMBEDDED_METADATA, "EMBEDDED_METADATA", "", false, false, boost::factory<SectionEmbeddedMetadata*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(EMBEDDED_METADATA, "EMBEDDED_METADATA", boost::factory<SectionEmbeddedMetadata*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
 
 void
