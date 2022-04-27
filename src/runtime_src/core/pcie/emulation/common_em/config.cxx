@@ -541,10 +541,8 @@ namespace xclemulation{
         std::string name = prop1.first;
         std::string value = prop1.second.get_value<std::string>();
         if (name == "Size") {
-          std::cout << "prasad value: "<< value <<  std::endl;
           uint64_t size = get_mem_value(value);
           if (size != 0) {
-            std::cout << "prasad size: "<< size <<  std::endl;
             info.mDDRSize = info.mDDRSize + size;
             DDRBank bank;
             bank.ddrSize = size;
