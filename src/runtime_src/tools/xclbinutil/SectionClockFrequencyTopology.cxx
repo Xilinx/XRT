@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,19 +17,19 @@
 #include "SectionClockFrequencyTopology.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
 #include <iostream>
 #include <stdint.h>
 
+namespace XUtil = XclBinUtilities;
+
 // Static Variables / Classes
-SectionClockFrequencyTopology::_init SectionClockFrequencyTopology::_initializer;
+SectionClockFrequencyTopology::init SectionClockFrequencyTopology::initializer;
 
-SectionClockFrequencyTopology::SectionClockFrequencyTopology() {
-  // Empty
-}
-
-SectionClockFrequencyTopology::~SectionClockFrequencyTopology() {
-  // Empty
+SectionClockFrequencyTopology::init::init() 
+{ 
+  registerSectionCtor(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", "clock_freq_topology", false, false, boost::factory<SectionClockFrequencyTopology*>()); 
 }
 
 const std::string
@@ -45,7 +45,7 @@ SectionClockFrequencyTopology::getClockTypeStr(enum CLOCK_TYPE _clockType) const
       return "SYSTEM";
   }
 
-  return XUtil::format("UNKNOWN (%d) CLOCK_TYPE", (unsigned int) _clockType);
+  return (boost::format("UNKNOWN (%d) CLOCK_TYPE") % (unsigned int) _clockType).str();
 }
 
 enum CLOCK_TYPE
@@ -77,47 +77,48 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
 
   // Do we have enough room to overlay the header structure
   if (_sectionSize < sizeof(clock_freq_topology)) {
-    throw std::runtime_error(XUtil::format("ERROR: Section size (%d) is smaller than the size of the clock_freq_topology structure (%d)",
-                                           _sectionSize, sizeof(clock_freq_topology)));
+    auto errMsg = boost::format("ERROR: Section size (%d) is smaller than the size of the clock_freq_topology structure (%d)")
+                                % _sectionSize % sizeof(clock_freq_topology);
+    throw std::runtime_error(errMsg.str());
   }
 
   clock_freq_topology* pHdr = (clock_freq_topology*)_pDataSection;
   boost::property_tree::ptree clock_freq_topology;
 
-  XUtil::TRACE(XUtil::format("m_count: %d", (uint32_t)pHdr->m_count));
+  XUtil::TRACE(boost::format("m_count: %d") % (uint32_t) pHdr->m_count);
 
   // Write out the entire structure except for the array structure
   XUtil::TRACE_BUF("clock_freq", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_clock_freq[0]) - (uint64_t) pHdr));
-  clock_freq_topology.put("m_count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
+  clock_freq_topology.put("m_count", (boost::format("%d") % (unsigned int) pHdr->m_count).str());
 
   clock_freq mydata = clock_freq {0};
 
-  XUtil::TRACE(XUtil::format("Size of clock_freq: %d\nSize of mydata: %d",
-                             sizeof(clock_freq),
-                             sizeof(mydata)));
+  XUtil::TRACE(boost::format("Size of clock_freq: %d\nSize of mydata: %d")
+                             % sizeof(clock_freq)
+                             % sizeof(mydata));
   uint64_t expectedSize = ((uint64_t)&(pHdr->m_clock_freq[0]) - (uint64_t) pHdr) + (sizeof(clock_freq) * (uint64_t)pHdr->m_count);
 
   if (_sectionSize != expectedSize) {
-    throw std::runtime_error(XUtil::format("ERROR: Section size (%d) does not match expected sections size (%d).",
-                                           _sectionSize, expectedSize));
+    auto errMsg = boost::format("ERROR: Section size (%d) does not match expected sections size (%d).") %_sectionSize % expectedSize;
+    throw std::runtime_error(errMsg.str());
   }
 
   boost::property_tree::ptree m_clock_freq;
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree clock_freq;
 
-    XUtil::TRACE(XUtil::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'",
-                               index,
-                               (unsigned int)pHdr->m_clock_freq[index].m_freq_Mhz,
-                               getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type).c_str(),
-                               pHdr->m_clock_freq[index].m_name));
+    XUtil::TRACE(boost::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'")
+                               % index
+                               % (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz
+                               % getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type)
+                               % pHdr->m_clock_freq[index].m_name);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("clock_freq", reinterpret_cast<const char*>(&pHdr->m_clock_freq[index]), sizeof(clock_freq));
 
-    clock_freq.put("m_freq_Mhz", XUtil::format("%d", (unsigned int)pHdr->m_clock_freq[index].m_freq_Mhz).c_str());
+    clock_freq.put("m_freq_Mhz", (boost::format("%d") % (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz).str());
     clock_freq.put("m_type", getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type).c_str());
-    clock_freq.put("m_name", XUtil::format("%s", pHdr->m_clock_freq[index].m_name).c_str());
+    clock_freq.put("m_name", (boost::format("%s") % pHdr->m_clock_freq[index].m_name).str());
 
     m_clock_freq.push_back(std::make_pair("", clock_freq));   // Used to make an array of objects
   }
@@ -142,7 +143,7 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
   clockFreqTopologyHdr.m_count = ptClockFreqTopo.get<uint16_t>("m_count");
 
   XUtil::TRACE("CLOCK_FREQ_TOPOLOGY");
-  XUtil::TRACE(XUtil::format("m_count: %d", clockFreqTopologyHdr.m_count));
+  XUtil::TRACE(boost::format("m_count: %d") % clockFreqTopologyHdr.m_count);
 
   if (clockFreqTopologyHdr.m_count == 0) {
     std::cout << "WARNING: Skipping CLOCK_FREQ_TOPOLOGY section for count size is zero." << std::endl;
@@ -166,19 +167,19 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
 
     std::string sm_name = ptClockFreq.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(clock_freq::m_name)) {
-      std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(clock_freq::m_name), sm_name.c_str());
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d). Name: '%s'")
+                                  % (int) sm_name.length() % (unsigned int) sizeof(clock_freq::m_name) % sm_name;
+      throw std::runtime_error(errMsg.str());
     }
 
     // We already know that there is enough room for this string
     memcpy(clockFreqHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    XUtil::TRACE(XUtil::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'",
-                               count,
-                               (unsigned int)clockFreqHdr.m_freq_Mhz,
-                               (unsigned int)clockFreqHdr.m_type,
-                               clockFreqHdr.m_name));
+    XUtil::TRACE(boost::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'")
+                               % count
+                               % (unsigned int) clockFreqHdr.m_freq_Mhz
+                               % (unsigned int) clockFreqHdr.m_type
+                               % clockFreqHdr.m_name);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("clock_freq", reinterpret_cast<const char*>(&clockFreqHdr), sizeof(clock_freq));
@@ -188,9 +189,9 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
 
   // -- The counts should match --
   if (count != (unsigned int)clockFreqTopologyHdr.m_count) {
-    std::string errMsg = XUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
-                                       (unsigned int)count, (unsigned int)clockFreqTopologyHdr.m_count);
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d")
+                                 % (unsigned int) count % (unsigned int) clockFreqTopologyHdr.m_count;
+    throw std::runtime_error(errMsg.str());
   }
 }
 

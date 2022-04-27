@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,19 +16,14 @@
 
 #include "SectionUserMetadata.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionUserMetadata::_init SectionUserMetadata::_initializer;
+SectionUserMetadata::init SectionUserMetadata::initializer;
 
-SectionUserMetadata::SectionUserMetadata() {
-  // Empty
+SectionUserMetadata::init::init() 
+{ 
+  registerSectionCtor(USER_METADATA, "USER_METADATA", "", false, false, boost::factory<SectionUserMetadata*>()); 
 }
-
-SectionUserMetadata::~SectionUserMetadata() {
-  // Empty
-}
-
 
 

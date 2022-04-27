@@ -16,7 +16,14 @@
 
 #include "SectionAIEResources.h"
 
+#include <boost/functional/factory.hpp>
+
 // Static Variables / Classes
-SectionAIEResources::_init SectionAIEResources::_initializer;
+SectionAIEResources::init SectionAIEResources::initializer;
+
+SectionAIEResources::init::init() 
+{ 
+  registerSectionCtor(AIE_RESOURCES, "AIE_RESOURCES", "", false, false, boost::factory<SectionAIEResources*>()); 
+}
 
 

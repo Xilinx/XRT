@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2021, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,19 +17,17 @@
 #include "SectionEmbeddedMetadata.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
-
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
+namespace XUtil = XclBinUtilities;
+
 // Static Variables / Classes
-SectionEmbeddedMetadata::_init SectionEmbeddedMetadata::_initializer;
+SectionEmbeddedMetadata::init SectionEmbeddedMetadata::initializer;
 
-SectionEmbeddedMetadata::SectionEmbeddedMetadata() {
-  // Empty
-}
-
-SectionEmbeddedMetadata::~SectionEmbeddedMetadata() {
-  // Empty
+SectionEmbeddedMetadata::init::init() 
+{ 
+  registerSectionCtor(EMBEDDED_METADATA, "EMBEDDED_METADATA", "", false, false, boost::factory<SectionEmbeddedMetadata*>()); 
 }
 
 void

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,19 +16,16 @@
 
 #include "SectionBitstreamPartialPDI.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionBitstreamPartialPDI::_init SectionBitstreamPartialPDI::_initializer;
+SectionBitstreamPartialPDI::init SectionBitstreamPartialPDI::initializer;
 
-SectionBitstreamPartialPDI::SectionBitstreamPartialPDI() {
-  // Empty
+SectionBitstreamPartialPDI::init::init() 
+{ 
+  registerSectionCtor(BITSTREAM_PARTIAL_PDI, "BITSTREAM_PARTIAL_PDI", "", false, false, boost::factory<SectionBitstreamPartialPDI*>()); 
 }
 
-SectionBitstreamPartialPDI::~SectionBitstreamPartialPDI() {
-  // Empty
-}
 
 
 

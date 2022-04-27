@@ -152,6 +152,7 @@ struct xocl_xgq_vmr {
 	struct semaphore 	xgq_log_page_sema;
 	struct xgq_cmd_cq_default_payload xgq_cq_payload;
 	int 			xgq_vmr_debug_level;
+	u8			xgq_vmr_debug_type;
 };
 
 static int vmr_status_query(struct platform_device *pdev);
@@ -972,7 +973,8 @@ static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_t
 		goto done;
 	}
 
-	ret = cmd->xgq_cmd_rcode == -ETIME ? 0 : cmd->xgq_cmd_rcode;
+	ret = (cmd->xgq_cmd_rcode == -ETIME || cmd->xgq_cmd_rcode == -EINVAL) ?
+		0 : cmd->xgq_cmd_rcode;
 
 	if (ret) {
 		struct xgq_cmd_cq_log_page_payload *log = NULL;
@@ -1510,6 +1512,7 @@ static int vmr_control_op(struct platform_device *pdev,
 	payload = &(cmd->xgq_cmd_entry.vmr_control_payload);
 	payload->req_type = req_type;
 	payload->debug_level = xgq->xgq_vmr_debug_level;
+	payload->debug_type = xgq->xgq_vmr_debug_type;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_VMR_CONTROL;
@@ -1915,6 +1918,28 @@ static ssize_t vmr_endpoint_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(vmr_endpoint);
 
+static ssize_t vmr_debug_type_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 2) {
+		XGQ_ERR(xgq, "type should be 0 - 2");
+		return -EINVAL;
+	}
+
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_vmr_debug_type = val;
+	mutex_unlock(&xgq->xgq_lock);
+
+	if (vmr_control_op(xgq->xgq_pdev, XGQ_CMD_VMR_DEBUG))
+		return -EINVAL;
+
+	return count;
+}
+static DEVICE_ATTR_WO(vmr_debug_type);
+
 static struct attribute *xgq_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
@@ -1926,6 +1951,7 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_program_sc.attr,
 	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_vmr_debug_dump.attr,
+	&dev_attr_vmr_debug_type.attr,
 	NULL,
 };
 

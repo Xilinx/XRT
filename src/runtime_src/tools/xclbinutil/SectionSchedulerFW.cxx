@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,19 +16,16 @@
 
 #include "SectionSchedulerFW.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionSchedulerFW::_init SectionSchedulerFW::_initializer;
+SectionSchedulerFW::init SectionSchedulerFW::initializer;
 
-SectionSchedulerFW::SectionSchedulerFW() {
-  // Empty
+SectionSchedulerFW::init::init() 
+{ 
+  registerSectionCtor(SCHED_FIRMWARE, "SCHED_FIRMWARE", "", false, false, boost::factory<SectionSchedulerFW*>()); 
 }
 
-SectionSchedulerFW::~SectionSchedulerFW() {
-  // Empty
-}
 
 
 

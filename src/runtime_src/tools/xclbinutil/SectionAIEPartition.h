@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019, 2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,14 +14,22 @@
  * under the License.
  */
 
-#ifndef __SectionDesignCheckPoint_h_
-#define __SectionDesignCheckPoint_h_
+#ifndef __SectionAIEPartitions_h_
+#define __SectionAIEPartitions_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
 #include "Section.h"
 
-// ------ C L A S S :   S e c t i o n D e s i g n C h e c k P o i n t --------
-class SectionDesignCheckPoint : public Section {
+// -------- C L A S S :   S e c t i o n A I E P a r t i t i o n --------------
+class SectionAIEPartition : public Section {
+ public:
+  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
+  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
+
+ protected:
+  void marshalToJSON(char* pDataSection, unsigned int sectionSize, boost::property_tree::ptree& ptReturn) const override;
+  void marshalFromJSON(const boost::property_tree::ptree& ptSection, std::ostringstream& buf) const override;
+
  private:
   // Static initializer helper class
   static class init {
