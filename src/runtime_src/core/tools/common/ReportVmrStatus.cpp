@@ -65,13 +65,14 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     };
 
   std::stringstream aggregated_report;
+  aggregated_report << "Vmr Status" << std::endl;
   for (auto& ks : ptree) {
     const boost::property_tree::ptree& vmr_stat = ks.second;
     const auto it = std::find_if(non_verbose_labels.begin(), non_verbose_labels.end(),
                       [&vmr_stat](const auto& str) { return boost::iequals(vmr_stat.get<std::string>("label"), str); });
     
     if (XBUtilities::getVerbose() || it != non_verbose_labels.end())
-      aggregated_report << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");   
+      aggregated_report << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");
     if (it != non_verbose_labels.end())
       non_verbose_labels.erase(it);
   }
@@ -79,7 +80,6 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   if (!non_verbose_labels.empty())
     throw std::runtime_error("Information Unavailable");
   //If no errors in retrieving all non-verbose labels, output as normal.
-  output << "Vmr Status" << std::endl; 
   output << aggregated_report.str();
   output << std::endl;
 }
