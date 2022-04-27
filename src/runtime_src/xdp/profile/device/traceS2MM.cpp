@@ -22,9 +22,6 @@
 
 namespace xdp {
 
-// Todo : Read this from debug IP Layout?
-constexpr uint64_t TS2MM_V2_BURST_LEN = 32;
-
 TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
                      uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
@@ -37,13 +34,8 @@ TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
         major_version = data->m_major;
         minor_version = data->m_minor;
     }
-    if (major_version >= 2) {
-        mIsVersion2 = true;
-        mBurstLen = TS2MM_V2_BURST_LEN;
-    } else {
-      // Old PL datamover had burstlength of 1
-        mBurstLen = 1;
-    }
+
+    mIsVersion2 = (major_version >= 2);
 }
 
 inline void TraceS2MM::write32(uint64_t offset, uint32_t val)
@@ -122,8 +114,8 @@ uint64_t TraceS2MM::getWordCount(bool final)
 
     // V2 datamover only writes data in bursts
     // Only the final write can be a non multiple of burst length
-    if (!final)
-        wordCount -= wordCount % mBurstLen;
+    if (!final && isVersion2())
+        wordCount -= wordCount % TS2MM_V2_BURST_LEN;
 
     return wordCount;
 }

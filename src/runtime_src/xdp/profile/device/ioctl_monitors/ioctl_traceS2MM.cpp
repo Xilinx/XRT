@@ -105,15 +105,15 @@ uint64_t IOCtlTraceS2MM::getWordCount(bool final)
     (*out_stream) << " IOCtlTraceS2MM::getWordCount " << std::endl;
 
   // Call flush on V2 datamover to ensure all data is written
-  if (final && mIsVersion2)
+  if (final && isVersion2())
     reset();
 
   uint64_t wordCount = 0;
   ioctl(driver_FD, TR_S2MM_IOC_GET_WORDCNT, &wordCount);
 
   // V2 datamover only writes data in bursts
-  if (!final)
-      wordCount -= wordCount % mBurstLen;
+  if (!final && isVersion2())
+      wordCount -= wordCount % TS2MM_V2_BURST_LEN;
 
   return wordCount;
 }

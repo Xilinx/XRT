@@ -24,6 +24,9 @@
 
 namespace xdp {
 
+// Todo : Read this from debug IP Layout?
+constexpr uint64_t TS2MM_V2_BURST_LEN = 32;
+
 /**
  * TraceS2MM ProfileIP (IP with safe access) for AXI Interface Monitor
  *
