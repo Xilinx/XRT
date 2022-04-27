@@ -50,31 +50,36 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree pt_empty;
   const boost::property_tree::ptree& ptree = pt.get_child("vmr", pt_empty);
 
-
-  output << "Vmr Status" << std::endl;
   if (ptree.empty()) {
     output << "  Information Unavailable" << std::endl;
     return;
   }
 
-  //list of non verbose labels
-  const std::vector<std::string> non_verbose_labels = { 
+  //list of sorted non-verbose labels
+  std::vector<std::string> non_verbose_labels = { 
       "build flags", 
-      "vitis version", 
-      "git hash", 
       "git branch", 
-      "git hash date" 
+      "git hash",  
+      "git hash date",
+      "vitis version" 
     };
 
-  for(auto& ks : ptree) {
+  std::stringstream aggregated_report;
+  for (auto& ks : ptree) {
     const boost::property_tree::ptree& vmr_stat = ks.second;
     const auto it = std::find_if(non_verbose_labels.begin(), non_verbose_labels.end(),
                       [&vmr_stat](const auto& str) { return boost::iequals(vmr_stat.get<std::string>("label"), str); });
     
-    if(XBUtilities::getVerbose())
-      output << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");
-    else if(it != std::end(non_verbose_labels))
-      output << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");
+    if (XBUtilities::getVerbose() || it != non_verbose_labels.end())
+      aggregated_report << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");   
+    if (it != non_verbose_labels.end())
+      non_verbose_labels.erase(it);
   }
+  //After removing found non-verbose labels, if there are any left, throw an error.
+  if (!non_verbose_labels.empty())
+    throw std::runtime_error("Information Unavailable");
+  //If no errors in retrieving all non-verbose labels, output as normal.
+  output << "Vmr Status" << std::endl; 
+  output << aggregated_report.str();
   output << std::endl;
 }
