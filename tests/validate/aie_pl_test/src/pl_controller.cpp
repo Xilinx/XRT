@@ -189,7 +189,7 @@ plController::enqueue_halt()
 void
 plController::get_rtp()
 {
-    ptree aie_meta;
+    boost::property_tree::ptree aie_meta;
     std::cout << "aie_info_path " << aie_info_path << std::endl;
     std::ifstream jsonFile(aie_info_path);
     if (!jsonFile.good())
@@ -198,7 +198,7 @@ plController::get_rtp()
     read_json(aie_info_path, aie_meta);
 
     for (auto& rtp_node : aie_meta.get_child("aie_metadata.RTPs")) {
-        rtp_type rtp;
+      rtp_type rtp = {};
 
         rtp.name = rtp_node.second.get<std::string>("port_name");
         rtp.selector_row = rtp_node.second.get<uint16_t>("selector_row");
@@ -230,7 +230,7 @@ plController::get_rtp()
 std::vector<tile_type>
 plController::get_tiles(const std::string& graph_name)
 {
-    ptree aie_meta;
+    boost::property_tree::ptree aie_meta;
 
     std::ifstream jsonFile(aie_info_path);
     if (!jsonFile.good())
@@ -289,7 +289,7 @@ plController::get_tiles(const std::string& graph_name)
 std::vector<buffer_type>
 plController::get_buffers(const std::string& port_name)
 {
-    ptree dma_meta;
+    boost::property_tree::ptree dma_meta;
     std::ifstream jsonFile(dma_info_path);
     if (!jsonFile.good())
         throw std::runtime_error(

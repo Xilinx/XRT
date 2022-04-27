@@ -23,16 +23,18 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 
-#include <stdlib.h>
-#include <unistd.h>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
+#include <stdlib.h>
+#include <unistd.h>
 
 namespace po = boost::program_options;
 
-int main(int argc, char* argv[]) {
+int
+main(int argc, char* argv[])
+{
     std::string b_file = "/vck5000_pcie_pl_controller.xclbin.xclbin";
 
     // Option Variables
@@ -70,7 +72,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Validate the options
-        po::notify(vm);  // Can throw
+        po::notify(vm); // Can throw
     } catch (po::error& e) {
         std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
         std::cout << desc << "\n";
@@ -91,7 +93,7 @@ int main(int argc, char* argv[]) {
     }
 
     auto num_devices = xrt::system::enumerate_devices();
-    auto device = xrt::device{dev_id};
+    auto device = xrt::device{ dev_id };
     auto uuid = device.load_xclbin(binaryfile);
 
     // instance of plController
@@ -144,7 +146,7 @@ int main(int argc, char* argv[]) {
 
     in_bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, mem_size, /*OFFSET=*/0);
 
-    int32_t num_pm = m_pl_ctrl.get_microcode_size();  /// sizeof(int32_t);
+    int32_t num_pm = m_pl_ctrl.get_microcode_size(); /// sizeof(int32_t);
     auto pm_bo = xrt::bo(device, (num_pm + 1) * sizeof(uint32_t),
                          controller_k1.group_id(4));
     auto host_pm = pm_bo.map<uint32_t*>();

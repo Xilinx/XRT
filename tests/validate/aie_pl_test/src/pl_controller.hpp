@@ -30,7 +30,6 @@
 
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-using boost::property_tree::ptree;
 #include "enums.hpp"
 
 namespace xf {
