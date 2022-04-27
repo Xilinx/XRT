@@ -467,17 +467,16 @@ namespace xclemulation{
   // Converts any sort of memory size notation provided by the platform to proper memory value 
   // directly without any lookup. This is scalable approach and supports more such memory notations.
   uint64_t get_mem_value(std::string& memorySizeStr) {
-
-    for(auto it = memorySizeStr.begin(); it != memorySizeStr.end(); it++) {
-      if(isalpha(*it)) {
+    for (auto it = memorySizeStr.begin(); it != memorySizeStr.end(); it++) {
+      if (isalpha(*it)) {
         uint64_t int_val = atoi(memorySizeStr.substr(0, *it).c_str()); 
         if (std::toupper(*it) == 'K')
           return int_val*1024; 
-        else if(std::toupper(*it) == 'M')
+        else if (std::toupper(*it) == 'M')
           return int_val*1024*1024; 
-        else if(std::toupper(*it) == 'G')
+        else if (std::toupper(*it) == 'G')
           return int_val*1024*1024*1024; 
-        else if(std::toupper(*it) == 'T')
+        else if (std::toupper(*it) == 'T')
           return int_val*1024*1024*1024*1024; 
       }
     }
