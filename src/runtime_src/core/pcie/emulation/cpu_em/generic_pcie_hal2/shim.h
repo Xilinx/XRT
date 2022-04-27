@@ -565,7 +565,6 @@ namespace xclcpuemhal2 {
     , mFileExists{false}
     , mCpuShimPtr(iPtr)
     {
-     // mFileExists = false; 
     }  
 
     ~sParseLog() = default;
