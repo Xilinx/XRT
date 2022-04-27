@@ -50,9 +50,9 @@ OptionOptions::printHelp() const
                                m_positionalOptions, m_globalOptions);
 }
 
-std::vector<std::string> 
+std::vector<std::string>
 OptionOptions::process_arguments( boost::program_options::variables_map& vm,
-                                  const SubCmdOptions& _options,
+                                  const SubCmdOptions& options,
                                   bool validate_arguments) const
 {
   po::options_description all_options("All Options");
@@ -60,7 +60,7 @@ OptionOptions::process_arguments( boost::program_options::variables_map& vm,
   all_options.add(m_optionsHidden);
 
   try {
-    po::command_line_parser parser(_options);
+    po::command_line_parser parser(options);
     return XBU::process_arguments(vm, parser, all_options, m_positionalOptions, validate_arguments);
   } catch(boost::program_options::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
