@@ -304,8 +304,8 @@ using addr_type = uint64_t;
     private:
       std::thread mMessengerThread;
       std::thread mHostMemAccessThread;
-      std::atomic_bool mMessengerThreadStarted;
-      std::atomic_bool mHostMemAccessThreadStarted;
+      std::atomic<bool> mMessengerThreadStarted;
+      std::atomic<bool> mHostMemAccessThreadStarted;
       void messagesThread(); 
       void hostMemAccessThread();
 

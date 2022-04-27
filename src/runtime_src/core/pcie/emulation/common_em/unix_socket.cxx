@@ -108,7 +108,7 @@ void unix_socket::start_server(double timeout_insec, bool fatal_error)
 ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
 {
   if (not server_started) {
-    std::cout<<"\n unix_socket::sk_write failed, no socket connection established.\n";
+    std::cout<< "\n unix_socket::sk_write failed, no socket connection established.\n";
     return -1;
   }
   ssize_t r;
@@ -120,7 +120,7 @@ ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
         continue;
       }
       if (EBADF == errno){
-        std::cout<<"\n file descriptor pointing to invalid file.\n";
+        std::cout<< "\n file descriptor pointing to invalid file.\n";
         break;
       }
        
@@ -134,7 +134,7 @@ ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
 ssize_t unix_socket::sk_read(void *rbuf, size_t count)
 {
   if (not server_started) {
-    std::cout<<"\n unix_socket::sk_read failed, no socket connection established.\n";
+    std::cout<< "\n unix_socket::sk_read failed, no socket connection established.\n";
     return -1;
   }
   ssize_t r;

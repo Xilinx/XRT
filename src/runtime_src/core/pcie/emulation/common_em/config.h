@@ -100,7 +100,7 @@ struct sParseLog
 {
   std::ifstream mFileStream;
   std::string mFileName;
-  std::atomic_bool mFileExists;
+  std::atomic<bool> mFileExists;
   std::vector<std::string> mMatchedStrings;
   eEmulationType mEmuType;
   
@@ -138,7 +138,14 @@ struct sParseLog
       }
     }
   }
-
+  /* print_user_msg prints an actionable item to the user so that one can perform
+  * for a cleaner exit. Hence Device Process, XSim exits neatly. ShimPtr->xclClose() achieves this.
+  * But unable to get those Shim pointers intelligently except by making them as composite classes.
+  * The proper clean up activity from XRT will be performed as part of future CR
+  * The current design has some limitations to apply this feature to both
+  * SwEmShim & HwEmShim classes.
+  * */
+  
   void print_user_msg()
   {
     switch (mEmuType) {

@@ -1799,12 +1799,12 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     xclGetDebugMessages(true);
-    try{
+    try {
       std::lock_guard<std::mutex> guard(mPrintMessagesLock);
       fetchAndPrintMessages();
       simulator_started = false;
     }
-    catch(std::exception& ex){
+    catch (std::exception& ex) {
       if (mLogStream.is_open()) 
         mLogStream << __func__ << ", unable to get lock:: " <<ex.what()<< std::endl;
       
@@ -3639,14 +3639,12 @@ void HwEmShim::closeMessengerThread()
 {
   // set_simulator_started has to be false in order to see proper exit of joinable thread.
   //set_simulator_started(false);
-  if (mMessengerThread.joinable())
-  {
+  if (mMessengerThread.joinable()) {
     mMessengerThreadStarted = false;
     mMessengerThread.join();
   }
 
-  if (mHostMemAccessThread.joinable())
-  {
+  if (mHostMemAccessThread.joinable()) {
     mHostMemAccessThreadStarted = false;
     mHostMemAccessThread.join();
   }
@@ -3935,7 +3933,7 @@ void HwEmShim::hostMemAccessThread() {
     auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(this);
     bool sock_ret = false;
     int count = 0;
-    while(mHostMemAccessThreadStarted && !sock_ret && count < 71){
+    while (mHostMemAccessThreadStarted && !sock_ret && count < 71) {
         sock_ret = mq2h_helper_ptr->connect_sock();
         count++;
     }
@@ -3943,7 +3941,7 @@ void HwEmShim::hostMemAccessThread() {
       std::cout<<"\n unable to get a reliable socket connection, ideally should exit here. select call took care. \n";
     }
     int r =0;
-    while(mHostMemAccessThreadStarted && r >= 0){
+    while (mHostMemAccessThreadStarted && r >= 0) {
         try {
             if (not get_simulator_started())
                 return;
