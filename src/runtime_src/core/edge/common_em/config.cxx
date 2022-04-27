@@ -464,99 +464,28 @@ namespace xclemulation{
     return environmentNameValueMap;
   }
 
-  //initialize memMap
-  static void initializeMemMap(std::map<std::string, uint64_t>& memMap)
-  {
-    memMap["1K"]    = xclemulation::MEMSIZE_1K;
-    memMap["4K"]    = xclemulation::MEMSIZE_4K;
-    memMap["8K"]    = xclemulation::MEMSIZE_8K;
-    memMap["16K"]   = xclemulation::MEMSIZE_16K;
-    memMap["32K"]   = xclemulation::MEMSIZE_32K;
-    memMap["64K"]   = xclemulation::MEMSIZE_64K;
-    memMap["128K"]  = xclemulation::MEMSIZE_128K;
-    memMap["256K"]  = xclemulation::MEMSIZE_256K;
-    memMap["512K"]  = xclemulation::MEMSIZE_512K;
+  // Converts any sort of memory size notation provided by the platform to proper memory value 
+  // directly without any lookup. This is scalable approach and supports more such memory notations.
+  uint64_t get_mem_value(std::string& memorySizeStr) {
 
-    memMap["1M"]    = xclemulation::MEMSIZE_1M;
-    memMap["2M"]    = xclemulation::MEMSIZE_2M;
-    memMap["4M"]    = xclemulation::MEMSIZE_4M;
-    memMap["8M"]    = xclemulation::MEMSIZE_8M;
-    memMap["16M"]   = xclemulation::MEMSIZE_16M;
-    memMap["32M"]   = xclemulation::MEMSIZE_32M;
-    memMap["64M"]   = xclemulation::MEMSIZE_64M;
-    memMap["128M"]  = xclemulation::MEMSIZE_128M;
-    memMap["256M"]  = xclemulation::MEMSIZE_256M;
-    memMap["512M"]  = xclemulation::MEMSIZE_512M;
-
-    memMap["1G"]    = xclemulation::MEMSIZE_1G;
-    memMap["2G"]    = xclemulation::MEMSIZE_2G;
-    memMap["4G"]    = xclemulation::MEMSIZE_4G;
-    memMap["8G"]    = xclemulation::MEMSIZE_8G;
-    memMap["16G"]   = xclemulation::MEMSIZE_16G;
-    memMap["32G"]   = xclemulation::MEMSIZE_32G;
-    memMap["64G"]   = xclemulation::MEMSIZE_64G;
-    memMap["128G"]  = xclemulation::MEMSIZE_128G;
-    memMap["256G"]  = xclemulation::MEMSIZE_256G;
-    memMap["512G"]  = xclemulation::MEMSIZE_512G;
-
-    memMap["1T"]    = xclemulation::MEMSIZE_1T;
-    memMap["2T"]    = xclemulation::MEMSIZE_2T;
-    memMap["4T"]    = xclemulation::MEMSIZE_4T;
-    memMap["8T"]    = xclemulation::MEMSIZE_8T;
-    memMap["16T"]   = xclemulation::MEMSIZE_16T;
-    memMap["32T"]   = xclemulation::MEMSIZE_32T;
-    memMap["64T"]   = xclemulation::MEMSIZE_64T;
-    memMap["128T"]  = xclemulation::MEMSIZE_128T;
-    memMap["256T"]  = xclemulation::MEMSIZE_256T;
-    memMap["512T"]  = xclemulation::MEMSIZE_512T;
-  }
-
-  // Converts any sort of memory size notation provided by the platform to single common notation 
-  // For eg: converts 2KB/2K/2.0K/2.00KB/2.000K to 2K to get the proper memory val
-  // For eg: converts 2MB/2M/2.0M/2.00MB/2.000M to 2M to get the proper memory val
-  // For eg: converts 2GB/2G/2.0G/2.00GB/2.000G to 2G to get the proper memory val
-  // For eg: converts 2TB/2T/2.0T/2.00TB/2.000T to 2T to get the proper memory val
-  // This is scalable approach and supports more such memory notations.
-  auto mem_common_notation = [](std::string &s, const char *lookfor, const char *append) -> std::string {
-    std::string lreturn;
-    size_t vv = 0;
-    vv = s.rfind(lookfor);
-    if (std::string::npos != vv) {
-      auto int_val = atoi(s.substr(0, vv).c_str());
-      std::stringstream ss;
-      ss << int_val;
-      lreturn = std::string(ss.str() + append);
-    }
-    return lreturn;
-  };
-
-  //Get the proper memsize mapped value for the plaform provided memory size string.
-  static uint64_t memory_size_literal(std::string& s, std::map<std::string, uint64_t>& memMap) {
-    std::string lliteral;
-    if ((lliteral = mem_common_notation(s, "KB", "K")).empty()) {
-      if ((lliteral = mem_common_notation(s, "K", "K")).empty()) {
-        if ((lliteral = mem_common_notation(s, "MB", "M")).empty()) {
-          if ((lliteral = mem_common_notation(s, "M", "M")).empty()) {
-            if ((lliteral = mem_common_notation(s, "GB", "G")).empty()) {
-              if ((lliteral = mem_common_notation(s, "G", "G")).empty()) {
-                if ((lliteral = mem_common_notation(s, "TB", "T")).empty()) {
-                  if ((lliteral = mem_common_notation(s, "T", "T")).empty()) {
-                    std::string errmsg = "ERROR: Invalid memory notation provided in the platform.";
-                    std::cerr << errmsg << std::endl;
-                    return 0;
-                  }
-                }
-              }
-            }
-          }
-        }
+    for(auto it = memorySizeStr.begin(); it != memorySizeStr.end(); it++) {
+      if(isalpha(*it)) {
+        uint64_t int_val = atoi(memorySizeStr.substr(0, *it).c_str()); 
+        if (std::toupper(*it) == 'K')
+          return int_val*1024; 
+        else if(std::toupper(*it) == 'M')
+          return int_val*1024*1024; 
+        else if(std::toupper(*it) == 'G')
+          return int_val*1024*1024*1024; 
+        else if(std::toupper(*it) == 'T')
+          return int_val*1024*1024*1024*1024; 
       }
     }
-    return memMap[lliteral];
+    return 0;
   }
 
   static void populateDDRBankInfo(boost::property_tree::ptree const& ddrBankTree, xclDeviceInfo2& info, 
-    std::list<DDRBank>& DDRBankList, std::map<std::string, uint64_t>& memMap)
+    std::list<DDRBank>& DDRBankList)
   {
     info.mDDRSize = 0;
     info.mDDRBankCount = 0;
@@ -567,7 +496,7 @@ namespace xclemulation{
         std::string name = prop1.first;
         std::string value = prop1.second.get_value<std::string>();
         if(name == "Size") {
-          uint64_t size = memory_size_literal(value, memMap);
+          uint64_t size = get_mem_value(value);
           if (size != 0) {
             info.mDDRSize = info.mDDRSize + size;
             DDRBank bank;
@@ -657,7 +586,8 @@ namespace xclemulation{
     }
   }
 
-  static void populateHwDevicesOfSingleBoard(boost::property_tree::ptree & deviceTree, std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool,FeatureRomHeader> >& devicesInfo,std::map<std::string, uint64_t>& memMap, bool bUnified, bool bXPR)
+  static void populateHwDevicesOfSingleBoard(boost::property_tree::ptree & deviceTree, std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank>,
+    bool, bool,FeatureRomHeader> >& devicesInfo, bool bUnified, bool bXPR)
   {
 
     for (auto& device : deviceTree)
@@ -730,7 +660,7 @@ namespace xclemulation{
         else if(prop.first == "DdrBanks")
         {
           boost::property_tree::ptree ddrBankTree = prop.second;
-          populateDDRBankInfo(ddrBankTree, info, DDRBankList,memMap);
+          populateDDRBankInfo(ddrBankTree, info, DDRBankList);
         }
         else if(prop.first == "FeatureRom")
         {
@@ -760,7 +690,8 @@ namespace xclemulation{
 
   //create all the devices If devices child is present in this tree otherwise call this function recursively for all the child trees
   //iterate over devices tree and create all the device objects.
-  static void populateHwEmDevices(boost::property_tree::ptree const& platformTree,std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank> ,bool, bool, FeatureRomHeader > >& devicesInfo,std::map<std::string, uint64_t>& memMap)
+  static void populateHwEmDevices(boost::property_tree::ptree const& platformTree,std::vector<std::tuple<xclDeviceInfo2,std::list<DDRBank>, 
+    bool, bool, FeatureRomHeader > >& devicesInfo)
   {
     using boost::property_tree::ptree;
     ptree::const_iterator platformEnd = platformTree.end();
@@ -799,7 +730,7 @@ namespace xclemulation{
           }
         }
         for(unsigned int i = 0; i < numBoards; i++)
-          populateHwDevicesOfSingleBoard(deviceTree,devicesInfo,memMap, bUnified, bXPR);
+          populateHwDevicesOfSingleBoard(deviceTree, devicesInfo, bUnified, bXPR);
       }
     }
   }
@@ -842,8 +773,6 @@ namespace xclemulation{
       //  std::cout<<emConfigFile<<" is used for the platform configuration "<<std::endl;
     }
 
-    std::map<std::string, uint64_t> memMap;
-    initializeMemMap(memMap);
     boost::property_tree::ptree configTree;
     boost::property_tree::read_json(ifs, configTree);//read the config file and stores in configTree
     ifs.close();
@@ -870,7 +799,7 @@ namespace xclemulation{
     bool success = validateVersions(versionTree);
     if(!success)
       return;//validation of Versions failed.
-    populateHwEmDevices(platformTree,devicesInfo,memMap);
+    populateHwEmDevices(platformTree, devicesInfo);
   }
 
   bool copyLogsFromOneFileToAnother(const std::string &logFile, std::ofstream &ofs) {
