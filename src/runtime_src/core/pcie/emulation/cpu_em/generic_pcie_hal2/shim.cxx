@@ -40,6 +40,8 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_DONE  = 2;
   const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
   const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
+  constexpr unsigned int simulationWaitTime = 300;
+
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 
   namespace bf = boost::filesystem;
@@ -526,6 +528,11 @@ namespace xclcpuemhal2 {
     }
   }
 
+  std::string CpuemShim::getDeviceProcessLogPath() {
+    auto lpath = this->deviceDirectory + "/../../../device_process.log";
+    return lpath;
+  }
+
   int CpuemShim::xclLoadXclBin(const xclBin *header)
   {
     if(mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -561,7 +568,7 @@ namespace xclcpuemhal2 {
     std::string binaryDirectory("");
     
     //Check if device_process.log already exists. Remove if exists.
-    auto extIoTxtFile = deviceDirectory + "/../../../device_process.log";
+    auto extIoTxtFile = getDeviceProcessLogPath();
     if (boost::filesystem::exists(extIoTxtFile))
       boost::filesystem::remove(extIoTxtFile);
     launchDeviceProcess(debuggable,binaryDirectory);
@@ -1245,30 +1252,26 @@ namespace xclcpuemhal2 {
   void CpuemShim::messagesThread()
   {
     auto start_time = std::chrono::high_resolution_clock::now();
-    auto lpath = this->deviceDirectory + "/../../../device_process.log";
-    sParseLog deviceProcessLog(lpath);
+    auto lpath = getDeviceProcessLogPath();
+    sParseLog deviceProcessLog(this, lpath);
     int count = 0;
     while (getDeviceProcessStarted())
     {
       // I may not get ParseLog() all the times, So Let's optimize myself.
-      // Let's sleep for 10,20,30 seconds....etc until it is < 300 seconds
+      // Let's sleep for 10,20,30 seconds....etc until it is < simulationWaitTime
       // After that I may not get extensive parseLog() statements.
-      // So I want to call it for each interval of 300 seconds
+      // So I want to call it for each interval of simulationWaitTime
 
       auto end_time = std::chrono::high_resolution_clock::now();
 
-      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= 300) {  
+      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= simulationWaitTime) {  
         deviceProcessLog.parseLog(); 
         ++count;
+        // giving some time for the simulator to run
         if (count%5 == 0) {
-          std::this_thread::sleep_for(std::chrono::seconds(10*(count/5)));
+          std::this_thread::sleep_for(std::chrono::seconds(std::min(10*(count/5), 300)));
           }
         }
-
-      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() >= 300) {  
-        std::this_thread::sleep_for(std::chrono::seconds(300));
-        deviceProcessLog.parseLog();
-      }
     }
   }
 
