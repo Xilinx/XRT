@@ -148,52 +148,60 @@ struct sdm_sensor_info
     //sensors are stored in hwmon sysfs dir with name ends with as follows.
     std::array<std::string, 6> sname_end = {"label", "input", "max", "average", "highest", "status"};
     int max_end_types = sname_end.size();
+    std::string errmsg, str_op, target_snode;
     data_type data = { 0 };
+    uint32_t uint_op = 0;
 
+    //Starting from index 0 in sname_end array, read and store all the sysfs nodes information
     for (int end_id = 0; end_id < max_end_types; end_id++)
     {
-      std::string target_snode = tpath + sname_end[end_id];
-      if (end_id == 0)
+      target_snode = tpath + sname_end[end_id];
+      switch(end_id)
       {
-        std::string errmsg;
-        std::string label;
-        pdev->sysfs_get("", target_snode, errmsg, label);
+      case 0:
+        // read sysfs node <tpath>label
+        pdev->sysfs_get("", target_snode, errmsg, str_output);
         if (!errmsg.empty())
         {
-          //go and read next sysfs node
+          //<tpath>label sysfs node is not found, so try next sysfs node.
           *next_id = true;
           end_id = max_end_types;
         }
         else {
-          data.label = label;
+          data.label = str_output;
         }
-        continue;
-      }
-
-      if (end_id == 5)
-      {
-        std::string errmsg;
-        std::string status;
-        pdev->sysfs_get("", target_snode, errmsg, status);
+        break;
+      case 1:
+        // read sysfs node <tpath>input
+        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
         if (errmsg.empty())
-          data.status = status;
-        continue;
+          data.input = uint_op;
+        break;
+      case 2:
+        // read sysfs node <tpath>max
+        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
+        if (errmsg.empty())
+          data.max = uint_op;
+        break;
+      case 3:
+        // read sysfs node <tpath>average
+        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
+        if (errmsg.empty())
+          data.average = uint_op;
+        break;
+      case 4:
+        // read sysfs node <tpath>highest
+        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
+        if (errmsg.empty())
+          data.highest = uint_op;
+        break;
+      case 5:
+        // read sysfs node <tpath>status
+        pdev->sysfs_get("", target_snode, errmsg, str_op);
+        if (errmsg.empty())
+          data.status = str_op;
+        break;
       }
-
-      std::string errmsg;
-      uint32_t input = 0;
-      pdev->sysfs_get<uint32_t>("", target_snode, errmsg, input, EINVAL);
-      if (!errmsg.empty())
-        continue;
-
-      if (end_id == 1)
-        data.input = input;
-      else if (end_id == 2)
-        data.max = input;
-      else if (end_id == 3)
-        data.average = input;
-      else
-        data.highest = input;
     }
     return data;
   }
@@ -218,8 +226,6 @@ struct sdm_sensor_info
     while (!next_id)
     {
       data_type data;
-      const auto slash = "/";
-      const auto underscore = "_";
       /*
        * Forming sysfs node as <path>/<start>[start_id]_. Here, path is "hwmon/hwmon*"
        * Example: <path>/in0_ or <path>/curr1_ or <path>/power1_ or <path>/temp1_ in 1st iteration.
@@ -227,7 +233,7 @@ struct sdm_sensor_info
        * So, next iteration will be <path>/in1_ or <path>/curr2_ or <path>/power2_ or <path>/temp2_.
        * Similarly, end string of sysfs node name will be retrieved using end[].
        */
-      std::string tpath = path + slash + type + std::to_string(start_id) + underscore;
+      std::string tpath = path + "/" + type + std::to_string(start_id) + "_";
       data = parse_sysfs_nodes(device, tpath, &next_id);
       output.push_back(data);
 
