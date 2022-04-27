@@ -160,7 +160,7 @@ struct sdm_sensor_info
       {
       case 0:
         // read sysfs node <tpath>label
-        pdev->sysfs_get("", target_snode, errmsg, str_output);
+        pdev->sysfs_get("", target_snode, errmsg, str_op);
         if (!errmsg.empty())
         {
           //<tpath>label sysfs node is not found, so try next sysfs node.
@@ -168,7 +168,7 @@ struct sdm_sensor_info
           end_id = max_end_types;
         }
         else {
-          data.label = str_output;
+          data.label = str_op;
         }
         break;
       case 1:
