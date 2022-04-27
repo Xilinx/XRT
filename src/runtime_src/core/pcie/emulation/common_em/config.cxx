@@ -555,124 +555,77 @@ namespace xclemulation{
     memMap["128T"]  = xclemulation::MEMSIZE_128T;
     memMap["256T"]  = xclemulation::MEMSIZE_256T;
     memMap["512T"]  = xclemulation::MEMSIZE_512T;
-
-    memMap["1KB"]    = xclemulation::MEMSIZE_1K;
-    memMap["4KB"]    = xclemulation::MEMSIZE_4K;
-    memMap["8KB"]    = xclemulation::MEMSIZE_8K;
-    memMap["16KB"]   = xclemulation::MEMSIZE_16K;
-    memMap["32KB"]   = xclemulation::MEMSIZE_32K;
-    memMap["64KB"]   = xclemulation::MEMSIZE_64K;
-    memMap["128KB"]  = xclemulation::MEMSIZE_128K;
-    memMap["256KB"]  = xclemulation::MEMSIZE_256K;
-    memMap["512KB"]  = xclemulation::MEMSIZE_512K;
-
-    memMap["1MB"]    = xclemulation::MEMSIZE_1M;
-    memMap["2MB"]    = xclemulation::MEMSIZE_2M;
-    memMap["4MB"]    = xclemulation::MEMSIZE_4M;
-    memMap["8MB"]    = xclemulation::MEMSIZE_8M;
-    memMap["16MB"]   = xclemulation::MEMSIZE_16M;
-    memMap["32MB"]   = xclemulation::MEMSIZE_32M;
-    memMap["64MB"]   = xclemulation::MEMSIZE_64M;
-    memMap["128MB"]  = xclemulation::MEMSIZE_128M;
-    memMap["256MB"]  = xclemulation::MEMSIZE_256M;
-    memMap["512MB"]  = xclemulation::MEMSIZE_512M;
-
-    memMap["1GB"]    = xclemulation::MEMSIZE_1G;
-    memMap["2GB"]    = xclemulation::MEMSIZE_2G;
-    memMap["4GB"]    = xclemulation::MEMSIZE_4G;
-    memMap["8GB"]    = xclemulation::MEMSIZE_8G;
-    memMap["16GB"]   = xclemulation::MEMSIZE_16G;
-    memMap["32GB"]   = xclemulation::MEMSIZE_32G;
-    memMap["64GB"]   = xclemulation::MEMSIZE_64G;
-    memMap["128GB"]  = xclemulation::MEMSIZE_128G;
-    memMap["256GB"]  = xclemulation::MEMSIZE_256G;
-    memMap["512GB"]  = xclemulation::MEMSIZE_512G;
-
-    memMap["1TB"]    = xclemulation::MEMSIZE_1T;
-    memMap["2TB"]    = xclemulation::MEMSIZE_2T;
-    memMap["4TB"]    = xclemulation::MEMSIZE_4T;
-    memMap["8TB"]    = xclemulation::MEMSIZE_8T;
-    memMap["16TB"]   = xclemulation::MEMSIZE_16T;
-    memMap["32TB"]   = xclemulation::MEMSIZE_32T;
-    memMap["64TB"]   = xclemulation::MEMSIZE_64T;
-    memMap["128TB"]  = xclemulation::MEMSIZE_128T;
-    memMap["256TB"]  = xclemulation::MEMSIZE_256T;
-
-    memMap["1.00KB"]    = xclemulation::MEMSIZE_1K;
-    memMap["4.00KB"]    = xclemulation::MEMSIZE_4K;
-    memMap["8.00KB"]    = xclemulation::MEMSIZE_8K;
-    memMap["16.00KB"]   = xclemulation::MEMSIZE_16K;
-    memMap["32.00KB"]   = xclemulation::MEMSIZE_32K;
-    memMap["64.00KB"]   = xclemulation::MEMSIZE_64K;
-    memMap["128.00KB"]  = xclemulation::MEMSIZE_128K;
-    memMap["256.00KB"]  = xclemulation::MEMSIZE_256K;
-    memMap["512.00KB"]  = xclemulation::MEMSIZE_512K;
-
-    memMap["1.00MB"]    = xclemulation::MEMSIZE_1M;
-    memMap["2.00MB"]    = xclemulation::MEMSIZE_2M;
-    memMap["4.00MB"]    = xclemulation::MEMSIZE_4M;
-    memMap["8.00MB"]    = xclemulation::MEMSIZE_8M;
-    memMap["16.00MB"]   = xclemulation::MEMSIZE_16M;
-    memMap["32.00MB"]   = xclemulation::MEMSIZE_32M;
-    memMap["64.00MB"]   = xclemulation::MEMSIZE_64M;
-    memMap["128.00MB"]  = xclemulation::MEMSIZE_128M;
-    memMap["256.00MB"]  = xclemulation::MEMSIZE_256M;
-    memMap["512.00MB"]  = xclemulation::MEMSIZE_512M;
-
-    memMap["1.00GB"]    = xclemulation::MEMSIZE_1G;
-    memMap["2.00GB"]    = xclemulation::MEMSIZE_2G;
-    memMap["4.00GB"]    = xclemulation::MEMSIZE_4G;
-    memMap["8.00GB"]    = xclemulation::MEMSIZE_8G;
-    memMap["16.00GB"]   = xclemulation::MEMSIZE_16G;
-    memMap["32.00GB"]   = xclemulation::MEMSIZE_32G;
-    memMap["64.00GB"]   = xclemulation::MEMSIZE_64G;
-    memMap["128.00GB"]  = xclemulation::MEMSIZE_128G;
-    memMap["256.00GB"]  = xclemulation::MEMSIZE_256G;
-    memMap["512.00GB"]  = xclemulation::MEMSIZE_512G;
-
-    memMap["1.00TB"]    = xclemulation::MEMSIZE_1T;
-    memMap["2.00TB"]    = xclemulation::MEMSIZE_2T;
-    memMap["4.00TB"]    = xclemulation::MEMSIZE_4T;
-    memMap["8.00TB"]    = xclemulation::MEMSIZE_8T;
-    memMap["16.00TB"]   = xclemulation::MEMSIZE_16T;
-    memMap["32.00TB"]   = xclemulation::MEMSIZE_32T;
-    memMap["64.00TB"]   = xclemulation::MEMSIZE_64T;
-    memMap["128.00TB"]  = xclemulation::MEMSIZE_128T;
-    memMap["256.00TB"]  = xclemulation::MEMSIZE_256T;
   }
 
-  static void populateDDRBankInfo(boost::property_tree::ptree const& ddrBankTree, xclDeviceInfo2& info, std::list<DDRBank>& DDRBankList, std::map<std::string, uint64_t>& memMap)
+  // Converts any sort of memory size notation provided by the platform to single common notation 
+  // For eg: converts 2KB/2K/2.0K/2.00KB/2.000K to 2K to get the proper memory val
+  // For eg: converts 2MB/2M/2.0M/2.00MB/2.000M to 2M to get the proper memory val
+  // For eg: converts 2GB/2G/2.0G/2.00GB/2.000G to 2G to get the proper memory val
+  // For eg: converts 2TB/2T/2.0T/2.00TB/2.000T to 2T to get the proper memory val
+  // This is scalable approach and supports more such memory notations.
+  auto mem_common_notation = [](std::string &s, const char *lookfor, const char *append) -> std::string {
+    std::string lreturn;
+    size_t vv = 0;
+    vv = s.rfind(lookfor);
+    if (std::string::npos != vv) {
+      auto int_val = atoi(s.substr(0, vv).c_str());
+      std::stringstream ss;
+      ss << int_val;
+      lreturn = std::string(ss.str() + append);
+    }
+    return lreturn;
+  };
+
+  //Get the proper memsize mapped value for the plaform provided memory size string.
+  static uint64_t memory_size_literal(std::string& s, std::map<std::string, uint64_t>& memMap) {
+    std::string lliteral;
+    if ((lliteral = mem_common_notation(s, "KB", "K")).empty()) {
+      if ((lliteral = mem_common_notation(s, "K", "K")).empty()) {
+        if ((lliteral = mem_common_notation(s, "MB", "M")).empty()) {
+          if ((lliteral = mem_common_notation(s, "M", "M")).empty()) {
+            if ((lliteral = mem_common_notation(s, "GB", "G")).empty()) {
+              if ((lliteral = mem_common_notation(s, "G", "G")).empty()) {
+                if ((lliteral = mem_common_notation(s, "TB", "T")).empty()) {
+                  if ((lliteral = mem_common_notation(s, "T", "T")).empty()) {
+                    std::string errmsg = "ERROR: Invalid memory notation provided in the platform.";
+                    std::cerr << errmsg << std::endl;
+                    return 0;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return memMap[lliteral];
+  }
+
+  static void populateDDRBankInfo(boost::property_tree::ptree const& ddrBankTree, xclDeviceInfo2& info, 
+    std::list<DDRBank>& DDRBankList, std::map<std::string, uint64_t>& memMap)
   {
     info.mDDRSize = 0;
     info.mDDRBankCount = 0;
     DDRBankList.clear();
     using boost::property_tree::ptree;
-    for (auto& prop : ddrBankTree)
-    {
-      for (auto& prop1 : prop.second)//we have only one property as of now which is Size of each DDRBank
-      {
+    for (auto& prop : ddrBankTree) {
+      for (auto& prop1 : prop.second) { //we have only one property as of now which is Size of each DDRBank
         std::string name = prop1.first;
         std::string value = prop1.second.get_value<std::string>();
-        if(name == "Size")
-        {
-          uint64_t size =  0;
-          std::map<std::string,uint64_t>::iterator it = memMap.find(value);
-          if(it != memMap.end())
-          {
-            size = (*it).second;
+        if (name == "Size") {
+          uint64_t size = memory_size_literal(value, memMap);
+          if (size != 0) {
+            info.mDDRSize = info.mDDRSize + size;
+            DDRBank bank;
+            bank.ddrSize = size;
+            DDRBankList.push_back(bank);
           }
-          info.mDDRSize = info.mDDRSize + size;
-          DDRBank bank;
-          bank.ddrSize = size;
-          DDRBankList.push_back(bank);
         }
       }
-
       info.mDDRBankCount = info.mDDRBankCount + 1;
     }
     //if no ddr exists, create a default DDR of 16GB
-    if(DDRBankList.size() == 0)
-    {
+    if (DDRBankList.size() == 0) {
       DDRBank bank;
       bank.ddrSize = 0x400000000;
       DDRBankList.push_back(bank);
