@@ -27,14 +27,14 @@
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
-OptionOptions::OptionOptions( const std::string & _longName,
-                              bool _isHidden,
-                              const std::string & _description)
+OptionOptions::OptionOptions( const std::string & longName,
+                              bool isHidden,
+                              const std::string & description)
   : m_executable("<unknown>")
   , m_command("<unknown>")
-  , m_longName(_longName)
-  , m_isHidden(_isHidden)
-  , m_description(_description)
+  , m_longName(longName)
+  , m_isHidden(isHidden)
+  , m_description(description)
   , m_extendedHelp("")
 {
   // Empty
