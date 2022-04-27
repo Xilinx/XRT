@@ -152,6 +152,7 @@ struct xocl_xgq_vmr {
 	struct semaphore 	xgq_log_page_sema;
 	struct xgq_cmd_cq_default_payload xgq_cq_payload;
 	int 			xgq_vmr_debug_level;
+	u8			xgq_vmr_debug_type;
 };
 
 static int vmr_status_query(struct platform_device *pdev);
@@ -765,7 +766,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
-		XGQ_INFO(xgq, "ret %d", cmd->xgq_cmd_rcode);
+		XGQ_INFO(xgq, "ret: %d, check VMR log for more info.", cmd->xgq_cmd_rcode);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
 		ret = len;
@@ -972,7 +973,8 @@ static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_t
 		goto done;
 	}
 
-	ret = cmd->xgq_cmd_rcode == -ETIME ? 0 : cmd->xgq_cmd_rcode;
+	ret = (cmd->xgq_cmd_rcode == -ETIME || cmd->xgq_cmd_rcode == -EINVAL) ?
+		0 : cmd->xgq_cmd_rcode;
 
 	if (ret) {
 		struct xgq_cmd_cq_log_page_payload *log = NULL;
@@ -1102,13 +1104,14 @@ static int vmr_info_query_op(struct platform_device *pdev,
 			XGQ_WARN(xgq, "info size is zero");
 			ret = -EINVAL;
 		} else {
-			char *info_data = vmalloc(info_size);
+			char *info_data = vmalloc(info_size + 1);
 			if (info_data == NULL) {
 				XGQ_ERR(xgq, "vmalloc failed");
 				ret = -ENOMEM;
 				goto done;
 			}
 			memcpy_from_device(xgq, address, info_data, info_size);
+			info_data[info_size] = '\0'; /* terminate the string */
 			*cnt += sprintf(buf, "%s", info_data);
 			vfree(info_data);
 		}
@@ -1400,61 +1403,85 @@ static uint64_t xgq_get_data(struct platform_device *pdev,
 	return target;
 }
 
-static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
-	size_t len)
+static bool vmr_check_apu_is_ready(struct xocl_xgq_vmr *xgq)
 {
-	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xgq_cmd_cq_vmr_payload *vmr_status =
 		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
-	int ret = 0;
+
+	if (vmr_status_query(xgq->xgq_pdev))
+		return false;
+
+	return vmr_status->ps_is_ready ? true : false;
+}
+
+static int vmr_wait_apu_is_ready(struct xocl_xgq_vmr *xgq)
+{
+	bool is_ready = false;
 	int i = 0;
-
-	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
-		XOCL_XGQ_DOWNLOAD_TIME);
-
-	if (ret != len) {
-		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
-		return -EIO;
-	}
 
 	/*
 	 * We wait till the apu is back online or report EBUSY after a
 	 * certain time.
 	 */
 	for (i = 0; i < MAX_WAIT; i++) {
-
-		if (vmr_status_query(xgq->xgq_pdev)) {
-			ret = -EIO;
+		is_ready = vmr_check_apu_is_ready(xgq);
+		if (is_ready)
 			break;
-		}
-		if (vmr_status->ps_is_ready) {
-			break;
-		}
 
 		msleep(WAIT_INTERVAL);
 	}
 
-	XGQ_INFO(xgq, "wait %d seconds for PS ready value: %d", i, vmr_status->ps_is_ready);
-	return vmr_status->ps_is_ready ? 0 : -ETIME;
+	XGQ_INFO(xgq, "wait %d seconds for PS ready value: %d", i, is_ready);
+	return is_ready ? 0 : -ETIME;
+}
+
+static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
+	size_t len)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
+		XOCL_XGQ_DOWNLOAD_TIME);
+	if (ret != len) {
+		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
+		ret = -EIO;
+	}
+
+	XGQ_INFO(xgq, "successfully download len %ld", len);
+	return 0;
 }
 
 /* read firmware from /lib/firmware/xilinx, load via xgq */
 static int xgq_download_apu_firmware(struct platform_device *pdev)
 {
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
 	char *apu_bin = "xilinx/xrt-versal-apu.xsabin";
 	char *apu_bin_buf = NULL;
 	size_t apu_bin_len = 0;
 	int ret = 0;
 
+	/* APU is ready, no dup download */
+	if (vmr_check_apu_is_ready(xgq)) {
+		XGQ_INFO(xgq, "apu is ready, skip download");
+		return ret;
+	}
+
 	ret = xocl_request_firmware(&pcidev->dev, apu_bin,
 			&apu_bin_buf, &apu_bin_len);
 	if (ret)
 		return ret;
+
+	XGQ_INFO(xgq, "start vmr-downloading apu firmware");
 	ret = xgq_download_apu_bin(pdev, apu_bin_buf, apu_bin_len);
 	vfree(apu_bin_buf);
+	if (ret) 
+		return ret;
 
-	return ret;
+	XGQ_INFO(xgq, "start waiting apu becomes ready");
+	/* wait till apu is ready or return -ETIME */
+	return vmr_wait_apu_is_ready(xgq);
 }
 
 static int vmr_control_op(struct platform_device *pdev,
@@ -1467,6 +1494,10 @@ static int vmr_control_op(struct platform_device *pdev,
 	int ret = 0;
 	int id = 0;
 
+	if (xgq->xgq_halted) {
+		XGQ_WARN(xgq, "VMR XGQ service is haulted. skip.");
+		return -EIO;
+	}
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
@@ -1481,6 +1512,7 @@ static int vmr_control_op(struct platform_device *pdev,
 	payload = &(cmd->xgq_cmd_entry.vmr_control_payload);
 	payload->req_type = req_type;
 	payload->debug_level = xgq->xgq_vmr_debug_level;
+	payload->debug_type = xgq->xgq_vmr_debug_type;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_VMR_CONTROL;
@@ -1843,7 +1875,8 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "BOOT_ON_DEFAULT:%d\n", vmr_status->boot_on_default);
 	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n", vmr_status->boot_on_backup);
 	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n", vmr_status->boot_on_recovery);
-	cnt += sprintf(buf + cnt, "MULTI_BOOT_OFFSET:0x%x\n", vmr_status->multi_boot_offset);
+	cnt += sprintf(buf + cnt, "CURRENT_MULTI_BOOT_OFFSET:0x%x\n", vmr_status->current_multi_boot_offset);
+	cnt += sprintf(buf + cnt, "BOOT_ON_OFFSET:0x%x\n", vmr_status->boot_on_offset);
 	cnt += sprintf(buf + cnt, "HAS_EXTFPT:%d\n", vmr_status->has_extfpt);
 	cnt += sprintf(buf + cnt, "HAS_EXT_META_XSABIN:%d\n", vmr_status->has_ext_xsabin);
 	cnt += sprintf(buf + cnt, "HAS_EXT_SC_FW:%d\n", vmr_status->has_ext_scfw);
@@ -1885,6 +1918,28 @@ static ssize_t vmr_endpoint_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(vmr_endpoint);
 
+static ssize_t vmr_debug_type_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL || val > 2) {
+		XGQ_ERR(xgq, "type should be 0 - 2");
+		return -EINVAL;
+	}
+
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_vmr_debug_type = val;
+	mutex_unlock(&xgq->xgq_lock);
+
+	if (vmr_control_op(xgq->xgq_pdev, XGQ_CMD_VMR_DEBUG))
+		return -EINVAL;
+
+	return count;
+}
+static DEVICE_ATTR_WO(vmr_debug_type);
+
 static struct attribute *xgq_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
@@ -1896,6 +1951,7 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_program_sc.attr,
 	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_vmr_debug_dump.attr,
+	&dev_attr_vmr_debug_type.attr,
 	NULL,
 };
 

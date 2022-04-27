@@ -87,6 +87,7 @@ enum xgq_cmd_vmr_control_type {
 	XGQ_CMD_BOOT_DEFAULT	= 0x1,
 	XGQ_CMD_BOOT_BACKUP	= 0x2,
 	XGQ_CMD_PROGRAM_SC	= 0x3,
+	XGQ_CMD_VMR_DEBUG	= 0x4,
 };
 
 /**
@@ -184,6 +185,12 @@ enum xgq_cmd_flash_type {
 	XGQ_CMD_FLASH_TO_LEGACY		= 0x2,
 };
 
+enum xgq_cmd_debug_type {
+	XGQ_CMD_DBG_CLEAR		= 0x0,
+	XGQ_CMD_DBG_RMGMT		= 0x1,
+	XGQ_CMD_DBG_VMC			= 0x2,
+};
+
 /**
  * struct xgq_cmd_vmr_control_payload: vmr controlling ops
  *
@@ -192,7 +199,8 @@ enum xgq_cmd_flash_type {
 struct xgq_cmd_vmr_control_payload {
 	uint32_t req_type:8;
 	uint32_t debug_level:3;
-	uint32_t rsvd:21;
+	uint32_t debug_type:5;
+	uint32_t rsvd:16;
 };
 
 /**
@@ -287,10 +295,11 @@ struct xgq_cmd_cq_vmr_payload {
 	uint16_t ps_is_ready:1;
 	uint16_t pl_is_ready:1;
 	uint16_t resvd1:5;
-	uint16_t multi_boot_offset;
+	uint16_t current_multi_boot_offset;
 	uint32_t debug_level:3;
 	uint32_t program_progress:7;
-	uint32_t resvd2:22;
+	uint16_t resvd2:6;
+	uint16_t boot_on_offset;
 };
 
 /*
