@@ -187,7 +187,7 @@ namespace xdp {
     if (devInterface->hasTs2mm()) {
       size_t num_ts2mm = devInterface->getNumberTS2MM();
       trace_buffer_size = GetTS2MMBufSize();
-      uint64_t each_buffer_size = devInterface->getAlignedTraceBufferSize(trace_buffer_size, num_ts2mm);
+      uint64_t each_buffer_size = devInterface->getAlignedTraceBufferSize(trace_buffer_size, static_cast<unsigned int>(num_ts2mm));
 
       buf_sizes.resize(num_ts2mm, each_buffer_size);
       for(size_t i = 0; i < num_ts2mm; i++) {

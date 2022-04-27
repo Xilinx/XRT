@@ -58,7 +58,7 @@ AIETraceOffload::AIETraceOffload(void* handle, uint64_t id,
                  bufferInitialized(false),
                  offloadStatus(AIEOffloadThreadStatus::IDLE)
 {
-  bufAllocSz = deviceIntf->getAlignedTraceBufferSize(totalSz, numStream);
+  bufAllocSz = deviceIntf->getAlignedTraceBufferSize(totalSz, static_cast<unsigned int>(numStream));
 }
 
 AIETraceOffload::~AIETraceOffload()
