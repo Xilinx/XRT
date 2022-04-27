@@ -288,7 +288,10 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
       { "versal_23_bandwidth.py",   "kernel_bw.exe"   },
       { "host_mem_23_bandwidth.py", "hostmemory.exe"  },
       { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"},
-      { "xcl_iops_test.exe",        "xcl_iops_test.exe"}
+      { "xcl_iops_test.exe",        "xcl_iops_test.exe"},
+      { "ps_validate.exe",          "ps_validate.exe"},
+      { "ps_aie.exe",               "ps_aie.exe"},
+      { "ps_bandwidth.exe",         "ps_bandwidth.exe"}
     };
 
     if (test_map.find(py) == test_map.end()) {
@@ -1258,6 +1261,33 @@ iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
 }
 
 /*
+ * TEST #13
+ */
+void
+psValidateTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+    runTestCase(_dev, "ps_validate.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
+ * TEST #14
+ */
+void
+psBandwidthTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+    runTestCase(_dev, "ps_bandwidth.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
+ * TEST #15
+ */
+void
+psAieTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+    runTestCase(_dev, "ps_aie.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
@@ -1290,7 +1320,10 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("m2m", "Run M2M test", "bandwidth.xclbin"), m2mTest },
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
-  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest }
+  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
+  { create_init_test("ps-aie", "Needs desc", "verify.xclbin"), psAieTest },
+  { create_init_test("ps-bw", "Needs desc", "bandwidth.xclbin"), psBandwidthTest },
+  { create_init_test("ps-validate", "Needs desc", "verify.xclbin"), psValidateTest }
 };
 
 
