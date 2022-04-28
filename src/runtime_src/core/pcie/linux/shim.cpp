@@ -1098,7 +1098,7 @@ int shim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
  */
 int shim::resetDevice(xclResetKind kind)
 {
-    int err = 0;
+    int ret = 0;
 
     // Only XCL_USER_RESET is supported on user pf.
     if (kind != XCL_USER_RESET)
@@ -1106,7 +1106,7 @@ int shim::resetDevice(xclResetKind kind)
 
     std::string err;
     int dev_offline = 1;
-    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
+    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_HOT_RESET);
     if (ret)
         return -errno;
 
@@ -1117,7 +1117,7 @@ int shim::resetDevice(xclResetKind kind)
      * sysfs node to retrieve latest status of device in the interval of 500 milli sec.
      * In certain testing environement, reset never complete and waits indefinitely
      * in this loop for dev_offline status to be false. To overcome this infinite loop issue,
-     * added loop_timer (default value set to 60 sec) which is used to exit the loop.
+     * added loop_timer (default value set to 120 sec) which is used to exit the loop.
      */
     unsigned int loop_timer = xrt_core::config::get_device_offline_timer();
     auto start = std::chrono::system_clock::now();
@@ -1129,13 +1129,13 @@ int shim::resetDevice(xclResetKind kind)
         std::chrono::duration<double> elapsed_seconds = end - start;
         if (elapsed_seconds.count() > loop_timer) {
             xrt_logmsg(XRT_WARNING, "%s: device unable to come online during reset, try again", __func__);
-            err = -EAGAIN;
+            ret = -EAGAIN;
         }
     }
 
     dev_init();
 
-    return err;
+    return ret;
 }
 
 int shim::p2pEnable(bool enable, bool force)
