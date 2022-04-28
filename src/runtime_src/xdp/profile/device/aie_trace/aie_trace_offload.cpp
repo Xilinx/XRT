@@ -74,6 +74,9 @@ bool AIETraceOffload::initReadTrace()
   buffers.clear();
   buffers.resize(numStream);
 
+  for (auto& buf : buffers)
+    buf.offset = 0;
+
   uint8_t  memIndex = 0;
   if(isPLIO) {
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
@@ -197,51 +200,40 @@ void AIETraceOffload::endReadTrace()
 
 void AIETraceOffload::readTrace(bool final)
 {
-  for(uint64_t i = 0; i < numStream; ++i) {
-    if(isPLIO) {
-      configAIETs2mm(i, final);
-    } else { 
-      buffers[i].usedSz = bufAllocSz;
-    }
-    uint64_t totalBytesRead = 0;
-    while (1) {
-      auto bytes = readPartialTrace(i);
-      totalBytesRead += bytes;
-      if (totalBytesRead >= bufAllocSz) {
-        buffers[i].isFull = true;
-        break;
-      }
+  for (uint64_t i = 0; i < numStream; ++i) {
+    configAIETs2mm(i, final);
 
-      if (bytes != CHUNK_SZ)
-        break;
-    }
-  }
-}
+    if (buffers[i].offset >= buffers[i].usedSz)
+      continue;
 
-uint64_t AIETraceOffload::readPartialTrace(uint64_t i)
-{
-  if (buffers[i].offset >= buffers[i].usedSz) {
-    return 0;
-  }
+    // Amount of newly written trace
+    uint64_t nBytes = buffers[i].usedSz - buffers[i].offset;
+    // Optimization : Skip small trace reads
+    if (nBytes < TS2MM_MIN_READ_SIZE && !final)
+      continue;
 
-  uint64_t nBytes = CHUNK_SZ;
+    // Sync to host
+    auto start = std::chrono::steady_clock::now();
+    void* hostBuf = deviceIntf->syncTraceBuf(buffers[i].boHandle, buffers[i].offset, nBytes);
+    auto end = std::chrono::steady_clock::now();
 
-  if ((buffers[i].offset + CHUNK_SZ) > buffers[i].usedSz) {
-    nBytes = buffers[i].usedSz - buffers[i].offset;
-#if 0
-    uint64_t bytesToReadLater = nBytes % 4;
-    nBytes -= bytesToReadLater;
-#endif
-  }
+    if (!hostBuf)
+      continue;
 
-  void* hostBuf = deviceIntf->syncTraceBuf(buffers[i].boHandle, buffers[i].offset, nBytes);
-
-  if(hostBuf) {
+    // Log trace buffer
     traceLogger->addAIETraceData(i, hostBuf, nBytes);
+
+    debug_stream
+    << "ts2mm " << i << " bytes : " << nBytes << " "
+    << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
+    << std::hex << "from 0x" << buffers[i].offset << " to 0x" << buffers[i].usedSz
+    << std::dec << std::endl;
+
+    //Update offset and check for full buffer
     buffers[i].offset += nBytes;
-    return nBytes;
+    if (nBytes >= bufAllocSz)
+      buffers[i].isFull = true;
   }
-  return 0;
 }
 
 bool AIETraceOffload::isTraceBufferFull()
@@ -259,12 +251,16 @@ bool AIETraceOffload::isTraceBufferFull()
 
 void AIETraceOffload::configAIETs2mm(uint64_t index, bool final)
 {
+  if (!isPLIO) {
+    buffers[index].usedSz = bufAllocSz;
+    return;
+  }
   uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(index, final);
   // Ensure complete packets at the end of each offload
   uint64_t incompletePacketWord = wordCount % 4;
   wordCount -= incompletePacketWord;
   uint64_t usedSize  = wordCount * TRACE_PACKET_SIZE;
-  if(usedSize <= bufAllocSz) {
+  if (usedSize <= bufAllocSz) {
     buffers[index].usedSz = usedSize;
   } else {
     buffers[index].usedSz = bufAllocSz;

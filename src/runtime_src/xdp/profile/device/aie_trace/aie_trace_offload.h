@@ -25,6 +25,9 @@ namespace xdp {
 class DeviceIntf;
 class AIETraceLogger;
 
+#define debug_stream \
+if(!m_debug); else std::cout
+
 struct AIETraceBufferInfo
 {
   size_t   boHandle;
@@ -99,6 +102,10 @@ private:
     uint64_t totalSz;
     uint64_t numStream;
 
+    // Set this to true for more verbose trace offload
+    // Internal use only
+    bool m_debug = true;
+
     uint64_t bufAllocSz;
 
     std::vector<AIETraceBufferInfo>  buffers;
@@ -112,7 +119,6 @@ private:
     AIEOffloadThreadStatus offloadStatus;
     std::thread offloadThread;
 
-    uint64_t readPartialTrace(uint64_t);
     void configAIETs2mm(uint64_t index, bool final);
 
     void continuousOffload();
