@@ -34,7 +34,10 @@ SectionMCS::init SectionMCS::initializer;
 
 SectionMCS::init::init() 
 { 
-  registerSectionCtor(MCS, "MCS", "", true, false, boost::factory<SectionMCS*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(MCS, "MCS", boost::factory<SectionMCS*>());
+  sectionInfo->supportsSubSections = true;
+
+  addSectionType(std::move(sectionInfo));
 }
 
 // --------------------------------------------------------------------------
@@ -134,7 +137,7 @@ SectionMCS::getSubPayload(char* _pDataSection,
   }
 
   // Make sure we support the format type
-  if (_eFormatType != FT_RAW) {
+  if (_eFormatType != FormatType::RAW) {
     auto errMsg = boost::format("ERROR: For section '%s' the format type (%d) is not supported.") % getSectionKindAsString() % (unsigned int) _eFormatType;
     throw std::runtime_error(errMsg.str());
   }
@@ -302,7 +305,7 @@ SectionMCS::readSubPayload(const char* _pOrigDataSection,
   }
 
   // Validate format type
-  if (_eFormatType != Section::FT_RAW) {
+  if (_eFormatType != Section::FormatType::RAW) {
       auto errMsg = boost::format("ERROR: Section '%s' only supports 'RAW' subsections.") % getSectionKindAsString();
     throw std::runtime_error(errMsg.str());
   }
@@ -408,7 +411,7 @@ SectionMCS::writeSubPayload(const std::string & _sSubSectionName,
                             FormatType _eFormatType, 
                             std::fstream&  _oStream) const {
   // Validate format type
-  if (_eFormatType != Section::FT_RAW) {
+  if (_eFormatType != Section::FormatType::RAW) {
     auto errMsg = boost::format("ERROR: Section '%s' only supports 'RAW' subsections.") % getSectionKindAsString();
     throw std::runtime_error(errMsg.str());
   }

@@ -28,7 +28,10 @@ SectionIPLayout::init SectionIPLayout::initializer;
 
 SectionIPLayout::init::init() 
 { 
-  registerSectionCtor(IP_LAYOUT, "IP_LAYOUT", "ip_layout", false, false, boost::factory<SectionIPLayout*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(IP_LAYOUT, "IP_LAYOUT", boost::factory<SectionIPLayout*>()); 
+  sectionInfo->nodeName = "ip_layout";
+
+  addSectionType(std::move(sectionInfo));
 }
 
 
@@ -375,7 +378,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 bool 
 SectionIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_JSON) {
+  if (_eFormatType == FormatType::JSON) {
     return true;
   }
   return false;
@@ -384,9 +387,9 @@ SectionIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionIPLayout::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-  if ((_eFormatType == FT_JSON) ||
-      (_eFormatType == FT_HTML) ||
-      (_eFormatType == FT_RAW))
+  if ((_eFormatType == FormatType::JSON) ||
+      (_eFormatType == FormatType::HTML) ||
+      (_eFormatType == FormatType::RAW))
   {
     return true;
   }

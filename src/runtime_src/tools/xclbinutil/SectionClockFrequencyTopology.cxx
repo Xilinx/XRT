@@ -29,7 +29,10 @@ SectionClockFrequencyTopology::init SectionClockFrequencyTopology::initializer;
 
 SectionClockFrequencyTopology::init::init() 
 { 
-  registerSectionCtor(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", "clock_freq_topology", false, false, boost::factory<SectionClockFrequencyTopology*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", boost::factory<SectionClockFrequencyTopology*>()); 
+  sectionInfo->nodeName = "clock_freq_topology"; 
+
+  addSectionType(std::move(sectionInfo));
 }
 
 const std::string
@@ -198,7 +201,7 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
 bool 
 SectionClockFrequencyTopology::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_JSON) {
+  if (_eFormatType == FormatType::JSON) {
     return true;
   }
   return false;
@@ -207,9 +210,9 @@ SectionClockFrequencyTopology::doesSupportAddFormatType(FormatType _eFormatType)
 bool 
 SectionClockFrequencyTopology::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML) ||
-        (_eFormatType == FT_RAW))
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML) ||
+        (_eFormatType == FormatType::RAW))
     {
       return true;
     }

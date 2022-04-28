@@ -23,7 +23,9 @@ SectionEmulationData::init SectionEmulationData::initializer;
 
 SectionEmulationData::init::init() 
 { 
-  registerSectionCtor(EMULATION_DATA, "EMULATION_DATA", "", false, false, boost::factory<SectionEmulationData*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(EMULATION_DATA, "EMULATION_DATA", boost::factory<SectionEmulationData*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
 
 

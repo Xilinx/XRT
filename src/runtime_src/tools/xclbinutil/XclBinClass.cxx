@@ -312,8 +312,8 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
       pt_sectionHeader.put("Size", (boost::format("0x%lx") % sectionHeader[index].m_sectionSize).str());
 
       boost::property_tree::ptree pt_Payload;
-      if (m_sections[index]->doesSupportAddFormatType(Section::FT_JSON) &&
-          m_sections[index]->doesSupportDumpFormatType(Section::FT_JSON)) {
+      if (m_sections[index]->doesSupportAddFormatType(Section::FormatType::JSON) &&
+          m_sections[index]->doesSupportDumpFormatType(Section::FormatType::JSON)) {
         m_sections[index]->getPayload(pt_Payload);
       }
 
@@ -655,7 +655,7 @@ XclBin::addMergeSection(ParameterSectionData& _PSD)
   enum axlf_section_kind eKind;
   Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
-  if (_PSD.getFormatType() != Section::FT_JSON) {
+  if (_PSD.getFormatType() != Section::FormatType::JSON) {
     std::string errMsg = "ERROR: Adding or merging of sections are only supported with the JSON format.";
     throw std::runtime_error(errMsg);
   }
@@ -1054,7 +1054,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
   pSection->setName(sBaseName);
 
   bool bAllowZeroSize = ((pSection->getSectionKind() == DEBUG_DATA)
-                         && (_PSD.getFormatType() == Section::FT_RAW));
+                         && (_PSD.getFormatType() == Section::FormatType::RAW));
 
   if ((!bAllowZeroSize) && (pSection->getSize() == 0)) {
     XUtil::QUIET("");
@@ -1091,7 +1091,7 @@ XclBin::addSections(ParameterSectionData& _PSD)
     throw std::runtime_error(errMsg);
   }
 
-  if (_PSD.getFormatType() != Section::FT_JSON) {
+  if (_PSD.getFormatType() != Section::FormatType::JSON) {
     auto errMsg = boost::format("ERROR: Expecting JSON format type, got '%s'.") % _PSD.getFormatTypeAsStr();
     throw std::runtime_error(errMsg.str());
   }
@@ -1177,7 +1177,7 @@ XclBin::appendSections(ParameterSectionData& _PSD)
     throw std::runtime_error(errMsg);
   }
 
-  if (_PSD.getFormatType() != Section::FT_JSON) {
+  if (_PSD.getFormatType() != Section::FormatType::JSON) {
     auto errMsg = boost::format("ERROR: Expecting JSON format type, got '%s'.") % _PSD.getFormatTypeAsStr();
     throw std::runtime_error(errMsg.str());
   }
@@ -1332,12 +1332,12 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
     throw XUtil::XclBinUtilException(XET_MISSING_SECTION, boost::str(errMsg));
   }
 
-  if (_PSD.getFormatType() == Section::FT_UNKNOWN) {
+  if (_PSD.getFormatType() == Section::FormatType::UNKNOWN) {
     std::string errMsg = "ERROR: Unknown format type '" + _PSD.getFormatTypeAsStr() + "' in the dump section option: '" + _PSD.getOriginalFormattedString() + "'";
     throw std::runtime_error(errMsg);
   }
 
-  if (_PSD.getFormatType() == Section::FT_UNDEFINED) {
+  if (_PSD.getFormatType() == Section::FormatType::UNDEFINED) {
     std::string errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>.  See help for more format details.";
     throw std::runtime_error(errMsg);
   }
@@ -1375,7 +1375,7 @@ XclBin::dumpSections(ParameterSectionData& _PSD)
     throw std::runtime_error(errMsg);
   }
 
-  if (_PSD.getFormatType() != Section::FT_JSON) {
+  if (_PSD.getFormatType() != Section::FormatType::JSON) {
     auto errMsg = boost::format("ERROR: Expecting JSON format type, got '%s'.") % _PSD.getFormatTypeAsStr();
     throw std::runtime_error(errMsg.str());
   }
@@ -1390,7 +1390,7 @@ XclBin::dumpSections(ParameterSectionData& _PSD)
   }
 
   switch (_PSD.getFormatType()) {
-    case Section::FT_JSON: {
+    case Section::FormatType::JSON: {
         boost::property_tree::ptree pt;
         for (const auto pSection : m_sections) {
           std::string sectionName = pSection->getSectionKindAsString();
@@ -1401,11 +1401,11 @@ XclBin::dumpSections(ParameterSectionData& _PSD)
         boost::property_tree::write_json(oDumpFile, pt, true /*Pretty print*/);
         break;
       }
-    case Section::FT_HTML:
-    case Section::FT_RAW:
-    case Section::FT_TXT:
-    case Section::FT_UNDEFINED:
-    case Section::FT_UNKNOWN:
+    case Section::FormatType::HTML:
+    case Section::FormatType::RAW:
+    case Section::FormatType::TXT:
+    case Section::FormatType::UNDEFINED:
+    case Section::FormatType::UNKNOWN:
     default:
       break;
   }
@@ -1844,7 +1844,7 @@ XclBin::addPsKernel(const std::string& encodedString)
       throw std::runtime_error(errMsg);
     }
 
-    pSection->readSubPayload(iSectionFile, "OBJ", Section::FT_RAW);
+    pSection->readSubPayload(iSectionFile, "OBJ", Section::FormatType::RAW);
 
     // -- Add the metadata
     XUtil::TRACE(boost::format("Adding PS Kernel SubSection '%s' METADATA") % kernelName);
@@ -1861,7 +1861,7 @@ XclBin::addPsKernel(const std::string& encodedString)
     std::ostringstream buffer;
     boost::property_tree::write_json(buffer, ptRTD);
     std::istringstream iSectionMetadata(buffer.str());
-    pSection->readSubPayload(iSectionMetadata, "METADATA", Section::FT_JSON);
+    pSection->readSubPayload(iSectionMetadata, "METADATA", Section::FormatType::JSON);
 
     // -- Now add the section to the collection and report our successful status
     addSection(pSection);

@@ -34,14 +34,18 @@ SectionFlash::init SectionFlash::initializer;
 
 SectionFlash::init::init() 
 { 
-  registerSectionCtor(ASK_FLASH, "FLASH", "", true, true, boost::factory<SectionFlash*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(ASK_FLASH, "FLASH", boost::factory<SectionFlash*>()); 
+  sectionInfo->supportsSubSections = true;
+  sectionInfo->supportsIndexing = true;
+
+  addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
 
 bool
 SectionFlash::doesSupportAddFormatType(FormatType _eFormatType) const {
-  // The FLASH top-level section does support any add syntax.
+  // The FLASH top-level section doesn't support any add syntax.
   // Must use sub-sections
   return false;
 }
@@ -352,7 +356,7 @@ SectionFlash::readSubPayload(const char* _pOrigDataSection,
         throw std::runtime_error(errMsg);
       }
 
-      if (_eFormatType != Section::FT_RAW) {
+      if (_eFormatType != Section::FormatType::RAW) {
         std::string errMsg = "ERROR: Flash DATA image only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -367,7 +371,7 @@ SectionFlash::readSubPayload(const char* _pOrigDataSection,
           throw std::runtime_error(errMsg);
         }
 
-        if (_eFormatType != Section::FT_JSON) {
+        if (_eFormatType != Section::FormatType::JSON) {
           std::string errMsg = "ERROR: FLASH[]-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -464,7 +468,7 @@ SectionFlash::writeSubPayload(const std::string& _sSubSectionName,
   switch (eSubSection) {
     case SS_DATA:
       // Some basic DRC checks
-      if (_eFormatType != Section::FT_RAW) {
+      if (_eFormatType != Section::FormatType::RAW) {
         std::string errMsg = "ERROR: FLASH[]-DATA only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -473,7 +477,7 @@ SectionFlash::writeSubPayload(const std::string& _sSubSectionName,
       break;
 
     case SS_METADATA: {
-        if (_eFormatType != Section::FT_JSON) {
+        if (_eFormatType != Section::FormatType::JSON) {
           std::string errMsg = "ERROR: FLASH[]-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
