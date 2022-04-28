@@ -565,7 +565,6 @@ namespace xclcpuemhal2 {
     {
     }  
 
-    ~sParseLog() = default;
     //**********************************************************************************//
     /**
     * closeApplicationOnMagicStrFound(std::string&) - Searches for a matchString in a file .
