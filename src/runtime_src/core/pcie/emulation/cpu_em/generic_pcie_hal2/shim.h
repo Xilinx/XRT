@@ -576,7 +576,8 @@ namespace xclcpuemhal2 {
     * @matchString:    string to match
     * 
     */
-    void closeApplicationOnMagicStrFound(const auto &matchString) {
+    void closeApplicationOnMagicStrFound(const auto &matchString) 
+    {
       std::string line;
       while (std::getline(file, line)) {
         if (line.find(matchString) != std::string::npos) {
