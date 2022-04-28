@@ -599,9 +599,8 @@ namespace xclcpuemhal2 {
         }
       }
 
-      if (mFileExists) {
+      if (mFileExists)
         closeApplicationOnMagicStrFound(endOfSimulationString);
-      }
       
     }
   };
