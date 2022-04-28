@@ -292,6 +292,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     };
 
     // Validate the legacy names
+    // If no legacy name exists use the passed in test name
     std::string test_name = py;
     if (test_map.find(py) != test_map.end())
       test_name = test_map.find(py)->second;
@@ -1300,7 +1301,7 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
-  { create_init_test("aie-pl", "", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest }
+  { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest }
 };
 
 
