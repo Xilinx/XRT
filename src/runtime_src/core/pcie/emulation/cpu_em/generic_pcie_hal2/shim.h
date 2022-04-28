@@ -555,7 +555,7 @@ namespace xclcpuemhal2 {
   {
     std::ifstream file;
     std::string mFileName;
-    std::atomic_bool mFileExists;
+    std::atomic<bool> mFileExists;
     CpuemShim * mCpuShimPtr;
 
     sParseLog(CpuemShim * iPtr, const std::string& iDeviceLog)
