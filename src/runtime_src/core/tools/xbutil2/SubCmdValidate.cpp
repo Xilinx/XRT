@@ -291,13 +291,13 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
       { "xcl_iops_test.exe",        "xcl_iops_test.exe"}
     };
 
-    if (test_map.find(py) == test_map.end()) {
-      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % py));
-      _ptTest.put("status", test_token_failed);
-      return;
-    }
+    // Validate the legacy names
+    std::string test_name = py;
+    if (test_map.find(py) != test_map.end())
+      test_name = test_map.find(py)->second;
 
-    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_map.find(py)->second;
+    // Parse if the file exists here
+    std::string  xrtTestCasePath = "/proj/xsjhdstaff6/dbenusov/XRT/build/Debug/opt/xilinx/xrt/test/" + test_name;
     boost::filesystem::path xrt_path(xrtTestCasePath);
     if (!boost::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
@@ -1294,13 +1294,13 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("verify", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
   { create_init_test("dma", "Run dma test", "verify.xclbin"), dmaTest },
   { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin"), iopsTest },
-  { create_init_test("aie-pl", "Needs description", "verify.xclbin"), aiePlTest },
   { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("p2p", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("m2m", "Run M2M test", "bandwidth.xclbin"), m2mTest },
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
-  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest }
+  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
+  { create_init_test("aie-pl", "", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest }
 };
 
 
@@ -1498,7 +1498,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
