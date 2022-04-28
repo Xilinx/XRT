@@ -595,8 +595,8 @@ namespace xclemulation{
 
       //fill info with default values
       info.mMagic = 0X586C0C6C;
-      //info.mHALMajorVersion = XCLHAL_MAJOR_VER;
-      //info.mHALMinorVersion= XCLHAL_MINOR_VER;
+      info.mHALMajorVersion = XCLHAL_MAJOR_VER;
+      info.mHALMinorVersion= XCLHAL_MINOR_VER;
       info.mVendorId = 0x10ee;
       info.mSubsystemVendorId = 0x0000;
       info.mDeviceVersion = 0x0000;
@@ -612,7 +612,6 @@ namespace xclemulation{
       DDRBankList.push_back(bank);
       FeatureRomHeader fRomHeader;
       std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
-
 
       //iterate over all the properties of device and fill the info structure. This info object gets used to create  device object
       for (auto& prop : device.second)
