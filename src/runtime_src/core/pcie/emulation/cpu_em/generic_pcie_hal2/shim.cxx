@@ -572,6 +572,7 @@ namespace xclcpuemhal2 {
     auto extIoTxtFile = getDeviceProcessLogPath();
     if (boost::filesystem::exists(extIoTxtFile))
       boost::filesystem::remove(extIoTxtFile);
+      
     launchDeviceProcess(debuggable,binaryDirectory);
 
     if (header)
