@@ -1098,6 +1098,8 @@ int shim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
  */
 int shim::resetDevice(xclResetKind kind)
 {
+    int err = 0;
+
     // Only XCL_USER_RESET is supported on user pf.
     if (kind != XCL_USER_RESET)
         return -EINVAL;
@@ -1127,13 +1129,13 @@ int shim::resetDevice(xclResetKind kind)
         std::chrono::duration<double> elapsed_seconds = end - start;
         if (elapsed_seconds.count() > loop_timer) {
             xrt_logmsg(XRT_WARNING, "%s: device unable to come online during reset, try again", __func__);
-            break;
+            err = -EAGAIN;
         }
     }
 
     dev_init();
 
-    return 0;
+    return err;
 }
 
 int shim::p2pEnable(bool enable, bool force)
