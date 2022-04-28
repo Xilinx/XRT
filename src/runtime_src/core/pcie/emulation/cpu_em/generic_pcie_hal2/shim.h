@@ -146,8 +146,6 @@ namespace xclcpuemhal2 {
 
       void set_messagesize( unsigned int messageSize ) { message_size = messageSize; }
       unsigned int get_messagesize(){ return message_size; }
-      void setDeviceProcessStarted(bool devProcess) { mIsDeviceProcessStarted = devProcess; }
-      bool getDeviceProcessStarted() const { return mIsDeviceProcessStarted; }
 
       ~CpuemShim();
       CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified,
@@ -573,7 +571,7 @@ namespace xclcpuemhal2 {
     * @matchString:    string to match
     * 
     */
-    void closeApplicationOnMagicStrFound(const auto &matchString) 
+    void closeApplicationOnMagicStrFound(const std::string &matchString) 
     {
       std::string line;
       while (std::getline(file, line)) {

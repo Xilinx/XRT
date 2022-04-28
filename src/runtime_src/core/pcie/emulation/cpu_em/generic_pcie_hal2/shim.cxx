@@ -755,7 +755,7 @@ namespace xclcpuemhal2 {
         verbose = true;
       }
 
-      setDeviceProcessStarted(true);
+      mIsDeviceProcessStarted = true;
       if (!mMessengerThread.joinable())
         mMessengerThread = std::thread([this] { messagesThread(); });
 
@@ -1231,7 +1231,7 @@ namespace xclcpuemhal2 {
       return;
     }
 
-    setDeviceProcessStarted(false);
+    mIsDeviceProcessStarted = false;
     std::string socketName = sock->get_name();
     // device is active if socketName is non-empty
     if (!socketName.empty())
@@ -1256,7 +1256,7 @@ namespace xclcpuemhal2 {
     auto lpath = getDeviceProcessLogPath();
     sParseLog deviceProcessLog(this, lpath);
     int count = 0;
-    while (getDeviceProcessStarted())
+    while (mIsDeviceProcessStarted)
     {
       // I may not get ParseLog() all the times, So Let's optimize myself.
       // Let's sleep for 10,20,30 seconds....etc until it is < simulationWaitTime
@@ -1314,7 +1314,7 @@ namespace xclcpuemhal2 {
       close(fd);
     }
     mFdToFileNameMap.clear();
-    setDeviceProcessStarted(false);
+    mIsDeviceProcessStarted = false;
     mCloseAll = true;
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty

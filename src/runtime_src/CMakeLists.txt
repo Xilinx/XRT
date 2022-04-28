@@ -22,7 +22,6 @@ if(XRT_VERBOSE)
 endif()
 
 add_compile_options("-fPIC")
-add_compile_options("-fconcepts")
 
 # TODO CL_TARGET_OPENCL_VERSION is not defined..
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
