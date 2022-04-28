@@ -1,8 +1,10 @@
 /**
- * Copyright (C) 2020-2022 Licensed under the Apache License, Version
- * 2.0 (the "License"). You may not use this file except in
- * compliance with the License. A copy of the License is located
- * at
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -68,15 +70,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-  try {
-    po::store(po::command_line_parser(_options).options(m_optionsDescription).positional(m_positionalOptions).run(), vm);
-    po::notify(vm); // Can throw
-  }
-  catch (po::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options);
 
   //-- Working variables
   std::shared_ptr<xrt_core::device> device;

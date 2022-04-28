@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,11 +18,12 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmd.h"
-#include "XBHelpMenusCore.h"
 #include <iostream>
 #include <boost/format.hpp>
 
+#include "core/common/error.h"
 #include "XBUtilitiesCore.h"
+#include "XBHelpMenusCore.h"
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
@@ -55,6 +57,29 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
                    const SubOptionOptions & _subOptionOptions) const
 {
  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions, m_globalOptions);
+}
+
+std::vector<std::string> 
+SubCmd::process_arguments( po::variables_map& vm,
+                           const SubCmdOptions& _options,
+                           const po::options_description& common_options,
+                           const po::options_description& hidden_options,
+                           const po::positional_options_description& positionals,
+                           const SubOptionOptions& suboptions,
+                           bool validate_arguments) const
+{
+  po::options_description all_options("All Options");
+  all_options.add(common_options);
+  all_options.add(hidden_options);
+
+  try {
+    po::command_line_parser parser(_options);
+    return XBU::process_arguments(vm, parser, all_options, positionals, validate_arguments);
+  } catch(boost::program_options::error& e) {
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    printHelp(common_options, hidden_options, suboptions);
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 }
 
 
