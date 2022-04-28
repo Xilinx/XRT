@@ -86,19 +86,20 @@ The command ``xbutil validate`` validates the installed card by running precompi
 - The ``--run`` (or ``-r``) specifies the perticular test(s) to execute
         
     - ``all`` (**default**): runs all the tests listed below
-    - ``Aux connection``: Check if auxiliary power is connected
-    - ``PCIE link``: Check if PCIE link is active
-    - ``SC version``: Check if SC firmware is up-to-date
-    - ``Verify kernel``: Run 'Hello World' kernel test
-    - ``DMA``: Run dma test
+    - ``aux-connection``: Check if auxiliary power is connected
+    - ``pcie-link``: Check if PCIE link is active
+    - ``sc-version``: Check if SC firmware is up-to-date
+    - ``verify``: Run 'Hello World' kernel test
+    - ``dma``: Run dma test
     - ``iops``: Run test to measure performance of scheduler (number of `hello world` kernel execution per second)
-    - ``Bandwidth kernel``: Run 'bandwidth kernel' and check the throughput
-    - ``Peer to peer bar``: Run peer-to-peer test
-    - ``Memory to memory DMA``: Run zero copy memory to memory data transfer test
-    - ``Host memory bandwidth test``: Run 'bandwidth kernel' when host memory is enabled
+    - ``mem-bw``: Run 'bandwidth kernel' and check the throughput
+    - ``p2p``: Run peer-to-peer test
+    - ``m2m``: Run zero copy memory to memory data transfer test
+    - ``hostmem-bw``: Run 'bandwidth kernel' when host memory is enabled
     - ``bist``: Run BIST test
-    - ``vcu``: Run decoder test (only applicable for specific platform). 
-    - ``quick``: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)   
+    - ``vcu``: Run decoder test (only applicable for specific platform).
+    - ``quick``: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)
+    - ``aie-pl``: Run AIE PL test
   
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     
