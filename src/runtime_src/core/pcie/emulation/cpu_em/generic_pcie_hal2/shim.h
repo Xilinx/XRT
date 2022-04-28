@@ -590,7 +590,8 @@ namespace xclcpuemhal2 {
     * parseLog() - Checks for file existence and calls closeApplication.
     * 
     */
-    void parseLog() {
+    void parseLog() 
+    {
       if (!mFileExists) {
         if (boost::filesystem::exists(mFileName)) {
           file.open(mFileName);
