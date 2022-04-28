@@ -528,7 +528,8 @@ namespace xclcpuemhal2 {
     }
   }
 
-  std::string CpuemShim::getDeviceProcessLogPath() {
+  std::string CpuemShim::getDeviceProcessLogPath() 
+  {
     auto lpath = this->deviceDirectory + "/../../../device_process.log";
     return lpath;
   }
