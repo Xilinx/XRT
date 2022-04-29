@@ -120,7 +120,7 @@ static irqreturn_t user_intr_handler(int irq_index, int irq, void *dev_id)
 		xdev->func_id, irq_index, irq);
 
 	if (xdev->conf.fp_user_isr_handler)
-		xdev->conf.fp_user_isr_handler((unsigned long)xdev,
+		xdev->conf.fp_user_isr_handler((unsigned long)xdev, irq,
 						xdev->conf.uld);
 
 	return IRQ_HANDLED;

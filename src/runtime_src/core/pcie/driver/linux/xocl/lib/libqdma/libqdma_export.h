@@ -473,7 +473,7 @@ struct qdma_dev_conf {
 	 *  @param dev_hndl	Device Handler
 	 *  @param uld		upper layer data, i.e. callback data
 	 */
-	void (*fp_user_isr_handler)(unsigned long dev_hndl, unsigned long uld);
+	void (*fp_user_isr_handler)(unsigned long dev_hndl, int irq, unsigned long uld);
 
 	/**
 	 *  @brief  Q interrupt top,
