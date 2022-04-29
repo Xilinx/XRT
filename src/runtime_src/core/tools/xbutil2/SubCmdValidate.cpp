@@ -344,7 +344,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
     std::vector<std::string> args = { "-k", xclbinPath,
-                                      "-d", std::to_string(_dev.get()->get_device_id()) };
+                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     int exit_code;
     try {
       if (py.find(".exe") != std::string::npos)
