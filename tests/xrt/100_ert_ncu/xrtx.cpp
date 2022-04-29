@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -44,7 +44,7 @@ usage()
 {
   std::cout << "usage: %s [options] \n\n";
   std::cout << "  -k <bitstream>\n";
-  std::cout << "  -d <device_bdf>\n";
+  std::cout << "  -d <device_index>\n";
   std::cout << "";
   std::cout << "  [--jobs <number>]: number of concurrently scheduled jobs\n";
   std::cout << "  [--cus <number>]: number of cus to use (default: 8) (max: 8)\n";
@@ -226,7 +226,7 @@ run(int argc, char** argv)
   std::vector<std::string> args(argv+1,argv+argc);
 
   std::string xclbin_fnm;
-  std::string device_bdf;
+  unsigned int device_index = 0;
   size_t secs = 0;
   size_t jobs = 1;
   size_t cus  = 1;
@@ -244,7 +244,7 @@ run(int argc, char** argv)
     }
 
     if (cur == "-d")
-      device_bdf = arg;
+      device_index = std::stoi(arg);
     else if (cur == "-k")
       xclbin_fnm = arg;
     else if (cur == "--jobs")
@@ -257,7 +257,7 @@ run(int argc, char** argv)
       throw std::runtime_error("bad argument '" + cur + " " + arg + "'");
   }
 
-  auto device = xrtDeviceOpenByBDF(device_bdf);
+  auto device = xrtDeviceOpen(device_index);
 
   if (xrtDeviceLoadXclbinFile(device, xclbin_fnm.c_str()))
     throw std::runtime_error("failed to load xclbin");
