@@ -16,8 +16,10 @@
 
 #ifndef xrtcore_memalign_h_
 #define xrtcore_memalign_h_
-#include <memory>
+
 #include <cstdlib>
+#include <memory>
+#include <stdexcept>
 
 namespace xrt_core {
 
