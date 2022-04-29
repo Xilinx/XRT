@@ -55,7 +55,7 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     return;
   }
 
-  //list of sorted non-verbose labels
+  // list of sorted non-verbose labels
   std::vector<std::string> non_verbose_labels = { 
       "build flags", 
       "git branch", 
@@ -64,22 +64,24 @@ ReportVmrStatus::writeReport( const xrt_core::device* /*_pDevice*/,
       "vitis version" 
     };
 
-  std::stringstream aggregated_report;
-  aggregated_report << "Vmr Status" << std::endl;
+  output << "Vmr Status" << std::endl;
   for (auto& ks : ptree) {
     const boost::property_tree::ptree& vmr_stat = ks.second;
     const auto it = std::find_if(non_verbose_labels.begin(), non_verbose_labels.end(),
                       [&vmr_stat](const auto& str) { return boost::iequals(vmr_stat.get<std::string>("label"), str); });
     
-    if (XBUtilities::getVerbose() || it != non_verbose_labels.end())
-      aggregated_report << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");
-    if (it != non_verbose_labels.end())
+    // Workaround: Checking if all vmr_version labels are available by comparing against non-verbose labels.
+    // (Until we have a dedicated hardware flag to check for partial vmr info/ vmr health)
+    if (it != non_verbose_labels.end()) {
+      output << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");
       non_verbose_labels.erase(it);
+    }
+    else if (XBUtilities::getVerbose()) {
+      output << fmt_basic % vmr_stat.get<std::string>("label") % vmr_stat.get<std::string>("value");
+    }
   }
-  //After removing found non-verbose labels, if there are any left, throw an error.
+  // After removing found non-verbose labels, if there are any left, throw an error.
   if (!non_verbose_labels.empty())
-    throw std::runtime_error("Information Unavailable");
-  //If no errors in retrieving all non-verbose labels, output as normal.
-  output << aggregated_report.str();
+    throw std::runtime_error("Incomplete Information");
   output << std::endl;
 }
