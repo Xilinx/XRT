@@ -502,7 +502,7 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
-      std::atomic_bool mIsDeviceProcessStarted;
+      std::atomic<bool> mIsDeviceProcessStarted;
   };
 
   class GraphType {
