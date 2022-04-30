@@ -371,8 +371,10 @@ get_next_free_apt_index(struct drm_zocl_dev *zdev)
 {
 	int apt_idx = 0;
 
+	BUG_ON(!mutex_is_locked(&zdev->cu_subdev.lock));
+
 	for (apt_idx = 0; apt_idx < MAX_APT_NUM; ++apt_idx) {
-		if (zdev->apertures[apt_idx].addr == EMPTY_APT_VALUE)
+		if (zdev->cu_subdev.apertures[apt_idx].addr == EMPTY_APT_VALUE)
 			return apt_idx;
 	}
 
@@ -391,10 +393,12 @@ update_max_apt_number(struct drm_zocl_dev *zdev)
 {
 	int apt_idx = 0;
 
-	zdev->num_apts = 0;
+	BUG_ON(!mutex_is_locked(&zdev->cu_subdev.lock));
+
+	zdev->cu_subdev.num_apts = 0;
 	for (apt_idx = 0; apt_idx < MAX_APT_NUM; ++apt_idx) {
-		if (zdev->apertures[apt_idx].addr != 0)
-			zdev->num_apts = apt_idx + 1;
+		if (zdev->cu_subdev.apertures[apt_idx].addr != 0)
+			zdev->cu_subdev.num_apts = apt_idx + 1;
 	}
 }
 
@@ -412,8 +416,9 @@ zocl_clean_aperture(struct drm_zocl_dev *zdev, u32 slot_idx)
 	int apt_idx = 0;
 	struct addr_aperture *apt = NULL;
 
+	mutex_lock(&zdev->cu_subdev.lock);
 	for (apt_idx = 0; apt_idx < MAX_APT_NUM; ++apt_idx) {
-		apt = &zdev->apertures[apt_idx];
+		apt = &zdev->cu_subdev.apertures[apt_idx];
 		if (apt->slot_idx == slot_idx) {
 			/* Reset this aperture index */
 			apt->addr = EMPTY_APT_VALUE;
@@ -425,6 +430,7 @@ zocl_clean_aperture(struct drm_zocl_dev *zdev, u32 slot_idx)
 	}
 
 	update_max_apt_number(zdev);
+	mutex_unlock(&zdev->cu_subdev.lock);
 }
 
 /* Record all of the hardware address apertures in the XCLBIN
@@ -467,6 +473,7 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 	/* Cleanup the aperture for this slot before update for new xclbin */
 	zocl_clean_aperture(zdev, slot->slot_idx);
 
+	mutex_lock(&zdev->cu_subdev.lock);
 	/* Now update the aperture for the new xclbin */
 	if (slot->ip) {
 		for (i = 0; i < slot->ip->m_count; ++i) {
@@ -474,9 +481,9 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			apt_idx = get_next_free_apt_index(zdev);
 			if (apt_idx < 0) {
 				DRM_ERROR("No more free apertures\n");
-				return -EINVAL;
+				goto cleanup;
 			}
-			apt = &zdev->apertures[apt_idx];
+			apt = &zdev->cu_subdev.apertures[apt_idx];
 
 			apt->addr = ip->m_base_address;
 			apt->size = CU_SIZE;
@@ -494,9 +501,9 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			apt_idx = get_next_free_apt_index(zdev);
 			if (apt_idx < 0) {
 				DRM_ERROR("No more free apertures\n");
-				return -EINVAL;
+				goto cleanup;
 			}
-			apt = &zdev->apertures[apt_idx];
+			apt = &zdev->cu_subdev.apertures[apt_idx];
 
 			apt->addr = dbg_ip->m_base_address;
 			apt->slot_idx = slot->slot_idx;
@@ -513,8 +520,14 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 		/* Update num_apts based on current index */
 		update_max_apt_number(zdev);
 	}
+	mutex_unlock(&zdev->cu_subdev.lock);
 
 	return 0;
+cleanup:
+	mutex_unlock(&zdev->cu_subdev.lock);
+	zocl_clean_aperture(zdev, slot->slot_idx);
+
+	return -EINVAL;
 }
 
 /*
@@ -530,9 +543,11 @@ zocl_get_cu_inst_idx(struct drm_zocl_dev *zdev)
 {
 	int i = 0;
 
+	BUG_ON(!mutex_is_locked(&zdev->cu_subdev.lock));
+
 	/* TODO : Didn't think about efficient way till now */
 	for (i = 0; i < MAX_CU_NUM; ++i)
-		if (zdev->cu_pldev[i] == NULL)
+		if (zdev->cu_subdev.cu_pldev[i] == NULL)
 			return i;
 
 	return -ENOSPC;
@@ -554,8 +569,9 @@ zocl_destroy_cu_slot(struct drm_zocl_dev *zdev, u32 slot_idx)
 	struct xrt_cu_info *info = NULL;
 	int i = 0;
 
+	mutex_lock(&zdev->cu_subdev.lock);
 	for (i = 0; i < MAX_CU_NUM; ++i) {
-		pldev = zdev->cu_pldev[i];
+		pldev = zdev->cu_subdev.cu_pldev[i];
 		if (!pldev)
 			continue;
 
@@ -565,9 +581,10 @@ zocl_destroy_cu_slot(struct drm_zocl_dev *zdev, u32 slot_idx)
 			platform_device_del(pldev);
 			/* Destroy the platform device */
 			platform_device_put(pldev);
-			zdev->cu_pldev[i] = NULL;
+			zdev->cu_subdev.cu_pldev[i] = NULL;
 		}
 	}
+	mutex_unlock(&zdev->cu_subdev.lock);
 }
 
 /*
@@ -620,19 +637,19 @@ zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			return -EINVAL;
 		}
 
-		/* Get the next free CU index */
-		cu_info[i].inst_idx = zocl_get_cu_inst_idx(zdev);
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
 		 */
 		krnl_info = zocl_query_kernel(slot, cu_info[i].kname);
 		if (!krnl_info) {
-			DRM_WARN("%s CU has no metadata, using default",cu_info[i].kname);
+			DRM_WARN("%s CU has no metadata, using default",
+				 cu_info[i].kname);
 			cu_info[i].args = NULL;
 			cu_info[i].num_args = 0;
 			cu_info[i].size = 0x10000;
 		} else {
-			cu_info[i].args = (struct xrt_cu_arg *)&krnl_info->args[i];
+			cu_info[i].args =
+				(struct xrt_cu_arg *)&krnl_info->args[i];
 			cu_info[i].num_args = krnl_info->anums;
 			cu_info[i].size = krnl_info->range;
 
@@ -640,14 +657,21 @@ zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 				cu_info[i].sw_reset = true;
 		}
 
+		mutex_lock(&zdev->cu_subdev.lock);
+		/* Get the next free CU index */
+		cu_info[i].inst_idx = zocl_get_cu_inst_idx(zdev);
+
 		/* CU sub device is a virtual device, which means there is no
 		 * device tree nodes
 		 */
-		err = subdev_create_cu(zdev->ddev->dev, &cu_info[i], &zdev->cu_pldev[i]);
+		err = subdev_create_cu(zdev->ddev->dev, &cu_info[i],
+			       &zdev->cu_subdev.cu_pldev[cu_info[i].inst_idx]);
 		if (err) {
 			DRM_ERROR("cannot create CU subdev");
+			mutex_unlock(&zdev->cu_subdev.lock);
 			goto err;
 		}
+		mutex_unlock(&zdev->cu_subdev.lock);
 	}
 	kfree(cu_info);
 
@@ -704,23 +728,27 @@ zocl_get_slot(struct drm_zocl_dev *zdev, uuid_t *id)
  *       reload the hardware and can do non-destructive operations.
  */
 static int
-zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
-		char __user *xclbin_ptr)
+zocl_cache_xclbin(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
+		  struct axlf *axlf, char __user *xclbin_ptr)
 {
 	int ret = 0;
+	struct axlf *slot_axlf = NULL;
 	size_t size = axlf->m_header.m_length;
 
-	slot->axlf = vmalloc(size);
-	if (!slot->axlf)
+	slot_axlf = vmalloc(size);
+	if (!slot_axlf)
 		return -ENOMEM;
 
-	ret = copy_from_user(slot->axlf, xclbin_ptr, size);
+	ret = copy_from_user(slot_axlf, xclbin_ptr, size);
 	if (ret) {
-		vfree(slot->axlf);
+		vfree(slot_axlf);
 		return ret;
 	}
 
+	write_lock(&zdev->attr_rwlock);
+	slot->axlf = slot_axlf;
 	slot->axlf_size = size;
+	write_unlock(&zdev->attr_rwlock);
 
 	return 0;
 }
@@ -736,20 +764,24 @@ zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
  *       reload the hardware and can do non-destructive operations.
  */
 static int
-zocl_kernel_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
-		char *xclbin_ptr)
+zocl_kernel_cache_xclbin(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
+			 struct axlf *axlf, char *xclbin_ptr)
 {
 	size_t size = axlf->m_header.m_length;
+	struct axlf *slot_axlf = NULL;
 
-	slot->axlf = vmalloc(size);
-	if (!slot->axlf) {
+	slot_axlf = vmalloc(size);
+	if (!slot_axlf) {
 		DRM_ERROR("%s cannot allocate slot->axlf memory!",__func__);
 		return -ENOMEM;
 	}
 
-	memcpy(slot->axlf, xclbin_ptr, size);
+	memcpy(slot_axlf, xclbin_ptr, size);
 
+	write_lock(&zdev->attr_rwlock);
+	slot->axlf = slot_axlf;
 	slot->axlf_size = size;
+	write_unlock(&zdev->attr_rwlock);
 
 	return 0;
 }
@@ -797,8 +829,6 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 		return ret;
 	}
 
-	write_lock(&zdev->attr_rwlock);
-
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = axlf_head->m_header.m_numSections-1;
@@ -813,25 +843,21 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 	size = zocl_offsetof_sect(BITSTREAM_PARTIAL_PDI, &section_buffer,
 	    axlf, xclbin);
 	if (size > 0) {
-		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_partial(zdev, section_buffer, size, slot);
-		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out;
 	}
 
 	size = zocl_offsetof_sect(PDI, &section_buffer, axlf, xclbin);
 	if (size > 0) {
-		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_partial(zdev, section_buffer, size, slot);
-		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out;
 	}
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
-		ret = zocl_cache_xclbin(slot, axlf, xclbin);
+		ret = zocl_cache_xclbin(zdev, slot, axlf, xclbin);
 		if (ret) {
 			DRM_ERROR("%s cannot cache xclbin",__func__);
 			goto out;
@@ -842,12 +868,11 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 	}
 
 	/* preserve uuid, avoid double download */
-	zocl_xclbin_set_uuid(slot, &axlf_head->m_header.uuid);
+	zocl_xclbin_set_uuid(zdev, slot, &axlf_head->m_header.uuid);
 
 	/* no need to reset scheduler, config will always reset scheduler */
 
 out:
-	write_unlock(&zdev->attr_rwlock);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(slot),
 		ret);
 	mutex_unlock(&slot->slot_xclbin_lock);
@@ -885,7 +910,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 
 	// Currently only 1 slot - TODO: Support multi-slot in the future
 	slot = zdev->pr_slot[0];
-	
+
         mutex_lock(&slot->slot_xclbin_lock);
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid)) {
@@ -895,7 +920,6 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 		return ret;
 	}
 
-	write_lock(&zdev->attr_rwlock);
 
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
@@ -915,7 +939,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 			zocl_destroy_aie(zdev);
 		}
 	}
-	
+
 	/*
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
 	 * such a section.
@@ -923,14 +947,12 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 	zocl_read_sect_kernel(AIE_RESOURCES, &aie_res, axlf, xclbin);
 
 	// Cache full xclbin
-	write_unlock(&zdev->attr_rwlock);
 	//last argument represents aie generation. 1. aie, 2. aie-ml ...
-	zocl_create_aie(zdev, axlf, aie_res,1);
-	write_lock(&zdev->attr_rwlock);
+	zocl_create_aie(zdev, axlf, aie_res, 1);
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
-		ret = zocl_kernel_cache_xclbin(slot, axlf, xclbin);
+		ret = zocl_kernel_cache_xclbin(zdev, slot, axlf, xclbin);
 		if (ret) {
 			DRM_ERROR("%s cannot cache xclbin",__func__);
 			goto out;
@@ -941,12 +963,11 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 	}
 
 	/* preserve uuid, avoid double download */
-	zocl_xclbin_set_uuid(slot, &axlf_head->m_header.uuid);
+	zocl_xclbin_set_uuid(zdev, slot, &axlf_head->m_header.uuid);
 
 	/* no need to reset scheduler, config will always reset scheduler */
 
 out:
-	write_unlock(&zdev->attr_rwlock);
 	vfree(aie_res);
 	if (!ret)
 		DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(slot), ret);
@@ -992,29 +1013,27 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
  * @param       slot: Specific slot structure
  *
  */
-void zocl_free_sections(struct drm_zocl_slot *slot)
+void zocl_free_sections(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 {
-	if (slot->ip) {
+	if (slot->ip)
 		vfree(slot->ip);
-		CLEAR(slot->ip);
-	}
-	if (slot->debug_ip) {
+	if (slot->debug_ip)
 		vfree(slot->debug_ip);
-		CLEAR(slot->debug_ip);
-	}
-	if (slot->connectivity) {
+	if (slot->connectivity)
 		vfree(slot->connectivity);
-		CLEAR(slot->connectivity);
-	}
-	if (slot->topology) {
+	if (slot->topology)
 		vfree(slot->topology);
-		CLEAR(slot->topology);
-	}
-	if (slot->axlf) {
+	if (slot->axlf)
 		vfree(slot->axlf);
-		CLEAR(slot->axlf);
-		slot->axlf_size = 0;
-	}
+
+	write_lock(&zdev->attr_rwlock);
+	CLEAR(slot->ip);
+	CLEAR(slot->debug_ip);
+	CLEAR(slot->connectivity);
+	CLEAR(slot->topology);
+	CLEAR(slot->axlf);
+	slot->axlf_size = 0;
+	write_unlock(&zdev->attr_rwlock);
 }
 
 /*
@@ -1144,6 +1163,74 @@ zocl_xclbin_refcount(struct drm_zocl_slot *slot)
 	return slot->slot_xclbin->zx_refcnt;
 }
 
+static int
+populate_slot_specific_sec(struct drm_zocl_dev *zdev, struct axlf *axlf,
+			   char __user *xclbin, struct drm_zocl_slot *slot)
+{
+	struct mem_topology     *topology = NULL;
+	struct ip_layout        *ip = NULL;
+	struct debug_ip_layout  *debug_ip = NULL;
+	struct connectivity     *connectivity = NULL;
+	struct aie_metadata      aie_data = { 0 };
+	uint64_t		 size = 0;
+	int			 ret = 0;
+	int slot_id = slot->slot_idx;
+
+	/* Populating IP_LAYOUT sections */
+	/* zocl_read_sect return size of section when successfully find it */
+	size = zocl_read_sect(IP_LAYOUT, &ip, axlf, xclbin);
+	if (size <= 0) {
+		if (size != 0)
+			return size;
+
+	} else if (sizeof_section(ip, m_ip_data) != size)
+		return -EINVAL;
+
+	/* Populating DEBUG_IP_LAYOUT sections */
+	size = zocl_read_sect(DEBUG_IP_LAYOUT, &debug_ip, axlf, xclbin);
+	if (size <= 0) {
+		if (size != 0)
+			return size;
+
+	} else if (sizeof_section(debug_ip, m_debug_ip_data) != size)
+		return -EINVAL;
+
+	/* Populating AIE_METADATA sections */
+	size = zocl_read_sect(AIE_METADATA, &aie_data.data, axlf,
+			     xclbin);
+	if (size < 0)
+		return size;
+
+	aie_data.size = size;
+
+	/* Populating CONNECTIVITY sections */
+	size = zocl_read_sect(CONNECTIVITY, &connectivity, axlf, xclbin);
+	if (size <= 0) {
+		if (size != 0)
+			return size;
+
+	} else if (sizeof_section(connectivity, m_connection) != size)
+		return -EINVAL;
+
+	/* Populating MEM_TOPOLOGY sections */
+	size = zocl_read_sect(MEM_TOPOLOGY, &topology, axlf, xclbin);
+	if (size <= 0) {
+		if (size != 0)
+			return size;
+
+	} else if (sizeof_section(topology, m_mem_data) != size)
+		return -EINVAL;
+
+	write_lock(&zdev->attr_rwlock);
+	slot->ip = ip;
+	slot->debug_ip = debug_ip;
+	slot->aie_data = aie_data;
+	slot->connectivity = connectivity;
+	slot->topology = topology;
+	write_unlock(&zdev->attr_rwlock);
+	return 0;
+}
+
 /*
  * This function is the main entry point to load xclbin. It's takes an userspace
  * pointer of xclbin and copy the xclbin data to kernel space. Then load that
@@ -1166,15 +1253,14 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	char __user *xclbin = NULL;
 	size_t size_of_header;
 	size_t num_of_sections;
-	void *kernels;
+	void *kernels = NULL;
 	void *aie_res = 0;
-	uint64_t size = 0;
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
 	int slot_id = axlf_obj->za_slot_id;
 	uint8_t hw_gen = axlf_obj->hw_gen;
 
-	if (slot_id > zdev->num_pr_slot) {
+	if ((slot_id < 0) || (slot_id > zdev->num_pr_slot)) {
 		DRM_ERROR("Invalid Slot[%d]", slot_id);
 		return -EINVAL;
 	}
@@ -1226,9 +1312,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EFAULT;
 	}
-
-	/* After this lock till unlock is an atomic context */
-	write_lock(&zdev->attr_rwlock);
+	
 
 	/*
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
@@ -1240,17 +1324,13 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	if (zocl_xclbin_same_uuid(slot, &axlf_head.m_header.uuid)) {
 		if (!(axlf_obj->za_flags & DRM_ZOCL_FORCE_PROGRAM)) {
 			if (is_aie_only(axlf)) {
-				write_unlock(&zdev->attr_rwlock);
 				ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin,
 							     client);
-				write_lock(&zdev->attr_rwlock);
 				if (ret)
 					DRM_WARN("read xclbin: fail to load AIE");
 				else {
-					write_unlock(&zdev->attr_rwlock);
-					zocl_create_aie(zdev, axlf, aie_res,hw_gen);
-					write_lock(&zdev->attr_rwlock);
-					zocl_cache_xclbin(slot, axlf, xclbin);
+					zocl_create_aie(zdev, axlf, aie_res, hw_gen);
+					zocl_cache_xclbin(zdev, slot, axlf, xclbin);
 				}
 			} else {
 				DRM_INFO("%s The XCLBIN already loaded", __func__);
@@ -1276,7 +1356,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	}
 
 	/* Free sections before load the new xclbin */
-	zocl_free_sections(slot);
+	zocl_free_sections(zdev, slot);
 
 #if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
 	if (xrt_xclbin_get_section_num(axlf, PARTITION_METADATA) &&
@@ -1287,10 +1367,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		 * axlf should have dtbo in PARTITION_METADATA section and
 		 * bitstream in BITSTREAM section.
 		 */
-		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_sect(zdev, axlf, xclbin, PARTITION_METADATA,
 				    slot);
-		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out0;
 
@@ -1334,34 +1412,26 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			 * Make sure we load PL bitstream first,
 			 * if there is one, before loading AIE PDI.
 			 */
-			write_unlock(&zdev->attr_rwlock);
 			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM,
 					    slot);
-			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				goto out0;
 
-			write_unlock(&zdev->attr_rwlock);
 			ret = zocl_load_sect(zdev, axlf, xclbin,
 			    BITSTREAM_PARTIAL_PDI, slot);
-			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				goto out0;
 
-			write_unlock(&zdev->attr_rwlock);
 			ret = zocl_load_sect(zdev, axlf, xclbin, PDI, slot);
-			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				goto out0;
 		}
 	} else if (is_aie_only(axlf)) {
-		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
-		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out0;
 
-		zocl_cache_xclbin(slot, axlf, xclbin);
+		zocl_cache_xclbin(zdev, slot, axlf, xclbin);
 	} else if ((axlf_obj->za_flags & DRM_ZOCL_PLATFORM_FLAT) &&
 		   axlf_head.m_header.m_mode == XCLBIN_FLAT &&
 		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
@@ -1370,37 +1440,14 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		 * Load full bitstream, enabled in xrt runtime config
 		 * and xclbin has full bitstream and its not hw emulation
 		 */
-		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM, slot);
-		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out0;
 	}
 
-	/* Populating IP_LAYOUT sections */
-	/* zocl_read_sect return size of section when successfully find it */
-	size = zocl_read_sect(IP_LAYOUT, &slot->ip, axlf, xclbin);
-	if (size <= 0) {
-		if (size != 0) {
-			ret = size;
-			goto out0;
-		}
-	} else if (sizeof_section(slot->ip, m_ip_data) != size) {
-		ret = -EINVAL;
+	ret = populate_slot_specific_sec(zdev, axlf, xclbin, slot);
+	if (ret)
 		goto out0;
-	}
-
-	/* Populating DEBUG_IP_LAYOUT sections */
-	size = zocl_read_sect(DEBUG_IP_LAYOUT, &slot->debug_ip, axlf, xclbin);
-	if (size <= 0) {
-		if (size != 0) {
-			ret = size;
-			goto out0;
-		}
-	} else if (sizeof_section(slot->debug_ip, m_debug_ip_data) != size) {
-		ret = -EINVAL;
-		goto out0;
-	}
 
 	ret = zocl_update_apertures(zdev, slot);
 	if (ret)
@@ -1428,82 +1475,34 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		slot->kernels = kernels;
 	}
 
-	/* Populating AIE_METADATA sections */
-	size = zocl_read_sect(AIE_METADATA, &slot->aie_data.data, axlf,
-			     xclbin);
-	if (size < 0) {
-		ret = size;
-		goto out0;
-	}
-	slot->aie_data.size = size;
-
-	/* Populating CONNECTIVITY sections */
-	size = zocl_read_sect(CONNECTIVITY, &slot->connectivity, axlf, xclbin);
-	if (size <= 0) {
-		if (size != 0) {
-			ret = size;
-			goto out0;
-		}
-	} else if (sizeof_section(slot->connectivity, m_connection) != size) {
-		ret = -EINVAL;
-		goto out0;
-	}
-
-	/* Populating MEM_TOPOLOGY sections */
-	size = zocl_read_sect(MEM_TOPOLOGY, &slot->topology, axlf, xclbin);
-	if (size <= 0) {
-		if (size != 0) {
-			ret = size;
-			goto out0;
-		}
-	} else if (sizeof_section(slot->topology, m_mem_data) != size) {
-		ret = -EINVAL;
-		goto out0;
-	}
-
 	zocl_clear_mem_slot(zdev, slot->slot_idx);
 	/* Initialize the memory for the new xclbin */
 	zocl_init_mem(zdev, slot);
 
 	/* Createing AIE Partition */
-	write_unlock(&zdev->attr_rwlock);
-	zocl_create_aie(zdev, axlf, aie_res,hw_gen);
-	write_lock(&zdev->attr_rwlock);
+	zocl_create_aie(zdev, axlf, aie_res, hw_gen);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.
 	 */
-	slot->slot_xclbin->zx_refcnt = 0;
 	if(ZOCL_PLATFORM_ARM64)
-		zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path);
-	zocl_xclbin_set_uuid(slot, &axlf_head.m_header.uuid);
+		zocl_xclbin_set_dtbo_path(zdev, slot, axlf_obj->za_dtbo_path);
 
-	/*
-	 * Invoking kernel thread (kthread), hence need
-	 * to call this outside of the atomic context
-	 */
-	write_unlock(&zdev->attr_rwlock);
+	zocl_xclbin_set_uuid(zdev, slot, &axlf_head.m_header.uuid);
 
 	/* Destroy the CUs specific for this slot */
 	zocl_destroy_cu_slot(zdev, slot->slot_idx);
 
 	/* Create the CUs for this slot */
 	ret = zocl_create_cu(zdev, slot);
-	if (ret) {
-		write_lock(&zdev->attr_rwlock);
+	if (ret)
 		goto out0;
-	}
 
 	ret = zocl_kds_update(zdev, slot, &axlf_obj->kds_cfg);
-	if (ret) {
-		write_lock(&zdev->attr_rwlock);
+	if (ret)
 		goto out0;
-	}
-
-	write_lock(&zdev->attr_rwlock);
 
 out0:
-	write_unlock(&zdev->attr_rwlock);
 	vfree(aie_res);
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(slot),
@@ -1646,7 +1645,8 @@ int zocl_unlock_bitstream(struct drm_zocl_slot *slot, const uuid_t *id)
  * @return      0 on success Error code on failure.
  */
 int
-zocl_xclbin_set_uuid(struct drm_zocl_slot *slot, void *uuid)
+zocl_xclbin_set_uuid(struct drm_zocl_dev *zdev,
+		     struct drm_zocl_slot *slot, void *uuid)
 {
 	xuid_t *zx_uuid = slot->slot_xclbin->zx_uuid;
 
@@ -1660,7 +1660,10 @@ zocl_xclbin_set_uuid(struct drm_zocl_slot *slot, void *uuid)
 		return -ENOMEM;
 
 	uuid_copy(zx_uuid, uuid);
+	write_lock(&zdev->attr_rwlock);
 	slot->slot_xclbin->zx_uuid = zx_uuid;
+	slot->slot_xclbin->zx_refcnt = 0;
+	write_unlock(&zdev->attr_rwlock);
 	return 0;
 }
 
@@ -1725,7 +1728,8 @@ zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
  * @return      0 on success Error code on failure.
  */
 int
-zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path)
+zocl_xclbin_set_dtbo_path(struct drm_zocl_dev *zdev,
+			  struct drm_zocl_slot *slot, char *dtbo_path)
 {
         char *path = slot->slot_xclbin->zx_dtbo_path;
 
@@ -1743,6 +1747,8 @@ zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path)
 		path[len] = '\0';
 	}
 
-        slot->slot_xclbin->zx_dtbo_path = path;
-        return 0;
+	write_lock(&zdev->attr_rwlock);
+	slot->slot_xclbin->zx_dtbo_path = path;
+	write_unlock(&zdev->attr_rwlock);
+	return 0;
 }
