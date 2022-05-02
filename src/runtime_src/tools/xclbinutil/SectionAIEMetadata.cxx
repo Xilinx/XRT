@@ -26,8 +26,11 @@ namespace XUtil = XclBinUtilities;
 // ----------------------------------------------------------------------------
 SectionAIEMetadata::init SectionAIEMetadata::initializer;
 
-SectionAIEMetadata::init::init() {
-  registerSectionCtor(AIE_METADATA, "AIE_METADATA", "", false, false, boost::factory<SectionAIEMetadata*>()); 
+SectionAIEMetadata::init::init() 
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(AIE_METADATA, "AIE_METADATA", boost::factory<SectionAIEMetadata*>());
+
+  addSectionType(std::move(sectionInfo));
 }
 // ----------------------------------------------------------------------------
 
@@ -72,8 +75,8 @@ SectionAIEMetadata::marshalFromJSON( const boost::property_tree::ptree& _ptSecti
 bool 
 SectionAIEMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if ((_eFormatType == FT_JSON) ||
-      (_eFormatType == FT_RAW)) {
+  if ((_eFormatType == FormatType::JSON) ||
+      (_eFormatType == FormatType::RAW)) {
     return true;
   }
   return false;
@@ -82,12 +85,10 @@ SectionAIEMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionAIEMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML)) {
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML)) {
       return true;
     }
     return false;
 }
-
-
 

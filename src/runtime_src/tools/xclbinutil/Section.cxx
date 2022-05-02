@@ -94,19 +94,12 @@ Section::getSupportedKinds()
 }
 
 
-// Next phase: This method will be refactor such that the underlying 
-// section class will initialize its own section data.
 void
-Section::registerSectionCtor(enum axlf_section_kind eKind,
-                             const std::string& cmdName,
-                             const std::string& nodeName,
-                             bool bSupportsSubSections,
-                             bool bSupportsIndexing,
-                             Section_factory sectionCtor) {
-
+Section::addSectionType(std::unique_ptr<SectionInfo> sectionInfo)
+{
   // Some error checking
-  if (cmdName.empty()) {
-    auto errMsg = boost::format("ERROR: CMD name for the section kind (%d) is empty. This needs to be defined.") % eKind;
+  if (sectionInfo->name.empty()) {
+    auto errMsg = boost::format("ERROR: CMD name for the section kind (%d) is empty. This needs to be defined.") % sectionInfo->eKind;
     throw std::runtime_error(errMsg.str());
   }
 
@@ -114,38 +107,33 @@ Section::registerSectionCtor(enum axlf_section_kind eKind,
   auto & sections = getSectionTypes();
 
   // Is the enumeration type already registered
-  if (std::any_of(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; })) {
+  if (std::any_of(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == sectionInfo->eKind; })) {
     auto errMsg = boost::format("ERROR: Attempting to register (%d : %s). Constructor enum of kind (%d) already registered.")
-                                % eKind % cmdName % eKind;
+                                % sectionInfo->eKind % sectionInfo->name % sectionInfo->eKind;
     throw std::runtime_error(errMsg.str());
   }
 
   // Is the cmd name already registered
   {
-    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->name == cmdName; });
+    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->name == sectionInfo->name; });
     if (iter != sections.end()) {
       auto errMsg = boost::format("ERROR: Attempting to register: (%d : %s). Constructor name '%s' already registered to eKind (%d).")
-                                  % eKind % cmdName
-                                  % cmdName % iter->get()->eKind;
+                                  % sectionInfo->eKind % sectionInfo->name
+                                  % sectionInfo->name % iter->get()->eKind;
       throw std::runtime_error(errMsg.str());
     }
   }
 
   // Is the header name already registered
-  if (!nodeName.empty()) {
-    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->nodeName == nodeName; });
+  if (!sectionInfo->nodeName.empty()) {
+    auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->nodeName == sectionInfo->nodeName; });
     if (iter != sections.end()) {
       auto errMsg = boost::format("ERROR: Attempting to register: (%d : %s). JSON mapping name '%s' already registered to eKind (%d).")
-                                    % eKind % cmdName
-                                    % nodeName % iter->get()->eKind;
+                                    % sectionInfo->eKind % sectionInfo->name
+                                    % sectionInfo->nodeName % iter->get()->eKind;
         throw std::runtime_error(errMsg.str());
     }
   }
-
-  auto sectionInfo = std::make_unique<SectionInfo>(eKind, cmdName, sectionCtor);
-  sectionInfo->nodeName = nodeName;
-  sectionInfo->supportsSubSections = bSupportsSubSections;
-  sectionInfo->supportsIndexing = bSupportsIndexing;
 
   sections.push_back(std::move(sectionInfo));
 }
@@ -201,20 +189,22 @@ Section::getSectionIndexName() const
   return m_sIndexName;
 }
 
+static const std::vector<std::pair<std::string, Section::FormatType>> formatTypeTable = {
+                         std::make_pair("",    Section::FormatType::UNDEFINED),
+                         std::make_pair("RAW",  Section::FormatType::RAW),
+                         std::make_pair("JSON", Section::FormatType::JSON),
+                         std::make_pair("HTML", Section::FormatType::HTML),
+                         std::make_pair("TXT",  Section::FormatType::TXT)
+};
+
 enum Section::FormatType 
-Section::getFormatType(const std::string _sFormatType)
+Section::getFormatType(const std::string & sFormatType)
 {
-  std::string sFormatType = _sFormatType;
+  auto iter = std::find_if(formatTypeTable.begin(), formatTypeTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sFormatType); });
+  if (iter == formatTypeTable.end())
+    return FormatType::UNDEFINED;
 
-  boost::to_upper(sFormatType);
-
-  if (sFormatType == "") { return FT_UNDEFINED; }
-  if (sFormatType == "RAW") { return FT_RAW; }
-  if (sFormatType == "JSON") { return FT_JSON; }
-  if (sFormatType == "HTML") { return FT_HTML; }
-  if (sFormatType == "TXT") { return FT_TXT; }
-  
-  return FT_UNKNOWN;
+  return iter->second;
 }
 
 enum axlf_section_kind 
@@ -471,7 +461,7 @@ void
 Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
 {
     switch (_eFormatType) {
-    case FT_RAW:
+    case FormatType::RAW:
       {
         axlf_section_header sectionHeader = axlf_section_header {0};
         sectionHeader.m_sectionKind = getSectionKind();
@@ -484,7 +474,7 @@ Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
         readXclBinBinary(_istream, sectionHeader);
         break;
       }
-    case FT_JSON:
+    case FormatType::JSON:
       {
         // Bring the file into memory
         _istream.seekg(0, _istream.end);
@@ -517,16 +507,16 @@ Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
         }
         break;
       }
-    case FT_HTML:
+    case FormatType::HTML:
       // Do nothing
       break;
-    case FT_TXT:
+    case FormatType::TXT:
       // Do nothing
       break;
-    case FT_UNKNOWN:
+    case FormatType::UNKNOWN:
       // Do nothing
       break;
-    case FT_UNDEFINED:
+    case FormatType::UNDEFINED:
       // Do nothing
       break;
     }
@@ -536,12 +526,12 @@ void
 Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) const
 {
   switch (_eFormatType) {
-  case FT_RAW:
+  case FormatType::RAW:
     {
       writeXclBinSectionBuffer(_ostream);
       break;
     }
-  case FT_JSON:
+  case FormatType::JSON:
     {
       boost::property_tree::ptree pt;
       marshalToJSON(m_pBuffer, m_bufferSize, pt);
@@ -549,7 +539,7 @@ Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) cons
       boost::property_tree::write_json(_ostream, pt, true /*Pretty print*/);
       break;
     }
-  case FT_HTML:
+  case FormatType::HTML:
     {
       boost::property_tree::ptree pt;
       marshalToJSON(m_pBuffer, m_bufferSize, pt);
@@ -559,13 +549,13 @@ Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) cons
       _ostream << "</pre></body></html>\n";
       break;
     }
-  case FT_UNKNOWN:
+  case FormatType::UNKNOWN:
     // Do nothing;
     break;
-  case FT_TXT:
+  case FormatType::TXT:
     // Do nothing;
     break;
-  case FT_UNDEFINED:
+  case FormatType::UNDEFINED:
     break;
   }
 }
@@ -591,7 +581,7 @@ Section::printHeader(std::ostream &_ostream) const
 bool 
 Section::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_RAW) {
+  if (_eFormatType == FormatType::RAW) {
     return true;
   }
   return false;
@@ -600,7 +590,7 @@ Section::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 Section::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_RAW) {
+  if (_eFormatType == FormatType::RAW) {
     return true;
   }
   return false;
@@ -623,7 +613,7 @@ Section::getSubPayload(std::ostringstream &_buf,
   }
 
   // Make sure we support the format type
-  if (_eFormatType != FT_RAW) {
+  if (_eFormatType != FormatType::RAW) {
     return false;
   }
 

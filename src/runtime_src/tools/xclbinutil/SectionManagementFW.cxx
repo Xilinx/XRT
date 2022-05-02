@@ -23,7 +23,9 @@ SectionManagementFW::init SectionManagementFW::initializer;
 
 SectionManagementFW::init::init() 
 { 
-  registerSectionCtor(FIRMWARE, "FIRMWARE", "", false, false, boost::factory<SectionManagementFW*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(FIRMWARE, "FIRMWARE", boost::factory<SectionManagementFW*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
 
 

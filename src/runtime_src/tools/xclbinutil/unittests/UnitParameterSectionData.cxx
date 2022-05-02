@@ -7,7 +7,7 @@ TEST(ParameterSectionData, ValidTuple) {
    ParameterSectionData *pPSD = new ParameterSectionData(sOption);
 
    EXPECT_STREQ("BUILD_METADATA", pPSD->getSectionName().c_str());
-   EXPECT_EQ(Section::FT_JSON, pPSD->getFormatType());
+   EXPECT_EQ(Section::FormatType::JSON, pPSD->getFormatType());
    EXPECT_STREQ("myfile.json", pPSD->getFile().c_str());
 }
 
@@ -17,7 +17,7 @@ TEST(ParameterSectionData, FileColon) {
    ParameterSectionData *pPSD = new ParameterSectionData(sOption);
 
    EXPECT_STREQ("BUILD_METADATA", pPSD->getSectionName().c_str());
-   EXPECT_EQ(Section::FT_JSON, pPSD->getFormatType());
+   EXPECT_EQ(Section::FormatType::JSON, pPSD->getFormatType());
    EXPECT_STREQ("C:\\file.json", pPSD->getFile().c_str());
 }
 
@@ -27,7 +27,7 @@ TEST(ParameterSectionData, EmptySectionWithJSON) {
    ParameterSectionData *pPSD = new ParameterSectionData(sOption);
 
    EXPECT_STREQ("", pPSD->getSectionName().c_str());
-   EXPECT_EQ(Section::FT_JSON, pPSD->getFormatType());
+   EXPECT_EQ(Section::FormatType::JSON, pPSD->getFormatType());
    EXPECT_STREQ("myfile.json", pPSD->getFile().c_str());
 }
 

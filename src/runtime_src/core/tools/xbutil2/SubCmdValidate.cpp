@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -294,13 +295,14 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
       { "ps_bandwidth.exe",         "ps_bandwidth.exe"}
     };
 
-    if (test_map.find(py) == test_map.end()) {
-      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % py));
-      _ptTest.put("status", test_token_failed);
-      return;
-    }
+    // Validate the legacy names
+    // If no legacy name exists use the passed in test name
+    std::string test_name = py;
+    if (test_map.find(py) != test_map.end())
+      test_name = test_map.find(py)->second;
 
-    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_map.find(py)->second;
+    // Parse if the file exists here
+    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
     boost::filesystem::path xrt_path(xrtTestCasePath);
     if (!boost::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
@@ -1264,9 +1266,9 @@ iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
  * TEST #13
  */
 void
-psValidateTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+aiePlTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-    runTestCase(_dev, "ps_validate.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+    runTestCase(_dev, "aie_pl.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
 }
 
 /*
@@ -1285,6 +1287,24 @@ void
 psAieTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
     runTestCase(_dev, "ps_aie.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
+ * TEST #16
+ */
+void
+psValidateTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+    runTestCase(_dev, "ps_validate.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
+ * TEST #17
+ */
+void
+psIopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+    runTestCase(_dev, "ps_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
 }
 
 /*
@@ -1321,9 +1341,11 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
-  { create_init_test("ps-aie", "Needs desc", "ps_aie.xclbin"), psAieTest },
-  { create_init_test("ps-bw", "Needs desc", "ps_bandwidth.xclbin"), psBandwidthTest },
-  { create_init_test("ps-validate", "Needs desc", "ps_validate_bandwidth.xclbin"), psValidateTest }
+  { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest },
+  { create_init_test("ps-aie", "Run AIE PS test", "ps_aie.xclbin"), psAieTest },
+  { create_init_test("ps-bw", "Run bandwidth PS test", "ps_bandwidth.xclbin"), psBandwidthTest },
+  { create_init_test("ps-validate", "Run validation PS test", "ps_validate_bandwidth.xclbin"), psValidateTest },
+  { create_init_test("ps-iops", "Run IOPS PS test", "ps_validate_bandwidth.xclbin"), psIopsTest }
 };
 
 
@@ -1521,7 +1543,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "ps-aie", "ps-bw", "ps-validate"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "ps-aie", "ps-bw", "ps-validate", "ps-iops"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };

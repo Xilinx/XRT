@@ -23,7 +23,9 @@ SectionSchedulerFW::init SectionSchedulerFW::initializer;
 
 SectionSchedulerFW::init::init() 
 { 
-  registerSectionCtor(SCHED_FIRMWARE, "SCHED_FIRMWARE", "", false, false, boost::factory<SectionSchedulerFW*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(SCHED_FIRMWARE, "SCHED_FIRMWARE", boost::factory<SectionSchedulerFW*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
 
 
