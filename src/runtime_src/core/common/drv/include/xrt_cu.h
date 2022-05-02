@@ -283,6 +283,7 @@ struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
 	struct resource		**res;
+	struct list_head	  cu;
 	/* pending queue */
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;
