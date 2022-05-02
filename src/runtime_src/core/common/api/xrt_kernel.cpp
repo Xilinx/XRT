@@ -1571,6 +1571,12 @@ public:
     return name;
   }
 
+  xrt::xclbin
+  get_xclbin() const
+  {
+    return xclbin;
+  }
+
   const std::bitset<max_cus>&
   get_cumask() const
   {
@@ -3119,6 +3125,20 @@ offset(int argno) const
   return xdp::native::profiling_wrapper("xrt::kernel::offset", [this, argno]{
     return handle->arg_offset(argno);
   });
+}
+
+std::string
+kernel::
+get_name() const
+{
+  return handle->get_name();
+}
+
+xrt::xclbin
+kernel::
+get_xclbin() const
+{
+  return handle->get_xclbin();
 }
 
 } // namespace xrt

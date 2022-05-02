@@ -42,7 +42,7 @@ public:
    * One word is 64 bit with current implementation
    * IP should support word packing if we want to support 512 bit words
    */
-  virtual uint64_t getWordCount();
+  virtual uint64_t getWordCount(bool final = false);
   virtual void showStatus() {}
 
   virtual int read(uint64_t offset, size_t size, void* data);

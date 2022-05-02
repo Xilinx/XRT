@@ -66,7 +66,7 @@ public:
     XDP_EXPORT
     bool initReadTrace();
     XDP_EXPORT
-    void readTrace();
+    void readTrace(bool final);
     XDP_EXPORT
     void endReadTrace();
     XDP_EXPORT
@@ -113,7 +113,7 @@ private:
     std::thread offloadThread;
 
     uint64_t readPartialTrace(uint64_t);
-    void configAIETs2mm(uint64_t wordCount);
+    void configAIETs2mm(uint64_t index, bool final);
 
     void continuousOffload();
     bool keepOffloading();

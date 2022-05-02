@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -71,6 +72,13 @@ public:
   void printHelp( const boost::program_options::options_description & _optionDescription,
                   const boost::program_options::options_description & _optionHidden,
                   const SubOptionOptions & _subOptionOptions) const;
+  std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
+                           const SubCmdOptions& _options,
+                           const boost::program_options::options_description& common_options,
+                           const boost::program_options::options_description& hidden_options,
+                           const boost::program_options::positional_options_description& positionals = boost::program_options::positional_options_description(),
+                           const SubOptionOptions& suboptions = SubOptionOptions(),
+                           bool validate_arguments = true) const;
   void conflictingOptions( const boost::program_options::variables_map& _vm, 
                            const std::string &_opt1, const std::string &_opt2) const;
 
