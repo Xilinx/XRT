@@ -29,6 +29,7 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 #include "xdp/profile/device/device_trace_logger.h"
+#include "xdp/profile/device/tracedefs.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
@@ -185,10 +186,9 @@ namespace xdp {
 
     if (devInterface->hasTs2mm()) {
       size_t num_ts2mm = devInterface->getNumberTS2MM();
-
       trace_buffer_size = GetTS2MMBufSize();
+      uint64_t each_buffer_size = devInterface->getAlignedTraceBufferSize(trace_buffer_size, static_cast<unsigned int>(num_ts2mm));
 
-      uint64_t each_buffer_size = (1 == num_ts2mm) ? trace_buffer_size : ((trace_buffer_size / num_ts2mm) % 0xfffffffffffff000);
       buf_sizes.resize(num_ts2mm, each_buffer_size);
       for(size_t i = 0; i < num_ts2mm; i++) {
         Memory* memory = (db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex(i));

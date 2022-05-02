@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019,2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,45 +18,37 @@
 #define __FDTNode_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "FDTProperty.h"
-
+#include <boost/property_tree/ptree.hpp>
 #include <string>
 #include <vector>
-#include <boost/property_tree/ptree.hpp>
 
 // ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
 class DTCStringsBlock;
 
-// ------------------- C L A S S :   S e c t i o n ---------------------------
+// ------------------- C L A S S :   F D T N o d e ---------------------------
 
 class FDTNode {
 
  private:
+  FDTNode();
   FDTNode(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock, unsigned int& _bytesExamined, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
   FDTNode(const boost::property_tree::ptree& _ptDTC, std::string & _nodeName, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
 
  public:
-  virtual ~FDTNode();
+  ~FDTNode();
 
  public:
   static FDTNode* marshalFromDTC(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
   static FDTNode* marshalFromJSON(const boost::property_tree::ptree& _ptDTC, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
 
+ public:
   void marshalToJSON(boost::property_tree::ptree& _dtcTree, const FDTProperty::PropertyNameFormat & _propertyNameFormat) const;
   void marshalToDTC(DTCStringsBlock& _dtcStringsBlock, std::ostream& _buf) const;
 
  protected:
   void marshalSubNodeToJSON(boost::property_tree::ptree& _ptTree, const FDTProperty::PropertyNameFormat & _propertyNameFormat) const;
   static void runningBufferCheck(const unsigned int _bytesExamined, const unsigned int _size);
-
- private:
-  // Purposefully private and undefined ctors...
-  FDTNode();
-  FDTNode(const FDTNode& obj);
-  FDTNode& operator=(const FDTNode& obj);
 
  private:
   std::string m_name;                      // Name of the node

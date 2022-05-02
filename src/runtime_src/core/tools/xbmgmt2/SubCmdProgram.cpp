@@ -1,7 +1,7 @@
 /**
  * Copyright (C) 2020,2021,2022 Xilinx, Inc
  * Copyright (C) 2022 Advanced Micro Devices, Inc.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
  * License is located at
@@ -36,7 +36,7 @@ namespace XBU = XBUtilities;
 #include "flash/flasher.h"
 #include "core/common/info_vmr.h"
 // Remove linux specific code
-#ifdef __GNUC__
+#ifdef __linux__
 #include "core/pcie/linux/scan.cpp"
 #endif
 
@@ -76,13 +76,13 @@ namespace {
 
 /**
  * @brief Update shell on the board for manual flash
- * 
+ *
  * @param[in] index The index of the board to be flashed
  * @param[in] image_paths The images to flash onto the board
- * @param[in] flash_type The format in which the board will be flashed. Leave 
+ * @param[in] flash_type The format in which the board will be flashed. Leave
  *                       blank to use the boards default flashing mode
  */
-static void 
+static void
 update_shell(unsigned int index, std::map<std::string, std::string>& image_paths, Flasher::E_FlasherType flash_type)
 {
   Flasher flasher(index);
@@ -107,14 +107,14 @@ update_shell(unsigned int index, std::map<std::string, std::string>& image_paths
     if (sec->fail())
       throw xrt_core::error(boost::str(boost::format("Failed to read %s") % image_paths["secondary"]));
   }
-  
+
   if (flasher.upgradeFirmware(flash_type, pri.get(), sec.get(), stripped.get()) != 0)
     throw xrt_core::error("Failed to update base");
-  
+
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base flash image has been programmed successfully.";
 }
 
-static std::string 
+static std::string
 getBDF(unsigned int index)
 {
   auto dev = xrt_core::get_mgmtpf_device(index);
@@ -138,7 +138,7 @@ is_SC_fixed(unsigned int index)
 }
 
 // Update SC firmware on the board
-static void 
+static void
 update_SC(unsigned int  index, const std::string& file)
 {
   Flasher flasher(index);
@@ -154,11 +154,11 @@ update_SC(unsigned int  index, const std::string& file)
     xrt_core::device_update<xrt_core::query::program_sc>(dev.get(), val);
     return;
   }
-  catch (const xrt_core::query::exception&) { 
+  catch (const xrt_core::query::exception&) {
     // this flow is not supported on the device
     // continue with the other flow
   }
-  
+
   //if factory image, update SC
   auto is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
   if (is_mfg) {
@@ -172,13 +172,13 @@ update_SC(unsigned int  index, const std::string& file)
   }
 
   // If SC is fixed, stop flashing immediately
-  if (is_SC_fixed(index)) 
+  if (is_SC_fixed(index))
     throw xrt_core::error("SC is fixed, unable to flash image.");
 
 // To be replaced with a cleaner fix
 // Mgmt pf needs to shutdown so that the board doesn't brick
 // Hack: added linux specific code to shutdown mgmt pf
-#ifdef __GNUC__
+#ifdef __linux__
   auto mgmt_dev = pcidev::get_dev(index, false);
   auto peer_dev = mgmt_dev->lookup_peer_dev();
   if (pcidev::shutdown(mgmt_dev))
@@ -195,12 +195,12 @@ update_SC(unsigned int  index, const std::string& file)
 
 // To be replaced with a cleaner fix
 // Hack: added linux specific code to bring back mgmt pf
-#ifdef __GNUC__
+#ifdef __linux__
   std::string errmsg;
   peer_dev->sysfs_put("", "shutdown", errmsg, "0\n");
   if (!errmsg.empty())
     throw xrt_core::error("Userpf is not online. Please warm reboot.");
-  
+
   const static int dev_timeout = 60;
   int wait = 0;
   do {
@@ -213,15 +213,15 @@ update_SC(unsigned int  index, const std::string& file)
   } while (++wait < dev_timeout);
   if (wait == dev_timeout)
     throw xrt_core::error("User function is not back online. Please warm reboot.");
-#endif 
+#endif
 }
 
 // Helper function for header info
-static std::string 
-file_size(const std::string & _file) 
+static std::string
+file_size(const std::string & _file)
 {
   std::ifstream in(_file.c_str(), std::ifstream::ate | std::ifstream::binary);
-  auto total_size = std::to_string(in.tellg()); 
+  auto total_size = std::to_string(in.tellg());
   int strSize = static_cast<int>(total_size.size());
 
   //if file size is > 3 digits, insert commas after every 3 digits
@@ -230,12 +230,12 @@ file_size(const std::string & _file)
    for (int i = (strSize - COMMA_SPACING);  i > 0;  i -= COMMA_SPACING)
      total_size.insert(static_cast<size_t>(i), 1, ',');
   }
-  
+
   return total_size + std::string(" bytes");
 }
 
 // Helper function for header info
-static std::pair<std::string, std::string> 
+static std::pair<std::string, std::string>
 deployment_path_and_filename(std::string file)
 {
   using tokenizer = boost::tokenizer< boost::char_separator<char> >;
@@ -243,7 +243,7 @@ deployment_path_and_filename(std::string file)
   tokenizer tokens(file, sep);
   std::string dsafile = "";
   for (auto tok_iter = tokens.begin(); tok_iter != tokens.end(); ++tok_iter) {
-  	if ((std::string(*tok_iter).find(XSABIN_FILE_SUFFIX) != std::string::npos) 
+  	if ((std::string(*tok_iter).find(XSABIN_FILE_SUFFIX) != std::string::npos)
           || (std::string(*tok_iter).find(DSABIN_FILE_SUFFIX) != std::string::npos))
           dsafile = *tok_iter;
   }
@@ -254,8 +254,8 @@ deployment_path_and_filename(std::string file)
 }
 
 // Helper function for header info
-static std::string 
-get_file_timestamp(const std::string & _file) 
+static std::string
+get_file_timestamp(const std::string & _file)
 {
   boost::filesystem::path p(_file);
 	if (!boost::filesystem::exists(p)) {
@@ -305,7 +305,7 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const s
 }
 
 static void
-report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device) 
+report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device)
 {
   std::cout << "----------------------------------------------------\n";
   pretty_print_platform_info(pt_device, vbnv);
@@ -318,7 +318,7 @@ report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device)
 
   if (!pt_device.get<bool>("platform.status.sc") && !pt_device.get<bool>("platform.status.is_factory") && !pt_device.get<bool>("platform.status.is_recovery"))
     action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt_device.get<std::string>("platform.bdf");
-  
+
   if (!action_list.str().empty()) {
     std::cout << "Actions to perform:\n" << action_list.str();
     std::cout << "----------------------------------------------------\n";
@@ -346,7 +346,7 @@ are_scs_equal(const DSAInfo& candidate, const DSAInfo& current)
           (candidate.bmc_ver() == current.bmc_ver()));
 }
 
-static bool 
+static bool
 update_sc(unsigned int boardIdx, DSAInfo& candidate)
 {
   Flasher flasher(boardIdx);
@@ -354,7 +354,7 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
   // Determine if the SC images are the same
   bool same_bmc = false;
   DSAInfo current = flasher.getOnBoardDSA();
-  if (!current.dsaname().empty()) 
+  if (!current.dsaname().empty())
     same_bmc = are_scs_equal(candidate, current);
 
   // -- Some DRCs (Design Rule Checks) --
@@ -363,13 +363,13 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
      std::cout << "INFO: Satellite controller is not present.\n";
      return false;
   }
-  
-  // Can the SC be programmed  
+
+  // Can the SC be programmed
   if (is_SC_fixed(boardIdx)) {
     std::cout << "INFO: Fixed Satellite Controller.\n";
     return false;
   }
-   
+
   // Check to see if force is being used
   if ((same_bmc == true) && (XBU::getForce() == true)) {
     std::cout << "INFO: Forcing flashing of the Satellite Controller (SC) image (Force flag is set).\n";
@@ -395,7 +395,7 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
 
 // Flash shell and sc firmware
 // Helper method for auto_flash
-static bool  
+static bool
 update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType flash_type)
 {
   Flasher flasher(boardIdx);
@@ -403,7 +403,7 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType f
   // Determine if the shells are the same
   bool same_dsa = false;
   DSAInfo current = flasher.getOnBoardDSA();
-  if (!current.dsaname().empty()) 
+  if (!current.dsaname().empty())
     same_dsa = are_shells_equal(candidate, current);
 
   // -- Some DRCs (Design Rule Checks) --
@@ -454,19 +454,19 @@ update_default_only(xrt_core::device* device, bool value)
         break;
       }
     }
-      
+
     uint32_t val = xrt_core::query::flush_default_only::value_type(value);
     xrt_core::device_update<xrt_core::query::flush_default_only>(device, val);
   }
-  catch (const xrt_core::query::exception&) { 
+  catch (const xrt_core::query::exception&) {
     // only available for versal devices
   }
 }
 
-// Update shell and sc firmware on the device automatically 
-// Refactor code to support only 1 device. 
-static void 
-auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_FlasherType flashType, const std::string& image = "") 
+// Update shell and sc firmware on the device automatically
+// Refactor code to support only 1 device.
+static void
+auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_FlasherType flashType, const std::string& image = "")
 {
   // Get platform information
   boost::property_tree::ptree pt;
@@ -503,9 +503,9 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
   boost::property_tree::ptree& pt_dev = pt.get_child(std::to_string(working_device->get_device_id()));
   bool same_shell = (dsa.name == pt_dev.get<std::string>("platform.current_shell.vbnv", ""))
                       && (dsa.matchId(pt_dev.get<std::string>("platform.current_shell.id", "")));
-  
+
   auto sc = pt_dev.get<std::string>("platform.current_shell.sc_version", "");
-  bool same_sc = ((sc.empty()) || (dsa.bmcVer.empty()) || 
+  bool same_sc = ((sc.empty()) || (dsa.bmcVer.empty()) ||
                   (dsa.bmcVer == sc) || (sc.find("FIXED") != std::string::npos));
 
   // Always update Arista devices
@@ -524,7 +524,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
 
     boardsToUpdate.push_back(std::make_pair(working_device->get_device_id(), dsa));
   }
-  
+
   // Is there anything to flash
   if (boardsToUpdate.empty() == true) {
     std::cout << "\nDevice is up-to-date.  No flashing to performed.\n";
@@ -580,7 +580,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
 
 
   if (error_stream.str().empty()) {
-    std::cout << "\nDevice flashed successfully.\n"; 
+    std::cout << "\nDevice flashed successfully.\n";
   } else {
     std::cout << "\nDevice flashing encountered errors:\n";
     std::cerr << error_stream.str();
@@ -616,7 +616,7 @@ program_plp(const xrt_core::device* dev, const std::string& partition)
 
   try {
     xrt_core::program_plp(dev, buffer, XBU::getForce());
-  } 
+  }
   catch (xrt_core::error& e) {
     std::cout << "ERROR: " << e.what() << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
@@ -630,7 +630,7 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
 {
   std::vector<std::string> path_list;
   auto installedShells = firmwareImage::getIntalledDSAs();
-  
+
   for(const auto& img : image_list) {
     // Check if the passed in image is absolute path
     if (boost::filesystem::is_regular_file(img)){
@@ -680,7 +680,7 @@ switch_partition(xrt_core::device* device, int boot)
     device->reset(hot_reset);
     std::cout << "Rebooted successfully" << std::endl;
   }
-  catch (const xrt_core::query::exception& ex) { 
+  catch (const xrt_core::query::exception& ex) {
     std::cout << "ERROR: " << ex.what() << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
     // only available for versal devices
@@ -693,7 +693,7 @@ switch_partition(xrt_core::device* device, int boot)
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("program", 
+    : SubCmd("program",
              "Update image(s) for a given device")
 {
   const std::string longDescription = "Updates the image(s) for a given device.";
@@ -730,7 +730,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   bool revertToGolden = false;
   bool help = false;
 
-  po::options_description commonOptions("Common Options");  
+  po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
@@ -749,39 +749,24 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
-  po::options_description hiddenOptions("Hidden Options");  
+  po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
     ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType),
       "Overrides the flash mode. Use with caution.  Valid values:\n"
       "  ospi\n"
       "  ospi_versal")
-    ("boot", boost::program_options::value<decltype(boot)>(&boot)->implicit_value("default"), 
+    ("boot", boost::program_options::value<decltype(boot)>(&boot)->implicit_value("default"),
     "RPU and/or APU will be booted to either partition A or partition B.  Valid values:\n"
     "  DEFAULT - Reboot RPU to partition A\n"
     "  BACKUP  - Reboot RPU to partition B\n")
   ;
 
-  po::options_description allOptions("All Options");  
-
-  allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
-
-  po::positional_options_description positionals;
-
   // Parse sub-command ...
   po::variables_map vm;
-
-  try {
-    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
-    po::notify(vm); // Can throw
-  } catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(commonOptions, hiddenOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options, commonOptions, hiddenOptions);
 
   // Check to see if help was requested or no command was found
-  if (help == true)  {
+  if (help) {
     printHelp(commonOptions, hiddenOptions);
     return;
   }
@@ -807,7 +792,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   std::set<std::string> deviceNames;
 
   xrt_core::device_collection deviceCollection;
-  for (const auto & deviceName : device) 
+  for (const auto & deviceName : device)
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
   XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
@@ -840,9 +825,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Populate flash type. Uses board's default when passing an empty input string.
   if (!flashType.empty()) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
         "Overriding flash mode is not recommended.\nYou may damage your device with this option.");
-  } 
+  }
   Flasher working_flasher(working_device->get_device_id());
   auto flash_type = working_flasher.getFlashType(flashType);
 
@@ -915,7 +900,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     return;
   }
-  
+
   // -- process "revert-to-golden" option ---------------------------------------
   if (revertToGolden) {
     XBU::verbose("Sub command: --revert-to-golden");
@@ -929,17 +914,17 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
         xrt_core::error(boost::str(boost::format("%d is an invalid index") % dev->get_device_id()));
         continue;
       }
-      std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device [" 
+      std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device ["
         % flasher.sGetDBDF() % "] back to factory mode.";
       flasher_list.push_back(flasher);
     }
-    
+
     XBUtilities::sudo_or_throw("Root privileges are required to revert the device to its golden flash image");
 
     //ask user's permission
     if (!XBU::can_proceed(XBU::getForce()))
       throw xrt_core::error(std::errc::operation_canceled);
-    
+
     for (auto& f : flasher_list) {
       if (!f.upgradeFirmware(flash_type, nullptr, nullptr, nullptr)) {
         std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "]"
@@ -983,7 +968,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     //TO_DO: add a report for plp before asking permission to proceed. Replace following 2 lines
     std::cout << "Programming shell on device [" << flasher.sGetDBDF() << "]..." << std::endl;
     std::cout << "Partition file: " << dsa.file << std::endl;
-    
+
     for (const auto& uuid : dsa.uuids) {
 
       //check if plp is compatible with the installed blp
@@ -1017,7 +1002,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     std::vector<char> xclbin_buffer(size);
     stream.read(xclbin_buffer.data(), size);
-    
+
     auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
     std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
     try {
@@ -1037,8 +1022,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     else if (boost::iequals(boot, "BACKUP"))
       switch_partition(working_device.get(), 1);
     else {
-      std::cout << "ERROR: Invalid value.\n" 
-                << "Usage: xbmgmt program --device='0000:00:00.0' --boot [default|backup]" 
+      std::cout << "ERROR: Invalid value.\n"
+                << "Usage: xbmgmt program --device='0000:00:00.0' --boot [default|backup]"
                 << std::endl;
       throw xrt_core::error(std::errc::operation_canceled);
     }

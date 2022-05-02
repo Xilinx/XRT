@@ -700,6 +700,20 @@ public:
   uint32_t
   read_register(uint32_t offset) const;
 
+  /**
+   * get_name() - Return the name of the kernel
+   */
+  XCL_DRIVER_DLLESPEC
+  std::string 
+  get_name() const;
+  
+  /**
+   * get_xclbin() - Return the xclbin containing the kernel
+   */
+  XCL_DRIVER_DLLESPEC
+  xrt::xclbin 
+  get_xclbin() const;
+
 public:
   /// @cond
   const std::shared_ptr<kernel_impl>&

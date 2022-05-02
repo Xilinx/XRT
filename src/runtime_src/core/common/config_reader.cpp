@@ -30,7 +30,7 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/format.hpp>
 
-#ifdef __GNUC__
+#ifdef __linux__
 # include <linux/limits.h>
 # include <sys/stat.h>
 #endif
@@ -215,7 +215,7 @@ get_string_value(const char* key, const std::string& default_value)
     if (!val.empty() && (val.front() == '"') && (val.back() == '"')) {
       val.erase(0, 1);
       val.erase(val.size()-1);
-    } 
+    }
   }
   catch( std::exception const&) {
     // eat the exception, probably bad path

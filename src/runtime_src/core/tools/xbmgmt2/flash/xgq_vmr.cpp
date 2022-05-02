@@ -40,7 +40,7 @@ int XGQ_VMR_Flasher::xclUpgradeFirmware(std::istream& binStream)
     binStream.read(buffer.data(), total_size);
     ssize_t ret = total_size;
 
-#ifdef __GNUC__
+#ifdef __linux__
     auto fd = m_device->file_open("xgq_vmr", O_RDWR);
     ret = write(fd.get(), buffer.data(), total_size);
 #endif

@@ -14,24 +14,27 @@
  * under the License.
  */
 
+#include "core/common/AlignedAllocator.h"
+#include "core/common/xclbin_parser.h"
+#include "plugin/xdp/device_offload.h"
 #include "shim.h"
 #include "system_hwemu.h"
 #include "xclbin.h"
-#include "core/common/xclbin_parser.h"
-#include "core/common/AlignedAllocator.h"
 #include "xcl_perfmon_parameters.h"
-#include <fstream>
-#include <boost/property_tree/xml_parser.hpp>
+
 #include <unistd.h>
+
+#include <boost/property_tree/xml_parser.hpp>
 #include <array>
 #include <cctype>
 #include <cerrno>
 #include <cstring>
+#include <fstream>
 #include <mutex>
 #include <set>
 #include <vector>
 
-#include "plugin/xdp/device_offload.h"
+
 
 #define SEND_RESP2QDMA() \
     { \
@@ -45,20 +48,10 @@
     }
 
 
-namespace {
 
-inline bool
-file_exists(const std::string& fnm)
-{
-  struct stat statBuf;
-  return stat(fnm.c_str(), &statBuf) == 0;
-}
-
-}
 
 namespace xclhwemhal2 {
     //Thread for which pooling for transaction from SIM_QDMA
-    void hostMemAccessThread(xclhwemhal2::HwEmShim* inst);
 
     /**
       * helper class for transactions from SIM_QDMA to XRT
@@ -68,9 +61,9 @@ namespace xclhwemhal2 {
         private:
         std::unique_ptr<call_packet_info> header;
         std::unique_ptr<response_packet_info> response_header;
-	    size_t  i_len;
-	    size_t  ri_len;
-        unix_socket* Q2h_sock;
+        size_t  i_len;
+        size_t  ri_len;
+        std::unique_ptr<unix_socket> Q2h_sock;
         xclhwemhal2::HwEmShim* inst;
 
         public:
@@ -101,8 +94,7 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::REG_BUFF_SIZE = 0x4;
   const unsigned HwEmShim::M2M_KERNEL_ARGS_SIZE = 36;
 
-  void messagesThread(xclhwemhal2::HwEmShim* inst);
-
+  
   // Maintain a list of all currently open device handles.
   //
   // xclClose removes a handle from the list.  At static destruction
@@ -621,17 +613,7 @@ namespace xclhwemhal2 {
 
     //CR-1116870 Changes End
 
-    set_simulator_started(true);
-
-    //Thread to fetch messages from Device to display on host
-    if(mMessengerThreadStarted == false) {
-      mMessengerThread = std::thread(xclhwemhal2::messagesThread,this);
-      mMessengerThreadStarted = true;
-    }
-
-    if (mLogStream.is_open())
-       mLogStream << __func__ << " mMessengerThreadStarted " << std::endl;
-
+    
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -844,7 +826,7 @@ namespace xclhwemhal2 {
     }
 
     if(mHostMemAccessThreadStarted == false) {
-  	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
+      mHostMemAccessThread = std::thread([this]() { hostMemAccessThread(); } );
     }
 
     if (deviceDirectory.empty() == false)
@@ -986,7 +968,8 @@ namespace xclhwemhal2 {
         if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
-        if (!file_exists(sim_file))
+        //if (!xclemulation::file_exists(sim_file))
+        if (!boost::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
@@ -1004,8 +987,18 @@ namespace xclhwemhal2 {
     {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
+    
+    sock = std::make_shared<unix_socket>();
+    set_simulator_started(true);
+    //Thread to fetch messages from Device to display on host
+    if (mMessengerThreadStarted == false) {
+      std::cout<<"\n messages Thread is created\n";
+      mMessengerThread = std::thread([this]() { messagesThread(); } );
+      mMessengerThreadStarted = true;
+    }
 
-    sock = new unix_socket;
+    if (mLogStream.is_open())
+      mLogStream << __func__ << " mMessengerThreadStarted " << std::endl;
 
     if (mLogStream.is_open())
       mLogStream << __func__ << " Created the Unix socket." << std::endl;
@@ -1806,17 +1799,25 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     xclGetDebugMessages(true);
-    mPrintMessagesLock.lock();
-    fetchAndPrintMessages();
-    simulator_started = false;
-    mPrintMessagesLock.unlock();
+    try {
+      std::lock_guard<std::mutex> guard(mPrintMessagesLock);
+      fetchAndPrintMessages();
+      simulator_started = false;
+    }
+    catch (std::exception& ex) {
+      if (mLogStream.is_open()) 
+        mLogStream << __func__ << ", unable to get lock:: " <<ex.what()<< std::endl;
+      
+      std::cout<<"\n unable to get lock::"<<ex.what();
+    }
+    
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
 #ifndef _WINDOWS
       xclClose_RPC_CALL(xclClose,this);
 #endif
-      closemMessengerThread();
+      closeMessengerThread();
       //clean up directories which are created inside the driver
       systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
     }
@@ -1846,8 +1847,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       saveWaveDataBase();
     }
     //ProfilerStop();
-    delete sock;
-    sock = NULL;
+    
+    sock.reset();
+
     PRINTENDFUNC;
     if(mMBSch && mCore)
     {
@@ -1927,7 +1929,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       delete mDataSpace;
       mDataSpace = NULL;
     }
-    closemMessengerThread();
+    closeMessengerThread();
   }
 
   void HwEmShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
@@ -3633,18 +3635,18 @@ int HwEmShim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* forma
     return 0;
 }
 
-void HwEmShim::closemMessengerThread()
+void HwEmShim::closeMessengerThread()
 {
-  if (mMessengerThreadStarted) {
-    mMessengerThread.join();
+  // set_simulator_started has to be false in order to see proper exit of joinable thread.
+  //set_simulator_started(false);
+  if (mMessengerThread.joinable()) {
     mMessengerThreadStarted = false;
+    mMessengerThread.join();
   }
 
-  if (mHostMemAccessThreadStarted) {
+  if (mHostMemAccessThread.joinable()) {
     mHostMemAccessThreadStarted = false;
-    if (mHostMemAccessThread.joinable()) {
-      mHostMemAccessThread.join();
-    }
+    mHostMemAccessThread.join();
   }
 }
 
@@ -3723,8 +3725,6 @@ int HwEmShim::xclIPName2Index(const char *name)
 }
 
 
-volatile bool HwEmShim::get_mHostMemAccessThreadStarted() { return mHostMemAccessThreadStarted; }
-volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAccessThreadStarted = val; }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 
@@ -3828,7 +3828,7 @@ Q2H_helper :: Q2H_helper(xclhwemhal2::HwEmShim* _inst) {
     header          = std::make_unique<call_packet_info>();
     response_header = std::make_unique<response_packet_info>();
     inst = _inst;
-    Q2h_sock        = NULL;
+    Q2h_sock        = nullptr;
     header->set_size(0);
     header->set_xcl_api(0);
     response_header->set_size(0);
@@ -3841,10 +3841,7 @@ Q2H_helper :: Q2H_helper(xclhwemhal2::HwEmShim* _inst) {
     ri_len          = response_header->ByteSizeLong();
 #endif
 }
-Q2H_helper::~Q2H_helper() {
-    delete Q2h_sock;
-    Q2h_sock = 0;
-}
+Q2H_helper::~Q2H_helper() = default;
 
 /**
  * Pooling on socket for any memory or interrupt requests from SIM_QDMA
@@ -3922,8 +3919,8 @@ bool Q2H_helper::connect_sock() {
     } else {
       sock_name = "D2X_unix_sock";
     }
-    if(Q2h_sock == NULL) {
-      Q2h_sock = new unix_socket("EMULATION_SOCKETID", sock_name, 5, false);
+    if (Q2h_sock == nullptr) {
+      Q2h_sock = std::make_unique<unix_socket>("EMULATION_SOCKETID", sock_name, 5, false);
     }
     else if (!Q2h_sock->server_started) {
       Q2h_sock->start_server(5,false);
@@ -3931,19 +3928,22 @@ bool Q2H_helper::connect_sock() {
     return Q2h_sock->server_started;
 }
 
-void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
-	inst->set_mHostMemAccessThreadStarted(true);
-    auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(inst);
+void HwEmShim::hostMemAccessThread() {
+    mHostMemAccessThreadStarted.store(true);
+    auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(this);
     bool sock_ret = false;
     int count = 0;
-    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 71){
+    while (mHostMemAccessThreadStarted && !sock_ret && count < 71) {
         sock_ret = mq2h_helper_ptr->connect_sock();
         count++;
     }
+    if (not sock_ret) {
+      std::cout<<"\n unable to get a reliable socket connection, ideally should exit here. select call took care. \n";
+    }
     int r =0;
-    while(inst->get_mHostMemAccessThreadStarted() && r >= 0){
+    while (mHostMemAccessThreadStarted && r >= 0) {
         try {
-            if (!inst->get_simulator_started())
+            if (not get_simulator_started())
                 return;
             r = mq2h_helper_ptr->poolingon_Qdma();
         } catch(int e) {

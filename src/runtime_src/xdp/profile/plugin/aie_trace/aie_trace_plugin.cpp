@@ -1255,7 +1255,7 @@ namespace xdp {
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
-      (std::get<0>(aieOffloaders[deviceId]))->readTrace();
+      (std::get<0>(aieOffloaders[deviceId]))->readTrace(true);
     }
   }
 
@@ -1294,7 +1294,7 @@ namespace xdp {
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
       }
 
-      offloader->readTrace();
+      offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();
@@ -1319,7 +1319,7 @@ namespace xdp {
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
       }
 
-      offloader->readTrace();
+      offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();

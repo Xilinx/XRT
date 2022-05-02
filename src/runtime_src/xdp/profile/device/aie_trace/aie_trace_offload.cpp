@@ -58,7 +58,7 @@ AIETraceOffload::AIETraceOffload(void* handle, uint64_t id,
                  bufferInitialized(false),
                  offloadStatus(AIEOffloadThreadStatus::IDLE)
 {
-  bufAllocSz = (totalSz / numStream) & 0xfffffffffffff000;
+  bufAllocSz = deviceIntf->getAlignedTraceBufferSize(totalSz, static_cast<unsigned int>(numStream));
 }
 
 AIETraceOffload::~AIETraceOffload()
@@ -195,11 +195,11 @@ void AIETraceOffload::endReadTrace()
   bufferInitialized = false;
 }
 
-void AIETraceOffload::readTrace()
+void AIETraceOffload::readTrace(bool final)
 {
   for(uint64_t i = 0; i < numStream; ++i) {
     if(isPLIO) {
-      configAIETs2mm(i);
+      configAIETs2mm(i, final);
     } else { 
       buffers[i].usedSz = bufAllocSz;
     }
@@ -257,17 +257,17 @@ bool AIETraceOffload::isTraceBufferFull()
   return false;
 }
 
-void AIETraceOffload::configAIETs2mm(uint64_t i /*index*/)
+void AIETraceOffload::configAIETs2mm(uint64_t index, bool final)
 {
-  uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(i);
+  uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(index, final);
   // Ensure complete packets at the end of each offload
   uint64_t incompletePacketWord = wordCount % 4;
   wordCount -= incompletePacketWord;
   uint64_t usedSize  = wordCount * TRACE_PACKET_SIZE;
   if(usedSize <= bufAllocSz) {
-    buffers[i].usedSz = usedSize;
+    buffers[index].usedSz = usedSize;
   } else {
-    buffers[i].usedSz = bufAllocSz;
+    buffers[index].usedSz = bufAllocSz;
   }
 }
 
@@ -290,11 +290,12 @@ void AIETraceOffload::continuousOffload()
   }
 
   while (keepOffloading()) {
-    readTrace();
+    readTrace(false);
     std::this_thread::sleep_for(std::chrono::milliseconds(offloadIntervalms));
   }
 
-  readTrace();
+  // Note: This will call flush and reset on datamover
+  readTrace(true);
   endReadTrace();
   offloadFinished();
 }
