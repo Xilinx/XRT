@@ -5,12 +5,28 @@
 
 if (${ERT_BUILD_ALL} STREQUAL "yes")
 
-function(GetBSP BSP)
+function(CopyBSP BSP)
+ message(STATUS "Copying ${BSP} from $ENV{ERT_BSP_DIR}")
+ file(COPY $ENV{ERT_BSP_DIR}/${BSP} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+endfunction()
+
+function(DownloadBSP BSP)
  set(URL https://github.com/Xilinx/ERT-BSP/raw/main/BSPs/${BSP})
+ message(STATUS "Downloading ${BSP} from ${URL}")
  FILE(DOWNLOAD ${URL} ${CMAKE_CURRENT_BINARY_DIR}/${BSP} STATUS dlstatus)
  if(NOT dlstatus EQUAL 0)
   message(FATAL_ERROR "ERROR: Failed to retrieve files from: ${URL}\n"
                        "   error code: ${dlstatus}\n")
+ endif()
+endfunction()
+
+function(GetBSP BSP)
+ if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${BSP})
+  message(STATUS "${BSP} exists, skip fetching")
+ elseif(DEFINED ENV{ERT_BSP_DIR})
+  CopyBSP(${BSP})
+ else()
+  DownloadBSP(${BSP})
  endif()
 endfunction()
 
@@ -49,7 +65,7 @@ function(build_ert_fw version)
    COMMAND ${CMAKE_COMMAND} -E make_directory ${version}
    COMMAND $(MAKE) DEFINES="-DERT_BUILD_${CFLAG_VERSION} " BLDDIR=${CMAKE_CURRENT_BINARY_DIR}/${version} SRCDIR=${CMAKE_CURRENT_SOURCE_DIR} -f ${CMAKE_CURRENT_SOURCE_DIR}/sched.mk ert
    DEPENDS ${version}/bsp.extracted ${CMAKE_CURRENT_SOURCE_DIR}/sched.c
-   COMMENT "Generating binary for ERT scheduler"
+   COMMENT "Generating binary for ERT scheduler: ${version}/sched.bin"
   )
 
   install (FILES
