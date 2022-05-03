@@ -34,8 +34,19 @@ struct AIETraceBufferInfo
 //  uint64_t allocSz;	// currently all the buffers are equal size
   uint64_t usedSz;
   uint64_t offset;
+  uint32_t rollover_count;
   bool     isFull;
   bool     offloadDone;
+
+  AIETraceBufferInfo()
+    : boHandle(0),
+      usedSz(0),
+      offset(0),
+      rollover_count(0),
+      isFull(false),
+      offloadDone(false),
+      isCircular(false)
+  {}
 };
 
 struct AIETraceGmioDMAInst
@@ -119,6 +130,13 @@ private:
     AIEOffloadThreadStatus offloadStatus;
     std::thread offloadThread;
 
+  //Circular Buffer Tracking
+  bool mEnCircularBuf;
+  // 100 mb of trace per second
+  uint64_t circ_buf_min_rate_plio = TS2MM_DEF_BUF_SIZE * 100;
+  uint64_t circ_buf_cur_rate_plio;
+
+private:
     void configAIETs2mm(uint64_t index, bool final);
 
     void continuousOffload();
