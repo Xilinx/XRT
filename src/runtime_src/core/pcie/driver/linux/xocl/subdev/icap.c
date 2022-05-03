@@ -651,18 +651,19 @@ static int calibrate_mig(struct icap *icap)
 	int i;
 
 	// Check for any DDR or PLRAM banks that are in use
-	// bool is_memory_in_use = false;
-	ICAP_ERR(icap, "Number of memory elements: %d\n", icap->group_topo->m_count);
-	
-	// for (i = 0; i < icap->group_topo->m_count; i++) {
-	// 	struct mem_data* mem_bank = &icap->group_topo->m_mem_data[i];
-	// 	if ((IS_DDR(mem_bank->m_tag) || IS_PLRAM(mem_bank->m_tag)) && mem_bank->m_used)
-	// 		is_memory_in_use = true;
-	// }
+	bool is_memory_bank_connected = false;
+
+	for (i = 0; i < icap->mem_topo->m_count; i++) {
+		struct mem_data* mem_bank = &icap->mem_topo->m_mem_data[i];
+		if (IS_DDR(mem_bank->m_tag) || IS_PLRAM(mem_bank->m_tag))
+			is_memory_bank_connected = true;
+	}
 
 	// If no DDR or PLRAM banks are in use there is nothing to calibrate
-	// if (!is_memory_in_use)
-	// 	return 0;
+	if (!is_memory_bank_connected) {
+		pr_info("No DDR or PLRAM banks connected. Skipping MIG Calibration\n");
+		return 0;
+	}
 
 	for (i = 0; i < 20 && !mig_calibration_done(icap); ++i)
 		msleep(500);
