@@ -1,5 +1,6 @@
 /**
  *  Copyright (C) 2017-2022 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2022 Advanced Micro Devices, Inc.
  *  Author: Sonal Santan
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
@@ -650,10 +651,11 @@ static int calibrate_mig(struct icap *icap)
 {
 	int i;
 
-	// Check for any DDR or PLRAM banks that are in use
+	/* Check for any DDR or PLRAM banks that are in use */
 	bool is_memory_bank_connected = false;
 
-	for (i = 0; i < icap->mem_topo->m_count; i++) {
+	/* If a DDR or PLRAM bank is found no need to keep searching */
+	for (i = 0; (i < icap->mem_topo->m_count) && (!is_memory_bank_connected); i++) {
 		struct mem_data* mem_bank = &icap->mem_topo->m_mem_data[i];
 		if (IS_DDR(mem_bank->m_tag) || IS_PLRAM(mem_bank->m_tag))
 			is_memory_bank_connected = true;
