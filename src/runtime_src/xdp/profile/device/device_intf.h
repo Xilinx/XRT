@@ -138,8 +138,13 @@ class DeviceIntf {
       return false;
     }
 
-    // Only version 2 Datamover supports circular buffer for AIE Trace
+    // Only version 2 Datamover supports circular buffer/flush for AIE Trace
     bool supportsCircBufAIE() {
+      if (mAieTraceDmaList.size() > 0)
+        return mAieTraceDmaList[0]->isVersion2();
+      return false;
+    }
+    bool supportsflushAIE() {
       if (mAieTraceDmaList.size() > 0)
         return mAieTraceDmaList[0]->isVersion2();
       return false;

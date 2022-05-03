@@ -25,7 +25,6 @@
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/tracedefs.h"
 
 #ifdef XRT_ENABLE_AIE
 #include <sys/mman.h>
@@ -46,7 +45,7 @@ AIETraceOffload::AIETraceOffload
   , AIETraceLogger* logger
   , bool isPlio
   , uint64_t totalSize
-    uint64_t numStrm
+  , uint64_t numStrm
   )
   : deviceHandle(handle)
   , deviceId(id)
@@ -58,7 +57,7 @@ AIETraceOffload::AIETraceOffload
   , traceContinuous(false)
   , offloadIntervalms(0)
   , bufferInitialized(false)
-  , offloadStatus(AIEOffloadThreadStatus::IDLE),
+  , offloadStatus(AIEOffloadThreadStatus::IDLE)
   , mEnCircularBuf(false)
 {
   bufAllocSz = deviceIntf->getAlignedTraceBufferSize(totalSz, static_cast<unsigned int>(numStream));
@@ -78,23 +77,8 @@ bool AIETraceOffload::initReadTrace()
   buffers.resize(numStream);
 
   uint8_t  memIndex = 0;
-  if(isPLIO) {
+  if (isPLIO) {
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
-    if (dev_intf->supportsCircBufAIE()) {
-      if (offloadIntervalms != 0) {
-        circ_buf_cur_rate_plio = buf_sizes.front() * (1000 / offloadIntervalms);
-        if (circ_buf_cur_rate_plio >= circ_buf_min_rate_plio)
-          mEnCircularBuf = true;
-      } else {
-        mEnCircularBuf = true;
-      }
-    }
-    debug_stream
-      << "Initialize aie PLIO s2mm"
-      << " size : " << bufAllocSz
-      << " circ buf : " << mEnCircularBuf
-      << std::endl;
-
   } else {
     memIndex = 0;  // for now
     gmioDMAInsts.clear();
@@ -239,7 +223,7 @@ void AIETraceOffload::readTrace(bool final)
     traceLogger->addAIETraceData(i, hostBuf, nBytes);
 
     debug_stream
-    << "ts2mm " << i << " bytes : " << nBytes << " "
+    << "ts2mm_" << i << " : bytes : " << nBytes << " "
     << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
     << std::hex << "from 0x" << buffers[i].offset << " to 0x" << buffers[i].usedSz
     << std::dec << std::endl;
@@ -303,7 +287,7 @@ void AIETraceOffload::configAIETs2mm(uint64_t index, bool final)
     if (!mEnCircularBuf) {
       bd.offloadDone = true;
       //stop_offload();
-      return false;
+      return;
     }
     bd.rollover_count++;
     bd.offset = 0;
@@ -315,13 +299,31 @@ void AIETraceOffload::configAIETs2mm(uint64_t index, bool final)
     bd.usedSz = bufAllocSz;
 
   debug_stream
-    << "AIETraceOffload::config_s2mm ID " << index << " " 
+    << "AIETraceOffload::config_s2mm_" << index << " "
     << "Reading from 0x"
-    << std::hex << buf.offset << " to 0x" << bd.usedSz << std::dec
+    << std::hex << bd.offset << " to 0x" << bd.usedSz << std::dec
     << " Bytes Read : " << bytes_read
     << " Bytes Written : " << bytes_written
     << " Rollovers : " << bd.rollover_count
     << std::endl;
+}
+
+void AIETraceOffload::checkCircularBufferSupport()
+{
+  if (!isPLIO)
+    return;
+  if (deviceIntf->supportsCircBufAIE()) {
+      if (offloadIntervalms != 0) {
+        circ_buf_cur_rate_plio = bufAllocSz * (1000 / offloadIntervalms);
+        if (circ_buf_cur_rate_plio >= circ_buf_min_rate_plio)
+          mEnCircularBuf = true;
+      } else {
+        mEnCircularBuf = true;
+      }
+    }
+    debug_stream
+      << "Circular buffer support : " << mEnCircularBuf
+      << std::endl;
 }
 
 void AIETraceOffload::startOffload()
@@ -341,6 +343,7 @@ void AIETraceOffload::continuousOffload()
     offloadFinished();
     return;
   }
+  checkCircularBufferSupport();
 
   while (keepOffloading()) {
     readTrace(false);

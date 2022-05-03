@@ -1280,7 +1280,12 @@ namespace xdp {
     // NOTE 1: The data mover uses a burst length of 128, so we need dummy packets
     //         to ensure all execution trace gets written to DDR.
     // NOTE 2: This flush mechanism is only valid for runtime event trace
-    if (runtimeMetrics && xrt_core::config::get_aie_trace_flush()) {
+    // NOTE 3: Disable flush if we have new datamover
+    DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
+    bool ts2mmFlushSupported = false;
+    if (deviceIntf)
+      ts2mmFlushSupported = deviceIntf->supportsflushAIE();
+    if (runtimeMetrics && xrt_core::config::get_aie_trace_flush() && !ts2mmFlushSupported) {
       setFlushMetrics(deviceId, handle);
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

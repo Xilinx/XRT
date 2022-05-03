@@ -19,6 +19,7 @@
 
 #include "xdp/config.h"
 #include "core/edge/user/aie/aie.h"
+#include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
 
@@ -44,8 +45,7 @@ struct AIETraceBufferInfo
       offset(0),
       rollover_count(0),
       isFull(false),
-      offloadDone(false),
-      isCircular(false)
+      offloadDone(false)
   {}
 };
 
@@ -142,8 +142,7 @@ private:
     void continuousOffload();
     bool keepOffloading();
     void offloadFinished();
-
-    //Circular Buffer Tracking : Not for now
+    void checkCircularBufferSupport();
 };
 
 }
