@@ -47,27 +47,16 @@ vmr_info(const xrt_core::device* device)
 {
   ptree_type pt_vmr_status_array;
   ptree_type pt_vmr_stats;
-  ptree_type pt_vmr_version;
   std::vector<std::string> vmr_status_raw;
-  std::vector<std::string> vmr_version;
   try {
     vmr_status_raw = xrt_core::device_query<xq::vmr_status>(device);
-    vmr_version = xrt_core::device_query<xq::extended_vmr_status>(device);
+    auto vmr_version = xrt_core::device_query<xq::extended_vmr_status>(device);
+    vmr_status_raw.insert(vmr_status_raw.begin(), vmr_version.begin(), vmr_version.end());
   }
   catch (const xq::exception&) {
     // only available for versal
     return pt_vmr_status_array;
   }
-
-  for (auto& stat_raw : vmr_version) {
-    ptree_type pt_stat;
-    std::vector<std::string> stat;
-    boost::split(stat, stat_raw, boost::is_any_of(":")); // eg: HAS_FPT:1
-    pt_stat.add("label", pretty_label(stat.at(0)));      // eg: Has ftp
-    pt_stat.add("value", stat.at(1));                    // eg: 1
-    pt_vmr_version.push_back(std::make_pair("", pt_stat));
-  }
-  pt_vmr_stats.add_child("vmr_version", pt_vmr_version);
 
   //parse one line at a time
   for (auto& stat_raw : vmr_status_raw) {
