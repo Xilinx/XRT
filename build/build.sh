@@ -56,6 +56,7 @@ usage()
     echo "[-driver]                   Include building driver code"
     echo "[-checkpatch]               Run checkpatch.pl on driver code"
     echo "[-verbose]                  Turn on verbosity when compiling"
+    echo "[-ertbsp <dir>]             Path to directory with pre-downloaded BSP files for building ERT (default: download BSP files during build time)"
     echo "[-ertfw <dir>]              Path to directory with pre-built ert firmware (default: build the firmware)"
     echo ""
     echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
@@ -86,6 +87,7 @@ nocmake=0
 nobuild=0
 noctest=0
 static_boost=""
+ertbsp=""
 ertfw=""
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
@@ -101,6 +103,11 @@ while [ $# -gt 0 ]; do
         -dbg)
             dbg=1
             opt=0
+            shift
+            ;;
+        -ertbsp)
+            shift
+            ertbsp=$1
             shift
             ;;
         -ertfw)
@@ -210,6 +217,11 @@ if [[ $ccache == 1 ]]; then
     if [[ -e /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl ]]; then
         /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl 1 30 $RDI_CCACHEROOT
     fi
+fi
+
+if [[ ! -z $ertbsp ]]; then
+    echo "export ERT_BSP_DIR=$ertbsp"
+    export ERT_BSP_DIR=$ertbsp
 fi
 
 if [[ ! -z $ertfw ]]; then
