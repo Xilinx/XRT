@@ -115,7 +115,7 @@ private:
 
     // Set this to true for more verbose trace offload
     // Internal use only
-    bool m_debug = true;
+    bool m_debug = false;
 
     uint64_t bufAllocSz;
 

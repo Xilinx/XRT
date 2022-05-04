@@ -312,7 +312,7 @@ read_trace_s2mm(bool force)
   auto bytes_written = (wordcount - bd.prv_wordcount) * TRACE_PACKET_SIZE;
 
   // Don't read data if there's less than 512B trace
-  if (!force && (bytes_written < TS2MM_MIN_READ_SIZE)) {
+  if (!force && !ts2mm_info.use_circ_buf && (bytes_written < TS2MM_MIN_READ_SIZE)) {
     debug_stream
       << "Skipping trace read. Amount of data: " << bytes_written << std::endl;
     return;

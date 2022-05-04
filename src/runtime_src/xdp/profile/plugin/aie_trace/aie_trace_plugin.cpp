@@ -1096,6 +1096,12 @@ namespace xdp {
                                               aieTraceBufSize,     // total trace buffer size
                                               numAIETraceOutput);  // numStream
 
+    // Can't call init without setting important details in offloader
+    if (continuousTrace && isPLIO) {
+      aieTraceOffloader->setContinuousTrace();
+      aieTraceOffloader->setOffloadIntervalms(offloadIntervalms);
+    }
+
     if (!aieTraceOffloader->initReadTrace()) {
       std::string msg = "Allocation of buffer for AIE trace failed. AIE trace will not be available.";
       xrt_core::message::send(severity_level::warning, "XRT", msg);
@@ -1106,11 +1112,8 @@ namespace xdp {
     aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
 
     // Continuous Trace Offload is supported only for PLIO flow
-    if (continuousTrace && isPLIO) {
-      aieTraceOffloader->setContinuousTrace();
-      aieTraceOffloader->setOffloadIntervalms(offloadIntervalms);
+    if (continuousTrace && isPLIO)
       aieTraceOffloader->startOffload();
-    }
   }
 
   void AieTracePlugin::setFlushMetrics(uint64_t deviceId, void* handle)
