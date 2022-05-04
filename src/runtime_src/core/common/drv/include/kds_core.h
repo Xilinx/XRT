@@ -158,6 +158,7 @@ struct kds_sched {
 
 	/* KDS polling thread */
 	struct task_struct     *polling_thread;
+	struct list_head	alive_cus; /* alive CU list */
 	wait_queue_head_t	wait_queue;
 	int			polling_start;
 	int			polling_stop;
