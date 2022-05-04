@@ -239,8 +239,10 @@ enum CU_PROTOCOL {
 
 struct xrt_cu_info {
 	u32			 model;
-	int			 cu_idx;
 	u32			 slot_idx;
+	/* CU Index respected to a slot */
+	int			 cu_idx;
+	/* Global CU Index respected to a device */
 	int			 inst_idx;
 	u64			 addr;
 	size_t			 size;

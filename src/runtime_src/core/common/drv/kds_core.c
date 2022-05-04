@@ -1276,7 +1276,6 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 			return -EINVAL;
 		}
 		/* a special handling for m2m cu :( */
-		/* SAIF TODO */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			test_and_set_bit(i, client->cu_bitmap);
@@ -1319,7 +1318,6 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		}
 		--cctx->virt_cu_ref;
 		/* a special handling for m2m cu :( */
-		/* SAIF TODO */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			if (!test_and_clear_bit(i, client->cu_bitmap)) {
@@ -1379,6 +1377,8 @@ int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 static inline void
 insert_cu(struct kds_cu_mgmt *cu_mgmt, int i, struct xrt_cu *xcu)
 {
+	BUG_ON(!mutex_is_locked(&cu_mgmt->lock));
+
 	cu_mgmt->xcus[i] = xcu;
 	/* m2m cu */
 	if (xcu->info.intr_id == M2M_CU_ID)
@@ -1393,11 +1393,12 @@ int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	if (cu_mgmt->num_cus >= MAX_CUS)
 		return -ENOMEM;
 
-	/* 
+	/*
 	 * For multi slot sorting CUs are not possible. We will find a free slot and
 	 * assign the CUs to that.
 	 */
 
+	mutex_lock(&cu_mgmt->lock);
 	/* Get a free slot in kds for this CU */
 	for (i = 0; i < MAX_CUS; i++) {
 		if (cu_mgmt->xcus[i] == NULL) {
@@ -1406,6 +1407,7 @@ int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 			break;
 		}
 	}
+	mutex_unlock(&cu_mgmt->lock);
 
 	return 0;
 }
@@ -1418,6 +1420,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 	if (cu_mgmt->num_cus == 0)
 		return -EINVAL;
 
+	mutex_lock(&cu_mgmt->lock);
 	for (i = 0; i < MAX_CUS; i++) {
 		if (cu_mgmt->xcus[i] != xcu)
 			continue;
@@ -1428,6 +1431,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 		cu_stat_write(cu_mgmt, usage[i], 0);
 		break;
 	}
+	mutex_unlock(&cu_mgmt->lock);
 
 	/* m2m cu */
 	if (xcu->info.intr_id == M2M_CU_ID)
@@ -1444,16 +1448,19 @@ int kds_add_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 	if (xcu->info.cu_idx >= MAX_CUS)
 		return -EINVAL;
 
+	mutex_lock(&scu_mgmt->lock);
 	/* Get a free slot in kds for this CU */
 	for (i = 0; i < MAX_CUS; i++) {
 		if (scu_mgmt->xcus[i] == NULL) {
 			scu_mgmt->xcus[i] = xcu;
 			xcu->info.cu_idx = i;
 			++scu_mgmt->num_cus;
+			mutex_unlock(&scu_mgmt->lock);
 
 			return 0;
 		}
 	}
+	mutex_unlock(&scu_mgmt->lock);
 
 	return -ENOSPC;
 }
@@ -1466,6 +1473,7 @@ int kds_del_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 	if (scu_mgmt->num_cus == 0)
 		return -EINVAL;
 
+	mutex_lock(&scu_mgmt->lock);
 	for (i = 0; i < MAX_CUS; i++) {
 		if (scu_mgmt->xcus[i] != xcu)
 			continue;
@@ -1475,6 +1483,7 @@ int kds_del_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 		cu_stat_write(scu_mgmt, usage[i], 0);
 		break;
 	}
+	mutex_unlock(&scu_mgmt->lock);
 
 	return 0;
 }
