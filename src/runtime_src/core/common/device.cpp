@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "device.h"
@@ -93,6 +81,17 @@ get_xclbin_uuid() const
   // Emulation mode likely, just return m_xclbin_uuid which reflects
   // the uuid of the xclbin loaded by this process.
   return m_xclbin ? m_xclbin.get_uuid() : uuid{};
+}
+
+// Registering an xclbin has one entry point (this one) only.
+// Shim level registering is not exposed to end application.
+//
+void
+device::
+register_xclbin(const xrt::xclbin& xclbin)
+{
+  static_cast<ishim*>(this)->register_xclbin(xclbin);
+  m_xclbins.insert(xclbin);
 }
 
 // Unforunately there are two independent entry points into loading an

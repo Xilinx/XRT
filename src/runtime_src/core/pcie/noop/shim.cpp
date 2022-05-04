@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements a dummy (no-op) shim level driver that is
 // used exclusively for debugging user space XRT with HW xclbins
@@ -115,7 +116,12 @@ class device
 {
   // model multiple partitions
   using slot_id = xrt_core::device::slot_id;
-  std::map<slot_id, xrt::xclbin> xclbins;
+
+  // registered xclbins
+  std::map<xrt::uuid, xrt::xclbin> m_xclbins;
+
+  // mapped xclbins (assigned resources)
+  std::map<slot_id, xrt::xclbin> m_slots;
 
   // capture cu data based on which slot it is associated with
   struct cu_data {
@@ -123,50 +129,52 @@ class device
     slot_id slot = 0;  // slot in which this cu is opened
     uint32_t ctx = 0;  // how many contexts are opened on the cu
   };
-  std::map<uint32_t, cu_data> idx2cu;  // idx -> cu_data
+  std::map<uint32_t, cu_data> m_idx2cu;  // idx -> cu_data
 
   // cu indices are per device from 0..127.
   // keep a stack of indices that can be used
   // once last context on cu is released, its index is recycled
   static constexpr uint32_t cu_max = 128;
-  std::vector<uint32_t> free_cu_indices;  // push, back, pop
+  std::vector<uint32_t> m_free_cu_indices;  // push, back, pop
 
   // slot index for xclbin is a running incremented index
-  slot_id slot_index = 0; // running index
+  slot_id m_slot_index = 0; // running index
 
   // exclusive locking to prevent race
-  std::mutex mutex;
-
-  // assign a slot index to an xclbin
-  void
-  register_xclbin(slot_id slot, const xrt::xclbin& xclbin)
-  {
-    xclbins[slot] = xclbin;
-  }
+  std::mutex m_mutex;
 
 public:
   // device ctor, initialize free cu indices
   device()
   {
-    free_cu_indices.reserve(128);
+    m_free_cu_indices.reserve(128);
     for (int i = 127; i >=0; --i)
-      free_cu_indices.push_back(i);
+      m_free_cu_indices.push_back(i);
   }
 
-  // assign next slot index to an xclbin
   void
   register_xclbin(const xrt::xclbin& xclbin)
   {
-    std::lock_guard lk(mutex);
-    register_xclbin(slot_index++, xclbin);
+    std::lock_guard lk(m_mutex);
+    m_xclbins[xclbin.get_uuid()] = xclbin;
   }
 
-  // unload an xclbin (todo)
-  void
-  unload_xclbin(slot_id slot)
+  slot_id
+  create_hw_context(const xrt::uuid& xid, uint32_t qos)
   {
-    std::lock_guard lk(mutex);
-    xclbins.erase(slot);
+    std::lock_guard lk(m_mutex);
+    auto itr = m_xclbins.find(xid);
+    if (itr == m_xclbins.end())
+      throw xrt_core::error("xclbin must be registered before hw context can be created");
+    m_slots[++m_slot_index] = (*itr).second;
+    return m_slot_index;
+  }
+
+  void
+  destroy_hw_context(slot_id slot)
+  {
+    std::lock_guard lk(m_mutex);
+    m_slots.erase(slot);
   }
 
   // open context on cu
@@ -174,12 +182,15 @@ public:
   int
   open_context(slot_id slot, const xrt::uuid& xid, const std::string& cuname, bool shared)
   {
-    std::lock_guard lk(mutex);
+    std::lock_guard lk(m_mutex);
 
     // this xclbin must have been registered
-    const auto& xclbin = xclbins[slot];
+    const auto& xclbin = m_slots[slot];
     if (!xclbin)
       throw xrt_core::error("Slot xclbin mismatch, no such registered xclbin in slot: " + std::to_string(slot));
+
+    if (xclbin.get_uuid() != xid)
+      throw xrt_core::error("Slot xclbin uuid mismatch in slot: " + std::to_string(slot));
 
     // find cu in xclbin
     auto cu = xclbin.get_ip(cuname);
@@ -192,24 +203,17 @@ public:
     // is tied to a process we simply throw.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
-    for (const auto& [idx, cud] : idx2cu)
+    for (const auto& [idx, cud] : m_idx2cu)
       if (cud.name == cuname && cud.slot == slot)
         throw xrt_core::error("Context already opened on cu: " + cuname);
 #pragma GCC diagnostic pop
 
-#if 0 // enable to pretend to fail and re-load xclbin to different additional slot
-    if (slot == 0) {
-      register_xclbin(slot_index++, xclbin);
-      return EAGAIN;
-    }
-#endif
-
-    auto idx = free_cu_indices.back();
-    auto& cudata = idx2cu[idx];
+    auto idx = m_free_cu_indices.back();
+    auto& cudata = m_idx2cu[idx];
     cudata.name = cuname;
     cudata.slot = slot;
     cudata.ctx = 1;
-    free_cu_indices.pop_back();
+    m_free_cu_indices.pop_back();
 
     return 0;
   }
@@ -218,10 +222,10 @@ public:
   void
   close_context(const xrt::uuid& xid, uint32_t cuidx)
   {
-    std::lock_guard lk(mutex);
+    std::lock_guard lk(m_mutex);
 
-    auto cu_itr = idx2cu.find(cuidx);
-    if (cu_itr == idx2cu.end())
+    auto cu_itr = m_idx2cu.find(cuidx);
+    if (cu_itr == m_idx2cu.end())
       throw xrt_core::error("No such cu with index: " + std::to_string(cuidx));
     auto& cudata  = (*cu_itr).second;
     if (cudata.ctx < 1)
@@ -230,8 +234,8 @@ public:
     // clean up if last context was released
     if (!--cudata.ctx) {
       auto nm = cudata.name;
-      idx2cu.erase(cuidx);
-      free_cu_indices.push_back(cuidx);
+      m_idx2cu.erase(cuidx);
+      m_free_cu_indices.push_back(cuidx);
     }
   }
 
@@ -239,7 +243,7 @@ public:
   kds_cu_info()
   {
     xrt_core::query::kds_cu_info::result_type vec;
-    for (const auto& [idx, cud] : idx2cu) {
+    for (const auto& [idx, cud] : m_idx2cu) {
       xrt_core::query::kds_cu_info::data data;
       data.slot_index = cud.slot;
       data.index = idx;
@@ -256,7 +260,7 @@ public:
   xclbin_slots()
   {
     xrt_core::query::xclbin_slots::result_type vec;
-    for (const auto& [slot, xclbin] : xclbins) {
+    for (const auto& [slot, xclbin] : m_xclbins) {
       xrt_core::query::xclbin_slots::slot_info data;
       data.slot = slot;
       data.uuid = xclbin.get_uuid().to_string();
@@ -361,6 +365,12 @@ struct shim
   pl::device* m_pldev;
   std::shared_ptr<xrt_core::device> m_core_device;
 
+  // Capture xclbins loaded using load_xclbin.
+  // load_xclbin is legacy and creates a hw_context implicitly.  If an
+  // xclbin is loaded with load_xclbin, an explicit hw_context cannot
+  // be created for that xclbin.
+  std::map<xrt::uuid, uint32_t> m_load_xclbin_slots;
+
   // create shim object, open the device, store the device handle
   shim(unsigned int devidx)
     : m_devidx(devidx), m_core_device(xrt_core::get_userpf_device(this, m_devidx))
@@ -463,6 +473,8 @@ struct shim
   {
     auto xclbin = m_core_device->get_xclbin(top->m_header.uuid);
     m_pldev->register_xclbin(xclbin);
+    auto uuid = xclbin.get_uuid();
+    m_load_xclbin_slots[uuid] = create_hw_context(uuid.get(), 0);
     return 0;
   }
 
@@ -508,6 +520,35 @@ struct shim
     return 0;
   }
 
+  uint32_t // slotidx
+  create_hw_context(const xuid_t xclbin_uuid, uint32_t qos)
+  {
+    if (m_load_xclbin_slots.find(xclbin_uuid) != m_load_xclbin_slots.end())
+      throw xrt_core::ishim::not_supported_error(__func__);
+
+    return m_pldev->create_hw_context(xclbin_uuid, qos);
+  }
+
+  void
+  destroy_hw_context(uint32_t ctxhdl)
+  {
+    m_pldev->destroy_hw_context(ctxhdl);
+    for (const auto& [uuid, slot] : m_load_xclbin_slots) {
+      if (slot != ctxhdl)
+        continue;
+
+      m_load_xclbin_slots.erase(uuid);
+      break;
+    }
+  }
+
+  void
+  register_xclbin(const xrt::xclbin& xclbin)
+  {
+    m_pldev->register_xclbin(xclbin);
+  }
+
+
 }; // struct shim
 
 shim*
@@ -543,7 +584,28 @@ xclbin_slots(const xrt_core::device* device)
   return s_devices[id]->xclbin_slots();
 }
 
+uint32_t // slotidx
+create_hw_context(const xrt_core::device* device, const xuid_t xclbin_uuid, uint32_t qos)
+{
+  auto shim = get_shim_object(device->get_device_handle());
+  return shim->create_hw_context(xclbin_uuid, qos);
 }
+
+void
+destroy_hw_context(const xrt_core::device* device, uint32_t ctxhdl)
+{
+  auto shim = get_shim_object(device->get_device_handle());
+  shim->destroy_hw_context(ctxhdl);
+}
+
+void
+register_xclbin(const xrt_core::device* device, const xrt::xclbin& xclbin)
+{
+  auto shim = get_shim_object(device->get_device_handle());
+  shim->register_xclbin(xclbin);
+}
+
+} // userpf
 
 // Basic
 unsigned int
