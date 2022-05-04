@@ -77,6 +77,7 @@ static inline void cu_move_to_complete(struct xrt_cu_hls *cu, int status)
 
 	xcmd = list_first_entry(&cu->submitted, struct kds_command, list);
 	xcmd->status = status;
+	cu->run_cnts--;
 	list_move_tail(&xcmd->list, &cu->completed);
 }
 
@@ -206,7 +207,6 @@ cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bool 
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg  = 1;
 		ready_reg = 1;
-		cu_hls->run_cnts--;
 		cu_move_to_complete(cu_hls, KDS_COMPLETED);
 	}
 
@@ -259,7 +259,6 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bo
 
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg += 1;
-		cu_hls->run_cnts--;
 		cu_write32(cu_hls, CTRL, CU_AP_CONTINUE);
 		cu_move_to_complete(cu_hls, KDS_COMPLETED);
 	}
@@ -275,7 +274,6 @@ static void cu_hls_check(void *core, struct xcu_status *status, bool force)
 	struct xrt_cu_hls *cu_hls = core;
 
 	if (kds_echo) {
-		cu_hls->run_cnts--;
 		status->num_done = 1;
 		status->num_ready = 1;
 		status->new_status = CU_AP_IDLE;
@@ -352,6 +350,7 @@ static u32 cu_hls_clear_intr(void *core)
 				ctrl_reg = cu_read32(cu_hls, CTRL);
 				if (ctrl_reg & CU_AP_DONE) {
 					cu_hls->done++;
+					cu_move_to_complete(cu_hls, KDS_COMPLETED);
 					cu_write32(cu_hls, CTRL, CU_AP_CONTINUE);
 				}
 			}

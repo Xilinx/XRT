@@ -1008,7 +1008,7 @@ def xrtDeviceOpenByBDF(bdf):
     """
     libcoreutil.xrtDeviceOpenByBDF.restype = ctypes.POINTER(xrtDeviceHandle)
     libcoreutil.xrtDeviceOpenByBDF.argTypes = [ctypes.c_char_p]
-    return _valueOrError(libcoreutil.xrtDeviceOpenBDF(bdf))
+    return _valueOrError(libcoreutil.xrtDeviceOpenByBDF(bdf))
 
 def xrtDeviceClose(handle):
     """

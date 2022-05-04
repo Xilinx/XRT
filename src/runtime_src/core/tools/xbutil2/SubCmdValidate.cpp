@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -291,13 +292,14 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
       { "xcl_iops_test.exe",        "xcl_iops_test.exe"}
     };
 
-    if (test_map.find(py) == test_map.end()) {
-      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % py));
-      _ptTest.put("status", test_token_failed);
-      return;
-    }
+    // Validate the legacy names
+    // If no legacy name exists use the passed in test name
+    std::string test_name = py;
+    if (test_map.find(py) != test_map.end())
+      test_name = test_map.find(py)->second;
 
-    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_map.find(py)->second;
+    // Parse if the file exists here
+    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
     boost::filesystem::path xrt_path(xrtTestCasePath);
     if (!boost::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
@@ -343,7 +345,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
     std::vector<std::string> args = { "-k", xclbinPath,
-                                      "-d", std::to_string(_dev.get()->get_device_id()) };
+                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     int exit_code;
     try {
       if (py.find(".exe") != std::string::npos)
@@ -1258,6 +1260,15 @@ iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
 }
 
 /*
+ * TEST #13
+ */
+void
+aiePlTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+    runTestCase(_dev, "aie_pl.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
@@ -1290,7 +1301,8 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("m2m", "Run M2M test", "bandwidth.xclbin"), m2mTest },
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
-  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest }
+  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
+  { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest }
 };
 
 
@@ -1488,7 +1500,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
@@ -1666,26 +1678,12 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   po::options_description hiddenOptions("Hidden Options");
 
-  po::options_description allOptions("All Options");
-  allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
-
-  po::positional_options_description positionals;
-
   // Parse sub-command ...
   po::variables_map vm;
-
-  try {
-    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
-    po::notify(vm); // Can throw
-  } catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options, commonOptions, hiddenOptions);
 
   // Check to see if help was requested or no command was found
-  if (help == true)  {
+  if (help) {
     printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
     return;
   }
