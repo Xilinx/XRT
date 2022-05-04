@@ -83,43 +83,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/cdev_sgdma.h
   xocl/lib/libxdma_api.h
   xocl/lib/Makefile.in
-  xocl/lib/libqdma/libqdma_config.h
-  xocl/lib/libqdma/libqdma_config.c
-  xocl/lib/libqdma/libqdma_export.h
-  xocl/lib/libqdma/libqdma_export.c
-  xocl/lib/libqdma/qdma_compat.h
-  xocl/lib/libqdma/qdma_context.h
-  xocl/lib/libqdma/qdma_context.c
-  xocl/lib/libqdma/qdma_debugfs.c
-  xocl/lib/libqdma/qdma_debugfs.h
-  xocl/lib/libqdma/qdma_debugfs_cmpt_queue.c
-  xocl/lib/libqdma/qdma_debugfs_dev.h
-  xocl/lib/libqdma/qdma_debugfs_dev.c
-  xocl/lib/libqdma/qdma_debugfs_queue.h
-  xocl/lib/libqdma/qdma_debugfs_queue.c
-  xocl/lib/libqdma/qdma_descq.c
-  xocl/lib/libqdma/qdma_descq.h
-  xocl/lib/libqdma/qdma_device.c
-  xocl/lib/libqdma/qdma_device.h
-  xocl/lib/libqdma/qdma_intr.h
-  xocl/lib/libqdma/qdma_intr.c
-  xocl/lib/libqdma/qdma_context.c
-  xocl/lib/libqdma/qdma_mbox.h
-  xocl/lib/libqdma/qdma_qconf_mgr.h
-  xocl/lib/libqdma/qdma_qconf_mgr.c
-  xocl/lib/libqdma/qdma_regs.h
-  xocl/lib/libqdma/qdma_regs.c
-  xocl/lib/libqdma/qdma_request.h
-  xocl/lib/libqdma/qdma_request.c
-  xocl/lib/libqdma/qdma_st_c2h.h
-  xocl/lib/libqdma/qdma_st_c2h.c
-  xocl/lib/libqdma/qdma_thread.h
-  xocl/lib/libqdma/qdma_thread.c
-  xocl/lib/libqdma/thread.h
-  xocl/lib/libqdma/thread.c
-  xocl/lib/libqdma/version.h
-  xocl/lib/libqdma/xdev.h
-  xocl/lib/libqdma/xdev.c
   xocl/lib/libqdma4/stmc.h
   xocl/lib/libqdma4/stmc.c
   xocl/lib/libqdma4/libqdma4_export.h
@@ -195,7 +158,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/libfdt/libfdt_env.h
   xocl/lib/libfdt/libfdt_internal.h
   xocl/subdev/xdma.c
-  xocl/subdev/qdma.c
   xocl/subdev/qdma4.c
   xocl/subdev/feature_rom.c
   xocl/subdev/xvc.c
