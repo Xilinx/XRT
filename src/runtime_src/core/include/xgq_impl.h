@@ -291,13 +291,23 @@ static inline void xgq_ring_write_consumed(uint64_t io_hdl, struct xgq_ring *rin
 static inline uint64_t xgq_ring_slot_ptr_produced(struct xgq_ring *ring)
 {
 	return ring->xr_slot_addr +
-	       (uint64_t)ring->xr_slot_sz * (ring->xr_produced & (ring->xr_slot_num - 1));
+		/*
+		 * In reality, below multiplication of two 32-bit ints will not overflow.
+		 * So, keep it as-is, instead of doing 64-bit mutiplication, which is very
+		 * slow on 32-bit CPU, e.g., Microblaze.
+		 */
+		ring->xr_slot_sz * (ring->xr_produced & (ring->xr_slot_num - 1));
 }
 
 static inline uint64_t xgq_ring_slot_ptr_consumed(struct xgq_ring *ring)
 {
 	return ring->xr_slot_addr +
-	       (uint64_t)ring->xr_slot_sz * (ring->xr_consumed & (ring->xr_slot_num - 1));
+		/*
+		 * In reality, below multiplication of two 32-bit ints will not overflow.
+		 * So, keep it as-is, instead of doing 64-bit mutiplication, which is very
+		 * slow on 32-bit CPU, e.g., Microblaze.
+		 */
+		ring->xr_slot_sz * (ring->xr_consumed & (ring->xr_slot_num - 1));
 }
 
 static inline int xgq_can_produce(struct xgq *xgq)

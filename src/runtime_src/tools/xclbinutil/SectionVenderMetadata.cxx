@@ -17,11 +17,12 @@
 #include "SectionVenderMetadata.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
-
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
+
+namespace XUtil = XclBinUtilities;
 
 // Disable windows compiler warnings
 #ifdef _WIN32
@@ -29,20 +30,15 @@ namespace XUtil = XclBinUtilities;
 #endif
 
 // Static Variables / Classes
-SectionVenderMetadata::_init SectionVenderMetadata::_initializer;
+SectionVenderMetadata::init SectionVenderMetadata::initializer;
 
-// -------------------------------------------------------------------------
+SectionVenderMetadata::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(VENDER_METADATA, "VENDER_METADATA", boost::factory<SectionVenderMetadata*>()); 
+  sectionInfo->supportsSubSections = true;
+  sectionInfo->supportsIndexing = true;
 
-SectionVenderMetadata::SectionVenderMetadata()
-{
-  // Empty
-}
-
-// -------------------------------------------------------------------------
-
-SectionVenderMetadata::~SectionVenderMetadata()
-{
-  // Empty
+  addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
@@ -50,7 +46,7 @@ SectionVenderMetadata::~SectionVenderMetadata()
 bool
 SectionVenderMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  // The Vender Metadata top-level section does support any add syntax.
+  // The Vender Metadata top-level section doesn't support any add syntax.
   // Must use sub-sections
   return false;
 }
@@ -232,7 +228,7 @@ SectionVenderMetadata::readSubPayload(const char* _pOrigDataSection,
     throw std::runtime_error(errMsg);
   }
 
-  if (_eFormatType != Section::FT_RAW) {
+  if (_eFormatType != Section::FormatType::RAW) {
     std::string errMsg = "ERROR: Vendor Metadata only supports the RAW format.";
     throw std::runtime_error(errMsg);
   }
@@ -316,7 +312,7 @@ SectionVenderMetadata::writeSubPayload(const std::string& _sSubSectionName,
   }
 
   // Some basic DRC checks
-  if (_eFormatType != Section::FT_RAW) {
+  if (_eFormatType != Section::FormatType::RAW) {
     std::string errMsg = "ERROR: Vendor Metadata section only supports the RAW format.";
     throw std::runtime_error(errMsg);
   }
@@ -325,7 +321,7 @@ SectionVenderMetadata::writeSubPayload(const std::string& _sSubSectionName,
 }
 
 void
-SectionVenderMetadata::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader)
+SectionVenderMetadata::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader)
 {
   Section::readXclBinBinary(_istream, _sectionHeader);
 

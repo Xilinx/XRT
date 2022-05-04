@@ -28,6 +28,28 @@
 
 extern int kds_echo;
 
+struct xrt_cu_scu {
+	int			 max_credits;
+	int			 credits;
+	int			 run_cnts;
+	void			*vaddr;
+	struct semaphore	*sc_sem;
+	struct list_head	 submitted;
+	struct list_head	 completed;
+};
+
+static inline void cu_move_to_complete(struct xrt_cu_scu *cu, int status)
+{
+	struct kds_command *xcmd = NULL;
+
+	if (unlikely(list_empty(&cu->submitted)))
+		return;
+
+	xcmd = list_first_entry(&cu->submitted, struct kds_command, list);
+	xcmd->status = status;
+	list_move_tail(&xcmd->list, &cu->completed);
+}
+
 static int scu_alloc_credit(void *core)
 {
 	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
@@ -90,7 +112,7 @@ static void scu_start(void *core)
 		return;
 
 	*cu_regfile = CU_AP_START;
-	up(&scu->sc_sem);
+	up(scu->sc_sem);
 }
 
 /*
@@ -119,6 +141,7 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 		done_reg  = 1;
 		ready_reg = 1;
 		scu->run_cnts--;
+		cu_move_to_complete(scu, KDS_COMPLETED);
 	}
 
 	status->num_done  = done_reg;
@@ -142,6 +165,52 @@ static void scu_check(void *core, struct xcu_status *status, bool force)
 	scu_ctrl_hs_check(scu, status, force);
 }
 
+static int scu_submit_config(void *core, struct kds_command *xcmd)
+{
+	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
+	int ret = 0;
+
+	ret = scu_configure(core, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type);
+	if (ret)
+		return ret;
+
+	list_move_tail(&xcmd->list, &scu->submitted);
+	return ret;
+}
+
+static struct kds_command *scu_get_complete(void *core)
+{
+	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
+	struct kds_command *xcmd = NULL;
+
+	if (list_empty(&scu->completed))
+		return NULL;
+
+	xcmd = list_first_entry(&scu->completed, struct kds_command, list);
+	list_del_init(&xcmd->list);
+
+	return xcmd;
+}
+
+static int scu_abort(void *core, void *cond,
+			bool (*match)(struct kds_command *xcmd, void *cond))
+{
+	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
+	struct kds_command *xcmd = NULL;
+	struct kds_command *next = NULL;
+	int ret = -EBUSY;
+
+	list_for_each_entry_safe(xcmd, next, &scu->submitted, list) {
+		if (!match(xcmd, cond))
+			continue;
+
+		xcmd->status = KDS_TIMEOUT;
+		list_move_tail(&xcmd->list, &scu->completed);
+	}
+
+	return ret;
+}
+
 static struct xcu_funcs xrt_scu_funcs = {
 	.alloc_credit	= scu_alloc_credit,
 	.free_credit	= scu_free_credit,
@@ -149,14 +218,15 @@ static struct xcu_funcs xrt_scu_funcs = {
 	.configure	= scu_configure,
 	.start		= scu_start,
 	.check		= scu_check,
+	.submit_config  = scu_submit_config,
+	.get_complete   = scu_get_complete,
+	.abort		= scu_abort,
 };
 
-int xrt_cu_scu_init(struct xrt_cu *xcu)
+int xrt_cu_scu_init(struct xrt_cu *xcu, void *vaddr, struct semaphore *sem)
 {
 	struct xrt_cu_scu *core = NULL;
-	size_t size = 0;
 	int err = 0;
-	struct drm_zocl_dev *zdev = NULL;
 
 	core = kzalloc(sizeof(struct xrt_cu_scu), GFP_KERNEL);
 	if (!core) {
@@ -164,20 +234,14 @@ int xrt_cu_scu_init(struct xrt_cu *xcu)
 		goto err;
 	}
 
-	zdev = zocl_get_zdev();
-
 	core->max_credits = 1;
 	core->credits = core->max_credits;
 	core->run_cnts = 0;
-	spin_lock_init(&core->cu_lock);
-	sema_init(&core->sc_sem, 0);
-	size = SOFT_KERNEL_REG_SIZE;
-	core->sc_bo = zocl_drm_create_bo(zdev->ddev, size, ZOCL_BO_FLAGS_CMA);
-	if (IS_ERR(core->sc_bo))
-		goto err;
-	core->sc_bo->flags = ZOCL_BO_FLAGS_CMA;
-	core->vaddr = core->sc_bo->cma_base.vaddr;
-	
+	core->sc_sem = sem;
+	core->vaddr = vaddr;
+	INIT_LIST_HEAD(&core->submitted);
+	INIT_LIST_HEAD(&core->completed);
+
 	xcu->core = core;
 	xcu->funcs = &xrt_scu_funcs;
 
@@ -199,43 +263,8 @@ err:
 
 void xrt_cu_scu_fini(struct xrt_cu *xcu)
 {
-	struct xrt_cu_scu *core = xcu->core;
-	struct pid *p = NULL;
-	struct task_struct *task = NULL;
-	int ret = 0;
-
-	// Wait for PS Kernel Process to finish
-	p = find_get_pid(core->sc_pid);
-	if(!p) {
-		// Process already gone
-		goto skip_kill;
-	}
-
-	task = pid_task(p, PIDTYPE_PID);
-	if(!task) {
-		DRM_WARN("Failed to get task for pid %d\n",core->sc_pid);
-		put_pid(p);
-		goto skip_kill;
-	}
-
-	if(core->sc_parent_pid != task_ppid_nr(task)) {
-		DRM_WARN("Parent pid does not match\n");
-		put_pid(p);
-		goto skip_kill;
-	}
-
-	ret = kill_pid(p, SIGTERM, 1);
-	if (ret) {
-		DRM_WARN("Failed to terminate SCU pid %d.  Performing SIGKILL.\n",core->sc_pid);
-		kill_pid(p, SIGKILL, 1);
-	}
-	put_pid(p);
-
 	xrt_cu_fini(xcu);
 
- skip_kill:
-	// Free Command Buffer BO
-	zocl_drm_free_bo(core->sc_bo);
 	if (xcu->core) {
 		kfree(xcu->core);
 	}

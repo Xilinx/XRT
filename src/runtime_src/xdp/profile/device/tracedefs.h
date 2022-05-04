@@ -21,6 +21,8 @@
 // Device timestamp is 45 bits so it can never be this value
 #define INVALID_DEVICE_TIMESTAMP 0xffffffffffffffff
 
+#define TRACE_BUFFER_4K_MASK  0xfffffffffffff000
+
 // Property bit masks
 #define XCL_PERF_MON_TRACE_MASK 0x1
 #define TS2MM_AIE_TRACE_MASK    0x1

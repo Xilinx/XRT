@@ -17,11 +17,22 @@
 #include "SectionGroupConnectivity.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
 #include <iostream>
 
+namespace XUtil = XclBinUtilities;
+
 // Static Variables / Classes
-SectionGroupConnectivity::_init SectionGroupConnectivity::_initializer;
+SectionGroupConnectivity::init SectionGroupConnectivity::initializer;
+
+SectionGroupConnectivity::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(ASK_GROUP_CONNECTIVITY, "GROUP_CONNECTIVITY", boost::factory<SectionGroupConnectivity*>()); 
+  sectionInfo->nodeName = "group_connectivity";
+
+  addSectionType(std::move(sectionInfo));
+}
 
 void
 SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
@@ -33,24 +44,24 @@ SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
 
   // Do we have enough room to overlay the header structure
   if (_sectionSize < sizeof(connectivity)) {
-    throw std::runtime_error(XUtil::format("ERROR: Section size (%d) is smaller than the size of the connectivity structure (%d)",
-                                           _sectionSize, sizeof(connectivity)));
+    auto errMsg = boost::format("ERROR: Section size (%d) is smaller than the size of the connectivity structure (%d)") % _sectionSize % sizeof(connectivity);
+    throw std::runtime_error(errMsg.str());
   }
 
   connectivity* pHdr = (connectivity*)_pDataSection;
   boost::property_tree::ptree connectivity;
 
-  XUtil::TRACE(XUtil::format("m_count: %d", (unsigned int)pHdr->m_count));
+  XUtil::TRACE(boost::format("m_count: %d") % (unsigned int) pHdr->m_count);
 
   // Write out the entire structure except for the array structure
   XUtil::TRACE_BUF("connectivity", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_connection[0]) - (uint64_t)pHdr));
-  connectivity.put("m_count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
+  connectivity.put("m_count", (boost::format("%d") % (unsigned int) pHdr->m_count).str());
 
   uint64_t expectedSize = ((uint64_t)&(pHdr->m_connection[0]) - (uint64_t)pHdr) + (sizeof(connection) * pHdr->m_count);
 
   if (_sectionSize != expectedSize) {
-    throw std::runtime_error(XUtil::format("ERROR: Section size (%d) does not match expected section size (%d).",
-                                           _sectionSize, expectedSize));
+    auto errMsg = boost::format("ERROR: Section size (%d) does not match expected section size (%d).") % _sectionSize % expectedSize;
+    throw std::runtime_error(errMsg.str());
   }
 
   boost::property_tree::ptree m_connection;
@@ -58,18 +69,18 @@ SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
     boost::property_tree::ptree connection;
 
 
-    XUtil::TRACE(XUtil::format("[%d]: arg_index: %d, m_ip_layout_index: %d, mem_data_index: %d",
-                               index,
-                               (unsigned int)pHdr->m_connection[index].arg_index,
-                               (unsigned int)pHdr->m_connection[index].m_ip_layout_index,
-                               (unsigned int)pHdr->m_connection[index].mem_data_index));
+    XUtil::TRACE(boost::format("[%d]: arg_index: %u, m_ip_layout_index: %u, mem_data_index: %u")
+                               % index
+                               % (unsigned int) pHdr->m_connection[index].arg_index
+                               % (unsigned int) pHdr->m_connection[index].m_ip_layout_index
+                               % (unsigned int) pHdr->m_connection[index].mem_data_index);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("connection", reinterpret_cast<const char*>(&(pHdr->m_connection[index])), sizeof(connection));
 
-    connection.put("arg_index", XUtil::format("%d", (unsigned int)pHdr->m_connection[index].arg_index).c_str());
-    connection.put("m_ip_layout_index", XUtil::format("%d", (unsigned int)pHdr->m_connection[index].m_ip_layout_index).c_str());
-    connection.put("mem_data_index", XUtil::format("%d", (unsigned int)pHdr->m_connection[index].mem_data_index).c_str());
+    connection.put("arg_index", (boost::format("%d") % (unsigned int) pHdr->m_connection[index].arg_index).str());
+    connection.put("m_ip_layout_index", (boost::format("%d") % (unsigned int) pHdr->m_connection[index].m_ip_layout_index).str());
+    connection.put("mem_data_index", (boost::format("%d") % (unsigned int) pHdr->m_connection[index].mem_data_index).str());
 
     m_connection.push_back(std::make_pair("", connection));   // Used to make an array of objects
   }
@@ -92,7 +103,7 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
   connectivityHdr.m_count = ptConnectivity.get<uint32_t>("m_count");
 
   XUtil::TRACE("GROUP CONNECTIVITY");
-  XUtil::TRACE(XUtil::format("m_count: %d", connectivityHdr.m_count));
+  XUtil::TRACE(boost::format("m_count: %d") % connectivityHdr.m_count);
 
   if (connectivityHdr.m_count == 0) {
     std::cout << "WARNING: Skipping GROUP CONNECTIVITY section for count size is zero." << std::endl;
@@ -115,10 +126,10 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
     connectionHdr.m_ip_layout_index = ptConnection.get<int32_t>("m_ip_layout_index");
     connectionHdr.mem_data_index = ptConnection.get<int32_t>("mem_data_index");
 
-    XUtil::TRACE(XUtil::format("[%d]: arg_index: %d, m_ip_layout_index: %d, mem_data_index: %d",
-                               count, (unsigned int)connectionHdr.arg_index,
-                               (unsigned int)connectionHdr.m_ip_layout_index,
-                               (unsigned int)connectionHdr.mem_data_index));
+    XUtil::TRACE(boost::format("[%d]: arg_index: %d, m_ip_layout_index: %d, mem_data_index: %d")
+                               % count % (unsigned int) connectionHdr.arg_index
+                               % (unsigned int) connectionHdr.m_ip_layout_index
+                               % (unsigned int) connectionHdr.mem_data_index);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("connection", reinterpret_cast<const char*>(&connectionHdr), sizeof(connection));
@@ -128,17 +139,17 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
 
   // -- The counts should match --
   if (count != (unsigned int)connectivityHdr.m_count) {
-    std::string errMsg = XUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
-                                       (unsigned int)count, (unsigned int)connectivityHdr.m_count);
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d")
+                                 % (unsigned int) count % (unsigned int) connectivityHdr.m_count;
+    throw std::runtime_error(errMsg.str());
   }
   
   // -- Buffer needs to be less than 64K--
   unsigned int bufferSize = (unsigned int) _buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
   if ( bufferSize > maxBufferSize ) {
-    std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the CONNECTIVITY section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",
-                                       (unsigned int) bufferSize, (unsigned int) maxBufferSize);
+    auto errMsg = boost::format("CRITICAL WARNING: The buffer size for the CONNECTIVITY section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.")
+                                % (unsigned int) bufferSize % (unsigned int) maxBufferSize;
     std::cout << errMsg << std::endl;
   }
 }
@@ -146,7 +157,7 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
 bool 
 SectionGroupConnectivity::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_JSON) {
+  if (_eFormatType == FormatType::JSON) {
     return true;
   }
   return false;
@@ -155,9 +166,9 @@ SectionGroupConnectivity::doesSupportAddFormatType(FormatType _eFormatType) cons
 bool 
 SectionGroupConnectivity::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML) ||
-        (_eFormatType == FT_RAW))
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML) ||
+        (_eFormatType == FormatType::RAW))
     {
       return true;
     }

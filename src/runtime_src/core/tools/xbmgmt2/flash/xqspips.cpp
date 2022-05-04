@@ -482,6 +482,24 @@ unsigned int XQSPIPS_Flasher::getFlashSize()
 
 void XQSPIPS_Flasher::readBack(const std::string& output, unsigned int base)
 {
+    initQSpiPS();
+
+    uint32_t StatusReg = XQSpiPS_GetStatusReg();
+
+    if (StatusReg == 0xFFFFFFFF) {
+        std::cout << "[ERROR]: Read PCIe device return -1. Cannot get QSPI status." << std::endl;
+        return;
+    }
+
+    /* Make sure it is ready to receive commands. */
+    resetQSpiPS();
+    XQSpiPS_Enable_GQSPI();
+
+    if (!getFlashID()) {
+        std::cout << "[ERROR]: Could not get Flash ID" << std::endl;
+        return;
+    }
+
     std::ofstream of_flash;
     of_flash.open(output, std::ofstream::out);
     if (!of_flash.is_open()) {
