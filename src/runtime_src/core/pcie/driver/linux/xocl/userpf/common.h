@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  * 		Lizhi Hou <lizhi.hou@xilinx.com>
@@ -17,7 +17,6 @@
 #define	_USERPF_COMMON_H
 
 #include "../xocl_drv.h"
-#include "../lib/libqdma/libqdma_export.h"
 #include "xocl_bo.h"
 #include "../xocl_drm.h"
 #include "xocl_ioctl.h"
