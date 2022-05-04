@@ -66,17 +66,21 @@ static ssize_t xclbinid_show(struct device *dev,
 	ssize_t count = 0;
 	int i = 0;
 
+	read_lock(&zdev->attr_rwlock);
 	for (i = 0; i < zdev->num_pr_slot; i++) {
 		zocl_slot = zdev->pr_slot[i];
 		if (!zocl_slot || !zocl_slot->slot_xclbin ||
-		    !zocl_slot->slot_xclbin->zx_uuid)
+		    !zocl_slot->slot_xclbin->zx_uuid) {
+			read_unlock(&zdev->attr_rwlock);
 			return 0;
+		}
 
 		count = sprintf(buf+size, raw_fmt, zocl_slot->slot_idx,
 				zocl_slot->slot_xclbin->zx_uuid);
 		size += count;
 	}
 
+	read_unlock(&zdev->attr_rwlock);
 	return size;
 }
 static DEVICE_ATTR_RO(xclbinid);
@@ -91,6 +95,7 @@ static ssize_t dtbo_path_show(struct device *dev,
 	ssize_t count = 0;
 	int i = 0;
 
+	read_lock(&zdev->attr_rwlock);
 	for (i = 0; i < zdev->num_pr_slot; i++) {
 		zocl_slot = zdev->pr_slot[i];
 		if (!zocl_slot || !zocl_slot->slot_xclbin ||
@@ -102,6 +107,7 @@ static ssize_t dtbo_path_show(struct device *dev,
 		size += count;
 	}
 
+	read_unlock(&zdev->attr_rwlock);
 	return size;
 }
 static DEVICE_ATTR_RO(dtbo_path);
