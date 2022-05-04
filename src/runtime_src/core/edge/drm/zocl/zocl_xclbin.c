@@ -1015,16 +1015,14 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
  */
 void zocl_free_sections(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 {
-	if (slot->ip)
-		vfree(slot->ip);
-	if (slot->debug_ip)
-		vfree(slot->debug_ip);
-	if (slot->connectivity)
-		vfree(slot->connectivity);
-	if (slot->topology)
-		vfree(slot->topology);
-	if (slot->axlf)
-		vfree(slot->axlf);
+	/*
+	 * vfree can ignore NULL pointer. We don't need to check if it is NULL.
+	 */
+	vfree(slot->ip);
+	vfree(slot->debug_ip);
+	vfree(slot->connectivity);
+	vfree(slot->topology);
+	vfree(slot->axlf);
 
 	write_lock(&zdev->attr_rwlock);
 	CLEAR(slot->ip);
