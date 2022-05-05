@@ -1,5 +1,14 @@
 #!/bin/bash
 
+#If git modules config file exist then try to clone them
+#Temporary fix for build pipeline to work
+GIT_MODULES=../.gitmodules
+if [ -f "$GIT_MODULES" ]; then
+    cd ..
+    git submodule update --init
+    cd build/
+fi
+
 set -e
 
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`

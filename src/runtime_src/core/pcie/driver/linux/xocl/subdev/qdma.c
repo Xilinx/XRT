@@ -53,7 +53,7 @@
 /* Module Parameters */
 unsigned int qdma_max_channel = 8;
 module_param(qdma_max_channel, uint, 0644);
-MODULE_PARM_DESC(qdma_max_channel, "Set number of channels for qdma, default is 16");
+MODULE_PARM_DESC(qdma_max_channel, "Set number of channels for qdma, default is 8");
 
 static unsigned int qdma_interrupt_mode = DIRECT_INTR_MODE;
 module_param(qdma_interrupt_mode, uint, 0644);
