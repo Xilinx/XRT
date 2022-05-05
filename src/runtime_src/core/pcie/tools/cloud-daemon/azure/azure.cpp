@@ -23,7 +23,9 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <syslog.h>
+#define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/sha.h>
+#undef OPENSSL_SUPPRESS_DEPRECATED
 #include <curl/curl.h>
 
 #include <cstdio>
