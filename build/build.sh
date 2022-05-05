@@ -13,9 +13,9 @@ CPU=`uname -m`
 #Temporary fix for build pipeline to work
 GIT_MODULES=$BUILDDIR/../.gitmodules
 if [ -f "$GIT_MODULES" ]; then
-    cd ..
+    cd $BUILDDIR/../
     git submodule update --init
-    cd build/
+    cd $BUILDDIR
 fi
 
 if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
