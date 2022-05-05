@@ -814,7 +814,7 @@ static int qdma_probe(struct platform_device *pdev)
 	conf->msix_qvec_max = 16;
 	conf->qdma_drv_mode = qdma_interrupt_mode;
 
-	conf->fp_user_isr_handler = qdma_isr;
+	conf->fp_user_isr_handler = (void*)qdma_isr;
 	conf->uld = (unsigned long)qdma;
 
 	xocl_info(&pdev->dev, "dma %d, mode 0x%x.\n",
