@@ -1,14 +1,5 @@
 #!/bin/bash
 
-#If git modules config file exist then try to clone them
-#Temporary fix for build pipeline to work
-GIT_MODULES=../.gitmodules
-if [ -f "$GIT_MODULES" ]; then
-    cd ..
-    git submodule update --init
-    cd build/
-fi
-
 set -e
 
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
@@ -17,6 +8,15 @@ CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
 CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
 CPU=`uname -m`
+
+#If git modules config file exist then try to clone them
+#Temporary fix for build pipeline to work
+GIT_MODULES=$BUILDDIR/../.gitmodules
+if [ -f "$GIT_MODULES" ]; then
+    cd ..
+    git submodule update --init
+    cd build/
+fi
 
 if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
     if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
