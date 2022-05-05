@@ -44,13 +44,13 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 	return count;
 }
 
-/* Each line is a CU, format:
- * "cu_idx kernel_name:cu_name address status usage"
- */
 ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	struct xrt_cu *xcu = NULL;
+	/* Each line is a CU, format:
+	 * "slot,cu_idx,kernel_name:cu_name,address,status,usage"
+	 */
 	char *cu_fmt = "%d,%d,%s:%s,0x%llx,0x%x,%llu\n";
 	ssize_t sz = 0;
 	int i;
@@ -64,12 +64,14 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 				continue;
 
 			/* Show the CUs as per slot order */
-			if (xcu->info.slot_idx == j) {
-				sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, j, i,
-						xcu->info.kname, xcu->info.iname,
-						xcu->info.addr, xcu->status,
-						cu_stat_read(cu_mgmt, usage[i]));
-			}
+			if (xcu->info.slot_idx != j)
+				continue;
+
+			sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, j,
+					set_domain(DOMAIN_PL, i),
+					xcu->info.kname, xcu->info.iname,
+					xcu->info.addr, xcu->status,
+					cu_stat_read(cu_mgmt, usage[i]));
 		}
 	}
 	mutex_unlock(&cu_mgmt->lock);
@@ -77,12 +79,12 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 	return sz;
 }
 
-/* Each line is a PS kernel, format:
- * "idx kernel_name status usage"
- */
 ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+	/* Each line is a PS kernel, format:
+	 * "slot,idx,kernel_name,status,usage"
+	 */
 	char *cu_fmt = "%d,%d,%s:%s,0x%x,%u\n";
 	struct xrt_cu *xcu = NULL;
 	ssize_t sz = 0;
@@ -98,10 +100,6 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 	 * So, this separate kds_scustat_raw is better.
 	 *
 	 * But in the worst case, this is still not good enough.
-	 *
-	 * Soft kernels are namespaced with a domain identifer that
-	 * is or'ed into the scu index.	 For soft kernels the
-	 * domain is SCU_DOMAIN.
 	 */
 	mutex_lock(&scu_mgmt->lock);
 	for (j = 0; j < MAX_SLOT; ++j) {
@@ -115,7 +113,8 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 				continue;
 
 			sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, j,
-					(i | SCU_DOMAIN), xcu->info.kname,xcu->info.iname,
+					set_domain(DOMAIN_PS, i),
+					xcu->info.kname,xcu->info.iname,
 					xcu->status,
 					cu_stat_read(scu_mgmt,usage[i]));
 		}
@@ -247,14 +246,6 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 
 		for (j = 0; j < cp->num_cus; j++) {
 			u32 scu_idx = j + cp->start_cuidx;
-
-			/*
-			 * TODO: Need consider size limit of the name.
-			 * In case PAGE_SIZE sysfs node cannot show all
-			 * SCUs (more than 64 SCUs or up to 128).
-			 */
-			strncpy(scu_mgmt->name[scu_idx], (char *)cp->sk_name,
-				sizeof(scu_mgmt->name[0]));
 
 			cu_stat_write(scu_mgmt, usage[scu_idx], 0);
 		}
@@ -1160,7 +1151,7 @@ is_cu_in_ctx_slot(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit, u
 {
 	struct xrt_cu *xcu = NULL;
 
-	if (cu_domain == (SCU_DOMAIN>>16))
+	if (cu_domain == DOMAIN_PS)
 		xcu = kds->scu_mgmt.xcus[bit];
 	else
 		xcu = kds->cu_mgmt.xcus[bit];
@@ -1183,18 +1174,18 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 
 	mutex_lock(&client->lock);
 	while (cctx->virt_cu_ref) {
-		info.cu_idx = CU_CTX_VIRT_CU;
+		info.cu_idx = 0xFFFF; /* Special index for virtual CU */
 		info.curr_ctx = cctx;
-		info.cu_domain = 0;
+		info.cu_domain = DOMAIN_VIRT;
 		kds_del_context(kds, client, &info);
 	}
 
 	bit = find_first_bit(client->scu_bitmap, MAX_CUS);
 	while (bit < MAX_CUS) {
 		/* Check whether this SCU belongs to current slot */
-	        if (is_cu_in_ctx_slot(kds, cctx, bit, (SCU_DOMAIN>>16))) {
+	        if (is_cu_in_ctx_slot(kds, cctx, bit, DOMAIN_PS)) {
 			info.cu_idx = bit;
-			info.cu_domain = (SCU_DOMAIN>>16);
+			info.cu_domain = DOMAIN_PS;
 			info.curr_ctx = cctx;
 			kds_del_context(kds, client, &info);
 		}
@@ -1205,9 +1196,9 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
 	while (bit < MAX_CUS) {
 		/* Check whether this CU belongs to current slot */
-	        if (is_cu_in_ctx_slot(kds, cctx, bit, 0 /* regular CUs */)) {
+	        if (is_cu_in_ctx_slot(kds, cctx, bit, DOMAIN_PL)) {
 			info.cu_idx = bit;
-			info.cu_domain = 0;
+			info.cu_domain = DOMAIN_PL;
 			info.curr_ctx = cctx;
 			kds_del_context(kds, client, &info);
 		}
@@ -1245,6 +1236,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info)
 {
 	u32 cu_idx = info->cu_idx;
+	u32 cu_domain = info->cu_domain;
 	bool shared = (info->flags != CU_CTX_EXCLUSIVE);
 	struct kds_client_ctx *cctx = (struct kds_client_ctx *)info->curr_ctx;
 	int i;
@@ -1259,7 +1251,8 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 	 * cu bit map and it relies on to how user open context.
 	 * Let's consider that kind of CUs later.
 	 */
-	if (cu_idx == CU_CTX_VIRT_CU) {
+	switch (cu_domain) {
+	case DOMAIN_VIRT:
 		if (!shared) {
 			kds_err(client, "Only allow share virtual CU");
 			return -EINVAL;
@@ -1273,19 +1266,23 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 			mutex_unlock(&kds->cu_mgmt.lock);
 		}
 		++cctx->virt_cu_ref;
-	} else {
-	     if (info->cu_domain == (SCU_DOMAIN>>16)) {
-		if (kds_add_scu_context(kds, client, info))
-			return -EINVAL;
-	     } else {
+		break;
+	case DOMAIN_PL:
 		if (kds_add_cu_context(kds, client, info))
 			return -EINVAL;
-	     }
+		break;
+	case DOMAIN_PS:
+		if (kds_add_scu_context(kds, client, info))
+			return -EINVAL;
+		break;
+	default:
+		kds_err(client, "Unknown Domain(%d)", cu_domain);
+		return -EINVAL;
 	}
 
 	++cctx->num_ctx;
 	kds_info(client, "Client pid(%d) add context Domain(%d) CU(0x%x) shared(%s)",
-		 pid_nr(client->pid), info->cu_domain, cu_idx, shared? "true" : "false");
+		 pid_nr(client->pid), cu_domain, cu_idx, shared? "true" : "false");
 	return 0;
 }
 
@@ -1293,6 +1290,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info)
 {
 	u32 cu_idx = info->cu_idx;
+	u32 cu_domain = info->cu_domain;
 	struct kds_client_ctx *cctx = (struct kds_client_ctx *)info->curr_ctx;
 	int i;
 
@@ -1300,7 +1298,9 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 
 	if (!cctx)
 		return -EINVAL;
-	if (cu_idx == CU_CTX_VIRT_CU) {
+
+	switch (cu_domain) {
+	case DOMAIN_VIRT:
 		if (!cctx->virt_cu_ref) {
 			kds_err(client, "No opening virtual CU");
 			return -EINVAL;
@@ -1317,14 +1317,18 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 			--kds->cu_mgmt.cu_refs[i];
 			mutex_unlock(&kds->cu_mgmt.lock);
 		}
-	} else {
-	     if (info->cu_domain == (SCU_DOMAIN>>16)) {
-		if (kds_del_scu_context(kds, client, info))
-			return -EINVAL;
-	     } else {
+		break;
+	case DOMAIN_PL:
 		if (kds_del_cu_context(kds, client, info))
 			return -EINVAL;
-	     }
+		break;
+	case DOMAIN_PS:
+		if (kds_del_scu_context(kds, client, info))
+			return -EINVAL;
+		break;
+	default:
+		kds_err(client, "Unknown CU domain(%d)", cu_domain);
+		return -EINVAL;
 	}
 
 	--cctx->num_ctx;
