@@ -289,7 +289,7 @@ if [[ $opt == 1 ]]; then
       echo ERROR: Please source a XRT setup file before building the documentation
     else
       echo "make xrt_docs"
-      source /opt/xilinx/xrt/setup.sh
+      source ${XILINX_XRT}/setup.sh
       make xrt_docs
     fi
   fi
