@@ -199,6 +199,8 @@ _main(int argc, char* argv[])
     //"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
     parser.addSwitch("--kernel", "-k",
                      "kernel (imply old style verify.xclbin is used)", "");
+    parser.addSwitch("--path", "-p",
+                     "executable path", "");
     parser.addSwitch("--device", "-d", "device id", "0");
     parser.addSwitch("--threads", "-t", "number of threads", "2");
     parser.addSwitch("--length", "-l", "length of queue", "128");
@@ -213,8 +215,8 @@ _main(int argc, char* argv[])
     int queueLength = parser.value_to_int("length");
     int total = parser.value_to_int("total");
     std::string xclbin_fn = parser.value("kernel");
+    std::string test_path = parser.value("path");
     if (xclbin_fn.empty()) {
-        std::string test_path = argv[1];
         xclbin_fn = test_path + "/ps_validate_bandwidth.xclbin";
         krnl.name = "hello_world";
         krnl.new_style = true;
