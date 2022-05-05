@@ -704,14 +704,6 @@ static struct xocl_dma_funcs qdma_ops = {
 	.get_str_stat = get_str_stat,
 };
 
-static struct file_operations queue_fops = {
-		.owner = THIS_MODULE,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,16,0)
-		.write_iter = queue_write_iter,
-		.read_iter = queue_read_iter,
-#endif
-};
-
 static int qdma_csr_prog_ta(struct pci_dev *pdev, int bar,
 				resource_size_t base)
 {
