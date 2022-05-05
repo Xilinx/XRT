@@ -1,9 +1,10 @@
 /**
-* Copyright (C) 2022 Xilinx, Inc
-*
-* Licensed under the Apache License, Version 2.0 (the "License"). You may
-* not use this file except in compliance with the License. A copy of the
-* License is located at
+ * Copyright (C) 2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
 *
 *     http://www.apache.org/licenses/LICENSE-2.0
 *
@@ -128,16 +129,7 @@ OO_AieClockFreq::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-
-  try {
-    po::store(po::command_line_parser(_options).options(m_optionsDescription).positional(m_positionalOptions).run(), vm);
-    po::notify(vm); // Can throw
-  }
-  catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << "\n\n";
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options);
 
   // Exit if neither action or device specified
   if(m_help || m_device.empty()) {

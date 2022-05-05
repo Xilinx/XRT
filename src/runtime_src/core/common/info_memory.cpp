@@ -564,6 +564,8 @@ populate_cus(const xrt_core::device *device)
     } 
     else { // scu_name e.g. kernel_vcu_encoder_2
       scu_name = ps_kernels.at(psk_inst).pkd_sym_name;
+      scu_name.append(":");
+      scu_name.append(ps_kernels.at(psk_inst).pkd_sym_name);
       scu_name.append("_");
       scu_name.append(std::to_string(num_scu));
     }

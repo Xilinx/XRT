@@ -13,15 +13,17 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
+#include "core/common/xclbin_parser.h"
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
-#include "core/common/xclbin_parser.h"
 #include <errno.h>
-#include <unistd.h>
-#include <boost/property_tree/xml_parser.hpp>
-#include <boost/lexical_cast.hpp>
 #include <inttypes.h>
+#include <unistd.h>
+#include <boost/lexical_cast.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+#include <cctype>
 
 #define DEBUG_MSGS(format, ...)
 //#define DEBUG_MSGS(format, ...) printf(format, ##__VA_ARGS__)
@@ -38,6 +40,8 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_DONE  = 2;
   const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
   const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
+  constexpr unsigned int simulationWaitTime = 300;
+
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 
   namespace bf = boost::filesystem;
@@ -51,6 +55,7 @@ namespace xclcpuemhal2 {
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
     ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
+    ,mIsDeviceProcessStarted(false)
   {
     binaryCounter = 0;
     mReqCounter = 0;
@@ -523,6 +528,12 @@ namespace xclcpuemhal2 {
     }
   }
 
+  std::string CpuemShim::getDeviceProcessLogPath() 
+  {
+    auto lpath = this->deviceDirectory + "/../../../device_process.log";
+    return lpath;
+  }
+
   int CpuemShim::xclLoadXclBin(const xclBin *header)
   {
     if(mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -556,10 +567,15 @@ namespace xclcpuemhal2 {
 
     bool isVersal = false;
     std::string binaryDirectory("");
+    
+    //Check if device_process.log already exists. Remove if exists.
+    auto extIoTxtFile = getDeviceProcessLogPath();
+    if (boost::filesystem::exists(extIoTxtFile))
+      boost::filesystem::remove(extIoTxtFile);
+      
     launchDeviceProcess(debuggable,binaryDirectory);
 
-    if(header)
-    {
+    if (header) {
       resetProgram();
       std::string logFilePath = xrt_core::config::get_hal_logging();
       if (!logFilePath.empty()) {
@@ -738,6 +754,10 @@ namespace xclcpuemhal2 {
       if ( mLogStream.is_open() ) {
         verbose = true;
       }
+
+      mIsDeviceProcessStarted = true;
+      if (!mMessengerThread.joinable())
+        mMessengerThread = std::thread([this] { messagesThread(); });
 
       xclLoadBitstream_RPC_CALL(xclLoadBitstream, xmlFile, tempdlopenfilename, deviceDirectory, binaryDirectory, verbose);
       if (!ack) {
@@ -1211,14 +1231,49 @@ namespace xclcpuemhal2 {
       return;
     }
 
+    mIsDeviceProcessStarted = false;
     std::string socketName = sock->get_name();
-    if(socketName.empty() == false)// device is active if socketName is non-empty
+    // device is active if socketName is non-empty
+    if (!socketName.empty())
     {
 #ifndef _WINDOWS
       xclClose_RPC_CALL(xclClose,this);
 #endif
     }
+   closeMessengerThread();
    saveDeviceProcessOutput();
+  }
+
+  void CpuemShim::closeMessengerThread()
+  {
+    if (mMessengerThread.joinable())
+      mMessengerThread.join();
+  }
+
+  void CpuemShim::messagesThread()
+  {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto lpath = getDeviceProcessLogPath();
+    sParseLog deviceProcessLog(this, lpath);
+    int count = 0;
+    while (mIsDeviceProcessStarted)
+    {
+      // I may not get ParseLog() all the times, So Let's optimize myself.
+      // Let's sleep for 10,20,30 seconds....etc until it is < simulationWaitTime
+      // After that I may not get extensive parseLog() statements.
+      // So I want to call it for each interval of simulationWaitTime
+
+      auto end_time = std::chrono::high_resolution_clock::now();
+
+      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= simulationWaitTime) {  
+        deviceProcessLog.parseLog(); 
+        ++count;
+        // giving some time for the simulator to run
+        if (count%5 == 0) {
+          std::this_thread::sleep_for(std::chrono::seconds(std::min(10*(count/5), 300)));
+          }
+        }
+    }
   }
 
   void CpuemShim::xclClose()
@@ -1259,7 +1314,7 @@ namespace xclcpuemhal2 {
       close(fd);
     }
     mFdToFileNameMap.clear();
-
+    mIsDeviceProcessStarted = false;
     mCloseAll = true;
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
@@ -1325,6 +1380,7 @@ namespace xclcpuemhal2 {
     {
       mLogStream.close();
     }
+    closeMessengerThread();
   }
 
   /**********************************************HAL2 API's START HERE **********************************************/

@@ -1,36 +1,37 @@
 #ifndef __EM_CONFIG_READER__
 #define __EM_CONFIG_READER__
 
-#include <cstring>
-#include <sstream>
-#include <list>
-#include <map>
-#include <tuple>
-#include <vector>
-#include <sys/types.h>
-#include <sys/stat.h>
-
+//XRT/Local includes
+#include "em_defines.h"
+#include "xbar_sys_parameters.h"
+#include "xclbin.h"
+#include "xclfeatures.h"
+#include "xclhal2.h"
+//std includes
 #ifdef _MSC_VER
 #include <boost/config/compiler/visualc.hpp>
 #endif
+#include <atomic>
 #include <boost/algorithm/string.hpp>
-#include <boost/locale.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ini_parser.hpp>
-#include <boost/foreach.hpp>
 #include <boost/filesystem.hpp>
-
 #include "boost/filesystem/path.hpp"
-#include "xbar_sys_parameters.h"
-#include "xclhal2.h"
-#include "xclfeatures.h"
-#include "em_defines.h"
-#include "xclbin.h"
+#include <boost/foreach.hpp>
+#include <boost/locale.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <chrono>
+#include <cstring>
+#include <list>
+#include <map>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sstream>
+#include <tuple>
+#include <vector>
 
 namespace xclemulation{
-
+  
   // KB
   const uint64_t MEMSIZE_1K   =   0x0000000000000400;
   const uint64_t MEMSIZE_4K   =   0x0000000000001000;
@@ -77,7 +78,7 @@ namespace xclemulation{
   const uint64_t MEMSIZE_128T =   0x0000800000000000;
   const uint64_t MEMSIZE_256T =   0x0001000000000000;
   const uint64_t MEMSIZE_512T =   0x0002000000000000;
-  
+
   //For Profiling Offsets
   const uint64_t FIFO_INFO_MESSAGES     = 0x0000000000100000;
   const uint64_t FIFO_WARNING_MESSAGES  = 0x0000000000200000;
@@ -85,9 +86,102 @@ namespace xclemulation{
   const uint64_t FIFO_CTRL_INFO_SIZE    = 0x64;
   const uint64_t FIFO_CTRL_WARNING_SIZE = 0x68;
   const uint64_t FIFO_CTRL_ERROR_SIZE   = 0x6C;
- 
+
   const int VIVADO_MIN_VERSION = 2000;
   const int VIVADO_MAX_VERSION = 2100;
+
+//sparse log utility
+enum class eEmulationType{
+  eSw_Emu,
+  eHw_Emu
+};
+
+struct sParseLog
+{
+  std::ifstream mFileStream;
+  std::string mFileName;
+  std::atomic<bool> mFileExists;
+  std::vector<std::string> mMatchedStrings;
+  eEmulationType mEmuType;
+  
+  sParseLog(const std::string& iDeviceLog, eEmulationType iType, const std::vector<std::string>& iMatchedStrings)
+      : mFileName(iDeviceLog)
+      , mFileExists{false}
+      , mMatchedStrings(iMatchedStrings)
+      , mEmuType(iType)
+  {
+
+  }
+  /* The function displays user actionable message by calling print_user_msg(),
+  *  if any user list of strings found in mFileName otherwise the content of 
+  *  mFileName will be displayed.
+  */
+  void check_simulator_status()
+  {
+    std::string line;
+    while (std::getline(mFileStream, line))
+    {
+      for (const auto &StringData : mMatchedStrings)
+      {
+        if (line.find(StringData) != std::string::npos)
+        {
+          if (eEmulationType::eSw_Emu == mEmuType)
+            print_user_msg();
+          else if (eEmulationType::eHw_Emu == mEmuType)
+          {
+            if (StringData == "Exiting xsim" || StringData == "FATAL_ERROR")
+              print_user_msg();
+            else
+              std::cout << line << '\n';
+          }
+        }
+      }
+    }
+  }
+  /* print_user_msg prints an actionable item to the user so that one can perform
+  * for a cleaner exit. Hence Device Process, XSim exits neatly. ShimPtr->xclClose() achieves this.
+  * But unable to get those Shim pointers intelligently except by making them as composite classes.
+  * The proper clean up activity from XRT will be performed as part of future CR
+  * The current design has some limitations to apply this feature to both
+  * SwEmShim & HwEmShim classes.
+  * */
+  
+  void print_user_msg()
+  {
+    switch (mEmuType) {
+      case eEmulationType::eSw_Emu:
+        std::cout << "Received request to end the application. Press Cntrl+C to exit the application." << std::endl;
+        break;
+      case eEmulationType::eHw_Emu:
+        std::cout << "SIMULATION EXITED" << std::endl;
+        break;
+    }
+  }
+  /*********************************************************************************
+   *  The function traverse the log file (simulate.log) and prints an actionable 
+   *  user message if anyline of log file matches exactly with an user defined
+   *  vector of strings. The log file might be updated by a separate process. So ensuring
+   *  file existence before opening it would eliminate several exceptions.
+   *  
+   * */
+  void parseLog()
+  {
+    // mFileName might be created/updated by xsim, check its existence always.
+    if (not mFileExists.load())
+    {
+      if (boost::filesystem::exists(mFileName))
+      {
+        mFileStream.open(mFileName);
+        if (mFileStream.is_open())
+          mFileExists.store(true);
+      }
+    }
+    // Now, check for user list of strings, display actionable message incase matched.
+    if (mFileExists.load())
+      check_simulator_status();
+    
+  }
+};
 
   //this class has only one member now. This will be extended to use all the parameters specific to each ddr.
   class DDRBank 

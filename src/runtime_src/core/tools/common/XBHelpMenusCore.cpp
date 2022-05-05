@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -556,4 +557,55 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
     if (!formattedString.empty()) 
       std::cout << fmtExtHelp % formattedString;
   }
+}
+
+std::vector<std::string>
+XBUtilities::process_arguments( po::variables_map& vm,
+                                po::command_line_parser& parser,
+                                const po::options_description& options,
+                                const po::positional_options_description& positionals,
+                                bool validate_arguments
+                                )
+{
+  // Add unregistered "option"" that will catch all extra positional arguments
+  po::options_description all_options(options);
+  all_options.add_options()("__unreg", po::value<std::vector<std::string> >(), "Holds all unregistered options");
+  po::positional_options_description all_positionals(positionals);
+  all_positionals.add("__unreg", -1);
+
+  // Parse the given options and hold onto the results
+  auto parsed_options = parser.options(all_options).positional(all_positionals).allow_unregistered().run();
+  
+  if (validate_arguments) {
+    // This variables holds options denoted with a '-' or '--' that were not registered
+    const auto unrecognized_options = po::collect_unrecognized(parsed_options.options, po::exclude_positional);
+    // Parse out all extra positional arguments from the boost results
+    // This variable holds arguments that do not have a '-' or '--' that did not have a registered positional space
+    std::vector<std::string> extra_positionals;
+    for (const auto& option : parsed_options.options) {
+      if (boost::equals(option.string_key, "__unreg"))
+        // Each option is a vector even though most of the time they contain only one element
+        for (const auto& bad_option : option.value)
+          extra_positionals.push_back(bad_option);
+    }
+
+    // Throw an exception if we have any unknown options or extra positionals
+    if (!unrecognized_options.empty() || !extra_positionals.empty()) {
+      std::string error_str;
+      error_str.append("Unrecognized arguments:\n");
+      for (const auto& option : unrecognized_options)
+        error_str.append(boost::str(boost::format("  %s\n") % option));
+      for (const auto& option : extra_positionals)
+        error_str.append(boost::str(boost::format("  %s\n") % option));
+      throw boost::program_options::error(error_str);
+    }
+  }
+
+  // Parse the options into the variable map
+  // If an exception occurs let it bubble up and be handled elsewhere
+  po::store(parsed_options, vm);
+  po::notify(vm);
+
+  // Return all the unrecognized arguments for use in a lower level command if needed
+  return po::collect_unrecognized(parsed_options.options, po::include_positional);
 }
