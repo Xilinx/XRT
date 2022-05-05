@@ -284,10 +284,14 @@ if [[ $opt == 1 ]]; then
   fi
 
   if [[ $docs == 1 ]]; then
+    # Source the XRT environment so we can find modules like pyxrt
+    if [[ -z "${XILINX_XRT}" ]]; then
+      echo ERROR: Please source a XRT setup file before building the documentation
+    else
       echo "make xrt_docs"
-      # Source the XRT environment so we can find modules like pyxrt
-      source ./opt/xilinx/xrt/setup.sh
+      source /opt/xilinx/xrt/setup.sh
       make xrt_docs
+    fi
   fi
 
   if [[ $driver == 1 ]]; then
