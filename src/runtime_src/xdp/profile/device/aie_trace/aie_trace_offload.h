@@ -132,8 +132,9 @@ private:
 
   //Circular Buffer Tracking
   bool mEnCircularBuf;
-  // 100 mb of trace per second
-  uint64_t circ_buf_min_rate_plio = TS2MM_DEF_BUF_SIZE * 100;
+  // 1000 mb of trace per second
+  // Very high bandwidth requirement
+  uint64_t circ_buf_min_rate_plio = TS2MM_DEF_BUF_SIZE * 1000;
   uint64_t circ_buf_cur_rate_plio;
 
 private:
