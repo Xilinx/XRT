@@ -19,13 +19,13 @@ inline void xgq_ctrl_init(struct xgq_ctrl *xgq_ctrl, struct xgq *xgq)
 inline void xgq_ctrl_response(struct xgq_ctrl *xgq_ctrl, void *resp, uint32_t size)
 {
 	int offset = 0;
-	uint32_t slot_addr;
+	uint64_t slot_addr;
 	struct sched_cmd *cmd = &xgq_ctrl->ctrl_cmd;
 
 	cmd_clear_header(cmd, 0);
 	xgq_notify_peer_consumed(xgq_ctrl->xgq);
 
-	while (xgq_produce(xgq_ctrl->xgq, (uint64_t *)&slot_addr))
+	while (xgq_produce(xgq_ctrl->xgq, &slot_addr))
 		continue;
 
 	for (; offset < size; offset+=4) {
