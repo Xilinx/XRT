@@ -164,15 +164,19 @@ get_render_devname()
     // A symlink to render device is created based on this node name
     static const std::regex filter{"platform.*zyxclmm_drm-render"};
 
-    boost::filesystem::directory_iterator end_itr;
-    for( boost::filesystem::directory_iterator itr( render_dev_sym_dir ); itr != end_itr; ++itr) {
-        if (!std::regex_match(itr->path().filename().string(), filter))
-	    continue;
+    try {
+        boost::filesystem::directory_iterator end_itr;
+        for( boost::filesystem::directory_iterator itr( render_dev_sym_dir ); itr != end_itr; ++itr) {
+            if (!std::regex_match(itr->path().filename().string(), filter))
+                continue;
 
-	if (boost::filesystem::is_symlink(itr->path()))
-	    render_devname = boost::filesystem::read_symlink(itr->path()).filename().string();
+            if (boost::filesystem::is_symlink(itr->path()))
+                render_devname = boost::filesystem::read_symlink(itr->path()).filename().string();
 
-	break;
+            break;
+        }
+    } catch (std::exception& e) {
+        /* consume any boost related exceptions, fall through and return the default */
     }
 
     if (render_devname.empty())
