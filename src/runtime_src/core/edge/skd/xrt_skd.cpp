@@ -236,6 +236,7 @@ namespace xrt {
     if(cmd_boh >= 0) {
       xclBOProperties prop;
       if (xclGetBOProperties(devHdl, cmd_boh, &prop)) {
+	syslog(LOG_ERR, "Cannot get command BO info in destructor.\n");
       }
       ret = munmap(args_from_host,prop.size);
       if (ret) {
