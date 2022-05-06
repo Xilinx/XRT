@@ -87,17 +87,6 @@ struct kds_ctx_info {
 	void		 *curr_ctx; // Holds the current context ptr for kds
 };
 
-/* TODO: PS kernel is very different with FPGA kernel.
- * Let's see if we can unify them later.
- */
-struct kds_scu_mgmt {
-	struct xrt_cu		 *xcus[MAX_CUS];
-	struct mutex		  lock;
-	int			  num_cus;
-	u32			  cu_refs[MAX_CUS];
-	struct cu_stats __percpu *cu_stats;
-};
-
 /* Context properties */
 #define	CU_CTX_PROP_MASK	0x0F
 #define	CU_CTX_SHARED		0x00
@@ -174,7 +163,7 @@ struct kds_sched {
 	struct mutex		lock;
 	bool			bad_state;
 	struct kds_cu_mgmt	cu_mgmt;
-	struct kds_scu_mgmt	scu_mgmt;
+	struct kds_cu_mgmt	scu_mgmt;
 	struct kds_ert	       *ert;
 	bool			xgq_enable;
 	u32			cu_intr_cap;
