@@ -101,6 +101,7 @@ XBUtilities::runScript( const std::string & env,
                         std::ostringstream & os_stderr,
                         bool /*erasePassFailMessage*/)
 {
+#ifndef __rtems__
   // Fix environment variables before running test case
   setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
   setShellPathEnv("PYTHONPATH", "/python");
@@ -177,6 +178,7 @@ XBUtilities::runScript( const std::string & env,
   else if (passed)
     return 0;
   else
+#endif
     return 1;
 }
 #else

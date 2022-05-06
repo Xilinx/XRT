@@ -43,6 +43,7 @@
 /* need to link the lib for the following to work */
 # define be32toh ntohl
 #else
+# include <sys/endian.h>
 # include <unistd.h> // SUDO check
 #endif
 
