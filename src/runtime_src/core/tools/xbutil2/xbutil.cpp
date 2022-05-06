@@ -35,7 +35,14 @@
 #include <string>
 
 // Program entry
+#if __rtems__
+extern "C" {
+  int xbutil_main( int argc, char** argv );
+};
+int xbutil_main( int argc, char** argv )
+#else
 int main( int argc, char** argv )
+#endif
 {
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
