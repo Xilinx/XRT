@@ -284,13 +284,13 @@ if [[ $opt == 1 ]]; then
   fi
 
   if [[ $docs == 1 ]]; then
-    # Source the XRT environment so we can find modules like pyxrt
-    if [[ -z "${XILINX_XRT}" ]]; then
-      echo ERROR: Please source a XRT setup file before building the documentation
-    else
+    # Source the release XRT environment so we can find modules like pyxrt
+    if [[ -f "./opt/xilinx/xrt/setup.sh" ]]; then
       echo "make xrt_docs"
-      source ${XILINX_XRT}/setup.sh
+      source ./opt/xilinx/xrt/setup.sh
       make xrt_docs
+    else
+      echo ERROR: The optimized build must be generated before creating the documentation 
     fi
   fi
 
