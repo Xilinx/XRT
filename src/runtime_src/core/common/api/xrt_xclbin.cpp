@@ -47,8 +47,10 @@
 #ifdef _WIN32
 # include "windows/uuid.h"
 # pragma warning( disable : 4244 4267 4996)
-#else
+#elifdef __linux__
 # include <linux/uuid.h>
+#else
+# include <uuid/uuid.h>
 #endif
 
 namespace {

@@ -29,9 +29,11 @@
 #include <algorithm>
 #include <cstdarg>
 #include <climits>
-#ifdef __linux__
+#if defined(__linux__) || defined(__rtems__)
 # include <syslog.h>
+#ifdef __linux__
 # include <linux/limits.h>
+#endif
 # include <sys/stat.h>
 # include <sys/types.h>
 #include <unistd.h>
