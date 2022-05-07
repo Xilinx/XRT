@@ -836,6 +836,27 @@ get_softkernels(const axlf* top)
   return sks;
 }
 
+aie_partition_obj get_aie_partition(const axlf* top)
+{
+  aie_partition_obj obj{};
+
+  auto pSection = ::xclbin::get_axlf_section(top, AIE_PARTITION);
+  if (!pSection)
+    return obj;
+
+  auto begin = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
+  auto aiep = reinterpret_cast<const aie_partition*>(begin);
+  obj.ncol = aiep->info.column_width;
+  obj.name = std::string(begin + aiep->mpo_name);
+  auto scp = reinterpret_cast<const uint8_t*>(begin + aiep->info.mpo_auint16_start_columns);
+  for (uint32_t i = 0; i < aiep->info.start_columns_count; i++) {
+    obj.start_col_list.push_back(scp[i]);
+    scp++;
+  }
+
+  return obj;
+}
+
 size_t
 get_kernel_freq(const axlf* top)
 {
