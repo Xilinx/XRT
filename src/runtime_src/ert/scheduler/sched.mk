@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+#
 include $(SRCDIR)/../ert.mk
 
 # BSP archive is created from SDK generated bsp
