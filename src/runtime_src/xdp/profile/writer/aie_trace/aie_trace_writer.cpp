@@ -83,7 +83,7 @@ namespace xdp {
 
     size_t num = traceData->buffer.size();
     for(size_t j = 0; j < num; j++) {
-      void*    buf = traceData->buffer[j];
+      void*    buf = traceData->buffer[j].get();
       // We write 4 bytes at a time
       // Max chunk size should be multiple of 4
       // If last chunk is not multiple of 4 then in worst case, 

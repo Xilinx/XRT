@@ -274,7 +274,7 @@ namespace xdp {
       offloader->start_offload(OffloadThreadType::TRACE);
       offloader->set_continuous();
       if (m_enable_circular_buffer) {
-        if (devInterface->supportsCircBuf()) {
+        if (devInterface->supportsCircBufPL()) {
           uint64_t min_offload_rate = 0 ;
           uint64_t requested_offload_rate = 0 ;
           bool use_circ_buf =
