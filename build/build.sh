@@ -15,8 +15,6 @@ GIT_MODULES=$BUILDDIR/../.gitmodules
 if [ -f "$GIT_MODULES" ]; then
     cd $BUILDDIR/../
     git submodule update --init
-    cd $BUILDDIR/../src/runtime_src/core/pcie/driver/linux/xocl/lib/libqdma
-    git checkout 785995783c78b2cbec6458141c4395e204c5bd9b
     cd $BUILDDIR
 fi
 
