@@ -168,10 +168,13 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	}
 
 	mutex_lock(&sk->sk_lock);
+	if(!IS_ERR(&sk->sk_meta_bo)) {
+		zocl_drm_free_bo(sk->sk_meta_bo);
+	}
 	for (i = 0; i < sk->sk_nimg; i++) {
 		if (IS_ERR(&sk->sk_img[i].si_bo))
 			continue;
-		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&sk->sk_img[i].si_bo->gem_base);
+		zocl_drm_free_bo(sk->sk_img[i].si_bo);
 	}
 	kfree(sk->sk_img);
 	sk->sk_nimg = 0;
@@ -303,6 +306,33 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 		sect = NULL;
 		return 0;
 	}
+
+	return size;
+}
+
+/* Read XCLBIN sections in kernel space */
+/* zocl_read_sect will alloc memory for sect, callers will call vfree */
+static int
+zocl_read_sect_kernel(enum axlf_section_kind kind, void *sect,
+		      struct axlf *axlf_full, char *xclbin_ptr)
+{
+	uint64_t offset = 0;
+	uint64_t size = 0;
+	void **sect_tmp = (void *)sect;
+	int err = 0;
+
+	err = xrt_xclbin_section_info(axlf_full, kind, &offset, &size);
+	if (err) {
+		DRM_INFO("skip kind %d(%s) return code: %d", kind,
+		    xrt_xclbin_kind_to_string(kind), err);
+		return 0;
+	} else {
+		DRM_INFO("found kind %d(%s)", kind,
+		    xrt_xclbin_kind_to_string(kind));
+	}
+
+	*sect_tmp = vmalloc(size);
+	memcpy(*sect_tmp, &xclbin_ptr[offset], size);
 
 	return size;
 }
@@ -890,7 +920,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
 	 * such a section.
 	 */
-	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
+	zocl_read_sect_kernel(AIE_RESOURCES, &aie_res, axlf, xclbin);
 
 	// Cache full xclbin
 	write_unlock(&zdev->attr_rwlock);

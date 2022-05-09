@@ -290,3 +290,51 @@ void zocl_scu_sk_crash(struct platform_device *pdev)
 	// TO-DO
 	// Add taks to indicate PS kernel crash
 }
+void zocl_scu_sk_shutdown(struct platform_device *pdev)
+{
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
+	struct xrt_cu_scu *cu_scu = xcu->core;
+	struct pid *p = NULL;
+	struct task_struct *task = NULL;
+	int ret = 0;
+
+	// Wait for PS Kernel Process to finish
+	p = find_get_pid(cu_scu->sc_pid);
+	if(!p) {
+		// Process already gone
+		goto skip_kill;
+	}
+
+	task = pid_task(p, PIDTYPE_PID);
+	if(!task) {
+		DRM_WARN("Failed to get task for pid %d\n",cu_scu->sc_pid);
+		put_pid(p);
+		goto skip_kill;
+	}
+
+	if(cu_scu->sc_parent_pid != task_ppid_nr(task)) {
+		DRM_WARN("Parent pid does not match\n");
+		put_pid(p);
+		goto skip_kill;
+	}
+
+	ret = kill_pid(p, SIGTERM, 1);
+	if (ret) {
+		DRM_WARN("Failed to terminate SCU pid %d.  Performing SIGKILL.\n",cu_scu->sc_pid);
+		kill_pid(p, SIGKILL, 1);
+	}
+	put_pid(p);
+	// Wait for PS kernel exit
+	down_timeout(&cu_scu->sc_sem,100);
+ skip_kill:
+	return;
+}
+void zocl_scu_sk_fini(struct platform_device *pdev)
+{
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
+	struct xrt_cu_scu *cu_scu = xcu->core;
+
+	up(&cu_scu->sc_sem);
+}
