@@ -127,11 +127,9 @@ set_cpu_affinity(std::thread& thread)
   if (all)
     return;
 
-#ifdef __linux__
   if (pthread_setaffinity_np(thread.native_handle(),sizeof(cpu_set_t),&cpuset)) {
     throw std::runtime_error("error calling pthread_setaffinity_np");
   }
-#endif
 }
 
 #else
