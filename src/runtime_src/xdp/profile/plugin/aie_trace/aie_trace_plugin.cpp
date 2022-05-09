@@ -1257,9 +1257,8 @@ namespace xdp {
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
-    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
+    if (aieOffloaders.find(deviceId) != aieOffloaders.end())
       (std::get<0>(aieOffloaders[deviceId]))->readTrace(true);
-    }
   }
 
   void AieTracePlugin::finishFlushAIEDevice(void* handle)
@@ -1293,7 +1292,7 @@ namespace xdp {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
+    if (aieOffloaders.find(deviceId) != aieOffloaders.end()) {
       auto offloader = std::get<0>(aieOffloaders[deviceId]);
       auto logger    = std::get<1>(aieOffloaders[deviceId]);
 
@@ -1312,7 +1311,7 @@ namespace xdp {
 
       aieOffloaders.erase(deviceId);
     }
-    
+
   }
 
   void AieTracePlugin::writeAll(bool /*openNewFiles*/)

@@ -138,12 +138,11 @@ private:
   uint64_t circ_buf_cur_rate_plio;
 
 private:
-    void configAIETs2mm(uint64_t index, bool final);
-
     void continuousOffload();
     bool keepOffloading();
     void offloadFinished();
     void checkCircularBufferSupport();
+    bool syncAndLog(uint64_t index);
 };
 
 }
