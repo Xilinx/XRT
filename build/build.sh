@@ -9,15 +9,6 @@ CMAKE=cmake
 CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
 CPU=`uname -m`
 
-#If git modules config file exist then try to clone them
-#Temporary fix for build pipeline to work
-GIT_MODULES=$BUILDDIR/../.gitmodules
-if [ -f "$GIT_MODULES" ]; then
-    cd $BUILDDIR/../
-    git submodule update --init
-    cd $BUILDDIR
-fi
-
 if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
     if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
         CMAKE=cmake3
@@ -260,6 +251,14 @@ if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
         echo "* MicroBlaze firmware will not be built                        *"
         echo "****************************************************************"
     fi
+fi
+
+#If git modules config file exist then try to clone them
+GIT_MODULES=$BUILDDIR/../.gitmodules
+if [ -f "$GIT_MODULES" ]; then
+    cd $BUILDDIR/../
+    git submodule update --init
+    cd $BUILDDIR
 fi
 
 if [[ $dbg == 1 ]]; then
