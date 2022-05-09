@@ -20,6 +20,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_xclbin.h"
+#include "xrt/xrt_uuid.h"
 
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -45,12 +46,7 @@
 #include <mutex>
 
 #ifdef _WIN32
-# include "windows/uuid.h"
 # pragma warning( disable : 4244 4267 4996)
-#elifdef __linux__
-# include <linux/uuid.h>
-#else
-# include <uuid/uuid.h>
 #endif
 
 namespace {
