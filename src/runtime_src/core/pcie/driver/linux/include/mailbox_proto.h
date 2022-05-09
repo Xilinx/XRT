@@ -346,13 +346,13 @@ struct xcl_mailbox_clock_freqscaling {
 #define XCL_MB_REQ_FLAG_REQUEST		(1 << 1)
 /**
  * struct mailbox_req - mailbox request message header
- * @req: opcode
+ * @req: opcode (see enum xcl_mailbox_request)
  * @flags: flags of this message
  * @data: payload of variable length
  */
 struct xcl_mailbox_req {
 	uint64_t flags;
-	enum xcl_mailbox_request req;
+	uint32_t req;
 	char data[1]; /* variable length of payload */
 };
 
