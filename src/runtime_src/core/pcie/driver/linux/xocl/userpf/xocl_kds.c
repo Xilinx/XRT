@@ -1944,6 +1944,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	if (major != 1 && minor != 0) {
 		userpf_err(xdev, "Only support ERT XGQ command 1.0\n");
 		ret = -EINVAL;
+		xocl_ert_ctrl_dump(xdev);	/* TODO: remove this line before 2022.2 release */
 		goto out;
 	}
 
