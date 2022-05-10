@@ -30,6 +30,7 @@ int xgq_exec_convert_start_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 	xgq_cmd->hdr.opcode = XGQ_CMD_OP_START_CUIDX;
 	xgq_cmd->hdr.state = 1;
 	xgq_cmd->hdr.count = payload_size;
+	xgq_cmd->hdr.cu_domain = DOMAIN_PL;
 
 	return sizeof(xgq_cmd->hdr) + payload_size;
 }
@@ -48,7 +49,7 @@ int xgq_exec_convert_start_scu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 	xgq_cmd->hdr.opcode = XGQ_CMD_OP_START_CUIDX;
 	xgq_cmd->hdr.state = 1;
 	xgq_cmd->hdr.count = payload_size;
-	xgq_cmd->hdr.cu_domain = (SCU_DOMAIN>>16);
+	xgq_cmd->hdr.cu_domain = DOMAIN_PS;
 
 	return sizeof(xgq_cmd->hdr) + payload_size;
 }

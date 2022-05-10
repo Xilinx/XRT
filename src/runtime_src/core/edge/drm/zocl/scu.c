@@ -14,6 +14,8 @@
 #include "zocl_sk.h"
 #include "xrt_cu.h"
 
+#define	SOFT_KERNEL_REG_SIZE	4096
+
 struct zocl_scu {
 	struct xrt_cu		 base;
 	struct platform_device	*pdev;
