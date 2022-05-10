@@ -85,7 +85,7 @@ namespace xdp {
       uint32_t mDelayCycles = 0;
 
       bool continuousTrace;
-      uint64_t offloadIntervalms;
+      uint64_t offloadIntervalUs;
       unsigned int aie_trace_file_dump_int_s;
 
       // Trace Runtime Status

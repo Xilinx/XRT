@@ -82,7 +82,7 @@ namespace xdp {
   AieTracePlugin::AieTracePlugin()
                 : XDPPlugin(),
                   continuousTrace(false),
-                  offloadIntervalms(0)
+                  offloadIntervalUs(0)
   {
     AieTracePlugin::live = true;
 
@@ -93,7 +93,16 @@ namespace xdp {
     // AIE trace is now supported for HW only
     continuousTrace = xrt_core::config::get_aie_trace_periodic_offload();
     if (continuousTrace) {
-      offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
+      auto offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
+      if (offloadIntervalms != 10) {
+        std::stringstream msg;
+        msg << "aie_trace_buffer_offload_interval_ms will be deprecated in future. "
+            << "Please use aie_trace_buffer_offload_interval_us instead.";
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        offloadIntervalUs = offloadIntervalms * 1e3;
+      } else {
+        offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
+      }
     }
 
     // Set Delay parameters
@@ -1099,7 +1108,7 @@ namespace xdp {
     // Can't call init without setting important details in offloader
     if (continuousTrace && isPLIO) {
       aieTraceOffloader->setContinuousTrace();
-      aieTraceOffloader->setOffloadIntervalms(offloadIntervalms);
+      aieTraceOffloader->setOffloadIntervalUs(offloadIntervalUs);
     }
 
     if (!aieTraceOffloader->initReadTrace()) {
