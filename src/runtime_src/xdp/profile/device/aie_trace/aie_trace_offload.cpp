@@ -246,10 +246,10 @@ void AIETraceOffload::readTrace(bool final)
 
     // End Offload at this offset
     // limit size to not cross circular buffer boundary
-    uint64_t circBufRolloberBytes = 0;
+    uint64_t circBufRolloverBytes = 0;
     bd.usedSz = bytes_written - bd.rollover_count * bufAllocSz;
     if (bd.usedSz > bufAllocSz) {
-      circBufRolloberBytes = bd.usedSz - bufAllocSz;
+      circBufRolloverBytes = bd.usedSz - bufAllocSz;
       bd.usedSz = bufAllocSz;
     }
 
@@ -268,16 +268,16 @@ void AIETraceOffload::readTrace(bool final)
       continue;
 
     // Do another sync if we're crossing circular buffer boundary
-    if (mEnCircularBuf && circBufRolloberBytes) {
+    if (mEnCircularBuf && circBufRolloverBytes) {
       // Start from 0
       bd.rollover_count++;
       bd.offset = 0;
       // End at leftover bytes
-      bd.usedSz = circBufRolloberBytes;
+      bd.usedSz = circBufRolloverBytes;
 
       debug_stream
         << "Circular buffer boundary read from 0x0 to 0x: "
-        << std::hex << circBufRolloberBytes << std::dec << std::endl;
+        << std::hex << circBufRolloverBytes << std::dec << std::endl;
 
       syncAndLog(index);
     }
