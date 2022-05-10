@@ -60,3 +60,22 @@ ReportMechanical::writeReport( const xrt_core::device* /*_pDevice*/,
   }
   _output << std::endl;
 }
+
+
+void
+ReportMechanical::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
+                               const boost::property_tree::ptree& _pt,
+                               const std::vector<std::string>& /*_elementsFilter*/,
+                               std::ostream & _output) const
+{
+  boost::property_tree::ptree empty_ptree;
+
+  const boost::property_tree::ptree& fans = _pt.get_child("mechanical.fans", empty_ptree);
+  for (auto& kv : fans) {
+    const boost::property_tree::ptree& pt_fan = kv.second;
+    if (!pt_fan.get<bool>("is_present", false))
+      continue;
+
+    _output << m_nagiosFormat % pt_fan.get<std::string>("description") % pt_fan.get<std::string>("speed_rpm") % "RPM";
+  }
+}

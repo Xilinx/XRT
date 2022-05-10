@@ -59,6 +59,7 @@ class Report {
   bool isHidden() const { return m_isHidden; };
 
   void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
+  void getNagiosReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
  // Needs a virtual destructor
   virtual ~Report() {};
@@ -66,8 +67,13 @@ class Report {
  // Child methods that need to be implemented
  protected:
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const = 0;
+  virtual void writeNagiosReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const {};
   virtual void getPropertyTreeInternal(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
   virtual void getPropertyTree20202(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
+
+// Formatting constant for Nagios plugin
+protected:
+  static boost::format m_nagiosFormat;
 
  // Child class Helper methods
  protected:
@@ -75,6 +81,7 @@ class Report {
   Report(const std::string & _reportName, const std::string & _shortDescription, bool _deviceRequired, bool _isHidden);
 
  private:
+  void populatePropertyTree( const xrt_core::device *pDevice, SchemaVersion schemaVersion, boost::property_tree::ptree & pt) const;
   Report() = delete;
 
  // Variables

@@ -51,6 +51,13 @@ namespace XBUtilities {
                       std::vector<std::string> & elementFilter,
                       std::ostream & consoleStream,
                       std::ostream & schemaStream);
+    void 
+     produce_nagios_reports( xrt_core::device_collection devices, 
+                      const ReportCollection & reportsToProcess, 
+                      Report::SchemaVersion schema, 
+                      std::vector<std::string> & elementFilter,
+                      std::ostream & consoleStream,
+                      std::ostream & schemaStream);
 };
 
 #endif

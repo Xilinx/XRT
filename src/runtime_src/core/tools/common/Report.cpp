@@ -22,6 +22,8 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <sstream>
 
+boost::format Report::m_nagiosFormat(" '%s'=%s%s::::");
+
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
   { SchemaVersion::unknown,       false, "",              "Unknown entry"},
@@ -80,6 +82,26 @@ Report::Report(const std::string & _reportName,
   // Empty
 }
 
+void
+Report::populatePropertyTree( const xrt_core::device *pDevice, 
+                              SchemaVersion schemaVersion,
+                              boost::property_tree::ptree & pt) const
+{
+  switch (schemaVersion) {
+    case SchemaVersion::json_internal:
+      getPropertyTreeInternal(pDevice, pt);
+      break;
+
+    case SchemaVersion::json_20202:
+      getPropertyTree20202(pDevice, pt);
+      break;
+
+    default:
+      throw std::runtime_error("ERROR: Unknown schema version.");
+      break;
+  }
+}
+
 void 
 Report::getFormattedReport( const xrt_core::device *pDevice, 
                             SchemaVersion schemaVersion,
@@ -89,21 +111,31 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
 {
   // If an exception occurs while generating a report throw an error in the catch
   try {
-    switch (schemaVersion) {
-      case SchemaVersion::json_internal:
-        getPropertyTreeInternal(pDevice, pt);
-        break;
-
-      case SchemaVersion::json_20202:
-        getPropertyTree20202(pDevice, pt);
-        break;
-
-      default:
-        throw std::runtime_error("ERROR: Unknown schema version.");
-        break;
+    populatePropertyTree(pDevice, schemaVersion, pt);
+    writeReport(pDevice, pt, elementFilter, consoleStream);
+  } catch (const std::exception& e) {
+    std::string reportName = getReportName();
+    if (!reportName.empty()) {
+      reportName[0] = static_cast<char>(std::toupper(reportName[0]));
+      std::cerr << reportName << std::endl;
     }
 
-    writeReport(pDevice, pt, elementFilter, consoleStream);
+    std::cerr << "  ERROR: " << e.what() << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+}
+
+void 
+Report::getNagiosReport( const xrt_core::device *pDevice, 
+                            SchemaVersion schemaVersion,
+                            const std::vector<std::string> & elementFilter,
+                            std::ostream & consoleStream,
+                            boost::property_tree::ptree & pt) const
+{
+  // If an exception occurs while generating a report throw an error in the catch
+  try {
+    populatePropertyTree(pDevice, schemaVersion, pt);
+    writeNagiosReport(pDevice, pt, elementFilter, consoleStream);
   } catch (const std::exception& e) {
     std::string reportName = getReportName();
     if (!reportName.empty()) {

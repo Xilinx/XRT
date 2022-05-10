@@ -319,3 +319,113 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
     throw xrt_core::error(std::errc::operation_canceled);
 }
 
+void 
+XBUtilities::produce_nagios_reports( xrt_core::device_collection devices, 
+                              const ReportCollection & reportsToProcess, 
+                              Report::SchemaVersion schemaVersion, 
+                              std::vector<std::string> & elementFilter,
+                              std::ostream & consoleStream,
+                              std::ostream & schemaStream)
+{
+  // Some simple DRCs
+  if (reportsToProcess.empty()) {
+    consoleStream << "Info: No action taken, no reports given.\n";
+    return;
+  }
+
+  if (schemaVersion == Report::SchemaVersion::unknown) {
+    consoleStream << "Info: No action taken, 'UNKNOWN' schema value specified.\n";
+    return;
+  }
+
+  // Working property tree
+  boost::property_tree::ptree ptRoot;
+
+  // Add schema version
+  {
+    boost::property_tree::ptree ptSchemaVersion;
+    ptSchemaVersion.put("schema", Report::getSchemaDescription(schemaVersion).optionName.c_str());
+    ptSchemaVersion.put("creation_date", xrt_core::timestamp());
+
+    ptRoot.add_child("schema_version", ptSchemaVersion);
+  }
+
+  bool is_report_output_valid = true;
+
+  // -- Check if any device specific report is requested
+  auto dev_report = [reportsToProcess]() {
+    for (auto &report : reportsToProcess) {
+      if (report->isDeviceRequired() == true)
+        return true;
+    }
+    return false;
+  };
+
+  if(dev_report()) {
+    // -- Process reports that work on a device
+    boost::property_tree::ptree ptDevices;
+    for (const auto & device : devices) {
+      boost::property_tree::ptree ptDevice;
+      auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+      ptDevice.put("interface_type", "pcie");
+      ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
+
+      bool is_mfg = false;
+      try {
+        is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
+      } 
+      catch (const xrt_core::query::exception&) {
+        is_mfg = false;
+      }
+
+      //if factory mode
+      std::string platform;
+      try {
+        if (is_mfg) {
+          platform = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
+        }
+        else {
+          platform = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
+        }
+      } 
+      catch(const xrt_core::query::exception&) {
+        // proceed even if the platform name is not available
+        platform = "<not defined>";
+      }
+
+      const auto is_ready = xrt_core::device_query<xrt_core::query::is_ready>(device);
+      bool is_recovery = false;
+      try {
+        is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
+      }
+      catch(const xrt_core::query::exception&) { 
+        is_recovery = false;
+      }
+
+      // Process the tests that require a device
+      // If the device is either of the following, most tests cannot be completed fully:
+      // 1. Is in factory mode and is not in recovery mode
+      // 2. Is not ready and is not in recovery mode
+      if((is_mfg || !is_ready) && !is_recovery) {
+        std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n\n";
+      }
+
+      for (auto &report : reportsToProcess) {
+        if (!report->isDeviceRequired())
+          continue;
+
+        boost::property_tree::ptree ptReport;
+        try {
+          report->getNagiosReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
+        } catch (const std::exception&) {
+          is_report_output_valid = false;
+        }
+      }
+    }
+  }
+
+  // If any the data reports failed to generate with an exception throw an operation cancelled but output everything
+  if(!is_report_output_valid)
+    throw xrt_core::error(std::errc::operation_canceled);
+}
+

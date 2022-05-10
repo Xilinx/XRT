@@ -208,7 +208,7 @@ _main(int argc, char* argv[])
   std::stringstream output;
   std::ostringstream oSchemaOutput;
   try {
-    XBU::produce_reports(deviceCollection, reportsToProcess, Report::getSchemaDescription("JSON").schemaVersion, elementsFilter, output, oSchemaOutput);
+    XBU::produce_nagios_reports(deviceCollection, reportsToProcess, Report::getSchemaDescription("JSON").schemaVersion, elementsFilter, output, oSchemaOutput);
   } catch (...) {
     status = 2;
   }
@@ -216,16 +216,16 @@ _main(int argc, char* argv[])
   // Output status before all other data
   switch (status) {
     case 0:
-      std::cout << "STATUS: OK" << std::endl;
+      std::cout << "STATUS: OK |";
       break;
     case 1:
-      std::cout << "STATUS: WARNING" << std::endl;
+      std::cout << "STATUS: WARNING |";
       break;
     default:
-      std::cout << "STATUS: FAILURE" << std::endl;
+      std::cout << "STATUS: FAILURE |";
       break;
   }
-  std::cout << output.str();
+  std::cout << output.str() << std::endl;
   return status;
 }
 
@@ -235,7 +235,7 @@ int main(int argc, char* argv[])
     return _main(argc, argv);
   } catch (const std::exception& ex) {
     std::cout << "STATUS: FAILURE\n";
-    std::cout << "  Error: " << ex.what();
+    std::cout << "  Error: " << ex.what() << std::endl;
     return 2;
   }
 }
