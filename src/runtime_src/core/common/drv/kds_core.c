@@ -560,9 +560,9 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	if (domain == DOMAIN_PL)
-		cu_set = test_and_set_bit(cu_idx, client->cu_bitmap);
+		cu_set = test_and_clear_bit(cu_idx, client->cu_bitmap);
 	else
-		cu_set = test_and_set_bit(cu_idx, client->scu_bitmap);
+		cu_set = test_and_clear_bit(cu_idx, client->scu_bitmap);
 
 	if (!cu_set) {
 		kds_err(client, "Client pid(%d) Domain(%d) CU(%d) has never been reserved",
