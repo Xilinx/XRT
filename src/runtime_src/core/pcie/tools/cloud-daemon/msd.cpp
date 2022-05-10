@@ -268,11 +268,11 @@ int Msd::remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
 {
     int pass = FOR_LOCAL;
     xcl_mailbox_req *req = reinterpret_cast<xcl_mailbox_req *>(orig->payloadData());
-    if (orig->payloadSize() < sizeof(xcl_mailbox_req)) {
+    if (orig->payloadSize() < XCL_MAILBOX_REQ_SIZE) {
         dev.log(LOG_ERR, "peer request dropped, wrong size");
         return -EINVAL;
     }
-    size_t reqSize = orig->payloadSize() - sizeof(xcl_mailbox_req);
+    size_t reqSize = orig->payloadSize() - XCL_MAILBOX_REQ_SIZE;
     
     switch (req->req) {
     case XCL_MAILBOX_REQ_LOAD_XCLBIN: {

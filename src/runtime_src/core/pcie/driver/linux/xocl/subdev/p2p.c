@@ -499,7 +499,7 @@ static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 		return;
 
 	mb_p2p_len = sizeof(struct xcl_mailbox_p2p_bar_addr);
-	reqlen = sizeof(struct xcl_mailbox_req) + mb_p2p_len;
+	reqlen = XCL_MAILBOX_REQ_SIZE + mb_p2p_len;
 	mb_req = vzalloc(reqlen);
 	if (!mb_req) {
 		p2p_err(p2p, "dropped request (%d), mem alloc issue",

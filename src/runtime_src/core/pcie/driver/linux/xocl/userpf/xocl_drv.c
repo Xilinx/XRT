@@ -120,7 +120,7 @@ static void xocl_mig_cache_read_from_peer(struct xocl_dev *xdev)
 	size_t resp_len = sizeof(struct xcl_mig_ecc)*MAX_M_COUNT;
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	size_t reqlen = XCL_MAILBOX_REQ_SIZE + data_len;
 	int ret = 0;
 
 	mb_req = vmalloc(reqlen);
@@ -330,7 +330,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 		goto failed;
 
 	userpf_info(xdev, "request mgmtpf to program prp");
-	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
+	mbret = xocl_peer_request(xdev, &mbreq, XCL_MAILBOX_REQ_SIZE,
 		&ret, &resplen, NULL, NULL, 0, 0);
 	if (mbret)
 		ret = mbret;
@@ -406,7 +406,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 		if (flag & XOCL_RESET_NO)
 			return 0;
 
-		mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
+		mbret = xocl_peer_request(xdev, &mbreq, XCL_MAILBOX_REQ_SIZE,
 			&ret, &resplen, NULL, NULL, 0, 6);
 		/*
 		 * Check the return values mbret & ret (mpd (peer) side response) and confirm
@@ -429,7 +429,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 		return 0;
 	}
 
-	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
+	mbret = xocl_peer_request(xdev, &mbreq, XCL_MAILBOX_REQ_SIZE,
 		&ret, &resplen, NULL, NULL, 0, 0);
 
 	xocl_reset_notify(xdev->core.pdev, true);
@@ -609,7 +609,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 		goto done;
 
 	data_len = sizeof(struct xcl_mailbox_conn);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	reqlen = XCL_MAILBOX_REQ_SIZE + data_len;
 	mb_req = vzalloc(reqlen);
 	if (!mb_req)
 		goto done;
@@ -654,7 +654,7 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	struct xcl_mailbox_req *req = NULL;
 	size_t resplen = sizeof(msg);
 	size_t data_len = sizeof(struct xcl_mailbox_clock_freqscaling);
-	size_t reqlen = sizeof(struct xcl_mailbox_req)+data_len;
+	size_t reqlen = XCL_MAILBOX_REQ_SIZE+data_len;
 	struct drm_xocl_reclock_info *freqs = (struct drm_xocl_reclock_info *)data;
 	struct xcl_mailbox_clock_freqscaling mb_freqs = {0};
 
@@ -822,7 +822,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	struct xcl_mailbox_subdev_peer subdev_peer = {0};
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req	*mb_req = NULL;
-	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	size_t reqlen = XCL_MAILBOX_REQ_SIZE + data_len;
 	struct xcl_subdev	*resp = NULL;
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
 	char *blob = NULL, *tmp;
@@ -1030,7 +1030,7 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req *mb_req = NULL;
 	char *in_buf = NULL;
-	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	size_t reqlen = XCL_MAILBOX_REQ_SIZE + data_len;
 	int ret = 0;
 
 	mb_req = vmalloc(reqlen);

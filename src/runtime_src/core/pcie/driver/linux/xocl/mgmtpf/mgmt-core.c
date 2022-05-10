@@ -1126,7 +1126,7 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 	size_t data_len = 0, reqlen = 0;
 
 	data_len = sizeof(struct xcl_mailbox_peer_state);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	reqlen = XCL_MAILBOX_REQ_SIZE + data_len;
 	mb_req = vzalloc(reqlen);
 	if (!mb_req)
 		return;

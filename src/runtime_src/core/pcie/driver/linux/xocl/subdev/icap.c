@@ -318,7 +318,7 @@ static void icap_read_from_peer(struct platform_device *pdev)
 	size_t resp_len = sizeof(struct xcl_pr_region);
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req *mb_req = NULL;
-	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	size_t reqlen = XCL_MAILBOX_REQ_SIZE + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	ICAP_INFO(icap, "reading from peer");
@@ -1121,7 +1121,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 		goto end;
 	else if (flag == RP_DOWNLOAD_NORMAL) {
 		(void) xocl_peer_notify(xocl_get_xdev(icap->icap_pdev), &mbreq,
-				sizeof(struct xcl_mailbox_req));
+				XCL_MAILBOX_REQ_SIZE);
 		ICAP_INFO(icap, "Notified userpf to program rp");
 		goto end;
 	}
@@ -1750,7 +1750,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, b
 
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
 	if ((ch_state & XCL_MB_PEER_SAME_DOMAIN) != 0) {
-		data_len = sizeof(struct xcl_mailbox_req) +
+		data_len = XCL_MAILBOX_REQ_SIZE +
 			sizeof(struct xcl_mailbox_bitstream_kaddr);
 		mb_req = vmalloc(data_len);
 		if (!mb_req) {
@@ -1762,7 +1762,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, b
 		memcpy(mb_req->data, &mb_addr,
 			sizeof(struct xcl_mailbox_bitstream_kaddr));
 	} else {
-		data_len = sizeof(struct xcl_mailbox_req) +
+		data_len = XCL_MAILBOX_REQ_SIZE +
 			xclbin->m_header.m_length;
 		mb_req = vmalloc(data_len);
 		if (!mb_req) {

@@ -19,6 +19,7 @@
 
 #ifndef __KERNEL__
 #include <stdint.h>
+#include <stddef.h>
 #endif
 
 /*
@@ -355,6 +356,12 @@ struct xcl_mailbox_req {
 	uint32_t req;
 	char data[1]; /* variable length of payload */
 };
+
+/**
+ * Definition to use for sizing mailbox request buffers
+ * e.g. size = XCL_MAILBOX_REQ_SIZE + message_length
+ */
+#define XCL_MAILBOX_REQ_SIZE (offsetof(struct xcl_mailbox_req, data))
 
 /**
  * struct sw_chan - mailbox software channel message metadata. This defines the

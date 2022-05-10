@@ -1880,7 +1880,7 @@ static void mailbox_send_test_load_xclbin_kaddr(struct mailbox *mbx)
 	mbx->mbx_recv_body_len = sizeof (int);
 
 	data_len = sizeof(struct xcl_mailbox_bitstream_kaddr);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	reqlen = XCL_MAILBOX_REQ_SIZE + data_len;
 	req = kzalloc(reqlen, GFP_KERNEL);
 	if (!req) {
 		mbx->mbx_test_send_status = -ENOMEM;
@@ -1917,7 +1917,7 @@ static void _mailbox_send_test(struct mailbox *mbx, size_t data_len, size_t resp
 		mbx->mbx_recv_body_len = resp_len;
 	}
 
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	reqlen = XCL_MAILBOX_REQ_SIZE + data_len;
 	req = vzalloc(reqlen);
 	if (!req) {
 		mbx->mbx_test_send_status = -ENOMEM;

@@ -134,7 +134,7 @@ int mb_notify(size_t index, int fd, bool online)
     std::unique_ptr<sw_msg> swmsg;
     struct xcl_mailbox_req *mb_req = NULL;
     struct xcl_mailbox_peer_state mb_conn = { 0 };
-    size_t data_len = sizeof(struct xcl_mailbox_peer_state) + sizeof(struct xcl_mailbox_req);
+    size_t data_len = sizeof(struct xcl_mailbox_peer_state) + XCL_MAILBOX_REQ_SIZE;
     pcieFunc dev(index);
    
     std::vector<char> buf(data_len, 0);

@@ -498,7 +498,7 @@ int Mpd::localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
     int ret = 0;
     xcl_mailbox_req *req = reinterpret_cast<xcl_mailbox_req *>(orig->payloadData());
     size_t reqSize;
-    if (orig->payloadSize() < sizeof(xcl_mailbox_req)) {
+    if (orig->payloadSize() < XCL_MAILBOX_REQ_SIZE) {
         dev.log(LOG_ERR, "local request dropped, wrong size");
         ret = -EINVAL;
         processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
@@ -506,7 +506,7 @@ int Mpd::localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req, ret);
         return FOR_LOCAL;
     }
-    reqSize = orig->payloadSize() - sizeof(xcl_mailbox_req);
+    reqSize = orig->payloadSize() - XCL_MAILBOX_REQ_SIZE;
 
     dev.log(LOG_INFO, "mpd daemon: request %d received(reqSize: %d)",
            req->req, reqSize);
