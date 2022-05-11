@@ -270,6 +270,7 @@ if [[ -z $qdmalib ]]; then
     GIT_MODULES=$BUILDDIR/../.gitmodules
     if [ -f "$GIT_MODULES" ]; then
         cd $BUILDDIR/../
+        rm -rf src/runtime_src/core/pcie/driver/linux/xocl/lib/libqdma
         git submodule update --init
         cd $BUILDDIR
     fi
