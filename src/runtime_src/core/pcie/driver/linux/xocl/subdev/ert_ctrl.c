@@ -745,7 +745,7 @@ static void ert_ctrl_dump_xgq(struct platform_device *pdev)
 	for (i = 0; i < xgq_hdr->xh_slot_num; i++) {
 		u32 *data;
 
-		data = (u32 *)(((char *)xgq_hdr) + xgq_hdr->xh_sq_offset);
+		data = (u32 *)(((char *)xgq_hdr) + xgq_hdr->xh_sq_offset + i * xgq_hdr->xh_sq_slot_size);
 		printk("slots(%d)", i);
 		print_hex_dump(KERN_INFO, "raw data: ", DUMP_PREFIX_OFFSET,
 				16, 4, data, xgq_hdr->xh_sq_slot_size, true);
@@ -755,7 +755,7 @@ static void ert_ctrl_dump_xgq(struct platform_device *pdev)
 	for (i = 0; i < xgq_hdr->xh_slot_num; i++) {
 		u32 *data;
 
-		data = (u32 *)(((char *)xgq_hdr) + xgq_hdr->xh_cq_offset);
+		data = (u32 *)(((char *)xgq_hdr) + xgq_hdr->xh_cq_offset + i * 16);
 		printk("slots(%d)", i);
 		print_hex_dump(KERN_INFO, "raw data: ", DUMP_PREFIX_OFFSET,
 				16, 4, data, 16, true);
