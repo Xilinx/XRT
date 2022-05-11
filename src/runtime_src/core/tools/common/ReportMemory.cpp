@@ -311,19 +311,20 @@ ReportMemory::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
         std::string chan_h2c, chan_c2h, chan_val = "N/A";
         for (auto& subv : v.second) {
           chan_val = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
-          if (subv.first == "host_to_card_bytes")
+          if (subv.first == "host_to_card_bytes") {
             chan_h2c = chan_val;
-          else if (subv.first == "card_to_host_bytes")
+            // Units are included from conversion function
+            auto h2c = boost::format("Chan[%d].h2c") % index;
+            _output << m_nagiosFormat % h2c % chan_h2c % "";
+          }
+          else if (subv.first == "card_to_host_bytes") {
             chan_c2h = chan_val;
-        
-          // Units are included from conversion function
-          auto h2c = boost::format("Chan[%d].h2c") % index;
-          _output << m_nagiosFormat % h2c % chan_h2c % "";
-          // Units are included from conversion function
-          auto c2h = boost::format("Chan[%d].c2h") % index;
-          _output << m_nagiosFormat % c2h % chan_c2h % "";
-          index++;
+            // Units are included from conversion function
+            auto c2h = boost::format("Chan[%d].c2h") % index;
+            _output << m_nagiosFormat % c2h % chan_c2h % "";
+          }
         }
+        index++;
       }
     }
     catch( std::exception const&) {
