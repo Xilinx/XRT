@@ -56,6 +56,7 @@ usage()
     echo "[-driver]                   Include building driver code"
     echo "[-checkpatch]               Run checkpatch.pl on driver code"
     echo "[-verbose]                  Turn on verbosity when compiling"
+    echo "[-ertbsp <dir>]             Path to directory with pre-downloaded BSP files for building ERT (default: download BSP files during build time)"
     echo "[-ertfw <dir>]              Path to directory with pre-built ert firmware (default: build the firmware)"
     echo ""
     echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
@@ -86,6 +87,7 @@ nocmake=0
 nobuild=0
 noctest=0
 static_boost=""
+ertbsp=""
 ertfw=""
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
@@ -101,6 +103,11 @@ while [ $# -gt 0 ]; do
         -dbg)
             dbg=1
             opt=0
+            shift
+            ;;
+        -ertbsp)
+            shift
+            ertbsp=$1
             shift
             ;;
         -ertfw)
@@ -212,6 +219,11 @@ if [[ $ccache == 1 ]]; then
     fi
 fi
 
+if [[ ! -z $ertbsp ]]; then
+    echo "export ERT_BSP_DIR=$ertbsp"
+    export ERT_BSP_DIR=$ertbsp
+fi
+
 if [[ ! -z $ertfw ]]; then
     echo "export XRT_FIRMWARE_DIR=$ertfw"
     export XRT_FIRMWARE_DIR=$ertfw
@@ -239,6 +251,14 @@ if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
         echo "* MicroBlaze firmware will not be built                        *"
         echo "****************************************************************"
     fi
+fi
+
+#If git modules config file exist then try to clone them
+GIT_MODULES=$BUILDDIR/../.gitmodules
+if [ -f "$GIT_MODULES" ]; then
+    cd $BUILDDIR/../
+    git submodule update --init
+    cd $BUILDDIR
 fi
 
 if [[ $dbg == 1 ]]; then

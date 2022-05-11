@@ -33,7 +33,7 @@ class Options(object):
         self.halLogFile = None
         self.alignment = 4096
         self.option_index = 0
-        self.index = 0
+        self.index = None
         self.cu_index = 0
         self.verbose = False
         self.handle = None
@@ -61,7 +61,7 @@ class Options(object):
             elif o in ("--cu_index", "-c"):
                 self.cu_index = int(arg)
             elif o in ("--device", "-d"):
-                self.index = int(arg)
+                self.index = arg
             elif o in ("--help", "-h"):
                 print(self.printHelp())
             elif o == "-v":
@@ -91,17 +91,18 @@ class Options(object):
 
 def initXRT(opt):
     deviceInfo = xclDeviceInfo2()
-    if opt.index >= xclProbe():
-        raise RuntimeError("Incorrect device index")
 
-    opt.handle = xrtDeviceOpen(opt.index)
+    opt.handle = xrtDeviceOpenByBDF(opt.index)
+    if opt.handle is None:
+            raise RuntimeError("Invalid device BDF")
+
     opt.xcl_handle = xrtDeviceToXclDevice(opt.handle)
 
     xclGetDeviceInfo2(opt.xcl_handle, ctypes.byref(deviceInfo))
 
     if sys.version_info[0] == 3:
         print("Shell = %s" % deviceInfo.mName)
-        print("Index = %d" % opt.index)
+        print("Index = %s" % opt.index)
         print("PCIe = GEN%d x %d" % (deviceInfo.mPCIeLinkSpeed, deviceInfo.mPCIeLinkWidth))
         print("OCL Frequency = (%d, %d) MHz" % (deviceInfo.mOCLFrequency[0], deviceInfo.mOCLFrequency[1]))
         print("DDR Bank = %d" % deviceInfo.mDDRBankCount)

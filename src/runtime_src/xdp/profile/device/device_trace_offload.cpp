@@ -38,7 +38,7 @@ DeviceTraceOffload
   , m_process_trace_done(false)
 {
   // Select appropriate reader
-  if(has_fifo()) {
+  if (has_fifo()) {
     m_read_trace = std::bind(&DeviceTraceOffload::read_trace_fifo, this, std::placeholders::_1);
   } else {
     m_read_trace = std::bind(&DeviceTraceOffload::read_trace_s2mm, this, std::placeholders::_1);
@@ -63,14 +63,7 @@ DeviceTraceOffload::
 void DeviceTraceOffload::
 offload_device_continuous()
 {
-  std::vector<uint64_t> buf_sizes;
-  if(!ts2mm_info.buffers.empty()) {
-    buf_sizes.resize(ts2mm_info.num_ts2mm);
-    for(size_t i = 0; i < ts2mm_info.num_ts2mm; i++) {
-       buf_sizes[i] = ts2mm_info.buffers[i].buf_size;
-    }
-  }
-  if (!m_initialized && !read_trace_init(true, buf_sizes)) {
+  if (!m_initialized) {
     offload_finished();
     return;
   }
@@ -281,7 +274,7 @@ read_leftover_circular_buf()
   // If we use circular buffer then, final trace read
   // might stop at trace buffer boundry and to read the entire
   // trace, we need one last read
-  if (ts2mm_info.use_circ_buf && ts2mm_info.buffers[0].used_size == ts2mm_info.full_buf_size) {
+  if (ts2mm_info.use_circ_buf && ts2mm_info.buffers[0].used_size == ts2mm_info.buffers[0].alloc_size) {
     debug_stream
       << "Try to read left over circular buffer data" << std::endl;
     m_read_trace(true);
@@ -314,25 +307,26 @@ read_trace_s2mm(bool force)
     << ts2mm_info.num_ts2mm << std::endl;
 
   for(uint64_t i = 0; i < ts2mm_info.num_ts2mm; i++) {
+  auto& bd = ts2mm_info.buffers[i];
   auto wordcount = dev_intf->getWordCountTs2mm(i, force);
-  auto bytes_written = (wordcount - ts2mm_info.buffers[i].prv_wordcount) * TRACE_PACKET_SIZE;
+  auto bytes_written = (wordcount - bd.prv_wordcount) * TRACE_PACKET_SIZE;
 
   // Don't read data if there's less than 512B trace
-  if (!force && (bytes_written < TS2MM_MIN_READ_SIZE)) {
+  if (!force && !ts2mm_info.use_circ_buf && (bytes_written < TS2MM_MIN_READ_SIZE)) {
     debug_stream
       << "Skipping trace read. Amount of data: " << bytes_written << std::endl;
     return;
   }
   // There's enough data available
-  ts2mm_info.buffers[i].prv_wordcount = wordcount;
+  bd.prv_wordcount = wordcount;
 
   if (!config_s2mm_reader(i, wordcount))
     return;
 
-  uint64_t nBytes = ts2mm_info.buffers[i].used_size - ts2mm_info.buffers[i].offset;
+  uint64_t nBytes = bd.used_size - bd.offset;
 
   auto start = std::chrono::steady_clock::now();
-  void* host_buf = dev_intf->syncTraceBuf(ts2mm_info.buffers[i].buf, ts2mm_info.buffers[i].offset, nBytes);
+  void* host_buf = dev_intf->syncTraceBuf(bd.buf, bd.offset, nBytes);
   auto end = std::chrono::steady_clock::now();
   debug_stream
     << "For " << i << " ts2mm : Elapsed time in microseconds for sync : "
@@ -351,30 +345,32 @@ read_trace_s2mm(bool force)
   ts2mm_info.process_queue_lock.unlock();
 
   // Print warning if processing large amount of trace
-  if (nBytes > TS2MM_WARN_BIG_BUF_SIZE && !ts2mm_info.buffers[i].big_trace_warn_done) {
+  if (nBytes > TS2MM_WARN_BIG_BUF_SIZE && !bd.big_trace_warn_done) {
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BIG_BUF);
-    ts2mm_info.buffers[i].big_trace_warn_done = true;
+    bd.big_trace_warn_done = true;
   }
 
-  if (ts2mm_info.buffers[i].used_size == ts2mm_info.buffers[i].buf_size && ts2mm_info.use_circ_buf == false)
-    ts2mm_info.buffers[i].full = true;
+  if (bd.used_size == bd.alloc_size && ts2mm_info.use_circ_buf == false)
+    bd.full = true;
   }
 }
 
 bool DeviceTraceOffload::
 config_s2mm_reader(uint64_t i, uint64_t wordCount)
 {
-  if (ts2mm_info.buffers[i].offload_done)
+  auto& bd = ts2mm_info.buffers[i];
+
+  if (bd.offload_done)
     return false;
 
   auto bytes_written = wordCount * TRACE_PACKET_SIZE;
-  auto bytes_read = ts2mm_info.buffers[i].rollover_count*ts2mm_info.buffers[i].buf_size + ts2mm_info.buffers[i].used_size;
+  auto bytes_read = bd.rollover_count * bd.alloc_size + bd.used_size;
 
   // Offload cannot keep up with the DMA
-  if (bytes_written > bytes_read + ts2mm_info.buffers[i].buf_size) {
+  if (bytes_written > bytes_read + bd.alloc_size) {
     // Don't read any data
-    ts2mm_info.buffers[i].offset = ts2mm_info.buffers[i].used_size;
-    ts2mm_info.buffers[i].offload_done = true;
+    bd.offset = bd.used_size;
+    bd.offload_done = true;
 
     // Add warnings and user markers
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE);
@@ -386,30 +382,30 @@ config_s2mm_reader(uint64_t i, uint64_t wordCount)
   }
 
   // Start Offload from previous offset
-  ts2mm_info.buffers[i].offset = ts2mm_info.buffers[i].used_size;
-  if (ts2mm_info.buffers[i].offset == ts2mm_info.full_buf_size) {
+  bd.offset = bd.used_size;
+  if (bd.offset == bd.alloc_size) {
     if (!ts2mm_info.use_circ_buf) {
-      ts2mm_info.buffers[i].offload_done = true;
+      bd.offload_done = true;
       stop_offload();
       return false;
     }
-    ts2mm_info.buffers[i].rollover_count++;
-    ts2mm_info.buffers[i].offset = 0;
+    bd.rollover_count++;
+    bd.offset = 0;
   }
 
   // End Offload at this offset
-  ts2mm_info.buffers[i].used_size = bytes_written - ts2mm_info.buffers[i].rollover_count*ts2mm_info.full_buf_size;
-  if (ts2mm_info.buffers[i].used_size > ts2mm_info.full_buf_size) {
-    ts2mm_info.buffers[i].used_size = ts2mm_info.full_buf_size;
+  bd.used_size = bytes_written - bd.rollover_count * bd.alloc_size;
+  if (bd.used_size > bd.alloc_size) {
+    bd.used_size = bd.alloc_size;
   }
 
   debug_stream
     << "DeviceTraceOffload::config_s2mm_reader for " << i << " ts2mm " 
     << "Reading from 0x"
-    << std::hex << ts2mm_info.buffers[i].offset << " to 0x" << ts2mm_info.buffers[i].used_size << std::dec
+    << std::hex << bd.offset << " to 0x" << bd.used_size << std::dec
     << " Bytes Read : " << bytes_read
     << " Bytes Written : " << bytes_written
-    << " Rollovers : " << ts2mm_info.buffers[i].rollover_count
+    << " Rollovers : " << bd.rollover_count
     << std::endl;
 
   return true;
@@ -418,25 +414,20 @@ config_s2mm_reader(uint64_t i, uint64_t wordCount)
 bool DeviceTraceOffload::
 init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
 {
-  debug_stream
-    << "DeviceTraceOffload::init_s2mm with size : " << ts2mm_info.full_buf_size
-    << std::endl;
   /* If buffer is already allocated and still attempting to initialize again,
    * then reset the TS2MM IP and free the old buffer
    */
-  if (!ts2mm_info.buffers.empty()) {
+  if (!ts2mm_info.buffers.empty())
     reset_s2mm();
-  }
-
-  if (!ts2mm_info.full_buf_size)
-    return false;
-
   ts2mm_info.buffers.resize(ts2mm_info.num_ts2mm);
 
+  if (buf_sizes.empty())
+    return false;
+
   // Check if allocated buffer and sleep interval can keep up with offload
-  if (dev_intf->supportsCircBuf() && circ_buf) {
+  if (dev_intf->supportsCircBufPL() && circ_buf) {
     if (sleep_interval_ms != 0) {
-      ts2mm_info.circ_buf_cur_rate = buf_sizes[0] * (1000 / sleep_interval_ms);
+      ts2mm_info.circ_buf_cur_rate = buf_sizes.front() * (1000 / sleep_interval_ms);
       if (ts2mm_info.circ_buf_cur_rate >= ts2mm_info.circ_buf_min_rate)
         ts2mm_info.use_circ_buf = true;
     } else {
@@ -444,21 +435,20 @@ init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
     }
   }
 
-  for(uint64_t i = 0; i < ts2mm_info.num_ts2mm; i++) {
-    ts2mm_info.buffers[i].buf_size = buf_sizes[i];
+  for (uint64_t i = 0; i < ts2mm_info.num_ts2mm; i++) {
+    auto& bd = ts2mm_info.buffers[i];
+    bd.alloc_size = buf_sizes[i];
 
-    ts2mm_info.buffers[i].buf = dev_intf->allocTraceBuf(ts2mm_info.buffers[i].buf_size, dev_intf->getTS2MmMemIndex(i));
-
-    if (!ts2mm_info.buffers[i].buf) {
+    bd.buf = dev_intf->allocTraceBuf(bd.alloc_size, dev_intf->getTS2MmMemIndex(i));
+    if (!bd.buf)
       return false;
-    }
 
     // Data Mover will write input stream to this address
-    ts2mm_info.buffers[i].address = dev_intf->getDeviceAddr(ts2mm_info.buffers[i].buf);
-    dev_intf->initTS2MM(i, ts2mm_info.buffers[i].buf_size, ts2mm_info.buffers[i].address, ts2mm_info.use_circ_buf);
+    bd.address = dev_intf->getDeviceAddr(bd.buf);
+    dev_intf->initTS2MM(i, bd.alloc_size, bd.address, ts2mm_info.use_circ_buf);
 
     debug_stream
-    << "DeviceTraceOffload::init_s2mm with each size : " << ts2mm_info.buffers[i].buf_size
+    << "DeviceTraceOffload::init_s2mm with each size : " << bd.alloc_size
     << " initiated " << i << " ts2mm " << std::endl;
   }
   return true;
@@ -471,7 +461,7 @@ reset_s2mm()
   if (ts2mm_info.buffers.empty())
     return;
 
-  for(uint64_t i = 0; i < ts2mm_info.num_ts2mm; i++) {
+  for (uint64_t i = 0; i < ts2mm_info.num_ts2mm; i++) {
     // Need to re-initialize datamover with circular buffer off for reset to work properly
     if (ts2mm_info.use_circ_buf)
       dev_intf->initTS2MM(i, 0, ts2mm_info.buffers[i].address, 0);
@@ -498,7 +488,7 @@ trace_buffer_full()
   }
 
   bool isFull = false;
-  for(uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
+  for (uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
     isFull |= ts2mm_info.buffers[i].full;
   }
   // Throw warning for this offloader if we detect full buffer

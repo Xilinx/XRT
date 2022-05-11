@@ -345,7 +345,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
     std::vector<std::string> args = { "-k", xclbinPath,
-                                      "-d", std::to_string(_dev.get()->get_device_id()) };
+                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     int exit_code;
     try {
       if (py.find(".exe") != std::string::npos)
@@ -542,7 +542,7 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
  * helper function for P2P test
  */
 static bool
-p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::string m_tag,
+p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, const std::string&,
              unsigned int mem_idx, uint64_t addr, uint64_t bo_size, uint32_t no_dma)
 {
   const size_t chunk_size = 16 * 1024 * 1024; //16 MB
@@ -1370,7 +1370,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if supported and details/error/warning: ostr
   // if supported and xclbin/testcase: verbose
   // if not supported: verbose
-  auto redirect_log = [&](std::string tag, std::string log_str) {
+  auto redirect_log = [&](const std::string& tag, const std::string& log_str) {
     std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
     if(boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
       if(XBU::getVerbose())
@@ -1480,7 +1480,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
 static test_status
 run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
                        Report::SchemaVersion schemaVersion,
-                       std::vector<TestCollection *> testObjectsToRun,
+                       const std::vector<TestCollection *>& testObjectsToRun,
                        boost::property_tree::ptree& ptDevCollectionTestSuite)
 {
   boost::property_tree::ptree ptDeviceTestSuite;
@@ -1535,7 +1535,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 static bool
 run_tests_on_devices( xrt_core::device_collection &deviceCollection,
                       Report::SchemaVersion schemaVersion,
-                      std::vector<TestCollection *> testObjectsToRun,
+                      const std::vector<TestCollection *>& testObjectsToRun,
                       std::ostream & output)
 {
   bool has_failures = false;
