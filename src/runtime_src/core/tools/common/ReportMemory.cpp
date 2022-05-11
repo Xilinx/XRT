@@ -248,27 +248,26 @@ ReportMemory::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
 
   // ECC
   try {
-    for (auto& v : _pt.get_child("mem_topology.board.memory.memories",empty_ptree)) {
-      std::string tag, st;
+    for (auto& v : _pt.get_child("mem_topology.board.memory.memories", empty_ptree)) {
+      std::string tag;
       unsigned int ce_cnt = 0, ue_cnt = 0;
       for (auto& subv : v.second) {
         if (subv.first == "tag") {
           tag = subv.second.get_value<std::string>();
-        } else if (subv.first == "extended_info") {
-          st = subv.second.get<std::string>("ecc.status","");
+        } 
+        else if (subv.first == "extended_info") {
+          auto st = subv.second.get<std::string>("ecc.status","");
           if (!st.empty()) {
             ce_cnt = subv.second.get<unsigned int>("ecc.error.correctable.count");
             ue_cnt = subv.second.get<unsigned int>("ecc.error.uncorrectable.count");
+            auto ce_cnt_tag = boost::format("%s_ce_cnt") % tag;
+            _output << m_nagiosFormat % ce_cnt_tag % ce_cnt % "";
+            auto ue_cnt_tag = boost::format("%s_ue_cnt") % tag;
+            _output << m_nagiosFormat % ue_cnt_tag % ue_cnt % "";
           }
         }
       }
-      if (!st.empty()) {
-        auto ce_cnt_tag = boost::format("%s_ce_cnt") % tag;
-        _output << m_nagiosFormat % ce_cnt_tag % ce_cnt % "";
-        auto ue_cnt_tag = boost::format("%s_ue_cnt") % tag;
-        _output << m_nagiosFormat % ue_cnt_tag % ue_cnt % "";
-      }
-    }
+    } 
   }
   catch( std::exception const&) {
     // eat the exception, probably bad path
@@ -278,14 +277,14 @@ ReportMemory::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
 
   // Memory usage
   try {
-    auto mem_pt = _pt.get_child("mem_topology.board.memory.memories",empty_ptree);
-    for (auto& v : mem_pt) {
-      std::string mem_usage, tag;
+    for (auto& v : _pt.get_child("mem_topology.board.memory.memories",empty_ptree)) {
+      std::string mem_usage;
+      std::string tag;
       unsigned bo_count = 0;
       for (auto& subv : v.second) {
-        if (subv.first == "tag") {
+        if (subv.first == "tag")
           tag = subv.second.get_value<std::string>();
-        } else if (subv.first == "extended_info") {
+        else if (subv.first == "extended_info") {
           bo_count = subv.second.get<unsigned>("usage.buffer_objects_count",0);
           mem_usage = xrt_core::utils::unit_convert(subv.second.get<size_t>("usage.allocated_bytes",0));
         }
@@ -303,33 +302,27 @@ ReportMemory::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
   }
 
   // Channel access
-  bool dma_is_present = _pt.get_child("mem_topology.board.direct_memory_accesses.metrics",empty_ptree).size() > 0 ? true:false;
-  if (dma_is_present) {
+  try {
     int index = 0;
-    try {
-      for (auto& v : _pt.get_child("mem_topology.board.direct_memory_accesses.metrics",empty_ptree)) {
-        std::string chan_h2c, chan_c2h, chan_val = "N/A";
-        for (auto& subv : v.second) {
-          chan_val = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
-          if (subv.first == "host_to_card_bytes") {
-            chan_h2c = chan_val;
-            // Units are included from conversion function
-            auto h2c = boost::format("Chan[%d].h2c") % index;
-            _output << m_nagiosFormat % h2c % chan_h2c % "";
-          }
-          else if (subv.first == "card_to_host_bytes") {
-            chan_c2h = chan_val;
-            // Units are included from conversion function
-            auto c2h = boost::format("Chan[%d].c2h") % index;
-            _output << m_nagiosFormat % c2h % chan_c2h % "";
-          }
+    for (auto& v : _pt.get_child("mem_topology.board.direct_memory_accesses.metrics",empty_ptree)) {
+      for (auto& subv : v.second) {
+        auto chan_val = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
+        if (subv.first == "host_to_card_bytes") {
+          // Units are included from conversion function
+          auto h2c = boost::format("Chan[%d].h2c") % index;
+          _output << m_nagiosFormat % h2c % chan_val % "";
+        } 
+        else if (subv.first == "card_to_host_bytes") {
+          // Units are included from conversion function
+          auto c2h = boost::format("Chan[%d].c2h") % index;
+          _output << m_nagiosFormat % c2h % chan_val % "";
         }
-        index++;
       }
+      index++;
     }
-    catch( std::exception const&) {
-      // eat the exception, probably bad path
-    }
+  }
+  catch( std::exception const&) {
+    // eat the exception, probably bad path
   }
 
   // Leave out the data stream info for now. If requested we can add this in later
