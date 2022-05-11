@@ -253,6 +253,14 @@ if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
     fi
 fi
 
+#If git modules config file exist then try to clone them
+GIT_MODULES=$BUILDDIR/../.gitmodules
+if [ -f "$GIT_MODULES" ]; then
+    cd $BUILDDIR/../
+    git submodule update --init
+    cd $BUILDDIR
+fi
+
 if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir

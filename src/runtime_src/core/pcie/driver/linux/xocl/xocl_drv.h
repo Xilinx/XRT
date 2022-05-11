@@ -2568,8 +2568,8 @@ void xocl_fini_feature_rom(void);
 int __init xocl_init_xdma(void);
 void xocl_fini_xdma(void);
 
-int __init xocl_init_qdma4(void);
-void xocl_fini_qdma4(void);
+int __init xocl_init_qdma(void);
+void xocl_fini_qdma(void);
 
 int __init xocl_init_xvc(void);
 void xocl_fini_xvc(void);
