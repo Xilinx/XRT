@@ -82,7 +82,7 @@ namespace xdp {
   AieTracePlugin::AieTracePlugin()
                 : XDPPlugin(),
                   continuousTrace(false),
-                  offloadIntervalms(0)
+                  offloadIntervalUs(0)
   {
     AieTracePlugin::live = true;
 
@@ -93,7 +93,16 @@ namespace xdp {
     // AIE trace is now supported for HW only
     continuousTrace = xrt_core::config::get_aie_trace_periodic_offload();
     if (continuousTrace) {
-      offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
+      auto offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
+      if (offloadIntervalms != 10) {
+        std::stringstream msg;
+        msg << "aie_trace_buffer_offload_interval_ms will be deprecated in future. "
+            << "Please use aie_trace_buffer_offload_interval_us instead.";
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        offloadIntervalUs = offloadIntervalms * 1e3;
+      } else {
+        offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
+      }
     }
 
     // Set Delay parameters
@@ -1096,6 +1105,12 @@ namespace xdp {
                                               aieTraceBufSize,     // total trace buffer size
                                               numAIETraceOutput);  // numStream
 
+    // Can't call init without setting important details in offloader
+    if (continuousTrace && isPLIO) {
+      aieTraceOffloader->setContinuousTrace();
+      aieTraceOffloader->setOffloadIntervalUs(offloadIntervalUs);
+    }
+
     if (!aieTraceOffloader->initReadTrace()) {
       std::string msg = "Allocation of buffer for AIE trace failed. AIE trace will not be available.";
       xrt_core::message::send(severity_level::warning, "XRT", msg);
@@ -1106,11 +1121,8 @@ namespace xdp {
     aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
 
     // Continuous Trace Offload is supported only for PLIO flow
-    if (continuousTrace && isPLIO) {
-      aieTraceOffloader->setContinuousTrace();
-      aieTraceOffloader->setOffloadIntervalms(offloadIntervalms);
+    if (continuousTrace && isPLIO)
       aieTraceOffloader->startOffload();
-    }
   }
 
   void AieTracePlugin::setFlushMetrics(uint64_t deviceId, void* handle)
@@ -1254,9 +1266,8 @@ namespace xdp {
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
-    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
+    if (aieOffloaders.find(deviceId) != aieOffloaders.end())
       (std::get<0>(aieOffloaders[deviceId]))->readTrace(true);
-    }
   }
 
   void AieTracePlugin::finishFlushAIEDevice(void* handle)
@@ -1280,12 +1291,17 @@ namespace xdp {
     // NOTE 1: The data mover uses a burst length of 128, so we need dummy packets
     //         to ensure all execution trace gets written to DDR.
     // NOTE 2: This flush mechanism is only valid for runtime event trace
-    if (runtimeMetrics && xrt_core::config::get_aie_trace_flush()) {
+    // NOTE 3: Disable flush if we have new datamover
+    DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
+    bool ts2mmFlushSupported = false;
+    if (deviceIntf)
+      ts2mmFlushSupported = deviceIntf->supportsflushAIE();
+    if (runtimeMetrics && xrt_core::config::get_aie_trace_flush() && !ts2mmFlushSupported) {
       setFlushMetrics(deviceId, handle);
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
+    if (aieOffloaders.find(deviceId) != aieOffloaders.end()) {
       auto offloader = std::get<0>(aieOffloaders[deviceId]);
       auto logger    = std::get<1>(aieOffloaders[deviceId]);
 
@@ -1304,7 +1320,7 @@ namespace xdp {
 
       aieOffloaders.erase(deviceId);
     }
-    
+
   }
 
   void AieTracePlugin::writeAll(bool /*openNewFiles*/)

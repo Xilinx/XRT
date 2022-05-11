@@ -34,20 +34,23 @@ if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
 fi
 
 COMP_FILE="/usr/share/bash-completion/bash_completion"
-# This is a hack to get around set -e
+# 1. This is a hack to get around set -e
 # The issue is chaining conditionals with actual commands and is
 # documented here: http://mywiki.wooledge.org/BashFAQ/105\
 # The issue is caused when sourcing the ${COMP_FILE}.
 # Specifically ${COMP_FILE}::_sysvdirs. Each check in that function
 # will fail the script due to the issues documented in the FAQ above.
 # If set -e is removed from the pipeline then check can be removed
-if [[ $- != *e* ]] && [ -f "${COMP_FILE}" ]; then
+# 2. Make sure that the shell is bash! The completion may not function
+# correctly or setup on other shells.
+# 3. Make sure the bash completion file exists
+if [[ $- != *e* ]] && [[ "$BASH" == *"/bash" ]] && [ -f "${COMP_FILE}" ]; then
     # Enable autocompletion for the xbutil and xbmgmt commands
     source $COMP_FILE
     source $XILINX_XRT/share/completions/xbutil-bash-completion
     source $XILINX_XRT/share/completions/xbmgmt-bash-completion
 else
-  echo Autocomplete not enabled for XRT tools
+    echo Autocomplete not enabled for XRT tools
 fi
 
 # To use the newest version of the XRT tools, either uncomment or set 

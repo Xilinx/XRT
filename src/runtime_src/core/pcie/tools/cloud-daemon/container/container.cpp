@@ -35,7 +35,9 @@
 #include <iomanip>
 #include <fstream>
 #include <uuid/uuid.h>
+#define OPENSSL_SUPPRESS_DEPRECATED
 #include <openssl/md5.h>
+#undef OPENSSL_SUPPRESS_DEPRECATED
 #include "xclbin.h"
 #include "container.h"
 

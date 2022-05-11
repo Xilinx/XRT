@@ -412,6 +412,28 @@ private:
   std::shared_ptr<xrt_core::device> handle;
 };
 
+/**
+ * operator==() - Compare two device objects
+ *
+ * @return
+ *   True if device objects refers to same physical device
+ */
+XCL_DRIVER_DLLESPEC
+bool
+operator== (const device& d1, const device& d2);
+
+/**
+ * operator!=() - Compare two device objects
+ *
+ * @return
+ *   True if device objects do not refer to same physical device
+ */
+inline bool
+operator!= (const device& d1, const device& d2)
+{
+  return !(d1 == d2);
+}
+
 } // namespace xrt
 
 /// @cond

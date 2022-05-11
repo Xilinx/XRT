@@ -170,12 +170,8 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 static inline void
 xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
 {
-	if (args->cu_index == XOCL_CTX_VIRT_CU_INDEX)
-		info->cu_idx = CU_CTX_VIRT_CU;
-	else {
-		info->cu_idx = args->cu_index & 0xffff;
-		info->cu_domain = args->cu_index >> 16;
-	}
+	info->cu_domain = get_domain(args->cu_index);
+	info->cu_idx = get_domain_idx(args->cu_index);
 
 	if (args->flags == XOCL_CTX_EXCLUSIVE)
 		info->flags = CU_CTX_EXCLUSIVE;
@@ -352,7 +348,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	int num_scu = kds->scu_mgmt.num_cus;
 	int off_idx;
 	int i;
-	
+
 	/* TODO: For CU stat command, there are few things to refine.
 	 * 1. Define size of the command
 	 * 2. Define CU status enum/macro in a header file
@@ -378,16 +374,16 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 
 		switch (status) {
 		case 1:
-			kds->scu_mgmt.status[i] = CU_AP_START;
+			kds->scu_mgmt.xcus[i]->status = CU_AP_START;
 			break;
 		case 0:
-			kds->scu_mgmt.status[i] = CU_AP_IDLE;
+			kds->scu_mgmt.xcus[i]->status = CU_AP_IDLE;
 			break;
 		case -1:
-			kds->scu_mgmt.status[i] = CU_AP_CRASHED;
+			kds->scu_mgmt.xcus[i]->status = CU_AP_CRASHED;
 			break;
 		default:
-			kds->scu_mgmt.status[i] = 0;
+			kds->scu_mgmt.xcus[i]->status = 0;
 		}
 	}
 	mutex_unlock(&kds->scu_mgmt.lock);
@@ -1724,7 +1720,7 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info
 		cfg_cu->hdr.state = 1;
 
 		cfg_cu->cu_idx = i;
-		cfg_cu->cu_domain = 0;
+		cfg_cu->cu_domain = DOMAIN_PL;
 		cfg_cu->ip_ctrl = cu_info[i].protocol;
 		cfg_cu->map_size = cu_info[i].size;
 		cfg_cu->laddr = cu_info[i].addr;
@@ -1805,7 +1801,7 @@ xocl_kds_xgq_cfg_scu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 		cfg_cu->hdr.state = 1;
 
 		cfg_cu->cu_idx = i;
-		cfg_cu->cu_domain = (SCU_DOMAIN >> 16);
+		cfg_cu->cu_domain = DOMAIN_PS;
 		cfg_cu->ip_ctrl = cu_info[i].protocol;
 		cfg_cu->map_size = cu_info[i].size;
 		cfg_cu->laddr = cu_info[i].addr;
@@ -1948,6 +1944,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	if (major != 1 && minor != 0) {
 		userpf_err(xdev, "Only support ERT XGQ command 1.0\n");
 		ret = -EINVAL;
+		xocl_ert_ctrl_dump(xdev);	/* TODO: remove this line before 2022.2 release */
 		goto out;
 	}
 
@@ -1995,7 +1992,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		struct xgq_cmd_resp_query_cu resp;
 		void *xgq;
 
-		ret = xocl_kds_xgq_query_cu(xdev, i, (SCU_DOMAIN>>16), &resp);
+		ret = xocl_kds_xgq_query_cu(xdev, i, DOMAIN_PS, &resp);
 		if (ret)
 			goto create_regular_cu;
 

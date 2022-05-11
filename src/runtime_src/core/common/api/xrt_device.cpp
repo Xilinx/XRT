@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_device.h
@@ -337,6 +338,15 @@ get_info_std(info::device param, const xrt::detail::abi& abi) const
   return query::get_info<std::any>(handle.get(), param, abi);
 }
 #endif
+
+// Equality means that both device objects refer to the same
+// underlying device.  The underlying device is opened based
+// on device id
+bool
+operator== (const device& d1, const device& d2)
+{
+  return d1.get_handle()->get_device_id() == d2.get_handle()->get_device_id();
+}
 
 } // xrt
 
