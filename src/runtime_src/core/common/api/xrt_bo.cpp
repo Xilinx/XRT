@@ -376,11 +376,10 @@ public:
   {
     device->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
     auto a_bo_impl = std::make_shared<xrt::aie::async_bo_impl>(bo, 0, port);
-    auto a_bo_hdl = xrt::aie::async_bo_hdl{a_bo_impl};
     std::unique_lock lk(::async_bo_hdls_mutex);
     ::async_bo_hdls[port].emplace_back(a_bo_impl.get());
 
-    return a_bo_hdl;
+    return xrt::aie::async_bo_hdl{a_bo_impl};
   }
 #endif
 
@@ -1265,6 +1264,13 @@ wait()
   //In future wait only for specific m_bd_num
   dev->wait_gmio(m_gmio_name.c_str());
   itr->second.clear();//All outstanding DMAs for this gmio_name have finished
+}
+
+xrt::aie::async_bo_hdl
+bo::
+async(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
+{
+  return get_handle()->async(*this, port, dir, sz, offset);
 }
 
 void
