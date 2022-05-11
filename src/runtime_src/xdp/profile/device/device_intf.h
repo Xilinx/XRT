@@ -130,8 +130,24 @@ class DeviceIntf {
     size_t getNumberTS2MM() {
       return mPlTraceDmaList.size();
     };
-    bool supportsCircBuf() {
-      return ((1 == getNumberTS2MM()) ? (mPlTraceDmaList[0]->supportsCircBuf()) : false);
+
+    // All datamovers support circular buffer for PL Trace
+    bool supportsCircBufPL() {
+      if (mPlTraceDmaList.size() > 0)
+        return mPlTraceDmaList[0]->supportsCircBuf();
+      return false;
+    }
+
+    // Only version 2 Datamover supports circular buffer/flush for AIE Trace
+    bool supportsCircBufAIE() {
+      if (mAieTraceDmaList.size() > 0)
+        return mAieTraceDmaList[0]->isVersion2();
+      return false;
+    }
+    bool supportsflushAIE() {
+      if (mAieTraceDmaList.size() > 0)
+        return mAieTraceDmaList[0]->isVersion2();
+      return false;
     }
 
     XDP_EXPORT
@@ -149,7 +165,7 @@ class DeviceIntf {
     XDP_EXPORT
     void resetAIETs2mm(uint64_t index);
     XDP_EXPORT
-    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index);
+    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index, bool circular);
 
     XDP_EXPORT
     uint64_t getWordCountAIETs2mm(uint64_t index, bool final);

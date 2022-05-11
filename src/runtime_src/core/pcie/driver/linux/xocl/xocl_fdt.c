@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2018-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *
@@ -229,10 +229,6 @@ static void *p2p_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (node >= 0)
 		return NULL;
 
-	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_QDMA4);
-	if (node >= 0)
-		return NULL;
-
 	p2p_priv = xocl_subdev_priv_alloc(sizeof(*p2p_priv));
 	if (!p2p_priv)
 		return NULL;
@@ -364,25 +360,9 @@ static struct xocl_subdev_map subdev_map[] = {
 	},
 	{
 		.id = XOCL_SUBDEV_DMA,
-		.dev_name = XOCL_QDMA4,
-		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_QDMA4},
-			{.res_name = NODE_STM4},
-			{.res_name = NODE_QDMA4_CSR},
-			{NULL},
-		},
-		.required_ip = 1,
-		.flags = 0,
-		.build_priv_data = NULL,
-		.devinfo_cb = NULL,
-		.max_level = XOCL_SUBDEV_LEVEL_PRP,
-       	},
-	{
-		.id = XOCL_SUBDEV_DMA,
 		.dev_name = XOCL_QDMA,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_QDMA},
-			{.res_name = NODE_STM},
 			{NULL},
 		},
 		.required_ip = 1,

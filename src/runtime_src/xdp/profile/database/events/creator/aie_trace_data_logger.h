@@ -36,7 +36,7 @@ public:
   virtual ~AIETraceDataLogger();
 
   XDP_EXPORT
-  virtual void addAIETraceData(uint64_t strmIndex, void* buffer, uint64_t bufferSz); 
+  virtual void addAIETraceData(uint64_t strmIndex, void* buffer, uint64_t bufferSz);
 };
 
 }

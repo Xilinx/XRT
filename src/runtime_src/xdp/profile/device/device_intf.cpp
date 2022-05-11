@@ -959,11 +959,11 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Initialize an AIE trace data mover
-  void DeviceIntf::initAIETs2mm(uint64_t bufSz, uint64_t bufAddr, uint64_t index)
+  void DeviceIntf::initAIETs2mm(uint64_t bufSz, uint64_t bufAddr, uint64_t index, bool circular)
   {
     if(index >= mAieTraceDmaList.size())
       return;
-    mAieTraceDmaList[index]->init(bufSz, bufAddr, false);
+    mAieTraceDmaList[index]->init(bufSz, bufAddr, circular);
   }
 
   // Get word count written by AIE trace data mover

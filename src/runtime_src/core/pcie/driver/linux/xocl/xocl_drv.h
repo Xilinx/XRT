@@ -1979,6 +1979,7 @@ struct xocl_ert_ctrl_funcs {
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
 	       void (* unset_xgq)(struct platform_device *pdev);
+	       void (* dump_xgq)(struct platform_device *pdev); /** TODO: Remove this line before 2022.2 release **/
 	};
 
 #define ERT_CTRL_DEV(xdev)     \
@@ -2011,6 +2012,11 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_unset_xgq(xdev) \
 	(ERT_CTRL_CB(xdev, unset_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev)) : NULL)
+/** TODO: Remove below debug function before 2022.2 release **/
+#define xocl_ert_ctrl_dump(xdev) \
+	(ERT_CTRL_CB(xdev, dump_xgq) ? \
+	 ERT_CTRL_OPS(xdev)->dump_xgq(ERT_CTRL_DEV(xdev)) : NULL)
+/** debug function end */
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2562,8 +2568,8 @@ void xocl_fini_feature_rom(void);
 int __init xocl_init_xdma(void);
 void xocl_fini_xdma(void);
 
-int __init xocl_init_qdma4(void);
-void xocl_fini_qdma4(void);
+int __init xocl_init_qdma(void);
+void xocl_fini_qdma(void);
 
 int __init xocl_init_xvc(void);
 void xocl_fini_xvc(void);
