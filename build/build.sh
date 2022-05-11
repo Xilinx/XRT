@@ -58,7 +58,7 @@ usage()
     echo "[-verbose]                  Turn on verbosity when compiling"
     echo "[-ertbsp <dir>]             Path to directory with pre-downloaded BSP files for building ERT (default: download BSP files during build time)"
     echo "[-ertfw <dir>]              Path to directory with pre-built ert firmware (default: build the firmware)"
-    echo "[-qdmadir <dir>]            Path to directory with pre-downloaded QDMA lib files for building QDMA (default: download QDMA lib files during build time)"
+    echo "[-qdmalib <dir>]            Path to directory with pre-downloaded QDMA lib files for building QDMA (default: download QDMA lib files during build time)"
     echo ""
     echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
     echo "When compiler is not accesible, use -ertfw to specify path to directory with"
@@ -90,7 +90,7 @@ noctest=0
 static_boost=""
 ertbsp=""
 ertfw=""
-qdmadir=""
+qdmalib=""
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
 while [ $# -gt 0 ]; do
@@ -117,9 +117,9 @@ while [ $# -gt 0 ]; do
             ertfw=$1
             shift
             ;;
-        -qdmadir)
+        -qdmalib)
             shift
-            qdmadir=$1
+            qdmalib=$1
             shift
             ;;
         -edge)
@@ -236,9 +236,9 @@ if [[ ! -z $ertfw ]]; then
     export XRT_FIRMWARE_DIR=$ertfw
 fi
 
-if [[ ! -z $qdmadir ]]; then
-    echo "export QDMA_LIB_DIR=$qdmadir"
-    export QDMA_LIB_DIR=$qdmadir
+if [[ ! -z $qdmalib ]]; then
+    echo "export QDMA_LIB_DIR=$qdmalib"
+    export QDMA_LIB_DIR=$qdmalib
 fi
 
 if [[ ! -z $static_boost ]]; then
@@ -266,11 +266,10 @@ if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
 fi
 
 #If git modules config file exist then try to clone them
-if [[ -z $qdmadir ]]; then
+if [[ -z $qdmalib ]]; then
     GIT_MODULES=$BUILDDIR/../.gitmodules
     if [ -f "$GIT_MODULES" ]; then
         cd $BUILDDIR/../
-        git submodule sync
         git submodule update --init
         cd $BUILDDIR
     fi
