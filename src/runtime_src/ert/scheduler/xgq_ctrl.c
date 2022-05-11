@@ -1,3 +1,18 @@
+/**
+ * Copyright (C) 2022 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 #include "xgq_mb_plat.h"
 #include "xgq_impl.h"
 #include "xgq_ctrl.h"
@@ -19,13 +34,13 @@ inline void xgq_ctrl_init(struct xgq_ctrl *xgq_ctrl, struct xgq *xgq)
 inline void xgq_ctrl_response(struct xgq_ctrl *xgq_ctrl, void *resp, uint32_t size)
 {
 	int offset = 0;
-	uint32_t slot_addr;
+	uint64_t slot_addr;
 	struct sched_cmd *cmd = &xgq_ctrl->ctrl_cmd;
 
 	cmd_clear_header(cmd, 0);
 	xgq_notify_peer_consumed(xgq_ctrl->xgq);
 
-	while (xgq_produce(xgq_ctrl->xgq, (uint64_t *)&slot_addr))
+	while (xgq_produce(xgq_ctrl->xgq, &slot_addr))
 		continue;
 
 	for (; offset < size; offset+=4) {

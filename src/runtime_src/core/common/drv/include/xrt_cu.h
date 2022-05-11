@@ -27,16 +27,6 @@
 #define ioremap_nocache         ioremap
 #endif
 
-#define MAX_CUS 128
-#define MAX_SLOT 32
-
-/* Soft kernel indices are numbered from 0 to some MAX_CUS
- * but are in a distinct domain which is indiciated by the
- * first 16 bit of the index used to identify the soft kernel
- */
-#define SCU_DOMAIN 0x10000
-#define	SOFT_KERNEL_REG_SIZE	4096
-
 /* The normal CU in ip_layout would assign a interrupt
  * ID in range 0 to 127. Use 128 for m2m cu could ensure
  * m2m CU is at the end of the CU, which is compatible with
@@ -239,8 +229,10 @@ enum CU_PROTOCOL {
 
 struct xrt_cu_info {
 	u32			 model;
-	int			 cu_idx;
 	u32			 slot_idx;
+	/* CU Index respected to a slot */
+	int			 cu_idx;
+	/* Global CU Index respected to a device */
 	int			 inst_idx;
 	u64			 addr;
 	size_t			 size;
@@ -283,6 +275,7 @@ struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
 	struct resource		**res;
+	struct list_head	  cu;
 	/* pending queue */
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;
@@ -561,42 +554,7 @@ struct xrt_cu_fa {
 int xrt_cu_fa_init(struct xrt_cu *xcu);
 void xrt_cu_fa_fini(struct xrt_cu *xcu);
 
-#define to_cu_scu(core) ((struct xrt_cu_scu *)(core))
-struct xrt_cu_scu {
-	u64			 paddr;
-	u32			 slot_sz;
-	u32			 num_slots;
-	u32			 head_slot;
-	u32			 desc_msw;
-	u32			 task_cnt;
-	int			 max_credits;
-	int			 credits;
-	int			 run_cnts;
-	u64			 check_count;
-	void			*vaddr;
-	struct drm_zocl_bo	*sc_bo;
-	spinlock_t		 cu_lock;
-
-	/*
-	 * This semaphore is used for each soft kernel
-	 * CU to wait for next command. When new command
-	 * for this CU comes in or we are told to abort
-	 * a CU, ert will up this semaphore.
-	 */
-	struct semaphore	sc_sem;
-
-	uint32_t		sc_flags;
-	uint64_t		usage;
-
-	/*
-	 * soft cu pid and parent pid. This can be used to identify if the
-	 * soft cu is still running or not. The parent should never crash
-	 */
-	uint32_t		sc_pid;
-	uint32_t		sc_parent_pid;
-};
-
-int xrt_cu_scu_init(struct xrt_cu *xcu);
+int xrt_cu_scu_init(struct xrt_cu *xcu, void *vaddr, struct semaphore *sem);
 void xrt_cu_scu_fini(struct xrt_cu *xcu);
 
 #endif /* _XRT_CU_H */

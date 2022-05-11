@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,19 +18,15 @@
 #define __DTC_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "DTCStringsBlock.h"
 #include "FDTNode.h"
-
 #include <boost/property_tree/ptree.hpp>
 
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
-// ------------------- C L A S S :   S e c t i o n ---------------------------
+// ------------------- C L A S S :   D T C -----------------------------------
 
 class DTC {
+ private:
+  DTC();
 
  public:
   DTC(const char* _pBuffer, const unsigned int _size, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
@@ -44,12 +40,6 @@ class DTC {
  protected:
   void marshalFromDTCImage( const char* _pBuffer, const unsigned int _size, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
   void marshalFromJSON(const boost::property_tree::ptree &_ptDTC, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
-
- private:
-  // Purposefully private and undefined ctors...
-  DTC();
-  DTC(const DTC& obj);
-  DTC& operator=(const DTC& obj);
 
  private:
   DTCStringsBlock m_DTCStringsBlock;    // Block of property strings

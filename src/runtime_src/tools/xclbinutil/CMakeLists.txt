@@ -1,7 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 # Signing xclbin images are currently only support on Linux
+
+# cmake 3.19 and after emits warning about this policy not being set
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)
+  cmake_policy(SET CMP0110 NEW)
+endif(CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)
 
 if(NOT WIN32)
   find_package(OpenSSL REQUIRED)
@@ -126,9 +131,13 @@ if(NOT WIN32)
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/BinaryImages")
   xrt_add_test("binary-images" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/BinaryImages/BinaryImages.py ${TEST_OPTIONS}")
 
-  # -- Binary Images
+  # -- Single Subsection
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SingleSubsection")
   xrt_add_test("single-subsection" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SingleSubsection/SingleSubsection.py ${TEST_OPTIONS}")
+
+  # -- AIE Partition
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AIEPartition")
+  xrt_add_test("aie-partition" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AIEPartition/AIEPartition.py ${TEST_OPTIONS}")
 
 endif()
 

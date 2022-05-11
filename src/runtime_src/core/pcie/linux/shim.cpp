@@ -587,8 +587,6 @@ int shim::dev_init()
     mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 
     mStreamHandle = mDev->open("dma.qdma", O_RDWR | O_SYNC);
-    if (mStreamHandle <= 0)
-       mStreamHandle = mDev->open("dma.qdma4", O_RDWR | O_SYNC);
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
 
@@ -1110,15 +1108,28 @@ int shim::resetDevice(xclResetKind kind)
 
     dev_fini();
 
+    // This loop used to wait for device come online and ready to use. It reads "dev_offline"
+    // sysfs node to retrieve latest status of device in the interval of 500 milli sec.
+    // In certain testing environement, reset never complete and waits indefinitely
+    // in this loop for dev_offline status to be false. To overcome this infinite loop issue,
+    // added loop_timer (default value set to 120 sec) which is used to exit the loop.
+    unsigned int loop_timer = xrt_core::config::get_device_offline_timer();
+    auto start = std::chrono::system_clock::now();
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
             "dev_offline", err, dev_offline, -1);
+        auto end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        if (elapsed_seconds.count() > loop_timer) {
+            xrt_logmsg(XRT_WARNING, "%s: device unable to come online during reset, try again", __func__);
+            ret = -EAGAIN;
+        }
     }
 
     dev_init();
 
-    return 0;
+    return ret;
 }
 
 int shim::p2pEnable(bool enable, bool force)
@@ -2439,12 +2450,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xdp::aie::flush_device(handle);
     xdp::pl_deadlock::flush_device(handle);
 
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-    int ret = 0;
-#else
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
-#endif
-
     if (!ret) {
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
@@ -2453,7 +2459,6 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       xdp::aie::update_device(handle);
       xdp::pl_deadlock::update_device(handle);
 
-#ifndef DISABLE_DOWNLOAD_XCLBIN
       //scheduler::init can not be skipped even for same_xclbin
       //as in multiple process stress tests it fails as
       //below init step is without a lock with above driver load xclbin step.
@@ -2462,7 +2467,6 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       //is ignored
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
-#endif
     }
     return ret;
   }
@@ -2797,13 +2801,8 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
 {
   return xdp::hal::profiling_wrapper("xclOpenContext",
   [handle, xclbinId, ipIndex, shared] {
-
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-  return 0;
-#endif
-
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
   }) ;
 }
 
@@ -2828,13 +2827,8 @@ int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIn
 {
   return xdp::hal::profiling_wrapper("xclCloseContext",
   [handle, xclbinId, ipIndex] {
-
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-  return 0;
-#endif
-
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
   });
 }
 

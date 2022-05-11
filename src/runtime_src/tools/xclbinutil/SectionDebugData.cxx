@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,19 +16,16 @@
 
 #include "SectionDebugData.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionDebugData::_init SectionDebugData::_initializer;
+SectionDebugData::init SectionDebugData::initializer;
 
-SectionDebugData::SectionDebugData() {
-  // Empty
+SectionDebugData::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_DATA, "DEBUG_DATA", boost::factory<SectionDebugData*>());
+
+  addSectionType(std::move(sectionInfo));
 }
-
-SectionDebugData::~SectionDebugData() {
-  // Empty
-}
-
 
 

@@ -52,7 +52,7 @@ enum class OffloadThreadType {
 
 struct TraceBufferInfo {
   size_t   buf;
-  uint64_t buf_size;
+  uint64_t alloc_size;
   uint64_t used_size;
   uint64_t offset;
   uint64_t address;
@@ -64,7 +64,7 @@ struct TraceBufferInfo {
   
   TraceBufferInfo()
     : buf(0),
-      buf_size(0),
+      alloc_size(0),
       used_size(0),
       offset(0),
       address(0),

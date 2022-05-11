@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020 Xilinx, Inc
+ * Copyright (C) 2018, 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,23 +16,22 @@
 
 #include "SectionBuildMetadata.h"
 
-#include <boost/property_tree/json_parser.hpp>
-
-#include "XclBinUtilities.h"
-
 #include "version.h" // Globally included from main
+#include "XclBinUtilities.h"
+#include <boost/functional/factory.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionBuildMetadata::_init SectionBuildMetadata::_initializer;
+SectionBuildMetadata::init SectionBuildMetadata::initializer;
 
-SectionBuildMetadata::SectionBuildMetadata() {
-  // Empty
-}
+SectionBuildMetadata::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(BUILD_METADATA, "BUILD_METADATA", boost::factory<SectionBuildMetadata*>()); 
+  sectionInfo->nodeName = "build_metadata";
 
-SectionBuildMetadata::~SectionBuildMetadata() {
-  // Empty
+  addSectionType(std::move(sectionInfo));
 }
 
 void 
@@ -79,8 +78,8 @@ SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSect
 bool 
 SectionBuildMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if ((_eFormatType == FT_JSON) ||
-      (_eFormatType == FT_RAW)){
+  if ((_eFormatType == FormatType::JSON) ||
+      (_eFormatType == FormatType::RAW)){
     return true;
   }
   return false;
@@ -89,8 +88,8 @@ SectionBuildMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionBuildMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML))
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML))
     {
       return true;
     }

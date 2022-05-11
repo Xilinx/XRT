@@ -220,6 +220,8 @@ namespace xrt {
 	munmap(bos[i],boSize[i]);
 	xclFreeBO(devHdl,boHandles[i]);
       }
+      bo_list.clear();
+
     }
 
   }
@@ -230,6 +232,22 @@ namespace xrt {
     std::string finiExtension = "_fini";
     char sk_fini[PS_KERNEL_NAME_LENGTH+finiExtension.size()];
     int ret = 0;
+
+    // Check if SCU is still in running state
+    // If it is, that means it has crashed
+    if((args_from_host[0] & 0x1) == 1) {
+      report_crash();  // Function to report crash to kernel - not implemented yet in kernel space
+    }
+    // Unmap command BO
+    if(cmd_boh >= 0) {
+      xclBOProperties prop;
+      if (xclGetBOProperties(devHdl, cmd_boh, &prop)) {
+      }
+      ret = munmap(args_from_host,prop.size);
+      if (ret) {
+	syslog(LOG_ERR, "Cannot munmap BO %d, at %p\n", cmd_boh, &args_from_host);
+      }
+    }
 
     snprintf(sk_fini,PS_KERNEL_NAME_LENGTH+finiExtension.size(),"%s%s",sk_name,finiExtension.c_str());
     kernel_fini = (kernel_fini_t)dlsym(sk_handle, sk_fini);
@@ -244,17 +262,9 @@ namespace xrt {
     if (ret) {
       syslog(LOG_ERR, "Cannot remove soft kernel file %s\n", sk_path);
     }
-    if(cmd_boh >= 0) {
-      xclBOProperties prop;
-      if (xclGetBOProperties(devHdl, cmd_boh, &prop)) {
-      }
-      ret = munmap(args_from_host,prop.size);
-      if (ret) {
-	syslog(LOG_ERR, "Cannot munmap BO %d, at %p\n", cmd_boh, &args_from_host);
-      }
-    }
     xclClose(devHdl);
     xclClose(parent_devHdl);
+    report_fini();
   }
 
   int skd::createSoftKernel(int *boh) {
@@ -365,6 +375,10 @@ namespace xrt {
   // Respond to SCU subdevice PS kernel initialization is done
   void skd::report_ready() {
     xclSKReport(devHdl,cu_idx,XRT_SCU_STATE_READY);
+  }
+
+  void skd::report_fini() {
+    xclSKReport(devHdl,cu_idx,XRT_SCU_STATE_FINI);
   }
 
   void skd::report_crash() {

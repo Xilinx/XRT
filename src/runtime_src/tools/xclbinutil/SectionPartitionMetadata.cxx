@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,13 +15,28 @@
  */
 
 #include "SectionPartitionMetadata.h"
+
 #include "DTC.h"
+#include "XclBinUtilities.h"
 #include <algorithm>
 #include <boost/algorithm/string/replace.hpp>
+#include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
+
+// Static Variables / Classes
+SectionPartitionMetadata::init SectionPartitionMetadata::initializer;
+
+SectionPartitionMetadata::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(PARTITION_METADATA, "PARTITION_METADATA", boost::factory<SectionPartitionMetadata *>()); 
+  sectionInfo->nodeName = "partition_metadata";
+
+  addSectionType(std::move(sectionInfo));
+}
+
 
 template <typename T>
 std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
@@ -32,9 +47,6 @@ std::vector<T> as_vector(boost::property_tree::ptree const& pt,
         r.push_back(item.second.get_value<T>());
     return r;
 }
-
-// Static Variables / Classes
-SectionPartitionMetadata::_init SectionPartitionMetadata::_initializer;
 
 
 // Variable name to data size mapping table
@@ -262,8 +274,8 @@ SchemaTransformToDTC_interrupt_endpoint( const std::string _sEndPointName,
   // -- Transform array to 'interrupts' array
   // Validate the count id is correct
   if (_ptOriginal.size() % 2 != 0) {
-    std::string errMsg =  XUtil::format("Error: The interrupt count (%d) for the interrupt '%s' needs to be a paired (e.g. even) set.", _ptOriginal.size(), _sEndPointName.c_str());
-    throw std::runtime_error(errMsg);
+    auto errMsg =  boost::format("Error: The interrupt count (%d) for the interrupt '%s' needs to be a paired (e.g. even) set.") % _ptOriginal.size() % _sEndPointName;
+    throw std::runtime_error(errMsg.str());
   }
 
   // -- Move the array down to an interrupt array
@@ -302,7 +314,7 @@ SchemaTransformToDTC_interfaces( const boost::property_tree::ptree& _ptOriginal,
 
     SchemaTransform_nameValue("interface_uuid", "", true  /*required*/, interface.second, ptInterface);
 
-    std::string sIndex = XUtil::format("@%d", index++);
+    std::string sIndex = (boost::format("@%d") % index++).str();
     _ptTransformed.add_child(sIndex.c_str(), ptInterface);
   }
 }
@@ -772,21 +784,11 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
                            _ptOriginal, _ptTransformed);
 }
 
-
-
-SectionPartitionMetadata::SectionPartitionMetadata() {
-  // Empty
-}
-
-SectionPartitionMetadata::~SectionPartitionMetadata() {
-  // Empty
-}
-
 bool 
 SectionPartitionMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (( _eFormatType == FT_JSON ) ||
-      ( _eFormatType == FT_RAW )) {
+  if (( _eFormatType == FormatType::JSON ) ||
+      ( _eFormatType == FormatType::RAW )) {
     return true;
   }
   return false;
@@ -795,9 +797,9 @@ SectionPartitionMetadata::doesSupportAddFormatType(FormatType _eFormatType) cons
 bool 
 SectionPartitionMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML) ||
-        (_eFormatType == FT_RAW))
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML) ||
+        (_eFormatType == FormatType::RAW))
     {
       return true;
     }

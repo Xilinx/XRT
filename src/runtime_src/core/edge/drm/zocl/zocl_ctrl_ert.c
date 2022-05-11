@@ -136,7 +136,6 @@ struct zocl_ctrl_ert {
 
 	size_t			zce_num_scus;
 	struct zocl_ctrl_ert_cu *zce_scus;
-	resource_size_t		zce_max_scu_size;
 
 	struct platform_device	*zce_xgq_intc;
 
@@ -210,9 +209,6 @@ static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu 
 {
 	int ret = 0;
 	struct xrt_cu_info info = {0};
-	struct zocl_scu *zcu = NULL;
-	struct xrt_cu *xcu = NULL;
-	struct xrt_cu_scu *cu_scu = NULL;
 	u32 cuidx = conf->cu_idx;
 
 	if (cuidx >= zert->zce_num_scus) {
@@ -228,8 +224,8 @@ static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu 
 		return ret;
 	}
 
-	if (conf->payload_size > zert->zce_max_scu_size)
-		zert->zce_max_scu_size = conf->payload_size;
+	if (conf->payload_size > zert->zce_max_cu_size)
+		zert->zce_max_cu_size = conf->payload_size;
 
 	ret = zocl_scu_wait_ready(zert->zce_scus[cuidx].zcec_pdev);
 	if(ret) {
@@ -313,7 +309,7 @@ static void zert_unassign_cu_xgqs(struct zocl_ctrl_ert *zert)
 	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
 		idx = cu->zcec_xgq_idx;
 		if (idx != ZERT_INVALID_XGQ_ID) {
-			ret = zcu_xgq_unassign_cu(zert->zce_cu_xgqs[idx].zcecx_pdev, i, SCU_DOMAIN>>16);
+			ret = zcu_xgq_unassign_cu(zert->zce_cu_xgqs[idx].zcecx_pdev, i, DOMAIN_PS);
 			if (ret)
 				zert_err(zert, "Failed to unassign SCU %d to XGQ %d", i, idx);
 		}
@@ -333,13 +329,13 @@ static void zert_destroy_cus(struct zocl_ctrl_ert *zert)
 	// TO-DO: Will need to make this more robust in future
 	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
 		if (cu->zcec_pdev) {
+			zocl_scu_sk_shutdown(cu->zcec_pdev);
 			zlib_destroy_subdev(cu->zcec_pdev);
 			cu->zcec_pdev = NULL;
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
 		}
 	}
 	zert->zce_num_scus = 0;
-	zert->zce_max_scu_size = 0;
 	kfree(zert->zce_scus);
 	zert->zce_scus = NULL;
 
@@ -415,7 +411,7 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 			}
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
-			ret = zcu_xgq_assign_cu(xgqpdev, i, 0);
+			ret = zcu_xgq_assign_cu(xgqpdev, i, DOMAIN_PL);
 			if (ret)
 				zert_err(zert, "Failed to assign CU %d to XGQ %d", i, idx);
 			else
@@ -435,7 +431,7 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 			}
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
-			ret = zcu_xgq_assign_cu(xgqpdev, i, SCU_DOMAIN>>16);
+			ret = zcu_xgq_assign_cu(xgqpdev, i, DOMAIN_PS);
 			if (ret)
 				zert_err(zert, "Failed to assign CU %d to XGQ %d", i, idx);
 			else
@@ -458,7 +454,7 @@ static int zert_create_cu_xgqs(struct zocl_ctrl_ert *zert)
 	BUG_ON(zert->zce_cu_xgq_ring_size % alignment);
 
 	/* No need to create CU XGQ if there is no CU configured. */
-	if (zert->zce_num_cus == 0) {
+	if ((zert->zce_num_cus == 0) && (zert->zce_num_scus == 0)) {
 		zert_info(zert, "No CU is configured, skip creating XGQs");
 		return 0;
 	}
@@ -850,7 +846,7 @@ static void zert_cmd_cfg_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *c
 	int rc;
 	struct xgq_cmd_config_cu *c = (struct xgq_cmd_config_cu *)cmd;
 
-	if(c->cu_domain==(SCU_DOMAIN>>16)) {
+	if(c->cu_domain == DOMAIN_PS) {
 		rc = zert_create_scu(zert, c);
 		init_resp(resp, cmd->cid, rc);
 	} else {
@@ -866,7 +862,7 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 	struct xgq_cmd_query_cu *c = (struct xgq_cmd_query_cu *)cmd;
 	struct xgq_cmd_resp_query_cu *r = (struct xgq_cmd_resp_query_cu *)resp;
 
-	if(c->cu_domain == (SCU_DOMAIN>>16)) {
+	if(c->cu_domain == DOMAIN_PS) {
 		if (zert->zce_num_scus <= c->cu_idx) {
 			zert_err(zert, "SCU index (%d) out of range", c->cu_idx);
 			init_resp(resp, cmd->cid, -EINVAL);
@@ -903,7 +899,7 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 		r->offset = zert->zce_cu_xgqs[r->xgq_id].zcecx_ring - zert->zce_cq_start;
 		break;
 	case XGQ_CMD_QUERY_CU_STATUS:
-		if(c->cu_domain == (SCU_DOMAIN>>16)) {
+		if(c->cu_domain == DOMAIN_PS) {
 			r->status = zocl_scu_get_status(cu->zcec_pdev);
 		} else {
 			r->status = zocl_cu_get_status(cu->zcec_pdev);

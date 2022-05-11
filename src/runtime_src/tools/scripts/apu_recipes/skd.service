@@ -1,0 +1,15 @@
+[Unit]
+Description=Soft Kernel Daemon
+After=apu-boot
+
+[Service]
+StartLimitIntervalSec=0
+Restart=always
+RestartSec=1
+User=softkernel
+ExecStart=/usr/bin/skd
+RemainAfterExit=on
+StandardOutput=journal+console
+ 
+[Install]
+WantedBy=multi-user.target

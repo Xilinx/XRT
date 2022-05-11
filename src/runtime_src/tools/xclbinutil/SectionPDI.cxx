@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,19 +16,16 @@
 
 #include "SectionPDI.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionPDI::_init SectionPDI::_initializer;
+SectionPDI::init SectionPDI::initializer;
 
-SectionPDI::SectionPDI() {
-  // Empty
+SectionPDI::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(PDI, "PDI", boost::factory<SectionPDI*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
-
-SectionPDI::~SectionPDI() {
-  // Empty
-}
-
 
 

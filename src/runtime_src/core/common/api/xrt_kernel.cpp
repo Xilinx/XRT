@@ -1571,6 +1571,12 @@ public:
     return name;
   }
 
+  xrt::xclbin
+  get_xclbin() const
+  {
+    return xclbin;
+  }
+
   const std::bitset<max_cus>&
   get_cumask() const
   {
@@ -2370,25 +2376,22 @@ class mailbox_impl : public run_impl
   void
   mailbox_wait(const mailbox_operation& mbop)
   {
+    poll(mbop);//Get initial status of read/write ack bit before polling in while loop.
     if (mbop == mailbox_operation::write) {
-        if (m_aquire_write)
+	    while (m_busy_write) //poll write done bit
+            poll(mailbox_operation::write);
+        if (m_aquire_write) //Return if already aquired.
             return;
-
-       while (m_busy_write) //poll write done bit
-           poll(mailbox_operation::write);
-
        uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
        kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
        m_aquire_write = true;
     }
 
     if (mbop == mailbox_operation::read) {
-        if (m_aquire_read)
-            return;
-
         while (m_busy_read) //poll read done bit
             poll(mailbox_operation::read);
-
+        if (m_aquire_read) //Return if already aquired. 
+            return;
         uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
         kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
         m_aquire_read = true;
@@ -3122,6 +3125,20 @@ offset(int argno) const
   return xdp::native::profiling_wrapper("xrt::kernel::offset", [this, argno]{
     return handle->arg_offset(argno);
   });
+}
+
+std::string
+kernel::
+get_name() const
+{
+  return handle->get_name();
+}
+
+xrt::xclbin
+kernel::
+get_xclbin() const
+{
+  return handle->get_xclbin();
 }
 
 } // namespace xrt

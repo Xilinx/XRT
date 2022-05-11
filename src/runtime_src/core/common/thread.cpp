@@ -25,7 +25,7 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/tokenizer.hpp>
 
-#ifdef __GNUC__
+#ifdef __linux__
 # include <pthread.h>
 # include <sched.h>
 #endif
@@ -34,7 +34,7 @@ namespace {
 
 namespace platform_specific {
 
-#ifdef __GNUC__
+#ifdef __linux__
 
 static void
 debug_thread_policy(const std::string& str, int policy, int priority)

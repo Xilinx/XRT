@@ -14,10 +14,26 @@
 #include "zocl_sk.h"
 #include "xrt_cu.h"
 
+#define	SOFT_KERNEL_REG_SIZE	4096
+
 struct zocl_scu {
 	struct xrt_cu		 base;
 	struct platform_device	*pdev;
-	spinlock_t		 lock;
+	struct drm_zocl_bo	*sc_bo;
+	/*
+	 * This semaphore is used for each soft kernel
+	 * CU to wait for next command. When new command
+	 * for this CU comes in or we are told to abort
+	 * a CU, ert will up this semaphore.
+	 */
+	struct semaphore	sc_sem;
+
+	/*
+	 * soft cu pid and parent pid. This can be used to identify if the
+	 * soft cu is still running or not. The parent should never crash
+	 */
+	uint32_t		sc_pid;
+	uint32_t		sc_parent_pid;
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -141,13 +157,19 @@ static int scu_probe(struct platform_device *pdev)
 
 	zcu->pdev = pdev;
 	zcu->base.dev = &pdev->dev;
+	sema_init(&zcu->sc_sem, 0);
 
 	info = dev_get_platdata(&pdev->dev);
 	memcpy(&zcu->base.info, info, sizeof(struct xrt_cu_info));
 
 	zdev = zocl_get_zdev();
-
-	err = xrt_cu_scu_init(&zcu->base);
+	zcu->sc_bo = zocl_drm_create_bo(zdev->ddev, SOFT_KERNEL_REG_SIZE, ZOCL_BO_FLAGS_CMA);
+	if (IS_ERR(zcu->sc_bo)) {
+		return -ENOMEM;
+		goto err;
+	}
+	zcu->sc_bo->flags = ZOCL_BO_FLAGS_CMA;
+	err = xrt_cu_scu_init(&zcu->base, zcu->sc_bo->cma_base.vaddr, &zcu->sc_sem);
 	if (err) {
 		DRM_ERROR("Not able to initial SCU %p\n", zcu);
 		goto err;
@@ -183,6 +205,8 @@ static int scu_remove(struct platform_device *pdev)
 	if (zcu->base.res)
 		vfree(zcu->base.res);
 
+	// Free Command Buffer BO
+	zocl_drm_free_bo(zcu->sc_bo);
 	sysfs_remove_group(&pdev->dev.kobj, &scu_attrgroup);
 
 	zocl_info(&pdev->dev, "SCU[%d] removed", info->cu_idx);
@@ -204,6 +228,7 @@ struct platform_driver scu_driver = {
 	},
 	.id_table	= scu_id_table,
 };
+
 u32 zocl_scu_get_status(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
@@ -211,36 +236,31 @@ u32 zocl_scu_get_status(struct platform_device *pdev)
 	BUG_ON(!zcu);
 	return xrt_cu_get_status(&zcu->base);
 }
+
 int zocl_scu_create_sk(struct platform_device *pdev, u32 pid, u32 parent_pid, struct drm_file *filp, int *boHandle)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
-	struct xrt_cu *xcu = &zcu->base;
-	struct xrt_cu_scu *cu_scu = xcu->core;
 	int ret = 0;
 
-	if(!cu_scu) {
-		return -EINVAL;
-	}
-	cu_scu->sc_pid = pid;
-	cu_scu->sc_parent_pid = parent_pid;
+	zcu->sc_pid = pid;
+	zcu->sc_parent_pid = parent_pid;
 	ret = drm_gem_handle_create(filp,
-				    &cu_scu->sc_bo->cma_base.base, boHandle);
+				    &zcu->sc_bo->cma_base.base, boHandle);
 	return(ret);
 }
+
 int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
-	struct xrt_cu *xcu = &zcu->base;
-	struct xrt_cu_scu *cu_scu = xcu->core;
 	int ret = 0;
-	u32 *vaddr = cu_scu->vaddr;
+	u32 *vaddr = zcu->sc_bo->cma_base.vaddr;
 
 	/* If the CU is running, mark it as done */
 	if (*vaddr & 1)
 		/* Clear Bit 0 and set Bit 1 */
 		*vaddr = 2 | (*vaddr & ~3);
 
-	if (down_interruptible(&cu_scu->sc_sem)) {
+	if (down_interruptible(&zcu->sc_sem)) {
 		ret = -EINTR;
 	}
 
@@ -254,15 +274,15 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 
 	return 0;
 }
+
 int zocl_scu_wait_ready(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &zcu->base;
-	struct xrt_cu_scu *cu_scu = xcu->core;
 	int ret = 0;
 
 	// Wait for PS kernel initizliation complete
-	if(down_timeout(&cu_scu->sc_sem,100)) {
+	if(down_timeout(&zcu->sc_sem,100)) {
 		zocl_err(&pdev->dev, "PS kernel initialization timed out!");
 		return -ETIME;
 	}
@@ -273,20 +293,66 @@ int zocl_scu_wait_ready(struct platform_device *pdev)
 	}
 	return 0;
 }
+
 void zocl_scu_sk_ready(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
-	struct xrt_cu *xcu = &zcu->base;
-	struct xrt_cu_scu *cu_scu = xcu->core;
 
-	up(&cu_scu->sc_sem);
+	up(&zcu->sc_sem);
 }
+
 void zocl_scu_sk_crash(struct platform_device *pdev)
 {
-	struct zocl_scu *zcu = platform_get_drvdata(pdev);
-	struct xrt_cu *xcu = &zcu->base;
-	struct xrt_cu_scu *cu_scu = xcu->core;
+	//struct zocl_scu *zcu = platform_get_drvdata(pdev);
 
 	// TO-DO
 	// Add taks to indicate PS kernel crash
+	return; /* Place holder */
+}
+
+void zocl_scu_sk_shutdown(struct platform_device *pdev)
+{
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct pid *p = NULL;
+	struct task_struct *task = NULL;
+	int ret = 0;
+
+	// Wait for PS Kernel Process to finish
+	p = find_get_pid(zcu->sc_pid);
+	if(!p) {
+		// Process already gone
+		goto skip_kill;
+	}
+
+	task = pid_task(p, PIDTYPE_PID);
+	if(!task) {
+		DRM_WARN("Failed to get task for pid %d\n", zcu->sc_pid);
+		put_pid(p);
+		goto skip_kill;
+	}
+
+	if(zcu->sc_parent_pid != task_ppid_nr(task)) {
+		DRM_WARN("Parent pid does not match\n");
+		put_pid(p);
+		goto skip_kill;
+	}
+
+	ret = kill_pid(p, SIGTERM, 1);
+	if (ret) {
+		DRM_WARN("Failed to terminate SCU pid %d.  Performing SIGKILL.\n", zcu->sc_pid);
+		kill_pid(p, SIGKILL, 1);
+	}
+	put_pid(p);
+
+	if (down_timeout(&zcu->sc_sem,100))
+		DRM_WARN("Wait for PS kernel timeout\n");
+ skip_kill:
+	return;
+}
+
+void zocl_scu_sk_fini(struct platform_device *pdev)
+{
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+
+	up(&zcu->sc_sem);
 }

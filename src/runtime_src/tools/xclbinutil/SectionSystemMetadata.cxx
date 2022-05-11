@@ -16,23 +16,22 @@
 
 #include "SectionSystemMetadata.h"
 
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/format.hpp>
-
 #include "XclBinUtilities.h"
+#include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
+#include <boost/property_tree/json_parser.hpp>
+
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionSystemMetadata::_init SectionSystemMetadata::_initializer;
+SectionSystemMetadata::init SectionSystemMetadata::initializer;
 
-SectionSystemMetadata::SectionSystemMetadata() {
-  // Empty
+SectionSystemMetadata::init::init() 
+{ 
+    auto sectionInfo = std::make_unique<SectionInfo>(SYSTEM_METADATA, "SYSTEM_METADATA", boost::factory<SectionSystemMetadata*>()); 
+
+    addSectionType(std::move(sectionInfo));
 }
-
-SectionSystemMetadata::~SectionSystemMetadata() {
-  // Empty
-}
-
 
 void
 SectionSystemMetadata::marshalToJSON(char* _pDataSection,
