@@ -390,10 +390,20 @@ get_aie_trace_periodic_offload()
   return value;
 }
 
+/**
+ * Deprecated in future. Ms is too long for aie trace
+ */
 inline unsigned int
 get_aie_trace_buffer_offload_interval_ms()
 {
   static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_ms", 10);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_buffer_offload_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_us", 100);
   return value;
 }
 

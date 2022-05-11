@@ -75,6 +75,8 @@ Please increase trace_buffer_size and trace_buffer_offload_interval together or 
 
 #define AIE_TS2MM_WARN_MSG_BUF_FULL             "AIE Trace Buffer is full. Device trace could be incomplete."
 #define AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE   "Circular buffer overwrite was detected in device trace. AIE trace could be incomplete."
+#define AIE_TS2MM_WARN_MSG_CIRC_BUF             "AIE trace will be limited to trace buffer size due to insufficient trace offload rate. Please increase \
+aie_trace_buffer_size and/or reduce aie_trace_buffer_offload_interval_us."
 
 // Trace file Dump Settings and Warnings
 #define MIN_TRACE_DUMP_INTERVAL_S 1

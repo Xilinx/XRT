@@ -93,7 +93,7 @@ public:
     inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }
     inline void setContinuousTrace() { traceContinuous = true; }
     inline bool continuousTrace()    { return traceContinuous; }
-    inline void setOffloadIntervalms(uint64_t v) { offloadIntervalms = v; }
+    inline void setOffloadIntervalUs(uint64_t v) { offloadIntervalUs = v; }
 
     inline AIEOffloadThreadStatus getOffloadStatus() {
       std::lock_guard<std::mutex> lock(statusLock);
@@ -124,7 +124,7 @@ private:
 
     // Continuous Trace Offload (For PLIO)
     bool traceContinuous;
-    uint64_t offloadIntervalms;
+    uint64_t offloadIntervalUs;
     bool bufferInitialized;
     std::mutex statusLock;
     AIEOffloadThreadStatus offloadStatus;
@@ -138,12 +138,11 @@ private:
   uint64_t circ_buf_cur_rate_plio;
 
 private:
-    void configAIETs2mm(uint64_t index, bool final);
-
     void continuousOffload();
     bool keepOffloading();
     void offloadFinished();
     void checkCircularBufferSupport();
+    bool syncAndLog(uint64_t index);
 };
 
 }
