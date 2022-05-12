@@ -353,7 +353,7 @@ struct xcl_mailbox_clock_freqscaling {
 struct xcl_mailbox_req {
 	uint64_t flags;
 	int32_t req;
-	uint8_t data[4]; /* variable length of payload, explicitly padded to int32_t */
+	int8_t data[4]; /* variable length of payload, explicitly padded to int32_t */
 };
 
 /**
@@ -373,7 +373,7 @@ struct xcl_sw_chan {
 	uint64_t sz;
 	uint64_t flags;
 	uint64_t id;
-	uint8_t data[4]; /* variable length of payload, explicitly padded to int32_t */
+	int8_t data[4]; /* variable length of payload, explicitly padded to int32_t */
 };
 
 /**
