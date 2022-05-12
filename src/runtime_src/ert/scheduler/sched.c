@@ -22,14 +22,11 @@
 #include <stdint.h>
 // includes from bsp
 #ifndef ERT_HW_EMU
-#include <xil_printf.h>
 #include <mb_interface.h>
 #include <xparameters.h>
-#else
-#include <stdio.h>
-#define xil_printf printf
 #endif
 
+#include "sched_print.h"
 #include "xgq_mb_plat.h"
 #include "core/include/xgq_impl.h"
 #include "sched_cmd.h"
@@ -39,10 +36,6 @@
 
 #define ERT_UNUSED __attribute__((unused))
 
-//#define ERT_VERBOSE
-#ifdef ERT_BUILD_V30
-#define CTRL_VERBOSE
-#endif
 //#define DEBUG_SLOT_STATE
 #define CU_STATUS_MASK_NUM          4
 
@@ -58,33 +51,6 @@
 #define SCRATCH_MODE                (1<<17)
 #define ECHO_MODE                   (1<<18)
 #define DMSG_ENABLE                 (1<<19)
-
-
-#ifdef ERT_VERBOSE
-# define ERT_PRINTF(format,...) xil_printf(format, ##__VA_ARGS__)
-# define ERT_DEBUGF(format,...) xil_printf(format, ##__VA_ARGS__)
-# define ERT_ASSERT(expr,msg) ((expr) ? ((void)0) : ert_assert(__FILE__,__LINE__,__FUNCTION__,#expr,msg))
-#else
-# define ERT_PRINTF(format,...) xil_printf(format, ##__VA_ARGS__)
-# define ERT_DEBUGF(format,...)
-# define ERT_ASSERT(expr,msg)
-#endif
-
-#ifdef CTRL_VERBOSE 
-#if defined(ERT_BUILD_V30)
-# define CTRL_DEBUG(msg) xil_printf(msg)
-# define CTRL_DEBUGF(format,...) xil_printf(format, ##__VA_ARGS__)
-# define DMSGF(format,...) if (dmsg) xil_printf(format, ##__VA_ARGS__)
-#else
-# define CTRL_DEBUG(msg)
-# define CTRL_DEBUGF(format,...)
-# define DMSGF(format,...)
-#endif
-#else
-# define CTRL_DEBUG(msg)
-# define CTRL_DEBUGF(format,...)
-# define DMSGF(format,...)
-#endif
 
 inline void
 exit(int32_t val)
@@ -403,6 +369,7 @@ configure_mb(struct sched_cmd *cmd)
   if (flatten_queue)
     cmd_queue_slot_size = 0;
 
+  resp_cmd.hdr.cid = 0x100;
   resp_cmd.i2h = 1;
   resp_cmd.i2e = 0;
   resp_cmd.cui = 0;
@@ -422,6 +389,7 @@ configure_mb_end(struct sched_cmd *cmd)
   struct xgq_com_queue_entry resp_cmd = {0};
   int ret = setup_cu_queue();
 
+  resp_cmd.hdr.cid = 0x101;
   resp_cmd.rcode = ret;
 
   if (!ret)
@@ -473,6 +441,7 @@ save_cfg_cu(struct sched_cmd *cmd)
                                 cmd_queue_slot_size : cu->slot_size;
   }
 
+  resp_cmd.hdr.cid = 0x105;
   resp_cmd.rcode = ret;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_com_queue_entry));
@@ -500,6 +469,7 @@ query_cu(struct sched_cmd *cmd)
   resp_cmd.xgq_id = cu_idx;
   resp_cmd.type = flatten_queue;
 
+  resp_cmd.hdr.cid = 0x106;
   resp_cmd.rcode = ret;
 
   CTRL_DEBUGF("  cu_idx          %x\r\n", cu_idx);
@@ -659,6 +629,10 @@ identify_xgq(struct sched_cmd *cmd)
 
   resp_cmd.rcode = 0;
 
+  /* TODO: for debug */
+  resp_cmd.hdr.cid = 0x123;
+  resp_cmd.resvd = read_clk_counter();
+  /* debug end */
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_identify));
 
   return 0;
