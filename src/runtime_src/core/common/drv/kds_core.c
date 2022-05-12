@@ -273,7 +273,7 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, int domain, struct kds_command *xcmd
 	/* After validation */
 	uint8_t valid_cus[MAX_CUS];
 	int num_valid = 0;
-	uint8_t index;
+	int8_t index;
 	u64 usage;
 	u64 min_usage;
 	int cu_set;
