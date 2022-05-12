@@ -54,7 +54,8 @@ std::pair<device::id_type, device::id_type>
 system::
 get_total_devices(bool is_user) const
 {
-  return {0,0};
+  auto nd = xclProbe();
+  return {nd,nd};
 }
 
 std::shared_ptr<xrt_core::device>
