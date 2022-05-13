@@ -147,7 +147,7 @@ struct ishim
   // not_supported_error, if either not implemented or an xclbin
   // was explicitly loaded using load_xclbin
   virtual uint32_t // slotidx
-  create_hw_context(const xuid_t xclbin_uuid, uint32_t qos) const
+  create_hw_context(const xuid_t /*xclbin_uuid*/, uint32_t /*qos*/) const
   { throw not_supported_error{__func__}; }
 
   virtual void
