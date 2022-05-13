@@ -246,7 +246,7 @@ struct xcl_firewall {
 	uint64_t err_detected_level;
 	uint64_t err_detected_time;
 	int8_t err_detected_level_name[50];
-	int8_t padding[14];
+	int8_t padding[6];
 };
 
 
