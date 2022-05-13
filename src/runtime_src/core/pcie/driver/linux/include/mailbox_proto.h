@@ -136,6 +136,7 @@ struct xcl_board_info {
 	int8_t		exp_bmc_ver[256];
 	uint32_t	mac_contiguous_num;
 	int8_t		mac_addr_first[6];
+	int8_t		padding[2];
 };
 
 /**
@@ -197,6 +198,7 @@ struct xcl_sensor {
 	uint32_t qspi_status;
 	uint32_t vccint_vcu_0v9;
 	uint32_t heartbeat_count;
+	uint32_t padding;
 	uint64_t heartbeat_err_time;
 	uint32_t heartbeat_err_code;
 	uint32_t heartbeat_stall;
@@ -244,6 +246,7 @@ struct xcl_firewall {
 	uint64_t err_detected_level;
 	uint64_t err_detected_time;
 	int8_t err_detected_level_name[50];
+	int8_t padding[14];
 };
 
 
@@ -353,7 +356,7 @@ struct xcl_mailbox_clock_freqscaling {
 struct xcl_mailbox_req {
 	uint64_t flags;
 	int32_t req;
-	int8_t data[4]; /* variable length of payload, explicitly padded to int32_t */
+	int32_t data[1]; /* variable length of payload from now on */
 };
 
 /**
@@ -373,7 +376,7 @@ struct xcl_sw_chan {
 	uint64_t sz;
 	uint64_t flags;
 	uint64_t id;
-	int8_t data[4]; /* variable length of payload, explicitly padded to int32_t */
+	uint64_t data[1]; /* variable length of payload from now on */
 };
 
 /**
