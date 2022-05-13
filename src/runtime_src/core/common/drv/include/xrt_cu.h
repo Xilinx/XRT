@@ -76,7 +76,6 @@
 enum xcu_model {
 	XCU_HLS,
 	XCU_ACC,
-	XCU_PLRAM,
 	XCU_FA,
 	XCU_XGQ,
 	XCU_AUTO,
@@ -157,6 +156,28 @@ struct xcu_funcs {
 	 * Check CU status and the pending task status.
 	 */
 	void (*check)(void *core, struct xcu_status *status, bool force);
+
+	/**
+	 * @submit_config:
+	 *
+	 * This is like configure CU. But it takes xcmd and own it.
+	 *
+	 */
+	int (*submit_config)(void *core, struct kds_command *xcmd);
+
+	/**
+	 * @get_complete:
+	 *
+	 * Get next completed xcmd.
+	 *
+	 */
+	struct kds_command *(*get_complete)(void *core);
+
+	/**
+	 * @abort:
+	 *
+	 */
+	int (*abort)(void *core, void *cond, bool (*match)(struct kds_command *xcmd, void *cond));
 
 	/**
 	 * @reset:
@@ -282,7 +303,6 @@ struct xrt_cu {
 	struct list_head	  rq ____cacheline_aligned_in_smp;
 	u32			  num_rq;
 	/* submitted queue */
-	struct list_head	  sq;
 	u32			  num_sq;
 	/* completed queue */
 	struct list_head	  cq;
@@ -296,7 +316,6 @@ struct xrt_cu {
 	u32			  ready_cnt;
 	u32			  status;
 	u32			  rcode;
-	u64			  run_timeout;
 	int			  busy_threshold;
 	u32			  interval_min;
 	u32			  interval_max;
@@ -307,6 +326,7 @@ struct xrt_cu {
 
 	struct timer_list	  timer;
 	atomic_t		  tick;
+	u32			  start_tick;
 
 	struct per_custat	  cu_stat;
 
@@ -375,6 +395,32 @@ static inline int xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int ty
 static inline void xrt_cu_start(struct xrt_cu *xcu)
 {
 	xcu->funcs->start(xcu->core);
+}
+
+static inline int xrt_cu_submit_config(struct xrt_cu *xcu, struct kds_command *xcmd)
+{
+	if (!xcu->funcs->submit_config)
+		return -EINVAL;
+
+	return xcu->funcs->submit_config(xcu->core, xcmd);
+}
+
+static inline struct kds_command *xrt_cu_get_complete(struct xrt_cu *xcu)
+{
+	if (!xcu->funcs->get_complete)
+		return NULL;
+
+	return xcu->funcs->get_complete(xcu->core);
+}
+
+static inline int
+xrt_cu_cmd_abort(struct xrt_cu *xcu, void *cond,
+		 bool (*match)(struct kds_command *xcmd, void *cond))
+{
+	if (!xcu->funcs->abort)
+		return -EINVAL;
+
+	return xcu->funcs->abort(xcu->core, cond, match);
 }
 
 static inline void xrt_cu_reset(struct xrt_cu *xcu)
@@ -476,18 +522,6 @@ ssize_t xrt_cu_circ_consume_all(struct xrt_cu *xcu, char *buf, size_t size);
 int xrt_cu_process_queues(struct xrt_cu *xcu);
 
 /* CU Implementations */
-#define to_cu_hls(core) ((struct xrt_cu_hls *)(core))
-struct xrt_cu_hls {
-	void __iomem		*vaddr;
-	int			 max_credits;
-	int			 credits;
-	int			 run_cnts;
-	bool			 ctrl_chain;
-	spinlock_t		 cu_lock;
-	u32			 done;
-	u32			 ready;
-};
-
 int xrt_cu_hls_init(struct xrt_cu *xcu);
 void xrt_cu_hls_fini(struct xrt_cu *xcu);
 
@@ -520,59 +554,15 @@ struct xrt_cu_fa {
 	int			 credits;
 	int			 run_cnts;
 	u64			 check_count;
+
+	struct list_head	 submitted;
+	struct list_head	 completed;
 };
 
 int xrt_cu_fa_init(struct xrt_cu *xcu);
 void xrt_cu_fa_fini(struct xrt_cu *xcu);
 
-#define to_cu_scu(core) ((struct xrt_cu_scu *)(core))
-struct xrt_cu_scu {
-	u64			 paddr;
-	u32			 slot_sz;
-	u32			 num_slots;
-	u32			 head_slot;
-	u32			 desc_msw;
-	u32			 task_cnt;
-	int			 max_credits;
-	int			 credits;
-	int			 run_cnts;
-	u64			 check_count;
-	void			*vaddr;
-	struct drm_zocl_bo	*sc_bo;
-	spinlock_t		 cu_lock;
-
-	/*
-	 * This semaphore is used for each soft kernel
-	 * CU to wait for next command. When new command
-	 * for this CU comes in or we are told to abort
-	 * a CU, ert will up this semaphore.
-	 */
-	struct semaphore	sc_sem;
-
-	uint32_t		sc_flags;
-	uint64_t		usage;
-
-	/*
-	 * soft cu pid and parent pid. This can be used to identify if the
-	 * soft cu is still running or not. The parent should never crash
-	 */
-	uint32_t		sc_pid;
-	uint32_t		sc_parent_pid;
-};
-
-int xrt_cu_scu_init(struct xrt_cu *xcu);
+int xrt_cu_scu_init(struct xrt_cu *xcu, void *vaddr, struct semaphore *sem);
 void xrt_cu_scu_fini(struct xrt_cu *xcu);
 
-/* PLRAM CU -- deprecated
- * TODO: Delete this type of CU once fast adapter is full supported
- */
-struct xrt_cu_plram {
-	void __iomem		*vaddr;
-	void __iomem		*plram;
-	int			 max_credits;
-	int			 credits;
-};
-
-int xrt_cu_plram_init(struct xrt_cu *xcu);
-void xrt_cu_plram_fini(struct xrt_cu *xcu);
 #endif /* _XRT_CU_H */

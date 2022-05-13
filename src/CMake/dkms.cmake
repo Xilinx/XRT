@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
@@ -290,7 +290,6 @@ SET (XRT_DKMS_COMMON_XRT_DRV
   common/drv/xrt_cu.c
   common/drv/cu_hls.c
   common/drv/fast_adapter.c
-  common/drv/cu_plram.c
   common/drv/xrt_xclbin.c
   common/drv/xgq_execbuf.c
   )

@@ -2,7 +2,7 @@
 /*
  * Xilinx CU with fast adapter.
  *
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -46,6 +46,19 @@ static inline u32 cu_read32(struct xrt_cu_fa *cu, u32 reg)
 static inline void cu_write32(struct xrt_cu_fa *cu, u32 reg, u32 val)
 {
 	iowrite32(val, cu->vaddr + reg);
+}
+
+static inline void cu_move_to_complete(struct xrt_cu_fa *cu, int status)
+{
+	struct kds_command *xcmd = NULL;
+
+	if (unlikely(list_empty(&cu->submitted)))
+		return;
+
+	xcmd = list_first_entry(&cu->submitted, struct kds_command, list);
+	xcmd->status = status;
+
+	list_move_tail(&xcmd->list, &cu->completed);
 }
 
 static int cu_fa_alloc_credit(void *core)
@@ -125,8 +138,9 @@ static void cu_fa_start(void *core)
 static void cu_fa_check(void *core, struct xcu_status *status, bool force)
 {
 	struct xrt_cu_fa *cu_fa = core;
-	u32 task_count;
+	u32 task_count = 0;
 	u32 done = 0;
+	int i = 0;
 
 	if (kds_echo || !cu_fa->cmdmem) {
 		cu_fa->run_cnts--;
@@ -151,6 +165,8 @@ static void cu_fa_check(void *core, struct xcu_status *status, bool force)
 	cu_fa->task_cnt = task_count;
 
 	cu_fa->run_cnts -= done;
+	for (i = 0; i < done; i++)
+		cu_move_to_complete(cu_fa, KDS_COMPLETED);
 
 	status->num_done  = done;
 	status->num_ready = done;
@@ -190,6 +206,52 @@ static bool cu_fa_reset_done(void *core)
 	return true;
 }
 
+static int cu_fa_submit_config(void *core, struct kds_command *xcmd)
+{
+	struct xrt_cu_fa *cu_fa = core;
+	int ret = 0;
+
+	ret = cu_fa_configure(core, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type);
+	if (ret)
+		return ret;
+
+	list_move_tail(&xcmd->list, &cu_fa->submitted);
+	return ret;
+}
+
+static struct kds_command *cu_fa_get_complete(void *core)
+{
+	struct xrt_cu_fa *cu_fa = core;
+	struct kds_command *xcmd = NULL;
+
+	if (list_empty(&cu_fa->completed))
+		return NULL;
+
+	xcmd = list_first_entry(&cu_fa->completed, struct kds_command, list);
+	list_del_init(&xcmd->list);
+
+	return xcmd;
+}
+
+static int cu_fa_abort(void *core, void *cond,
+		       bool (*match)(struct kds_command *xcmd, void *cond))
+{
+	struct xrt_cu_fa *cu_fa = core;
+	struct kds_command *xcmd = NULL;
+	struct kds_command *next = NULL;
+	int ret = -EBUSY;
+
+	list_for_each_entry_safe(xcmd, next, &cu_fa->submitted, list) {
+		if (!match(xcmd, cond))
+			continue;
+
+		xcmd->status = KDS_TIMEOUT;
+		list_move_tail(&xcmd->list, &cu_fa->completed);
+	}
+
+	return ret;
+}
+
 static struct xcu_funcs xrt_cu_fa_funcs = {
 	.alloc_credit	= cu_fa_alloc_credit,
 	.free_credit	= cu_fa_free_credit,
@@ -202,6 +264,9 @@ static struct xcu_funcs xrt_cu_fa_funcs = {
 	.clear_intr	= cu_fa_clear_intr,
 	.reset		= cu_fa_reset,
 	.reset_done	= cu_fa_reset_done,
+	.submit_config  = cu_fa_submit_config,
+	.get_complete   = cu_fa_get_complete,
+	.abort		= cu_fa_abort,
 };
 
 int xrt_cu_fa_init(struct xrt_cu *xcu)
@@ -243,6 +308,8 @@ int xrt_cu_fa_init(struct xrt_cu *xcu)
 	xcu_info(xcu, "Fast adapter init taskCount 0x%x", core->task_cnt);
 	core->credits = core->max_credits;
 	core->run_cnts = 0;
+	INIT_LIST_HEAD(&core->submitted);
+	INIT_LIST_HEAD(&core->completed);
 
 	/* TODO:
 	 * Maybe in the future, we could initial all of the CU resource at this
