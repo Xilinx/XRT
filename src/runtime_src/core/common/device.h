@@ -244,9 +244,9 @@ public:
 
   // register_xclbin() - Registers an xclbin with the device
   //
-  // This function registers an xclbin without loading it on
-  // to hardware resource.  Once registered, a hardware context
-  // can be created one or more times, which will assign the
+  // This function registers an xclbin without loading it onto
+  // hardware resource.  Once registered, a hardware context
+  // can be created once or more times, which will assign the
   // xclbin to hardware resources.
   XRT_CORE_COMMON_EXPORT
   void

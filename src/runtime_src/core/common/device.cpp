@@ -84,7 +84,7 @@ get_xclbin_uuid() const
 }
 
 // Registering an xclbin has one entry point (this one) only.
-// Shim level registering is not exposed to end application.
+// Shim level registering is not exposed to end-user application.
 //
 void
 device::
@@ -94,7 +94,7 @@ register_xclbin(const xrt::xclbin& xclbin)
   m_xclbins.insert(xclbin);
 }
 
-// Unforunately there are two independent entry points into loading an
+// Unfortunately there are two independent entry points to load an
 // xclbin.  One is this function via xrt::device::load_xclbin(), the
 // other is xclLoadXclBin(). The two entrypoints converge in
 // register_axlf() upon successful xclbin loading. It is possible for

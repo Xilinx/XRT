@@ -1261,7 +1261,7 @@ private:
   // @am:  access mode for the CU
   // Return: shared ownership to the context in form of a shared_ptr
   //
-  // This function opens the compute unit the slot associated with
+  // This function opens the compute unit in the slot associated with
   // the hardware context from which the kernel was constructed.
   void
   open_cu_context(const xrt::xclbin::ip& cu, ip_context::access_mode am)
@@ -1269,7 +1269,7 @@ private:
     auto slot = xrt_core::hw_context_int::get_slot(hwctx);
     auto cdevice = device->get_core_device();
 
-    // try open the cu context.  this may throw if cu in slot cannot be acquired.
+    // try open the cu context.  This may throw if cu in slot cannot be acquired.
     auto ctx = ip_context::open(cdevice, xclbin, slot, cu, am); // may throw
 
     // success, record cuidx in kernel cumask

@@ -11,7 +11,7 @@
 // Provide access to xrt::xclbin data that is not directly exposed
 // to end users via xrt::xclbin.   These functions are used by
 // XRT core implementation.
-namespace xrt_core { namespace hw_context_int {
+namespace xrt_core::hw_context_int {
 
 // get_slot() - Retrieve the slot index associated with the context
 uint32_t

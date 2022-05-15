@@ -49,7 +49,7 @@ class hw_context_impl
         // Without a hw_context, it is an error if multiple slots have
         // loaded same xclbin
         auto slots = m_device->get_slots(uuid);
-        if (!slots.size())
+        if (slots.empty())
           throw std::runtime_error("Unexpected error, xclbin has not been loaded");
         if (slots.size() > 1)
           throw std::runtime_error("Unexpected error, multi-slot xclbin requires hw_context");
@@ -122,7 +122,7 @@ public:
 ////////////////////////////////////////////////////////////////
 // xrt_hw_context implementation of extension APIs not exposed to end-user
 ////////////////////////////////////////////////////////////////
-namespace xrt_core { namespace hw_context_int {
+namespace xrt_core::hw_context_int {
 
 uint32_t
 get_slot(const xrt::hw_context& hwctx)
