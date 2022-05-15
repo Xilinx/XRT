@@ -12,13 +12,10 @@ multiple xclbins
 
 #include "experimental/xrt_hw_context.h"
 
-#include <array>
-#include <atomic>
-#include <cstdlib>
-#include <fstream>
+#include <algorithm>
+#include <stdexcept>
 #include <iostream>
-#include <list>
-#include <thread>
+#include <string>
 #include <vector>
 
 #ifdef _WIN32
