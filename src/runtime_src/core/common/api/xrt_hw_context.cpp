@@ -122,7 +122,7 @@ public:
 ////////////////////////////////////////////////////////////////
 // xrt_hw_context implementation of extension APIs not exposed to end-user
 ////////////////////////////////////////////////////////////////
-namespace xrt_core::hw_context_int {
+namespace xrt_core { namespace hw_context_int {
 
 uint32_t
 get_slot(const xrt::hw_context& hwctx)
