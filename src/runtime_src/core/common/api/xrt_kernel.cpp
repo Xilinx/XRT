@@ -3,6 +3,7 @@
 
 // This file implements XRT kernel APIs as declared in
 // core/include/experimental/xrt_kernel.h
+#define XRT_API_SOURCE  // exporting xrt_kernel.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_kernel.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/xrt/xrt_kernel.h"
