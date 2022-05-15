@@ -107,6 +107,24 @@ public:
   {}
 
   /**
+   * async() - Async transfer of data between BO and Shim DMA channel.
+   *
+   * @param port
+   *  GMIO port name.
+   * @param dir
+   *  GM to AIE or AIE to GM
+   * @param sz
+   *  Size of data to transfer
+   * @param offset
+   *  Offset within BO
+   *
+   * Asynchronously transfer the buffer contents from BO offset to offset + sz
+   * between GMIO and AIE.
+   */
+  xrt::async_bo_hdl 
+  async(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
+
+  /**
    * sync() - Transfer data between BO and Shim DMA channel.
    *
    * @param port

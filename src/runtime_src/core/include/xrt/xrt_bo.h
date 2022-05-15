@@ -7,6 +7,7 @@
 
 #include "xrt.h"
 #include "xrt_mem.h"
+#include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
 # include <memory>
@@ -62,6 +63,23 @@ using memory_group = xrtMemoryGroup;
  * Use xrt::bo bo{..., pid_type{pid}, ...};
  */
 struct pid_type { pid_t pid; };
+
+class async_bo_impl;
+class async_bo_hdl : public detail::pimpl<async_bo_impl>
+{
+public:
+  async_bo_hdl()
+  {}
+
+  explicit
+  async_bo_hdl(std::shared_ptr<async_bo_impl> handle)
+    : detail::pimpl<async_bo_impl>(std::move(handle))
+  {}
+
+  XCL_DRIVER_DLLESPEC
+  void
+  wait();
+};
 
 class bo_impl;
 class bo
@@ -362,6 +380,19 @@ public:
   XCL_DRIVER_DLLESPEC
   xclBufferExportHandle
   export_buffer();
+
+  /**
+   * async() - Start buffer content txfer with device side
+   *
+   */
+  XCL_DRIVER_DLLESPEC
+  xrt::async_bo_hdl
+  async(xclBOSyncDirection dir, size_t sz, size_t offset);
+
+  xrt::async_bo_hdl
+  async(xclBOSyncDirection dir) {
+    return async(dir, size(), 0);
+  }
 
   /**
    * sync() - Synchronize buffer content with device side
