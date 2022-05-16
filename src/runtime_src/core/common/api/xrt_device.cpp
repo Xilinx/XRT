@@ -273,6 +273,17 @@ load_xclbin(const xclbin& xclbin)
 
 uuid
 device::
+register_xclbin(const xclbin& xclbin)
+{
+  return xdp::native::profiling_wrapper("xrt::device::register_xclbin",
+  [this, &xclbin]{
+    handle->register_xclbin(xclbin);
+    return xclbin.get_uuid();
+  });
+}
+
+uuid
+device::
 get_xclbin_uuid() const
 {
   return xdp::native::profiling_wrapper("xrt::device::get_xclbin_uuid", [this]{
