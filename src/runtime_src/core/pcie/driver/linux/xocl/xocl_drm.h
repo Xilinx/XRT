@@ -25,14 +25,15 @@
 
 typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
 
-#define IS_HOST_MEM(m_tag)				(!strncmp(m_tag, "HOST[0]", 7))
-#define IS_PLRAM(m_tag)					(!strncmp(m_tag, "PLRAM[", 6))
-#define IS_DDR(m_tag)					(!strncmp(m_tag, "DDR[", 4))
-/* 
- * Returns if the memory bank associated with the given tag should be 
- * calibrated. Currently only DDR and  PLRAM must be calibrated.
- */
-#define MEM_NEEDS_CALIBRATION(m_tag)	(IS_DDR(m_tag) || IS_PLRAM(m_tag))
+enum MEM_TAG {
+	MEM_TAG_DDR = 0,
+	MEM_TAG_PLRAM,
+	MEM_TAG_HOST,
+	MEM_TAG_HBM,
+	MEM_TAG_INVALID
+};
+
+enum MEM_TAG convert_mem_tag(const char *name);
 
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo

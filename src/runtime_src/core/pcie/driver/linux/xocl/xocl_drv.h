@@ -1555,7 +1555,7 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
 	 topo->m_mem_data[idx].m_type == MEM_HBM) &&			\
-	!IS_HOST_MEM(topo->m_mem_data[idx].m_tag))
+	!(convert_mem_tag(topo->m_mem_data[idx].m_tag) == MEM_TAG_HOST))
 
 struct xocl_mig_label {
 	unsigned char		tag[16];

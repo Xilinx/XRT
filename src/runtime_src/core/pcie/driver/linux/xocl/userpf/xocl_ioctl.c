@@ -279,7 +279,7 @@ static int xocl_preserve_memcmp(struct mem_topology *new_topo, struct mem_topolo
 		return ret;
 
 	for (i = 0; i < mem_topo->m_count; ++i) {
-		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag))
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) == MEM_TAG_HOST)
 			continue;
 		for (j = 0; j < new_topo->m_count; ++j) {
 			if (memcmp(mem_topo->m_mem_data[i].m_tag, 
