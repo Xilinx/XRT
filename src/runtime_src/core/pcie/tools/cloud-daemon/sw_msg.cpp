@@ -72,7 +72,7 @@ char *sw_msg::data()
 char *sw_msg::payloadData()
 {
     xcl_sw_chan *sc = reinterpret_cast<xcl_sw_chan *>(buf.data());
-    return sc->data;
+    return reinterpret_cast<char *>(sc->data);
 }
 
 uint64_t sw_msg::id()

@@ -289,7 +289,7 @@ int Msd::remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
             break;
         }
 
-        int ret = download_xclbin(dev, req->data);
+        int ret = download_xclbin(dev, reinterpret_cast<char *>(req->data));
         dev.log(LOG_INFO, "xclbin download, ret=%d", ret);
         processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
             XCL_MB_REQ_FLAG_RESPONSE);
