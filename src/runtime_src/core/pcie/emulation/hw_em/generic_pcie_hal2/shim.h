@@ -252,15 +252,6 @@ using addr_type = uint64_t;
 
       std::vector<std::string> parsedMsgs;
 
-      //QDMA Support
-      int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclDestroyQueue(uint64_t q_hdl);
-      void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
-      int xclFreeQDMABuf(uint64_t buf_hdl);
-      ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
@@ -275,7 +266,7 @@ using addr_type = uint64_t;
       // Restricted read/write on IP register space
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
-      
+
       bool device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size);
       bool device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size);
       bool device2xrt_irq_trans_cb(uint32_t,unsigned long int);
@@ -306,7 +297,7 @@ using addr_type = uint64_t;
       std::thread mHostMemAccessThread;
       std::atomic<bool> mMessengerThreadStarted;
       std::atomic<bool> mHostMemAccessThreadStarted;
-      void messagesThread(); 
+      void messagesThread();
       void hostMemAccessThread();
 
       std::shared_ptr<xrt_core::device> mCoreDevice;
@@ -316,7 +307,7 @@ using addr_type = uint64_t;
       void launchTempProcess() {};
 
       void initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList);
-      //Mapped CU register space for xclRegRead/Write()     
+      //Mapped CU register space for xclRegRead/Write()
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
       std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;
