@@ -38,7 +38,7 @@ TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
     mIsVersion2 = (major_version >= 2);
 }
 
-inline void TraceS2MM::write32(uint64_t offset, uint32_t val)
+void TraceS2MM::write32(uint64_t offset, uint32_t val)
 {
     write(offset, 4, &val);
 }

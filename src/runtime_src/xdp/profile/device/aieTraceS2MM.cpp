@@ -15,9 +15,36 @@
  */
 
 #include "aieTraceS2MM.h"
-#include "tracedefs.h"
 
 namespace xdp {
+
+void AIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
+{
+    if (out_stream) {
+        (*out_stream) << " TraceS2MM::init " << std::endl;
+    }
+
+    if (isActive()) {
+        reset();
+    }
+
+    // Configure DDR Offset
+    write32(TS2MM_WRITE_OFFSET_LOW, static_cast<uint32_t>(bufaddr));
+    write32(TS2MM_WRITE_OFFSET_HIGH, static_cast<uint32_t>(bufaddr >> BITS_WORD));
+    // Configure Number of trace words
+    uint64_t word_count = bo_size / mDatawidthBytes;
+    write32(TS2MM_COUNT_LOW, static_cast<uint32_t>(word_count));
+    write32(TS2MM_COUNT_HIGH, static_cast<uint32_t>(word_count >> BITS_WORD));
+
+    // Enable use of circular buffer
+    if (supportsCircBuf()) {
+      uint32_t reg = circular ? 0x1 : 0x0;
+      write32(TS2MM_CIRCULAR_BUF, reg);
+    }
+
+    // Start Data Mover
+    write32(TS2MM_AP_CTRL, TS2MM_AP_START);
+}
 
 uint64_t AIETraceS2MM::getWordCount(bool final)
 {
@@ -29,10 +56,10 @@ uint64_t AIETraceS2MM::getWordCount(bool final)
         reset();
 
     uint32_t regValue = 0;
-    read(TS2MM_WRITTEN_LOW, 4, &regValue);
+    read(TS2MM_WRITTEN_LOW, BYTES_WORD, &regValue);
     uint64_t wordCount = static_cast<uint64_t>(regValue);
-    read(TS2MM_WRITTEN_HIGH, 4, &regValue);
-    wordCount |= static_cast<uint64_t>(regValue) << 32;
+    read(TS2MM_WRITTEN_HIGH, BYTES_WORD, &regValue);
+    wordCount |= static_cast<uint64_t>(regValue) << BITS_WORD;
 
     return adjustWordCount(wordCount, final);
 }
@@ -48,19 +75,17 @@ uint64_t AIETraceS2MM::adjustWordCount(uint64_t wordCount, bool final)
     if (!final)
         wordCount -= wordCount % TS2MM_V2_BURST_LEN;
 
-    /**
-     * Datawidth settings defined by v++ linker
-     * Bits 0:0 : AIE Datamover
-     * Bits 2:1 : 0x1: 64 Bit
-     *            0x2: 128 Bit
-     */
-    auto dwidth_setting = ((properties >> 1) & 0x3);
-    // 128 bit
-    if (dwidth_setting == 0x2)
-        return wordCount * 2;
+    // Wordcount is always in 64 bit
+    return wordCount * (mDatawidthBytes / BYTES_64BIT);
+}
 
-    // Default : 64 bit
-    return wordCount;
+uint8_t AIETraceS2MM::getMemIndex()
+{
+    if (out_stream) {
+        (*out_stream) << " TraceS2MM::getMemIndex " << std::endl;
+    }
+
+    return (properties >> 3);
 }
 
 }   // namespace xdp

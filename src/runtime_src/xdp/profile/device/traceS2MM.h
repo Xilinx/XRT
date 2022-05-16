@@ -70,7 +70,7 @@ public:
      * IP should support word packing if we want to support 512 bit words
      */
     virtual uint64_t getWordCount(bool final = false);
-    uint8_t getMemIndex();
+    virtual uint8_t getMemIndex();
     virtual void showStatus();	// ??
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
@@ -101,7 +101,7 @@ private:
     uint8_t minor_version;
     uint32_t mTraceFormat = 0;
 
-private:
+protected:
     void write32(uint64_t offset, uint32_t val);
 
 protected:
