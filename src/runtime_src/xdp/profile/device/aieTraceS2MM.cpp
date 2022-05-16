@@ -79,13 +79,4 @@ uint64_t AIETraceS2MM::adjustWordCount(uint64_t wordCount, bool final)
     return wordCount * (mDatawidthBytes / BYTES_64BIT);
 }
 
-uint8_t AIETraceS2MM::getMemIndex()
-{
-    if (out_stream) {
-        (*out_stream) << " TraceS2MM::getMemIndex " << std::endl;
-    }
-
-    return (properties >> 3);
-}
-
 }   // namespace xdp

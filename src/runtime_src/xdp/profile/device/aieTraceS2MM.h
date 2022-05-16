@@ -58,16 +58,19 @@ public:
         : TraceS2MM(handle, index, data)
     {
         /**
-         * Datawidth settings defined by v++ linker
+         * Settings defined by v++ linker
         * Bits 0:0 : AIE Datamover
         * Bits 2:1 : 0x1: 64 Bit (Default)
         *            0x2: 128 Bit
+        * Bits 7:0 : Memory Index
         */
         auto dwidth_setting = ((properties >> 1) & 0x3);
         mDatawidthBytes = BYTES_64BIT;
         // 128 bit
         if (dwidth_setting == 0x2)
             mDatawidthBytes  = BYTES_128BIT;
+
+        memIndex = (properties >> 3);
     }
 
     /**
@@ -84,7 +87,7 @@ public:
     void init(uint64_t bo_size, int64_t bufaddr, bool circular);
 
     // PL and AIE Datamovers use different bits for memory index
-    uint8_t getMemIndex();
+    uint8_t getMemIndex() { return memIndex; }
 
 protected:
     /**
@@ -95,6 +98,7 @@ protected:
 
 protected:
     uint64_t mDatawidthBytes;
+    uint8_t memIndex;
 };
 
 } //  xdp
