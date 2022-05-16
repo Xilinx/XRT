@@ -25,7 +25,7 @@ private:
   lookup_query(query::key_type query_key) const override;
 
   uint32_t // slotidx
-  create_hw_context(const xuid_t xclbin_uuid, uint32_t qos) const override
+  create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const override
   {
     return userpf::create_hw_context(this, xclbin_uuid, qos);
   }

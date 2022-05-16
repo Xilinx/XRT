@@ -474,7 +474,7 @@ struct shim
     auto xclbin = m_core_device->get_xclbin(top->m_header.uuid);
     m_pldev->register_xclbin(xclbin);
     auto uuid = xclbin.get_uuid();
-    m_load_xclbin_slots[uuid] = create_hw_context(uuid.get(), 0);
+    m_load_xclbin_slots[uuid] = create_hw_context(uuid, 0);
     return 0;
   }
 
@@ -521,7 +521,7 @@ struct shim
   }
 
   uint32_t // slotidx
-  create_hw_context(const xuid_t xclbin_uuid, uint32_t qos)
+  create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
   {
     if (m_load_xclbin_slots.find(xclbin_uuid) != m_load_xclbin_slots.end())
       throw xrt_core::ishim::not_supported_error(__func__);
@@ -585,7 +585,7 @@ xclbin_slots(const xrt_core::device* device)
 }
 
 uint32_t // slotidx
-create_hw_context(const xrt_core::device* device, const xuid_t xclbin_uuid, uint32_t qos)
+create_hw_context(const xrt_core::device* device, const xrt::uuid& xclbin_uuid, uint32_t qos)
 {
   auto shim = get_shim_object(device->get_device_handle());
   return shim->create_hw_context(xclbin_uuid, qos);
