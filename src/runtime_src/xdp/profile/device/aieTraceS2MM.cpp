@@ -20,13 +20,11 @@ namespace xdp {
 
 void AIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
-    if (out_stream) {
+    if (out_stream)
         (*out_stream) << " TraceS2MM::init " << std::endl;
-    }
 
-    if (isActive()) {
+    if (isActive())
         reset();
-    }
 
     // Configure DDR Offset
     write32(TS2MM_WRITE_OFFSET_LOW, static_cast<uint32_t>(bufaddr));
