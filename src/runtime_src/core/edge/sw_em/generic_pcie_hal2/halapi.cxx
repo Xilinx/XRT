@@ -526,56 +526,6 @@ int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOPrope
   return drv->xclGetBOProperties(boHandle, properties);
 }
 
-//QDMA Support
-
-int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclCreateWriteQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclCreateReadQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
-}
-
-void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : nullptr;
-}
-
-int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
-}
-
-ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
-}
-
-ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
-}
-
-int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
-}
-
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
   return -ENOSYS;

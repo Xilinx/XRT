@@ -795,18 +795,18 @@ xclLoadAxlf(const axlf *buffer)
   return ret ? -errno : ret;
 }
 
-int 
+int
 shim::
 secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *top) {
   try {
     static int xclbin_hw_emu_count = 0;
-        
+
     if (core_dev->get_xclbin_uuid() != xrt::uuid(top->m_header.uuid)) {
       xclbin_hw_emu_count++;
 
       if (xclbin_hw_emu_count > 1) {
         xclLog(XRT_WARNING, "%s: Skipping as xclbin is already loaded. Only single XCLBIN load is supported for hw_emu embedded designs.", __func__);
-        return 0; 
+        return 0;
       }
     } else {
       xclLog(XRT_INFO, "%s: Loading the XCLBIN", __func__);
@@ -964,7 +964,7 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
 }
 
 // For DDR4: Typical Max BW = 19.25 GB/s
-double 
+double
 shim::
 xclGetHostReadMaxBandwidthMBps()
 {
@@ -972,7 +972,7 @@ xclGetHostReadMaxBandwidthMBps()
 }
 
 // For DDR4: Typical Max BW = 19.25 GB/s
-double 
+double
 shim::
 xclGetHostWriteMaxBandwidthMBps()
 {
@@ -980,7 +980,7 @@ xclGetHostWriteMaxBandwidthMBps()
 }
 
 // For DDR4: Typical Max BW = 19.25 GB/s
-double 
+double
 shim::
 xclGetKernelReadMaxBandwidthMBps()
 {
@@ -988,7 +988,7 @@ xclGetKernelReadMaxBandwidthMBps()
 }
 
 // For DDR4: Typical Max BW = 19.25 GB/s
-double 
+double
 shim::
 xclGetKernelWriteMaxBandwidthMBps()
 {
@@ -2520,54 +2520,6 @@ int
 xclRegisterInterruptNotify(xclDeviceHandle handle, unsigned int userInterrupt, int fd)
 {
   return 0;
-}
-
-int
-xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, void **q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, void **q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclDestroyQueue(xclDeviceHandle handle, void *q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclModifyQueue(xclDeviceHandle handle, void *q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclStartQueue(xclDeviceHandle handle, void *q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclStopQueue(xclDeviceHandle handle, void *q_hdl)
-{
-  return -ENOSYS;
-}
-
-ssize_t
-xclWriteQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_req)
-{
-  return -ENOSYS;
-}
-
-ssize_t
-xclReadQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_req)
-{
-  return -ENOSYS;
 }
 
 int

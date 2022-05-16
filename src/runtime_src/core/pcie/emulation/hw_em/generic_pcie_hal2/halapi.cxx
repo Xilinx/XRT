@@ -429,57 +429,6 @@ ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t 
   }) ;
 }
 
-
-//QDMA Support
-//
-
-int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclCreateWriteQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclCreateReadQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
-}
-
-void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
-}
-
-int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
-}
-
-ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
-}
-
-ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
-}
-int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
-}
-
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)
 {
   return 0;

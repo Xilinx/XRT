@@ -94,7 +94,7 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::REG_BUFF_SIZE = 0x4;
   const unsigned HwEmShim::M2M_KERNEL_ARGS_SIZE = 36;
 
-  
+
   // Maintain a list of all currently open device handles.
   //
   // xclClose removes a handle from the list.  At static destruction
@@ -216,7 +216,7 @@ namespace xclhwemhal2 {
               logMessage(line);
               parsedMsgs.push_back(line);
               if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR"))
-                 std::cout << "SIMULATION EXITED" << std::endl; 
+                 std::cout << "SIMULATION EXITED" << std::endl;
             }
           }
         }
@@ -434,7 +434,7 @@ namespace xclhwemhal2 {
     //CR-1116870 changes. Clearing "mOffsetInstanceStreamMap" for each kernel in case of multiple kernels with different xclbin's
     //required for sys_opt/kernel_swap example
     mOffsetInstanceStreamMap.clear();
-    
+
     std::stringstream ss;
     ss << deviceDirectory << "/binary_" << binaryCounter;
     std::string binaryDirectory = ss.str();
@@ -516,7 +516,7 @@ namespace xclhwemhal2 {
       for (auto it : mMembanks)
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));        
+        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));
 
         std::size_t found = it.tag.find("HOST");
         if (found != std::string::npos) {
@@ -534,7 +534,7 @@ namespace xclhwemhal2 {
         }
 
         // Connectivity provided with the bus direction for HBM[31:0], XCLBIN creates the large group of memory with all the HBM[31:0] size
-        // like MBG. It indicates allocation of sequential memory is possible and not to limited size of one HBM. Hence creating the 
+        // like MBG. It indicates allocation of sequential memory is possible and not to limited size of one HBM. Hence creating the
         // HBM child memories (HBM subsets listed in RTD which falls under the range of MBG) for MBG memory type
         for (auto it2 : mDDRMemoryManager)
         {
@@ -613,7 +613,7 @@ namespace xclhwemhal2 {
 
     //CR-1116870 Changes End
 
-    
+
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
     std::string wdbFileName("");
@@ -892,7 +892,7 @@ namespace xclhwemhal2 {
         if (args.m_emuData) {
 
           extractEmuData(sim_path, binaryCounter, args);
-          
+
           //Assuming that we will have only one AIE Kernel, need to
           //update this logic when we have suport for multiple AIE Kernels
 
@@ -987,7 +987,7 @@ namespace xclhwemhal2 {
     {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
-    
+
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
     //Thread to fetch messages from Device to display on host
@@ -1033,7 +1033,7 @@ namespace xclhwemhal2 {
     }
 
     try
-    {      
+    {
       std::ifstream emuSettingsFile(emuSettingsFilePath.c_str());
       if (!emuSettingsFile.good()) {
         return false;
@@ -1465,7 +1465,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     uint64_t origSize = size;
     unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
-    uint64_t result = -1;    
+    uint64_t result = -1;
 
     if (boFlags & XCL_BO_FLAGS_HOST_ONLY) {
       result = mDDRMemoryManager[host_sptag_idx]->alloc(size, paddingFactor, chunks);
@@ -1805,12 +1805,12 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       simulator_started = false;
     }
     catch (std::exception& ex) {
-      if (mLogStream.is_open()) 
+      if (mLogStream.is_open())
         mLogStream << __func__ << ", unable to get lock:: " <<ex.what()<< std::endl;
-      
+
       std::cout<<"\n unable to get lock::"<<ex.what();
     }
-    
+
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
@@ -1847,7 +1847,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       saveWaveDataBase();
     }
     //ProfilerStop();
-    
+
     sock.reset();
 
     PRINTENDFUNC;
@@ -2729,7 +2729,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     PRINTENDFUNC;
     return -1;
   }
-   
+
   // Copy buffer thru the M2M.
     if ((deviceQuery(key_type::m2m) && getM2MAddress() != 0) && !((sBO->fd >= 0) || (dBO->fd >= 0))) {
 
@@ -2829,7 +2829,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
         mLogStream << __func__ << ", data written successfully from local buffer to dest fd." << std::endl;
       }
     }
-  } 
+  }
   else if (sBO->fd >= 0) {  //source p2p buffer
     // CR-1112934 Copy data from exported fd to temp buffer using read API
     std::vector<char> temp_buffer(size);
@@ -3346,252 +3346,6 @@ void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
    strncpy(slotName, str.c_str(), length-1);
    slotName[length-1] = '\0';
   }
-}
-
-
-/********************************************** QDMA APIs IMPLEMENTATION START **********************************************/
-
-/*
- * xclCreateWriteQueue()
- */
-int HwEmShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-
-  if (mLogStream.is_open())
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-
-  uint64_t q_handle = 0;
-  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,true);
-  if(q_handle <= 0)
-  {
-    if (mLogStream.is_open())
-      mLogStream << " unable to create write queue "<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-  *q_hdl = q_handle;
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclCreateReadQueue()
- */
-int HwEmShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  uint64_t q_handle = 0;
-  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,false);
-  if(q_handle <= 0)
-  {
-    if (mLogStream.is_open())
-      mLogStream << " unable to create read queue "<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-  *q_hdl = q_handle;
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclDestroyQueue()
- */
-int HwEmShim::xclDestroyQueue(uint64_t q_hdl)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  uint64_t q_handle = q_hdl;
-  bool success = false;
-  xclDestroyQueue_RPC_CALL(xclDestroyQueue, q_handle);
-  if(!success)
-  {
-    if (mLogStream.is_open())
-      mLogStream <<" unable to destroy the queue"<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclWriteQueue()
- */
-ssize_t HwEmShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
-{
-
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-
-  bool eot = false;
-  if(wr->flag & XCL_QUEUE_REQ_EOT)
-    eot = true;
-
-  bool nonBlocking = false;
-  if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING)
-  {
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < wr->buf_num; i++)
-    {
-      //vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
-      vaLenMap[wr->bufs[i].va] = 0;//for write we should not read the data back
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter, wr->priv_data, vaLenMap));
-    nonBlocking = true;
-  }
-  uint64_t fullSize = 0;
-  for (unsigned i = 0; i < wr->buf_num; i++)
-  {
-    xclWriteQueue_RPC_CALL(xclWriteQueue,q_hdl, wr->bufs[i].va, wr->bufs[i].len);
-    fullSize += written_size;
-  }
-  PRINTENDFUNC;
-  mReqCounter++;
-  return fullSize;
-}
-
-/*
- * xclReadQueue()
- */
-ssize_t HwEmShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-
-  bool eot = false;
-  if(rd->flag & XCL_QUEUE_REQ_EOT)
-    eot = true;
-
-  bool nonBlocking = false;
-  if (rd->flag & XCL_QUEUE_REQ_NONBLOCKING)
-  {
-    nonBlocking = true;
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < rd->buf_num; i++)
-    {
-      vaLenMap[rd->bufs[i].va] = rd->bufs[i].len;
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter,rd->priv_data, vaLenMap));
-  }
-
-  void *dest;
-
-  uint64_t fullSize = 0;
-  for (unsigned i = 0; i < rd->buf_num; i++)
-  {
-    dest = (void *)rd->bufs[i].va;
-    uint64_t read_size = 0;
-    do
-    {
-      xclReadQueue_RPC_CALL(xclReadQueue,q_hdl, dest , rd->bufs[i].len);
-    } while (read_size == 0 && !nonBlocking);
-    fullSize += read_size;
-  }
-  mReqCounter++;
-  PRINTENDFUNC;
-  return fullSize;
-
-}
-/*
- * xclPollCompletion
- */
-int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
-  }
-  xclemulation::TIMEOUT_SCALE timeout_scale=xclemulation::config::getInstance()->getTimeOutScale();
-  if(timeout_scale==xclemulation::TIMEOUT_SCALE::NA) {
-      std::string dMsg = "WARNING: [HW-EMU 10] xclPollCompletion : Timeout is not enabled in emulation by default.Please use xrt.ini (key: timeout_scale=ms|sec|min) to enable";
-      logMessage(dMsg, 0);
-  }
-
-  xclemulation::ApiWatchdog watch(timeout_scale,timeout);
-  watch.reset();
-  *actual = 0;
-  while(*actual < min_compl)
-  {
-    std::list<std::tuple<uint64_t ,void*, std::map<uint64_t,uint64_t> > >::iterator it = mReqList.begin();
-    while ( it != mReqList.end() )
-    {
-      unsigned numBytesProcessed = 0;
-      uint64_t reqCounter = std::get<0>(*it);
-      void* priv_data = std::get<1>(*it);
-      std::map<uint64_t,uint64_t>vaLenMap = std::get<2>(*it);
-      xclPollCompletion_RPC_CALL(xclPollCompletion,reqCounter,vaLenMap);
-      if(numBytesProcessed > 0)
-      {
-        comps[*actual].priv_data = priv_data;
-        comps[*actual].nbytes = numBytesProcessed;
-        (*actual)++;
-        mReqList.erase(it++);
-        if(*actual >= max_compl) {
-        	PRINTENDFUNC;
-        	return (*actual);
-        }
-      }
-      else
-      {
-        it++;
-      }
-      if(watch.isTimeout()) {
-    	 PRINTENDFUNC;
-    	 if (*actual <=0) {
-    		 return -ETIMEDOUT;
-    	 } else {
-    		 return *actual;
-    	 }
-     }
-
-    }
-  }
-  PRINTENDFUNC;
-  return (*actual);
-}
-
-/*
- * xclAllocQDMABuf()
- */
-void * HwEmShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  void *pBuf=nullptr;
-  if (posix_memalign(&pBuf, getpagesize(), size))
-  {
-    if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
-    pBuf=nullptr;
-    return pBuf;
-  }
-  memset(pBuf, 0, size);
-  return pBuf;
-}
-
-/*
- * xclFreeQDMABuf()
- */
-int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  PRINTENDFUNC;
-  return 0;//TODO
 }
 
 int HwEmShim::xcl_LogMsg(xrtLogMsgLevel level, const char* tag, const char* format, ...)
