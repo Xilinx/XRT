@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2020 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -111,11 +112,7 @@ uint64_t IOCtlAIETraceS2MM::getWordCount(bool final)
   uint64_t wordCount = 0;
   ioctl(driver_FD, TR_S2MM_IOC_GET_WORDCNT, &wordCount);
 
-  // V2 datamover only writes data in bursts
-  if (!final && isVersion2())
-      wordCount -= wordCount % TS2MM_V2_BURST_LEN;
-
-  return wordCount;
+  return adjustWordCount(wordCount, final);
 }
 
 int IOCtlAIETraceS2MM::read(uint64_t /*offset*/, size_t size, void* /*data*/)

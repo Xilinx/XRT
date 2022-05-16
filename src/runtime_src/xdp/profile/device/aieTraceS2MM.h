@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2019 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -61,9 +62,16 @@ public:
     {}
 
     /** 
-     * One word is 64 bit with current implementation
-     * IP should support word packing if we want to support 512 bit words
+     * Always returns wordcount in 64 bit multiple
      */
+    uint64_t getWordCount(bool final = false);
+
+protected:
+    /**
+     * Adjust wordcount based on debug IP layout settings
+     * and datamover versions
+     */
+    uint64_t adjustWordCount(uint64_t wordCount, bool final);
 };
 
 } //  xdp

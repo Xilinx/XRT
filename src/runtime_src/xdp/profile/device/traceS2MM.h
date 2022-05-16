@@ -93,8 +93,10 @@ public:
      */
     bool isVersion2() {return mIsVersion2;}
 
-private:
+protected:
     uint8_t properties;
+
+private:
     uint8_t major_version;
     uint8_t minor_version;
     uint32_t mTraceFormat = 0;
