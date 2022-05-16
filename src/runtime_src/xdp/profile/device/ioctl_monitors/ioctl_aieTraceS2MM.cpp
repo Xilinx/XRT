@@ -76,9 +76,9 @@ void IOCtlAIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
     (*out_stream) << " IOCtlAIETraceS2MM::init " << std::endl;
 
   /**
-   * The ioctl driver always assumes worcount to be multiple of 64 bits
-   * When 128 bits are used, this effectively halves the wordcount calculation in driver
-   * and hence the total bo size is honored.
+   * The ioctl driver always assumes wordcount to be multiple of 64 bits.
+   * When 128 bits are used, the calculation below effectively halves the
+   * wordcount calculation in driver code and hence the total bo size is honored.
    * This should be fixed in future when AIE datamovers are used with ioctls
    */
   bo_size = bo_size * (BYTES_64BIT / mDatawidthBytes);
