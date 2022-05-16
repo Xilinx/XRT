@@ -30,11 +30,11 @@ void AIETraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 
     // Configure DDR Offset
     write32(TS2MM_WRITE_OFFSET_LOW, static_cast<uint32_t>(bufaddr));
-    write32(TS2MM_WRITE_OFFSET_HIGH, static_cast<uint32_t>(bufaddr >> BITS_WORD));
+    write32(TS2MM_WRITE_OFFSET_HIGH, static_cast<uint32_t>(bufaddr >> BITS_PER_WORD));
     // Configure Number of trace words
     uint64_t word_count = bo_size / mDatawidthBytes;
     write32(TS2MM_COUNT_LOW, static_cast<uint32_t>(word_count));
-    write32(TS2MM_COUNT_HIGH, static_cast<uint32_t>(word_count >> BITS_WORD));
+    write32(TS2MM_COUNT_HIGH, static_cast<uint32_t>(word_count >> BITS_PER_WORD));
 
     // Enable use of circular buffer
     if (supportsCircBuf()) {
@@ -56,10 +56,10 @@ uint64_t AIETraceS2MM::getWordCount(bool final)
         reset();
 
     uint32_t regValue = 0;
-    read(TS2MM_WRITTEN_LOW, BYTES_WORD, &regValue);
+    read(TS2MM_WRITTEN_LOW, BYTES_PER_WORD, &regValue);
     uint64_t wordCount = static_cast<uint64_t>(regValue);
-    read(TS2MM_WRITTEN_HIGH, BYTES_WORD, &regValue);
-    wordCount |= static_cast<uint64_t>(regValue) << BITS_WORD;
+    read(TS2MM_WRITTEN_HIGH, BYTES_PER_WORD, &regValue);
+    wordCount |= static_cast<uint64_t>(regValue) << BITS_PER_WORD;
 
     return adjustWordCount(wordCount, final);
 }

@@ -84,10 +84,14 @@ Please increase trace_buffer_size and trace_buffer_offload_interval together or 
 #define TRACE_DUMP_FILE_COUNT_WARN_MSG "Continuous Trace might create a large number of trace files. Please use trace_file_dump_interval \
 to control how often trace data is written."
 
+namespace xdp {
+
 // Ease of use constants
-constexpr unsigned int BITS_WORD = 32;
-constexpr unsigned int BYTES_WORD = 4;
+constexpr unsigned int BITS_PER_WORD = 32;
+constexpr unsigned int BYTES_PER_WORD = 4;
 constexpr unsigned int BYTES_64BIT = 8;
 constexpr unsigned int BYTES_128BIT = 16;
+
+}
 
 #endif
