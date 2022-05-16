@@ -62,7 +62,7 @@ public:
         * Bits 0:0 : AIE Datamover
         * Bits 2:1 : 0x1: 64 Bit (Default)
         *            0x2: 128 Bit
-        * Bits 7:0 : Memory Index
+        * Bits 7:3 : Memory Index
         */
         auto dwidth_setting = ((properties >> 1) & 0x3);
         mDatawidthBytes = BYTES_64BIT;
