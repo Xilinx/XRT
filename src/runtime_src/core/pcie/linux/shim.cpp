@@ -1329,44 +1329,67 @@ bool shim::zeroOutDDR()
 /*
  * xclLoadXclBin()
  */
-int shim::xclLoadXclBin(const xclBin *buffer)
+int
+shim::
+xclLoadXclBin(const xclBin *buffer)
 {
-    auto top = reinterpret_cast<const axlf*>(buffer);
-    auto ret = xclLoadAxlf(top);
-    if (ret != 0) {
-      if (ret == -EOPNOTSUPP) {
-        xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
-        auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
-        auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
-        if (xclbin_vbnv != shell_vbnv) {
-          xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
-          xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
-        }
-        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
-      }
-      else if (ret == -EBUSY) {
-        xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
-      }
-      else if (ret == -EKEYREJECTED) {
-        xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
-      }
-      else if (ret == -E2BIG) {
-        xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
-      }
-      else if (ret == -ETIMEDOUT) {
-        xrt_logmsg(XRT_ERROR,
-                   "Can't reach out to mgmt for xclbin downloading");
-        xrt_logmsg(XRT_ERROR,
-                   "Is xclmgmt driver loaded? Or is MSD/MPD running?");
-      }
-      else if (ret == -EDEADLK) {
-        xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
-        xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
-      }
-      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
-    }
+  xdp::hal::flush_device(this);
+  xdp::aie::flush_device(this);
+  xdp::pl_deadlock::flush_device(this);
 
+  auto top = reinterpret_cast<const axlf*>(buffer);
+  if (auto ret = xclLoadAxlf(top)) {
+    // Something wrong, determine what
+    if (ret == -EOPNOTSUPP) {
+      xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
+      auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
+      auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
+      if (xclbin_vbnv != shell_vbnv) {
+        xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
+        xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
+      }
+      xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
+    }
+    else if (ret == -EBUSY) {
+      xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
+    }
+    else if (ret == -EKEYREJECTED) {
+      xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
+    }
+    else if (ret == -E2BIG) {
+      xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
+    }
+    else if (ret == -ETIMEDOUT) {
+      xrt_logmsg(XRT_ERROR,
+                 "Can't reach out to mgmt for xclbin downloading");
+      xrt_logmsg(XRT_ERROR,
+                 "Is xclmgmt driver loaded? Or is MSD/MPD running?");
+    }
+    else if (ret == -EDEADLK) {
+      xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
+      xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
+    }
+    xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
     return ret;
+  }
+
+  // Success
+  mCoreDevice->register_axlf(buffer);
+
+  xdp::hal::update_device(this);
+  xdp::aie::update_device(this);
+  xdp::pl_deadlock::update_device(this);
+
+  // scheduler::init can not be skipped even for same_xclbin as in
+  // multiple process stress tests it fails as below init step is
+  // without a lock with above driver load xclbin step.  New KDS fixes
+  // this by ensuring that scheduler init is done by driver itself
+  // along with icap download in single command call and then below
+  // init step in user space is ignored
+  auto ret = xrt_core::scheduler::init(this, buffer);
+  START_DEVICE_PROFILING_CB(this);
+
+  return ret;
 }
 
 /*
@@ -1678,16 +1701,18 @@ bool shim::isGood() const
  *
  * Returns pointer to valid handle on success, 0 on failure.
  */
-shim *shim::handleCheck(void *handle)
+xocl::shim*
+shim::
+handleCheck(void* handle)
 {
-    if (!handle) {
-        return 0;
-    }
-    if (!((shim *) handle)->isGood() ||
-      ((shim *) handle)->mUserHandle == -1) {
-        return 0;
-    }
-    return (shim *) handle;
+  if (!handle)
+    return 0;
+
+  auto shim = reinterpret_cast<xocl::shim*>(handle);
+  if (!shim->isGood() || shim->mUserHandle == -1)
+    return 0;
+
+  return shim;
 }
 
 /*
@@ -2140,6 +2165,33 @@ open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cun
   xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
 }
 
+// Assign xclbin with uuid to hardware resources and return a context id
+// The context handle is 1:1 with a slot idx
+uint32_t
+shim::
+create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const
+{
+  // Explicit hardware contexts are not supported in Alveo.
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
+void
+shim::
+destroy_hw_context(uint32_t ctxhdl) const
+{
+  // Explicit hardware contexts are not supported in Alveo.
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
+// Registers an xclbin, but does not load it.
+void
+shim::
+register_xclbin(const xrt::xclbin&) const
+{
+  // Explicit hardware contexts are not supported in Alveo.
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
 } // namespace xocl
 
 ////////////////////////////////////////////////////////////////
@@ -2159,6 +2211,28 @@ open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid
   auto shim = get_shim_object(handle);
   shim->open_context(slot, xclbin_uuid, cuname, shared);
 }
+
+uint32_t // ctxhdl aka slotidx
+create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+  auto shim = get_shim_object(handle);
+  return shim->create_hw_context(xclbin_uuid, qos);
+}
+
+void
+destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+{
+  auto shim = get_shim_object(handle);
+  shim->destroy_hw_context(ctxhdl);
+}
+
+void
+register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
+{
+  auto shim = get_shim_object(handle);
+  shim->register_xclbin(xclbin);
+}
+
 
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////
@@ -2220,48 +2294,23 @@ void xclClose(xclDeviceHandle handle)
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
-  return xdp::hal::profiling_wrapper("xclLoadXclBin",
-  [handle, buffer] {
-
-  try {
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    if (!drv) {
+  return xdp::hal::profiling_wrapper("xclLoadXclBin", [handle, buffer] {
+    try {
+      auto drv = xocl::shim::handleCheck(handle);
+      if (!drv)
         return -EINVAL;
+
+      return drv->xclLoadXclBin(buffer);
     }
-
-    xdp::hal::flush_device(handle);
-    xdp::aie::flush_device(handle);
-    xdp::pl_deadlock::flush_device(handle);
-
-    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
-    if (!ret) {
-      auto core_device = xrt_core::get_userpf_device(drv);
-      core_device->register_axlf(buffer);
-
-      xdp::hal::update_device(handle) ;
-      xdp::aie::update_device(handle);
-      xdp::pl_deadlock::update_device(handle);
-
-      //scheduler::init can not be skipped even for same_xclbin
-      //as in multiple process stress tests it fails as
-      //below init step is without a lock with above driver load xclbin step.
-      //New KDS fixes this by ensuring that scheduler init is done by driver itself
-      //along with icap download in single command call and then below init step in user space
-      //is ignored
-      ret = xrt_core::scheduler::init(handle, buffer);
-      START_DEVICE_PROFILING_CB(handle);
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get_code();
     }
-    return ret;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -EINVAL;
-  }
-  }) ;
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return -EINVAL;
+    }
+  });
 }
 
 int xclLogMsg(xclDeviceHandle, xrtLogMsgLevel level, const char* tag, const char* format, ...)

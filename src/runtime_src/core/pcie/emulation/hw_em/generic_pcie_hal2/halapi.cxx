@@ -48,6 +48,27 @@ open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid
   // shim->open_context(slot, xclbin_uuid, cuname, shared);
 }
 
+uint32_t // ctxhdl aka slotidx
+create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+  auto shim = get_shim_object(handle);
+  return shim->create_hw_context(xclbin_uuid, qos);
+}
+
+void
+destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+{
+  auto shim = get_shim_object(handle);
+  shim->destroy_hw_context(ctxhdl);
+}
+
+void
+register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
+{
+  auto shim = get_shim_object(handle);
+  shim->register_xclbin(xclbin);
+}
+
 } // xrt::shim_int
 
 
