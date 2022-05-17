@@ -142,48 +142,6 @@ struct xclQueueContext {
     uint64_t	flags;	   /* isr en, wb en, etc */
 };
 
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclCreateWriteQueue(xclDeviceHandle handle, struct xclQueueContext *q_ctx,
-                    uint64_t *q_hdl);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclCreateReadQueue(xclDeviceHandle handle, struct xclQueueContext *q_ctx,
-                   uint64_t *q_hdl);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-void*
-xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclModifyQueue(xclDeviceHandle handle, uint64_t q_hdl);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclStartQueue(xclDeviceHandle handle, uint64_t q_hdl);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclStopQueue(xclDeviceHandle handle, uint64_t q_hdl);
-
 struct xclReqBuffer {
     union {
 	char*    buf;    // ptr or,
@@ -223,34 +181,6 @@ struct xclReqCompletion {
     size_t			nbytes;
     int				err_code;
 };
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-ssize_t
-xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest *wr_req);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-ssize_t
-xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest *rd_req);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclPollQueue(xclDeviceHandle handle, uint64_t q_hdl, int min_compl,
-		   int max_compl, struct xclReqCompletion *comps,
-		   int* actual_compl, int timeout);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclSetQueueOpt(xclDeviceHandle handle, uint64_t q_hdl, int type, uint32_t val);
-
-XRT_DEPRECATED
-XCL_DRIVER_DLLESPEC
-int
-xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl,
-                  struct xclReqCompletion *comps, int* actual_compl, int timeout);
 
 /* End XRT Stream Queue APIs */
 

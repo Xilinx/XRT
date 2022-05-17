@@ -390,10 +390,20 @@ get_aie_trace_periodic_offload()
   return value;
 }
 
+/**
+ * Deprecated in future. Ms is too long for aie trace
+ */
 inline unsigned int
 get_aie_trace_buffer_offload_interval_ms()
 {
   static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_ms", 10);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_buffer_offload_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_us", 100);
   return value;
 }
 
@@ -828,6 +838,15 @@ inline bool
 get_flag_sw_emu_kernel_debug()
 {
   static bool value = detail::get_bool_value("Emulation.kernel-dbg", false);
+  return value;
+}
+
+// This flag is added to exit device offline status check loop forcibly.
+// By default, device offline status loop runs for 120 seconds.
+inline unsigned int
+get_device_offline_timer()
+{
+  static unsigned int value = detail::get_uint_value("Runtime.dev_offline_timer", 120);
   return value;
 }
 

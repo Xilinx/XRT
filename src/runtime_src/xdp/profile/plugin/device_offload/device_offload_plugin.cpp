@@ -186,12 +186,8 @@ namespace xdp {
 
     if (devInterface->hasTs2mm()) {
       size_t num_ts2mm = devInterface->getNumberTS2MM();
-
       trace_buffer_size = GetTS2MMBufSize();
-
-      uint64_t each_buffer_size = (num_ts2mm == 1) ? trace_buffer_size : ((trace_buffer_size / num_ts2mm) & TRACE_BUFFER_4K_MASK);
-      if (each_buffer_size < TS2MM_MIN_BUF_SIZE)
-        each_buffer_size = TS2MM_MIN_BUF_SIZE;
+      uint64_t each_buffer_size = devInterface->getAlignedTraceBufferSize(trace_buffer_size, static_cast<unsigned int>(num_ts2mm));
 
       buf_sizes.resize(num_ts2mm, each_buffer_size);
       for(size_t i = 0; i < num_ts2mm; i++) {
@@ -278,7 +274,7 @@ namespace xdp {
       offloader->start_offload(OffloadThreadType::TRACE);
       offloader->set_continuous();
       if (m_enable_circular_buffer) {
-        if (devInterface->supportsCircBuf()) {
+        if (devInterface->supportsCircBufPL()) {
           uint64_t min_offload_rate = 0 ;
           uint64_t requested_offload_rate = 0 ;
           bool use_circ_buf =

@@ -52,7 +52,7 @@ enum class OffloadThreadType {
 
 struct TraceBufferInfo {
   size_t   buf;
-  uint64_t buf_size;
+  uint64_t alloc_size;
   uint64_t used_size;
   uint64_t offset;
   uint64_t address;
@@ -64,7 +64,7 @@ struct TraceBufferInfo {
   
   TraceBufferInfo()
     : buf(0),
-      buf_size(0),
+      alloc_size(0),
       used_size(0),
       offset(0),
       address(0),
@@ -89,7 +89,7 @@ struct Ts2mmInfo {
   uint64_t circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
   uint64_t circ_buf_cur_rate;
 
-  std::queue<std::unique_ptr<char[]>> data_queue;
+  std::queue<std::unique_ptr<unsigned char[]>> data_queue;
   std::queue<uint64_t> size_queue;
   std::mutex process_queue_lock;
 
@@ -161,7 +161,6 @@ private:
   void read_trace_fifo(bool force=true);
   void read_trace_s2mm(bool force=true);
   uint64_t read_trace_s2mm_partial();
-  bool config_s2mm_reader(uint64_t i, uint64_t wordCount);
   bool init_s2mm(bool circ_buf, const std::vector<uint64_t> &);
   void reset_s2mm();
   bool should_continue();
@@ -169,7 +168,7 @@ private:
   void offload_device_continuous();
   void offload_finished();
   void process_trace_continuous();
-  void read_leftover_circular_buf();
+  bool sync_and_log(uint64_t index);
 
 protected:
   DeviceIntf* dev_intf;

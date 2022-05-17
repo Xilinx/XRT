@@ -11,6 +11,8 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
+#include "experimental/xrt_hw_context.h"
+
 #ifdef __cplusplus
 # include "experimental/xrt_enqueue.h"
 # include <chrono>
@@ -604,6 +606,13 @@ public:
   kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
          cu_access_mode mode = cu_access_mode::shared);
 
+
+  /// @cond
+  /// Experimental in 2022.2
+  XCL_DRIVER_DLLESPEC
+  kernel(const xrt::hw_context& ctx, const std::string& name);
+  /// @endcond
+
   /// @cond
   /// Deprecated construtor for exclusive access
   kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool ex)
@@ -699,6 +708,20 @@ public:
   XCL_DRIVER_DLLESPEC
   uint32_t
   read_register(uint32_t offset) const;
+
+  /**
+   * get_name() - Return the name of the kernel
+   */
+  XCL_DRIVER_DLLESPEC
+  std::string
+  get_name() const;
+
+  /**
+   * get_xclbin() - Return the xclbin containing the kernel
+   */
+  XCL_DRIVER_DLLESPEC
+  xrt::xclbin
+  get_xclbin() const;
 
 public:
   /// @cond

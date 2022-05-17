@@ -23,7 +23,8 @@ struct zocl_xclbin {
 int zocl_xclbin_init(struct drm_zocl_slot *slot);
 void zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot);
 
-int zocl_xclbin_set_uuid(struct drm_zocl_slot *slot, void *uuid);
+int zocl_xclbin_set_uuid(struct drm_zocl_dev *zdev,
+			 struct drm_zocl_slot *slot, void *uuid);
 void *zocl_xclbin_get_uuid(struct drm_zocl_slot *slot);
 int zocl_xclbin_hold(struct drm_zocl_slot *slot, const uuid_t *id);
 int zocl_lock_bitstream(struct drm_zocl_slot *slot, const uuid_t *id);
@@ -39,6 +40,7 @@ int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 			struct drm_zocl_slot *slot);
 int zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data);
 bool zocl_xclbin_accel_adapter(int kds_mask);
-int zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path);
+int zocl_xclbin_set_dtbo_path(struct drm_zocl_dev *zdev,
+			      struct drm_zocl_slot *slot, char *dtbo_path);
 
 #endif /* _ZOCL_XCLBIN_H_ */

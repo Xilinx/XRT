@@ -14,24 +14,27 @@
  * under the License.
  */
 
+#include "core/common/AlignedAllocator.h"
+#include "core/common/xclbin_parser.h"
+#include "plugin/xdp/device_offload.h"
 #include "shim.h"
 #include "system_hwemu.h"
 #include "xclbin.h"
-#include "core/common/xclbin_parser.h"
-#include "core/common/AlignedAllocator.h"
 #include "xcl_perfmon_parameters.h"
-#include <fstream>
-#include <boost/property_tree/xml_parser.hpp>
+
 #include <unistd.h>
+
+#include <boost/property_tree/xml_parser.hpp>
 #include <array>
 #include <cctype>
 #include <cerrno>
 #include <cstring>
+#include <fstream>
 #include <mutex>
 #include <set>
 #include <vector>
 
-#include "plugin/xdp/device_offload.h"
+
 
 #define SEND_RESP2QDMA() \
     { \
@@ -45,20 +48,10 @@
     }
 
 
-namespace {
 
-inline bool
-file_exists(const std::string& fnm)
-{
-  struct stat statBuf;
-  return stat(fnm.c_str(), &statBuf) == 0;
-}
-
-}
 
 namespace xclhwemhal2 {
     //Thread for which pooling for transaction from SIM_QDMA
-    void hostMemAccessThread(xclhwemhal2::HwEmShim* inst);
 
     /**
       * helper class for transactions from SIM_QDMA to XRT
@@ -68,9 +61,9 @@ namespace xclhwemhal2 {
         private:
         std::unique_ptr<call_packet_info> header;
         std::unique_ptr<response_packet_info> response_header;
-	    size_t  i_len;
-	    size_t  ri_len;
-        unix_socket* Q2h_sock;
+        size_t  i_len;
+        size_t  ri_len;
+        std::unique_ptr<unix_socket> Q2h_sock;
         xclhwemhal2::HwEmShim* inst;
 
         public:
@@ -101,7 +94,6 @@ namespace xclhwemhal2 {
   const unsigned HwEmShim::REG_BUFF_SIZE = 0x4;
   const unsigned HwEmShim::M2M_KERNEL_ARGS_SIZE = 36;
 
-  void messagesThread(xclhwemhal2::HwEmShim* inst);
 
   // Maintain a list of all currently open device handles.
   //
@@ -224,7 +216,7 @@ namespace xclhwemhal2 {
               logMessage(line);
               parsedMsgs.push_back(line);
               if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR"))
-                 std::cout << "SIMULATION EXITED" << std::endl; 
+                 std::cout << "SIMULATION EXITED" << std::endl;
             }
           }
         }
@@ -442,7 +434,7 @@ namespace xclhwemhal2 {
     //CR-1116870 changes. Clearing "mOffsetInstanceStreamMap" for each kernel in case of multiple kernels with different xclbin's
     //required for sys_opt/kernel_swap example
     mOffsetInstanceStreamMap.clear();
-    
+
     std::stringstream ss;
     ss << deviceDirectory << "/binary_" << binaryCounter;
     std::string binaryDirectory = ss.str();
@@ -524,7 +516,7 @@ namespace xclhwemhal2 {
       for (auto it : mMembanks)
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));        
+        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));
 
         std::size_t found = it.tag.find("HOST");
         if (found != std::string::npos) {
@@ -542,7 +534,7 @@ namespace xclhwemhal2 {
         }
 
         // Connectivity provided with the bus direction for HBM[31:0], XCLBIN creates the large group of memory with all the HBM[31:0] size
-        // like MBG. It indicates allocation of sequential memory is possible and not to limited size of one HBM. Hence creating the 
+        // like MBG. It indicates allocation of sequential memory is possible and not to limited size of one HBM. Hence creating the
         // HBM child memories (HBM subsets listed in RTD which falls under the range of MBG) for MBG memory type
         for (auto it2 : mDDRMemoryManager)
         {
@@ -621,16 +613,6 @@ namespace xclhwemhal2 {
 
     //CR-1116870 Changes End
 
-    set_simulator_started(true);
-
-    //Thread to fetch messages from Device to display on host
-    if(mMessengerThreadStarted == false) {
-      mMessengerThread = std::thread(xclhwemhal2::messagesThread,this);
-      mMessengerThreadStarted = true;
-    }
-
-    if (mLogStream.is_open())
-       mLogStream << __func__ << " mMessengerThreadStarted " << std::endl;
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
@@ -844,7 +826,7 @@ namespace xclhwemhal2 {
     }
 
     if(mHostMemAccessThreadStarted == false) {
-  	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
+      mHostMemAccessThread = std::thread([this]() { hostMemAccessThread(); } );
     }
 
     if (deviceDirectory.empty() == false)
@@ -910,7 +892,7 @@ namespace xclhwemhal2 {
         if (args.m_emuData) {
 
           extractEmuData(sim_path, binaryCounter, args);
-          
+
           //Assuming that we will have only one AIE Kernel, need to
           //update this logic when we have suport for multiple AIE Kernels
 
@@ -986,7 +968,8 @@ namespace xclhwemhal2 {
         if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
-        if (!file_exists(sim_file))
+        //if (!xclemulation::file_exists(sim_file))
+        if (!boost::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
@@ -1005,7 +988,17 @@ namespace xclhwemhal2 {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
 
-    sock = new unix_socket;
+    sock = std::make_shared<unix_socket>();
+    set_simulator_started(true);
+    //Thread to fetch messages from Device to display on host
+    if (mMessengerThreadStarted == false) {
+      std::cout<<"\n messages Thread is created\n";
+      mMessengerThread = std::thread([this]() { messagesThread(); } );
+      mMessengerThreadStarted = true;
+    }
+
+    if (mLogStream.is_open())
+      mLogStream << __func__ << " mMessengerThreadStarted " << std::endl;
 
     if (mLogStream.is_open())
       mLogStream << __func__ << " Created the Unix socket." << std::endl;
@@ -1040,7 +1033,7 @@ namespace xclhwemhal2 {
     }
 
     try
-    {      
+    {
       std::ifstream emuSettingsFile(emuSettingsFilePath.c_str());
       if (!emuSettingsFile.good()) {
         return false;
@@ -1472,7 +1465,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     uint64_t origSize = size;
     unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
-    uint64_t result = -1;    
+    uint64_t result = -1;
 
     if (boFlags & XCL_BO_FLAGS_HOST_ONLY) {
       result = mDDRMemoryManager[host_sptag_idx]->alloc(size, paddingFactor, chunks);
@@ -1806,17 +1799,25 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     xclGetDebugMessages(true);
-    mPrintMessagesLock.lock();
-    fetchAndPrintMessages();
-    simulator_started = false;
-    mPrintMessagesLock.unlock();
+    try {
+      std::lock_guard<std::mutex> guard(mPrintMessagesLock);
+      fetchAndPrintMessages();
+      simulator_started = false;
+    }
+    catch (std::exception& ex) {
+      if (mLogStream.is_open())
+        mLogStream << __func__ << ", unable to get lock:: " <<ex.what()<< std::endl;
+
+      std::cout<<"\n unable to get lock::"<<ex.what();
+    }
+
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
 #ifndef _WINDOWS
       xclClose_RPC_CALL(xclClose,this);
 #endif
-      closemMessengerThread();
+      closeMessengerThread();
       //clean up directories which are created inside the driver
       systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
     }
@@ -1846,8 +1847,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       saveWaveDataBase();
     }
     //ProfilerStop();
-    delete sock;
-    sock = NULL;
+
+    sock.reset();
+
     PRINTENDFUNC;
     if(mMBSch && mCore)
     {
@@ -1927,7 +1929,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       delete mDataSpace;
       mDataSpace = NULL;
     }
-    closemMessengerThread();
+    closeMessengerThread();
   }
 
   void HwEmShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
@@ -2727,7 +2729,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     PRINTENDFUNC;
     return -1;
   }
-   
+
   // Copy buffer thru the M2M.
     if ((deviceQuery(key_type::m2m) && getM2MAddress() != 0) && !((sBO->fd >= 0) || (dBO->fd >= 0))) {
 
@@ -2827,7 +2829,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
         mLogStream << __func__ << ", data written successfully from local buffer to dest fd." << std::endl;
       }
     }
-  } 
+  }
   else if (sBO->fd >= 0) {  //source p2p buffer
     // CR-1112934 Copy data from exported fd to temp buffer using read API
     std::vector<char> temp_buffer(size);
@@ -3346,252 +3348,6 @@ void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
   }
 }
 
-
-/********************************************** QDMA APIs IMPLEMENTATION START **********************************************/
-
-/*
- * xclCreateWriteQueue()
- */
-int HwEmShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-
-  if (mLogStream.is_open())
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-
-  uint64_t q_handle = 0;
-  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,true);
-  if(q_handle <= 0)
-  {
-    if (mLogStream.is_open())
-      mLogStream << " unable to create write queue "<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-  *q_hdl = q_handle;
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclCreateReadQueue()
- */
-int HwEmShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  uint64_t q_handle = 0;
-  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,false);
-  if(q_handle <= 0)
-  {
-    if (mLogStream.is_open())
-      mLogStream << " unable to create read queue "<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-  *q_hdl = q_handle;
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclDestroyQueue()
- */
-int HwEmShim::xclDestroyQueue(uint64_t q_hdl)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  uint64_t q_handle = q_hdl;
-  bool success = false;
-  xclDestroyQueue_RPC_CALL(xclDestroyQueue, q_handle);
-  if(!success)
-  {
-    if (mLogStream.is_open())
-      mLogStream <<" unable to destroy the queue"<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclWriteQueue()
- */
-ssize_t HwEmShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
-{
-
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-
-  bool eot = false;
-  if(wr->flag & XCL_QUEUE_REQ_EOT)
-    eot = true;
-
-  bool nonBlocking = false;
-  if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING)
-  {
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < wr->buf_num; i++)
-    {
-      //vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
-      vaLenMap[wr->bufs[i].va] = 0;//for write we should not read the data back
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter, wr->priv_data, vaLenMap));
-    nonBlocking = true;
-  }
-  uint64_t fullSize = 0;
-  for (unsigned i = 0; i < wr->buf_num; i++)
-  {
-    xclWriteQueue_RPC_CALL(xclWriteQueue,q_hdl, wr->bufs[i].va, wr->bufs[i].len);
-    fullSize += written_size;
-  }
-  PRINTENDFUNC;
-  mReqCounter++;
-  return fullSize;
-}
-
-/*
- * xclReadQueue()
- */
-ssize_t HwEmShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-
-  bool eot = false;
-  if(rd->flag & XCL_QUEUE_REQ_EOT)
-    eot = true;
-
-  bool nonBlocking = false;
-  if (rd->flag & XCL_QUEUE_REQ_NONBLOCKING)
-  {
-    nonBlocking = true;
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < rd->buf_num; i++)
-    {
-      vaLenMap[rd->bufs[i].va] = rd->bufs[i].len;
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter,rd->priv_data, vaLenMap));
-  }
-
-  void *dest;
-
-  uint64_t fullSize = 0;
-  for (unsigned i = 0; i < rd->buf_num; i++)
-  {
-    dest = (void *)rd->bufs[i].va;
-    uint64_t read_size = 0;
-    do
-    {
-      xclReadQueue_RPC_CALL(xclReadQueue,q_hdl, dest , rd->bufs[i].len);
-    } while (read_size == 0 && !nonBlocking);
-    fullSize += read_size;
-  }
-  mReqCounter++;
-  PRINTENDFUNC;
-  return fullSize;
-
-}
-/*
- * xclPollCompletion
- */
-int HwEmShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
-  }
-  xclemulation::TIMEOUT_SCALE timeout_scale=xclemulation::config::getInstance()->getTimeOutScale();
-  if(timeout_scale==xclemulation::TIMEOUT_SCALE::NA) {
-      std::string dMsg = "WARNING: [HW-EMU 10] xclPollCompletion : Timeout is not enabled in emulation by default.Please use xrt.ini (key: timeout_scale=ms|sec|min) to enable";
-      logMessage(dMsg, 0);
-  }
-
-  xclemulation::ApiWatchdog watch(timeout_scale,timeout);
-  watch.reset();
-  *actual = 0;
-  while(*actual < min_compl)
-  {
-    std::list<std::tuple<uint64_t ,void*, std::map<uint64_t,uint64_t> > >::iterator it = mReqList.begin();
-    while ( it != mReqList.end() )
-    {
-      unsigned numBytesProcessed = 0;
-      uint64_t reqCounter = std::get<0>(*it);
-      void* priv_data = std::get<1>(*it);
-      std::map<uint64_t,uint64_t>vaLenMap = std::get<2>(*it);
-      xclPollCompletion_RPC_CALL(xclPollCompletion,reqCounter,vaLenMap);
-      if(numBytesProcessed > 0)
-      {
-        comps[*actual].priv_data = priv_data;
-        comps[*actual].nbytes = numBytesProcessed;
-        (*actual)++;
-        mReqList.erase(it++);
-        if(*actual >= max_compl) {
-        	PRINTENDFUNC;
-        	return (*actual);
-        }
-      }
-      else
-      {
-        it++;
-      }
-      if(watch.isTimeout()) {
-    	 PRINTENDFUNC;
-    	 if (*actual <=0) {
-    		 return -ETIMEDOUT;
-    	 } else {
-    		 return *actual;
-    	 }
-     }
-
-    }
-  }
-  PRINTENDFUNC;
-  return (*actual);
-}
-
-/*
- * xclAllocQDMABuf()
- */
-void * HwEmShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  void *pBuf=nullptr;
-  if (posix_memalign(&pBuf, getpagesize(), size))
-  {
-    if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
-    pBuf=nullptr;
-    return pBuf;
-  }
-  memset(pBuf, 0, size);
-  return pBuf;
-}
-
-/*
- * xclFreeQDMABuf()
- */
-int HwEmShim::xclFreeQDMABuf(uint64_t buf_hdl)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  PRINTENDFUNC;
-  return 0;//TODO
-}
-
 int HwEmShim::xcl_LogMsg(xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
   va_list args;
@@ -3633,18 +3389,18 @@ int HwEmShim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* forma
     return 0;
 }
 
-void HwEmShim::closemMessengerThread()
+void HwEmShim::closeMessengerThread()
 {
-  if (mMessengerThreadStarted) {
-    mMessengerThread.join();
+  // set_simulator_started has to be false in order to see proper exit of joinable thread.
+  //set_simulator_started(false);
+  if (mMessengerThread.joinable()) {
     mMessengerThreadStarted = false;
+    mMessengerThread.join();
   }
 
-  if (mHostMemAccessThreadStarted) {
+  if (mHostMemAccessThread.joinable()) {
     mHostMemAccessThreadStarted = false;
-    if (mHostMemAccessThread.joinable()) {
-      mHostMemAccessThread.join();
-    }
+    mHostMemAccessThread.join();
   }
 }
 
@@ -3723,8 +3479,6 @@ int HwEmShim::xclIPName2Index(const char *name)
 }
 
 
-volatile bool HwEmShim::get_mHostMemAccessThreadStarted() { return mHostMemAccessThreadStarted; }
-volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAccessThreadStarted = val; }
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 
@@ -3828,7 +3582,7 @@ Q2H_helper :: Q2H_helper(xclhwemhal2::HwEmShim* _inst) {
     header          = std::make_unique<call_packet_info>();
     response_header = std::make_unique<response_packet_info>();
     inst = _inst;
-    Q2h_sock        = NULL;
+    Q2h_sock        = nullptr;
     header->set_size(0);
     header->set_xcl_api(0);
     response_header->set_size(0);
@@ -3841,10 +3595,7 @@ Q2H_helper :: Q2H_helper(xclhwemhal2::HwEmShim* _inst) {
     ri_len          = response_header->ByteSizeLong();
 #endif
 }
-Q2H_helper::~Q2H_helper() {
-    delete Q2h_sock;
-    Q2h_sock = 0;
-}
+Q2H_helper::~Q2H_helper() = default;
 
 /**
  * Pooling on socket for any memory or interrupt requests from SIM_QDMA
@@ -3922,8 +3673,8 @@ bool Q2H_helper::connect_sock() {
     } else {
       sock_name = "D2X_unix_sock";
     }
-    if(Q2h_sock == NULL) {
-      Q2h_sock = new unix_socket("EMULATION_SOCKETID", sock_name, 5, false);
+    if (Q2h_sock == nullptr) {
+      Q2h_sock = std::make_unique<unix_socket>("EMULATION_SOCKETID", sock_name, 5, false);
     }
     else if (!Q2h_sock->server_started) {
       Q2h_sock->start_server(5,false);
@@ -3931,19 +3682,22 @@ bool Q2H_helper::connect_sock() {
     return Q2h_sock->server_started;
 }
 
-void hostMemAccessThread(xclhwemhal2::HwEmShim* inst) {
-	inst->set_mHostMemAccessThreadStarted(true);
-    auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(inst);
+void HwEmShim::hostMemAccessThread() {
+    mHostMemAccessThreadStarted.store(true);
+    auto mq2h_helper_ptr = std::make_unique<Q2H_helper>(this);
     bool sock_ret = false;
     int count = 0;
-    while(inst->get_mHostMemAccessThreadStarted() && !sock_ret && count < 71){
+    while (mHostMemAccessThreadStarted && !sock_ret && count < 71) {
         sock_ret = mq2h_helper_ptr->connect_sock();
         count++;
     }
+    if (not sock_ret) {
+      std::cout<<"\n unable to get a reliable socket connection, ideally should exit here. select call took care. \n";
+    }
     int r =0;
-    while(inst->get_mHostMemAccessThreadStarted() && r >= 0){
+    while (mHostMemAccessThreadStarted && r >= 0) {
         try {
-            if (!inst->get_simulator_started())
+            if (not get_simulator_started())
                 return;
             r = mq2h_helper_ptr->poolingon_Qdma();
         } catch(int e) {

@@ -13,15 +13,17 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
+#include "core/common/xclbin_parser.h"
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
-#include "core/common/xclbin_parser.h"
 #include <errno.h>
-#include <unistd.h>
-#include <boost/property_tree/xml_parser.hpp>
-#include <boost/lexical_cast.hpp>
 #include <inttypes.h>
+#include <unistd.h>
+#include <boost/lexical_cast.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+#include <cctype>
 
 #define DEBUG_MSGS(format, ...)
 //#define DEBUG_MSGS(format, ...) printf(format, ##__VA_ARGS__)
@@ -38,6 +40,8 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_DONE  = 2;
   const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
   const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
+  constexpr unsigned int simulationWaitTime = 300;
+
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 
   namespace bf = boost::filesystem;
@@ -51,6 +55,7 @@ namespace xclcpuemhal2 {
     ,mDSAMajorVersion(DSA_MAJOR_VERSION)
     ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
+    ,mIsDeviceProcessStarted(false)
   {
     binaryCounter = 0;
     mReqCounter = 0;
@@ -523,6 +528,12 @@ namespace xclcpuemhal2 {
     }
   }
 
+  std::string CpuemShim::getDeviceProcessLogPath()
+  {
+    auto lpath = this->deviceDirectory + "/../../../device_process.log";
+    return lpath;
+  }
+
   int CpuemShim::xclLoadXclBin(const xclBin *header)
   {
     if(mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -556,10 +567,15 @@ namespace xclcpuemhal2 {
 
     bool isVersal = false;
     std::string binaryDirectory("");
+
+    //Check if device_process.log already exists. Remove if exists.
+    auto extIoTxtFile = getDeviceProcessLogPath();
+    if (boost::filesystem::exists(extIoTxtFile))
+      boost::filesystem::remove(extIoTxtFile);
+
     launchDeviceProcess(debuggable,binaryDirectory);
 
-    if(header)
-    {
+    if (header) {
       resetProgram();
       std::string logFilePath = xrt_core::config::get_hal_logging();
       if (!logFilePath.empty()) {
@@ -738,6 +754,10 @@ namespace xclcpuemhal2 {
       if ( mLogStream.is_open() ) {
         verbose = true;
       }
+
+      mIsDeviceProcessStarted = true;
+      if (!mMessengerThread.joinable())
+        mMessengerThread = std::thread([this] { messagesThread(); });
 
       xclLoadBitstream_RPC_CALL(xclLoadBitstream, xmlFile, tempdlopenfilename, deviceDirectory, binaryDirectory, verbose);
       if (!ack) {
@@ -1211,14 +1231,49 @@ namespace xclcpuemhal2 {
       return;
     }
 
+    mIsDeviceProcessStarted = false;
     std::string socketName = sock->get_name();
-    if(socketName.empty() == false)// device is active if socketName is non-empty
+    // device is active if socketName is non-empty
+    if (!socketName.empty())
     {
 #ifndef _WINDOWS
       xclClose_RPC_CALL(xclClose,this);
 #endif
     }
+   closeMessengerThread();
    saveDeviceProcessOutput();
+  }
+
+  void CpuemShim::closeMessengerThread()
+  {
+    if (mMessengerThread.joinable())
+      mMessengerThread.join();
+  }
+
+  void CpuemShim::messagesThread()
+  {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto lpath = getDeviceProcessLogPath();
+    sParseLog deviceProcessLog(this, lpath);
+    int count = 0;
+    while (mIsDeviceProcessStarted)
+    {
+      // I may not get ParseLog() all the times, So Let's optimize myself.
+      // Let's sleep for 10,20,30 seconds....etc until it is < simulationWaitTime
+      // After that I may not get extensive parseLog() statements.
+      // So I want to call it for each interval of simulationWaitTime
+
+      auto end_time = std::chrono::high_resolution_clock::now();
+
+      if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= simulationWaitTime) {
+        deviceProcessLog.parseLog();
+        ++count;
+        // giving some time for the simulator to run
+        if (count%5 == 0) {
+          std::this_thread::sleep_for(std::chrono::seconds(std::min(10*(count/5), 300)));
+          }
+        }
+    }
   }
 
   void CpuemShim::xclClose()
@@ -1252,14 +1307,14 @@ namespace xclcpuemhal2 {
       int fd = it.first;
       // CR-1123001 munmap() call is not required while exiting the application
       // OS will take care of cleaning once file descriptor close call is performed.
-      
+
       //uint64_t sSize = std::get<1>(it.second);
       //void* addr = std::get<2>(it.second);
       //munmap(addr,sSize);
       close(fd);
     }
     mFdToFileNameMap.clear();
-
+    mIsDeviceProcessStarted = false;
     mCloseAll = true;
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
@@ -1325,6 +1380,7 @@ namespace xclcpuemhal2 {
     {
       mLogStream.close();
     }
+    closeMessengerThread();
   }
 
   /**********************************************HAL2 API's START HERE **********************************************/
@@ -1838,244 +1894,6 @@ size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_
   return returnVal;
 }
 /***************************************************************************************/
-/********************************************** QDMA APIs IMPLEMENTATION START **********************************************/
-
-/*
- * xclCreateWriteQueue()
- */
-int CpuemShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-
-  uint64_t q_handle = 0;
-  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,true);
-  if(q_handle <= 0)
-  {
-    if (mLogStream.is_open())
-      mLogStream << " unable to create write queue "<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-  *q_hdl = q_handle;
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclCreateReadQueue()
- */
-int CpuemShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  uint64_t q_handle = 0;
-  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,false);
-  if(q_handle <= 0)
-  {
-    if (mLogStream.is_open())
-      mLogStream << " unable to create read queue "<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-  *q_hdl = q_handle;
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclDestroyQueue()
- */
-int CpuemShim::xclDestroyQueue(uint64_t q_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  uint64_t q_handle = q_hdl;
-  bool success = false;
-  xclDestroyQueue_RPC_CALL(xclDestroyQueue, q_handle);
-  if(!success)
-  {
-    if (mLogStream.is_open())
-      mLogStream <<" unable to destroy the queue"<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclWriteQueue()
- */
-ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-
-  bool eot = false;
-  if(wr->flag & XCL_QUEUE_REQ_EOT)
-    eot = true;
-
-  bool nonBlocking = false;
-  if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING)
-  {
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < wr->buf_num; i++)
-    {
-      vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter, wr->priv_data, vaLenMap));
-    nonBlocking = true;
-  }
-  uint64_t fullSize = 0;
-  for (unsigned i = 0; i < wr->buf_num; i++)
-  {
-    xclWriteQueue_RPC_CALL(xclWriteQueue,q_hdl, wr->bufs[i].va, wr->bufs[i].len);
-    fullSize += written_size;
-  }
-  PRINTENDFUNC;
-  mReqCounter++;
-  return fullSize;
-}
-
-/*
- * xclReadQueue()
- */
-ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-
-  bool eot = false;
-  if(rd->flag & XCL_QUEUE_REQ_EOT)
-    eot = true;
-
-  bool nonBlocking = false;
-  if (rd->flag & XCL_QUEUE_REQ_NONBLOCKING)
-  {
-    nonBlocking = true;
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < rd->buf_num; i++)
-    {
-      vaLenMap[rd->bufs[i].va] = rd->bufs[i].len;
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter,rd->priv_data, vaLenMap));
-  }
-
-  void *dest;
-
-  uint64_t fullSize = 0;
-  for (unsigned i = 0; i < rd->buf_num; i++)
-  {
-    dest = (void *)rd->bufs[i].va;
-    uint64_t read_size = 0;
-    do
-    {
-      xclReadQueue_RPC_CALL(xclReadQueue,q_hdl, dest , rd->bufs[i].len);
-    } while (read_size == 0 && !nonBlocking);
-    fullSize += read_size;
-  }
-  mReqCounter++;
-  PRINTENDFUNC;
-  return fullSize;
-}
-/*
- * xclPollCompletion
- */
-int CpuemShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
-  }
-
-//  struct timespec time, *ptime = NULL;
-//
-//  if (timeout > 0)
-//  {
-//    memset(&time, 0, sizeof(time));
-//    time.tv_sec = timeout / 1000;
-//    time.tv_nsec = (timeout % 1000) * 1000000;
-//    ptime = &time;
-//  }
-
-  *actual = 0;
-  while(*actual < min_compl)
-  {
-    std::list<std::tuple<uint64_t ,void*, std::map<uint64_t,uint64_t> > >::iterator it = mReqList.begin();
-    while ( it != mReqList.end() )
-    {
-      unsigned numBytesProcessed = 0;
-      uint64_t reqCounter = std::get<0>(*it);
-      void* priv_data = std::get<1>(*it);
-      std::map<uint64_t,uint64_t>vaLenMap = std::get<2>(*it);
-      xclPollCompletion_RPC_CALL(xclPollCompletion,reqCounter,vaLenMap);
-      if(numBytesProcessed > 0)
-      {
-        comps[*actual].priv_data = priv_data;
-        comps[*actual].nbytes = numBytesProcessed;
-        (*actual)++;
-        mReqList.erase(it++);
-      }
-      else
-      {
-        it++;
-      }
-    }
-  }
-  PRINTENDFUNC;
-  return (*actual);
-}
-
-/*
- * xclAllocQDMABuf()
- */
-void * CpuemShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  void *pBuf=nullptr;
-  if (posix_memalign(&pBuf, sizeof(double)*16, size))
-  {
-    if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
-    pBuf=nullptr;
-    return pBuf;
-  }
-  memset(pBuf, 0, size);
-  PRINTENDFUNC;
-  return pBuf;
-
-}
-
-/*
- * xclFreeQDMABuf()
- */
-int CpuemShim::xclFreeQDMABuf(uint64_t buf_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  PRINTENDFUNC;
-  return 0;//TODO
-}
 
 /*
  * xclLogMsg()
