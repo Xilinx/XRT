@@ -18,7 +18,7 @@ xrt_core::query::xclbin_slots::result_type
 xclbin_slots(const xrt_core::device* device);
 
 uint32_t // slotidx
-create_hw_context(const xrt_core::device* device, const xuid_t xclbin_uuid, uint32_t qos);
+create_hw_context(const xrt_core::device* device, const xrt::uuid& xclbin_uuid, uint32_t qos);
 
 void
 destroy_hw_context(const xrt_core::device* device, uint32_t slotidx);

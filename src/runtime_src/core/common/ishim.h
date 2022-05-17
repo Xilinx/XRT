@@ -12,6 +12,7 @@
 #include "xrt/xrt_aie.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_graph.h"
+#include "xrt/xrt_uuid.h"
 
 #include "experimental/xrt-next.h"
 
@@ -46,13 +47,13 @@ struct ishim
   close_device() = 0;
 
   virtual void
-  open_context(const xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
+  open_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
-  open_context(uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared) = 0;
+  open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) = 0;
 
   virtual void
-  close_context(const xuid_t xclbin_uuid, unsigned int ip_index) = 0;
+  close_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index) = 0;
 
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags) = 0;
@@ -146,12 +147,12 @@ struct ishim
   // cannot be created for that xclbin.  This function throws
   // not_supported_error, if either not implemented or an xclbin
   // was explicitly loaded using load_xclbin
-  virtual uint32_t // slotidx
-  create_hw_context(const xuid_t /*xclbin_uuid*/, uint32_t /*qos*/) const
+  virtual uint32_t // ctx handle aka slot idx
+  create_hw_context(const xrt::uuid& /*xclbin_uuid*/, uint32_t /*qos*/) const
   { throw not_supported_error{__func__}; }
 
   virtual void
-  destroy_hw_context(uint32_t /*slotidx*/) const
+  destroy_hw_context(uint32_t /*ctxhdl*/) const
   { throw not_supported_error{__func__}; }
 
   // Registers an xclbin, but does not load it.
@@ -192,7 +193,7 @@ struct ishim
 
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
-  open_graph(const xuid_t, const char*, xrt::graph::access_mode am) = 0;
+  open_graph(const xrt::uuid&, const char*, xrt::graph::access_mode am) = 0;
 
   virtual void
   close_graph(xclGraphHandle handle) = 0;
@@ -271,23 +272,23 @@ struct shim : public DeviceType
   }
 
   void
-  open_context(const xuid_t xclbin_uuid , unsigned int ip_index, bool shared) override
+  open_context(const xrt::uuid& xclbin_uuid , unsigned int ip_index, bool shared) override
   {
-    if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index, shared))
+    if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid.get(), ip_index, shared))
       throw system_error(ret, "failed to open ip context");
   }
 
   void
-  open_context(uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared) override
+  open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) override
   {
-    if (auto ret = xclOpenContextByName(DeviceType::get_device_handle(), slot, xclbin_uuid, cuname, shared))
+    if (auto ret = xclOpenContextByName(DeviceType::get_device_handle(), slot, xclbin_uuid.get(), cuname.c_str(), shared))
       throw system_error(ret, "failed to open ip context");
   }
 
   void
-  close_context(const xuid_t xclbin_uuid, unsigned int ip_index) override
+  close_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index) override
   {
-    if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index))
+    if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid.get(), ip_index))
       throw system_error(ret, "failed to close ip context");
   }
 
@@ -508,9 +509,9 @@ struct shim : public DeviceType
 
 #ifdef XRT_ENABLE_AIE
   xclGraphHandle
-  open_graph(const xuid_t uuid, const char *gname, xrt::graph::access_mode am) override
+  open_graph(const xrt::uuid& uuid, const char *gname, xrt::graph::access_mode am) override
   {
-    if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid, gname, am))
+    if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid.get(), gname, am))
       return ghdl;
 
     throw system_error(EINVAL, "failed to open graph");
