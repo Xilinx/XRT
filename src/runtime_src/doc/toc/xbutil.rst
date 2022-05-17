@@ -101,10 +101,10 @@ The command ``xbutil validate`` validates the installed card by running precompi
     - ``vcu``: Run decoder test (only applicable for specific platform).
     - ``quick``: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)
     - ``aie-pl``: Run AIE PL test
-    - ``ps-aie``: Run AIE PS test
-    - ``ps-bw``: Run bandwidth PS test
-    - ``ps-validate``: Run validation PS test
-    - ``ps-iops``: Run IOPS PS test
+    - ``aie-ps``: Run AIE PS test
+    - ``bw-ps``: Run bandwidth PS test
+    - ``validate-ps``: Run validation PS test
+    - ``iops-ps``: Run IOPS PS test
   
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     

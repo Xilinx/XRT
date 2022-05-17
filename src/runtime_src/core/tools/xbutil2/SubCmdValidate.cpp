@@ -1337,10 +1337,10 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
   { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest },
-  { create_init_test("ps-aie", "Run AIE PS test", "ps_aie.xclbin"), psAieTest },
-  { create_init_test("ps-bw", "Run bandwidth PS test", "ps_bandwidth.xclbin"), psBandwidthTest },
-  { create_init_test("ps-validate", "Run validation PS test", "ps_validate_bandwidth.xclbin"), psValidateTest },
-  { create_init_test("ps-iops", "Run IOPS PS test", "ps_validate_bandwidth.xclbin"), psIopsTest }
+  { create_init_test("aie-ps", "Run AIE PS test", "ps_aie.xclbin"), psAieTest },
+  { create_init_test("bw-ps", "Run bandwidth PS test", "ps_bandwidth.xclbin"), psBandwidthTest },
+  { create_init_test("validate-ps", "Run validation PS test", "ps_validate_bandwidth.xclbin"), psValidateTest },
+  { create_init_test("iops-ps", "Run IOPS PS test", "ps_validate_bandwidth.xclbin"), psIopsTest }
 };
 
 
@@ -1538,7 +1538,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "ps-aie", "ps-bw", "ps-validate", "ps-iops"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "aie-ps", "bw-ps", "validate-ps", "iops-ps"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
