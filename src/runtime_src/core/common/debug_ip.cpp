@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +22,7 @@
 #include "core/common/device.h"
 #include "core/include/xclbin.h"
 #include "core/include/xcl_perfmon_parameters.h"
+#include "core/include/xdp/app_debug.h"
 
 namespace xrt_core { namespace debug_ip {
 
@@ -53,9 +55,9 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
     XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET
   };
 
-  std::vector<uint64_t> ret_val(XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT);
+  std::vector<uint64_t> ret_val(xdp::DebugIPRegisters::AIM::NUM_COUNTERS_DISPLAYED);
 
-  uint32_t curr_data[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
+  uint32_t curr_data[xdp::DebugIPRegisters::AIM::NUM_COUNTERS_DISPLAYED] = {0};
 
   uint32_t sample_interval = 0;
 
@@ -66,7 +68,7 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
   if (dbg_ip_data->m_properties & XAIM_64BIT_PROPERTY_MASK) {
-    for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; c++) {
+    for (int c = 0; c < xdp::DebugIPRegisters::AIM::NUM_COUNTERS_DISPLAYED; c++) {
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                     dbg_ip_data->m_base_address + aim_upper_offsets[c],
                     &curr_data[c], sizeof(uint32_t));
@@ -74,7 +76,7 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
     }
   }
 
-  for (int c = 0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
+  for (int c = 0; c < xdp::DebugIPRegisters::AIM::NUM_COUNTERS_DISPLAYED; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                   dbg_ip_data->m_base_address + aim_offsets[c],
                   &curr_data[c], sizeof(uint32_t));
@@ -112,10 +114,10 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
     XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET
   };
 
-  std::vector<uint64_t> ret_val(XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT);
+  std::vector<uint64_t> ret_val(xdp::DebugIPRegisters::AM::NUM_COUNTERS);
 
   // Read all metric counters
-  uint32_t curr_data[XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
+  uint32_t curr_data[xdp::DebugIPRegisters::AM::NUM_COUNTERS_DISPLAYED] = {0};
 
   uint32_t sample_interval = 0;
   // Read sample interval register to latch the sampled metric counters
@@ -131,7 +133,7 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
   if (dbg_ip_data->m_properties & XAM_64BIT_PROPERTY_MASK) {
-    for (int c = 0 ; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; c++) {
+    for (int c = 0; c < xdp::DebugIPRegisters::AM::NUM_COUNTERS_DISPLAYED; c++) {
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                     dbg_ip_data->m_base_address + am_upper_offsets[c],
                     &curr_data[c], sizeof(uint32_t));
@@ -139,51 +141,72 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
 
     auto get_upper_bytes = [&] (auto dest, auto src) { ret_val[dest] = (static_cast<uint64_t>(curr_data[src])) << 32; };
 
-    get_upper_bytes(XAM_IOCTL_EXECUTION_COUNT_INDEX, XAM_ACCEL_EXECUTION_COUNT_INDEX);
-    get_upper_bytes(XAM_IOCTL_EXECUTION_CYCLES_INDEX, XAM_ACCEL_EXECUTION_CYCLES_INDEX);
-    get_upper_bytes(XAM_IOCTL_STALL_INT_INDEX, XAM_ACCEL_STALL_INT_INDEX);
-    get_upper_bytes(XAM_IOCTL_STALL_STR_INDEX, XAM_ACCEL_STALL_STR_INDEX);
-    get_upper_bytes(XAM_IOCTL_STALL_EXT_INDEX, XAM_ACCEL_STALL_EXT_INDEX);
-    get_upper_bytes(XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX, XAM_ACCEL_MIN_EXECUTION_CYCLES_INDEX);
-    get_upper_bytes(XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX, XAM_ACCEL_MAX_EXECUTION_CYCLES_INDEX);
-    get_upper_bytes(XAM_IOCTL_START_COUNT_INDEX, XAM_ACCEL_TOTAL_CU_START_INDEX);
+    get_upper_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::EXECUTION_COUNT,
+                    xdp::DebugIPRegisters::AM::DisplayIndex::EXECUTION_COUNT);
+    get_upper_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::EXECUTION_CYCLES,
+                    xdp::DebugIPRegisters::AM::DisplayIndex::EXECUTION_CYCLES);
+    get_upper_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::STALL_INT,
+                    xdp::DebugIPRegisters::AM::DisplayIndex::STALL_INT);
+    get_upper_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::STALL_STR,
+                    xdp::DebugIPRegisters::AM::DisplayIndex::STALL_STR);
+    get_upper_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::STALL_EXT,
+                    xdp::DebugIPRegisters::AM::DisplayIndex::STALL_EXT);
+    get_upper_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::MIN_EXECUTION_CYCLES,
+                    xdp::DebugIPRegisters::AM::DisplayIndex::MIN_EXECUTION_CYCLES);
+    get_upper_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::MAX_EXECUTION_CYCLES,
+                    xdp::DebugIPRegisters::AM::DisplayIndex::MAX_EXECUTION_CYCLES);
+    // Is this correct?
+    get_upper_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::START_COUNT,
+                    xdp::DebugIPRegisters::AM::DisplayIndex::TOTAL_CU_START);
     
     if (has_dataflow) {
       uint64_t busy_cycles = 0, max_parallel = 0;
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_UPPER_OFFSET, &busy_cycles, sizeof(uint32_t));
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &max_parallel, sizeof(uint32_t));
 
-      ret_val[XAM_IOCTL_BUSY_CYCLES_INDEX] = busy_cycles << 32;
-      ret_val[XAM_IOCTL_MAX_PARALLEL_ITR_INDEX] = max_parallel << 32;
+      ret_val[xdp::DebugIPRegisters::AM::IoctlIndex::BUSY_CYCLES] =
+        busy_cycles << 32;
+      ret_val[xdp::DebugIPRegisters::AM::IoctlIndex::MAX_PARALLEL_ITR] =
+        max_parallel << 32;
 
     }
   }
 
-  for (int c = 0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
+  for (int c = 0; c < xdp::DebugIPRegisters::AM::NUM_COUNTERS_DISPLAYED; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address+am_offsets[c], &curr_data[c], sizeof(uint32_t));
   }
 
   auto get_lower_bytes = [&] (auto dest, auto src) { ret_val[dest] |= curr_data[src]; };
 
-  get_lower_bytes(XAM_IOCTL_EXECUTION_COUNT_INDEX, XAM_ACCEL_EXECUTION_COUNT_INDEX);
-  get_lower_bytes(XAM_IOCTL_EXECUTION_CYCLES_INDEX, XAM_ACCEL_EXECUTION_CYCLES_INDEX);
-  get_lower_bytes(XAM_IOCTL_STALL_INT_INDEX, XAM_ACCEL_STALL_INT_INDEX);
-  get_lower_bytes(XAM_IOCTL_STALL_STR_INDEX, XAM_ACCEL_STALL_STR_INDEX);
-  get_lower_bytes(XAM_IOCTL_STALL_EXT_INDEX, XAM_ACCEL_STALL_EXT_INDEX);
-  get_lower_bytes(XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX, XAM_ACCEL_MIN_EXECUTION_CYCLES_INDEX);
-  get_lower_bytes(XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX, XAM_ACCEL_MAX_EXECUTION_CYCLES_INDEX);
-  get_lower_bytes(XAM_IOCTL_START_COUNT_INDEX, XAM_ACCEL_TOTAL_CU_START_INDEX);
+  get_lower_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::EXECUTION_COUNT,
+                  xdp::DebugIPRegisters::AM::DisplayIndex::EXECUTION_COUNT);
+  get_lower_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::EXECUTION_CYCLES,
+                  xdp::DebugIPRegisters::AM::DisplayIndex::EXECUTION_CYCLES);
+  get_lower_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::STALL_INT,
+                  xdp::DebugIPRegisters::AM::DisplayIndex::STALL_INT);
+  get_lower_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::STALL_STR,
+                  xdp::DebugIPRegisters::AM::DisplayIndex::STALL_STR);
+  get_lower_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::STALL_EXT,
+                  xdp::DebugIPRegisters::AM::DisplayIndex::STALL_EXT);
+  get_lower_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::MIN_EXECUTION_CYCLES,
+                  xdp::DebugIPRegisters::AM::DisplayIndex::MIN_EXECUTION_CYCLES);
+  get_lower_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::MAX_EXECUTION_CYCLES,
+                  xdp::DebugIPRegisters::AM::DisplayIndex::MAX_EXECUTION_CYCLES);
+  // Is this correct?
+  get_lower_bytes(xdp::DebugIPRegisters::AM::IoctlIndex::START_COUNT,
+                  xdp::DebugIPRegisters::AM::DisplayIndex::TOTAL_CU_START);
 
   if (has_dataflow) {
     uint64_t busy_cycles = 0, max_parallel = 0;
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_OFFSET, &busy_cycles, sizeof(uint32_t));
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &max_parallel, sizeof(uint32_t));
 
-    ret_val[XAM_IOCTL_BUSY_CYCLES_INDEX] |= busy_cycles;
-    ret_val[XAM_IOCTL_MAX_PARALLEL_ITR_INDEX] |= max_parallel;
+    ret_val[xdp::DebugIPRegisters::AM::IoctlIndex::BUSY_CYCLES] |= busy_cycles;
+    ret_val[xdp::DebugIPRegisters::AM::IoctlIndex::MAX_PARALLEL_ITR] |= max_parallel;
   } else {
-    ret_val[XAM_IOCTL_BUSY_CYCLES_INDEX] = ret_val[XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX];
-    ret_val[XAM_IOCTL_MAX_PARALLEL_ITR_INDEX] = 1;
+    ret_val[xdp::DebugIPRegisters::AM::IoctlIndex::BUSY_CYCLES] =
+      ret_val[xdp::DebugIPRegisters::AM::IoctlIndex::MAX_EXECUTION_CYCLES];
+    ret_val[xdp::DebugIPRegisters::AM::IoctlIndex::MAX_PARALLEL_ITR] = 1;
   }
   return ret_val;
 
@@ -201,7 +224,7 @@ get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
     XASM_STARVE_CYCLES_OFFSET
   };
 
-  std::vector<uint64_t> ret_val(XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT);
+  std::vector<uint64_t> ret_val(xdp::DebugIPRegisters::ASM::NUM_COUNTERS);
 
   uint32_t sample_interval = 0 ;
   // Read sample interval register to latch the sampled metric counters
@@ -210,7 +233,7 @@ get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
                 &sample_interval, sizeof(uint32_t));
 
   // Then read all the individual 64-bit counters
-  for (unsigned int j = 0 ; j < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; j++) {
+  for (unsigned int j = 0 ; j < xdp::DebugIPRegisters::ASM::NUM_COUNTERS; j++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                   dbg_ip_data->m_base_address + asm_offsets[j],
                   &ret_val[j], sizeof(uint64_t));
@@ -234,9 +257,9 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
     LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
   };
 
-  std::vector<uint32_t> ret_val(XLAPC_STATUS_PER_SLOT);
+  std::vector<uint32_t> ret_val(xdp::DebugIPRegisters::LAPC::NUM_STATUS);
 
-  for (int c = 0; c < XLAPC_STATUS_PER_SLOT; c++) {
+  for (int c = 0; c < xdp::DebugIPRegisters::LAPC::NUM_STATUS; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER, 
                   dbg_ip_data->m_base_address+statusRegisters[c], 
                   &ret_val[c], sizeof(uint32_t));
@@ -249,17 +272,17 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 std::vector<uint32_t> 
 get_spc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
-  std::vector<uint32_t> ret_val(XSPC_STATUS_PER_SLOT);
+  std::vector<uint32_t> ret_val(xdp::DebugIPRegisters::SPC::NUM_STATUS_PER_IP);
 
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
                 dbg_ip_data->m_base_address + XSPC_PC_ASSERTED_OFFSET,
-                &ret_val[XSPC_PC_ASSERTED], sizeof(uint32_t));
+                &ret_val[xdp::DebugIPRegisters::SPC::Index::PC_ASSERTED], sizeof(uint32_t));
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
                 dbg_ip_data->m_base_address + XSPC_CURRENT_PC_OFFSET,
-                &ret_val[XSPC_CURRENT_PC], sizeof(uint32_t));
+                &ret_val[xdp::DebugIPRegisters::SPC::Index::CURRENT_PC], sizeof(uint32_t));
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
                 dbg_ip_data->m_base_address + XSPC_SNAPSHOT_PC_OFFSET,
-                &ret_val[XSPC_SNAPSHOT_PC], sizeof(uint32_t));
+                &ret_val[xdp::DebugIPRegisters::SPC::Index::SNAPSHOT_PC], sizeof(uint32_t));
 
   return ret_val;
 }

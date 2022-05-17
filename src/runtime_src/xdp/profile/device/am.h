@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019-2022 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -19,6 +20,8 @@
 #define XDP_PROFILE_DEVICE_AM_H
 
 #include <stdexcept>
+
+#include "core/include/xdp/counters.h"
 #include "profile_ip_access.h"
 
 namespace xdp {

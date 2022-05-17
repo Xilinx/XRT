@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,8 +17,6 @@
 
 #ifndef XDP_API_INTERFACE_PLUGIN_DOT_H
 #define XDP_API_INTERFACE_PLUGIN_DOT_H
-
-#include "xclperf.h"
 
 #include "xdp/config.h"
 

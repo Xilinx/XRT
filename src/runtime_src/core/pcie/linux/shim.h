@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc.
 #ifndef PCIE_LINUX_SHIM_H_
 #define PCIE_LINUX_SHIM_H_
 
@@ -11,6 +12,8 @@
 #include "core/common/xrt_profiling.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
+
+#include "core/include/xdp/app_debug.h"
 
 #include "core/include/xstream.h" /* for stream_opt_type */
 
@@ -119,9 +122,6 @@ public:
     int xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size);
     int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
     int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
-
-    // Experimental debug profile device data API
-    int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
 
     // Execute and interrupt abstraction
     int xclExecBuf(unsigned int cmdBO);

@@ -1,6 +1,7 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
  * Copyright (C) 2019 Samsung Semiconductor, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1981,8 +1982,8 @@ xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples,
                       uint32_t& traceSamples, uint32_t& traceBufSz)
 {
   xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "xclGetTraceBufferInfo()");
-  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
-  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
+  traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
   return 0;
 }
@@ -1999,7 +2000,7 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
   const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
   uint32_t size = 0;
 
-  wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+  wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
   uint32_t numWords = numSamples * wordsPerSample;
 
   xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);

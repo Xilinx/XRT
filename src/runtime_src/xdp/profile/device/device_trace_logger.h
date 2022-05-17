@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -100,6 +101,12 @@ namespace xdp {
     uint64_t firstTimestamp = 0 ;
     // Used to mark timeline trace if trace buffer gets full
     double mLatestHostTimestampMs = 0;
+
+  private:
+    static constexpr uint64_t CU_MASK        = 0x1;
+    static constexpr uint64_t STALL_INT_MASK = 0x2;
+    static constexpr uint64_t STALL_STR_MASK = 0x4;
+    static constexpr uint64_t STALL_EXT_MASK = 0x8;
 
   public:
 

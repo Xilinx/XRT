@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,13 +21,15 @@
 /* 4244 : Disable warning for conversion from "uint64_t" to "unsigned int" */
 #endif
 
-#include "xdp/profile/plugin/hal_api_interface/xdp_api_interface.h"
-
 #include <cassert>
-#include <iostream>
-#include <cstring>
 #include <chrono>
+#include <cstring>
+#include <iostream>
+
+#include "core/include/xdp/common.h"
+
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/plugin/hal_api_interface/xdp_api_interface.h"
 
 namespace xdp {
 
@@ -158,7 +161,8 @@ namespace xdp {
       
       for(unsigned int i=0; i < results->numASM ; ++i) {
         std::string monName = currDevice->getMonitorName(XCL_PERF_MON_STR, i);
-        std::size_t sepPos  = monName.find(IP_LAYOUT_SEP);
+        // Stream monitors have the name structured as "Master-Slave"
+        std::size_t sepPos  = monName.find("-");
         if(sepPos == std::string::npos)
           continue;
 

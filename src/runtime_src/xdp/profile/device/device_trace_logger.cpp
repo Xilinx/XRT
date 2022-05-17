@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -99,7 +100,7 @@ namespace xdp {
     uint64_t eventFlags = getEventFlags(trace) ;
     uint64_t deviceTimestamp = getDeviceTimestamp(trace) ;
 
-    if (!(eventFlags & XAM_TRACE_CU_MASK)) {
+    if (!(eventFlags & CU_MASK)) {
       // End event
       std::tuple<VTFEventType, uint64_t, double, uint64_t> e =
         db->getDynamicInfo().matchingDeviceEventStart(monTraceId, KERNEL);
@@ -193,20 +194,20 @@ namespace xdp {
 
     // A single trace packet could have multiple events happening simultaneously
 
-    if (traceID & XAM_TRACE_CU_MASK) {
+    if (traceID & CU_MASK) {
       addCUEvent(trace, hostTimestamp, slot, monTraceID, cuId);
     }
-    if (traceID & XAM_TRACE_STALL_INT_MASK) {
+    if (traceID & STALL_INT_MASK) {
       addStallEvent(trace, hostTimestamp, slot, monTraceID, cuId,
-                    KERNEL_STALL_DATAFLOW, XAM_TRACE_STALL_INT_MASK);
+                    KERNEL_STALL_DATAFLOW, STALL_INT_MASK);
     }
-    if (traceID & XAM_TRACE_STALL_STR_MASK) {
+    if (traceID & STALL_STR_MASK) {
       addStallEvent(trace, hostTimestamp, slot, monTraceID, cuId,
-                    KERNEL_STALL_PIPE, XAM_TRACE_STALL_STR_MASK);
+                    KERNEL_STALL_PIPE, STALL_STR_MASK);
     }
-    if (traceID & XAM_TRACE_STALL_EXT_MASK) {
+    if (traceID & STALL_EXT_MASK) {
       addStallEvent(trace, hostTimestamp, slot, monTraceID, cuId,
-                    KERNEL_STALL_EXT_MEM, XAM_TRACE_STALL_EXT_MASK);
+                    KERNEL_STALL_EXT_MEM, STALL_EXT_MASK);
     }
 
     traceIDs[slot] ^= (traceID & 0xf);
@@ -214,7 +215,7 @@ namespace xdp {
 
     // If a CU just ended completely, we need to tie off any hanging
     //  reads, writes, and stalls
-    if ((traceID & XAM_TRACE_CU_MASK) && cuStarts[slot].empty()) {
+    if ((traceID & CU_MASK) && cuStarts[slot].empty()) {
       addApproximateDataTransferEndEvents(cuId);
       addApproximateStallEndEvents(trace, hostTimestamp, slot, monTraceID, cuId);
     }
@@ -646,17 +647,17 @@ namespace xdp {
     // There are some stall events still outstanding that need to be closed
     const double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
 
-    if (traceIDs[s] & XAM_TRACE_STALL_INT_MASK) {
+    if (traceIDs[s] & STALL_INT_MASK) {
       addStallEvent(trace, hostTimestamp-halfCycleTimeInMs, s, monTraceID, cuId,
-                    KERNEL_STALL_DATAFLOW, XAM_TRACE_STALL_INT_MASK);
+                    KERNEL_STALL_DATAFLOW, STALL_INT_MASK);
     }
-    if (traceIDs[s] & XAM_TRACE_STALL_STR_MASK) {
+    if (traceIDs[s] & STALL_STR_MASK) {
       addStallEvent(trace, hostTimestamp-halfCycleTimeInMs, s, monTraceID,
-                    cuId, KERNEL_STALL_PIPE, XAM_TRACE_STALL_STR_MASK);
+                    cuId, KERNEL_STALL_PIPE, STALL_STR_MASK);
     }
-    if (traceIDs[s] & XAM_TRACE_STALL_EXT_MASK) {
+    if (traceIDs[s] & STALL_EXT_MASK) {
       addStallEvent(trace, hostTimestamp-halfCycleTimeInMs, s, monTraceID, cuId,
-                    KERNEL_STALL_EXT_MEM, XAM_TRACE_STALL_EXT_MASK);
+                    KERNEL_STALL_EXT_MEM, STALL_EXT_MASK);
     }
   }
 

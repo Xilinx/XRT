@@ -16,6 +16,7 @@
  */
 #include "shim.h"
 #include "core/include/shim_int.h"
+#include "core/include/xdp/app_debug.h"
 #include "core/common/device.h"
 #include "core/common/system.h"
 #include "xcl_graph.h"

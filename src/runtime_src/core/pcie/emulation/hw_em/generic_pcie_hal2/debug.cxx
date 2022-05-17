@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -32,6 +33,7 @@
  * under the License.
  */
 
+#include "core/include/xdp/counters.h"
 #include "shim.h"
 #include "xclbin.h"
 #include "xcl_perfmon_parameters.h"
@@ -70,18 +72,18 @@ namespace xclhwemhal2
       mLogStream << "debug_ip_layout: reading profile addresses and names..." << std::endl;
     }
 
-    memset(mPerfmonProperties, 0, sizeof(uint8_t) * XAIM_MAX_NUMBER_SLOTS);
-    memset(mAccelmonProperties, 0, sizeof(uint8_t) * XAM_MAX_NUMBER_SLOTS);
-    memset(mStreamMonProperties, 0, sizeof(uint8_t) * XASM_MAX_NUMBER_SLOTS);
+    memset(mPerfmonProperties, 0, sizeof(uint8_t) * xdp::MAX_NUM_AIMS);
+    memset(mAccelmonProperties, 0, sizeof(uint8_t) * xdp::MAX_NUM_AMS);
+    memset(mStreamMonProperties, 0, sizeof(uint8_t) * xdp::MAX_NUM_ASMS);
 
     mMemoryProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_MM_MONITOR, mPerfMonBaseAddress,
-                                                      mPerfMonSlotName, mPerfmonProperties, XAIM_MAX_NUMBER_SLOTS);
+                                                      mPerfMonSlotName, mPerfmonProperties, xdp::MAX_NUM_AIMS);
 
     mAccelProfilingNumberSlots = getIPCountAddrNames(debugFileName, ACCEL_MONITOR, mAccelMonBaseAddress,
-                                                     mAccelMonSlotName, mAccelmonProperties, XAM_MAX_NUMBER_SLOTS);
+                                                     mAccelMonSlotName, mAccelmonProperties, xdp::MAX_NUM_AMS);
 
     mStreamProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_STREAM_MONITOR, mStreamMonBaseAddress,
-                                                      mStreamMonSlotName, mStreamMonProperties, XASM_MAX_NUMBER_SLOTS);
+                                                      mStreamMonSlotName, mStreamMonProperties, xdp::MAX_NUM_ASMS);
 
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
 

@@ -22,6 +22,7 @@
 #include "xrt/device/hal.h"
 #include "xrt/util/range.h"
 #include "core/common/device.h"
+#include "core/include/xdp/common.h"
 #include "xclbin.h"
 #include "ert.h"
 

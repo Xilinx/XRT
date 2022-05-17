@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,7 +25,6 @@
 #include "memorymanager.h"
 #include "rpc_messages.pb.h"
 
-#include "xclperf.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "xclbin.h"
@@ -35,6 +35,8 @@
 #include "core/common/query_requests.h"
 #include "core/common/api/xclbin_int.h"
 #include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xdp/common.h"
+#include "core/include/xdp/counters.h"
 
 #include "mem_model.h"
 #include "mbscheduler.h"
@@ -321,11 +323,8 @@ using addr_type = uint64_t;
       //mutex to control parellel RPC calls
       std::mutex mtx;
       std::mutex mApiMtx;
-      std::vector<Event> list_of_events[XAIM_MAX_NUMBER_SLOTS];
+      std::vector<Event> list_of_events[xdp::MAX_NUM_AIMS];
       unsigned int tracecount_calls;
-      // In case support for different version DSAs is required
-      int mDSAMajorVersion;
-      int mDSAMinorVersion;
       static std::map<std::string, std::string> mEnvironmentNameValueMap;
 
       void* ci_buf;
@@ -372,15 +371,15 @@ using addr_type = uint64_t;
       uint64_t mPerfMonFifoCtrlBaseAddress;
       uint64_t mPerfMonFifoReadBaseAddress;
       uint64_t mTraceFunnelAddress;
-      uint64_t mPerfMonBaseAddress[XAIM_MAX_NUMBER_SLOTS];
-      uint64_t mAccelMonBaseAddress[XAM_MAX_NUMBER_SLOTS];
-      uint64_t mStreamMonBaseAddress[XASM_MAX_NUMBER_SLOTS];
-      std::string mPerfMonSlotName[XAIM_MAX_NUMBER_SLOTS];
-      std::string mAccelMonSlotName[XAM_MAX_NUMBER_SLOTS];
-      std::string mStreamMonSlotName[XASM_MAX_NUMBER_SLOTS];
-      uint8_t mPerfmonProperties[XAIM_MAX_NUMBER_SLOTS];
-      uint8_t mAccelmonProperties[XAM_MAX_NUMBER_SLOTS];
-      uint8_t mStreamMonProperties[XASM_MAX_NUMBER_SLOTS];
+      uint64_t mPerfMonBaseAddress[xdp::MAX_NUM_AIMS];
+      uint64_t mAccelMonBaseAddress[xdp::MAX_NUM_AMS];
+      uint64_t mStreamMonBaseAddress[xdp::MAX_NUM_ASMS];
+      std::string mPerfMonSlotName[xdp::MAX_NUM_AIMS];
+      std::string mAccelMonSlotName[xdp::MAX_NUM_AMS];
+      std::string mStreamMonSlotName[xdp::MAX_NUM_ASMS];
+      uint8_t mPerfmonProperties[xdp::MAX_NUM_AIMS];
+      uint8_t mAccelmonProperties[xdp::MAX_NUM_AMS];
+      uint8_t mStreamMonProperties[xdp::MAX_NUM_ASMS];
       std::vector<membank> mMembanks;
       static std::map<int, std::tuple<std::string,int,void*, unsigned int> > mFdToFileNameMap;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;

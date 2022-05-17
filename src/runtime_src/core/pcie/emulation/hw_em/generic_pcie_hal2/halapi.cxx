@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,6 +16,7 @@
  */
 #include "shim.h"
 #include "core/include/shim_int.h"
+#include "core/include/xdp/app_debug.h"
 
 #include "core/common/device.h"
 #include "core/common/system.h"

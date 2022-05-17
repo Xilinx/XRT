@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,6 +31,8 @@
 #include <mutex>
 #include <set>
 #include <vector>
+
+#include "core/include/xdp/trace.h"
 
 #include "plugin/xdp/device_offload.h"
 
@@ -1769,7 +1772,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     for(unsigned int counter = 0 ; counter < numSlots; counter++)
     {
       unsigned int samplessize = 0;
-      if (counter == XPAR_AIM0_HOST_SLOT)
+
+      // This used to compare to XPAR_AIM0_HOST_SLOT, which is a meaningless
+      // definition now.  Changing it to the equivalent 0 for now, but this
+      // section should be revisited.
+      if (counter == 0)
         continue;
 
       char slotname[128];
@@ -2012,8 +2019,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     FeatureRomHeader &fRomHeader, const boost::property_tree::ptree& platformData)
     :mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
-    ,mDSAMajorVersion(DSA_MAJOR_VERSION)
-    ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
     ,mCuIndx(0)
   {
@@ -3198,9 +3203,9 @@ int HwEmShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 
 int HwEmShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+  uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
 
-  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
 
   return 0;
@@ -3213,7 +3218,7 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
 
     uint32_t size = 0;
 
-    wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+    wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
     uint32_t numWords = numSamples * wordsPerSample;
 
 //    alignas is defined in c++11
@@ -3330,13 +3335,13 @@ void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
                                   char* slotName, uint32_t length) {
   std::string str = "";
   if (type == XCL_PERF_MON_MEMORY) {
-    str = (slotnum < XAIM_MAX_NUMBER_SLOTS) ? mPerfMonSlotName[slotnum] : "";
+    str = (slotnum < xdp::MAX_NUM_AIMS) ? mPerfMonSlotName[slotnum] : "";
   }
   if (type == XCL_PERF_MON_ACCEL) {
-    str = (slotnum < XAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+    str = (slotnum < xdp::MAX_NUM_AMS) ? mAccelMonSlotName[slotnum] : "";
   }
   if (type == XCL_PERF_MON_STR) {
-    str = (slotnum < XASM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
+    str = (slotnum < xdp::MAX_NUM_ASMS) ? mStreamMonSlotName[slotnum] : "";
   }
   if(str.length() < length) {
    strncpy(slotName, str.c_str(), length);

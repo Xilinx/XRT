@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -25,7 +26,7 @@
 #include "core/common/device.h"
 #include "core/common/bo_cache.h"
 #include "core/common/xrt_profiling.h"
-#include "core/include/xcl_app_debug.h"
+#include "core/include/xdp/app_debug.h"
 #include <cstdint>
 #include <fstream>
 #include <map>

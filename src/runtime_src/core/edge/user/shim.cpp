@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -1249,18 +1250,18 @@ xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults)
     LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
   };
 
-  uint64_t baseAddress[XLAPC_MAX_NUMBER_SLOTS];
-  uint32_t numSlots = getIPCountAddrNames(LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, XLAPC_MAX_NUMBER_SLOTS);
-  uint32_t temp[XLAPC_STATUS_PER_SLOT];
+  uint64_t baseAddress[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS];
+  uint32_t numSlots = getIPCountAddrNames(LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, xdp::DebugIPRegisters::LAPC::NUM_COUNTERS);
+  uint32_t temp[xdp::DebugIPRegisters::LAPC::NUM_STATUS];
   aCheckerResults->NumSlots = numSlots;
   snprintf(aCheckerResults->DevUserName, 256, "%s", " ");
   for (uint32_t s = 0; s < numSlots; ++s) {
-    for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++)
+    for (int c=0; c < xdp::DebugIPRegisters::LAPC::NUM_STATUS; c++)
       size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER, baseAddress[s]+statusRegisters[c], &temp[c], 4);
 
-    aCheckerResults->OverallStatus[s]      = temp[XLAPC_OVERALL_STATUS];
-    std::copy(temp+XLAPC_CUMULATIVE_STATUS_0, temp+XLAPC_SNAPSHOT_STATUS_0, aCheckerResults->CumulativeStatus[s]);
-    std::copy(temp+XLAPC_SNAPSHOT_STATUS_0, temp+XLAPC_STATUS_PER_SLOT, aCheckerResults->SnapshotStatus[s]);
+    aCheckerResults->OverallStatus[s]      = temp[xdp::DebugIPRegisters::LAPC::Index::STATUS];
+    std::copy(temp+xdp::DebugIPRegisters::LAPC::Index::CUMULATIVE_STATUS_0, temp+xdp::DebugIPRegisters::LAPC::Index::SNAPSHOT_STATUS_0, aCheckerResults->CumulativeStatus[s]);
+    std::copy(temp+xdp::DebugIPRegisters::LAPC::Index::SNAPSHOT_STATUS_0, temp+xdp::DebugIPRegisters::LAPC::NUM_STATUS, aCheckerResults->SnapshotStatus[s]);
   }
 
   return size;
@@ -1297,11 +1298,11 @@ xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
   };
 
   // Read all metric counters
-  uint64_t baseAddress[XAIM_MAX_NUMBER_SLOTS];
-  uint8_t mPerfmonProperties[XAIM_MAX_NUMBER_SLOTS] = {} ;
-  uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, XAIM_MAX_NUMBER_SLOTS);
+  uint64_t baseAddress[xdp::MAX_NUM_AIMS];
+  uint8_t mPerfmonProperties[xdp::MAX_NUM_AIMS] = {} ;
+  uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, xdp::MAX_NUM_AIMS);
 
-  uint32_t temp[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
+  uint32_t temp[xdp::DebugIPRegisters::AIM::NUM_COUNTERS];
 
   aCounterResults->NumSlots = numSlots;
   snprintf(aCounterResults->DevUserName, 256, "%s", " ");
@@ -1314,7 +1315,7 @@ xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
 
     // If applicable, read the upper 32-bits of the 64-bit debug counters
     if (mPerfmonProperties[s] & XAIM_64BIT_PROPERTY_MASK) {
-      for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
+      for (int c = 0; c < xdp::DebugIPRegisters::AIM::NUM_COUNTERS; ++c) {
         xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                 baseAddress[s] + spm_upper_offsets[c],
                 &temp[c], 4) ;
@@ -1330,7 +1331,7 @@ xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
       aCounterResults->LastReadData[s]  = ((uint64_t)(temp[8])) << 32 ;
     }
 
-    for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
+    for (int c=0; c < xdp::DebugIPRegisters::AIM::NUM_COUNTERS; c++)
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+spm_offsets[c], &temp[c], 4);
 
     aCounterResults->WriteBytes[s]    |= temp[0];
@@ -1381,15 +1382,15 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
   };
 
   // Read all metric counters
-  uint64_t baseAddress[XAM_MAX_NUMBER_SLOTS] = {0};
-  uint8_t  accelmonProperties[XAM_MAX_NUMBER_SLOTS] = {0};
-  uint8_t  accelmonMajorVersions[XAM_MAX_NUMBER_SLOTS] = {0};
-  uint8_t  accelmonMinorVersions[XAM_MAX_NUMBER_SLOTS] = {0};
+  uint64_t baseAddress[xdp::MAX_NUM_AMS] = {0};
+  uint8_t  accelmonProperties[xdp::MAX_NUM_AMS] = {0};
+  uint8_t  accelmonMajorVersions[xdp::MAX_NUM_AMS] = {0};
+  uint8_t  accelmonMinorVersions[xdp::MAX_NUM_AMS] = {0};
 
   uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, accelmonProperties,
-                                          accelmonMajorVersions, accelmonMinorVersions, XAM_MAX_NUMBER_SLOTS);
+                                          accelmonMajorVersions, accelmonMinorVersions, xdp::MAX_NUM_AMS);
 
-  uint32_t temp[XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
+  uint32_t temp[xdp::DebugIPRegisters::AM::NUM_COUNTERS_DISPLAYED] = {0};
 
   samResult->NumSlots = numSlots;
   snprintf(samResult->DevUserName, 256, "%s", " ");
@@ -1404,7 +1405,7 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
 
     // If applicable, read the upper 32-bits of the 64-bit debug counters
     if (accelmonProperties[s] & XAM_64BIT_PROPERTY_MASK) {
-      for (int c = 0 ; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
+      for (int c = 0; c < xdp::DebugIPRegisters::AM::NUM_COUNTERS_DISPLAYED; ++c) {
         xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                 baseAddress[s] + sam_upper_offsets[c],
                 &temp[c], 4) ;
@@ -1428,7 +1429,7 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
       }
     }
 
-    for (int c=0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++)
+    for (int c=0; c < xdp::DebugIPRegisters::AM::NUM_COUNTERS_DISPLAYED; c++)
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+sam_offsets[c], &temp[c], 4);
 
     samResult->CuExecCount[s]      |= temp[0];
@@ -1463,11 +1464,11 @@ xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults)
   size_t size = 0; // The amount of data read from the hardware
 
   // Get the base addresses of all the SSPM IPs in the debug IP layout
-  uint64_t baseAddress[XASM_MAX_NUMBER_SLOTS];
+  uint64_t baseAddress[xdp::MAX_NUM_ASMS];
   uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_MONITOR,
                                           baseAddress,
                                           nullptr, nullptr, nullptr, nullptr,
-                                          XASM_MAX_NUMBER_SLOTS);
+                                          xdp::MAX_NUM_ASMS);
 
   // Fill up the portions of the return struct that are known by the runtime
   aCounterResults->NumSlots = numSlots ;
@@ -1491,9 +1492,9 @@ xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults)
                       &sampleInterval, sizeof(uint32_t));
 
       // Then read all the individual 64-bit counters
-      unsigned long long int tmp[XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
+      unsigned long long int tmp[xdp::DebugIPRegisters::ASM::NUM_COUNTERS] ;
 
-      for (unsigned int j = 0 ; j < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j)
+      for (unsigned int j = 0 ; j < xdp::DebugIPRegisters::ASM::NUM_COUNTERS; ++j)
         {
           size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                           baseAddress[i] + sspm_offsets[j],
@@ -1515,11 +1516,11 @@ xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingChecke
   size_t size = 0; // The amount of data read from the hardware
 
   // Get the base addresses of all the SPC IPs in the debug IP layout
-  uint64_t baseAddress[XSPC_MAX_NUMBER_SLOTS];
+  uint64_t baseAddress[xdp::DebugIPRegisters::SPC::NUM_COUNTERS];
   uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
                                           baseAddress,
                                           nullptr, nullptr, nullptr, nullptr,
-                                          XSPC_MAX_NUMBER_SLOTS);
+                                          xdp::DebugIPRegisters::SPC::NUM_COUNTERS);
 
   // Fill up the portions of the return struct that are known by the runtime
   aStreamingCheckerResults->NumSlots = numSlots ;
@@ -2420,12 +2421,6 @@ xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type,
     ;
   }
   return -1 ;
-}
-
-int
-xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
-{
-  return 0;
 }
 
 int

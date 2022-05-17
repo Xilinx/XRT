@@ -39,7 +39,7 @@ namespace {
   static bool nonZero(xclCounterResults& values)
   {
     // Check AIM stats
-    for (uint64_t i = 0 ; i < XAIM_MAX_NUMBER_SLOTS ; ++i)
+    for (uint64_t i = 0 ; i < xdp::MAX_NUM_AIMS ; ++i)
     {
       if (values.WriteBytes[i]      != 0) return true ;
       if (values.WriteTranx[i]      != 0) return true ;
@@ -56,7 +56,7 @@ namespace {
     }
 
     // Check AM stats
-    for (uint64_t i = 0 ; i < XAM_MAX_NUMBER_SLOTS ; ++i)
+    for (uint64_t i = 0 ; i < xdp::MAX_NUM_AMS ; ++i)
     {
       if (values.CuExecCount[i]       != 0) return true ;
       if (values.CuExecCycles[i]      != 0) return true ;
@@ -69,7 +69,7 @@ namespace {
     }
 
     // Check ASM stats
-    for (uint64_t i = 0 ; i < XASM_MAX_NUMBER_SLOTS ; ++i)
+    for (uint64_t i = 0 ; i < xdp::MAX_NUM_ASMS ; ++i)
     {
       if (values.StrNumTranx[i]     != 0) return true ;
       if (values.StrDataBytes[i]    != 0) return true ;

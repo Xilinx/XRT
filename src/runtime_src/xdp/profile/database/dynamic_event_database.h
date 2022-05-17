@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,21 +18,20 @@
 #ifndef VP_DYNAMIC_EVENT_DATABASE_DOT_H
 #define VP_DYNAMIC_EVENT_DATABASE_DOT_H
 
-#include <map>
-#include <list>
-#include <mutex>
-#include <vector>
+#include <atomic>
 #include <fstream>
 #include <functional>
+#include <list>
+#include <map>
 #include <memory>
-#include <atomic>
+#include <mutex>
+#include <vector>
 
-#include "xdp/profile/database/events/vtf_event.h"
+#include "core/common/uuid.h"
+#include "core/include/xdp/counters.h"
 
 #include "xdp/config.h"
-#include "core/common/uuid.h"
-
-#include "core/include/xclperf.h"
+#include "xdp/profile/database/events/vtf_event.h"
 
 namespace xdp {
 

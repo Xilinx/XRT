@@ -35,7 +35,7 @@
 
 
 // Default dma chunk size
-#define CHUNK_SZ (MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE)
+#define CHUNK_SZ (xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * TRACE_PACKET_SIZE)
 
 namespace xdp {
 

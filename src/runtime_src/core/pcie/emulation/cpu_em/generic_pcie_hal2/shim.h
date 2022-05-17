@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,7 +23,9 @@
 #include "memorymanager.h"
 #include "rpc_messages.pb.h"
 
-#include "xclperf.h"
+#include "core/include/xdp/common.h"
+#include "core/include/xdp/counters.h"
+#include "core/include/xdp/trace.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "xclbin.h"
@@ -468,8 +471,6 @@ namespace xclcpuemhal2 {
 
       uint64_t mRAMSize;
       size_t mCoalesceThreshold;
-      int mDSAMajorVersion;
-      int mDSAMinorVersion;
       unsigned int mDeviceIndex;
       bool mCloseAll;
 
