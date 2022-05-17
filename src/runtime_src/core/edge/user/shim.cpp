@@ -86,6 +86,15 @@ operator"" _gb(unsigned long long value)
   return value << 30;
 }
 
+static ZYNQ::shim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = ZYNQ::shim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
+}
+
 }
 
 // TODO: This code is copy from core/pcie/linux/shim.cpp. Considering to create a util library for X86 and ARM.
@@ -1095,7 +1104,7 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
 
 int
 shim::
-xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
+xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
   unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
   int ret;
@@ -1107,16 +1116,19 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
   ctx.flags = flags;
   ctx.op = ZOCL_CTX_OP_ALLOC_CTX;
 
-  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
-  return ret ? -errno : ret;
+  if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx))
+    throw xrt_core::system_error(errno, "failed to open ip context");
+
+  return 0;
 }
 
-int
+// open_context() - aka xclOpenContextByName
+void
 shim::
-xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
+open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
 {
   // TODO: implement for full support of multiple xclbins
-  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
+  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
 }
 
 int
@@ -1796,6 +1808,25 @@ setAIEAccessMode(xrt::aie::access_mode am)
 
 } // end namespace ZYNQ
 
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+void
+open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+{
+  auto shim = get_shim_object(handle);
+  shim->open_context(slot, xclbin_uuid, cuname, shared);
+}
+
+} // xrt::shim_int
+////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////
+// Implementation of user exposed SHIM APIs
+// This are C level functions
+////////////////////////////////////////////////////////////////
 unsigned
 xclProbe()
 {
@@ -2359,27 +2390,15 @@ xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipInd
 {
   return xdp::hal::profiling_wrapper("xclOpenContext",
   [handle, xclbinId, ipIndex, shared] {
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-
-  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
+    try {
+      ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+      return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get_code();
+    }
   }) ;
-}
-
-int
-xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
-{
-  try {
-    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-    return drv ? drv->xclOpenContext(slot, xclbinId, cuname, shared) : -EINVAL;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
 }
 
 int

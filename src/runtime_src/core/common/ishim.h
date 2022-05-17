@@ -281,8 +281,7 @@ struct shim : public DeviceType
   void
   open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) override
   {
-    if (auto ret = xclOpenContextByName(DeviceType::get_device_handle(), slot, xclbin_uuid.get(), cuname.c_str(), shared))
-      throw system_error(ret, "failed to open ip context");
+    xrt::shim_int::open_context(DeviceType::get_device_handle(), slot, xclbin_uuid, cuname, shared);
   }
 
   void

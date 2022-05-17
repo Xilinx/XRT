@@ -20,6 +20,39 @@
 #include "core/common/system.h"
 #include "xcl_graph.h"
 
+namespace {
+
+// Wrap handle check to throw on error
+static xclcpuemhal2::CpuemShim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = xclcpuemhal2::CpuemShim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
+}
+
+} // namespace
+
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+// open_context - aka xclOpenContextByName
+void
+open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+{
+  auto shim = get_shim_object(handle);
+  shim->open_context(slot, xclbin_uuid, cuname, shared);
+}
+
+} // xrt::shim_int
+
+////////////////////////////////////////////////////////////////
+// Implementation of user exposed SHIM APIs
+// This are C level functions
+////////////////////////////////////////////////////////////////
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
   xclDeviceInfo2 info;
@@ -531,22 +564,6 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
-}
-
-int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
-{
-  try {
-    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-    return drv ? drv->xclOpenContextByName(slot, xclbinId, cuname, shared) : -ENODEV;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
 }
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)

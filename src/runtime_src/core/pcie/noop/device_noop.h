@@ -8,7 +8,7 @@
 #include "core/common/query_requests.h"
 #include "core/pcie/common/device_pcie.h"
 
-#include "shim.h"
+#include "shim_int.h"
 
 namespace xrt_core { namespace noop {
 
@@ -24,22 +24,22 @@ private:
   virtual const query::request&
   lookup_query(query::key_type query_key) const override;
 
-  uint32_t // slotidx
+  uint32_t // ctx handle aka slotidx
   create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const override
   {
-    return userpf::create_hw_context(this, xclbin_uuid, qos);
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos);
   }
 
   void
-  destroy_hw_context(uint32_t slotidx) const override
+  destroy_hw_context(uint32_t ctxhdl) const override
   {
-    userpf::destroy_hw_context(this, slotidx);
+    xrt::shim_int::destroy_hw_context(get_device_handle(), ctxhdl);
   }
 
   void
   register_xclbin(const xrt::xclbin& xclbin) const override
   {
-    userpf::register_xclbin(this, xclbin);
+    xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
   }
 };
 

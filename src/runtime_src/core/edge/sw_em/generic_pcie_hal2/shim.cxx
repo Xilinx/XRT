@@ -2111,11 +2111,6 @@ int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool 
   return 0;
 }
 
-int CpuemShim::xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const
-{
-  return 0;
-}
-
 /*
 * xclExecWait
 */
@@ -2172,6 +2167,16 @@ int CpuemShim::xclIPName2Index(const char *name)
   //Get IP_LAYOUT buffer from xclbin
   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
   return xclemulation::getIPName2Index(name, buffer.first);
+}
+
+// open_context() - aka xclOpenContextByName
+void
+CpuemShim::
+open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+{
+  // Alveo Linux PCIE does not yet support multiple xclbins.
+  // Call regular flow
+  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
 }
 
 /******************************* XRT Graph API's **************************************************/

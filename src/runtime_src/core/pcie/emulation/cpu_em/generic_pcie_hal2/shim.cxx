@@ -1935,11 +1935,6 @@ int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool 
   return 0;
 }
 
-int CpuemShim::xclOpenContextByName(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const
-{
-  return xclOpenContext(xclbinId, mCoreDevice->get_cuidx(slot, cuname).index, shared);
-}
-
 /*
 * xclExecWait
 */
@@ -2301,5 +2296,15 @@ int CpuemShim::xrtGMIOWait(const char *gmioname)
   return 0;
 }
 
-/**********************************************HAL2 API's END HERE **********************************************/
+// open_context() - aka xclOpenContextByName
+void
+CpuemShim::
+open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+{
+  // Alveo Linux PCIE does not yet support multiple xclbins.
+  // Call regular flow
+  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
 }
+
+/**********************************************HAL2 API's END HERE **********************************************/
+} //xclcpuemhal2

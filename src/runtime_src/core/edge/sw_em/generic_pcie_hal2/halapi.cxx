@@ -14,9 +14,39 @@
  * under the License.
  */
 #include "shim.h"
+#include "core/include/shim_int.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "xcl_graph.h"
+
+namespace {
+
+// Wrap handle check to throw on error
+static xclcpuemhal2::CpuemShim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = xclcpuemhal2::CpuemShim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
+}
+
+} // namespace
+
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+// open_context - aka xclOpenContextByName
+void
+open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+{
+  auto shim = get_shim_object(handle);
+  shim->open_context(slot, xclbin_uuid, cuname, shared);
+}
+
+} // xrt::shim_int
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
@@ -586,8 +616,6 @@ int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz
   return -1;
 }
 
-
-
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
   va_list args;
@@ -602,12 +630,6 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
-}
-
-int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclOpenContext(slot, xclbinId, cuname, shared) : -ENODEV;
 }
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
