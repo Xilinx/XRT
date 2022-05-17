@@ -85,6 +85,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    xball.rst
    xbtop.rst
    xbtools_map.rst
+   nagios_plugin.rst
 
 
 .. toctree::
