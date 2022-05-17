@@ -80,6 +80,7 @@ bool AIETraceOffload::initReadTrace()
     gmioDMAInsts.clear();
     gmioDMAInsts.resize(numStream);
   }
+
   for(uint64_t i = 0; i < numStream ; ++i) {
     buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
     if(!buffers[i].boHandle) {
