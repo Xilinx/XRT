@@ -40,7 +40,7 @@ namespace xdp {
 
   // AIE Trace data type
   struct AIETraceDataType {
-    std::vector<void*> buffer;
+    std::vector<std::unique_ptr<unsigned char[]>> buffer;
     std::vector<uint64_t> bufferSz;
   };
   typedef std::vector<AIETraceDataType*> AIETraceDataVector;

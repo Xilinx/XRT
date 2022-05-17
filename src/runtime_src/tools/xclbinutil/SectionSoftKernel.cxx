@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,11 +17,12 @@
 #include "SectionSoftKernel.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
-
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
+
+namespace XUtil = XclBinUtilities;
 
 // Disable windows compiler warnings
 #ifdef _WIN32
@@ -29,25 +30,22 @@ namespace XUtil = XclBinUtilities;
 #endif
 
 // Static Variables / Classes
-SectionSoftKernel::_init SectionSoftKernel::_initializer;
+SectionSoftKernel::init SectionSoftKernel::initializer;
 
-// -------------------------------------------------------------------------
+SectionSoftKernel::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(SOFT_KERNEL, "SOFT_KERNEL", boost::factory<SectionSoftKernel*>()); 
+  sectionInfo->supportsSubSections = true;
+  sectionInfo->supportsIndexing = true;
 
-SectionSoftKernel::SectionSoftKernel() {
-  // Empty
-}
-
-// -------------------------------------------------------------------------
-
-SectionSoftKernel::~SectionSoftKernel() {
-  // Empty
+  addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
 
 bool
 SectionSoftKernel::doesSupportAddFormatType(FormatType _eFormatType) const {
-  // The Soft Kernel top-level section does support any add syntax.
+  // The Soft Kernel top-level section doesn't support any add syntax.
   // Must use sub-sections
   return false;
 }
@@ -137,8 +135,8 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // Do we have enough room to overlay the header structure
   if (_origSectionSize < sizeof(soft_kernel)) {
-    std::string errMsg = XUtil::format("ERROR: Segment size (%d) is smaller than the size of the soft_kernel structure (%d)", _origSectionSize, sizeof(soft_kernel));
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the soft_kernel structure (%d)") % _origSectionSize % sizeof(soft_kernel);
+    throw std::runtime_error(errMsg.str());
   }
 
   // Prepare our destination header buffer
@@ -148,19 +146,19 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   const soft_kernel* pHdr = reinterpret_cast<const soft_kernel*>(_pOrigDataSection);
 
   XUtil::TRACE_BUF("soft_kernel-original", reinterpret_cast<const char*>(pHdr), sizeof(soft_kernel));
-  XUtil::TRACE(XUtil::format("Original: \n"
+  XUtil::TRACE(boost::format("Original: \n"
                              "  mpo_name (0x%lx): '%s'\n"
                              "  m_image_offset: 0x%lx, m_image_size: 0x%lx\n"
                              "  mpo_version (0x%lx): '%s'\n"
                              "  mpo_md5_value (0x%lx): '%s'\n"
                              "  mpo_symbol_name (0x%lx): '%s'\n"
-                             "  m_num_instances: %d",
-                             pHdr->mpo_name, reinterpret_cast<const char*>(pHdr) + pHdr->mpo_name,
-                             pHdr->m_image_offset, pHdr->m_image_size,
-                             pHdr->mpo_version, reinterpret_cast<const char*>(pHdr) + pHdr->mpo_version,
-                             pHdr->mpo_md5_value, reinterpret_cast<const char*>(pHdr) + pHdr->mpo_md5_value,
-                             pHdr->mpo_symbol_name, reinterpret_cast<const char*>(pHdr) + pHdr->mpo_symbol_name,
-                             pHdr->m_num_instances));
+                             "  m_num_instances: %d")
+                             % pHdr->mpo_name % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_name)
+                             % pHdr->m_image_offset % pHdr->m_image_size
+                             % pHdr->mpo_version % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_version)
+                             % pHdr->mpo_md5_value % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_md5_value)
+                             % pHdr->mpo_symbol_name % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_symbol_name)
+                             % pHdr->m_num_instances);
 
   // Get the JSON metadata
   _istream.seekg(0, _istream.end);             // Go to the beginning
@@ -194,13 +192,13 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     std::string sValue = ptSK.get<std::string>("mpo_name", sDefault);
 
     if (sValue.compare(getSectionIndexName()) != 0) {
-      std::string errMsg = XUtil::format("ERROR: Metadata data mpo_name '%s' does not match expected section name '%s'", sValue.c_str(), getSectionIndexName().c_str());
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: Metadata data mpo_name '%s' does not match expected section name '%s'") % sValue % getSectionIndexName();
+      throw std::runtime_error(errMsg.str());
     }
 
     softKernelHdr.mpo_name = sizeof(soft_kernel) + stringBlock.tellp();
     stringBlock << sValue << '\0';   
-    XUtil::TRACE(XUtil::format("  mpo_name (0x%lx): '%s'", softKernelHdr.mpo_name, sValue.c_str()).c_str());
+    XUtil::TRACE(boost::format("  mpo_name (0x%lx): '%s'") % softKernelHdr.mpo_name % sValue);
   }
 
   // mpo_version
@@ -209,7 +207,7 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     std::string sValue = ptSK.get<std::string>("mpo_version", sDefault);
     softKernelHdr.mpo_version = sizeof(soft_kernel) + stringBlock.tellp();
     stringBlock << sValue << '\0';
-    XUtil::TRACE(XUtil::format("  mpo_version (0x%lx): '%s'", softKernelHdr.mpo_version, sValue.c_str()).c_str());
+    XUtil::TRACE(boost::format("  mpo_version (0x%lx): '%s'") % softKernelHdr.mpo_version % sValue);
   }
 
   // mpo_md5_value
@@ -218,7 +216,7 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     std::string sValue = ptSK.get<std::string>("mpo_md5_value", sDefault);
     softKernelHdr.mpo_md5_value = sizeof(soft_kernel) + stringBlock.tellp();
     stringBlock << sValue << '\0';
-    XUtil::TRACE(XUtil::format("  mpo_md5_value (0x%lx): '%s'", softKernelHdr.mpo_md5_value, sValue.c_str()).c_str());
+    XUtil::TRACE(boost::format("  mpo_md5_value (0x%lx): '%s'") % softKernelHdr.mpo_md5_value % sValue);
   }
 
   // mpo_symbol_name
@@ -227,14 +225,14 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     std::string sValue = ptSK.get<std::string>("mpo_symbol_name", sDefault);
     softKernelHdr.mpo_symbol_name = sizeof(soft_kernel) + stringBlock.tellp();
     stringBlock << sValue << '\0';
-    XUtil::TRACE(XUtil::format("  mpo_symbol_name (0x%lx): '%s'", softKernelHdr.mpo_symbol_name, sValue.c_str()).c_str());
+    XUtil::TRACE(boost::format("  mpo_symbol_name (0x%lx): '%s'") % softKernelHdr.mpo_symbol_name % sValue);
 
     // DRC Check checking to see if the maximum symbol name length has been violated
     constexpr unsigned int MAX_SYMBOL_NAME_LENGTH = 19;
     if (sValue.length() > MAX_SYMBOL_NAME_LENGTH) {
-      const std::string errMsg = (boost::format("ERROR: The given symbol name '%s' (length %d) exceeds the maximum support length of %d characters.") 
-                                            % sValue % sValue.length() % MAX_SYMBOL_NAME_LENGTH).str();
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: The given symbol name '%s' (length %d) exceeds the maximum support length of %d characters.") 
+                                  % sValue % sValue.length() % MAX_SYMBOL_NAME_LENGTH;
+      throw std::runtime_error(errMsg.str());
     }
   }
 
@@ -243,14 +241,13 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     uint32_t defaultValue = pHdr->m_num_instances;
     uint32_t value = ptSK.get<uint32_t>("m_num_instances", defaultValue);
     softKernelHdr.m_num_instances = value;
-    XUtil::TRACE(XUtil::format("  m_num_instances: %d", softKernelHdr.m_num_instances).c_str());
+    XUtil::TRACE(boost::format("  m_num_instances: %d") % softKernelHdr.m_num_instances);
 
     // DRC Check checking the maximum number of instances
     constexpr unsigned int MAX_NUM_INSTANCES = 128;
     if (value > MAX_NUM_INSTANCES) {
-      const std::string errMsg = (boost::format("ERROR: The number of instances (%d) exceeds the maximum supported value (%d).") 
-                                                 % value % MAX_NUM_INSTANCES).str();
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: The number of instances (%d) exceeds the maximum supported value (%d).") % value % MAX_NUM_INSTANCES;
+      throw std::runtime_error(errMsg.str());
     }
   }
 
@@ -258,8 +255,8 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   {
     softKernelHdr.m_image_offset = sizeof(soft_kernel) + stringBlock.tellp();
     softKernelHdr.m_image_size = pHdr->m_image_size;
-    XUtil::TRACE(XUtil::format("  m_image_offset: 0x%lx", softKernelHdr.m_image_offset).c_str());
-    XUtil::TRACE(XUtil::format("    m_image_size: 0x%lx", softKernelHdr.m_image_size).c_str());
+    XUtil::TRACE(boost::format("  m_image_offset: 0x%lx") % softKernelHdr.m_image_offset);
+    XUtil::TRACE(boost::format("    m_image_size: 0x%lx") % softKernelHdr.m_image_size);
   }
 
   // Copy the output to the output buffer.
@@ -344,7 +341,7 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
         throw std::runtime_error(errMsg);
       }
 
-      if (_eFormatType != Section::FT_RAW) {
+      if (_eFormatType != Section::FormatType::RAW) {
         std::string errMsg = "ERROR: Soft kernel's object only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -359,7 +356,7 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
           throw std::runtime_error(errMsg);
         }
 
-        if (_eFormatType != Section::FT_JSON) {
+        if (_eFormatType != Section::FormatType::JSON) {
           std::string errMsg = "ERROR: SOFT_KERNEL-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -370,8 +367,8 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
 
     case SS_UNKNOWN:
     default: {
-        std::string errMsg = XUtil::format("ERROR: Subsection '%s' not support by section '%s", _sSubSectionName.c_str(), getSectionKindAsString().c_str());
-        throw std::runtime_error(errMsg);
+        auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
+        throw std::runtime_error(errMsg.str());
       }
       break;
   }
@@ -386,8 +383,8 @@ SectionSoftKernel::writeObjImage(std::ostream& _oStream) const {
   // Overlay the structure
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(soft_kernel)) {
-    std::string errMsg = XUtil::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)", m_bufferSize, sizeof(soft_kernel));
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)") % m_bufferSize % sizeof(soft_kernel);
+    throw std::runtime_error(errMsg.str());
   }
 
   // No look at the data
@@ -406,25 +403,25 @@ SectionSoftKernel::writeMetadata(std::ostream& _oStream) const {
   // Overlay the structure
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(soft_kernel)) {
-    std::string errMsg = XUtil::format("ERROR: Segment size (%d) is smaller than the size of the softkernel structure (%d)", m_bufferSize, sizeof(soft_kernel));
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the softkernel structure (%d)") % m_bufferSize % sizeof(soft_kernel);
+    throw std::runtime_error(errMsg.str());
   }
 
   soft_kernel* pHdr = reinterpret_cast<soft_kernel *>(m_pBuffer);
 
-  XUtil::TRACE(XUtil::format("Original: \n"
+  XUtil::TRACE(boost::format("Original: \n"
                              "  mpo_name (0x%lx): '%s'\n"
                              "  m_image_offset: 0x%lx, m_image_size: 0x%lx\n"
                              "  mpo_version (0x%lx): '%s'\n"
                              "  mpo_md5_value (0x%lx): '%s'\n"
                              "  mpo_symbol_name (0x%lx): '%s'\n"
-                             "  m_num_instances: %d",
-                             pHdr->mpo_name, reinterpret_cast<char *>(pHdr) + pHdr->mpo_name,
-                             pHdr->m_image_offset, pHdr->m_image_size,
-                             pHdr->mpo_version, reinterpret_cast<char *>(pHdr) + pHdr->mpo_version,
-                             pHdr->mpo_md5_value, reinterpret_cast<char *>(pHdr) + pHdr->mpo_md5_value,
-                             pHdr->mpo_symbol_name, reinterpret_cast<char *>(pHdr) + pHdr->mpo_symbol_name,
-                             pHdr->m_num_instances));
+                             "  m_num_instances: %d")
+                             % pHdr->mpo_name % (reinterpret_cast<char *>(pHdr) + pHdr->mpo_name)
+                             % pHdr->m_image_offset % pHdr->m_image_size
+                             % pHdr->mpo_version % (reinterpret_cast<char *>(pHdr) + pHdr->mpo_version)
+                             % pHdr->mpo_md5_value % (reinterpret_cast<char *>(pHdr) + pHdr->mpo_md5_value)
+                             % pHdr->mpo_symbol_name % (reinterpret_cast<char *>(pHdr) + pHdr->mpo_symbol_name)
+                             % pHdr->m_num_instances);
 
   // Convert the data from the binary format to JSON
   boost::property_tree::ptree ptSoftKernel;
@@ -433,7 +430,7 @@ SectionSoftKernel::writeMetadata(std::ostream& _oStream) const {
   ptSoftKernel.put("mpo_version", reinterpret_cast<char *>(pHdr) + pHdr->mpo_version);
   ptSoftKernel.put("mpo_md5_value", reinterpret_cast<char *>(pHdr) + pHdr->mpo_md5_value);
   ptSoftKernel.put("mpo_symbol_name", reinterpret_cast<char *>(pHdr) + pHdr->mpo_symbol_name);
-  ptSoftKernel.put("m_num_instances", XUtil::format("%d", pHdr->m_num_instances).c_str());
+  ptSoftKernel.put("m_num_instances", (boost::format("%d") % pHdr->m_num_instances).str());
 
   boost::property_tree::ptree root;
   root.put_child("soft_kernel_metadata", ptSoftKernel);
@@ -458,7 +455,7 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
   switch (eSubSection) {
     case SS_OBJ:
       // Some basic DRC checks
-      if (_eFormatType != Section::FT_RAW) {
+      if (_eFormatType != Section::FormatType::RAW) {
         std::string errMsg = "ERROR: SOFT_KERNEL-OBJ only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -467,7 +464,7 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
       break;
 
     case SS_METADATA: {
-        if (_eFormatType != Section::FT_JSON) {
+        if (_eFormatType != Section::FormatType::JSON) {
           std::string errMsg = "ERROR: SOFT_KERNEL-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -478,15 +475,15 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
 
     case SS_UNKNOWN:
     default: {
-        std::string errMsg = XUtil::format("ERROR: Subsection '%s' not support by section '%s", _sSubSectionName.c_str(), getSectionKindAsString().c_str());
-        throw std::runtime_error(errMsg);
+        auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
+        throw std::runtime_error(errMsg.str());
       }
       break;
   }
 }
 
 void
-SectionSoftKernel::readXclBinBinary(std::fstream& _istream, const axlf_section_header& _sectionHeader) {
+SectionSoftKernel::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader) {
   Section::readXclBinBinary(_istream, _sectionHeader);
 
   // Extract the binary data as a JSON string

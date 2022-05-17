@@ -388,19 +388,35 @@ public:
   }
 
   virtual hal::operations_result<double>
-  getDeviceMaxRead() override
+  getHostMaxRead() override
   {
-    if (!m_ops->mGetDeviceMaxRead)
+    if (!m_ops->mGetHostMaxRead)
       return hal::operations_result<double>();
-    return m_ops->mGetDeviceMaxRead(m_handle);
+    return m_ops->mGetHostMaxRead(m_handle);
   }
 
   virtual hal::operations_result<double>
-  getDeviceMaxWrite() override
+  getHostMaxWrite() override
   {
-    if (!m_ops->mGetDeviceMaxWrite)
+    if (!m_ops->mGetHostMaxWrite)
       return hal::operations_result<double>();
-    return m_ops->mGetDeviceMaxWrite(m_handle);
+    return m_ops->mGetHostMaxWrite(m_handle);
+  }
+
+  virtual hal::operations_result<double>
+  getKernelMaxRead() override
+  {
+    if (!m_ops->mGetKernelMaxRead)
+      return hal::operations_result<double>();
+    return m_ops->mGetKernelMaxRead(m_handle);
+  }
+
+  virtual hal::operations_result<double>
+  getKernelMaxWrite() override
+  {
+    if (!m_ops->mGetKernelMaxWrite)
+      return hal::operations_result<double>();
+    return m_ops->mGetKernelMaxWrite(m_handle);
   }
 
   virtual hal::operations_result<size_t>

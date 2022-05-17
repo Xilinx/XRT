@@ -228,7 +228,7 @@ int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 
 int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);
-void zocl_free_sections(struct drm_zocl_slot *slot);
+void zocl_free_sections(struct drm_zocl_dev *dev, struct drm_zocl_slot *slot);
 void zocl_free_bo(struct drm_gem_object *obj);
 void zocl_drm_free_bo(struct drm_zocl_bo *bo);
 struct drm_zocl_bo *zocl_drm_create_bo(struct drm_device *dev,
@@ -287,7 +287,10 @@ struct platform_device *zocl_find_pdev(char *name);
 static inline struct drm_zocl_dev *
 zocl_get_zdev(void)
 {
-	return platform_get_drvdata(zocl_find_pdev("zyxclmm_drm"));
+	struct platform_device *pdev = zocl_find_pdev("zyxclmm_drm");
+	if(!pdev)
+		return NULL;
+	return platform_get_drvdata(pdev);
 }
 int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr);
 int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx);
@@ -317,7 +320,7 @@ zocl_cu_submit_xcmd(struct drm_zocl_dev *zdev, int i, struct kds_command *xcmd)
 	struct zocl_drv_private *priv;
 	struct zocl_cu_ops *ops;
 
-	pdev = zdev->cu_pldev[i];
+	pdev = zdev->cu_subdev.cu_pldev[i];
 	priv = (void *)platform_get_device_id(pdev)->driver_data;
 	ops = (struct zocl_cu_ops *)priv->ops;
 	return ops->submit(pdev, xcmd);

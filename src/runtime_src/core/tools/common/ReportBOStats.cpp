@@ -95,7 +95,7 @@ ReportBOStats::getPropertyTree20202( const xrt_core::device * pDevice,
     } else {
       std::string mem_used(bo_info[1]);
       mem_used.pop_back();
-      auto mem_used_bytes = XBUtilities::string_to_bytes(mem_used);
+      auto mem_used_bytes = XBUtilities::string_to_base_units(mem_used, XBUtilities::unit::bytes);
       mem_used.pop_back();
       bo_pt.put("buffer_type", bo_info[0].substr(1, bo_info[0].length()-2));
       bo_pt.put("buffer_count", bo_info[2].substr(0, bo_info[2].length()-3));

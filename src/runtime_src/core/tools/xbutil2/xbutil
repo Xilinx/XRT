@@ -3,10 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Copyright (C) 2020-2021 Xilinx, Inc.
-#
-# xbutil loader which automatically switches between legacy and next-gen
-# xbutil utility. Starting with 2021.1 the default is next-gen xbutil tool.
+# Copyright (C) 2020-2022 Xilinx, Inc.
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
@@ -17,47 +14,26 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
 fi
 
 # Working variables
-DEFAULT=xbutil2
-XRT_PROG=""
-
-# -- Legacy commands
-declare -A LEGACY_COMMANDS=( \
-        ["help"]="XBUTIL" \
-        ["version"]="XBUTIL" \
-        ["clock"]="XBUTIL" \
-        ["boot"]="XBUTIL" \
-        ["query"]="XBUTIL" \
-        ["dump"]="XBUTIL" \
-        ["run"]="XBUTIL" \
-        ["fan"]="XBUTIL" \
-        ["dmatest"]="XBUTIL" \
-        ["list"]="XBUTIL" \
-        ["scan"]="XBUTIL" \
-        ["mem"]="XBUTIL" \
-        ["dd"]="XBUTIL" \
-        ["status"]="XBUTIL" \
-        ["m2mtest"]="XBUTIL" \
-        ["flash"]="XBUTIL" \
-        ["top"]="XBUTIL" \
-        ["p2p"]="XBUTIL" \
-        ["host_mem"]="XBUTIL" \
-        ["scheduler"]="XBUTIL" \
-    )
+XRT_PROG=xbutil2
 
 # -- Examine the options
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
     case "$1" in
-	# Indicates that the new version of xbutil (e.g., xbutil2) should be used
-	-new|--new)
-	    XRT_PROG=xbutil2
-	    shift
-	    ;;
-	# Indicates that the legacy version of xbutil should be used
-	-legacy|--legacy)
-	    XRT_PROG=xbutil
-	    shift
+    # Indicates that the legacy was specified
+    -legacy|--legacy)
+        echo "----------------------------------------------------------------------"
+        echo "Error: Obsoleted option
+       The --legacy option is no longer supported.
+    
+       For legacy migration, please refer to the XRT github.io utility 
+       migration guide.
+
+       Commands, options, arguments and their descriptions can also be 
+       reported via the --help option."
+        echo "----------------------------------------------------------------------"
+        exit 1
 	    ;;
 	# Copy the options the remaining options
 	*)
@@ -67,59 +43,6 @@ while [ $# -gt 0 ]; do
 	    ;;
     esac
 done
-
-# Determine which version of xbutil should be used
-# Check to see environment variable is set
-if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
-     XRT_PROG=xbutil2
-fi
-
-# Default to the new gen tool if we still could not disambuguate the choice
-if [[ -z ${XRT_PROG} ]]; then
-    XRT_PROG=${DEFAULT}
-fi
-
-# Friendly message if running in a terminal
-if [[ ${XRT_PROG} == "xbutil" ]] && [[ -t 1 ]]; then
-    echo "---------------------------------------------------------------------"
-    echo "Deprecation Warning:
-    The given legacy sub-command and/or option has been deprecated
-    to be obsoleted in the next release.
- 
-    Further information regarding the legacy deprecated sub-commands
-    and options along with their mappings to the next generation
-    sub-commands and options can be found on the Xilinx Runtime (XRT)
-    documentation page:
-    
-    https://xilinx.github.io/XRT/master/html/ 
-
-    Please update your scripts and tools to use the next generation
-    sub-commands and options."
-    echo "---------------------------------------------------------------------"
-fi
-
-# Determine if the user has specified a legacy command
-LEGACY_PROG=${LEGACY_COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
-
-# Additional friendly messessages
-if [[ ${XRT_PROG} == "xbutil2" ]] && [[ ${LEGACY_PROG} = "XBUTIL" ]]; then
-    echo "---------------------------------------------------------------------"
-    echo "Error: Legacy command used with new tools.
-         
-       You are using a deprecated legacy command. This will ultimately 
-       result in an 'Unknown command' error.
-    
-       It is recommended that you update your scripts and tools to use
-       the next generation sub-commands and options. These are 
-       documented on the Xilinx Runtime (XRT) documentation page:
- 
-       https://xilinx.github.io/XRT/master/html/ 
- 
-       If you must use a legacy command, you will have to use the 
-       --legacy option on the command line."
-    echo "---------------------------------------------------------------------"
-    echo
-fi
 
 # -- Find loader directory
 XRT_LOADER_DIR="`dirname \"$0\"`"

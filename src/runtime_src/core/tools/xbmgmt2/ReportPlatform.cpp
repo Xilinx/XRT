@@ -28,6 +28,7 @@
 #include <boost/algorithm/string.hpp>
 
 static boost::format fmtBasic("  %-20s : %s\n");
+static boost::format fmtBasicHex("  %-20s : 0x%x\n");
 
 void
 ReportPlatform::getPropertyTreeInternal( const xrt_core::device * device,
@@ -198,7 +199,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   dev_prop.put("board_type", xrt_core::device_query<xrt_core::query::board_name>(device));
   dev_prop.put("board_name", info.mName.empty() ? "N/A" : info.mName);
   dev_prop.put("config_mode", info.mConfigMode);
-  dev_prop.put("max_power_watts", info.mMaxPower.empty() ? "N/A" : info.mMaxPower);
+  dev_prop.put("max_power_watts", info.mMaxPower);
   pt_platform.add_child("device_properties", dev_prop);
 
   //Flashable partition running on FPGA
@@ -282,6 +283,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
               pt_current_shell.get<std::string>("id", ""), installedDSA));
     pt_status.put("sc", same_sc( pt_current_shell.get<std::string>("sc_version", ""), installedDSA));
     pt_status.put("is_factory", xrt_core::device_query<xrt_core::query::is_mfg>(device));
+    pt_status.put("is_recovery", xrt_core::device_query<xrt_core::query::is_recovery>(device));
     pt_platform.add_child("status", pt_status);
 
     pt_available_shells.push_back( std::make_pair("", pt_available_shell) );
@@ -342,8 +344,12 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << "Device properties\n";
   _output << fmtBasic % "Type" % string_or_NA(dev_properties.get<std::string>("board_type"));
   _output << fmtBasic % "Name" % string_or_NA(dev_properties.get<std::string>("board_name"));
-  _output << fmtBasic % "Config Mode" % string_or_NA(dev_properties.get<std::string>("config_mode"));
-  _output << fmtBasic % "Max Power" % string_or_NA(dev_properties.get<std::string>("max_power_watts"));
+  auto config_mode = dev_properties.get<unsigned int>("config_mode");
+  if (config_mode != 0)
+    _output << fmtBasicHex % "Config Mode" % config_mode;
+  auto max_power_str = dev_properties.get<std::string>("max_power_watts");
+  if (!max_power_str.empty())
+    _output << fmtBasic % "Max Power" % max_power_str;
   _output << std::endl;
 
   _output << "Flashable partitions running on FPGA\n";

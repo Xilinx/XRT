@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,17 +17,18 @@
 #include "SectionBitstream.h"
 
 #include "XclBinUtilities.h"
+#include <boost/functional/factory.hpp>
+
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionBitstream::_init SectionBitstream::_initializer;
+SectionBitstream::init SectionBitstream::initializer;
 
-SectionBitstream::SectionBitstream() {
-  // Empty
-}
+SectionBitstream::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(BITSTREAM, "BITSTREAM", boost::factory<SectionBitstream*>());
 
-SectionBitstream::~SectionBitstream() {
-  // Empty
+  addSectionType(std::move(sectionInfo));
 }
 
 std::string

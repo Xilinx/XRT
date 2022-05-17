@@ -409,7 +409,7 @@ namespace xdp {
     return deviceInfo[deviceId]->kdmaCount ;
   }
 
-  void VPStaticDatabase::setMaxReadBW(uint64_t deviceId, double bw)
+  void VPStaticDatabase::setHostMaxReadBW(uint64_t deviceId, double bw)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -418,10 +418,10 @@ namespace xdp {
     XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
     if (!xclbin)
       return ;
-    xclbin->pl.maxReadBW = bw ;
+    xclbin->pl.hostMaxReadBW = bw ;
   }
 
-  double VPStaticDatabase::getMaxReadBW(uint64_t deviceId)
+  double VPStaticDatabase::getHostMaxReadBW(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -432,10 +432,10 @@ namespace xdp {
     if (!xclbin)
       return 0.0 ;
 
-    return xclbin->pl.maxReadBW ;
+    return xclbin->pl.hostMaxReadBW ;
   }
 
-  void VPStaticDatabase::setMaxWriteBW(uint64_t deviceId, double bw)
+  void VPStaticDatabase::setHostMaxWriteBW(uint64_t deviceId, double bw)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -446,10 +446,10 @@ namespace xdp {
     if (!xclbin)
       return ;
 
-    xclbin->pl.maxWriteBW = bw ;
+    xclbin->pl.hostMaxWriteBW = bw ;
   }
 
-  double VPStaticDatabase::getMaxWriteBW(uint64_t deviceId)
+  double VPStaticDatabase::getHostMaxWriteBW(uint64_t deviceId)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -460,7 +460,61 @@ namespace xdp {
     if (!xclbin)
       return 0.0 ;
 
-    return xclbin->pl.maxWriteBW ;
+    return xclbin->pl.hostMaxWriteBW ;
+  }
+
+  void VPStaticDatabase::setKernelMaxReadBW(uint64_t deviceId, double bw)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+    xclbin->pl.kernelMaxReadBW = bw ;
+  }
+
+  double VPStaticDatabase::getKernelMaxReadBW(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0.0 ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return 0.0 ;
+
+    return xclbin->pl.kernelMaxReadBW ;
+  }
+
+  void VPStaticDatabase::setKernelMaxWriteBW(uint64_t deviceId, double bw)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    xclbin->pl.kernelMaxWriteBW = bw ;
+  }
+
+  double VPStaticDatabase::getKernelMaxWriteBW(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0.0 ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return 0.0 ;
+
+    return xclbin->pl.kernelMaxWriteBW ;
   }
 
   std::string VPStaticDatabase::getXclbinName(uint64_t deviceId)

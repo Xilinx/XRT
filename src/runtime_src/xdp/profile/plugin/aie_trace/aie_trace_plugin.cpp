@@ -75,6 +75,8 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using module_type = xrt_core::edge::aie::module_type;
 
+  constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0;
+
   bool AieTracePlugin::live = false;
 
   AieTracePlugin::AieTracePlugin()
@@ -93,6 +95,11 @@ namespace xdp {
     if (continuousTrace) {
       offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
     }
+
+    // Set Delay parameters
+    // Update delay with clock cycles when we get device handle later
+    mDelayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(nullptr));
+    mUseDelay = (mDelayCycles > 0) ? true : false;
 
     // Pre-defined metric sets
     metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};
@@ -136,6 +143,10 @@ namespace xdp {
     //         to produce events before hitting the bug. For example, sync packets 
     //         occur after 1024 cycles and with no events, is incorrectly repeated.
     auto counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
+    // ES1 is more stable for delay usecase
+    if (mUseDelay)
+      counterScheme = "es1";
+
     if (counterScheme == "es1") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
       coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
@@ -218,7 +229,7 @@ namespace xdp {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
   }
 
-  bool AieTracePlugin::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet, bool useDelay)
+  bool AieTracePlugin::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet)
   {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
     uint32_t available = 0;
@@ -228,7 +239,7 @@ namespace xdp {
     // Core Module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
     required = coreCounterStartEvents.size();
-    if (useDelay)
+    if (mUseDelay)
       required += 1;
     if (available < required) {
       msg << "Available core module performance counters for aie trace : " << available << std::endl
@@ -410,8 +421,12 @@ namespace xdp {
 
   uint64_t AieTracePlugin::getTraceStartDelayCycles(void* handle)
   {
-    auto device = xrt_core::get_userpf_device(handle);
-    auto freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+    double freqMhz = AIE_DEFAULT_FREQ_MHZ;
+
+    if (handle != nullptr) {
+      auto device = xrt_core::get_userpf_device(handle);
+      freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+    }
 
     std::smatch pieces_match;
     uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * 1e6);
@@ -482,10 +497,8 @@ namespace xdp {
       return false;
     }
     auto tiles = getTilesForTracing(handle);
-    
     // getTraceStartDelayCycles is 32 bit for now
-    uint32_t delayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(handle));
-    bool useDelay = (delayCycles > 0) ? true : false;
+    mDelayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(handle));
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -511,7 +524,7 @@ namespace xdp {
 
       // Check Resource Availability
       // For now only counters are checked
-      if (!tileHasFreeRsc(aieDevice, loc, metricSet, useDelay)) {
+      if (!tileHasFreeRsc(aieDevice, loc, metricSet)) {
         xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
         printTileStats(aieDevice, tile);
         return false;
@@ -636,7 +649,7 @@ namespace xdp {
         if (xrt_core::config::get_aie_trace_user_control()) {
           coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
           coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
-        } else if (useDelay) {
+        } else if (mUseDelay) {
           auto perfCounter = core.perfCounter();
           if (perfCounter->initialize(mod, XAIE_EVENT_ACTIVE_CORE,
                                       mod, XAIE_EVENT_DISABLED_CORE) != XAIE_OK) 
@@ -644,7 +657,7 @@ namespace xdp {
           if (perfCounter->reserve() != XAIE_OK) 
             break;
 
-          perfCounter->changeThreshold(delayCycles);
+          perfCounter->changeThreshold(mDelayCycles);
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
 
@@ -1083,6 +1096,12 @@ namespace xdp {
                                               aieTraceBufSize,     // total trace buffer size
                                               numAIETraceOutput);  // numStream
 
+    // Can't call init without setting important details in offloader
+    if (continuousTrace && isPLIO) {
+      aieTraceOffloader->setContinuousTrace();
+      aieTraceOffloader->setOffloadIntervalms(offloadIntervalms);
+    }
+
     if (!aieTraceOffloader->initReadTrace()) {
       std::string msg = "Allocation of buffer for AIE trace failed. AIE trace will not be available.";
       xrt_core::message::send(severity_level::warning, "XRT", msg);
@@ -1093,11 +1112,8 @@ namespace xdp {
     aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
 
     // Continuous Trace Offload is supported only for PLIO flow
-    if (continuousTrace && isPLIO) {
-      aieTraceOffloader->setContinuousTrace();
-      aieTraceOffloader->setOffloadIntervalms(offloadIntervalms);
+    if (continuousTrace && isPLIO)
       aieTraceOffloader->startOffload();
-    }
   }
 
   void AieTracePlugin::setFlushMetrics(uint64_t deviceId, void* handle)
@@ -1242,7 +1258,7 @@ namespace xdp {
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
-      (std::get<0>(aieOffloaders[deviceId]))->readTrace();
+      (std::get<0>(aieOffloaders[deviceId]))->readTrace(true);
     }
   }
 
@@ -1267,7 +1283,12 @@ namespace xdp {
     // NOTE 1: The data mover uses a burst length of 128, so we need dummy packets
     //         to ensure all execution trace gets written to DDR.
     // NOTE 2: This flush mechanism is only valid for runtime event trace
-    if (runtimeMetrics && xrt_core::config::get_aie_trace_flush()) {
+    // NOTE 3: Disable flush if we have new datamover
+    DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
+    bool ts2mmFlushSupported = false;
+    if (deviceIntf)
+      ts2mmFlushSupported = deviceIntf->supportsflushAIE();
+    if (runtimeMetrics && xrt_core::config::get_aie_trace_flush() && !ts2mmFlushSupported) {
       setFlushMetrics(deviceId, handle);
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -1281,7 +1302,7 @@ namespace xdp {
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
       }
 
-      offloader->readTrace();
+      offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();
@@ -1306,7 +1327,7 @@ namespace xdp {
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
       }
 
-      offloader->readTrace();
+      offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();

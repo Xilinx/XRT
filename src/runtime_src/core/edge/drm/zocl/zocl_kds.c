@@ -97,10 +97,8 @@ static int copybo_ecmd2xcmd(struct drm_zocl_dev *zdev, struct drm_file *filp,
 static inline void
 zocl_ctx_to_info(struct drm_zocl_ctx *args, struct kds_ctx_info *info)
 {
-	if (args->cu_index == ZOCL_CTX_VIRT_CU_INDEX)
-		info->cu_idx = CU_CTX_VIRT_CU;
-	else
-		info->cu_idx = args->cu_index;
+	info->cu_domain = get_domain(args->cu_index);
+	info->cu_idx = get_domain_idx(args->cu_index);
 
 	/* Ignore ZOCL_CTX_SHARED bit if ZOCL_CTX_EXCLUSIVE bit is set */
 	if (args->flags & ZOCL_CTX_EXCLUSIVE)
@@ -842,8 +840,15 @@ void zocl_destroy_client(void *client_hdl)
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_sched  *kds = NULL;
 	struct kds_client_ctx *curr = NULL;
+	struct kds_client_ctx *tmp = NULL;
 	struct drm_zocl_slot *slot = NULL;
 	int pid = pid_nr(client->pid);
+
+	if (!zdev) {
+		zocl_info(client->dev, "client exits pid(%d)\n", pid);
+		kfree(client);
+		return;
+	}
 
 	kds = &zdev->kds;
 
@@ -856,7 +861,7 @@ void zocl_destroy_client(void *client_hdl)
 	/* Delete all the existing context associated to this device for this
 	 * client.
 	 */
-	list_for_each_entry(curr, &client->ctx_list, link) {
+	list_for_each_entry_safe(curr, tmp, &client->ctx_list, link) {
 		/* Get the corresponding slot for this xclbin */
 		slot = zocl_get_slot(zdev, curr->xclbin_id);
 		if (!slot)
@@ -865,6 +870,7 @@ void zocl_destroy_client(void *client_hdl)
 		/* Unlock this slot specific xclbin */
 		zocl_unlock_bitstream(slot, curr->xclbin_id);
 		vfree(curr->xclbin_id);
+		list_del(&curr->link);
 		vfree(curr);
 	}
 

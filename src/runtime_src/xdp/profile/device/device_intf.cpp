@@ -888,6 +888,28 @@ DeviceIntf::~DeviceIntf()
     return mDevice->getDeviceAddr(bufHandle);
   }
 
+  // All buffers have to be 4k Aligned
+  uint64_t DeviceIntf::getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks)
+  {
+    constexpr uint64_t TRACE_BUFFER_4K_MASK = 0xfffffffffffff000;
+
+    if (!num_chunks)
+      return 0;
+
+    uint64_t aligned_size =  (total_bytes / num_chunks) & TRACE_BUFFER_4K_MASK;
+    if (aligned_size < TS2MM_MIN_BUF_SIZE)
+      aligned_size = TS2MM_MIN_BUF_SIZE;
+
+    if (xrt_core::config::get_verbosity() >= static_cast<unsigned int>(xrt_core::message::severity_level::info)) {
+      std::stringstream info_msg;
+      info_msg << "Setting 4K aligned trace buffer size to : " << aligned_size
+      << " for num chunks : " << num_chunks ;
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", info_msg.str());
+    }
+
+    return aligned_size;
+  }
+
   // Reset PL trace data movers
   void DeviceIntf::resetTS2MM(uint64_t index)
   {
@@ -905,11 +927,11 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Get word count written by PL trace data mover
-  uint64_t DeviceIntf::getWordCountTs2mm(uint64_t index)
+  uint64_t DeviceIntf::getWordCountTs2mm(uint64_t index, bool final)
   {
     if(index >= mPlTraceDmaList.size())
       return 0;
-    return mPlTraceDmaList[index]->getWordCount();
+    return mPlTraceDmaList[index]->getWordCount(final);
   }
 
   // Get memory index of trace data mover
@@ -937,19 +959,19 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Initialize an AIE trace data mover
-  void DeviceIntf::initAIETs2mm(uint64_t bufSz, uint64_t bufAddr, uint64_t index)
+  void DeviceIntf::initAIETs2mm(uint64_t bufSz, uint64_t bufAddr, uint64_t index, bool circular)
   {
     if(index >= mAieTraceDmaList.size())
       return;
-    mAieTraceDmaList[index]->init(bufSz, bufAddr, false);
+    mAieTraceDmaList[index]->init(bufSz, bufAddr, circular);
   }
 
   // Get word count written by AIE trace data mover
-  uint64_t DeviceIntf::getWordCountAIETs2mm(uint64_t index)
+  uint64_t DeviceIntf::getWordCountAIETs2mm(uint64_t index, bool final)
   {
     if(index >= mAieTraceDmaList.size())
       return 0;
-    return mAieTraceDmaList[index]->getWordCount();
+    return mAieTraceDmaList[index]->getWordCount(final);
   }
 
   // Get memory index of AIE trace data mover
@@ -960,14 +982,24 @@ DeviceIntf::~DeviceIntf()
     return mAieTraceDmaList[index]->getMemIndex();
   }
 
-  void DeviceIntf::setMaxBwRead()
+  void DeviceIntf::setHostMaxBwRead()
   {
-    mMaxReadBW = mDevice->getMaxBwRead();
+    mHostMaxReadBW = mDevice->getHostMaxBwRead();
   }
 
-  void DeviceIntf::setMaxBwWrite()
+  void DeviceIntf::setHostMaxBwWrite()
   {
-    mMaxWriteBW = mDevice->getMaxBwWrite();
+    mHostMaxWriteBW = mDevice->getHostMaxBwWrite();
+  }
+
+  void DeviceIntf::setKernelMaxBwRead()
+  {
+    mKernelMaxReadBW = mDevice->getKernelMaxBwRead();
+  }
+
+  void DeviceIntf::setKernelMaxBwWrite()
+  {
+    mKernelMaxWriteBW = mDevice->getKernelMaxBwWrite();
   }
 
   uint32_t DeviceIntf::getDeadlockStatus()

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,18 +16,16 @@
 
 #include "SectionEmulationData.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionEmulationData::_init SectionEmulationData::_initializer;
+SectionEmulationData::init SectionEmulationData::initializer;
 
-SectionEmulationData::SectionEmulationData() {
-  // Empty
-}
+SectionEmulationData::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(EMULATION_DATA, "EMULATION_DATA", boost::factory<SectionEmulationData*>()); 
 
-SectionEmulationData::~SectionEmulationData() {
-  // Empty
+  addSectionType(std::move(sectionInfo));
 }
 
 

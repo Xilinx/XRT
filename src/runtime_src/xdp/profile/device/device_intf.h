@@ -3,7 +3,7 @@
 
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
-
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Author(s): Paul Schumacher
  *          : Anurag Dubey
  *          : Tianhao Zhou
@@ -106,6 +106,8 @@ class DeviceIntf {
     void* syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes);
     XDP_EXPORT
     uint64_t getDeviceAddr(size_t bufHandle);
+    XDP_EXPORT
+    uint64_t getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks);
 
     // Trace FIFO Management
     bool hasFIFO() {return (mFifoCtrl != nullptr);};
@@ -128,8 +130,24 @@ class DeviceIntf {
     size_t getNumberTS2MM() {
       return mPlTraceDmaList.size();
     };
-    bool supportsCircBuf() {
-      return ((1 == getNumberTS2MM()) ? (mPlTraceDmaList[0]->supportsCircBuf()) : false);
+
+    // All datamovers support circular buffer for PL Trace
+    bool supportsCircBufPL() {
+      if (mPlTraceDmaList.size() > 0)
+        return mPlTraceDmaList[0]->supportsCircBuf();
+      return false;
+    }
+
+    // Only version 2 Datamover supports circular buffer/flush for AIE Trace
+    bool supportsCircBufAIE() {
+      if (mAieTraceDmaList.size() > 0)
+        return mAieTraceDmaList[0]->isVersion2();
+      return false;
+    }
+    bool supportsflushAIE() {
+      if (mAieTraceDmaList.size() > 0)
+        return mAieTraceDmaList[0]->isVersion2();
+      return false;
     }
 
     XDP_EXPORT
@@ -138,7 +156,7 @@ class DeviceIntf {
     void initTS2MM(uint64_t index, uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
 
     XDP_EXPORT
-    uint64_t getWordCountTs2mm(uint64_t index);
+    uint64_t getWordCountTs2mm(uint64_t index, bool final);
     XDP_EXPORT
     uint8_t  getTS2MmMemIndex(uint64_t index);
     XDP_EXPORT
@@ -147,19 +165,25 @@ class DeviceIntf {
     XDP_EXPORT
     void resetAIETs2mm(uint64_t index);
     XDP_EXPORT
-    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index);
+    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index, bool circular);
 
     XDP_EXPORT
-    uint64_t getWordCountAIETs2mm(uint64_t index);
+    uint64_t getWordCountAIETs2mm(uint64_t index, bool final);
     XDP_EXPORT
     uint8_t  getAIETs2mmMemIndex(uint64_t index);
     
-    double getMaxBwRead() const {return mMaxReadBW;}
-    double getMaxBwWrite() const {return mMaxWriteBW;}
+    double getHostMaxBwRead() const {return mHostMaxReadBW;}
+    double getHostMaxBwWrite() const {return mHostMaxWriteBW;}
+    double getKernelMaxBwRead() const {return mKernelMaxReadBW;}
+    double getKernelMaxBwWrite() const {return mKernelMaxWriteBW;}
     XDP_EXPORT
-    void setMaxBwRead();
+    void setHostMaxBwRead();
     XDP_EXPORT
-    void setMaxBwWrite();
+    void setHostMaxBwWrite();
+    XDP_EXPORT
+    void setKernelMaxBwRead();
+    XDP_EXPORT
+    void setKernelMaxBwWrite();
 
     XDP_EXPORT
     uint32_t getDeadlockStatus();
@@ -196,16 +220,17 @@ class DeviceIntf {
     DeadlockDetector*     mDeadlockDetector  = nullptr;
 
     /*
-     * Set bandwidth number to a reasonable default
+     * Set max bandwidths to reasonable defaults
      * For PCIE Device:
-     *   bw_per_lane = 985 MB/s (Wikipedia on PCIE 3.0)
-     *   num_lanes = 16/8/4 depending on host system
-     *   total bw = bw_per_lane * num_lanes
+     *   configuration: gen 3x16, gen 4x8 
+     *   encoding: 128b/130b
      * For Edge Device:
-     *  total bw = DDR4 memory bandwidth
+     *  total BW: DDR4 memory bandwidth
      */
-    double mMaxReadBW  = 9600.0;
-    double mMaxWriteBW = 9600.0;
+    double mHostMaxReadBW    = 15753.85;
+    double mHostMaxWriteBW   = 15753.85;
+    double mKernelMaxReadBW  = 19250.00;
+    double mKernelMaxWriteBW = 19250.00;
 
 }; /* DeviceIntf */
 

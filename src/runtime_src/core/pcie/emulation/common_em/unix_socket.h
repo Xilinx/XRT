@@ -18,22 +18,25 @@
 
 #ifndef __XCLHOST_UNIXSOCKET__
 #define __XCLHOST_UNIXSOCKET__
+// Local/XRT headers
+#include "em_defines.h"
+#include "system_utils.h"
+#include "xclhal2.h"
+// c-style system headers
 #include <sys/socket.h>
-#include <sys/un.h>
 #include <sys/stat.h>
+#include <sys/un.h>
+// C++ headers
+#include <atomic>
 #include <boost/algorithm/string.hpp>
 #include <iostream>
-
-#include "system_utils.h"
-#include "em_defines.h"
-#include "xclhal2.h"
 
 class unix_socket {
   private:
     int fd;
     std::string name;
 public:
-    bool server_started;
+    std::atomic<bool> server_started;
     void set_name(const std::string &sock_name) { name = sock_name;}
     std::string get_name() { return name;}
     unix_socket(const std::string& env = "EMULATION_SOCKETID", const std::string& sock_id="xcl_sock",double timeout_insec=300,bool fatal_error=true);

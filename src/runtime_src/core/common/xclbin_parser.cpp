@@ -229,6 +229,20 @@ kernel_max_ctx(const ip_data& ip)
   return ctxid;
 }
 
+//Get the cu functional from kernel xml entry
+static size_t
+get_functional(const pt::ptree& xml_kernel, const std::string& element)
+{
+  for (auto& elem : xml_kernel) {
+    if (elem.first != element)
+      continue;
+
+    return convert(elem.second.get<std::string>("<xmlattr>.functional"));
+  }
+
+  return 0;
+}
+
 // Determine the address range from kernel xml entry
 static size_t
 get_address_range(const pt::ptree& xml_kernel)
@@ -822,6 +836,20 @@ get_softkernels(const axlf* top)
   return sks;
 }
 
+aie_partition_obj
+get_aie_partition(const axlf* top)
+{
+  auto pSection = ::xclbin::get_axlf_section(top, AIE_PARTITION);
+  if (!pSection)
+    return {};
+
+  auto begin = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
+  auto aiep = reinterpret_cast<const aie_partition*>(begin);
+  auto scp = reinterpret_cast<const uint16_t*>(begin + aiep->info.mpo_auint16_start_columns);
+
+  return {aiep->info.column_width, {scp, scp + aiep->info.start_columns_count}, begin + aiep->mpo_name};
+}
+
 size_t
 get_kernel_freq(const axlf* top)
 {
@@ -946,6 +974,8 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
     if (!sw_reset)
       sw_reset = get_sw_reset_from_ini(kname);
 
+    auto functional = get_functional(xml_kernel.second, "extended-data");
+
     return kernel_properties
       { kname
       , to_kernel_type(xml_kernel.second.get<std::string>("<xmlattr>.type", "pl"))
@@ -953,6 +983,7 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
       , mailbox
       , get_address_range(xml_kernel.second)
       , sw_reset
+      , functional
 
       , convert(xml_kernel.second.get<std::string>("<xmlattr>.workGroupSize", "0"))
       , get_xyz(xml_kernel.second, "compileWorkGroupSize")

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 - 2020 Xilinx, Inc
+ * Copyright (C) 2019 - 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,6 +17,8 @@
 #include "DTC.h"
 
 #include "XclBinUtilities.h"
+#include <boost/format.hpp>
+
 namespace XUtil = XclBinUtilities;
 
 #ifdef _WIN32
@@ -85,8 +87,8 @@ DTC::marshalFromDTCImage( const char* _pBuffer,
 
   // Check the header size
   if ( _size < FDT_HEADER_SIZE) {
-    std::string err = XUtil::format("ERROR: The given DTC buffer's header size (%d bytes) is smaller then the expected size (%d bytes).", _size, FDT_HEADER_SIZE);
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: The given DTC buffer's header size (%d bytes) is smaller then the expected size (%d bytes).") %  _size % FDT_HEADER_SIZE;
+    throw std::runtime_error(errMsg.str());
   }
 
   const fdt_header * pHdr = (const fdt_header *) _pBuffer;
@@ -95,25 +97,25 @@ DTC::marshalFromDTCImage( const char* _pBuffer,
   static const uint32_t MAGIC = 0xd00dfeed;
 
   if ( ntohl(pHdr->magic) != MAGIC ) {
-      std::string err = XUtil::format("ERROR: Missing DTC magic number.  Expected: 0x%x, Found: 0x%x.", MAGIC, ntohl(pHdr->magic));
-      throw std::runtime_error(err);
+      auto errMsg = boost::format("ERROR: Missing DTC magic number.  Expected: 0x%x, Found: 0x%x.") % MAGIC % ntohl(pHdr->magic);
+      throw std::runtime_error(errMsg.str());
   }
 
   // Validate Size
   if ( ntohl(pHdr->totalsize) != _size ) {
-      std::string err = XUtil::format("ERROR: The expected size (%d bytes) does not match actual (%d bytes)", ntohl(pHdr->totalsize), _size);
-      throw std::runtime_error(err);
+      auto errMsg = boost::format("ERROR: The expected size (%d bytes) does not match actual (%d bytes)") %  ntohl(pHdr->totalsize) % _size;
+      throw std::runtime_error(errMsg.str());
   }
 
   // -- Get and validate the strings offset --
   if ( ntohl(pHdr->off_dt_strings) > _size ) {
-      std::string err = XUtil::format("ERROR: The string block offset (0x%x) exceeds then image size (0x%x)", ntohl(pHdr->off_dt_strings), _size);
-      throw std::runtime_error(err);
+      auto errMsg = boost::format("ERROR: The string block offset (0x%x) exceeds then image size (0x%x)") % ntohl(pHdr->off_dt_strings) % _size;
+      throw std::runtime_error(errMsg.str());
   }
 
   if ( (ntohl(pHdr->off_dt_strings) + ntohl(pHdr->size_dt_strings)) > _size ) {
-      std::string err = XUtil::format("ERROR: The string block offset and size (0x%x) exceeds then image size (0x%x)", (ntohl(pHdr->off_dt_strings) + ntohl(pHdr->size_dt_strings)), _size);
-      throw std::runtime_error(err);
+      auto errMsg = boost::format("ERROR: The string block offset and size (0x%x) exceeds then image size (0x%x)") % (ntohl(pHdr->off_dt_strings) + ntohl(pHdr->size_dt_strings)) % _size;
+      throw std::runtime_error(errMsg.str());
   }
 
   // -- Get the strings block --
@@ -123,13 +125,13 @@ DTC::marshalFromDTCImage( const char* _pBuffer,
 
   // -- Get the validate the structure nodes offset --
   if ( ntohl(pHdr->off_dt_struct) > _size ) {
-      std::string err = XUtil::format("ERROR: The structure block offset (0x%x) exceeds then image size (0x%x)", ntohl(pHdr->off_dt_struct), _size);
-      throw std::runtime_error(err);
+      auto errMsg = boost::format("ERROR: The structure block offset (0x%x) exceeds then image size (0x%x)") % ntohl(pHdr->off_dt_struct) % _size;
+      throw std::runtime_error(errMsg.str());
   }
 
   if ( (ntohl(pHdr->off_dt_struct) + ntohl(pHdr->size_dt_struct)) > _size ) {
-      std::string err = XUtil::format("ERROR: The structure block offset and size (0x%x) exceeds then image size (0x%x)", (ntohl(pHdr->off_dt_struct) + ntohl(pHdr->size_dt_struct)), _size);
-      throw std::runtime_error(err);
+      auto errMsg = boost::format("ERROR: The structure block offset and size (0x%x) exceeds then image size (0x%x)") % (ntohl(pHdr->off_dt_struct) + ntohl(pHdr->size_dt_struct)) % _size;
+      throw std::runtime_error(errMsg.str());
   }
 
   // -- Get the top FDT Note (which will include the node tree) --

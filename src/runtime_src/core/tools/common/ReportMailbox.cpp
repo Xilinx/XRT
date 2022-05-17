@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (c) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -83,7 +84,11 @@ ReportMailbox::getPropertyTree20202( const xrt_core::device * device,
                                        boost::property_tree::ptree &pt) const
 {
   // There can only be 1 root node
-  pt.add_child("mailbox", parse_mailbox_requests(xrt_core::device_query<xrt_core::query::mailbox_metrics>(device)));
+  try {
+    pt.add_child("mailbox", parse_mailbox_requests(xrt_core::device_query<xrt_core::query::mailbox_metrics>(device)));
+  } catch (const std::exception&) {
+    // For now do not throw a warning here. Instead deal with the issue in the report function when an empty tree is detected.
+  }
 }
 
 
@@ -97,8 +102,10 @@ ReportMailbox::writeReport( const xrt_core::device* /*_pDevice*/,
 
   _output << "Mailbox" << std::endl;
 
-  if (_pt.empty()) 
+  if (_pt.empty()) {
+    _output << "  Information unavailable\n";
     return;
+  }
   
   const boost::property_tree::ptree& mailbox = _pt.get_child("mailbox.requests", empty_ptree);
   _output << boost::format("  %-22s : %s Bytes\n") % "Total bytes received" % _pt.get<std::string>("mailbox.raw_bytes");

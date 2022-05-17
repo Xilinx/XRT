@@ -153,14 +153,24 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
   return xrt_bos[boIndex].address();
 }
 
-double HalDevice::getMaxBwRead()
+double HalDevice::getHostMaxBwRead()
 {
-  return xclGetReadMaxBandwidthMBps(mHalDevice);
+  return xclGetHostReadMaxBandwidthMBps(mHalDevice);
 }
 
-double HalDevice::getMaxBwWrite()
+double HalDevice::getHostMaxBwWrite()
 {
-   return xclGetWriteMaxBandwidthMBps(mHalDevice);
+   return xclGetHostWriteMaxBandwidthMBps(mHalDevice);
+}
+
+double HalDevice::getKernelMaxBwRead()
+{
+  return xclGetKernelReadMaxBandwidthMBps(mHalDevice);
+}
+
+double HalDevice::getKernelMaxBwWrite()
+{
+   return xclGetKernelWriteMaxBandwidthMBps(mHalDevice);
 }
 
 std::string HalDevice::getSubDevicePath(std::string& subdev, uint32_t index)

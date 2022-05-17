@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,16 +16,15 @@
 
 #include "FDTProperty.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
-
 #include "DTCStringsBlock.h"
-#include <boost/tuple/tuple.hpp>
+#include "XclBinUtilities.h"
+#include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
-
-
+#include <boost/tuple/tuple.hpp>
 #include <limits.h>
 #include <stdint.h>
+
+namespace XUtil = XclBinUtilities;
 
 #ifdef _WIN32
   #pragma comment(lib, "wsock32.lib")
@@ -99,8 +98,8 @@ FDTProperty::getWordLength(DataFormat _eDataFormat) const
     }
   }
 
-  std::string err = XUtil::format("ERROR: Unknown data format: %d", (unsigned int) _eDataFormat);
-  throw std::runtime_error(err);
+  auto errMsg = boost::format("ERROR: Unknown data format: %d") % (unsigned int) _eDataFormat;
+  throw std::runtime_error(errMsg.str());
   return 0;
 }
 
@@ -173,8 +172,8 @@ FDTProperty::FDTProperty(const char* _pBuffer,
 
   // Check the header size
   if ( _size < sizeof(FDTLenOffset)) {
-    std::string err = XUtil::format("ERROR: The given property buffer's header size (%d bytes) is smaller then its header (%d bytes).", _size, sizeof(FDTLenOffset));
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: The given property buffer's header size (%d bytes) is smaller then its header (%d bytes).") %  _size % sizeof(FDTLenOffset);
+    throw std::runtime_error(errMsg.str());
   }
 
   // -- Get the offset, length, and name values --
@@ -195,7 +194,7 @@ FDTProperty::FDTProperty(const char* _pBuffer,
 
   const std::string & prettyTypeName = getDataFormatPrettyName(eDataType);
 
-  XUtil::TRACE(XUtil::format("Property Name: '%s', length: %d, type: %s", m_name.c_str(), m_dataLength, prettyTypeName.c_str()).c_str());
+  XUtil::TRACE(boost::format("Property Name: '%s', length: %d, type: %s") % m_name % m_dataLength % prettyTypeName);
 
   // Get the data (if any)
   if (m_dataLength != 0) {
@@ -243,7 +242,7 @@ FDTProperty::au8MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   boost::property_tree::ptree ptProperty;
   for (unsigned int index = 0; index < m_dataLength; ++index) {
     boost::property_tree::ptree ptChildArrayElement;
-    ptChildArrayElement.put("", XUtil::format("0x%x", uint8Array[index]).c_str());
+    ptChildArrayElement.put("", (boost::format("0x%x") % uint8Array[index]).str());
     ptProperty.push_back(std::make_pair("", ptChildArrayElement));
   }
   _ptTree.add_child(m_name.c_str(), ptProperty);
@@ -257,8 +256,8 @@ FDTProperty::au16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   // Check and make sure that all is good
   static unsigned int byteBoundary = 2;
   if ((m_dataLength % byteBoundary) != 0) {
-    std::string err = XUtil::format("ERROR: Data length (%d) does not end on a 2-byte boundary.", m_dataLength);
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 2-byte boundary.") % m_dataLength;
+    throw std::runtime_error(errMsg.str());
   }
 
   unsigned int numElements = m_dataLength / byteBoundary;
@@ -267,7 +266,7 @@ FDTProperty::au16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   boost::property_tree::ptree ptProperty;
   for (unsigned int index = 0; index < numElements; ++index) {
     boost::property_tree::ptree ptChildArrayElement;
-    ptChildArrayElement.put("", XUtil::format("0x%x", ntohs(uint16Array[index])).c_str());
+    ptChildArrayElement.put("", (boost::format("0x%x") % ntohs(uint16Array[index])).str());
     ptProperty.push_back(std::make_pair("", ptChildArrayElement));
   }
   _ptTree.add_child(m_name.c_str(), ptProperty);
@@ -281,8 +280,8 @@ FDTProperty::au32MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   // Check and make sure that all is good
   static unsigned int byteBoundary = 4;
   if ((m_dataLength % byteBoundary) != 0) {
-    std::string err = XUtil::format("ERROR: Data length (%d) does not end on a 4-byte boundary.", m_dataLength);
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 4-byte boundary.") % m_dataLength;
+    throw std::runtime_error(errMsg.str());
   }
 
   unsigned int numElements = m_dataLength / byteBoundary;
@@ -291,7 +290,7 @@ FDTProperty::au32MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   boost::property_tree::ptree ptProperty;
   for (unsigned int index = 0; index < numElements; ++index) {
     boost::property_tree::ptree ptChildArrayElement;
-    ptChildArrayElement.put("", XUtil::format("0x%x", ntohl(uint32Array[index])).c_str());
+    ptChildArrayElement.put("", (boost::format("0x%x") % ntohl(uint32Array[index])).str());
     ptProperty.push_back(std::make_pair("", ptChildArrayElement));
   }
   _ptTree.add_child(m_name.c_str(), ptProperty);
@@ -305,12 +304,12 @@ FDTProperty::u16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   // Check and make sure that all is good
   static unsigned int byteBoundary = 2;
   if ((m_dataLength % byteBoundary) != 0) {
-    std::string err = XUtil::format("ERROR: Data length (%d) does not end on a 2-byte boundary.", m_dataLength);
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 2-byte boundary.") % m_dataLength;
+    throw std::runtime_error(errMsg.str());
   }
 
   const uint16_t uint16Value = ntohs(*((const uint16_t *) m_pDataBuffer));
-  _ptTree.put(m_name.c_str(), XUtil::format("0x%x", uint16Value).c_str());
+  _ptTree.put(m_name.c_str(), (boost::format("0x%x") % uint16Value).str());
 }
 
 void
@@ -320,12 +319,12 @@ FDTProperty::u32MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 
   // Check and make sure that all is good
   if (m_dataLength != sizeof(uint32_t)) {
-    std::string err = XUtil::format("ERROR: Data length for a 32-bit word is invalid: Expected: %d, Actual: %d", sizeof(uint32_t), m_dataLength);
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: Data length for a 32-bit word is invalid: Expected: %d, Actual: %d") % sizeof(uint32_t) % m_dataLength;
+    throw std::runtime_error(errMsg.str());
   }
 
   const uint32_t uint32Value = ntohl(*((const uint32_t *) m_pDataBuffer));
-  _ptTree.put(m_name.c_str(), XUtil::format("0x%x", uint32Value).c_str());
+  _ptTree.put(m_name.c_str(), (boost::format("0x%x") % uint32Value).str());
 }
 
 void
@@ -336,14 +335,14 @@ FDTProperty::u128MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   // Check and make sure that all is good
   static unsigned int expectedSize = 16;
   if (m_dataLength != expectedSize) {
-    std::string err = XUtil::format("ERROR: Data length for a 128-bit word is invalid: Expected: %d, Actual: %d", expectedSize, m_dataLength);
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: Data length for a 128-bit word is invalid: Expected: %d, Actual: %d") % expectedSize % m_dataLength;
+    throw std::runtime_error(errMsg.str());
   }
 
   std::string s128Hex;
 
   XUtil::binaryBufferToHexString((const unsigned char *) m_pDataBuffer, m_dataLength, s128Hex);
-  _ptTree.put(m_name.c_str(), XUtil::format("0x%s", s128Hex.c_str()).c_str());
+  _ptTree.put(m_name.c_str(), (boost::format("0x%s") % s128Hex).str());
 }
 
 void
@@ -353,13 +352,13 @@ FDTProperty::u64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
 
   // Check and make sure that all is good
   if (m_dataLength != sizeof(uint64_t)) {
-    std::string err = XUtil::format("ERROR: Data length for a 64-bit word is invalid: Expected: %d, Actual: %d", sizeof(uint64_t), m_dataLength);
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: Data length for a 64-bit word is invalid: Expected: %d, Actual: %d") % sizeof(uint64_t) % m_dataLength;
+    throw std::runtime_error(errMsg.str());
   }
 
   std::string s64Hex;
   XUtil::binaryBufferToHexString((const unsigned char *) m_pDataBuffer, sizeof(uint64_t), s64Hex);
-  _ptTree.put(m_name.c_str(), XUtil::format("0x%s", s64Hex.c_str()).c_str());
+  _ptTree.put(m_name.c_str(), (boost::format("0x%s") % s64Hex).str());
 }
 
 void
@@ -370,8 +369,8 @@ FDTProperty::au64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   // Check and make sure that all is good
   static unsigned int byteBoundary = 8;
   if ((m_dataLength % byteBoundary) != 0) {
-    std::string err = XUtil::format("ERROR: Data length (%d) does not end on a 8-byte boundary.", m_dataLength);
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 8-byte boundary.") % m_dataLength;
+    throw std::runtime_error(errMsg.str());
   }
 
   boost::property_tree::ptree ptProperty;
@@ -379,7 +378,7 @@ FDTProperty::au64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
     boost::property_tree::ptree ptChildArrayElement;
     std::string s64Hex;
     XUtil::binaryBufferToHexString((const unsigned char *) &m_pDataBuffer[index], byteBoundary, s64Hex);
-    ptChildArrayElement.put("", XUtil::format("0x%s", s64Hex.c_str()).c_str());
+    ptChildArrayElement.put("", (boost::format("0x%s") % s64Hex).str());
     ptProperty.push_back(std::make_pair("", ptChildArrayElement));
   }
 
@@ -417,7 +416,7 @@ FDTProperty::aszMarshalToJSON(boost::property_tree::ptree &_ptTree) const
     boost::property_tree::ptree ptChildArrayElement;
     ptChildArrayElement.put("", sString.c_str());
     ptProperty.push_back(std::make_pair("", ptChildArrayElement));
-    XUtil::TRACE(XUtil::format("String: %s", sString.c_str()).c_str());
+    XUtil::TRACE(boost::format("String: %s") % sString);
   }
 
   _ptTree.add_child(m_name.c_str(), ptProperty);
@@ -448,7 +447,7 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
                            const std::string & _sData)
 {
   unsigned int bytesWritten = 0;
-  XUtil::TRACE(XUtil::format("Storing property: '%s' with value: '%s'", m_name.c_str(), _sData.c_str()));
+  XUtil::TRACE(boost::format("Storing property: '%s' with value: '%s'") % m_name % _sData);
 
   switch (_eDataFormat) {
     case DF_sz:
@@ -462,8 +461,8 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
         if (dataWord > UINT8_MAX) {
-          std::string err = XUtil::format("ERROR: Property '%s' data value '%s' exceeds the maximum byte storage space'.", m_name.c_str(), _sData.c_str());
-          throw std::runtime_error(err);
+          auto errMsg = boost::format("ERROR: Property '%s' data value '%s' exceeds the maximum byte storage space'.") % m_name % _sData;
+          throw std::runtime_error(errMsg.str());
         }
 
         uint8_t * pWord = (uint8_t *) _buffer;
@@ -477,8 +476,8 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
         if (dataWord > UINT16_MAX) {
-          std::string err = XUtil::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint16_t storage space.", m_name.c_str(), _sData.c_str());
-          throw std::runtime_error(err);
+          auto errMsg = boost::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint16_t storage space.") %  m_name % _sData;
+          throw std::runtime_error(errMsg.str());
         }
 
         uint16_t * pWord = (uint16_t *) _buffer;
@@ -493,8 +492,8 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
         if (dataWord > UINT32_MAX) {
-          std::string err = XUtil::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint32_t storage space.", m_name.c_str(), _sData.c_str());
-          throw std::runtime_error(err);
+          auto errMsg = boost::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint32_t storage space.") % m_name % _sData;
+          throw std::runtime_error(errMsg.str());
         }
 
         uint32_t * pWord = (uint32_t *) _buffer;
@@ -507,10 +506,11 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
     case DF_au64:
     case DF_u64:
       {
+        errno = 0; 
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
         if (errno == ERANGE) {
-          std::string err = XUtil::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint64_t storage space.", m_name.c_str(), _sData.c_str());
-          throw std::runtime_error(err);
+          auto errMsg = boost::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint64_t storage space.") % m_name % _sData;
+          throw std::runtime_error(errMsg.str());
         }
 
         uint64_t * pWord = (uint64_t *) _buffer;
@@ -529,20 +529,20 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
         // Only support hex values
         if ((_sData.compare(0, 2, "0x") != 0) &&
             (_sData.compare(0, 2, "0X") != 0)) {
-          std::string err = XUtil::format("ERROR: Property '%s' data value '%s' must be a hex value (e.g., start with '0x').", m_name.c_str(), _sData.c_str());
-          throw std::runtime_error(err);
+          auto errMsg = boost::format("ERROR: Property '%s' data value '%s' must be a hex value (e.g., start with '0x').") % m_name % _sData;
+          throw std::runtime_error(errMsg.str());
         }
 
         // Must be of even length
         if ((_sData.size() % 2) != 0) {
-            std::string err = XUtil::format("ERROR: Property '%s' data value '%s' doesn't support nibble length values, must be full byte values.", m_name.c_str(), _sData.c_str());
-            throw std::runtime_error(err);
+            auto errMsg = boost::format("ERROR: Property '%s' data value '%s' doesn't support nibble length values, must be full byte values.") % m_name % _sData;
+            throw std::runtime_error(errMsg.str());
         }
 
         // Must not be too long
         if (_sData.size() > 34) {
-          std::string err = XUtil::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint128_t storage space.", m_name.c_str(), _sData.c_str());
-          throw std::runtime_error(err);
+          auto errMsg = boost::format("ERROR: Property '%s' data value '%s' exceeds the maximum uint128_t storage space.") % m_name % _sData;
+          throw std::runtime_error(errMsg.str());
         }
 
         std::string sHex(_sData.c_str() + 2);  // Strip off the 2 two characters
@@ -561,8 +561,8 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
     case DF_unknown:
     default:
       {
-        std::string err = XUtil::format("ERROR: Unknown data type for property '%s'", m_name.c_str());
-        throw std::runtime_error(err);
+        auto errMsg = boost::format("ERROR: Unknown data type for property '%s'") % m_name;
+        throw std::runtime_error(errMsg.str());
       }
       break;
   }
@@ -587,8 +587,8 @@ FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _
 
   // Make sure that we are not dealing with an array of data for non arrays
   if ((arraySize > 1) && !isDataFormatArray(m_eDataFormat)) {
-    std::string err = XUtil::format("ERROR: Array of data found for the variable: '%s'", m_name.c_str());
-    throw std::runtime_error(err);
+    auto errMsg = boost::format("ERROR: Array of data found for the variable: '%s'") % m_name;
+    throw std::runtime_error(errMsg.str());
   }
 
   // Address the non-array values first
@@ -652,7 +652,7 @@ FDTProperty::marshalToJSON(boost::property_tree::ptree &_ptTree,
   }
 
   std::string sTypeName = getDataFormatPrettyName(eDataFormat);
-  XUtil::TRACE(XUtil::format("-- Serializing Property: '%s', Type: %s", m_name.c_str(), sTypeName.c_str()));
+  XUtil::TRACE(boost::format("-- Serializing Property: '%s', Type: %s") % m_name % sTypeName);
 
   boost::property_tree::ptree ptProperty;
 

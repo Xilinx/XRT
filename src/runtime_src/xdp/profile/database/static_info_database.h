@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -220,10 +221,14 @@ namespace xdp {
     XDP_EXPORT DeviceIntf* getDeviceIntf(uint64_t deviceId) ;
     XDP_EXPORT void setKDMACount(uint64_t deviceId, uint64_t num) ;
     XDP_EXPORT uint64_t getKDMACount(uint64_t deviceId) ;
-    XDP_EXPORT void setMaxReadBW(uint64_t deviceId, double bw) ;
-    XDP_EXPORT double getMaxReadBW(uint64_t deviceId) ;
-    XDP_EXPORT void setMaxWriteBW(uint64_t deviceId, double bw) ;
-    XDP_EXPORT double getMaxWriteBW(uint64_t deviceId) ;
+    XDP_EXPORT void setHostMaxReadBW(uint64_t deviceId, double bw) ;
+    XDP_EXPORT double getHostMaxReadBW(uint64_t deviceId) ;
+    XDP_EXPORT void setHostMaxWriteBW(uint64_t deviceId, double bw) ;
+    XDP_EXPORT double getHostMaxWriteBW(uint64_t deviceId) ;
+    XDP_EXPORT void setKernelMaxReadBW(uint64_t deviceId, double bw) ;
+    XDP_EXPORT double getKernelMaxReadBW(uint64_t deviceId) ;
+    XDP_EXPORT void setKernelMaxWriteBW(uint64_t deviceId, double bw) ;
+    XDP_EXPORT double getKernelMaxWriteBW(uint64_t deviceId) ;
     XDP_EXPORT std::string getXclbinName(uint64_t deviceId) ;
     XDP_EXPORT std::vector<XclbinInfo*> getLoadedXclbins(uint64_t deviceId) ;
     XDP_EXPORT ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId) ;

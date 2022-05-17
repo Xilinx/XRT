@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -42,6 +43,31 @@ enum class config_type {
     threshold_temp_override,
     reset
 };
+
+std::ostream&
+operator<<(std::ostream& os, const config_type& value)
+{
+  switch (value) {
+    case config_type::security:
+      os << "security";
+      break;
+    case config_type::clk_scaling:
+      os << "runtime clock scaling";
+      break;
+    case config_type::threshold_power_override:
+      os << "threshold power override";
+      break;
+    case config_type::threshold_temp_override:
+      os << "threshold temp override";
+      break;
+    case config_type::reset:
+      os << "clock scaling option reset";
+      break;
+    default:
+      throw std::runtime_error("Configuration missing enumeration conversion");
+  }
+  return os;
+}
 
 enum class mem_type {
     unknown= 0,
@@ -264,7 +290,7 @@ remove_daemon_config()
  * change host name in config
  */
 static void 
-update_daemon_config(const std::string& host)
+update_daemon_config(const std::string& host = "")
 {
   XBU::sudo_or_throw("Updating daemon configuration requires sudo");
   auto cfg = get_daemon_conf();
@@ -273,7 +299,8 @@ update_daemon_config(const std::string& host)
   if (!cfile)
     throw xrt_core::system_error(std::errc::invalid_argument, "Missing '" + std::string(config_file) + "'.  Cannot update");
 
-  cfg.host = host;
+  if(!host.empty())
+    cfg.host = host;
   // update the configuration file
   cfile << boost::str(boost::format("%s\n") % cfg);
   std::cout << boost::format("Successfully updated the Daemon configuration.\n");
@@ -286,22 +313,28 @@ update_daemon_config(const std::string& host)
 static bool 
 update_device_conf(xrt_core::device* device, const std::string& value, config_type cfg)
 {
-  switch(cfg) {
-  case config_type::security:
-    xrt_core::device_update<xrt_core::query::sec_level>(device, value);
-    break;
-  case config_type::clk_scaling:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(device, value);
-    break;
-  case config_type::threshold_power_override:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(device, value);
-    break;
-  case config_type::threshold_temp_override:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(device, value);
-    break;
-  case config_type::reset:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_reset>(device, value);
-    break;
+  XBU::sudo_or_throw("Updating device configuration requires sudo");
+  try {
+    switch(cfg) {
+      case config_type::security:
+        xrt_core::device_update<xrt_core::query::sec_level>(device, value);
+        break;
+      case config_type::clk_scaling:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(device, value);
+        break;
+      case config_type::threshold_power_override:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(device, value);
+        break;
+      case config_type::threshold_temp_override:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(device, value);
+        break;
+      case config_type::reset:
+        xrt_core::device_update<xrt_core::query::xmc_scaling_reset>(device, value);
+        break;
+    }
+  } catch (const std::exception&) {
+    std::cerr << boost::format("ERROR: Device does not support %s\n\n") % cfg;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   return true;
 }
@@ -314,8 +347,13 @@ static void
 memory_retention(xrt_core::device* device, bool enable)
 {
   XBU::sudo_or_throw("Updating memory retention requires sudo");
-  auto value = xrt_core::query::data_retention::value_type(enable);
-  xrt_core::device_update<xrt_core::query::data_retention>(device, value);
+  try {
+    auto value = xrt_core::query::data_retention::value_type(enable);
+    xrt_core::device_update<xrt_core::query::data_retention>(device, value);
+  } catch (const std::exception&) {
+    std::cerr << boost::format("ERROR: Device does not support memory retention\n\n");
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 }
 
 void
@@ -374,24 +412,10 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         ("showx", boost::program_options::bool_switch(&showx), "Display the device configuration settings")
     ;
 
-    po::options_description hiddenOptions("Hidden Options");
-    hiddenOptions.add(configHiddenOptions);
-
-    po::options_description allOptions("All Options");
-    allOptions.add(commonOptions);
-    allOptions.add(hiddenOptions);
-
     // Parse sub-command ...
     po::variables_map vm;
 
-    try {
-        po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
-        po::notify(vm); // Can throw
-    } catch (po::error& e) {
-        std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-        printHelp(commonOptions, hiddenOptions);
-        throw xrt_core::error(std::errc::operation_canceled);
-    }
+    process_arguments(vm, _options, commonOptions, configHiddenOptions);
 
     // Ensure mutual exclusion amongst the load config and config options
     // TODO Once all of the config options are incorporated into the load config file
@@ -409,14 +433,29 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // Check the options
     // -- process "help" option -----------------------------------------------
     if (help) {
-        printHelp(commonOptions, hiddenOptions);
+        printHelp(commonOptions, configHiddenOptions);
+        return;
+    }
+
+    // Non-device options
+    // Remove the daemon config file
+    if (purge) {
+        XBU::verbose("Sub command: --purge");
+        remove_daemon_config();
+        return;
+    }
+
+    // Update daemon
+    if (daemon) {
+        XBU::verbose("Sub command: --daemon");
+        update_daemon_config(host);
         return;
     }
 
     // -- process "device" option -----------------------------------------------
     if(devices.empty()) {
         std::cerr << "ERROR: Please specify a single device using --device option" << "\n";
-        printHelp(commonOptions, hiddenOptions);
+        printHelp(commonOptions, configHiddenOptions);
         throw xrt_core::error(std::errc::operation_canceled);
     }
 
@@ -437,7 +476,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // enforce 1 device specification
     if(deviceCollection.size() != 1) {
         std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
-        printHelp(commonOptions, hiddenOptions);
+        printHelp(commonOptions, configHiddenOptions);
         throw xrt_core::error(std::errc::operation_canceled);
     }
 
@@ -483,23 +522,6 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         show_device_conf(workingDevice.get());
         return;
     }
-    
-    // Remove the daemon config file
-    if (purge) {
-        XBU::verbose("Sub command: --purge");
-        remove_daemon_config();
-        return;
-    }
-
-    // Update daemon
-    if (daemon) {
-        XBU::verbose("Sub command: --daemon");
-        if(host.empty())
-            throw xrt_core::error("Please specify ip or hostname for peer");
-
-        update_daemon_config(host);
-        return;
-    }
 
     // Keeps track if any parameter was updated to prevent no option printout/error
     bool is_something_updated = false;
@@ -532,7 +554,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         bool disableRetention = boost::iequals(retention, "DISABLE");
         if (!enableRetention && !disableRetention) {
             std::cerr << "ERROR: Invalidate '--retention' option: " << retention << std::endl;
-            printHelp(commonOptions, hiddenOptions);
+            printHelp(commonOptions, configHiddenOptions);
             throw xrt_core::error(std::errc::operation_canceled);
         }
 
@@ -543,7 +565,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     if (!is_something_updated) {
         std::cerr << "ERROR: Please specify a valid option to configure the device" << "\n\n";
-        printHelp(commonOptions, hiddenOptions);
+        printHelp(commonOptions, configHiddenOptions);
         throw xrt_core::error(std::errc::operation_canceled);
     }
 }

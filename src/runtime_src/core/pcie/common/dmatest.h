@@ -117,7 +117,7 @@ namespace xcldev {
         DMARunner(xclDeviceHandle handle, size_t size, unsigned flags = 0, size_t totalSize = 0) :
                 mHandle(handle),
                 mSize(size),
-                mTotalSize(totalSize ? totalSize : 0x100000000),
+                mTotalSize(totalSize),
                 mFlags(flags),
                 mPattern('x') {
             long long count = mTotalSize / mSize;

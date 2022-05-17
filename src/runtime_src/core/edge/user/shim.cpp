@@ -1,7 +1,5 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Author(s): Hem C. Neema
- *          : Min Ma
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -16,30 +14,34 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #include "shim.h"
 #include "system_linux.h"
-#include "core/common/message.h"
-#include "core/common/scheduler.h"
-#include "core/common/xclbin_parser.h"
-#include "core/common/config_reader.h"
+
+#include "core/include/shim_int.h"
 #include "core/include/xcl_perfmon_parameters.h"
-#include "core/common/bo_cache.h"
-#include "core/common/config_reader.h"
-#include "core/common/query_requests.h"
-#include "core/common/error.h"
 #include "core/include/xrt/xrt_uuid.h"
+
 #include "core/edge/common/aie_parser.h"
 
+#include "core/common/bo_cache.h"
+#include "core/common/config_reader.h"
+#include "core/common/config_reader.h"
+#include "core/common/error.h"
+#include "core/common/message.h"
+#include "core/common/query_requests.h"
+#include "core/common/scheduler.h"
+#include "core/common/xclbin_parser.h"
+
+#include <cassert>
 #include <cerrno>
+#include <chrono>
+#include <cstdarg>
+#include <cstring>
 #include <iostream>
 #include <iomanip>
-#include <cstring>
 #include <thread>
-#include <chrono>
 #include <vector>
-#include <cassert>
-#include <cstdarg>
+
 #include <boost/filesystem.hpp>
 #include <regex>
 
@@ -781,10 +783,39 @@ xclLoadAxlf(const axlf *buffer)
     }
   }
 
+  #ifdef __HWEM__
+    if (!secondXclbinLoadCheck(this->mCoreDevice, buffer)) {
+      return 0; // skipping to load the 2nd xclbin for hw_emu embedded designs
+    }
+  #endif
+
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_READ_AXLF, &axlf_obj);
 
   xclLog(XRT_INFO, "%s: flags 0x%x, return %d", __func__, flags, ret);
   return ret ? -errno : ret;
+}
+
+int 
+shim::
+secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *top) {
+  try {
+    static int xclbin_hw_emu_count = 0;
+        
+    if (core_dev->get_xclbin_uuid() != xrt::uuid(top->m_header.uuid)) {
+      xclbin_hw_emu_count++;
+
+      if (xclbin_hw_emu_count > 1) {
+        xclLog(XRT_WARNING, "%s: Skipping as xclbin is already loaded. Only single XCLBIN load is supported for hw_emu embedded designs.", __func__);
+        return 0; 
+      }
+    } else {
+      xclLog(XRT_INFO, "%s: Loading the XCLBIN", __func__);
+    }
+  }
+  catch(const std::exception &e) {
+    // do nothing
+  }
+  return 1;
 }
 
 int
@@ -932,22 +963,36 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
-// Get the maximum bandwidth for host reads from the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
 shim::
-xclGetReadMaxBandwidthMBps()
+xclGetHostReadMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 19250.00;
 }
 
-// Get the maximum bandwidth for host writes to the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
-double
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
 shim::
-xclGetWriteMaxBandwidthMBps()
+xclGetHostWriteMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
+shim::
+xclGetKernelReadMaxBandwidthMBps()
+{
+  return 19250.00;
+}
+
+// For DDR4: Typical Max BW = 19.25 GB/s
+double 
+shim::
+xclGetKernelWriteMaxBandwidthMBps()
+{
+  return 19250.00;
 }
 
 int
@@ -1013,7 +1058,7 @@ xclSKCreate(int *boHandle, uint32_t cu_idx)
   if(!ret) {
     *boHandle = scmd.handle;
   }
-  
+
   return ret ? -errno : ret;
 }
 
@@ -1033,6 +1078,9 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
     break;
   case XRT_SCU_STATE_CRASH:
     scmd.cu_state = ZOCL_SCU_STATE_CRASH;
+    break;
+  case XRT_SCU_STATE_FINI:
+    scmd.cu_state = ZOCL_SCU_STATE_FINI;
     break;
   default:
     return -EINVAL;
@@ -1061,6 +1109,14 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
   return ret ? -errno : ret;
+}
+
+int
+shim::
+xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
+{
+  // TODO: implement for full support of multiple xclbins
+  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
 }
 
 int
@@ -2218,18 +2274,34 @@ xclGetDeviceClockFreqMHz(xclDeviceHandle handle)
 }
 
 double
-xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
+xclGetHostReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return drv ? drv->xclGetReadMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostReadMaxBandwidthMBps() : 0.0;
 }
 
 
 double
-xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
+xclGetHostWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return drv ? drv->xclGetWriteMaxBandwidthMBps() : 0.0;
+  return drv ? drv->xclGetHostWriteMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetKernelReadMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelReadMaxBandwidthMBps() : 0.0;
+}
+
+
+double
+xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
+{
+  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+  return drv ? drv->xclGetKernelWriteMaxBandwidthMBps() : 0.0;
 }
 
 
@@ -2291,6 +2363,23 @@ xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipInd
 
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
   }) ;
+}
+
+int
+xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
+{
+  try {
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+    return drv ? drv->xclOpenContext(slot, xclbinId, cuname, shared) : -EINVAL;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
 }
 
 int

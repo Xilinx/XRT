@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,46 +18,29 @@
 #define __SectionPartitionMetadata_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
 #include "FDTProperty.h"
-#include <boost/functional/factory.hpp>
 
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
-// ------------- C L A S S :   S e c t i o n D T C ---------------------------
-
+// --- C L A S S :   S e c t i o n P a r t i t i o n M e t a d a t a ---------
 class SectionPartitionMetadata : public Section {
  public:
-  SectionPartitionMetadata();
-  virtual ~SectionPartitionMetadata();
-
- public:
-  virtual bool doesSupportAddFormatType(FormatType _eFormatType) const;
-  virtual bool doesSupportDumpFormatType(FormatType _eFormatType) const;
-  virtual void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo);
+  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
+  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
+  void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo) override;
 
  protected:
-  virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
-  virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
+  void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
+  void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  protected:
    static const FDTProperty::PropertyNameFormat m_propertyNameFormat;
 
-
- private:
-  // Purposefully private and undefined ctors...
-  SectionPartitionMetadata(const SectionPartitionMetadata& obj);
-  SectionPartitionMetadata& operator=(const SectionPartitionMetadata& obj);
-
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-      _init() { registerSectionCtor(PARTITION_METADATA, "PARTITION_METADATA", "partition_metadata", false, false, boost::factory<SectionPartitionMetadata *>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

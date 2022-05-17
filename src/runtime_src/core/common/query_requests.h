@@ -16,17 +16,19 @@
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
+#include "error.h"
+#include "query.h"
+#include "uuid.h"
 
 #include "core/include/xclerr_int.h"
-#include "query.h"
-#include "error.h"
-#include "uuid.h"
-#include <string>
-#include <vector>
-#include <sstream>
+
 #include <iomanip>
 #include <map>
+#include <string>
+#include <sstream>
 #include <stdexcept>
+#include <vector>
+
 #include <boost/any.hpp>
 #include <boost/format.hpp>
 
@@ -259,14 +261,16 @@ enum class key_type
   lapc_status,
   spc_status,
   accel_deadlock_status,
-  get_xclbin_data,
+  xclbin_slots,
   aie_get_freq,
   aie_set_freq,
   dtbo_path,
 
   boot_partition,
   flush_default_only,
+  program_sc,
   vmr_status,
+  extended_vmr_status,
 
   hwmon_sdm_serial_num,
   hwmon_sdm_oem_id,
@@ -276,6 +280,7 @@ enum class key_type
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
   hwmon_sdm_fan_presence,
+  hotplug_offline,
 
   noop
 };
@@ -285,7 +290,7 @@ enum class key_type
 // Provides granularity for calling code to catch errors specific to
 // query request which are often acceptable errors because some
 // devices may not support all types of query requests.
-//  
+//
 // Other non query exceptions signal a different kind of error which
 // should maybe not be caught.
 //
@@ -906,6 +911,7 @@ struct sdm_sensor_info : request
     uint32_t max {};
     uint32_t average {};
     uint32_t highest {};
+    std::string status;
   };
   using result_type = std::vector<sensor_data>;
   using req_type = sdr_req_type;
@@ -995,7 +1001,7 @@ struct instance : request
   virtual boost::any
   get(const device*) const = 0;
 
-  static std::string 
+  static std::string
   to_string(const result_type& value)
   {
     return std::to_string(value);
@@ -1348,7 +1354,7 @@ struct aie_core_info : request
 {
   using result_type = std::string;
   static const key_type key = key_type::aie_core_info;
-  
+
   virtual boost::any
   get(const device*) const = 0;
 };
@@ -1357,7 +1363,7 @@ struct aie_shim_info : request
 {
   using result_type = std::string;
   static const key_type key = key_type::aie_shim_info;
-  
+
   virtual boost::any
   get(const device*) const = 0;
 };
@@ -2899,6 +2905,19 @@ struct flush_default_only : request
   put(const device*, const boost::any&) const = 0;
 };
 
+struct program_sc : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::program_sc;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
 struct vmr_status : request
 {
   using result_type = std::vector<std::string>;
@@ -2908,20 +2927,35 @@ struct vmr_status : request
   get(const device*) const = 0;
 };
 
-struct get_xclbin_data : request
+struct extended_vmr_status : request
 {
-  struct xclbin_data {
-    uint32_t	slot_index;
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::extended_vmr_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrieve xclbin slot information.  This is a mapping
+// from xclbin uuid to the slot index created by the driver
+struct xclbin_slots : request
+{
+  using slot_id = uint32_t;
+
+  struct slot_info {
+    slot_id slot;
     std::string uuid;
   };
 
-  using result_type = std::vector<struct xclbin_data>;
-  using data_type = struct xclbin_data;
-  static const key_type key = key_type::get_xclbin_data;
+  using result_type = std::vector<slot_info>;
+  static const key_type key = key_type::xclbin_slots;
+
+  // Convert raw data to associative map
+  static std::map<slot_id, xrt::uuid>
+  to_map(const result_type& value);
 
   virtual boost::any
   get(const xrt_core::device* device) const = 0;
-
 };
 
 struct hwmon_sdm_serial_num : request
@@ -2991,6 +3025,15 @@ struct hwmon_sdm_fan_presence : request
 {
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_fan_presence;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hotplug_offline : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::hotplug_offline;
 
   virtual boost::any
   get(const device*) const = 0;

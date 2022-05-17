@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -51,7 +52,7 @@ enum class OffloadThreadType {
 
 struct TraceBufferInfo {
   size_t   buf;
-  uint64_t buf_size;
+  uint64_t alloc_size;
   uint64_t used_size;
   uint64_t offset;
   uint64_t address;
@@ -63,7 +64,7 @@ struct TraceBufferInfo {
   
   TraceBufferInfo()
     : buf(0),
-      buf_size(0),
+      alloc_size(0),
       used_size(0),
       offset(0),
       address(0),

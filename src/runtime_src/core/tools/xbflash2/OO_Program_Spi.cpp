@@ -49,9 +49,9 @@ spiCommand(po::variables_map& vm) {
 
     //optional command line args
     std::string sBar = vm.count("bar") ? vm["bar"].as<std::string>() : "";
-    int bar = !sBar.empty() ? std::stoi(sBar) : 0;
+    int bar = !sBar.empty() ? std::stoi(sBar, nullptr, 0) : 0;
     std::string sBarOffset = vm.count("bar-offset") ? vm["bar-offset"].as<std::string>() : "";
-    size_t baroff = !sBarOffset.empty() ? std::stoul(sBarOffset) : INVALID_OFFSET;
+    size_t baroff = !sBarOffset.empty() ? std::stoul(sBarOffset, nullptr, 0) : INVALID_OFFSET;
     bool force = vm.count("force") ? true : false;
     bool dualflash = vm.count("dual-flash") ? true : false;    
 

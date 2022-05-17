@@ -17,11 +17,15 @@
 
 #include "xrt_skd.h"
 
+#ifdef __GNUC__
+# pragma GCC diagnostic ignored "-Wformat-truncation"
+#endif
+
 namespace xrt {
 
   /**
    * skd() - Constructor from uuid and soft kernel section
-   * 
+   *
    * @param kernel metadata buffer handle
    *
    * @param soft kernel image buffer handle
@@ -73,7 +77,7 @@ namespace xrt {
       xclFreeBO(parent_devHdl, sk_meta_bo);
       return -1;
     }
-    
+
     buf = xclMapBO(parent_devHdl, sk_meta_bo, false);
     if (!buf) {
       syslog(LOG_ERR, "Cannot map metadata BO.\n");
@@ -84,7 +88,7 @@ namespace xrt {
     num_args = args.size();
     syslog(LOG_INFO,"Num args = %d\n",num_args);
     munmap(buf, prop.size);
-    
+
     // new device handle for the current instance
     devHdl = xclOpen(0, NULL, XCL_QUIET);
     xrtdHdl = xrtDeviceOpenFromXcl(devHdl);
@@ -117,7 +121,7 @@ namespace xrt {
       }
     }
     ffi_args = new ffi_type*[num_args];
-    
+
     // Open main soft kernel
     kernel = dlsym(sk_handle, sk_name);
     errstr = dlerror();
@@ -129,7 +133,7 @@ namespace xrt {
       syslog(LOG_ERR, "Cannot find kernel %s\n", sk_name);
       return -1;
     }
-    
+
     // Soft kernel command bohandle init
     ret = createSoftKernel(&cmd_boh);
     if (ret) {
@@ -138,23 +142,23 @@ namespace xrt {
     }
 
     syslog(LOG_INFO, "%s_%d start running, cmd_boh = %d\n", sk_name, cu_idx, cmd_boh);
-    
+
     args_from_host = (unsigned *)xclMapBO(devHdl, cmd_boh, true);;
     if (args_from_host == MAP_FAILED) {
       syslog(LOG_ERR, "Failed to map soft kernel args for %s_%d", sk_name, cu_idx);
       dlclose(sk_handle);
       return -1;
     }
-    
+
     // Prep FFI type for all kernel arguments
     for(int i=0;i<num_args;i++) {
       ffi_args[i] = convert_to_ffitype(args[i]);
     }
-    
+
     if(ffi_prep_cif(&cif,FFI_DEFAULT_ABI, num_args, &ffi_type_uint32,ffi_args) != FFI_OK) {
       syslog(LOG_ERR, "Cannot prep FFI arguments!");
       return -1;
-    }    
+    }
 
     syslog(LOG_INFO,"Finish soft kernel %s init\n",sk_name);
     return 0;
@@ -171,18 +175,18 @@ namespace xrt {
     void* bos[num_args];
     uint64_t boSize[num_args];
     std::vector<int> bo_list;
-    
+
     while (1) {
       ret = waitNextCmd();
-      
+
       if (ret) {
 	/* We are told to exit the soft kernel loop */
 	syslog(LOG_INFO, "Exit soft kernel %s\n", sk_name);
 	break;
       }
-      
+
       syslog(LOG_INFO, "Got new kernel command!\n");
-      
+
       /* Reg file indicates the kernel should not be running. */
       if (!(args_from_host[0] & 0x1))
 	continue; //AP_START bit is not set; New Cmd is not available
@@ -207,19 +211,21 @@ namespace xrt {
 	  ffi_arg_values[i] = &args_from_host[(args[i].offset+PS_KERNEL_REG_OFFSET)/4];
 	}
       }
-      
+
       ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
       args_from_host[1] = (uint32_t)kernel_return;
-      
+
       // Unmap Buffers
       for(auto i:bo_list) {
 	munmap(bos[i],boSize[i]);
 	xclFreeBO(devHdl,boHandles[i]);
       }
+      bo_list.clear();
+
     }
 
   }
-  
+
   skd::~skd() {
     // Call soft kernel fini if available
     kernel_fini_t kernel_fini;
@@ -227,19 +233,12 @@ namespace xrt {
     char sk_fini[PS_KERNEL_NAME_LENGTH+finiExtension.size()];
     int ret = 0;
 
-    snprintf(sk_fini,PS_KERNEL_NAME_LENGTH+finiExtension.size(),"%s%s",sk_name,finiExtension.c_str());
-    kernel_fini = (kernel_fini_t)dlsym(sk_handle, sk_fini);
-    if (!kernel_fini) {
-      syslog(LOG_INFO, "kernel fini function %s not found\n", sk_fini);
-    } else {
-      ret = kernel_fini(xrtHandle);
+    // Check if SCU is still in running state
+    // If it is, that means it has crashed
+    if((args_from_host[0] & 0x1) == 1) {
+      report_crash();  // Function to report crash to kernel - not implemented yet in kernel space
     }
-    
-    dlclose(sk_handle);
-    ret = deleteSoftKernelFile();
-    if (ret) {
-      syslog(LOG_ERR, "Cannot remove soft kernel file %s\n", sk_path);
-    }
+    // Unmap command BO
     if(cmd_boh >= 0) {
       xclBOProperties prop;
       if (xclGetBOProperties(devHdl, cmd_boh, &prop)) {
@@ -249,8 +248,23 @@ namespace xrt {
 	syslog(LOG_ERR, "Cannot munmap BO %d, at %p\n", cmd_boh, &args_from_host);
       }
     }
+
+    snprintf(sk_fini,PS_KERNEL_NAME_LENGTH+finiExtension.size(),"%s%s",sk_name,finiExtension.c_str());
+    kernel_fini = (kernel_fini_t)dlsym(sk_handle, sk_fini);
+    if (!kernel_fini) {
+      syslog(LOG_INFO, "kernel fini function %s not found\n", sk_fini);
+    } else {
+      ret = kernel_fini(xrtHandle);
+    }
+
+    dlclose(sk_handle);
+    ret = deleteSoftKernelFile();
+    if (ret) {
+      syslog(LOG_ERR, "Cannot remove soft kernel file %s\n", sk_path);
+    }
     xclClose(devHdl);
     xclClose(parent_devHdl);
+    report_fini();
   }
 
   int skd::createSoftKernel(int *boh) {
@@ -271,31 +285,31 @@ namespace xrt {
     void *buf = NULL;
     char path[XRT_MAX_PATH_LENGTH];
     int len, i;
-    
+
     xclBOProperties prop;
     if (xclGetBOProperties(handle, bohdl, &prop)) {
       syslog(LOG_ERR, "Cannot get SK .so BO info.\n");
       return -1;
     }
-    
+
     buf = xclMapBO(handle, bohdl, false);
     if (!buf) {
       syslog(LOG_ERR, "Cannot map softkernel BO.\n");
       return -1;
     }
-    
+
     snprintf(path, XRT_MAX_PATH_LENGTH, "%s", SOFT_KERNEL_FILE_PATH);
-    
+
     /* If not exist, create the path one by one. */
     std::filesystem::create_directories(path);
-    
+
     fptr = fopen(sk_path, "w+b");
     if (fptr == NULL) {
       syslog(LOG_ERR, "Cannot create file: %s\n", sk_path);
       munmap(buf, prop.size);
       return -1;
     }
-    
+
     /* copy the soft kernel to file */
     if (fwrite(buf, prop.size, 1, fptr) != 1) {
       syslog(LOG_ERR, "Fail to write to file %s.\n", sk_path);
@@ -304,10 +318,10 @@ namespace xrt {
       return -1;
     }
     syslog(LOG_INFO,"File created at %s\n", sk_path);
-    
+
     fclose(fptr);
     munmap(buf, prop.size);
-    
+
     return 0;
   }
 
@@ -318,7 +332,7 @@ namespace xrt {
   {
     return(remove(sk_path));
   }
-  
+
   /* Convert argument to ffi_type */
   ffi_type* skd::convert_to_ffitype(xrt_core::xclbin::kernel_argument arg) {
     ffi_type* return_type;
@@ -346,7 +360,7 @@ namespace xrt {
       { {"float", 8 }, &ffi_type_double },
       { {"double", 8 }, &ffi_type_double }
     };
-    
+
     if((arg.index == xrt_core::xclbin::kernel_argument::no_index) ||  // Argument is xrtHandles
        (arg.type == xrt_core::xclbin::kernel_argument::argtype::global)) {  // Argument is a buffer pointer
       return_type = &ffi_type_pointer;
@@ -363,8 +377,11 @@ namespace xrt {
     xclSKReport(devHdl,cu_idx,XRT_SCU_STATE_READY);
   }
 
+  void skd::report_fini() {
+    xclSKReport(devHdl,cu_idx,XRT_SCU_STATE_FINI);
+  }
+
   void skd::report_crash() {
     xclSKReport(devHdl,cu_idx,XRT_SCU_STATE_CRASH);
   }
 }
-

@@ -14,16 +14,6 @@
 namespace {
 
 static bool
-is_windows()
-{
-#ifdef _WIN32
-    return true;
-#else
-    return false;
-#endif
-}
-
-static bool
 is_sw_emulation()
 {
   static auto xem = std::getenv("XCL_EMULATION_MODE");
@@ -37,8 +27,7 @@ kds_enabled(bool forceoff=false)
   static bool iskdsemu = is_sw_emulation() ? (xrt_core::config::get_flag_kds_sw_emu() ? true : false) : true;
   static bool enabled = iskdsemu
     &&  xrt_core::config::get_kds()
-    && !xrt_core::config::get_feature_toggle("Runtime.sws")
-    && !is_windows();
+    && !xrt_core::config::get_feature_toggle("Runtime.sws");
 
   if (forceoff)
     enabled = false;

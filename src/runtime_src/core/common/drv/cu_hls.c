@@ -2,7 +2,7 @@
 /*
  * Xilinx HLS CU
  *
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -10,6 +10,7 @@
  * License version 2 or Apache License, Version 2.0.
  */
 
+#include <linux/delay.h>
 #include "xrt_cu.h"
 #include "xgq_cmd_ert.h"
 
@@ -40,6 +41,20 @@
 
 extern int kds_echo;
 
+struct xrt_cu_hls {
+	void __iomem		*vaddr;
+	int			 max_credits;
+	int			 credits;
+	int			 run_cnts;
+	bool			 ctrl_chain;
+	bool			 sw_reset;
+	spinlock_t		 cu_lock;
+	u32			 done;
+	u32			 ready;
+	struct list_head	 submitted;
+	struct list_head	 completed;
+};
+
 static inline u32 cu_read32(struct xrt_cu_hls *cu, u32 reg)
 {
 	u32 ret;
@@ -51,6 +66,19 @@ static inline u32 cu_read32(struct xrt_cu_hls *cu, u32 reg)
 static inline void cu_write32(struct xrt_cu_hls *cu, u32 reg, u32 val)
 {
 	iowrite32(val, cu->vaddr + reg);
+}
+
+static inline void cu_move_to_complete(struct xrt_cu_hls *cu, int status)
+{
+	struct kds_command *xcmd = NULL;
+
+	if (unlikely(list_empty(&cu->submitted)))
+		return;
+
+	xcmd = list_first_entry(&cu->submitted, struct kds_command, list);
+	xcmd->status = status;
+	cu->run_cnts--;
+	list_move_tail(&xcmd->list, &cu->completed);
 }
 
 static int cu_hls_alloc_credit(void *core)
@@ -179,7 +207,7 @@ cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bool 
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg  = 1;
 		ready_reg = 1;
-		cu_hls->run_cnts--;
+		cu_move_to_complete(cu_hls, KDS_COMPLETED);
 	}
 
 	status->num_done  = done_reg;
@@ -231,8 +259,8 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bo
 
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg += 1;
-		cu_hls->run_cnts--;
 		cu_write32(cu_hls, CTRL, CU_AP_CONTINUE);
+		cu_move_to_complete(cu_hls, KDS_COMPLETED);
 	}
 	spin_unlock_irqrestore(&cu_hls->cu_lock, flags);
 
@@ -246,10 +274,10 @@ static void cu_hls_check(void *core, struct xcu_status *status, bool force)
 	struct xrt_cu_hls *cu_hls = core;
 
 	if (kds_echo) {
-		cu_hls->run_cnts--;
 		status->num_done = 1;
 		status->num_ready = 1;
 		status->new_status = CU_AP_IDLE;
+		cu_move_to_complete(cu_hls, KDS_COMPLETED);
 		return;
 	}
 
@@ -322,6 +350,7 @@ static u32 cu_hls_clear_intr(void *core)
 				ctrl_reg = cu_read32(cu_hls, CTRL);
 				if (ctrl_reg & CU_AP_DONE) {
 					cu_hls->done++;
+					cu_move_to_complete(cu_hls, KDS_COMPLETED);
 					cu_write32(cu_hls, CTRL, CU_AP_CONTINUE);
 				}
 			}
@@ -362,6 +391,70 @@ static bool cu_hls_reset_done(void *core)
 	return true;
 }
 
+static int cu_hls_submit_config(void *core, struct kds_command *xcmd)
+{
+	struct xrt_cu_hls *cu_hls = core;
+	int ret = 0;
+
+	ret = cu_hls_configure(core, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type);
+	if (ret)
+		return ret;
+
+	list_move_tail(&xcmd->list, &cu_hls->submitted);
+	return ret;
+}
+
+static struct kds_command *cu_hls_get_complete(void *core)
+{
+	struct xrt_cu_hls *cu_hls = core;
+	struct kds_command *xcmd = NULL;
+
+	if (list_empty(&cu_hls->completed))
+		return NULL;
+
+	xcmd = list_first_entry(&cu_hls->completed, struct kds_command, list);
+	list_del_init(&xcmd->list);
+
+	return xcmd;
+}
+
+static int cu_hls_abort(void *core, void *cond,
+			bool (*match)(struct kds_command *xcmd, void *cond))
+{
+	struct xrt_cu_hls *cu_hls = core;
+	struct kds_command *xcmd = NULL;
+	struct kds_command *next = NULL;
+	int ret = -EBUSY;
+
+	if (cu_hls->sw_reset) {
+		int time = 10 * 1000 * 1000; /* 10 second */
+		cu_hls_reset(core);
+
+		do {
+			usleep_range(1000, 1500);
+			time -= 1000;
+			if (cu_hls_reset_done(core))
+				break;
+		} while (time > 0);
+
+		/* Reset is done, CU is still functional */
+		if (time >= 0) {
+			cu_hls->credits = cu_hls->max_credits;
+			ret = 0;
+		}
+	}
+
+	list_for_each_entry_safe(xcmd, next, &cu_hls->submitted, list) {
+		if (!match(xcmd, cond))
+			continue;
+
+		xcmd->status = KDS_TIMEOUT;
+		list_move_tail(&xcmd->list, &cu_hls->completed);
+	}
+
+	return ret;
+}
+
 static struct xcu_funcs xrt_cu_hls_funcs = {
 	.alloc_credit	= cu_hls_alloc_credit,
 	.free_credit	= cu_hls_free_credit,
@@ -374,6 +467,9 @@ static struct xcu_funcs xrt_cu_hls_funcs = {
 	.clear_intr	= cu_hls_clear_intr,
 	.reset		= cu_hls_reset,
 	.reset_done	= cu_hls_reset_done,
+	.submit_config  = cu_hls_submit_config,
+	.get_complete   = cu_hls_get_complete,
+	.abort		= cu_hls_abort,
 };
 
 int xrt_cu_hls_init(struct xrt_cu *xcu)
@@ -407,6 +503,9 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	spin_lock_init(&core->cu_lock);
 	core->done = 0;
 	core->ready = 0;
+	core->sw_reset = xcu->info.sw_reset;
+	INIT_LIST_HEAD(&core->submitted);
+	INIT_LIST_HEAD(&core->completed);
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_hls_funcs;

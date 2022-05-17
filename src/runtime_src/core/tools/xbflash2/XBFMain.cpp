@@ -44,7 +44,6 @@ void  main_(int argc, char** argv,
   bool bBatchMode = false;
   bool bShowHidden = false;
   bool bForce = false;
-  bool bVersion = false;
   std::string sDevice;
 
   // Build Options
@@ -58,7 +57,6 @@ void  main_(int argc, char** argv,
   po::options_description globalOptions("Global Options");
   globalOptions.add_options()
     ("help",    boost::program_options::bool_switch(&bHelp), "Help to use this application")
-    ("version", boost::program_options::bool_switch(&bVersion), "Report the version of XRT and its drivers")
   ;
   globalOptions.add(globalSubCmdOptions);
 
