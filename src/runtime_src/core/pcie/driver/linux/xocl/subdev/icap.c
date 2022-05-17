@@ -663,7 +663,7 @@ static int calibrate_mig(struct icap *icap)
 	/* If a DDR or PLRAM bank is found no need to keep searching */
 	for (i = 0; (i < icap->mem_topo->m_count) && (!is_memory_bank_connected); i++) {
 		struct mem_data* mem_bank = &icap->mem_topo->m_mem_data[i];
-		if (MEM_NEEDS_CALIBRATION(mem_bank->tag) && (mem_bank->m_used != 0))
+		if (MEM_NEEDS_CALIBRATION(mem_bank->m_tag) && (mem_bank->m_used != 0))
 			is_memory_bank_connected = true;
 	}
 
