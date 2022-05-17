@@ -124,7 +124,7 @@ temp_log_file=$(mktemp -u --suffix=.xball.log)
 
 
 # 4. Use python to read the JSON file to find the devices of interest
-python3 "${XRT_BIN_DIR}/xball.py" "${temp_python_status}" "${temp_json_file}" "${device_filter}" "${xrt_app}" "$prog_args"
+python3 "${XILINX_XRT}/python/xball.py" "${temp_python_status}" "${temp_json_file}" "${device_filter}" "${xrt_app}" "$prog_args"
 
 # 5. Get python exit code
 python_exit_code=1     # Assume the it failed

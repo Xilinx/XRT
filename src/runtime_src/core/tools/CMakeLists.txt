@@ -15,7 +15,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
 endif()
 
 install (PROGRAMS "./common/xball" DESTINATION ${XRT_INSTALL_BIN_DIR})
-install (FILES "./common/xball.py" DESTINATION ${XRT_INSTALL_BIN_DIR})
+install (FILES "./common/xball.py" DESTINATION ${XRT_INSTALL_PYTHON_DIR})
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   if (NOT WIN32)
     # Use PROGRAMS to allow for execution. This is recommended in the CMake documentation
