@@ -126,14 +126,37 @@ using addr_type = uint64_t;
       static int xcl_LogMsg(xrtLogMsgLevel level, const char* tag, const char* format, ...);
       static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
-      //P2P Support
+      // P2P Support
       int xclExportBO(unsigned int boHandle);
       unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
       int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
 
-      //MB scheduler related API's
+      // MB scheduler related API's
       int xclExecBuf( unsigned int cmdBO);
       int xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list);
+
+      ////////////////////////////////////////////////////////////////
+      // Context handling
+      ////////////////////////////////////////////////////////////////
+      int
+      xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+
+      // aka xclOpenContextByName, internal shim API for native C++ applications only
+      void
+      open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const;
+
+      // aka xclCreateHWContext, internal shim API for native C++ applications only
+      uint32_t // ctx handle aka slot idx
+      create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const;
+
+      // aka xclDestroyHWContext, internal shim API for native C++ applications only
+      void
+      destroy_hw_context(uint32_t ctxhdl) const;
+
+      // aka xclRegisterXclbin, internal shim API for native C++ applications only
+      void
+      register_xclbin(const xrt::xclbin&) const;
+      ////////////////////////////////////////////////////////////////
 
       int xclRegisterEventNotify( unsigned int userInterrupt, int fd);
       int xclExecWait( int timeoutMilliSec);

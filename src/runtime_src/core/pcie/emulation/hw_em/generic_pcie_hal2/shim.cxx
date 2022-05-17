@@ -3169,6 +3169,56 @@ int HwEmShim::xclExecWait(int timeoutMilliSec)
   return 1;
 }
 
+////////////////////////////////////////////////////////////////
+// Context handling
+////////////////////////////////////////////////////////////////
+int
+HwEmShim::
+xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+{
+  return 0; // success
+}
+
+// aka xclOpenContextByName, internal shim API for native C++ applications only
+// Once properly implemented, this API should throw on error
+void
+HwEmShim::
+open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+{
+  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
+}
+
+// aka xclCreateHWContext, internal shim API for native C++ applications only
+// Once properly implemented, this API should throw on error
+uint32_t // ctx handle aka slot idx
+HwEmShim::
+create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const
+{
+  // Explicit hardware contexts are not yet supported
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
+// aka xclDestroyHWContext, internal shim API for native C++ applications only
+// Once properly implemented, this API should throw on error
+void
+HwEmShim::
+destroy_hw_context(uint32_t ctxhdl) const
+{
+  // Explicit hardware contexts are not yet supported
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
+// aka xclRegisterXclbin, internal shim API for native C++ applications only
+// Once properly implemented, this API should throw on error
+void
+HwEmShim::
+register_xclbin(const xrt::xclbin&) const
+{
+  // Explicit hardware contexts are not yet supported
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+////////////////////////////////////////////////////////////////
+
 ssize_t HwEmShim::xclUnmgdPwrite(unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
   if (flags)
