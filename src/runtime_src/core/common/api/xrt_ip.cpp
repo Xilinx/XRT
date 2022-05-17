@@ -159,7 +159,7 @@ class ip_impl
       size = ip.get_size();
 
       // context, driver allows shared context per xrt.ini
-      device->open_context(slot, xclbin_uuid.get(), ipnm.c_str(), xrt_core::config::get_rw_shared());
+      device->open_context(slot, xclbin_uuid, ipnm, xrt_core::config::get_rw_shared());
 
       // idx is guaranteed valid only after context creation
       idx = device->get_cuidx(slot, ipnm);

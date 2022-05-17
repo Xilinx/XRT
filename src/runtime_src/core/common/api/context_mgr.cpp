@@ -95,7 +95,7 @@ public:
       if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
         throw std::runtime_error("aquiring cu context timed out");
     }
-    m_device->open_context(slot, uuid.get(), ipname.c_str(), shared);
+    m_device->open_context(slot, uuid, ipname, shared);
 
     // Successful context creation means CU idx is now known
     if (!ctx)
@@ -121,7 +121,7 @@ public:
       if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
         throw std::runtime_error("aquiring cu context timed out");
     }
-    m_device->open_context(uuid.get(), ipidx.index, shared);
+    m_device->open_context(uuid, ipidx.index, shared);
     ctx->set(idx);
   }
 
@@ -135,7 +135,7 @@ public:
     auto ctx = get_ctx(ipidx);
     if (!ctx->test(idx))
       throw std::runtime_error("ctx " + std::to_string(ipidx.index) + " not open");
-    m_device->close_context(uuid.get(), ipidx.index);
+    m_device->close_context(uuid, ipidx.index);
     ctx->reset(idx);
     m_cv.notify_all();
   }

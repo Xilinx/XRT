@@ -150,15 +150,6 @@ namespace xclcpuemhal2 {
       static CpuemShim *handleCheck(void *handle);
       bool isGood() const;
 
-      //QDMA Support
-      int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclDestroyQueue(uint64_t q_hdl);
-      void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
-      int xclFreeQDMABuf(uint64_t buf_hdl);
-      ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
       int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
       int xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const;
       int xclExecWait(int timeoutMilliSec);

@@ -51,7 +51,7 @@ AIETraceOffload::AIETraceOffload
   , totalSz(totalSize)
   , numStream(numStrm)
   , traceContinuous(false)
-  , offloadIntervalms(0)
+  , offloadIntervalUs(0)
   , bufferInitialized(false)
   , offloadStatus(AIEOffloadThreadStatus::IDLE)
   , mEnCircularBuf(false)
@@ -160,8 +160,8 @@ bool AIETraceOffload::initReadTrace()
 void AIETraceOffload::endReadTrace()
 {
   // reset
-  for(uint64_t i = 0; i < numStream ; ++i) {
-    if(!buffers[i].boHandle) {
+  for (uint64_t i = 0; i < numStream ; ++i) {
+    if (!buffers[i].boHandle) {
       continue;
     }
     if(isPLIO) {
@@ -191,127 +191,145 @@ void AIETraceOffload::endReadTrace()
     deviceIntf->freeTraceBuf(buffers[i].boHandle);
     buffers[i].boHandle = 0;
   }
-  buffers.clear();
   bufferInitialized = false;
 }
 
 void AIETraceOffload::readTrace(bool final)
 {
-  for (uint64_t i = 0; i < numStream; ++i) {
-    configAIETs2mm(i, final);
+  for (uint64_t index = 0; index < numStream; ++index) {
+    auto& bd = buffers[index];
 
-    if (buffers[i].offset >= buffers[i].usedSz)
+    if (bd.offloadDone)
       continue;
 
-    // Amount of newly written trace
-    uint64_t nBytes = buffers[i].usedSz - buffers[i].offset;
+    // read complete trace buffer in gmio
+    if (!isPLIO) {
+      bd.usedSz = bufAllocSz;
+      bd.offloadDone = true;
+      syncAndLog(index);
+      continue;
+    }
 
-    // Sync to host
-    auto start = std::chrono::steady_clock::now();
-    void* hostBuf = deviceIntf->syncTraceBuf(buffers[i].boHandle, buffers[i].offset, nBytes);
-    auto end = std::chrono::steady_clock::now();
+    uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(index, final);
+    // AIE Trace packets are 4 words of 64 bit
+    wordCount -= wordCount % 4;
 
-    if (!hostBuf)
+    uint64_t bytes_written  = wordCount * TRACE_PACKET_SIZE;
+    uint64_t bytes_read = bd.usedSz + bd.rollover_count * bufAllocSz;
+
+    // Offload cannot keep up with the DMA
+    // There is a slight chance that overwrite could occur
+    // during this check. In that case trace could be corrupt
+    if (bytes_written > bytes_read + bufAllocSz) {
+      // Don't read any more data
+      bd.offloadDone = true;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE);
+      debug_stream
+        << "Bytes Read : " << bytes_read
+        << " Bytes Written : " << bytes_written
+        << std::endl;
+      // Fatal condition. Abort offload
+      stopOffload();
+      return;
+    }
+
+    // Start Offload from previous offset
+    bd.offset = bd.usedSz;
+    if (bd.offset == bufAllocSz) {
+      if (!mEnCircularBuf) {
+        bd.offloadDone = true;
+        continue;
+      }
+      bd.rollover_count++;
+      bd.offset = 0;
+    }
+
+    // End Offload at this offset
+    // limit size to not cross circular buffer boundary
+    uint64_t circBufRolloverBytes = 0;
+    bd.usedSz = bytes_written - bd.rollover_count * bufAllocSz;
+    if (bd.usedSz > bufAllocSz) {
+      circBufRolloverBytes = bd.usedSz - bufAllocSz;
+      bd.usedSz = bufAllocSz;
+    }
+
+    if (bd.offset != bd.usedSz) {
+      debug_stream
+        << "AIETraceOffload::config_s2mm_" << index << " "
+        << "Reading from 0x"
+        << std::hex << bd.offset << " to 0x" << bd.usedSz << std::dec
+        << " Bytes Read : " << bytes_read
+        << " Bytes Written : " << bytes_written
+        << " Rollovers : " << bd.rollover_count
+        << std::endl;
+    }
+
+    if (!syncAndLog(index))
       continue;
 
-    // Log trace buffer
-    traceLogger->addAIETraceData(i, hostBuf, nBytes);
+    // Do another sync if we're crossing circular buffer boundary
+    if (mEnCircularBuf && circBufRolloverBytes) {
+      // Start from 0
+      bd.rollover_count++;
+      bd.offset = 0;
+      // End at leftover bytes
+      bd.usedSz = circBufRolloverBytes;
+
+      debug_stream
+        << "Circular buffer boundary read from 0x0 to 0x: "
+        << std::hex << circBufRolloverBytes << std::dec << std::endl;
+
+      syncAndLog(index);
+    }
+  }
+}
+
+bool AIETraceOffload::syncAndLog(uint64_t index)
+{
+  auto& bd = buffers[index];
+
+  if (bd.offset >= bd.usedSz)
+    return false;
+
+  // Amount of newly written trace
+  uint64_t nBytes = bd.usedSz - bd.offset;
+
+  // Sync to host
+  auto start = std::chrono::steady_clock::now();
+  void* hostBuf = deviceIntf->syncTraceBuf(bd.boHandle, bd.offset, nBytes);
+  auto end = std::chrono::steady_clock::now();
+
+  if (!hostBuf) {
+    bd.offloadDone = true;
+    return false;
+  }
+
+  // Log trace buffer
+  traceLogger->addAIETraceData(index, hostBuf, nBytes);
 
     debug_stream
-    << "ts2mm_" << i << " : bytes : " << nBytes << " "
-    << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
-    << std::hex << "from 0x" << buffers[i].offset << " to 0x" << buffers[i].usedSz
-    << " host_buf : 0x" << hostBuf << std::dec
-    << std::endl;
+      << "ts2mm_" << index << " : bytes : " << nBytes << " "
+      << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
+      << std::hex << "from 0x" << bd.offset << " to 0x"
+      << bd.usedSz << std::dec << std::endl;
 
-    //Update offset and check for full buffer
-    buffers[i].offset += nBytes;
-    if (buffers[i].offset >= bufAllocSz)
-      buffers[i].isFull = true;
-  }
+    // check for full buffer
+  if ((bd.offset + nBytes >= bufAllocSz) && !mEnCircularBuf)
+    bd.isFull = true;
+
+  return true;
 }
 
 bool AIETraceOffload::isTraceBufferFull()
 {
-  // Detect if any trace buffer got full
+  // Detect if any trace buffer was full
   if (isPLIO) {
     for (auto& buf: buffers) {
-      if (buf.isFull) {
+      if (buf.isFull)
         return true;
-      }
     }
   }
   return false;
-}
-
-void AIETraceOffload::configAIETs2mm(uint64_t index, bool final)
-{
-  auto& bd = buffers[index];
-
-  if (bd.offloadDone)
-    return;
-
-  // read complete trace buffer in gmio
-  if (!isPLIO) {
-    bd.usedSz = bufAllocSz;
-    bd.offloadDone = true;
-    return;
-  }
-
-  uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(index, final);
-  // AIE Trace packets are 4 words of 64 bit
-  wordCount -= wordCount % 4;
-
-  uint64_t bytes_written  = wordCount * TRACE_PACKET_SIZE;
-  uint64_t bytes_read = bd.usedSz + bd.rollover_count * bufAllocSz;
-
-  // Todo Optimization : Skip small trace reads
-  //if (((bytes_written - bytes_read) < TS2MM_MIN_READ_SIZE) && !final)
-  //  continue;
-
-  // Offload cannot keep up with the DMA
-  // There is a slight chance that overwrite could occur
-  // during this check. In that case trace could be corrupt
-  if (bytes_written > bytes_read + bufAllocSz) {
-    // Don't read any more data
-    bd.offset = bd.usedSz;
-    bd.offloadDone = true;
-    stopOffload();
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE);
-    debug_stream
-      << "Bytes Read : " << bytes_read
-      << " Bytes Written : " << bytes_written
-      << std::endl;
-    return;
-  }
-
-  // Start Offload from previous offset
-  bd.offset = bd.usedSz;
-  if (bd.offset == bufAllocSz) {
-    if (!mEnCircularBuf) {
-      bd.offloadDone = true;
-      stopOffload();
-      return;
-    }
-    bd.rollover_count++;
-    bd.offset = 0;
-  }
-
-  // End Offload at this offset
-  bd.usedSz = bytes_written - bd.rollover_count * bufAllocSz;
-  if (bd.usedSz > bufAllocSz)
-    bd.usedSz = bufAllocSz;
-
-  if (bd.offset != bd.usedSz) {
-    debug_stream
-      << "AIETraceOffload::config_s2mm_" << index << " "
-      << "Reading from 0x"
-      << std::hex << bd.offset << " to 0x" << bd.usedSz << std::dec
-      << " Bytes Read : " << bytes_read
-      << " Bytes Written : " << bytes_written
-      << " Rollovers : " << bd.rollover_count
-      << std::endl;
-  }
 }
 
 void AIETraceOffload::checkCircularBufferSupport()
@@ -319,19 +337,30 @@ void AIETraceOffload::checkCircularBufferSupport()
   if (!isPLIO || !deviceIntf->supportsCircBufAIE())
     return;
 
-  if (offloadIntervalms != 0) {
-    circ_buf_cur_rate_plio = bufAllocSz * (1000 / offloadIntervalms);
+  if (offloadIntervalUs != 0) {
+    circ_buf_cur_rate_plio = bufAllocSz * (1e6 / offloadIntervalUs);
     if (circ_buf_cur_rate_plio >= circ_buf_min_rate_plio)
       mEnCircularBuf = true;
   } else {
     mEnCircularBuf = true;
   }
 
+  if (!mEnCircularBuf &&
+      (xrt_core::config::get_verbosity() >= static_cast<unsigned int>(xrt_core::message::severity_level::info))) {
+
+    std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF)
+      + " Minimum required offload rate (bytes per second) : "
+      + std::to_string(circ_buf_min_rate_plio)
+      + " Requested offload rate : "
+      + std::to_string(circ_buf_cur_rate_plio);
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+  }
+
   debug_stream
     << "Circular buffer support : " << mEnCircularBuf
     << " Min Rate : " << circ_buf_min_rate_plio
     << " Cur Rate : " << circ_buf_cur_rate_plio
-    << " offloadIntervalms : " << offloadIntervalms
+    << " offloadIntervalUs : " << offloadIntervalUs
     << " bufAllocSz : " << bufAllocSz
     << std::endl;
 }
@@ -356,7 +385,7 @@ void AIETraceOffload::continuousOffload()
 
   while (keepOffloading()) {
     readTrace(false);
-    std::this_thread::sleep_for(std::chrono::milliseconds(offloadIntervalms));
+    std::this_thread::sleep_for(std::chrono::microseconds(offloadIntervalUs));
   }
 
   // Note: This will call flush and reset on datamover
