@@ -242,15 +242,18 @@ public:
     return qr.put(this, std::forward<Args>(args)...);
   }
 
-  // register_xclbin() - Registers an xclbin with the device
+  // record_xclbin() - Registers an xclbin with the device
   //
-  // This function registers an xclbin without loading it onto
-  // hardware resource.  Once registered, a hardware context
-  // can be created once or more times, which will assign the
-  // xclbin to hardware resources.
+  // This function records/registers an xclbin without loading it onto
+  // hardware resource.  Once registered, a hardware context can be
+  // created once or more times, which will assign the xclbin to
+  // hardware resources.
+  //
+  // Naming of "record" as in record_xclbin is to compensate for
+  // virtual register_xclbin which is defined by shim.
   XRT_CORE_COMMON_EXPORT
   void
-  register_xclbin(const xrt::xclbin& xclbin);
+  record_xclbin(const xrt::xclbin& xclbin);
 
   /**
    * load_xclbin() - Load an xclbin object on this device

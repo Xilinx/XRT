@@ -85,12 +85,13 @@ get_xclbin_uuid() const
 
 // Registering an xclbin has one entry point (this one) only.
 // Shim level registering is not exposed to end-user application.
-//
+// Naming of "record" as in record_xclbin is to compensate for
+// virtual register_xclbin which is defined by shim.
 void
 device::
-register_xclbin(const xrt::xclbin& xclbin)
+record_xclbin(const xrt::xclbin& xclbin)
 {
-  static_cast<ishim*>(this)->register_xclbin(xclbin);
+  register_xclbin(xclbin); // shim level registration
   m_xclbins.insert(xclbin);
 }
 
