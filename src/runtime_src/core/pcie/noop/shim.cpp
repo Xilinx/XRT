@@ -177,9 +177,7 @@ public:
     m_slots.erase(slot);
   }
 
-  // open context on cu
-  // return: 0 on success, EAGAIN if xclbin was re-loaded, else error
-  int
+  void
   open_context(slot_id slot, const xrt::uuid& xid, const std::string& cuname, bool shared)
   {
     std::lock_guard lk(m_mutex);
@@ -214,8 +212,6 @@ public:
     cudata.slot = slot;
     cudata.ctx = 1;
     m_free_cu_indices.pop_back();
-
-    return 0;
   }
 
   // close the cu context
@@ -429,10 +425,10 @@ struct shim
     return 0;
   }
 
-  int
-  open_context(uint32_t slot, const xrt::uuid& uuid, const char* cuname, bool shared)
+  void
+  open_context(uint32_t slot, const xrt::uuid& uuid, const std::string& cuname, bool shared)
   {
-    return m_pldev->open_context(slot, uuid, cuname, shared);
+    m_pldev->open_context(slot, uuid, cuname, shared);
   }
 
   int
@@ -520,7 +516,7 @@ struct shim
     return 0;
   }
 
-  uint32_t // slotidx
+  uint32_t // ctxhdl aka slotidx
   create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
   {
     if (m_load_xclbin_slots.find(xclbin_uuid) != m_load_xclbin_slots.end())
@@ -584,29 +580,48 @@ xclbin_slots(const xrt_core::device* device)
   return s_devices[id]->xclbin_slots();
 }
 
-uint32_t // slotidx
-create_hw_context(const xrt_core::device* device, const xrt::uuid& xclbin_uuid, uint32_t qos)
+} // userpf
+
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+void
+open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
 {
-  auto shim = get_shim_object(device->get_device_handle());
+  auto shim = get_shim_object(handle);
+  shim->open_context(slot, xclbin_uuid, cuname, shared);
+}
+
+uint32_t // ctxhdl aka slotidx
+create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+  auto shim = get_shim_object(handle);
   return shim->create_hw_context(xclbin_uuid, qos);
 }
 
 void
-destroy_hw_context(const xrt_core::device* device, uint32_t ctxhdl)
+destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
 {
-  auto shim = get_shim_object(device->get_device_handle());
+  auto shim = get_shim_object(handle);
   shim->destroy_hw_context(ctxhdl);
 }
 
 void
-register_xclbin(const xrt_core::device* device, const xrt::xclbin& xclbin)
+register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
 {
-  auto shim = get_shim_object(device->get_device_handle());
+  auto shim = get_shim_object(handle);
   shim->register_xclbin(xclbin);
 }
 
-} // userpf
+} // xrt::shim_int
+////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////
+// Implementation of user exposed SHIM APIs
+// This are C level functions
+////////////////////////////////////////////////////////////////
 // Basic
 unsigned int
 xclProbe()
@@ -728,23 +743,6 @@ xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipInd
   return (ipIndex == (unsigned int)-1)
     ? 0
     : shim->open_context(xclbinId, ipIndex, shared);
-}
-
-int
-xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared)
-{
-  try {
-    auto shim = get_shim_object(handle);
-    return shim->open_context(slot, xclbin_uuid, cuname, shared);
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
 }
 
 int

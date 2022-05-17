@@ -155,7 +155,6 @@ namespace xclcpuemhal2 {
       bool isGood() const;
 
       int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
-      int xclOpenContextByName(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const;
       int xclExecWait(int timeoutMilliSec);
       int xclExecBuf(unsigned int cmdBO);
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
@@ -405,6 +404,13 @@ namespace xclcpuemhal2 {
       // */
       // int
       //   xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size);
+
+      ////////////////////////////////////////////////////////////////
+      // Internal SHIM APIs
+      ////////////////////////////////////////////////////////////////
+      // aka xclOpenContextByName
+      void
+      open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const;
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;

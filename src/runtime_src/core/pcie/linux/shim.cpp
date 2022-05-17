@@ -119,6 +119,16 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
   return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
 }
 
+static
+xocl::shim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = xocl::shim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
+}
+
 } // namespace
 
 namespace xocl {
@@ -1748,27 +1758,20 @@ int shim::xclExecWait(int timeoutMilliSec)
     return mDev->poll(mUserHandle, POLLIN, timeoutMilliSec);
 }
 
-/*
- * xclOpenContext
- */
-int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+// xclOpenContext
+int
+shim::
+xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
-    int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_CTX};
     std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
     ctx.cu_index = ipIndex;
     ctx.flags = flags;
-    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
-    return ret ? -errno : ret;
-}
+    if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx))
+      throw xrt_core::system_error(errno, "failed to open ip context");
 
-int shim::
-xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared) const
-{
-  // Alveo Linux PCIE does not yet support multiple xclbins.
-  // Call regular flow
-  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
+    return 0;
 }
 
 /*
@@ -2127,13 +2130,45 @@ int shim::xclCloseIPInterruptNotify(int fd)
     return 0;
 }
 
+// open_context() - aka xclOpenContextByName
+void
+shim::
+open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+{
+  // Alveo Linux PCIE does not yet support multiple xclbins.
+  // Call regular flow
+  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
+}
+
 } // namespace xocl
 
-/*******************************/
-/* GLOBAL DECLARATIONS *********/
-/*******************************/
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
 
-unsigned xclProbe()
+xclDeviceHandle
+open_by_bdf(const std::string& bdf)
+{
+  return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
+}
+
+void
+open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+{
+  auto shim = get_shim_object(handle);
+  shim->open_context(slot, xclbin_uuid, cuname, shared);
+}
+
+} // xrt::shim_int
+////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////
+// Implementation of user exposed SHIM APIs
+// This are C level functions
+////////////////////////////////////////////////////////////////
+unsigned int
+xclProbe()
 {
   return xdp::hal::profiling_wrapper("xclProbe", [] {
     return pcidev::get_dev_ready();
@@ -2170,22 +2205,6 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 
   return static_cast<xclDeviceHandle>(nullptr);
   }) ;
-}
-
-xclDeviceHandle
-xclOpenByBDF(const char *bdf)
-{
-  try {
-    return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-
-  return nullptr;
 }
 
 void xclClose(xclDeviceHandle handle)
@@ -2561,30 +2580,20 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   });
 }
 
-int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int
+xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   return xdp::hal::profiling_wrapper("xclOpenContext",
   [handle, xclbinId, ipIndex, shared] {
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+    try {
+      xocl::shim *drv = xocl::shim::handleCheck(handle);
+      return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get_code();
+    }
   }) ;
-}
-
-int
-xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
-{
-  try {
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclOpenContext(slot, xclbin_uuid, cuname, shared) : -ENODEV;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
 }
 
 int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)

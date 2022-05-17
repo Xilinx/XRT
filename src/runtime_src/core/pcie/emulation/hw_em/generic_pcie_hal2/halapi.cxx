@@ -21,6 +21,36 @@
 #include "plugin/xdp/device_offload.h"
 #include "plugin/xdp/hal_trace.h"
 
+namespace {
+
+// Wrap handle check to throw on error
+static xclhwemhal2::HwEmShim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = xclhwemhal2::HwEmShim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
+}
+
+} // namespace
+
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+// open_context - aka xclOpenContextByName
+void
+open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+{
+  get_shim_object(handle);
+  // shim->open_context(slot, xclbin_uuid, cuname, shared);
+}
+
+} // xrt::shim_int
+
+
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
@@ -183,11 +213,6 @@ int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO, size_t nu
 
 //defining following two functions as they gets called in scheduler init call
 int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
-{
-  return 0;
-}
-
-int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
 {
   return 0;
 }
