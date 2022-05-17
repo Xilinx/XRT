@@ -39,7 +39,7 @@ namespace po = boost::program_options;
 #include <sstream>
 #include <string>
 
-int 
+int
 _main(int argc, char* argv[])
 {
   std::vector<std::string> devices;
@@ -76,9 +76,7 @@ _main(int argc, char* argv[])
       throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // Initial state is OK (value of 0)
   // If any issues occur below the value will be set to 1 or 2
-  int status = 0;
   static const ReportCollection reportsToProcess = {
     std::make_shared<ReportMechanical>(),
     std::make_shared<ReportThermal>(),
@@ -89,22 +87,29 @@ _main(int argc, char* argv[])
 
   std::stringstream output;
   std::ostringstream oSchemaOutput;
+
+  // Initial status state is critical
+  Report::NagiosStatus internal_status = Report::NagiosStatus::critical;
   try {
-    XBU::produce_nagios_reports(deviceCollection, reportsToProcess, Report::getSchemaDescription("JSON").schemaVersion, elementsFilter, output, oSchemaOutput);
+    internal_status = XBU::produce_nagios_reports(deviceCollection, reportsToProcess, Report::getSchemaDescription("JSON").schemaVersion, elementsFilter, output, oSchemaOutput);
   } catch (...) {
-    status = 2;
+    internal_status = Report::NagiosStatus::critical;
   }
 
   // Output status before all other data
-  switch (status) {
-    case 0:
+  int status = 0;
+  switch (internal_status) {
+    case Report::NagiosStatus::okay:
       std::cout << "STATUS: OK |";
+      status = 0;
       break;
-    case 1:
+    case Report::NagiosStatus::warning:
       std::cout << "STATUS: WARNING |";
+      status = 1;
       break;
     default:
       std::cout << "STATUS: FAILURE |";
+      status = 2;
       break;
   }
   std::cout << output.str() << std::endl;
