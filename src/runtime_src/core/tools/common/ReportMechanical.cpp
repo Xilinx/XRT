@@ -62,7 +62,7 @@ ReportMechanical::writeReport( const xrt_core::device* /*_pDevice*/,
 }
 
 
-void
+Report::NagiosStatus
 ReportMechanical::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
                                const boost::property_tree::ptree& _pt,
                                const std::vector<std::string>& /*_elementsFilter*/,
@@ -78,4 +78,6 @@ ReportMechanical::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
 
     _output << m_nagiosFormat % pt_fan.get<std::string>("description") % pt_fan.get<std::string>("speed_rpm") % "RPM";
   }
+
+  return NagiosStatus::okay;
 }

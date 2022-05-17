@@ -26,6 +26,29 @@
 
 class Report {
  public:
+  // Nagios data area
+  enum class NagiosStatus {
+    okay = 0,
+    warning,
+    critical,
+    unknown
+  };
+
+  // Define these operators to allow fo easy comparison of device states
+  friend bool operator<(NagiosStatus rhs, NagiosStatus lhs)
+  {
+    int val_rhs = static_cast<int>(rhs);
+    int val_lhs = static_cast<int>(lhs);
+    return val_rhs < val_lhs;
+  }
+
+  friend bool operator>(NagiosStatus rhs, NagiosStatus lhs)
+  {
+    int val_rhs = static_cast<int>(rhs);
+    int val_lhs = static_cast<int>(lhs);
+    return val_rhs > val_lhs;
+  }
+
   // Supported JSON schemas.
   // 
   // Remember to update the initialization of Report::m_schemaVersionMapping 
@@ -59,7 +82,7 @@ class Report {
   bool isHidden() const { return m_isHidden; };
 
   void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
-  void getNagiosReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
+  NagiosStatus getNagiosReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
  // Needs a virtual destructor
   virtual ~Report() {};
@@ -67,7 +90,7 @@ class Report {
  // Child methods that need to be implemented
  protected:
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const = 0;
-  virtual void writeNagiosReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const {};
+  virtual NagiosStatus writeNagiosReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const { return NagiosStatus::okay; };
   virtual void getPropertyTreeInternal(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
   virtual void getPropertyTree20202(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
 

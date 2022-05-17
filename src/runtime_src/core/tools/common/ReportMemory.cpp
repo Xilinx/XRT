@@ -238,7 +238,7 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << std::endl;
 }
 
-void 
+Report::NagiosStatus 
 ReportMemory::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
                            const boost::property_tree::ptree& _pt, 
                            const std::vector<std::string>& /*_elementsFilter*/,
@@ -326,4 +326,6 @@ ReportMemory::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
   }
 
   // Leave out the data stream info for now. If requested we can add this in later
+
+  return NagiosStatus::okay;
 }

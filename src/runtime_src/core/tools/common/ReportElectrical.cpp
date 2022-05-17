@@ -20,6 +20,7 @@
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string.hpp>
 
 void
 ReportElectrical::getPropertyTreeInternal( const xrt_core::device * _pDevice,
@@ -75,7 +76,7 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
 
 }
 
-void
+Report::NagiosStatus
 ReportElectrical::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
                                const boost::property_tree::ptree& _pt,
                                const std::vector<std::string>& /*_elementsFilter*/,
@@ -106,4 +107,9 @@ ReportElectrical::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
       _output << m_nagiosFormat % amp_name % pt_sensor.get<std::string>("current.amps") % "A";
     }
   }
+
+  if (boost::equals(power_warn, "true"))
+    return NagiosStatus::warning;
+
+  return NagiosStatus::okay;
 }

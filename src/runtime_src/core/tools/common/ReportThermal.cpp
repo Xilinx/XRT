@@ -69,7 +69,7 @@ ReportThermal::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << std::endl;
 }
 
-void
+Report::NagiosStatus
 ReportThermal::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
                             const boost::property_tree::ptree& _pt,
                             const std::vector<std::string>& /*_elementsFilter*/,
@@ -78,11 +78,26 @@ ReportThermal::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree empty_ptree;
   const boost::property_tree::ptree& thermals = _pt.get_child("thermals", empty_ptree);
 
+  NagiosStatus status = NagiosStatus::okay;
+
   for(auto& kv : thermals) {
     const boost::property_tree::ptree& pt_temp = kv.second;
     if(!pt_temp.get<bool>("is_present", false))
       continue;
 
-    _output << m_nagiosFormat % pt_temp.get<std::string>("description") % pt_temp.get<std::string>("temp_C") % "C";
+    auto temp_C = std::stoi(pt_temp.get<std::string>("temp_C"));
+
+    _output << m_nagiosFormat % pt_temp.get<std::string>("description") % temp_C % "C";
+
+    auto temp_max_C_pt = pt_temp.get_child("temp_max_C", empty_ptree);
+    if (!temp_max_C_pt.empty()) {
+      auto temp_max_C = std::stoi(pt_temp.get<std::string>("temp_max_C"));
+      if (temp_C > temp_max_C) {
+        status = NagiosStatus::warning;
+        _output << m_nagiosFormat % pt_temp.get<std::string>("description") % "OVERTEMP" % "";
+      }
+    }
   }
+
+  return status;
 }
