@@ -169,8 +169,10 @@ using addr_type = uint64_t;
 
       //Performance Monitor APIs
       double xclGetDeviceClockFreqMHz();
-      double xclGetReadMaxBandwidthMBps();
-      double xclGetWriteMaxBandwidthMBps();
+      double xclGetHostReadMaxBandwidthMBps();
+      double xclGetHostWriteMaxBandwidthMBps();
+      double xclGetKernelReadMaxBandwidthMBps();
+      double xclGetKernelWriteMaxBandwidthMBps();
       size_t xclGetDeviceTimestamp();
       void xclReadBusStatus(xclPerfMonType type);
       void xclGetDebugMessages(bool force = false);

@@ -94,8 +94,10 @@ private:
 
   typedef size_t (* getDeviceTimeFuncType)(xclDeviceHandle handle);
   typedef double (* getDeviceClockFuncType)(xclDeviceHandle handle);
-  typedef double (* getDeviceMaxReadFuncType)(xclDeviceHandle handle);
-  typedef double (* getDeviceMaxWriteFuncType)(xclDeviceHandle handle);
+  typedef double (* getHostMaxReadFuncType)(xclDeviceHandle handle);
+  typedef double (* getHostMaxWriteFuncType)(xclDeviceHandle handle);
+  typedef double (* getKernelMaxReadFuncType)(xclDeviceHandle handle);
+  typedef double (* getKernelMaxWriteFuncType)(xclDeviceHandle handle);
   typedef void (* setSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots);
   typedef uint32_t (* getSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef void (* getSlotNameFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
@@ -187,8 +189,10 @@ public:
 
   getDeviceTimeFuncType mGetDeviceTime;
   getDeviceClockFuncType mGetDeviceClock;
-  getDeviceMaxReadFuncType mGetDeviceMaxRead;
-  getDeviceMaxWriteFuncType mGetDeviceMaxWrite;
+  getHostMaxReadFuncType mGetHostMaxRead;
+  getHostMaxWriteFuncType mGetHostMaxWrite;
+  getKernelMaxReadFuncType mGetKernelMaxRead;
+  getKernelMaxWriteFuncType mGetKernelMaxWrite;
   setSlotFuncType mSetProfilingSlots;
   getSlotFuncType mGetProfilingSlots;
   getSlotNameFuncType mGetProfilingSlotName;

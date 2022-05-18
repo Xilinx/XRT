@@ -731,8 +731,9 @@ namespace xdp {
         double transferRate  = totalSizeInMB / totalTimeInS; 
 
 	double maxReadBW =
-	  (db->getStaticInfo()).getMaxReadBW(read.first.second) ;
+	  (db->getStaticInfo()).getHostMaxReadBW(read.first.second) ;
 	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
+        if (aveBWUtil > 100.0) aveBWUtil = 100.0 ;
 
 	fout << contextName << ":" << numDevices << ","
 	     << "READ" << ","
@@ -769,8 +770,9 @@ namespace xdp {
         double transferRate  = totalSizeInMB / totalTimeInS; 
 
 	double maxWriteBW =
-	  (db->getStaticInfo()).getMaxWriteBW(write.first.second);
+	  (db->getStaticInfo()).getHostMaxWriteBW(write.first.second);
 	double aveBWUtil = (100.0 * transferRate) / maxWriteBW ;
+        if (aveBWUtil > 100.0) aveBWUtil = 100.0 ;
 
 	fout << contextName << ":" << numDevices << "," 
 	     << "WRITE" << ","
@@ -856,7 +858,7 @@ namespace xdp {
 	    double transferRate = (totalWriteTime == 0.0) ? 0 :
 	      (double)(values.WriteBytes[monitorId]) / (1000.0 * totalWriteTime);
 	    double aveBW =
-	      (100.0 * transferRate) / xclbin->maxWriteBW ;
+	      (100.0 * transferRate) / xclbin->kernelMaxWriteBW ;
 	    if (aveBW > 100.0) aveBW = 100.0 ;
 
 	    fout << device->getUniqueDeviceName() << ","
@@ -876,7 +878,7 @@ namespace xdp {
 	      double transferRate = (totalReadTime == 0.0) ? 0 :
 		(double)(values.ReadBytes[monitorId]) / (1000.0 * totalReadTime);
 	      double aveBW =
-		(100.0 * transferRate) / xclbin->maxReadBW ;
+		(100.0 * transferRate) / xclbin->kernelMaxReadBW ;
 	      if (aveBW > 100.0) aveBW = 100.0 ;
 
 	      fout << device->getUniqueDeviceName() << ","
@@ -1519,7 +1521,7 @@ namespace xdp {
 	 ++iter)
     {
       double durationMS = (double)((*iter).duration) / 1.0e6 ;
-      double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+      double rate = ((double)((*iter).size) / 1000.0) / durationMS ;
 
       fout << (*iter).address << ","
 	   << (*iter).contextId << ","
@@ -1556,7 +1558,7 @@ namespace xdp {
 	 ++iter)
     {
       double durationMS = (double)((*iter).duration) / 1.0e6 ;
-      double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+      double rate = ((double)((*iter).size) / 1000.0) / durationMS ;
 
       fout << (*iter).address << "," 
 	   << (*iter).contextId << ","

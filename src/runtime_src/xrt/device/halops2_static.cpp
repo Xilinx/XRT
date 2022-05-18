@@ -52,8 +52,10 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mGetDeviceInfo(0)
   ,mGetDeviceTime(0)
   ,mGetDeviceClock(0)
-  ,mGetDeviceMaxRead(0)
-  ,mGetDeviceMaxWrite(0)
+  ,mGetHostMaxRead(0)
+  ,mGetHostMaxWrite(0)
+  ,mGetKernelMaxRead(0)
+  ,mGetKernelMaxWrite(0)
   ,mSetProfilingSlots(0)
   ,mGetProfilingSlots(0)
   ,mGetProfilingSlotName(0)
@@ -136,8 +138,10 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   // Profiling Functions
   mGetDeviceTime = &xclGetDeviceTimestamp;
   mGetDeviceClock = &xclGetDeviceClockFreqMHz;
-  mGetDeviceMaxRead = &xclGetReadMaxBandwidthMBps;
-  mGetDeviceMaxWrite = &xclGetWriteMaxBandwidthMBps;
+  mGetHostMaxRead = &xclGetHostReadMaxBandwidthMBps;
+  mGetHostMaxWrite = &xclGetHostWriteMaxBandwidthMBps;
+  mGetKernelMaxRead = &xclGetKernelReadMaxBandwidthMBps;
+  mGetKernelMaxWrite = &xclGetKernelWriteMaxBandwidthMBps;
   mSetProfilingSlots = &xclSetProfilingNumberSlots;
   mGetProfilingSlots = &xclGetProfilingNumberSlots;
   mGetProfilingSlotName = &xclGetProfilingSlotName;
