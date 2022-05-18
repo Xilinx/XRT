@@ -47,7 +47,7 @@ public:
   ////////////////////////////////////////////////////////////////
   xclInterruptNotifyHandle
   open_ip_interrupt_notify(unsigned int ip_index) override;
-  
+
   void
   close_ip_interrupt_notify(xclInterruptNotifyHandle handle) override;
 
@@ -65,6 +65,24 @@ public:
 
   xclBufferHandle
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
+
+  uint32_t // ctx handle aka slotidx
+  create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const override
+  {
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos);
+  }
+
+  void
+  destroy_hw_context(uint32_t ctxhdl) const override
+  {
+    xrt::shim_int::destroy_hw_context(get_device_handle(), ctxhdl);
+  }
+
+  void
+  register_xclbin(const xrt::xclbin& xclbin) const override
+  {
+    xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
+  }
   ////////////////////////////////////////////////////////////////
 
 private:

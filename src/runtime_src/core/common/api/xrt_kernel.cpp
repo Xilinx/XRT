@@ -3,9 +3,12 @@
 
 // This file implements XRT kernel APIs as declared in
 // core/include/experimental/xrt_kernel.h
+#define XRT_API_SOURCE  // exporting xrt_kernel.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_kernel.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-#include "core/include/experimental/xrt_kernel.h"
+#include "core/include/xrt/xrt_kernel.h"
+
+#include "core/include/experimental/xrt_hw_context.h"
 #include "core/include/experimental/xrt_mailbox.h"
 #include "core/include/experimental/xrt_xclbin.h"
 #include "core/include/ert.h"
@@ -18,6 +21,7 @@
 #include "enqueue.h"
 #include "exec.h"
 #include "handle.h"
+#include "hw_context_int.h"
 #include "kernel_int.h"
 #include "native_profile.h"
 #include "xclbin_int.h"
@@ -333,6 +337,12 @@ struct device_type
   get_core_device() const
   {
     return core_device.get();
+  }
+
+  xrt::device
+  get_xrt_device() const
+  {
+    return xrt::device{core_device};
   }
 };
 
@@ -1229,6 +1239,7 @@ private:
   std::string name;                    // kernel name
   std::shared_ptr<device_type> device; // shared ownership
   std::shared_ptr<ctxmgr_type> ctxmgr; // device context mgr ownership
+  xrt::hw_context hwctx;               // context for hw resources if any (can be null)
   xrt::xclbin xclbin;                  // xclbin with this kernel
   xrt::xclbin::kernel xkernel;         // kernel xclbin metadata
   std::vector<argument> args;          // kernel args sorted by argument index
@@ -1245,73 +1256,28 @@ private:
   control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                        // Internal unique id for debug
 
-
-  // Update device slot info and return list of new slots
-  // added compared to old slots
-  std::vector<slot_id>
-  get_new_xclbin_slots(const std::vector<slot_id>& old)
-  {
-    // update xclbin info to reflect changes made by driver
-    // and get new list of slots
-    auto cdevice = device->get_core_device();
-    cdevice->update_xclbin_info();
-    auto slots = cdevice->get_slots(xclbin.get_uuid());
-
-    // compare set difference returning only new slots
-    std::vector<slot_id> diff;
-    std::set_difference(slots.begin(), slots.end(), old.begin(), old.end(),
-                        std::inserter(diff, diff.begin()));
-    return diff;
-  }
-
   // Open context of a specific compute unit.
   //
   // @cu:  compute unit to open
   // @am:  access mode for the CU
   // Return: shared ownership to the context in form of a shared_ptr
   //
-  // This function tries to open the compute unit in all slots that
-  // match xclbin uuid from which this kernel was constructed.  If
-  // context creation fails with EAGAIN then this indicates that the
-  // driver may have re-loaded the xclbin, maybe into a different
-  // slot, and opening the context should be tried again after
-  // refreshing the slots.
+  // This function opens the compute unit in the slot associated with
+  // the hardware context from which the kernel was constructed.
   void
   open_cu_context(const xrt::xclbin::ip& cu, ip_context::access_mode am)
   {
+    auto slot = xrt_core::hw_context_int::get_slot(hwctx);
     auto cdevice = device->get_core_device();
-    auto slots = cdevice->get_slots(xclbin.get_uuid());
 
-    while (1) {
-      bool again = false;
-      for (auto slot : slots) {
-        try {
-          // try open the cu context.  this may throw if cu in slot cannot be aquired.
-          auto ctx = ip_context::open(cdevice, xclbin, slot, cu, am); // may throw
+    // try open the cu context.  This may throw if cu in slot cannot be acquired.
+    auto ctx = ip_context::open(cdevice, xclbin, slot, cu, am); // may throw
 
-          // success, record cuidx in kernel cumask
-          auto cuidx = ctx->get_cuidx();
-          ipctxs.push_back(std::move(ctx));
-          cumask.set(cuidx);
-          num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
-        }
-        catch (const xrt_core::system_error& ex) {
-          if (ex.get_code() == EAGAIN) {
-            // open context caused re-load of xclbin into a different slot
-            // stop current iteration, re-fresh slots, and try the new ones
-            again = true;
-            break; // stop current iteration, re-fresh, and try new slots
-          }
-        }
-      }
-
-      // open context did not re-load any xclbin
-      if (!again)
-        break;
-
-      // update the slots
-      slots = get_new_xclbin_slots(slots);
-    }
+    // success, record cuidx in kernel cumask
+    auto cuidx = ctx->get_cuidx();
+    ipctxs.push_back(std::move(ctx));
+    cumask.set(cuidx);
+    num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
   }
 
   // Compute data for FAST_ADAPTER descriptor use (see ert_fa.h)
@@ -1470,11 +1436,12 @@ public:
   //
   // The ctxmgr is not directly used by kernel_impl, but its
   // construction and shared ownership must be tied to the kernel_impl
-  kernel_impl(std::shared_ptr<device_type> dev, const xrt::uuid& xclbin_id, const std::string& nm, ip_context::access_mode am)
+  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm, ip_context::access_mode am)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
-    , xclbin(device->core_device->get_xclbin(xclbin_id))       // xclbin with kernel
+    , hwctx(std::move(ctx))                                    // hw context
+    , xclbin(hwctx.get_xclbin())                               // xclbin with kernel
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
     , vctx(ip_context::open_virtual_cu(device->core_device.get(), xclbin))
@@ -1569,6 +1536,12 @@ public:
   get_name() const
   {
     return name;
+  }
+
+  xrt::xclbin
+  get_xclbin() const
+  {
+    return xclbin;
   }
 
   const std::bitset<max_cus>&
@@ -2370,25 +2343,22 @@ class mailbox_impl : public run_impl
   void
   mailbox_wait(const mailbox_operation& mbop)
   {
+    poll(mbop);//Get initial status of read/write ack bit before polling in while loop.
     if (mbop == mailbox_operation::write) {
-        if (m_aquire_write)
+	    while (m_busy_write) //poll write done bit
+            poll(mailbox_operation::write);
+        if (m_aquire_write) //Return if already aquired.
             return;
-
-       while (m_busy_write) //poll write done bit
-           poll(mailbox_operation::write);
-
        uint32_t ctrlreg_write = kernel->read_register(mailbox_input_ctrl_reg);
        kernel->write_register(mailbox_input_ctrl_reg, ctrlreg_write & ~mailbox_input_write);//0, Mailbox Aquire/Lock sync HOST -> SW
        m_aquire_write = true;
     }
 
     if (mbop == mailbox_operation::read) {
-        if (m_aquire_read)
-            return;
-
         while (m_busy_read) //poll read done bit
             poll(mailbox_operation::read);
-
+        if (m_aquire_read) //Return if already aquired.
+            return;
         uint32_t ctrlreg_read = kernel->read_register(mailbox_output_ctrl_reg);
         kernel->write_register(mailbox_output_ctrl_reg, ctrlreg_read & ~mailbox_output_read);//0, Mailbox Aquire/Lock sync HOST -> SW
         m_aquire_read = true;
@@ -2730,7 +2700,15 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     const std::string& name,
 	     xrt::kernel::cu_access_mode mode)
 {
-  return std::make_shared<xrt::kernel_impl>(dev, xclbin_id, name, mode) ;
+  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id}, name, mode);
+}
+
+static std::shared_ptr<xrt::kernel_impl>
+alloc_kernel_from_ctx(const std::shared_ptr<device_type>& dev,
+                      const xrt::hw_context& hwctx,
+                      const std::string& name)
+{
+  return std::make_shared<xrt::kernel_impl>(dev, hwctx, name, xrt::kernel::cu_access_mode::shared);
 }
 
 static std::shared_ptr<xrt::mailbox_impl>
@@ -2752,7 +2730,7 @@ xrtKernelHandle
 xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
 {
   auto device = get_device(dhdl);
-  auto kernel = std::make_shared<xrt::kernel_impl>(device, xclbin_uuid, name, am);
+  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid}, name, am);
   auto handle = kernel.get();
   kernels.add(handle, std::move(kernel));
   return handle;
@@ -3078,13 +3056,18 @@ get_ert_packet() const
 kernel::
 kernel(const xrt::device& xdev, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
-	   alloc_kernel, get_device(xdev), xclbin_id, name, mode))
+      alloc_kernel, get_device(xdev), xclbin_id, name, mode))
 {}
 
 kernel::
 kernel(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, cu_access_mode mode)
   : handle(xdp::native::profiling_wrapper("xrt::kernel::kernel",
-	   alloc_kernel, get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
+      alloc_kernel, get_device(xrt_core::get_userpf_device(dhdl)), xclbin_id, name, mode))
+{}
+
+kernel::
+kernel(const xrt::hw_context& ctx, const std::string& name)
+  : handle(alloc_kernel_from_ctx(get_device(ctx.get_device()), ctx, name))
 {}
 
 uint32_t
@@ -3122,6 +3105,20 @@ offset(int argno) const
   return xdp::native::profiling_wrapper("xrt::kernel::offset", [this, argno]{
     return handle->arg_offset(argno);
   });
+}
+
+std::string
+kernel::
+get_name() const
+{
+  return handle->get_name();
+}
+
+xrt::xclbin
+kernel::
+get_xclbin() const
+{
+  return handle->get_xclbin();
 }
 
 } // namespace xrt

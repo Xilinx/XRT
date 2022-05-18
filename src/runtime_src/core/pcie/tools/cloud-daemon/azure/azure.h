@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -112,7 +112,7 @@ private:
     static const int rest_timeout { 30 }; //in second
     static const int upload_retry { 15 };
     static const int reset_retry { 3 };
-    static const int timeout_threshold { 49 }; //mailbox timeout set as 50s
+    static const int timeout_threshold { 120 }; //mailbox timeout set as 120 seconds
     std::shared_ptr<pcidev::pci_device> dev;
     size_t index;
     struct timeval start;

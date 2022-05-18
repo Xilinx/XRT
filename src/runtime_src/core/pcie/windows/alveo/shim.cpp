@@ -381,7 +381,7 @@ done:
 
 
   int
-  open_context(const xuid_t xclbin_id, unsigned int ip_idx, bool shared)
+  open_context(const xuid_t xclbin_id, unsigned int ip_idx, bool shared) const
   {
     HANDLE deviceHandle = m_dev;
     XOCL_CTX_ARGS ctxArgs = { 0 };
@@ -405,22 +405,10 @@ done:
                          0,
                          &bytesRet,
                          NULL)) {
-
-      auto error = GetLastError();
-      xrt_core::message::
-        send(xrt_core::message::severity_level::error, "XRT", "CTX failed with error %d", error);
-      return error;
+      throw xrt_core::system_error(GetLastError(), "Failed to open ip context");
     }
 
     return 0;
-  }
-
-  int
-  open_context(uint32_t slot, const xuid_t xclbin_id, const char* cuname, bool shared)
-  {
-    // Alveo Windows PCIE does not yet support multiple xclbins.
-    // Call regular flow
-    return open_context(xclbin_id, m_core_device->get_cuidx(slot, cuname).index, shared);
   }
 
   int
@@ -1424,6 +1412,18 @@ done:
         throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_kds_custat) failed in retrieving KDS CU info");
   }
 
+  ////////////////////////////////////////////////////////////////
+  // Internal SHIM APIs
+  ////////////////////////////////////////////////////////////////
+  // aka xclOpenContextByName
+  void
+  open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+  {
+    // Alveo Windows PCIE does not yet support multiple xclbins.
+    // Call regular flow
+    open_context(xclbin_uuid.get(), m_core_device->get_cuidx(slot, cuname).index, shared);
+  }
+
 }; // struct shim
 
 shim*
@@ -1581,6 +1581,25 @@ get_kds_custat(xclDeviceHandle hdl, char* buffer, DWORD size, int* size_ret)
 }
 } // namespace userpf
 
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+void
+open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+{
+  auto shim = get_shim_object(handle);
+  shim->open_context(slot, xclbin_uuid, cuname, shared);
+}
+
+} // namespace xrt::shim_int
+////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////
+// Implementation of user exposed SHIM APIs
+// This are C level functions
+////////////////////////////////////////////////////////////////
 // Basic
 unsigned int
 xclProbe()
@@ -1754,23 +1773,6 @@ xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipInd
   return (ipIndex == (unsigned int)-1)
 	  ? 0
 	  : shim->open_context(xclbinId, ipIndex, shared);
-}
-
-int
-xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared)
-{
-  try {
-    auto shim = get_shim_object(handle);
-    return shim->open_context(slot, xclbin_uuid, cuname, shared);
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
 }
 
 int

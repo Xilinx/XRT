@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,19 +16,16 @@
 
 #include "SectionManagementFW.h"
 
-#include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
+#include <boost/functional/factory.hpp>
 
 // Static Variables / Classes
-SectionManagementFW::_init SectionManagementFW::_initializer;
+SectionManagementFW::init SectionManagementFW::initializer;
 
-SectionManagementFW::SectionManagementFW() {
-  // Empty
+SectionManagementFW::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(FIRMWARE, "FIRMWARE", boost::factory<SectionManagementFW*>()); 
+
+  addSectionType(std::move(sectionInfo));
 }
-
-SectionManagementFW::~SectionManagementFW() {
-  // Empty
-}
-
 
 

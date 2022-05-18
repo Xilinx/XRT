@@ -19,11 +19,15 @@
 
 #include "xdp/config.h"
 #include "core/edge/user/aie/aie.h"
+#include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
 
 class DeviceIntf;
 class AIETraceLogger;
+
+#define debug_stream \
+if(!m_debug); else std::cout
 
 struct AIETraceBufferInfo
 {
@@ -31,8 +35,18 @@ struct AIETraceBufferInfo
 //  uint64_t allocSz;	// currently all the buffers are equal size
   uint64_t usedSz;
   uint64_t offset;
+  uint32_t rollover_count;
   bool     isFull;
   bool     offloadDone;
+
+  AIETraceBufferInfo()
+    : boHandle(0),
+      usedSz(0),
+      offset(0),
+      rollover_count(0),
+      isFull(false),
+      offloadDone(false)
+  {}
 };
 
 struct AIETraceGmioDMAInst
@@ -66,7 +80,7 @@ public:
     XDP_EXPORT
     bool initReadTrace();
     XDP_EXPORT
-    void readTrace();
+    void readTrace(bool final);
     XDP_EXPORT
     void endReadTrace();
     XDP_EXPORT
@@ -79,7 +93,7 @@ public:
     inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }
     inline void setContinuousTrace() { traceContinuous = true; }
     inline bool continuousTrace()    { return traceContinuous; }
-    inline void setOffloadIntervalms(uint64_t v) { offloadIntervalms = v; }
+    inline void setOffloadIntervalUs(uint64_t v) { offloadIntervalUs = v; }
 
     inline AIEOffloadThreadStatus getOffloadStatus() {
       std::lock_guard<std::mutex> lock(statusLock);
@@ -99,6 +113,10 @@ private:
     uint64_t totalSz;
     uint64_t numStream;
 
+    // Set this to true for more verbose trace offload
+    // Internal use only
+    bool m_debug = false;
+
     uint64_t bufAllocSz;
 
     std::vector<AIETraceBufferInfo>  buffers;
@@ -106,20 +124,25 @@ private:
 
     // Continuous Trace Offload (For PLIO)
     bool traceContinuous;
-    uint64_t offloadIntervalms;
+    uint64_t offloadIntervalUs;
     bool bufferInitialized;
     std::mutex statusLock;
     AIEOffloadThreadStatus offloadStatus;
     std::thread offloadThread;
 
-    uint64_t readPartialTrace(uint64_t);
-    void configAIETs2mm(uint64_t wordCount);
+  //Circular Buffer Tracking
+  bool mEnCircularBuf;
+  // 1000 mb of trace per second
+  // Very high bandwidth requirement
+  uint64_t circ_buf_min_rate_plio = TS2MM_DEF_BUF_SIZE * 1000;
+  uint64_t circ_buf_cur_rate_plio;
 
+private:
     void continuousOffload();
     bool keepOffloading();
     void offloadFinished();
-
-    //Circular Buffer Tracking : Not for now
+    void checkCircularBufferSupport();
+    bool syncAndLog(uint64_t index);
 };
 
 }

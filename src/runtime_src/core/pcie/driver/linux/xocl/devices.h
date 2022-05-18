@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018-2021, Xilinx Inc
+ *  Copyright (C) 2018-2022, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -2253,22 +2253,6 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_SPI				\
 	}
 
-#define MGMT_RES_XBB_QDMA						\
-	((struct xocl_subdev_info []) {					\
-		XOCL_DEVINFO_FEATURE_ROM,				\
-		XOCL_DEVINFO_PRP_IORES_MGMT,				\
-		XOCL_DEVINFO_AXIGATE_ULP,				\
-		XOCL_DEVINFO_CLOCK_LEGACY,				\
-		XOCL_DEVINFO_AF_DSA52,					\
-		XOCL_DEVINFO_XMC,					\
-		XOCL_DEVINFO_XVC_PRI,					\
-		XOCL_DEVINFO_NIFD_PRI,					\
-		XOCL_DEVINFO_MAILBOX_MGMT_QDMA,				\
-		XOCL_DEVINFO_ICAP_MGMT,					\
-		XOCL_DEVINFO_FMGR,					\
-		XOCL_DEVINFO_FLASH,					\
-	})
-
 #define MGMT_RES_XBB_QEP						\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM,				\
@@ -2285,14 +2269,6 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_FLASH,					\
 	})
 
-
-#define XOCL_BOARD_MGMT_XBB_QDMA					\
-	(struct xocl_board_private){					\
-		.flags	  = XOCL_DSAFLAG_FIXED_INTR,			\
-		.subdev_info    = MGMT_RES_XBB_QDMA,			\
-		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_QDMA),		\
-		.flash_type = FLASH_TYPE_SPI				\
-	}
 
 #define XOCL_BOARD_MGMT_U250_QEP					\
 	(struct xocl_board_private){					\
@@ -2397,29 +2373,6 @@ struct xocl_subdev_map {
 		.flags		= 0,					\
 		.subdev_info	= MGMT_RES_XBB_DSA52_U280,		\
 		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_DSA52_U280),	\
-		.flash_type = FLASH_TYPE_SPI,				\
-	}
-
-#define MGMT_RES_XBB_QDMA_U280						\
-	((struct xocl_subdev_info []) {					\
-		XOCL_DEVINFO_FEATURE_ROM,				\
-		XOCL_DEVINFO_PRP_IORES_MGMT,				\
-		XOCL_DEVINFO_AXIGATE_ULP,				\
-		XOCL_DEVINFO_CLOCK_HBM,					\
-		XOCL_DEVINFO_AF_DSA52,					\
-		XOCL_DEVINFO_XMC,					\
-		XOCL_DEVINFO_XVC_PRI,					\
-		XOCL_DEVINFO_MAILBOX_MGMT_QDMA,				\
-		XOCL_DEVINFO_ICAP_MGMT,					\
-		XOCL_DEVINFO_FMGR,					\
-		XOCL_DEVINFO_FLASH,					\
-	})
-
-#define XOCL_BOARD_MGMT_XBB_QDMA_U280					\
-	(struct xocl_board_private){					\
-		.flags	  = XOCL_DSAFLAG_FIXED_INTR,			\
-		.subdev_info    = MGMT_RES_XBB_QDMA_U280,		\
-		.subdev_num = ARRAY_SIZE(MGMT_RES_XBB_QDMA_U280),	\
 		.flash_type = FLASH_TYPE_SPI,				\
 	}
 
@@ -3407,79 +3360,6 @@ struct xocl_subdev_map {
 		.flash_type = FLASH_TYPE_QSPIPS_X4_SINGLE,		\
 	}
 
-#define XOCL_PRIV_XMC_ARISTA_LB2_QDMA \
-    ((struct xocl_xmc_privdata) {     \
-        .flags = XOCL_XMC_NOSC,       \
-    })
-
-#define XOCL_DEVINFO_XMC_ARISTA_LB2_QDMA              \
-    {                                                 \
-        XOCL_SUBDEV_MB,                               \
-        XOCL_XMC,                                     \
-        XOCL_RES_XMC,                                 \
-        ARRAY_SIZE(XOCL_RES_XMC),                     \
-        .override_idx = -1,                           \
-        .priv_data = &XOCL_PRIV_XMC_ARISTA_LB2_QDMA,  \
-        .data_len = sizeof(struct xocl_xmc_privdata), \
-    }
-
-#define XOCL_DEVINFO_XMC_USER_ARISTA_LB2_QDMA         \
-    {                                                 \
-        XOCL_SUBDEV_MB,                               \
-        XOCL_XMC,                                     \
-        NULL,                                         \
-        0,                                            \
-        .override_idx = -1,                           \
-        .priv_data = &XOCL_PRIV_XMC_ARISTA_LB2_QDMA,  \
-        .data_len = sizeof(struct xocl_xmc_privdata), \
-    }
-
-#define MGMT_RES_ARISTA_LB2_QDMA          \
-    ((struct xocl_subdev_info[]) {        \
-        XOCL_DEVINFO_FEATURE_ROM,         \
-        XOCL_DEVINFO_PRP_IORES_MGMT,      \
-        XOCL_DEVINFO_AXIGATE_ULP,         \
-        XOCL_DEVINFO_CLOCK_LEGACY,        \
-        XOCL_DEVINFO_AF_DSA52,            \
-        XOCL_DEVINFO_XMC_ARISTA_LB2_QDMA, \
-        XOCL_DEVINFO_XVC_PRI,             \
-        XOCL_DEVINFO_NIFD_PRI,            \
-        XOCL_DEVINFO_MAILBOX_MGMT_QDMA,   \
-        XOCL_DEVINFO_ICAP_MGMT,           \
-        XOCL_DEVINFO_FMGR,                \
-        XOCL_DEVINFO_FLASH,               \
-    })
-
-#define USER_RES_ARISTA_LB2_QDMA               \
-    ((struct xocl_subdev_info[]) {             \
-        XOCL_DEVINFO_FEATURE_ROM,              \
-        XOCL_DEVINFO_QDMA,                     \
-        XOCL_DEVINFO_XVC_PUB,                  \
-        XOCL_DEVINFO_MAILBOX_USER_QDMA,        \
-        XOCL_DEVINFO_ICAP_USER,                \
-        XOCL_DEVINFO_XMC_USER_ARISTA_LB2_QDMA, \
-        XOCL_DEVINFO_AF_USER,                  \
-        XOCL_DEVINFO_INTC_QDMA,                \
-	XOCL_DEVINFO_ERT_CTRL,                  \
-    })
-
-#define XOCL_BOARD_MGMT_ARISTA_LB2_QDMA                     \
-    (struct xocl_board_private) {                           \
-        .flags = XOCL_DSAFLAG_FIXED_INTR,                   \
-        .board_name = "arista_lb2",                         \
-        .subdev_info = MGMT_RES_ARISTA_LB2_QDMA,            \
-        .subdev_num = ARRAY_SIZE(MGMT_RES_ARISTA_LB2_QDMA), \
-        .flash_type = FLASH_TYPE_SPI,                       \
-    }
-
-#define XOCL_BOARD_USER_ARISTA_LB2_QDMA                     \
-    (struct xocl_board_private) {                           \
-        .flags = 0,                                         \
-        .board_name = "arista_lb2",                         \
-        .subdev_info = USER_RES_ARISTA_LB2_QDMA,            \
-        .subdev_num = ARRAY_SIZE(USER_RES_ARISTA_LB2_QDMA), \
-    }
-
 #define	XOCL_MGMT_PCI_IDS						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A47, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A87, PCI_ANY_ID, MGMT_DEFAULT) },	\
@@ -3500,11 +3380,6 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4350, MGMT_6A8F_DSA50) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4351, MGMT_6A8F) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A8F, 0x4352, MGMT_6A8F_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, 0x4360, MGMT_QDMA) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5010, PCI_ANY_ID, MGMT_XBB_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5014, PCI_ANY_ID, MGMT_XBB_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5018, PCI_ANY_ID, MGMT_XBB_QDMA_U280) },\
-	{ XOCL_PCI_DEVID(0x10EE, 0x501C, PCI_ANY_ID, MGMT_XBB_QDMA_U280) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5030, PCI_ANY_ID, MGMT_XBB_SMARTN) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6A9F, PCI_ANY_ID, MGMT_DEFAULT) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6E4F, PCI_ANY_ID, MGMT_DEFAULT) },	\
@@ -3547,8 +3422,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xD03C, PCI_ANY_ID, XBB_MFG_U30) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD04C, PCI_ANY_ID, XBB_MFG_U25) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }, \
-	{ XOCL_PCI_DEVID(0x13FE, 0x806C, PCI_ANY_ID, XBB_MFG("advantech")) }, \
-	{ XOCL_PCI_DEVID(0x3475, 0x5010, PCI_ANY_ID, MGMT_ARISTA_LB2_QDMA) }
+	{ XOCL_PCI_DEVID(0x13FE, 0x806C, PCI_ANY_ID, XBB_MFG("advantech")) }
 
 #define	XOCL_USER_XDMA_PCI_IDS						\
 	{ XOCL_PCI_DEVID(0x10EE, 0x4A48, PCI_ANY_ID, USER_XDMA) },	\
@@ -3596,18 +3470,13 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0xF010, PCI_ANY_ID, USER_AWS_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0xF011, PCI_ANY_ID, USER_AWS_NODMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, 0x4360, USER_QDMA) },		\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5011, PCI_ANY_ID, USER_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5015, PCI_ANY_ID, USER_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x5019, PCI_ANY_ID, USER_QDMA) },	\
-	{ XOCL_PCI_DEVID(0x10EE, 0x501D, PCI_ANY_ID, USER_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5031, PCI_ANY_ID, USER_SMARTN) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5086, PCI_ANY_ID, X3522PV_USER_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5029, PCI_ANY_ID, USER_XDMA_VERSAL) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5045, PCI_ANY_ID, USER_XDMA_VERSAL) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5049, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x6099, PCI_ANY_ID, VCK190_USER_RAPTOR2) }, \
-	{ XOCL_PCI_DEVID(0x10EE, 0x5079, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
-	{ XOCL_PCI_DEVID(0x3475, 0x5011, PCI_ANY_ID, USER_ARISTA_LB2_QDMA) }
+	{ XOCL_PCI_DEVID(0x10EE, 0x5079, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }
 
 #define XOCL_DSA_VBNV_MAP						\
 	{ 0x10EE, 0x5001, PCI_ANY_ID,					\

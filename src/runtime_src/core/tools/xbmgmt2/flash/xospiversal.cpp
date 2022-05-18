@@ -47,7 +47,7 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
 
     std::cout << "INFO: ***PDI has " << size << " bytes" << std::endl;
 
-#ifdef __GNUC__
+#ifdef __linux__
     auto data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(top) +
         hdr->m_sectionOffset);
     auto fd = m_device->file_open("xfer_versal", O_RDWR);

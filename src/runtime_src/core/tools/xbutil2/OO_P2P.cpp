@@ -1,8 +1,10 @@
 /**
- * Copyright (C) 2020-2022 Licensed under the Apache License, 
- * Version 2.0 (the "License"). You may not use this file except 
- * in compliance with the License. A copy of the License is 
- * located at 
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -198,7 +200,7 @@ test(xrt_core::device* device)
 {
   // lock xclbin
   auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
-  device->open_context(uuid.get(), -1, true);
+  device->open_context(uuid, -1, true);
   auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), -1); };
   xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
 
@@ -268,9 +270,7 @@ OO_P2P::OO_P2P( const std::string &_longName, bool _isHidden )
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
-  m_positionalOptions.
-    add("action", 1 /* max_count */)
-  ;
+  m_positionalOptions.add("action", 1);
 }
 
 void
@@ -291,16 +291,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   // Parse sub-command ...
   po::variables_map vm;
 
-  try {
-    po::store(po::command_line_parser(_options).options(m_optionsDescription).positional(m_positionalOptions).run(), vm);
-    po::notify(vm); // Can throw
-  }
-  catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << "\n\n";
-
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options);
 
   if (m_help) {
     printHelp();
@@ -327,9 +318,9 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;
 
-  for (const auto & deviceName : m_devices) 
+  for (const auto & deviceName : m_devices)
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-  
+
   try {
     XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
   } catch (const std::runtime_error& e) {
@@ -355,7 +346,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     p2p(deviceCollection[0].get(), action, XBU::getForce());
   } catch (const xrt_core::system_error& ex) {
     std::cerr << "ERROR: " << ex.what() << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled); 
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Print success message for the user
@@ -363,7 +354,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     case action_type::enable:
       std::cout <<  "Please WARM reboot the machine to enable P2P now.\n";
       break;
-    
+
     case action_type::disable:
       std::cout << "Please WARM reboot the machine to disable P2P now.\n";
       break;

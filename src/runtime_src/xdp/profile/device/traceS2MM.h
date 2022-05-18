@@ -27,6 +27,9 @@
 
 namespace xdp {
 
+// Todo : Read this from debug IP Layout?
+constexpr uint64_t TS2MM_V2_BURST_LEN = 32;
+
 /**
  * TraceS2MM ProfileIP (IP with safe access) for AXI Interface Monitor
  *
@@ -69,22 +72,39 @@ public:
      * One word is 64 bit with current implementation
      * IP should support word packing if we want to support 512 bit words
      */
-    virtual uint64_t getWordCount();
-    uint8_t getMemIndex();
+    virtual uint64_t getWordCount(bool final = false);
+    virtual uint8_t getMemIndex();
     virtual void showStatus();	// ??
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
     void parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector);
 
     void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
-    bool supportsCircBuf() { return major_version >= 1 && minor_version > 0;}
+
+    /**
+     * All datamovers after 1.0 support circular buffer
+     * Remove code that depends on this check in future
+     */
+    bool supportsCircBuf() { return true; }
+
+    /**
+     *  Version 2 Features and Requirements :
+     * Data written in multiple of burst size
+     * Trace buffer size needs to be multiple of burst size (needed for circulat buffer to work)
+     * Reset process involves flushing of leftover data to memory
+     * Datamover count could be in terms of 128/64 bits
+     */
+    bool isVersion2() {return mIsVersion2;}
+
+protected:
+    uint8_t properties;
 
 private:
-    uint8_t properties;
     uint8_t major_version;
     uint8_t minor_version;
     uint32_t mTraceFormat = 0;
 
+protected:
     void write32(uint64_t offset, uint32_t val);
 
 protected:
@@ -101,6 +121,10 @@ protected:
     //  we need to keep track of what we see until we see all four 
     //  clock training packets
     xclTraceResults partialResult = {};
+
+    // Members specific to version 2 datamover
+    bool mIsVersion2 = false;
+    uint32_t mBurstLen = 1;
 };
 
 } //  xdp

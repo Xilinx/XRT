@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,13 +16,23 @@
 
 #include "SectionAIEMetadata.h"
 
+#include "XclBinUtilities.h"
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionAIEMetadata::_init SectionAIEMetadata::_initializer;
+// ----------------------------------------------------------------------------
+SectionAIEMetadata::init SectionAIEMetadata::initializer;
+
+SectionAIEMetadata::init::init() 
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(AIE_METADATA, "AIE_METADATA", boost::factory<SectionAIEMetadata*>());
+
+  addSectionType(std::move(sectionInfo));
+}
+// ----------------------------------------------------------------------------
 
 void 
 SectionAIEMetadata::marshalToJSON( char* _pDataSection, 
@@ -65,8 +75,8 @@ SectionAIEMetadata::marshalFromJSON( const boost::property_tree::ptree& _ptSecti
 bool 
 SectionAIEMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if ((_eFormatType == FT_JSON) ||
-      (_eFormatType == FT_RAW)) {
+  if ((_eFormatType == FormatType::JSON) ||
+      (_eFormatType == FormatType::RAW)) {
     return true;
   }
   return false;
@@ -75,12 +85,10 @@ SectionAIEMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionAIEMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML)) {
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML)) {
       return true;
     }
     return false;
 }
-
-
 

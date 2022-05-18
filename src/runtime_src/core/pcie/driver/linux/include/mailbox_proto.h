@@ -122,20 +122,21 @@ enum xcl_group_kind {
  * struct xcl_board_info - Data structure used to fetch BDINFO group
  */
 struct xcl_board_info {
-	char	 serial_num[256];
-	char	 mac_addr0[32];
-	char	 mac_addr1[32];
-	char	 mac_addr2[32];
-	char	 mac_addr3[32];
-	char	 revision[256];
-	char	 bd_name[256];
-	char	 bmc_ver[256];
-	uint32_t max_power;
-	uint32_t fan_presence;
-	uint32_t config_mode;
-	char exp_bmc_ver[256];
-	uint32_t mac_contiguous_num;
-	char     mac_addr_first[6];
+	int8_t		serial_num[256];
+	int8_t		mac_addr0[32];
+	int8_t		mac_addr1[32];
+	int8_t		mac_addr2[32];
+	int8_t		mac_addr3[32];
+	int8_t		revision[256];
+	int8_t		bd_name[256];
+	int8_t		bmc_ver[256];
+	uint32_t	max_power;
+	uint32_t	fan_presence;
+	uint32_t	config_mode;
+	int8_t		exp_bmc_ver[256];
+	uint32_t	mac_contiguous_num;
+	int8_t		mac_addr_first[6];
+	int8_t		padding[2];
 };
 
 /**
@@ -197,6 +198,7 @@ struct xcl_sensor {
 	uint32_t qspi_status;
 	uint32_t vccint_vcu_0v9;
 	uint32_t heartbeat_count;
+	uint32_t padding;
 	uint64_t heartbeat_err_time;
 	uint32_t heartbeat_err_code;
 	uint32_t heartbeat_stall;
@@ -243,7 +245,8 @@ struct xcl_firewall {
 	uint64_t err_detected_status;
 	uint64_t err_detected_level;
 	uint64_t err_detected_time;
-	char err_detected_level_name[50];
+	int8_t err_detected_level_name[50];
+	int8_t padding[6];
 };
 
 
@@ -270,11 +273,11 @@ struct xcl_subdev {
 };
 /**
  * struct mailbox_subdev_peer - MAILBOX_REQ_PEER_DATA payload type
- * @kind: data group
+ * @kind: data group (enum xcl_group_kind)
  * @size: buffer size for receiving response
  */
 struct xcl_mailbox_subdev_peer {
-	enum xcl_group_kind kind;
+	int32_t kind;
 	uint32_t padding;
 	uint64_t size;
 	uint64_t entries;
@@ -310,7 +313,7 @@ struct xcl_mailbox_conn_resp {
 	uint32_t reserved;
 	uint64_t conn_flags;
 	uint64_t chan_switch;
-	char comm_id[XCL_COMM_ID_SIZE];
+	int8_t comm_id[XCL_COMM_ID_SIZE];
 	uint64_t chan_disable;
 };
 
@@ -338,22 +341,22 @@ struct xcl_mailbox_bitstream_kaddr {
  * @target_freqs: array of target clock frequencies (max clocks: 16)
  */
 struct xcl_mailbox_clock_freqscaling {
-	unsigned int region;
-	unsigned short target_freqs[16];
+	uint32_t region;
+	uint16_t target_freqs[16];
 };
 
 #define XCL_MB_REQ_FLAG_RESPONSE	(1 << 0)
 #define XCL_MB_REQ_FLAG_REQUEST		(1 << 1)
 /**
  * struct mailbox_req - mailbox request message header
- * @req: opcode
+ * @req: opcode (enum xcl_mailbox_request)
  * @flags: flags of this message
  * @data: payload of variable length
  */
 struct xcl_mailbox_req {
 	uint64_t flags;
-	enum xcl_mailbox_request req;
-	char data[1]; /* variable length of payload */
+	int32_t req;
+	int32_t data[1]; /* variable length of payload from now on */
 };
 
 /**
@@ -373,7 +376,7 @@ struct xcl_sw_chan {
 	uint64_t sz;
 	uint64_t flags;
 	uint64_t id;
-	char data[1]; /* variable length of payload */
+	uint64_t data[1]; /* variable length of payload from now on */
 };
 
 /**

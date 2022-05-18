@@ -21,6 +21,10 @@ jobs:
         FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .raw_url')
         for f in ${FILES[*]}; do
           echo "checking $f ..."
+          #git submodule file is coming as null here, so skip further checks for this type of files
+          if [ $f == null ]; then
+            continue;
+          fi
           if ! $(curl -s -L -I $f | grep "content-type:" | tail -1 | grep -q "text/"); then
             echo "$f is not a text file"
             exit 1
