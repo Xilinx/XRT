@@ -3,6 +3,7 @@
  * Xilinx Kernel Driver XCLBIN parser
  *
  * Copyright (C) 2020-2021 Xilinx, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  */
