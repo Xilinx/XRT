@@ -618,7 +618,6 @@ exit_mb(struct sched_cmd *cmd)
   CTRL_DEBUGF("mb wakeup\r\n");
 }
 
-
 static int32_t
 identify_xgq(struct sched_cmd *cmd)
 {
@@ -631,7 +630,9 @@ identify_xgq(struct sched_cmd *cmd)
 
   /* TODO: for debug */
   resp_cmd.hdr.cid = 0x123;
+#ifdef ERT_BUILD_V30
   resp_cmd.resvd = read_clk_counter();
+#endif
   /* debug end */
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_identify));
 
