@@ -124,6 +124,7 @@ temp_log_file=$(mktemp -u --suffix=.xball.log)
 
 
 # 4. Use python to read the JSON file to find the devices of interest
+# This command invokes the python script found at the bottom of this file
 python3 $0 "${temp_python_status}" "${temp_json_file}" "${device_filter}" "${xrt_app}" "$prog_args"
 
 # 5. Get python exit code
