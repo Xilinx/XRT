@@ -144,6 +144,7 @@ rm "${temp_log_file}"
 exit $python_exit_code
 """ # Hide bash from python
 
+# Python script starts here
 import json
 import os
 import re
