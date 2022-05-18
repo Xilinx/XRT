@@ -83,7 +83,6 @@ set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
 set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include/xrt")
 set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
-set (XRT_INSTALL_PYTHON_DIR    "${XRT_INSTALL_DIR}/python")
 
 #Setting RPATH variable for cross compilation
 if (DEFINED CROSS_COMPILE)
