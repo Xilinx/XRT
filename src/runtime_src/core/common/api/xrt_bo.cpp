@@ -45,14 +45,16 @@
 # pragma warning( disable : 4244 4100 4996 4505 )
 #endif
 
-namespace xrt
+/*
+namespace xrt::aie::bo
 {
-  class async_bo_impl;
+  class async_handle_impl;
 }
+*/
 
 namespace {
   //Map of gmio -> list of async handles
-  static std::unordered_map<std::string, std::vector<xrt::async_bo_impl*>> async_bo_hdls;
+  static std::unordered_map<std::string, std::vector<xrt::aie::bo::async_handle_impl*>> async_bo_hdls;
   std::mutex async_bo_hdls_mutex;//Mutex for use with above map
 
 XRT_CORE_UNUSED
@@ -129,39 +131,6 @@ send_exception_message(const std::string& msg)
 } // namespace
 
 namespace xrt {
-
-/*!
- * @class async_bo_impl
- * 
- * @brief
- * Impl Class associated with async bo which allows to wait for completion
- *
- */
-class async_bo_impl
-{
-private:
-  size_t m_bd_num; //For future use
-  std::string m_gmio_name;
-  xrt::bo m_bo;
-
-public:
-
-  /**
-   * async_bo_impl() - Construct async_bo_obj
-   */
-  async_bo_impl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
-    : m_bd_num(bd_num),
-      m_gmio_name(gmio_name),
-      m_bo(bo)
-  {
-  }
-
-  /**
-   * wait() - Wait for async to complete
-   */
-  void wait();//For Alveo
-  void wait_aie();
-};
 
 // class bo_impl - Base class for buffer objects
 //
@@ -410,24 +379,27 @@ public:
     device->sync_aie_bo(bo, port.c_str(), dir, sz, offset);
   }
 
-  xrt::async_bo_hdl
+  xrt::bo::async_handle
   async(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
   {
     device->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
-    auto a_bo_impl = std::make_shared<xrt::async_bo_impl>(bo, 0, port);
+    auto a_bo_impl = std::make_shared<xrt::aie::bo::async_handle_impl>(bo, 0, port);
     std::unique_lock lk(::async_bo_hdls_mutex);
     ::async_bo_hdls[port].emplace_back(a_bo_impl.get());
 
-    return xrt::async_bo_hdl{a_bo_impl};
+    return xrt::bo::async_handle(std::dynamic_pointer_cast<xrt::bo::async_handle_impl>(a_bo_impl));
+    //return xrt::bo::async_handle(a_bo_impl);
   }
 #endif
 
-  xrt::async_bo_hdl
+  xrt::bo::async_handle
   async(xrt::bo& bo, xclBOSyncDirection dir, size_t sz, size_t offset)
   {
+    throw std::runtime_error("Unsupported feature");
+
     //TODO for Alveo; base xrt::bo class
-    auto a_bo_impl = std::make_shared<xrt::async_bo_impl>(bo, 0, "");
-    return xrt::async_bo_hdl{a_bo_impl};
+    auto a_bo_impl = std::make_shared<xrt::bo::async_handle_impl>(bo, 0, "");
+    return xrt::bo::async_handle{a_bo_impl};
   }
 
   virtual void
@@ -480,6 +452,70 @@ public:
   virtual bool   is_imported()   const { return false;   }
 };
 
+/*!
+ * @class async_bo_impl
+ * 
+ * @brief
+ * Impl Class associated with async bo which allows to wait for completion
+ *
+ */
+class bo::async_handle_impl
+{
+public:
+  size_t m_bd_num; //For future use
+  std::string m_gmio_name;
+  xrt::bo m_bo;
+
+public:
+  /**
+   * async_bo_impl() - Construct async_bo_obj
+   */
+  async_handle_impl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
+    : m_bd_num(bd_num),
+      m_gmio_name(gmio_name),
+      m_bo(bo)
+  {
+  }
+
+  /**
+   * wait() - Wait for async to complete
+   */
+  virtual void wait() {
+    throw std::runtime_error("Unsupported feature");
+  }
+};
+
+class aie::bo::async_handle_impl : public xrt::bo::async_handle_impl
+{
+public:
+  /**
+   * async_bo_impl() - Construct async_bo_obj
+   */
+  async_handle_impl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
+    : xrt::bo::async_handle_impl(bo, bd_num, gmio_name)
+  {
+  }
+
+  /**
+   * wait() - Wait for async to complete
+   */
+  virtual void wait() override
+  {
+    auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
+
+    std::unique_lock lk(::async_bo_hdls_mutex);
+    auto itr = ::async_bo_hdls.find(m_gmio_name);
+    if (itr == ::async_bo_hdls.end())
+      throw std::runtime_error("Unexpected error");
+
+    if (std::find(itr->second.begin(), itr->second.end(), this) == itr->second.end())
+      return;//This DMA has already finished
+
+    //In future wait only for specific m_bd_num
+    dev->wait_gmio(m_gmio_name.c_str());
+    itr->second.clear();//All outstanding DMAs for this gmio_name have finished
+  }
+};
 
 // class buffer_ubuf - User provide host side buffer
 //
@@ -1114,45 +1150,11 @@ alignment()
 namespace xrt {
 
 void
-async_bo_hdl::
+bo::async_handle::
 wait()
 {
   handle->wait();
 }
-
-void
-async_bo_impl::
-wait()
-{
-  if (m_gmio_name.empty()) {
-    //TODO; Alveo wait for DMA to finish
-    return;
-  };
-
-  //Wait for AIE GMIO txfer to finish
-  wait_aie();
-}
-
-#ifdef XRT_ENABLE_AIE
-void
-async_bo_impl::
-wait_aie()
-{
-  auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
-
-  std::unique_lock lk(::async_bo_hdls_mutex);
-  auto itr = ::async_bo_hdls.find(m_gmio_name);
-  if (itr == ::async_bo_hdls.end())
-    throw std::runtime_error("Unexpected error");
-
-  if (std::find(itr->second.begin(), itr->second.end(), this) == itr->second.end())
-    return;//This DMA has already finished
-
-  //In future wait only for specific m_bd_num
-  dev->wait_gmio(m_gmio_name.c_str());
-  itr->second.clear();//All outstanding DMAs for this gmio_name have finished
-}
-#endif
 
 bo::
 bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
@@ -1251,7 +1253,7 @@ sync(xclBOSyncDirection dir, size_t size, size_t offset)
     });
 }
 
-xrt::async_bo_hdl
+bo::async_handle
 bo::
 async(xclBOSyncDirection dir, size_t sz, size_t offset)
 {
@@ -1303,7 +1305,7 @@ copy(const bo& src, size_t sz, size_t src_offset, size_t dst_offset)
 ////////////////////////////////////////////////////////////////
 namespace xrt { namespace aie {
 
-xrt::async_bo_hdl
+xrt::bo::async_handle
 bo::
 async(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
 {

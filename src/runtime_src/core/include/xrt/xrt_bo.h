@@ -64,26 +64,35 @@ using memory_group = xrtMemoryGroup;
  */
 struct pid_type { pid_t pid; };
 
-class async_bo_impl;
-class async_bo_hdl : public detail::pimpl<async_bo_impl>
-{
-public:
-  async_bo_hdl()
-  {}
-
-  explicit
-  async_bo_hdl(std::shared_ptr<async_bo_impl> handle)
-    : detail::pimpl<async_bo_impl>(std::move(handle))
-  {}
-
-  XCL_DRIVER_DLLESPEC
-  void
-  wait();
-};
-
 class bo_impl;
 class bo
 {
+public:
+  /*!
+   * @class async_handle
+   *
+   * @brief
+   * xrt::bo::async_handle represents an asynchronously operation
+   *
+   * @details
+   * A handle object is returned from asynchronous buffer object
+   * operations.  It can be used to wait for the operation to
+   * complete.
+   */
+  class async_handle_impl;
+  class async_handle : public detail::pimpl<async_handle_impl>
+  {
+  public:
+    explicit
+    async_handle(std::shared_ptr<async_handle_impl> handle)
+      : detail::pimpl<async_handle_impl>(std::move(handle))
+    {}
+
+    XCL_DRIVER_DLLESPEC
+    void
+    wait();
+  };
+
 public:
   /**
    * @enum flags - buffer object flags
@@ -386,10 +395,10 @@ public:
    *
    */
   XCL_DRIVER_DLLESPEC
-  xrt::async_bo_hdl
+  async_handle
   async(xclBOSyncDirection dir, size_t sz, size_t offset);
 
-  xrt::async_bo_hdl
+  async_handle
   async(xclBOSyncDirection dir) {
     return async(dir, size(), 0);
   }

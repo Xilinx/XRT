@@ -95,6 +95,8 @@ private:
 class bo : public xrt::bo
 {
 public:
+  class async_handle_impl;
+
   /**
    * bo() - Constructor BO that is used for AIE GMIO.
    *
@@ -121,7 +123,7 @@ public:
    * Asynchronously transfer the buffer contents from BO offset to offset + sz
    * between GMIO and AIE.
    */
-  xrt::async_bo_hdl 
+  async_handle 
   async(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
 
   /**
