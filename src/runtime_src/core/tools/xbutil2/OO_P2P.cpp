@@ -200,7 +200,7 @@ test(xrt_core::device* device)
 {
   // lock xclbin
   auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
-  device->open_context(uuid.get(), -1, true);
+  device->open_context(uuid, -1, true);
   auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), -1); };
   xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
 
@@ -318,9 +318,9 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;
 
-  for (const auto & deviceName : m_devices) 
+  for (const auto & deviceName : m_devices)
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-  
+
   try {
     XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
   } catch (const std::runtime_error& e) {
@@ -346,7 +346,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     p2p(deviceCollection[0].get(), action, XBU::getForce());
   } catch (const xrt_core::system_error& ex) {
     std::cerr << "ERROR: " << ex.what() << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled); 
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Print success message for the user
@@ -354,7 +354,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     case action_type::enable:
       std::cout <<  "Please WARM reboot the machine to enable P2P now.\n";
       break;
-    
+
     case action_type::disable:
       std::cout << "Please WARM reboot the machine to disable P2P now.\n";
       break;

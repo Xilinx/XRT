@@ -21,6 +21,57 @@
 #include "plugin/xdp/device_offload.h"
 #include "plugin/xdp/hal_trace.h"
 
+namespace {
+
+// Wrap handle check to throw on error
+static xclhwemhal2::HwEmShim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = xclhwemhal2::HwEmShim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
+}
+
+} // namespace
+
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+// open_context - aka xclOpenContextByName
+void
+open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+{
+  get_shim_object(handle);
+  // shim->open_context(slot, xclbin_uuid, cuname, shared);
+}
+
+uint32_t // ctxhdl aka slotidx
+create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+  auto shim = get_shim_object(handle);
+  return shim->create_hw_context(xclbin_uuid, qos);
+}
+
+void
+destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+{
+  auto shim = get_shim_object(handle);
+  shim->destroy_hw_context(ctxhdl);
+}
+
+void
+register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
+{
+  auto shim = get_shim_object(handle);
+  shim->register_xclbin(xclbin);
+}
+
+} // xrt::shim_int
+
+
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
@@ -183,11 +234,6 @@ int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO, size_t nu
 
 //defining following two functions as they gets called in scheduler init call
 int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
-{
-  return 0;
-}
-
-int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
 {
   return 0;
 }
@@ -427,57 +473,6 @@ ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t 
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : static_cast<ssize_t>(-ENODEV);
   }) ;
-}
-
-
-//QDMA Support
-//
-
-int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclCreateWriteQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclCreateReadQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
-}
-
-void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
-}
-
-int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
-}
-
-ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
-}
-
-ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
-}
-int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)

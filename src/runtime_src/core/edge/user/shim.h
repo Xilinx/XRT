@@ -75,8 +75,9 @@ public:
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
 
-  int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
-  int xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared);
+  int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+  // aka xclOpenContextByName()
+  void open_context(uint32_t slot, const xrt::uuid& xclbinId, const std::string& cuname, bool shared) const;
   int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
   int xclSKGetCmd(xclSKCmd *cmd);

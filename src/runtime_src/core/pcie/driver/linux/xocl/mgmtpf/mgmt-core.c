@@ -999,7 +999,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
-		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		ret = xclmgmt_read_subdev_req(lro, (char *)req->data, &resp, &sz);
 		if (ret) {
 			/* if can't get data, return 0 as response */
 			ret = 0;
@@ -1102,7 +1102,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
-		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		ret = xclmgmt_read_subdev_req(lro, (char *)req->data, &resp, &sz);
 		if (ret) {
 			/* if can't get data, return 0 as response */
 			ret = 0;

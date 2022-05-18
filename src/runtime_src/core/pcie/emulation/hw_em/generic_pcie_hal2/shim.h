@@ -126,14 +126,37 @@ using addr_type = uint64_t;
       static int xcl_LogMsg(xrtLogMsgLevel level, const char* tag, const char* format, ...);
       static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
-      //P2P Support
+      // P2P Support
       int xclExportBO(unsigned int boHandle);
       unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
       int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
 
-      //MB scheduler related API's
+      // MB scheduler related API's
       int xclExecBuf( unsigned int cmdBO);
       int xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list);
+
+      ////////////////////////////////////////////////////////////////
+      // Context handling
+      ////////////////////////////////////////////////////////////////
+      int
+      xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+
+      // aka xclOpenContextByName, internal shim API for native C++ applications only
+      void
+      open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const;
+
+      // aka xclCreateHWContext, internal shim API for native C++ applications only
+      uint32_t // ctx handle aka slot idx
+      create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const;
+
+      // aka xclDestroyHWContext, internal shim API for native C++ applications only
+      void
+      destroy_hw_context(uint32_t ctxhdl) const;
+
+      // aka xclRegisterXclbin, internal shim API for native C++ applications only
+      void
+      register_xclbin(const xrt::xclbin&) const;
+      ////////////////////////////////////////////////////////////////
 
       int xclRegisterEventNotify( unsigned int userInterrupt, int fd);
       int xclExecWait( int timeoutMilliSec);
@@ -252,15 +275,6 @@ using addr_type = uint64_t;
 
       std::vector<std::string> parsedMsgs;
 
-      //QDMA Support
-      int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclDestroyQueue(uint64_t q_hdl);
-      void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
-      int xclFreeQDMABuf(uint64_t buf_hdl);
-      ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
@@ -275,7 +289,7 @@ using addr_type = uint64_t;
       // Restricted read/write on IP register space
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
-      
+
       bool device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size);
       bool device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size);
       bool device2xrt_irq_trans_cb(uint32_t,unsigned long int);
@@ -306,7 +320,7 @@ using addr_type = uint64_t;
       std::thread mHostMemAccessThread;
       std::atomic<bool> mMessengerThreadStarted;
       std::atomic<bool> mHostMemAccessThreadStarted;
-      void messagesThread(); 
+      void messagesThread();
       void hostMemAccessThread();
 
       std::shared_ptr<xrt_core::device> mCoreDevice;
@@ -316,7 +330,7 @@ using addr_type = uint64_t;
       void launchTempProcess() {};
 
       void initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList);
-      //Mapped CU register space for xclRegRead/Write()     
+      //Mapped CU register space for xclRegRead/Write()
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
       std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;
