@@ -45,13 +45,6 @@
 # pragma warning( disable : 4244 4100 4996 4505 )
 #endif
 
-/*
-namespace xrt::aie::bo
-{
-  class async_handle_impl;
-}
-*/
-
 namespace {
   //Map of gmio -> list of async handles
   static std::unordered_map<std::string, std::vector<xrt::aie::bo::async_handle_impl*>> async_bo_hdls;
