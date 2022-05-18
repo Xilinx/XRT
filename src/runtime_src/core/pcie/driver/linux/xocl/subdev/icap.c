@@ -1290,64 +1290,37 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 	icap_clean_axlf_section(icap, PARTITION_METADATA);
 }
 
-static enum MEM_TYPE convert_mem_type(const char *name)
-{
-	enum MEM_TAG m_tag = convert_mem_tag(name);
-
-	/* Use MEM_DDR3 as a invalid memory type. */
-	enum MEM_TYPE mem_type = MEM_DDR3;
-
-	switch (m_tag) {
-		case MEM_TAG_DDR:
-		case MEM_TAG_PLRAM:
-			mem_type = MEM_DRAM;
-			break;
-		case MEM_TAG_HBM:
-			mem_type = MEM_HBM;
-			break;
-		case MEM_TAG_HOST:
-			mem_type = MEM_HOST;
-			break;
-		default:
-			mem_type = MEM_DDR3;
-			break;
-	}
-
-	return mem_type;
-}
-
 static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum IP_TYPE ecc_type,
 	int idx)
 {
 	uint16_t memidx = INVALID_MEM_IDX, mem_idx = 0;
 	uint32_t i;
-	enum MEM_TYPE m_type, target_m_type;
+	enum MEM_TAG m_tag, target_m_tag;
+
+	if (!mem_topo)
+		return INVALID_MEM_IDX;
 
 	/*
 	 * Get global memory index by feeding desired memory type and index
 	 */
 	if (ecc_type == IP_MEM_DDR4)
-		target_m_type = MEM_DRAM;
+		target_m_tag = MEM_TAG_DDR;
 	else if (ecc_type == IP_DDR4_CONTROLLER)
-		target_m_type = MEM_DRAM;
+		target_m_tag = MEM_TAG_DDR;
 	else if (ecc_type == IP_MEM_HBM_ECC)
-		target_m_type = MEM_HBM;
+		target_m_tag = MEM_TAG_HBM;
 	else
-		goto done;
-
-	if (!mem_topo)
-		goto done;
+		return INVALID_MEM_IDX;
 
 	for (i = 0; i < mem_topo->m_count; ++i) {
-		m_type = convert_mem_type(mem_topo->m_mem_data[i].m_tag);
-		if (m_type == target_m_type) {
+		m_tag = convert_mem_tag(mem_topo->m_mem_data[i].m_tag);
+		if (m_tag == target_m_tag) {
 			if (idx == mem_idx)
 				return i;
 			mem_idx++;
 		}
 	}
 
-done:
 	return memidx;
 }
 
@@ -1914,7 +1887,7 @@ static void icap_save_calib(struct icap *icap)
 		return;
 
 	for (; i < mem_topo->m_count; ++i) {
-		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) != MEM_TAG_DDR)
 			continue;
 		else
 			ddr_idx++;
@@ -1943,7 +1916,7 @@ static void icap_calib(struct icap *icap, bool retain)
 	(void) xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
-		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) != MEM_TAG_DDR)
 			continue;
 		else
 			ddr_idx++;
