@@ -10,6 +10,8 @@
 #ifndef _XOCL_XCLBIN_H
 #define	_XOCL_XCLBIN_H
 
+#include "xocl_types.h"
+
 #if 0
 /* for icap user to preserve xclbin data */
 struct xocl_xclbin {
@@ -30,5 +32,15 @@ void xocl_xclbin_fini(xdev_handle_t xdev);
 #endif
 
 int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin);
+
+enum MEM_TAG {
+	MEM_TAG_DDR = 0,
+	MEM_TAG_PLRAM,
+	MEM_TAG_HOST,
+	MEM_TAG_HBM,
+	MEM_TAG_INVALID
+};
+
+enum MEM_TAG convert_mem_tag(const char *name);
 
 #endif

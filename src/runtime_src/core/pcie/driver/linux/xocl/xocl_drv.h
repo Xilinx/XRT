@@ -50,8 +50,10 @@
 #include <linux/types.h>
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
+#include "xocl_types.h"
 #include "xclbin.h"
 #include "xrt_xclbin.h"
+#include "xocl_xclbin.h"
 #include "xrt_mem.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
@@ -473,8 +475,6 @@ static inline void xocl_subdev_dyn_free(struct xocl_subdev *subdev)
 		subdev->bar_idx = NULL;
 	}
 }
-
-typedef	void *xdev_handle_t;
 
 struct xocl_pci_funcs {
 	int (*intr_config)(xdev_handle_t xdev, u32 intr, bool enable);

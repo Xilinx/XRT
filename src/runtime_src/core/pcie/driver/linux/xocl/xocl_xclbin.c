@@ -7,6 +7,8 @@
  * Authors: David Zhang <davidzha@xilinx.com>
  */
 
+#include "xocl_xclbin.h"
+
 #include "xrt_xclbin.h"
 #include "xocl_drv.h"
 
@@ -261,4 +263,26 @@ int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin)
 	}
 
 	return rval;
+}
+
+enum MEM_TAG convert_mem_tag(const char *name)
+{
+	/* Don't trust m_type in xclbin, convert name to m_type instead.
+	 * m_tag[i] = "HBM[0]" -> m_type = MEM_TAG_HBM
+	 * m_tag[i] = "DDR[1]" -> m_type = MEM_TAG_DRAM
+	 */
+	enum MEM_TAG mem_tag = MEM_TAG_INVALID;
+
+	if (!strncasecmp(name, "DDR", 3))
+		mem_tag = MEM_TAG_DDR;
+	else if (!strncasecmp(name, "PLRAM", 5))
+		mem_tag = MEM_TAG_PLRAM;
+	else if (!strncasecmp(name, "HBM", 3))
+		mem_tag = MEM_TAG_HBM;
+	else if (!strncasecmp(name, "bank", 4))
+		mem_tag = MEM_TAG_DDR;
+	else if (!strncasecmp(name, "HOST[0]", 7))
+		mem_tag = MEM_TAG_HOST;
+
+	return mem_tag;
 }

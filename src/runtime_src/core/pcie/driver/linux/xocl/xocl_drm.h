@@ -25,16 +25,6 @@
 
 typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
 
-enum MEM_TAG {
-	MEM_TAG_DDR = 0,
-	MEM_TAG_PLRAM,
-	MEM_TAG_HOST,
-	MEM_TAG_HBM,
-	MEM_TAG_INVALID
-};
-
-enum MEM_TAG convert_mem_tag(const char *name);
-
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
  *

@@ -1290,28 +1290,6 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 	icap_clean_axlf_section(icap, PARTITION_METADATA);
 }
 
-enum MEM_TAG convert_mem_tag(const char *name)
-{
-	/* Don't trust m_type in xclbin, convert name to m_type instead.
-	 * m_tag[i] = "HBM[0]" -> m_type = MEM_TAG_HBM
-	 * m_tag[i] = "DDR[1]" -> m_type = MEM_TAG_DRAM
-	 */
-	enum MEM_TAG mem_tag = MEM_TAG_INVALID;
-
-	if (!strncasecmp(name, "DDR", 3))
-		mem_tag = MEM_TAG_DDR;
-	else if (!strncasecmp(name, "PLRAM", 5))
-		mem_tag = MEM_TAG_PLRAM;
-	else if (!strncasecmp(name, "HBM", 3))
-		mem_tag = MEM_TAG_HBM;
-	else if (!strncasecmp(name, "bank", 4))
-		mem_tag = MEM_TAG_DDR;
-	else if (!strncasecmp(name, "HOST[0]", 7))
-		mem_tag = MEM_TAG_HOST;
-
-	return mem_tag;
-}
-
 static enum MEM_TYPE convert_mem_type(const char *name)
 {
 	enum MEM_TAG m_tag = convert_mem_tag(name);
