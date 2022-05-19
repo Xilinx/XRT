@@ -428,12 +428,19 @@ p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
 {
   int stride = xrt_core::getpagesize();
 
+  const size_t write_size = 1024;
   assert((size % stride) == 0);
   for (size_t i = 0; i < size; i += stride) {
     if (set)
-      std::memset(&(boptr[i]), pattern, 1024);
-    else if (boptr[i] != pattern)
-      return false;
+      // Write a large block of datato trigger a write combine
+      std::memset(&(boptr[i]), pattern, write_size);
+    else {
+      // Verify all of the written bytes
+      for (size_t q = 0; q < write_size; q++) {
+        if (boptr[i + q] != pattern)
+          return false;
+      }
+    }
   }
   return true;
 }
