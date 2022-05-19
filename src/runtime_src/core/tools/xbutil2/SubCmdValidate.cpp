@@ -430,12 +430,10 @@ p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
 
   assert((size % stride) == 0);
   for (size_t i = 0; i < size; i += stride) {
-    if (set) {
-      boptr[i] = pattern;
-    }
-    else if (boptr[i] != pattern) {
+    if (set)
+      std::memset(&(boptr[i]), pattern, 1024);
+    else if (boptr[i] != pattern)
       return false;
-    }
   }
   return true;
 }
