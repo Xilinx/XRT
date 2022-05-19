@@ -429,17 +429,17 @@ p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
   int stride = xrt_core::getpagesize();
 
   const size_t write_size = 1024;
+  char valid_data[write_size];
+  std::memset(valid_data, pattern, write_size);
   assert((size % stride) == 0);
   for (size_t i = 0; i < size; i += stride) {
     if (set)
       // Write a large block of datato trigger a write combine
-      std::memset(&(boptr[i]), pattern, write_size);
+      std::memcpy(&(boptr[i]), valid_data, write_size);
     else {
       // Verify all of the written bytes
-      for (size_t q = 0; q < write_size; q++) {
-        if (boptr[i + q] != pattern)
-          return false;
-      }
+      if (std::memcmp(&(boptr[i]), valid_data, write_size) != 0)
+        return false;
     }
   }
   return true;
@@ -1505,7 +1505,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "p2p"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
