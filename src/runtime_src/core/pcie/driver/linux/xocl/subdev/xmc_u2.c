@@ -2182,7 +2182,7 @@ static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uW\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t hwmon_scaling_target_power_store(struct device *dev,
@@ -2238,7 +2238,7 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uc\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
@@ -2301,7 +2301,7 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uC\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
@@ -2329,7 +2329,7 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uW\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t reg_base_show(struct device *dev,
