@@ -93,6 +93,7 @@ constexpr unsigned int BITS_PER_WORD = 32;
 constexpr unsigned int BYTES_PER_WORD = 4;
 constexpr unsigned int BYTES_64BIT = 8;
 constexpr unsigned int BYTES_128BIT = 16;
+constexpr uint32_t MAX_COUNT_32BIT = 0xffffffff;
 
 }
 

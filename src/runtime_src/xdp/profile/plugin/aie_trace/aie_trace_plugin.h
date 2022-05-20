@@ -62,11 +62,12 @@ namespace xdp {
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
       bool setMetrics(uint64_t deviceId, void* handle);
       void setFlushMetrics(uint64_t deviceId, void* handle);
-      uint64_t getTraceStartDelayCycles(void* handle);
+      void setTraceStartDelayCycles(void* handle);
 
       // Aie resource manager utility functions
       bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+      bool configureStartDelay(xaiefal::XAieMod& core);
 
       // Utility functions
       std::string getMetricSet(void* handle);
@@ -82,7 +83,8 @@ namespace xdp {
 
       // These flags are used to decide configuration at various points
       bool mUseDelay = false;
-      uint32_t mDelayCycles = 0;
+      uint64_t mDelayCycles = 0;
+      bool mUseOneDelayCtr = true;
 
       bool continuousTrace;
       uint64_t offloadIntervalUs;
