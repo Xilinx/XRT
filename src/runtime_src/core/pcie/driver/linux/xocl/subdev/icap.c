@@ -2309,8 +2309,6 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 		DEBUG_IP_LAYOUT);
 	icap_cache_clock_freq_topology(icap, xclbin);
 
-	icap_create_subdev_ip_layout(pdev);
-
 	/* Create cu/scu subdev by slot */
 	err = xocl_register_cus(xdev, 0, &xclbin->m_header.uuid,
 				icap->ip_layout, icap->ps_kernel);
@@ -2338,6 +2336,7 @@ done:
 	if (err) {
 		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	} else {
+		icap_create_subdev_ip_layout(pdev);
 		/* Remember "this" bitstream, so avoid re-download next time. */
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 	}
