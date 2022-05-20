@@ -125,6 +125,58 @@ send_exception_message(const std::string& msg)
 
 namespace xrt {
 
+/*!
+ * @class async_bo_impl
+ * 
+ * @brief
+ * Impl Class associated with async bo which allows to wait for completion
+ *
+ */
+class bo::async_handle_impl
+{
+public:
+  xrt::bo m_bo;
+
+public:
+  /**
+   * async_bo_impl() - Construct async_bo_obj
+   */
+  async_handle_impl(const xrt::bo& bo)
+    : m_bo(bo)
+  {
+  }
+
+  /**
+   * wait() - Wait for async to complete
+   */
+  virtual void 
+  wait();
+};
+
+class aie::bo::async_handle_impl : public xrt::bo::async_handle_impl
+{
+public:
+  size_t m_bd_num; //For future use
+  std::string m_gmio_name;
+
+public:
+  /**
+   * async_bo_impl() - Construct async_bo_obj
+   */
+  async_handle_impl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
+    : xrt::bo::async_handle_impl(bo),
+      m_bd_num(bd_num),
+      m_gmio_name(gmio_name)
+  {
+  }
+
+  /**
+   * wait() - Wait for async to complete
+   */
+  void 
+  wait() override;
+};
+
 // class bo_impl - Base class for buffer objects
 //
 // [bo_impl]: base class
@@ -380,8 +432,7 @@ public:
     std::unique_lock lk(::async_bo_hdls_mutex);
     ::async_bo_hdls[port].emplace_back(a_bo_impl.get());
 
-    return xrt::bo::async_handle(std::dynamic_pointer_cast<xrt::bo::async_handle_impl>(a_bo_impl));
-    //return xrt::bo::async_handle(a_bo_impl);
+    return xrt::bo::async_handle(a_bo_impl);
   }
 #endif
 
@@ -391,7 +442,7 @@ public:
     throw std::runtime_error("Unsupported feature");
 
     //TODO for Alveo; base xrt::bo class
-    auto a_bo_impl = std::make_shared<xrt::bo::async_handle_impl>(bo, 0, "");
+    auto a_bo_impl = std::make_shared<xrt::bo::async_handle_impl>(bo);
     return xrt::bo::async_handle{a_bo_impl};
   }
 
@@ -443,71 +494,6 @@ public:
   virtual void*  get_hbuf()      const { return nullptr; }
   virtual bool   is_sub()        const { return false;   }
   virtual bool   is_imported()   const { return false;   }
-};
-
-/*!
- * @class async_bo_impl
- * 
- * @brief
- * Impl Class associated with async bo which allows to wait for completion
- *
- */
-class bo::async_handle_impl
-{
-public:
-  size_t m_bd_num; //For future use
-  std::string m_gmio_name;
-  xrt::bo m_bo;
-
-public:
-  /**
-   * async_bo_impl() - Construct async_bo_obj
-   */
-  async_handle_impl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
-    : m_bd_num(bd_num),
-      m_gmio_name(gmio_name),
-      m_bo(bo)
-  {
-  }
-
-  /**
-   * wait() - Wait for async to complete
-   */
-  virtual void wait() {
-    throw std::runtime_error("Unsupported feature");
-  }
-};
-
-class aie::bo::async_handle_impl : public xrt::bo::async_handle_impl
-{
-public:
-  /**
-   * async_bo_impl() - Construct async_bo_obj
-   */
-  async_handle_impl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
-    : xrt::bo::async_handle_impl(bo, bd_num, gmio_name)
-  {
-  }
-
-  /**
-   * wait() - Wait for async to complete
-   */
-  virtual void wait() override
-  {
-    auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
-
-    std::unique_lock lk(::async_bo_hdls_mutex);
-    auto itr = ::async_bo_hdls.find(m_gmio_name);
-    if (itr == ::async_bo_hdls.end())
-      throw std::runtime_error("Unexpected error");
-
-    if (std::find(itr->second.begin(), itr->second.end(), this) == itr->second.end())
-      return;//This DMA has already finished
-
-    //In future wait only for specific m_bd_num
-    dev->wait_gmio(m_gmio_name.c_str());
-    itr->second.clear();//All outstanding DMAs for this gmio_name have finished
-  }
 };
 
 // class buffer_ubuf - User provide host side buffer
@@ -1141,6 +1127,32 @@ alignment()
 // xrt_bo C++ API implmentations (xrt_bo.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
+
+void 
+bo::async_handle_impl::
+wait()
+{
+  throw std::runtime_error("Unsupported feature");
+}
+
+void 
+aie::bo::async_handle_impl::
+wait()
+{
+  auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
+
+  std::unique_lock lk(::async_bo_hdls_mutex);
+  auto itr = ::async_bo_hdls.find(m_gmio_name);
+  if (itr == ::async_bo_hdls.end())
+    throw std::runtime_error("Unexpected error");
+
+  if (std::find(itr->second.begin(), itr->second.end(), this) == itr->second.end())
+    return;//This DMA has already finished
+
+  //In future wait only for specific m_bd_num
+  dev->wait_gmio(m_gmio_name.c_str());
+  itr->second.clear();//All outstanding DMAs for this gmio_name have finished
+}
 
 void
 bo::async_handle::
