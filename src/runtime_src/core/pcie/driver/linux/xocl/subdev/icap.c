@@ -51,10 +51,10 @@ static struct key *icap_keys = NULL;
 #define	ICAP_PRIVILEGED(icap)	((icap)->icap_regs != NULL)
 
 /*
- * Only DDR and PLRAM memory banks require MIG calibration
+ * Only DDR, PLRAM, and HBM memory banks require MIG calibration
  */
 #define MEM_NEEDS_CALIBRATION(m_tag) \
-	((convert_mem_tag(m_tag) == MEM_TAG_DDR) || (convert_mem_tag(m_tag) == MEM_TAG_PLRAM))
+	((convert_mem_tag(m_tag) == MEM_TAG_DDR) || (convert_mem_tag(m_tag) == MEM_TAG_PLRAM) || (convert_mem_tag(m_tag) == MEM_TAG_HBM))
 
 /*
  * Block comment for spliting old icap into subdevs (icap, clock, xclbin, etc.)
@@ -669,7 +669,7 @@ static int calibrate_mig(struct icap *icap)
 
 	// If no DDR or PLRAM banks are in use there is nothing to calibrate
 	if (!is_memory_bank_connected) {
-		ICAP_INFO(icap, "No DDR or PLRAM banks connected. Skipping MIG Calibration\n");
+		ICAP_INFO(icap, "No DDR, HBM, or PLRAM memory used. Skipping MIG Calibration\n");
 		return 0;
 	}
 
