@@ -435,12 +435,22 @@ p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
 
   assert((size % stride) == 0);
   for (size_t i = 0; i < size; i += stride) {
+    // Due to test timeout we can only have one large write to test write combines
+    // The first write in a memory segment is a large write combine while all others are single bytes
     if (set)
-      // Write a large block of data to trigger a write combine
-      std::memcpy(&(boptr[i]), valid_data, write_size);
+      if(i == 0)
+        // Write a large block of data to trigger a write combine
+        std::memcpy(&(boptr[i]), valid_data, write_size);
+      else
+        boptr[i] = pattern;
     else {
       // Verify all of the written bytes
-      if (std::memcmp(&(boptr[i]), valid_data, write_size) != 0)
+      // These could be combined into one statement but it is nice to match the writes above
+      // in terms of what each if statement represents.
+      // The first if represent the large write while the second covers the single byte writes
+      if ((i == 0) && (std::memcmp(&(boptr[i]), valid_data, write_size) != 0))
+        return false;
+      else if (boptr[i] != pattern)
         return false;
     }
   }
