@@ -20,6 +20,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <limits>
 
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
@@ -471,7 +472,7 @@ namespace xdp {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
     }
 
-    if (cycles > MAX_COUNT_32BIT)
+    if (cycles > std::numeric_limits<uint32_t>::max())
       mUseOneDelayCtr = false;
 
     mUseDelay = ( cycles != 0 );
@@ -491,7 +492,7 @@ namespace xdp {
 
     if (!mUseOneDelayCtr) {
       // ceil(x/y) where x and y are  positive integers
-      delayCyclesLow =  static_cast<uint32_t>(1 + ((mDelayCycles - 1) / MAX_COUNT_32BIT));
+      delayCyclesLow =  static_cast<uint32_t>(1 + ((mDelayCycles - 1) / std::numeric_limits<uint32_t>::max()));
       delayCyclesHigh = static_cast<uint32_t>(mDelayCycles / delayCyclesLow);
     } else {
       delayCyclesLow = static_cast<uint32_t>(mDelayCycles);
@@ -507,7 +508,7 @@ namespace xdp {
     pc->changeThreshold(delayCyclesLow);
     XAie_Events counterEvent;
     pc->getCounterEvent(mod, counterEvent);
-    // Set reset and trace start using this counter
+    // Reset when done counting
     pc->changeRstEvent(mod, counterEvent);
     if (pc->start() != XAIE_OK)
         return false;
@@ -516,14 +517,15 @@ namespace xdp {
     // Use previous counter to start a new counter
     if (!mUseOneDelayCtr && delayCyclesHigh) {
       auto pc = core.perfCounter();
+      // Count by 1 when previous counter generates event
       if (pc->initialize(mod, counterEvent,
-                         mod, XAIE_EVENT_DISABLED_CORE) != XAIE_OK)
+                         mod, counterEvent) != XAIE_OK)
         return false;
       if (pc->reserve() != XAIE_OK)
       return false;
       pc->changeThreshold(delayCyclesHigh);
       pc->getCounterEvent(mod, counterEvent);
-      // Set reset and trace start using this counter
+      // Reset when done counting
       pc->changeRstEvent(mod, counterEvent);
       if (pc->start() != XAIE_OK)
         return false;
