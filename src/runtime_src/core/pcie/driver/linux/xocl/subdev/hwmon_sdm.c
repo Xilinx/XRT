@@ -25,7 +25,7 @@
 #include "../xocl_drv.h"
 #include "xclfeatures.h"
 
-#define SYSFS_COUNT_PER_SENSOR          5
+#define SYSFS_COUNT_PER_SENSOR          11
 #define SYSFS_NAME_LEN                  30
 #define HWMON_SDM_DEFAULT_EXPIRE_SECS   1
 
@@ -43,11 +43,17 @@ enum sensor_data_status {
 };
 
 enum sysfs_sdr_field_ids {
-	SYSFS_SDR_NAME		= 0,
-	SYSFS_SDR_INS_VAL	= 1,
-	SYSFS_SDR_MAX_VAL	= 2,
-	SYSFS_SDR_AVG_VAL	= 3,
-	SYSFS_SDR_STATUS_VAL	= 4,
+	SYSFS_SDR_NAME                  = 0,
+	SYSFS_SDR_INS_VAL               = 1,
+	SYSFS_SDR_MAX_VAL               = 2,
+	SYSFS_SDR_AVG_VAL               = 3,
+	SYSFS_SDR_STATUS_VAL            = 4,
+	SYSFS_SDR_UPPER_WARN_VAL        = 5,
+	SYSFS_SDR_UPPER_CRITICAL_VAL    = 6,
+	SYSFS_SDR_UPPER_FATAL_VAL       = 7,
+	SYSFS_SDR_LOWER_WARN_VAL        = 8,
+	SYSFS_SDR_LOWER_CRITICAL_VAL    = 9,
+	SYSFS_SDR_LOWER_FATAL_VAL       = 0xA,
 };
 
 struct xocl_sdr_bdinfo {
@@ -319,6 +325,12 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 		sz = snprintf(buf, buf_len + 2, "%s\n", output);
 	} else if ((field_id == SYSFS_SDR_INS_VAL) ||
                (field_id == SYSFS_SDR_AVG_VAL) ||
+               (field_id == SYSFS_SDR_UPPER_WARN_VAL) ||
+               (field_id == SYSFS_SDR_UPPER_FATAL_VAL) ||
+               (field_id == SYSFS_SDR_UPPER_CRITICAL_VAL) ||
+               (field_id == SYSFS_SDR_LOWER_CRITICAL_VAL) ||
+               (field_id == SYSFS_SDR_LOWER_WARN_VAL) ||
+               (field_id == SYSFS_SDR_LOWER_FATAL_VAL) ||
                (field_id == SYSFS_SDR_MAX_VAL)) {
 		if (buf_len > 4) {
 			//TODO: fix this case
@@ -474,6 +486,8 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	uint8_t val_len, value_type_length, threshold_support_byte;
 	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
 	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0, status_index;
+	uint32_t upper_warning = 0, upper_critical = 0, upper_fatal = 0;
+	uint32_t lower_warning = 0, lower_critical = 0, lower_fatal = 0;
 
 	completion_code = in_buf[SDR_COMPLETE_IDX];
 
@@ -554,6 +568,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_UPPER_WARNING_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				upper_warning = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -562,6 +577,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_UPPER_CRITICAL_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				upper_critical = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -570,6 +586,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_UPPER_FATAL_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				upper_fatal = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -578,6 +595,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_LOWER_WARNING_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				lower_warning = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -586,6 +604,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_LOWER_CRITICAL_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				lower_critical = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -594,6 +613,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_LOWER_FATAL_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				lower_fatal = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -642,6 +662,18 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 						sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "temp%d_max", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_INS_VAL], "temp%d_input", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_NAME], "temp%d_label", sys_index);
+						if (upper_warning != 0)
+							sprintf(sysfs_name[SYSFS_SDR_UPPER_WARN_VAL], "temp%d_upper_warn", sys_index);
+						if (upper_critical != 0)
+							sprintf(sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL], "temp%d_upper_critical", sys_index);
+						if (upper_fatal != 0)
+							sprintf(sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL], "temp%d_upper_fatal", sys_index);
+						if (lower_warning != 0)
+							sprintf(sysfs_name[SYSFS_SDR_LOWER_WARN_VAL], "temp%d_lower_warn", sys_index);
+						if (lower_critical != 0)
+							sprintf(sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL], "temp%d_lower_critical", sys_index);
+						if (lower_fatal != 0)
+							sprintf(sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL], "temp%d_lower_fatal", sys_index);
 						sys_index++;
 					}
 					create = true;
@@ -670,6 +702,18 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "power%d_max", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_INS_VAL], "power%d_input", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_NAME], "power%d_label", sys_index);
+					if (upper_warning != 0)
+						sprintf(sysfs_name[SYSFS_SDR_UPPER_WARN_VAL], "power%d_upper_warn", sys_index);
+					if (upper_critical != 0)
+						sprintf(sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL], "power%d_upper_critical", sys_index);
+					if (upper_fatal != 0)
+						sprintf(sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL], "power%d_upper_fatal", sys_index);
+					if (lower_warning != 0)
+						sprintf(sysfs_name[SYSFS_SDR_LOWER_WARN_VAL], "power%d_lower_warn", sys_index);
+					if (lower_critical != 0)
+						sprintf(sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL], "power%d_lower_critical", sys_index);
+					if (lower_fatal != 0)
+						sprintf(sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL], "power%d_lower_fatal", sys_index);
 					sys_index++;
 					create = true;
 					break;
@@ -726,6 +770,60 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_STATUS_VAL], repo_id, SYSFS_SDR_STATUS_VAL, status_index, 1);
 					if (err) {
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_STATUS_VAL], err);
+					}
+				}
+
+				//Create *_upper_warn sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_UPPER_WARN_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UPPER_WARN_VAL], repo_id,
+                                             SYSFS_SDR_UPPER_WARN_VAL, upper_warning, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UPPER_WARN_VAL], err);
+					}
+				}
+
+				//Create *_upper_critical sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL], repo_id,
+                                             SYSFS_SDR_UPPER_CRITICAL_VAL, upper_critical, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL], err);
+					}
+				}
+
+				//Create *_upper_fatal sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL], repo_id,
+                                             SYSFS_SDR_UPPER_FATAL_VAL, upper_fatal, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL], err);
+					}
+				}
+
+				//Create *_lower_warn sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_LOWER_WARN_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_LOWER_WARN_VAL], repo_id,
+                                             SYSFS_SDR_LOWER_WARN_VAL, lower_warning, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_LOWER_WARN_VAL], err);
+					}
+				}
+
+				//Create *_lower_critical sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL], repo_id,
+                                             SYSFS_SDR_LOWER_CRITICAL_VAL, lower_critical, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL], err);
+					}
+				}
+
+				//Create *_lower_fatal sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL], repo_id,
+                                             SYSFS_SDR_LOWER_FATAL_VAL, lower_fatal, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL], err);
 					}
 				}
 			}
