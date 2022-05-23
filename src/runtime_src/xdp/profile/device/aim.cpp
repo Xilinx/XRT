@@ -17,6 +17,7 @@
 /************************ AXI Interface Monitor (AIM, earlier SPM) ***********************/
 
 /* Address offsets in core */
+/*
 #define XAIM_CONTROL_OFFSET                          0x08
 #define XAIM_TRACE_CTRL_OFFSET                       0x10
 #define XAIM_SAMPLE_OFFSET                           0x20
@@ -52,7 +53,7 @@
 #define XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET      0xF0
 #define XAIM_SAMPLE_READ_BUSY_CYCLES_UPPER_OFFSET    0xF4
 #define XAIM_SAMPLE_WRITE_BUSY_CYCLES_UPPER_OFFSET   0xF8
-
+*/
 /* SPM Control Register masks */
 #define XAIM_CR_COUNTER_RESET_MASK               0x00000002
 #define XAIM_CR_COUNTER_ENABLE_MASK              0x00000001
@@ -64,6 +65,7 @@
 
 #define XDP_SOURCE
 
+#include "core/include/xdp/aim.h"
 #include "aim.h"
 #include "xdp/profile/device/utility.h"
 #include <bitset>
@@ -93,20 +95,20 @@ size_t AIM::startCounter()
     uint32_t regValue = 0;
     
     // 1. Reset AXI - MM monitor metric counters
-    size += read(XAIM_CONTROL_OFFSET, 4, &regValue);
+    size += read(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
     regValue = regValue | XAIM_CR_COUNTER_RESET_MASK;
-    size += write(XAIM_CONTROL_OFFSET, 4, &regValue);
+    size += write(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
     regValue = regValue & ~(XAIM_CR_COUNTER_RESET_MASK);
-    size += write(XAIM_CONTROL_OFFSET, 4, &regValue);
+    size += write(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
     // 2. Start AXI-MM monitor metric counters
     regValue = regValue | XAIM_CR_COUNTER_ENABLE_MASK;
-    size += write(XAIM_CONTROL_OFFSET, 4, &regValue);
+    size += write(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
     // 3. Read from sample register to ensure total time is read again at end
-    size += read(XAIM_SAMPLE_OFFSET, 4, &regValue);
+    size += read(IP::AIM::AXI_LITE::SAMPLE, 4, &regValue);
 
     return size;
 }
@@ -120,10 +122,10 @@ size_t AIM::stopCounter()
     uint32_t regValue = 0;
 
     // 1. Stop AIM metric counters
-    size += read(XAIM_CONTROL_OFFSET, 4, &regValue);
+    size += read(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
     regValue = regValue & ~(XAIM_CR_COUNTER_ENABLE_MASK);
-    size += write(XAIM_CONTROL_OFFSET, 4, &regValue);
+    size += write(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
     return size;
 }
@@ -140,31 +142,31 @@ size_t AIM::readCounter(xclCounterResults& counterResults)
     
     // Read sample interval register
     // NOTE: this also latches the sampled metric counters
-    size += read(XAIM_SAMPLE_OFFSET, 4, &sampleInterval);
+    size += read(IP::AIM::AXI_LITE::SAMPLE, 4, &sampleInterval);
 
     // The sample interval in the counter results struct is never used,
     //  so don't set it
 
-    size += read(XAIM_SAMPLE_WRITE_BYTES_OFFSET, 4, &counterResults.WriteBytes[s]);
-    size += read(XAIM_SAMPLE_WRITE_TRANX_OFFSET, 4, &counterResults.WriteTranx[s]);
-    size += read(XAIM_SAMPLE_WRITE_LATENCY_OFFSET, 4, &counterResults.WriteLatency[s]);
-    size += read(XAIM_SAMPLE_READ_BYTES_OFFSET, 4, &counterResults.ReadBytes[s]);
-    size += read(XAIM_SAMPLE_READ_TRANX_OFFSET, 4, &counterResults.ReadTranx[s]);
-    size += read(XAIM_SAMPLE_READ_LATENCY_OFFSET, 4, &counterResults.ReadLatency[s]);
-    size += read(XAIM_SAMPLE_READ_BUSY_CYCLES_OFFSET, 4, &counterResults.ReadBusyCycles[s]);
-    size += read(XAIM_SAMPLE_WRITE_BUSY_CYCLES_OFFSET, 4, &counterResults.WriteBusyCycles[s]);
+    size += read(IP::AIM::AXI_LITE::WRITE_BYTES, 4, &counterResults.WriteBytes[s]);
+    size += read(IP::AIM::AXI_LITE::WRITE_TRANX, 4, &counterResults.WriteTranx[s]);
+    size += read(IP::AIM::AXI_LITE::WRITE_LATENCY, 4, &counterResults.WriteLatency[s]);
+    size += read(IP::AIM::AXI_LITE::READ_BYTES, 4, &counterResults.ReadBytes[s]);
+    size += read(IP::AIM::AXI_LITE::READ_TRANX, 4, &counterResults.ReadTranx[s]);
+    size += read(IP::AIM::AXI_LITE::READ_LATENCY, 4, &counterResults.ReadLatency[s]);
+    size += read(IP::AIM::AXI_LITE::READ_BUSY_CYCLES, 4, &counterResults.ReadBusyCycles[s]);
+    size += read(IP::AIM::AXI_LITE::WRITE_BUSY_CYCLES, 4, &counterResults.WriteBusyCycles[s]);
 
     // Read upper 32 bits (if available)
     if(has64bit()) {
         uint64_t upper[8] = {};
-        size += read(XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET, 4, &upper[0]);
-        size += read(XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET, 4, &upper[1]);
-        size += read(XAIM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET, 4, &upper[2]);
-        size += read(XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET, 4, &upper[3]);
-        size += read(XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET, 4, &upper[4]);
-        size += read(XAIM_SAMPLE_READ_LATENCY_UPPER_OFFSET, 4, &upper[5]);
-        size += read(XAIM_SAMPLE_READ_BUSY_CYCLES_UPPER_OFFSET, 4, &upper[6]);
-        size += read(XAIM_SAMPLE_WRITE_BUSY_CYCLES_UPPER_OFFSET, 4, &upper[7]);
+        size += read(IP::AIM::AXI_LITE::WRITE_BYTES_UPPER, 4, &upper[0]);
+        size += read(IP::AIM::AXI_LITE::WRITE_TRANX_UPPER, 4, &upper[1]);
+        size += read(IP::AIM::AXI_LITE::WRITE_LATENCY_UPPER, 4, &upper[2]);
+        size += read(IP::AIM::AXI_LITE::READ_BYTES_UPPER, 4, &upper[3]);
+        size += read(IP::AIM::AXI_LITE::READ_TRANX_UPPER, 4, &upper[4]);
+        size += read(IP::AIM::AXI_LITE::READ_LATENCY_UPPER, 4, &upper[5]);
+        size += read(IP::AIM::AXI_LITE::READ_BUSY_CYCLES_UPPER, 4, &upper[6]);
+        size += read(IP::AIM::AXI_LITE::WRITE_BUSY_CYCLES_UPPER, 4, &upper[7]);
 
         counterResults.WriteBytes[s]      += (upper[0] << 32);
         counterResults.WriteTranx[s]      += (upper[1] << 32);
@@ -212,7 +214,7 @@ size_t AIM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     uint32_t regValue = 0;
     // Set AIM trace control register bits
     regValue = traceOption & XAIM_TRACE_CTRL_MASK;
-    size += write(XAIM_TRACE_CTRL_OFFSET, 4, &regValue);
+    size += write(IP::AIM::AXI_LITE::TRACE_CTRL, 4, &regValue);
 
     return size;
 }

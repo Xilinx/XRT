@@ -1705,7 +1705,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
          sstr << (i > 0 ? "," : "") << "{";
          sstr << quotes << "CUName" << quotes << " : " << quotes << cuNameportNames[i].first << quotes << ",";
          sstr << quotes << "AXIPortname" << quotes << " : " << quotes << cuNameportNames[i].second << quotes << ",";
-         if (!xclAXICheckerCodes::isValidAXICheckerCodes(OverallStatus[i],
+         if (!xdp::isValidAXICheckerCodes(OverallStatus[i],
                                SnapshotStatus[i], CumulativeStatus[i])) {
            sstr << quotes << "FirstViolation" << quotes << " : " << quotes << "Invalid Codes" << quotes << ",";
            sstr << quotes << "OtherViolations" << quotes << " : " << quotes << "Invalid Codes" << quotes ;
@@ -1715,12 +1715,12 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
               std::string tstr;
               unsigned int tCummStatus[4] = {0};
               //snapshot reflects first violation, cumulative has all violations
-              tstr = xclAXICheckerCodes::decodeAXICheckerCodes(SnapshotStatus[i]);
+              tstr = xdp::decodeAXICheckerCodes(SnapshotStatus[i]);
               tstr = (tstr == "") ? "None" : tstr;
               sstr << quotes << "FirstViolation" << quotes << " : " << quotes << tstr << quotes << ",";
 
               std::transform(CumulativeStatus[i], CumulativeStatus[i]+4, SnapshotStatus[i], tCummStatus, std::bit_xor<unsigned int>());
-              tstr = xclAXICheckerCodes::decodeAXICheckerCodes(tCummStatus);
+              tstr = xdp::decodeAXICheckerCodes(tCummStatus);
               tstr = (tstr == "") ? "None" : tstr;
               sstr << quotes << "OtherViolations" << quotes << " : " << quotes << tstr << quotes ;
            }
@@ -1739,7 +1739,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
 
     sstr << "Light-weight AXI protocol checker (LAPC) status\n";
     for (unsigned int i = 0; i<NumSlots; ++i) {
-      if (!xclAXICheckerCodes::isValidAXICheckerCodes(OverallStatus[i],
+      if (!xdp::isValidAXICheckerCodes(OverallStatus[i],
                           SnapshotStatus[i], CumulativeStatus[i])) {
         sstr << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
         sstr << "  Invalid codes read, skip decoding\n";
@@ -1748,12 +1748,12 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
       else if (OverallStatus[i]) {
         sstr << "CU Name: " << cuNameportNames[i].first << " AXI Port: " << cuNameportNames[i].second << "\n";
         sstr << "  First violation: \n";
-        sstr << "    " <<  xclAXICheckerCodes::decodeAXICheckerCodes(SnapshotStatus[i]);
+        sstr << "    " <<  xdp::decodeAXICheckerCodes(SnapshotStatus[i]);
         //snapshot reflects first violation, cumulative has all violations
         unsigned int tCummStatus[4] = {0};
         std::transform(CumulativeStatus[i], CumulativeStatus[i]+4, SnapshotStatus[i], tCummStatus, std::bit_xor<unsigned int>());
         sstr << "  Other violations: \n";
-        std::string tstr = xclAXICheckerCodes::decodeAXICheckerCodes(tCummStatus);
+        std::string tstr = xdp::decodeAXICheckerCodes(tCummStatus);
         if (tstr == "") {
           sstr << "    " << "None";
         }

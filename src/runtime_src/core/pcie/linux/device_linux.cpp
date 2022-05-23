@@ -22,6 +22,9 @@
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
 #include "core/common/utils.h"
+#include "core/include/xdp/aim.h"
+#include "core/include/xdp/am.h"
+#include "core/include/xdp/asm.h"
 #include "core/include/xdp/app_debug.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
@@ -531,31 +534,22 @@ struct aim_counter
     std::string aim_name("aximm_mon_");
     aim_name += std::to_string(dbg_ip_data->m_base_address);
 
-    result_type retval_buf(xdp::DebugIPRegisters::AIM::NUM_COUNTERS_DISPLAYED, 0);
+    result_type retval_buf(xdp::IP::AIM::NUM_COUNTERS_XBUTIL, 0);
 
-    result_type val_buf = get_counter_status_from_sysfs(aim_name, "counters", xdp::DebugIPRegisters::AIM::NUM_COUNTERS, device);
+    result_type val_buf = get_counter_status_from_sysfs(aim_name, "counters", xdp::IP::AIM::NUM_COUNTERS, device);
 
     /* Note that required return values are NOT in contiguous sequential order 
      * in AIM subdevice file. So, need to read only a few isolated indices in val_buf.
      */
-    retval_buf[xdp::DebugIPRegisters::AIM::DisplayIndex::WRITE_BYTES] =
-      val_buf[xdp::DebugIPRegisters::AIM::IoctlIndex::WRITE_BYTES];
-    retval_buf[xdp::DebugIPRegisters::AIM::DisplayIndex::WRITE_TRANX] =
-      val_buf[xdp::DebugIPRegisters::AIM::IoctlIndex::WRITE_TRANX];
-    retval_buf[xdp::DebugIPRegisters::AIM::DisplayIndex::READ_BYTES] =
-      val_buf[xdp::DebugIPRegisters::AIM::IoctlIndex::READ_BYTES];
-    retval_buf[xdp::DebugIPRegisters::AIM::DisplayIndex::READ_TRANX] =
-      val_buf[xdp::DebugIPRegisters::AIM::IoctlIndex::READ_TRANX];
-    retval_buf[xdp::DebugIPRegisters::AIM::DisplayIndex::OUTSTANDING_COUNT] =
-      val_buf[xdp::DebugIPRegisters::AIM::IoctlIndex::OUTSTANDING_COUNT];
-    retval_buf[xdp::DebugIPRegisters::AIM::DisplayIndex::WRITE_LAST_ADDRESS] =
-      val_buf[xdp::DebugIPRegisters::AIM::IoctlIndex::WRITE_LAST_ADDRESS];
-    retval_buf[xdp::DebugIPRegisters::AIM::DisplayIndex::WRITE_LAST_DATA] =
-      val_buf[xdp::DebugIPRegisters::AIM::IoctlIndex::WRITE_LAST_DATA];
-    retval_buf[xdp::DebugIPRegisters::AIM::DisplayIndex::READ_LAST_ADDRESS] =
-      val_buf[xdp::DebugIPRegisters::AIM::IoctlIndex::READ_LAST_ADDRESS];
-    retval_buf[xdp::DebugIPRegisters::AIM::DisplayIndex::READ_LAST_DATA] =
-      val_buf[xdp::DebugIPRegisters::AIM::IoctlIndex::READ_LAST_DATA];
+    retval_buf[xdp::IP::AIM::xbutil::WRITE_BYTES] = val_buf[xdp::IP::AIM::sysfs::WRITE_BYTES];
+    retval_buf[xdp::IP::AIM::xbutil::WRITE_TRANX] = val_buf[xdp::IP::AIM::sysfs::WRITE_TRANX];
+    retval_buf[xdp::IP::AIM::xbutil::READ_BYTES] = val_buf[xdp::IP::AIM::sysfs::READ_BYTES];
+    retval_buf[xdp::IP::AIM::xbutil::READ_TRANX] = val_buf[xdp::IP::AIM::sysfs::READ_TRANX];
+    retval_buf[xdp::IP::AIM::xbutil::OUTSTANDING_COUNT] = val_buf[xdp::IP::AIM::sysfs::OUTSTANDING_COUNT];
+    retval_buf[xdp::IP::AIM::xbutil::WRITE_LAST_ADDRESS] = val_buf[xdp::IP::AIM::sysfs::WRITE_LAST_ADDRESS];
+    retval_buf[xdp::IP::AIM::xbutil::WRITE_LAST_DATA] = val_buf[xdp::IP::AIM::sysfs::WRITE_LAST_DATA];
+    retval_buf[xdp::IP::AIM::xbutil::READ_LAST_ADDRESS] = val_buf[xdp::IP::AIM::sysfs::READ_LAST_ADDRESS];
+    retval_buf[xdp::IP::AIM::xbutil::READ_LAST_DATA] = val_buf[xdp::IP::AIM::sysfs::READ_LAST_DATA];
 
     return retval_buf;
   }
@@ -578,7 +572,7 @@ struct am_counter
     std::string am_name("accel_mon_");
     am_name += std::to_string(dbg_ip_data->m_base_address);
 
-    result_type val_buf = get_counter_status_from_sysfs(am_name, "counters", xdp::DebugIPRegisters::AM::NUM_COUNTERS, device);
+    result_type val_buf = get_counter_status_from_sysfs(am_name, "counters", xdp::IP::AM::NUM_COUNTERS, device);
 
     return val_buf;
   }
@@ -601,7 +595,7 @@ struct asm_counter
     std::string asm_name("axistream_mon_");
     asm_name += std::to_string(dbg_ip_data->m_base_address);
 
-    result_type val_buf = get_counter_status_from_sysfs(asm_name, "counters", xdp::DebugIPRegisters::ASM::NUM_COUNTERS, device);
+    result_type val_buf = get_counter_status_from_sysfs(asm_name, "counters", xdp::IP::ASM::NUM_COUNTERS, device);
 
     return val_buf;
   }

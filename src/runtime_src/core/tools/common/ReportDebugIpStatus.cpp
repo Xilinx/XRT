@@ -32,6 +32,9 @@ namespace XBU = XBUtilities;
 #include "core/common/xrt_profiling.h"
 #include "core/include/experimental/xrt-next.h"
 #include "core/include/xcl_perfmon_parameters.h"
+#include "core/include/xdp/aim.h"
+#include "core/include/xdp/am.h"
+#include "core/include/xdp/asm.h"
 #include "core/include/xdp/axi_checker_codes.h"
 #include "core/include/xdp/common.h"
 
@@ -316,15 +319,15 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   aimResults.NumSlots = (unsigned int)debugIpNum[AXI_MM_MONITOR];
 
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo);
-  aimResults.WriteBytes[index]    = valBuf[xdp::DebugIPRegisters::AIM::DisplayIndex::WRITE_BYTES];
-  aimResults.WriteTranx[index]    = valBuf[xdp::DebugIPRegisters::AIM::DisplayIndex::WRITE_TRANX];
-  aimResults.ReadBytes[index]     = valBuf[xdp::DebugIPRegisters::AIM::DisplayIndex::READ_BYTES];
-  aimResults.ReadTranx[index]     = valBuf[xdp::DebugIPRegisters::AIM::DisplayIndex::READ_TRANX];
-  aimResults.OutStandCnts[index]  = valBuf[xdp::DebugIPRegisters::AIM::DisplayIndex::OUTSTANDING_COUNT];
-  aimResults.LastWriteAddr[index] = valBuf[xdp::DebugIPRegisters::AIM::DisplayIndex::WRITE_LAST_ADDRESS];
-  aimResults.LastWriteData[index] = valBuf[xdp::DebugIPRegisters::AIM::DisplayIndex::WRITE_LAST_DATA];
-  aimResults.LastReadAddr[index]  = valBuf[xdp::DebugIPRegisters::AIM::DisplayIndex::READ_LAST_ADDRESS];
-  aimResults.LastReadData[index]  = valBuf[xdp::DebugIPRegisters::AIM::DisplayIndex::READ_LAST_DATA];
+  aimResults.WriteBytes[index]    = valBuf[xdp::IP::AIM::xbutil::WRITE_BYTES];
+  aimResults.WriteTranx[index]    = valBuf[xdp::IP::AIM::xbutil::WRITE_TRANX];
+  aimResults.ReadBytes[index]     = valBuf[xdp::IP::AIM::xbutil::READ_BYTES];
+  aimResults.ReadTranx[index]     = valBuf[xdp::IP::AIM::xbutil::READ_TRANX];
+  aimResults.OutStandCnts[index]  = valBuf[xdp::IP::AIM::xbutil::OUTSTANDING_COUNT];
+  aimResults.LastWriteAddr[index] = valBuf[xdp::IP::AIM::xbutil::WRITE_LAST_ADDRESS];
+  aimResults.LastWriteData[index] = valBuf[xdp::IP::AIM::xbutil::WRITE_LAST_DATA];
+  aimResults.LastReadAddr[index]  = valBuf[xdp::IP::AIM::xbutil::READ_LAST_ADDRESS];
+  aimResults.LastReadData[index]  = valBuf[xdp::IP::AIM::xbutil::READ_LAST_DATA];
 
 }
 
@@ -354,19 +357,21 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[ACCEL_MONITOR];
   amResults.NumSlots = (unsigned int)debugIpNum[ACCEL_MONITOR];
 
+  // The result comes back "as if" we read from sysfs, even though the
+  // actual implementation may be different.
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::am_counter>(device, dbgIpInfo);
-  amResults.CuExecCount[index] = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::EXECUTION_COUNT];
-  amResults.CuStartCount[index]      = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::START_COUNT];
-  amResults.CuExecCycles[index]      = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::EXECUTION_CYCLES];
+  amResults.CuExecCount[index] = valBuf[xdp::IP::AM::sysfs::EXECUTION_COUNT];
+  amResults.CuStartCount[index] = valBuf[xdp::IP::AM::sysfs::TOTAL_CU_START];
+  amResults.CuExecCycles[index] = valBuf[xdp::IP::AM::sysfs::EXECUTION_CYCLES];
 
-  amResults.CuStallIntCycles[index]  = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::STALL_INT];
-  amResults.CuStallStrCycles[index]  = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::STALL_STR];
-  amResults.CuStallExtCycles[index]  = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::STALL_EXT];
+  amResults.CuStallIntCycles[index] = valBuf[xdp::IP::AM::sysfs::STALL_INT];
+  amResults.CuStallStrCycles[index] = valBuf[xdp::IP::AM::sysfs::STALL_STR];
+  amResults.CuStallExtCycles[index] = valBuf[xdp::IP::AM::sysfs::STALL_EXT];
 
-  amResults.CuBusyCycles[index]      = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::BUSY_CYCLES];
-  amResults.CuMaxParallelIter[index] = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::MAX_PARALLEL_ITR];
-  amResults.CuMaxExecCycles[index]   = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::MAX_EXECUTION_CYCLES];
-  amResults.CuMinExecCycles[index]   = valBuf[xdp::DebugIPRegisters::AM::IoctlIndex::MIN_EXECUTION_CYCLES];
+  amResults.CuBusyCycles[index]      = valBuf[xdp::IP::AM::sysfs::BUSY_CYCLES];
+  amResults.CuMaxParallelIter[index] = valBuf[xdp::IP::AM::sysfs::MAX_PARALLEL_ITER];
+  amResults.CuMaxExecCycles[index]   = valBuf[xdp::IP::AM::sysfs::MAX_EXECUTION_CYCLES];
+  amResults.CuMinExecCycles[index]   = valBuf[xdp::IP::AM::sysfs::MIN_EXECUTION_CYCLES];
 
 }
 
@@ -397,12 +402,14 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_STREAM_MONITOR];
   asmResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_MONITOR];
 
+  // This vector comes back as if we got it from sysfs, but the implementation
+  // might be different
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::asm_counter>(device, dbgIpInfo);
-  asmResults.StrNumTranx[index]     = valBuf[xdp::DebugIPRegisters::ASM::Index::NUM_TRANX];
-  asmResults.StrDataBytes[index]    = valBuf[xdp::DebugIPRegisters::ASM::Index::DATA_BYTES];
-  asmResults.StrBusyCycles[index]   = valBuf[xdp::DebugIPRegisters::ASM::Index::BUSY_CYCLES];
-  asmResults.StrStallCycles[index]  = valBuf[xdp::DebugIPRegisters::ASM::Index::STALL_CYCLES];
-  asmResults.StrStarveCycles[index] = valBuf[xdp::DebugIPRegisters::ASM::Index::STARVE_CYCLES];
+  asmResults.StrNumTranx[index]     = valBuf[xdp::IP::ASM::sysfs::NUM_TRANX];
+  asmResults.StrDataBytes[index]    = valBuf[xdp::IP::ASM::sysfs::DATA_BYTES];
+  asmResults.StrBusyCycles[index]   = valBuf[xdp::IP::ASM::sysfs::BUSY_CYCLES];
+  asmResults.StrStallCycles[index]  = valBuf[xdp::IP::ASM::sysfs::STALL_CYCLES];
+  asmResults.StrStarveCycles[index] = valBuf[xdp::IP::ASM::sysfs::STARVE_CYCLES];
 
 }
 
@@ -1017,7 +1024,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
         }  
       }
 
-      if (!xclAXICheckerCodes::isValidAXICheckerCodes(entry.get<unsigned int>("overall_status"),
+      if (!xdp::isValidAXICheckerCodes(entry.get<unsigned int>("overall_status"),
                 snapshotStatus, cumulativeStatus)) {
 
         invalid_codes = true;
@@ -1030,7 +1037,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
         violations_found = true;
         _output << boost::format("CU Name: %s AXI Port: %s \n  First violation: \n    %s")
                     % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
-                    % xclAXICheckerCodes::decodeAXICheckerCodes(snapshotStatus) 
+                    % xdp::decodeAXICheckerCodes(snapshotStatus) 
                 << std::endl;
 
         // Snapshot reflects first violation, Cumulative has all violations
@@ -1039,7 +1046,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
                        snapshotStatus,
                        transformedStatus,
                        std::bit_xor<unsigned int>());
-        std::string tStr = xclAXICheckerCodes::decodeAXICheckerCodes(transformedStatus);
+        std::string tStr = xdp::decodeAXICheckerCodes(transformedStatus);
         _output << boost::format("  Other violations: \n    %s") % (("" == tStr) ? "None" : tStr)
                 << std::endl;
       }

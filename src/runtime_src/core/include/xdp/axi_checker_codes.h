@@ -14,117 +14,21 @@
  * under the License.
  */
 
+// These AXI error codes are used in both xbutil and the gdb application
+// debug extensions
+
 #ifndef AXI_CHECKER_CODES_H
 #define AXI_CHECKER_CODES_H
 
 #include "core/include/xdp/app_debug.h"
 
-class xclAXICheckerCodes {
-  enum class AXICheckerCodes {
-    AXI_ERRM_AWADDR_BOUNDARY,
-    AXI_ERRM_AWADDR_WRAP_ALIGN,
-    AXI_ERRM_AWBURST,
-    AXI_ERRM_AWLEN_LOCK,
-    AXI_ERRM_AWCACHE,
-    AXI_ERRM_AWLEN_FIXED,
-    AXI_ERRM_AWLEN_WRAP,
-    AXI_ERRM_AWSIZE,
-    AXI_ERRM_AWVALID_RESET,
-    AXI_ERRM_AWADDR_STABLE,
-    AXI_ERRM_AWBURST_STABLE,
-    AXI_ERRM_AWCACHE_STABLE,
-    AXI_ERRM_AWID_STABLE,
-    AXI_ERRM_AWLEN_STABLE,
-    AXI_ERRM_AWLOCK_STABLE,
-    AXI_ERRM_AWPROT_STABLE,
-    AXI_ERRM_AWSIZE_STABLE,
-    AXI_ERRM_AWQOS_STABLE,
-    AXI_ERRM_AWREGION_STABLE,
-    AXI_ERRM_AWVALID_STABLE,
-    AXI_RECS_AWREADY_MAX_WAIT,
-    AXI_ERRM_WDATA_NUM,
-    AXI_ERRM_WSTRB,
-    AXI_ERRM_WVALID_RESET,
-    AXI_ERRM_WDATA_STABLE,
-    AXI_ERRM_WLAST_STABLE,
-    AXI_ERRM_WSTRB_STABLE,
-    AXI_ERRM_WVALID_STABLE,
-    AXI_RECS_WREADY_MAX_WAIT,
-    AXI_ERRS_BRESP_WLAST,
-    AXI_ERRS_BRESP_EXOKAY,
-    AXI_ERRS_BVALID_RESET,
-    AXI_ERRS_BRESP_AW,
-    AXI_ERRS_BID_STABLE,
-    AXI_ERRS_BRESP_STABLE,
-    AXI_ERRS_BVALID_STABLE,
-    AXI_RECM_BREADY_MAX_WAIT,
-    AXI_ERRM_ARADDR_BOUNDARY,
-    AXI_ERRM_ARADDR_WRAP_ALIGN,
-    AXI_ERRM_ARBURST,
-    AXI_ERRM_ARLEN_LOCK,
-    AXI_ERRM_ARCACHE,
-    AXI_ERRM_ARLEN_FIXED,
-    AXI_ERRM_ARLEN_WRAP,
-    AXI_ERRM_ARSIZE,
-    AXI_ERRM_ARVALID_RESET,
-    AXI_ERRM_ARADDR_STABLE,
-    AXI_ERRM_ARBURST_STABLE,
-    AXI_ERRM_ARCACHE_STABLE,
-    AXI_ERRM_ARID_STABLE,
-    AXI_ERRM_ARLEN_STABLE,
-    AXI_ERRM_ARLOCK_STABLE,
-    AXI_ERRM_ARPROT_STABLE,
-    AXI_ERRM_ARSIZE_STABLE,
-    AXI_ERRM_ARQOS_STABLE,
-    AXI_ERRM_ARREGION_STABLE,
-    AXI_ERRM_ARVALID_STABLE,
-    AXI_RECS_ARREADY_MAX_WAIT,
-    AXI_ERRS_RDATA_NUM,
-    AXI_ERRS_RID,
-    AXI_ERRS_RRESP_EXOKAY,
-    AXI_ERRS_RVALID_RESET,
-    AXI_ERRS_RDATA_STABLE,
-    AXI_ERRS_RID_STABLE,
-    AXI_ERRS_RLAST_STABLE,
-    AXI_ERRS_RRESP_STABLE,
-    AXI_ERRS_RVALID_STABLE,
-    AXI_RECM_RREADY_MAX_WAIT,
-    AXI_ERRM_EXCL_ALIGN,
-    AXI_ERRM_EXCL_LEN,
-    AXI_RECM_EXCL_MATCH,
-    AXI_ERRM_EXCL_MAX,
-    AXI_RECM_EXCL_PAIR,
-    AXI_ERRM_AWUSER_STABLE,
-    AXI_ERRM_WUSER_STABLE,
-    AXI_ERRS_BUSER_STABLE,
-    AXI_ERRM_ARUSER_STABLE,
-    AXI_ERRS_RUSER_STABLE,
-    AXI_AUXM_RCAM_OVERFLOW,
-    AXI_AUXM_RCAM_UNDERFLOW,
-    AXI_AUXM_WCAM_OVERFLOW,
-    AXI_AUXM_WCAM_UNDERFLOW,
-    AXI_AUXM_EXCL_OVERFLOW,
-    AXI4LITE_ERRS_BRESP_EXOKAY,
-    AXI4LITE_ERRS_RRESP_EXOKAY,
-    AXI4LITE_AUXM_DATA_WIDTH,
-    XILINX_AW_SUPPORTS_NARROW_BURST,
-    XILINX_AR_SUPPORTS_NARROW_BURST,
-    XILINX_AW_SUPPORTS_NARROW_CACHE,
-    XILINX_AR_SUPPORTS_NARROW_CACHE,
-    XILINX_AW_MAX_BURST,
-    XILINX_AR_MAX_BURST,
-    XILINX_AWVALID_RESET,
-    XILINX_WVALID_RESET,
-    XILINX_BVALID_RESET,
-    XILINX_ARVALID_RESET,
-    XILINX_RVALID_RESET,
-    RECS_CONTINUOUS_RTRANSFERS_MAX_WAIT,
-    RECM_CONTINUOUS_WTRANSFERS_MAX_WAIT,
-    RECM_WLAST_TO_AWVALID_MAX_WAIT,
-    RECS_WRITE_TO_BVALID_MAX_WAIT
-  };
-public:
-  static bool isValidAXICheckerCodes(unsigned int aOverallStatus, unsigned int aSnapshot[xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM], unsigned int aCumulative[xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM]) {
+namespace xdp {
+  static
+  bool
+  isValidAXICheckerCodes(unsigned int aOverallStatus,
+                         unsigned int aSnapshot[DebugIPRegisters::LAPC::STATUS_REG_NUM],
+                         unsigned int aCumulative[DebugIPRegisters::LAPC::STATUS_REG_NUM])
+  {
     //Validate the codes read from the device.
     //overallstatus could be 0 or 1
     if (aOverallStatus > 1) return false;
@@ -150,7 +54,11 @@ public:
     }
     return true;
   }
-  static std::string decodeAXICheckerCodes(unsigned int aWord[4]) {
+
+  static
+  std::string
+  decodeAXICheckerCodes(unsigned int aWord[4])
+  {
   static const char* AXICheckerStrings [101] = {
     "AXI_ERRM_AWADDR_BOUNDARY",
     "AXI_ERRM_AWADDR_WRAP_ALIGN",
@@ -371,7 +279,7 @@ public:
     }
     return s;
   }
-};
+} // end namespace xdp
 
 class xclStreamingAXICheckerCodes
 {
@@ -398,11 +306,9 @@ class xclStreamingAXICheckerCodes
 					      unsigned int current_pc,
 					      unsigned int snapshot_pc) 
   {
-    if (pc_asserted) 
-    {
+    if (pc_asserted) {
       // The snapshot PC register should only be one of the valid error codes
-      switch ((StreamingAXICheckerCodes)(snapshot_pc))
-      {
+      switch ((StreamingAXICheckerCodes)(snapshot_pc)) {
       case AXI4STREAM_ERRM_TVALID_RESET:
       case AXI4STREAM_ERRM_TID_STABLE:
       case AXI4STREAM_ERRM_TDEST_STABLE:
@@ -426,8 +332,7 @@ class xclStreamingAXICheckerCodes
 
       return true ;
     }
-    else
-    {
+    else {
       // If pc_asserted is false, then there should be nothing on
       //  the other registers.
       return (current_pc == 0 && snapshot_pc == 0) ;
@@ -466,10 +371,8 @@ class xclStreamingAXICheckerCodes
     std::string s = "" ;
     unsigned int w = aWord;
     unsigned int i = 0 ;
-    while (w)
-    {
-      if (w & (unsigned int)(0x1))
-      {
+    while (w) {
+      if (w & (unsigned int)(0x1)) {
 	s.append(StreamingAXICheckerStrings[i]);
 	s.append(":");
 	s.append(StreamingAXICheckerExplanations[i]);

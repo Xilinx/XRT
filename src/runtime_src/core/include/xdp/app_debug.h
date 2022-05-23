@@ -24,83 +24,6 @@
 namespace xdp {
   namespace DebugIPRegisters {
 
-    // Offsets of the debug registers inside the AXI Interface Monitor
-    namespace AIM {
-      constexpr int NUM_COUNTERS           = 13;
-      constexpr int NUM_COUNTERS_DISPLAYED = 9;
-
-      namespace DisplayIndex {
-        constexpr int WRITE_BYTES        = 0;
-        constexpr int WRITE_TRANX        = 1;
-        constexpr int READ_BYTES         = 2;
-        constexpr int READ_TRANX         = 3;
-        constexpr int OUTSTANDING_COUNT  = 4;
-        constexpr int WRITE_LAST_ADDRESS = 5;
-        constexpr int WRITE_LAST_DATA    = 6;
-        constexpr int READ_LAST_ADDRESS  = 7;
-        constexpr int READ_LAST_DATA     = 8;
-      } // end namespace DisplayIndex
-
-      namespace IoctlIndex {
-        constexpr int WRITE_BYTES        = 0;
-        constexpr int WRITE_TRANX        = 1;
-        constexpr int WRITE_LATENCY      = 2;
-        constexpr int WRITE_BUSY_CYCLES  = 3;
-        constexpr int READ_BYTES         = 4;
-        constexpr int READ_TRANX         = 5;
-        constexpr int READ_LATENCY       = 6;
-        constexpr int READ_BUSY_CYCLES   = 7;
-        constexpr int OUTSTANDING_COUNT  = 8;
-        constexpr int WRITE_LAST_ADDRESS = 9;
-        constexpr int WRITE_LAST_DATA    = 10;
-        constexpr int READ_LAST_ADDRESS  = 11;
-        constexpr int READ_LAST_DATA     = 12;
-      } // end namespace IoctlIndex
-    } // end namespace AIM
-
-    // Offsets of the debug registers inside the Accelerator Monitor
-    namespace AM {
-      constexpr int NUM_COUNTERS           = 10;
-      constexpr int NUM_COUNTERS_DISPLAYED = 8;
-
-      namespace DisplayIndex {
-        constexpr int EXECUTION_COUNT      = 0;
-        constexpr int EXECUTION_CYCLES     = 1;
-        constexpr int STALL_INT            = 2;
-        constexpr int STALL_STR            = 3;
-        constexpr int STALL_EXT            = 4;
-        constexpr int MIN_EXECUTION_CYCLES = 5;
-        constexpr int MAX_EXECUTION_CYCLES = 6;
-        constexpr int TOTAL_CU_START       = 7;
-      } // end namespace Index
-
-      namespace IoctlIndex {
-        constexpr int EXECUTION_COUNT      = 0;
-        constexpr int START_COUNT          = 1;
-        constexpr int EXECUTION_CYCLES     = 2;
-        constexpr int STALL_INT            = 3;
-        constexpr int STALL_STR            = 4;
-        constexpr int STALL_EXT            = 5;
-        constexpr int BUSY_CYCLES          = 6;
-        constexpr int MAX_PARALLEL_ITR     = 7;
-        constexpr int MAX_EXECUTION_CYCLES = 8;
-        constexpr int MIN_EXECUTION_CYCLES = 9;
-      } // end namespace IoctlIndex
-    } // end namespace AM
-
-    namespace ASM {
-      constexpr int NUM_COUNTERS = 5;
-
-      // For ASMs, the display index and Ioctl index are the same
-      namespace Index {
-        constexpr int NUM_TRANX     = 0;
-        constexpr int DATA_BYTES    = 1;
-        constexpr int BUSY_CYCLES   = 2;
-        constexpr int STALL_CYCLES  = 3;
-        constexpr int STARVE_CYCLES = 4;
-      } // end namespace Index
-    } // end namespace ASM
-
     namespace LAPC {
       constexpr int NUM_COUNTERS = 31;
       constexpr int NUM_STATUS = 9;
@@ -145,7 +68,7 @@ enum xclDebugReadType {
   XCL_DEBUG_READ_TYPE_ASM  = 3,
   XCL_DEBUG_READ_TYPE_AM   = 4,
   XCL_DEBUG_READ_TYPE_SPC  = 5,
-  XCL_DEBUG_READ_TYPE_ADD  = 6
+  XCL_DEBUG_READ_TYPE_ADD  = 6  // Deadlock detector
 };
 
 /* Debug counter results */
@@ -203,10 +126,10 @@ XCL_CHECKER_STREAM = 1
 
 /* Debug checker results */
 typedef struct {
-  unsigned int   OverallStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS];
-  unsigned int   CumulativeStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS][xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM];
-  unsigned int   SnapshotStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS][xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM];
-  unsigned int   NumSlots;
+  unsigned int OverallStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS];
+  unsigned int CumulativeStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS][xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM];
+  unsigned int SnapshotStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS][xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM];
+  unsigned int NumSlots;
   char DevUserName[256];
 } xclDebugCheckersResults;
 

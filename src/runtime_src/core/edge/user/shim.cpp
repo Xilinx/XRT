@@ -20,6 +20,9 @@
 
 #include "core/include/shim_int.h"
 #include "core/include/xcl_perfmon_parameters.h"
+#include "core/include/xdp/aim.h"
+#include "core/include/xdp/am.h"
+#include "core/include/xdp/asm.h"
 #include "core/include/xrt/xrt_uuid.h"
 
 #include "core/edge/common/aie_parser.h"
@@ -1285,28 +1288,28 @@ xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
 {
   size_t size = 0;
 
-  uint64_t spm_offsets[] = {
-    XAIM_SAMPLE_WRITE_BYTES_OFFSET,
-    XAIM_SAMPLE_WRITE_TRANX_OFFSET,
-    XAIM_SAMPLE_READ_BYTES_OFFSET,
-    XAIM_SAMPLE_READ_TRANX_OFFSET,
-    XAIM_SAMPLE_OUTSTANDING_COUNTS_OFFSET,
-    XAIM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET,
-    XAIM_SAMPLE_LAST_WRITE_DATA_OFFSET,
-    XAIM_SAMPLE_LAST_READ_ADDRESS_OFFSET,
-    XAIM_SAMPLE_LAST_READ_DATA_OFFSET
+  uint64_t aim_offsets[] = {
+    xdp::IP::AIM::AXI_LITE::WRITE_BYTES,
+    xdp::IP::AIM::AXI_LITE::WRITE_TRANX,
+    xdp::IP::AIM::AXI_LITE::READ_BYTES,
+    xdp::IP::AIM::AXI_LITE::READ_TRANX,
+    xdp::IP::AIM::AXI_LITE::OUTSTANDING_COUNTS,
+    xdp::IP::AIM::AXI_LITE::LAST_WRITE_ADDRESS,
+    xdp::IP::AIM::AXI_LITE::LAST_WRITE_DATA,
+    xdp::IP::AIM::AXI_LITE::LAST_READ_ADDRESS,
+    xdp::IP::AIM::AXI_LITE::LAST_READ_DATA
   };
 
-  uint64_t spm_upper_offsets[] = {
-    XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
-    XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
-    XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET,
-    XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET,
-    XAIM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET,
-    XAIM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET,
-    XAIM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET,
-    XAIM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET,
-    XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET
+  uint64_t aim_upper_offsets[] = {
+    xdp::IP::AIM::AXI_LITE::WRITE_BYTES_UPPER,
+    xdp::IP::AIM::AXI_LITE::WRITE_TRANX_UPPER,
+    xdp::IP::AIM::AXI_LITE::READ_BYTES_UPPER,
+    xdp::IP::AIM::AXI_LITE::READ_TRANX_UPPER,
+    xdp::IP::AIM::AXI_LITE::OUTSTANDING_COUNTS_UPPER,
+    xdp::IP::AIM::AXI_LITE::LAST_WRITE_ADDRESS_UPPER,
+    xdp::IP::AIM::AXI_LITE::LAST_WRITE_DATA_UPPER,
+    xdp::IP::AIM::AXI_LITE::LAST_READ_ADDRESS_UPPER,
+    xdp::IP::AIM::AXI_LITE::LAST_READ_DATA_UPPER
   };
 
   // Read all metric counters
@@ -1314,7 +1317,7 @@ xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
   uint8_t mPerfmonProperties[xdp::MAX_NUM_AIMS] = {} ;
   uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, mPerfmonProperties, nullptr, nullptr, xdp::MAX_NUM_AIMS);
 
-  uint32_t temp[xdp::DebugIPRegisters::AIM::NUM_COUNTERS];
+  uint32_t temp[xdp::IP::AIM::NUM_COUNTERS_XBUTIL];
 
   aCounterResults->NumSlots = numSlots;
   snprintf(aCounterResults->DevUserName, 256, "%s", " ");
@@ -1322,14 +1325,14 @@ xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
     uint32_t sampleInterval;
     // Read sample interval register to latch the sampled metric counters
     size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                    baseAddress[s] + XAIM_SAMPLE_OFFSET,
+                    baseAddress[s] + xdp::IP::AIM::AXI_LITE::SAMPLE,
                     &sampleInterval, 4);
 
     // If applicable, read the upper 32-bits of the 64-bit debug counters
     if (mPerfmonProperties[s] & XAIM_64BIT_PROPERTY_MASK) {
-      for (int c = 0; c < xdp::DebugIPRegisters::AIM::NUM_COUNTERS; ++c) {
+      for (int c = 0; c < xdp::IP::AIM::NUM_COUNTERS_XBUTIL; ++c) {
         xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                baseAddress[s] + spm_upper_offsets[c],
+                baseAddress[s] + aim_upper_offsets[c],
                 &temp[c], 4) ;
       }
       aCounterResults->WriteBytes[s]    = ((uint64_t)(temp[0])) << 32 ;
@@ -1343,8 +1346,8 @@ xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
       aCounterResults->LastReadData[s]  = ((uint64_t)(temp[8])) << 32 ;
     }
 
-    for (int c=0; c < xdp::DebugIPRegisters::AIM::NUM_COUNTERS; c++)
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+spm_offsets[c], &temp[c], 4);
+    for (int c=0; c < xdp::IP::AIM::NUM_COUNTERS_XBUTIL; c++)
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+aim_offsets[c], &temp[c], 4);
 
     aCounterResults->WriteBytes[s]    |= temp[0];
     aCounterResults->WriteTranx[s]    |= temp[1];
@@ -1371,26 +1374,26 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
     is not supported
   */
 
-  uint64_t sam_offsets[] = {
-    XAM_ACCEL_EXECUTION_COUNT_OFFSET,
-    XAM_ACCEL_EXECUTION_CYCLES_OFFSET,
-    XAM_ACCEL_STALL_INT_OFFSET,
-    XAM_ACCEL_STALL_STR_OFFSET,
-    XAM_ACCEL_STALL_EXT_OFFSET,
-    XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET,
-    XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET,
-    XAM_ACCEL_TOTAL_CU_START_OFFSET
+  uint64_t am_offsets[] = {
+    xdp::IP::AM::AXI_LITE::EXECUTION_COUNT,
+    xdp::IP::AM::AXI_LITE::EXECUTION_CYCLES,
+    xdp::IP::AM::AXI_LITE::STALL_INT,
+    xdp::IP::AM::AXI_LITE::STALL_STR,
+    xdp::IP::AM::AXI_LITE::STALL_EXT,
+    xdp::IP::AM::AXI_LITE::MIN_EXECUTION_CYCLES,
+    xdp::IP::AM::AXI_LITE::MAX_EXECUTION_CYCLES,
+    xdp::IP::AM::AXI_LITE::TOTAL_CU_START
   };
 
-  uint64_t sam_upper_offsets[] = {
-    XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
-    XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
-    XAM_ACCEL_STALL_INT_UPPER_OFFSET,
-    XAM_ACCEL_STALL_STR_UPPER_OFFSET,
-    XAM_ACCEL_STALL_EXT_UPPER_OFFSET,
-    XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
-    XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
-    XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET
+  uint64_t am_upper_offsets[] = {
+    xdp::IP::AM::AXI_LITE::EXECUTION_COUNT_UPPER,
+    xdp::IP::AM::AXI_LITE::EXECUTION_CYCLES_UPPER,
+    xdp::IP::AM::AXI_LITE::STALL_INT_UPPER,
+    xdp::IP::AM::AXI_LITE::STALL_STR_UPPER,
+    xdp::IP::AM::AXI_LITE::STALL_EXT_UPPER,
+    xdp::IP::AM::AXI_LITE::MIN_EXECUTION_CYCLES_UPPER,
+    xdp::IP::AM::AXI_LITE::MAX_EXECUTION_CYCLES_UPPER,
+    xdp::IP::AM::AXI_LITE::TOTAL_CU_START_UPPER
   };
 
   // Read all metric counters
@@ -1402,7 +1405,7 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
   uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, accelmonProperties,
                                           accelmonMajorVersions, accelmonMinorVersions, xdp::MAX_NUM_AMS);
 
-  uint32_t temp[xdp::DebugIPRegisters::AM::NUM_COUNTERS_DISPLAYED] = {0};
+  uint32_t temp[xdp::IP::AM::NUM_COUNTERS_XBUTIL] = {0};
 
   samResult->NumSlots = numSlots;
   snprintf(samResult->DevUserName, 256, "%s", " ");
@@ -1410,16 +1413,16 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
     uint32_t sampleInterval;
     // Read sample interval register to latch the sampled metric counters
     size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                    baseAddress[s] + XAM_SAMPLE_OFFSET,
+                    baseAddress[s] + xdp::IP::AM::AXI_LITE::SAMPLE,
                     &sampleInterval, 4);
 
     bool hasDataflow = (cmpMonVersions(accelmonMajorVersions[s],accelmonMinorVersions[s],1,1) < 0) ? true : false;
 
     // If applicable, read the upper 32-bits of the 64-bit debug counters
     if (accelmonProperties[s] & XAM_64BIT_PROPERTY_MASK) {
-      for (int c = 0; c < xdp::DebugIPRegisters::AM::NUM_COUNTERS_DISPLAYED; ++c) {
+      for (int c = 0; c < xdp::IP::AM::NUM_COUNTERS_XBUTIL; ++c) {
         xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                baseAddress[s] + sam_upper_offsets[c],
+                baseAddress[s] + am_upper_offsets[c],
                 &temp[c], 4) ;
       }
       samResult->CuExecCount[s]      = ((uint64_t)(temp[0])) << 32;
@@ -1433,16 +1436,16 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
 
       if(hasDataflow) {
         uint64_t dfTmp[2] = {0};
-        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], 4);
-        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], 4);
+        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + xdp::IP::AM::AXI_LITE::BUSY_CYCLES_UPPER, &dfTmp[0], 4);
+        xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + xdp::IP::AM::AXI_LITE::MAX_PARALLEL_ITER_UPPER, &dfTmp[1], 4);
 
         samResult->CuBusyCycles[s]      = dfTmp[0] << 32;
         samResult->CuMaxParallelIter[s] = dfTmp[1] << 32;
       }
     }
 
-    for (int c=0; c < xdp::DebugIPRegisters::AM::NUM_COUNTERS_DISPLAYED; c++)
-      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+sam_offsets[c], &temp[c], 4);
+    for (int c=0; c < xdp::IP::AM::NUM_COUNTERS_XBUTIL; c++)
+      size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+am_offsets[c], &temp[c], 4);
 
     samResult->CuExecCount[s]      |= temp[0];
     samResult->CuExecCycles[s]     |= temp[1];
@@ -1455,8 +1458,8 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
 
     if(hasDataflow) {
       uint64_t dfTmp[2] = {0};
-      xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_BUSY_CYCLES_OFFSET, &dfTmp[0], 4);
-      xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + XAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], 4);
+      xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + xdp::IP::AM::AXI_LITE::BUSY_CYCLES, &dfTmp[0], 4);
+      xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s] + xdp::IP::AM::AXI_LITE::MAX_PARALLEL_ITER, &dfTmp[1], 4);
 
       samResult->CuBusyCycles[s]      |= dfTmp[0] << 32;
       samResult->CuMaxParallelIter[s] |= dfTmp[1] << 32;
@@ -1475,7 +1478,7 @@ xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults)
 {
   size_t size = 0; // The amount of data read from the hardware
 
-  // Get the base addresses of all the SSPM IPs in the debug IP layout
+  // Get the base addresses of all the ASM IPs in the debug IP layout
   uint64_t baseAddress[xdp::MAX_NUM_ASMS];
   uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_MONITOR,
                                           baseAddress,
@@ -1487,12 +1490,12 @@ xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults)
   snprintf(aCounterResults->DevUserName, 256, "%s", " ");
 
   // Fill up the return structure with the values read from the hardware
-  uint64_t sspm_offsets[] = {
-    XASM_NUM_TRANX_OFFSET,
-    XASM_DATA_BYTES_OFFSET,
-    XASM_BUSY_CYCLES_OFFSET,
-    XASM_STALL_CYCLES_OFFSET,
-    XASM_STARVE_CYCLES_OFFSET
+  uint64_t asm_offsets[] = {
+    xdp::IP::ASM::AXI_LITE::NUM_TRANX,
+    xdp::IP::ASM::AXI_LITE::DATA_BYTES,
+    xdp::IP::ASM::AXI_LITE::BUSY_CYCLES,
+    xdp::IP::ASM::AXI_LITE::STALL_CYCLES,
+    xdp::IP::ASM::AXI_LITE::STARVE_CYCLES
   };
 
   for (unsigned int i = 0 ; i < numSlots ; ++i)
@@ -1500,16 +1503,16 @@ xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults)
       uint32_t sampleInterval ;
       // Read sample interval register to latch the sampled metric counters
       size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                      baseAddress[i] + XASM_SAMPLE_OFFSET,
+                      baseAddress[i] + xdp::IP::ASM::AXI_LITE::SAMPLE,
                       &sampleInterval, sizeof(uint32_t));
 
       // Then read all the individual 64-bit counters
-      unsigned long long int tmp[xdp::DebugIPRegisters::ASM::NUM_COUNTERS] ;
+      unsigned long long int tmp[xdp::IP::ASM::NUM_COUNTERS] ;
 
-      for (unsigned int j = 0 ; j < xdp::DebugIPRegisters::ASM::NUM_COUNTERS; ++j)
+      for (unsigned int j = 0 ; j < xdp::IP::ASM::NUM_COUNTERS; ++j)
         {
           size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                          baseAddress[i] + sspm_offsets[j],
+                          baseAddress[i] + asm_offsets[j],
                           &tmp[j], sizeof(unsigned long long int));
         }
       aCounterResults->StrNumTranx[i] = tmp[0] ;

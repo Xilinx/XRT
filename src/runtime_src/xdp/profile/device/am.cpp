@@ -17,6 +17,7 @@
 
 /************************ Accelerator Monitor (AM, earlier SAM) ************************/
 
+/*
 #define XAM_CONTROL_OFFSET                          0x08
 #define XAM_TRACE_CTRL_OFFSET                       0x10
 #define XAM_SAMPLE_OFFSET                           0x20
@@ -40,7 +41,7 @@
 #define XAM_BUSY_CYCLES_UPPER_OFFSET                0xC4
 #define XAM_MAX_PARALLEL_ITER_OFFSET                0xC8
 #define XAM_MAX_PARALLEL_ITER_UPPER_OFFSET          0xCC
-
+*/
 /* SAM Trace Control Masks */
 #define XAM_TRACE_STALL_SELECT_MASK    0x0000001c
 #define XAM_COUNTER_RESET_MASK         0x00000002
@@ -52,6 +53,7 @@
 
 #define XDP_SOURCE
 #include "am.h"
+#include "core/include/xdp/am.h"
 #include "xdp/profile/device/utility.h"
 #include <bitset>
 
@@ -80,14 +82,14 @@ size_t AM::startCounter()
     uint32_t regValue = 0;
     uint32_t origRegValue = 0;
 
-    size += read(XAM_CONTROL_OFFSET, 4, &origRegValue);
+    size += read(IP::AM::AXI_LITE::CONTROL, 4, &origRegValue);
 
     // Reset
     regValue = origRegValue | XAM_COUNTER_RESET_MASK;
-    size += write(XAM_CONTROL_OFFSET, 4, &regValue);
+    size += write(IP::AM::AXI_LITE::CONTROL, 4, &regValue);
 
     // Write original value after reset
-    size += write(XAM_CONTROL_OFFSET, 4, &origRegValue);
+    size += write(IP::AM::AXI_LITE::CONTROL, 4, &origRegValue);
 
     return size;
 }
@@ -132,24 +134,24 @@ size_t AM::readCounter(xclCounterResults& counterResults)
 
     // Read sample interval register
     // NOTE: this also latches the sampled metric counters
-    size += read(XAM_SAMPLE_OFFSET, 4, &sampleInterval);
+    size += read(IP::AM::AXI_LITE::SAMPLE, 4, &sampleInterval);
 
     if(out_stream) {
         (*out_stream) << "Accelerator Monitor Sample Interval : " << sampleInterval << std::endl;
     }
 
-    size += read(XAM_ACCEL_EXECUTION_COUNT_OFFSET, 4, &counterResults.CuExecCount[s]);
-    size += read(XAM_ACCEL_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuExecCycles[s]);
-    size += read(XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuMinExecCycles[s]);
-    size += read(XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET, 4, &counterResults.CuMaxExecCycles[s]);
+    size += read(IP::AM::AXI_LITE::EXECUTION_COUNT, 4, &counterResults.CuExecCount[s]);
+    size += read(IP::AM::AXI_LITE::EXECUTION_CYCLES, 4, &counterResults.CuExecCycles[s]);
+    size += read(IP::AM::AXI_LITE::MIN_EXECUTION_CYCLES, 4, &counterResults.CuMinExecCycles[s]);
+    size += read(IP::AM::AXI_LITE::MAX_EXECUTION_CYCLES, 4, &counterResults.CuMaxExecCycles[s]);
 
     // Read upper 32 bits (if available)
     if(has64bit()) {
         uint64_t upper[4] = {};
-        size += read(XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET, 4, &upper[0]);
-        size += read(XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[1]);
-        size += read(XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[2]);
-        size += read(XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET, 4, &upper[3]);
+        size += read(IP::AM::AXI_LITE::EXECUTION_COUNT_UPPER, 4, &upper[0]);
+        size += read(IP::AM::AXI_LITE::EXECUTION_CYCLES_UPPER, 4, &upper[1]);
+        size += read(IP::AM::AXI_LITE::MIN_EXECUTION_CYCLES_UPPER, 4, &upper[2]);
+        size += read(IP::AM::AXI_LITE::MAX_EXECUTION_CYCLES_UPPER, 4, &upper[3]);
 
         counterResults.CuExecCount[s]     += (upper[0] << 32);
         counterResults.CuExecCycles[s]    += (upper[1] << 32);
@@ -167,13 +169,13 @@ size_t AM::readCounter(xclCounterResults& counterResults)
     }
 
     if(hasDataflow()) {
-        size += read(XAM_BUSY_CYCLES_OFFSET, 4, &counterResults.CuBusyCycles[s]);
-        size += read(XAM_MAX_PARALLEL_ITER_OFFSET, 4, &counterResults.CuMaxParallelIter[s]);
+      size += read(IP::AM::AXI_LITE::BUSY_CYCLES, 4, &counterResults.CuBusyCycles[s]);
+      size += read(IP::AM::AXI_LITE::MAX_PARALLEL_ITER, 4, &counterResults.CuMaxParallelIter[s]);
 
         if(has64bit()) {
             uint64_t upper[2] = {};
-            size += read(XAM_BUSY_CYCLES_UPPER_OFFSET, 4, &upper[0]);
-            size += read(XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, 4, &upper[1]);
+            size += read(IP::AM::AXI_LITE::BUSY_CYCLES_UPPER, 4, &upper[0]);
+            size += read(IP::AM::AXI_LITE::MAX_PARALLEL_ITER_UPPER, 4, &upper[1]);
             counterResults.CuBusyCycles[s]  += (upper[0] << 32);
             counterResults.CuMaxParallelIter[s]  += (upper[1] << 32);
         }
@@ -193,9 +195,9 @@ size_t AM::readCounter(xclCounterResults& counterResults)
     }
 
     if(hasStall()) {
-        size += read(XAM_ACCEL_STALL_INT_OFFSET, 4, &counterResults.CuStallIntCycles[s]);
-        size += read(XAM_ACCEL_STALL_STR_OFFSET, 4, &counterResults.CuStallStrCycles[s]);
-        size += read(XAM_ACCEL_STALL_EXT_OFFSET, 4, &counterResults.CuStallExtCycles[s]);
+      size += read(IP::AM::AXI_LITE::STALL_INT, 4, &counterResults.CuStallIntCycles[s]);
+      size += read(IP::AM::AXI_LITE::STALL_STR, 4, &counterResults.CuStallStrCycles[s]);
+      size += read(IP::AM::AXI_LITE::STALL_EXT, 4, &counterResults.CuStallExtCycles[s]);
     }
 
 
@@ -233,7 +235,7 @@ size_t AM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     // Set Stall trace control register bits
     // Bit 1 : CU (Always ON)  Bit 2 : INT  Bit 3 : STR  Bit 4 : Ext
     regValue = ((traceOption & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1 ;
-    size += write(XAM_TRACE_CTRL_OFFSET, 4, &regValue);
+    size += write(IP::AM::AXI_LITE::TRACE_CTRL, 4, &regValue);
 
     return size;
 }
@@ -243,7 +245,7 @@ void AM::disable()
     m_enabled = false;
     // Disable all trace
     uint32_t regValue = 0;
-    write(XAM_TRACE_CTRL_OFFSET, 4, &regValue);
+    write(IP::AM::AXI_LITE::TRACE_CTRL, 4, &regValue);
 }
 
 void AM::configureDataflow(bool cuHasApCtrlChain)
@@ -254,9 +256,9 @@ void AM::configureDataflow(bool cuHasApCtrlChain)
         return;
 
     uint32_t regValue = 0;
-    read(XAM_CONTROL_OFFSET, 4, &regValue);
+    read(IP::AM::AXI_LITE::CONTROL, 4, &regValue);
     regValue = regValue | XAM_DATAFLOW_EN_MASK;
-    write(XAM_CONTROL_OFFSET, 4, &regValue);
+    write(IP::AM::AXI_LITE::CONTROL, 4, &regValue);
 
     if(out_stream) {
       (*out_stream) << "Dataflow enabled on slot : " << getName() << std::endl;

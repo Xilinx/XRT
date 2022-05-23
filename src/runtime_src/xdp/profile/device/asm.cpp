@@ -27,7 +27,7 @@
 #define AXI_FIFO_RESET_VALUE            0xA5
 
 /************************** AXI Stream Monitor (ASM, earlier SSPM) *********************/
-
+/*
 #define XASM_CONTROL_OFFSET           0x0
 #define XASM_SAMPLE_OFFSET            0x20
 #define XASM_NUM_TRANX_OFFSET         0x80
@@ -35,6 +35,7 @@
 #define XASM_BUSY_CYCLES_OFFSET       0x90
 #define XASM_STALL_CYCLES_OFFSET      0x98
 #define XASM_STARVE_CYCLES_OFFSET     0xA0
+*/
 
 /* SSPM Control Mask */
 #define XASM_COUNTER_RESET_MASK       0x00000001
@@ -49,6 +50,7 @@
 
 #define XDP_SOURCE
 #include "asm.h"
+#include "core/include/xdp/asm.h"
 #include "xdp/profile/device/utility.h"
 
 namespace xdp {
@@ -76,14 +78,14 @@ size_t ASM::startCounter()
     uint32_t regValue = 0;
     uint32_t origRegValue = 0;
 
-    size += read(XASM_CONTROL_OFFSET, 4, &origRegValue);
+    size += read(xdp::IP::ASM::AXI_LITE::CONTROL, 4, &origRegValue);
 
     // Reset
     regValue = origRegValue | XASM_COUNTER_RESET_MASK;
-    size += write(XASM_CONTROL_OFFSET, 4, &regValue);
+    size += write(xdp::IP::ASM::AXI_LITE::CONTROL, 4, &regValue);
 
     // Write original value after reset
-    size += write(XASM_CONTROL_OFFSET, 4, &origRegValue);
+    size += write(xdp::IP::ASM::AXI_LITE::CONTROL, 4, &origRegValue);
 
     return size;
 }
@@ -109,13 +111,13 @@ size_t ASM::readCounter(xclCounterResults& counterResults)
         (*out_stream) << "Reading AXI Stream Monitors.." << std::endl;
     }
 
-    size += read(XASM_SAMPLE_OFFSET, 4, &sampleInterval);
+    size += read(xdp::IP::ASM::AXI_LITE::SAMPLE, 4, &sampleInterval);
 
-    size += read(XASM_NUM_TRANX_OFFSET, 8, &counterResults.StrNumTranx[s]);
-    size += read(XASM_DATA_BYTES_OFFSET, 8, &counterResults.StrDataBytes[s]);
-    size += read(XASM_BUSY_CYCLES_OFFSET, 8, &counterResults.StrBusyCycles[s]);
-    size += read(XASM_STALL_CYCLES_OFFSET, 8, &counterResults.StrStallCycles[s]);
-    size += read(XASM_STARVE_CYCLES_OFFSET, 8, &counterResults.StrStarveCycles[s]);
+    size += read(xdp::IP::ASM::AXI_LITE::NUM_TRANX, 8, &counterResults.StrNumTranx[s]);
+    size += read(xdp::IP::ASM::AXI_LITE::DATA_BYTES, 8, &counterResults.StrDataBytes[s]);
+    size += read(xdp::IP::ASM::AXI_LITE::BUSY_CYCLES, 8, &counterResults.StrBusyCycles[s]);
+    size += read(xdp::IP::ASM::AXI_LITE::STALL_CYCLES, 8, &counterResults.StrStallCycles[s]);
+    size += read(xdp::IP::ASM::AXI_LITE::STARVE_CYCLES, 8, &counterResults.StrStarveCycles[s]);
 
     // AXIS without TLAST is assumed to be one long transfer
     if (counterResults.StrNumTranx[s] == 0 && counterResults.StrDataBytes[s] > 0) {
@@ -137,12 +139,12 @@ size_t ASM::triggerTrace(uint32_t traceOption /* starttrigger*/)
 {
     // Tun on/off trace as requested
     uint32_t regValue = 0;
-    read(XASM_CONTROL_OFFSET, 4, &regValue);
+    read(xdp::IP::ASM::AXI_LITE::CONTROL, 4, &regValue);
     if (traceOption & XASM_TRACE_CTRL_MASK)
         regValue |= XASM_TRACE_ENABLE_MASK;
     else
         regValue &= (~XASM_TRACE_ENABLE_MASK);
-    write(XASM_CONTROL_OFFSET, 4, &regValue);
+    write(xdp::IP::ASM::AXI_LITE::CONTROL, 4, &regValue);
     return 0;
 }
 
