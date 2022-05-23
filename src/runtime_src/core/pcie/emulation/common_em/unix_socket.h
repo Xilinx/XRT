@@ -30,11 +30,16 @@
 #include <atomic>
 #include <boost/algorithm/string.hpp>
 #include <iostream>
+#include <thread>
+
 
 class unix_socket {
   private:
     int fd;
     std::string name;
+    std::atomic<bool> simprocess_socket_live;
+    std::atomic<bool> mStopThread;
+    std::thread mcheck_socket_status_thread;
 public:
     std::atomic<bool> server_started;
     void set_name(const std::string &sock_name) { name = sock_name;}
@@ -44,10 +49,16 @@ public:
     {
        server_started = false;
        close(fd);
+       mStopThread = true;
+       if ( mcheck_socket_status_thread.joinable() ){
+          mcheck_socket_status_thread.join();
+       }
     }
     void start_server(double timeout_insec,bool fatal_error);
     ssize_t sk_write(const void *wbuf, size_t count);
     ssize_t sk_read(void *rbuf, size_t count);
+    void monitor_socket_status();
+    void monitor_socket_status_thread();
 };
 
 

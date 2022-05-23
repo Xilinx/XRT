@@ -18,11 +18,19 @@
 #ifndef _WINDOWS
 
 #include "unix_socket.h"
+#include "utility.h"
+
+#include <unistd.h>
+#include <signal.h>
+
+#include <chrono>
 
 unix_socket::unix_socket(const std::string& env, const std::string& sock_id, double timeout_insec, bool fatal_error)
 {
   std::string socket = sock_id;
   server_started.store(false);
+  simprocess_socket_live.store(false);
+  mStopThread.store(false);
   fd = -1;
   char* cUser = getenv("USER");
 
@@ -65,6 +73,7 @@ void unix_socket::start_server(double timeout_insec, bool fatal_error)
     fd = sock;
     std::cout<<"\n server socket name is\t"<<name<<"\n";
     server_started.store(true);
+    simprocess_socket_live.store(true);
     return;
   }
   unlink(server.sun_path);
@@ -101,14 +110,15 @@ void unix_socket::start_server(double timeout_insec, bool fatal_error)
     exit(1);
   } else {
     server_started.store(true);
+    simprocess_socket_live.store(true);
   }
   return;
 }
 
 ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
 {
-  if (not server_started) {
-    std::cout<< "\n unix_socket::sk_write failed, no socket connection established.\n";
+  if (not server_started || (false == simprocess_socket_live) ) {
+    std::cout<< "\n unix_socket::sk_write failed, no socket connection established or failed.\n";
     return -1;
   }
   ssize_t r;
@@ -116,13 +126,14 @@ ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
   auto buf = reinterpret_cast<const unsigned char*>(wbuf);
   do {
     if ((r = write(fd, buf + wlen, count - wlen)) < 0) {
-      if (errno == EINTR || errno == EAGAIN) {
-        continue;
-      }
-      if (EBADF == errno){
+      if (EBADF == errno || (false == simprocess_socket_live)){
         std::cout<< "\n file descriptor pointing to invalid file.\n";
         break;
       }
+      if (errno == EINTR || errno == EAGAIN ) {
+        continue;
+      }
+      
        
       return -1;
     }
@@ -133,8 +144,8 @@ ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
 
 ssize_t unix_socket::sk_read(void *rbuf, size_t count)
 {
-  if (not server_started) {
-    std::cout<< "\n unix_socket::sk_read failed, no socket connection established.\n";
+  if (not server_started || (false == simprocess_socket_live)) {
+    std::cout<< "\n unix_socket::sk_read failed, no socket connection established or failed.\n";
     return -1;
   }
   ssize_t r;
@@ -143,7 +154,7 @@ ssize_t unix_socket::sk_read(void *rbuf, size_t count)
 
   do {
     if ((r = read(fd, buf + rlen, count - rlen)) < 0) {
-      if (errno == EINTR || errno == EAGAIN)
+      if (errno == EINTR || errno == EAGAIN || (false == simprocess_socket_live) )
         continue;
       return -1;
     }
@@ -151,6 +162,44 @@ ssize_t unix_socket::sk_read(void *rbuf, size_t count)
   } while ((rlen < static_cast<unsigned int>(count)) );
 
   return rlen;
+}
+
+void unix_socket::monitor_socket_status() {
+  mcheck_socket_status_thread = std::thread(&unix_socket::monitor_socket_status_thread,this);
+}
+
+void unix_socket::monitor_socket_status_thread() {
+  using namespace std::chrono_literals;
+
+  while( false==mStopThread ) {
+    if ( false == server_started) {
+      std::this_thread::sleep_for(1s);
+      continue;
+    }
+
+  /*  if (std::system("pgrep xsim > /dev/null") != 0){
+      std::cout<<"\n xsim is no longer running so skipping socket calls now! & Exiting the application...\n";
+      simprocess_socket_live.store(false);
+      kill(getpid(),SIGKILL);
+     // assert(simprocess_socket_live == true);
+      //exit(1);
+    }
+    */
+    auto pid_value = cUtility::proc_find("xsim");
+    if (-1 != pid_value){
+      std::cout<<"\n xsim is no longer running so skipping socket calls now! & Exiting the application...\n";
+      simprocess_socket_live.store(false);
+      kill(getpid(),SIGKILL);
+     
+    }
+    else{
+
+      simprocess_socket_live.store(true);
+    }
+      
+
+    std::this_thread::sleep_for(500ms);
+  }
 }
 
 #endif

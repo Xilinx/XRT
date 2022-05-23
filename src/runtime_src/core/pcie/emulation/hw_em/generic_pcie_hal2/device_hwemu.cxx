@@ -71,6 +71,7 @@ initialize_query_table()
   emplace_func0_request<query::m2m, device_query>();
   emplace_func0_request<query::nodma, device_query>();
   emplace_func0_request<query::rom_vbnv, xclemulation::query::device_info>();
+  
 }
 
 struct X { X() { initialize_query_table(); } };

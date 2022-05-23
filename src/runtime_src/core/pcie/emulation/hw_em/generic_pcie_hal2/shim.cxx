@@ -987,6 +987,7 @@ namespace xclhwemhal2 {
     }
 
     sock = std::make_shared<unix_socket>();
+    sock->monitor_socket_status();
     set_simulator_started(true);
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
