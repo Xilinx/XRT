@@ -492,8 +492,8 @@ namespace xdp {
 
     if (!mUseOneDelayCtr) {
       // ceil(x/y) where x and y are  positive integers
-      delayCyclesLow =  static_cast<uint32_t>(1 + ((mDelayCycles - 1) / std::numeric_limits<uint32_t>::max()));
-      delayCyclesHigh = static_cast<uint32_t>(mDelayCycles / delayCyclesLow);
+      delayCyclesHigh = static_cast<uint32_t>(1 + ((mDelayCycles - 1) / std::numeric_limits<uint32_t>::max()));
+      delayCyclesLow =  static_cast<uint32_t>(mDelayCycles / delayCyclesHigh);
     } else {
       delayCyclesLow = static_cast<uint32_t>(mDelayCycles);
     }
@@ -534,10 +534,10 @@ namespace xdp {
     if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
       std::stringstream msg;
       msg << "Configuring delay : "
-      << "mDelay : "<< mDelayCycles << " "
-      << "low : " << delayCyclesLow << " "
-      << "high : " << delayCyclesHigh << " "
-      << std::endl;
+          << "mDelay : "<< mDelayCycles << " "
+          << "low : " << delayCyclesLow << " "
+          << "high : " << delayCyclesHigh << " "
+          << std::endl;
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 
