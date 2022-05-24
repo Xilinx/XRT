@@ -51,6 +51,12 @@ namespace xdp {
         constexpr int STARVE_CYCLES = 4;
       } // end namespace sysfs
 
+      namespace mask {
+        constexpr int COUNTER_RESET = 0x00000001;
+        constexpr int TRACE_ENABLE  = 0x00000002;
+        constexpr int TRACE_CTRL    = 0x2;
+      }
+
     } // end namespace IP
   } // end namespace IP
 } // end namespace xdp
