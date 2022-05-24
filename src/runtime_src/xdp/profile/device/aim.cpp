@@ -14,59 +14,10 @@
  * under the License.
  */
 
-/************************ AXI Interface Monitor (AIM, earlier SPM) ***********************/
-
-/* Address offsets in core */
-/*
-#define XAIM_CONTROL_OFFSET                          0x08
-#define XAIM_TRACE_CTRL_OFFSET                       0x10
-#define XAIM_SAMPLE_OFFSET                           0x20
-#define XAIM_SAMPLE_WRITE_BYTES_OFFSET               0x80
-#define XAIM_SAMPLE_WRITE_TRANX_OFFSET               0x84
-#define XAIM_SAMPLE_WRITE_LATENCY_OFFSET             0x88
-#define XAIM_SAMPLE_READ_BYTES_OFFSET                0x8C
-#define XAIM_SAMPLE_READ_TRANX_OFFSET                0x90
-#define XAIM_SAMPLE_READ_LATENCY_OFFSET              0x94
-// The following two registers are still in the hardware,
-//  but are unused
-//#define XAIM_SAMPLE_MIN_MAX_WRITE_LATENCY_OFFSET   0x98
-//#define XAIM_SAMPLE_MIN_MAX_READ_LATENCY_OFFSET    0x9C
-#define XAIM_SAMPLE_OUTSTANDING_COUNTS_OFFSET        0xA0
-#define XAIM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET        0xA4
-#define XAIM_SAMPLE_LAST_WRITE_DATA_OFFSET           0xA8
-#define XAIM_SAMPLE_LAST_READ_ADDRESS_OFFSET         0xAC
-#define XAIM_SAMPLE_LAST_READ_DATA_OFFSET            0xB0
-#define XAIM_SAMPLE_READ_BUSY_CYCLES_OFFSET          0xB4
-#define XAIM_SAMPLE_WRITE_BUSY_CYCLES_OFFSET         0xB8
-#define XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET         0xC0
-#define XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET         0xC4
-#define XAIM_SAMPLE_WRITE_LATENCY_UPPER_OFFSET       0xC8
-#define XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET          0xCC
-#define XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET          0xD0
-#define XAIM_SAMPLE_READ_LATENCY_UPPER_OFFSET        0xD4
-// Reserved for high 32-bits of MIN_MAX_WRITE_LATENCY - 0xD8
-// Reserved for high 32-bits of MIN_MAX_READ_LATENCY  - 0xDC
-#define XAIM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET  0xE0
-#define XAIM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET  0xE4
-#define XAIM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET     0xE8
-#define XAIM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET   0xEC
-#define XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET      0xF0
-#define XAIM_SAMPLE_READ_BUSY_CYCLES_UPPER_OFFSET    0xF4
-#define XAIM_SAMPLE_WRITE_BUSY_CYCLES_UPPER_OFFSET   0xF8
-*/
-/* SPM Control Register masks */
-#define XAIM_CR_COUNTER_RESET_MASK               0x00000002
-#define XAIM_CR_COUNTER_ENABLE_MASK              0x00000001
-#define XAIM_TRACE_CTRL_MASK                     0x00000003        
-
-/* Debug IP layout properties mask bits */
-#define XAIM_HOST_PROPERTY_MASK                  0x4
-#define XAIM_64BIT_PROPERTY_MASK                 0x8
-
 #define XDP_SOURCE
 
 #include "core/include/xdp/aim.h"
-#include "aim.h"
+#include "xdp/profile/device/aim.h"
 #include "xdp/profile/device/utility.h"
 #include <bitset>
 
@@ -97,14 +48,14 @@ size_t AIM::startCounter()
     // 1. Reset AXI - MM monitor metric counters
     size += read(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
-    regValue = regValue | XAIM_CR_COUNTER_RESET_MASK;
+    regValue = regValue | IP::AIM::mask::CR_COUNTER_RESET;
     size += write(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
-    regValue = regValue & ~(XAIM_CR_COUNTER_RESET_MASK);
+    regValue = regValue & ~(IP::AIM::mask::CR_COUNTER_RESET);
     size += write(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
     // 2. Start AXI-MM monitor metric counters
-    regValue = regValue | XAIM_CR_COUNTER_ENABLE_MASK;
+    regValue = regValue | IP::AIM::mask::CR_COUNTER_ENABLE;
     size += write(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
     // 3. Read from sample register to ensure total time is read again at end
@@ -124,7 +75,7 @@ size_t AIM::stopCounter()
     // 1. Stop AIM metric counters
     size += read(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
-    regValue = regValue & ~(XAIM_CR_COUNTER_ENABLE_MASK);
+    regValue = regValue & ~(IP::AIM::mask::CR_COUNTER_ENABLE);
     size += write(IP::AIM::AXI_LITE::CONTROL, 4, &regValue);
 
     return size;
@@ -213,7 +164,7 @@ size_t AIM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     size_t size = 0;
     uint32_t regValue = 0;
     // Set AIM trace control register bits
-    regValue = traceOption & XAIM_TRACE_CTRL_MASK;
+    regValue = traceOption & IP::AIM::mask::TRACE_CTRL;
     size += write(IP::AIM::AXI_LITE::TRACE_CTRL, 4, &regValue);
 
     return size;
@@ -221,7 +172,7 @@ size_t AIM::triggerTrace(uint32_t traceOption /* starttrigger*/)
 
 bool AIM::isHostMonitor() const
 {
-    return ((properties & XAIM_HOST_PROPERTY_MASK) ? true : false);
+  return ((properties & IP::AIM::mask::PROPERTY_HOST) ? true : false);
 }
 
 bool AIM::isShellMonitor() 
@@ -234,7 +185,7 @@ bool AIM::isShellMonitor()
 
 bool AIM::has64bit() const
 {
-    return ((properties & XAIM_64BIT_PROPERTY_MASK) ? true : false);
+  return ((properties & IP::AIM::mask::PROPERTY_64BIT) ? true : false);
 }
 
 void AIM::showProperties()

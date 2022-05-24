@@ -110,8 +110,11 @@ namespace xdp {
       namespace mask {
         // These are masks on the property of the IP that give information
         // on the specific instance.
-        constexpr int PROPERTY_HOST  = 0x4; // Used in emulation
-        constexpr int PROPERTY_64BIT = 0x8;
+        constexpr int PROPERTY_HOST     = 0x4;
+        constexpr int PROPERTY_64BIT    = 0x8;
+        constexpr int CR_COUNTER_RESET  = 0x00000002;
+        constexpr int CR_COUNTER_ENABLE = 0x00000001;
+        constexpr int TRACE_CTRL        = 0x00000003;
       }
 
     } // end namespace AIM
