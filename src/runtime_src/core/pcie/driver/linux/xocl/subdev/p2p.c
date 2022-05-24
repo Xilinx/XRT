@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -1219,7 +1220,7 @@ static int p2p_adjust_mem_topo(struct platform_device *pdev, void *mem_topo)
 	for (i = 0; i< topo->m_count; ++i) {
 		if (!XOCL_IS_P2P_MEM(topo, i) || !topo->m_mem_data[i].m_used)
 			continue;
-		if (IS_HOST_MEM(topo->m_mem_data[i].m_tag))
+		if (convert_mem_tag(topo->m_mem_data[i].m_tag) == MEM_TAG_HOST)
 			continue;
 
 		sz = roundup((topo->m_mem_data[i].m_size << 10), align);
@@ -1237,7 +1238,7 @@ static int p2p_adjust_mem_topo(struct platform_device *pdev, void *mem_topo)
 	for (i = 0; i< topo->m_count; ++i) {
 		if (!XOCL_IS_P2P_MEM(topo, i) || !topo->m_mem_data[i].m_used)
 			continue;
-		if (IS_HOST_MEM(topo->m_mem_data[i].m_tag))
+		if (convert_mem_tag(topo->m_mem_data[i].m_tag) == MEM_TAG_HOST)
 			continue;
 
 		sz = roundup((topo->m_mem_data[i].m_size << 10), align);

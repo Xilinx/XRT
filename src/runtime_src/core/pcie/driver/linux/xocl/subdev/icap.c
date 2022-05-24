@@ -1,5 +1,6 @@
 /**
  *  Copyright (C) 2017-2022 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2022 Advanced Micro Devices, Inc.
  *  Author: Sonal Santan
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
@@ -48,6 +49,12 @@ static struct key *icap_keys = NULL;
 	xocl_dbg(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
 
 #define	ICAP_PRIVILEGED(icap)	((icap)->icap_regs != NULL)
+
+/*
+ * Only DDR, PLRAM, and HBM memory banks require MIG calibration
+ */
+#define MEM_NEEDS_CALIBRATION(m_tag) \
+	((convert_mem_tag(m_tag) == MEM_TAG_DDR) || (convert_mem_tag(m_tag) == MEM_TAG_PLRAM) || (convert_mem_tag(m_tag) == MEM_TAG_HBM))
 
 /*
  * Block comment for spliting old icap into subdevs (icap, clock, xclbin, etc.)
@@ -649,6 +656,22 @@ static inline bool mig_calibration_done(struct icap *icap)
 static int calibrate_mig(struct icap *icap)
 {
 	int i;
+
+	/* Check for any DDR or PLRAM banks that are in use */
+	bool is_memory_bank_connected = false;
+
+	/* If a DDR or PLRAM bank is found no need to keep searching */
+	for (i = 0; (i < icap->mem_topo->m_count) && (!is_memory_bank_connected); i++) {
+		struct mem_data* mem_bank = &icap->mem_topo->m_mem_data[i];
+		if (MEM_NEEDS_CALIBRATION(mem_bank->m_tag) && (mem_bank->m_used != 0))
+			is_memory_bank_connected = true;
+	}
+
+	// If no DDR or PLRAM banks are in use there is nothing to calibrate
+	if (!is_memory_bank_connected) {
+		ICAP_INFO(icap, "No DDR, HBM, or PLRAM memory used. Skipping MIG Calibration\n");
+		return 0;
+	}
 
 	for (i = 0; i < 20 && !mig_calibration_done(icap); ++i)
 		msleep(500);
@@ -1267,57 +1290,37 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 	icap_clean_axlf_section(icap, PARTITION_METADATA);
 }
 
-static uint32_t convert_mem_type(const char *name)
-{
-	/* Don't trust m_type in xclbin, convert name to m_type instead.
-	 * m_tag[i] = "HBM[0]" -> m_type = MEM_HBM
-	 * m_tag[i] = "DDR[1]" -> m_type = MEM_DRAM
-	 *
-	 * Use MEM_DDR3 as a invalid memory type. */
-	enum MEM_TYPE mem_type = MEM_DDR3;
-
-	if (!strncasecmp(name, "DDR", 3))
-		mem_type = MEM_DRAM;
-	else if (!strncasecmp(name, "HBM", 3))
-		mem_type = MEM_HBM;
-	else if (!strncasecmp(name, "bank", 4))
-		mem_type = MEM_DRAM;
-
-	return mem_type;
-}
-
 static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum IP_TYPE ecc_type,
 	int idx)
 {
 	uint16_t memidx = INVALID_MEM_IDX, mem_idx = 0;
 	uint32_t i;
-	enum MEM_TYPE m_type, target_m_type;
+	enum MEM_TAG m_tag, target_m_tag;
+
+	if (!mem_topo)
+		return INVALID_MEM_IDX;
 
 	/*
 	 * Get global memory index by feeding desired memory type and index
 	 */
 	if (ecc_type == IP_MEM_DDR4)
-		target_m_type = MEM_DRAM;
+		target_m_tag = MEM_TAG_DDR;
 	else if (ecc_type == IP_DDR4_CONTROLLER)
-		target_m_type = MEM_DRAM;
+		target_m_tag = MEM_TAG_DDR;
 	else if (ecc_type == IP_MEM_HBM_ECC)
-		target_m_type = MEM_HBM;
+		target_m_tag = MEM_TAG_HBM;
 	else
-		goto done;
-
-	if (!mem_topo)
-		goto done;
+		return INVALID_MEM_IDX;
 
 	for (i = 0; i < mem_topo->m_count; ++i) {
-		m_type = convert_mem_type(mem_topo->m_mem_data[i].m_tag);
-		if (m_type == target_m_type) {
+		m_tag = convert_mem_tag(mem_topo->m_mem_data[i].m_tag);
+		if (m_tag == target_m_tag) {
 			if (idx == mem_idx)
 				return i;
 			mem_idx++;
 		}
 	}
 
-done:
 	return memidx;
 }
 
@@ -1884,7 +1887,7 @@ static void icap_save_calib(struct icap *icap)
 		return;
 
 	for (; i < mem_topo->m_count; ++i) {
-		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) != MEM_TAG_DDR)
 			continue;
 		else
 			ddr_idx++;
@@ -1913,7 +1916,7 @@ static void icap_calib(struct icap *icap, bool retain)
 	(void) xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
-		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) != MEM_TAG_DDR)
 			continue;
 		else
 			ddr_idx++;
@@ -2268,7 +2271,7 @@ static void icap_cache_max_host_mem_aperture(struct icap *icap)
 	for ( i=0; i< mem_topo->m_count; ++i) {
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
-		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag))
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) == MEM_TAG_HOST)
 			icap->max_host_mem_aperture = mem_topo->m_mem_data[i].m_size << 10;
 	}
 
@@ -2799,7 +2802,7 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 		int i;
 
 		for (i = 0; i< mem_topo->m_count; ++i) {
-			if (!IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag) ||
+			if (!(convert_mem_tag(mem_topo->m_mem_data[i].m_tag) == MEM_TAG_HOST) ||
 			    mem_topo->m_mem_data[i].m_used)
 				continue;
 
@@ -3633,7 +3636,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	memcpy(mem_topo, icap->mem_topo, size);
 	range = xocl_addr_translator_get_range(xdev);
 	for ( i=0; i< mem_topo->m_count; ++i) {
-		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) == MEM_TAG_HOST){
 			/* m_size in KB, convert Byte to KB */
 			mem_topo->m_mem_data[i].m_size = (range>>10);
 		}
@@ -3694,7 +3697,7 @@ static ssize_t icap_read_group_topology(struct file *filp, struct kobject *kobj,
 	memcpy(group_topo, icap->group_topo, size);
 	range = xocl_addr_translator_get_range(xdev);
 	for ( i=0; i< group_topo->m_count; ++i) {
-		if (IS_HOST_MEM(group_topo->m_mem_data[i].m_tag)){
+		if (convert_mem_tag(group_topo->m_mem_data[i].m_tag) == MEM_TAG_HOST){
 			/* m_size in KB, convert Byte to KB */
 			group_topo->m_mem_data[i].m_size = (range>>10);
 		} else
