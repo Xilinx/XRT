@@ -22,14 +22,13 @@ namespace xrt {
 //
 class hw_context_impl
 {
-  using qos_type = uint32_t; // TBD
-
+  using qos_type = xcl_qos_type;
+  using ctx_handle_type = xcl_hwctx_handle;
 
   // Managed context handle with special handling for flows
   // or applications that use load_xclbin (legacy Alveo)
   struct ctx_handle
   {
-    using ctx_handle_type = uint32_t;
     const xrt_core::device* m_device;
     ctx_handle_type m_hdl;
     bool m_destroy_context = true;
@@ -66,12 +65,6 @@ class hw_context_impl
     }
   };
 
-  qos_type
-  priority_to_qos(xrt::hw_context::priority /*qos*/)
-  {
-    return 0; // TBD
-  }
-
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
   qos_type m_qos;
@@ -81,7 +74,7 @@ public:
   hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, xrt::hw_context::priority qos)
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
-    , m_qos(priority_to_qos(qos))
+    , m_qos(static_cast<qos_type>(qos))
     , m_ctx_handle{m_core_device.get(), xclbin_id, m_qos}
   {
   }
@@ -110,8 +103,8 @@ public:
     return m_qos;
   }
 
-  uint32_t
-  get_slot() const
+  ctx_handle_type
+  get_xcl_handle() const
   {
     return m_ctx_handle.m_hdl;
   }
@@ -124,10 +117,10 @@ public:
 ////////////////////////////////////////////////////////////////
 namespace xrt_core { namespace hw_context_int {
 
-uint32_t
-get_slot(const xrt::hw_context& hwctx)
+xcl_hwctx_handle
+get_xcl_handle(const xrt::hw_context& hwctx)
 {
-  return hwctx.get_handle()->get_slot();
+  return hwctx.get_handle()->get_xcl_handle();
 }
 
 }} // hw_context_int, xrt_core

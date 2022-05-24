@@ -9,6 +9,8 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
+#include "xcl_hwctx.h"
+
 #ifdef __cplusplus
 
 namespace xrt {
@@ -25,7 +27,22 @@ class hw_context_impl;
 class hw_context : public detail::pimpl<hw_context_impl>
 {
 public:
-  enum class priority {};
+  /**
+   * @enum priority - tbd
+   *
+   * @var exclusive
+   *  Create a context for exclusive access to shareable resources.
+   *  Legacy compute unit access control.
+   * @var shared
+   *  Create a context for shared access to shareable resources
+   *  Legacy compute unit access control.
+   */
+  enum class priority : xcl_qos_type {
+    exclusive = XCL_QOS_EXCLUSIVE,  // legacy
+    shared = XCL_QOS_SHARED,        // legacy
+    reserved = 0
+  };
+
 public:
   /**
    * hw_context() - Constructor for empty context

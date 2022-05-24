@@ -14,8 +14,8 @@
 namespace xrt_core { namespace hw_context_int {
 
 // get_slot() - Retrieve the slot index associated with the context
-uint32_t
-get_slot(const xrt::hw_context& ctx);
+xcl_hwctx_handle
+get_xcl_handle(const xrt::hw_context& ctx);
 
 }} // hw_context_int, xrt_core
 
