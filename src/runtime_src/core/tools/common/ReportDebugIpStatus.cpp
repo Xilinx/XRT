@@ -1010,9 +1010,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
       for(auto& e : snapshot_pt) {
         snapshotStatus[idx] = e.second.get_value<unsigned int>();
         ++idx;
-        if(idx >= xdp::IP::LAPC::NUM_STATUS) {
+        if(idx >= xdp::IP::LAPC::NUM_STATUS)
           break;
-        }  
       }
 
       const boost::property_tree::ptree& cumulative_pt = entry.get_child("cumulative_status");
@@ -1020,9 +1019,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
       for(auto& e : cumulative_pt) {
         cumulativeStatus[idx] = e.second.get_value<unsigned int>();
         ++idx;
-        if(idx >= xdp::IP::LAPC::NUM_STATUS) {
+        if(idx >= xdp::IP::LAPC::NUM_STATUS)
           break;
-        }  
       }
 
       if (!xdp::isValidAXICheckerCodes(entry.get<unsigned int>("overall_status"),
@@ -1077,9 +1075,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
         for(auto& e : snapshot_pt) {
           snapshotStatus[idx] = e.second.get_value<unsigned int>(); 
           ++idx;
-          if(idx >= xdp::IP::LAPC::NUM_STATUS) {
+          if(idx >= xdp::IP::LAPC::NUM_STATUS)
             break;
-          }  
         }
 
         const boost::property_tree::ptree& cumulative_pt = entry.get_child("cumulative_status");
@@ -1087,9 +1084,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
         for(auto& e : cumulative_pt) {
           cumulativeStatus[idx] = e.second.get_value<unsigned int>(); 
           ++idx;  
-          if(idx >= xdp::IP::LAPC::NUM_STATUS) {
+          if(idx >= xdp::IP::LAPC::NUM_STATUS)
             break;
-          }  
         }
 
         _output << valueFormat
