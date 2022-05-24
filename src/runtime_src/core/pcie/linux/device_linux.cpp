@@ -149,7 +149,9 @@ struct sdm_sensor_info
     std::array<std::string, 6> sname_end = {"label", "input", "max", "average", "highest", "status"};
     int max_end_types = sname_end.size();
     std::string errmsg, str_op, target_snode;
-    data_type data = { 0 };
+    // data_type has default constructor that initializes data members appropriately,
+    // So, don't use "= {0}", it can only be used for fundamental types.
+    data_type data {};
     uint32_t uint_op = 0;
 
     //Starting from index 0 in sname_end array, read and store all the sysfs nodes information

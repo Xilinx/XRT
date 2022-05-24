@@ -153,6 +153,20 @@ config_versal_project()
     cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot
     cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot/files
 
+    # Create startup script to start skd
+    SERVICE_FILE=$APU_RECIPES_DIR/skd.service
+    BB_FILE=$APU_RECIPES_DIR/skd.bb
+    INIT_SCRIPT=$APU_RECIPES_DIR/skd.sh
+
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n skd --enable
+    fi
+
+    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
+    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd
+    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
+
 }
 
 # --- End internal functions

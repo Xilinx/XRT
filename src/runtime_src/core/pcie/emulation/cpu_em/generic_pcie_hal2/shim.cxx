@@ -994,7 +994,7 @@ namespace xclcpuemhal2 {
       return -EINVAL;
 
     const unsigned REG_BUFF_SIZE = 0x4;
-    std::array<char, REG_BUFF_SIZE> buff;
+    std::array<char, REG_BUFF_SIZE> buff = {};
     uint64_t baseAddr = cuidx2addr[cu_index];
     if (rd) {
       size_t size=4;

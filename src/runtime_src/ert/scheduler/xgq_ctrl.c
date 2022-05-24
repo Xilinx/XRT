@@ -17,6 +17,7 @@
 #include "xgq_impl.h"
 #include "xgq_ctrl.h"
 #include "sched_cmd.h"
+#include "sched_print.h"
 
 /*
  * XGQ CU handler (MODE 1 - One XGQ per CU).
@@ -43,6 +44,15 @@ inline void xgq_ctrl_response(struct xgq_ctrl *xgq_ctrl, void *resp, uint32_t si
 	while (xgq_produce(xgq_ctrl->xgq, &slot_addr))
 		continue;
 
+    /* TODO: for debug */
+    {
+        uint32_t off = slot_addr & 0x00000FFF;
+        uint32_t cq_base = slot_addr & 0xFFFFF000;
+        if ((off != 0x430) && (off != 0x440)) {
+            xgq_reg_write32(0, cq_base + 0x600, off);
+        }
+    }
+    /* debug end */
 	for (; offset < size; offset+=4) {
 		xgq_reg_write32(0, slot_addr+offset, *(uint32_t *)(resp+offset));
 	}

@@ -3,12 +3,15 @@
  * Xilinx Kernel Driver XCLBIN parser
  *
  * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  */
 
 #ifndef _XOCL_XCLBIN_H
 #define	_XOCL_XCLBIN_H
+
+#include "xocl_types.h"
 
 #if 0
 /* for icap user to preserve xclbin data */
@@ -30,5 +33,15 @@ void xocl_xclbin_fini(xdev_handle_t xdev);
 #endif
 
 int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin);
+
+enum MEM_TAG {
+	MEM_TAG_DDR = 0,
+	MEM_TAG_PLRAM,
+	MEM_TAG_HOST,
+	MEM_TAG_HBM,
+	MEM_TAG_INVALID
+};
+
+enum MEM_TAG convert_mem_tag(const char *name);
 
 #endif
