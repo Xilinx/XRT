@@ -100,8 +100,8 @@ public:
   //debug related
   uint32_t getCheckerNumberSlots(int type);
   uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
-                                    uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
-                                    size_t size);
+                               uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
+                               size_t size);
   size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
   size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
   size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
