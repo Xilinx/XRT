@@ -940,23 +940,33 @@ get_aie_trace_settings_start_iteration()
 inline std::string
 get_aie_trace_settings_graph_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_metrics", "");
+  static std::string value = detail::get_string_value("AIE_trace_settings.graph_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_trace_settings_graph_aie_tile_metrics()
+get_aie_trace_settings_aie_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_aie_tile_metrics", "");
+  static std::string value = detail::get_string_value("AIE_trace_settings.aie_tile_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_trace_settings_graph_mem_tile_metrics()
+get_aie_trace_settings_mem_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_mem_tile_metrics", "");
+  static std::string value = detail::get_string_value("AIE_trace_settings.mem_tile_metrics", "");
   return value;
 }
+
+#if 0
+// Post 2022.2
+inline std::string
+get_aie_trace_settings_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.interface_tile_metrics", "");
+  return value;
+}
+#endif
 
 
 }} // config,xrt_core

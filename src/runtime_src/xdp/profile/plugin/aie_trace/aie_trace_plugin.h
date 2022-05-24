@@ -61,6 +61,8 @@ namespace xdp {
       inline uint32_t bcIdToEvent(int bcId);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
       bool setMetrics(uint64_t deviceId, void* handle);
+      bool setMetricsSettings(uint64_t deviceId, void* handle);
+
       void setFlushMetrics(uint64_t deviceId, void* handle);
       void setTraceStartDelayCycles(void* handle);
 
@@ -70,7 +72,7 @@ namespace xdp {
       bool configureStartDelay(xaiefal::XAieMod& core);
 
       // Utility functions
-      std::string getMetricSet(void* handle);
+      std::string getMetricSet(void* handle, const std::string& metricStr);
       std::vector<tile_type> getTilesForTracing(void* handle);
 
     private:

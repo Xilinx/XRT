@@ -898,7 +898,9 @@ namespace xdp {
 
       // 1. Runtime-defined counters
       // NOTE: these take precedence
-      bool runtimeCounters = setMetrics(deviceId, handle);
+      bool runtimeCounters = setMetricsSettings(deviceId, handle);
+      if(!runtimeCounters) 
+        runtimeCounters = setMetrics(deviceId, handle);
 
       // 2. Compiler-defined counters
       if (!runtimeCounters) {
@@ -1071,109 +1073,112 @@ namespace xdp {
 
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
-      std::string metricsStr = metricSettings[module];
 
-      int NUM_COUNTERS       = numCounters[module];
-      XAie_ModuleType mod    = falModuleTypes[module];
-      std::string moduleName = moduleNames[module];
-      auto metricSet         = getMetricSet(mod, metricsStr);
-      auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
+      for(auto &metricStr : metricSettings[module]) { 
+//      std::string metricsStr = metricSettings[module];
+
+        int NUM_COUNTERS       = numCounters[module];
+        XAie_ModuleType mod    = falModuleTypes[module];
+        std::string moduleName = moduleNames[module];
+        auto metricSet         = getMetricSet(mod, metricsStr);
+        auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
 
 
-      // Ask Resource manager for resource availability
-      auto numFreeCounters   = getNumFreeCtr(aieDevice, tiles, mod, metricSet);
-      if (numFreeCounters == 0)
-        continue;
+        // Ask Resource manager for resource availability
+        auto numFreeCounters   = getNumFreeCtr(aieDevice, tiles, mod, metricSet);
+        if (numFreeCounters == 0)
+          continue;
 
-      // Get vector of pre-defined metrics for this set
-      uint8_t resetEvent = 0;
-      auto startEvents = (mod == XAIE_CORE_MOD) ? mCoreStartEvents[metricSet]
-                       : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet] 
-                       : mShimStartEvents[metricSet]);
-      auto endEvents   = (mod == XAIE_CORE_MOD) ? mCoreEndEvents[metricSet]
-                       : ((mod == XAIE_MEM_MOD) ? mMemoryEndEvents[metricSet] 
-                       : mShimEndEvents[metricSet]);
+        // Get vector of pre-defined metrics for this set
+        uint8_t resetEvent = 0;
+        auto startEvents = (mod == XAIE_CORE_MOD) ? mCoreStartEvents[metricSet]
+                         : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet] 
+                         : mShimStartEvents[metricSet]);
+        auto endEvents   = (mod == XAIE_CORE_MOD) ? mCoreEndEvents[metricSet]
+                         : ((mod == XAIE_MEM_MOD) ? mMemoryEndEvents[metricSet] 
+                         : mShimEndEvents[metricSet]);
 
-      int numTileCounters[NUM_COUNTERS+1] = {0};
+        int numTileCounters[NUM_COUNTERS+1] = {0};
       
-      // Iterate over tiles and metrics to configure all desired counters
-      for (auto& tile : tiles) {
-        int numCounters = 0;
-        auto col = tile.col;
-        auto row = tile.row;
+        // Iterate over tiles and metrics to configure all desired counters
+        for (auto& tile : tiles) {
+          int numCounters = 0;
+          auto col = tile.col;
+          auto row = tile.row;
         
-        // NOTE: resource manager requires absolute row number
-        auto loc        = (mod == XAIE_PL_MOD) ? XAie_TileLoc(col, 0) 
-                        : XAie_TileLoc(col, row + 1);
-        auto& xaieTile  = (mod == XAIE_PL_MOD) ? aieDevice->tile(col, 0) 
-                        : aieDevice->tile(col, row + 1);
-        auto xaieModule = (mod == XAIE_CORE_MOD) ? xaieTile.core()
-                        : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
-                        : xaieTile.pl());
+          // NOTE: resource manager requires absolute row number
+          auto loc        = (mod == XAIE_PL_MOD) ? XAie_TileLoc(col, 0) 
+                          : XAie_TileLoc(col, row + 1);
+          auto& xaieTile  = (mod == XAIE_PL_MOD) ? aieDevice->tile(col, 0) 
+                          : aieDevice->tile(col, row + 1);
+          auto xaieModule = (mod == XAIE_CORE_MOD) ? xaieTile.core()
+                          : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
+                          : xaieTile.pl());
         
-        for (int i=0; i < numFreeCounters; ++i) {
-          auto startEvent = startEvents.at(i);
-          auto endEvent   = endEvents.at(i);
+          for (int i=0; i < numFreeCounters; ++i) {
+            auto startEvent = startEvents.at(i);
+            auto endEvent   = endEvents.at(i);
 
-          // Request counter from resource manager
-          auto perfCounter = xaieModule.perfCounter();
-          auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
-          if (ret != XAIE_OK) break;
-          ret = perfCounter->reserve();
-          if (ret != XAIE_OK) break;
+            // Request counter from resource manager
+            auto perfCounter = xaieModule.perfCounter();
+            auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
+            if (ret != XAIE_OK) break;
+            ret = perfCounter->reserve();
+            if (ret != XAIE_OK) break;
           
-          configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
-          configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, startEvent, metricSet);
+            configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
+            configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, startEvent, metricSet);
           
-          // Start the counters after group events have been configured
-          ret = perfCounter->start();
-          if (ret != XAIE_OK) break;
-          mPerfCounters.push_back(perfCounter);
+            // Start the counters after group events have been configured
+            ret = perfCounter->start();
+            if (ret != XAIE_OK) break;
+            mPerfCounters.push_back(perfCounter);
 
-          // Convert enums to physical event IDs for reporting purposes
-          uint8_t tmpStart;
-          uint8_t tmpEnd;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
-          uint16_t phyStartEvent = (mod == XAIE_CORE_MOD) ? tmpStart
-                                 : ((mod == XAIE_MEM_MOD) ? (tmpStart + BASE_MEMORY_COUNTER)
-                                 : (tmpStart + BASE_SHIM_COUNTER));
-          uint16_t phyEndEvent   = (mod == XAIE_CORE_MOD) ? tmpEnd
-                                 : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
-                                 : (tmpEnd + BASE_SHIM_COUNTER));
+            // Convert enums to physical event IDs for reporting purposes
+            uint8_t tmpStart;
+            uint8_t tmpEnd;
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
+            uint16_t phyStartEvent = (mod == XAIE_CORE_MOD) ? tmpStart
+                                   : ((mod == XAIE_MEM_MOD) ? (tmpStart + BASE_MEMORY_COUNTER)
+                                   : (tmpStart + BASE_SHIM_COUNTER));
+            uint16_t phyEndEvent   = (mod == XAIE_CORE_MOD) ? tmpEnd
+                                   : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
+                                   : (tmpEnd + BASE_SHIM_COUNTER));
 
-          auto payload = getCounterPayload(aieDevInst, tile, col, row, startEvent);
+            auto payload = getCounterPayload(aieDevInst, tile, col, row, startEvent);
+  
+            // Store counter info in database
+            std::string counterName = "AIE Counter " + std::to_string(counterId);
+            (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
+                phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz, 
+                moduleName, counterName);
+            counterId++;
+            numCounters++;
+          }
 
-          // Store counter info in database
-          std::string counterName = "AIE Counter " + std::to_string(counterId);
-          (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
-              phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz, 
-              moduleName, counterName);
-          counterId++;
-          numCounters++;
+          std::stringstream msg;
+          msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+          numTileCounters[numCounters]++;
         }
 
-        std::stringstream msg;
-        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-        numTileCounters[numCounters]++;
-      }
+        // Report counters reserved per tile
+        {
+          std::stringstream msg;
+          msg << "AIE profile counters reserved in " << moduleName << " modules - ";
+          for (int n=0; n <= NUM_COUNTERS; ++n) {
+            if (numTileCounters[n] == 0) continue;
+            msg << n << ": " << numTileCounters[n] << " tiles";
+            if (n != NUM_COUNTERS) msg << ", ";
 
-      // Report counters reserved per tile
-      {
-        std::stringstream msg;
-        msg << "AIE profile counters reserved in " << moduleName << " modules - ";
-        for (int n=0; n <= NUM_COUNTERS; ++n) {
-          if (numTileCounters[n] == 0) continue;
-          msg << n << ": " << numTileCounters[n] << " tiles";
-          if (n != NUM_COUNTERS) msg << ", ";
-
-          (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], module);
+            (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], module);
+          }
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
         }
-        xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      }
 
-      runtimeCounters = true;
+        runtimeCounters = true;
+      } // multiple metrics
     } // for module
 
     return runtimeCounters;
