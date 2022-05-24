@@ -34,11 +34,11 @@
  */
 
 #include "core/include/xdp/counters.h"
+#include "core/include/xdp/aim.h"
 // Local/XRT headers
 #include "config.h"
 #include "shim.h"
 #include "xclbin.h"
-#include "xcl_perfmon_parameters.h"
 // C++ headers
 #include <algorithm>
 #include <cassert>
@@ -166,7 +166,7 @@ namespace xclhwemhal2
     // NOTE: host is always index 0
     if (type == AXI_MM_MONITOR)
     {
-      properties[0] = XAIM_HOST_PROPERTY_MASK;
+      properties[0] = xdp::IP::AIM::mask::PROPERTY_HOST;
       portNames[0] = "host/host";
       ++count;
     }

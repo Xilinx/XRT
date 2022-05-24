@@ -21,13 +21,14 @@
 #define AXI_CHECKER_CODES_H
 
 #include "core/include/xdp/app_debug.h"
+#include "core/include/xdp/lapc.h"
 
 namespace xdp {
   static
   bool
   isValidAXICheckerCodes(unsigned int aOverallStatus,
-                         unsigned int aSnapshot[DebugIPRegisters::LAPC::STATUS_REG_NUM],
-                         unsigned int aCumulative[DebugIPRegisters::LAPC::STATUS_REG_NUM])
+                         unsigned int aSnapshot[IP::LAPC::NUM_STATUS],
+                         unsigned int aCumulative[IP::LAPC::NUM_STATUS])
   {
     //Validate the codes read from the device.
     //overallstatus could be 0 or 1
@@ -36,7 +37,7 @@ namespace xdp {
     if (aSnapshot[3]>>5 != 0) return false;
     //There should be only 1 bit set in Snapshot
     int nonzero_snapshots = 0;
-    for (int i=0; i<xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM; ++i) {
+    for (int i=0; i < xdp::IP::LAPC::NUM_STATUS; ++i) {
       if (aSnapshot[i]!=0) {
         if ((aSnapshot[i] & (aSnapshot[i]-1)) != 0) return false;
         if (nonzero_snapshots) return false;
@@ -48,7 +49,7 @@ namespace xdp {
     //if snapshot is all zero then overallstatus and cumulative should be zero
     if (!nonzero_snapshots) {
       if (aOverallStatus) return false;
-      for (int i=0; i<xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM; ++i) {
+      for (int i=0; i<xdp::IP::LAPC::NUM_STATUS; ++i) {
         if (aCumulative[i]) return false;
       }
     }

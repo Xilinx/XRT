@@ -1653,17 +1653,17 @@ clGetDebugAccelMonitorCounters()
 
 
 struct lapc_debug_view {
-  unsigned int   OverallStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS];
-  unsigned int   CumulativeStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS][4];
-  unsigned int   SnapshotStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS][4];
+  unsigned int   OverallStatus[xdp::MAX_NUM_LAPCS];
+  unsigned int   CumulativeStatus[xdp::MAX_NUM_LAPCS][4];
+  unsigned int   SnapshotStatus[xdp::MAX_NUM_LAPCS][4];
   unsigned int   NumSlots;
   std::string    DevUserName;
   std::string    SysfsPath;
   lapc_debug_view () {
-    std::fill (OverallStatus, OverallStatus+xdp::DebugIPRegisters::LAPC::NUM_COUNTERS, 0);
-    for (auto i = 0; i<xdp::DebugIPRegisters::LAPC::NUM_COUNTERS; ++i)
+    std::fill (OverallStatus, OverallStatus + xdp::MAX_NUM_LAPCS, 0);
+    for (auto i = 0; i < xdp::MAX_NUM_LAPCS; ++i)
       std::fill (CumulativeStatus[i], CumulativeStatus[i]+4, 0);
-    for (auto i = 0; i<xdp::DebugIPRegisters::LAPC::NUM_COUNTERS; ++i)
+    for (auto i = 0; i < xdp::MAX_NUM_LAPCS; ++i)
       std::fill (SnapshotStatus[i], SnapshotStatus[i]+4, 0);
     NumSlots = 0;
     DevUserName = "";
@@ -1831,10 +1831,10 @@ clGetDebugCheckers() {
   }
 
   auto lapc_view = new lapc_debug_view ();
-  std::copy(debugCheckers.OverallStatus, debugCheckers.OverallStatus+xdp::DebugIPRegisters::LAPC::NUM_COUNTERS, lapc_view->OverallStatus);
-  for (auto i = 0; i<xdp::DebugIPRegisters::LAPC::NUM_COUNTERS; ++i)
+  std::copy(debugCheckers.OverallStatus, debugCheckers.OverallStatus+xdp::MAX_NUM_LAPCS, lapc_view->OverallStatus);
+  for (auto i = 0; i < xdp::MAX_NUM_LAPCS; ++i)
     std::copy(debugCheckers.CumulativeStatus[i], debugCheckers.CumulativeStatus[i]+4, lapc_view->CumulativeStatus[i]);
-  for (auto i = 0; i<xdp::DebugIPRegisters::LAPC::NUM_COUNTERS; ++i)
+  for (auto i = 0; i < xdp::MAX_NUM_LAPCS; ++i)
     std::copy(debugCheckers.SnapshotStatus[i], debugCheckers.SnapshotStatus[i]+4, lapc_view->SnapshotStatus[i]);
   lapc_view->NumSlots = debugCheckers.NumSlots;
   lapc_view->DevUserName = debugCheckers.DevUserName;

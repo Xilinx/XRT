@@ -92,6 +92,12 @@ namespace xdp {
         constexpr int TOTAL_CU_START       = 7;
       } // end namespace xbutil
 
+      namespace mask {
+        // These are the masks to be applied to the properties field of the AM
+        // to determine a particular instance's configuration.
+        constexpr int PROPERTY_64BIT = 0x8;
+      }
+
     } // end namespace AM
   } // end namespace IP
 } // end namespace xdp

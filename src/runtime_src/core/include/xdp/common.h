@@ -32,9 +32,12 @@ namespace xdp {
   // counters only (no trace).  On those platforms we can have 31 AIMs in the
   // PL region + 3 in the static region for a total of 34.
 
-  constexpr int MAX_NUM_AMS  = 31; // Max Number of Accelerator Monitor
-  constexpr int MAX_NUM_AIMS = 34; // Max Number of AXI Interface Monitors
-  constexpr int MAX_NUM_ASMS = 31; // Max Number of AXI Stream Monitors
+  constexpr int MAX_NUM_AMS   = 31; // Max Number of Accelerator Monitor
+  constexpr int MAX_NUM_AIMS  = 34; // Max Number of AXI Interface Monitors
+  constexpr int MAX_NUM_ASMS  = 31; // Max Number of AXI Stream Monitors
+  constexpr int MAX_NUM_LAPCS = 31; // Max Number of AXI Protocol Checkers
+  constexpr int MAX_NUM_SPCS  = 31; // Max Number of AXI Stream Protocol Checker
+
 } // end namespace xdp
 
 // Since the structures and enums are used in shims (and connected via dlsym)

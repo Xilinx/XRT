@@ -21,11 +21,13 @@
 
 #include "core/common/device.h"
 #include "core/include/xclbin.h"
-#include "core/include/xcl_perfmon_parameters.h"
+#include "core/include/xdp/add.h"
 #include "core/include/xdp/aim.h"
 #include "core/include/xdp/am.h"
 #include "core/include/xdp/asm.h"
 #include "core/include/xdp/app_debug.h"
+#include "core/include/xdp/lapc.h"
+#include "core/include/xdp/spc.h"
 
 namespace xrt_core { namespace debug_ip {
 
@@ -70,7 +72,7 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
                 &sample_interval, sizeof(uint32_t));
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
-  if (dbg_ip_data->m_properties & XAIM_64BIT_PROPERTY_MASK) {
+  if (dbg_ip_data->m_properties & xdp::IP::AIM::mask::PROPERTY_64BIT) {
     for (int c = 0; c < xdp::IP::AIM::NUM_COUNTERS_XBUTIL; c++) {
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                     dbg_ip_data->m_base_address + aim_upper_offsets[c],
@@ -139,7 +141,7 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
   bool has_dataflow = (dbg_ip_version > ref_version);
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
-  if (dbg_ip_data->m_properties & XAM_64BIT_PROPERTY_MASK) {
+  if (dbg_ip_data->m_properties & xdp::IP::AIM::mask::PROPERTY_64BIT) {
     for (int c = 0; c < xdp::IP::AM::NUM_COUNTERS_XBUTIL; c++) {
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                     dbg_ip_data->m_base_address + am_upper_offsets[c],
@@ -251,18 +253,20 @@ std::vector<uint32_t>
 get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
   static const uint64_t statusRegisters[] = {
-    LAPC_OVERALL_STATUS_OFFSET,
-
-    LAPC_CUMULATIVE_STATUS_0_OFFSET, LAPC_CUMULATIVE_STATUS_1_OFFSET,
-    LAPC_CUMULATIVE_STATUS_2_OFFSET, LAPC_CUMULATIVE_STATUS_3_OFFSET,
-
-    LAPC_SNAPSHOT_STATUS_0_OFFSET, LAPC_SNAPSHOT_STATUS_1_OFFSET,
-    LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
+    xdp::IP::LAPC::AXI_LITE::STATUS,
+    xdp::IP::LAPC::AXI_LITE::CUMULATIVE_STATUS_0,
+    xdp::IP::LAPC::AXI_LITE::CUMULATIVE_STATUS_1,
+    xdp::IP::LAPC::AXI_LITE::CUMULATIVE_STATUS_2,
+    xdp::IP::LAPC::AXI_LITE::CUMULATIVE_STATUS_3,
+    xdp::IP::LAPC::AXI_LITE::SNAPSHOT_STATUS_0,
+    xdp::IP::LAPC::AXI_LITE::SNAPSHOT_STATUS_1,
+    xdp::IP::LAPC::AXI_LITE::SNAPSHOT_STATUS_2,
+    xdp::IP::LAPC::AXI_LITE::SNAPSHOT_STATUS_3
   };
 
-  std::vector<uint32_t> ret_val(xdp::DebugIPRegisters::LAPC::NUM_STATUS);
+  std::vector<uint32_t> ret_val(xdp::IP::LAPC::NUM_COUNTERS);
 
-  for (int c = 0; c < xdp::DebugIPRegisters::LAPC::NUM_STATUS; c++) {
+  for (int c = 0; c < xdp::IP::LAPC::NUM_COUNTERS; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER, 
                   dbg_ip_data->m_base_address+statusRegisters[c], 
                   &ret_val[c], sizeof(uint32_t));
@@ -275,17 +279,17 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 std::vector<uint32_t> 
 get_spc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
-  std::vector<uint32_t> ret_val(xdp::DebugIPRegisters::SPC::NUM_STATUS_PER_IP);
+  std::vector<uint32_t> ret_val(xdp::IP::SPC::NUM_COUNTERS);
 
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
-                dbg_ip_data->m_base_address + XSPC_PC_ASSERTED_OFFSET,
-                &ret_val[xdp::DebugIPRegisters::SPC::Index::PC_ASSERTED], sizeof(uint32_t));
+                dbg_ip_data->m_base_address + xdp::IP::SPC::AXI_LITE::PC_ASSERTED,
+                &ret_val[xdp::IP::SPC::sysfs::PC_ASSERTED], sizeof(uint32_t));
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
-                dbg_ip_data->m_base_address + XSPC_CURRENT_PC_OFFSET,
-                &ret_val[xdp::DebugIPRegisters::SPC::Index::CURRENT_PC], sizeof(uint32_t));
+                dbg_ip_data->m_base_address + xdp::IP::SPC::AXI_LITE::CURRENT_PC,
+                &ret_val[xdp::IP::SPC::sysfs::CURRENT_PC], sizeof(uint32_t));
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
-                dbg_ip_data->m_base_address + XSPC_SNAPSHOT_PC_OFFSET,
-                &ret_val[xdp::DebugIPRegisters::SPC::Index::SNAPSHOT_PC], sizeof(uint32_t));
+                dbg_ip_data->m_base_address + xdp::IP::SPC::AXI_LITE::SNAPSHOT_PC,
+                &ret_val[xdp::IP::SPC::sysfs::SNAPSHOT_PC], sizeof(uint32_t));
 
   return ret_val;
 }
@@ -297,7 +301,7 @@ get_accel_deadlock_status(const xrt_core::device* device, debug_ip_data* dbg_ip_
   uint32_t ret_val = 0;
 
   device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                dbg_ip_data->m_base_address + XACCEL_DEADLOCK_STATUS_OFFSET,
+                dbg_ip_data->m_base_address + xdp::IP::ADD::AXI_LITE::STATUS,
                 &ret_val, sizeof(ret_val));
 
   return ret_val;

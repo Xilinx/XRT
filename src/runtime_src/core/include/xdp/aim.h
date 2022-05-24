@@ -107,6 +107,13 @@ namespace xdp {
         constexpr int READ_LAST_DATA     = 8;
       } // end namespace xbutil
 
+      namespace mask {
+        // These are masks on the property of the IP that give information
+        // on the specific instance.
+        constexpr int PROPERTY_HOST  = 0x4; // Used in emulation
+        constexpr int PROPERTY_64BIT = 0x8;
+      }
+
     } // end namespace AIM
   } // end namespace IP
 } // end namespace xdp

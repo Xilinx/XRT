@@ -19,10 +19,11 @@
 #include "system_linux.h"
 
 #include "core/include/shim_int.h"
-#include "core/include/xcl_perfmon_parameters.h"
 #include "core/include/xdp/aim.h"
 #include "core/include/xdp/am.h"
 #include "core/include/xdp/asm.h"
+#include "core/include/xdp/lapc.h"
+#include "core/include/xdp/spc.h"
 #include "core/include/xrt/xrt_uuid.h"
 
 #include "core/edge/common/aie_parser.h"
@@ -1256,27 +1257,29 @@ xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults)
   size_t size = 0;
 
   uint64_t statusRegisters[] = {
-    LAPC_OVERALL_STATUS_OFFSET,
-
-    LAPC_CUMULATIVE_STATUS_0_OFFSET, LAPC_CUMULATIVE_STATUS_1_OFFSET,
-    LAPC_CUMULATIVE_STATUS_2_OFFSET, LAPC_CUMULATIVE_STATUS_3_OFFSET,
-
-    LAPC_SNAPSHOT_STATUS_0_OFFSET, LAPC_SNAPSHOT_STATUS_1_OFFSET,
-    LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
+    xdp::IP::LAPC::AXI_LITE::STATUS,
+    xdp::IP::LAPC::AXI_LITE::CUMULATIVE_STATUS_0,
+    xdp::IP::LAPC::AXI_LITE::CUMULATIVE_STATUS_1,
+    xdp::IP::LAPC::AXI_LITE::CUMULATIVE_STATUS_2,
+    xdp::IP::LAPC::AXI_LITE::CUMULATIVE_STATUS_3,
+    xdp::IP::LAPC::AXI_LITE::SNAPSHOT_STATUS_0,
+    xdp::IP::LAPC::AXI_LITE::SNAPSHOT_STATUS_1,
+    xdp::IP::LAPC::AXI_LITE::SNAPSHOT_STATUS_2,
+    xdp::IP::LAPC::AXI_LITE::SNAPSHOT_STATUS_3
   };
 
-  uint64_t baseAddress[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS];
-  uint32_t numSlots = getIPCountAddrNames(LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, xdp::DebugIPRegisters::LAPC::NUM_COUNTERS);
-  uint32_t temp[xdp::DebugIPRegisters::LAPC::NUM_STATUS];
+  uint64_t baseAddress[xdp::MAX_NUM_LAPCS];
+  uint32_t numSlots = getIPCountAddrNames(LAPC, baseAddress, nullptr, nullptr, nullptr, nullptr, xdp::MAX_NUM_LAPCS);
+  uint32_t temp[xdp::IP::LAPC::NUM_COUNTERS];
   aCheckerResults->NumSlots = numSlots;
   snprintf(aCheckerResults->DevUserName, 256, "%s", " ");
   for (uint32_t s = 0; s < numSlots; ++s) {
-    for (int c=0; c < xdp::DebugIPRegisters::LAPC::NUM_STATUS; c++)
+    for (int c=0; c < xdp::IP::LAPC::NUM_COUNTERS; c++)
       size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER, baseAddress[s]+statusRegisters[c], &temp[c], 4);
 
-    aCheckerResults->OverallStatus[s]      = temp[xdp::DebugIPRegisters::LAPC::Index::STATUS];
-    std::copy(temp+xdp::DebugIPRegisters::LAPC::Index::CUMULATIVE_STATUS_0, temp+xdp::DebugIPRegisters::LAPC::Index::SNAPSHOT_STATUS_0, aCheckerResults->CumulativeStatus[s]);
-    std::copy(temp+xdp::DebugIPRegisters::LAPC::Index::SNAPSHOT_STATUS_0, temp+xdp::DebugIPRegisters::LAPC::NUM_STATUS, aCheckerResults->SnapshotStatus[s]);
+    aCheckerResults->OverallStatus[s]      = temp[xdp::IP::LAPC::sysfs::STATUS];
+    std::copy(temp+xdp::IP::LAPC::sysfs::CUMULATIVE_STATUS_0, temp+xdp::IP::LAPC::sysfs::SNAPSHOT_STATUS_0, aCheckerResults->CumulativeStatus[s]);
+    std::copy(temp+xdp::IP::LAPC::sysfs::SNAPSHOT_STATUS_0, temp+xdp::IP::LAPC::NUM_COUNTERS, aCheckerResults->SnapshotStatus[s]);
   }
 
   return size;
@@ -1329,7 +1332,7 @@ xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
                     &sampleInterval, 4);
 
     // If applicable, read the upper 32-bits of the 64-bit debug counters
-    if (mPerfmonProperties[s] & XAIM_64BIT_PROPERTY_MASK) {
+    if (mPerfmonProperties[s] & xdp::IP::AIM::mask::PROPERTY_64BIT) {
       for (int c = 0; c < xdp::IP::AIM::NUM_COUNTERS_XBUTIL; ++c) {
         xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                 baseAddress[s] + aim_upper_offsets[c],
@@ -1419,7 +1422,7 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
     bool hasDataflow = (cmpMonVersions(accelmonMajorVersions[s],accelmonMinorVersions[s],1,1) < 0) ? true : false;
 
     // If applicable, read the upper 32-bits of the 64-bit debug counters
-    if (accelmonProperties[s] & XAM_64BIT_PROPERTY_MASK) {
+    if (accelmonProperties[s] & xdp::IP::AM::mask::PROPERTY_64BIT) {
       for (int c = 0; c < xdp::IP::AM::NUM_COUNTERS_XBUTIL; ++c) {
         xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
                 baseAddress[s] + am_upper_offsets[c],
@@ -1531,31 +1534,30 @@ xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingChecke
   size_t size = 0; // The amount of data read from the hardware
 
   // Get the base addresses of all the SPC IPs in the debug IP layout
-  uint64_t baseAddress[xdp::DebugIPRegisters::SPC::NUM_COUNTERS];
+  uint64_t baseAddress[xdp::MAX_NUM_SPCS];
   uint32_t numSlots = getIPCountAddrNames(AXI_STREAM_PROTOCOL_CHECKER,
                                           baseAddress,
                                           nullptr, nullptr, nullptr, nullptr,
-                                          xdp::DebugIPRegisters::SPC::NUM_COUNTERS);
+                                          xdp::MAX_NUM_SPCS);
 
   // Fill up the portions of the return struct that are known by the runtime
   aStreamingCheckerResults->NumSlots = numSlots ;
   snprintf(aStreamingCheckerResults->DevUserName, 256, "%s", " ");
 
   // Fill up the return structure with the values read from the hardware
-  for (unsigned int i = 0 ; i < numSlots ; ++i)
-    {
+  for (unsigned int i = 0 ; i < numSlots ; ++i) {
       uint32_t pc_asserted ;
       uint32_t current_pc ;
       uint32_t snapshot_pc ;
 
       size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
-                      baseAddress[i] + XSPC_PC_ASSERTED_OFFSET,
+                      baseAddress[i] + xdp::IP::SPC::AXI_LITE::PC_ASSERTED,
                       &pc_asserted, sizeof(uint32_t));
       size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
-                      baseAddress[i] + XSPC_CURRENT_PC_OFFSET,
+                      baseAddress[i] + xdp::IP::SPC::AXI_LITE::CURRENT_PC,
                       &current_pc, sizeof(uint32_t));
       size += xclRead(XCL_ADDR_SPACE_DEVICE_CHECKER,
-                      baseAddress[i] + XSPC_SNAPSHOT_PC_OFFSET,
+                      baseAddress[i] + xdp::IP::SPC::AXI_LITE::SNAPSHOT_PC,
                       &snapshot_pc, sizeof(uint32_t));
 
       aStreamingCheckerResults->PCAsserted[i] = pc_asserted;

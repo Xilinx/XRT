@@ -18,43 +18,7 @@
 #define XDP_APP_DEBUG_INT_H
 
 #include "core/include/xdp/common.h"
-
-// The order in which we display registers is different from the
-// offset in the actual IP (retrieved via ioctls).
-namespace xdp {
-  namespace DebugIPRegisters {
-
-    namespace LAPC {
-      constexpr int NUM_COUNTERS = 31;
-      constexpr int NUM_STATUS = 9;
-      constexpr int STATUS_REG_NUM = 4;
-
-      // For LAPCs, the DisplayIndex and IoctlIndex are the same
-      namespace Index {
-        constexpr int STATUS              = 0;
-        constexpr int CUMULATIVE_STATUS_0 = 1;
-        constexpr int CUMULATIVE_STATUS_1 = 2;
-        constexpr int CUMULATIVE_STATUS_2 = 3;
-        constexpr int CUMULATIVE_STATUS_3 = 4;
-        constexpr int SNAPSHOT_STATUS_0   = 5;
-        constexpr int SNAPSHOT_STATUS_1   = 6;
-        constexpr int SNAPSHOT_STATUS_2   = 7;
-        constexpr int SNAPSHOT_STATUS_3   = 8;
-      } /// end namespace Index
-    } // end namespace LAPC
-
-    namespace SPC {
-      constexpr int NUM_COUNTERS      = 31;
-      constexpr int NUM_STATUS_PER_IP = 3;
-      namespace Index {
-        constexpr int PC_ASSERTED = 0;
-        constexpr int CURRENT_PC  = 1;
-        constexpr int SNAPSHOT_PC = 2;
-      } // end namespace Index
-    } // end namespace SPC
-
-  } // end namespace DebugIPRegisters
-} // end namespace xdp
+#include "core/include/xdp/lapc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -126,17 +90,17 @@ XCL_CHECKER_STREAM = 1
 
 /* Debug checker results */
 typedef struct {
-  unsigned int OverallStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS];
-  unsigned int CumulativeStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS][xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM];
-  unsigned int SnapshotStatus[xdp::DebugIPRegisters::LAPC::NUM_COUNTERS][xdp::DebugIPRegisters::LAPC::STATUS_REG_NUM];
+  unsigned int OverallStatus[xdp::MAX_NUM_LAPCS];
+  unsigned int CumulativeStatus[xdp::MAX_NUM_LAPCS][xdp::IP::LAPC::NUM_STATUS];
+  unsigned int SnapshotStatus[xdp::MAX_NUM_LAPCS][xdp::IP::LAPC::NUM_STATUS];
   unsigned int NumSlots;
   char DevUserName[256];
 } xclDebugCheckersResults;
 
 typedef struct {
-  unsigned int PCAsserted[xdp::DebugIPRegisters::SPC::NUM_COUNTERS];
-  unsigned int CurrentPC [xdp::DebugIPRegisters::SPC::NUM_COUNTERS];
-  unsigned int SnapshotPC[xdp::DebugIPRegisters::SPC::NUM_COUNTERS];
+  unsigned int PCAsserted[xdp::MAX_NUM_SPCS];
+  unsigned int CurrentPC [xdp::MAX_NUM_SPCS];
+  unsigned int SnapshotPC[xdp::MAX_NUM_SPCS];
   unsigned int NumSlots;
   char DevUserName[256];
 } xclDebugStreamingCheckersResults;

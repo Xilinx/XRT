@@ -26,6 +26,7 @@
 #include "core/include/xdp/am.h"
 #include "core/include/xdp/asm.h"
 #include "core/include/xdp/app_debug.h"
+#include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 #include "xrt.h"
@@ -617,7 +618,7 @@ struct lapc_status
     std::string lapc_name("lapc_");
     lapc_name += std::to_string(dbg_ip_data->m_base_address);
 
-    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(lapc_name, "status", xdp::DebugIPRegisters::LAPC::NUM_STATUS, device);
+    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(lapc_name, "status", xdp::IP::LAPC::NUM_COUNTERS, device);
 
     result_type ret_val;
     for(auto& e: val_buf) {
@@ -644,7 +645,7 @@ struct spc_status
     std::string spc_name("spc_");
     spc_name += std::to_string(dbg_ip_data->m_base_address);
 
-    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(spc_name, "status", xdp::DebugIPRegisters::SPC::NUM_STATUS_PER_IP, device);
+    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(spc_name, "status", xdp::IP::SPC::NUM_COUNTERS, device);
 
     result_type ret_val;
     for(auto& e: val_buf) {

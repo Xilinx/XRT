@@ -21,7 +21,6 @@
 #include "shim.h"
 #include "system_hwemu.h"
 #include "xclbin.h"
-#include "xcl_perfmon_parameters.h"
 
 #include <unistd.h>
 
@@ -35,6 +34,7 @@
 #include <set>
 #include <vector>
 
+#include "core/include/xdp/fifo.h"
 #include "core/include/xdp/trace.h"
 
 #include "plugin/xdp/device_offload.h"
@@ -3279,9 +3279,9 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
     /* Alignment is limited to 16 by PPC64LE : so , should it be
     alignas(16) uint32_t hostbuf[traceBufSzInWords];
     */
-    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+    alignas(xdp::IP::FIFO::alignment) uint32_t hostbuf[traceBufWordSz];
 #else
-    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(xdp::IP::FIFO::alignment, traceBufWordSz);
     uint32_t* hostbuf = alignedBuffer.getBuffer();
 #endif
 
