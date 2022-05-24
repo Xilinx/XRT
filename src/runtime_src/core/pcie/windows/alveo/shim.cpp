@@ -2024,10 +2024,10 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
       #if 0
           if(mLogStream.is_open())
             mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-		       << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
-                          << (void *)(hostbuf + words) << std::dec << std::endl;
+                       << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                       << (void *)(hostbuf + words) << std::dec << std::endl;
       #endif
-	  shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
+      shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
       size += chunkSizeBytes;
     }
   }
@@ -2038,11 +2038,11 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
 #if 0
       if(mLogStream.is_open()) {
         mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-		   << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0]*/ << " and writing it to 0x"
-                      << (void *)(hostbuf + words) << std::dec << std::endl;
+                   << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                   << (void *)(hostbuf + words) << std::dec << std::endl;
       }
 #endif
-      shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
+    shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
     size += chunkSizeBytes;
   }
 #if 0
