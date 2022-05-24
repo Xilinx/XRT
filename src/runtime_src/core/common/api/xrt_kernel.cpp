@@ -2649,6 +2649,19 @@ get_device(const xrt::device& xdev)
   return get_device(xdev.get_handle());
 }
 
+static xrt::hw_context::priority
+mode_to_qos(xrt::kernel::cu_access_mode mode)
+{
+  switch (mode) {
+  case xrt::kernel::cu_access_mode::exclusive:
+    return xrt::hw_context::priority::exclusive;
+  case xrt::kernel::cu_access_mode::shared:
+    return xrt::hw_context::priority::shared;
+  default:
+    throw std::runtime_error("unexpected access mode for kernel");
+  }
+}
+
 // Active kernels per xrtKernelOpen/Close.  This is a mapping from
 // xrtKernelHandle to the corresponding kernel object.  The
 // xrtKernelHandle is the address of the kernel object.  This is
@@ -2700,7 +2713,10 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     const std::string& name,
 	     xrt::kernel::cu_access_mode mode)
 {
-  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id}, name, mode);
+  // Before hwctx can be created we need to translate cu_access_mode
+  // into QoS specifier expected by the hwctx constructor.
+  auto qos = mode_to_qos(mode);
+  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, qos}, name, mode);
 }
 
 static std::shared_ptr<xrt::kernel_impl>
