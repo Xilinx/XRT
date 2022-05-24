@@ -57,6 +57,8 @@ namespace xdp {
   private:
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
+    bool setMetricsSettings(uint64_t deviceId, void* handle);
+    bool setGraphMetricsSettings(uint64_t deviceId, void* handle);
 
     std::string getMetricSet(const XAie_ModuleType mod, 
                              const std::string& metricsStr);
