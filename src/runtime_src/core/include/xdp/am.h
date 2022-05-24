@@ -95,7 +95,11 @@ namespace xdp {
       namespace mask {
         // These are the masks to be applied to the properties field of the AM
         // to determine a particular instance's configuration.
-        constexpr int PROPERTY_64BIT = 0x8;
+        constexpr int PROPERTY_64BIT     = 0x8;
+        constexpr int PROPERTY_STALL     = 0x4;
+        constexpr int COUNTER_RESET      = 0x00000002;
+        constexpr int DATAFLOW_EN        = 0x00000008;
+        constexpr int TRACE_STALL_SELECT = 0x0000001c;
       }
 
     } // end namespace AM

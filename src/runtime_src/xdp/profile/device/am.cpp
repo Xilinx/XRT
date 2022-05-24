@@ -14,46 +14,9 @@
  * under the License.
  */
 
-
-/************************ Accelerator Monitor (AM, earlier SAM) ************************/
-
-/*
-#define XAM_CONTROL_OFFSET                          0x08
-#define XAM_TRACE_CTRL_OFFSET                       0x10
-#define XAM_SAMPLE_OFFSET                           0x20
-#define XAM_ACCEL_EXECUTION_COUNT_OFFSET            0x80
-#define XAM_ACCEL_EXECUTION_CYCLES_OFFSET           0x84
-#define XAM_ACCEL_STALL_INT_OFFSET                  0x88
-#define XAM_ACCEL_STALL_STR_OFFSET                  0x8c
-#define XAM_ACCEL_STALL_EXT_OFFSET                  0x90
-#define XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET       0x94
-#define XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET       0x98
-#define XAM_ACCEL_TOTAL_CU_START_OFFSET             0x9c
-#define XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET      0xA0
-#define XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET     0xA4
-#define XAM_ACCEL_STALL_INT_UPPER_OFFSET            0xA8
-#define XAM_ACCEL_STALL_STR_UPPER_OFFSET            0xAc
-#define XAM_ACCEL_STALL_EXT_UPPER_OFFSET            0xB0
-#define XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET 0xB4
-#define XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET 0xB8
-#define XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET       0xbc
-#define XAM_BUSY_CYCLES_OFFSET                      0xC0
-#define XAM_BUSY_CYCLES_UPPER_OFFSET                0xC4
-#define XAM_MAX_PARALLEL_ITER_OFFSET                0xC8
-#define XAM_MAX_PARALLEL_ITER_UPPER_OFFSET          0xCC
-*/
-/* SAM Trace Control Masks */
-#define XAM_TRACE_STALL_SELECT_MASK    0x0000001c
-#define XAM_COUNTER_RESET_MASK         0x00000002
-#define XAM_DATAFLOW_EN_MASK           0x00000008
-
-/* Debug IP layout properties mask bits */
-#define XAM_STALL_PROPERTY_MASK        0x4
-#define XAM_64BIT_PROPERTY_MASK        0x8
-
 #define XDP_SOURCE
-#include "am.h"
 #include "core/include/xdp/am.h"
+#include "xdp/profile/device/am.h"
 #include "xdp/profile/device/utility.h"
 #include <bitset>
 
@@ -85,7 +48,7 @@ size_t AM::startCounter()
     size += read(IP::AM::AXI_LITE::CONTROL, 4, &origRegValue);
 
     // Reset
-    regValue = origRegValue | XAM_COUNTER_RESET_MASK;
+    regValue = origRegValue | IP::AM::mask::COUNTER_RESET;
     size += write(IP::AM::AXI_LITE::CONTROL, 4, &regValue);
 
     // Write original value after reset
@@ -234,7 +197,7 @@ size_t AM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     uint32_t regValue = 0;
     // Set Stall trace control register bits
     // Bit 1 : CU (Always ON)  Bit 2 : INT  Bit 3 : STR  Bit 4 : Ext
-    regValue = ((traceOption & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1 ;
+    regValue = ((traceOption & IP::AM::mask::TRACE_STALL_SELECT) >> 1) | 0x1 ;
     size += write(IP::AM::AXI_LITE::TRACE_CTRL, 4, &regValue);
 
     return size;
@@ -257,7 +220,7 @@ void AM::configureDataflow(bool cuHasApCtrlChain)
 
     uint32_t regValue = 0;
     read(IP::AM::AXI_LITE::CONTROL, 4, &regValue);
-    regValue = regValue | XAM_DATAFLOW_EN_MASK;
+    regValue = regValue | IP::AM::mask::DATAFLOW_EN;
     write(IP::AM::AXI_LITE::CONTROL, 4, &regValue);
 
     if(out_stream) {
@@ -275,7 +238,7 @@ void AM::configureFa(bool cuHasFa)
 
 bool AM::has64bit() const
 {
-    return ((properties & XAM_64BIT_PROPERTY_MASK) ? true : false);
+  return ((properties & IP::AM::mask::PROPERTY_64BIT) ? true : false);
 }
 
 bool AM::hasDataflow() const
@@ -285,7 +248,7 @@ bool AM::hasDataflow() const
 
 bool AM::hasStall() const
 {
-    return ((properties & XAM_STALL_PROPERTY_MASK) ? true : false);
+  return ((properties & IP::AM::mask::PROPERTY_STALL) ? true : false);
 }
 
 void AM::showProperties()
