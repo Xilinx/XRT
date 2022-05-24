@@ -43,6 +43,7 @@ usage()
     echo "[-dbg]                      Build debug library only (default)"
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
+    echo "[-no-werror]                Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
     echo "[-noctest]                  Skip unit tests"
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
@@ -132,6 +133,10 @@ while [ $# -gt 0 ]; do
             ;;
         -noctest)
             noctest=1
+            shift
+            ;;
+        -no-werror|--no-werror)
+            cmake_flags+=" -DXRT_NO_WERROR=1"
             shift
             ;;
         -j)
