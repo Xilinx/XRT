@@ -214,7 +214,7 @@ mem_write(const device* dev, long long addr, long long size, unsigned int patter
 }
 
 void
-mem_write(const device* dev, long long addr, long long size, std::vector<char> buf)
+mem_write(const device* dev, long long addr, long long size, std::vector<char>& buf)
 {
   instance().mem_write(dev, addr, size, buf);
 }

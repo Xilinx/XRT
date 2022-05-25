@@ -1,5 +1,8 @@
 /**
- * Copyright (C) 2020-2022 Licensed under the Apache License, Version
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * 
+ * Licensed under the Apache License, Version
  * 2.0 (the "License"). You may not use this file except in
  * compliance with the License. A copy of the License is located
  * at
@@ -38,7 +41,7 @@ OO_MemRead::OO_MemRead( const std::string &_longName, bool _isHidden )
     , m_device({})
     , m_baseAddress("")
     , m_sizeBytes("")
-    , m_count(1)
+    , m_count(0)
     , m_outputFile("")
     , m_help(false)
 {
@@ -82,7 +85,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
 
   //-- Working variables
   std::shared_ptr<xrt_core::device> device;
-  long long addr = 0, size = 0;
+  long long addr = 0;
 
   try {
     //-- Device
@@ -113,6 +116,9 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  if (m_count <= 0)
+    throw xrt_core::error("Please specify a number of blocks greater than zero");
+
   try {
     //-- base address
     addr = std::stoll(m_baseAddress, nullptr, 0);
@@ -122,28 +128,36 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  // Validate the number of bytes to be written if defined
+  // This does not need to be defined for the --input option path
+  uint64_t size = 0;
   try {
-    //-- size
-    size = std::stoll(m_sizeBytes, nullptr, 0);
+    if (!m_sizeBytes.empty()) {
+      size = XBUtilities::string_to_bytes(m_sizeBytes);
+      if (size <= 0)
+        throw xrt_core::error(std::errc::operation_canceled, "Size must be greater than 0");
+    }
   }
-  catch(const std::invalid_argument&) {
-    std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--size'\n") % m_sizeBytes;
+  catch(const xrt_core::error& e) {
+    std::cerr << boost::format("Value supplied to --size is invalid: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   XBU::verbose(boost::str(boost::format("Device: %s") % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device))));
   XBU::verbose(boost::str(boost::format("Address: %s") % addr));
-  XBU::verbose(boost::str(boost::format("Size: %s") % size));
-  XBU::verbose(boost::str(boost::format("Block count: %s") % m_count));
+  XBU::verbose(boost::str(boost::format("Size: %llu") % size));
+  XBU::verbose(boost::str(boost::format("Block count: %d") % m_count));
   XBU::verbose(boost::str(boost::format("Output file: %s") % m_outputFile));
+  XBU::verbose(boost::str(boost::format("Bytes to read: %lld") % (m_count * size)));
 
   //read mem
   XBU::xclbin_lock xclbin_lock(device);
   
   try{
     for(int c = 0; c < m_count; c++) {
+      XBU::verbose(boost::str(boost::format("[%d / %d] Reading from Address: %s, Size: %s bytes") % c % m_count % addr % size));
       xrt_core::mem_read(device.get(), addr, size, m_outputFile);
-      addr +=size;
+      addr += size;
     }
   } catch(const xrt_core::error& e) {
     std::cerr << e.what() << std::endl;

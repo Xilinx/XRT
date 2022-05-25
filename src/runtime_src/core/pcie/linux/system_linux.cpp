@@ -307,7 +307,7 @@ mem_write(const device* device, long long addr, long long size, unsigned int pat
 
 void
 system_linux::
-mem_write(const device* device, long long addr, long long size, std::vector<char> buf) const
+mem_write(const device* device, long long addr, long long size, std::vector<char>& buf) const
 {
   auto get_ddr_mem_size = [device]() {
     auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);

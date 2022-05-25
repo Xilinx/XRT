@@ -142,7 +142,7 @@ public:
   }
 
   virtual void
-  mem_write(const device*, long long, long long, std::vector<char>) const
+  mem_write(const device*, long long, long long, std::vector<char>&) const
   {
     throw std::runtime_error("memory write is not supported");
   }
@@ -276,11 +276,7 @@ mem_read(const device* dev, long long addr, long long size, const std::string& o
 
 XRT_CORE_COMMON_EXPORT
 void
-mem_write(const device* device, long long addr, long long size, unsigned int pattern);
-
-XRT_CORE_COMMON_EXPORT
-void
-mem_write(const device* device, long long addr, long long size, std::vector<char> buf);
+mem_write(const device* device, long long addr, long long size, std::vector<char>& buf);
 
 } //xrt_core
 

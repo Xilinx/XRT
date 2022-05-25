@@ -58,7 +58,7 @@ public:
   mem_write(const device* device, long long addr, long long size, unsigned int pattern) const;
 
   void
-  mem_write(const device* device, long long addr, long long size, std::vector<char> buf) const;
+  mem_write(const device* device, long long addr, long long size, std::vector<char>& buf) const;
 
   monitor_access_type
   get_monitor_access_type() const
