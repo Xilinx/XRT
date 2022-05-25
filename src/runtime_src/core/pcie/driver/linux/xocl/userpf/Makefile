@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 #
 # Authors:
 #
@@ -44,7 +44,6 @@ drv_common-y   := $(common_dir)/kds_core.o \
 		  $(common_dir)/xrt_cu.o \
 		  $(common_dir)/cu_hls.o \
 		  $(common_dir)/fast_adapter.o \
-		  $(common_dir)/cu_plram.o \
 		  $(common_dir)/xgq_execbuf.o \
 		  $(common_dir)/xrt_xclbin.o
 
@@ -57,7 +56,6 @@ xocl-y := \
 	../xocl_debug.o \
 	../xocl_xgq.o \
 	../subdev/xdma.o \
-	../subdev/qdma.o \
 	../subdev/qdma4.o \
 	../subdev/feature_rom.o \
 	../subdev/mailbox.o \

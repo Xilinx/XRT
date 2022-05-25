@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,20 +16,21 @@
 
 #include "SectionKeyValueMetadata.h"
 
+#include "XclBinUtilities.h"
+#include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionKeyValueMetadata::_init SectionKeyValueMetadata::_initializer;
+SectionKeyValueMetadata::init SectionKeyValueMetadata::initializer;
 
-SectionKeyValueMetadata::SectionKeyValueMetadata() {
-  // Empty
-}
+SectionKeyValueMetadata::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(KEYVALUE_METADATA, "KEYVALUE_METADATA", boost::factory<SectionKeyValueMetadata*>()); 
+  sectionInfo->nodeName = "keyvalue_metadata";
 
-SectionKeyValueMetadata::~SectionKeyValueMetadata() {
-  // Empty
+  addSectionType(std::move(sectionInfo));
 }
 
 void 
@@ -96,7 +97,7 @@ SectionKeyValueMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptS
 bool 
 SectionKeyValueMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_JSON) {
+  if (_eFormatType == FormatType::JSON) {
     return true;
   }
   return false;
@@ -105,8 +106,8 @@ SectionKeyValueMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionKeyValueMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-    if ((_eFormatType == FT_JSON) ||
-        (_eFormatType == FT_HTML))
+    if ((_eFormatType == FormatType::JSON) ||
+        (_eFormatType == FormatType::HTML))
     {
       return true;
     }

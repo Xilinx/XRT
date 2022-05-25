@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -75,7 +76,6 @@ void  main_(int argc, char** argv,
     ("trace",       boost::program_options::bool_switch(&bTrace), "Enables code flow tracing")
     ("show-hidden", boost::program_options::bool_switch(&bShowHidden), "Shows hidden options and commands")
     ("subCmd",      po::value<std::string>(), "Command to execute")
-    ("subCmdArgs",  po::value<std::vector<std::string> >(), "Arguments for command")
   ;
 
   // Merge the options to one common collection
@@ -84,28 +84,12 @@ void  main_(int argc, char** argv,
 
   // Create a sub-option command and arguments
   po::positional_options_description positionalCommand;
-  positionalCommand.
-    add("subCmd", 1 /* max_count */).
-    add("subCmdArgs", -1 /* Unlimited max_count */);
+  positionalCommand.add("subCmd", 1 /* max_count */);
 
-  // -- Parse the command line
-  po::parsed_options parsed = po::command_line_parser(argc, argv).
-    options(allOptions).            // Global options
-    positional(positionalCommand).  // Our commands
-    allow_unregistered().           // Allow for unregistered options (needed for sub options)
-    run();                          // Parse the options
-
+  // Parse the command line arguments
   po::variables_map vm;
-
-  try {
-    po::store(parsed, vm);          // Can throw
-    po::notify(vm);                 // Can throw
-  } catch (po::error& e) {
-    // Something bad happen with parsing our options
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    XBU::report_commands_help(_executable, _description, globalOptions, hiddenOptions, _subCmds);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  po::command_line_parser parser(argc, argv);
+  auto subcmd_options = XBU::process_arguments(vm, parser, allOptions, positionalCommand, false);
 
   if(bVersion) {
     std::cout << XBU::get_xrt_pretty_version();
@@ -138,28 +122,25 @@ void  main_(int argc, char** argv,
     }
   }
 
-  if ( !subCommand) {
+  if (!subCommand) {
     std::cerr << "ERROR: " << "Unknown command: '" << sCommand << "'" << std::endl;
     XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // -- Prepare the data
-  std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-  opts.erase(opts.begin());
+  subcmd_options.erase(subcmd_options.begin());
 
-  if (bHelp == true) 
-    opts.push_back("--help");
+  if (bHelp)
+    subcmd_options.push_back("--help");
 
   #ifdef ENABLE_DEFAULT_ONE_DEVICE_OPTION
   // If the user has NOT specified a device AND the command to be executed
   // is not the examine command, then automatically add the device.
   // Note: "examine" produces different reports depending if the user has
   //       specified the --device option or not.
-  if ( sDevice.empty() &&
-       (subCommand->isDefaultDeviceValid())) {
+  if (sDevice.empty() && (subCommand->isDefaultDeviceValid()))
     sDevice = "default";
-  }
   #endif
 
   // Was default device requested?
@@ -192,14 +173,14 @@ void  main_(int argc, char** argv,
 
   // If there is a device value, pass it to the sub commands.
   if (!sDevice.empty()) {
-    opts.push_back("-d");
-    opts.push_back(sDevice);
+    subcmd_options.push_back("-d");
+    subcmd_options.push_back(sDevice);
   }
 
   subCommand->setGlobalOptions(globalSubCmdOptions);
 
   // -- Execute the sub-command
-  subCommand->execute(opts);
+  subCommand->execute(subcmd_options);
 }
 
 

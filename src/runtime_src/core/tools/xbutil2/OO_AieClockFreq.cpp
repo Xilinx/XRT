@@ -1,9 +1,10 @@
 /**
-* Copyright (C) 2022 Xilinx, Inc
-*
-* Licensed under the Apache License, Version 2.0 (the "License"). You may
-* not use this file except in compliance with the License. A copy of the
-* License is located at
+ * Copyright (C) 2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
 *
 *     http://www.apache.org/licenses/LICENSE-2.0
 *
@@ -65,7 +66,7 @@ set_aie_part_freq(const std::shared_ptr<xrt_core::device>& device, uint32_t part
   uint64_t freq = 0;
   try {
     //convert freq to hertz(Hz)
-    freq = XBUtilities::string_to_bytes(setFreq);
+    freq = XBUtilities::string_to_base_units(setFreq, XBUtilities::unit::Hertz);
   }
   catch(const xrt_core::error&) {
     std::cerr << "Freq value provided with 'set' option is invalid. Please specify proper units and rerun" << std::endl;
@@ -128,16 +129,7 @@ OO_AieClockFreq::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-
-  try {
-    po::store(po::command_line_parser(_options).options(m_optionsDescription).positional(m_positionalOptions).run(), vm);
-    po::notify(vm); // Can throw
-  }
-  catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << "\n\n";
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options);
 
   // Exit if neither action or device specified
   if(m_help || m_device.empty()) {

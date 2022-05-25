@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 # Signing xclbin images are currently only support on Linux
 
@@ -29,7 +29,7 @@ find_package(Threads REQUIRED)
 
 # -----------------------------------------------------------------------------
 # Include the generated header files (e.g., version.h)
-include_directories(${CMAKE_BINARY_DIR}/gen)
+include_directories(${XRT_BINARY_DIR}/gen)
 
 # ==-- x c l b i n u t i l --==================================================
 
@@ -114,11 +114,11 @@ if(NOT WIN32)
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/PartitionMetadata")
   xrt_add_test("partition_metadata" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/PartitionMetadata/SectionPartitionMetadata.py ${TEST_OPTIONS}")
 
-  # -- Fixed Kernels 
+  # -- Fixed Kernels
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/FixedKernel")
   xrt_add_test("fixed-kernel" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/FixedKernel/FixedKernel.py ${TEST_OPTIONS}")
 
-  # -- PS Kernels 
+  # -- PS Kernels
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/PSKernel")
   xrt_add_test("ps-kernel" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/PSKernel/PSKernel.py ${TEST_OPTIONS}")
 
@@ -126,9 +126,13 @@ if(NOT WIN32)
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/BinaryImages")
   xrt_add_test("binary-images" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/BinaryImages/BinaryImages.py ${TEST_OPTIONS}")
 
-  # -- Binary Images
+  # -- Single Subsection
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SingleSubsection")
   xrt_add_test("single-subsection" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SingleSubsection/SingleSubsection.py ${TEST_OPTIONS}")
+
+  # -- AIE Partition
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AIEPartition")
+  xrt_add_test("aie-partition" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AIEPartition/AIEPartition.py ${TEST_OPTIONS}")
 
 endif()
 

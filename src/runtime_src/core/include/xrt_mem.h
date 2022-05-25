@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019, Xilinx Inc - All rights reserved.
+ * Copyright (C) 2019-2022, Xilinx Inc - All rights reserved.
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -13,15 +13,56 @@
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations
  * under the License.
+ *
+ * GPL license Verbiage:
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _XRT_MEM_H_
 #define _XRT_MEM_H_
 
+#ifdef _WIN32
+# pragma warning( push )
+# pragma warning( disable : 4201 )
+#endif
 
 #ifdef __cplusplus
+# include <cstdint>
 extern "C" {
+#else
+# if defined(__KERNEL__)
+#  include <linux/types.h>
+# else
+#  include <stdint.h>
+# endif
 #endif
+
+/**
+ * Encoding of flags passed to xcl buffer allocation APIs
+ */
+struct xcl_bo_flags
+{
+  union {
+    uint32_t flags;
+    struct {
+      uint16_t bank;       // [15-0]
+      uint8_t  slot;       // [16-23]
+      uint8_t  boflags;    // [24-31]
+    };
+  };
+};
 
 /**
  * XCL BO Flags bits layout
@@ -67,4 +108,9 @@ enum xclDDRFlags {
 #ifdef __cplusplus
 }
 #endif
+
+#ifdef _WIN32
+# pragma warning( pop )
+#endif
+
 #endif

@@ -308,7 +308,7 @@ DSAInfo::DSAInfo(const std::string& filename, uint64_t ts, const std::string& id
         }
         // For 2RP platform, only UUIDs are provided
         //timestamp = ap->m_header.m_featureRomTimeStamp;
-        hasFlashImage = (xclbin::get_axlf_section(ap, MCS) != nullptr) || (xclbin::get_axlf_section(ap, PDI) != nullptr) || 
+        hasFlashImage = (xclbin::get_axlf_section(ap, MCS) != nullptr) || (xclbin::get_axlf_section(ap, PDI) != nullptr) ||
                             (xclbin::get_axlf_section(ap, ASK_FLASH) != nullptr);
 
         // Find out BMC version
@@ -361,7 +361,7 @@ normalize_uuid(std::string id)
     return uuid;
 }
 
-bool DSAInfo::matchId(const std::string &id) const 
+bool DSAInfo::matchId(const std::string &id) const
 {
     uint64_t ts = strtoull(id.c_str(), nullptr, 0);
     if (ts != 0 && ts != ULLONG_MAX && ts == timestamp)
@@ -384,12 +384,12 @@ bool DSAInfo::matchIntId(std::string &id) const
 
     if (uuids.size() > 1) {
         for(unsigned int j = 1; j < uuids.size(); j++) {
-            
+
             //Check 1: check if passed in id matches UUID
             if (!strncmp(uuids[j].c_str(), uuid.c_str(), uuid.length()))
                 return true;
-            
-            //Check 2: check if passed in ID macthes the timestamp 
+
+            //Check 2: check if passed in ID macthes the timestamp
             uint64_t int_ts = 0;
             uuid2ts(uuids[j], int_ts);
 	        if (int_ts == ts)
@@ -412,7 +412,7 @@ bool DSAInfo::matchId(const DSAInfo& dsa) const
     return false;
 }
 
-bool DSAInfo::bmcVerIsFixed() const 
+bool DSAInfo::bmcVerIsFixed() const
 {
 	return (bmcVer.find("FIXED") != std::string::npos);
 }
@@ -429,7 +429,7 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
       catch (const std::exception&) {
         // directory cannot be checked, maybe relative and
         // insufficient CWD permissions
-        continue; 
+        continue;
       }
 
       boost::filesystem::recursive_directory_iterator end_iter;
@@ -441,7 +441,7 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
         }
       }
     }
-    
+
     return installedDSA;
 }
 
@@ -460,7 +460,7 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
     return stream;
 }
 
-static void 
+static void
 remove_xsabin_mirror(void * xsabin_buffer)
 {
   static const std::string mirror_data_start = "XCLBIN_MIRROR_DATA_START";
@@ -490,14 +490,14 @@ remove_xsabin_mirror(void * xsabin_buffer)
 
   // Compress the image
   uint64_t bytesToCopy = bufferSize - end_offset;
-  if (bytesToCopy != 0) 
+  if (bytesToCopy != 0)
     std::memcpy(reinterpret_cast<unsigned char *>(xsabin_buffer) + start_offset, reinterpret_cast<unsigned char *>(xsabin_buffer) + end_offset, bytesToCopy);
 
   // Update length of the buffer
   axlf_header->m_header.m_length = bufferSize - bytesRemoved;
 }
 
-static void 
+static void
 remove_xsabin_section(void * xsabin_buffer, enum axlf_section_kind section_to_remove)
 {
   // Simple DRC check
@@ -505,7 +505,7 @@ remove_xsabin_section(void * xsabin_buffer, enum axlf_section_kind section_to_re
     throw std::runtime_error("ERROR: Buffer pointer is a nullptr.");
   axlf *axlf_header = reinterpret_cast<struct axlf *>(xsabin_buffer);
 
-  // This loop does need to re-evaluate the m_numSections for it will be 
+  // This loop does need to re-evaluate the m_numSections for it will be
   // reduced as sections are removed.  In addition, we need to start again from
   // the start for there could be multiple sections of the same type that
   // need to be removed.
@@ -526,7 +526,7 @@ remove_xsabin_section(void * xsabin_buffer, enum axlf_section_kind section_to_re
     uint64_t bytesRemoved = startFromOffset - startToOffset;
 
     if (bytesToCopy != 0) {
-      std::memcpy(reinterpret_cast<unsigned char *>(xsabin_buffer) + startToOffset, 
+      std::memcpy(reinterpret_cast<unsigned char *>(xsabin_buffer) + startToOffset,
                     reinterpret_cast<unsigned char *>(xsabin_buffer) + startFromOffset, bytesToCopy);
     }
     // -- Now do some incremental clean up of the data structures
@@ -546,7 +546,7 @@ remove_xsabin_section(void * xsabin_buffer, enum axlf_section_kind section_to_re
     // Remove the array entry
     void * ptrStartTo = &sectionHeaderArray[index];
     void * ptrStartFrom = &sectionHeaderArray[index+1];
-    uint64_t bytesToShift = axlf_header->m_header.m_length - 
+    uint64_t bytesToShift = axlf_header->m_header.m_length -
                             (reinterpret_cast<unsigned char *>(ptrStartFrom) - reinterpret_cast<unsigned char *>(xsabin_buffer));
     std::memcpy(reinterpret_cast<unsigned char *>(ptrStartTo), reinterpret_cast<unsigned char *>(ptrStartFrom), bytesToShift);
 
@@ -699,7 +699,7 @@ firmwareImage::firmwareImage(const std::string& file, imageType type) :
                 }
 
                 /*
-                 * By default, we load entire xsabin. 
+                 * By default, we load entire xsabin.
 		 * For legacy ospiversal type, the Flasher class will trim to PDI.
 		 * For new ospi_xgq type, the Flasher will take entire xsabin.
                  */
@@ -749,11 +749,11 @@ firmwareImage::firmwareImage(const std::string& file, imageType type) :
                 in_file.read(mBuf, bufsize);
             }
         }
-            
+
     }
     else
     {
-        if (type != MCS_FIRMWARE_PRIMARY)
+        if ((type != BMC_FIRMWARE) && (type != MCS_FIRMWARE_PRIMARY))
         {
             this->setstate(failbit);
             std::cout << "non-dsabin supports only primary bitstream: " << file << std::endl;
@@ -766,7 +766,7 @@ firmwareImage::firmwareImage(const std::string& file, imageType type) :
     }
 
 // rdbuf doesn't work on windows and str() doesn't work for ospi_versal on linux
-#ifdef __GNUC__
+#ifdef __linux__
     this->rdbuf()->pubsetbuf(mBuf, bufsize);
 #endif
 #ifdef _WIN32

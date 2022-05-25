@@ -290,11 +290,12 @@ int Flasher::getBoardInfo(BoardInfo& board)
         board.mName = sdr_info[BDINFO_NAME];
         board.mRev = sdr_info[BDINFO_REV];
         board.mFanPresence = sdr_info[BDINFO_FAN_PRESENCE][0];
-        board.mMaxPower = sdr_info[BDINFO_MAX_PWR];
         board.mMacAddr0 = sdr_info[BDINFO_MAC0].compare(unassigned_mac) ?
             sdr_info[BDINFO_MAC0] : std::move(std::string("Unassigned"));
         board.mMacAddr1 = sdr_info[BDINFO_MAC1].compare(unassigned_mac) ?
             sdr_info[BDINFO_MAC1] : std::move(std::string("Unassigned"));
+        board.mConfigMode = 0;
+        board.mMaxPower = "";
         return 0;
     }
     if (ret != 0)

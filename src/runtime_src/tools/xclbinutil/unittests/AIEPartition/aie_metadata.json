@@ -1,0 +1,173 @@
+{
+    "schema_version": {
+        "major": "1",
+        "minor": "0",
+        "patch": "0"
+    },
+    "aie_metadata": {
+        "driver_config": {
+            "hw_gen": 2,
+            "base_address": 2199023255552,
+            "npi_address": 0,
+            "column_shift": 25,
+            "row_shift": 20,
+            "num_rows": 6,
+            "num_columns": 5,
+            "shim_row": 0,
+            "reserved_row_start": 1,
+            "reserved_num_rows": 1,
+            "aie_tile_row_start": 2,
+            "aie_tile_num_rows": 4,
+            "partition_num_cols": 1,
+            "partition_overlay_start_cols": [
+                1,
+                2,
+                3,
+                4
+            ]
+        },
+        "aiecompiler_options": {
+            "broadcast_enable_core": false
+        },
+        "graphs": {
+            "graph0": {
+                "id": 0,
+                "name": "ipu_inst",
+                "core_columns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "core_rows": [
+                    0,
+                    1,
+                    2,
+                    3
+                ],
+                "iteration_memory_columns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "iteration_memory_rows": [
+                    0,
+                    1,
+                    2,
+                    2
+                ],
+                "iteration_memory_addresses": [
+                    26628,
+                    26628,
+                    26628,
+                    49220
+                ],
+                "multirate_triggers": [
+                    false,
+                    false,
+                    false,
+                    false
+                ],
+                "pl_kernel_instance_names": [],
+                "pl_axi_lite_modes": []
+            }
+        },
+        "RTPs": {},
+        "GMIOs": {
+            "gmio0": {
+                "id": 0,
+                "name": "ipu_inst.aPr_slice_c0",
+                "logical_name": "IFM_MT0",
+                "type": 0,
+                "shim_column": 0,
+                "channel_number": 2,
+                "stream_id": 3,
+                "burst_length_in_16byte": 16,
+                "pl_kernel_instance_name": "",
+                "pl_parameter_index": -1
+            },
+            "gmio1": {
+                "id": 1,
+                "name": "ipu_inst.bPr_slice_c0",
+                "logical_name": "WGT_MT0",
+                "type": 0,
+                "shim_column": 0,
+                "channel_number": 3,
+                "stream_id": 7,
+                "burst_length_in_16byte": 16,
+                "pl_kernel_instance_name": "",
+                "pl_parameter_index": -1
+            },
+            "gmio2": {
+                "id": 2,
+                "name": "ipu_inst.cPr_slice_c0",
+                "logical_name": "OFM_MT0",
+                "type": 1,
+                "shim_column": 0,
+                "channel_number": 0,
+                "stream_id": 2,
+                "burst_length_in_16byte": 16,
+                "pl_kernel_instance_name": "",
+                "pl_parameter_index": -1
+            }
+        },
+        "PLIOs": {
+            "plio0": {
+                "id": 0,
+                "name": "ipu_inst.tct0",
+                "logical_name": "TCT",
+                "shim_column": 0,
+                "slaveOrMaster": 1,
+                "stream_id": 0
+            }
+        },
+        "EventGraphs": {
+            "graph0": {
+                "id": 0,
+                "name": "ipu_inst",
+                "core_columns": [
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "core_rows": [
+                    0,
+                    1,
+                    2,
+                    3
+                ],
+                "dma_columns": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                ],
+                "dma_rows": [
+                    0,
+                    1,
+                    1,
+                    2,
+                    2,
+                    3,
+                    0,
+                    1,
+                    2,
+                    3
+                ]
+            }
+        },
+        "DeviceData": {
+            "AIEBaseAddress": "0x20000000000",
+            "AIEFrequency": 1000
+        },
+        "TraceGMIOs": {}
+    }
+}

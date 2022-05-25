@@ -217,7 +217,7 @@ static int cu_probe(struct platform_device *pdev)
 	sprintf(zcu->irq_name, "zocl_cu[%d]", info->intr_id);
 
 	if (info->intr_enable) {
-		zcu->irq = zdev->irq[info->intr_id];
+		zcu->irq = zdev->cu_subdev.irq[info->intr_id];
 		/* Currently requesting irq if it's enable in cu config.
 		 * Not disabling it further, even user wants to use 
 		 * polling.
@@ -255,7 +255,7 @@ static int cu_probe(struct platform_device *pdev)
 	zcu->base.user_manage_irq = user_manage_irq;
 	zcu->base.configure_irq = configure_irq;
 
-	zocl_info(&pdev->dev, "CU[%d] created", info->cu_idx);
+	zocl_info(&pdev->dev, "CU[%d] created", info->inst_idx);
 	return 0;
 err2:
 	zocl_kds_del_cu(zdev, &zcu->base);
@@ -291,14 +291,15 @@ static int cu_remove(struct platform_device *pdev)
 		free_irq(zcu->irq, zcu);
 
 	zdev = zocl_get_zdev();
-	zocl_kds_del_cu(zdev, &zcu->base);
+	if(zdev)
+		zocl_kds_del_cu(zdev, &zcu->base);
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);
 
 	sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
 
-	zocl_info(&pdev->dev, "CU[%d] removed", info->cu_idx);
+	zocl_info(&pdev->dev, "CU[%d] removed", info->inst_idx);
 	kfree(zcu->irq_name);
 	kfree(zcu);
 

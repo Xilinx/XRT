@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020 Xilinx, Inc
+ * Copyright (C) 2018, 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,19 +17,21 @@
 #include "SectionIPLayout.h"
 
 #include "XclBinUtilities.h"
-namespace XUtil = XclBinUtilities;
-
+#include <boost/format.hpp>
+#include <boost/functional/factory.hpp>
 #include <iostream>
 
+namespace XUtil = XclBinUtilities;
+
 // Static Variables / Classes
-SectionIPLayout::_init SectionIPLayout::_initializer;
+SectionIPLayout::init SectionIPLayout::initializer;
 
-SectionIPLayout::SectionIPLayout() {
-  // Empty
-}
+SectionIPLayout::init::init() 
+{ 
+  auto sectionInfo = std::make_unique<SectionInfo>(IP_LAYOUT, "IP_LAYOUT", boost::factory<SectionIPLayout*>()); 
+  sectionInfo->nodeName = "ip_layout";
 
-SectionIPLayout::~SectionIPLayout() {
-  // Empty
+  addSectionType(std::move(sectionInfo));
 }
 
 
@@ -54,7 +56,7 @@ SectionIPLayout::getIPTypeStr(enum IP_TYPE _ipType) const {
       return "IP_PS_KERNEL";
   }
 
-  return XUtil::format("UNKNOWN (%d)", (unsigned int)_ipType);
+  return (boost::format("UNKNOWN (%d)") % (unsigned int) _ipType).str();
 }
 
 enum IP_TYPE
@@ -89,7 +91,7 @@ SectionIPLayout::getIPControlTypeStr(enum IP_CONTROL _ipControlType) const {
       return "FAST_ADAPTER";
   }
 
-  return XUtil::format("UNKNOWN (%d)", (unsigned int) _ipControlType);
+  return (boost::format("UNKNOWN (%d)") % (unsigned int) _ipControlType).str();
 }
 
 
@@ -126,24 +128,25 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
 
   // Do we have enough room to overlay the header structure
   if (_sectionSize < sizeof(ip_layout)) {
-    throw std::runtime_error(XUtil::format("ERROR: Section size (%d) is smaller than the size of the ip_layout structure (%d)",
-                                           _sectionSize, sizeof(ip_layout)));
+    auto errMsg = boost::format("ERROR: Section size (%d) is smaller than the size of the ip_layout structure (%d)")
+                                % _sectionSize % sizeof(ip_layout);
+    throw std::runtime_error(errMsg.str());
   }
 
   ip_layout* pHdr = (ip_layout*)_pDataSection;
   boost::property_tree::ptree ip_layout;
 
-  XUtil::TRACE(XUtil::format("m_count: %d", pHdr->m_count));
+  XUtil::TRACE(boost::format("m_count: %d") % pHdr->m_count);
 
   // Write out the entire structure except for the array structure
   XUtil::TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_ip_data[0]) - (uint64_t)pHdr));
-  ip_layout.put("m_count", XUtil::format("%d", (unsigned int)pHdr->m_count).c_str());
+  ip_layout.put("m_count", (boost::format("%d") % (unsigned int) pHdr->m_count).str());
 
   uint64_t expectedSize = ((uint64_t)&(pHdr->m_ip_data[0]) - (uint64_t)pHdr) + (sizeof(ip_data) * pHdr->m_count);
 
   if (_sectionSize != expectedSize) {
-    throw std::runtime_error(XUtil::format("ERROR: Section size (%d) does not match expected section size (%d).",
-                                           _sectionSize, expectedSize));
+    auto errMsg = boost::format("ERROR: Section size (%d) does not match expected section size (%d).") % _sectionSize % expectedSize;
+    throw std::runtime_error(errMsg.str());
   }
 
   boost::property_tree::ptree m_ip_data;
@@ -154,31 +157,31 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
         ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)  ||
         ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM_ECC)) {
 
-      XUtil::TRACE(XUtil::format("[%d]: m_type: %s, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'",
-                                 index,
-                                 getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
-                                 pHdr->m_ip_data[index].indices.m_index,
-                                 pHdr->m_ip_data[index].indices.m_pc_index,
-                                 pHdr->m_ip_data[index].m_base_address,
-                                 pHdr->m_ip_data[index].m_name));
+      XUtil::TRACE(boost::format("[%d]: m_type: %s, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'")
+                                 % index
+                                 % getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type)
+                                 % pHdr->m_ip_data[index].indices.m_index
+                                 % pHdr->m_ip_data[index].indices.m_pc_index
+                                 % pHdr->m_ip_data[index].m_base_address
+                                 % pHdr->m_ip_data[index].m_name);
     } else if ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
       std::string sIPControlType = getIPControlTypeStr((enum IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
-      XUtil::TRACE(XUtil::format("[%d]: m_type: %s, properties: 0x%x {m_ip_control: %s, m_interrupt_id: %d, m_int_enable: %d}, m_base_address: 0x%lx, m_name: '%s'",
-                                 index,
-                                 getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
-                                 pHdr->m_ip_data[index].properties,
-                                 sIPControlType.c_str(),
-                                 (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT,
-                                 (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INT_ENABLE_MASK)),
-                                 pHdr->m_ip_data[index].m_base_address,
-                                 pHdr->m_ip_data[index].m_name));
+      XUtil::TRACE(boost::format("[%d]: m_type: %s, properties: 0x%x {m_ip_control: %s, m_interrupt_id: %d, m_int_enable: %d}, m_base_address: 0x%lx, m_name: '%s'")
+                                 % index
+                                 % getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type)
+                                 % pHdr->m_ip_data[index].properties
+                                 % sIPControlType
+                                 % ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT)
+                                 % (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INT_ENABLE_MASK))
+                                 % pHdr->m_ip_data[index].m_base_address
+                                 % pHdr->m_ip_data[index].m_name);
     } else {
-      XUtil::TRACE(XUtil::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
-                                 index,
-                                 getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str(),
-                                 pHdr->m_ip_data[index].properties,
-                                 pHdr->m_ip_data[index].m_base_address,
-                                 pHdr->m_ip_data[index].m_name));
+      XUtil::TRACE(boost::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
+                                 % index
+                                 % getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type)
+                                 % pHdr->m_ip_data[index].properties
+                                 % pHdr->m_ip_data[index].m_base_address
+                                 % pHdr->m_ip_data[index].m_name);
     }
 
     // Write out the entire structure
@@ -189,22 +192,22 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     if (((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
         ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)  ||
         ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM_ECC)) {
-      ip_data.put("m_index", XUtil::format("%d", (unsigned int)pHdr->m_ip_data[index].indices.m_index).c_str());
-      ip_data.put("m_pc_index", XUtil::format("%d", (unsigned int)pHdr->m_ip_data[index].indices.m_pc_index).c_str());
+      ip_data.put("m_index", (boost::format("%d") % (unsigned int)pHdr->m_ip_data[index].indices.m_index).str());
+      ip_data.put("m_pc_index", (boost::format("%d") % (unsigned int)pHdr->m_ip_data[index].indices.m_pc_index).str());
     } else if ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
-      ip_data.put("m_int_enable", XUtil::format("%d", (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INT_ENABLE_MASK))).c_str());
-      ip_data.put("m_interrupt_id", XUtil::format("%d", (pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT).c_str());
+      ip_data.put("m_int_enable", (boost::format("%d") % ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_INT_ENABLE_MASK)))).str());
+      ip_data.put("m_interrupt_id", (boost::format("%d") % (((pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT))).str());
       std::string sIPControlType = getIPControlTypeStr((enum IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
       ip_data.put("m_ip_control", sIPControlType.c_str());
     } else {
-      ip_data.put("properties", XUtil::format("0x%x", pHdr->m_ip_data[index].properties).c_str());
+      ip_data.put("properties", (boost::format("0x%x") % pHdr->m_ip_data[index].properties).str());
     }
     if ( pHdr->m_ip_data[index].m_base_address != ((uint64_t) -1) ) {
-      ip_data.put("m_base_address", XUtil::format("0x%lx", pHdr->m_ip_data[index].m_base_address).c_str());
+      ip_data.put("m_base_address", (boost::format("0x%lx") % pHdr->m_ip_data[index].m_base_address).str());
     } else {
       ip_data.put("m_base_address", "not_used");
     }
-    ip_data.put("m_name", XUtil::format("%s", pHdr->m_ip_data[index].m_name).c_str());
+    ip_data.put("m_name", (boost::format("%s") % pHdr->m_ip_data[index].m_name).str());
 
     m_ip_data.push_back(std::make_pair("", ip_data));   // Used to make an array of objects
   }
@@ -232,7 +235,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   }
 
   XUtil::TRACE("IP_LAYOUT");
-  XUtil::TRACE(XUtil::format("m_count: %d", ipLayoutHdr.m_count));
+  XUtil::TRACE(boost::format("m_count: %d") % ipLayoutHdr.m_count);
 
   // Write out the entire structure except for the mem_data structure
   XUtil::TRACE_BUF("ip_layout - minus ip_data", reinterpret_cast<const char*>(&ipLayoutHdr), (sizeof(ip_layout) - sizeof(ip_data)));
@@ -278,9 +281,8 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
           unsigned int interruptID = std::stoul(sInterruptID);
           unsigned int maxValue = ((unsigned int) IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
           if (interruptID > maxValue) {
-            std::string errMsg = XUtil::format("ERROR: The m_interrupt_id (%d), exceeds maximum value (%d).",
-                                               interruptID, maxValue);
-            throw std::runtime_error(errMsg);
+            auto errMsg = boost::format("ERROR: The m_interrupt_id (%d), exceeds maximum value (%d).") % interruptID % maxValue;
+            throw std::runtime_error(errMsg.str());
           }
   
           unsigned int shiftValue = (interruptID << IP_INTERRUPT_ID_SHIFT);
@@ -298,9 +300,8 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   
           unsigned int maxValue = ((unsigned int) IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
           if (ipControl > maxValue) {
-            std::string errMsg = XUtil::format("ERROR: The m_ip_control (%d), exceeds maximum value (%d).",
-                                               (unsigned int) ipControl, maxValue);
-            throw std::runtime_error(errMsg);
+            auto errMsg = boost::format("ERROR: The m_ip_control (%d), exceeds maximum value (%d).") % (unsigned int) ipControl % maxValue;
+            throw std::runtime_error(errMsg.str());
           }
   
           unsigned int shiftValue = ipControl << IP_CONTROL_SHIFT;
@@ -322,9 +323,9 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
     std::string sm_name = ptIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(ip_data::m_name)) {
-      std::string errMsg = XUtil::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'",
-                                         (unsigned int)sm_name.length(), (unsigned int)sizeof(ip_data::m_name), sm_name.c_str());
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
+                                   % (unsigned int) sm_name.length() % (unsigned int) sizeof(ip_data::m_name) % sm_name;
+      throw std::runtime_error(errMsg.str());
     }
 
     // We already know that there is enough room for this string
@@ -333,20 +334,20 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     if ((ipDataHdr.m_type == IP_MEM_DDR4) ||
         (ipDataHdr.m_type == IP_MEM_HBM)  ||
         (ipDataHdr.m_type == IP_MEM_HBM_ECC)) {
-      XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'",
-                                 count,
-                                 (unsigned int)ipDataHdr.m_type,
-                                 (unsigned int)ipDataHdr.indices.m_index,
-                                 (unsigned int)ipDataHdr.indices.m_pc_index,
-                                 ipDataHdr.m_base_address,
-                                 ipDataHdr.m_name));
+      XUtil::TRACE(boost::format("[%d]: m_type: %d, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'")
+                                 % count
+                                 % (unsigned int)ipDataHdr.m_type
+                                 % (unsigned int)ipDataHdr.indices.m_index
+                                 % (unsigned int)ipDataHdr.indices.m_pc_index
+                                 % ipDataHdr.m_base_address
+                                 % ipDataHdr.m_name);
     } else {
-      XUtil::TRACE(XUtil::format("[%d]: m_type: %d, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'",
-                                 count,
-                                 (unsigned int)ipDataHdr.m_type,
-                                 (unsigned int)ipDataHdr.properties,
-                                 ipDataHdr.m_base_address,
-                                 ipDataHdr.m_name));
+      XUtil::TRACE(boost::format("[%d]: m_type: %d, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
+                                 % count
+                                 % (unsigned int)ipDataHdr.m_type
+                                 % (unsigned int)ipDataHdr.properties
+                                 % ipDataHdr.m_base_address
+                                 % ipDataHdr.m_name);
     }
 
     // Write out the entire structure
@@ -357,17 +358,17 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
   // -- The counts should match --
   if (count != (unsigned int)ipLayoutHdr.m_count) {
-    std::string errMsg = XUtil::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d",
-                                       (unsigned int)count, (unsigned int)ipLayoutHdr.m_count);
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d")
+                                % (unsigned int) count % (unsigned int)ipLayoutHdr.m_count;
+    throw std::runtime_error(errMsg.str());
   }
 
   // -- Buffer needs to be less than 64K--
   unsigned int bufferSize = (unsigned int) _buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
   if ( bufferSize > maxBufferSize ) {
-    std::string errMsg = XUtil::format("CRITICAL WARNING: The buffer size for the IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.",
-                                       (unsigned int) bufferSize, (unsigned int) maxBufferSize);
+    auto errMsg = boost::format("CRITICAL WARNING: The buffer size for the IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.")
+                                % (unsigned int) bufferSize % (unsigned int) maxBufferSize;
     std::cout << errMsg << std::endl;
     // throw std::runtime_error(errMsg);
   }
@@ -377,7 +378,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 bool 
 SectionIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
 {
-  if (_eFormatType == FT_JSON) {
+  if (_eFormatType == FormatType::JSON) {
     return true;
   }
   return false;
@@ -386,9 +387,9 @@ SectionIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
 bool 
 SectionIPLayout::doesSupportDumpFormatType(FormatType _eFormatType) const
 {
-  if ((_eFormatType == FT_JSON) ||
-      (_eFormatType == FT_HTML) ||
-      (_eFormatType == FT_RAW))
+  if ((_eFormatType == FormatType::JSON) ||
+      (_eFormatType == FormatType::HTML) ||
+      (_eFormatType == FormatType::RAW))
   {
     return true;
   }
@@ -419,8 +420,8 @@ SectionIPLayout::appendToSectionMetadata(const boost::property_tree::ptree& _ptA
   unsigned int appendCount = _ptAppendData.get<unsigned int>("m_count");
 
   if (appendCount != ip_datas.size()) {
-    std::string errMsg = XUtil::format("ERROR: IP layout section append's count (%d) does not match the number of ip_data entries (%d).", appendCount, ip_datas.size());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: IP layout section append's count (%d) does not match the number of ip_data entries (%d).") % appendCount % ip_datas.size();
+    throw std::runtime_error(errMsg.str());
   }
 
   if (appendCount == 0) {

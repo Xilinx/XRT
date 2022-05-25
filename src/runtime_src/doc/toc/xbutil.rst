@@ -3,6 +3,7 @@
 ..
    comment:: SPDX-License-Identifier: Apache-2.0
    comment:: Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+   comment:: Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 
 xbutil
@@ -10,8 +11,6 @@ xbutil
 
 This document describes the latest ``xbutil`` commands. These latest commands are default from 21.1 release.  
 
-
-P.S: The older version of the commands can only be executed by adding ``--legacy`` switch . The documentation link of legacy version: `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/Chunk778393017.html>`_
 
 For an instructive video on xbutil commands listed below click `here <https://www.youtube.com/watch?v=nvU2ZBnAaz4>`_.
 
@@ -88,19 +87,20 @@ The command ``xbutil validate`` validates the installed card by running precompi
 - The ``--run`` (or ``-r``) specifies the perticular test(s) to execute
         
     - ``all`` (**default**): runs all the tests listed below
-    - ``Aux connection``: Check if auxiliary power is connected
-    - ``PCIE link``: Check if PCIE link is active
-    - ``SC version``: Check if SC firmware is up-to-date
-    - ``Verify kernel``: Run 'Hello World' kernel test
-    - ``DMA``: Run dma test
+    - ``aux-connection``: Check if auxiliary power is connected
+    - ``pcie-link``: Check if PCIE link is active
+    - ``sc-version``: Check if SC firmware is up-to-date
+    - ``verify``: Run 'Hello World' kernel test
+    - ``dma``: Run dma test
     - ``iops``: Run test to measure performance of scheduler (number of `hello world` kernel execution per second)
-    - ``Bandwidth kernel``: Run 'bandwidth kernel' and check the throughput
-    - ``Peer to peer bar``: Run peer-to-peer test
-    - ``Memory to memory DMA``: Run zero copy memory to memory data transfer test
-    - ``Host memory bandwidth test``: Run 'bandwidth kernel' when host memory is enabled
+    - ``mem-bw``: Run 'bandwidth kernel' and check the throughput
+    - ``p2p``: Run peer-to-peer test
+    - ``m2m``: Run zero copy memory to memory data transfer test
+    - ``hostmem-bw``: Run 'bandwidth kernel' when host memory is enabled
     - ``bist``: Run BIST test
-    - ``vcu``: Run decoder test (only applicable for specific platform). 
-    - ``quick``: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)   
+    - ``vcu``: Run decoder test (only applicable for specific platform).
+    - ``quick``: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)
+    - ``aie-pl``: Run AIE PL test
   
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     

@@ -17,7 +17,7 @@
 #ifndef SYSTEM_PCIE_H
 #define SYSTEM_PCIE_H
 
-#include "common/system.h"
+#include "core/common/system.h"
 
 namespace xrt_core {
 

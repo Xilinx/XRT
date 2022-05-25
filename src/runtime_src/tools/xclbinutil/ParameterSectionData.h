@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,26 +18,19 @@
 #define __ParameterSectionData_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
-#include <string>
 #include "Section.h"
 #include "xclbin.h"
+#include <string>
 
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
-
-// ------------------- C L A S S :   S e c t i o n ---------------------------
-
-/**
- *    This class represents the base class for a given Section in the xclbin
- *    archive.  
-*/
+// ---------- C L A S S :   P a r a m e t e r S e c t i o n D a t a ---------
 
 class ParameterSectionData {
+ private:
+  ParameterSectionData();
+
  public:
   ParameterSectionData(const std::string &_formattedString);
-  virtual ~ParameterSectionData();
+  ~ParameterSectionData();
 
  public:
   const std::string &getFile();
@@ -49,6 +42,9 @@ class ParameterSectionData {
   enum axlf_section_kind &getSectionKind();
   const std::string &getOriginalFormattedString();
 
+  protected:
+   void transformFormattedString(const std::string _formattedString);
+
  protected:
    enum Section::FormatType m_formatType;
    std::string m_formatTypeStr;
@@ -58,17 +54,6 @@ class ParameterSectionData {
    std::string m_sectionIndex;
    enum axlf_section_kind m_eKind;
    std::string m_originalString;
-
- protected:
-   void transformFormattedString(const std::string _formattedString);
-
- private:
-  ParameterSectionData();
-  // Purposefully private and undefined ctors...
-  ParameterSectionData(const ParameterSectionData& obj);
-  ParameterSectionData& operator=(const ParameterSectionData& obj);
-
- private:
 };
 
 #endif

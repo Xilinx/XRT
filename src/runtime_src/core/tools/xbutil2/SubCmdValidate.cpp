@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -46,7 +47,7 @@ namespace po = boost::program_options;
 #include <sstream>
 #include <thread>
 #include <regex>
-#ifdef __GNUC__
+#ifdef __linux__
 #include <sys/mman.h> //munmap
 #endif
 
@@ -244,7 +245,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
   }
   else if(!logic_uuid.empty()) {
     xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, _ptTest);
-  } 
+  }
   else {
     auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
     xclbinPath = searchLegacyXclbin(vendor, name, xclbin, _ptTest);
@@ -291,13 +292,14 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
       { "xcl_iops_test.exe",        "xcl_iops_test.exe"}
     };
 
-    if (test_map.find(py) == test_map.end()) {
-      logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % py));
-      _ptTest.put("status", test_token_failed);
-      return;
-    }
+    // Validate the legacy names
+    // If no legacy name exists use the passed in test name
+    std::string test_name = py;
+    if (test_map.find(py) != test_map.end())
+      test_name = test_map.find(py)->second;
 
-    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_map.find(py)->second;
+    // Parse if the file exists here
+    std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
     boost::filesystem::path xrt_path(xrtTestCasePath);
     if (!boost::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
@@ -343,7 +345,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
     std::vector<std::string> args = { "-k", xclbinPath,
-                                      "-d", std::to_string(_dev.get()->get_device_id()) };
+                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     int exit_code;
     try {
       if (py.find(".exe") != std::string::npos)
@@ -402,7 +404,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
 static void
 free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t bo_size)
 {
-#ifdef __GNUC__
+#ifdef __linux__
   if(boptr != nullptr)
     munmap(boptr, bo_size);
 #endif
@@ -465,14 +467,14 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   return true;
 }
 
-//Since no DMA platforms don't have a DMA engine, we copy p2p buffer 
+//Since no DMA platforms don't have a DMA engine, we copy p2p buffer
 //to host only buffer and run the test through m2m
 
 static bool
 p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_size, int bank)
 {
    // testing p2p write flow host -> device
-	
+
   xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_HOST_ONLY|bank);
   if (boh == NULLBO) {
     return false;
@@ -544,7 +546,7 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
              unsigned int mem_idx, uint64_t addr, uint64_t bo_size, uint32_t no_dma)
 {
   const size_t chunk_size = 16 * 1024 * 1024; //16 MB
-  const size_t mem_size = 256 * 1024 * 1024 ; //256 MB 
+  const size_t mem_size = 256 * 1024 * 1024 ; //256 MB
 
   xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P | mem_idx);
   if (boh == NULLBO) {
@@ -576,7 +578,7 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
         return false;
       }
     }
-  } 
+  }
   free_unmap_bo(handle, boh, boptr, bo_size);
   _ptTest.put("status", test_token_passed);
   return true;
@@ -859,7 +861,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
     max_power = xrt_core::device_query<xrt_core::query::max_power_level>(_dev);
   }
   catch (const xrt_core::query::exception&) { }
-  
+
   //check if device has aux power connector
   bool auxDevice = false;
   for (auto bd : auxPwrRequiredDevice) {
@@ -956,17 +958,6 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     return ;
   }
 
-  auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
-  size_t totalSize = 0;
-  switch (vendor) {
-    case ARISTA_ID:
-      totalSize = 0x20000000;
-      break;
-    default:
-    case XILINX_ID:
-      break;
-  }
-
   auto is_host_mem = [](std::string tag) {
     return tag.compare(0,4,"HOST") == 0;
   };
@@ -993,7 +984,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
       }
       catch(const std::invalid_argument&) {
         std::cerr << boost::format(
-          "ERROR: The parameter '%s' value '%s' is invalid for the test '%s'. Please specify and integer byte block-size.'\n") 
+          "ERROR: The parameter '%s' value '%s' is invalid for the test '%s'. Please specify and integer byte block-size.'\n")
           % "block-size" % str_block_size % "dma" ;
         throw xrt_core::error(std::errc::operation_canceled);
       }
@@ -1002,9 +993,15 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     logger(_ptTest, "Details", (boost::format("Buffer size - '%s'") % xrt_core::utils::unit_convert(block_size)).str());
 
     // check if the bank has enough memory to allocate
-    //  m_size is in KB so convert block_size (bytes) to KB for comparision
+    // m_size is in KB so convert block_size (bytes) to KB for comparison
     if(mem.m_size < (block_size/1024))
       continue;
+
+    size_t totalSize = 0;
+    if (xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev) == ARISTA_ID)
+      totalSize = 0x20000000; // 512 MB
+    else
+      totalSize = std::min((mem.m_size * 1024), XBU::string_to_base_units("2G", XBUtilities::unit::bytes)); // minimum of mem size in bytes and 2 GB
 
     xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
     try {
@@ -1109,8 +1106,8 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     }
   }
   run_test.finish(true, "");
- 
-  if (XBU::is_escape_codes_disabled() == true) 
+
+  if (XBU::is_escape_codes_disabled() == true)
     std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
 }
 
@@ -1263,6 +1260,15 @@ iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
 }
 
 /*
+ * TEST #13
+ */
+void
+aiePlTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+    runTestCase(_dev, "aie_pl.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
+}
+
+/*
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
@@ -1295,7 +1301,8 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("m2m", "Run M2M test", "bandwidth.xclbin"), m2mTest },
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
-  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest }
+  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
+  { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest }
 };
 
 
@@ -1449,7 +1456,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   const boost::property_tree::ptree empty_ptree;
   auto report = std::make_shared<ReportPlatforms>();
   report->getPropertyTreeInternal(device.get(), platform_report);
-  
+
   const boost::property_tree::ptree& platforms = platform_report.get_child("platforms", empty_ptree);
   if(platforms.size() > 1)
     throw xrt_core::error(std::errc::operation_canceled);
@@ -1493,7 +1500,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"Verify kernel", "Bandwidth kernel", "iops", "vcu"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
@@ -1540,7 +1547,7 @@ run_tests_on_devices( xrt_core::device_collection &deviceCollection,
 
   // -- Run the various tests and collect the test data
   boost::property_tree::ptree ptDeviceTested;
-  for(auto const& dev : deviceCollection) 
+  for(auto const& dev : deviceCollection)
     has_failures |= (run_test_suite_device(dev, schemaVersion, testObjectsToRun, ptDeviceTested) == test_status::failed);
 
   ptDevCollectionTestSuite.put_child("logical_devices", ptDeviceTested);
@@ -1671,26 +1678,12 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   po::options_description hiddenOptions("Hidden Options");
 
-  po::options_description allOptions("All Options");
-  allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
-
-  po::positional_options_description positionals;
-
   // Parse sub-command ...
   po::variables_map vm;
-
-  try {
-    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
-    po::notify(vm); // Can throw
-  } catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options, commonOptions, hiddenOptions);
 
   // Check to see if help was requested or no command was found
-  if (help == true)  {
+  if (help) {
     printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
     return;
   }
@@ -1749,7 +1742,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       doesTestExist(param[0], testNameDescription);
 
       //check parameter name
-      auto iter = std::find_if( extendedKeysCollection.begin(), extendedKeysCollection.end(), 
+      auto iter = std::find_if( extendedKeysCollection.begin(), extendedKeysCollection.end(),
           [&param](const ExtendedKeysStruct& collection){ return collection.param_name == param[1];} );
       if (iter == extendedKeysCollection.end())
         throw xrt_core::error((boost::format("Unsupported parameter name '%s' for validation test '%s'") % param[1] % param[2]).str());
@@ -1852,6 +1845,6 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
   }
 
-  if (has_failures == true) 
+  if (has_failures == true)
     throw xrt_core::error(std::errc::operation_canceled);
 }

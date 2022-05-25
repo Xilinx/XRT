@@ -1,40 +1,32 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2022 Xilinx, Inc. All rights reserved.
-#
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_BINARY_DIR}
+# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+add_library(core_pciewindows_mcdm_objects OBJECT
+  device_mcdm.cpp
+  shim.cpp
+  system_mcdm.cpp
   )
 
-file(GLOB XRT_PCIE_MCDM_FILES
-  "*.cpp"
-  "../../common/aie_stubs.cpp"
-  "../../common/system_pcie.cpp"
-  "../../common/device_pcie.cpp"
+target_compile_definitions(core_pciewindows_mcdm_objects
+  PRIVATE
+  XCLHAL_MAJOR_VER=2
+  XCLHAL_MINOR_VER=1
   )
 
-file(GLOB XRT_PCIE_MCDM_STATIC_FILES
-  "device_mcdm.cpp"
-  "../../common/aie_stubs.cpp"
-  "../../common/system_pcie.cpp"
-  "../../common/device_pcie.cpp"
-  )
-
-file(GLOB XRT_PCIE_MCDM_SHARED_FILES
-  "shim.cpp"
-  "mgmt.cpp"
-  "device_mcdm.cpp"
-  "system_mcdm.cpp"
-  "../../common/aie_stubs.cpp"
-  "../../common/system_pcie.cpp"
-  "../../common/device_pcie.cpp"
+target_include_directories(core_pciewindows_mcdm_objects
+  PRIVATE
+  ${XRT_SOURCE_DIR}/runtime_src
+  ${XRT_BINARY_DIR}
   )
 
 add_library(xrt_core SHARED
-  ${XRT_PCIE_MCDM_SHARED_FILES}
+  $<TARGET_OBJECTS:core_pciewindows_mcdm_objects>
+  $<TARGET_OBJECTS:core_pciecommon_objects>
   )
+
 add_library(xrt_core_static STATIC
-  ${XRT_PCIE_MCDM_STATIC_FILES}
+  $<TARGET_OBJECTS:core_pciewindows_mcdm_objects>
+  $<TARGET_OBJECTS:core_pciecommon_objects>
   )
 
 target_link_libraries(xrt_core

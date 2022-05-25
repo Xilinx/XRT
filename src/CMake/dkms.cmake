@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
@@ -18,19 +18,19 @@ SET (DKMS_POSTINST "postinst")
 SET (DKMS_PRERM "prerm")
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/dkms-xocl/${DKMS_FILE_NAME}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/dkms-xocl/${DKMS_FILE_NAME}.in"
   ${DKMS_FILE_NAME}
   @ONLY
   )
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
   ${DKMS_POSTINST}
   @ONLY
   )
 
 configure_file (
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
   ${DKMS_PRERM}
   @ONLY
   )
@@ -83,43 +83,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/cdev_sgdma.h
   xocl/lib/libxdma_api.h
   xocl/lib/Makefile.in
-  xocl/lib/libqdma/libqdma_config.h
-  xocl/lib/libqdma/libqdma_config.c
-  xocl/lib/libqdma/libqdma_export.h
-  xocl/lib/libqdma/libqdma_export.c
-  xocl/lib/libqdma/qdma_compat.h
-  xocl/lib/libqdma/qdma_context.h
-  xocl/lib/libqdma/qdma_context.c
-  xocl/lib/libqdma/qdma_debugfs.c
-  xocl/lib/libqdma/qdma_debugfs.h
-  xocl/lib/libqdma/qdma_debugfs_cmpt_queue.c
-  xocl/lib/libqdma/qdma_debugfs_dev.h
-  xocl/lib/libqdma/qdma_debugfs_dev.c
-  xocl/lib/libqdma/qdma_debugfs_queue.h
-  xocl/lib/libqdma/qdma_debugfs_queue.c
-  xocl/lib/libqdma/qdma_descq.c
-  xocl/lib/libqdma/qdma_descq.h
-  xocl/lib/libqdma/qdma_device.c
-  xocl/lib/libqdma/qdma_device.h
-  xocl/lib/libqdma/qdma_intr.h
-  xocl/lib/libqdma/qdma_intr.c
-  xocl/lib/libqdma/qdma_context.c
-  xocl/lib/libqdma/qdma_mbox.h
-  xocl/lib/libqdma/qdma_qconf_mgr.h
-  xocl/lib/libqdma/qdma_qconf_mgr.c
-  xocl/lib/libqdma/qdma_regs.h
-  xocl/lib/libqdma/qdma_regs.c
-  xocl/lib/libqdma/qdma_request.h
-  xocl/lib/libqdma/qdma_request.c
-  xocl/lib/libqdma/qdma_st_c2h.h
-  xocl/lib/libqdma/qdma_st_c2h.c
-  xocl/lib/libqdma/qdma_thread.h
-  xocl/lib/libqdma/qdma_thread.c
-  xocl/lib/libqdma/thread.h
-  xocl/lib/libqdma/thread.c
-  xocl/lib/libqdma/version.h
-  xocl/lib/libqdma/xdev.h
-  xocl/lib/libqdma/xdev.c
   xocl/lib/libqdma4/stmc.h
   xocl/lib/libqdma4/stmc.c
   xocl/lib/libqdma4/libqdma4_export.h
@@ -195,7 +158,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/libfdt/libfdt_env.h
   xocl/lib/libfdt/libfdt_internal.h
   xocl/subdev/xdma.c
-  xocl/subdev/qdma.c
   xocl/subdev/qdma4.c
   xocl/subdev/feature_rom.c
   xocl/subdev/xvc.c
@@ -290,7 +252,6 @@ SET (XRT_DKMS_COMMON_XRT_DRV
   common/drv/xrt_cu.c
   common/drv/cu_hls.c
   common/drv/fast_adapter.c
-  common/drv/cu_plram.c
   common/drv/xrt_xclbin.c
   common/drv/xgq_execbuf.c
   )
@@ -314,12 +275,12 @@ foreach (DKMS_FILE ${XRT_DKMS_DRIVER_SRCS})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_DRIVER_SRC_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
 endforeach()
-  
+
 foreach (DKMS_FILE ${XRT_DKMS_DRIVER_INCLUDES})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_DRIVER_INCLUDE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
 endforeach()
-  
+
 foreach (DKMS_FILE ${XRT_DKMS_CORE_INCLUDES})
   get_filename_component(DKMS_DIR ${DKMS_FILE} DIRECTORY)
   install (FILES ${XRT_DKMS_CORE_DIR}/${DKMS_FILE} DESTINATION ${XRT_DKMS_INSTALL_DRIVER_DIR}/${DKMS_DIR})
@@ -334,4 +295,3 @@ foreach (DKMS_FILE ${XRT_DKMS_COMMON_XRT_DRV_INCLUDES})
 endforeach()
 
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/${DKMS_FILE_NAME} DESTINATION ${XRT_DKMS_INSTALL_DIR})
-

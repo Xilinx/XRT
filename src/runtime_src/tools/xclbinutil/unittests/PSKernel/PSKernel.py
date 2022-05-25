@@ -145,7 +145,8 @@ def main():
                      "--dump-section", "CONNECTIVITY:JSON:" + outputPSKConnectivity,
                      "--dump-section", "MEM_TOPOLOGY:JSON:" + outputPSKMemTopology,
                      "--output", outputOnlyPSKernelXclbin, 
-                     "--force"]
+                     "--force"
+                     ]
 
   execCmd(step, cmd)
 

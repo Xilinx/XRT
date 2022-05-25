@@ -50,10 +50,12 @@ typedef int (* kernel_t)(void *args, struct sk_operations *ops);
 /*
  * PS Context Data Structure included by user PS kernel code
  */
+
 class pscontext {
 public:
-  ~pscontext();
- pscontext() : pimpl{std::make_shared<pscontext::impl>()} {}
+ pscontext()
+   : pimpl{std::make_shared<pscontext::impl>()} {}
+  virtual ~pscontext() {}
  
 protected:
   struct impl;

@@ -257,6 +257,14 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			return;
 		}
 
+		if (XOCL_DSA_IS_VERSAL_ES3(xdev)) {
+			ret = xocl_hwmon_sdm_init(xdev);
+			if (ret) {
+				userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
+				return;
+			}
+		}
+
 		xocl_kds_reset(xdev, xclbin_id);
 		XOCL_PUT_XCLBIN_ID(xdev);
 		if (!xdev->core.drm) {
@@ -1078,7 +1086,7 @@ int xocl_hwmon_sdm_init(struct xocl_dev *xdev)
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_POWER);
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_VOLTAGE);
 
-	return ret;
+	return 0;
 }
 
 /*
@@ -1860,7 +1868,6 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_version_control,
 	xocl_init_iores,
 	xocl_init_xdma,
-	xocl_init_qdma,
 	xocl_init_qdma4,
 	xocl_init_mailbox,
 	xocl_init_xmc,
@@ -1904,7 +1911,6 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_version_control,
 	xocl_fini_iores,
 	xocl_fini_xdma,
-	xocl_fini_qdma,
 	xocl_fini_qdma4,
 	xocl_fini_mailbox,
 	xocl_fini_xmc,

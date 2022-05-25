@@ -1,44 +1,33 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-#
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${Boost_INCLUDE_DIRS}
-  ${CMAKE_BINARY_DIR}
-  )
-
-file(GLOB XRT_PCIE_NOOP_FILES
-  "*.h"
-  "*.cpp"
-  "../common/system_pcie.cpp"
-  "../common/device_pcie.cpp"
-  )
-
-file(GLOB XRT_PCIE_NOOP_SHARED_FILES
-  "shim.cpp"
-  "system_noop.cpp"
-  "../common/aie_stubs.cpp"
-  "../common/system_pcie.cpp"
-  "device_noop.cpp"
-  "../common/device_pcie.cpp"
-  )
-
-set(CMAKE_CXX_FLAGS "-DXCLHAL_MAJOR_VER=2 ${CMAKE_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS "-DXCLHAL_MINOR_VER=1 ${CMAKE_CXX_FLAGS}")
-
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 add_library(xrt_noop SHARED
-  ${XRT_PCIE_NOOP_SHARED_FILES}
+  device_noop.cpp
+  shim.cpp
+  system_noop.cpp
+  $<TARGET_OBJECTS:core_pciecommon_objects>
   $<TARGET_OBJECTS:core_common_objects>
   )
 
-set_target_properties(xrt_noop PROPERTIES VERSION ${XRT_VERSION_STRING}
-  SOVERSION ${XRT_SOVERSION})
+target_include_directories(xrt_noop
+  PRIVATE
+  ${XRT_SOURCE_DIR}/runtime_src
+  )
+
+target_compile_definitions(xrt_noop
+  PRIVATE
+  XCLHAL_MAJOR_VER=2
+  XCLHAL_MINOR_VER=1
+  )
 
 target_link_libraries(xrt_noop
   PRIVATE
   xrt_coreutil
   pthread
   )
+
+set_target_properties(xrt_noop PROPERTIES
+  VERSION ${XRT_VERSION_STRING}
+  SOVERSION ${XRT_SOVERSION})
 
 install(TARGETS xrt_noop
   EXPORT xrt-targets

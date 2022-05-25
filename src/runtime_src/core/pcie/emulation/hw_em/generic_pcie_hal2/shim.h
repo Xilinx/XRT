@@ -18,40 +18,41 @@
 #define _HW_EM_SHIM_H_
 
 #ifndef _WINDOWS
-#include "unix_socket.h"
 #include "config.h"
+#include "core/common/api/xclbin_int.h"
+#include "core/common/device.h"
+#include "core/common/message.h"
+#include "core/common/query_requests.h"
+#include "core/common/scheduler.h"
+#include "core/common/xrt_profiling.h"
+#include "core/include/experimental/xrt_xclbin.h"
 #include "em_defines.h"
+#include "mbscheduler.h"
 #include "memorymanager.h"
+#include "mbscheduler_hwemu.h"
+#include "mem_model.h"
 #include "rpc_messages.pb.h"
-
+#include "xgq_hwemu.h"
+#include "xclbin.h"
 #include "xclperf.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
-#include "xclbin.h"
-#include "core/common/device.h"
-#include "core/common/scheduler.h"
-#include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
-#include "core/common/query_requests.h"
-#include "core/common/api/xclbin_int.h"
-#include "core/include/experimental/xrt_xclbin.h"
+#include "unix_socket.h"
 
-#include "mem_model.h"
-#include "mbscheduler.h"
-#include "mbscheduler_hwemu.h"
-#include "xgq_hwemu.h"
 #endif
 
-#include <sys/param.h>
-#include <sys/wait.h>
-#include <thread>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/mman.h>
-#include <sys/types.h>
+#include <sys/param.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <tuple>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 #include <cstdarg>
+#include <thread>
+#include <tuple>
+
 #ifdef _WINDOWS
 #define strtoll _strtoi64
 #endif
@@ -102,6 +103,7 @@ using addr_type = uint64_t;
    std::string name;
    unsigned int size;
  } KernelArg;
+
 
   class HwEmShim {
 
@@ -273,8 +275,7 @@ using addr_type = uint64_t;
       // Restricted read/write on IP register space
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
-      volatile bool get_mHostMemAccessThreadStarted();
-      volatile void set_mHostMemAccessThreadStarted(bool val);
+      
       bool device2xrt_rd_trans_cb(unsigned long int addr, void* const data_ptr,unsigned long int size);
       bool device2xrt_wr_trans_cb(unsigned long int addr, void const* data_ptr,unsigned long int size);
       bool device2xrt_irq_trans_cb(uint32_t,unsigned long int);
@@ -301,6 +302,13 @@ using addr_type = uint64_t;
       bool readEmuSettingsJsonFile(const std::string& emuSettingsFilePath);
 
     private:
+      std::thread mMessengerThread;
+      std::thread mHostMemAccessThread;
+      std::atomic<bool> mMessengerThreadStarted;
+      std::atomic<bool> mHostMemAccessThreadStarted;
+      void messagesThread(); 
+      void hostMemAccessThread();
+
       std::shared_ptr<xrt_core::device> mCoreDevice;
       bool simulator_started;
       uint64_t mRAMSize;
@@ -343,7 +351,8 @@ using addr_type = uint64_t;
       static std::ofstream mDebugLogStream;
       static bool mFirstBinary;
       unsigned int binaryCounter;
-      unix_socket* sock;
+
+      std::shared_ptr<unix_socket> sock;
       std::string deviceName;
       xclDeviceInfo2 mDeviceInfo;
       unsigned int mDeviceIndex;
@@ -392,11 +401,8 @@ using addr_type = uint64_t;
       uint64_t mCuBaseAddress;
       bool     mVersalPlatform;
       //For Emulation specific messages on host from Device
-      std::thread mMessengerThread;
-      std::thread mHostMemAccessThread;
-      bool mMessengerThreadStarted;
-      bool mHostMemAccessThreadStarted;
-      void closemMessengerThread();
+
+      void closeMessengerThread();
       bool mIsTraceHubAvailable;
       uint32_t mCuIndx;
       std::map<std::string, uint64_t> mCURangeMap;

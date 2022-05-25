@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,32 +18,16 @@
 #define __SectionBitstreamPartialPDI_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
-
-// #includes here - please keep these to a bare minimum!
 #include "Section.h"
-#include <boost/functional/factory.hpp>
-
-// ------------ F O R W A R D - D E C L A R A T I O N S ----------------------
-// Forward declarations - use these instead whenever possible...
 
 // ---- C L A S S :   S e c t i o n B i t s t r e a m P a r t i a l P D I ----
-
 class SectionBitstreamPartialPDI : public Section {
- public:
-  SectionBitstreamPartialPDI();
-  virtual ~SectionBitstreamPartialPDI();
-
- private:
-  // Purposefully private and undefined ctors...
-  SectionBitstreamPartialPDI(const SectionBitstreamPartialPDI& obj);
-  SectionBitstreamPartialPDI& operator=(const SectionBitstreamPartialPDI& obj);
-
  private:
   // Static initializer helper class
-  static class _init {
+  static class init {
    public:
-    _init() { registerSectionCtor(BITSTREAM_PARTIAL_PDI, "BITSTREAM_PARTIAL_PDI", "", false, false, boost::factory<SectionBitstreamPartialPDI*>()); }
-  } _initializer;
+    init();
+  } initializer;
 };
 
 #endif

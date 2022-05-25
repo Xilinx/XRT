@@ -858,7 +858,7 @@ ert_valid_opcode(struct ert_packet *pkt)
     break;
   case ERT_CLK_CALIB:
   case ERT_MB_VALIDATE:
-  case ERT_ACCESS_TEST_C:  
+  case ERT_ACCESS_TEST_C:
   case ERT_CU_STAT: /* TODO: Rules to validate? */
   case ERT_EXIT:
   case ERT_ABORT:
@@ -872,7 +872,7 @@ ert_valid_opcode(struct ert_packet *pkt)
   return valid;
 }
 
-#ifdef __GNUC__
+#ifdef __linux__
 #define P2ROUNDUP(x, align)     (-(-(x) & -(align)))
 static inline struct cu_cmd_state_timestamps *
 ert_start_kernel_timestamps(struct ert_start_kernel_cmd *pkt)

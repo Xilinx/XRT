@@ -15,58 +15,56 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#include "shim.h"  // This file implements shim.h
+#include "xrt.h"   // This file implements xrt.h
 
-#include "shim.h"
+#include "ert.h"
 #include "scan.h"
 #include "system_linux.h"
-#include "core/common/message.h"
-#include "core/common/xclbin_parser.h"
-#include "core/common/scheduler.h"
+#include "xclbin.h"
+
+#include "core/include/shim_int.h"
+
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 #include "core/common/query_requests.h"
+#include "core/common/scheduler.h"
+#include "core/common/xclbin_parser.h"
 #include "core/common/AlignedAllocator.h"
 
-#include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
-#include "plugin/xdp/aie_trace.h"
+#include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/pl_deadlock.h"
-
-#include "xclbin.h"
-#include "ert.h"
-#include "shim_int.h"
 
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 
+#include <cassert>
+#include <cerrno>
+#include <chrono>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
+#include <condition_variable>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include <sstream>
-#include <vector>
-#include <cstring>
 #include <thread>
-#include <chrono>
-#include <cstdio>
-#include <cstdarg>
-#include <cerrno>
-#include <condition_variable>
+#include <vector>
 
 #include <unistd.h>
 #include <poll.h>
 
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/uio.h>
 #include <sys/syscall.h>
-#include <sys/file.h>
-#include <linux/aio_abi.h>
+#include <sys/uio.h>
 #include <asm/mman.h>
-
-#ifdef NDEBUG
-# undef NDEBUG
-# include<cassert>
-#endif
+#include <linux/aio_abi.h>
 
 #if defined(__GNUC__)
 #define SHIM_UNUSED __attribute__((unused))
@@ -1112,15 +1110,28 @@ int shim::resetDevice(xclResetKind kind)
 
     dev_fini();
 
+    // This loop used to wait for device come online and ready to use. It reads "dev_offline"
+    // sysfs node to retrieve latest status of device in the interval of 500 milli sec.
+    // In certain testing environement, reset never complete and waits indefinitely
+    // in this loop for dev_offline status to be false. To overcome this infinite loop issue,
+    // added loop_timer (default value set to 120 sec) which is used to exit the loop.
+    unsigned int loop_timer = xrt_core::config::get_device_offline_timer();
+    auto start = std::chrono::system_clock::now();
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
             "dev_offline", err, dev_offline, -1);
+        auto end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        if (elapsed_seconds.count() > loop_timer) {
+            xrt_logmsg(XRT_WARNING, "%s: device unable to come online during reset, try again", __func__);
+            ret = -EAGAIN;
+        }
     }
 
     dev_init();
 
-    return 0;
+    return ret;
 }
 
 int shim::p2pEnable(bool enable, bool force)
@@ -1752,6 +1763,14 @@ int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool share
     ctx.flags = flags;
     ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
     return ret ? -errno : ret;
+}
+
+int shim::
+xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared) const
+{
+  // Alveo Linux PCIE does not yet support multiple xclbins.
+  // Call regular flow
+  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
 }
 
 /*
@@ -2433,12 +2452,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xdp::aie::flush_device(handle);
     xdp::pl_deadlock::flush_device(handle);
 
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-    int ret = 0;
-#else
     auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
-#endif
-
     if (!ret) {
       auto core_device = xrt_core::get_userpf_device(drv);
       core_device->register_axlf(buffer);
@@ -2447,7 +2461,6 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       xdp::aie::update_device(handle);
       xdp::pl_deadlock::update_device(handle);
 
-#ifndef DISABLE_DOWNLOAD_XCLBIN
       //scheduler::init can not be skipped even for same_xclbin
       //as in multiple process stress tests it fails as
       //below init step is without a lock with above driver load xclbin step.
@@ -2456,7 +2469,6 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
       //is ignored
       ret = xrt_core::scheduler::init(handle, buffer);
       START_DEVICE_PROFILING_CB(handle);
-#endif
     }
     return ret;
   }
@@ -2791,27 +2803,34 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
 {
   return xdp::hal::profiling_wrapper("xclOpenContext",
   [handle, xclbinId, ipIndex, shared] {
-
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-  return 0;
-#endif
-
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
   }) ;
+}
+
+int
+xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
+{
+  try {
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclOpenContext(slot, xclbin_uuid, cuname, shared) : -ENODEV;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
 }
 
 int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   return xdp::hal::profiling_wrapper("xclCloseContext",
   [handle, xclbinId, ipIndex] {
-
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-  return 0;
-#endif
-
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
   });
 }
 

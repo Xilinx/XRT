@@ -16,19 +16,19 @@ set(DKMS_POSTINST "postinst-aws")
 set(DKMS_PRERM "prerm-aws")
 
 configure_file(
-  "${CMAKE_SOURCE_DIR}/CMake/config/dkms-awsmgmt/${DKMS_FILE_NAME}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/dkms-awsmgmt/${DKMS_FILE_NAME}.in"
   "aws/${DKMS_FILE_NAME}"
   @ONLY
   )
 
 configure_file(
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_POSTINST}.in"
   "aws/postinst"
   @ONLY
   )
 
 configure_file(
-  "${CMAKE_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
+  "${XRT_SOURCE_DIR}/CMake/config/${DKMS_PRERM}.in"
   "aws/prerm"
   @ONLY
   )

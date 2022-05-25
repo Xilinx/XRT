@@ -1,8 +1,6 @@
-/**
- * Copyright (C) 2021 Xilinx, Inc
- * SPDX-License-Identifier: Apache-2.0
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 /****************************************************************
 Enqueue example illustrating use of xrt::enqueue APIs
 
@@ -28,8 +26,8 @@ event dependencies controlling the execution order.
          r[5]         r[6]
           |            |
          o[5]         o[6]
- 
-a[0..5]: 
+
+a[0..5]:
 xrt::bo objects that are synced to device and used as input to
 xrt::run objects.  Event dependencies ensure that no sync operation
 takes place before the receiving kernel is done with prior execution.
@@ -41,7 +39,7 @@ a[3] : r[2]
 a[4] : r[3], r[4]
 a[5] : r[6]
 
-r[0..6]: 
+r[0..6]:
 xrt::run objects from same xrt::kernel object.  Event dependencies
 ensure that run objects wait for (1) input to be synced and (2)
 receiving kernel is done with prior execution.
@@ -54,7 +52,7 @@ r[4] : a[4], r[1], r[6]
 r[5] : r[2], r[3], o[5]
 r[6] : r[4], r[5], o[6]
 
-o[o..6]: 
+o[o..6]:
 xrt::bo objects for kernel run outputs.  The outputs o[0..4] are used
 as input to following run objects. o[5] and o[6] are synced from
 device.
@@ -66,19 +64,20 @@ o[6] : r[6]
 
 
 #include "xrt.h"
-#include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
 #include "experimental/xrt_enqueue.h"
 #include "xclbin.h"
 
+#include <array>
+#include <atomic>
+#include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <list>
 #include <thread>
-#include <atomic>
-#include <iostream>
 #include <vector>
-#include <cstdlib>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4267 )
@@ -173,7 +172,7 @@ struct job_type
 
     for (int i = 0; i < 6; ++i)
       a[i] = xrt::bo(device, data_size * sizeof(unsigned long), grpid0);
-    
+
     for (int i = 0; i < 7; ++i)
       o[i] = xrt::bo(device, data_size * sizeof(unsigned long), grpid1);
   }
@@ -228,7 +227,7 @@ struct job_type
 
     // sync a5 when r6 is done
     ea[5] = queue.enqueue_with_waitlist(sync, {er[6]}, a[5], XCL_BO_SYNC_BO_TO_DEVICE);
-    
+
     // run r0 when a0, a1, r2  are done
     er[0] = queue.enqueue_with_waitlist(r[0], {ea[0], ea[1], er[2]}, a[0], a[1], o[0], ELEMENTS);
 
@@ -252,7 +251,7 @@ struct job_type
 
     // sync o5 when r5 is done
     eo[5] = queue.enqueue_with_waitlist(sync, {er[5]}, o[5], XCL_BO_SYNC_BO_FROM_DEVICE);
-    
+
     // sync o6 when r6 is done
     eo[6] = queue.enqueue_with_waitlist(sync, {er[6]}, o[6], XCL_BO_SYNC_BO_FROM_DEVICE);
   }

@@ -3,10 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
-# Copyright (C) 2020-2021 Xilinx, Inc.
-#
-# xbmgmt loader which automatically switches between legacy and next-gen
-# xbmgmt utility. Starting with 2021.1 the default is next-gen xbmgmt utility.
+# Copyright (C) 2020-2022 Xilinx, Inc.
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
@@ -17,37 +14,26 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
 fi
 
 # Working variables
-DEFAULT=xbmgmt2
-XRT_PROG=""
-
-
-# -- Legacy commands
-declare -A LEGACY_COMMANDS=( \
-        ["help"]="XBMGMT" \
-        ["version"]="XBMGMT" \
-        ["scan"]="XBMGMT" \
-        ["flash"]="XBMGMT" \
-        ["clock"]="XBMGMT" \
-        ["partition"]="XBMGMT" \
-        ["config"]="XBMGMT" \
-        ["nifd"]="XBMGMT" \
-        ["hotplug"]="XBMGMT" \
-    )
+XRT_PROG=xbmgmt2
 
 # Examine the options and look for -new/--new
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
     case "$1" in
-	# Indicates that the new version of xbmgmt (e.g., xbmgmt2) should be used
-	-new|--new)
-	    XRT_PROG=xbmgmt2
-	    shift
-	    ;;
-	# Indicates that the legacy version of xbutil should be used
-	-legacy|--legacy)
-	    XRT_PROG=xbmgmt
-	    shift
+    # Indicates that the legacy was specified
+    -legacy|--legacy)
+        echo "----------------------------------------------------------------------"
+        echo "Error: Obsoleted option
+       The --legacy option is no longer supported.
+    
+       For legacy migration, please refer to the XRT github.io utility 
+       migration guide.
+
+       Commands, options, arguments and their descriptions can also be 
+       reported via the --help option."
+        echo "----------------------------------------------------------------------"
+        exit 1
 	    ;;
 	# Copy the options the remaining options
 	*)
@@ -57,59 +43,6 @@ while [ $# -gt 0 ]; do
 	    ;;
     esac
 done
-
-# Determine which version of xbmgmt should be used
-# Check to see environment variable is NOT set
-if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
-    XRT_PROG=xbmgmt2
-fi
-
-# Default to the new gen tool if we still could not disambuguate the choice
-if [[ -z ${XRT_PROG} ]]; then
-    XRT_PROG=${DEFAULT}
-fi
-
-# Friendly message if running in a terminal
-if [[ ${XRT_PROG} == "xbmgmt" ]] && [[ -t 1 ]]; then
-    echo "---------------------------------------------------------------------"
-    echo "Deprecation Warning:
-    The given legacy sub-command and/or option has been deprecated
-    to be obsoleted in the next release.
- 
-    Further information regarding the legacy deprecated sub-commands
-    and options along with their mappings to the next generation
-    sub-commands and options can be found on the Xilinx Runtime (XRT)
-    documentation page:
-    
-    https://xilinx.github.io/XRT/master/html/ 
-
-    Please update your scripts and tools to use the next generation
-    sub-commands and options."
-    echo "---------------------------------------------------------------------"
-fi
-
-# Determine if the user has specified a legacy command
-LEGACY_PROG=${LEGACY_COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
-
-# Additional friendly messessages
-if [[ ${XRT_PROG} == "xbmgmt2" ]] && [[ ${LEGACY_PROG} = "XBMGMT" ]]; then
-    echo "---------------------------------------------------------------------"
-    echo "Error: Legacy command used with new tools.
-         
-       You are using a deprecated legacy command. This will ultimately 
-       result in an 'Unknown command' error.
-    
-       It is recommended that you update your scripts and tools to use
-       the next generation sub-commands and options. These are 
-       documented on the Xilinx Runtime (XRT) documentation page:
- 
-       https://xilinx.github.io/XRT/master/html/ 
- 
-       If you must use a legacy command, you will have to use the 
-       --legacy option on the command line."
-    echo "---------------------------------------------------------------------"
-    echo
-fi
 
 # -- Find and call the loader
 XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"

@@ -72,15 +72,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-  try {
-    po::store(po::command_line_parser(_options).options(m_optionsDescription).positional(m_positionalOptions).run(), vm);
-    po::notify(vm); // Can throw
-  }
-  catch (po::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options);
 
   // Honor help option first
   if (m_help) {

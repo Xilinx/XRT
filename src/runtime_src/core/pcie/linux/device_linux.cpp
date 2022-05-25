@@ -139,17 +139,81 @@ struct sdm_sensor_info
   using data_type = query::sdm_sensor_info::data_type;
   using sdr_req_type = query::sdm_sensor_info::sdr_req_type;
 
+  static data_type
+  parse_sysfs_nodes(const xrt_core::device* device,
+                    std::string tpath,
+                    bool *next_id)
+  {
+    auto pdev = get_pcidev(device);
+    //sensors are stored in hwmon sysfs dir with name ends with as follows.
+    std::array<std::string, 6> sname_end = {"label", "input", "max", "average", "highest", "status"};
+    int max_end_types = sname_end.size();
+    std::string errmsg, str_op, target_snode;
+    data_type data = { 0 };
+    uint32_t uint_op = 0;
+
+    //Starting from index 0 in sname_end array, read and store all the sysfs nodes information
+    for (int end_id = 0; end_id < max_end_types; end_id++)
+    {
+      target_snode = tpath + sname_end[end_id];
+      switch(end_id)
+      {
+      case 0:
+        // read sysfs node <tpath>label
+        pdev->sysfs_get("", target_snode, errmsg, str_op);
+        if (!errmsg.empty())
+        {
+          //<tpath>label sysfs node is not found, so try next sysfs node.
+          *next_id = true;
+          end_id = max_end_types;
+        }
+        else {
+          data.label = str_op;
+        }
+        break;
+      case 1:
+        // read sysfs node <tpath>input
+        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
+        if (errmsg.empty())
+          data.input = uint_op;
+        break;
+      case 2:
+        // read sysfs node <tpath>max
+        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
+        if (errmsg.empty())
+          data.max = uint_op;
+        break;
+      case 3:
+        // read sysfs node <tpath>average
+        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
+        if (errmsg.empty())
+          data.average = uint_op;
+        break;
+      case 4:
+        // read sysfs node <tpath>highest
+        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
+        if (errmsg.empty())
+          data.highest = uint_op;
+        break;
+      case 5:
+        // read sysfs node <tpath>status
+        pdev->sysfs_get("", target_snode, errmsg, str_op);
+        if (errmsg.empty())
+          data.status = str_op;
+        break;
+      }
+    }
+    return data;
+  }
+
   static result_type
   get_sdm_sensors(const xrt_core::device* device,
                   const sdr_req_type& req_type,
                   const std::string& path)
   {
-    auto pdev = get_pcidev(device);
     result_type output;
-    //sensors are stored in hwmon sysfs dir with name starts & ends with as follows.
+    //sensors are stored in hwmon sysfs dir with name starts with as follows.
     std::array<std::string, 5> sname_start = {"curr", "in", "power", "temp", "fan"};
-    std::array<std::string, 5> sname_end = {"label", "input", "max", "average", "highest"};
-    int max_end_types = sname_end.size();
     bool next_id = false;
     //All sensor sysfs nodes starts with 1 as starting index.
     int start_id = 1;
@@ -162,54 +226,16 @@ struct sdm_sensor_info
     while (!next_id)
     {
       data_type data;
-      const auto slash = "/";
-      const auto underscore = "_";
       /*
-       * Forming sysfs node as /<start>[start_id]_.
-       * Example: /in0_ or /curr1_ or /power1_ or /temp1_ in 1st iteration.
+       * Forming sysfs node as <path>/<start>[start_id]_. Here, path is "hwmon/hwmon*"
+       * Example: <path>/in0_ or <path>/curr1_ or <path>/power1_ or <path>/temp1_ in 1st iteration.
        * start_id will be incremented till next_id become true.
-       * So, next iteration will be /in1_ or /curr2_ or /power2_ or /temp2_.
+       * So, next iteration will be <path>/in1_ or <path>/curr2_ or <path>/power2_ or <path>/temp2_.
        * Similarly, end string of sysfs node name will be retrieved using end[].
        */
-      std::string tmp = slash + type + std::to_string(start_id) + underscore;
-      for (int end_id = 0; end_id < max_end_types; end_id++)
-      {
-        if (end_id == 0)
-        {
-          std::string errmsg;
-          std::string label;
-          pdev->sysfs_get("", path + tmp + sname_end[end_id], errmsg, label);
-          if (!errmsg.empty())
-          {
-            //go and read next sysfs node
-            data.label = "N/A";
-            next_id = true;
-            end_id = max_end_types;
-            continue;
-          }
-          data.label = label;
-        }
-        else
-        {
-          std::string errmsg;
-          uint32_t input = 0;
-          pdev->sysfs_get<uint32_t>("", path + tmp + sname_end[end_id], errmsg, input, EINVAL);
-          if (!errmsg.empty())
-            continue;
-
-          if (end_id == 1)
-            data.input = input;
-          else if (end_id == 2)
-            data.max = input;
-          else if (end_id == 3)
-            data.average = input;
-          else
-            data.highest = input;
-        }
-      } // for (end_id =0; end_id < max ...)
-
-      if (data.label.compare("N/A"))
-        output.push_back(data);
+      std::string tpath = path + "/" + type + std::to_string(start_id) + "_";
+      data = parse_sysfs_nodes(device, tpath, &next_id);
+      output.push_back(data);
 
       start_id++;
     } //while (!next_id)
@@ -266,7 +292,7 @@ struct sdm_sensor_info
     }
 
     if (path.empty())
-      return result_type();
+      throw xrt_core::query::sysfs_error("target hwmon_sdm sysfs path /sys/bus/pci/devices/<bdf>/hwmon/hwmon*/ not found");
 
     return get_sdm_sensors(device, req_type, path);
   } //get()
@@ -350,6 +376,22 @@ struct instance
 
 };
 
+struct hotplug_offline 
+{
+  using result_type = query::hotplug_offline::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto mgmt_dev = pcidev::get_dev(device->get_device_id(), false);
+
+    // Remove both user_pf and mgmt_pf
+    if (pcidev::shutdown(mgmt_dev, true, true))
+      throw xrt_core::query::sysfs_error("Hotplug offline failed");
+
+    return true;
+  }
+};
 
 struct kds_scu_info
 {
@@ -1012,6 +1054,7 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                       bdf>();
   emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::instance,                       instance>();
+  emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_func4_request<query::am_counter,                     am_counter>();
@@ -1024,6 +1067,7 @@ initialize_query_table()
   emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
   emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
+  emplace_sysfs_get<query::extended_vmr_status>                ("xgq_vmr", "vmr_verbose_info");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
   emplace_sysfs_get<query::hwmon_sdm_serial_num>               ("hwmon_sdm", "serial_num");
