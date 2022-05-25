@@ -26,7 +26,7 @@ class ReportPower:
 
         # check if xclbin is loaded
         if not electrical_raw:
-            self._df.clear()
+            self._df = {}
             # If data is missing set the page count to 0!
             self.page_count = 0
             return self.page_count
@@ -49,7 +49,7 @@ class ReportPower:
         offset = 1
 
         if len(self._df) == 0:
-            print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
+            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
             return offset + 1
 
         if (self.page_count == 0):
