@@ -18,6 +18,11 @@ namespace xrt_core { namespace hw_context_int {
 xcl_hwctx_handle
 get_xcl_handle(const xrt::hw_context& ctx);
 
+// Get a raw pointer to the core device associated with
+// the hw context
+xrt_core::device*
+get_core_device_raw(const xrt::hw_context& ctx);
+
 // Backdoor for changing qos of a hardware context after it has
 // been constructed.  The new qos affects how compute units are
 // within the context are opened.  This is used for legacy
