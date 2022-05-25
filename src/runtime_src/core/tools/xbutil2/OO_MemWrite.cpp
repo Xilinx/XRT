@@ -122,10 +122,10 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   }
 
   // Validate the given address option
-  long long addr = 0;
+  uint64_t addr = 0;
   try {
     //-- base address
-    addr = std::stoll(m_baseAddress, nullptr, 0);
+    addr = std::stoull(m_baseAddress, nullptr, 0);
   }
   catch (const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--address'\n") % m_baseAddress;
@@ -134,7 +134,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
 
   // Validate the number of bytes to be written if defined
   // This does not need to be defined for the --input option path
-  long long size = 0;
+  uint64_t size = 0;
   try {
     if (!m_sizeBytes.empty()) {
       size = XBUtilities::string_to_bytes(m_sizeBytes);
@@ -186,7 +186,8 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       for (int c = 0; c < count; c++) {
         XBU::verbose(boost::str(boost::format("[%d / %d] Writing to Address: %s, Size: %llu bytes") % c % count % addr % size));
         std::vector<char> buffer(size);
-        auto input_size = input_stream.read(buffer.data(), size).gcount();
+        // gcount will only return a value >= 0
+        uint64_t input_size = static_cast<uint64_t>(input_stream.read(buffer.data(), size).gcount());
         xrt_core::mem_write(device.get(), addr, size, buffer);
         if (input_size != size)
           break; // partial read and break the loop
@@ -251,6 +252,8 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  return;
+  std::cerr << "No valid options provided\n";
+  printHelp();
+  xrt_core::error(std::errc::operation_canceled);
 }
 

@@ -116,8 +116,10 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  if (m_count <= 0)
-    throw xrt_core::error("Please specify a number of blocks greater than zero");
+  if (m_count <= 0) {
+    std::cerr << "ERROr: Please specify a number of blocks greater than zero\n";
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 
   try {
     //-- base address

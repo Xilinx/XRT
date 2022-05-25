@@ -268,7 +268,7 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force) cons
 
 void
 system_linux::
-mem_read(const device* device, long long addr, long long size, const std::string& output_file) const
+mem_read(const device* device, uint64_t addr, uint64_t size, const std::string& output_file) const
 {
   auto get_ddr_mem_size = [device]() {
     auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
@@ -287,27 +287,7 @@ mem_read(const device* device, long long addr, long long size, const std::string
 
 void
 system_linux::
-mem_write(const device* device, long long addr, long long size, unsigned int pattern) const
-{
-  auto get_ddr_mem_size = [device]() {
-    auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
-    auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
-    
-    // convert ddr_size from GB to bytes
-    // return the result in KB
-    return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
-  };
-
-  auto bdf_str = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  auto handle = device->get_device_handle();
-  if(xcldev::memaccess(handle, get_ddr_mem_size(), getpagesize(), bdf_str)
-      .write(addr, size, pattern) < 0)
-    throw xrt_core::error(EINVAL, "Memory write failed");
-}
-
-void
-system_linux::
-mem_write(const device* device, long long addr, long long size, std::vector<char>& buf) const
+mem_write(const device* device, uint64_t addr, uint64_t size, std::vector<char>& buf) const
 {
   auto get_ddr_mem_size = [device]() {
     auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);

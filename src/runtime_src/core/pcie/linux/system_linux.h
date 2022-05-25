@@ -52,13 +52,10 @@ public:
   program_plp(const device* dev, const std::vector<char> &buffer, bool force) const;
   
   void
-  mem_read(const device* dev, long long addr, long long size, const std::string& output_file) const;
+  mem_read(const device* dev, uint64_t addr, uint64_t size, const std::string& output_file) const;
 
   void
-  mem_write(const device* device, long long addr, long long size, unsigned int pattern) const;
-
-  void
-  mem_write(const device* device, long long addr, long long size, std::vector<char>& buf) const;
+  mem_write(const device* device, uint64_t addr, uint64_t size, std::vector<char>& buf) const;
 
   monitor_access_type
   get_monitor_access_type() const

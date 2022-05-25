@@ -130,19 +130,13 @@ public:
   }
 
   virtual void
-  mem_read(const device*, long long, long long, const std::string&) const
+  mem_read(const device*, uint64_t, uint64_t, const std::string&) const
   {
     throw std::runtime_error("memory read is not supported");
   }
 
   virtual void
-  mem_write(const device*, long long, long long, unsigned int) const
-  {
-    throw std::runtime_error("memory write is not supported");
-  }
-
-  virtual void
-  mem_write(const device*, long long, long long, std::vector<char>&) const
+  mem_write(const device*, uint64_t, uint64_t, std::vector<char>&) const
   {
     throw std::runtime_error("memory write is not supported");
   }
@@ -272,11 +266,11 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force);
 
 XRT_CORE_COMMON_EXPORT
 void
-mem_read(const device* dev, long long addr, long long size, const std::string& output_file);
+mem_read(const device* dev, uint64_t addr, uint64_t size, const std::string& output_file);
 
 XRT_CORE_COMMON_EXPORT
 void
-mem_write(const device* device, long long addr, long long size, std::vector<char>& buf);
+mem_write(const device* device, uint64_t addr, uint64_t size, std::vector<char>& buf);
 
 } //xrt_core
 

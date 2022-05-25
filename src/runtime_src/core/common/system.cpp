@@ -202,19 +202,13 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force)
 }
 
 void
-mem_read(const device* dev, long long addr, long long size, const std::string& output_file)
+mem_read(const device* dev, uint64_t addr, uint64_t size, const std::string& output_file)
 {
   instance().mem_read(dev, addr, size, output_file);
 }
 
 void
-mem_write(const device* dev, long long addr, long long size, unsigned int pattern)
-{
-  instance().mem_write(dev, addr, size, pattern);
-}
-
-void
-mem_write(const device* dev, long long addr, long long size, std::vector<char>& buf)
+mem_write(const device* dev, uint64_t addr, uint64_t size, std::vector<char>& buf)
 {
   instance().mem_write(dev, addr, size, buf);
 }
