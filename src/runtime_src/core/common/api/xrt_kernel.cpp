@@ -276,6 +276,33 @@ value_to_uint32_vector(ValueType value)
   return value_to_uint32_vector(&value, sizeof(value));
 }
 
+static xrt::hw_context::qos
+mode_to_qos(xrt::kernel::cu_access_mode mode)
+{
+  switch (mode) {
+  case xrt::kernel::cu_access_mode::exclusive:
+    return xrt::hw_context::qos::exclusive;
+  case xrt::kernel::cu_access_mode::shared:
+    return xrt::hw_context::qos::shared;
+  default:
+    throw std::runtime_error("unexpected access mode for kernel");
+  }
+}
+
+// Transition only, to be removed
+static xrt::kernel::cu_access_mode
+qos_to_mode(xrt::hw_context::qos qos)
+{
+  switch (qos) {
+  case xrt::hw_context::qos::exclusive:
+    return xrt::kernel::cu_access_mode::exclusive;
+  case xrt::hw_context::qos::shared:
+    return xrt::kernel::cu_access_mode::shared;
+  default:
+    throw std::runtime_error("unexpected access mode for kernel");
+  }
+}
+
 // struct device_type - Extends xrt_core::device
 //
 // This struct is not really needed.
@@ -1265,10 +1292,12 @@ private:
   // This function opens the compute unit in the slot associated with
   // the hardware context from which the kernel was constructed.
   void
-  open_cu_context(const xrt::xclbin::ip& cu, ip_context::access_mode am)
+  open_cu_context(const xrt::xclbin::ip& cu)
   {
-    auto slot = xrt_core::hw_context_int::get_slot(hwctx);
+    // TO BE CHANGED next
+    auto slot = xrt_core::hw_context_int::get_xcl_handle(hwctx);
     auto cdevice = device->get_core_device();
+    auto am = qos_to_mode(hwctx.get_qos());
 
     // try open the cu context.  This may throw if cu in slot cannot be acquired.
     auto ctx = ip_context::open(cdevice, xclbin, slot, cu, am); // may throw
@@ -1436,7 +1465,7 @@ public:
   //
   // The ctxmgr is not directly used by kernel_impl, but its
   // construction and shared ownership must be tied to the kernel_impl
-  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm, ip_context::access_mode am)
+  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
@@ -1451,8 +1480,8 @@ public:
 
     // mailbox kernels opens CU in exclusive mode for direct read/write access
     if (properties.mailbox != mailbox_type::none || properties.counted_auto_restart > 0) {
-      XRT_DEBUGF("kernel_impl mailbox or counted auto restart detected, changing access mode to exclusive");
-      am = ip_context::access_mode::exclusive;
+        XRT_DEBUGF("kernel_impl mailbox or counted auto restart detected, changing access mode to exclusive");
+        xrt_core::hw_context_int::set_exclusive(hwctx);
     }
 
     // Compare the matching CUs against the CU sort order to create cumask
@@ -1465,7 +1494,7 @@ public:
       if (cu.get_control_type() == xrt::xclbin::ip::control_type::none)
         throw xrt_core::error(ENOTSUP, "AP_CTRL_NONE is only supported by XRT native API xrt::ip");
 
-      open_cu_context(cu, am);
+      open_cu_context(cu);
     }
 
     // set kernel protocol
@@ -2700,7 +2729,8 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     const std::string& name,
 	     xrt::kernel::cu_access_mode mode)
 {
-  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id}, name, mode);
+  auto qos = mode_to_qos(mode);  // legacy access mode to hwctx qos
+  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, qos}, name);
 }
 
 static std::shared_ptr<xrt::kernel_impl>
@@ -2708,7 +2738,7 @@ alloc_kernel_from_ctx(const std::shared_ptr<device_type>& dev,
                       const xrt::hw_context& hwctx,
                       const std::string& name)
 {
-  return std::make_shared<xrt::kernel_impl>(dev, hwctx, name, xrt::kernel::cu_access_mode::shared);
+  return std::make_shared<xrt::kernel_impl>(dev, hwctx, name);
 }
 
 static std::shared_ptr<xrt::mailbox_impl>
@@ -2730,7 +2760,8 @@ xrtKernelHandle
 xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
 {
   auto device = get_device(dhdl);
-  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid}, name, am);
+  auto qos = mode_to_qos(am);  // legacy access mode to hwctx qos
+  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid, qos}, name);
   auto handle = kernel.get();
   kernels.add(handle, std::move(kernel));
   return handle;
