@@ -13,7 +13,7 @@
 // XRT core implementation.
 namespace xrt_core { namespace hw_context_int {
 
-// get_slot() - Retrieve the slot index associated with the context
+// get_xcl_handle() - Retrieve the driver handle index associated with the context
 xcl_hwctx_handle
 get_xcl_handle(const xrt::hw_context& ctx);
 

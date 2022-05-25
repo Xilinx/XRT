@@ -37,7 +37,7 @@ public:
    *  Create a context for shared access to shareable resources
    *  Legacy compute unit access control.
    */
-  enum class priority : xcl_qos_type {
+  enum class qos : xcl_qos_type {
     exclusive = XCL_QOS_EXCLUSIVE,  // legacy
     shared = XCL_QOS_SHARED,        // legacy
     reserved = 0
@@ -53,10 +53,10 @@ public:
    * hw_context() - Constructor
    */
   XRT_API_EXPORT
-  hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, priority qos);
+  hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, qos qos);
 
   hw_context(const xrt::device& device, const xrt::uuid& xclbin_id)
-    : hw_context{device, xclbin_id, static_cast<priority>(0)}
+    : hw_context{device, xclbin_id, static_cast<qos>(0)}
   {}
 
   XRT_API_EXPORT
@@ -70,6 +70,10 @@ public:
   XRT_API_EXPORT
   xrt::xclbin
   get_xclbin() const;
+
+  XRT_API_EXPORT
+  qos
+  get_qos() const;
 };
 
 } // namespace xrt

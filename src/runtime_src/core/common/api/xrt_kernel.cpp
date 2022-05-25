@@ -276,6 +276,33 @@ value_to_uint32_vector(ValueType value)
   return value_to_uint32_vector(&value, sizeof(value));
 }
 
+static xrt::hw_context::qos
+mode_to_qos(xrt::kernel::cu_access_mode mode)
+{
+  switch (mode) {
+  case xrt::kernel::cu_access_mode::exclusive:
+    return xrt::hw_context::qos::exclusive;
+  case xrt::kernel::cu_access_mode::shared:
+    return xrt::hw_context::qos::shared;
+  default:
+    throw std::runtime_error("unexpected access mode for kernel");
+  }
+}
+
+// Transition only, to be removed
+static xrt::kernel::cu_access_mode
+qos_to_mode(xrt::hw_context::qos qos)
+{
+  switch (qos) {
+  case xrt::hw_context::qos::exclusive:
+    return xrt::kernel::cu_access_mode::exclusive;
+  case xrt::hw_context::qos::shared:
+    return xrt::kernel::cu_access_mode::shared;
+  default:
+    throw std::runtime_error("unexpected access mode for kernel");
+  }
+}
+
 // struct device_type - Extends xrt_core::device
 //
 // This struct is not really needed.
@@ -1265,10 +1292,11 @@ private:
   // This function opens the compute unit in the slot associated with
   // the hardware context from which the kernel was constructed.
   void
-  open_cu_context(const xrt::xclbin::ip& cu, ip_context::access_mode am)
+  open_cu_context(const xrt::xclbin::ip& cu)
   {
     auto slot = xrt_core::hw_context_int::get_xcl_handle(hwctx);
     auto cdevice = device->get_core_device();
+    auto am = qos_to_mode(hwctx.get_qos());
 
     // try open the cu context.  This may throw if cu in slot cannot be acquired.
     auto ctx = ip_context::open(cdevice, xclbin, slot, cu, am); // may throw
@@ -1436,7 +1464,7 @@ public:
   //
   // The ctxmgr is not directly used by kernel_impl, but its
   // construction and shared ownership must be tied to the kernel_impl
-  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm, ip_context::access_mode am)
+  kernel_impl(std::shared_ptr<device_type> dev, xrt::hw_context ctx, const std::string& nm)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
@@ -1465,7 +1493,7 @@ public:
       if (cu.get_control_type() == xrt::xclbin::ip::control_type::none)
         throw xrt_core::error(ENOTSUP, "AP_CTRL_NONE is only supported by XRT native API xrt::ip");
 
-      open_cu_context(cu, am);
+      open_cu_context(cu);
     }
 
     // set kernel protocol
@@ -2649,19 +2677,6 @@ get_device(const xrt::device& xdev)
   return get_device(xdev.get_handle());
 }
 
-static xrt::hw_context::priority
-mode_to_qos(xrt::kernel::cu_access_mode mode)
-{
-  switch (mode) {
-  case xrt::kernel::cu_access_mode::exclusive:
-    return xrt::hw_context::priority::exclusive;
-  case xrt::kernel::cu_access_mode::shared:
-    return xrt::hw_context::priority::shared;
-  default:
-    throw std::runtime_error("unexpected access mode for kernel");
-  }
-}
-
 // Active kernels per xrtKernelOpen/Close.  This is a mapping from
 // xrtKernelHandle to the corresponding kernel object.  The
 // xrtKernelHandle is the address of the kernel object.  This is
@@ -2716,7 +2731,7 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
   // Before hwctx can be created we need to translate cu_access_mode
   // into QoS specifier expected by the hwctx constructor.
   auto qos = mode_to_qos(mode);
-  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, qos}, name, mode);
+  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, qos}, name);
 }
 
 static std::shared_ptr<xrt::kernel_impl>
@@ -2724,7 +2739,7 @@ alloc_kernel_from_ctx(const std::shared_ptr<device_type>& dev,
                       const xrt::hw_context& hwctx,
                       const std::string& name)
 {
-  return std::make_shared<xrt::kernel_impl>(dev, hwctx, name, xrt::kernel::cu_access_mode::shared);
+  return std::make_shared<xrt::kernel_impl>(dev, hwctx, name);
 }
 
 static std::shared_ptr<xrt::mailbox_impl>
