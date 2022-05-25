@@ -84,7 +84,7 @@ public:
     m_qos = xrt::hw_context::qos::exclusive;
   }
 
-  std::shared_ptr<xrt_core::device>
+  const std::shared_ptr<xrt_core::device>&
   get_core_device() const
   {
     return m_core_device;
@@ -126,6 +126,12 @@ xcl_hwctx_handle
 get_xcl_handle(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->get_xcl_handle();
+}
+
+xrt_core::device*
+get_core_device_raw(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->get_core_device().get();
 }
 
 void
