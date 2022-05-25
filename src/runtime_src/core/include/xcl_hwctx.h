@@ -4,10 +4,9 @@
 #ifndef XCL_HWCTX_H_
 #define XCL_HWCTX_H_
 
-/* #ifdef _WIN32 */
-/* # pragma warning( push ) */
-/* # pragma warning( disable : 4201 ) */
-/* #endif */
+// Definitions related to HW context shared between user space XRT and
+// Linux kernel driver.  The header file is exported as underlying
+// types are exposed in xrt::hw_context::qos definition.
 
 #ifdef __cplusplus
 # include <cstdint>
@@ -20,18 +19,24 @@ extern "C" {
 # endif
 #endif
 
+// Underlying representation of a hardware context handle.
+//
+// The context handle is among other things used with / encoded in
+// buffer object flags.
 typedef uint32_t xcl_hwctx_handle;
 
+// Underlying representation of a hardware context QoS value.
 typedef uint32_t xcl_qos_type;
+
+// Special sentinels that represent legacy compute unit context
+// access.  All compute units associated with a hardware context
+// are opened with same QoS value.  Legacy PL supports shared
+// or exclusive mode for compute unit access.
 #define XCL_QOS_SHARED 0xFFFFFFFF
 #define XCL_QOS_EXCLUSIVE 0xFFFFFFFE
 
 #ifdef __cplusplus
 }
 #endif
-
-/* #ifdef _WIN32 */
-/* # pragma warning( pop ) */
-/* #endif */
 
 #endif

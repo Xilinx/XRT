@@ -78,6 +78,12 @@ public:
   {
   }
 
+  void
+  set_exclusive()
+  {
+    m_qos = xrt::hw_context::qos::exclusive;
+  }
+
   std::shared_ptr<xrt_core::device>
   get_core_device() const
   {
@@ -120,6 +126,12 @@ xcl_hwctx_handle
 get_xcl_handle(const xrt::hw_context& hwctx)
 {
   return hwctx.get_handle()->get_xcl_handle();
+}
+
+void
+set_exclusive(xrt::hw_context& hwctx)
+{
+  hwctx.get_handle()->set_exclusive();
 }
 
 }} // hw_context_int, xrt_core

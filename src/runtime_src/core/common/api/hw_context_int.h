@@ -13,9 +13,17 @@
 // XRT core implementation.
 namespace xrt_core { namespace hw_context_int {
 
-// get_xcl_handle() - Retrieve the driver handle index associated with the context
+// get_xcl_handle() - Driver handle index
+// Retrieve the driver handle index associated with the context
 xcl_hwctx_handle
 get_xcl_handle(const xrt::hw_context& ctx);
+
+// Backdoor for changing qos of a hardware context after it has
+// been constructed.  The new qos affects how compute units are
+// within the context are opened.  This is used for legacy
+// xrt::kernel objects associated with a mailbox
+void
+set_exclusive(xrt::hw_context& ctx);
 
 }} // hw_context_int, xrt_core
 

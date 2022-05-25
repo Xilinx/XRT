@@ -1294,6 +1294,7 @@ private:
   void
   open_cu_context(const xrt::xclbin::ip& cu)
   {
+    // TO BE CHANGED next
     auto slot = xrt_core::hw_context_int::get_xcl_handle(hwctx);
     auto cdevice = device->get_core_device();
     auto am = qos_to_mode(hwctx.get_qos());
@@ -1479,8 +1480,8 @@ public:
 
     // mailbox kernels opens CU in exclusive mode for direct read/write access
     if (properties.mailbox != mailbox_type::none || properties.counted_auto_restart > 0) {
-      XRT_DEBUGF("kernel_impl mailbox or counted auto restart detected, changing access mode to exclusive");
-      am = ip_context::access_mode::exclusive;
+        XRT_DEBUGF("kernel_impl mailbox or counted auto restart detected, changing access mode to exclusive");
+        xrt_core::hw_context_int::set_exclusive(hwctx);
     }
 
     // Compare the matching CUs against the CU sort order to create cumask
@@ -2728,9 +2729,7 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     const std::string& name,
 	     xrt::kernel::cu_access_mode mode)
 {
-  // Before hwctx can be created we need to translate cu_access_mode
-  // into QoS specifier expected by the hwctx constructor.
-  auto qos = mode_to_qos(mode);
+  auto qos = mode_to_qos(mode);  // legacy access mode to hwctx qos
   return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, qos}, name);
 }
 
@@ -2761,7 +2760,8 @@ xrtKernelHandle
 xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
 {
   auto device = get_device(dhdl);
-  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid}, name, am);
+  auto qos = mode_to_qos(am);  // legacy access mode to hwctx qos
+  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid, qos}, name);
   auto handle = kernel.get();
   kernels.add(handle, std::move(kernel));
   return handle;
