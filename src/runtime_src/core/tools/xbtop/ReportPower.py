@@ -48,11 +48,7 @@ class ReportPower:
         XBUtil.print_section_heading(term, lock, self.report_name(), start_y)
         offset = 1
 
-        if len(self._df) == 0:
-            XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
-            return offset + 1
-
-        if (self.page_count == 0):
+        if len(self._df) == 0 or self.page_count == 0:
             XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable. Acceleration image not loaded")
             return offset + 1
 
