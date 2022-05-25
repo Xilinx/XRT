@@ -13,6 +13,7 @@ import XBUtil
 # found in PYTHONPATH
 import pyxrt
 
+
 class ReportPower:
 
     def report_name(self):
@@ -22,7 +23,7 @@ class ReportPower:
         self.report_length = report_length
         #get power info
         electrical_json = dev.get_info(pyxrt.xrt_info_device.electrical)
-        electrical_raw = json.loads(electrical_json) #read into a dictionary
+        electrical_raw = json.loads(electrical_json)  #read into a dictionary
 
         # check if xclbin is loaded
         if not electrical_raw:
@@ -53,7 +54,7 @@ class ReportPower:
             return offset + 1
 
         # Create the complete power buffer
-        all_data=[
+        all_data = [
             'Power     : %s Watts' % self._df['Power'],
             'Max Power : %s Watts' % self._df['Max Power'],
             'Warning   : %s' % self._df['Warning']
@@ -63,7 +64,7 @@ class ReportPower:
         page_offset = page * self.report_length
         # The upper offset is bounded by the size of the full power buffer
         upper_page_offset = min(self.report_length + page_offset, len(all_data))
-        data=all_data[page_offset:upper_page_offset]
+        data = all_data[page_offset:upper_page_offset]
 
         if (not data):
             XBUtil.print_warning(term, lock, start_y + offset, "Data unavailable")
