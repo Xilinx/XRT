@@ -938,6 +938,13 @@ namespace xclhwemhal2 {
             std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;
           }
 
+          // This is temporary solution to enable the support for V70 platform. Will remove this once we have the device based DTB solution.
+          // We have separate DTB for the V70 platform (sv60 device).
+          if (fpgaDeviceName.find("xcvc2802:") != std::string::npos 
+            && fs::exists(sim_path + "/emulation_data/board-versal-xcvc2802-ps-cosim-vitis-virt.dtb") ){
+            launcherArgs += " -qemu-dtb " + sim_path + "/emulation_data/board-versal-xcvc2802-ps-cosim-vitis-virt.dtb";
+          }
+
           if (is_enable_debug) {
             launcherArgs += " -enable-debug ";
           }
