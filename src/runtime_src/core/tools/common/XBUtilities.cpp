@@ -248,6 +248,24 @@ str2index(const std::string& str, bool _inUserDomain)
 }
 
 void
+XBUtilities::xrt_xbutil_version_cmp()
+{
+  boost::property_tree::ptree pt_xrt;
+  xrt_core::get_xrt_info(pt_xrt);
+  boost::property_tree::ptree empty_ptree;
+
+  std::string xrt_version = pt_xrt.get<std::string>("version", "N/A");
+  const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
+  for(auto& drv : available_drivers) {
+    const boost::property_tree::ptree& driver = drv.second;
+    std::string drv_name = driver.get<std::string>("name", "N/A");
+    std::string drv_version = driver.get<std::string>("version", "N/A");
+    if (drv_name.compare("xocl") == 0 && drv_version.compare("unknown") != 0 && xrt_version.compare(drv_version) != 0)
+      throw std::runtime_error("Mixed versions of XRT and xbutil are not supported. Please install matching versions of XRT and xbutil.");
+  }
+}
+
+void
 XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
                               bool _inUserDomain,
                               xrt_core::device_collection &_deviceCollection)
