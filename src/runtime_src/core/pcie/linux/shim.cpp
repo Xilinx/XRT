@@ -558,7 +558,7 @@ shim(unsigned index)
   , mStallProfilingNumberSlots(0)
   , mStreamProfilingNumberSlots(0)
   , mCmdBOCache(nullptr)
-  , mCuMaps{128, {nullptr, 0}}
+  , mCuMaps{128, {nullptr, 0, 0, 0}}
 {
   init(index);
 }
@@ -656,8 +656,8 @@ shim::~shim()
     dev_fini();
 
     for (auto p : mCuMaps) {
-        if (p.first)
-            (void) munmap(p.first, p.second);
+        if (p.addr)
+            (void) munmap(p.addr, p.size);
     }
 }
 
@@ -1810,10 +1810,10 @@ int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 
     if (ipIndex < mCuMaps.size()) {
 	    // Make sure no MMIO register space access when CU is released.
-	    uint32_t *p = mCuMaps[ipIndex].first;
+	    uint32_t *p = mCuMaps[ipIndex].addr;
 	    if (p) {
-		(void) munmap(p, mCuMaps[ipIndex].second);
-		mCuMaps[ipIndex] = std::make_pair<uint32_t*, uint32_t>(nullptr, 0);
+		(void) munmap(p, mCuMaps[ipIndex].size);
+		mCuMaps[ipIndex] = {nullptr, 0, 0, 0};
 	    }
     }
 
@@ -2032,42 +2032,66 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     return -EINVAL;
   }
 
-  auto& cumap = mCuMaps[ipIndex];  // {base, size}
+  auto& cumap = mCuMaps[ipIndex];  // {base, size, start, end}
 
-  if (cumap.first == nullptr) {
-    auto cu_subdev = "CU[" + std::to_string(ipIndex) + "]";
-    uint32_t size = 0;
-    std::string errmsg;
-    mDev->sysfs_get<uint32_t>(cu_subdev, "size", errmsg, size, 0);
-    if (size <= 0) {
+  if (cumap.addr == nullptr) {
+    auto size = xrt_core::device_query<xrt_core::query::cu_size>(mCoreDevice, ipIndex);
+    if (size <= 0 || size > 0x10000) {
       xrt_logmsg(XRT_ERROR, "%s: incorrect cu size %d", __func__, size);
       return -EINVAL;
     }
+    auto range = xrt_core::device_query<xrt_core::query::cu_read_range>(mCoreDevice, ipIndex);
 
     void *p = mDev->mmap(mUserHandle, size, PROT_READ | PROT_WRITE,
                          MAP_SHARED, static_cast<off_t>(ipIndex + 1) * getpagesize());
     if (p != MAP_FAILED) {
-      cumap.first = static_cast<uint32_t*>(p);
-      cumap.second = size;
+      cumap.addr = static_cast<uint32_t*>(p);
+      cumap.size = size;
+      cumap.start = range.start;
+      cumap.end = range.end;
     }
 
-    if (cumap.first == nullptr) {
+    if (cumap.addr == nullptr) {
       xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
       return -EINVAL;
     }
   }
 
-  if (offset >= cumap.second || (offset & (sizeof(uint32_t) - 1)) != 0) {
+  if ((cumap.start != 0xFFFFFFFF) && (!rd)) {
+    xrt_logmsg(XRT_ERROR, "%s: read range is set, not allow write", __func__);
+    return -EINVAL;
+  }
+
+  if ((offset & (sizeof(uint32_t) - 1)) != 0) {
+    xrt_logmsg(XRT_ERROR, "%s: offset is not aligned in word: %d", __func__, offset);
+    return -EINVAL;
+  }
+
+  if (offset >= cumap.size) {
     xrt_logmsg(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
     return -EINVAL;
   }
 
+  if ((cumap.start != 0xFFFFFFFF) && ((cumap.start > offset) || (cumap.end < offset))) {
+    xrt_logmsg(XRT_ERROR, "%s: CU offset %d out of read range, %d, %d", __func__, offset, cumap.start, cumap.end);
+    return -EINVAL;
+  }
+
   if (rd)
-    *datap = (cumap.first)[offset / sizeof(uint32_t)];
+    *datap = (cumap.addr)[offset / sizeof(uint32_t)];
   else
-    (cumap.first)[offset / sizeof(uint32_t)] = *datap;
+    (cumap.addr)[offset / sizeof(uint32_t)] = *datap;
 
   return 0;
+}
+
+int shim::xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    int ret = 0;
+    drm_xocl_set_range range = {ipIndex, start, size};
+
+    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_SET_READ_RANGE, &range);
+    return ret ? -errno : ret;
 }
 
 int shim::xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap)
@@ -2626,6 +2650,12 @@ int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, i
 {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegisterEventNotify(userInterrupt, fd) : -ENODEV;
+}
+
+int xclIPSetReadRange(xclDeviceHandle handle, uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclIPSetReadRange(ipIndex, start, size) : -ENODEV;
 }
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)

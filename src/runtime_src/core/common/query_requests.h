@@ -282,6 +282,9 @@ enum class key_type
   hwmon_sdm_fan_presence,
   hotplug_offline,
 
+  cu_size,
+  cu_read_range,
+
   noop
 };
 
@@ -3037,6 +3040,28 @@ struct hotplug_offline : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct cu_size : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::cu_size;
+
+  virtual boost::any
+  get(const device* device, const boost::any& cu_idx) const = 0;
+};
+
+struct cu_read_range : request
+{
+  struct range_data {
+      uint32_t start;
+      uint32_t end;
+  };
+  using result_type = range_data;
+  static const key_type key = key_type::cu_read_range;
+
+  virtual boost::any
+  get(const device* device, const boost::any& cu_idx) const = 0;
 };
 
 } // query

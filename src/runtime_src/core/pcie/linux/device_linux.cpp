@@ -677,6 +677,58 @@ struct accel_deadlock_status
   }
 };
 
+struct cu_size
+{
+  using result_type = query::cu_size::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& cu_idx)
+  {
+    const auto index = boost::any_cast<uint32_t>(cu_idx);
+    const auto cu_subdev = "CU[" + std::to_string(index) + "]";
+    auto pdev = get_pcidev(device);
+    std::string errmsg;
+    result_type size;
+
+    pdev->sysfs_get(cu_subdev, "size", errmsg, size, static_cast<uint32_t>(0));
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    return size;
+  }
+};
+
+struct cu_read_range
+{
+  using result_type = query::cu_read_range::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& cu_idx)
+  {
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    const auto index = boost::any_cast<uint32_t>(cu_idx);
+    const auto cu_subdev = "CU[" + std::to_string(index) + "]";
+    auto pdev = get_pcidev(device);
+    std::string errmsg;
+    std::string range_str;
+    result_type range = {0, 0};
+
+    // The read_range is printing in formatted string
+    // Format: "%d %d"
+    pdev->sysfs_get(cu_subdev, "read_range", errmsg, range_str);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    tokenizer tokens(range_str);
+    const int radix = 16;
+    tokenizer::iterator tok_it = tokens.begin();
+    range.start = std::stoul(std::string(*tok_it++), nullptr, radix);
+    range.end = std::stoul(std::string(*tok_it++), nullptr, radix);
+
+    return range;
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -1080,6 +1132,9 @@ initialize_query_table()
   emplace_sysfs_get<query::hwmon_sdm_mac_addr1>                ("hwmon_sdm", "mac_addr1");
   emplace_sysfs_get<query::hwmon_sdm_fan_presence>             ("hwmon_sdm", "fan_presence");
   emplace_sysfs_get<query::hwmon_sdm_revision>                 ("hwmon_sdm", "revision");
+
+  emplace_func4_request<query::cu_size,                        cu_size>();
+  emplace_func4_request<query::cu_read_range,                  cu_read_range>();
 }
 
 struct X { X() { initialize_query_table(); }};
