@@ -270,7 +270,7 @@ void
 system_linux::
 mem_read(const device* device, uint64_t addr, uint64_t size, const std::string& output_file) const
 {
-  if(xrt_core::memaccess().read(device, output_file, addr, size) < 0)
+  if(xrt_core::device_mem_read(device, output_file, addr, size) < 0)
     throw xrt_core::error(EINVAL, "Memory read failed");
 }
 
@@ -278,7 +278,7 @@ void
 system_linux::
 mem_write(const device* device, uint64_t addr, uint64_t size, std::vector<char>& buf) const
 {
-  if(xrt_core::memaccess().write(device, addr, size, buf.data()) < 0)
+  if(xrt_core::device_mem_write(device, addr, size, buf.data()) < 0)
     throw xrt_core::error(EINVAL, "Memory write failed");
 }
 
