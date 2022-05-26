@@ -19,21 +19,18 @@
  */
 #include "core/pcie/common/memaccess.h"
 
-#include <string>
-#include <iostream>
 #include <fstream>
-#include <sstream>
-#include <vector>
+#include <iostream>
 #include <numeric>
-
-#include <unistd.h>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "core/common/memalign.h"
-#include "core/common/utils.h"
 #include "core/common/query_requests.h"
+#include "core/common/utils.h"
 
 #include "core/include/xrt.h"
-#include "xclbin.h"
 
 struct mem_bank_t {
   uint64_t m_base_address;
