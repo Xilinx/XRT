@@ -270,17 +270,7 @@ void
 system_linux::
 mem_read(const device* device, uint64_t addr, uint64_t size, const std::string& output_file) const
 {
-  auto get_ddr_mem_size = [device]() {
-    auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
-    auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
-
-    // convert ddr_size from GB to bytes
-    // return the result in KB
-    return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
-  };
-
-  if(xrt_core::memaccess(get_ddr_mem_size(), getpagesize())
-      .read(device, output_file, addr, size) < 0)
+  if(xrt_core::memaccess().read(device, output_file, addr, size) < 0)
     throw xrt_core::error(EINVAL, "Memory read failed");
 }
 
@@ -288,17 +278,7 @@ void
 system_linux::
 mem_write(const device* device, uint64_t addr, uint64_t size, std::vector<char>& buf) const
 {
-  auto get_ddr_mem_size = [device]() {
-    auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
-    auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
-    
-    // convert ddr_size from GB to bytes
-    // return the result in KB
-    return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
-  };
-
-  if(xrt_core::memaccess(get_ddr_mem_size(), getpagesize())
-      .write(device, addr, size, buf.data()) < 0)
+  if(xrt_core::memaccess().write(device, addr, size, buf.data()) < 0)
     throw xrt_core::error(EINVAL, "Memory write failed");
 }
 

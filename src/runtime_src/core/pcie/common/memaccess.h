@@ -43,11 +43,8 @@
 
 namespace xrt_core {
   class memaccess {
-    uint64_t mDDRSize;
-    uint64_t mDataAlignment;
   public:
-    memaccess(uint64_t aDDRSize, uint64_t aDataAlignment) :
-              mDDRSize(aDDRSize), mDataAlignment (aDataAlignment) {}
+    memaccess() {}
 
     struct mem_bank_t {
       uint64_t m_base_address;
@@ -71,6 +68,18 @@ namespace xrt_core {
       { MEM_HOST, "MEM_HOST" },
     };
 
+    uint64_t
+    get_ddr_mem_size(const device * device)
+    {
+      auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
+      auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
+      
+      // convert ddr_size from GB to bytes
+      // return the result in KB
+      // TODO user xbutil:: convert function here
+      return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
+    };
+
     /*
      * getDDRBanks()
      *
@@ -78,7 +87,8 @@ namespace xrt_core {
      * Sort the vector based on start address.
      * Returns number of banks.
      */
-    std::vector<mem_bank_t> getDDRBanks(const device* device)
+    std::vector<mem_bank_t>
+    getDDRBanks(const device* device)
     {
       std::vector<mem_bank_t> aBanks;
 
@@ -103,7 +113,8 @@ namespace xrt_core {
      * Read from specified address, specified size within a bank
      * Caller's responsibility to do sanity checks. No sanity checks done here
      */
-    void readBank(const device* device, std::ofstream& aOutFile, uint64_t aStartAddr, uint64_t aSize) 
+    void
+    readBank(const device* device, std::ofstream& aOutFile, uint64_t aStartAddr, uint64_t aSize) 
     {
       // Allocate a buffer to hold the read data
       auto buf = xrt_core::aligned_alloc(getpagesize(), aSize);
@@ -138,7 +149,8 @@ namespace xrt_core {
      * returns the number of banks the start address and size going to span
      * return -1 in case of any sanity check failures
      */
-    int readWriteHelper (const device* device, uint64_t& aStartAddr, uint64_t& aSize,
+    int
+    readWriteHelper (const device* device, uint64_t& aStartAddr, uint64_t& aSize,
                 std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& startbank) 
     {
       vec_banks = getDDRBanks(device);
@@ -201,7 +213,8 @@ namespace xrt_core {
       return bankcnt;
     }
 
-    int read(const device* device, std::string aFilename, uint64_t aStartAddr = 0, uint64_t aSize = 0)
+    int
+    read(const device* device, std::string aFilename, uint64_t aStartAddr = 0, uint64_t aSize = 0)
     {
       std::vector<mem_bank_t> vec_banks;
       uint64_t startAddr = aStartAddr;
@@ -247,7 +260,8 @@ namespace xrt_core {
       return size;
     }
 
-    int write(const device* device, uint64_t aStartAddr, uint64_t aSize, char *srcBuf) {
+    int
+    write(const device* device, uint64_t aStartAddr, uint64_t aSize, char *srcBuf) {
       void *buf = 0;
       uint64_t endAddr;
       uint64_t size;
@@ -255,7 +269,7 @@ namespace xrt_core {
       if (xrt_core::posix_memalign(&buf, getpagesize(), blockSize))
         return -1;
 
-      endAddr = aSize == 0 ? mDDRSize : aStartAddr + aSize;
+      endAddr = (aSize == 0) ? get_ddr_mem_size(device) : (aStartAddr + aSize);
       size = endAddr-aStartAddr;
 
       // Use plain POSIX open/pwrite/close.
