@@ -278,10 +278,9 @@ mem_read(const device* device, uint64_t addr, uint64_t size, const std::string& 
     // return the result in KB
     return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
   };
-  auto bdf_str = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  auto handle = device->get_device_handle();
-  if(xcldev::memaccess(handle, get_ddr_mem_size(), getpagesize(), bdf_str)
-      .read(output_file, addr, size) < 0)
+
+  if(xrt_core::memaccess(get_ddr_mem_size(), getpagesize())
+      .read(device, output_file, addr, size) < 0)
     throw xrt_core::error(EINVAL, "Memory read failed");
 }
 
@@ -298,10 +297,8 @@ mem_write(const device* device, uint64_t addr, uint64_t size, std::vector<char>&
     return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
   };
 
-  auto bdf_str = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  auto handle = device->get_device_handle();
-  if(xcldev::memaccess(handle, get_ddr_mem_size(), getpagesize(), bdf_str)
-      .write(addr, size, buf.data()) < 0)
+  if(xrt_core::memaccess(get_ddr_mem_size(), getpagesize())
+      .write(device, addr, size, buf.data()) < 0)
     throw xrt_core::error(EINVAL, "Memory write failed");
 }
 

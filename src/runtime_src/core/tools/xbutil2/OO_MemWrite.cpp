@@ -54,7 +54,7 @@ OO_MemWrite::OO_MemWrite( const std::string &_longName, bool _isHidden)
     ("input,i", boost::program_options::value<decltype(m_inputFile)>(&m_inputFile), "Input file")
     ("address", boost::program_options::value<decltype(m_baseAddress)>(&m_baseAddress)->required(), "Base address to start from")
     ("size", boost::program_options::value<decltype(m_sizeBytes)>(&m_sizeBytes), "Block size (bytes) to write")
-    ("count", boost::program_options::value<decltype(m_count)>(&m_count), "Number of blocks to write")
+    ("count", boost::program_options::value<decltype(m_count)>(&m_count)->default_value(1), "Number of blocks to write")
     ("fill,f", boost::program_options::value<decltype(m_fill)>(&m_fill), "The byte value to fill the memory with")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
@@ -129,7 +129,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   uint64_t size = 0;
   try {
     if (!m_sizeBytes.empty()) {
-      size = XBUtilities::string_to_bytes(m_sizeBytes);
+      size = XBUtilities::string_to_base_units(m_sizeBytes, XBUtilities::unit::bytes);
       if (size <= 0)
         throw xrt_core::error(std::errc::operation_canceled, "Size must be greater than 0");
     }
@@ -161,7 +161,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       count = m_count;
 
     if (count <= 0)
-      throw xrt_core::error(std::errc::operation_canceled, "Number of blocks greater than 0");
+      throw xrt_core::error(std::errc::operation_canceled, "Value for --count must be greater than 0");
 
     // Logging information
     XBU::verbose(boost::str(boost::format("Device: %s") % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device))));
@@ -198,7 +198,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   if(!m_fill.empty()) {
     // Validate the block count. This cannot be done as the --input path may create its own block count
     if (m_count <= 0)
-      throw xrt_core::error(std::errc::operation_canceled, "Number of blocks must be greater than 0");
+      throw xrt_core::error(std::errc::operation_canceled, "Value for --count must be greater than 0");
     
     // Validate the number of bytes to write
     if (m_sizeBytes.empty())

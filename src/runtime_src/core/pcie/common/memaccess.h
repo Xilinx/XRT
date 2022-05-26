@@ -37,65 +37,17 @@
 
 #include "core/common/memalign.h"
 #include "core/common/utils.h"
+#include "core/common/device.h"
 
-#include "xclhal2.h"
 #include "xclbin.h"
 
-static std::string get_name(const std::string& dir, const std::string& subdir)
-{
-    std::string line;
-    std::ifstream ifs(dir + "/" + subdir + "/name");
-
-    if (ifs.is_open())
-        std::getline(ifs, line);
-
-    return line;
-}
-
-// Helper to find subdevice directory name
-// Assumption: all subdevice's sysfs directory name starts with subdevice name!!
-static int get_subdev_dir_name(const std::string& dir,
-    const std::string& subDevName, std::string& subdir)
-{
-    DIR *dp;
-    size_t sub_nm_sz = subDevName.size();
-
-    subdir = "";
-    if (subDevName.empty())
-        return 0;
-
-    int ret = -ENOENT;
-    dp = opendir(dir.c_str());
-    if (dp) {
-        struct dirent *entry;
-        while ((entry = readdir(dp))) {
-            std::string nm = get_name(dir, entry->d_name);
-            if (!nm.empty()) {
-                if (nm != subDevName)
-                    continue;
-            } else if(strncmp(entry->d_name, subDevName.c_str(), sub_nm_sz) ||
-                entry->d_name[sub_nm_sz] != '.') {
-                continue;
-            }
-            // found it
-            subdir = entry->d_name;
-            ret = 0;
-            break;
-        }
-        closedir(dp);
-    }
-
-    return ret;
-}
-
-namespace xcldev {
+namespace xrt_core {
   class memaccess {
-    xclDeviceHandle mHandle;
-    size_t mDDRSize, mDataAlignment;
-    std::string mDevUserName;
+    uint64_t mDDRSize;
+    uint64_t mDataAlignment;
   public:
-    memaccess(xclDeviceHandle aHandle, size_t aDDRSize, size_t aDataAlignment, std::string& aDevUserName) :
-              mHandle(aHandle), mDDRSize(aDDRSize), mDataAlignment (aDataAlignment), mDevUserName(aDevUserName) {}
+    memaccess(uint64_t aDDRSize, uint64_t aDataAlignment) :
+              mDDRSize(aDDRSize), mDataAlignment (aDataAlignment) {}
 
     struct mem_bank_t {
       uint64_t m_base_address;
@@ -126,51 +78,23 @@ namespace xcldev {
      * Sort the vector based on start address.
      * Returns number of banks.
      */
-    int getDDRBanks( std::vector<mem_bank_t>& aBanks )
+    std::vector<mem_bank_t> getDDRBanks(const device* device)
     {
-        int nfound = 0;
-        aBanks.clear();
-        std::string base = "/sys/bus/pci/devices/" + mDevUserName;
-        std::string icap;
-        struct stat sb;
+      std::vector<mem_bank_t> aBanks;
 
-        if ( get_subdev_dir_name(base, "icap", icap) ) {
-            std::cout << "ERROR: failed to find icap subdev " << std::endl;
-            return EINVAL;
-        }
+      auto mt_raw = xrt_core::device_query<xrt_core::query::mem_topology_raw>(device);
+      auto map = reinterpret_cast<const mem_topology*>(mt_raw.data());
 
-        std::string path = base + "/" + icap + "/mem_topology";
-        if( stat( path.c_str(), &sb ) < 0 ) {
-            std::cout << "ERROR: failed to stat " << path << std::endl;
-            return errno;
-        }
-        std::ifstream ifs( path.c_str(), std::ifstream::binary );
-        if( !ifs.good() ) {
-            return errno;
-        }
-        ifs.read( (char*)&nfound, sizeof(nfound) );
-        ifs.seekg( 0, ifs.beg );
-        if( nfound == 0 ) {
-            std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card." << std::endl;
-            ifs.close();
-            return nfound;
-        }
-        int buf_size = sizeof(mem_topology)*nfound + offsetof(mem_topology, m_mem_data);
-        buf_size *= 2; // double buffer size for padding safety.
-        char* buffer = new char[ buf_size ];
-        memset( buffer, 0, buf_size );
-        ifs.read( buffer, buf_size ); // TODO: read entry by entry instead of entire mem_topology struct.
-        mem_topology *map = (mem_topology *)buffer;
-        for( int i = 0; i < map->m_count; i++ ) {
-            if( map->m_mem_data[i].m_used && map->m_mem_data[i].m_type != MEM_STREAMING ) {
-                aBanks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i, map->m_mem_data[i].m_type );
-            }
-        }
-        std::sort (aBanks.begin(), aBanks.end(),
-                   [] (const mem_bank_t& a, const mem_bank_t& b) {return (a.m_base_address < b.m_base_address);});
-        delete [] buffer;
-        ifs.close();
-        return nfound;
+      for( int i = 0; i < map->m_count; i++ ) {
+          // If a memory bank is in use and is not a streaming bank emplace it into the bank list
+          if( map->m_mem_data[i].m_used && map->m_mem_data[i].m_type != MEM_STREAMING )
+              aBanks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i, map->m_mem_data[i].m_type );
+      }
+
+      std::sort (aBanks.begin(), aBanks.end(),
+                  [] (const mem_bank_t& a, const mem_bank_t& b) {return (a.m_base_address < b.m_base_address);});
+
+      return aBanks;
     }
 
     /*
@@ -179,69 +103,28 @@ namespace xcldev {
      * Read from specified address, specified size within a bank
      * Caller's responsibility to do sanity checks. No sanity checks done here
      */
-    int readBank(std::ofstream& aOutFile, unsigned long long aStartAddr, unsigned long long aSize) {
-      unsigned long long blockSize = 0x20000;
-      auto buf = xrt_core::aligned_alloc(getpagesize(), blockSize);
-      if (!buf)
-        return -1;
-      std::memset(buf.get(), 0, blockSize);
-
-      size_t count = aSize;
-      uint64_t incr;
-      auto guard = xrt_core::utils::ios_restore(std::cout);
-      for (uint64_t phy = aStartAddr; phy < aStartAddr+aSize; phy += incr) {
-        incr = (count >= aSize) ? aSize : count;
-        //std::cout << "Reading from addr " << std::hex << phy << " aSize = " << std::hex << incr << std::dec << std::endl;
-        if (xclUnmgdPread(mHandle, 0, buf.get(), incr, phy) < 0) {
-          //error
-          std::cout << "Error (" << strerror (errno) << ") reading 0x" << std::hex << incr << " bytes from DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
-          return -1;
-        }
-        count -= incr;
-        if (incr) {
-          aOutFile.write(reinterpret_cast<const char*>(buf.get()), incr);
-          if ((aOutFile.rdstate() & std::ifstream::failbit) != 0) {
-            std::cout << "Error writing to file at offset " << aSize-count << "\n";
-          }
-        }
-        std::cout << "INFO: Read size 0x" << std::hex << incr << " B from addr 0x" << phy
-                  << ". Total Read so far 0x" << aSize-count << std::endl;
-      }
-      if (count != 0) {
-        std::cout << "Error! Read " << std::dec << aSize-count << " bytes, requested " << aSize << std::endl;
-        return -1;
-      }
-      return count;
-    }
-
-    int runDMATest(size_t blocksize, unsigned int aPattern)
+    void readBank(const device* device, std::ofstream& aOutFile, uint64_t aStartAddr, uint64_t aSize) 
     {
-        int result = 0;
-        std::vector<mem_bank_t> mems;
-        int numBanks = getDDRBanks(mems);
+      // Allocate a buffer to hold the read data
+      auto buf = xrt_core::aligned_alloc(getpagesize(), aSize);
+      if (!buf)
+        throw std::runtime_error("readBank: Failed to allocate aligned buffer");
+      std::memset(buf.get(), 0, aSize);
 
-        if (!numBanks) {
-          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card \n";
-          return -1;
-        }
+      // Read the data in from the device
+      auto guard = xrt_core::utils::ios_restore(std::cout);
+      // We are given only the status not the number of bytes read
+      if (xclUnmgdPread(device->get_device_handle(), 0, buf.get(), aSize, aStartAddr) < 0) {
+        std::cerr << boost::format("ERROR: (%s) reading 0x%x bytes from DDR/HBM/PLRAM at offset 0x%x\n") % strerror(errno) % aSize % aStartAddr;
+        throw xrt_core::error(std::errc::operation_canceled);
+      }
 
-        for(const auto& itr : mems) {
-            if( writeBank(itr.m_base_address, itr.m_size, aPattern) == -1)
-                return -1;
-            result = readCompare(itr.m_base_address, itr.m_size, aPattern, false);
-            if(result < 0)
-                return result;
-            try {
-                DMARunner runner(mHandle, blocksize, 1 << itr.m_index);
-                result = runner.run();
-            } catch (const xrt_core::error &ex) {
-                std::cout << "ERROR: " << ex.what() << std::endl;
-                return ex.get();
-            }
-        }
+      // Write the received data into the output file
+      aOutFile.write(reinterpret_cast<const char*>(buf.get()), aSize);
+      if ((aOutFile.rdstate() & std::ifstream::failbit) != 0)
+        throw std::runtime_error("readBank: Error writing to output file\n");
 
-
-        return result;
+      std::cout << boost::format("INFO: Read size 0x%x bytes from address 0x%x\n") % aSize % aStartAddr;
     }
 
     /*
@@ -255,94 +138,79 @@ namespace xcldev {
      * returns the number of banks the start address and size going to span
      * return -1 in case of any sanity check failures
      */
-    int readWriteHelper (unsigned long long& aStartAddr, unsigned long long& aSize,
-                std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& startbank) {
-        int nbanks = getDDRBanks(vec_banks);
-        if (!nbanks) {
-          std::cout << "ERROR: Memory topology is not available, ensure that a valid bitstream is programmed onto the card \n";
-          return -1;
+    int readWriteHelper (const device* device, uint64_t& aStartAddr, uint64_t& aSize,
+                std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& startbank) 
+    {
+      vec_banks = getDDRBanks(device);
+      //Find the first memory bank with valid size since vec_banks is sorted
+      auto validBank =  std::find_if(vec_banks.begin(), vec_banks.end(),
+                  [](const mem_bank_t item) {return (item.m_size);});
+
+      if (validBank == vec_banks.end()) {
+        std::cerr << "ERROR: Couldn't find valid memory banks\n";
+        xrt_core::error(std::errc::operation_canceled);
+      }
+
+      //if given start address is 0 then choose start address to be the lowest address available
+      uint64_t startAddr = (aStartAddr == 0) ? validBank->m_base_address : aStartAddr;
+      // Update reference
+      aStartAddr = startAddr;
+
+      //Sanity check start address
+      startbank = std::find_if(vec_banks.begin(), vec_banks.end(),
+                  [startAddr](const mem_bank_t& item) {return (startAddr >= item.m_base_address && startAddr < (item.m_base_address+item.m_size));});
+
+      if (startbank == vec_banks.end()) {
+        std::cerr << boost::format("ERROR: Start address 0x%x is not valid\n") % startAddr;
+        xrt_core::error(std::errc::operation_canceled);
+      }
+
+      //Sanity check access size
+      uint64_t availableSize = std::accumulate(startbank, vec_banks.end(), (uint64_t)0,
+              [](uint64_t result, const mem_bank_t& obj) {return (result + obj.m_size);}) ;
+
+      availableSize -= (startAddr - startbank->m_base_address);
+      if (aSize > availableSize) {
+        std::cerr << boost::format("ERROR: Cannot access %d bytes of memory from start address 0x%x\n") % aSize % startAddr;
+        xrt_core::error(std::errc::operation_canceled);
+      }
+
+      //if given size is 0, then the end Address is the max address of the unused bank
+      uint64_t size = (aSize == 0) ? availableSize : aSize;
+      // Update reference
+      aSize = size;
+
+      //Find the number of banks this read/write straddles, this is just for better messaging
+      int bankcnt = 0;
+      for(auto it = startbank; it!=vec_banks.end(); ++it) {
+        uint64_t available_bank_size;
+        if (it != startbank)
+          available_bank_size = it->m_size;
+        else
+          available_bank_size = it->m_size - (startAddr - it->m_base_address);
+
+        if (size != 0) {
+          uint64_t accesssize = (size > available_bank_size) ? (uint64_t) available_bank_size : size;
+          ++bankcnt;
+          size -= accesssize;
         }
-
-        std::stringstream sstr;
-//        //This lambda captures the bank info in the stringstream
-//        auto banksinfo = [&sstr](uint64_t result, const mem_bank_t& obj) {
-//          sstr << "[Addr: 0x" << std::hex << obj.m_base_address << ", Size: " << std::dec << obj.m_size << "]";
-//          return (result + obj.m_size);
-//        };
-
-//        uint64_t total_mem = std::accumulate(vec_banks.begin(), vec_banks.end(), (uint64_t)0, std::move(banksinfo));
-
-        //Find the first memory bank with valid size since vec_banks is sorted
-        auto validBank =  std::find_if(vec_banks.begin(), vec_banks.end(),
-                    [](const mem_bank_t item) {return (item.m_size);});
-
-        if (validBank == vec_banks.end()) {
-          std:: cout << "ERROR: Couldn't find valid memory banks" << std::dec << std::endl;
-          return -1;
+        else {
+          break;
         }
-        //if given start address is 0 then choose start address to be the lowest address available
-        unsigned long long startAddr = aStartAddr == 0 ? validBank->m_base_address : aStartAddr;
-        aStartAddr = startAddr;
-
-        //Sanity check start address
-        startbank = std::find_if(vec_banks.begin(), vec_banks.end(),
-                    [startAddr](const mem_bank_t& item) {return (startAddr >= item.m_base_address && startAddr < (item.m_base_address+item.m_size));});
-
-        if (startbank == vec_banks.end()) {
-          std:: cout << "ERROR: Start address 0x" << std::hex << startAddr << " is not valid" << std::dec << std::endl;
-          std:: cout << "Available memory banks: " << sstr.str() << std::endl;
-          return -1;
-        }
-        //Sanity check access size
-        uint64_t availableSize = std::accumulate(startbank, vec_banks.end(), (uint64_t)0,
-                [](uint64_t result, const mem_bank_t& obj) {return (result + obj.m_size);}) ;
-
-        availableSize -= (startAddr - startbank->m_base_address);
-        if (aSize > availableSize) {
-          std:: cout << "ERROR: Cannot access " << aSize << " bytes of memory from start address 0x" << std::hex << startAddr << std::dec << std::endl;
-          std:: cout << "Available memory banks: " << sstr.str() << std::endl;
-          return -1;
-        }
-
-        //if given size is 0, then the end Address is the max address of the unused bank
-        unsigned long long size = (aSize == 0) ? availableSize : aSize;
-        aSize = size;
-
-        //Find the number of banks this read/write straddles, this is just for better messaging
-        int bankcnt = 0;
-        unsigned long long tsize = size;
-        for(auto it = startbank; it!=vec_banks.end(); ++it) {
-          unsigned long long available_bank_size;
-          if (it != startbank) {
-            available_bank_size = it->m_size;
-          }
-          else {
-            available_bank_size = it->m_size - (startAddr - it->m_base_address);
-          }
-          if (tsize != 0) {
-            unsigned long long accesssize = (tsize > available_bank_size) ? (unsigned long long) available_bank_size : tsize;
-            ++bankcnt;
-            tsize -= accesssize;
-          }
-          else {
-            break;
-          }
-        }
-        return bankcnt;
+      }
+      return bankcnt;
     }
 
-    /*
-     * read()
-     */
-    int read(std::string aFilename, unsigned long long aStartAddr = 0, unsigned long long aSize = 0) {
+    int read(const device* device, std::string aFilename, uint64_t aStartAddr = 0, uint64_t aSize = 0)
+    {
       std::vector<mem_bank_t> vec_banks;
-      unsigned long long startAddr = aStartAddr;
-      unsigned long long size = aSize;
+      uint64_t startAddr = aStartAddr;
+      uint64_t size = aSize;
       std::vector<mem_bank_t>::iterator startbank;
       int bankcnt = 0;
 
       //Sanity check the address and size against the mem topology
-      if ((bankcnt = readWriteHelper(startAddr, size, vec_banks, startbank)) == -1) {
+      if ((bankcnt = readWriteHelper(device, startAddr, size, vec_banks, startbank)) == -1) {
         return -1;
       }
 
@@ -350,15 +218,14 @@ namespace xcldev {
 
       size_t count = size;
       for(auto it = startbank; it!=vec_banks.end(); ++it) {
-        unsigned long long available_bank_size;
+        uint64_t available_bank_size;
         if (it != startbank) {
           startAddr = it->m_base_address;
           available_bank_size = it->m_size;
         }
-        else {
-          //startAddr = startAddr;
+        else 
           available_bank_size = it->m_size - (startAddr - it->m_base_address);
-        }
+
         if (size != 0) {
           if (it->m_type > bankEnumStringMap.size()) {
             std::cout << boost::format("Error: Invalid Bank type (%d) received\n") % it->m_type;
@@ -366,10 +233,8 @@ namespace xcldev {
           }
           std::string bank_name = bankEnumStringMap[it->m_type];
           std::cout << boost::format("INFO: Reading %llu bytes from bank %s address 0x%x\n") % size % bankEnumStringMap[it->m_type] % startAddr;
-          unsigned long long readsize = (size > available_bank_size) ? (unsigned long long) available_bank_size : size;
-          if( readBank(outFile, startAddr, readsize) == -1) {
-            return -1;
-          }
+          uint64_t readsize = (size > available_bank_size) ? (uint64_t) available_bank_size : size;
+          readBank(device, outFile, startAddr, readsize);
           size -= readsize;
         }
         else {
@@ -382,181 +247,11 @@ namespace xcldev {
       return size;
     }
 
-    /*
-     * readCompare()
-     */
-    int readCompare(unsigned long long aStartAddr = 0, unsigned long long aSize = 0, unsigned int aPattern = 'J', bool checks = true) {
+    int write(const device* device, uint64_t aStartAddr, uint64_t aSize, char *srcBuf) {
       void *buf = 0;
-      void *bufPattern = 0;
-      unsigned long long size = aSize;
-      std::vector<mem_bank_t> vec_banks;
-      std::vector<mem_bank_t>::iterator startbank;
-      int bankcnt = 0;
-      //unsigned long long blockSize = 0x20000;
-      unsigned long long blockSize = aSize;
-      if (blockSize < 64) {
-        blockSize = 64;
-      }
-
-      if (xrt_core::posix_memalign(&buf, getpagesize(), blockSize+1))//Last is for termination char
-        return -1;
-      if (xrt_core::posix_memalign(&bufPattern, getpagesize(), blockSize+1)) {//Last is for termination char
-        free(buf);
-        return -1;
-      }
-      std::memset(buf, '\0', blockSize+1);//Fill with termination char
-      std::memset(bufPattern, '\0', blockSize+1);//Fill with termination char
-      std::memset(bufPattern, aPattern, blockSize);
-
-      if(checks) {
-          //Sanity check the address and size against the mem topology
-          if ((bankcnt = readWriteHelper(aStartAddr, size, vec_banks, startbank)) == -1) {
-              free(buf);
-              free(bufPattern);
-              return -1;
-          }
-      }
-
-      unsigned long long endAddr = aSize == 0 ? mDDRSize : aStartAddr+aSize;
-      size = endAddr-aStartAddr;
-
-      // Use plain POSIX open/pwrite/close.
-      size_t count = size;
-      uint64_t incr;
-      for (uint64_t phy = aStartAddr; phy < aStartAddr+size; phy += incr) {
-        incr = (count >= blockSize) ? blockSize : count;
-        //Reset the read buffer
-        std::memset(buf, '\0', blockSize+1);//Fill with termination char
-        std::memset(bufPattern, '\0', blockSize+1);//Fill with termination char
-        std::memset(bufPattern, aPattern, incr);//Need this when count is < blockSize
-        //std::cout << "Reading from addr " << std::hex << phy << " size = " << std::hex << incr << std::dec << std::endl;
-        if (xclUnmgdPread(mHandle, 0, buf, incr, phy) < 0) {
-          //error
-          std::cout << "Error (" << strerror (errno) << ") reading 0x" << std::hex << incr << " bytes from DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
-          free(buf);
-          free(bufPattern);
-          return -1;
-        }
-        count -= incr;
-        if (incr) {
-          //char temp = aPattern;
-          //std::cout << "INFO: Pattern char is: " << temp << std::endl;
-          if( std::string((char*)buf) != std::string((char*)bufPattern)) { // strings are equal
-            std::cout << "Error: read data didn't meet the pattern. Total Num of Bytes Read = " << std::dec << size << std::endl;
-            std::cout << "Error: read data is: " << std::string((char*)buf) << std::endl;
-          }
-        }
-        //std::cout << "INFO: Read size: " << std::dec << incr << " B. Total Read so far: " << std::dec << size-count << std::endl;
-      }
-      free(buf);
-      free(bufPattern);
-      if (count != 0) {
-        std::cout << "Error! Read " << std::dec << size-count << " bytes, requested " << size << std::endl;
-        return -1;
-      }
-      return count;
-    }
-
-    /*
-     * writeBank()
-     *
-     * Write to the specified address within a bank
-     * Caller's responsibility to do sanity checks. No sanity checks done here
-     */
-    int writeBank(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern) {
-      char *buf = 0;
-      unsigned long long endAddr;
-      unsigned long long size;
-      unsigned long long blockSize = 0x20000;//128KB
-      if (xrt_core::posix_memalign((void**)&buf, getpagesize(), blockSize))
-        return -1;
-
-      endAddr = aStartAddr + aSize;
-      size = endAddr-aStartAddr;
-
-      // Use plain POSIX open/pwrite/close.
-
-      std::cout << "INFO: Writing DDR/HBM/PLRAM with " << std::dec << size << " bytes of pattern: 0x"
-         << std::hex << aPattern << " from address 0x" <<std::hex << aStartAddr << std::endl;
-
-      unsigned long long count = size;
-      uint64_t incr = 0;
-      std::memset(buf, aPattern, blockSize);
-      for(uint64_t phy=aStartAddr; phy<endAddr; phy+=incr) {
-        incr = (count >= blockSize) ? blockSize : count;
-        //std::cout << "Writing to addr " << std::hex << phy << " size = " << std::hex << incr << std::dec << std::endl;
-        if (xclUnmgdPwrite(mHandle, 0, buf, incr, phy) < 0) {
-          //error
-          std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
-          free(buf);
-          return -1;
-        }
-        count -= incr;
-      }
-
-      free(buf);
-      if (count != 0) {
-        std::cout << "Error! Written " << std::dec << size-count << " bytes, requested " << size << std::endl;
-        return -1;
-      }
-      return count;
-    }
-
-    /*
-     * write()
-     */
-    int write(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
-      std::vector<mem_bank_t> vec_banks;
-      unsigned long long startAddr = aStartAddr;
-      unsigned long long size = aSize;
-      std::vector<mem_bank_t>::iterator startbank;
-      int bankcnt = 0;
-
-      //Sanity check the address and size against the mem topology
-      if ((bankcnt = readWriteHelper(startAddr, size, vec_banks, startbank)) == -1) {
-        return -1;
-      }
-
-      if (bankcnt > 1) {
-        std::cout << "INFO: Writing " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
-                                    << " straddles " << bankcnt << " banks" << std::dec << std::endl;
-      }
-      else {
-        std::cout << "INFO: Writing to single bank, " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
-                                    << std::dec << std::endl;
-      }
-      for(auto it = startbank; it!=vec_banks.end(); ++it) {
-        unsigned long long available_bank_size;
-        if (it != startbank) {
-          startAddr = it->m_base_address;
-          available_bank_size = it->m_size;
-        }
-        else {
-          //startAddr = startAddr;
-          available_bank_size = it->m_size - (startAddr - it->m_base_address);
-        }
-        if (size != 0) {
-          unsigned long long writesize = (size > available_bank_size) ? (unsigned long long) available_bank_size : size;
-          if( writeBank(startAddr, writesize, aPattern) == -1) {
-            return -1;
-          }
-          size -= writesize;
-        }
-        else {
-          break;
-        }
-      }
-      return size;
-    }
-
-    /*
-     * write()
-     */
-    int write(unsigned long long aStartAddr, unsigned long long aSize, char *srcBuf) {
-      void *buf = 0;
-      unsigned long long endAddr;
-      unsigned long long size;
-      unsigned long long blockSize = aSize; //0x20000;//128KB
+      uint64_t endAddr;
+      uint64_t size;
+      uint64_t blockSize = aSize; //0x20000;//128KB
       if (xrt_core::posix_memalign(&buf, getpagesize(), blockSize))
         return -1;
 
@@ -567,12 +262,12 @@ namespace xcldev {
       std::cout << "INFO: Writing DDR/HBM/PLRAM with " << size << " bytes from file, "
                 << " from address 0x" << std::hex << aStartAddr << std::dec << std::endl;
 
-      unsigned long long count = size;
+      uint64_t count = size;
       uint64_t incr;
       memcpy(buf, srcBuf, aSize);
       for(uint64_t phy=aStartAddr; phy<endAddr; phy+=incr) {
         incr = (count >= blockSize) ? blockSize : count;
-        if (xclUnmgdPwrite(mHandle, 0, buf, incr, phy) < 0) {
+        if (xclUnmgdPwrite(device->get_device_handle(), 0, buf, incr, phy) < 0) {
           //error
           std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR/HBM/PLRAM at offset 0x" << phy << std::dec << std::endl;
           free(buf);
@@ -588,43 +283,6 @@ namespace xcldev {
       }
       return count;
     }
-
-    /*
-     * writeQuiet()
-     */
-    int writeQuiet(unsigned long long aStartAddr, unsigned long long aSize, unsigned int aPattern = 'J') {
-        unsigned long long endAddr;
-        unsigned long long size;
-        //unsigned long long blockSize = 0x20000;
-        unsigned long long blockSize = aSize;
-        auto buf = xrt_core::aligned_alloc(getpagesize(), blockSize);
-        if (!buf)
-          return -1;
-
-        endAddr = aSize == 0 ? mDDRSize : aStartAddr + aSize;
-        size = endAddr-aStartAddr;
-
-        unsigned long long count = size;
-        uint64_t incr;
-        std::memset(buf.get(), aPattern, blockSize);
-        for(uint64_t phy=aStartAddr; phy<endAddr; phy+=incr) {
-          incr = (count >= blockSize) ? blockSize : count;
-          //std::cout << "Writing to addr " << std::hex << phy << " size = " << std::hex << incr << std::dec << std::endl;
-          if (xclUnmgdPwrite(mHandle, 0, buf.get(), incr, phy) < 0) {
-            //error
-            std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR/HBM/PLRAM at offset 0x" << std::hex << phy << std::dec << "\n";
-            return -1;
-          }
-          count -= incr;
-        }
-
-        if (count != 0) {
-          std::cout << "Error! Written " << std::dec << size-count << " bytes, requested " << size << std::endl;
-          return -1;
-        }
-        return count;
-      }
-
   };
 }
 

@@ -50,7 +50,7 @@ OO_MemRead::OO_MemRead( const std::string &_longName, bool _isHidden )
     ("output,o", boost::program_options::value<decltype(m_outputFile)>(&m_outputFile)->required(), "Output file")
     ("address", boost::program_options::value<decltype(m_baseAddress)>(&m_baseAddress)->required(), "Base address to start from")
     ("size", boost::program_options::value<decltype(m_sizeBytes)>(&m_sizeBytes)->required(), "Size (bytes) to read")
-    ("count", boost::program_options::value<decltype(m_count)>(&m_count), "Number of blocks to read")
+    ("count", boost::program_options::value<decltype(m_count)>(&m_count)->default_value(1), "Number of blocks to read")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -127,7 +127,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   uint64_t size = 0;
   try {
     if (!m_sizeBytes.empty()) {
-      size = XBUtilities::string_to_bytes(m_sizeBytes);
+      size = XBUtilities::string_to_base_units(m_sizeBytes, XBUtilities::unit::bytes);
       if (size <= 0)
         throw xrt_core::error(std::errc::operation_canceled, "Size must be greater than 0");
     }
