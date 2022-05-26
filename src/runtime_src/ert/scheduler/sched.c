@@ -369,7 +369,9 @@ configure_mb(struct sched_cmd *cmd)
   if (flatten_queue)
     cmd_queue_slot_size = 0;
 
-  resp_cmd.hdr.cid = 0x100;
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.i2h = 1;
   resp_cmd.i2e = 0;
   resp_cmd.cui = 0;
@@ -389,7 +391,9 @@ configure_mb_end(struct sched_cmd *cmd)
   struct xgq_com_queue_entry resp_cmd = {0};
   int ret = setup_cu_queue();
 
-  resp_cmd.hdr.cid = 0x101;
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   if (!ret)
@@ -441,7 +445,9 @@ save_cfg_cu(struct sched_cmd *cmd)
                                 cmd_queue_slot_size : cu->slot_size;
   }
 
-  resp_cmd.hdr.cid = 0x105;
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_com_queue_entry));
@@ -469,7 +475,9 @@ query_cu(struct sched_cmd *cmd)
   resp_cmd.xgq_id = cu_idx;
   resp_cmd.type = flatten_queue;
 
-  resp_cmd.hdr.cid = 0x106;
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   CTRL_DEBUGF("  cu_idx          %x\r\n", cu_idx);
@@ -491,6 +499,9 @@ get_clk_counter(struct sched_cmd *cmd)
 
   resp_cmd.timestamp = read_clk_counter();
   
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_clock_calib));
@@ -542,6 +553,9 @@ validate_mb(struct sched_cmd *cmd)
   CTRL_DEBUGF("resp_cmd.cq_write_single %d\r\n",resp_cmd.cq_write_single);
   CTRL_DEBUGF("resp_cmd.cu_read_single %d\r\n",resp_cmd.cu_read_single);
   CTRL_DEBUGF("resp_cmd.cu_write_single %d\r\n",resp_cmd.cu_write_single);    
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_access_valid));
@@ -596,6 +610,9 @@ data_integrity(struct sched_cmd *cmd)
       resp_cmd.d2cu_access = 0;
     }
   }
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_data_integrity));
@@ -608,6 +625,9 @@ exit_mb(struct sched_cmd *cmd)
 {
   struct xgq_com_queue_entry resp_cmd = {0};
 
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = 0;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_com_queue_entry));
@@ -628,12 +648,12 @@ identify_xgq(struct sched_cmd *cmd)
 
   resp_cmd.rcode = 0;
 
-  /* TODO: for debug */
-  resp_cmd.hdr.cid = 0x123;
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
 #ifdef ERT_BUILD_V30
   resp_cmd.resvd = read_clk_counter();
 #endif
-  /* debug end */
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_identify));
 
   return 0;
@@ -656,6 +676,21 @@ process_ctrl_command()
 
   if (!cmd)
     return -ENOENT;
+
+#ifdef XGQ_CMD_DEBUG
+  {
+      /* CQ offset 0x610 is unused yet. */
+      struct xgq_cmd_sq_hdr *log = (void *)(ERT_CQ_BASE_ADDR + 0x610);
+      int i = 0;
+
+      for (i = 0; i < 3; i++) {
+          write_reg((uint32_t)(&log[i].header[0]), read_reg((uint32_t)(&log[i+1].header[0])));
+          write_reg((uint32_t)(&log[i].header[1]), read_reg((uint32_t)(&log[i+1].header[1])));
+      }
+      write_reg((uint32_t)(&log[i].header[0]), cmd->cc_header.hdr.header[0]);
+      write_reg((uint32_t)(&log[i].header[1]), cmd->cc_header.hdr.header[1]);
+  }
+#endif
 
   opcode = cmd_op_code(cmd);
 
