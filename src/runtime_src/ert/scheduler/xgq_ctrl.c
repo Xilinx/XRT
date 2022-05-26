@@ -72,6 +72,15 @@ struct sched_cmd *xgq_ctrl_get_cmd(struct xgq_ctrl *xgq_ctrl)
 		if (!ret) {
 			cmd_set_addr(cmd, addr);
 			cmd_load_header(cmd);
+            /* TODO: for debug */
+            {
+                uint32_t off = addr & 0x00000FFF;
+                uint32_t cq_base = addr & 0xFFFFF000;
+                if ((off != 0x30) && (off != 0x230)) {
+                    xgq_reg_write32(0, cq_base + 0x604, off);
+                }
+            }
+            /* debug end */
 		}
 	}
 
