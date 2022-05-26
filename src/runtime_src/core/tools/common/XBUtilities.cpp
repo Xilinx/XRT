@@ -291,6 +291,21 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 }
 
+  std::shared_ptr<xrt_core::device>
+  XBUtilities::get_device ( const std::string &deviceBDF, bool in_user_domain)
+  {
+    // -- If the deviceBDF is empty then do nothing
+    if (deviceBDF.empty())
+      throw std::runtime_error("Please specify a device using --device option" + str_available_devs(in_user_domain));
+
+    // -- Collect the devices by name
+    auto index = str2index(deviceBDF, in_user_domain);    // Can throw
+    if(in_user_domain)
+      return xrt_core::get_userpf_device(index);
+    else
+      return xrt_core::get_mgmtpf_device(index);
+  }
+
 void
 XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& error)
 {

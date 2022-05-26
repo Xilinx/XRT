@@ -44,6 +44,9 @@ namespace XBUtilities {
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
 
+  std::shared_ptr<xrt_core::device> get_device ( const std::string &deviceBDF,
+                                 bool in_user_domain);
+
   boost::property_tree::ptree
   get_available_devices(bool inUserDomain);
   
