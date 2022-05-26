@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT kernel APIs as declared in
 // core/include/experimental/xrt_kernel.h
@@ -454,9 +455,9 @@ class ip_context
   public:
     connectivity() = default;
 
-    // @device: core device
-    // @conn: connectivity section of xclbin
-    connectivity(const xrt_core::device* device, const xrt::xclbin& xclbin, const xrt::xclbin::ip& ip)
+    // @xclbin: meta data
+    // @ip: ip to compute connectivity for
+    connectivity(const xrt::xclbin& xclbin, const xrt::xclbin::ip& ip)
     {
       const auto& memidx_encoding = xrt_core::xclbin_int::get_membank_encoding(xclbin);
 
@@ -513,12 +514,27 @@ public:
   static std::shared_ptr<ip_context>
   open(const xrt::hw_context& hwctx, const xrt::xclbin::ip& ip)
   {
-    // Slightly complicated handling of shared ownership of ip_context objects.
-    // This code would be greatly simplified to the point of not needed if only
-    // driver would manage CU context within a HW context as opposed to per slot.
-    // Contexts are managed per device.
-    // Within a device, a CU is opened in a slot.
-    // This function manages the ip_context objects per device and slot.
+    // - IP index is unique per device
+    // - IP index is unique per domain
+    // - IP index is unique per slot
+    // - IP index can be shared between hwctx, provided hwctx refer
+    //   to same slot
+    // - A slot can contain only one domain type of CUs
+    //
+    // In 2022.2, before true support for multi-xclbin, it is assumed
+    // that hwctx referring to same xclbin also shares the same ctxhdl.
+    //
+    // For cases (drivers) that support multi-xclbin and sharing it is
+    // assumed that each hwctx is unique and has a unique ctx handle,
+    // and that opening a CU context is required for each hwctx.
+    //
+    // This function therefore associates ipctx with each hwctx handle
+    // so that if same hwctx is used repeatedly, CU contexts within
+    // that hwctx are opened only once.
+    //
+    // The function also ensures that different devices can share same
+    // hwctx handle, implying that even for same handle index, the CU
+    // should be opened again if the device is different
     using ctx_ips = std::map<std::string, std::weak_ptr<ip_context>>;
     using ctx_to_ips = std::map<xcl_hwctx_handle, ctx_ips>;
     static std::mutex mutex;
@@ -526,14 +542,12 @@ public:
     auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
     auto ctxhdl = xrt_core::hw_context_int::get_xcl_handle(hwctx);
     std::lock_guard<std::mutex> lk(mutex);
-    auto& ctx2ips = dev2ips[device]; // domain -> ip_context_list
-    auto& ips = ctx2ips[ctxhdl];
+    auto& ctx2ips = dev2ips[device]; // hwctx handle -> [ip_context]*
+    auto& ips = ctx2ips[ctxhdl];     // ipname -> ip_context
     auto ipctx = ips[ip.get_name()].lock();
-    if (!ipctx) {
+    if (!ipctx)
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
-      ipctx = std::shared_ptr<ip_context>(new ip_context(hwctx, ip));
-      ips[ip.get_name()] = ipctx;
-    }
+      ips[ip.get_name()] = ipctx = std::shared_ptr<ip_context>(new ip_context(hwctx, ip));
 
     return ipctx;
   }
@@ -591,9 +605,7 @@ public:
 
   ~ip_context()
   {
-    auto device = xrt_core::hw_context_int::get_core_device_raw(m_hwctx);
-    auto xid = m_hwctx.get_xclbin_uuid();
-    xrt_core::context_mgr::close_context(device, xid, m_idx);
+    xrt_core::context_mgr::close_context(m_hwctx, m_idx);
   }
 
   ip_context(const ip_context&) = delete;
@@ -605,29 +617,19 @@ private:
   // regular CU
   ip_context(xrt::hw_context xhwctx, xrt::xclbin::ip xip)
     : m_hwctx(std::move(xhwctx))
-    , m_device(xrt_core::hw_context_int::get_core_device_raw(m_hwctx))
     , m_ip(std::move(xip))
-    , m_args(m_device, m_hwctx.get_xclbin(), m_ip)
+    , m_args(m_hwctx.get_xclbin(), m_ip)
+    , m_idx(xrt_core::context_mgr::open_context(m_hwctx, m_ip.get_name()))
     , m_address(m_ip.get_base_address())
     , m_size(m_ip.get_size())
-    , m_access(qos_to_mode(m_hwctx.get_qos()))
-  {
-    auto slot = xrt_core::hw_context_int::get_xcl_handle(m_hwctx);
-    auto xid = m_hwctx.get_xclbin_uuid();
-    xrt_core::context_mgr::open_context(m_device, slot, xid, m_ip.get_name(), std::underlying_type<access_mode>::type(m_access));
-
-    // If open context was successful, then the cuidx is recorded in device
-    m_idx = m_device->get_cuidx(slot, m_ip.get_name());
-  }
+  {}
 
   xrt::hw_context m_hwctx;    // hw context in which IP is opened
-  xrt_core::device* m_device; // cached from hwctx
   xrt::xclbin::ip m_ip;       // the xclbin ip object
   connectivity m_args;        // argument memory connections
   xrt_core::cuidx_type m_idx; // cu domain and index
   uint64_t m_address;         // cache base address for programming
   size_t m_size;              // cache address space size
-  access_mode m_access;       // compute unit access mode
 };
 
 // Remove when c++17
