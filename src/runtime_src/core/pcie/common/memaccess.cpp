@@ -35,17 +35,15 @@
 #include "core/include/xrt.h"
 #include "xclbin.h"
 
-namespace xrt_core {
+struct mem_bank_t {
+  uint64_t m_base_address;
+  uint64_t m_size;
+  int m_index;
+  uint8_t m_type;
+  mem_bank_t (uint64_t addr, uint64_t size, int index, uint8_t type) : m_base_address(addr), m_size(size), m_index(index), m_type(type) {}
+};
 
-  struct mem_bank_t {
-    uint64_t m_base_address;
-    uint64_t m_size;
-    int m_index;
-    uint8_t m_type;
-    mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex, uint8_t aType) : m_base_address(aAddr), m_size(aSize), m_index(aIndex), m_type(aType) {}
-  };
-
-  std::map <int, std::string> bankEnumStringMap = {
+static std::map <int, std::string> bank_enum_string_map = {
     { MEM_DDR3, "DDR3" },
     { MEM_DDR4, "DDR4" },
     { MEM_DRAM, "DRAM" },
@@ -59,233 +57,192 @@ namespace xrt_core {
     { MEM_HOST, "MEM_HOST" },
   };
 
-  uint64_t
-  get_ddr_mem_size(const device * device)
-  {
-    auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
-    auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
-    
-    // convert ddr_size from GB to bytes
-    // return the result in KB
-    // TODO user xbutil:: convert function here
-    return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
-  };
+static uint64_t
+get_ddr_mem_size(const xrt_core::device * device)
+{
+  auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
+  auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
+  
+  // convert ddr_size from GB to bytes
+  // return the result in KB
+  // TODO user xbutil:: convert function here
+  return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
+};
 
-  /*
-    * getDDRBanks()
-    *
-    * Get the addrs and size of each DDR bank
-    * Sort the vector based on start address.
-    * Returns number of banks.
-    */
-  std::vector<mem_bank_t>
-  getDDRBanks(const device* device)
-  {
-    std::vector<mem_bank_t> aBanks;
+static std::vector<mem_bank_t>
+get_ddr_banks(const xrt_core::device* device)
+{
+  std::vector<mem_bank_t> banks;
 
-    auto mt_raw = xrt_core::device_query<xrt_core::query::mem_topology_raw>(device);
-    auto map = reinterpret_cast<const mem_topology*>(mt_raw.data());
+  auto mt_raw = xrt_core::device_query<xrt_core::query::mem_topology_raw>(device);
+  auto map = reinterpret_cast<const mem_topology*>(mt_raw.data());
 
-    for( int i = 0; i < map->m_count; i++ ) {
-        // If a memory bank is in use and is not a streaming bank emplace it into the bank list
-        if( map->m_mem_data[i].m_used && map->m_mem_data[i].m_type != MEM_STREAMING )
-            aBanks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i, map->m_mem_data[i].m_type );
-    }
-
-    std::sort (aBanks.begin(), aBanks.end(),
-                [] (const mem_bank_t& a, const mem_bank_t& b) {return (a.m_base_address < b.m_base_address);});
-
-    return aBanks;
+  for( int i = 0; i < map->m_count; i++ ) {
+      // If a memory bank is in use and is not a streaming bank emplace it into the bank list
+      if( map->m_mem_data[i].m_used && map->m_mem_data[i].m_type != MEM_STREAMING )
+          banks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i, map->m_mem_data[i].m_type );
   }
 
-  /*
-    * readBank()
-    *
-    * Read from specified address, specified size within a bank
-    * Caller's responsibility to do sanity checks. No sanity checks done here
-    */
-  void
-  readBank(const device* device, std::ofstream& aOutFile, uint64_t aStartAddr, uint64_t aSize) 
-  {
-    // Allocate a buffer to hold the read data
-    auto buf = xrt_core::aligned_alloc(getpagesize(), aSize);
-    if (!buf)
-      throw std::runtime_error("readBank: Failed to allocate aligned buffer");
-    std::memset(buf.get(), 0, aSize);
+  std::sort (banks.begin(), banks.end(),
+              [] (const mem_bank_t& a, const mem_bank_t& b) {return (a.m_base_address < b.m_base_address);});
 
-    // Read the data in from the device
-    auto guard = xrt_core::utils::ios_restore(std::cout);
-    // We are given only the status not the number of bytes read
-    if (xclUnmgdPread(device->get_device_handle(), 0, buf.get(), aSize, aStartAddr) < 0) {
-      std::cerr << boost::format("ERROR: (%s) reading 0x%x bytes from DDR/HBM/PLRAM at offset 0x%x\n") % strerror(errno) % aSize % aStartAddr;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
+  return banks;
+}
 
-    // Write the received data into the output file
-    aOutFile.write(reinterpret_cast<const char*>(buf.get()), aSize);
-    if ((aOutFile.rdstate() & std::ifstream::failbit) != 0)
-      throw std::runtime_error("readBank: Error writing to output file\n");
+static void
+read_banks(const xrt_core::device* device, std::ofstream& output_file, uint64_t start_addr, uint64_t size) 
+{
+  // Allocate a buffer to hold the read data
+  auto buf = xrt_core::aligned_alloc(getpagesize(), size);
+  if (!buf)
+    throw std::runtime_error("read_banks: Failed to allocate aligned buffer");
+  std::memset(buf.get(), 0, size);
 
-    std::cout << boost::format("INFO: Read size 0x%x bytes from address 0x%x\n") % aSize % aStartAddr;
+  // Read the data in from the device
+  auto guard = xrt_core::utils::ios_restore(std::cout);
+  // We are given only the status not the number of bytes read
+  if (xclUnmgdPread(device->get_device_handle(), 0, buf.get(), size, start_addr) < 0) {
+    std::cerr << boost::format("ERROR: (%s) reading 0x%x bytes from DDR/HBM/PLRAM at offset 0x%x\n") % strerror(errno) % size % start_addr;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  /*
-    * readWriteHelper()
-    *
-    * Sanity check the user's Start Address and Size against the mem topology
-    * If the start address is 0 (ie. unspecified by user) change it to the first available address
-    * If the size is 0 (ie. unspecified by user) change it to the maximum available size
-    * Fill the vector with the available banks
-    * Set the iterator to the bank containing the start address
-    * returns the number of banks the start address and size going to span
-    * return -1 in case of any sanity check failures
-    */
+  // Write the received data into the output file
+  output_file.write(reinterpret_cast<const char*>(buf.get()), size);
+  if ((output_file.rdstate() & std::ifstream::failbit) != 0)
+    throw std::runtime_error("read_banks: Error writing to output file\n");
+
+  std::cout << boost::format("INFO: Read size 0x%x bytes from address 0x%x\n") % size % start_addr;
+}
+
+/*
+  * read_write_helper()
+  *
+  * Sanity check the user's Start Address and Size against the mem topology
+  * If the start address is 0 (ie. unspecified by user) change it to the first available address
+  * If the size is 0 (ie. unspecified by user) change it to the maximum available size
+  * Fill the vector with the available banks
+  * Set the iterator to the bank containing the start address
+  */
+static void
+read_write_helper (const xrt_core::device* device, uint64_t& start_addr, uint64_t& size,
+            std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& start_bank) 
+{
+  vec_banks = get_ddr_banks(device);
+  //Find the first memory bank with valid size since vec_banks is sorted
+  auto valid_bank =  std::find_if(vec_banks.begin(), vec_banks.end(),
+              [](const mem_bank_t item) {return (item.m_size);});
+
+  if (valid_bank == vec_banks.end()) {
+    std::cerr << "ERROR: Couldn't find valid memory banks\n";
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  //if given start address is 0 then choose start address to be the lowest address available
+  uint64_t validated_start_addr = (start_addr == 0) ? valid_bank->m_base_address : start_addr;
+  // Update reference
+  start_addr = validated_start_addr;
+
+  //Sanity check start address
+  start_bank = std::find_if(vec_banks.begin(), vec_banks.end(),
+              [validated_start_addr](const mem_bank_t& item) {return (validated_start_addr >= item.m_base_address && validated_start_addr < (item.m_base_address+item.m_size));});
+
+  if (start_bank == vec_banks.end()) {
+    std::cerr << boost::format("ERROR: Start address 0x%x is not valid\n") % validated_start_addr;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  //Sanity check access size
+  uint64_t available_size = std::accumulate(start_bank, vec_banks.end(), (uint64_t)0,
+          [](uint64_t result, const mem_bank_t& obj) {return (result + obj.m_size);}) ;
+
+  available_size -= (validated_start_addr - start_bank->m_base_address);
+  if (size > available_size) {
+    std::cerr << boost::format("ERROR: Cannot access %d bytes of memory from start address 0x%x\n") % size % validated_start_addr;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  //if given size is 0, then the end Address is the max address of the unused bank
+  uint64_t validate_size = (size == 0) ? available_size : size;
+  // Update reference
+  size = validate_size;
+}
+
+namespace xrt_core {
   int
-  readWriteHelper (const device* device, uint64_t& aStartAddr, uint64_t& aSize,
-              std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& startbank) 
-  {
-    vec_banks = getDDRBanks(device);
-    //Find the first memory bank with valid size since vec_banks is sorted
-    auto validBank =  std::find_if(vec_banks.begin(), vec_banks.end(),
-                [](const mem_bank_t item) {return (item.m_size);});
-
-    if (validBank == vec_banks.end()) {
-      std::cerr << "ERROR: Couldn't find valid memory banks\n";
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-
-    //if given start address is 0 then choose start address to be the lowest address available
-    uint64_t startAddr = (aStartAddr == 0) ? validBank->m_base_address : aStartAddr;
-    // Update reference
-    aStartAddr = startAddr;
-
-    //Sanity check start address
-    startbank = std::find_if(vec_banks.begin(), vec_banks.end(),
-                [startAddr](const mem_bank_t& item) {return (startAddr >= item.m_base_address && startAddr < (item.m_base_address+item.m_size));});
-
-    if (startbank == vec_banks.end()) {
-      std::cerr << boost::format("ERROR: Start address 0x%x is not valid\n") % startAddr;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-
-    //Sanity check access size
-    uint64_t availableSize = std::accumulate(startbank, vec_banks.end(), (uint64_t)0,
-            [](uint64_t result, const mem_bank_t& obj) {return (result + obj.m_size);}) ;
-
-    availableSize -= (startAddr - startbank->m_base_address);
-    if (aSize > availableSize) {
-      std::cerr << boost::format("ERROR: Cannot access %d bytes of memory from start address 0x%x\n") % aSize % startAddr;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-
-    //if given size is 0, then the end Address is the max address of the unused bank
-    uint64_t size = (aSize == 0) ? availableSize : aSize;
-    // Update reference
-    aSize = size;
-
-    //Find the number of banks this read/write straddles, this is just for better messaging
-    int bankcnt = 0;
-    for(auto it = startbank; it!=vec_banks.end(); ++it) {
-      uint64_t available_bank_size;
-      if (it != startbank)
-        available_bank_size = it->m_size;
-      else
-        available_bank_size = it->m_size - (startAddr - it->m_base_address);
-
-      if (size != 0) {
-        uint64_t accesssize = (size > available_bank_size) ? (uint64_t) available_bank_size : size;
-        ++bankcnt;
-        size -= accesssize;
-      }
-      else {
-        break;
-      }
-    }
-    return bankcnt;
-  }
-
-  int
-  device_mem_read(const device* device, std::string aFilename, uint64_t aStartAddr, uint64_t aSize)
+  device_mem_read(const device* device, std::string filename, uint64_t start_addr, uint64_t size)
   {
     std::vector<mem_bank_t> vec_banks;
-    uint64_t startAddr = aStartAddr;
-    uint64_t size = aSize;
-    std::vector<mem_bank_t>::iterator startbank;
-    int bankcnt = 0;
+    uint64_t current_addr = start_addr;
+    std::vector<mem_bank_t>::iterator start_bank;
 
     //Sanity check the address and size against the mem topology
-    if ((bankcnt = readWriteHelper(device, startAddr, size, vec_banks, startbank)) == -1) {
-      return -1;
-    }
+    read_write_helper(device, current_addr, size, vec_banks, start_bank);
 
-    std::ofstream outFile(aFilename, std::ofstream::out | std::ofstream::binary | std::ofstream::app);
+    std::ofstream out_file(filename, std::ofstream::out | std::ofstream::binary | std::ofstream::app);
 
     size_t count = size;
-    for(auto it = startbank; it!=vec_banks.end(); ++it) {
+    for(auto it = start_bank; it!=vec_banks.end(); ++it) {
       uint64_t available_bank_size;
-      if (it != startbank) {
-        startAddr = it->m_base_address;
+      if (it != start_bank) {
+        current_addr = it->m_base_address;
         available_bank_size = it->m_size;
       }
       else 
-        available_bank_size = it->m_size - (startAddr - it->m_base_address);
+        available_bank_size = it->m_size - (current_addr - it->m_base_address);
 
       if (size != 0) {
-        if (it->m_type > bankEnumStringMap.size()) {
+        if (it->m_type > bank_enum_string_map.size()) {
           std::cout << boost::format("Error: Invalid Bank type (%d) received\n") % it->m_type;
           return -1;
         }
-        std::string bank_name = bankEnumStringMap[it->m_type];
-        std::cout << boost::format("INFO: Reading %llu bytes from bank %s address 0x%x\n") % size % bankEnumStringMap[it->m_type] % startAddr;
-        uint64_t readsize = (size > available_bank_size) ? (uint64_t) available_bank_size : size;
-        readBank(device, outFile, startAddr, readsize);
-        size -= readsize;
+        std::string bank_name = bank_enum_string_map[it->m_type];
+        uint64_t read_size = (size > available_bank_size) ? (uint64_t) available_bank_size : size;
+        std::cout << boost::format("INFO: Reading %llu bytes from bank %s address 0x%x. %llu bytes remaining.\n") % read_size % bank_enum_string_map[it->m_type] % current_addr % size;
+        read_banks(device, out_file, current_addr, read_size);
+        size -= read_size;
       }
       else {
         break;
       }
     }
 
-    outFile.close();
-    std::cout << "INFO: Read data saved in file: " << aFilename << "; Num of bytes: " << std::dec << count-size << " bytes " << std::endl;
+    out_file.close();
+    std::cout << boost::format("INFO: Read data saved in file: %s; Number of bytes: %d bytes\n") % filename % (count - size);
     return size;
   }
 
   int
-  device_mem_write(const device* device, uint64_t aStartAddr, uint64_t aSize, char *srcBuf) {
+  device_mem_write(const device* device, uint64_t start_addr, uint64_t size, char *src_buf) {
     void *buf = 0;
-    uint64_t endAddr;
-    uint64_t size;
-    uint64_t blockSize = aSize; //0x20000;//128KB
-    if (xrt_core::posix_memalign(&buf, getpagesize(), blockSize))
-      return -1;
+    uint64_t block_size = size;
+    if (xrt_core::posix_memalign(&buf, getpagesize(), block_size) != 0)
+      throw std::runtime_error("device_mem_write: Failed to align memory buffer");
 
-    endAddr = (aSize == 0) ? get_ddr_mem_size(device) : (aStartAddr + aSize);
-    size = endAddr-aStartAddr;
+    uint64_t endAddr = (size == 0) ? get_ddr_mem_size(device) : (start_addr + size);
+    size = endAddr - start_addr;
 
     // Use plain POSIX open/pwrite/close.
-    std::cout << "INFO: Writing DDR/HBM/PLRAM with " << size << " bytes from file, "
-              << " from address 0x" << std::hex << aStartAddr << std::dec << std::endl;
+    std::cout << boost::format("INFO: Writing DDR/HBM/PLRAM with %llu bytes at address 0x%x\n") % size % start_addr;
 
     uint64_t count = size;
     uint64_t incr;
-    memcpy(buf, srcBuf, aSize);
-    for(uint64_t phy=aStartAddr; phy<endAddr; phy+=incr) {
-      incr = (count >= blockSize) ? blockSize : count;
+    memcpy(buf, src_buf, size);
+    for (uint64_t phy=start_addr; phy < endAddr; phy+=incr) {
+      incr = (count >= block_size) ? block_size : count;
       if (xclUnmgdPwrite(device->get_device_handle(), 0, buf, incr, phy) < 0) {
-        //error
-        std::cout << "Error (" << strerror (errno) << ") writing 0x" << std::hex << incr << " bytes to DDR/HBM/PLRAM at offset 0x" << phy << std::dec << std::endl;
+        std::cerr << boost::format("ERROR: (%s) writing 0x%x bytes to DDR/HBM/PLRAM at offset 0x%x\n") % strerror (errno) % incr % phy;
         free(buf);
-        return -1;
+        throw xrt_core::error(std::errc::operation_canceled);
       }
       count -= incr;
     }
 
     free(buf);
     if (count != 0) {
-      std::cout << "Error! Written " << size-count << " bytes, requested " << size << std::endl;
-      return -1;
+      std::cerr << boost::format("ERROR: Written %llu bytes. Requested %llu bytes") % (size - count) % size;
+      throw xrt_core::error(std::errc::operation_canceled);
     }
+
     return count;
   }
 }
