@@ -206,25 +206,4 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force) cons
   }
 }
 
-void
-system_windows::
-mem_read(const device*, long long, long long, const std::string&) const
-{
-  throw std::runtime_error("memory read is not supported");
-}
-
-void
-system_windows::
-mem_write(const device*, long long, long long, unsigned int) const
-{
-  throw std::runtime_error("memory write is not supported");
-}
-
-void
-system_windows::
-mem_write(const device* device, long long addr, long long size, std::vector<char> buf) const
-{
-  throw std::runtime_error("memory write is not supported");
-}
-
 } // xrt_core

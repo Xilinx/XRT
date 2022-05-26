@@ -21,6 +21,7 @@
 #include "OO_MemRead.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
+#include "core/common/memaccess.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
@@ -150,7 +151,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   try{
     for(int c = 0; c < m_count; c++) {
       XBU::verbose(boost::str(boost::format("[%d / %d] Reading from Address: %s, Size: %s bytes") % c % m_count % addr % size));
-      xrt_core::mem_read(device.get(), addr, size, m_outputFile);
+      xrt_core::device_mem_read(device.get(), m_outputFile, addr, size);
       addr += size;
     }
   } catch(const xrt_core::error& e) {

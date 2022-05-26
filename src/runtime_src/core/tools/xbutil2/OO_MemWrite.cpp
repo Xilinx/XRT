@@ -21,6 +21,7 @@
 #include "OO_MemWrite.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
+#include "core/common/memaccess.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
@@ -180,7 +181,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
         std::vector<char> buffer(size);
         // gcount will only return a value >= 0
         uint64_t input_size = static_cast<uint64_t>(input_stream.read(buffer.data(), size).gcount());
-        xrt_core::mem_write(device.get(), addr, size, buffer);
+        xrt_core::device_mem_write(device.get(), addr, size, buffer.data());
         if (input_size != size)
           break; // partial read and break the loop
         addr += size;
@@ -232,7 +233,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       // Write the vector to the device
       for (int c = 0; c < m_count; c++) {
         XBU::verbose(boost::str(boost::format("[%d / %d] Writing to Address: %s, Size: %s bytes") % c % m_count % addr % size));
-        xrt_core::mem_write(device.get(), addr, size, buffer);
+        xrt_core::device_mem_write(device.get(), addr, size, buffer.data());
         addr += size;
       }
     } catch (const xrt_core::error& e) {

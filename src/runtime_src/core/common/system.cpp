@@ -201,16 +201,4 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force)
   instance().program_plp(dev, buffer, force);
 }
 
-void
-mem_read(const device* dev, uint64_t addr, uint64_t size, const std::string& output_file)
-{
-  instance().mem_read(dev, addr, size, output_file);
-}
-
-void
-mem_write(const device* dev, uint64_t addr, uint64_t size, std::vector<char>& buf)
-{
-  instance().mem_write(dev, addr, size, buf);
-}
-
 } // xrt_core

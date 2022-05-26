@@ -19,7 +19,7 @@
 #include "core/common/query_requests.h"
 #include "gen/version.h"
 #include "scan.h"
-#include "core/pcie/common/memaccess.h"
+#include "core/common/memaccess.h"
 
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/format.hpp>
@@ -264,22 +264,6 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force) cons
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
-}
-
-void
-system_linux::
-mem_read(const device* device, uint64_t addr, uint64_t size, const std::string& output_file) const
-{
-  if(xrt_core::device_mem_read(device, output_file, addr, size) < 0)
-    throw xrt_core::error(EINVAL, "Memory read failed");
-}
-
-void
-system_linux::
-mem_write(const device* device, uint64_t addr, uint64_t size, std::vector<char>& buf) const
-{
-  if(xrt_core::device_mem_write(device, addr, size, buf.data()) < 0)
-    throw xrt_core::error(EINVAL, "Memory write failed");
 }
 
 namespace pcie_linux {
