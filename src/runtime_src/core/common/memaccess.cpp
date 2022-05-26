@@ -87,7 +87,7 @@ get_ddr_banks(const xrt_core::device* device)
 }
 
 static void
-read_banks(const xrt_core::device* device, std::ofstream& output_file, uint64_t start_addr, uint64_t size) 
+read_banks(xrt_core::device* device, std::ofstream& output_file, uint64_t start_addr, uint64_t size) 
 {
   // Allocate a buffer to hold the read data
   auto buf = xrt_core::aligned_alloc(getpagesize(), size);
@@ -97,11 +97,9 @@ read_banks(const xrt_core::device* device, std::ofstream& output_file, uint64_t 
 
   // Read the data in from the device
   auto guard = xrt_core::utils::ios_restore(std::cout);
-  // We are given only the status not the number of bytes read
-  if (xclUnmgdPread(device->get_device_handle(), 0, buf.get(), size, start_addr) < 0) {
-    std::cerr << boost::format("ERROR: (%s) reading 0x%x bytes from DDR/HBM/PLRAM at offset 0x%x\n") % strerror(errno) % size % start_addr;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+
+  // Perform the read action
+  device->unmgd_pread(buf.get(), size, start_addr);
 
   // Write the received data into the output file
   output_file.write(reinterpret_cast<const char*>(buf.get()), size);
@@ -121,7 +119,7 @@ read_banks(const xrt_core::device* device, std::ofstream& output_file, uint64_t 
   * Set the iterator to the bank containing the start address
   */
 static void
-read_write_helper (const xrt_core::device* device, uint64_t& start_addr, uint64_t& size,
+read_write_helper (xrt_core::device* device, uint64_t& start_addr, uint64_t& size,
             std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& start_bank) 
 {
   vec_banks = get_ddr_banks(device);
@@ -166,7 +164,7 @@ read_write_helper (const xrt_core::device* device, uint64_t& start_addr, uint64_
 
 namespace xrt_core {
   int
-  device_mem_read(const device* device, std::string filename, uint64_t start_addr, uint64_t size)
+  device_mem_read(device* device, std::string filename, uint64_t start_addr, uint64_t size)
   {
     std::vector<mem_bank_t> vec_banks;
     uint64_t current_addr = start_addr;
@@ -187,10 +185,11 @@ namespace xrt_core {
       else 
         available_bank_size = it->m_size - (current_addr - it->m_base_address);
 
+      // continue to read as long as there are bytes leaft to read
       if (size != 0) {
         if (it->m_type > bank_enum_string_map.size()) {
-          std::cout << boost::format("Error: Invalid Bank type (%d) received\n") % it->m_type;
-          return -1;
+          std::cerr << boost::format("ERROR: Invalid Bank type (%d) received\n") % it->m_type;
+          throw xrt_core::error(std::errc::operation_canceled);
         }
         std::string bank_name = bank_enum_string_map[it->m_type];
         uint64_t read_size = (size > available_bank_size) ? (uint64_t) available_bank_size : size;
@@ -198,6 +197,7 @@ namespace xrt_core {
         read_banks(device, out_file, current_addr, read_size);
         size -= read_size;
       }
+      // Otherwise stop iterating throughthe banks and return
       else {
         break;
       }
@@ -209,11 +209,9 @@ namespace xrt_core {
   }
 
   int
-  device_mem_write(const device* device, uint64_t start_addr, uint64_t size, char *src_buf) {
-    void *buf = 0;
+  device_mem_write(device* device, uint64_t start_addr, uint64_t size, char *src_buf) {
     uint64_t block_size = size;
-    if (xrt_core::posix_memalign(&buf, getpagesize(), block_size) != 0)
-      throw std::runtime_error("device_mem_write: Failed to align memory buffer");
+    auto buf = xrt_core::aligned_alloc(getpagesize(), size);
 
     uint64_t endAddr = (size == 0) ? get_ddr_mem_size(device) : (start_addr + size);
     size = endAddr - start_addr;
@@ -223,18 +221,14 @@ namespace xrt_core {
 
     uint64_t count = size;
     uint64_t incr;
-    memcpy(buf, src_buf, size);
+    memcpy(buf.get(), src_buf, size);
     for (uint64_t phy=start_addr; phy < endAddr; phy+=incr) {
       incr = (count >= block_size) ? block_size : count;
-      if (xclUnmgdPwrite(device->get_device_handle(), 0, buf, incr, phy) < 0) {
-        std::cerr << boost::format("ERROR: (%s) writing 0x%x bytes to DDR/HBM/PLRAM at offset 0x%x\n") % strerror (errno) % incr % phy;
-        free(buf);
-        throw xrt_core::error(std::errc::operation_canceled);
-      }
+      // Perform write action
+      device->unmgd_pwrite(buf.get(), incr, phy);
       count -= incr;
     }
 
-    free(buf);
     if (count != 0) {
       std::cerr << boost::format("ERROR: Written %llu bytes. Requested %llu bytes") % (size - count) % size;
       throw xrt_core::error(std::errc::operation_canceled);
