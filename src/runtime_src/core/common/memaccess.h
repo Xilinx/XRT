@@ -26,10 +26,10 @@
 
 namespace xrt_core {
   int
-  device_mem_read(const device* device, std::string aFilename, uint64_t aStartAddr, uint64_t aSize);
+  device_mem_read(device* device, std::string aFilename, uint64_t aStartAddr, uint64_t aSize);
 
   int
-  device_mem_write(const device* device, uint64_t aStartAddr, uint64_t aSize, char *srcBuf);
+  device_mem_write(device* device, uint64_t aStartAddr, uint64_t aSize, char *srcBuf);
 }
 
 #endif /* MEMACCESS_H */

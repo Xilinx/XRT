@@ -17,13 +17,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "core/pcie/common/memaccess.h"
+#include "core/common/memaccess.h"
 
 #include <fstream>
 #include <iostream>
 #include <numeric>
 #include <sstream>
-#include <string>
 #include <vector>
 
 #include "core/common/memalign.h"
