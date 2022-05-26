@@ -17,7 +17,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "core/common/memaccess.h"
+#include "core/pcie/common/memaccess.h"
 
 #include <string>
 #include <iostream>

@@ -19,7 +19,6 @@
 #include "core/common/query_requests.h"
 #include "gen/version.h"
 #include "scan.h"
-#include "core/common/memaccess.h"
 
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/format.hpp>

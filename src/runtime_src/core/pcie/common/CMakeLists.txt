@@ -3,6 +3,7 @@
 add_library(core_pciecommon_objects OBJECT
   aie_stubs.cpp
   device_pcie.cpp
+  memaccess.cpp
   system_pcie.cpp
   )
 
