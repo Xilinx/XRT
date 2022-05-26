@@ -148,7 +148,7 @@ namespace xrt_core {
 
       if (validBank == vec_banks.end()) {
         std::cerr << "ERROR: Couldn't find valid memory banks\n";
-        xrt_core::error(std::errc::operation_canceled);
+        throw xrt_core::error(std::errc::operation_canceled);
       }
 
       //if given start address is 0 then choose start address to be the lowest address available
@@ -162,7 +162,7 @@ namespace xrt_core {
 
       if (startbank == vec_banks.end()) {
         std::cerr << boost::format("ERROR: Start address 0x%x is not valid\n") % startAddr;
-        xrt_core::error(std::errc::operation_canceled);
+        throw xrt_core::error(std::errc::operation_canceled);
       }
 
       //Sanity check access size
@@ -172,7 +172,7 @@ namespace xrt_core {
       availableSize -= (startAddr - startbank->m_base_address);
       if (aSize > availableSize) {
         std::cerr << boost::format("ERROR: Cannot access %d bytes of memory from start address 0x%x\n") % aSize % startAddr;
-        xrt_core::error(std::errc::operation_canceled);
+        throw xrt_core::error(std::errc::operation_canceled);
       }
 
       //if given size is 0, then the end Address is the max address of the unused bank
