@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_linux.h"
 
@@ -31,6 +18,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/api/hw_context_int.h"
 
 #include <cassert>
 #include <cerrno>
@@ -1104,7 +1092,7 @@ xclSKReport(uint32_t cu_idx, xrt_scu_state state)
 
 int
 shim::
-xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   unsigned int flags = shared ? ZOCL_CTX_SHARED : ZOCL_CTX_EXCLUSIVE;
   int ret;
@@ -1123,12 +1111,19 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 }
 
 // open_context() - aka xclOpenContextByName
-void
+xrt_core::cuidx_type
 shim::
-open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  // TODO: implement for full support of multiple xclbins
-  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
+  // Edge does not yet support multiple xclbins.  Call
+  // regular flow.  Default access mode to shared unless explicitly
+  // exclusive.
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+  return cuidx;
 }
 
 int
@@ -1813,11 +1808,11 @@ setAIEAccessMode(xrt::aie::access_mode am)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
-void
-open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
 {
   auto shim = get_shim_object(handle);
-  shim->open_context(slot, xclbin_uuid, cuname, shared);
+  return shim->open_cu_context(hwctx, cuname);
 }
 
 } // xrt::shim_int

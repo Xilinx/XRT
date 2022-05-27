@@ -20,6 +20,8 @@
 #include "core/common/task.h"
 #include "core/common/thread.h"
 
+#include "core/common/api/hw_context_int.h"
+
 #include <cstdio>
 #include <mutex>
 #include <stdexcept>
@@ -114,8 +116,9 @@ namespace pl {
 
 class device
 {
-  // model multiple partitions
-  using slot_id = xrt_core::device::slot_id;
+  // model multiple partitions, but for simplicity slot is
+  // used for context handle also.
+  using slot_id = xcl_hwctx_handle;
 
   // registered xclbins
   std::map<xrt::uuid, xrt::xclbin> m_xclbins;
@@ -143,6 +146,12 @@ class device
   // exclusive locking to prevent race
   std::mutex m_mutex;
 
+  static slot_id
+  get_slot(const xrt::hw_context& hwctx)
+  {
+    return static_cast<xcl_hwctx_handle>(hwctx);
+  }
+
 public:
   // device ctor, initialize free cu indices
   device()
@@ -159,7 +168,7 @@ public:
     m_xclbins[xclbin.get_uuid()] = xclbin;
   }
 
-  slot_id
+  xcl_hwctx_handle
   create_hw_context(const xrt::uuid& xid, uint32_t qos)
   {
     std::lock_guard lk(m_mutex);
@@ -167,27 +176,29 @@ public:
     if (itr == m_xclbins.end())
       throw xrt_core::error("xclbin must be registered before hw context can be created");
     m_slots[++m_slot_index] = (*itr).second;
-    return m_slot_index;
+    return m_slot_index;  // for simplicity we use the slot_id as the context handle
   }
 
   void
-  destroy_hw_context(slot_id slot)
+  destroy_hw_context(xcl_hwctx_handle ctxhdl)
   {
     std::lock_guard lk(m_mutex);
-    m_slots.erase(slot);
+    m_slots.erase(ctxhdl);   // for simplicity context handle is same as slot
   }
 
-  void
-  open_context(slot_id slot, const xrt::uuid& xid, const std::string& cuname, bool shared)
+  xrt_core::cuidx_type
+  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   {
     std::lock_guard lk(m_mutex);
+
+    auto slot = get_slot(hwctx);
 
     // this xclbin must have been registered
     const auto& xclbin = m_slots[slot];
     if (!xclbin)
       throw xrt_core::error("Slot xclbin mismatch, no such registered xclbin in slot: " + std::to_string(slot));
 
-    if (xclbin.get_uuid() != xid)
+    if (xclbin.get_uuid() != hwctx.get_xclbin_uuid())
       throw xrt_core::error("Slot xclbin uuid mismatch in slot: " + std::to_string(slot));
 
     // find cu in xclbin
@@ -212,6 +223,8 @@ public:
     cudata.slot = slot;
     cudata.ctx = 1;
     m_free_cu_indices.pop_back();
+
+    return xrt_core::cuidx_type{idx};
   }
 
   // close the cu context
@@ -420,15 +433,15 @@ struct shim
   }
 
   int
-  open_context(const xrt::uuid&, unsigned int, bool)
+  open_cu_context(const xrt::uuid&, unsigned int, bool)
   {
     return 0;
   }
 
-  void
-  open_context(uint32_t slot, const xrt::uuid& uuid, const std::string& cuname, bool shared)
+  xrt_core::cuidx_type
+  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   {
-    m_pldev->open_context(slot, uuid, cuname, shared);
+    return m_pldev->open_cu_context(hwctx, cuname);
   }
 
   int
@@ -587,11 +600,11 @@ xclbin_slots(const xrt_core::device* device)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
-void
-open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
 {
   auto shim = get_shim_object(handle);
-  shim->open_context(slot, xclbin_uuid, cuname, shared);
+  return shim->open_cu_context(hwctx, cuname);
 }
 
 uint32_t // ctxhdl aka slotidx
@@ -742,7 +755,7 @@ xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipInd
   // Virtual resources are not currently supported by driver
   return (ipIndex == (unsigned int)-1)
     ? 0
-    : shim->open_context(xclbinId, ipIndex, shared);
+    : shim->open_cu_context(xclbinId, ipIndex, shared);
 }
 
 int

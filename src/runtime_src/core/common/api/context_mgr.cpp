@@ -20,20 +20,6 @@ using namespace std::chrono_literals;
 
 namespace {
 
-// Transition only, to be removed
-static bool
-is_shared(xrt::hw_context::qos qos)
-{
-  switch (qos) {
-  case xrt::hw_context::qos::exclusive:
-    return false;
-  case xrt::hw_context::qos::shared:
-    return true;
-  default:
-    throw std::runtime_error("unexpected access mode for kernel");
-  }
-}
-
 } // namespace
 
 namespace xrt_core { namespace context_mgr {
@@ -112,17 +98,17 @@ public:
   open(const xrt::hw_context& hwctx, const std::string& ipname)
   {
     std::unique_lock<std::mutex> ul(m_mutex);
-    auto ctxhdl = xrt_core::hw_context_int::get_xcl_handle(hwctx);
+    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
     auto [ipidx, ctx] = get_ipidx_ctx(ctxhdl, ipname);
     while (ctx && ctx->test(ctxidx(ipidx))) {
       if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
         throw std::runtime_error("aquiring cu context timed out");
     }
-    m_device->open_context(ctxhdl, hwctx.get_xclbin_uuid(), ipname, is_shared(hwctx.get_qos()));
+    ipidx = m_device->open_cu_context(hwctx, ipname);
 
-    // Successful context creation means CU idx is now known
+    // Successful context creation means CU idx is valid now
     if (!ctx)
-      std::tie(ipidx, ctx) = get_ipidx_ctx(ctxhdl, ipname);
+      ctx = get_ctx(ipidx);
 
     if (!ctx)
       throw std::runtime_error("Unexpected ctx error");
@@ -142,7 +128,7 @@ public:
     auto ctx = get_ctx(ipidx);
     if (!ctx->test(idx))
       throw std::runtime_error("ctx " + std::to_string(ipidx.index) + " not open");
-    m_device->close_context(hwctx.get_xclbin_uuid(), ipidx.index);
+    m_device->close_cu_context(hwctx, ipidx);
     ctx->reset(idx);
     m_cv.notify_all();
   }
