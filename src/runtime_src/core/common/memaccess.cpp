@@ -28,41 +28,17 @@
 #include "core/common/memalign.h"
 #include "core/common/query_requests.h"
 #include "core/common/utils.h"
+#include "core/common/unistd.h"
 
 #include "core/include/xrt.h"
 
+// TODO add tag in here for alter use...
 struct mem_bank_t {
   uint64_t m_base_address;
   uint64_t m_size;
   int m_index;
   uint8_t m_type;
   mem_bank_t (uint64_t addr, uint64_t size, int index, uint8_t type) : m_base_address(addr), m_size(size), m_index(index), m_type(type) {}
-};
-
-static std::map <int, std::string> bank_enum_string_map = {
-    { MEM_DDR3, "DDR3" },
-    { MEM_DDR4, "DDR4" },
-    { MEM_DRAM, "DRAM" },
-    { MEM_STREAMING, "MEM_STREAMING" },
-    { MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB" },
-    { MEM_ARE, "MEM_ARE" },
-    { MEM_HBM, "HBM" },
-    { MEM_BRAM, "BRAM" },
-    { MEM_URAM, "URAM" },
-    { MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION" },
-    { MEM_HOST, "MEM_HOST" },
-  };
-
-static uint64_t
-get_ddr_mem_size(const xrt_core::device * device)
-{
-  auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
-  auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
-  
-  // convert ddr_size from GB to bytes
-  // return the result in KB
-  // TODO user xbutil:: convert function here
-  return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
 };
 
 static std::vector<mem_bank_t>
@@ -85,31 +61,8 @@ get_ddr_banks(const xrt_core::device* device)
   return banks;
 }
 
-static void
-read_banks(xrt_core::device* device, std::ofstream& output_file, uint64_t start_addr, uint64_t size) 
-{
-  // Allocate a buffer to hold the read data
-  auto buf = xrt_core::aligned_alloc(getpagesize(), size);
-  if (!buf)
-    throw std::runtime_error("read_banks: Failed to allocate aligned buffer");
-  std::memset(buf.get(), 0, size);
-
-  // Read the data in from the device
-  auto guard = xrt_core::utils::ios_restore(std::cout);
-
-  // Perform the read action
-  device->unmgd_pread(buf.get(), size, start_addr);
-
-  // Write the received data into the output file
-  output_file.write(reinterpret_cast<const char*>(buf.get()), size);
-  if ((output_file.rdstate() & std::ifstream::failbit) != 0)
-    throw std::runtime_error("read_banks: Error writing to output file\n");
-
-  std::cout << boost::format("INFO: Read size 0x%x bytes from address 0x%x\n") % size % start_addr;
-}
-
 /*
-  * read_write_helper()
+  * validate_address_and_size()
   *
   * Sanity check the user's Start Address and Size against the mem topology
   * If the start address is 0 (ie. unspecified by user) change it to the first available address
@@ -118,7 +71,7 @@ read_banks(xrt_core::device* device, std::ofstream& output_file, uint64_t start_
   * Set the iterator to the bank containing the start address
   */
 static void
-read_write_helper (xrt_core::device* device, uint64_t& start_addr, uint64_t& size,
+validate_address_and_size(xrt_core::device* device, uint64_t& start_addr, uint64_t& size,
             std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& start_bank) 
 {
   vec_banks = get_ddr_banks(device);
@@ -161,78 +114,85 @@ read_write_helper (xrt_core::device* device, uint64_t& start_addr, uint64_t& siz
   size = validate_size;
 }
 
-namespace xrt_core {
-  int
-  device_mem_read(device* device, std::string filename, uint64_t start_addr, uint64_t size)
-  {
-    std::vector<mem_bank_t> vec_banks;
-    uint64_t current_addr = start_addr;
-    std::vector<mem_bank_t>::iterator start_bank;
+enum class OperationType {
+  read,
+  write
+};
 
-    //Sanity check the address and size against the mem topology
-    read_write_helper(device, current_addr, size, vec_banks, start_bank);
+static void 
+perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf, uint64_t start_addr, uint64_t size, OperationType action)
+{
+  std::vector<mem_bank_t> vec_banks;
+  std::vector<mem_bank_t>::iterator start_bank;
 
-    std::ofstream out_file(filename, std::ofstream::out | std::ofstream::binary | std::ofstream::app);
+  // Sanity check the address and size against the mem topology
+  validate_address_and_size(device, start_addr, size, vec_banks, start_bank);
 
-    size_t count = size;
-    for(auto it = start_bank; it!=vec_banks.end(); ++it) {
-      uint64_t available_bank_size;
-      if (it != start_bank) {
-        current_addr = it->m_base_address;
-        available_bank_size = it->m_size;
-      }
-      else 
-        available_bank_size = it->m_size - (current_addr - it->m_base_address);
-
-      // continue to read as long as there are bytes leaft to read
-      if (size != 0) {
-        if (it->m_type > bank_enum_string_map.size()) {
-          std::cerr << boost::format("ERROR: Invalid Bank type (%d) received\n") % it->m_type;
-          throw xrt_core::error(std::errc::operation_canceled);
-        }
-        std::string bank_name = bank_enum_string_map[it->m_type];
-        uint64_t read_size = (size > available_bank_size) ? (uint64_t) available_bank_size : size;
-        std::cout << boost::format("INFO: Reading %llu bytes from bank %s address 0x%x. %llu bytes remaining.\n") % read_size % bank_enum_string_map[it->m_type] % current_addr % size;
-        read_banks(device, out_file, current_addr, read_size);
-        size -= read_size;
-      }
-      // Otherwise stop iterating throughthe banks and return
-      else {
-        break;
-      }
+  uint64_t current_addr = start_addr;
+  size_t remaining_bytes_to_edit = size;
+  // continue to read as long as there are bytes left to read or we run out of banks
+  for(auto it = start_bank; (it != vec_banks.end()) && (remaining_bytes_to_edit > 0); ++it) {
+    // Validate the amount of memory the current memory bank has
+    uint64_t available_bank_size = 0;
+    if (it != start_bank) {
+      current_addr = it->m_base_address;
+      available_bank_size = it->m_size;
     }
+    else 
+      available_bank_size = it->m_size - (current_addr - it->m_base_address);
 
-    out_file.close();
-    std::cout << boost::format("INFO: Read data saved in file: %s; Number of bytes: %d bytes\n") % filename % (count - size);
-    return size;
+    // If the available bank size is less than the source buffer write what we are able to and move to the next bank
+    uint64_t bytes_to_edit = std::min(available_bank_size, size);
+    std::cout << boost::format("INFO: Writing %llu bytes to bank %s address 0x%x. %llu bytes remaining.\n") % bytes_to_edit % "temp name" % current_addr % remaining_bytes_to_edit;
+    
+    // TODO Clear all flags in cout?? Why??
+    auto guard = xrt_core::utils::ios_restore(std::cout);
+    switch (action) {
+      case OperationType::read:
+        device->unmgd_pread(buf.get(), size, start_addr);
+        break;
+      case OperationType::write:
+        device->unmgd_pwrite(buf.get(), size, start_addr);
+        break;
+      default:
+        throw std::runtime_error("perform_memory_action: Invalid action");
+    }
+    remaining_bytes_to_edit -= bytes_to_edit;
   }
 
-  int
-  device_mem_write(device* device, uint64_t start_addr, uint64_t size, char *src_buf) {
-    uint64_t block_size = size;
-    auto buf = xrt_core::aligned_alloc(getpagesize(), size);
+  if (remaining_bytes_to_edit > 0)
+      throw std::runtime_error(boost::str(boost::format("Warning: Wrote %llu bytes. Requested %llu bytes") % (size - remaining_bytes_to_edit) % size));
+}
 
-    uint64_t endAddr = (size == 0) ? get_ddr_mem_size(device) : (start_addr + size);
-    size = endAddr - start_addr;
+namespace xrt_core {
+  std::vector<char>
+  device_mem_read(device* device, uint64_t start_addr, uint64_t size)
+  {
+    // Allocate a buffer to hold the read data
+    auto buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), size);
+    if (!buf)
+      throw std::runtime_error("read_banks: Failed to allocate aligned buffer");
+    std::memset(buf.get(), 0, size);
 
-    // Use plain POSIX open/pwrite/close.
-    std::cout << boost::format("INFO: Writing DDR/HBM/PLRAM with %llu bytes at address 0x%x\n") % size % start_addr;
+    // Read from the device
+    perform_memory_action(device, buf, start_addr, size, OperationType::read);
 
-    uint64_t count = size;
-    uint64_t incr;
-    memcpy(buf.get(), src_buf, size);
-    for (uint64_t phy=start_addr; phy < endAddr; phy+=incr) {
-      incr = (count >= block_size) ? block_size : count;
-      // Perform write action
-      device->unmgd_pwrite(buf.get(), incr, phy);
-      count -= incr;
-    }
+    // Format the read data into the return object
+    std::vector<char> data(size);
+    memcpy(data.data(), buf.get(), size);
+    return data;
+  }
 
-    if (count != 0) {
-      std::cerr << boost::format("ERROR: Written %llu bytes. Requested %llu bytes") % (size - count) % size;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
+  void
+  device_mem_write(device* device, uint64_t start_addr, std::vector<char>& src) 
+  {
+    // Prepare the data to write
+    auto buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), src.size());
+    if (!buf)
+      throw std::runtime_error("write_banks: Failed to allocate aligned buffer");
+    memcpy(buf.get(), src.data(), src.size());
 
-    return count;
+    // Write to the device
+    perform_memory_action(device, buf, start_addr, src.size(), OperationType::write);
   }
 }

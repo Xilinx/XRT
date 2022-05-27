@@ -181,7 +181,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
         std::vector<char> buffer(size);
         // gcount will only return a value >= 0
         uint64_t input_size = static_cast<uint64_t>(input_stream.read(buffer.data(), size).gcount());
-        xrt_core::device_mem_write(device.get(), addr, size, buffer.data());
+        xrt_core::device_mem_write(device.get(), addr, buffer);
         if (input_size != size)
           break; // partial read and break the loop
         addr += size;
@@ -233,7 +233,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       // Write the vector to the device
       for (int c = 0; c < m_count; c++) {
         XBU::verbose(boost::str(boost::format("[%d / %d] Writing to Address: %s, Size: %s bytes") % c % m_count % addr % size));
-        xrt_core::device_mem_write(device.get(), addr, size, buffer.data());
+        xrt_core::device_mem_write(device.get(), addr, buffer);
         addr += size;
       }
     } catch (const xrt_core::error& e) {

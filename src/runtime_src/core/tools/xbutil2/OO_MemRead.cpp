@@ -148,16 +148,26 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   //read mem
   XBU::xclbin_lock xclbin_lock(device);
   
+  // Open the output file and write the data as we receive it
+  std::ofstream out_file(m_outputFile, std::ofstream::out | std::ofstream::binary | std::ofstream::app);
   try{
     for(int c = 0; c < m_count; c++) {
       XBU::verbose(boost::str(boost::format("[%d / %d] Reading from Address: %s, Size: %s bytes") % c % m_count % addr % size));
-      xrt_core::device_mem_read(device.get(), m_outputFile, addr, size);
-      addr += size;
+      // Get the output from the device
+      std::vector<char> data = xrt_core::device_mem_read(device.get(), addr, size);
+      // Write output to the given file
+      out_file.write(data.data(), data.size());
+      if ((out_file.rdstate() & std::ifstream::failbit) != 0)
+        throw std::runtime_error("Error writing to output file\n");
+      // increment the starting address by the number of bytes read
+      addr += data.size();
     }
   } catch(const xrt_core::error& e) {
     std::cerr << e.what() << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
+  out_file.close();
+
   std::cout << "Memory read succeeded" << std::endl;
 }
 

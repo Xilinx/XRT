@@ -25,11 +25,11 @@
 #include <string>
 
 namespace xrt_core {
-  int
-  device_mem_read(device* device, std::string aFilename, uint64_t aStartAddr, uint64_t aSize);
+  std::vector<char>
+  device_mem_read(device* device, uint64_t start_addr, uint64_t size);
 
-  int
-  device_mem_write(device* device, uint64_t aStartAddr, uint64_t aSize, char *srcBuf);
+  void
+  device_mem_write(device* device, uint64_t start_addr, std::vector<char>& src);
 }
 
 #endif /* MEMACCESS_H */
