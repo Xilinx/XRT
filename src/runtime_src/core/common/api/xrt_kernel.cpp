@@ -540,7 +540,7 @@ public:
     static std::mutex mutex;
     static std::map<xrt_core::device*, ctx_to_ips> dev2ips;
     auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
-    auto ctxhdl = xrt_core::hw_context_int::get_xcl_handle(hwctx);
+    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
     std::lock_guard<std::mutex> lk(mutex);
     auto& ctx2ips = dev2ips[device]; // hwctx handle -> [ip_context]*
     auto& ips = ctx2ips[ctxhdl];     // ipname -> ip_context
@@ -584,7 +584,7 @@ public:
   slot_id
   get_slot() const
   {
-    return xrt_core::hw_context_int::get_xcl_handle(m_hwctx);
+    return static_cast<xcl_hwctx_handle>(m_hwctx);
   }
 
   // Check if arg is connected to specified memory bank

@@ -5,7 +5,6 @@
 
 // This file defines implementation extensions to the XRT XCLBIN APIs.
 #include "core/include/experimental/xrt_hw_context.h"
-
 #include <cstdint>
 
 // Provide access to xrt::xclbin data that is not directly exposed
@@ -13,10 +12,9 @@
 // XRT core implementation.
 namespace xrt_core { namespace hw_context_int {
 
-// get_xcl_handle() - Driver handle index
-// Retrieve the driver handle index associated with the context
-xcl_hwctx_handle
-get_xcl_handle(const xrt::hw_context& ctx);
+// Get the core_device from this context
+std::shared_ptr<xrt_core::device>
+get_core_device(const xrt::hw_context& ctx);
 
 // Get a raw pointer to the core device associated with
 // the hw context

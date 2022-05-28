@@ -97,6 +97,14 @@ public:
   XRT_API_EXPORT
   qos
   get_qos() const;
+
+public:
+  /// @cond
+  // Undocumented internal access to low level context handle
+  // Subject to change without warning
+  XRT_API_EXPORT
+  explicit operator xcl_hwctx_handle () const;
+  /// @endcond
 };
 
 } // namespace xrt
