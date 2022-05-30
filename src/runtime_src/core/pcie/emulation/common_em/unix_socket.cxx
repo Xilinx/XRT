@@ -22,6 +22,7 @@
 
 #include <unistd.h>
 #include <signal.h>
+#include <sys/socketvar.h>
 
 #include <chrono>
 
@@ -104,6 +105,7 @@ void unix_socket::start_server(double timeout_insec, bool fatal_error)
   }
 
   fd = accept(sock, 0, 0);
+  mpoll_on_filedescriptor = {fd, POLLERR, 0}; 
   close(sock);
   if (fd == -1){
     perror("socket acceptance failed");
@@ -174,17 +176,43 @@ void unix_socket::monitor_socket_status_thread() {
   while( false==mStopThread ) {
     if ( false == server_started) {
       std::this_thread::sleep_for(1s);
+      std::cout<<"\n socket connect is not established yet...\n";
+      continue;
+    }
+    
+    mpoll_on_filedescriptor = {fd, POLLERR, 0}; 
+    auto retval = poll(&mpoll_on_filedescriptor, 1, 500);
+    if ( retval < 0 ) {
+          std::cout<<"\n poll is failed";
+          continue;
+    }
+
+    if (retval == 0) {
+      //std::cout<<"\n poll is timedout ";
       continue;
     }
 
-  /*  if (std::system("pgrep xsim > /dev/null") != 0){
-      std::cout<<"\n xsim is no longer running so skipping socket calls now! & Exiting the application...\n";
+    //if( mpoll_on_filedescriptor.revents != POLLIN ) {
+      if( (mpoll_on_filedescriptor.revents == POLLRDHUP) || 
+      ( (mpoll_on_filedescriptor.revents == POLLERR)) ||
+       (mpoll_on_filedescriptor.revents == POLLHUP)
+      ) {
+      std::cout<<"\n socket is not readable! something fishy!!!";
+      simprocess_socket_live.store(false);
+      std::this_thread::sleep_for(500ms);
+      kill(getpid(),SIGKILL);
+
+    }
+
+    if ( mpoll_on_filedescriptor.revents & POLLERR ) {
+      std::cout<< "\n Hurrah! client connection is lost ::";
       simprocess_socket_live.store(false);
       kill(getpid(),SIGKILL);
-     // assert(simprocess_socket_live == true);
-      //exit(1);
+
     }
-    */
+    std::this_thread::sleep_for(500ms);
+    continue;
+/*
     auto pid_value = cUtility::proc_find("xsim");
     if (-1 != pid_value){
       std::cout<<"\n xsim is no longer running so skipping socket calls now! & Exiting the application...\n";
@@ -199,7 +227,8 @@ void unix_socket::monitor_socket_status_thread() {
       
 
     std::this_thread::sleep_for(500ms);
-  }
+    */
+  }  // end of while
 }
 
 #endif

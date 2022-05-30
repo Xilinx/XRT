@@ -23,6 +23,7 @@
 #include "system_utils.h"
 #include "xclhal2.h"
 // c-style system headers
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -40,6 +41,7 @@ class unix_socket {
     std::atomic<bool> simprocess_socket_live;
     std::atomic<bool> mStopThread;
     std::thread mcheck_socket_status_thread;
+    pollfd mpoll_on_filedescriptor;
 public:
     std::atomic<bool> server_started;
     void set_name(const std::string &sock_name) { name = sock_name;}
