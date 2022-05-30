@@ -43,7 +43,7 @@ usage()
     echo "[-dbg]                      Build debug library only (default)"
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
-    echo "[-no-werror]                Disable compilation with warnings as error"
+    echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
     echo "[-noctest]                  Skip unit tests"
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
@@ -90,6 +90,7 @@ noctest=0
 static_boost=""
 ertbsp=""
 ertfw=""
+werror=1
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
 
 while [ $# -gt 0 ]; do
@@ -135,8 +136,8 @@ while [ $# -gt 0 ]; do
             noctest=1
             shift
             ;;
-        -no-werror|--no-werror)
-            cmake_flags+=" -DXRT_NO_WERROR=1"
+        -disable-werror|--disable-werror)
+            werror=0
             shift
             ;;
         -j)
@@ -200,6 +201,11 @@ done
 debug_dir=${DEBUG_DIR:-Debug}
 release_dir=${REL_DIR:-Release}
 edge_dir=${EDGE_DIR:-Edge}
+
+# By default compile with warnings as errors.
+# Update every time CMake is generating makefiles.
+# Disable with '-disable-werror' option.
+cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
 
 here=$PWD
 cd $BUILDDIR

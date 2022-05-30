@@ -23,9 +23,9 @@ endif()
 
 add_compile_options("-fPIC")
 
-if (NOT XRT_NO_WERROR)
+if (XRT_ENABLE_WERROR)
   list(APPEND XRT_WARN_OPTS "-Werror")
-endif(NOT XRT_NO_WERROR)
+endif(XRT_ENABLE_WERROR)
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_compile_options( ${XRT_WARN_OPTS} )
