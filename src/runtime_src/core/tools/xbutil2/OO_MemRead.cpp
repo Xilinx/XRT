@@ -34,6 +34,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include <fstream>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
