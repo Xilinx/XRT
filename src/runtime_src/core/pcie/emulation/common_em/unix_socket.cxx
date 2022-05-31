@@ -183,6 +183,7 @@ void unix_socket::monitor_socket_status_thread() {
     mpoll_on_filedescriptor = {fd, POLLERR, 0}; 
     auto retval = poll(&mpoll_on_filedescriptor, 1, 500);
     if ( retval < 0 ) {
+      
           std::cout<<"\n poll is failed";
           continue;
     }
@@ -211,23 +212,8 @@ void unix_socket::monitor_socket_status_thread() {
 
     }
     std::this_thread::sleep_for(500ms);
-    continue;
-/*
-    auto pid_value = cUtility::proc_find("xsim");
-    if (-1 != pid_value){
-      std::cout<<"\n xsim is no longer running so skipping socket calls now! & Exiting the application...\n";
-      simprocess_socket_live.store(false);
-      kill(getpid(),SIGKILL);
-     
-    }
-    else{
+    
 
-      simprocess_socket_live.store(true);
-    }
-      
-
-    std::this_thread::sleep_for(500ms);
-    */
   }  // end of while
 }
 
