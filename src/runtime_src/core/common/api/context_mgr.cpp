@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#define XRT_API_SOURCE         // in smae dll as coreutil
 #include "context_mgr.h"
 #include "core/common/cuidx_type.h"
 #include "core/common/debug.h"
 #include "core/common/device.h"
+#include "core/common/api/hw_context_int.h"
 
 #include <bitset>
 #include <chrono>
@@ -14,6 +17,10 @@
 #include <mutex>
 
 using namespace std::chrono_literals;
+
+namespace {
+
+} // namespace
 
 namespace xrt_core { namespace context_mgr {
 
@@ -37,7 +44,8 @@ class device_context_mgr
 
   // CU contexts are managed per domain where indicies are
   // in the range [0..max_cus[.  This allows for a compact
-  // bitset representation.
+  // bitset representation.  CU indices are unique within
+  // a domain and global for all hardware contexts.
   using domain_type = cuidx_type::domain_type;
   std::map<domain_type, std::bitset<max_cus>> m_d2ctx; // domain -> cxt
 
@@ -50,17 +58,17 @@ class device_context_mgr
   }
 
   // Get the CU index within a domain and the domain context bitset
-  // for the CU identified by argument slot and cuname.
+  // for the CU identified by arguments.
   // The returned index is only valid if the context bitset is not null.
-  std::pair<size_t, std::bitset<max_cus>*>
-  get_idx_ctx(slot_id slot, const std::string& cuname)
+  std::pair<cuidx_type, std::bitset<max_cus>*>
+  get_ipidx_ctx(xcl_hwctx_handle ctxhdl, const std::string& cuname)
   {
     try {
-      auto idx = m_device->get_cuidx(slot, cuname);
-      return {ctxidx(idx), get_ctx(idx)};
+      auto ipidx = m_device->get_cuidx(ctxhdl, cuname);
+      return {ipidx, get_ctx(ipidx)};
     }
     catch (const std::exception&) {
-      return {0, nullptr};
+      return {cuidx_type{0}, nullptr};
     }
   }
 
@@ -81,61 +89,46 @@ public:
     : m_device(device)
   {}
 
-  // Open context on cu identified by slot, uuid, and name.
-  // Open the cu context when it is safe to do so.  Note, that usage
+  // Open context on IP in specified hardware context.
+  // Open the IP context when it is safe to do so.  Note, that usage
   // of the context manager does not support multiple threads calling
   // this open() function on the same ip. The intended use-case
   // (xrt::kernel) prevents this situation.
-  void
-  open(slot_id slot, const xrt::uuid& uuid, const std::string& ipname, bool shared)
+  cuidx_type
+  open(const xrt::hw_context& hwctx, const std::string& ipname)
   {
     std::unique_lock<std::mutex> ul(m_mutex);
-    auto [idx, ctx] = get_idx_ctx(slot, ipname);
-    while (ctx && ctx->test(idx)) {
+    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+    auto [ipidx, ctx] = get_ipidx_ctx(ctxhdl, ipname);
+    while (ctx && ctx->test(ctxidx(ipidx))) {
       if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
         throw std::runtime_error("aquiring cu context timed out");
     }
-    m_device->open_context(slot, uuid, ipname, shared);
+    ipidx = m_device->open_cu_context(hwctx, ipname);
 
-    // Successful context creation means CU idx is now known
+    // Successful context creation means CU idx is valid now
     if (!ctx)
-      std::tie(idx, ctx) = get_idx_ctx(slot, ipname);
+      ctx = get_ctx(ipidx);
 
     if (!ctx)
       throw std::runtime_error("Unexpected ctx error");
 
-    ctx->set(idx);
-  }
+    ctx->set(ctxidx(ipidx));
 
-  // Open the cu context when it is safe to do so.  Note, that usage
-  // of the context manager does not support multiple threads calling
-  // this open() function on the same ip. The intended use-case
-  // (xrt::kernel) prevents this situation.
-  void
-  open(const xrt::uuid& uuid, cuidx_type ipidx, bool shared)
-  {
-    auto idx = ctxidx(ipidx);
-    std::unique_lock<std::mutex> ul(m_mutex);
-    auto ctx = get_ctx(ipidx);
-    while (ctx->test(idx)) {
-      if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
-        throw std::runtime_error("aquiring cu context timed out");
-    }
-    m_device->open_context(uuid, ipidx.index, shared);
-    ctx->set(idx);
+    return ipidx;
   }
 
   // Close the cu context and notify threads that might be waiting
   // to open this cu
   void
-  close(const xrt::uuid& uuid, cuidx_type ipidx)
+  close(const xrt::hw_context& hwctx, cuidx_type ipidx)
   {
     auto idx = ctxidx(ipidx);
     std::lock_guard<std::mutex> lk(m_mutex);
     auto ctx = get_ctx(ipidx);
     if (!ctx->test(idx))
       throw std::runtime_error("ctx " + std::to_string(ipidx.index) + " not open");
-    m_device->close_context(uuid, ipidx.index);
+    m_device->close_cu_context(hwctx, ipidx);
     ctx->reset(idx);
     m_cv.notify_all();
   }
@@ -168,34 +161,22 @@ create(const xrt_core::device* device)
 }
 
 // Regular CU
-void
-open_context(xrt_core::device* device, slot_id slot, const xrt::uuid& uuid, const std::string& cuname, bool shared)
+cuidx_type
+open_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  if (auto ctxmgr = get_device_context_mgr(device)) {
-    ctxmgr->open(slot, uuid, cuname, shared);
-    return;
-  }
-
-  throw std::runtime_error("No context manager for device");
-}
-
-// Virtual CU
-void
-open_context(xrt_core::device* device, const xrt::uuid& uuid, cuidx_type cuidx, bool shared)
-{
-  if (auto ctxmgr = get_device_context_mgr(device)) {
-    ctxmgr->open(uuid, cuidx, shared);
-    return;
-  }
+  auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
+  if (auto ctxmgr = get_device_context_mgr(device))
+    return ctxmgr->open(hwctx, cuname);
 
   throw std::runtime_error("No context manager for device");
 }
 
 void
-close_context(xrt_core::device* device, const xrt::uuid& uuid, cuidx_type cuidx)
+close_context(const xrt::hw_context& hwctx, cuidx_type cuidx)
 {
+  auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
   if (auto ctxmgr = get_device_context_mgr(device)) {
-    ctxmgr->close(uuid, cuidx);
+    ctxmgr->close(hwctx, cuidx);
     return;
   }
 

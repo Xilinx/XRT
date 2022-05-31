@@ -1,29 +1,10 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _SW_EMU_SHIM_H_
 #define _SW_EMU_SHIM_H_
 
 #include "config.h"
-#include "core/common/api/xclbin_int.h"
-#include "core/common/device.h"
-#include "core/common/message.h"
-#include "core/common/scheduler.h"
-#include "core/common/query_requests.h"
-#include "core/common/xrt_profiling.h"
-#include "core/include/experimental/xrt_xclbin.h"
 #include "em_defines.h"
 #include "memorymanager.h"
 #include "rpc_messages.pb.h"
@@ -34,6 +15,15 @@
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 
+#include "core/common/api/xclbin_int.h"
+#include "core/common/device.h"
+#include "core/common/message.h"
+#include "core/common/scheduler.h"
+#include "core/common/query_requests.h"
+#include "core/common/xrt_profiling.h"
+#include "core/include/experimental/xrt_hw_context.h"
+#include "core/include/experimental/xrt_xclbin.h"
+
 #include <fcntl.h>
 #include <stdarg.h>
 #include <sys/mman.h>
@@ -41,7 +31,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include<atomic>
+#include <atomic>
 #include <thread>
 #include <tuple>
 
@@ -154,10 +144,10 @@ namespace xclcpuemhal2 {
       static CpuemShim *handleCheck(void *handle);
       bool isGood() const;
 
-      int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+      int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
       int xclExecWait(int timeoutMilliSec);
       int xclExecBuf(unsigned int cmdBO);
-      int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
+      int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
       //Get CU index from IP_LAYOUT section for corresponding kernel name
       int xclIPName2Index(const char *name);
 
@@ -409,8 +399,8 @@ namespace xclcpuemhal2 {
       // Internal SHIM APIs
       ////////////////////////////////////////////////////////////////
       // aka xclOpenContextByName
-      void
-      open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const;
+      xrt_core::cuidx_type
+      open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
