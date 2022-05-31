@@ -31,7 +31,7 @@ endif()
 
 if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
   set(XRT_WARN_OPTS
-  -Wall -Werror
+  -Wall
   -Wno-mismatched-tags
   -Wno-unused-const-variable
   -Wno-unused-private-field
@@ -45,7 +45,7 @@ if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
   -Wno-overloaded-virtual
    )
 else()
-  set(XRT_WARN_OPTS -Wall -Werror )
+  set(XRT_WARN_OPTS -Wall)
 endif()
 
 if (DEFINED ENV{XRT_NATIVE_BUILD})
