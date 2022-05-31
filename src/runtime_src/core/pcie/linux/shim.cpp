@@ -27,6 +27,7 @@
 #include "core/include/shim_int.h"
 #include "core/include/xdp/fifo.h"
 #include "core/include/xdp/trace.h"
+#include "core/include/experimental/xrt_hw_context.h"
 
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
@@ -35,6 +36,7 @@
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/AlignedAllocator.h"
+#include "core/common/api/hw_context_int.h"
 
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_api_interface.h"
@@ -2136,20 +2138,26 @@ int shim::xclCloseIPInterruptNotify(int fd)
 }
 
 // open_context() - aka xclOpenContextByName
-void
+xrt_core::cuidx_type
 shim::
-open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  // Alveo Linux PCIE does not yet support multiple xclbins.
-  // Call regular flow
-  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
+  // Alveo Linux PCIE does not yet support multiple xclbins.  Call
+  // regular flow.  Default access mode to shared unless explicitly
+  // exclusive.
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+  return cuidx;
 }
 
 // Assign xclbin with uuid to hardware resources and return a context id
 // The context handle is 1:1 with a slot idx
 uint32_t
 shim::
-create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const
+create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
 {
   // Explicit hardware contexts are not supported in Alveo.
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -2157,7 +2165,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const
 
 void
 shim::
-destroy_hw_context(uint32_t ctxhdl) const
+destroy_hw_context(uint32_t ctxhdl)
 {
   // Explicit hardware contexts are not supported in Alveo.
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -2166,7 +2174,7 @@ destroy_hw_context(uint32_t ctxhdl) const
 // Registers an xclbin, but does not load it.
 void
 shim::
-register_xclbin(const xrt::xclbin&) const
+register_xclbin(const xrt::xclbin&)
 {
   // Explicit hardware contexts are not supported in Alveo.
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -2185,11 +2193,11 @@ open_by_bdf(const std::string& bdf)
   return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
 }
 
-void
-open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
 {
   auto shim = get_shim_object(handle);
-  shim->open_context(slot, xclbin_uuid, cuname, shared);
+  return shim->open_cu_context(hwctx, cuname);
 }
 
 uint32_t // ctxhdl aka slotidx

@@ -7,6 +7,10 @@ Removed
 .......
 * XRT streaming APIs used with QDMA PCIe DMA engine have been removed per deprecation announcement in 2.11.x
 
+Changed
+.......
+* Experimental native C++ APIs ``xrt::xclbin`` and ``xrt::ip`` have ABI breaking changes in 2.14.x per PR #6723. Code that uses these APIs must be recompiled.
+
 
 2.13.0 (202210.2.13.x)
 ~~~~~~~~~~~~~~~~~~~~~~

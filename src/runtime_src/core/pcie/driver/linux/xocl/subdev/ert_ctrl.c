@@ -760,6 +760,10 @@ static void ert_ctrl_dump_xgq(struct platform_device *pdev)
 		print_hex_dump(KERN_INFO, "raw data: ", DUMP_PREFIX_OFFSET,
 				16, 4, data, 16, true);
 	}
+
+	/* special value at 0x600 */
+	print_hex_dump(KERN_INFO, "raw data: ", DUMP_PREFIX_OFFSET,
+		       16, 4, ec->ec_cq_base + 0x600, 48, true);
 }
 
 static int ert_ctrl_xgq_ip_init(struct platform_device *pdev)

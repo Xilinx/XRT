@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "core/include/shim_int.h"
 #include "core/include/xdp/app_debug.h"
@@ -43,11 +30,11 @@ get_shim_object(xclDeviceHandle handle)
 namespace xrt::shim_int {
 
 // open_context - aka xclOpenContextByName
-void
-open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  get_shim_object(handle);
-  // shim->open_context(slot, xclbin_uuid, cuname, shared);
+  auto shim = get_shim_object(handle);
+  return shim->open_cu_context(hwctx, cuname);
 }
 
 uint32_t // ctxhdl aka slotidx

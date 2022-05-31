@@ -1,32 +1,20 @@
-/**
- * Copyright (C) 2016-2019 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _HW_EM_SHIM_H_
 #define _HW_EM_SHIM_H_
 
 #ifndef _WINDOWS
 #include "config.h"
 #include "em_defines.h"
+
 #include "core/common/api/xclbin_int.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xrt_profiling.h"
+#include "core/include/experimental/xrt_hw_context.h"
 #include "core/include/experimental/xrt_xclbin.h"
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/counters.h"
@@ -142,23 +130,26 @@ using addr_type = uint64_t;
       // Context handling
       ////////////////////////////////////////////////////////////////
       int
-      xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+      xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
+
+      int
+      xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
       // aka xclOpenContextByName, internal shim API for native C++ applications only
-      void
-      open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const;
+      xrt_core::cuidx_type
+      open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
 
       // aka xclCreateHWContext, internal shim API for native C++ applications only
       uint32_t // ctx handle aka slot idx
-      create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const;
+      create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos);
 
       // aka xclDestroyHWContext, internal shim API for native C++ applications only
       void
-      destroy_hw_context(uint32_t ctxhdl) const;
+      destroy_hw_context(uint32_t ctxhdl);
 
       // aka xclRegisterXclbin, internal shim API for native C++ applications only
       void
-      register_xclbin(const xrt::xclbin&) const;
+      register_xclbin(const xrt::xclbin&);
       ////////////////////////////////////////////////////////////////
 
       int xclRegisterEventNotify( unsigned int userInterrupt, int fd);

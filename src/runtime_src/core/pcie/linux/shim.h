@@ -142,18 +142,18 @@ public:
   // Internal SHIM APIs
   ////////////////////////////////////////////////////////////////
   // aka xclOpenContextByName
-  void
-  open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const;
+  xrt_core::cuidx_type
+  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
 
   uint32_t // ctx handle aka slot idx
-  create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const;
+  create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos);
 
   void
-  destroy_hw_context(uint32_t ctxhdl) const;
+  destroy_hw_context(uint32_t ctxhdl);
 
   // Registers an xclbin, but does not load it.
   void
-  register_xclbin(const xrt::xclbin&) const;
+  register_xclbin(const xrt::xclbin&);
 
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -50,8 +51,10 @@
 #include <linux/types.h>
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
+#include "xocl_types.h"
 #include "xclbin.h"
 #include "xrt_xclbin.h"
+#include "xocl_xclbin.h"
 #include "xrt_mem.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
@@ -473,8 +476,6 @@ static inline void xocl_subdev_dyn_free(struct xocl_subdev *subdev)
 		subdev->bar_idx = NULL;
 	}
 }
-
-typedef	void *xdev_handle_t;
 
 struct xocl_pci_funcs {
 	int (*intr_config)(xdev_handle_t xdev, u32 intr, bool enable);
@@ -1555,7 +1556,7 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
 	 topo->m_mem_data[idx].m_type == MEM_HBM) &&			\
-	!IS_HOST_MEM(topo->m_mem_data[idx].m_tag))
+	!(convert_mem_tag(topo->m_mem_data[idx].m_tag) == MEM_TAG_HOST))
 
 struct xocl_mig_label {
 	unsigned char		tag[16];

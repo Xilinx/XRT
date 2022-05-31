@@ -2,7 +2,8 @@
 // Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
-#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#define XRT_API_SOURCE         // in same dll as coreutil
 #include "device.h"
 #include "config_reader.h"
 #include "debug.h"
@@ -93,6 +94,13 @@ record_xclbin(const xrt::xclbin& xclbin)
 {
   register_xclbin(xclbin); // shim level registration
   m_xclbins.insert(xclbin);
+
+  // For single xclbin case, where shim doesn't implement
+  // kds_cu_info, we need the current xclbin stored here
+  // as a temporary 'global'.  This variable is used when
+  // update_cu_info() is called and query:kds_cu_info is not
+  // implemented
+  m_xclbin = xclbin;
 }
 
 // Unfortunately there are two independent entry points to load an
@@ -153,6 +161,7 @@ get_xclbin(const uuid& xclbin_id) const
   if (xclbin_id)
     return m_xclbins.get(xclbin_id);
 
+  // Single xclbin case
   return m_xclbin;
 }
 
@@ -174,7 +183,7 @@ update_xclbin_info()
   }
   catch (const query::no_such_key&) {
     // device does not support multiple xclbins, assume slot 0
-    // for current loaded xclbin
+    // for current xclbin
     m_xclbins.reset(std::map<slot_id, xrt::uuid>{{0, get_xclbin_uuid()}});
   }
 }
@@ -213,6 +222,9 @@ update_cu_info()
     }
   }
   catch (const query::no_such_key&) {
+    // This code path only works for single xclbin case.
+    // It assumes that m_xclbin is the single xclbin and that
+    // there is only one default slot with number 0.
     auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
     auto& cu2idx = m_cu2idx[0]; // default slot 0
     if (ip_layout != nullptr) {

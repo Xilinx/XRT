@@ -1,26 +1,16 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+#include "shim.h"
+#include "system_hwemu.h"
+#include "plugin/xdp/device_offload.h"
+
+#include "core/include/xclbin.h"
 
 #include "core/common/AlignedAllocator.h"
 #include "core/common/xclbin_parser.h"
-#include "plugin/xdp/device_offload.h"
-#include "shim.h"
-#include "system_hwemu.h"
-#include "xclbin.h"
+#include "core/common/api/hw_context_int.h"
+#include "core/common/api/xclbin_int.h"
 
 #include <unistd.h>
 
@@ -940,6 +930,13 @@ namespace xclhwemhal2 {
           }
           else {
             std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;
+          }
+
+          // This is temporary solution to enable the support for V70 platform. Will remove this once we have the device based DTB solution.
+          // We have separate DTB for the V70 platform (sv60 device).
+          if (fpgaDeviceName.find("xcvc2802:") != std::string::npos
+            && fs::exists(sim_path + "/emulation_data/board-versal-xcvc2802-ps-cosim-vitis-virt.dtb") ){
+            launcherArgs += " -qemu-dtb " + sim_path + "/emulation_data/board-versal-xcvc2802-ps-cosim-vitis-virt.dtb";
           }
 
           if (is_enable_debug) {
@@ -3180,25 +3177,43 @@ int HwEmShim::xclExecWait(int timeoutMilliSec)
 ////////////////////////////////////////////////////////////////
 int
 HwEmShim::
-xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
-  return 0; // success
+  // When properly implemented this function must throw on error
+  // and any exception must be caught by global xclOpenContext and
+  // converted to error code
+  return 0;
+}
+
+int
+HwEmShim::
+xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
+{
+  return 0;
 }
 
 // aka xclOpenContextByName, internal shim API for native C++ applications only
 // Once properly implemented, this API should throw on error
-void
+xrt_core::cuidx_type
 HwEmShim::
-open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
+  // Emulation does not yet support multiple xclbins.  Call
+  // regular flow.  Default access mode to shared unless explicitly
+  // exclusive.
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+  return cuidx;
 }
 
 // aka xclCreateHWContext, internal shim API for native C++ applications only
 // Once properly implemented, this API should throw on error
 uint32_t // ctx handle aka slot idx
 HwEmShim::
-create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const
+create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
 {
   // Explicit hardware contexts are not yet supported
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -3208,7 +3223,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const
 // Once properly implemented, this API should throw on error
 void
 HwEmShim::
-destroy_hw_context(uint32_t ctxhdl) const
+destroy_hw_context(uint32_t ctxhdl)
 {
   // Explicit hardware contexts are not yet supported
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -3218,7 +3233,7 @@ destroy_hw_context(uint32_t ctxhdl) const
 // Once properly implemented, this API should throw on error
 void
 HwEmShim::
-register_xclbin(const xrt::xclbin&) const
+register_xclbin(const xrt::xclbin&)
 {
   // Explicit hardware contexts are not yet supported
   throw xrt_core::ishim::not_supported_error{__func__};
