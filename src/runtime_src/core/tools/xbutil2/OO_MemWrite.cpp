@@ -152,10 +152,16 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     int count = 0;
     if (vm["count"].defaulted()) {
       input_stream.seekg(0, input_stream.end);
-      int length = input_stream.tellg();
+      // tellg returns a signed value as the number of bytes. Validate the return code and
+      // cast it into a useful format
+      auto nonvalidated_length = input_stream.tellg();
+      if (nonvalidated_length < 0)
+        throw std::runtime_error("Failed to get input file length");
+      uint64_t validated_length = static_cast<uint64_t>(nonvalidated_length);
+
       if (m_sizeBytes.empty()) // update size
-        size = length;
-      count = static_cast<int>(std::ceil(length / size));
+        size = validated_length;
+      count = static_cast<int>(std::ceil(validated_length / size));
       input_stream.seekg(0, input_stream.beg);
     }
     else
@@ -247,6 +253,6 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
 
   std::cerr << "No valid options provided\n";
   printHelp();
-  xrt_core::error(std::errc::operation_canceled);
+  throw xrt_core::error(std::errc::operation_canceled);
 }
 
