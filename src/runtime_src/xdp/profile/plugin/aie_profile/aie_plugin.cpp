@@ -1010,7 +1010,7 @@ namespace xdp {
 
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_core_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_memory_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_interface_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_interface_tile_metrics());
 //    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_mem_tile_metrics());
 
     // Process AIE_profile_settings metrics
@@ -1273,7 +1273,7 @@ namespace xdp {
     for (int module=0; module < NUM_MODULES; ++module) {
       // Implementation
     }
-
-   }
+    return true;
+  }
  
 } // end namespace xdp
