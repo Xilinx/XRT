@@ -1032,7 +1032,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
       }
-      boost::split(metricSettings[module], metricsConfig[module], boost::is_any_of(";"));
+      boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
 
 #if 0
       std::vector<std::string> multMetricVal;
@@ -1043,7 +1043,7 @@ namespace xdp {
       for(size_t i = 0; i < multMetricVal.size(); i++) {
         boost::split(metricValVec[i], multMetricVal[i], boost::is_any_of(":"));
       }
-      metricSettings[module] = metricValVec;
+      metricsSettings[module] = metricValVec;
 #endif
     }
 
@@ -1074,7 +1074,7 @@ namespace xdp {
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
 
-      for(auto &metricStr : metricSettings[module]) { 
+      for(auto &metricsStr : metricsSettings[module]) { 
 //      std::string metricsStr = metricSettings[module];
 
         int NUM_COUNTERS       = numCounters[module];
@@ -1230,7 +1230,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
       }
-      boost::split(metricSettings[module], metricsConfig[module], boost::is_any_of(";"));
+      boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
 
 #if 0
       std::vector<std::string> multMetricVal;
@@ -1241,7 +1241,7 @@ namespace xdp {
       for(size_t i = 0; i < multMetricVal.size(); i++) {
         boost::split(metricValVec[i], multMetricVal[i], boost::is_any_of(":"));
       }
-      metricSettings[module] = metricValVec;
+      metricsSettings[module] = metricValVec;
 #endif
     }
 

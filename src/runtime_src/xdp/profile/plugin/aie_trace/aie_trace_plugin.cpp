@@ -338,7 +338,7 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
-  std::string AieTracePlugin::getMetricSet(void* handle, const std::string& metricStr)
+  std::string AieTracePlugin::getMetricSet(void* handle, const std::string& metricsStr)
   {
 
     std::vector<std::string> vec;
@@ -956,6 +956,8 @@ namespace xdp {
 
   void AieTracePlugin::updateAIEDevice(void* handle)
   {
+      xrt_core::message::send(severity_level::warning, "XRT", "Checking call");
+
     if (handle == nullptr)
       return;
 
@@ -1439,6 +1441,7 @@ namespace xdp {
 
     metricsConfig.push_back(xrt_core::config::get_aie_trace_settings_aie_tile_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_trace_settings_mem_tile_metrics());
+//    metricsConfig.push_back(xrt_core::config::get_aie_trace_settings_graph_metrics());
 #if 0
     // Post 2022.2
     metricsConfig.push_back(xrt_core::config::get_aie_trace_settings_interface_tile_metrics());
@@ -1466,14 +1469,14 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
       }
-      boost::split(metricSettings[module], metricsConfig[module], boost::is_any_of(";"));
+      boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
 
     }
 
    // Configure aie, memory tiles
     for (int module=0; module < NUM_MODULES; ++module) {
 
-      for(auto &metricStr : metricSettings[module]) {
+      for(auto &metricsStr : metricsSettings[module]) {
         auto metricSet = getMetricSet(handle, metricsStr);
         if (metricSet.empty()) {
           if (!runtimeMetrics)
