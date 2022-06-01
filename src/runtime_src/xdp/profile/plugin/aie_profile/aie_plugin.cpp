@@ -1208,7 +1208,7 @@ namespace xdp {
 
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_core_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_memory_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_interface_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_interface_tile_metrics());
 //    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_mem_tile_metrics());
 
     // Process AIE_profile_settings metrics
@@ -1226,7 +1226,7 @@ namespace xdp {
       if (metricsConfig.empty()){
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
         std::string metricMsg = "No graph_metric set specified for " + modName + " module. " +
-                                "Please specify the AIE_profile_settings. graph_" + modname + "_metrics setting in your xrt.ini.";
+                                "Please specify the AIE_profile_settings. graph_" + modName + "_metrics setting in your xrt.ini.";
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
       }
