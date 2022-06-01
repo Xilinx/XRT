@@ -393,13 +393,35 @@ public:
   /**
    * async() - Start buffer content txfer with device side
    *
+   * @param dir
+   *  To device or from device
+   * @param sz
+   *  Size of data to synchronize
+   * @param offset
+   *  Offset within the BO
+   *
+   * Asynchronously transfer specified size bytes of buffer
+   * starting at specified offset.
    */
   XCL_DRIVER_DLLESPEC
   async_handle
   async(xclBOSyncDirection dir, size_t sz, size_t offset);
 
+  /**
+   * async() - Start buffer content txfer with device side
+   *
+   * @param dir
+   *  To device or from device
+   * @param sz
+   *  Size of data to synchronize
+   * @param offset
+   *  Offset within the BO
+   *
+   * Asynchronously transfer entire buffer content in specified direction
+   */
   async_handle
-  async(xclBOSyncDirection dir) {
+  async(xclBOSyncDirection dir)
+  {
     return async(dir, size(), 0);
   }
 

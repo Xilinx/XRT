@@ -46,9 +46,11 @@
 #endif
 
 namespace {
-  //Map of gmio -> list of async handles
-  static std::unordered_map<std::string, std::vector<xrt::aie::bo::async_handle_impl*>> async_bo_hdls;
-  std::mutex async_bo_hdls_mutex;//Mutex for use with above map
+// Map of gmio -> list of async handles
+// Handle entry means there DMA is in progress for that gmio name
+// All handle entries for a gmio name are removed when wait() is called
+static std::unordered_map<std::string, std::vector<xrt::aie::bo::async_handle_impl*>> async_bo_hdls;
+std::mutex async_bo_hdls_mutex;// Mutex for use with above map
 
 XRT_CORE_UNUSED
 static bool
@@ -125,30 +127,25 @@ send_exception_message(const std::string& msg)
 
 namespace xrt {
 
-/*!
- * @class async_bo_impl
- * 
- * @brief
- * Impl Class associated with async bo which allows to wait for completion
- *
- */
+// class bo::async_handle_impl - Base class for asynchronous buffer DMA handle
+//
+// Derived classes:
+// [aie::b ::async_handle_impl]: For AIE BOs
+//
+// Impl Class associated with async bo which allows to wait for completion
 class bo::async_handle_impl
 {
 public:
   xrt::bo m_bo;
 
 public:
-  /**
-   * async_bo_impl() - Construct async_bo_obj
-   */
-  async_handle_impl(const xrt::bo& bo)
-    : m_bo(bo)
+  // async_bo_impl() - Construct async_bo_obj
+  async_handle_impl(xrt::bo bo)
+    : m_bo(std::move(bo))
   {
   }
 
-  /**
-   * wait() - Wait for async to complete
-   */
+  // wait() - Wait for async to complete
   virtual void 
   wait();
 };
@@ -156,23 +153,19 @@ public:
 class aie::bo::async_handle_impl : public xrt::bo::async_handle_impl
 {
 public:
-  size_t m_bd_num; //For future use
+  size_t m_bd_num; // For future use
   std::string m_gmio_name;
 
 public:
-  /**
-   * async_bo_impl() - Construct async_bo_obj
-   */
-  async_handle_impl(const xrt::bo& bo, const size_t bd_num, const std::string& gmio_name)
-    : xrt::bo::async_handle_impl(bo),
+  // async_bo_impl() - Construct async_bo_obj
+  async_handle_impl(xrt::bo bo, size_t bd_num, std::string gmio_name)
+    : xrt::bo::async_handle_impl(std::move(bo)),
       m_bd_num(bd_num),
-      m_gmio_name(gmio_name)
+      m_gmio_name(std::move(gmio_name))
   {
   }
 
-  /**
-   * wait() - Wait for async to complete
-   */
+  // wait() - Wait for async to complete
   void 
   wait() override;
 };
@@ -429,10 +422,10 @@ public:
   {
     device->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
     auto a_bo_impl = std::make_shared<xrt::aie::bo::async_handle_impl>(bo, 0, port);
-    std::unique_lock lk(::async_bo_hdls_mutex);
+    std::lock_guard lk(::async_bo_hdls_mutex);
     ::async_bo_hdls[port].emplace_back(a_bo_impl.get());
 
-    return xrt::bo::async_handle(a_bo_impl);
+    return xrt::bo::async_handle{a_bo_impl};
   }
 #endif
 
@@ -1141,17 +1134,20 @@ wait()
 {
   auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
 
-  std::unique_lock lk(::async_bo_hdls_mutex);
+  std::lock_guard lk(::async_bo_hdls_mutex);
   auto itr = ::async_bo_hdls.find(m_gmio_name);
   if (itr == ::async_bo_hdls.end())
     throw std::runtime_error("Unexpected error");
 
+  // Check gmio in the map to see if DMA has finished
   if (std::find(itr->second.begin(), itr->second.end(), this) == itr->second.end())
-    return;//This DMA has already finished
+    return;
 
-  //In future wait only for specific m_bd_num
+  // DMA has not finished; Wait for it;
+  // In future wait only for specific m_bd_num
   dev->wait_gmio(m_gmio_name.c_str());
-  itr->second.clear();//All outstanding DMAs for this gmio_name have finished
+  // All outstanding DMAs for this gmio_name have finishedd; for all bd numbers
+  itr->second.clear();
 }
 
 void
