@@ -1028,7 +1028,7 @@ namespace xdp {
       if (metricsConfig.empty()){
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
         std::string metricMsg = "No metric set specified for " + modName + " module. " +
-                                "Please specify the AIE_profile_settings." + modname + "_metrics" + " or Debug.aie_profile_" + modName + "_metrics setting in your xrt.ini.";
+                                "Please specify the AIE_profile_settings." + modName + "_metrics" + " or Debug.aie_profile_" + modName + "_metrics setting in your xrt.ini.";
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
       }
