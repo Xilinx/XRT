@@ -1017,11 +1017,6 @@ namespace xdp {
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
 
-#if 0
-    typedef std::vector<std::vector<std::string>> 2DStringVectorType;
-    std::vector<2DStringVectorType> metricsSettings(NUM_MODULES);
-#endif
-
     std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
 
     for(int module = 0; module < NUM_MODULES; ++module) {
@@ -1033,18 +1028,6 @@ namespace xdp {
         continue;
       }
       boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
-
-#if 0
-      std::vector<std::string> multMetricVal;
-      boost::split(multMetricsVal, metricsConfig[module], boost::is_any_of(";"));
-
-      2DStringVectorType metricValVec(multMetricVal.size());
-
-      for(size_t i = 0; i < multMetricVal.size(); i++) {
-        boost::split(metricValVec[i], multMetricVal[i], boost::is_any_of(":"));
-      }
-      metricsSettings[module] = metricValVec;
-#endif
     }
 
     // Get AIE clock frequency
@@ -1075,7 +1058,6 @@ namespace xdp {
     for (int module=0; module < NUM_MODULES; ++module) {
 
       for(auto &metricsStr : metricsSettings[module]) { 
-//      std::string metricsStr = metricSettings[module];
 
         int NUM_COUNTERS       = numCounters[module];
         XAie_ModuleType mod    = falModuleTypes[module];
@@ -1215,11 +1197,6 @@ namespace xdp {
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
 
-#if 0
-    typedef std::vector<std::vector<std::string>> 2DStringVectorType;
-    std::vector<2DStringVectorType> metricsSettings(NUM_MODULES);
-#endif
-
     std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
 
     for(int module = 0; module < NUM_MODULES; ++module) {
@@ -1232,17 +1209,6 @@ namespace xdp {
       }
       boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
 
-#if 0
-      std::vector<std::string> multMetricVal;
-      boost::split(multMetricsVal, metricsConfig[module], boost::is_any_of(";"));
-
-      2DStringVectorType metricValVec(multMetricVal.size());
-
-      for(size_t i = 0; i < multMetricVal.size(); i++) {
-        boost::split(metricValVec[i], multMetricVal[i], boost::is_any_of(":"));
-      }
-      metricsSettings[module] = metricValVec;
-#endif
     }
 
     // Get AIE clock frequency
