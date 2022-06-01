@@ -677,10 +677,10 @@ namespace xdp {
 
     int numCounters[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
-    XAie_ModuleType falModuleTypes[NUM_MODULES] =
+    XAie_ModuleType falModuleTypes[NUM_MODULES] = 
         {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
     std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
-    std::string metricSettings[NUM_MODULES] =
+    std::string metricSettings[NUM_MODULES] = 
         {xrt_core::config::get_aie_profile_core_metrics(),
          xrt_core::config::get_aie_profile_memory_metrics(),
          interfaceMetric};
@@ -709,29 +709,29 @@ namespace xdp {
       // Get vector of pre-defined metrics for this set
       uint8_t resetEvent = 0;
       auto startEvents = (mod == XAIE_CORE_MOD) ? mCoreStartEvents[metricSet]
-                       : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet]
+                       : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet] 
                        : mShimStartEvents[metricSet]);
       auto endEvents   = (mod == XAIE_CORE_MOD) ? mCoreEndEvents[metricSet]
-                       : ((mod == XAIE_MEM_MOD) ? mMemoryEndEvents[metricSet]
+                       : ((mod == XAIE_MEM_MOD) ? mMemoryEndEvents[metricSet] 
                        : mShimEndEvents[metricSet]);
 
       int numTileCounters[NUM_COUNTERS+1] = {0};
-
+      
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tile : tiles) {
         int numCounters = 0;
         auto col = tile.col;
         auto row = tile.row;
-
+        
         // NOTE: resource manager requires absolute row number
-        auto loc        = (mod == XAIE_PL_MOD) ? XAie_TileLoc(col, 0)
+        auto loc        = (mod == XAIE_PL_MOD) ? XAie_TileLoc(col, 0) 
                         : XAie_TileLoc(col, row + 1);
-        auto& xaieTile  = (mod == XAIE_PL_MOD) ? aieDevice->tile(col, 0)
+        auto& xaieTile  = (mod == XAIE_PL_MOD) ? aieDevice->tile(col, 0) 
                         : aieDevice->tile(col, row + 1);
         auto xaieModule = (mod == XAIE_CORE_MOD) ? xaieTile.core()
                         : ((mod == XAIE_MEM_MOD) ? xaieTile.mem()
                         : xaieTile.pl());
-
+        
         for (int i=0; i < numFreeCounters; ++i) {
           auto startEvent = startEvents.at(i);
           auto endEvent   = endEvents.at(i);
@@ -742,10 +742,10 @@ namespace xdp {
           if (ret != XAIE_OK) break;
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
-
+          
           configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
           configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, startEvent, metricSet);
-
+          
           // Start the counters after group events have been configured
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;
@@ -768,7 +768,7 @@ namespace xdp {
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
-              phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz,
+              phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz, 
               moduleName, counterName);
           counterId++;
           numCounters++;
