@@ -3048,20 +3048,23 @@ struct cu_size : request
   static const key_type key = key_type::cu_size;
 
   virtual boost::any
-  get(const device* device, const boost::any& cu_idx) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
 };
 
 struct cu_read_range : request
 {
   struct range_data {
-      uint32_t start;
-      uint32_t end;
+    uint32_t start;
+    uint32_t end;
   };
-  using result_type = range_data;
+  using result_type = std::string;
   static const key_type key = key_type::cu_read_range;
 
   virtual boost::any
-  get(const device* device, const boost::any& cu_idx) const = 0;
+  get(const device*, modifier, const std::string&) const = 0;
+
+  static range_data
+  to_range(const std::string& str);
 };
 
 } // query

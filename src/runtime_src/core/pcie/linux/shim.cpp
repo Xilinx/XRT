@@ -82,6 +82,7 @@
 #define MAX_TRACE_NUMBER_SAMPLES                        16384
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
 
+namespace xq = xrt_core::query;
 namespace {
 
 template <typename ...Args>
@@ -655,7 +656,7 @@ shim::~shim()
 
     dev_fini();
 
-    for (auto p : mCuMaps) {
+    for (const auto& p : mCuMaps) {
         if (p.addr)
             (void) munmap(p.addr, p.size);
     }
@@ -1810,11 +1811,10 @@ int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 
     if (ipIndex < mCuMaps.size()) {
 	    // Make sure no MMIO register space access when CU is released.
-	    uint32_t *p = mCuMaps[ipIndex].addr;
-	    if (p) {
-		(void) munmap(p, mCuMaps[ipIndex].size);
-		mCuMaps[ipIndex] = {nullptr, 0, 0, 0};
-	    }
+        if (auto p = mCuMaps[ipIndex].addr) {
+            std::ignore = munmap(p, mCuMaps[ipIndex].size);
+            mCuMaps[ipIndex] = {nullptr, 0, 0, 0};
+        }
     }
 
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
@@ -2035,12 +2035,14 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
   auto& cumap = mCuMaps[ipIndex];  // {base, size, start, end}
 
   if (cumap.addr == nullptr) {
-    auto size = xrt_core::device_query<xrt_core::query::cu_size>(mCoreDevice, ipIndex);
+    auto cu_subdev = "CU[" + std::to_string(ipIndex) + "]";
+    auto size = xrt_core::device_query<xq::cu_size>(mCoreDevice, xq::request::modifier::subdev, cu_subdev);
     if (size <= 0 || size > 0x10000) {
       xrt_logmsg(XRT_ERROR, "%s: incorrect cu size %d", __func__, size);
       return -EINVAL;
     }
-    auto range = xrt_core::device_query<xrt_core::query::cu_read_range>(mCoreDevice, ipIndex);
+    auto range_str = xrt_core::device_query<xq::cu_read_range>(mCoreDevice, xq::request::modifier::subdev, cu_subdev);
+    auto range = xq::cu_read_range::to_range(range_str);
 
     void *p = mDev->mmap(mUserHandle, size, PROT_READ | PROT_WRITE,
                          MAP_SHARED, static_cast<off_t>(ipIndex + 1) * getpagesize());
@@ -2057,11 +2059,6 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     }
   }
 
-  if ((cumap.start != 0xFFFFFFFF) && (!rd)) {
-    xrt_logmsg(XRT_ERROR, "%s: read range is set, not allow write", __func__);
-    return -EINVAL;
-  }
-
   if ((offset & (sizeof(uint32_t) - 1)) != 0) {
     xrt_logmsg(XRT_ERROR, "%s: offset is not aligned in word: %d", __func__, offset);
     return -EINVAL;
@@ -2072,9 +2069,16 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     return -EINVAL;
   }
 
-  if ((cumap.start != 0xFFFFFFFF) && ((cumap.start > offset) || (cumap.end < offset))) {
-    xrt_logmsg(XRT_ERROR, "%s: CU offset %d out of read range, %d, %d", __func__, offset, cumap.start, cumap.end);
-    return -EINVAL;
+  if (cumap.start != 0xFFFFFFFF) {
+    if (!rd) {
+        xrt_logmsg(XRT_ERROR, "%s: read range is set, not allow write", __func__);
+        return -EINVAL;
+    }
+
+    if ((cumap.start > offset) || (cumap.end < offset)) {
+        xrt_logmsg(XRT_ERROR, "%s: CU offset %d out of read range, %d, %d", __func__, offset, cumap.start, cumap.end);
+        return -EINVAL;
+    }
   }
 
   if (rd)
