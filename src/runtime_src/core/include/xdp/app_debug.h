@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 /********************** Definitions: Enums, Structs ***************************/
-enum xclDebugReadType {
+enum xclDebugReadType : unsigned int {
   XCL_DEBUG_READ_TYPE_APM  = 0,
   XCL_DEBUG_READ_TYPE_LAPC = 1,
   XCL_DEBUG_READ_TYPE_AIM  = 2,

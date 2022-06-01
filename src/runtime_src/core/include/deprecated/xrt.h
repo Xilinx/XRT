@@ -191,6 +191,16 @@ int
 xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
                        size_t num_bo_in_wait_list, xclBufferHandle *bo_wait_list);
 
+/* Forward declaration of enum declared in deprecated/xcl_app_debug.h */
+enum xclDebugReadType : unsigned int;
+
+/* Not supported */
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+size_t
+xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
+                     void* debugResults);
+
 #ifdef __cplusplus
 }
 #endif
