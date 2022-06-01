@@ -83,15 +83,13 @@ _main(int argc, char* argv[])
     std::make_shared<ReportMemory>(),
     std::make_shared<ReportElectrical>()
   };
-  std::vector<std::string> elementsFilter;
 
   std::stringstream output;
-  std::ostringstream oSchemaOutput;
 
   // Initial status state is critical
   Report::NagiosStatus internal_status = Report::NagiosStatus::critical;
   try {
-    internal_status = XBU::produce_nagios_reports(deviceCollection, reportsToProcess, Report::getSchemaDescription("JSON").schemaVersion, elementsFilter, output, oSchemaOutput);
+    internal_status = XBU::produce_nagios_reports(deviceCollection, reportsToProcess, Report::getSchemaDescription("JSON").schemaVersion, output);
   } catch (...) {
     internal_status = Report::NagiosStatus::critical;
   }

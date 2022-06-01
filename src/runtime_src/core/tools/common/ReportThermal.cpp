@@ -72,7 +72,6 @@ ReportThermal::writeReport( const xrt_core::device* /*_pDevice*/,
 Report::NagiosStatus
 ReportThermal::writeNagiosReport( const xrt_core::device* /*_pDevice*/,
                             const boost::property_tree::ptree& _pt,
-                            const std::vector<std::string>& /*_elementsFilter*/,
                             std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;

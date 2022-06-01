@@ -128,14 +128,13 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
 Report::NagiosStatus 
 Report::getNagiosReport( const xrt_core::device *pDevice, 
                             SchemaVersion schemaVersion,
-                            const std::vector<std::string> & elementFilter,
                             std::ostream & consoleStream,
                             boost::property_tree::ptree & pt) const
 {
   // If an exception occurs while generating a report throw an error in the catch
   try {
     populatePropertyTree(pDevice, schemaVersion, pt);
-    return writeNagiosReport(pDevice, pt, elementFilter, consoleStream);
+    return writeNagiosReport(pDevice, pt, consoleStream);
   } catch (const std::exception& e) {
     std::string reportName = getReportName();
     if (!reportName.empty()) {

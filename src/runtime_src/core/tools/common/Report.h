@@ -82,7 +82,7 @@ class Report {
   bool isHidden() const { return m_isHidden; };
 
   void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
-  NagiosStatus getNagiosReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
+  NagiosStatus getNagiosReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
  // Needs a virtual destructor
   virtual ~Report() {};
@@ -90,7 +90,7 @@ class Report {
  // Child methods that need to be implemented
  protected:
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const = 0;
-  virtual NagiosStatus writeNagiosReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const { return NagiosStatus::okay; };
+  virtual NagiosStatus writeNagiosReport(const xrt_core::device* /*_pDevice*/, const boost::property_tree::ptree& /*pt*/, std::ostream & /*_output*/) const { return NagiosStatus::okay; };
   virtual void getPropertyTreeInternal(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
   virtual void getPropertyTree20202(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
 
