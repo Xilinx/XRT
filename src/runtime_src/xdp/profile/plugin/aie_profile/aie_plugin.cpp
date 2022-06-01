@@ -729,7 +729,7 @@ namespace xdp {
         auto& xaieTile  = (mod == XAIE_PL_MOD) ? aieDevice->tile(col, 0) 
                         : aieDevice->tile(col, row + 1);
         auto xaieModule = (mod == XAIE_CORE_MOD) ? xaieTile.core()
-                        : ((mod == XAIE_MEM_MOD) ? xaieTile.mem()
+                        : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
                         : xaieTile.pl());
         
         for (int i=0; i < numFreeCounters; ++i) {
