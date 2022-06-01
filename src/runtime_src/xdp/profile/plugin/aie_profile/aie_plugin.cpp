@@ -656,7 +656,7 @@ namespace xdp {
     xaiefal::XAieDev* aieDevice =
       static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
     if (!aieDevInst || !aieDevice) {
-      xrt_core::message::send(severity_level::warning, "XRT",
+      xrt_core::message::send(severity_level::warning, "XRT", 
           "Unable to get AIE device. There will be no AIE profiling.");
       return false;
     }
