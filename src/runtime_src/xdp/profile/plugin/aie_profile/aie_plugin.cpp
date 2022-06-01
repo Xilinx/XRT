@@ -1035,7 +1035,7 @@ namespace xdp {
     auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
 
     // Get Channel Id in interface metric ; check all the entries
-    for(auto &interfaceMetric : metricsSettings[NUM_MODULES-1]) {
+    for(auto &interfaceMetric : metricsSettings) {
       if(3 == interfaceMetric.size()) {
         // current entry has channel ID
         try {
@@ -1216,7 +1216,7 @@ namespace xdp {
     auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
 
     // Get Channel Id in interface metric ; check all the entries
-    for(auto &interfaceMetric : metricsSettings[NUM_MODULES-1]) {
+    for(auto &interfaceMetric : metricsSettings) {
       if(3 == interfaceMetric.size()) {
         // current entry has channel ID
         try {
