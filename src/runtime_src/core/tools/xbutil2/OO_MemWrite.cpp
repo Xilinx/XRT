@@ -149,23 +149,23 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     // Open the input file stream after validating the file path and name
     std::ifstream input_stream(m_inputFile, std::ios::binary);
     // If count is unspecified, calculate based on the file size and block size
-    int count = 0;
-    if (vm["count"].defaulted()) {
-      input_stream.seekg(0, input_stream.end);
-      // tellg returns a signed value as the number of bytes. Validate the return code and
-      // cast it into a useful format
-      auto nonvalidated_length = input_stream.tellg();
-      if (nonvalidated_length < 0)
-        throw std::runtime_error("Failed to get input file length");
-      uint64_t validated_length = static_cast<uint64_t>(nonvalidated_length);
+    int count = m_count;
+    // if (vm["count"].defaulted()) {
+    //   // input_stream.seekg(0, input_stream.end);
+    //   // // tellg returns a signed value as the number of bytes. Validate the return code and
+    //   // // cast it into a useful format
+    //   // auto nonvalidated_length = input_stream.tellg();
+    //   // if (nonvalidated_length < 0)
+    //   //   throw std::runtime_error("Failed to get input file length");
+    //   // uint64_t validated_length = static_cast<uint64_t>(nonvalidated_length);
 
-      if (m_sizeBytes.empty()) // update size
-        size = validated_length;
-      count = static_cast<int>(std::ceil(validated_length / size));
-      input_stream.seekg(0, input_stream.beg);
-    }
-    else
-      count = m_count;
+    //   if (m_sizeBytes.empty()) // update size
+    //     size = validated_length;
+    //   count = static_cast<int>(std::ceil(validated_length / size));
+    //   input_stream.seekg(0, input_stream.beg);
+    // }
+    // else
+    //   count = m_count;
 
     if (count <= 0)
       throw xrt_core::error(std::errc::operation_canceled, "Value for --count must be greater than 0");
