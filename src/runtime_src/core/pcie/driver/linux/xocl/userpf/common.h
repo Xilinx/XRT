@@ -169,7 +169,7 @@ int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
-int xocl_set_range_ioctl(struct drm_device *dev, void *data,
+int xocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 
 /* sysfs functions */

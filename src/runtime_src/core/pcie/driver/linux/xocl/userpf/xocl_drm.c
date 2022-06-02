@@ -432,7 +432,7 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_FREE_CMA, xocl_free_cma_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(XOCL_SET_READ_RANGE, xocl_set_range_ioctl,
+	DRM_IOCTL_DEF_DRV(XOCL_SET_READ_RANGE, xocl_set_cu_read_only_range_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 
 /* LINUX KERNEL-SPACE IOCTLS - The following entries are meant to be

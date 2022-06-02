@@ -658,8 +658,8 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	return err;
 }
 
-int xocl_set_range_ioctl(struct drm_device *dev, void *data,
-			 struct drm_file *filp)
+int xocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
+				      struct drm_file *filp)
 {
 	struct drm_xocl_set_range *info = data;
 	struct xocl_drm *drm_p = dev->dev_private;
