@@ -165,7 +165,7 @@ enum drm_xocl_ops {
 	/* Memory to Memory BO copy */
 	DRM_XOCL_COPY_BO,
 	/* Set CU read-only range */
-	DRM_XOCL_SET_READ_RANGE,
+	DRM_XOCL_SET_CU_READONLY_RANGE,
 
 	/* The following IOCTLs can only be called from linux kernel space
 	 * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
@@ -342,7 +342,15 @@ struct drm_xocl_copy_bo {
 	uint64_t src_offset;
 };
 
-struct drm_xocl_set_range {
+/**
+ * struct drm_xocl_set_cu_range - Set CU range
+ * used with DRM_IOCTL_XOCL_SET_CU_READONLY_RANGE
+ *
+ * @cu_index:	Index of the compute unit in the device inage for which
+ * @start:	Start offset of the range
+ * @size:	Size of the range
+ */
+struct drm_xocl_set_cu_range {
 	uint32_t cu_index;
 	uint32_t start;
 	uint32_t size;
@@ -701,7 +709,7 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_ALLOC_CMA	XOCL_IOC_ARG(ALLOC_CMA, alloc_cma_info)
 #define	DRM_IOCTL_XOCL_FREE_CMA		XOCL_IOC(FREE_CMA)
 #define	DRM_IOCTL_XOCL_COPY_BO		XOCL_IOC_ARG(COPY_BO, copy_bo)
-#define	DRM_IOCTL_XOCL_SET_READ_RANGE	XOCL_IOC_ARG(SET_READ_RANGE, set_range)
+#define	DRM_IOCTL_XOCL_SET_CU_READONLY_RANGE	XOCL_IOC_ARG(SET_CU_READONLY_RANGE, set_cu_range)
 
 #define	DRM_IOCTL_XOCL_KINFO_BO		XOCL_IOC_ARG(KINFO_BO, kinfo_bo)
 #define	DRM_IOCTL_XOCL_MAP_KERN_MEM	XOCL_IOC_ARG(MAP_KERN_MEM, map_kern_mem)

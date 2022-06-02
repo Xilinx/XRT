@@ -661,7 +661,7 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 int xocl_set_cu_read_only_range_ioctl(struct drm_device *dev, void *data,
 				      struct drm_file *filp)
 {
-	struct drm_xocl_set_range *info = data;
+	struct drm_xocl_set_cu_range *info = data;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	int ret = 0;

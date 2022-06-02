@@ -2092,9 +2092,9 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 int shim::xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size)
 {
     int ret = 0;
-    drm_xocl_set_range range = {ipIndex, start, size};
+    drm_xocl_set_cu_range range = {ipIndex, start, size};
 
-    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_SET_READ_RANGE, &range);
+    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_SET_CU_READONLY_RANGE, &range);
     return ret ? -errno : ret;
 }
 
