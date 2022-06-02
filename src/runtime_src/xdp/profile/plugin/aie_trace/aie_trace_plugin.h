@@ -63,6 +63,8 @@ namespace xdp {
       bool setMetrics(uint64_t deviceId, void* handle);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
 
+      bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
+
       void setFlushMetrics(uint64_t deviceId, void* handle);
       void setTraceStartDelayCycles(void* handle);
 
@@ -103,6 +105,9 @@ namespace xdp {
                          DeviceIntf*> AIEData;
 
       std::map<uint32_t, AIEData>  aieOffloaders;
+
+      XAie_DevInst*     aieDevInst = nullptr;
+      xaiefal::XAieDev* aieDevice  = nullptr;
 
       // Types
       typedef XAie_Events            EventType;

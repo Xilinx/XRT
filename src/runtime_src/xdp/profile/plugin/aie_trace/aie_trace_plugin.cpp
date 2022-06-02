@@ -417,7 +417,6 @@ namespace xdp {
     std::smatch pieces_match;
     uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * 1e6);
 
-    const uint64_t max_cycles = 0xffffffff;
     // AIE_trace_settings configs have higher priority than older Debug configs
     std::string size_str = xrt_core::config::get_aie_trace_settings_start_time();
     if(0 == size_str.compare("0")) {
@@ -539,29 +538,6 @@ namespace xdp {
   // Configure all resources necessary for trace control and events
   bool AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
-    xaiefal::XAieDev* aieDevice =
-      static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
-    if (!aieDevInst || !aieDevice) {
-      xrt_core::message::send(severity_level::warning, "XRT",
-          "Unable to get AIE device. AIE event trace will not be available.");
-      return false;
-    }
-
-    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-    runtimeMetrics = (compilerOptions.event_trace == "runtime");
-
-    if (!runtimeMetrics) {
-      std::stringstream msg;
-      msg << "Found compiler trace option of " << compilerOptions.event_trace
-          << ". No runtime AIE metrics will be changed.";
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      return true;
-    }
-
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
       std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will not be available.");
@@ -954,10 +930,33 @@ namespace xdp {
     return true;
   } // end setMetrics
 
+  bool AieTracePlugin::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
+  {
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle));
+    if (!aieDevInst || !aieDevice) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+          "Unable to get AIE device. AIE event trace will not be available.");
+      return false;
+    }
+
+    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+    runtimeMetrics = (compilerOptions.event_trace == "runtime");
+
+    if (!runtimeMetrics) {
+      std::stringstream msg;
+      msg << "Found compiler trace option of " << compilerOptions.event_trace
+          << ". No runtime AIE metrics will be changed.";
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return true;
+    }
+    return true;
+  }
+
   void AieTracePlugin::updateAIEDevice(void* handle)
   {
-      xrt_core::message::send(severity_level::warning, "XRT", "Checking call");
-
     if (handle == nullptr)
       return;
 
@@ -997,12 +996,17 @@ namespace xdp {
       }
     }
 
-    // Set metrics for counters and trace events 
-    if (!setMetricsSettings(deviceId, handle)) {
-      if (!setMetrics(deviceId, handle)) {
-        std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");
-        xrt_core::message::send(severity_level::warning, "XRT", msg);
-        return;
+    if (!checkAieDeviceAndRuntimeMetrics(deviceId, handle))
+      return;
+
+    if (runtimeMetrics) {
+      // Set runtime metrics for counters and trace events 
+      if (!setMetricsSettings(deviceId, handle)) {
+        if (!setMetrics(deviceId, handle)) {
+          std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+          return;
+        }
       }
     }
     
@@ -1412,29 +1416,6 @@ namespace xdp {
   // Configure all resources necessary for trace control and events
   bool AieTracePlugin::setMetricsSettings(uint64_t deviceId, void* handle)
   {
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
-    xaiefal::XAieDev* aieDevice =
-      static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
-    if (!aieDevInst || !aieDevice) {
-      xrt_core::message::send(severity_level::warning, "XRT",
-          "Unable to get AIE device. AIE event trace will not be available.");
-      return false;
-    }
-
-    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-    runtimeMetrics = (compilerOptions.event_trace == "runtime");
-
-    if (!runtimeMetrics) {
-      std::stringstream msg;
-      msg << "Found compiler trace option of " << compilerOptions.event_trace
-          << ". No runtime AIE metrics will be changed.";
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      return true;
-    }
-
     constexpr int NUM_MODULES = 2; // aie_tile, mem_tile
 
     std::vector<std::string> metricsConfig;
@@ -1454,7 +1435,6 @@ namespace xdp {
         return true;
       return false;
     }
-
 
     // Process AIE_profile_settings metrics
     // Each of the metrics can have ; separated multiple values. Process and save all

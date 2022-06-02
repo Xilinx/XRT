@@ -867,6 +867,18 @@ namespace xdp {
     }
   }
 
+  bool AIEProfilingPlugin::checkAieDevice(uint64_t deviceId, void* handle)
+  {
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+    aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
+    if (!aieDevInst || !aieDevice) {
+      xrt_core::message::send(severity_level::warning, "XRT", 
+          "Unable to get AIE device. There will be no AIE profiling.");
+      return false;
+    }
+    return true;
+  }
+
   void AIEProfilingPlugin::updateAIEDevice(void* handle)
   {
     // Don't update if no profiling is requested
@@ -898,6 +910,10 @@ namespace xdp {
 
       // 1. Runtime-defined counters
       // NOTE: these take precedence
+
+      if(!checkAieDevice(deviceId, handle))
+        return;
+
       bool runtimeCounters = setMetricsSettings(deviceId, handle);
       if(!runtimeCounters) 
         runtimeCounters = setMetrics(deviceId, handle);
