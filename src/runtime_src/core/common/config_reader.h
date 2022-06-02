@@ -369,6 +369,16 @@ get_aie_trace_metrics()
   return value;
 }
 
+/**
+ * off|time|graph|user
+ */
+inline std::string
+get_aie_trace_start_type()
+{
+  static std::string value = detail::get_string_value("Debug.aie_trace_start_type", "off");
+  return value;
+}
+
 inline std::string
 get_aie_trace_start_time()
 {
@@ -376,10 +386,10 @@ get_aie_trace_start_time()
   return value;
 }
 
-inline bool
-get_aie_trace_user_control()
+inline unsigned int
+get_aie_trace_start_iteration()
 {
-  static bool value = detail::get_bool_value("Debug.aie_trace_user_control", false);
+  static unsigned int value = detail::get_uint_value("Debug.aie_trace_start_iteration", 1);
   return value;
 }
 
