@@ -27,8 +27,8 @@ class SectionClockFrequencyTopology : public Section {
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  protected:
-  const std::string getClockTypeStr(enum CLOCK_TYPE _clockType) const;
-  enum CLOCK_TYPE getClockType(std::string& _sClockType) const;
+  const std::string getClockTypeStr(CLOCK_TYPE _clockType) const;
+  CLOCK_TYPE getClockType(std::string& _sClockType) const;
 
  private:
   // Static initializer helper class

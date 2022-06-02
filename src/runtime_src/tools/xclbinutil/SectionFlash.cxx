@@ -36,8 +36,8 @@ SectionFlash::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(ASK_FLASH, "FLASH", boost::factory<SectionFlash*>()); 
   sectionInfo->supportsSubSections = true;
-  sectionInfo->subSections.push_back(getSubSectionName(SubSection::DATA));
-  sectionInfo->subSections.push_back(getSubSectionName(SubSection::METADATA));
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::data));
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));
 
   sectionInfo->supportsIndexing = true;
 
@@ -45,32 +45,32 @@ SectionFlash::init::init()
   // The top-level section doesn't support any add syntax.
   // Must use sub-sections
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
-using SubSectionTableCollection = std::vector<std::pair<std::string, enum SectionFlash::SubSection>>;
+using SubSectionTableCollection = std::vector<std::pair<std::string, SectionFlash::SubSection>>;
 static const SubSectionTableCollection & 
   getSubSectionTable() 
 {
   static SubSectionTableCollection subSectionTable = {
-    std::make_pair("UNKNOWN", SectionFlash::SubSection::UNKNOWN),
-    std::make_pair("DATA", SectionFlash::SubSection::DATA),
-    std::make_pair("METADATA", SectionFlash::SubSection::METADATA)
+    {"UNKNOWN", SectionFlash::SubSection::unknown},
+    {"DATA", SectionFlash::SubSection::data},
+    {"METADATA", SectionFlash::SubSection::metadata}
   };
   return subSectionTable;
 }
 
 
-enum SectionFlash::SubSection 
-SectionFlash::getSubSectionEnum(const std::string sSubSectionName){
+SectionFlash::SubSection 
+SectionFlash::getSubSectionEnum(const std::string & sSubSectionName){
   auto subSectionTable = getSubSectionTable();
   auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
 
   if (iter == subSectionTable.end())
-    return SubSection::UNKNOWN;
+    return SubSection::unknown;
 
   return iter->second; 
 }
@@ -78,12 +78,12 @@ SectionFlash::getSubSectionEnum(const std::string sSubSectionName){
 // -------------------------------------------------------------------------
 
 const std::string &
-SectionFlash::getSubSectionName(enum SectionFlash::SubSection eSubSection){
+SectionFlash::getSubSectionName(SectionFlash::SubSection eSubSection){
   auto subSectionTable = getSubSectionTable();
   auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
 
   if (iter == subSectionTable.end())
-    return getSubSectionName(SubSection::UNKNOWN);
+    return getSubSectionName(SubSection::unknown);
 
   return iter->first; 
 }
@@ -107,7 +107,7 @@ SectionFlash::subSectionExists(const std::string& _sSubSectionName) const {
   // Extract the sub-section entry type
   const SubSection eSS = getSubSectionEnum(_sSubSectionName);
 
-  if (eSS == SubSection::METADATA) {
+  if (eSS == SubSection::metadata) {
     // Extract the binary data as a JSON string
     std::ostringstream buffer;
     writeMetadata(buffer);
@@ -139,7 +139,7 @@ SectionFlash::subSectionExists(const std::string& _sSubSectionName) const {
 // -------------------------------------------------------------------------
 
 static std::string
-getFlashTypeAsString(enum FLASH_TYPE _eFT) {
+getFlashTypeAsString(FLASH_TYPE _eFT) {
   switch (_eFT) {
     case FLT_BIN_PRIMARY: return "BIN";
     case FLT_UNKNOWN:     return "UNKNOWN";
@@ -148,7 +148,7 @@ getFlashTypeAsString(enum FLASH_TYPE _eFT) {
 }
 
 
-static enum FLASH_TYPE
+static FLASH_TYPE
 getFlashType(const std::string &_sFlashType) {
   if (_sFlashType == "BIN") {
     return FLT_BIN_PRIMARY;
@@ -176,7 +176,7 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   flash flashHdr = { 0 };              // Header buffer
   std::ostringstream stringBlock;      // String block (stored immediately after the header)
 
-  const flash* pHdr = reinterpret_cast<const flash*>(_pOrigDataSection);
+  auto pHdr = reinterpret_cast<const flash*>(_pOrigDataSection);
 
   XUtil::TRACE_BUF("flash-original", reinterpret_cast<const char*>(pHdr), sizeof(flash));
   XUtil::TRACE(boost::format("Original: \n"
@@ -221,7 +221,7 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // m_flash_type
   {
-    std::string sFlashType = ptFlash.get<std::string>("flash_type", getFlashTypeAsString((FLASH_TYPE) pHdr->m_flash_type).c_str());
+    auto sFlashType = ptFlash.get<std::string>("flash_type", getFlashTypeAsString((FLASH_TYPE) pHdr->m_flash_type).c_str());
 
     if (sFlashType.compare(getSectionIndexName()) != 0) {
       auto errMsg = boost::format("ERROR: Metadata data mpo_flash_type '%s' does not match expected section type '%s'") % sFlashType % getSectionIndexName();
@@ -231,7 +231,7 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // m_flash_type
   {
-    std::string sFlashType = ptFlash.get<std::string>("flash_type", getFlashTypeAsString((FLASH_TYPE) pHdr->m_flash_type).c_str());
+    auto sFlashType = ptFlash.get<std::string>("flash_type", getFlashTypeAsString((FLASH_TYPE) pHdr->m_flash_type).c_str());
     FLASH_TYPE eFlashType = getFlashType(sFlashType);
 
     flashHdr.m_flash_type = eFlashType;
@@ -240,8 +240,8 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_name
   {
-    std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_name;
-    std::string sValue = ptFlash.get<std::string>("name", sDefault);
+    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_name;
+    auto sValue = ptFlash.get<std::string>("name", sDefault);
     flashHdr.mpo_name = sizeof(flash) + stringBlock.tellp();
     stringBlock << sValue << '\0';
     XUtil::TRACE(boost::format("  mpo_name (0x%lx): '%s'") % flashHdr.mpo_name % sValue);
@@ -250,8 +250,8 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_version
   {
-    std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_version;
-    std::string sValue = ptFlash.get<std::string>("version", sDefault);
+    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_version;
+    auto sValue = ptFlash.get<std::string>("version", sDefault);
     flashHdr.mpo_version = sizeof(flash) + stringBlock.tellp();
     stringBlock << sValue << '\0';
     XUtil::TRACE(boost::format("  mpo_version (0x%lx): '%s'") % flashHdr.mpo_version % sValue);
@@ -259,8 +259,8 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_md5_value
   {
-    std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_md5_value;
-    std::string sValue = ptFlash.get<std::string>("md5", sDefault);
+    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(flash) + pHdr->mpo_md5_value;
+    auto sValue = ptFlash.get<std::string>("md5", sDefault);
     flashHdr.mpo_md5_value = sizeof(flash) + stringBlock.tellp();
     stringBlock << sValue << '\0';
     XUtil::TRACE(boost::format("  mpo_md5_value (0x%lx): '%s'") % flashHdr.mpo_md5_value % sValue);
@@ -353,20 +353,20 @@ SectionFlash::readSubPayload(const char* _pOrigDataSection,
                              unsigned int _origSectionSize,
                              std::istream& _istream,
                              const std::string& _sSubSectionName,
-                             enum Section::FormatType _eFormatType,
+                             Section::FormatType _eFormatType,
                              std::ostringstream& _buffer) const {
   // Determine the sub-section of interest
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SubSection::DATA:
+    case SubSection::data:
       // Some basic DRC checks
       if (_pOrigDataSection != nullptr) {
         std::string errMsg = "ERROR: Flash DATA image already exists.";
         throw std::runtime_error(errMsg);
       }
 
-      if (_eFormatType != Section::FormatType::RAW) {
+      if (_eFormatType != Section::FormatType::raw) {
         std::string errMsg = "ERROR: Flash DATA image only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -374,14 +374,14 @@ SectionFlash::readSubPayload(const char* _pOrigDataSection,
       createDefaultImage(_istream, _buffer);
       break;
 
-    case SubSection::METADATA: {
+    case SubSection::metadata: {
         // Some basic DRC checks
         if (_pOrigDataSection == nullptr) {
           std::string errMsg = "ERROR: Missing FLASH data image.  Add the FLASH[]-DATA image prior to changing its metadata.";
           throw std::runtime_error(errMsg);
         }
 
-        if (_eFormatType != Section::FormatType::JSON) {
+        if (_eFormatType != Section::FormatType::json) {
           std::string errMsg = "ERROR: FLASH[]-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -390,7 +390,7 @@ SectionFlash::readSubPayload(const char* _pOrigDataSection,
       }
       break;
 
-    case SubSection::UNKNOWN:
+    case SubSection::unknown:
     default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());
@@ -413,9 +413,9 @@ SectionFlash::writeObjImage(std::ostream& _oStream) const {
   }
 
   // No look at the data
-  flash* pHdr = reinterpret_cast<flash *>(m_pBuffer);
+  auto pHdr = reinterpret_cast<flash *>(m_pBuffer);
 
-  const char* pFWBuffer = reinterpret_cast<const char *>(pHdr) + pHdr->m_image_offset;
+  auto pFWBuffer = reinterpret_cast<const char *>(pHdr) + pHdr->m_image_offset;
   _oStream.write(pFWBuffer, pHdr->m_image_size);
 }
 
@@ -432,7 +432,7 @@ SectionFlash::writeMetadata(std::ostream& _oStream) const {
     throw std::runtime_error(errMsg.str());
   }
 
-  flash* pHdr = reinterpret_cast<flash *>(m_pBuffer);
+  auto pHdr = reinterpret_cast<flash *>(m_pBuffer);
 
   XUtil::TRACE(boost::format("Original: \n"
                              "  m_flash_type (%d) : '%s' \n"
@@ -476,9 +476,9 @@ SectionFlash::writeSubPayload(const std::string& _sSubSectionName,
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SubSection::DATA:
+    case SubSection::data:
       // Some basic DRC checks
-      if (_eFormatType != Section::FormatType::RAW) {
+      if (_eFormatType != Section::FormatType::raw) {
         std::string errMsg = "ERROR: FLASH[]-DATA only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -486,8 +486,8 @@ SectionFlash::writeSubPayload(const std::string& _sSubSectionName,
       writeObjImage(_oStream);
       break;
 
-    case SubSection::METADATA: {
-        if (_eFormatType != Section::FormatType::JSON) {
+    case SubSection::metadata: {
+        if (_eFormatType != Section::FormatType::json) {
           std::string errMsg = "ERROR: FLASH[]-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -496,7 +496,7 @@ SectionFlash::writeSubPayload(const std::string& _sSubSectionName,
       }
       break;
 
-    case SubSection::UNKNOWN:
+    case SubSection::unknown:
     default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());
@@ -527,7 +527,7 @@ SectionFlash::readXclBinBinary(std::istream& _istream, const axlf_section_header
 
   XUtil::TRACE_PrintTree("Current FLASH contents", ptFlash);
 
-  std::string sFlashType = ptFlash.get<std::string>("flash_type", "");
+  auto sFlashType = ptFlash.get<std::string>("flash_type", "");
 
   if (getFlashType(sFlashType) == FLT_UNKNOWN) {
     auto errMsg = boost::format("Error: Unknown flash type: %s") % sFlashType;

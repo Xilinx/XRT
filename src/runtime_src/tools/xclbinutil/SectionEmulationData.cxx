@@ -25,9 +25,9 @@ SectionEmulationData::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(EMULATION_DATA, "EMULATION_DATA", boost::factory<SectionEmulationData*>()); 
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }

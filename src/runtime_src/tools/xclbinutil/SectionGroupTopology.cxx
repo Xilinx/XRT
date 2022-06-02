@@ -31,11 +31,11 @@ SectionGroupTopology::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(ASK_GROUP_TOPOLOGY, "GROUP_TOPOLOGY", boost::factory<SectionGroupTopology*>()); 
   sectionInfo->nodeName = "group_topology";
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
@@ -43,7 +43,7 @@ SectionGroupTopology::init::init()
 // ----------------------------------------------------------------------------
 
 const std::string
-SectionGroupTopology::getMemTypeStr(enum MEM_TYPE _memType) const {
+SectionGroupTopology::getMemTypeStr(MEM_TYPE _memType) const {
   switch (_memType) {
     case MEM_DDR3:
       return "MEM_DDR3";
@@ -74,7 +74,7 @@ SectionGroupTopology::getMemTypeStr(enum MEM_TYPE _memType) const {
   return (boost::format("UNKNOWN (%d)") % (unsigned int)_memType).str();
 }
 
-enum MEM_TYPE
+MEM_TYPE
 SectionGroupTopology::getMemType(std::string& _sMemType) const {
   if (_sMemType == "MEM_DDR3")
     return MEM_DDR3;
@@ -154,7 +154,7 @@ SectionGroupTopology::marshalToJSON(char* _pDataSection,
 
     XUtil::TRACE(boost::format("[%d]: m_type: %s, m_used: %d, m_sizeKB: 0x%lx, m_tag: '%s', m_base_address: 0x%lx")
                                % index
-                               % getMemTypeStr((enum MEM_TYPE)pHdr->m_mem_data[index].m_type)
+                               % getMemTypeStr((MEM_TYPE)pHdr->m_mem_data[index].m_type)
                                % (unsigned int) pHdr->m_mem_data[index].m_used
                                % pHdr->m_mem_data[index].m_size
                                % pHdr->m_mem_data[index].m_tag
@@ -163,13 +163,13 @@ SectionGroupTopology::marshalToJSON(char* _pDataSection,
     // Write out the entire structure
     XUtil::TRACE_BUF("mem_data", reinterpret_cast<const char*>(&(pHdr->m_mem_data[index])), sizeof(mem_data));
 
-    mem_data.put("m_type", getMemTypeStr((enum MEM_TYPE)pHdr->m_mem_data[index].m_type).c_str());
+    mem_data.put("m_type", getMemTypeStr((MEM_TYPE)pHdr->m_mem_data[index].m_type).c_str());
     mem_data.put("m_used", (boost::format("%d") % (unsigned int) pHdr->m_mem_data[index].m_used).str());
     mem_data.put("m_sizeKB", (boost::format("0x%lx") % pHdr->m_mem_data[index].m_size).str());
     mem_data.put("m_tag", (boost::format("%s") % pHdr->m_mem_data[index].m_tag).str());
     mem_data.put("m_base_address", (boost::format("0x%lx") % pHdr->m_mem_data[index].m_base_address).str());
 
-    m_mem_data.push_back(std::make_pair("", mem_data));   // Used to make an array of objects
+    m_mem_data.push_back({"", mem_data});   // Used to make an array of objects
   }
 
   mem_topology.add_child("m_mem_data", m_mem_data);
@@ -209,12 +209,12 @@ SectionGroupTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     mem_data memData = mem_data {0};
     boost::property_tree::ptree ptMemData = kv.second;
 
-    std::string sm_type = ptMemData.get<std::string>("m_type");
+    auto sm_type = ptMemData.get<std::string>("m_type");
     memData.m_type = (uint8_t)getMemType(sm_type);
 
     memData.m_used = ptMemData.get<uint8_t>("m_used");
 
-    std::string sm_tag = ptMemData.get<std::string>("m_tag");
+    auto sm_tag = ptMemData.get<std::string>("m_tag");
     if (sm_tag.length() >= sizeof(mem_data::m_tag)) {
       auto errMsg = boost::format("ERROR: The m_tag entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
                                   % (unsigned int)sm_tag.length() % (unsigned int)sizeof(mem_data::m_tag) % sm_tag;
@@ -252,7 +252,7 @@ SectionGroupTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSect
       memData.m_size = XUtil::stringToUInt64(static_cast<std::string>(sizeKB.get()));
 
 
-      std::string sBaseAddress = ptMemData.get<std::string>("m_base_address");
+      auto sBaseAddress = ptMemData.get<std::string>("m_base_address");
       memData.m_base_address = XUtil::stringToUInt64(sBaseAddress);
     }
 

@@ -31,11 +31,11 @@ SectionIPLayout::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(IP_LAYOUT, "IP_LAYOUT", boost::factory<SectionIPLayout*>()); 
   sectionInfo->nodeName = "ip_layout";
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
@@ -43,7 +43,7 @@ SectionIPLayout::init::init()
 // ----------------------------------------------------------------------------
 
 const std::string
-SectionIPLayout::getIPTypeStr(enum IP_TYPE _ipType) const {
+SectionIPLayout::getIPTypeStr(IP_TYPE _ipType) const {
   switch (_ipType) {
     case IP_MB:
       return "IP_MB";
@@ -66,7 +66,7 @@ SectionIPLayout::getIPTypeStr(enum IP_TYPE _ipType) const {
   return (boost::format("UNKNOWN (%d)") % (unsigned int) _ipType).str();
 }
 
-enum IP_TYPE
+IP_TYPE
 SectionIPLayout::getIPType(std::string& _sIPType) const {
   if (_sIPType == "IP_MB") return IP_MB;
   if (_sIPType == "IP_KERNEL") return IP_KERNEL;
@@ -82,7 +82,7 @@ SectionIPLayout::getIPType(std::string& _sIPType) const {
 }
 
 const std::string
-SectionIPLayout::getIPControlTypeStr(enum IP_CONTROL _ipControlType) const {
+SectionIPLayout::getIPControlTypeStr(IP_CONTROL _ipControlType) const {
   switch (_ipControlType) {
     case AP_CTRL_HS:
       return "AP_CTRL_HS";
@@ -102,7 +102,7 @@ SectionIPLayout::getIPControlTypeStr(enum IP_CONTROL _ipControlType) const {
 }
 
 
-enum IP_CONTROL
+IP_CONTROL
 SectionIPLayout::getIPControlType(std::string& _sIPControlType) const {
   if (_sIPControlType == "AP_CTRL_HS") return AP_CTRL_HS;
   if (_sIPControlType == "AP_CTRL_CHAIN") return AP_CTRL_CHAIN;
@@ -160,22 +160,22 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree ip_data;
 
-    if (((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
-        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)  ||
-        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM_ECC)) {
+    if (((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
+        ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)  ||
+        ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM_ECC)) {
 
       XUtil::TRACE(boost::format("[%d]: m_type: %s, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'")
                                  % index
-                                 % getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type)
+                                 % getIPTypeStr((IP_TYPE)pHdr->m_ip_data[index].m_type)
                                  % pHdr->m_ip_data[index].indices.m_index
                                  % pHdr->m_ip_data[index].indices.m_pc_index
                                  % pHdr->m_ip_data[index].m_base_address
                                  % pHdr->m_ip_data[index].m_name);
-    } else if ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
-      std::string sIPControlType = getIPControlTypeStr((enum IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
+    } else if ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
+      std::string sIPControlType = getIPControlTypeStr((IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
       XUtil::TRACE(boost::format("[%d]: m_type: %s, properties: 0x%x {m_ip_control: %s, m_interrupt_id: %d, m_int_enable: %d}, m_base_address: 0x%lx, m_name: '%s'")
                                  % index
-                                 % getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type)
+                                 % getIPTypeStr((IP_TYPE)pHdr->m_ip_data[index].m_type)
                                  % pHdr->m_ip_data[index].properties
                                  % sIPControlType
                                  % ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT)
@@ -185,7 +185,7 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     } else {
       XUtil::TRACE(boost::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
                                  % index
-                                 % getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type)
+                                 % getIPTypeStr((IP_TYPE)pHdr->m_ip_data[index].m_type)
                                  % pHdr->m_ip_data[index].properties
                                  % pHdr->m_ip_data[index].m_base_address
                                  % pHdr->m_ip_data[index].m_name);
@@ -194,17 +194,17 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     // Write out the entire structure
     XUtil::TRACE_BUF("ip_data", reinterpret_cast<const char*>(&(pHdr->m_ip_data[index])), sizeof(ip_data));
 
-    ip_data.put("m_type", getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str());
+    ip_data.put("m_type", getIPTypeStr((IP_TYPE)pHdr->m_ip_data[index].m_type).c_str());
 
-    if (((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
-        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)  ||
-        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM_ECC)) {
+    if (((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
+        ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)  ||
+        ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM_ECC)) {
       ip_data.put("m_index", (boost::format("%d") % (unsigned int)pHdr->m_ip_data[index].indices.m_index).str());
       ip_data.put("m_pc_index", (boost::format("%d") % (unsigned int)pHdr->m_ip_data[index].indices.m_pc_index).str());
-    } else if ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
+    } else if ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
       ip_data.put("m_int_enable", (boost::format("%d") % ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_INT_ENABLE_MASK)))).str());
       ip_data.put("m_interrupt_id", (boost::format("%d") % (((pHdr->m_ip_data[index].properties & ((uint32_t) IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT))).str());
-      std::string sIPControlType = getIPControlTypeStr((enum IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
+      std::string sIPControlType = getIPControlTypeStr((IP_CONTROL) ((pHdr->m_ip_data[index].properties & ((uint32_t) IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
       ip_data.put("m_ip_control", sIPControlType.c_str());
     } else {
       ip_data.put("properties", (boost::format("0x%x") % pHdr->m_ip_data[index].properties).str());
@@ -216,7 +216,7 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     }
     ip_data.put("m_name", (boost::format("%s") % pHdr->m_ip_data[index].m_name).str());
 
-    m_ip_data.push_back(std::make_pair("", ip_data));   // Used to make an array of objects
+    m_ip_data.push_back({"", ip_data});   // Used to make an array of objects
   }
 
   ip_layout.add_child("m_ip_data", m_ip_data);
@@ -256,7 +256,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     ip_data ipDataHdr = ip_data {0};
     boost::property_tree::ptree ptIPData = kv.second;
 
-    std::string sm_type = ptIPData.get<std::string>("m_type");
+    auto sm_type = ptIPData.get<std::string>("m_type");
     ipDataHdr.m_type = getIPType(sm_type);
 
     // For these IPs, the struct indices needs to be initialized
@@ -268,7 +268,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
       ipDataHdr.indices.m_pc_index = ptIPData.get<uint8_t>("m_pc_index", 0);
     } else {
       // Get the properties value (if one is defined)
-      std::string sProperties = ptIPData.get<std::string>("properties", "0");
+      auto sProperties = ptIPData.get<std::string>("properties", "0");
       ipDataHdr.properties = (uint32_t)XUtil::stringToUInt64(sProperties);
       
       { // m_int_enable
@@ -283,7 +283,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
       }
   
       { // m_interrupt_id
-        std::string sInterruptID = ptIPData.get<std::string>("m_interrupt_id","");
+        auto sInterruptID = ptIPData.get<std::string>("m_interrupt_id","");
         if (!sInterruptID.empty()) {
           unsigned int interruptID = std::stoul(sInterruptID);
           unsigned int maxValue = ((unsigned int) IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
@@ -319,7 +319,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
       }
     }
 
-    std::string sBaseAddress = ptIPData.get<std::string>("m_base_address");
+    auto sBaseAddress = ptIPData.get<std::string>("m_base_address");
 
     if ( sBaseAddress != "not_used" ) {
       ipDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
@@ -328,7 +328,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
       ipDataHdr.m_base_address = (uint64_t) -1;
     }
 
-    std::string sm_name = ptIPData.get<std::string>("m_name");
+    auto sm_name = ptIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(ip_data::m_name)) {
       auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
                                    % (unsigned int) sm_name.length() % (unsigned int) sizeof(ip_data::m_name) % sm_name;
@@ -421,7 +421,7 @@ SectionIPLayout::appendToSectionMetadata(const boost::property_tree::ptree& _ptA
 
   for (auto ip_data : ip_datas) {
     boost::property_tree::ptree new_ip_data;
-    std::string sm_type = ip_data.get<std::string>("m_type");
+    auto sm_type = ip_data.get<std::string>("m_type");
     new_ip_data.put("m_type", sm_type);
 
     if ((getIPType(sm_type) == IP_MEM_DDR4) ||
@@ -435,7 +435,7 @@ SectionIPLayout::appendToSectionMetadata(const boost::property_tree::ptree& _ptA
     new_ip_data.put("m_base_address", ip_data.get<std::string>("m_base_address"));
     new_ip_data.put("m_name", ip_data.get<std::string>("m_name"));
 
-    ptDest_m_ip_data.push_back(std::make_pair("", new_ip_data));   // Used to make an array of objects
+    ptDest_m_ip_data.push_back({"", new_ip_data});   // Used to make an array of objects
   }
 
   // Update count

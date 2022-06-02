@@ -28,9 +28,9 @@ SectionBitstream::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(BITSTREAM, "BITSTREAM", boost::factory<SectionBitstream*>());
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }

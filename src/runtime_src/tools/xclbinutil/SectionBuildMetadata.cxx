@@ -31,11 +31,11 @@ SectionBuildMetadata::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(BUILD_METADATA, "BUILD_METADATA", boost::factory<SectionBuildMetadata*>()); 
   sectionInfo->nodeName = "build_metadata";
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
-  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
 
   addSectionType(std::move(sectionInfo));
 }

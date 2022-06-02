@@ -32,9 +32,9 @@ SectionDNACertificate::init::init()
 
   // Add format support empty (no support)
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
@@ -116,7 +116,7 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
 
     boost::property_tree::ptree ptDNA;
     ptDNA.put("", dnaString.c_str());
-    dna_list.push_back(std::make_pair("", ptDNA));
+    dna_list.push_back({"", ptDNA});
   }
   XUtil::TRACE_PrintTree("DNA_LIST", dna_list);
 

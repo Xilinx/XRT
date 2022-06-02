@@ -294,7 +294,7 @@ FDTNode::marshalSubNodeToJSON(boost::property_tree::ptree& _ptTree,
   if (m_name.length() != 0) 
     _ptTree.add_child(m_name.c_str(), ptSubNode);
   else 
-    _ptTree.push_back(std::make_pair("", ptSubNode));
+    _ptTree.push_back({"", ptSubNode});
 }
 
 

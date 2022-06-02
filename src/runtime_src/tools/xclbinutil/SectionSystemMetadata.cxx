@@ -30,9 +30,9 @@ SectionSystemMetadata::init::init()
 { 
     auto sectionInfo = std::make_unique<SectionInfo>(SYSTEM_METADATA, "SYSTEM_METADATA", boost::factory<SectionSystemMetadata*>()); 
 
-    sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+    sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
-    sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+    sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
     addSectionType(std::move(sectionInfo));
 }

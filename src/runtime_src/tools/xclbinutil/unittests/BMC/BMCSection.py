@@ -1,10 +1,10 @@
-import subprocess
-import os
-import argparse
 from argparse import RawDescriptionHelpFormatter
+import argparse
+import binascii
 import filecmp
 import json
-import binascii
+import os
+import subprocess
 
 # Start of our unit test
 # -- main() -------------------------------------------------------------------

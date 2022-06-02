@@ -81,7 +81,7 @@ DTCStringsBlock::parseDTCStringsBlock(const char* _pBuffer, const unsigned int _
 }
 
 uint32_t 
-DTCStringsBlock::addString(const std::string _dtcString)
+DTCStringsBlock::addString(const std::string & _dtcString)
 {
   // Has the string already been added
   std::string haystackString = m_pDTCStringBlock->str();

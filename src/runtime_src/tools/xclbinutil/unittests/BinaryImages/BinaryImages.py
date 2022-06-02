@@ -1,9 +1,9 @@
-import subprocess
-import os
-import argparse
 from argparse import RawDescriptionHelpFormatter
+import argparse
 import filecmp
 import json
+import os
+import subprocess
 
 # Start of our unit test
 # -- main() -------------------------------------------------------------------

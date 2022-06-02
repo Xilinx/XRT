@@ -24,20 +24,20 @@
 class SectionSoftKernel : public Section {
  public:
   enum SubSection{
-    UNKNOWN,
-    OBJ,
-    METADATA
+    unknown,
+    obj,
+    metadata
   };
  public:
-  static enum SubSection getSubSectionEnum(const std::string _sSubSectionName);
-  static const std::string & getSubSectionName(enum SubSection eSubSection);
+  static SubSection getSubSectionEnum(const std::string & _sSubSectionName);
+  static const std::string & getSubSectionName(SubSection eSubSection);
 
  public:
   bool subSectionExists(const std::string &_sSubSectionName) const override;
   void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader) override;
 
  protected:
-  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const override;
+  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, Section::FormatType _eFormatType, std::ostringstream &_buffer) const override;
   void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
 
  protected:

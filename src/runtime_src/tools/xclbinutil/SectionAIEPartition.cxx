@@ -30,11 +30,11 @@ SectionAIEPartition::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(AIE_PARTITION, "AIE_PARTITION", boost::factory<SectionAIEPartition*>());
   sectionInfo->nodeName = "aie_partition";
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
@@ -81,13 +81,13 @@ SectionAIEPartition::marshalToJSON(char* pDataSection,
                                % pHdr->info.mpo_auint16_start_columns);
 
     if (pHdr->info.start_columns_count) {
-      const uint16_t* startColumns = reinterpret_cast<const uint16_t*>(reinterpret_cast<const uint8_t*>(pHdr) + pHdr->info.mpo_auint16_start_columns);
+      auto startColumns = reinterpret_cast<const uint16_t*>(reinterpret_cast<const uint8_t*>(pHdr) + pHdr->info.mpo_auint16_start_columns);
 
       boost::property_tree::ptree ptArray;
       for (size_t index = 0; index < pHdr->info.start_columns_count; index++) {
         boost::property_tree::ptree ptEntry;
         ptEntry.put("", std::to_string(startColumns[index]));
-        ptArray.push_back(std::make_pair("", ptEntry));   // Used to make an array of objects
+        ptArray.push_back({"", ptEntry});   // Used to make an array of objects
       }
       ptPartitionInfo.add_child("start_columns", ptArray);
     }

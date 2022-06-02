@@ -25,9 +25,9 @@ SectionAIEResources::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(AIE_RESOURCES, "AIE_RESOURCES", boost::factory<SectionAIEResources*>());
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }

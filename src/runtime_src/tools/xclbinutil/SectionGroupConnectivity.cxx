@@ -31,11 +31,11 @@ SectionGroupConnectivity::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(ASK_GROUP_CONNECTIVITY, "GROUP_CONNECTIVITY", boost::factory<SectionGroupConnectivity*>()); 
   sectionInfo->nodeName = "group_connectivity";
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
@@ -90,7 +90,7 @@ SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
     connection.put("m_ip_layout_index", (boost::format("%d") % (unsigned int) pHdr->m_connection[index].m_ip_layout_index).str());
     connection.put("mem_data_index", (boost::format("%d") % (unsigned int) pHdr->m_connection[index].mem_data_index).str());
 
-    m_connection.push_back(std::make_pair("", connection));   // Used to make an array of objects
+    m_connection.push_back({"", connection});   // Used to make an array of objects
   }
 
   connectivity.add_child("m_connection", m_connection);

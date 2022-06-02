@@ -29,8 +29,8 @@ class SectionGroupTopology : public Section {
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  protected:
-  const std::string getMemTypeStr(enum MEM_TYPE _memType) const;
-  enum MEM_TYPE getMemType(std::string& _sMemType) const;
+  const std::string getMemTypeStr(MEM_TYPE _memType) const;
+  MEM_TYPE getMemType(std::string& _sMemType) const;
 
  private:
   // Static initializer helper class

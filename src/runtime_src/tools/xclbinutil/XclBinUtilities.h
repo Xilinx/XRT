@@ -37,8 +37,8 @@ class XclBin;
 
 // Custom exception with payloads
 typedef enum {
-  XET_RUNTIME = 1,           // Generic Runtime error (1)
-  XET_MISSING_SECTION = 100, // Section is missing
+  xet_runtime = 1,           // Generic Runtime error (1)
+  xet_missing_section = 100, // Section is missing
 } XclBinExceptionType;
 
 namespace XclBinUtilities {

@@ -25,9 +25,9 @@ SectionManagementFW::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(FIRMWARE, "FIRMWARE", boost::factory<SectionManagementFW*>()); 
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }

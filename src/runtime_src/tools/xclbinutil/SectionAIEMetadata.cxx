@@ -30,11 +30,11 @@ SectionAIEMetadata::init::init()
 {
   auto sectionInfo = std::make_unique<SectionInfo>(AIE_METADATA, "AIE_METADATA", boost::factory<SectionAIEMetadata*>());
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::JSON);
-  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::JSON);
-  sectionInfo->supportedDumpFormats.push_back(FormatType::HTML);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
 
   addSectionType(std::move(sectionInfo));
 }

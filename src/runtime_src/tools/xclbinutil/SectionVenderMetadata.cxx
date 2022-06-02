@@ -46,7 +46,7 @@ SectionVenderMetadata::init::init()
   // The top-level section doesn't support any add syntax.
   // Must use sub-sections
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
@@ -120,8 +120,8 @@ SectionVenderMetadata::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   // Update and record the variables
   // mpo_name
   {
-    std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(vender_metadata) + pHdr->mpo_name;
-    std::string sValue = ptSK.get<std::string>("mpo_name", sDefault);
+    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(vender_metadata) + pHdr->mpo_name;
+    auto sValue = ptSK.get<std::string>("mpo_name", sDefault);
 
     if (sValue.compare(getSectionIndexName()) != 0) {
       auto errMsg = boost::format("ERROR: Metadata data mpo_name '%s' does not match expected section name '%s'")
@@ -204,7 +204,7 @@ SectionVenderMetadata::readSubPayload(const char* _pOrigDataSection,
                                       unsigned int _origSectionSize,
                                       std::istream& _istream,
                                       const std::string& _sSubSectionName,
-                                      enum Section::FormatType _eFormatType,
+                                      Section::FormatType _eFormatType,
                                       std::ostringstream& _buffer) const
 {
   // Only default (e.g. empty) sub sections are supported
@@ -220,7 +220,7 @@ SectionVenderMetadata::readSubPayload(const char* _pOrigDataSection,
     throw std::runtime_error(errMsg);
   }
 
-  if (_eFormatType != Section::FormatType::RAW) {
+  if (_eFormatType != Section::FormatType::raw) {
     std::string errMsg = "ERROR: Vendor Metadata only supports the RAW format.";
     throw std::runtime_error(errMsg);
   }
@@ -243,9 +243,9 @@ SectionVenderMetadata::writeObjImage(std::ostream& _oStream) const
   }
 
   // No look at the data
-  vender_metadata* pHdr = reinterpret_cast<vender_metadata*>(m_pBuffer);
+  auto pHdr = reinterpret_cast<vender_metadata*>(m_pBuffer);
 
-  const char* pFWBuffer = reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset;
+  auto pFWBuffer = reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset;
   _oStream.write(pFWBuffer, pHdr->m_image_size);
 }
 
@@ -263,7 +263,7 @@ SectionVenderMetadata::writeMetadata(std::ostream& _oStream) const
     throw std::runtime_error(boost::str(errMsg));
   }
 
-  vender_metadata* pHdr = reinterpret_cast<vender_metadata*>(m_pBuffer);
+  auto pHdr = reinterpret_cast<vender_metadata*>(m_pBuffer);
   XUtil::TRACE(boost::str(boost::format(
                               "Original: \n"
                               "  mpo_name (0x%lx): '%s'\n"
@@ -302,7 +302,7 @@ SectionVenderMetadata::writeSubPayload(const std::string& _sSubSectionName,
   }
 
   // Some basic DRC checks
-  if (_eFormatType != Section::FormatType::RAW) {
+  if (_eFormatType != Section::FormatType::raw) {
     std::string errMsg = "ERROR: Vendor Metadata section only supports the RAW format.";
     throw std::runtime_error(errMsg);
   }
@@ -335,7 +335,7 @@ SectionVenderMetadata::readXclBinBinary(std::istream& _istream, const axlf_secti
     throw std::runtime_error("ERROR: copyBufferUpdateMetadata could not find the vender_metadata section.");
 
   XUtil::TRACE_PrintTree("Current VENDER_METADATA contents", pt);
-  std::string sName = ptVenderMetadata.get<std::string>("mpo_name");
+  auto sName = ptVenderMetadata.get<std::string>("mpo_name");
 
   Section::m_sIndexName = sName;
 }

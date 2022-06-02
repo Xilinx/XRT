@@ -27,8 +27,8 @@ class SectionDebugIPLayout : public Section {
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  protected:
-  const std::string getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const;
-  enum DEBUG_IP_TYPE getDebugIPType(std::string& _sDebugIPType) const;
+  const std::string getDebugIPTypeStr(DEBUG_IP_TYPE _debugIpType) const;
+  DEBUG_IP_TYPE getDebugIPType(std::string& _sDebugIPType) const;
 
  private:
   // Static initializer helper class

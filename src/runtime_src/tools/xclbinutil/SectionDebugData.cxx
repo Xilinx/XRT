@@ -25,9 +25,9 @@ SectionDebugData::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_DATA, "DEBUG_DATA", boost::factory<SectionDebugData*>());
 
-  sectionInfo->supportedAddFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
-  sectionInfo->supportedDumpFormats.push_back(FormatType::RAW);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
