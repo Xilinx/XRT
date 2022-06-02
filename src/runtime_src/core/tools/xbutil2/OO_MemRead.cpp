@@ -33,8 +33,9 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <vector>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 

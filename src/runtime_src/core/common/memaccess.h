@@ -25,9 +25,11 @@
 #include <string>
 
 namespace xrt_core {
+  XRT_CORE_COMMON_EXPORT
   std::vector<char>
   device_mem_read(device* device, uint64_t start_addr, uint64_t size);
 
+  XRT_CORE_COMMON_EXPORT
   void
   device_mem_write(device* device, uint64_t start_addr, std::vector<char>& src);
 }

@@ -17,16 +17,17 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "core/common/memaccess.h"
+#define XRT_CORE_COMMON_SOURCE
+#include "memaccess.h"
 
 #include <iostream>
 #include <numeric>
 #include <vector>
 
-#include "core/common/memalign.h"
-#include "core/common/query_requests.h"
-#include "core/common/utils.h"
-#include "core/common/unistd.h"
+#include "memalign.h"
+#include "query_requests.h"
+#include "utils.h"
+#include "unistd.h"
 
 // TODO add tag in here for alter use...
 struct mem_bank_t {
@@ -179,7 +180,7 @@ namespace xrt_core {
 
     // Format the read data into the return object
     std::vector<char> data(size);
-    memcpy(data.data(), buf.get(), size);
+    std::memcpy(data.data(), buf.get(), size);
     return data;
   }
 
@@ -190,7 +191,7 @@ namespace xrt_core {
     auto buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), src.size());
     if (!buf)
       throw std::runtime_error("write_banks: Failed to allocate aligned buffer");
-    memcpy(buf.get(), src.data(), src.size());
+    std::memcpy(buf.get(), src.data(), src.size());
 
     // Write to the device
     perform_memory_action(device, buf, start_addr, src.size(), OperationType::write);

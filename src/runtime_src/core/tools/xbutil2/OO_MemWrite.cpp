@@ -33,9 +33,10 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <math.h>
+#include <vector>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -150,22 +151,22 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     std::ifstream input_stream(m_inputFile, std::ios::binary);
     // If count is unspecified, calculate based on the file size and block size
     int count = m_count;
-    // if (vm["count"].defaulted()) {
-    //   // input_stream.seekg(0, input_stream.end);
-    //   // // tellg returns a signed value as the number of bytes. Validate the return code and
-    //   // // cast it into a useful format
-    //   // auto nonvalidated_length = input_stream.tellg();
-    //   // if (nonvalidated_length < 0)
-    //   //   throw std::runtime_error("Failed to get input file length");
-    //   // uint64_t validated_length = static_cast<uint64_t>(nonvalidated_length);
+    if (vm["count"].defaulted()) {
+      input_stream.seekg(0, input_stream.end);
+      // tellg returns a signed value as the number of bytes. Validate the return code and
+      // cast it into a useful format
+      auto nonvalidated_length = input_stream.tellg();
+      if (nonvalidated_length < 0)
+        throw std::runtime_error("Failed to get input file length");
+      uint64_t validated_length = static_cast<uint64_t>(nonvalidated_length);
 
-    //   if (m_sizeBytes.empty()) // update size
-    //     size = validated_length;
-    //   count = static_cast<int>(std::ceil(validated_length / size));
-    //   input_stream.seekg(0, input_stream.beg);
-    // }
-    // else
-    //   count = m_count;
+      if (m_sizeBytes.empty()) // update size
+        size = validated_length;
+      count = static_cast<int>(std::ceil(validated_length / size));
+      input_stream.seekg(0, input_stream.beg);
+    }
+    else
+      count = m_count;
 
     if (count <= 0)
       throw xrt_core::error(std::errc::operation_canceled, "Value for --count must be greater than 0");
@@ -211,10 +212,10 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     if (m_sizeBytes.empty())
       throw xrt_core::error(std::errc::operation_canceled, "Value required for --size when using --fill");
 
-    unsigned int fill_byte = 'J';
+    char fill_byte = 'J';
     try {
       //-- fill pattern
-      fill_byte = std::stoi(m_fill, nullptr, 0);
+      fill_byte = static_cast<char>(std::stoi(m_fill, nullptr, 0));
     }
     catch(const std::invalid_argument&) {
       std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--fill'. Please specify a value between 0 and 255\n") % m_fill;
