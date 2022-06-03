@@ -1646,7 +1646,7 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 	}
 
 	userpf_info(xdev, "Config start completed, num_cus(%d), num_scus(%d)\n",
-		    cfg_start->num_cus, cfg_start->num_scus);
+		    num_cus, num_scus);
 	return 0;
 }
 
@@ -1707,6 +1707,9 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info
 		int max_off_idx = 0;
 		int max_off = 0;
 		int max_off_arg_size = 0;
+
+		if (cu_info[i].protocol == CTRL_NONE)
+			continue;
 
 		client = kds->anon_client;
 		xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
@@ -1898,6 +1901,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	struct xrt_cu_info *cu_info = NULL;
 	int major = 0, minor = 0;
 	int num_cus = 0;
+	int num_ooc_cus = 0;
 	struct xrt_cu_info *scu_info = NULL;
 	int num_scus = 0;
 	int ret = 0;
@@ -1934,6 +1938,13 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		return -ENOMEM;
 	}
 	num_scus = xocl_kds_fill_scu_info(xdev, slot_hdl, ip_layout, scu_info, MAX_CUS);
+
+	/* Count number of out of control CU */
+	num_ooc_cus = 0;
+	for (i = 0; i < num_cus; i++) {
+		if (cu_info[i].protocol == CTRL_NONE)
+			num_ooc_cus++;
+	}
 
 	/*
 	 * The XGQ Identify command is used to identify the version of firmware which
