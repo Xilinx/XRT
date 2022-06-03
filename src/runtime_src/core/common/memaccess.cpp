@@ -27,7 +27,7 @@
 #include "memalign.h"
 #include "query_requests.h"
 #include "utils.h"
-#include "unistd.h"
+#include "core/common/unistd.h"
 
 // Holds the parsed data from the memory topology object
 struct mem_bank_t
