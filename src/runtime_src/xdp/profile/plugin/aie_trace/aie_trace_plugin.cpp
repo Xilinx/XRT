@@ -245,7 +245,8 @@ namespace xdp {
       ++required;
       if (!mUseOneDelayCtr)
         ++required;
-    }
+    } else if (mUseGraphIterator)
+      ++required;
     if (available < required) {
       msg << "Available core module performance counters for aie trace : " << available << std::endl
           << "Required core module performance counters for aie trace : "  << required;
@@ -405,64 +406,79 @@ namespace xdp {
     return tiles;
   }
 
-  void AieTracePlugin::setTraceStartDelayCycles(void* handle)
+  void AieTracePlugin::setTraceStartControl(void* handle)
   {
-    double freqMhz = AIE_DEFAULT_FREQ_MHZ;
+    mUseDelay = false;
+    mUseGraphIterator = false;
+    mUseUserControl = false;
 
-    if (handle != nullptr) {
-      auto device = xrt_core::get_userpf_device(handle);
-      freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
-    }
+    auto startType = xrt_core::config::get_aie_trace_settings_start_type();
 
-    std::smatch pieces_match;
-    uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * 1e6);
+    if (startType == "time") {
+    // Use number of cycles to start trace
+      double freqMhz = AIE_DEFAULT_FREQ_MHZ;
+      if (handle != nullptr) {
+        auto device = xrt_core::get_userpf_device(handle);
+        freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+      }
 
-    // AIE_trace_settings configs have higher priority than older Debug configs
-    std::string size_str = xrt_core::config::get_aie_trace_settings_start_time();
-    if(0 == size_str.compare("0")) {
-      size_str = xrt_core::config::get_aie_trace_start_time();
-    }
+      std::smatch pieces_match;
+      uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * 1e6);
 
-    // Catch cases like "1Ms" "1NS"
-    std::transform(size_str.begin(), size_str.end(), size_str.begin(),
-      [](unsigned char c){ return std::tolower(c); });
+      // AIE_trace_settings configs have higher priority than older Debug configs
+      std::string size_str = xrt_core::config::get_aie_trace_settings_start_time();
+      if (size_str == "0")
+        size_str = xrt_core::config::get_aie_trace_start_time();
 
-    // Default is 0 cycles
-    uint64_t cycles = 0;
-    // Regex can parse values like : "1s" "1ms" "1ns"
-    const std::regex size_regex("\\s*(\\d+\\.?\\d*)\\s*(s|ms|us|ns|)\\s*");
-    if (std::regex_match(size_str, pieces_match, size_regex)) {
-      try {
-        if (pieces_match[2] == "s") {
-          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec);
-        } else if (pieces_match[2] == "ms") {
-          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e3);
-        } else if (pieces_match[2] == "us") {
-          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e6);
-        } else if (pieces_match[2] == "ns") {
-          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e9);
-        } else {
-          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]));
-        }
+      // Catch cases like "1Ms" "1NS"
+      std::transform(size_str.begin(), size_str.end(), size_str.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+
+      // Default is 0 cycles
+      uint64_t cycles = 0;
+      // Regex can parse values like : "1s" "1ms" "1ns"
+      const std::regex size_regex("\\s*(\\d+\\.?\\d*)\\s*(s|ms|us|ns|)\\s*");
+      if (std::regex_match(size_str, pieces_match, size_regex)) {
+        try {
+          if (pieces_match[2] == "s") {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec);
+          } else if (pieces_match[2] == "ms") {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e3);
+          } else if (pieces_match[2] == "us") {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e6);
+          } else if (pieces_match[2] == "ns") {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e9);
+          } else {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]));
+          }
         
-        std::string msg("Parsed aie_trace_start_time: " + std::to_string(cycles) + " cycles.");
-        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+          std::string msg("Parsed aie_trace_start_time: " + std::to_string(cycles) + " cycles.");
+          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
 
-      } catch (const std::exception& ) {
-        // User specified number cannot be parsed
+        } catch (const std::exception& ) {
+          // User specified number cannot be parsed
+          std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+        }
+      } else {
         std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       }
-    } else {  
-      std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+
+      if (cycles > std::numeric_limits<uint32_t>::max())
+        mUseOneDelayCtr = false;
+
+      mUseDelay = (cycles != 0);
+      mDelayCycles = cycles;
+    } else if (startType == "graph") {
+    // Start trace when graph iterator reaches a threshold
+      mIterationCount = xrt_core::config::get_aie_trace_settings_start_iteration();
+      mUseGraphIterator = (mIterationCount != 0);
+    } else if (startType == "user") {
+    // Start trace using user events
+      mUseUserControl = true;
     }
 
-    if (cycles > std::numeric_limits<uint32_t>::max())
-      mUseOneDelayCtr = false;
-
-    mUseDelay = ( cycles != 0 );
-    mDelayCycles = cycles;
   }
 
   bool AieTracePlugin::configureStartDelay(xaiefal::XAieMod& core)
@@ -535,6 +551,38 @@ namespace xdp {
     return true;
   }
 
+bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
+  {
+    XAie_ModuleType mod = XAIE_CORE_MOD;
+    // Count up by 1 for every iteration
+    auto pc = core.perfCounter();
+    if (pc->initialize(mod, XAIE_EVENT_INSTR_EVENT_0_CORE,
+                       mod, XAIE_EVENT_INSTR_EVENT_0_CORE) != XAIE_OK)
+      return false;
+    if (pc->reserve() != XAIE_OK)
+      return false;
+    pc->changeThreshold(mIterationCount);
+    XAie_Events counterEvent;
+    pc->getCounterEvent(mod, counterEvent);
+    // Reset when done counting
+    pc->changeRstEvent(mod, counterEvent);
+    if (pc->start() != XAIE_OK)
+        return false;
+
+    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
+      std::stringstream msg;
+      msg << "Configuring aie trace to start on iteration : " << mIterationCount;
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    }
+
+    coreTraceStartEvent = counterEvent;
+    // This is needed because the cores are started/stopped during execution
+    // to get around some hw bugs. We cannot restart tracemodules when that happens
+    coreTraceEndEvent = XAIE_EVENT_NONE_CORE;
+
+    return true;
+  }
+
   // Configure all resources necessary for trace control and events
   bool AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
@@ -555,7 +603,7 @@ namespace xdp {
     }
 
     auto tiles = getTilesForTracing(handle);
-    setTraceStartDelayCycles(handle);
+    setTraceStartControl(handle);
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -703,9 +751,11 @@ namespace xdp {
         auto coreTrace = core.traceControl();
 
         // Delay cycles and user control are not compatible with each other
-        if (xrt_core::config::get_aie_trace_user_control()) {
+        if (mUseUserControl) {
           coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
           coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+        } else if (mUseGraphIterator && !configureStartIteration(core)) {
+          break;
         } else if (mUseDelay && !configureStartDelay(core)) {
           break;
         }
@@ -1463,10 +1513,10 @@ namespace xdp {
             return true;
           return false;
         }
-    
+
         auto tiles = getTilesForTracing(handle);
-        setTraceStartDelayCycles(handle);
-    
+        setTraceStartControl(handle);
+
         // Keep track of number of events reserved per tile
         int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
         int numTileMemoryTraceEvents[NUM_MEMORY_TRACE_EVENTS+1] = {0};
@@ -1603,7 +1653,7 @@ namespace xdp {
             printTileStats(aieDevice, tile);
             return false;
           }
-    
+
           //
           // 3. Configure Core Tracing Events
           //
@@ -1611,20 +1661,22 @@ namespace xdp {
             XAie_ModuleType mod = XAIE_CORE_MOD;
             uint8_t phyEvent = 0;
             auto coreTrace = core.traceControl();
-    
+
             // Delay cycles and user control are not compatible with each other
-            if (xrt_core::config::get_aie_trace_user_control()) {
+            if (mUseUserControl) {
               coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
               coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+            } else if (mUseGraphIterator && !configureStartIteration(core)) {
+              break;
             } else if (mUseDelay && !configureStartDelay(core)) {
               break;
             }
-    
+
             // Set overall start/end for trace capture
             // Wendy said this should be done first
             if (coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK) 
               break;
-    
+
             auto ret = coreTrace->reserve();
             if (ret != XAIE_OK) {
               std::stringstream msg;

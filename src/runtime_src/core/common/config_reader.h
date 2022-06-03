@@ -377,13 +377,6 @@ get_aie_trace_start_time()
 }
 
 inline bool
-get_aie_trace_user_control()
-{
-  static bool value = detail::get_bool_value("Debug.aie_trace_user_control", false);
-  return value;
-}
-
-inline bool
 get_aie_trace_periodic_offload()
 {
   static bool value = detail::get_bool_value("Debug.aie_trace_periodic_offload", true);
@@ -915,6 +908,10 @@ get_aie_profile_settings_mem_tile_metrics()
 }
 
 // AIE_trace_settings
+
+/**
+ * off|time|graph|user
+ */
 inline std::string
 get_aie_trace_settings_start_type()
 {
@@ -925,7 +922,6 @@ get_aie_trace_settings_start_type()
 inline std::string
 get_aie_trace_settings_start_time()
 {
-  //default value ?
   static std::string value = detail::get_string_value("AIE_trace_settings.start_time", "0");
   return value;
 }
