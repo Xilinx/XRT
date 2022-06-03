@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -320,15 +320,15 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   aimResults.NumSlots = (unsigned int)debugIpNum[AXI_MM_MONITOR];
 
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo);
-  aimResults.WriteBytes[index]    = valBuf[xdp::IP::AIM::xbutil::WRITE_BYTES];
-  aimResults.WriteTranx[index]    = valBuf[xdp::IP::AIM::xbutil::WRITE_TRANX];
-  aimResults.ReadBytes[index]     = valBuf[xdp::IP::AIM::xbutil::READ_BYTES];
-  aimResults.ReadTranx[index]     = valBuf[xdp::IP::AIM::xbutil::READ_TRANX];
-  aimResults.OutStandCnts[index]  = valBuf[xdp::IP::AIM::xbutil::OUTSTANDING_COUNT];
-  aimResults.LastWriteAddr[index] = valBuf[xdp::IP::AIM::xbutil::WRITE_LAST_ADDRESS];
-  aimResults.LastWriteData[index] = valBuf[xdp::IP::AIM::xbutil::WRITE_LAST_DATA];
-  aimResults.LastReadAddr[index]  = valBuf[xdp::IP::AIM::xbutil::READ_LAST_ADDRESS];
-  aimResults.LastReadData[index]  = valBuf[xdp::IP::AIM::xbutil::READ_LAST_DATA];
+  aimResults.WriteBytes[index]    = valBuf[xdp::IP::AIM::report::WRITE_BYTES];
+  aimResults.WriteTranx[index]    = valBuf[xdp::IP::AIM::report::WRITE_TRANX];
+  aimResults.ReadBytes[index]     = valBuf[xdp::IP::AIM::report::READ_BYTES];
+  aimResults.ReadTranx[index]     = valBuf[xdp::IP::AIM::report::READ_TRANX];
+  aimResults.OutStandCnts[index]  = valBuf[xdp::IP::AIM::report::OUTSTANDING_COUNT];
+  aimResults.LastWriteAddr[index] = valBuf[xdp::IP::AIM::report::WRITE_LAST_ADDRESS];
+  aimResults.LastWriteData[index] = valBuf[xdp::IP::AIM::report::WRITE_LAST_DATA];
+  aimResults.LastReadAddr[index]  = valBuf[xdp::IP::AIM::report::READ_LAST_ADDRESS];
+  aimResults.LastReadData[index]  = valBuf[xdp::IP::AIM::report::READ_LAST_DATA];
 
 }
 

@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -544,15 +544,15 @@ struct aim_counter
     /* Note that required return values are NOT in contiguous sequential order 
      * in AIM subdevice file. So, need to read only a few isolated indices in val_buf.
      */
-    retval_buf[xdp::IP::AIM::xbutil::WRITE_BYTES] = val_buf[xdp::IP::AIM::sysfs::WRITE_BYTES];
-    retval_buf[xdp::IP::AIM::xbutil::WRITE_TRANX] = val_buf[xdp::IP::AIM::sysfs::WRITE_TRANX];
-    retval_buf[xdp::IP::AIM::xbutil::READ_BYTES] = val_buf[xdp::IP::AIM::sysfs::READ_BYTES];
-    retval_buf[xdp::IP::AIM::xbutil::READ_TRANX] = val_buf[xdp::IP::AIM::sysfs::READ_TRANX];
-    retval_buf[xdp::IP::AIM::xbutil::OUTSTANDING_COUNT] = val_buf[xdp::IP::AIM::sysfs::OUTSTANDING_COUNT];
-    retval_buf[xdp::IP::AIM::xbutil::WRITE_LAST_ADDRESS] = val_buf[xdp::IP::AIM::sysfs::WRITE_LAST_ADDRESS];
-    retval_buf[xdp::IP::AIM::xbutil::WRITE_LAST_DATA] = val_buf[xdp::IP::AIM::sysfs::WRITE_LAST_DATA];
-    retval_buf[xdp::IP::AIM::xbutil::READ_LAST_ADDRESS] = val_buf[xdp::IP::AIM::sysfs::READ_LAST_ADDRESS];
-    retval_buf[xdp::IP::AIM::xbutil::READ_LAST_DATA] = val_buf[xdp::IP::AIM::sysfs::READ_LAST_DATA];
+    retval_buf[xdp::IP::AIM::report::WRITE_BYTES] = val_buf[xdp::IP::AIM::sysfs::WRITE_BYTES];
+    retval_buf[xdp::IP::AIM::report::WRITE_TRANX] = val_buf[xdp::IP::AIM::sysfs::WRITE_TRANX];
+    retval_buf[xdp::IP::AIM::report::READ_BYTES] = val_buf[xdp::IP::AIM::sysfs::READ_BYTES];
+    retval_buf[xdp::IP::AIM::report::READ_TRANX] = val_buf[xdp::IP::AIM::sysfs::READ_TRANX];
+    retval_buf[xdp::IP::AIM::report::OUTSTANDING_COUNT] = val_buf[xdp::IP::AIM::sysfs::OUTSTANDING_COUNT];
+    retval_buf[xdp::IP::AIM::report::WRITE_LAST_ADDRESS] = val_buf[xdp::IP::AIM::sysfs::WRITE_LAST_ADDRESS];
+    retval_buf[xdp::IP::AIM::report::WRITE_LAST_DATA] = val_buf[xdp::IP::AIM::sysfs::WRITE_LAST_DATA];
+    retval_buf[xdp::IP::AIM::report::READ_LAST_ADDRESS] = val_buf[xdp::IP::AIM::sysfs::READ_LAST_ADDRESS];
+    retval_buf[xdp::IP::AIM::report::READ_LAST_DATA] = val_buf[xdp::IP::AIM::sysfs::READ_LAST_DATA];
 
     return retval_buf;
   }

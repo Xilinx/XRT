@@ -90,11 +90,11 @@ constexpr int READ_LAST_ADDRESS  = 11;
 constexpr int READ_LAST_DATA     = 12;
 } // end namespace sysfs
 
-namespace xbutil {
-// When we are reporting the status of this IP using xbutil, we
+namespace report {
+// When we are reporting the status of this IP, we
 // strip away the write latency, write busy, read latency, and 
 // read busy cycle information.  The numbers here represent the
-// index into the array used by xbutil to access the register value
+// index into the array used by xbutil and XDP to access the register value
 constexpr int WRITE_BYTES        = 0;
 constexpr int WRITE_TRANX        = 1;
 constexpr int READ_BYTES         = 2;
@@ -104,7 +104,7 @@ constexpr int WRITE_LAST_ADDRESS = 5;
 constexpr int WRITE_LAST_DATA    = 6;
 constexpr int READ_LAST_ADDRESS  = 7;
 constexpr int READ_LAST_DATA     = 8;
-} // end namespace xbutil
+} // end namespace report
 
 namespace mask {
 // These are masks on the property of the IP that give information

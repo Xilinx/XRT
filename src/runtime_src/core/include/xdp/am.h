@@ -77,8 +77,8 @@ constexpr int MAX_EXECUTION_CYCLES = 8;
 constexpr int MIN_EXECUTION_CYCLES = 9;
 } // end namespace sysfs
 
-namespace xbutil {
-// When we are reporting the status of this IP using xbutil,
+namespace report {
+// When we are reporting the status of this IP,
 // we strip away the busy cycles and max parallel iter (and also
 // reorder the registers) since dataflow may not be enabled.
 constexpr int EXECUTION_COUNT      = 0;
@@ -89,7 +89,7 @@ constexpr int STALL_EXT            = 4;
 constexpr int MIN_EXECUTION_CYCLES = 5;
 constexpr int MAX_EXECUTION_CYCLES = 6; 
 constexpr int TOTAL_CU_START       = 7;
-} // end namespace xbutil
+} // end namespace report
 
 namespace mask {
 // These are the masks to be applied to the properties field of the AM

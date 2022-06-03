@@ -1,6 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -152,21 +152,21 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
 
 
     get_upper_bytes(xdp::IP::AM::sysfs::EXECUTION_COUNT,
-                    xdp::IP::AM::xbutil::EXECUTION_COUNT);
+                    xdp::IP::AM::report::EXECUTION_COUNT);
     get_upper_bytes(xdp::IP::AM::sysfs::EXECUTION_CYCLES,
-                    xdp::IP::AM::xbutil::EXECUTION_CYCLES);
+                    xdp::IP::AM::report::EXECUTION_CYCLES);
     get_upper_bytes(xdp::IP::AM::sysfs::STALL_INT,
-                    xdp::IP::AM::xbutil::STALL_INT);
+                    xdp::IP::AM::report::STALL_INT);
     get_upper_bytes(xdp::IP::AM::sysfs::STALL_STR,
-                    xdp::IP::AM::xbutil::STALL_STR);
+                    xdp::IP::AM::report::STALL_STR);
     get_upper_bytes(xdp::IP::AM::sysfs::STALL_EXT,
-                    xdp::IP::AM::xbutil::STALL_EXT);
+                    xdp::IP::AM::report::STALL_EXT);
     get_upper_bytes(xdp::IP::AM::sysfs::MIN_EXECUTION_CYCLES,
-                    xdp::IP::AM::xbutil::MIN_EXECUTION_CYCLES);
+                    xdp::IP::AM::report::MIN_EXECUTION_CYCLES);
     get_upper_bytes(xdp::IP::AM::sysfs::MAX_EXECUTION_CYCLES,
-                    xdp::IP::AM::xbutil::MAX_EXECUTION_CYCLES);
+                    xdp::IP::AM::report::MAX_EXECUTION_CYCLES);
     get_upper_bytes(xdp::IP::AM::sysfs::TOTAL_CU_START,
-                    xdp::IP::AM::xbutil::TOTAL_CU_START);
+                    xdp::IP::AM::report::TOTAL_CU_START);
 
     if (has_dataflow) {
       uint64_t busy_cycles = 0, max_parallel = 0;
@@ -186,21 +186,21 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
   auto get_lower_bytes = [&] (auto dest, auto src) { ret_val[dest] |= curr_data[src]; };
 
   get_lower_bytes(xdp::IP::AM::sysfs::EXECUTION_COUNT,
-                  xdp::IP::AM::xbutil::EXECUTION_COUNT);
+                  xdp::IP::AM::report::EXECUTION_COUNT);
   get_lower_bytes(xdp::IP::AM::sysfs::EXECUTION_CYCLES,
-                  xdp::IP::AM::xbutil::EXECUTION_CYCLES);
+                  xdp::IP::AM::report::EXECUTION_CYCLES);
   get_lower_bytes(xdp::IP::AM::sysfs::STALL_INT,
-                  xdp::IP::AM::xbutil::STALL_INT);
+                  xdp::IP::AM::report::STALL_INT);
   get_lower_bytes(xdp::IP::AM::sysfs::STALL_STR,
-                  xdp::IP::AM::xbutil::STALL_STR);
+                  xdp::IP::AM::report::STALL_STR);
   get_lower_bytes(xdp::IP::AM::sysfs::STALL_EXT,
-                  xdp::IP::AM::xbutil::STALL_EXT);
+                  xdp::IP::AM::report::STALL_EXT);
   get_lower_bytes(xdp::IP::AM::sysfs::MIN_EXECUTION_CYCLES,
-                  xdp::IP::AM::xbutil::MIN_EXECUTION_CYCLES);
+                  xdp::IP::AM::report::MIN_EXECUTION_CYCLES);
   get_lower_bytes(xdp::IP::AM::sysfs::MAX_EXECUTION_CYCLES,
-                  xdp::IP::AM::xbutil::MAX_EXECUTION_CYCLES);
+                  xdp::IP::AM::report::MAX_EXECUTION_CYCLES);
   get_lower_bytes(xdp::IP::AM::sysfs::TOTAL_CU_START,
-                  xdp::IP::AM::xbutil::TOTAL_CU_START);
+                  xdp::IP::AM::report::TOTAL_CU_START);
 
   if (has_dataflow) {
     uint64_t busy_cycles = 0, max_parallel = 0;
