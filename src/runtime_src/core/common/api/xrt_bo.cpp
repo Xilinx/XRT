@@ -142,8 +142,7 @@ public:
   // async_bo_impl() - Construct async_bo_obj
   async_handle_impl(xrt::bo bo)
     : m_bo(std::move(bo))
-  {
-  }
+  {}
 
   // wait() - Wait for async to complete
   virtual void 
@@ -159,11 +158,10 @@ public:
 public:
   // async_bo_impl() - Construct async_bo_obj
   async_handle_impl(xrt::bo bo, size_t bd_num, std::string gmio_name)
-    : xrt::bo::async_handle_impl(std::move(bo)),
-      m_bd_num(bd_num),
-      m_gmio_name(std::move(gmio_name))
-  {
-  }
+    : xrt::bo::async_handle_impl(std::move(bo))
+    , m_bd_num(bd_num)
+    , m_gmio_name(std::move(gmio_name))
+  {}
 
   // wait() - Wait for async to complete
   void 
@@ -1128,6 +1126,7 @@ wait()
   throw std::runtime_error("Unsupported feature");
 }
 
+#ifdef XRT_ENABLE_AIE
 void 
 aie::bo::async_handle_impl::
 wait()
@@ -1149,6 +1148,7 @@ wait()
   // All outstanding DMAs for this gmio_name have finishedd; for all bd numbers
   itr->second.clear();
 }
+#endif
 
 void
 bo::async_handle::
