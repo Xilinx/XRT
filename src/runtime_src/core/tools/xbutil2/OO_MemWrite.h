@@ -33,7 +33,7 @@ class OO_MemWrite : public OptionOptions {
   std::string m_inputFile;
   std::string m_baseAddress;
   std::string m_sizeBytes;
-  int m_count;
+  uint64_t m_count;
   std::string m_fill;
   bool m_help;
 };

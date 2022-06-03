@@ -147,7 +147,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     // Open the input file stream after validating the file path and name
     std::ifstream input_stream(m_inputFile, std::ios::binary);
     // If count is unspecified, calculate based on the file size and block size
-    int count = m_count;
+    uint64_t count = m_count;
     if (vm["count"].defaulted()) {
       input_stream.seekg(0, input_stream.end);
       // tellg returns a signed value as the number of bytes. Validate the return code and
@@ -174,7 +174,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     XBU::verbose(boost::str(boost::format("Device: %s") % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device))));
     XBU::verbose(boost::str(boost::format("Address: %s") % addr));
     XBU::verbose(boost::str(boost::format("Size: %llu") % size));
-    XBU::verbose(boost::str(boost::format("Block count: %d") % count));
+    XBU::verbose(boost::str(boost::format("Block count: %llu") % count));
     XBU::verbose(boost::str(boost::format("Input File: %s") % m_inputFile));
     XBU::verbose(boost::str(boost::format("Bytes to write: %lld") % 5));
 
@@ -182,8 +182,8 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     XBU::xclbin_lock xclbin_lock(device);
     
     try {
-      for (int c = 0; c < count; c++) {
-        XBU::verbose(boost::str(boost::format("[%d / %d] Writing to Address: %s, Size: %llu bytes") % c % count % addr % size));
+      for (decltype(count) c = 0; c < count; c++) {
+        XBU::verbose(boost::str(boost::format("[%d / %llu] Writing to Address: %s, Size: %llu bytes") % c % count % addr % size));
         std::vector<char> buffer(size);
         // Populate the buffer with the data to write and get the number of bytes read
         // gcount will only return a value >= 0
@@ -226,7 +226,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     XBU::verbose(boost::str(boost::format("Device: %s") % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device))));
     XBU::verbose(boost::str(boost::format("Address: %s") % addr));
     XBU::verbose(boost::str(boost::format("Size: %llu") % size));
-    XBU::verbose(boost::str(boost::format("Block count: %s") % m_count));
+    XBU::verbose(boost::str(boost::format("Block count: %llu") % m_count));
     XBU::verbose(boost::str(boost::format("Fill pattern: %s") % m_fill));
     // XBU::verbose(boost::str(boost::format("Bytes to write: %ll") % (m_count * size)));
 
@@ -238,8 +238,8 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       std::vector<char> buffer(size);
       std::fill(buffer.begin(), buffer.end(), fill_byte);
       // Write the vector to the device
-      for (int c = 0; c < m_count; c++) {
-        XBU::verbose(boost::str(boost::format("[%d / %d] Writing to Address: %s, Size: %s bytes") % c % m_count % addr % size));
+      for (decltype(m_count) c = 0; c < m_count; c++) {
+        XBU::verbose(boost::str(boost::format("[%d / %llu] Writing to Address: %s, Size: %s bytes") % c % m_count % addr % size));
         xrt_core::device_mem_write(device.get(), addr, buffer);
         addr += size;
       }
