@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,44 +21,41 @@
 #ifndef LAPC_DOT_H
 #define LAPC_DOT_H
 
-namespace xdp {
-  namespace IP {
-    namespace LAPC {
-      constexpr int NUM_COUNTERS = 9;
-      constexpr int NUM_STATUS = 4;
+namespace xdp::IP::LAPC {
 
-      namespace AXI_LITE {
-        // These are the actual physical offsets of the 32-bit registers in
-        // the LAPC IP accessible over the AXI-Lite connection.  If using
-        // xclRead or xclWrite, these offsets are used.
-        constexpr int STATUS              = 0x0;
-        constexpr int CUMULATIVE_STATUS_0 = 0x100;
-        constexpr int CUMULATIVE_STATUS_1 = 0x104;
-        constexpr int CUMULATIVE_STATUS_2 = 0x108;
-        constexpr int CUMULATIVE_STATUS_3 = 0x10c;
-        constexpr int SNAPSHOT_STATUS_0   = 0x200;
-        constexpr int SNAPSHOT_STATUS_1   = 0x204;
-        constexpr int SNAPSHOT_STATUS_2   = 0x208;
-        constexpr int SNAPSHOT_STATUS_3   = 0x20c;
-      } // end namespace AXI_LITE
+constexpr int NUM_COUNTERS = 9;
+constexpr int NUM_STATUS = 4;
 
-      namespace sysfs {
-        // When accessing the IP via sysfs, an array of 32-bit words is
-        // put together and returned.  These numbers are the array offsets to
-        // access the specific registers returned.
-        constexpr int STATUS              = 0;
-        constexpr int CUMULATIVE_STATUS_0 = 1;
-        constexpr int CUMULATIVE_STATUS_1 = 2;
-        constexpr int CUMULATIVE_STATUS_2 = 3;
-        constexpr int CUMULATIVE_STATUS_3 = 4;
-        constexpr int SNAPSHOT_STATUS_0   = 5;
-        constexpr int SNAPSHOT_STATUS_1   = 6;
-        constexpr int SNAPSHOT_STATUS_2   = 7;
-        constexpr int SNAPSHOT_STATUS_3   = 8;
-      } // end namespace sysfs
+namespace AXI_LITE {
+// These are the actual physical offsets of the 32-bit registers in
+// the LAPC IP accessible over the AXI-Lite connection.  If using
+// xclRead or xclWrite, these offsets are used.
+constexpr int STATUS              = 0x0;
+constexpr int CUMULATIVE_STATUS_0 = 0x100;
+constexpr int CUMULATIVE_STATUS_1 = 0x104;
+constexpr int CUMULATIVE_STATUS_2 = 0x108;
+constexpr int CUMULATIVE_STATUS_3 = 0x10c;
+constexpr int SNAPSHOT_STATUS_0   = 0x200;
+constexpr int SNAPSHOT_STATUS_1   = 0x204;
+constexpr int SNAPSHOT_STATUS_2   = 0x208;
+constexpr int SNAPSHOT_STATUS_3   = 0x20c;
+} // end namespace AXI_LITE
 
-    } // end namespace LAPC
-  } // end namespace IP
-} // end namespace xdp
+namespace sysfs {
+// When accessing the IP via sysfs, an array of 32-bit words is
+// put together and returned.  These numbers are the array offsets to
+// access the specific registers returned.
+constexpr int STATUS              = 0;
+constexpr int CUMULATIVE_STATUS_0 = 1;
+constexpr int CUMULATIVE_STATUS_1 = 2;
+constexpr int CUMULATIVE_STATUS_2 = 3;
+constexpr int CUMULATIVE_STATUS_3 = 4;
+constexpr int SNAPSHOT_STATUS_0   = 5;
+constexpr int SNAPSHOT_STATUS_1   = 6;
+constexpr int SNAPSHOT_STATUS_2   = 7;
+constexpr int SNAPSHOT_STATUS_3   = 8;
+} // end namespace sysfs
+
+} // end namespace xdp::IP::LAPC
 
 #endif

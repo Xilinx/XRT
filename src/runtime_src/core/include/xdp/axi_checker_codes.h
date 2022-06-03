@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,42 +24,43 @@
 #include "core/include/xdp/lapc.h"
 
 namespace xdp {
-  static
-  bool
-  isValidAXICheckerCodes(unsigned int aOverallStatus,
-                         unsigned int aSnapshot[IP::LAPC::NUM_STATUS],
-                         unsigned int aCumulative[IP::LAPC::NUM_STATUS])
-  {
-    //Validate the codes read from the device.
-    //overallstatus could be 0 or 1
-    if (aOverallStatus > 1) return false;
-    //There are 101 possible codes and hence there cannot be any bits set beyond bit-100
-    if (aSnapshot[3]>>5 != 0) return false;
-    //There should be only 1 bit set in Snapshot
-    int nonzero_snapshots = 0;
-    for (int i=0; i < xdp::IP::LAPC::NUM_STATUS; ++i) {
-      if (aSnapshot[i]!=0) {
-        if ((aSnapshot[i] & (aSnapshot[i]-1)) != 0) return false;
-        if (nonzero_snapshots) return false;
-        ++nonzero_snapshots;
-        //Bit set in snapshot must also be set in cumulative
-        if ((aSnapshot[i] & aCumulative[i]) == 0) return false;
-      }
-    }
-    //if snapshot is all zero then overallstatus and cumulative should be zero
-    if (!nonzero_snapshots) {
-      if (aOverallStatus) return false;
-      for (int i=0; i<xdp::IP::LAPC::NUM_STATUS; ++i) {
-        if (aCumulative[i]) return false;
-      }
-    }
-    return true;
-  }
 
-  static
-  std::string
-  decodeAXICheckerCodes(unsigned int aWord[4])
-  {
+static
+bool
+isValidAXICheckerCodes(unsigned int aOverallStatus,
+                       unsigned int aSnapshot[IP::LAPC::NUM_STATUS],
+                       unsigned int aCumulative[IP::LAPC::NUM_STATUS])
+{
+  //Validate the codes read from the device.
+  //overallstatus could be 0 or 1
+  if (aOverallStatus > 1) return false;
+  //There are 101 possible codes and hence there cannot be any bits set beyond bit-100
+  if (aSnapshot[3]>>5 != 0) return false;
+  //There should be only 1 bit set in Snapshot
+  int nonzero_snapshots = 0;
+  for (int i=0; i < xdp::IP::LAPC::NUM_STATUS; ++i) {
+    if (aSnapshot[i]!=0) {
+      if ((aSnapshot[i] & (aSnapshot[i]-1)) != 0) return false;
+      if (nonzero_snapshots) return false;
+      ++nonzero_snapshots;
+      //Bit set in snapshot must also be set in cumulative
+      if ((aSnapshot[i] & aCumulative[i]) == 0) return false;
+    }
+  }
+  //if snapshot is all zero then overallstatus and cumulative should be zero
+  if (!nonzero_snapshots) {
+    if (aOverallStatus) return false;
+    for (int i=0; i<xdp::IP::LAPC::NUM_STATUS; ++i) {
+      if (aCumulative[i]) return false;
+    }
+  }
+  return true;
+}
+
+static
+std::string
+decodeAXICheckerCodes(unsigned int aWord[4])
+{
   static const char* AXICheckerStrings [101] = {
     "AXI_ERRM_AWADDR_BOUNDARY",
     "AXI_ERRM_AWADDR_WRAP_ALIGN",
@@ -266,20 +267,21 @@ namespace xdp {
     "AWVALID should be asserted within MAXWAITS cycles of WLAST transfer or previous AW transfer if there are yet more WLAST transfers outstanding.",
     "BVALID should be asserted within MAXWAITS cycles of AW command transfer or WLAST transfer (whichever is later), or previous B transfer if there are yet more AW and WLAST transfers outstanding."
   };
-    std::string s;
-    for (unsigned int j = 0; j<4; ++j) {
-      unsigned int i = 0;
-      unsigned int w = aWord[j];
-      while (w) {
-        if (w & ((unsigned int)0x1)) {
-          s.append(AXICheckerStrings[j*32+i]).append(":").append(AXICheckerExplanations[j*32+i]).append("\n");
-        }
-        w = w>>1;
-        ++i;
+  std::string s;
+  for (unsigned int j = 0; j<4; ++j) {
+    unsigned int i = 0;
+    unsigned int w = aWord[j];
+    while (w) {
+      if (w & ((unsigned int)0x1)) {
+        s.append(AXICheckerStrings[j*32+i]).append(":").append(AXICheckerExplanations[j*32+i]).append("\n");
       }
+      w = w>>1;
+      ++i;
     }
-    return s;
   }
+  return s;
+}
+
 } // end namespace xdp
 
 class xclStreamingAXICheckerCodes

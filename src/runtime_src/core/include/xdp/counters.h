@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,6 +25,12 @@
 // defined in C using C constructs.
 
 namespace xdp {
+
+// Orignally called xclCounterResults, the xdp::CounterResults struct
+// is passed to the shim to be filled in with all of the current values
+// of the profiling IP registers.  The struct is the maximal set of all
+// possible profiling IP combinations.
+
 struct CounterResults {
   float SampleIntervalUsec;
 
@@ -62,10 +68,5 @@ struct CounterResults {
 };
 
 } // end namespace xdp
-
-// xclCounterResults is passed to the shim to be filled in with all
-// of the current values of the profiling IP registers.  The struct is
-// the maximal set of all possible profiling IP combinations.
-
 
 #endif

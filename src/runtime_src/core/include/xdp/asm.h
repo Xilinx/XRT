@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,44 +21,41 @@
 #ifndef ASM_DOT_H
 #define ASM_DOT_H
 
-namespace xdp {
-  namespace IP {
-    namespace ASM {
-      // The total number of 64-bit counters accessible on the IP
-      constexpr int NUM_COUNTERS = 5;
+namespace xdp::IP::ASM {
 
-      namespace AXI_LITE {
-        // These are the actual physical offsets of the 64-bit registers in
-        // the ASM IP accessible over the AXI-Lite connection.  If using
-        // xclRead or xclWrite, these offsets are used.
-        constexpr int CONTROL       = 0x00;
-        constexpr int SAMPLE        = 0x20;
-        constexpr int NUM_TRANX     = 0x80;
-        constexpr int DATA_BYTES    = 0x88;
-        constexpr int BUSY_CYCLES   = 0x90;
-        constexpr int STALL_CYCLES  = 0x98;
-        constexpr int STARVE_CYCLES = 0xA0;
-      } // end namespace AXI_LITE
+// The total number of 64-bit counters accessible on the IP
+constexpr int NUM_COUNTERS = 5;
 
-      namespace sysfs {
-        // When accessing the IP via sysfs, an array of 64-bit words is
-        // put together and returned.  These numbers are the array offsets
-        // to access the specific registers returned.
-        constexpr int NUM_TRANX     = 0;
-        constexpr int DATA_BYTES    = 1;
-        constexpr int BUSY_CYCLES   = 2;
-        constexpr int STALL_CYCLES  = 3;
-        constexpr int STARVE_CYCLES = 4;
-      } // end namespace sysfs
+namespace AXI_LITE {
+// These are the actual physical offsets of the 64-bit registers in
+// the ASM IP accessible over the AXI-Lite connection.  If using
+// xclRead or xclWrite, these offsets are used.
+constexpr int CONTROL       = 0x00;
+constexpr int SAMPLE        = 0x20;
+constexpr int NUM_TRANX     = 0x80;
+constexpr int DATA_BYTES    = 0x88;
+constexpr int BUSY_CYCLES   = 0x90;
+constexpr int STALL_CYCLES  = 0x98;
+constexpr int STARVE_CYCLES = 0xA0;
+} // end namespace AXI_LITE
 
-      namespace mask {
-        constexpr int COUNTER_RESET = 0x00000001;
-        constexpr int TRACE_ENABLE  = 0x00000002;
-        constexpr int TRACE_CTRL    = 0x2;
-      }
+namespace sysfs {
+// When accessing the IP via sysfs, an array of 64-bit words is
+// put together and returned.  These numbers are the array offsets
+// to access the specific registers returned.
+constexpr int NUM_TRANX     = 0;
+constexpr int DATA_BYTES    = 1;
+constexpr int BUSY_CYCLES   = 2;
+constexpr int STALL_CYCLES  = 3;
+constexpr int STARVE_CYCLES = 4;
+} // end namespace sysfs
 
-    } // end namespace IP
-  } // end namespace IP
-} // end namespace xdp
+namespace mask {
+constexpr int COUNTER_RESET = 0x00000001;
+constexpr int TRACE_ENABLE  = 0x00000002;
+constexpr int TRACE_CTRL    = 0x2;
+} // end namespace mask
+
+} // end namespace xdp::IP::ASM
 
 #endif

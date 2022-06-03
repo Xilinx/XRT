@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,31 +21,28 @@
 #ifndef SPC_DOT_H
 #define SPC_DOT_H
 
-namespace xdp {
-  namespace IP {
-    namespace SPC {
-      constexpr int NUM_COUNTERS = 3;
+namespace xdp::IP::SPC {
 
-      namespace AXI_LITE {
-        // These are the actual physical offsets of the 32-bit registers in
-        // the SPC IP accessible over the AXI-Lite connection.  If using
-        // xclRead or xclWrite, these offsets are used.
-        constexpr int PC_ASSERTED = 0x0;
-        constexpr int CURRENT_PC  = 0x100;
-        constexpr int SNAPSHOT_PC = 0x200;
-      } // end namespace AXI_LITE
+constexpr int NUM_COUNTERS = 3;
 
-      namespace sysfs {
-        // When accessing the IP via sysfs, an array of 32-bit words is
-        // put together and returned.  These numbers are the array offsets to
-        // access the specific registers returned.
-        constexpr int PC_ASSERTED = 0;
-        constexpr int CURRENT_PC  = 1;
-        constexpr int SNAPSHOT_PC = 2;
-      } // end namespace sysfs
+namespace AXI_LITE {
+// These are the actual physical offsets of the 32-bit registers in
+// the SPC IP accessible over the AXI-Lite connection.  If using
+// xclRead or xclWrite, these offsets are used.
+constexpr int PC_ASSERTED = 0x0;
+constexpr int CURRENT_PC  = 0x100;
+constexpr int SNAPSHOT_PC = 0x200;
+} // end namespace AXI_LITE
 
-    } // end namespace SPC
-  } // end namespace IP
-} // end namespace xdp
+namespace sysfs {
+// When accessing the IP via sysfs, an array of 32-bit words is
+// put together and returned.  These numbers are the array offsets to
+// access the specific registers returned.
+constexpr int PC_ASSERTED = 0;
+constexpr int CURRENT_PC  = 1;
+constexpr int SNAPSHOT_PC = 2;
+} // end namespace sysfs
+
+} // end namespace xdp::IP::SPC
 
 #endif

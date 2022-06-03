@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,18 +20,17 @@
 #ifndef FIFO_DOT_H
 #define FIFO_DOT_H
 
-namespace xdp {
-  namespace IP {
-    namespace FIFO {
-      constexpr int alignment = 0x1000;
-      namespace AXI_LITE {
-        // On some devices (like edge) we cannot transfer values via
-        // the AXI-full connection.  Instead, we need to read the
-        // contents of the FIFO one-by-one over the AXI-Lite connection
-        constexpr int RDFD = 0x1000;
-      }
-    }
-  }
-}
+namespace xdp::IP::FIFO {
+
+constexpr int alignment = 0x1000;
+
+namespace AXI_LITE {
+// On some devices (like edge) we cannot transfer values via
+// the AXI-full connection.  Instead, we need to read the
+// contents of the FIFO one-by-one over the AXI-Lite connection
+constexpr int RDFD = 0x1000;
+} // end namespace AXI_LITE
+
+} // end namespace xdp::IP::FIFO
 
 #endif

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,17 +20,16 @@
 #ifndef ADD_DOT_H
 #define ADD_DOT_H
 
-namespace xdp {
-  namespace IP {
-    namespace ADD {
-      namespace AXI_LITE {
-        // These are the actual physical offsets of the 32-bit registers in
-        // the ADD IP accessible over the AXI-Lite connection.  If using
-        // xclRead or xclWrite, these offsets are used.
-        constexpr int STATUS = 0x0;
-      } // end namespace AXI_LITE
-    } // end namespace ADD
-  } // end namespace IP
-} // end namespace xdp
+namespace xdp::IP::ADD {
+
+namespace AXI_LITE {
+// These are the actual physical offsets of the 32-bit registers in
+// the ADD IP accessible over the AXI-Lite connection.  If using
+// xclRead or xclWrite, these offsets are used.
+constexpr int STATUS = 0x0;
+
+} // end namespace AXI_LITE
+
+} // end namespace xdp::IP::ADD
 
 #endif
