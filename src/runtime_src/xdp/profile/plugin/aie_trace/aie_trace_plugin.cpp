@@ -412,7 +412,7 @@ namespace xdp {
     mUseGraphIterator = false;
     mUseUserControl = false;
 
-    auto startType = xrt_core::config::get_aie_trace_start_type();
+    auto startType = xrt_core::config::get_aie_trace_settings_start_type();
 
     if (startType == "time") {
     // Use number of cycles to start trace
@@ -427,7 +427,7 @@ namespace xdp {
 
       // AIE_trace_settings configs have higher priority than older Debug configs
       std::string size_str = xrt_core::config::get_aie_trace_settings_start_time();
-      if (size_str =="0")
+      if (size_str == "0")
         size_str = xrt_core::config::get_aie_trace_start_time();
 
       // Catch cases like "1Ms" "1NS"
@@ -472,7 +472,7 @@ namespace xdp {
       mDelayCycles = cycles;
     } else if (startType == "graph") {
     // Start trace when graph iterator reaches a threshold
-      mIterationCount = xrt_core::config::get_aie_trace_start_iteration();
+      mIterationCount = xrt_core::config::get_aie_trace_settings_start_iteration();
       mUseGraphIterator = (mIterationCount != 0);
     } else if (startType == "user") {
     // Start trace using user events
@@ -1513,10 +1513,10 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
             return true;
           return false;
         }
-    
+
         auto tiles = getTilesForTracing(handle);
-        setTraceStartDelayCycles(handle);
-    
+        setTraceStartControl(handle);
+
         // Keep track of number of events reserved per tile
         int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
         int numTileMemoryTraceEvents[NUM_MEMORY_TRACE_EVENTS+1] = {0};
@@ -1653,7 +1653,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
             printTileStats(aieDevice, tile);
             return false;
           }
-    
+
           //
           // 3. Configure Core Tracing Events
           //
@@ -1661,20 +1661,22 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
             XAie_ModuleType mod = XAIE_CORE_MOD;
             uint8_t phyEvent = 0;
             auto coreTrace = core.traceControl();
-    
+
             // Delay cycles and user control are not compatible with each other
-            if (xrt_core::config::get_aie_trace_user_control()) {
+            if (mUseUserControl) {
               coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
               coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+            } else if (mUseGraphIterator && !configureStartIteration(core)) {
+              break;
             } else if (mUseDelay && !configureStartDelay(core)) {
               break;
             }
-    
+
             // Set overall start/end for trace capture
             // Wendy said this should be done first
             if (coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK) 
               break;
-    
+
             auto ret = coreTrace->reserve();
             if (ret != XAIE_OK) {
               std::stringstream msg;

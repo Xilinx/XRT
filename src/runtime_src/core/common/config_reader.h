@@ -369,27 +369,10 @@ get_aie_trace_metrics()
   return value;
 }
 
-/**
- * off|time|graph|user
- */
-inline std::string
-get_aie_trace_start_type()
-{
-  static std::string value = detail::get_string_value("Debug.aie_trace_start_type", "off");
-  return value;
-}
-
 inline std::string
 get_aie_trace_start_time()
 {
   static std::string value = detail::get_string_value("Debug.aie_trace_start_time", "0");
-  return value;
-}
-
-inline unsigned int
-get_aie_trace_start_iteration()
-{
-  static unsigned int value = detail::get_uint_value("Debug.aie_trace_start_iteration", 1);
   return value;
 }
 
@@ -925,6 +908,10 @@ get_aie_profile_settings_mem_tile_metrics()
 }
 
 // AIE_trace_settings
+
+/**
+ * off|time|graph|user
+ */
 inline std::string
 get_aie_trace_settings_start_type()
 {
@@ -935,7 +922,6 @@ get_aie_trace_settings_start_type()
 inline std::string
 get_aie_trace_settings_start_time()
 {
-  //default value ?
   static std::string value = detail::get_string_value("AIE_trace_settings.start_time", "0");
   return value;
 }
