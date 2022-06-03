@@ -130,13 +130,10 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   // This does not need to be defined for the --input option path
   uint64_t size = 0;
   try {
-    if (!m_sizeBytes.empty()) {
+    if (!m_sizeBytes.empty())
       size = XBUtilities::string_to_base_units(m_sizeBytes, XBUtilities::unit::bytes);
-      if (size <= 0)
-        throw xrt_core::error(std::errc::operation_canceled, "Size must be greater than 0");
-    }
   }
-  catch(const xrt_core::error& e) {
+  catch (const xrt_core::error& e) {
     std::cerr << boost::format("Value supplied to --size is invalid: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
@@ -162,7 +159,9 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
 
       if (m_sizeBytes.empty()) // update size
         size = validated_length;
-      count = static_cast<int>(std::ceil(validated_length / size));
+      // Set count such that the entire input stream is written to the device
+      // Add size to the validated length to account for truncation due to division
+      count = (validated_length + size - 1) / size;
       input_stream.seekg(0, input_stream.beg);
     }
     else
@@ -186,8 +185,9 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       for (int c = 0; c < count; c++) {
         XBU::verbose(boost::str(boost::format("[%d / %d] Writing to Address: %s, Size: %llu bytes") % c % count % addr % size));
         std::vector<char> buffer(size);
+        // Populate the buffer with the data to write and get the number of bytes read
         // gcount will only return a value >= 0
-        uint64_t input_size = static_cast<uint64_t>(input_stream.read(buffer.data(), size).gcount());
+        auto input_size = static_cast<uint64_t>(input_stream.read(buffer.data(), size).gcount());
         xrt_core::device_mem_write(device.get(), addr, buffer);
         if (input_size != size)
           break; // partial read and break the loop
@@ -217,7 +217,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       //-- fill pattern
       fill_byte = static_cast<char>(std::stoi(m_fill, nullptr, 0));
     }
-    catch(const std::invalid_argument&) {
+    catch (const std::invalid_argument&) {
       std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--fill'. Please specify a value between 0 and 255\n") % m_fill;
       throw xrt_core::error(std::errc::operation_canceled);
     }

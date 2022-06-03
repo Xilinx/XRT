@@ -25,13 +25,24 @@
 #include <string>
 
 namespace xrt_core {
-  XRT_CORE_COMMON_EXPORT
-  std::vector<char>
-  device_mem_read(device* device, uint64_t start_addr, uint64_t size);
 
-  XRT_CORE_COMMON_EXPORT
-  void
-  device_mem_write(device* device, uint64_t start_addr, std::vector<char>& src);
+// Read from a device's memory banks
+// This function safely reads from a device's memory banks. It will ensure that the read
+// attempts start/end on memory bank borders when applicable. This prevents reading from an unused bank
+// or writing out of bounds. The memory bank usage may not be contiguous and this function account for 
+// these situations.
+XRT_CORE_COMMON_EXPORT
+std::vector<char>
+device_mem_read(device* device, uint64_t start_addr, uint64_t size);
+
+// Write to a device's memory banks
+// This function safely writes to a device's memory banks. It will ensure that the write
+// attempts start/end on memory bank borders when applicable. This prevents writing to an unused bank
+// or writing out of bounds. The memory bank usage may not be contiguous and this function account for 
+// these situations.
+XRT_CORE_COMMON_EXPORT
+void
+device_mem_write(device* device, uint64_t start_addr, std::vector<char>& src);
 }
 
 #endif /* MEMACCESS_H */

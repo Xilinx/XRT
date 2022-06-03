@@ -120,7 +120,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     //-- base address
     addr = std::stoll(m_baseAddress, nullptr, 0);
   }
-  catch(const std::invalid_argument&) {
+  catch (const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--address'\n") % m_baseAddress;
     throw xrt_core::error(std::errc::operation_canceled);
   }
@@ -135,7 +135,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
         throw xrt_core::error(std::errc::operation_canceled, "Size must be greater than 0");
     }
   }
-  catch(const xrt_core::error& e) {
+  catch (const xrt_core::error& e) {
     std::cerr << boost::format("Value supplied to --size is invalid: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
@@ -164,7 +164,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
       // increment the starting address by the number of bytes read
       addr += data.size();
     }
-  } catch(const xrt_core::error& e) {
+  } catch (const xrt_core::error& e) {
     std::cerr << e.what() << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
