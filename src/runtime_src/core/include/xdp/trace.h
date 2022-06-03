@@ -20,6 +20,8 @@
 #ifndef XDP_TRACE_DOT_H
 #define XDP_TRACE_DOT_H
 
+#include <cstdint>
+
 namespace xdp {
 
 // This is the width of the word coming out of the trace FIFO, which is
@@ -33,46 +35,35 @@ constexpr int TRACE_FIFO_WORD_WIDTH = 64;
 
 constexpr int MAX_TRACE_NUMBER_SAMPLES_FIFO = 16384;
 
-} // end namespace xdp
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-enum xclPerfMonEventID {
-  XCL_PERF_MON_HW_EVENT = 0
+enum TraceEventType : unsigned int {
+  start = 0x4,
+  end   = 0x5
 };
 
-enum xclPerfMonEventType {
-  XCL_PERF_MON_START_EVENT = 0x4,
-  XCL_PERF_MON_END_EVENT   = 0x5
-};
+// Used when reading the events via shim functions
+struct TraceEvent {
+  TraceEventType EventType;
+  uint64_t       Timestamp;
+  uint8_t        Overflow;
+  uint32_t       TraceID;
+  uint8_t        Error;
+  uint8_t        Reserved;
+  int32_t        isClockTrain;
 
-typedef struct {
-  enum xclPerfMonEventID   EventID;
-  enum xclPerfMonEventType EventType;
-  unsigned long long int   Timestamp;
-  unsigned char            Overflow;
-  unsigned int             TraceID;
-  unsigned char            Error;
-  unsigned char            Reserved;
-  int isClockTrain;
   // Used in HW Emulation
-  unsigned long long int   HostTimestamp;
-  unsigned char            EventFlags;
-  unsigned char            WriteAddrLen;
-  unsigned char            ReadAddrLen;
-  unsigned short int       WriteBytes;
-  unsigned short int       ReadBytes;
-} xclTraceResults;
+  uint64_t HostTimestamp;
+  uint8_t  EventFlags;
+  uint8_t  WriteAddrLen;
+  uint8_t  ReadAddrLen;
+  uint16_t WriteBytes;
+  uint16_t ReadBytes;
+};
 
-typedef struct {
-  unsigned int mLength;
-  xclTraceResults mArray[xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO];
-} xclTraceResultsVector;
+struct TraceEventsVector {
+  uint32_t mLength;
+  TraceEvent mArray[MAX_TRACE_NUMBER_SAMPLES_FIFO];
+};
 
-#ifdef __cplusplus
-}
-#endif
+} // end namespace xdp
 
 #endif

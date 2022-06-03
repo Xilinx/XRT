@@ -373,8 +373,8 @@ namespace xdp {
                                  uint64_t commandQueueId) ;
 
     XDP_EXPORT void updateCounters(uint64_t deviceId, 
-                                   xclCounterResults& counters) ;
-    XDP_EXPORT void updateCounters(xclCounterResults& counters) ;
+                                   xdp::CounterResults& counters) ;
+    XDP_EXPORT void updateCounters(xdp::CounterResults& counters) ;
 
     // Getters and setters on statistical information
     XDP_EXPORT void setFirstKernelStartTime(double startTime) ;

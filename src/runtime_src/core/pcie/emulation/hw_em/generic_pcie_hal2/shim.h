@@ -196,7 +196,7 @@ using addr_type = uint64_t;
       double xclGetKernelReadMaxBandwidthMBps();
       double xclGetKernelWriteMaxBandwidthMBps();
       size_t xclGetDeviceTimestamp();
-      void xclReadBusStatus(xclPerfMonType type);
+      void xclReadBusStatus(xdp::MonitorType type);
       void xclGetDebugMessages(bool force = false);
       void logMessage(std::string& msg,int verbosity = 0);
 
@@ -204,8 +204,8 @@ using addr_type = uint64_t;
       void readDebugIpLayout(const std::string debugFileName);
       uint32_t getIPCountAddrNames(const std::string debugFileName, int type, uint64_t *baseAddress,
                                    std::string * portNames, uint8_t *properties, size_t size);
-      void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum, char* slotName, uint32_t length);
-      uint32_t getPerfMonNumberSlots(xclPerfMonType type);
+      void getPerfMonSlotName(xdp::MonitorType type, uint32_t slotnum, char* slotName, uint32_t length);
+      uint32_t getPerfMonNumberSlots(xdp::MonitorType type);
 
       int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
       int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);

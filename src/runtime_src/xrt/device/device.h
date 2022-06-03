@@ -591,13 +591,13 @@ public:
 
   // Following functions are undocumented profiling functions
   hal::operations_result<size_t>
-  clockTraining(xclPerfMonType type)
+  clockTraining(xdp::MonitorType type)
   {
     return m_hal->clockTraining(type);
   }
 
   hal::operations_result<uint32_t>
-  countTrace(xclPerfMonType type)
+  countTrace(xdp::MonitorType type)
   {
     return m_hal->countTrace(type);
   }
@@ -639,7 +639,7 @@ public:
   }
 
   hal::operations_result<size_t>
-  readCounters(xclPerfMonType type, xclCounterResults& result)
+  readCounters(xdp::MonitorType type, xdp::CounterResults& result)
   {
     return m_hal->readCounters(type,result);
   }
@@ -651,7 +651,7 @@ public:
   }
 
   hal::operations_result<size_t>
-  readTrace(xclPerfMonType type, xclTraceResultsVector& vec)
+  readTrace(xdp::MonitorType type, xdp::TraceEventsVector& vec)
   {
     return m_hal->readTrace(type,vec);
   }
@@ -675,56 +675,56 @@ public:
   }
 
   hal::operations_result<void>
-  setProfilingSlots(xclPerfMonType type, uint32_t slots)
+  setProfilingSlots(xdp::MonitorType type, uint32_t slots)
   {
     return m_hal->setProfilingSlots(type, slots);
   }
 
   hal::operations_result<uint32_t>
-  getProfilingSlots(xclPerfMonType type)
+  getProfilingSlots(xdp::MonitorType type)
   {
     return m_hal->getProfilingSlots(type);
   }
 
   hal::operations_result<void>
-  getProfilingSlotName(xclPerfMonType type, uint32_t slotnum,
+  getProfilingSlotName(xdp::MonitorType type, uint32_t slotnum,
                        char* slotName, uint32_t length)
   {
     return m_hal->getProfilingSlotName(type, slotnum, slotName, length);
   }
 
   hal::operations_result<uint32_t>
-  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  getProfilingSlotProperties(xdp::MonitorType type, uint32_t slotnum)
   {
     return m_hal->getProfilingSlotProperties(type, slotnum);
   }
 
   hal::operations_result<void>
-  configureDataflow(xclPerfMonType type, unsigned *ip_config)
+  configureDataflow(xdp::MonitorType type, unsigned *ip_config)
   {
     return m_hal->configureDataflow(type, ip_config);
   }
 
   hal::operations_result<size_t>
-  startCounters(xclPerfMonType type)
+  startCounters(xdp::MonitorType type)
   {
     return m_hal->startCounters(type);
   }
 
   hal::operations_result<size_t>
-  startTrace(xclPerfMonType type, uint32_t options)
+  startTrace(xdp::MonitorType type, uint32_t options)
   {
     return m_hal->startTrace(type,options);
   }
 
   hal::operations_result<size_t>
-  stopCounters(xclPerfMonType type)
+  stopCounters(xdp::MonitorType type)
   {
     return m_hal->stopCounters(type);
   }
 
   hal::operations_result<size_t>
-  stopTrace(xclPerfMonType type)
+  stopTrace(xdp::MonitorType type)
   {
     return m_hal->stopTrace(type);
   }

@@ -17,57 +17,55 @@
 #ifndef XDP_COUNTERS_DOT_H
 #define XDP_COUNTERS_DOT_H
 
+#include <cstdint>
 #include "core/include/xdp/common.h"
 
 // The definitions in this file are used in the shim interface, which are
 // dynamically linked via dlsym().  Because of that, the structures are
 // defined in C using C constructs.
-#ifdef __cplusplus
-extern "C" {
-#endif
+
+namespace xdp {
+struct CounterResults {
+  float SampleIntervalUsec;
+
+  // Counter values for all of the AIMs in the design
+  uint64_t WriteBytes[MAX_NUM_AIMS];
+  uint64_t WriteTranx[MAX_NUM_AIMS];
+  uint64_t WriteLatency[MAX_NUM_AIMS];
+  uint16_t WriteMinLatency[MAX_NUM_AIMS];
+  uint16_t WriteMaxLatency[MAX_NUM_AIMS];
+  uint64_t ReadBytes[MAX_NUM_AIMS];
+  uint64_t ReadTranx[MAX_NUM_AIMS];
+  uint64_t ReadLatency[MAX_NUM_AIMS];
+  uint16_t ReadMinLatency[MAX_NUM_AIMS];
+  uint16_t ReadMaxLatency[MAX_NUM_AIMS];
+  uint64_t ReadBusyCycles[MAX_NUM_AIMS];
+  uint64_t WriteBusyCycles[MAX_NUM_AIMS];
+
+  // Counter values for all the AMs in the design
+  uint64_t CuExecCount[MAX_NUM_AMS];
+  uint64_t CuExecCycles[MAX_NUM_AMS];
+  uint64_t CuBusyCycles[MAX_NUM_AMS];
+  uint64_t CuMaxParallelIter[MAX_NUM_AMS];
+  uint64_t CuStallExtCycles[MAX_NUM_AMS];
+  uint64_t CuStallIntCycles[MAX_NUM_AMS];
+  uint64_t CuStallStrCycles[MAX_NUM_AMS];
+  uint64_t CuMinExecCycles[MAX_NUM_AMS];
+  uint64_t CuMaxExecCycles[MAX_NUM_AMS];
+
+  // Counter values for all the ASMs in the design
+  uint64_t StrNumTranx[MAX_NUM_ASMS];
+  uint64_t StrDataBytes[MAX_NUM_ASMS];
+  uint64_t StrBusyCycles[MAX_NUM_ASMS];
+  uint64_t StrStallCycles[MAX_NUM_ASMS];
+  uint64_t StrStarveCycles[MAX_NUM_ASMS];
+};
+
+} // end namespace xdp
 
 // xclCounterResults is passed to the shim to be filled in with all
 // of the current values of the profiling IP registers.  The struct is
 // the maximal set of all possible profiling IP combinations.
 
-typedef struct {
-  float SampleIntervalUsec;
-
-  // Counter values for all of the AIMs in the design
-  unsigned long long int WriteBytes[xdp::MAX_NUM_AIMS];
-  unsigned long long int WriteTranx[xdp::MAX_NUM_AIMS];
-  unsigned long long int WriteLatency[xdp::MAX_NUM_AIMS];
-  unsigned short int     WriteMinLatency[xdp::MAX_NUM_AIMS];
-  unsigned short int     WriteMaxLatency[xdp::MAX_NUM_AIMS];
-  unsigned long long int ReadBytes[xdp::MAX_NUM_AIMS];
-  unsigned long long int ReadTranx[xdp::MAX_NUM_AIMS];
-  unsigned long long int ReadLatency[xdp::MAX_NUM_AIMS];
-  unsigned short int     ReadMinLatency[xdp::MAX_NUM_AIMS];
-  unsigned short int     ReadMaxLatency[xdp::MAX_NUM_AIMS];
-  unsigned long long int ReadBusyCycles[xdp::MAX_NUM_AIMS];
-  unsigned long long int WriteBusyCycles[xdp::MAX_NUM_AIMS];
-
-  // Counter values for all the AMs in the design
-  unsigned long long int CuExecCount[xdp::MAX_NUM_AMS];
-  unsigned long long int CuExecCycles[xdp::MAX_NUM_AMS];
-  unsigned long long int CuBusyCycles[xdp::MAX_NUM_AMS];
-  unsigned long long int CuMaxParallelIter[xdp::MAX_NUM_AMS];
-  unsigned long long int CuStallExtCycles[xdp::MAX_NUM_AMS];
-  unsigned long long int CuStallIntCycles[xdp::MAX_NUM_AMS];
-  unsigned long long int CuStallStrCycles[xdp::MAX_NUM_AMS];
-  unsigned long long int CuMinExecCycles[xdp::MAX_NUM_AMS];
-  unsigned long long int CuMaxExecCycles[xdp::MAX_NUM_AMS];
-
-  // Counter values for all the ASMs in the design
-  unsigned long long int StrNumTranx[xdp::MAX_NUM_ASMS];
-  unsigned long long int StrDataBytes[xdp::MAX_NUM_ASMS];
-  unsigned long long int StrBusyCycles[xdp::MAX_NUM_ASMS];
-  unsigned long long int StrStallCycles[xdp::MAX_NUM_ASMS];
-  unsigned long long int StrStarveCycles[xdp::MAX_NUM_ASMS];
-} xclCounterResults;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

@@ -37,7 +37,7 @@
 // Anonymous namespace for helper functions
 namespace {
 
-  static bool nonZero(xclCounterResults& values)
+  static bool nonZero(xdp::CounterResults& values)
   {
     // Check AIM stats
     for (uint64_t i = 0 ; i < xdp::MAX_NUM_AIMS ; ++i)
@@ -150,7 +150,7 @@ namespace xdp {
   void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
                                               DeviceIntf* devInterface)
   {
-    uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
+    uint32_t numAM = devInterface->getNumMonitors(xdp::MonitorType::accel) ;
     bool* dataflowConfig = new bool[numAM] ;
     (db->getStaticInfo()).getDataflowConfiguration(deviceId, dataflowConfig, numAM) ;
     devInterface->configureDataflow(dataflowConfig) ;
@@ -161,7 +161,7 @@ namespace xdp {
   void DeviceOffloadPlugin::configureFa(uint64_t deviceId,
                                         DeviceIntf* devInterface)
   {
-    uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
+    uint32_t numAM = devInterface->getNumMonitors(xdp::MonitorType::accel) ;
     bool* FaConfig = new bool[numAM] ;
     (db->getStaticInfo()).getFaConfiguration(deviceId, FaConfig, numAM) ;
     devInterface->configureFa(FaConfig) ;
@@ -333,7 +333,7 @@ namespace xdp {
     for (auto o : offloaders)
     {
       uint64_t deviceId = o.first ;
-      xclCounterResults results ;
+      xdp::CounterResults results ;
       std::get<2>(o.second)->readCounters(results) ;
 
       // Only store this in the dynamic database if there is valid data.

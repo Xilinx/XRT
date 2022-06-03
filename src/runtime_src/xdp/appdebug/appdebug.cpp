@@ -1224,7 +1224,7 @@ isEmulationMode()
 
 app_debug_view<aim_debug_view>*
 clGetDebugCounters() {
-  xclDebugCountersResults debugResults = {0};
+  xdp::AIMCounterResults debugResults = {0};
 
   if (isEmulationMode()) {
     auto adv = new app_debug_view<aim_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
@@ -1238,13 +1238,13 @@ clGetDebugCounters() {
 
   auto platform = appdebug::getcl_platform_id();
   // Iterates over all devices, but assumes only one device
-  memset(&debugResults,0, sizeof(xclDebugCountersResults));
+  memset(&debugResults,0, sizeof(xdp::AIMCounterResults));
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
   std::string sysfs_open_path;
   for (auto device : platform->get_device_range()) {
     if (device->is_active()) {
-      //memset(&debugResults,0, sizeof(xclDebugCountersResults));
+      //memset(&debugResults,0, sizeof(xdp::AIMCounterResults));
       //At this point we deal with only one deviceyy
       device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_AIM, &debugResults);
       sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();
@@ -1389,8 +1389,8 @@ clGetDebugStreamCounters()
     return adv;
   }
 
-  xclStreamingDebugCountersResults streamingDebugCounters;
-  memset(&streamingDebugCounters, 0, sizeof(xclStreamingDebugCountersResults));
+  xdp::ASMCounterResults streamingDebugCounters;
+  memset(&streamingDebugCounters, 0, sizeof(xdp::ASMCounterResults));
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
   std::string sysfs_open_path;
@@ -1590,8 +1590,8 @@ clGetDebugAccelMonitorCounters()
     return adv;
   }
 
-  xclAccelMonitorCounterResults amCounters;
-  memset(&amCounters, 0, sizeof(xclAccelMonitorCounterResults));
+  xdp::AMCounterResults amCounters;
+  memset(&amCounters, 0, sizeof(xdp::AMCounterResults));
 
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
@@ -1803,7 +1803,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
 }
 app_debug_view<lapc_debug_view>*
 clGetDebugCheckers() {
-  xclDebugCheckersResults debugCheckers;
+  xdp::LAPCCounterResults debugCheckers;
 
   if (isEmulationMode()) {
     auto adv = new app_debug_view<lapc_debug_view>(nullptr, nullptr, true, "xstatus is not supported in emulation flow");
@@ -1819,10 +1819,10 @@ clGetDebugCheckers() {
   std::string sysfs_open_path;
   auto platform = appdebug::getcl_platform_id();
   // Iterates over all devices, but assumes only one device
-  memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
+  memset(&debugCheckers,0, sizeof(xdp::LAPCCounterResults));
   for (auto device : platform->get_device_range()) {
     if (device->is_active()) {
-      //memset(&debugCheckers,0, sizeof(xclDebugCheckersResults));
+      //memset(&debugCheckers,0, sizeof(xdp::LAPCCounterResults));
       //At this point we deal with only one deviceyy
       device->get_xdevice()->debugReadIPStatus(XCL_DEBUG_READ_TYPE_LAPC, &debugCheckers);
       sysfs_open_path = device->get_xdevice()->getSysfsPath(subdev, entry).get();

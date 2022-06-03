@@ -86,7 +86,7 @@ namespace xdp {
     bool isStreamRead = false ;
 
     // When counters are read from the device, they are stored in a structure
-    //  called xclCounterResults.  That structure has arrays of values and
+    //  called xdp::CounterResults.  That structure has arrays of values and
     //  each monitor uses this slotIndex to index the arrays to grab the
     //  counter values for itself.
     uint64_t slotIndex ;
@@ -173,13 +173,13 @@ namespace xdp {
     std::map<int32_t, std::vector<int32_t>> connections ;
 
     // If this compute unit has an AM attached to it, then the amId
-    //  is keeping track of the slot ID inside the xclCounterResults
+    //  is keeping track of the slot ID inside the xdp::CounterResults
     //  structure for this compute unit.
     int32_t amId = -1 ;
 
     // If this compute unit has any AIMs or ASMs attached to its ports,
     //  then these vectors will keep track of the slot IDs inside the
-    //  xclCounterResults structure for all of the attached monitors.
+    //  xdp::CounterResults structure for all of the attached monitors.
     std::vector<uint32_t> aimIds ; // All AIMs (counters only and trace enabled)
     std::vector<uint32_t> asmIds ; // All ASMs (counters only and trace enabled)
     std::vector<uint32_t> aimIdsWithTrace ; // Only AIMs with trace

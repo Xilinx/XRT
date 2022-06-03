@@ -63,7 +63,7 @@ size_t ASM::stopCounter()
     return 0;
 }
 
-size_t ASM::readCounter(xclCounterResults& counterResults)
+size_t ASM::readCounter(xdp::CounterResults& counterResults)
 {
     if(out_stream)
         (*out_stream) << " ASM::readCounter " << std::endl;

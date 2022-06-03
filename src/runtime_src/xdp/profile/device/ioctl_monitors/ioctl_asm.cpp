@@ -93,7 +93,7 @@ size_t IOCtlASM::stopCounter()
   return 0;
 }
 
-size_t IOCtlASM::readCounter(xclCounterResults& counterResults)
+size_t IOCtlASM::readCounter(xdp::CounterResults& counterResults)
 {
   if(!isOpened()) {
     return 0;

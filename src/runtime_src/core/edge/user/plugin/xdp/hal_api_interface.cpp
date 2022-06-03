@@ -48,8 +48,8 @@ namespace xdphalinterface {
   {
     APIInterfaceLoader loader ;
     if(!cb_valid()) return;
-    CBPayload payload = {0, handle};
-    cb(HalInterfaceCallbackType::START_DEVICE_PROFILING, &payload);
+    xdp::CBPayload payload = {0, handle};
+    cb(xdp::HalInterfaceCallbackType::start_device_profiling, &payload);
   }
 
   StartDeviceProfilingCls::~StartDeviceProfilingCls()
@@ -60,8 +60,8 @@ namespace xdphalinterface {
     APIInterfaceLoader loader ;
     if(!cb_valid()) { status = (-1); return; }
     
-    ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};   // pass ProfileResults** as void*
-    cb(HalInterfaceCallbackType::CREATE_PROFILE_RESULTS, &payload);
+    xdp::ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};   // pass ProfileResults** as void*
+    cb(xdp::HalInterfaceCallbackType::create_profile_results, &payload);
     status = 0;
   }
 
@@ -73,8 +73,8 @@ namespace xdphalinterface {
     APIInterfaceLoader loader ;
     if(!cb_valid()) { status = (-1); return; }
 
-    ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
-    cb(HalInterfaceCallbackType::GET_PROFILE_RESULTS, &payload);
+    xdp::ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
+    cb(xdp::HalInterfaceCallbackType::get_profile_results, &payload);
     status = 0;
   }
 
@@ -86,8 +86,8 @@ namespace xdphalinterface {
     APIInterfaceLoader loader ;
     if(!cb_valid()) { status = (-1); return; }
 
-    ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
-    cb(HalInterfaceCallbackType::DESTROY_PROFILE_RESULTS, &payload);
+    xdp::ProfileResultsCBPayload payload = {{0, handle}, static_cast<void*>(results)};
+    cb(xdp::HalInterfaceCallbackType::destroy_profile_results, &payload);
     status = 0;
   }
 

@@ -467,13 +467,13 @@ public:
 
   // Following functions are undocumented profiling functions
   virtual operations_result<size_t>
-  clockTraining(xclPerfMonType)
+  clockTraining(xdp::MonitorType)
   {
     return operations_result<size_t>();
   }
 
   virtual operations_result<uint32_t>
-  countTrace(xclPerfMonType)
+  countTrace(xdp::MonitorType)
   {
     return operations_result<uint32_t>();
   }
@@ -515,7 +515,7 @@ public:
   }
 
   virtual operations_result<size_t>
-  readCounters(xclPerfMonType, xclCounterResults&)
+  readCounters(xdp::MonitorType, xdp::CounterResults&)
   {
     return operations_result<size_t>();
   }
@@ -528,7 +528,7 @@ public:
 
 
   virtual operations_result<size_t>
-  readTrace(xclPerfMonType type, xclTraceResultsVector&)
+  readTrace(xdp::MonitorType type, xdp::TraceEventsVector&)
   {
     return operations_result<size_t>();
   }
@@ -552,56 +552,56 @@ public:
   }
 
   virtual operations_result<void>
-  setProfilingSlots(xclPerfMonType type, uint32_t)
+  setProfilingSlots(xdp::MonitorType type, uint32_t)
   {
     return operations_result<void>();
   }
 
   virtual operations_result<uint32_t>
-  getProfilingSlots(xclPerfMonType type)
+  getProfilingSlots(xdp::MonitorType type)
   {
     return operations_result<uint32_t>();
   }
 
   virtual operations_result<void>
-  getProfilingSlotName(xclPerfMonType type, uint32_t slotnum,
+  getProfilingSlotName(xdp::MonitorType type, uint32_t slotnum,
                        char* slotName, uint32_t length)
   {
     return operations_result<void>();
   }
 
   virtual operations_result<uint32_t>
-  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  getProfilingSlotProperties(xdp::MonitorType type, uint32_t slotnum)
   {
     return operations_result<uint32_t>();
   }
 
   virtual operations_result<void>
-  configureDataflow(xclPerfMonType, unsigned *ip_config)
+  configureDataflow(xdp::MonitorType, unsigned *ip_config)
   {
     return operations_result<void>();
   }
 
   virtual operations_result<size_t>
-  startCounters(xclPerfMonType)
+  startCounters(xdp::MonitorType)
   {
     return operations_result<size_t>();
   }
 
   virtual operations_result<size_t>
-  startTrace(xclPerfMonType, uint32_t)
+  startTrace(xdp::MonitorType, uint32_t)
   {
     return operations_result<size_t>();
   }
 
   virtual operations_result<size_t>
-  stopCounters(xclPerfMonType)
+  stopCounters(xdp::MonitorType)
   {
     return operations_result<size_t>();
   }
 
   virtual operations_result<size_t>
-  stopTrace(xclPerfMonType)
+  stopTrace(xdp::MonitorType)
   {
     return operations_result<size_t>();
   }

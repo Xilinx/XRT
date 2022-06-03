@@ -102,11 +102,11 @@ public:
   uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
                                uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                size_t size);
-  size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
-  size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
-  size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
-  size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
-  size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
+  size_t xclDebugReadCounters(xdp::AIMCounterResults* debugResult);
+  size_t xclDebugReadCheckers(xdp::LAPCCounterResults* checkerResult);
+  size_t xclDebugReadStreamingCounters(xdp::ASMCounterResults* streamingResult);
+  size_t xclDebugReadStreamingCheckers(xdp::SPCCounterResults* streamingCheckerResult);
+  size_t xclDebugReadAccelMonitorCounters(xdp::AMCounterResults* samResult);
 
   // APIs using sysfs information
   uint32_t xclGetNumLiveProcesses();

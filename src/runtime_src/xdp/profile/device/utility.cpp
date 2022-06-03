@@ -21,15 +21,15 @@
 namespace xdp {
 
   uint64_t getAIMSlotId(uint64_t idx) {
-    return ((idx - MIN_TRACE_ID_AIM)/NUM_TRACE_ID_PER_AIM);
+    return ((idx - min_trace_id_aim)/num_trace_id_per_aim);
   }
 
   uint64_t getAMSlotId(uint64_t idx) {
-    return ((idx - MIN_TRACE_ID_AM)/NUM_TRACE_ID_PER_AM);
+    return ((idx - min_trace_id_am)/num_trace_id_per_am);
   }
 
   uint64_t getASMSlotId(uint64_t idx) {
-    return ((idx - MIN_TRACE_ID_ASM)/NUM_TRACE_ID_PER_ASM);
+    return ((idx - min_trace_id_asm)/num_trace_id_per_asm);
   }
 
 } // end namespace xdp

@@ -77,7 +77,7 @@ public:
     virtual void showStatus();	// ??
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
-    void parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector);
+    void parseTraceBuf(void* buf, uint64_t size, std::vector<xdp::TraceEvent>& traceVector);
 
     void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
 
@@ -109,7 +109,7 @@ protected:
 
 protected:
     void parsePacketClockTrain(uint64_t packet);
-    void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result);
+    void parsePacket(uint64_t packet, uint64_t firstTimestamp, xdp::TraceEvent &result);
     uint64_t seekClockTraining(uint64_t* arr, uint64_t count);
 
 protected:
@@ -120,7 +120,7 @@ protected:
     // Since clock training packets can be interspersed with other packets,
     //  we need to keep track of what we see until we see all four 
     //  clock training packets
-    xclTraceResults partialResult = {};
+    xdp::TraceEvent partialResult = {};
 
     // Members specific to version 2 datamover
     bool mIsVersion2 = false;

@@ -178,8 +178,8 @@ namespace xdp {
     uint64_t traceID = getTraceId(trace) ;
     uint64_t deviceTimestamp = getDeviceTimestamp(trace) ;
 
-    uint32_t slot = (traceID - MIN_TRACE_ID_AM) / 16 ;
-    uint64_t monTraceID = slot * 16 + MIN_TRACE_ID_AM ;
+    uint32_t slot = (traceID - min_trace_id_am) / 16 ;
+    uint64_t monTraceID = slot * 16 + min_trace_id_am ;
 
     Monitor* mon = db->getStaticInfo().getAMonitor(deviceId, xclbin, slot) ;
     if (!mon) {
@@ -253,7 +253,7 @@ namespace xdp {
     auto traceId = getTraceId(trace) ;
     auto eventFlags = getEventFlags(trace) ;
     auto deviceTimestamp = getDeviceTimestamp(trace) ;
-    auto slot = traceId - MIN_TRACE_ID_ASM ;
+    auto slot = traceId - min_trace_id_asm ;
 
     Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, slot);
     if (!mon) {
@@ -572,7 +572,7 @@ namespace xdp {
          aimIndex < (db->getStaticInfo()).getNumAIM(deviceId, xclbin) ;
          ++aimIndex) {
 
-      uint64_t aimSlotID = (aimIndex * 2) + MIN_TRACE_ID_AIM ;
+      uint64_t aimSlotID = (aimIndex * 2) + min_trace_id_aim ;
       Monitor* mon =
         db->getStaticInfo().getAIMonitor(deviceId, xclbin, aimIndex);
       if (!mon)
@@ -604,7 +604,7 @@ namespace xdp {
     // Find unfinished ASM events
     bool unfinishedASMevents = false;
     for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumUserASMWithTrace(deviceId, xclbin); ++asmIndex) {
-      uint64_t asmTraceID = asmIndex + MIN_TRACE_ID_ASM;
+      uint64_t asmTraceID = asmIndex + min_trace_id_asm;
       Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, asmIndex);
       if(!mon) {
         continue;
@@ -797,11 +797,11 @@ namespace xdp {
         continue;
       }
 
-      bool AMPacket  = (traceId >= MIN_TRACE_ID_AM &&
-                        traceId <= MAX_TRACE_ID_AM);
-      bool AIMPacket = (traceId <= MAX_TRACE_ID_AIM); // MIN TRACE ID AIM == 0
-      bool ASMPacket = (traceId >= MIN_TRACE_ID_ASM &&
-                        traceId < MAX_TRACE_ID_ASM);
+      bool AMPacket  = (traceId >= min_trace_id_am &&
+                        traceId <= max_trace_id_am);
+      bool AIMPacket = (traceId <= max_trace_id_aim); // min trace id aim == 0
+      bool ASMPacket = (traceId >= min_trace_id_asm &&
+                        traceId <  max_trace_id_asm);
       if (!AMPacket && !AIMPacket && !ASMPacket) {
         continue;
       }

@@ -81,7 +81,7 @@ size_t AIM::stopCounter()
     return size;
 }
 
-size_t AIM::readCounter(xclCounterResults& counterResults)
+size_t AIM::readCounter(xdp::CounterResults& counterResults)
 {
     if(out_stream)
         (*out_stream) << " AIM::readCounter " << std::endl;

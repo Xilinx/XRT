@@ -173,18 +173,18 @@ DeviceIntf::~DeviceIntf()
   // Debug IP Layout
   // ***************************************************************************
   
-  uint32_t DeviceIntf::getNumMonitors(xclPerfMonType type)
+  uint32_t DeviceIntf::getNumMonitors(xdp::MonitorType type)
   {
-    if (type == XCL_PERF_MON_MEMORY)
+    if (type == xdp::MonitorType::memory)
       return mAimList.size();
-    if (type == XCL_PERF_MON_ACCEL)
+    if (type == xdp::MonitorType::accel)
       return mAmList.size();
-    if (type == XCL_PERF_MON_STR)
+    if (type == xdp::MonitorType::str)
       return mAsmList.size();
-    if (type == XCL_PERF_MON_NOC)
+    if (type == xdp::MonitorType::noc)
       return nocList.size();
 
-    if (type == XCL_PERF_MON_STALL) {
+    if (type == xdp::MonitorType::stall) {
       uint32_t count = 0;
       for (auto mon : mAmList) {
         if (mon->hasStall()) count++;
@@ -192,7 +192,7 @@ DeviceIntf::~DeviceIntf()
       return count;
     }
 
-    if (type == XCL_PERF_MON_HOST) {
+    if (type == xdp::MonitorType::host) {
       uint32_t count = 0;
       for (auto mon : mAimList) {
         if (mon->isHostMonitor()) count++;
@@ -202,7 +202,7 @@ DeviceIntf::~DeviceIntf()
 
     // FIFO ?
 
-    if (type == XCL_PERF_MON_SHELL) {
+    if (type == xdp::MonitorType::shell) {
       uint32_t count = 0;
       for (auto mon : mAimList) {
         if (mon->isShellMonitor()) count++;
@@ -214,12 +214,12 @@ DeviceIntf::~DeviceIntf()
     return 0;
   }
 
-  std::string DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index)
+  std::string DeviceIntf::getMonitorName(xdp::MonitorType type, uint32_t index)
   {
-    if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { return mAimList[index]->getName(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { return mAmList[index]->getName(); }
-    if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { return mAsmList[index]->getName(); }
-    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { return nocList[index]->getName(); }
+    if((type == xdp::MonitorType::memory) && (index < mAimList.size())) { return mAimList[index]->getName(); }
+    if((type == xdp::MonitorType::accel)  && (index < mAmList.size()))  { return mAmList[index]->getName(); }
+    if((type == xdp::MonitorType::str)    && (index < mAsmList.size())) { return mAsmList[index]->getName(); }
+    if((type == xdp::MonitorType::noc)    && (index < nocList.size()))  { return nocList[index]->getName(); }
     return std::string("");
   }
 
@@ -316,7 +316,7 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Read AIM performance counters
-  size_t DeviceIntf::readCounters(xclCounterResults& counterResults) {
+  size_t DeviceIntf::readCounters(xdp::CounterResults& counterResults) {
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id()
       << ", " << &counterResults
@@ -324,7 +324,7 @@ DeviceIntf::~DeviceIntf()
     }
 
     // Initialize all values in struct to 0
-    memset(&counterResults, 0, sizeof(xclCounterResults));
+    memset(&counterResults, 0, sizeof(xdp::CounterResults));
 
     if (!mIsDeviceProfiling)
       return 0;
@@ -942,7 +942,7 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Parse trace buffer data after reading from FIFO or DDR
-  void DeviceIntf::parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector)
+  void DeviceIntf::parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xdp::TraceEvent>& traceVector)
   {
     if(index >= mPlTraceDmaList.size())
       return;

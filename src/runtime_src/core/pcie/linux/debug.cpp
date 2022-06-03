@@ -132,7 +132,7 @@ namespace xocl {
   }
 
   // Read APM performance counters
-  size_t shim::xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults) {
+  size_t shim::xclDebugReadCheckers(xdp::LAPCCounterResults* aCheckerResults) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
       << ", " << aCheckerResults
@@ -173,11 +173,11 @@ namespace xocl {
 
   // Read AIM performance counters
 
-  size_t shim::xclDebugReadCounters(xclDebugCountersResults* aCounterResults) {
+  size_t shim::xclDebugReadCounters(xdp::AIMCounterResults* aCounterResults) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
-      << ", " << XCL_PERF_MON_MEMORY << ", " << aCounterResults
-      << ", Read device counters..." << std::endl;
+                 << ", " << xdp::MonitorType::memory << ", " << aCounterResults
+                 << ", Read device counters..." << std::endl;
     }
 
     size_t size = 0;
@@ -258,14 +258,14 @@ namespace xocl {
 
   // Read the streaming performance monitors
 
-  size_t shim::xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults) {
+  size_t shim::xclDebugReadStreamingCounters(xdp::ASMCounterResults* aCounterResults) {
 
     size_t size = 0; // The amount of data read from the hardware
 
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
-      << ", " << XCL_PERF_MON_MEMORY << ", " << aCounterResults
-      << ", Read streaming device counters..." << std::endl;
+                 << ", " << xdp::MonitorType::memory << ", " << aCounterResults
+                 << ", Read streaming device counters..." << std::endl;
     }
 
     // Get the base addresses of all the SSPM IPs in the debug IP layout
@@ -314,14 +314,14 @@ namespace xocl {
     return size;
   }
 
-  size_t shim::xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults) {
+  size_t shim::xclDebugReadStreamingCheckers(xdp::SPCCounterResults* aStreamingCheckerResults) {
 
     size_t size = 0; // The amount of data read from the hardware
 
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
-      << ", " << XCL_PERF_MON_MEMORY << ", " << aStreamingCheckerResults
-      << ", Read streaming protocol checkers..." << std::endl;
+                 << ", " << xdp::MonitorType::memory << ", " << aStreamingCheckerResults
+                 << ", Read streaming protocol checkers..." << std::endl;
     }
 
     // Get the base addresses of all the SPC IPs in the debug IP layout
@@ -358,7 +358,7 @@ namespace xocl {
     return size;
   }
 
-  size_t shim::xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult) {
+  size_t shim::xclDebugReadAccelMonitorCounters(xdp::AMCounterResults* samResult) {
     size_t size = 0;
 
     /*
@@ -369,8 +369,8 @@ namespace xocl {
 
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id()
-      << ", " << XCL_PERF_MON_MEMORY << ", " << samResult
-      << ", Read device counters..." << std::endl;
+                 << ", " << xdp::MonitorType::memory << ", " << samResult
+                 << ", Read device counters..." << std::endl;
     }
 
     uint64_t am_offsets[] = {
@@ -480,15 +480,15 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
     return -1;
   switch (type) {
     case XCL_DEBUG_READ_TYPE_LAPC :
-      return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
+      return drv->xclDebugReadCheckers(reinterpret_cast<xdp::LAPCCounterResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_AIM :
-      return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
+      return drv->xclDebugReadCounters(reinterpret_cast<xdp::AIMCounterResults*>(debugResults));
     case XCL_DEBUG_READ_TYPE_AM :
-      return drv->xclDebugReadAccelMonitorCounters(reinterpret_cast<xclAccelMonitorCounterResults*>(debugResults));
+      return drv->xclDebugReadAccelMonitorCounters(reinterpret_cast<xdp::AMCounterResults*>(debugResults));
   case XCL_DEBUG_READ_TYPE_ASM :
-    return drv->xclDebugReadStreamingCounters(reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
+    return drv->xclDebugReadStreamingCounters(reinterpret_cast<xdp::ASMCounterResults*>(debugResults));
   case XCL_DEBUG_READ_TYPE_SPC:
-    return drv->xclDebugReadStreamingCheckers(reinterpret_cast<xclDebugStreamingCheckersResults*>(debugResults));
+    return drv->xclDebugReadStreamingCheckers(reinterpret_cast<xdp::SPCCounterResults*>(debugResults));
     default:
       ;
   };

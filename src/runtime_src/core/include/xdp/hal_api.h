@@ -38,32 +38,29 @@
 // and the XDP library.  Since the functions that take these objects are
 // dynamically linked via dlsym() we define these as C structures.
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+//#ifdef __cplusplus
+//extern "C" {
+//#endif
 
 // Used in the HAL API Interface to access hardware counters in host code
-enum HalInterfaceCallbackType {
-  START_DEVICE_PROFILING,
-  CREATE_PROFILE_RESULTS,
-  GET_PROFILE_RESULTS,
-  DESTROY_PROFILE_RESULTS
-} ;
 
+namespace xdp {
 
-/**
- * This is an example of the struct that callback
- * functions can take. Eventually, different API
- * callbacks are likely to take different structs.
- */
-typedef struct CBPayload {
+// We are passing this enum through a callback function that is dynamically
+// linked via dlsym.  The enum is treated as an unsigned int, so it is
+// explicitly called out in the declaration.
+
+enum HalInterfaceCallbackType : unsigned int {
+  start_device_profiling  = 0,
+  create_profile_results  = 1,
+  get_profile_results     = 2,
+  destroy_profile_results = 3
+};
+
+struct CBPayload {
   uint64_t idcode;
   void* deviceHandle;
-} CBPayload;
-
-/**
- * Specialized payloads for different types of information
- */
+};
 
 struct ProfileResultsCBPayload
 {
@@ -71,12 +68,37 @@ struct ProfileResultsCBPayload
   void* results;
 };
 
+} // end namespace xdp
+
+
+/**
+ * This is an example of the struct that callback
+ * functions can take. Eventually, different API
+ * callbacks are likely to take different structs.
+ */
+/*
+typedef struct CBPayload {
+  uint64_t idcode;
+  void* deviceHandle;
+} CBPayload;
+*/
+/**
+ * Specialized payloads for different types of information
+ */
+/*
+struct ProfileResultsCBPayload
+{
+  struct CBPayload basePayload;
+  void* results;
+};
+*/
+
 /**
  * end hal level xdp plugin types
  */
 
-#ifdef __cplusplus
-}
-#endif
+//#ifdef __cplusplus
+//}
+//#endif
 
 #endif

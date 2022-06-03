@@ -1246,7 +1246,7 @@ xclCloseIPInterruptNotify(int fd)
 
 size_t
 shim::
-xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults)
+xclDebugReadCheckers(xdp::LAPCCounterResults* aCheckerResults)
 {
   size_t size = 0;
 
@@ -1281,7 +1281,7 @@ xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults)
 
 size_t
 shim::
-xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
+xclDebugReadCounters(xdp::AIMCounterResults* aCounterResults)
 {
   size_t size = 0;
 
@@ -1361,7 +1361,7 @@ xclDebugReadCounters(xclDebugCountersResults* aCounterResults)
 
 size_t
 shim::
-xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
+xclDebugReadAccelMonitorCounters(xdp::AMCounterResults* samResult)
 {
   size_t size = 0;
 
@@ -1471,7 +1471,7 @@ xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult)
 
 size_t
 shim::
-xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults)
+xclDebugReadStreamingCounters(xdp::ASMCounterResults* aCounterResults)
 {
   size_t size = 0; // The amount of data read from the hardware
 
@@ -1523,7 +1523,7 @@ xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults)
 
 size_t
 shim::
-xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults)
+xclDebugReadStreamingCheckers(xdp::SPCCounterResults* aStreamingCheckerResults)
 {
   size_t size = 0; // The amount of data read from the hardware
 
@@ -2426,15 +2426,15 @@ xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type,
     return -1;
   switch (type) {
   case XCL_DEBUG_READ_TYPE_LAPC:
-    return drv->xclDebugReadCheckers(reinterpret_cast<xclDebugCheckersResults*>(debugResults));
+    return drv->xclDebugReadCheckers(reinterpret_cast<xdp::LAPCCounterResults*>(debugResults));
   case XCL_DEBUG_READ_TYPE_AIM:
-    return drv->xclDebugReadCounters(reinterpret_cast<xclDebugCountersResults*>(debugResults));
+    return drv->xclDebugReadCounters(reinterpret_cast<xdp::AIMCounterResults*>(debugResults));
   case XCL_DEBUG_READ_TYPE_AM:
-    return drv->xclDebugReadAccelMonitorCounters(reinterpret_cast<xclAccelMonitorCounterResults*>(debugResults));
+    return drv->xclDebugReadAccelMonitorCounters(reinterpret_cast<xdp::AMCounterResults*>(debugResults));
   case XCL_DEBUG_READ_TYPE_ASM:
-    return drv->xclDebugReadStreamingCounters(reinterpret_cast<xclStreamingDebugCountersResults*>(debugResults));
+    return drv->xclDebugReadStreamingCounters(reinterpret_cast<xdp::ASMCounterResults*>(debugResults));
   case XCL_DEBUG_READ_TYPE_SPC:
-    return drv->xclDebugReadStreamingCheckers(reinterpret_cast<xclDebugStreamingCheckersResults*>(debugResults));
+    return drv->xclDebugReadStreamingCheckers(reinterpret_cast<xdp::SPCCounterResults*>(debugResults));
   default:
     ;
   }

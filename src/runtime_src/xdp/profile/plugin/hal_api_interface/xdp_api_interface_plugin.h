@@ -18,6 +18,7 @@
 #ifndef XDP_API_INTERFACE_PLUGIN_DOT_H
 #define XDP_API_INTERFACE_PLUGIN_DOT_H
 
+#include "core/include/xdp/hal_api.h"
 #include "xdp/config.h"
 
 // Currently, the HAL API Interface does not require a proper
@@ -25,8 +26,9 @@
 //  Instead, it just directly communicates with the counters in hardware.
 
 extern "C" {
-  XDP_EXPORT void hal_api_interface_cb_func(HalInterfaceCallbackType cb_type, 
-					    void* payload) ;
+  XDP_EXPORT
+  void hal_api_interface_cb_func(xdp::HalInterfaceCallbackType cb_type,
+                                 void* payload) ;
 }
 
 #endif

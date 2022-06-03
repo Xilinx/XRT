@@ -42,22 +42,22 @@ namespace xdp {
   // In order to differentiate between reads and writes, each AIM is assigned
   // two trace IDs.  At compile time, we can only insert up to 31 AIMs in the
   // PL region.
-  constexpr int NUM_TRACE_ID_PER_AIM = 2;
-  constexpr int MIN_TRACE_ID_AIM     = 0;
-  constexpr int MAX_TRACE_ID_AIM     = 61;
+  constexpr int num_trace_id_per_aim = 2;
+  constexpr int min_trace_id_aim     = 0;
+  constexpr int max_trace_id_aim     = 61;
 
   // Because of the different stalls each compute unit can create, each AM
   // is assigned sixteen trace IDs.  At compile time, we can only insert
   // up to 31 AMs in the PL region.
-  constexpr int NUM_TRACE_ID_PER_AM = 16;
-  constexpr int MIN_TRACE_ID_AM     = 64;
-  constexpr int MAX_TRACE_ID_AM     = 544;
+  constexpr int num_trace_id_per_am = 16;
+  constexpr int min_trace_id_am     = 64;
+  constexpr int max_trace_id_am     = 544;
 
   // Each ASM is assigned a single trace ID.  At compile time, we can only
   // insert up to 31 ASMs in the PL region.
-  constexpr int NUM_TRACE_ID_PER_ASM = 1;
-  constexpr int MIN_TRACE_ID_ASM     = 576;
-  constexpr int MAX_TRACE_ID_ASM     = 607;
+  constexpr int num_trace_id_per_asm = 1;
+  constexpr int min_trace_id_asm     = 576;
+  constexpr int max_trace_id_asm     = 607;
 
 } // end namespace xdp
 

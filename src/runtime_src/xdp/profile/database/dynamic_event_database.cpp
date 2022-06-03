@@ -369,7 +369,7 @@ namespace xdp {
 
   void VPDynamicDatabase::setCounterResults(const uint64_t deviceId,
                                             xrt_core::uuid uuid,
-                                            xclCounterResults& values)
+                                            xdp::CounterResults& values)
   {
     std::lock_guard<std::mutex> lock(ctrLock) ;
     std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
@@ -377,8 +377,8 @@ namespace xdp {
     deviceCounters[index] = values ;
   }
 
-  xclCounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId,
-                                                         xrt_core::uuid uuid)
+  xdp::CounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId,
+                                                           xrt_core::uuid uuid)
   {
     std::lock_guard<std::mutex> lock(ctrLock) ;
     std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;

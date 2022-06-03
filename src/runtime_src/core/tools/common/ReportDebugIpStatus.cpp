@@ -86,12 +86,12 @@ class DebugIpStatusCollector
   std::vector<std::string> cuNames[DEBUG_IP_TYPE_MAX];
   std::vector<std::string> portNames[DEBUG_IP_TYPE_MAX];
 
-  xclDebugCountersResults          aimResults;
-  xclStreamingDebugCountersResults asmResults;
-  xclAccelMonitorCounterResults    amResults;
-  xclDebugCheckersResults          lapcResults;
-  xclDebugStreamingCheckersResults spcResults;
-  xclAccelDeadlockDetectorResults  accelDeadlockResults;
+  xdp::AIMCounterResults  aimResults;
+  xdp::ASMCounterResults  asmResults;
+  xdp::AMCounterResults   amResults;
+  xdp::LAPCCounterResults lapcResults;
+  xdp::SPCCounterResults  spcResults;
+  xdp::ADDCounterResults  accelDeadlockResults;
 
 public :
   DebugIpStatusCollector(xclDeviceHandle h, const xrt_core::device* d);

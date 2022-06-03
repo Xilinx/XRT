@@ -64,7 +64,7 @@ public:
 
     virtual size_t startCounter();
     virtual size_t stopCounter();
-    virtual size_t readCounter(xclCounterResults& counterResult);
+    virtual size_t readCounter(xdp::CounterResults& counterResult);
 
     XDP_EXPORT
     bool isHostMonitor() const ;

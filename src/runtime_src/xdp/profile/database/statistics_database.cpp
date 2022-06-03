@@ -407,11 +407,11 @@ namespace xdp {
   }
 
   void VPStatisticsDatabase::updateCounters(uint64_t /*deviceId*/,
-                                             xclCounterResults& /*counters*/)
+                                            xdp::CounterResults& /*counters*/)
   {
   }
 
-  void VPStatisticsDatabase::updateCounters(xclCounterResults& /*counters*/)
+  void VPStatisticsDatabase::updateCounters(xdp::CounterResults& /*counters*/)
   {
   }
 

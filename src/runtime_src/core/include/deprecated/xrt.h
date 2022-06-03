@@ -21,6 +21,10 @@
 /* This header file is included from include.xrt.h, it is not
  * Not a stand-alone header file */
 
+// Including the deprecated xcl_app_debug.h file for the xclDebugReadIPStatus
+// function enum parameter definition.
+#include "deprecated/xcl_app_debug.h"
+
 #ifdef __GNUC__
 # define XRT_DEPRECATED __attribute__ ((deprecated))
 #else
@@ -190,9 +194,6 @@ XCL_DRIVER_DLLESPEC
 int
 xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
                        size_t num_bo_in_wait_list, xclBufferHandle *bo_wait_list);
-
-/* Forward declaration of enum declared in deprecated/xcl_app_debug.h */
-enum xclDebugReadType : unsigned int;
 
 /* Not supported */
 XRT_DEPRECATED

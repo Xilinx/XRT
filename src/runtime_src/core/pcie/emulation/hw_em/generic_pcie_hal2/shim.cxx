@@ -1758,7 +1758,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // *_RPC_CALL uses unix_socket
 #endif
     Event eventObj;
-    uint32_t numSlots = getPerfMonNumberSlots(XCL_PERF_MON_MEMORY);
+    uint32_t numSlots = getPerfMonNumberSlots(xdp::MonitorType::memory);
     bool ack = true;
     for(unsigned int counter = 0 ; counter < numSlots; counter++)
     {
@@ -1771,7 +1771,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         continue;
 
       char slotname[128];
-      getPerfMonSlotName(XCL_PERF_MON_MEMORY,counter,slotname,128);
+      getPerfMonSlotName(xdp::MonitorType::memory,counter,slotname,128);
 
       if (simulator_started == true)
       {
@@ -2284,7 +2284,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return deviceTimeStamp;
   }
 
-  void HwEmShim::xclReadBusStatus(xclPerfMonType type) {
+  void HwEmShim::xclReadBusStatus(xdp::MonitorType type) {
 
     bool is_bus_idle = true;
     uint64_t l_idle_bus_cycles = 0;
@@ -3382,33 +3382,33 @@ double HwEmShim::xclGetKernelWriteMaxBandwidthMBps()
   return 19250.00;
 }
 
-uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)
+uint32_t HwEmShim::getPerfMonNumberSlots(xdp::MonitorType type)
 {
-  if (type == XCL_PERF_MON_MEMORY)
+  if (type == xdp::MonitorType::memory)
     return mMemoryProfilingNumberSlots;
-  if (type == XCL_PERF_MON_ACCEL)
+  if (type == xdp::MonitorType::accel)
     return mAccelProfilingNumberSlots;
-  if (type == XCL_PERF_MON_STALL)
+  if (type == xdp::MonitorType::stall)
     return mStallProfilingNumberSlots;
-  if (type == XCL_PERF_MON_HOST)
+  if (type == xdp::MonitorType::host)
     return 1;
-  if (type == XCL_PERF_MON_STR)
+  if (type == xdp::MonitorType::str)
     return mStreamProfilingNumberSlots;
 
   return 0;
 }
 
 // Get slot name
-void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
+void HwEmShim::getPerfMonSlotName(xdp::MonitorType type, uint32_t slotnum,
                                   char* slotName, uint32_t length) {
   std::string str = "";
-  if (type == XCL_PERF_MON_MEMORY) {
+  if (type == xdp::MonitorType::memory) {
     str = (slotnum < xdp::MAX_NUM_AIMS) ? mPerfMonSlotName[slotnum] : "";
   }
-  if (type == XCL_PERF_MON_ACCEL) {
+  if (type == xdp::MonitorType::accel) {
     str = (slotnum < xdp::MAX_NUM_AMS) ? mAccelMonSlotName[slotnum] : "";
   }
-  if (type == XCL_PERF_MON_STR) {
+  if (type == xdp::MonitorType::str) {
     str = (slotnum < xdp::MAX_NUM_ASMS) ? mStreamMonSlotName[slotnum] : "";
   }
   if(str.length() < length) {

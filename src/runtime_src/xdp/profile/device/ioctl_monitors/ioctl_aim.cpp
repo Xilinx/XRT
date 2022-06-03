@@ -93,7 +93,7 @@ size_t IOCtlAIM::stopCounter()
   return 0;
 }
 
-size_t IOCtlAIM::readCounter(xclCounterResults& counterResults)
+size_t IOCtlAIM::readCounter(xdp::CounterResults& counterResults)
 {
   if(!isOpened()) {
     return 0;

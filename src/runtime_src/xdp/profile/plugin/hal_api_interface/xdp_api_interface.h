@@ -31,7 +31,7 @@ namespace xdp {
   {
   private:
     std::map<xclDeviceHandle, DeviceIntf*> devices;
-    std::map<std::string, xclCounterResults> mFinalCounterResultsMap;
+    std::map<std::string, xdp::CounterResults> mFinalCounterResultsMap;
 
     static bool live;
 

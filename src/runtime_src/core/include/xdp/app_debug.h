@@ -17,14 +17,14 @@
 #ifndef XDP_APP_DEBUG_INT_H
 #define XDP_APP_DEBUG_INT_H
 
+#include <cstdint>
+
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/lapc.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /********************** Definitions: Enums, Structs ***************************/
+
+/*
 enum xclDebugReadType : unsigned int {
   XCL_DEBUG_READ_TYPE_APM  = 0,
   XCL_DEBUG_READ_TYPE_LAPC = 1,
@@ -34,78 +34,73 @@ enum xclDebugReadType : unsigned int {
   XCL_DEBUG_READ_TYPE_SPC  = 5,
   XCL_DEBUG_READ_TYPE_ADD  = 6  // Deadlock detector
 };
+*/
 
-/* Debug counter results */
-typedef struct {
-  unsigned long long int WriteBytes     [xdp::MAX_NUM_AIMS];
-  unsigned long long int WriteTranx     [xdp::MAX_NUM_AIMS];
-  unsigned long long int ReadBytes      [xdp::MAX_NUM_AIMS];
-  unsigned long long int ReadTranx      [xdp::MAX_NUM_AIMS];
+namespace xdp {
 
-  unsigned long long int OutStandCnts   [xdp::MAX_NUM_AIMS];
-  unsigned long long int LastWriteAddr  [xdp::MAX_NUM_AIMS];
-  unsigned long long int LastWriteData  [xdp::MAX_NUM_AIMS];
-  unsigned long long int LastReadAddr   [xdp::MAX_NUM_AIMS];
-  unsigned long long int LastReadData   [xdp::MAX_NUM_AIMS];
-  unsigned int           NumSlots;
-  char                   DevUserName    [256];
-} xclDebugCountersResults;
+struct AIMCounterResults {
+  uint64_t WriteBytes   [MAX_NUM_AIMS];
+  uint64_t WriteTranx   [MAX_NUM_AIMS];
+  uint64_t ReadBytes    [MAX_NUM_AIMS];
+  uint64_t ReadTranx    [MAX_NUM_AIMS];
 
-typedef struct {
-  unsigned int           NumSlots;
-  char                   DevUserName    [256];
-
-  unsigned long long int StrNumTranx    [xdp::MAX_NUM_ASMS];
-  unsigned long long int StrDataBytes   [xdp::MAX_NUM_ASMS];
-  unsigned long long int StrBusyCycles  [xdp::MAX_NUM_ASMS];
-  unsigned long long int StrStallCycles [xdp::MAX_NUM_ASMS];
-  unsigned long long int StrStarveCycles[xdp::MAX_NUM_ASMS];
-} xclStreamingDebugCountersResults ;
-
-typedef struct {
-  unsigned int           NumSlots ;
-  char                   DevUserName    [256] ;
-
-  unsigned long long CuExecCount        [xdp::MAX_NUM_AMS];
-  unsigned long long CuExecCycles       [xdp::MAX_NUM_AMS];
-  unsigned long long CuBusyCycles       [xdp::MAX_NUM_AMS];
-  unsigned long long CuMaxParallelIter  [xdp::MAX_NUM_AMS];
-  unsigned long long CuStallExtCycles   [xdp::MAX_NUM_AMS];
-  unsigned long long CuStallIntCycles   [xdp::MAX_NUM_AMS];
-  unsigned long long CuStallStrCycles   [xdp::MAX_NUM_AMS];
-  unsigned long long CuMinExecCycles    [xdp::MAX_NUM_AMS];
-  unsigned long long CuMaxExecCycles    [xdp::MAX_NUM_AMS];
-  unsigned long long CuStartCount       [xdp::MAX_NUM_AMS];
-} xclAccelMonitorCounterResults;
-
-typedef struct {
-  unsigned int           Num;
-  unsigned int           DeadlockStatus;
-} xclAccelDeadlockDetectorResults;
-
-enum xclCheckerType {
-XCL_CHECKER_MEMORY = 0,
-XCL_CHECKER_STREAM = 1
+  uint64_t OutStandCnts [MAX_NUM_AIMS];
+  uint64_t LastWriteAddr[MAX_NUM_AIMS];
+  uint64_t LastWriteData[MAX_NUM_AIMS];
+  uint64_t LastReadAddr [MAX_NUM_AIMS];
+  uint64_t LastReadData [MAX_NUM_AIMS];
+  uint32_t NumSlots;
+  char     DevUserName[256];
 };
 
-/* Debug checker results */
-typedef struct {
-  unsigned int OverallStatus[xdp::MAX_NUM_LAPCS];
-  unsigned int CumulativeStatus[xdp::MAX_NUM_LAPCS][xdp::IP::LAPC::NUM_STATUS];
-  unsigned int SnapshotStatus[xdp::MAX_NUM_LAPCS][xdp::IP::LAPC::NUM_STATUS];
-  unsigned int NumSlots;
+struct ASMCounterResults {
+  uint32_t NumSlots;
   char DevUserName[256];
-} xclDebugCheckersResults;
 
-typedef struct {
-  unsigned int PCAsserted[xdp::MAX_NUM_SPCS];
-  unsigned int CurrentPC [xdp::MAX_NUM_SPCS];
-  unsigned int SnapshotPC[xdp::MAX_NUM_SPCS];
-  unsigned int NumSlots;
+  uint64_t StrNumTranx    [MAX_NUM_ASMS];
+  uint64_t StrDataBytes   [MAX_NUM_ASMS];
+  uint64_t StrBusyCycles  [MAX_NUM_ASMS];
+  uint64_t StrStallCycles [MAX_NUM_ASMS];
+  uint64_t StrStarveCycles[MAX_NUM_ASMS];
+};
+
+struct AMCounterResults {
+  uint32_t NumSlots ;
+  char DevUserName[256] ;
+
+  uint64_t CuExecCount      [MAX_NUM_AMS];
+  uint64_t CuExecCycles     [MAX_NUM_AMS];
+  uint64_t CuBusyCycles     [MAX_NUM_AMS];
+  uint64_t CuMaxParallelIter[MAX_NUM_AMS];
+  uint64_t CuStallExtCycles [MAX_NUM_AMS];
+  uint64_t CuStallIntCycles [MAX_NUM_AMS];
+  uint64_t CuStallStrCycles [MAX_NUM_AMS];
+  uint64_t CuMinExecCycles  [MAX_NUM_AMS];
+  uint64_t CuMaxExecCycles  [MAX_NUM_AMS];
+  uint64_t CuStartCount     [MAX_NUM_AMS];
+};
+
+struct ADDCounterResults {
+  uint32_t Num;
+  uint32_t DeadlockStatus;
+};
+
+struct LAPCCounterResults {
+  uint32_t OverallStatus[MAX_NUM_LAPCS];
+  uint32_t CumulativeStatus[MAX_NUM_LAPCS][IP::LAPC::NUM_STATUS];
+  uint32_t SnapshotStatus[MAX_NUM_LAPCS][IP::LAPC::NUM_STATUS];
+  uint32_t NumSlots;
   char DevUserName[256];
-} xclDebugStreamingCheckersResults;
+};
 
-#ifdef __cplusplus
-}
-#endif
+struct SPCCounterResults {
+  uint32_t PCAsserted[MAX_NUM_SPCS];
+  uint32_t CurrentPC [MAX_NUM_SPCS];
+  uint32_t SnapshotPC[MAX_NUM_SPCS];
+  uint32_t NumSlots;
+  char DevUserName[256];
+};
+
+} // end namespace xdp
+
 #endif

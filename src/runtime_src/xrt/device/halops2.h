@@ -101,23 +101,23 @@ private:
   typedef double (* getHostMaxWriteFuncType)(xclDeviceHandle handle);
   typedef double (* getKernelMaxReadFuncType)(xclDeviceHandle handle);
   typedef double (* getKernelMaxWriteFuncType)(xclDeviceHandle handle);
-  typedef void (* setSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots);
-  typedef uint32_t (* getSlotFuncType)(xclDeviceHandle handle, xclPerfMonType type);
-  typedef void (* getSlotNameFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
+  typedef void (* setSlotFuncType)(xclDeviceHandle handle, xdp::MonitorType type, uint32_t numSlots);
+  typedef uint32_t (* getSlotFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
+  typedef void (* getSlotNameFuncType)(xclDeviceHandle handle, xdp::MonitorType type, uint32_t slotnum,
                                        char* slotName, uint32_t length);
-  typedef uint32_t (* getSlotPropertiesFuncType)(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum);
-  typedef size_t (* clockTrainingFuncType)(xclDeviceHandle handle, xclPerfMonType type);
-  typedef void  (* configureDataflowFuncType)(xclDeviceHandle handle, xclPerfMonType type, unsigned int *ip_config);
-  typedef size_t (* startCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
-  typedef size_t (* stopCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type);
-  typedef size_t (* readCountersFuncType)(xclDeviceHandle handle, xclPerfMonType type,
-                                          xclCounterResults& counterResults);
-  typedef size_t (* startTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type,
+  typedef uint32_t (* getSlotPropertiesFuncType)(xclDeviceHandle handle, xdp::MonitorType type, uint32_t slotnum);
+  typedef size_t (* clockTrainingFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
+  typedef void  (* configureDataflowFuncType)(xclDeviceHandle handle, xdp::MonitorType type, unsigned int *ip_config);
+  typedef size_t (* startCountersFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
+  typedef size_t (* stopCountersFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
+  typedef size_t (* readCountersFuncType)(xclDeviceHandle handle, xdp::MonitorType type,
+                                          xdp::CounterResults& counterResults);
+  typedef size_t (* startTraceFuncType)(xclDeviceHandle handle, xdp::MonitorType type,
                                         uint32_t options);
-  typedef size_t (* stopTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type);
-  typedef uint32_t (* countTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type);
-  typedef size_t (* readTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type,
-                                       xclTraceResultsVector& traceVector);
+  typedef size_t (* stopTraceFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
+  typedef uint32_t (* countTraceFuncType)(xclDeviceHandle handle, xdp::MonitorType type);
+  typedef size_t (* readTraceFuncType)(xclDeviceHandle handle, xdp::MonitorType type,
+                                       xdp::TraceEventsVector& traceVector);
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
