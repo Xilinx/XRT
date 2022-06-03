@@ -1429,8 +1429,11 @@ namespace xdp {
 #endif
 
     if (metricsConfig[0].empty() && metricsConfig[1].empty()) {
+#if 0
+// No need to add the warning message here, as all the tests are using configs under Debug
       std::string msg("AIE_trace_settings.aie_tile_metrics and mem_tile_metrics were not specified in xrt.ini. AIE event trace will not be available.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
+#endif
       if (!runtimeMetrics)
         return true;
       return false;
@@ -1444,9 +1447,12 @@ namespace xdp {
 
     for(int module = 0; module < NUM_MODULES; ++module) {
       if (metricsConfig[module].empty()){
+#if 0
+// No need to add the warning message here, as all the tests are using configs under Debug
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
         std::string metricMsg("AIE_trace_settings.aie_tile_metrics and mem_tile_metrics were not specified in xrt.ini. AIE event trace will not be available.");
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
+#endif
         continue;
       }
       boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
