@@ -22,19 +22,8 @@
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/lapc.h"
 
-/********************** Definitions: Enums, Structs ***************************/
-
-/*
-enum xclDebugReadType : unsigned int {
-  XCL_DEBUG_READ_TYPE_APM  = 0,
-  XCL_DEBUG_READ_TYPE_LAPC = 1,
-  XCL_DEBUG_READ_TYPE_AIM  = 2,
-  XCL_DEBUG_READ_TYPE_ASM  = 3,
-  XCL_DEBUG_READ_TYPE_AM   = 4,
-  XCL_DEBUG_READ_TYPE_SPC  = 5,
-  XCL_DEBUG_READ_TYPE_ADD  = 6  // Deadlock detector
-};
-*/
+// The xclDebugReadType is only used in the deprecated function, so it is not
+// replicated here
 
 namespace xdp {
 
