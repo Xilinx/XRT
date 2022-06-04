@@ -35,7 +35,10 @@ struct mem_bank_t
   uint64_t m_base_address;
   uint64_t m_size;
   int m_index;
-  mem_bank_t(int index, const struct mem_data& data) : m_base_address(data.m_base_address), m_size(data.m_size * 1024), m_index(index)
+  mem_bank_t(int index, const struct mem_data& data) :
+  m_base_address(data.m_base_address)
+  , m_size(data.m_size * 1024)
+  , m_index(index)
   {}
 };
 
@@ -54,6 +57,8 @@ get_ddr_banks(const xrt_core::device* device)
           banks.emplace_back(i, map->m_mem_data[i]);
   }
 
+  // Sort banks based on their starting address
+  // This is useful later on for processing
   std::sort (banks.begin(), banks.end(),
               [] (const mem_bank_t& a, const mem_bank_t& b) {
                 return a.m_base_address < b.m_base_address;
@@ -62,34 +67,30 @@ get_ddr_banks(const xrt_core::device* device)
   return banks;
 }
 
-// validate_address_and_size()
-// Sanity check the user's Start Address and Size against the mem topology.
-// If the start address is 0 (ie. unspecified by user) change it to the first available address.
-// If the size is 0 (ie. unspecified by user) change it to the maximum available size.
-// Fill the vector with the available banks.
-// Set the iterator to the bank containing the start address.
-static void
-validate_address_and_size(xrt_core::device* device, uint64_t& start_addr, uint64_t& size,
-            std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& start_bank) 
+static uint64_t
+get_starting_address(const std::vector<mem_bank_t>& vec_banks, const uint64_t start_addr)
 {
-  // Validate the memory banks
-  vec_banks = get_ddr_banks(device);
-  // Find the first memory bank with valid size since vec_banks is sorted
   auto valid_bank =  std::find_if(vec_banks.begin(), vec_banks.end(),
-              [](const mem_bank_t item) {
-                return item.m_size;
-              });
+            [](const mem_bank_t& item) {
+              return item.m_size;
+            });
 
   if (valid_bank == vec_banks.end())
     throw xrt_core::error(std::errc::operation_canceled, "ERROR: Couldn't find valid memory banks");
 
-  // Validate the start address
-  // If given start address is 0 choose a start address of the first available memory bank
-  // Update reference
-  start_addr = (start_addr == 0) ? valid_bank->m_base_address : start_addr;
+  // If start address is 0 choose a start address of the first available memory bank
+  // The first available memory bank may not have a base address of 0
+  if (start_addr == 0)
+    return valid_bank->m_base_address;
+  
+  return start_addr;
+}
 
-  //Sanity check start address
-  start_bank = std::find_if(vec_banks.begin(), vec_banks.end(),
+static std::vector<mem_bank_t>::iterator
+get_starting_bank(std::vector<mem_bank_t>& vec_banks, const uint64_t start_addr)
+{
+  // Sanity check start address
+  auto start_bank = std::find_if(vec_banks.begin(), vec_banks.end(),
               [=](const mem_bank_t& item) {
                 return ((start_addr >= item.m_base_address) && (start_addr < (item.m_base_address+item.m_size)));
               });
@@ -97,6 +98,12 @@ validate_address_and_size(xrt_core::device* device, uint64_t& start_addr, uint64
   if (start_bank == vec_banks.end())
     throw xrt_core::error(std::errc::operation_canceled,  boost::str(boost::format("Start address 0x%x is not valid") % start_addr));
 
+  return start_bank;
+}
+
+static uint64_t
+get_available_memory_size(std::vector<mem_bank_t>& vec_banks, std::vector<mem_bank_t>::iterator& start_bank, const uint64_t start_addr) 
+{
   // Validate the amount of accessable memory
   uint64_t available_size = std::accumulate(start_bank, vec_banks.end(), (uint64_t)0,
           [](uint64_t result, const mem_bank_t& obj) {
@@ -104,12 +111,8 @@ validate_address_and_size(xrt_core::device* device, uint64_t& start_addr, uint64
           }) ;
 
   available_size -= start_addr - start_bank->m_base_address;
-  if (size > available_size) 
-    throw xrt_core::error(std::errc::operation_canceled, boost::str(boost::format("Cannot access %d bytes of memory from start address 0x%x\n") % size % start_addr));
 
-  // If no size is supplied the end address is the ending address of the last available memory bank
-  // Update the input reference to reflect the change
-  size = (size == 0) ? available_size : size;
+  return available_size;
 }
 
 enum class operation_type {
@@ -117,20 +120,30 @@ enum class operation_type {
   write
 };
 
-// Ensure safe access into a device's memory banks based on memory bank boundary and if the bank is in use
+// Ensure safe access into a device's memory banks based on memory
+// bank boundary and if the bank is in use
 static void 
-perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf, uint64_t start_addr, uint64_t size, operation_type action)
+perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf, const uint64_t start_addr, const uint64_t size, operation_type action)
 {
-  std::vector<mem_bank_t> vec_banks;
-  std::vector<mem_bank_t>::iterator start_bank;
+  auto vec_banks = get_ddr_banks(device);
+  auto validated_start_addr = get_starting_address(vec_banks, start_addr);
+  auto start_bank = get_starting_bank(vec_banks, validated_start_addr);
+  auto available_size = get_available_memory_size(vec_banks, start_bank, validated_start_addr);
 
-  // Sanity check the address and size against the mem topology
-  validate_address_and_size(device, start_addr, size, vec_banks, start_bank);
+  // Validate the size of the memory operation
+  if (size > available_size)
+    throw xrt_core::error(std::errc::operation_canceled, boost::str(boost::format("Cannot access %d bytes of memory from start address 0x%x\n") % size % start_addr));
 
-  uint64_t current_addr = start_addr;
+  auto validated_size = size;
+  // If no size is specified for the read. Read all available memory
+  if ((size == 0) && (action == operation_type::read))
+    validated_size = available_size;
+
+  uint64_t current_addr = validated_start_addr;
   size_t remaining_bytes_to_see = size;
   size_t bytes_seen = 0;
-  // continue to read as long as there are bytes left to read or we run out of banks
+
+  // continue to operate as long as there are bytes left to see or we run out of banks
   for (auto it = start_bank; (it != vec_banks.end()) && (remaining_bytes_to_see > 0); ++it) {
     // Validate the amount of memory the current memory bank has
     uint64_t available_bank_size = 0;
@@ -141,17 +154,17 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
     else 
       available_bank_size = it->m_size - (current_addr - it->m_base_address);
 
-    // If the available bank size is less than the source buffer write what we are able to and move to the next bank
-    uint64_t bytes_to_edit = std::min(available_bank_size, size);
+    // If the available bank size is less than the source buffer see what bytes we are able to and move to the next bank
+    uint64_t bytes_to_edit = std::min(available_bank_size, validated_size);
 
     // Update the buffer index based on how far we have read
     void* current_buffer_location = static_cast<char *>(buf.get()) + bytes_seen;
     switch (action) {
       case operation_type::read:
-        device->unmgd_pread(current_buffer_location, bytes_to_edit, start_addr);
+        device->unmgd_pread(current_buffer_location, bytes_to_edit, validated_start_addr);
         break;
       case operation_type::write:
-        device->unmgd_pwrite(current_buffer_location, bytes_to_edit, start_addr);
+        device->unmgd_pwrite(current_buffer_location, bytes_to_edit, validated_start_addr);
         break;
       default:
         throw std::runtime_error("perform_memory_action: Invalid action");
@@ -167,7 +180,7 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
 namespace xrt_core {
 
 std::vector<char>
-device_mem_read(device* device, uint64_t start_addr, uint64_t size)
+device_mem_read(device* device, const uint64_t start_addr, const uint64_t size)
 {
   // Allocate a buffer to hold the read data
   auto buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), size);
@@ -185,7 +198,7 @@ device_mem_read(device* device, uint64_t start_addr, uint64_t size)
 }
 
 void
-device_mem_write(device* device, uint64_t start_addr, std::vector<char>& src) 
+device_mem_write(device* device, const uint64_t start_addr, const std::vector<char>& src) 
 {
   // Prepare the data to write
   auto buf = xrt_core::aligned_alloc(xrt_core::getpagesize(), src.size());
