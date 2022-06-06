@@ -38,12 +38,13 @@ class unix_socket {
   private:
     int fd;
     std::string name;
-    std::atomic<bool> simprocess_socket_live;
+    
     std::atomic<bool> mStopThread;
     std::thread mcheck_socket_status_thread;
     pollfd mpoll_on_filedescriptor;
 public:
     std::atomic<bool> server_started;
+    std::atomic<bool> simprocess_socket_live;
     void set_name(const std::string &sock_name) { name = sock_name;}
     std::string get_name() { return name;}
     unix_socket(const std::string& env = "EMULATION_SOCKETID", const std::string& sock_id="xcl_sock",double timeout_insec=300,bool fatal_error=true);

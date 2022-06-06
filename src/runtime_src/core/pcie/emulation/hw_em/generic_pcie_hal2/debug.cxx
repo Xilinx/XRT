@@ -270,6 +270,7 @@ namespace xclhwemhal2
    */
   void HwEmShim::messagesThread()
   {
+    using namespace std::chrono_literals;
     if (xclemulation::config::getInstance()->isSystemDPAEnabled() == false)
     {
       return;
@@ -285,12 +286,15 @@ namespace xclhwemhal2
       sleep(10);
       if (not get_simulator_started())
        break;
-
+      if ( sock->simprocess_socket_live == false ) { 
+        std::cout<<"\n socket connection is lost so returning from messagethread. \n";  
+        return; 
+      }
       auto l_time_end = std::chrono::high_resolution_clock::now();
       // My wait time > 300 seconds, Let's fetch the exact details behind late connection with Simulator.
       if (std::chrono::duration_cast<std::chrono::seconds>(l_time_end - l_time).count() > kMaxTimeToConnectSimulator) {
        
-        std::lock_guard<std::mutex> guard(mPrintMessagesLock);
+        //std::lock_guard<std::mutex> guard(mPrintMessagesLock);
         if (get_simulator_started() == false)
           return;
         // Possibility of deadlock detection?
@@ -301,7 +305,7 @@ namespace xclhwemhal2
       auto end_time = std::chrono::high_resolution_clock::now();
       if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= kMaxTimeToConnectSimulator) {
 
-        std::lock_guard<std::mutex> guard(mPrintMessagesLock);
+        //std::lock_guard<std::mutex> guard(mPrintMessagesLock);
 
         if (get_simulator_started() == false) 
           return;
@@ -310,7 +314,8 @@ namespace xclhwemhal2
         parseCount++;
         if (parseCount%5 == 0) {
             // Sleep for 10, 20, 30 ...etc
-            std::this_thread::sleep_for(std::chrono::seconds(10*(parseCount/5)));
+            //std::this_thread::sleep_for(std::chrono::seconds(10*(parseCount/5)));
+            std::this_thread::sleep_for(5s);
         }
       }
       

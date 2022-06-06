@@ -20,6 +20,7 @@
 #include "unix_socket.h"
 #include "utility.h"
 
+#include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/socketvar.h>
@@ -119,33 +120,176 @@ void unix_socket::start_server(double timeout_insec, bool fatal_error)
 
 ssize_t unix_socket::sk_write(const void *wbuf, size_t count)
 {
-  if (not server_started || (false == simprocess_socket_live) ) {
+  if (not server_started  ) {
     std::cout<< "\n unix_socket::sk_write failed, no socket connection established or failed.\n";
+    return -1;
+  }
+  if  (false == simprocess_socket_live) {
     return -1;
   }
   ssize_t r;
   ssize_t wlen = 0;
   auto buf = reinterpret_cast<const unsigned char*>(wbuf);
-  do {
-    if ((r = write(fd, buf + wlen, count - wlen)) < 0) {
-      if (EBADF == errno || (false == simprocess_socket_live)){
-        std::cout<< "\n file descriptor pointing to invalid file.\n";
-        break;
-      }
-      if (errno == EINTR || errno == EAGAIN ) {
-        continue;
-      }
-      
-       
-      return -1;
+  
+  struct timeval      timeout;
+  timeout.tv_sec  = 1;
+  timeout.tv_usec = 0;
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(fd,&rfds);
+  if ( select(fd + 1, &rfds, NULL, NULL, &timeout) < 0 ) {
+    std::cout<<"\n failed to set the select timedout for write socket\n";
+  }
+
+ while (wlen < static_cast<unsigned int>(count) && simprocess_socket_live && server_started) {
+   r = send(fd, buf + wlen, count - wlen,0);
+    if (r < 0 ) {
+       if (r == -EAGAIN)
+                std::cout<<"\n non-blocking succeeded\n";
+       if ( errno == EAGAIN ||  errno == EWOULDBLOCK) {
+          std::cout<<"\n data is not received in send call\n";
+          continue;
+       }
+       else {
+         std::cout<<"\n returning from send call\n";
+         return -1;
+       }
     }
     wlen += r;
-  } while (wlen < static_cast<unsigned int>(count));
+ }
+
   return wlen;
 }
 
 ssize_t unix_socket::sk_read(void *rbuf, size_t count)
 {
+  if (false ==  server_started ) {
+    //std::cout<< "\n unix_socket::sk_read failed, connection is NOT established at all so returing.\n";
+    return -1;
+    
+  }
+  if (false == simprocess_socket_live) {
+    //std::cout<< "\n unix_socket::sk_read failed, connection is already lost so returing.\n";
+    return -1;
+  }
+  //ssize_t r;
+  ssize_t rlen = 0;
+  auto buf = reinterpret_cast<unsigned char*>(rbuf);
+struct timeval      timeout;
+  timeout.tv_sec  = 1;
+  timeout.tv_usec = 0;
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(fd,&rfds);
+  if ( select(fd + 1, &rfds, NULL, NULL, &timeout) < 0 ) {
+    std::cout<<"\n failed to set the read select timedout for read socket\n";
+  }
+
+  //std::string lReceivedData;
+
+  while (rlen < static_cast<unsigned int>(count) && simprocess_socket_live && server_started) {
+    ssize_t actual_read = 0;
+    //char data[1024];
+    actual_read = recv(fd, buf + rlen, count - rlen , 0);
+    if (actual_read < 0 ) {
+       if (actual_read == -EAGAIN)
+                std::cout<<"\n non-blocking succeeded\n";
+       if ( errno == EAGAIN ||  errno == EWOULDBLOCK) {
+          std::cout<<"\n data is not received in recv call\n";
+          continue;
+       }
+       else {
+         std::cout<<"\n returning from recv call\n";
+         return -1;
+       }
+    }
+    //lReceivedData.append(data);
+    rlen += actual_read;
+    
+  }
+
+  return rlen;
+}
+
+void unix_socket::monitor_socket_status()
+{
+ int status = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+
+  if (status == -1)
+    std::cout<<"\n unable to change the socket to non-blocking call\n"; 
+
+  mcheck_socket_status_thread = std::thread(&unix_socket::monitor_socket_status_thread, this);
+}
+
+void unix_socket::monitor_socket_status_thread() {
+
+while (true) {
+  if ( system("pgrep xsim") !=0 ){
+    std::cout<<"\n xsim is no longer present so exiting the app\n";
+    break;
+
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds{500});
+}
+exit(0);
+}
+
+
+/*
+void unix_socket::monitor_socket_status_thread() {
+  using namespace std::chrono_literals;
+
+  while( false==mStopThread ) {
+    if ( false == server_started) {
+      std::this_thread::sleep_for(1s);
+      std::cout<<"\n socket connect is not established yet...\n";
+      continue;
+    }
+    
+    mpoll_on_filedescriptor = {fd, POLLERR, -1}; 
+    auto retval = poll(&mpoll_on_filedescriptor, 1, 500);
+    if ( retval < 0 ) {
+      
+          std::cout<<"\n poll is failed";
+          continue;
+    }
+
+    if (retval == 0) {
+      //std::cout<<"\n poll is timedout ";
+      continue;
+    }
+
+if( mpoll_on_filedescriptor.revents & POLLHUP ) {
+    //if( mpoll_on_filedescriptor.revents != POLLIN ) {
+    //  if( (mpoll_on_filedescriptor.revents == POLLRDHUP) || 
+    //  ( (mpoll_on_filedescriptor.revents == POLLERR)) ||
+    //   (mpoll_on_filedescriptor.revents == POLLHUP)
+    //  ) {
+      std::cout<<"\n socket is not readable! So application will exit now.";
+      simprocess_socket_live.store(false);
+      server_started.store(false);
+      std::this_thread::sleep_for(5s);
+      break;
+      //kill(getpid(),SIGTERM);
+
+    }
+
+    if ( mpoll_on_filedescriptor.revents & POLLERR ) {
+      std::cout<< "\n Hurrah! client connection is lost ::";
+      simprocess_socket_live.store(false);
+      break;
+
+    }
+    //std::this_thread::sleep_for(500ms);
+    
+
+  }  // end of while
+  exit(0);
+}
+
+ssize_t unix_socket::sk_read(void *rbuf, size_t count)
+{
+  
   if (not server_started || (false == simprocess_socket_live)) {
     std::cout<< "\n unix_socket::sk_read failed, no socket connection established or failed.\n";
     return -1;
@@ -153,6 +297,16 @@ ssize_t unix_socket::sk_read(void *rbuf, size_t count)
   ssize_t r;
   ssize_t rlen = 0;
   auto buf = reinterpret_cast<unsigned char*>(rbuf);
+
+  struct timeval      timeout;
+  timeout.tv_sec  = 1;
+  timeout.tv_usec = 0;
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(fd,&rfds);
+  if ( select(fd + 1, &rfds, NULL, NULL, &timeout) < 0 ) {
+    std::cout<<"\n failed to set the select timedout for write socket\n";
+  }
 
   do {
     if ((r = read(fd, buf + rlen, count - rlen)) < 0) {
@@ -167,6 +321,10 @@ ssize_t unix_socket::sk_read(void *rbuf, size_t count)
 }
 
 void unix_socket::monitor_socket_status() {
+  int status = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+
+  if (status == -1)
+    std::cout<<"\n unable to change the socket to non-blocking call\n";
   mcheck_socket_status_thread = std::thread(&unix_socket::monitor_socket_status_thread,this);
 }
 
@@ -201,7 +359,7 @@ void unix_socket::monitor_socket_status_thread() {
       std::cout<<"\n socket is not readable! something fishy!!!";
       simprocess_socket_live.store(false);
       std::this_thread::sleep_for(500ms);
-      kill(getpid(),SIGKILL);
+      exit(0);
 
     }
 
@@ -216,5 +374,5 @@ void unix_socket::monitor_socket_status_thread() {
 
   }  // end of while
 }
-
+*/
 #endif

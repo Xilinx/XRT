@@ -1799,9 +1799,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     xclGetDebugMessages(true);
     try {
-      std::lock_guard<std::mutex> guard(mPrintMessagesLock);
-      fetchAndPrintMessages();
+      mHostMemAccessThreadStarted.store(false);
       simulator_started = false;
+      //std::lock_guard<std::mutex> guard(mPrintMessagesLock);
+      fetchAndPrintMessages();
+      
     }
     catch (std::exception& ex) {
       if (mLogStream.is_open())
