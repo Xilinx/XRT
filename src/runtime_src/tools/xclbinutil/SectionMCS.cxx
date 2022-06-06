@@ -51,7 +51,7 @@ SectionMCS::init::init()
 using SubSectionTableCollection = std::vector<std::pair<std::string, MCS_TYPE>>;
 static const SubSectionTableCollection& 
   getSubSectionTable() {
-  static SubSectionTableCollection subSectionTable = {
+  static const SubSectionTableCollection subSectionTable = {
     {"UNKNOWN", MCS_UNKNOWN},
     {"PRIMARY", MCS_PRIMARY},
     {"SECONDARY", MCS_SECONDARY}

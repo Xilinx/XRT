@@ -254,7 +254,7 @@ FDTProperty::au16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   XUtil::TRACE("   Type: Array of 16 bits");
 
   // Check and make sure that all is good
-  static unsigned int byteBoundary = 2;
+  static const unsigned int byteBoundary = 2;
   if ((m_dataLength % byteBoundary) != 0) {
     auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 2-byte boundary.") % m_dataLength;
     throw std::runtime_error(errMsg.str());
@@ -302,7 +302,7 @@ FDTProperty::u16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   XUtil::TRACE("   Type: 16 bits");
 
   // Check and make sure that all is good
-  static unsigned int byteBoundary = 2;
+  static const unsigned int byteBoundary = 2;
   if ((m_dataLength % byteBoundary) != 0) {
     auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 2-byte boundary.") % m_dataLength;
     throw std::runtime_error(errMsg.str());
@@ -333,7 +333,7 @@ FDTProperty::u128MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   XUtil::TRACE("   Type: 128 bits");
 
   // Check and make sure that all is good
-  static unsigned int expectedSize = 16;
+  static const unsigned int expectedSize = 16;
   if (m_dataLength != expectedSize) {
     auto errMsg = boost::format("ERROR: Data length for a 128-bit word is invalid: Expected: %d, Actual: %d") % expectedSize % m_dataLength;
     throw std::runtime_error(errMsg.str());
@@ -367,7 +367,7 @@ FDTProperty::au64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   XUtil::TRACE("   Type: Array 64 bits");
 
   // Check and make sure that all is good
-  static unsigned int byteBoundary = 8;
+  static const unsigned int byteBoundary = 8;
   if ((m_dataLength % byteBoundary) != 0) {
     auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 8-byte boundary.") % m_dataLength;
     throw std::runtime_error(errMsg.str());

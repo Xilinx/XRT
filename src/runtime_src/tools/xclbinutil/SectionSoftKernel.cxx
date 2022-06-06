@@ -56,7 +56,7 @@ using SubSectionTableCollection = std::vector<std::pair<std::string, SectionSoft
 static const SubSectionTableCollection & 
   getSubSectionTable() 
 {
-  static SubSectionTableCollection subSectionTable = {
+  static const SubSectionTableCollection subSectionTable = {
                  {"UNKNOWN", SectionSoftKernel::SubSection::unknown},
                  {"OBJ", SectionSoftKernel::SubSection::obj},
                  {"METADATA", SectionSoftKernel::SubSection::metadata}

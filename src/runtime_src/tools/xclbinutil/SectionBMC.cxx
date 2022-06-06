@@ -52,7 +52,7 @@ using SubSectionTableCollection = std::vector<std::pair<std::string, SectionBMC:
 static const SubSectionTableCollection & 
   getSubSectionTable() 
 {
-  static SubSectionTableCollection subSectionTable = {
+  static const SubSectionTableCollection subSectionTable = {
     {"UNKNOWN", SectionBMC::SubSection::unknown},
     {"FW", SectionBMC::SubSection::fw},
     {"METADATA", SectionBMC::SubSection::metadata}

@@ -47,7 +47,7 @@ int addressQualifierStrToInt(const std::string& addressQualifier)
 }
 
 #define TYPESIZE(VAR) {#VAR, sizeof(VAR)}
-static std::vector<std::pair<std::string, std::size_t>> scalarTypes = {
+static const std::vector<std::pair<std::string, std::size_t>> scalarTypes = {
   TYPESIZE(char), TYPESIZE(unsigned char),
   TYPESIZE(float),
   TYPESIZE(int8_t), TYPESIZE(uint8_t),
@@ -503,13 +503,13 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
 
   // -- Validate _init function
   if (!initKernels.empty()) {
-    static std::vector<std::string> argsExpected = { "xclDeviceHandle", "const unsigned char*" };
+    static const std::vector<std::string> argsExpected = { "xclDeviceHandle", "const unsigned char*" };
     validateSignature(initKernels, argsExpected, kernelName, kernelLibrary);
   }
 
   // -- Validate _fini function
   if (!finiKernels.empty()) {
-    static std::vector<std::string> argsExpected = { "xrtHandles*" };
+    static const std::vector<std::string> argsExpected = { "xrtHandles*" };
     validateSignature(finiKernels, argsExpected, kernelName, kernelLibrary);
   }
 

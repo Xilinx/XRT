@@ -278,7 +278,7 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
     unsigned int runningOffset = (unsigned int)_ostream.tellp();
     unsigned int bytePadding = XUtil::bytesToAlign(runningOffset);
     if (bytePadding != 0) {
-      static char holePack[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0 };
+      static const char holePack[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0 };
       _ostream.write(holePack, bytePadding);
       _ostream.flush();
     }

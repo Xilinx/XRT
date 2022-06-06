@@ -125,7 +125,7 @@ void rename_file_node(const std::string & fileNodeName,
                       rapidjson::Document::AllocatorType& allocator)
 {
   // Remove the subname (e.g., _file) from the existing key
-  const static std::string removeSubName = "_file";
+  static const std::string removeSubName = "_file";
 
   std::string newKey = fileNodeName;              
   auto index = newKey.find(removeSubName); 
