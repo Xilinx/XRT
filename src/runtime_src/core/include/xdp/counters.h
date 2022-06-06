@@ -20,10 +20,6 @@
 #include <cstdint>
 #include "core/include/xdp/common.h"
 
-// The definitions in this file are used in the shim interface, which are
-// dynamically linked via dlsym().  Because of that, the structures are
-// defined in C using C constructs.
-
 namespace xdp {
 
 // Orignally called xclCounterResults, the xdp::CounterResults struct
@@ -35,35 +31,35 @@ struct CounterResults {
   float SampleIntervalUsec;
 
   // Counter values for all of the AIMs in the design
-  uint64_t WriteBytes[MAX_NUM_AIMS];
-  uint64_t WriteTranx[MAX_NUM_AIMS];
-  uint64_t WriteLatency[MAX_NUM_AIMS];
+  uint64_t WriteBytes     [MAX_NUM_AIMS];
+  uint64_t WriteTranx     [MAX_NUM_AIMS];
+  uint64_t WriteLatency   [MAX_NUM_AIMS];
   uint16_t WriteMinLatency[MAX_NUM_AIMS];
   uint16_t WriteMaxLatency[MAX_NUM_AIMS];
-  uint64_t ReadBytes[MAX_NUM_AIMS];
-  uint64_t ReadTranx[MAX_NUM_AIMS];
-  uint64_t ReadLatency[MAX_NUM_AIMS];
-  uint16_t ReadMinLatency[MAX_NUM_AIMS];
-  uint16_t ReadMaxLatency[MAX_NUM_AIMS];
-  uint64_t ReadBusyCycles[MAX_NUM_AIMS];
+  uint64_t ReadBytes      [MAX_NUM_AIMS];
+  uint64_t ReadTranx      [MAX_NUM_AIMS];
+  uint64_t ReadLatency    [MAX_NUM_AIMS];
+  uint16_t ReadMinLatency [MAX_NUM_AIMS];
+  uint16_t ReadMaxLatency [MAX_NUM_AIMS];
+  uint64_t ReadBusyCycles [MAX_NUM_AIMS];
   uint64_t WriteBusyCycles[MAX_NUM_AIMS];
 
   // Counter values for all the AMs in the design
-  uint64_t CuExecCount[MAX_NUM_AMS];
-  uint64_t CuExecCycles[MAX_NUM_AMS];
-  uint64_t CuBusyCycles[MAX_NUM_AMS];
+  uint64_t CuExecCount      [MAX_NUM_AMS];
+  uint64_t CuExecCycles     [MAX_NUM_AMS];
+  uint64_t CuBusyCycles     [MAX_NUM_AMS];
   uint64_t CuMaxParallelIter[MAX_NUM_AMS];
-  uint64_t CuStallExtCycles[MAX_NUM_AMS];
-  uint64_t CuStallIntCycles[MAX_NUM_AMS];
-  uint64_t CuStallStrCycles[MAX_NUM_AMS];
-  uint64_t CuMinExecCycles[MAX_NUM_AMS];
-  uint64_t CuMaxExecCycles[MAX_NUM_AMS];
+  uint64_t CuStallExtCycles [MAX_NUM_AMS];
+  uint64_t CuStallIntCycles [MAX_NUM_AMS];
+  uint64_t CuStallStrCycles [MAX_NUM_AMS];
+  uint64_t CuMinExecCycles  [MAX_NUM_AMS];
+  uint64_t CuMaxExecCycles  [MAX_NUM_AMS];
 
   // Counter values for all the ASMs in the design
-  uint64_t StrNumTranx[MAX_NUM_ASMS];
-  uint64_t StrDataBytes[MAX_NUM_ASMS];
-  uint64_t StrBusyCycles[MAX_NUM_ASMS];
-  uint64_t StrStallCycles[MAX_NUM_ASMS];
+  uint64_t StrNumTranx    [MAX_NUM_ASMS];
+  uint64_t StrDataBytes   [MAX_NUM_ASMS];
+  uint64_t StrBusyCycles  [MAX_NUM_ASMS];
+  uint64_t StrStallCycles [MAX_NUM_ASMS];
   uint64_t StrStarveCycles[MAX_NUM_ASMS];
 };
 

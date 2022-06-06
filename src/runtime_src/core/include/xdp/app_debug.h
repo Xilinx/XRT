@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,10 +22,17 @@
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/lapc.h"
 
-// The xclDebugReadType is only used in the deprecated function, so it is not
-// replicated here
+// An additional type (xclDebugReadType) is used in a shim function that
+// was incorrectly exposed to the user in the xrt.h.  The declaration
+// is deprecated in 2022.2 (but not the shim function) and the type will
+// be re-implemented here in a future release when the the declaration is
+// removed.
 
 namespace xdp {
+
+// The structs declared in this file are used in xbutil and application
+// debug in order to read all the debug counter values from the
+// debug/profile IP.
 
 struct AIMCounterResults {
   uint64_t WriteBytes   [MAX_NUM_AIMS];

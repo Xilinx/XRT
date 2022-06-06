@@ -20,12 +20,11 @@
 #include <cstdint>
 
 // The declarations used in this file are shared between the different shims
-// and the XDP library.  Since the functions that take these objects are
-// dynamically linked via dlsym() we define these as C structures.
+// and the XDP library.
 
 namespace xdp {
 
-// This enum is Used in the HAL API Interface to access hardware counters from
+// This enum is used in the HAL API Interface to access hardware counters from
 // host code.  We are passing this enum through a callback function that is
 // dynamically linked via dlsym.  The enum is treated as an unsigned int,
 // so it is explicitly called out in the declaration.
@@ -36,6 +35,10 @@ enum HalInterfaceCallbackType : unsigned int {
   get_profile_results     = 2,
   destroy_profile_results = 3
 };
+
+// These structs were originally intended to provide support for other
+// types of C callbacks dynamically linked that would be accessed by
+// user functions.
 
 struct CBPayload {
   uint64_t idcode;

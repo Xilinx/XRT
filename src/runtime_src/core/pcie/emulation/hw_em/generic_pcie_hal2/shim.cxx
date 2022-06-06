@@ -27,9 +27,6 @@
 #include "core/include/xdp/fifo.h"
 #include "core/include/xdp/trace.h"
 
-#include "plugin/xdp/device_offload.h"
-
-
 #define SEND_RESP2QDMA() \
     { \
         auto raw_response_header    = std::make_unique<char[]>(ri_len); \

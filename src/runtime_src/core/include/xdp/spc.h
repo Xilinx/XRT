@@ -23,6 +23,7 @@
 
 namespace xdp::IP::SPC {
 
+// The total number of 32-bit counters accessible on the IP
 constexpr int NUM_COUNTERS = 3;
 
 namespace AXI_LITE {

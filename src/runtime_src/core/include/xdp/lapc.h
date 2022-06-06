@@ -23,7 +23,9 @@
 
 namespace xdp::IP::LAPC {
 
+// The total number of the 32-bit registers available on the IP
 constexpr int NUM_COUNTERS = 9;
+// The status registers are grouped together in groups of four
 constexpr int NUM_STATUS = 4;
 
 namespace AXI_LITE {

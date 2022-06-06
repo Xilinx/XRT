@@ -17,11 +17,9 @@
 #ifndef XDP_COMMON_DOT_H
 #define XDP_COMMON_DOT_H
 
-/*
- * This file contains the common debug/profiling declarations used by
- * distinct parts of the code base to interface with the profiling
- * IP on the hardware inserted into the reconfigurable region.
-*/
+// This file contains the common debug/profiling declarations used by
+// distinct parts of the code base to interface with the profiling
+// IP on the hardware inserted into the reconfigurable region.
 
 namespace xdp {
 // On the tools side, there are hard limits to the total number of
