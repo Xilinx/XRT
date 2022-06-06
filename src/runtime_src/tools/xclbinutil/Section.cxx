@@ -32,7 +32,7 @@ namespace XUtil = XclBinUtilities;
 #endif
 
 
-Section::SectionInfo::SectionInfo( enum axlf_section_kind eKind,
+Section::SectionInfo::SectionInfo( axlf_section_kind eKind,
                                    std::string sectionName,
                                    Section_factory sectionCtor)
   : eKind(eKind)
@@ -140,7 +140,7 @@ Section::addSectionType(std::unique_ptr<SectionInfo> sectionInfo)
 
 void
 Section::translateSectionKindStrToKind(const std::string & sectionName, 
-                                       enum axlf_section_kind & eKind)
+                                       axlf_section_kind & eKind)
 {
   auto & sections = getSectionTypes();
   auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->name == sectionName; });
@@ -152,7 +152,7 @@ Section::translateSectionKindStrToKind(const std::string & sectionName,
 }
 
 bool
-Section::supportsSubSections(enum axlf_section_kind &eKind)
+Section::supportsSubSections(axlf_section_kind &eKind)
 {
   auto &sections = getSectionTypes();
 
@@ -167,7 +167,7 @@ Section::supportsSubSections(enum axlf_section_kind &eKind)
 }
 
 bool
-Section::supportsSectionIndex(enum axlf_section_kind &eKind)
+Section::supportsSectionIndex(axlf_section_kind &eKind)
 {
   auto & sections = getSectionTypes();
 
@@ -181,6 +181,21 @@ Section::supportsSectionIndex(enum axlf_section_kind &eKind)
   return iter->get()->supportsIndexing;
 }
 
+bool 
+Section::supportsSubSectionName(axlf_section_kind eKind, const std::string & sSubSectionName)
+{
+  auto& sections = getSectionTypes();
+  auto sectionIter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+
+  if (sectionIter == sections.end())
+    return false;
+
+  auto subSections = sectionIter->get()->subSections;
+
+  return std::any_of(subSections.begin(), subSections.end(), [&](const auto &entry) { return boost::iequals(entry, sSubSectionName); });
+}
+
+
 // -------------------------------------------------------------------------
 
 const std::string & 
@@ -190,24 +205,24 @@ Section::getSectionIndexName() const
 }
 
 static const std::vector<std::pair<std::string, Section::FormatType>> formatTypeTable = {
-                         std::make_pair("",    Section::FormatType::UNDEFINED),
-                         std::make_pair("RAW",  Section::FormatType::RAW),
-                         std::make_pair("JSON", Section::FormatType::JSON),
-                         std::make_pair("HTML", Section::FormatType::HTML),
-                         std::make_pair("TXT",  Section::FormatType::TXT)
+                         {"",    Section::FormatType::undefined},
+                         {"RAW",  Section::FormatType::raw},
+                         {"JSON", Section::FormatType::json},
+                         {"HTML", Section::FormatType::html},
+                         {"TXT",  Section::FormatType::txt}
 };
 
-enum Section::FormatType 
+Section::FormatType 
 Section::getFormatType(const std::string & sFormatType)
 {
   auto iter = std::find_if(formatTypeTable.begin(), formatTypeTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sFormatType); });
   if (iter == formatTypeTable.end())
-    return FormatType::UNDEFINED;
+    return FormatType::undefined;
 
   return iter->second;
 }
 
-enum axlf_section_kind 
+axlf_section_kind 
 Section::getKindOfJSON(const std::string &nodeName) {
   auto & sections = getSectionTypes();
   auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->nodeName == nodeName; });
@@ -221,7 +236,7 @@ Section::getKindOfJSON(const std::string &nodeName) {
 }
 
 std::string
-Section::getJSONOfKind(enum axlf_section_kind eKind) {
+Section::getJSONOfKind(axlf_section_kind eKind) {
   auto & sections = getSectionTypes();
   auto iter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
 
@@ -234,7 +249,7 @@ Section::getJSONOfKind(enum axlf_section_kind eKind) {
 }
 
 Section*
-Section::createSectionObjectOfKind( enum axlf_section_kind eKind, 
+Section::createSectionObjectOfKind( axlf_section_kind eKind, 
                                     const std::string sIndexName) {
   Section* pSection = nullptr;
 
@@ -259,7 +274,7 @@ Section::createSectionObjectOfKind( enum axlf_section_kind eKind,
 }
 
 
-enum axlf_section_kind
+axlf_section_kind
 Section::getSectionKind() const {
   return m_eKind;
 }
@@ -301,7 +316,8 @@ Section::writeXclBinSectionBuffer(std::ostream& _ostream) const
 void
 Section::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader) {
   // Some error checking
-  if ((enum axlf_section_kind)_sectionHeader.m_sectionKind != getSectionKind()) {
+  XUtil::TRACE("ReadXclBinBinary...");
+  if ((axlf_section_kind)_sectionHeader.m_sectionKind != getSectionKind()) {
     auto errMsg = boost::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d") % getSectionKind() % _sectionHeader.m_sectionKind;
     throw std::runtime_error(errMsg.str());
   }
@@ -363,7 +379,7 @@ void
 Section::readXclBinBinary(std::istream& _istream,
                           const boost::property_tree::ptree& _ptSection) {
   // Some error checking
-  enum axlf_section_kind eKind = (enum axlf_section_kind)_ptSection.get<unsigned int>("Kind");
+  axlf_section_kind eKind = (axlf_section_kind)_ptSection.get<unsigned int>("Kind");
 
   if (eKind != getSectionKind()) {
     auto errMsg = boost::format("ERROR: Unexpected section kind.  Expected: %d, Read: %d") % (unsigned int) getSectionKind() % (unsigned int) eKind;
@@ -458,10 +474,10 @@ Section::getPathAndName() const
 
 
 void 
-Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
+Section::readPayload(std::istream& _istream, FormatType _eFormatType)
 {
     switch (_eFormatType) {
-    case FormatType::RAW:
+    case FormatType::raw:
       {
         axlf_section_header sectionHeader = axlf_section_header {0};
         sectionHeader.m_sectionKind = getSectionKind();
@@ -474,7 +490,7 @@ Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
         readXclBinBinary(_istream, sectionHeader);
         break;
       }
-    case FormatType::JSON:
+    case FormatType::json:
       {
         // Bring the file into memory
         _istream.seekg(0, _istream.end);
@@ -507,31 +523,31 @@ Section::readPayload(std::istream& _istream, enum FormatType _eFormatType)
         }
         break;
       }
-    case FormatType::HTML:
+    case FormatType::html:
       // Do nothing
       break;
-    case FormatType::TXT:
+    case FormatType::txt:
       // Do nothing
       break;
-    case FormatType::UNKNOWN:
+    case FormatType::unknown:
       // Do nothing
       break;
-    case FormatType::UNDEFINED:
+    case FormatType::undefined:
       // Do nothing
       break;
     }
 }
 
 void 
-Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) const
+Section::dumpContents(std::ostream& _ostream, FormatType _eFormatType) const
 {
   switch (_eFormatType) {
-  case FormatType::RAW:
+  case FormatType::raw:
     {
       writeXclBinSectionBuffer(_ostream);
       break;
     }
-  case FormatType::JSON:
+  case FormatType::json:
     {
       boost::property_tree::ptree pt;
       marshalToJSON(m_pBuffer, m_bufferSize, pt);
@@ -539,7 +555,7 @@ Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) cons
       boost::property_tree::write_json(_ostream, pt, true /*Pretty print*/);
       break;
     }
-  case FormatType::HTML:
+  case FormatType::html:
     {
       boost::property_tree::ptree pt;
       marshalToJSON(m_pBuffer, m_bufferSize, pt);
@@ -549,13 +565,13 @@ Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) cons
       _ostream << "</pre></body></html>\n";
       break;
     }
-  case FormatType::UNKNOWN:
+  case FormatType::unknown:
     // Do nothing;
     break;
-  case FormatType::TXT:
+  case FormatType::txt:
     // Do nothing;
     break;
-  case FormatType::UNDEFINED:
+  case FormatType::undefined:
     break;
   }
 }
@@ -563,7 +579,7 @@ Section::dumpContents(std::ostream& _ostream, enum FormatType _eFormatType) cons
 void 
 Section::dumpSubSection(std::fstream& _ostream, 
                         std::string _sSubSection, 
-                        enum FormatType _eFormatType) const
+                        FormatType _eFormatType) const
 {
   writeSubPayload(_sSubSection, _eFormatType, _ostream);
 }
@@ -579,41 +595,43 @@ Section::printHeader(std::ostream &_ostream) const
 }
 
 bool 
-Section::doesSupportAddFormatType(FormatType _eFormatType) const
+Section::doesSupportAddFormatType(axlf_section_kind eKind, FormatType eFormatType)
 {
-  if (_eFormatType == FormatType::RAW) {
-    return true;
-  }
-  return false;
+  auto & sections = getSectionTypes();
+
+  auto sectionIter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+  if (sectionIter == sections.end())
+    return false;
+
+  auto & addFormats = sectionIter->get()->supportedAddFormats;
+  return std::any_of(addFormats.begin(), addFormats.end(), [&](const auto &entry){return entry == eFormatType; });
 }
 
 bool 
-Section::doesSupportDumpFormatType(FormatType _eFormatType) const
+Section::doesSupportDumpFormatType(axlf_section_kind eKind, FormatType eFormatType)
 {
-  if (_eFormatType == FormatType::RAW) {
-    return true;
-  }
-  return false;
-}
+  auto & sections = getSectionTypes();
 
-bool 
-Section::supportsSubSection(const std::string &_sSubSectionName) const
-{
-  return false;
+  auto sectionIter = std::find_if(sections.begin(), sections.end(), [&](const auto &entry) { return entry->eKind == eKind; });
+  if (sectionIter == sections.end())
+    return false;
+
+  auto & addFormats = sectionIter->get()->supportedDumpFormats;
+  return std::any_of(addFormats.begin(), addFormats.end(), [&](const auto &entry){return entry == eFormatType; });
 }
 
 bool 
 Section::getSubPayload(std::ostringstream &_buf, 
-                       const std::string _sSubSection, 
-                       enum Section::FormatType _eFormatType) const
+                       const std::string & _sSubSection, 
+                       Section::FormatType _eFormatType) const
 {
   // Make sure we support this subsection
-  if (supportsSubSection(_sSubSection) == false) {
+  if (supportsSubSectionName(m_eKind, _sSubSection) == false) {
     return false;
   }
 
   // Make sure we support the format type
-  if (_eFormatType != FormatType::RAW) {
+  if (_eFormatType != FormatType::raw) {
     return false;
   }
 
@@ -632,7 +650,7 @@ Section::getSubPayload(char* _pDataSection,
                        unsigned int _sectionSize, 
                        std::ostringstream &_buf, 
                        const std::string &_sSubSection, 
-                       enum Section::FormatType _eFormatType) const
+                       Section::FormatType _eFormatType) const
 {
   // Empty
 }
@@ -640,10 +658,10 @@ Section::getSubPayload(char* _pDataSection,
 void
 Section::readSubPayload(std::istream& _istream, 
                         const std::string & _sSubSection, 
-                        enum Section::FormatType _eFormatType)
+                        Section::FormatType _eFormatType)
 {
   // Make sure we support this subsection
-  if (supportsSubSection(_sSubSection) == false) {
+  if (supportsSubSectionName(m_eKind, _sSubSection) == false) {
     return;
   }
 
@@ -674,7 +692,7 @@ Section::readSubPayload(const char* _pOrigDataSection,
                         unsigned int _origSectionSize,  
                         std::istream& _istream, 
                         const std::string & _sSubSection, 
-                        enum Section::FormatType _eFormatType, 
+                        Section::FormatType _eFormatType, 
                         std::ostringstream &_buffer) const
 {
    auto errMsg = boost::format("FATAL ERROR: Section '%s' virtual method readSubPayLoad() not defined.") % getSectionKindAsString();

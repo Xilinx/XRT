@@ -32,11 +32,19 @@ SectionClockFrequencyTopology::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(CLOCK_FREQ_TOPOLOGY, "CLOCK_FREQ_TOPOLOGY", boost::factory<SectionClockFrequencyTopology*>()); 
   sectionInfo->nodeName = "clock_freq_topology"; 
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
+
   addSectionType(std::move(sectionInfo));
 }
 
+// ----------------------------------------------------------------------------
+
 const std::string
-SectionClockFrequencyTopology::getClockTypeStr(enum CLOCK_TYPE _clockType) const {
+SectionClockFrequencyTopology::getClockTypeStr(CLOCK_TYPE _clockType) const {
   switch (_clockType) {
     case CT_UNUSED:
       return "UNUSED";
@@ -51,7 +59,7 @@ SectionClockFrequencyTopology::getClockTypeStr(enum CLOCK_TYPE _clockType) const
   return (boost::format("UNKNOWN (%d) CLOCK_TYPE") % (unsigned int) _clockType).str();
 }
 
-enum CLOCK_TYPE
+CLOCK_TYPE
 SectionClockFrequencyTopology::getClockType(std::string& _sClockType) const {
   if (_sClockType == "UNUSED")
     return CT_UNUSED;
@@ -113,17 +121,17 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
     XUtil::TRACE(boost::format("[%d]: m_freq_Mhz: %d, m_type: %d, m_name: '%s'")
                                % index
                                % (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz
-                               % getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type)
+                               % getClockTypeStr((CLOCK_TYPE)pHdr->m_clock_freq[index].m_type)
                                % pHdr->m_clock_freq[index].m_name);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("clock_freq", reinterpret_cast<const char*>(&pHdr->m_clock_freq[index]), sizeof(clock_freq));
 
     clock_freq.put("m_freq_Mhz", (boost::format("%d") % (unsigned int) pHdr->m_clock_freq[index].m_freq_Mhz).str());
-    clock_freq.put("m_type", getClockTypeStr((enum CLOCK_TYPE)pHdr->m_clock_freq[index].m_type).c_str());
+    clock_freq.put("m_type", getClockTypeStr((CLOCK_TYPE)pHdr->m_clock_freq[index].m_type).c_str());
     clock_freq.put("m_name", (boost::format("%s") % pHdr->m_clock_freq[index].m_name).str());
 
-    m_clock_freq.push_back(std::make_pair("", clock_freq));   // Used to make an array of objects
+    m_clock_freq.push_back({"", clock_freq});   // Used to make an array of objects
   }
 
   clock_freq_topology.add_child("m_clock_freq", m_clock_freq);
@@ -165,10 +173,10 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
     boost::property_tree::ptree ptClockFreq = kv.second;
 
     clockFreqHdr.m_freq_Mhz = ptClockFreq.get<uint16_t>("m_freq_Mhz");
-    std::string sm_type = ptClockFreq.get<std::string>("m_type");
+    auto sm_type = ptClockFreq.get<std::string>("m_type");
     clockFreqHdr.m_type = (uint8_t) getClockType(sm_type);
 
-    std::string sm_name = ptClockFreq.get<std::string>("m_name");
+    auto sm_name = ptClockFreq.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(clock_freq::m_name)) {
       auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d). Name: '%s'")
                                   % (int) sm_name.length() % (unsigned int) sizeof(clock_freq::m_name) % sm_name;
@@ -198,24 +206,3 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
   }
 }
 
-bool 
-SectionClockFrequencyTopology::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (_eFormatType == FormatType::JSON) {
-    return true;
-  }
-  return false;
-}
-
-bool 
-SectionClockFrequencyTopology::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
-}

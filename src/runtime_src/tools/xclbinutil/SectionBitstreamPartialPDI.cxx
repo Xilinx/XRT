@@ -25,6 +25,10 @@ SectionBitstreamPartialPDI::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(BITSTREAM_PARTIAL_PDI, "BITSTREAM_PARTIAL_PDI", boost::factory<SectionBitstreamPartialPDI*>()); 
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
+
   addSectionType(std::move(sectionInfo));
 }
 

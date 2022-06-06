@@ -191,7 +191,7 @@ DTC::marshalToDTC(std::ostringstream& _buf) const
  
   // -- Create dummy "memory block" --
   std::ostringstream memoryBlock;
-  static unsigned int FDTReservedEntrySize = 16;
+  static const unsigned int FDTReservedEntrySize = 16;
   for (unsigned index = 0; index < FDTReservedEntrySize; ++index) {
     char emptyByte = '\0';
     memoryBlock.write(&emptyByte, sizeof(char));

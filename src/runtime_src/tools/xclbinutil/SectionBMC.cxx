@@ -36,17 +36,55 @@ SectionBMC::init::init()
 {
   auto sectionInfo = std::make_unique<SectionInfo>(BMC, "BMC", boost::factory<SectionBMC*>()); 
   sectionInfo->supportsSubSections = true;
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::fw));
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));
+
+  // Add format support empty (no support)
+  // The top-level section doesn't support any add syntax.
+  // Must use sub-sections
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
+
+using SubSectionTableCollection = std::vector<std::pair<std::string, SectionBMC::SubSection>>;
+static const SubSectionTableCollection & 
+  getSubSectionTable() 
+{
+  static const SubSectionTableCollection subSectionTable = {
+    {"UNKNOWN", SectionBMC::SubSection::unknown},
+    {"FW", SectionBMC::SubSection::fw},
+    {"METADATA", SectionBMC::SubSection::metadata}
+  };
+
+  return subSectionTable;
+}
+
+
+SectionBMC::SubSection 
+SectionBMC::getSubSectionEnum(const std::string & sSubSectionName)
+{
+  const auto & subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
+
+  if (iter == subSectionTable.end())
+    return SubSection::unknown;
+
+  return iter->second; 
+}
+
 // -------------------------------------------------------------------------
 
-bool 
-SectionBMC::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  // The BMC top-level section doesn't support any add syntax.  
-  // Must use sub-sections
-  return false;
+const std::string &
+SectionBMC::getSubSectionName(SectionBMC::SubSection eSubSection) {
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
+
+  if (iter == subSectionTable.end())
+    return getSubSectionName(SubSection::unknown);
+
+  return iter->first; 
 }
 
 // -------------------------------------------------------------------------
@@ -60,7 +98,7 @@ SectionBMC::subSectionExists(const std::string& _sSubSectionName) const {
 
   SubSection eSS = getSubSectionEnum(_sSubSectionName);
 
-  if (eSS == SS_METADATA) {
+  if (eSS == SubSection::metadata) {
      std::ostringstream buffer;
      writeMetadata(buffer);
 
@@ -85,33 +123,6 @@ SectionBMC::subSectionExists(const std::string& _sSubSectionName) const {
 
 // -------------------------------------------------------------------------
 
-bool
-SectionBMC::supportsSubSection(const std::string& _sSubSectionName) const {
-
-  if (getSubSectionEnum(_sSubSectionName) == SS_UNKNOWN) {
-    return false;
-  }
-  
-  return true;
-}
-
-// -------------------------------------------------------------------------
-
-enum SectionBMC::SubSection 
-SectionBMC::getSubSectionEnum(const std::string _sSubSectionName) const {
-  // Case-insensitive
-  std::string sSubSection = _sSubSectionName;
-  boost::to_upper(sSubSection);
-
-  if (sSubSection == "FW") {return SS_FW;}
-  if (sSubSection == "METADATA") {return SS_METADATA;}
-
-  return SS_UNKNOWN;
-}
-
-
-
-// -------------------------------------------------------------------------
 void
 SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection, 
                                      unsigned int _origSectionSize,  
@@ -179,7 +190,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   boost::property_tree::ptree &ptBMC = pt.get_child("bmc_metadata");
 
   // Image Name
-  std::string sImageName = ptBMC.get<std::string>("m_image_name");
+  auto sImageName = ptBMC.get<std::string>("m_image_name");
   if ( sImageName.length() >= sizeof(bmc::m_image_name) ) {
     auto errMsg = boost::format("ERROR: The m_image_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
                                 % (int) sImageName.length() % (unsigned int) sizeof(bmc::m_image_name) % sImageName;
@@ -188,7 +199,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   memcpy( pHdr->m_image_name, sImageName.c_str(), sImageName.length() + 1);
 
   // Device Name
-  std::string sDeviceName = ptBMC.get<std::string>("m_device_name");
+  auto sDeviceName = ptBMC.get<std::string>("m_device_name");
   if ( sDeviceName.length() >= sizeof(bmc::m_device_name) ) {
     auto errMsg = boost::format("ERROR: The m_device_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
                                 % (int) sDeviceName.length() % (unsigned int) sizeof(bmc::m_device_name) % sDeviceName;
@@ -197,7 +208,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   memcpy( pHdr->m_device_name, sDeviceName.c_str(), sDeviceName.length() + 1);
 
   // Version
-  std::string sVersion = ptBMC.get<std::string>("m_version");
+  auto sVersion = ptBMC.get<std::string>("m_version");
   if ( sVersion.length() >= sizeof(bmc::m_version) ) {
     auto errMsg = boost::format("ERROR: The m_version entry length (%d), exceeds the allocated space (%d).  Version: '%s'")
                                 % (int) sVersion.length() % (unsigned int) sizeof(bmc::m_version) % sVersion;
@@ -206,7 +217,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   memcpy( pHdr->m_version, sVersion.c_str(), sVersion.length() + 1);
 
   // MD5 Value
-  std::string sMD5Value = ptBMC.get<std::string>("m_md5value");
+  auto sMD5Value = ptBMC.get<std::string>("m_md5value");
   if ( sMD5Value.length() >= sizeof(bmc::m_md5value) ) {
     auto errMsg = boost::format("ERROR: The m_md5value entry length (%d), exceeds the allocated space (%d).  Value: '%s'")
                                 % (int) sMD5Value.length() % (unsigned int) sizeof(bmc::m_md5value) % sMD5Value;
@@ -278,20 +289,20 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
                            unsigned int _origSectionSize,  
                            std::istream& _istream, 
                            const std::string & _sSubSectionName, 
-                           enum Section::FormatType _eFormatType,
+                           Section::FormatType _eFormatType,
                            std::ostringstream &_buffer) const
 {
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_FW:
+    case SubSection::fw:
       // Some basic DRC checks
       if (_pOrigDataSection != nullptr) {
         std::string errMsg = "ERROR: Firmware image already exists.";
         throw std::runtime_error(errMsg);
       }
 
-      if (_eFormatType != Section::FormatType::RAW) {
+      if (_eFormatType != Section::FormatType::raw) {
         std::string errMsg = "ERROR: BMC-FW only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -299,7 +310,7 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
       createDefaultFWImage(_istream, _buffer);
       break;
 
-    case SS_METADATA:
+    case SubSection::metadata:
       {
         // Some basic DRC checks
         if (_pOrigDataSection == nullptr) {
@@ -307,7 +318,7 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
           throw std::runtime_error(errMsg);
         }
 
-        if (_eFormatType != Section::FormatType::JSON) {
+        if (_eFormatType != Section::FormatType::json) {
           std::string errMsg = "ERROR: BMC-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -316,7 +327,7 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::unknown:
     default:
       {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
@@ -391,9 +402,9 @@ SectionBMC::writeSubPayload(const std::string & _sSubSectionName,
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_FW:
+    case SubSection::fw:
       // Some basic DRC checks
-      if (_eFormatType != Section::FormatType::RAW) {
+      if (_eFormatType != Section::FormatType::raw) {
         std::string errMsg = "ERROR: BMC-FW only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -401,9 +412,9 @@ SectionBMC::writeSubPayload(const std::string & _sSubSectionName,
       writeFWImage(_oStream);
       break;
 
-    case SS_METADATA:
+    case SubSection::metadata:
       {
-        if (_eFormatType != Section::FormatType::JSON) {
+        if (_eFormatType != Section::FormatType::json) {
           std::string errMsg = "ERROR: BMC-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -412,7 +423,7 @@ SectionBMC::writeSubPayload(const std::string & _sSubSectionName,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::unknown:
     default:
       {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName.c_str() % getSectionKindAsString();

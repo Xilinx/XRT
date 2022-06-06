@@ -139,6 +139,14 @@ if(NOT WIN32)
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/AIEPartition")
   xrt_add_test("aie-partition" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/AIEPartition/AIEPartition.py ${TEST_OPTIONS}")
 
+  # -- BMC Section
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/BMC")
+  xrt_add_test("bmc" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/BMC/BMCSection.py ${TEST_OPTIONS}")
+
+  # -- MCS Section
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/MCS")
+  xrt_add_test("mcs" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/MCS/MCSSection.py ${TEST_OPTIONS}")
+
 endif()
 
 
