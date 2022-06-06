@@ -52,14 +52,10 @@ namespace {
 class aie_async_handle_map
 {
 public:
-  // async_bo_map() - Construct async_bo_map
-  aie_async_handle_map()
-  {}
-
   // insert()
   // Insert async_handle for every new DMA transfer
   void
-  insert(const std::string& gmio_name, xrt::aie::bo::async_handle_impl* hdl)
+  insert(const std::string& gmio_name, const xrt::aie::bo::async_handle_impl* hdl)
   {
     std::lock_guard lk(async_bo_hdls_mutex);
     async_bo_hdls[gmio_name].emplace_back(hdl);
@@ -78,7 +74,7 @@ public:
   // Check if async_hdl is present for a particular gmio_name
   // If present then DMA has not finished yet
   bool 
-  found(const std::string& gmio_name, xrt::aie::bo::async_handle_impl* hdl)
+  found(const std::string& gmio_name, const xrt::aie::bo::async_handle_impl* hdl) const
   {
     std::lock_guard lk(async_bo_hdls_mutex);
     auto itr = async_bo_hdls.find(gmio_name);
@@ -86,18 +82,15 @@ public:
       throw std::runtime_error("Unexpected error");
 
     // Check gmio in the map to see if DMA has finished
-    if (std::find(itr->second.begin(), itr->second.end(), hdl) == itr->second.end())
-      return false;
-
-    return true;
+    return (std::find(itr->second.begin(), itr->second.end(), hdl) != itr->second.end());
   }
 
 private:
   // Map of gmio -> list of async handles
   // Handle entry means there DMA is in progress for that gmio name
   // All handle entries for a gmio name are removed when wait() is called
-  std::unordered_map<std::string, std::vector<xrt::aie::bo::async_handle_impl*>> async_bo_hdls;
-  std::mutex async_bo_hdls_mutex;// Mutex for use with above map
+  std::unordered_map<std::string, std::vector<const xrt::aie::bo::async_handle_impl*>> async_bo_hdls;
+  mutable std::mutex async_bo_hdls_mutex;// Mutex for use with above map
 };
 
 static aie_async_handle_map aie_async_info;
@@ -176,49 +169,6 @@ send_exception_message(const std::string& msg)
 } // namespace
 
 namespace xrt {
-
-// class bo::async_handle_impl - Base class for asynchronous buffer DMA handle
-//
-// Derived classes:
-// [aie::b ::async_handle_impl]: For AIE BOs
-//
-// Impl Class associated with async bo which allows to wait for completion
-class bo::async_handle_impl
-{
-public:
-  xrt::bo m_bo;
-
-public:
-  // async_bo_impl() - Construct async_bo_obj
-  async_handle_impl(xrt::bo bo)
-    : m_bo(std::move(bo))
-  {}
-
-  // wait() - Wait for async to complete
-  virtual void 
-  wait();
-};
-
-class aie::bo::async_handle_impl : public xrt::bo::async_handle_impl
-{
-public:
-  size_t m_bd_num; // For future use
-  std::string m_gmio_name;
-
-public:
-  // async_bo_impl() - Construct async_bo_obj
-  async_handle_impl(xrt::bo bo, size_t bd_num, std::string gmio_name)
-    : xrt::bo::async_handle_impl(std::move(bo))
-    , m_bd_num(bd_num)
-    , m_gmio_name(std::move(gmio_name))
-  {
-    ::aie_async_info.insert(m_gmio_name, this);
-  }
-
-  // wait() - Wait for async to complete
-  void 
-  wait() override;
-};
 
 // class bo_impl - Base class for buffer objects
 //
@@ -468,24 +418,11 @@ public:
   }
 
   xrt::bo::async_handle
-  async(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
-  {
-    device->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
-    auto a_bo_impl = std::make_shared<xrt::aie::bo::async_handle_impl>(bo, 0, port);
-
-    return xrt::bo::async_handle{a_bo_impl};
-  }
+  async(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
 #endif
 
   xrt::bo::async_handle
-  async(xrt::bo& bo, xclBOSyncDirection dir, size_t sz, size_t offset)
-  {
-    throw std::runtime_error("Unsupported feature");
-
-    //TODO for Alveo; base xrt::bo class
-    auto a_bo_impl = std::make_shared<xrt::bo::async_handle_impl>(bo);
-    return xrt::bo::async_handle{a_bo_impl};
-  }
+  async(xrt::bo& bo, xclBOSyncDirection dir, size_t sz, size_t offset);
 
   virtual void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
@@ -536,6 +473,87 @@ public:
   virtual bool   is_sub()        const { return false;   }
   virtual bool   is_imported()   const { return false;   }
 };
+
+// class bo::async_handle_impl - Base class for asynchronous buffer DMA handle
+//
+// Derived classes:
+// [aie::b ::async_handle_impl]: For AIE BOs
+//
+// Impl Class associated with async bo which allows to wait for completion
+class bo::async_handle_impl
+{
+public:
+  xrt::bo m_bo;
+
+public:
+  // async_bo_impl() - Construct async_bo_obj
+  async_handle_impl(xrt::bo bo)
+    : m_bo(std::move(bo))
+  {}
+
+  // wait() - Wait for async to complete
+  virtual void 
+  wait()
+  {
+    throw std::runtime_error("Unsupported feature");
+  }
+};
+
+#ifdef XRT_ENABLE_AIE
+class aie::bo::async_handle_impl : public xrt::bo::async_handle_impl
+{
+public:
+  size_t m_bd_num; // For future use
+  std::string m_gmio_name;
+
+public:
+  // async_bo_impl() - Construct async_bo_obj
+  async_handle_impl(xrt::bo bo, size_t bd_num, std::string gmio_name)
+    : xrt::bo::async_handle_impl(std::move(bo))
+    , m_bd_num(bd_num)
+    , m_gmio_name(std::move(gmio_name))
+  {
+    ::aie_async_info.insert(m_gmio_name, this);
+  }
+
+  // wait() - Wait for async to complete
+  void 
+  wait() override
+  {
+    //DMA has already finished if not found
+    if(!::aie_async_info.found(m_gmio_name, this))
+      return;
+
+    auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
+    // DMA has not finished; Wait for it;
+    // In future wait only for specific m_bd_num
+    dev->wait_gmio(m_gmio_name.c_str());
+    // All outstanding DMAs for this gmio_name have finishedd; for all bd numbers
+    ::aie_async_info.clear(m_gmio_name);
+  }
+};
+
+xrt::bo::async_handle
+bo_impl::
+async(xrt::bo& bo, const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
+{
+  device->sync_aie_bo_nb(bo, port.c_str(), dir, sz, offset);
+  auto a_bo_impl = std::make_shared<xrt::aie::bo::async_handle_impl>(bo, 0, port);
+
+  return xrt::bo::async_handle{a_bo_impl};
+}
+#endif
+
+xrt::bo::async_handle
+bo_impl::
+async(xrt::bo& bo, xclBOSyncDirection dir, size_t sz, size_t offset)
+{
+  throw std::runtime_error("Unsupported feature");
+
+  //TODO for Alveo; base xrt::bo class
+  auto a_bo_impl = std::make_shared<xrt::bo::async_handle_impl>(bo);
+  return xrt::bo::async_handle{a_bo_impl};
+}
 
 // class buffer_ubuf - User provide host side buffer
 //
@@ -1168,31 +1186,6 @@ alignment()
 // xrt_bo C++ API implmentations (xrt_bo.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
-
-void 
-bo::async_handle_impl::
-wait()
-{
-  throw std::runtime_error("Unsupported feature");
-}
-
-#ifdef XRT_ENABLE_AIE
-void 
-aie::bo::async_handle_impl::
-wait()
-{
-  //DMA has already finished if not found
-  if(!::aie_async_info.found(m_gmio_name, this))
-    return;
-
-  auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
-  // DMA has not finished; Wait for it;
-  // In future wait only for specific m_bd_num
-  dev->wait_gmio(m_gmio_name.c_str());
-  // All outstanding DMAs for this gmio_name have finishedd; for all bd numbers
-  ::aie_async_info.clear(m_gmio_name);
-}
-#endif
 
 void
 bo::async_handle::
