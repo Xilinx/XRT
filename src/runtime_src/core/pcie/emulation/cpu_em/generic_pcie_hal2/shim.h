@@ -1,48 +1,40 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _SW_EMU_SHIM_H_
 #define _SW_EMU_SHIM_H_
 
-#include "unix_socket.h"
 #include "config.h"
 #include "em_defines.h"
 #include "memorymanager.h"
 #include "rpc_messages.pb.h"
-
+#include "swscheduler.h"
+#include "unix_socket.h"
+#include "xclbin.h"
 #include "xclperf.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
-#include "xclbin.h"
-#include "core/common/device.h"
-#include "core/common/scheduler.h"
-#include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
-#include "core/common/query_requests.h"
+
 #include "core/common/api/xclbin_int.h"
+#include "core/common/device.h"
+#include "core/common/message.h"
+#include "core/common/scheduler.h"
+#include "core/common/query_requests.h"
+#include "core/common/xrt_profiling.h"
+#include "core/include/experimental/xrt_hw_context.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
-#include "swscheduler.h"
+#include <fcntl.h>
 #include <stdarg.h>
 #include <sys/mman.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+#include <atomic>
 #include <thread>
 #include <tuple>
-#include <sys/wait.h>
+
 #ifndef _WINDOWS
 #include <dlfcn.h>
 #endif
@@ -50,6 +42,8 @@
 namespace xclcpuemhal2 {
   using key_type = xrt_core::query::key_type;
   const uint64_t MEMSIZE = 0x0000000080000000;
+  const auto endOfSimulationString = "received request to end simulation from connected initiator";
+
   // XDMA Shim
   class CpuemShim {
     public:
@@ -143,7 +137,6 @@ namespace xclcpuemhal2 {
       void set_messagesize( unsigned int messageSize ) { message_size = messageSize; }
       unsigned int get_messagesize(){ return message_size; }
 
-
       ~CpuemShim();
       CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool bUnified,
         bool bXPR, FeatureRomHeader &featureRom, const boost::property_tree::ptree & platformData);
@@ -151,30 +144,20 @@ namespace xclcpuemhal2 {
       static CpuemShim *handleCheck(void *handle);
       bool isGood() const;
 
-      //QDMA Support
-      int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
-      int xclDestroyQueue(uint64_t q_hdl);
-      void *xclAllocQDMABuf(size_t size, uint64_t *buf_hdl);
-      int xclFreeQDMABuf(uint64_t buf_hdl);
-      ssize_t xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      ssize_t xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr);
-      int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout);
-      int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
-      int xclOpenContextByName(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const;
+      int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
       int xclExecWait(int timeoutMilliSec);
       int xclExecBuf(unsigned int cmdBO);
-      int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
+      int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
       //Get CU index from IP_LAYOUT section for corresponding kernel name
       int xclIPName2Index(const char *name);
 
       bool isValidCu(uint32_t cu_index);
       uint64_t getCuAddRange(uint32_t cu_index);
+      std::string getDeviceProcessLogPath();
       bool isValidOffset(uint32_t offset, uint64_t cuAddRange);
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
-
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
@@ -187,6 +170,7 @@ namespace xclcpuemhal2 {
       // New API's for m2m and no-dma
       void constructQueryTable();
       int deviceQuery(key_type queryKey);
+      void messagesThread();
 
       //******************************* XRT Graph API's **************************************************//
       /**
@@ -411,6 +395,13 @@ namespace xclcpuemhal2 {
       // int
       //   xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size);
 
+      ////////////////////////////////////////////////////////////////
+      // Internal SHIM APIs
+      ////////////////////////////////////////////////////////////////
+      // aka xclOpenContextByName
+      xrt_core::cuidx_type
+      open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
+
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;
@@ -432,6 +423,7 @@ namespace xclcpuemhal2 {
       uint32_t bin2dec(const char * str, int start, int number);
       std::string dec2bin(uint32_t n);
       std::string dec2bin(uint32_t n, unsigned bits);
+      void closeMessengerThread();
 
       std::mutex mtx;
       unsigned int message_size;
@@ -443,6 +435,9 @@ namespace xclcpuemhal2 {
       std::vector<std::string> mTempdlopenfilenames;
       std::string deviceName;
       std::string deviceDirectory;
+      // a thread variable which calls messagesThread,
+      // messagesThread is a joinable thread used to display any messages seen in device_process.log
+      std::thread mMessengerThread;
       std::list<xclemulation::DDRBank> mDdrBanks;
       std::map<uint64_t,std::pair<std::string,unsigned int>> kernelArgsInfo;
       xclDeviceInfo2 mDeviceInfo;
@@ -494,6 +489,7 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
+      std::atomic<bool> mIsDeviceProcessStarted;
   };
 
   class GraphType {
@@ -534,6 +530,65 @@ namespace xclcpuemhal2 {
     static unsigned int mGraphHandle;
   };
   extern std::map<unsigned int, CpuemShim*> devices;
+
+   // sParseLog structure parses a file named mFileName and looks for a matchString
+   // On successfull match, print the line to the console
+   // Currently, we are using this structure to parse the external IO file that is
+   // generated by the deviceProcess during SW EMU.
+
+  struct sParseLog
+  {
+    std::ifstream file;
+    std::string mFileName;
+    std::atomic<bool> mFileExists;
+    CpuemShim * mCpuShimPtr;
+
+    sParseLog(CpuemShim * iPtr, const std::string& iDeviceLog)
+    : mFileName(iDeviceLog)
+    , mFileExists{false}
+    , mCpuShimPtr(iPtr)
+    {
+    }
+
+    //**********************************************************************************//
+    /**
+    * closeApplicationOnMagicStrFound(std::string&) - Searches for a matchString in a file .
+    * On a successfull match, it prints a user visible message on the console and exits the application.
+    *
+    * @matchString:    string to match
+    *
+    */
+    void closeApplicationOnMagicStrFound(const std::string &matchString)
+    {
+      std::string line;
+      while (std::getline(file, line)) {
+        if (line.find(matchString) != std::string::npos) {
+          std::cout << "Received request to end the application. Exiting the application." << std::endl;
+          mCpuShimPtr->xclClose();
+        }
+      }
+    }
+
+    //**********************************************************************************//
+    /**
+    * parseLog() - Checks for file existence and calls closeApplication.
+    *
+    */
+    void parseLog()
+    {
+      if (!mFileExists) {
+        if (boost::filesystem::exists(mFileName)) {
+          file.open(mFileName);
+          if (file.is_open())
+            mFileExists = true;
+        }
+      }
+
+      if (mFileExists)
+        closeApplicationOnMagicStrFound(endOfSimulationString);
+
+    }
+  };
 }
 
 #endif

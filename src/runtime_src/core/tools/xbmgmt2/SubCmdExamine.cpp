@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -103,28 +104,14 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     ("help", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
-  po::options_description hiddenOptions("Hidden Options");  
-
-  po::options_description allOptions("All Options");  
-  allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
-
-  po::positional_options_description positionals;
+  po::options_description hiddenOptions("Hidden Options");
 
   // Parse sub-command ...
   po::variables_map vm;
-
-  try {
-    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
-    po::notify(vm); // Can throw
-  } catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(commonOptions, hiddenOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  process_arguments(vm, _options, commonOptions, hiddenOptions);
 
   // Check to see if help was requested 
-  if (bHelp == true)  {
+  if (bHelp) {
     printHelp(commonOptions, hiddenOptions);
     return;
   }

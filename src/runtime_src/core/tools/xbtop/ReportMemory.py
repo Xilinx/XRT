@@ -122,7 +122,7 @@ class ReportMemory:
                 line.append(memory['type'])
                 line.append(memory['extended_info']['temperature_C'] if 'temperature_C' in memory['extended_info'] else "--")
                 line.append(XBUtil.convert_size(int(memory['range_bytes'], self.hexadecimal_converion)))
-                line.append(XBUtil.convert_size(int(memory['extended_info']['usage']['buffer_objects_count'],0)))
+                line.append(XBUtil.convert_size(int(memory['extended_info']['usage']['allocated_bytes'],0)))
                 
                 size = int(memory['range_bytes'], self.hexadecimal_converion)
                 if size == 0 or memory['enabled'] == "false":

@@ -95,6 +95,18 @@ struct softkernel_object
   char *sk_buf;
 };
 
+// struct aie_partition_obj - wrapper for an AIE Partition object
+//
+// @ncol: number of columns in this partition
+// @start_col_list: Array of start column for partition relocation
+// @name: partition name
+struct aie_partition_obj
+{
+  uint16_t ncol;
+  std::vector<uint16_t> start_col_list;
+  std::string name;
+};
+
 /**
  * get_axlf_section_header() - retrieve axlf section header
  *
@@ -272,6 +284,10 @@ get_dbg_ips_pair(const axlf* top);
  */
 std::vector<softkernel_object>
 get_softkernels(const axlf* top);
+
+XRT_CORE_COMMON_EXPORT
+aie_partition_obj
+get_aie_partition(const axlf* top);
 
 /**
  * get_kernel_freq() - Get kernel frequency.

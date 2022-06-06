@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -49,9 +50,12 @@ class OptionOptions {
 
  // Child class Helper methods
  protected:
-  OptionOptions(const std::string & _longName, bool _isHidden, const std::string & _description);
-  void setExtendedHelp(const std::string &_extendedHelp) { m_extendedHelp = _extendedHelp; };
+  OptionOptions(const std::string & longName, bool isHidden, const std::string & description);
+  void setExtendedHelp(const std::string &extendedHelp) { m_extendedHelp = extendedHelp; };
   void printHelp() const;
+  std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
+                                              const SubCmdOptions& options,
+                                              bool validate_arguments = true) const;
 
  private:
   OptionOptions() = delete;

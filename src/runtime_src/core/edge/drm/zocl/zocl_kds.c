@@ -97,10 +97,8 @@ static int copybo_ecmd2xcmd(struct drm_zocl_dev *zdev, struct drm_file *filp,
 static inline void
 zocl_ctx_to_info(struct drm_zocl_ctx *args, struct kds_ctx_info *info)
 {
-	if (args->cu_index == ZOCL_CTX_VIRT_CU_INDEX)
-		info->cu_idx = CU_CTX_VIRT_CU;
-	else
-		info->cu_idx = args->cu_index;
+	info->cu_domain = get_domain(args->cu_index);
+	info->cu_idx = get_domain_idx(args->cu_index);
 
 	/* Ignore ZOCL_CTX_SHARED bit if ZOCL_CTX_EXCLUSIVE bit is set */
 	if (args->flags & ZOCL_CTX_EXCLUSIVE)

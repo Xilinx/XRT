@@ -1,28 +1,12 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-/**
- * Copyright (C) 2015 Xilinx, Inc
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2015-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_swemu.h"
-#include "xclbin.h"
-#include "core/common/xclbin_parser.h"
 #include "pllauncher_defines.h"
+#include "core/include/xclbin.h"
+#include "core/common/xclbin_parser.h"
+#include "core/common/api/hw_context_int.h"
 #include <errno.h>
 #include <unistd.h>
 #include <boost/property_tree/xml_parser.hpp>
@@ -612,7 +596,7 @@ namespace xclcpuemhal2 {
       const auto& props = xrt_core::xclbin_int::get_properties(kernel);
       //get CU's of each kernel object.iterate over CU's to get arguments
       if (props.address_range != 0 && !props.name.empty())
-        continue;       
+        continue;
       for (const auto& cu : kernel.get_cus()) {
         auto instance_name = cu.get_name();
         if (!instance_name.empty())
@@ -620,7 +604,7 @@ namespace xclcpuemhal2 {
       }
     }
   }
-  
+
   int CpuemShim::xclLoadXclBin(const xclBin *header)
   {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -846,7 +830,7 @@ namespace xclcpuemhal2 {
     return 0;
   }
 
-   bool CpuemShim::isValidCu(uint32_t cu_index) {  
+   bool CpuemShim::isValidCu(uint32_t cu_index) {
     // get sorted cu addresses to match up with cu_index
     const auto& cuidx2addr = mCoreDevice->get_cus();
     if (cu_index >= cuidx2addr.size()) {
@@ -867,12 +851,12 @@ namespace xclcpuemhal2 {
       if (tmpCuIdx == cuIdx) {
         cuAddRange = cuInfo.second;
         mLogStream << __func__ << " , cuAddRange :  " << cuAddRange << std::endl;
-      }  
+      }
     }
-    return cuAddRange;	  
+    return cuAddRange;
   }
 
-  bool CpuemShim::isValidOffset(uint32_t offset, uint64_t cuAddRange) { 
+  bool CpuemShim::isValidOffset(uint32_t offset, uint64_t cuAddRange) {
     if (offset >= cuAddRange || (offset & (sizeof(uint32_t) - 1)) != 0) {
       std::string strMsg = "ERROR: [SW-EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
       mLogStream << __func__ << strMsg << std::endl;
@@ -2070,245 +2054,6 @@ size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_
   PRINTENDFUNC;
   return returnVal;
 }
-/***************************************************************************************/
-/********************************************** QDMA APIs IMPLEMENTATION START **********************************************/
-
-/*
- * xclCreateWriteQueue()
- */
-int CpuemShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-
-  uint64_t q_handle = 0;
-  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,true);
-  if(q_handle <= 0)
-  {
-    if (mLogStream.is_open())
-      mLogStream << " unable to create write queue "<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-  *q_hdl = q_handle;
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclCreateReadQueue()
- */
-int CpuemShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  uint64_t q_handle = 0;
-  xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,false);
-  if(q_handle <= 0)
-  {
-    if (mLogStream.is_open())
-      mLogStream << " unable to create read queue "<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-  *q_hdl = q_handle;
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclDestroyQueue()
- */
-int CpuemShim::xclDestroyQueue(uint64_t q_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  uint64_t q_handle = q_hdl;
-  bool success = false;
-  xclDestroyQueue_RPC_CALL(xclDestroyQueue, q_handle);
-  if(!success)
-  {
-    if (mLogStream.is_open())
-      mLogStream <<" unable to destroy the queue"<<std::endl;
-    PRINTENDFUNC;
-    return -1;
-  }
-
-  PRINTENDFUNC;
-  return 0;
-}
-
-/*
- * xclWriteQueue()
- */
-ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-
-  bool eot = false;
-  if(wr->flag & XCL_QUEUE_REQ_EOT)
-    eot = true;
-
-  bool nonBlocking = false;
-  if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING)
-  {
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < wr->buf_num; i++)
-    {
-      vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter, wr->priv_data, vaLenMap));
-    nonBlocking = true;
-  }
-  uint64_t fullSize = 0;
-  for (unsigned i = 0; i < wr->buf_num; i++)
-  {
-    xclWriteQueue_RPC_CALL(xclWriteQueue,q_hdl, wr->bufs[i].va, wr->bufs[i].len);
-    fullSize += written_size;
-  }
-  PRINTENDFUNC;
-  mReqCounter++;
-  return fullSize;
-}
-
-/*
- * xclReadQueue()
- */
-ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-
-  bool eot = false;
-  if(rd->flag & XCL_QUEUE_REQ_EOT)
-    eot = true;
-
-  bool nonBlocking = false;
-  if (rd->flag & XCL_QUEUE_REQ_NONBLOCKING)
-  {
-    nonBlocking = true;
-    std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < rd->buf_num; i++)
-    {
-      vaLenMap[rd->bufs[i].va] = rd->bufs[i].len;
-    }
-    mReqList.push_back(std::make_tuple(mReqCounter,rd->priv_data, vaLenMap));
-  }
-
-  void *dest;
-
-  uint64_t fullSize = 0;
-  for (unsigned i = 0; i < rd->buf_num; i++)
-  {
-    dest = (void *)rd->bufs[i].va;
-    uint64_t read_size = 0;
-    do
-    {
-      xclReadQueue_RPC_CALL(xclReadQueue,q_hdl, dest , rd->bufs[i].len);
-    } while (read_size == 0 && !nonBlocking);
-    fullSize += read_size;
-  }
-  mReqCounter++;
-  PRINTENDFUNC;
-  return fullSize;
-
-}
-/*
- * xclPollCompletion
- */
-int CpuemShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
-  }
-//  struct timespec time, *ptime = NULL;
-//
-//  if (timeout > 0)
-//  {
-//    memset(&time, 0, sizeof(time));
-//    time.tv_sec = timeout / 1000;
-//    time.tv_nsec = (timeout % 1000) * 1000000;
-//    ptime = &time;
-//  }
-
-  *actual = 0;
-  while(*actual < min_compl)
-  {
-    std::list<std::tuple<uint64_t ,void*, std::map<uint64_t,uint64_t> > >::iterator it = mReqList.begin();
-    while ( it != mReqList.end() )
-    {
-      unsigned numBytesProcessed = 0;
-      uint64_t reqCounter = std::get<0>(*it);
-      void* priv_data = std::get<1>(*it);
-      std::map<uint64_t,uint64_t>vaLenMap = std::get<2>(*it);
-      xclPollCompletion_RPC_CALL(xclPollCompletion,reqCounter,vaLenMap);
-      if(numBytesProcessed > 0)
-      {
-        comps[*actual].priv_data = priv_data;
-        comps[*actual].nbytes = numBytesProcessed;
-        (*actual)++;
-        mReqList.erase(it++);
-      }
-      else
-      {
-        it++;
-      }
-    }
-  }
-  PRINTENDFUNC;
-  return (*actual);
-}
-
-/*
- * xclAllocQDMABuf()
- */
-void * CpuemShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  void *pBuf=nullptr;
-  if (posix_memalign(&pBuf, sizeof(double)*16, size))
-  {
-    if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
-    pBuf=nullptr;
-    return pBuf;
-  }
-  memset(pBuf, 0, size);
-  PRINTENDFUNC;
-  return pBuf;
-
-}
-
-/*
- * xclFreeQDMABuf()
- */
-int CpuemShim::xclFreeQDMABuf(uint64_t buf_hdl)
-{
-  std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open())
-  {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  }
-  PRINTENDFUNC;
-  return 0;//TODO
-}
 
 /*
  * xclLogMsg()
@@ -2345,13 +2090,11 @@ int CpuemShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const cha
 /*
 * xclOpenContext
 */
-int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
-  return 0;
-}
-
-int CpuemShim::xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const
-{
+  // When properly implemented this function must throw on error
+  // and any exception must be caught by global xclOpenContext and
+  // converted to error code
   return 0;
 }
 
@@ -2400,7 +2143,7 @@ int CpuemShim::xclExecBuf(unsigned int cmdBO)
 /*
 * xclCloseContext
 */
-int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
+int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 {
   return 0;
 }
@@ -2412,7 +2155,22 @@ int CpuemShim::xclIPName2Index(const char *name)
   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
   return xclemulation::getIPName2Index(name, buffer.first);
 }
-/********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
+
+// open_context() - aka xclOpenContextByName
+xrt_core::cuidx_type
+CpuemShim::
+open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+{
+  // Edge does not yet support multiple xclbins.  Call
+  // regular flow.  Default access mode to shared unless explicitly
+  // exclusive.
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+  return cuidx;
+}
 
 /******************************* XRT Graph API's **************************************************/
 /**

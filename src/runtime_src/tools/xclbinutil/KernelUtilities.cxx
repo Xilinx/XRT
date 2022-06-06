@@ -588,8 +588,8 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
     boost::property_tree::ptree ptInstanceArray;
     for (unsigned long instance = 0; instance < numInstances; ++instance) {
       boost::property_tree::ptree ptInstance;
-      ptInstance.put("name", "scu_" + std::to_string(instance));
-      ptInstanceArray.push_back({"", ptInstance});
+      ptInstance.put("name", kernelName + "_" + std::to_string(instance));
+      ptInstanceArray.push_back(std::make_pair("", ptInstance));
     }
     ptKernel.add_child("instances", ptInstanceArray);
 

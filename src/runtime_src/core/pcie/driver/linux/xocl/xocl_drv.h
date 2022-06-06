@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -50,8 +51,10 @@
 #include <linux/types.h>
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
+#include "xocl_types.h"
 #include "xclbin.h"
 #include "xrt_xclbin.h"
+#include "xocl_xclbin.h"
 #include "xrt_mem.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
@@ -473,8 +476,6 @@ static inline void xocl_subdev_dyn_free(struct xocl_subdev *subdev)
 		subdev->bar_idx = NULL;
 	}
 }
-
-typedef	void *xdev_handle_t;
 
 struct xocl_pci_funcs {
 	int (*intr_config)(xdev_handle_t xdev, u32 intr, bool enable);
@@ -1555,7 +1556,7 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
 	 topo->m_mem_data[idx].m_type == MEM_HBM) &&			\
-	!IS_HOST_MEM(topo->m_mem_data[idx].m_tag))
+	!(convert_mem_tag(topo->m_mem_data[idx].m_tag) == MEM_TAG_HOST))
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
@@ -1979,6 +1980,7 @@ struct xocl_ert_ctrl_funcs {
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
 	       void (* unset_xgq)(struct platform_device *pdev);
+	       void (* dump_xgq)(struct platform_device *pdev); /** TODO: Remove this line before 2022.2 release **/
 	};
 
 #define ERT_CTRL_DEV(xdev)     \
@@ -2011,6 +2013,11 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_unset_xgq(xdev) \
 	(ERT_CTRL_CB(xdev, unset_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev)) : NULL)
+/** TODO: Remove below debug function before 2022.2 release **/
+#define xocl_ert_ctrl_dump(xdev) \
+	(ERT_CTRL_CB(xdev, dump_xgq) ? \
+	 ERT_CTRL_OPS(xdev)->dump_xgq(ERT_CTRL_DEV(xdev)) : NULL)
+/** debug function end */
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2564,9 +2571,6 @@ void xocl_fini_xdma(void);
 
 int __init xocl_init_qdma(void);
 void xocl_fini_qdma(void);
-
-int __init xocl_init_qdma4(void);
-void xocl_fini_qdma4(void);
 
 int __init xocl_init_xvc(void);
 void xocl_fini_xvc(void);

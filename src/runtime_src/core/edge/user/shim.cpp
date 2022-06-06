@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_linux.h"
 
@@ -31,6 +18,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
+#include "core/common/api/hw_context_int.h"
 
 #include <cassert>
 #include <cerrno>
@@ -84,6 +72,15 @@ constexpr size_t
 operator"" _gb(unsigned long long value)
 {
   return value << 30;
+}
+
+static ZYNQ::shim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = ZYNQ::shim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
 }
 
 }
@@ -795,18 +792,18 @@ xclLoadAxlf(const axlf *buffer)
   return ret ? -errno : ret;
 }
 
-int 
+int
 shim::
 secondXclbinLoadCheck(std::shared_ptr<xrt_core::device> core_dev, const axlf *top) {
   try {
     static int xclbin_hw_emu_count = 0;
-        
+
     if (core_dev->get_xclbin_uuid() != xrt::uuid(top->m_header.uuid)) {
       xclbin_hw_emu_count++;
 
       if (xclbin_hw_emu_count > 1) {
         xclLog(XRT_WARNING, "%s: Skipping as xclbin is already loaded. Only single XCLBIN load is supported for hw_emu embedded designs.", __func__);
-        return 0; 
+        return 0;
       }
     } else {
       xclLog(XRT_INFO, "%s: Loading the XCLBIN", __func__);
@@ -964,7 +961,7 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
 }
 
 // For DDR4: Typical Max BW = 19.25 GB/s
-double 
+double
 shim::
 xclGetHostReadMaxBandwidthMBps()
 {
@@ -972,7 +969,7 @@ xclGetHostReadMaxBandwidthMBps()
 }
 
 // For DDR4: Typical Max BW = 19.25 GB/s
-double 
+double
 shim::
 xclGetHostWriteMaxBandwidthMBps()
 {
@@ -980,7 +977,7 @@ xclGetHostWriteMaxBandwidthMBps()
 }
 
 // For DDR4: Typical Max BW = 19.25 GB/s
-double 
+double
 shim::
 xclGetKernelReadMaxBandwidthMBps()
 {
@@ -988,7 +985,7 @@ xclGetKernelReadMaxBandwidthMBps()
 }
 
 // For DDR4: Typical Max BW = 19.25 GB/s
-double 
+double
 shim::
 xclGetKernelWriteMaxBandwidthMBps()
 {
@@ -1107,16 +1104,26 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
   ctx.flags = flags;
   ctx.op = ZOCL_CTX_OP_ALLOC_CTX;
 
-  ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx);
-  return ret ? -errno : ret;
+  if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_CTX, &ctx))
+    throw xrt_core::system_error(errno, "failed to open ip context");
+
+  return 0;
 }
 
-int
+// open_context() - aka xclOpenContextByName
+xrt_core::cuidx_type
 shim::
-xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
+open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  // TODO: implement for full support of multiple xclbins
-  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
+  // Edge does not yet support multiple xclbins.  Call
+  // regular flow.  Default access mode to shared unless explicitly
+  // exclusive.
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+  return cuidx;
 }
 
 int
@@ -1796,6 +1803,25 @@ setAIEAccessMode(xrt::aie::access_mode am)
 
 } // end namespace ZYNQ
 
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
+{
+  auto shim = get_shim_object(handle);
+  return shim->open_cu_context(hwctx, cuname);
+}
+
+} // xrt::shim_int
+////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////
+// Implementation of user exposed SHIM APIs
+// This are C level functions
+////////////////////////////////////////////////////////////////
 unsigned
 xclProbe()
 {
@@ -2359,27 +2385,15 @@ xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipInd
 {
   return xdp::hal::profiling_wrapper("xclOpenContext",
   [handle, xclbinId, ipIndex, shared] {
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-
-  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
+    try {
+      ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+      return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -EINVAL;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get_code();
+    }
   }) ;
-}
-
-int
-xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
-{
-  try {
-    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-    return drv ? drv->xclOpenContext(slot, xclbinId, cuname, shared) : -EINVAL;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
 }
 
 int
@@ -2520,54 +2534,6 @@ int
 xclRegisterInterruptNotify(xclDeviceHandle handle, unsigned int userInterrupt, int fd)
 {
   return 0;
-}
-
-int
-xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, void **q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, void **q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclDestroyQueue(xclDeviceHandle handle, void *q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclModifyQueue(xclDeviceHandle handle, void *q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclStartQueue(xclDeviceHandle handle, void *q_hdl)
-{
-  return -ENOSYS;
-}
-
-int
-xclStopQueue(xclDeviceHandle handle, void *q_hdl)
-{
-  return -ENOSYS;
-}
-
-ssize_t
-xclWriteQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_req)
-{
-  return -ENOSYS;
-}
-
-ssize_t
-xclReadQueue(xclDeviceHandle handle, void *q_hdl, xclQueueRequest *wr_req)
-{
-  return -ENOSYS;
 }
 
 int

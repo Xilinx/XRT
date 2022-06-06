@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "core/include/shim_int.h"
 
@@ -20,6 +8,57 @@
 #include "core/common/system.h"
 #include "plugin/xdp/device_offload.h"
 #include "plugin/xdp/hal_trace.h"
+
+namespace {
+
+// Wrap handle check to throw on error
+static xclhwemhal2::HwEmShim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = xclhwemhal2::HwEmShim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
+}
+
+} // namespace
+
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+// open_context - aka xclOpenContextByName
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
+{
+  auto shim = get_shim_object(handle);
+  return shim->open_cu_context(hwctx, cuname);
+}
+
+uint32_t // ctxhdl aka slotidx
+create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+  auto shim = get_shim_object(handle);
+  return shim->create_hw_context(xclbin_uuid, qos);
+}
+
+void
+destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+{
+  auto shim = get_shim_object(handle);
+  shim->destroy_hw_context(ctxhdl);
+}
+
+void
+register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
+{
+  auto shim = get_shim_object(handle);
+  shim->register_xclbin(xclbin);
+}
+
+} // xrt::shim_int
+
 
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
@@ -183,11 +222,6 @@ int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO, size_t nu
 
 //defining following two functions as they gets called in scheduler init call
 int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
-{
-  return 0;
-}
-
-int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
 {
   return 0;
 }
@@ -360,20 +394,14 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-  int ret = 0;
-#else
   xdp::hw_emu::flush_device(handle);
   auto ret = drv->xclLoadXclBin(buffer);
-#endif
   if (!ret) {
     auto device = xrt_core::get_userpf_device(drv);
     device->register_axlf(buffer);
-#ifndef DISABLE_DOWNLOAD_XCLBIN
     // Call update_device only when xclbin is loaded and registered successfully
     xdp::hw_emu::update_device(handle);
     ret = xrt_core::scheduler::init(handle, buffer);
-#endif
   }
   return ret;
   }) ;
@@ -433,57 +461,6 @@ ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t 
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : static_cast<ssize_t>(-ENODEV);
   }) ;
-}
-
-
-//QDMA Support
-//
-
-int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclCreateWriteQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclCreateReadQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
-}
-
-void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
-}
-
-int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
-}
-
-ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
-}
-
-ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
-}
-int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
 }
 
 size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void* debugResults)

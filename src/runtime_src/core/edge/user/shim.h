@@ -1,31 +1,22 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _ZYNQ_SHIM_H_
 #define _ZYNQ_SHIM_H_
 
 #include "zynq_dev.h"
+
 #include "core/edge/include/xclhal2_mpsoc.h"
 #include "core/edge/include/zynq_ioctl.h"
+
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/bo_cache.h"
 #include "core/common/xrt_profiling.h"
+
 #include "core/include/xcl_app_debug.h"
+#include "core/include/experimental/xrt_hw_context.h"
+
 #include <cstdint>
 #include <fstream>
 #include <map>
@@ -76,7 +67,8 @@ public:
   int xclExecWait(int timeoutMilliSec);
 
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
-  int xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared);
+  // aka xclOpenContextByName()
+  xrt_core::cuidx_type open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
   int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
   int xclSKGetCmd(xclSKCmd *cmd);

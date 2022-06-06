@@ -1,7 +1,23 @@
+/**
+ * Copyright (C) 2022 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 #ifndef __SCHED_CU_H__
 #define __SCHED_CU_H__
 
 #include "sched_cmd.h"
+#include "sched_print.h"
 
 /* One CU. */
 struct sched_cu {
@@ -18,6 +34,18 @@ struct sched_cu {
 #define SCHED_AP_WAIT_FOR_INPUT	(SCHED_AP_READY | SCHED_AP_IDLE)
 /* Where CU arguments starts. */
 #define SCHED_CU_ARG_OFFSET	(0x10)
+
+#ifdef SCHED_CU_DEBUG
+#define cu_verify_ctrl(cu, mask, msg) \
+    do { \
+        u32 reg_val; \
+        reg_val = cu_load_status(cu); \
+        if (!(reg_val & mask)) \
+            ERT_PRINTF("V-PROT: " msg ", got %d\r\n", reg_val); \
+    } while (0)
+#else
+#define cu_verify_ctrl(cu, mask, msg)
+#endif
 
 static inline void cu_set_status(struct sched_cu *cu, uint32_t flags)
 {
@@ -40,7 +68,7 @@ static inline void cu_set_addr(struct sched_cu *cu, uint64_t addr)
 }
 
 /* Read status from HW and cache them. Expensive! */
-static inline void cu_load_status(struct sched_cu *cu)
+static inline uint32_t cu_load_status(struct sched_cu *cu)
 {
 	uint32_t hw = reg_read(cu->cu_addr);
 
@@ -51,6 +79,8 @@ static inline void cu_load_status(struct sched_cu *cu)
 	if (cu_has_status(cu, SCHED_AP_START) && !(hw & SCHED_AP_START))
 		hw |= SCHED_AP_READY;
 	cu_set_status(cu, hw);
+
+    return hw;
 }
 
 static inline void cu_init(struct sched_cu *cu, uint64_t cu_addr)
@@ -82,6 +112,7 @@ static inline int cu_start(struct sched_cu *cu, struct sched_cmd *cu_cmd)
 	/* Kick off CU. */
 	reg_write(cu->cu_addr, SCHED_AP_START);
 
+    cu_verify_ctrl(cu, 0x3, "CU status should be busy(0x1) or done(0x2) after start");
 	cu_set_status(cu, SCHED_AP_START);
 	cu_clear_status(cu, SCHED_AP_WAIT_FOR_INPUT);
 	return 0;

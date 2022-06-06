@@ -106,6 +106,8 @@ class DeviceIntf {
     void* syncTraceBuf(size_t bufHandle ,uint64_t offset, uint64_t bytes);
     XDP_EXPORT
     uint64_t getDeviceAddr(size_t bufHandle);
+    XDP_EXPORT
+    uint64_t getAlignedTraceBufferSize(uint64_t total_bytes, unsigned int num_chunks);
 
     // Trace FIFO Management
     bool hasFIFO() {return (mFifoCtrl != nullptr);};
@@ -128,8 +130,24 @@ class DeviceIntf {
     size_t getNumberTS2MM() {
       return mPlTraceDmaList.size();
     };
-    bool supportsCircBuf() {
-      return ((1 == getNumberTS2MM()) ? (mPlTraceDmaList[0]->supportsCircBuf()) : false);
+
+    // All datamovers support circular buffer for PL Trace
+    bool supportsCircBufPL() {
+      if (mPlTraceDmaList.size() > 0)
+        return mPlTraceDmaList[0]->supportsCircBuf();
+      return false;
+    }
+
+    // Only version 2 Datamover supports circular buffer/flush for AIE Trace
+    bool supportsCircBufAIE() {
+      if (mAieTraceDmaList.size() > 0)
+        return mAieTraceDmaList[0]->isVersion2();
+      return false;
+    }
+    bool supportsflushAIE() {
+      if (mAieTraceDmaList.size() > 0)
+        return mAieTraceDmaList[0]->isVersion2();
+      return false;
     }
 
     XDP_EXPORT
@@ -138,7 +156,7 @@ class DeviceIntf {
     void initTS2MM(uint64_t index, uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
 
     XDP_EXPORT
-    uint64_t getWordCountTs2mm(uint64_t index);
+    uint64_t getWordCountTs2mm(uint64_t index, bool final);
     XDP_EXPORT
     uint8_t  getTS2MmMemIndex(uint64_t index);
     XDP_EXPORT
@@ -147,10 +165,10 @@ class DeviceIntf {
     XDP_EXPORT
     void resetAIETs2mm(uint64_t index);
     XDP_EXPORT
-    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index);
+    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index, bool circular);
 
     XDP_EXPORT
-    uint64_t getWordCountAIETs2mm(uint64_t index);
+    uint64_t getWordCountAIETs2mm(uint64_t index, bool final);
     XDP_EXPORT
     uint8_t  getAIETs2mmMemIndex(uint64_t index);
     

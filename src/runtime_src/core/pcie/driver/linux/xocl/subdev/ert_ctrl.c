@@ -723,6 +723,49 @@ done:
 	return ec->ec_exgq[id];
 }
 
+static void ert_ctrl_dump_xgq(struct platform_device *pdev)
+{
+	struct ert_ctrl *ec = platform_get_drvdata(pdev);
+	struct xgq_header *xgq_hdr = ec->ec_cq_base + 0x4;
+	int i;
+
+	printk("(Debug) Dump control XGQ header info\n");
+	printk("magic: 0x%x\n", xgq_hdr->xh_magic);
+	printk("version: 0x%x\n", xgq_hdr->xh_version);
+	printk("slot_num: 0x%x\n", xgq_hdr->xh_slot_num);
+	printk("sq_offset: 0x%x\n", xgq_hdr->xh_sq_offset);
+	printk("cq_offset: 0x%x\n", xgq_hdr->xh_cq_offset);
+	printk("sq_slot_size: 0x%x\n", xgq_hdr->xh_sq_slot_size);
+	printk("sq_produced: %d\n", xgq_hdr->xh_sq_produced);
+	printk("sq_consumed: %d\n", xgq_hdr->xh_sq_consumed);
+	printk("cq_produced: %d\n", xgq_hdr->xh_cq_produced);
+	printk("cq_consumed: %d\n", xgq_hdr->xh_cq_consumed);
+
+	printk("(Debug) Dump control XGQ sq slots\n");
+	for (i = 0; i < xgq_hdr->xh_slot_num; i++) {
+		u32 *data;
+
+		data = (u32 *)(((char *)xgq_hdr) + xgq_hdr->xh_sq_offset + i * xgq_hdr->xh_sq_slot_size);
+		printk("slots(%d)", i);
+		print_hex_dump(KERN_INFO, "raw data: ", DUMP_PREFIX_OFFSET,
+				16, 4, data, xgq_hdr->xh_sq_slot_size, true);
+	}
+
+	printk("(Debug) Dump control XGQ cq slots\n");
+	for (i = 0; i < xgq_hdr->xh_slot_num; i++) {
+		u32 *data;
+
+		data = (u32 *)(((char *)xgq_hdr) + xgq_hdr->xh_cq_offset + i * 16);
+		printk("slots(%d)", i);
+		print_hex_dump(KERN_INFO, "raw data: ", DUMP_PREFIX_OFFSET,
+				16, 4, data, 16, true);
+	}
+
+	/* special value at 0x600 */
+	print_hex_dump(KERN_INFO, "raw data: ", DUMP_PREFIX_OFFSET,
+		       16, 4, ec->ec_cq_base + 0x600, 48, true);
+}
+
 static int ert_ctrl_xgq_ip_init(struct platform_device *pdev)
 {
 	struct ert_ctrl	*ec = platform_get_drvdata(pdev);
@@ -878,6 +921,7 @@ static struct xocl_ert_ctrl_funcs ert_ctrl_ops = {
 	.get_base	= ert_ctrl_get_base,
 	.setup_xgq	= ert_ctrl_setup_xgq,
 	.unset_xgq	= ert_ctrl_unset_xgq,
+	.dump_xgq	= ert_ctrl_dump_xgq,
 };
 
 struct xocl_drv_private ert_ctrl_drv_priv = {

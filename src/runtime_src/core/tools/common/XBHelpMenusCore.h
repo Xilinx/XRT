@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -69,6 +70,13 @@ namespace XBUtilities {
     create_usage_string( const boost::program_options::options_description &_od,
                          const boost::program_options::positional_options_description & _pod,
                          bool removeLongOptDashes = false);
+
+  std::vector<std::string>
+    process_arguments( boost::program_options::variables_map& vm,
+                       boost::program_options::command_line_parser& parser,
+                       const boost::program_options::options_description& options,
+                       const boost::program_options::positional_options_description& positionals,
+                       bool validate_arguments);
 };
 
 #endif

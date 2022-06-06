@@ -24,6 +24,7 @@
 #include "xclbin.h"
 
 #include "core/include/shim_int.h"
+#include "core/include/experimental/xrt_hw_context.h"
 
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
@@ -32,6 +33,7 @@
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/AlignedAllocator.h"
+#include "core/common/api/hw_context_int.h"
 
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_api_interface.h"
@@ -117,6 +119,16 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
                 struct io_event *events, struct timespec *timeout)
 {
   return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
+}
+
+static
+xocl::shim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = xocl::shim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
 }
 
 } // namespace
@@ -587,8 +599,6 @@ int shim::dev_init()
     mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
 
     mStreamHandle = mDev->open("dma.qdma", O_RDWR | O_SYNC);
-    if (mStreamHandle <= 0)
-       mStreamHandle = mDev->open("dma.qdma4", O_RDWR | O_SYNC);
     memset(&mAioContext, 0, sizeof(mAioContext));
     mAioEnabled = (io_setup(SHIM_QDMA_AIO_EVT_MAX, &mAioContext) == 0);
 
@@ -1110,15 +1120,28 @@ int shim::resetDevice(xclResetKind kind)
 
     dev_fini();
 
+    // This loop used to wait for device come online and ready to use. It reads "dev_offline"
+    // sysfs node to retrieve latest status of device in the interval of 500 milli sec.
+    // In certain testing environement, reset never complete and waits indefinitely
+    // in this loop for dev_offline status to be false. To overcome this infinite loop issue,
+    // added loop_timer (default value set to 120 sec) which is used to exit the loop.
+    unsigned int loop_timer = xrt_core::config::get_device_offline_timer();
+    auto start = std::chrono::system_clock::now();
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
             "dev_offline", err, dev_offline, -1);
+        auto end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        if (elapsed_seconds.count() > loop_timer) {
+            xrt_logmsg(XRT_WARNING, "%s: device unable to come online during reset, try again", __func__);
+            ret = -EAGAIN;
+        }
     }
 
     dev_init();
 
-    return 0;
+    return ret;
 }
 
 int shim::p2pEnable(bool enable, bool force)
@@ -1308,44 +1331,67 @@ bool shim::zeroOutDDR()
 /*
  * xclLoadXclBin()
  */
-int shim::xclLoadXclBin(const xclBin *buffer)
+int
+shim::
+xclLoadXclBin(const xclBin *buffer)
 {
-    auto top = reinterpret_cast<const axlf*>(buffer);
-    auto ret = xclLoadAxlf(top);
-    if (ret != 0) {
-      if (ret == -EOPNOTSUPP) {
-        xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
-        auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
-        auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
-        if (xclbin_vbnv != shell_vbnv) {
-          xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
-          xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
-        }
-        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
-      }
-      else if (ret == -EBUSY) {
-        xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
-      }
-      else if (ret == -EKEYREJECTED) {
-        xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
-      }
-      else if (ret == -E2BIG) {
-        xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
-      }
-      else if (ret == -ETIMEDOUT) {
-        xrt_logmsg(XRT_ERROR,
-                   "Can't reach out to mgmt for xclbin downloading");
-        xrt_logmsg(XRT_ERROR,
-                   "Is xclmgmt driver loaded? Or is MSD/MPD running?");
-      }
-      else if (ret == -EDEADLK) {
-        xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
-        xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
-      }
-      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
-    }
+  xdp::hal::flush_device(this);
+  xdp::aie::flush_device(this);
+  xdp::pl_deadlock::flush_device(this);
 
+  auto top = reinterpret_cast<const axlf*>(buffer);
+  if (auto ret = xclLoadAxlf(top)) {
+    // Something wrong, determine what
+    if (ret == -EOPNOTSUPP) {
+      xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
+      auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
+      auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
+      if (xclbin_vbnv != shell_vbnv) {
+        xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
+        xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
+      }
+      xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
+    }
+    else if (ret == -EBUSY) {
+      xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
+    }
+    else if (ret == -EKEYREJECTED) {
+      xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
+    }
+    else if (ret == -E2BIG) {
+      xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
+    }
+    else if (ret == -ETIMEDOUT) {
+      xrt_logmsg(XRT_ERROR,
+                 "Can't reach out to mgmt for xclbin downloading");
+      xrt_logmsg(XRT_ERROR,
+                 "Is xclmgmt driver loaded? Or is MSD/MPD running?");
+    }
+    else if (ret == -EDEADLK) {
+      xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
+      xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
+    }
+    xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
     return ret;
+  }
+
+  // Success
+  mCoreDevice->register_axlf(buffer);
+
+  xdp::hal::update_device(this);
+  xdp::aie::update_device(this);
+  xdp::pl_deadlock::update_device(this);
+
+  // scheduler::init can not be skipped even for same_xclbin as in
+  // multiple process stress tests it fails as below init step is
+  // without a lock with above driver load xclbin step.  New KDS fixes
+  // this by ensuring that scheduler init is done by driver itself
+  // along with icap download in single command call and then below
+  // init step in user space is ignored
+  auto ret = xrt_core::scheduler::init(this, buffer);
+  START_DEVICE_PROFILING_CB(this);
+
+  return ret;
 }
 
 /*
@@ -1657,16 +1703,18 @@ bool shim::isGood() const
  *
  * Returns pointer to valid handle on success, 0 on failure.
  */
-shim *shim::handleCheck(void *handle)
+xocl::shim*
+shim::
+handleCheck(void* handle)
 {
-    if (!handle) {
-        return 0;
-    }
-    if (!((shim *) handle)->isGood() ||
-      ((shim *) handle)->mUserHandle == -1) {
-        return 0;
-    }
-    return (shim *) handle;
+  if (!handle)
+    return 0;
+
+  auto shim = reinterpret_cast<xocl::shim*>(handle);
+  if (!shim->isGood() || shim->mUserHandle == -1)
+    return 0;
+
+  return shim;
 }
 
 /*
@@ -1737,27 +1785,20 @@ int shim::xclExecWait(int timeoutMilliSec)
     return mDev->poll(mUserHandle, POLLIN, timeoutMilliSec);
 }
 
-/*
- * xclOpenContext
- */
-int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+// xclOpenContext
+int
+shim::
+xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
-    int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_CTX};
     std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
     ctx.cu_index = ipIndex;
     ctx.flags = flags;
-    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
-    return ret ? -errno : ret;
-}
+    if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx))
+      throw xrt_core::system_error(errno, "failed to open ip context");
 
-int shim::
-xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared) const
-{
-  // Alveo Linux PCIE does not yet support multiple xclbins.
-  // Call regular flow
-  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
+    return 0;
 }
 
 /*
@@ -1789,242 +1830,6 @@ int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 int shim::xclBootFPGA()
 {
     return -EOPNOTSUPP;
-}
-
-/*
- * xclCreateWriteQueue()
- */
-int shim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-    struct xocl_qdma_ioc_create_queue q_info;
-
-    memset(&q_info, 0, sizeof (q_info));
-    q_info.write = 1;
-    q_info.rid = q_ctx->route;
-    q_info.flowid = q_ctx->flow;
-    q_info.flags = q_ctx->flags;
-
-    int rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
-    if (rc) {
-        xrt_logmsg(XRT_ERROR, "%s: Create Write Queue IOCTL failed", __func__);
-        return -errno;
-    }
-
-    queue_cb *qcb = new xocl::queue_cb(&q_info);
-    *q_hdl = reinterpret_cast<uint64_t>(qcb);
-
-    return 0;
-}
-
-/*
- * xclCreateReadQueue()
- */
-int shim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-    struct xocl_qdma_ioc_create_queue q_info;
-
-    memset(&q_info, 0, sizeof (q_info));
-
-    q_info.rid = q_ctx->route;
-    q_info.flowid = q_ctx->flow;
-    q_info.flags = q_ctx->flags;
-
-    int rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_CREATE_QUEUE, &q_info);
-    if (rc) {
-        xrt_logmsg(XRT_ERROR, "%s: Create Read Queue IOCTL failed", __func__);
-        return -errno;
-    }
-
-    queue_cb *qcb = new xocl::queue_cb(&q_info);
-    *q_hdl = reinterpret_cast<uint64_t>(qcb);
-
-    return 0;
-}
-
-/*
- * xclDestroyQueue()
- */
-int shim::xclDestroyQueue(uint64_t q_hdl)
-{
-    queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
-    int qfd = qcb->queue_get_handle();
-
-    int rc = ioctl(qfd, XOCL_QDMA_IOC_QUEUE_FLUSH, NULL);
-
-    if (rc)
-        xrt_logmsg(XRT_ERROR, "%s: Flush Queue failed", __func__);
-
-    rc = close(qfd);
-    if (rc)
-        xrt_logmsg(XRT_ERROR, "%s: Destroy Queue failed", __func__);
-
-    delete(qcb);
-
-    return rc;
-}
-
-/*
- * xclAllocQDMABuf()
- */
-void *shim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
-{
-    struct xocl_qdma_ioc_alloc_buf req;
-    void *buf;
-    int rc;
-
-    memset(&req, 0, sizeof (req));
-    req.size = size;
-
-    rc = ioctl(mStreamHandle, XOCL_QDMA_IOC_ALLOC_BUFFER, &req);
-    if (rc) {
-        xrt_logmsg(XRT_ERROR, "%s: Alloc buffer IOCTL failed", __func__);
-        return NULL;
-    }
-
-    buf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, req.buf_fd, 0);
-    if (!buf) {
-        xrt_logmsg(XRT_ERROR, "%s: Map buffer failed", __func__);
-
-        close(req.buf_fd);
-    } else {
-        *buf_hdl = req.buf_fd;
-    }
-
-    return buf;
-}
-
-/*
- * xclFreeQDMABuf()
- */
-int shim::xclFreeQDMABuf(uint64_t buf_hdl)
-{
-    int rc;
-
-    rc = close((int)buf_hdl);
-    if (rc)
-        xrt_logmsg(XRT_ERROR, "%s: Destory Queue failed", __func__);
-
-
-    return rc;
-}
-
-/*
- * xclPollCompletion()
- */
-int shim::xclPollCompletion(int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
-{
-    /* TODO: populate actual and timeout args correctly */
-    struct timespec time, *ptime = nullptr;
-    int num_evt, i;
-
-    *actual = 0;
-    if (!mAioEnabled) {
-        xrt_logmsg(XRT_ERROR, "%s: async io is not enabled", __func__);
-        throw std::runtime_error("sync io is not enabled");
-    }
-
-    if (timeout > 0) {
-        memset(&time, 0, sizeof(time));
-        time.tv_sec = timeout / 1000;
-        time.tv_nsec = (timeout % 1000) * 1000000;
-        ptime = &time;
-    }
-    num_evt = io_getevents(mAioContext, min_compl, max_compl, (struct io_event *)comps, ptime);
-
-    *actual = num_evt;
-    if (num_evt <= 0) {
-        xrt_logmsg(XRT_DEBUG, "%s: failed to poll Queue Completions", __func__);
-        return -ETIMEDOUT;
-    }
-
-    for (i = num_evt - 1; i >= 0; i--) {
-        comps[i].priv_data = (void *)((struct io_event *)comps)[i].data;
-        if (((struct io_event *)comps)[i].res < 0){
-            /* error returned by AIO framework */
-            comps[i].nbytes = 0;
-            comps[i].err_code = ((struct io_event *)comps)[i].res;
-        } else {
-            comps[i].nbytes = ((struct io_event *)comps)[i].res;
-            comps[i].err_code = ((struct io_event *)comps)[i].res2;
-        }
-    }
-    return 0;
-}
-
-/*
- * xclPollQueue()
- */
-int shim::xclPollQueue(uint64_t q_hdl, int min_compl, int max_compl, struct xclReqCompletion *comps, int* actual, int timeout /*ms*/)
-{
-    queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
-
-    if (!qcb->queue_aio_ctx_enabled()) {
-        xrt_logmsg(XRT_ERROR, "%s: per-queue AIO is not enabled", __func__);
-        return -EINVAL;
-    }
-    return qcb->queue_poll_completion(min_compl, max_compl, comps, actual, timeout);
-}
-
-/*
- * xclSetQueueOpt()
- */
-int shim::xclSetQueueOpt(uint64_t q_hdl, int type, uint32_t val)
-{
-    queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
-
-    return qcb->set_option(type, val);
-}
-
-/*
- * xclWriteQueue()
- */
-ssize_t shim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
-{
-    queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
-
-    if (!qcb->queue_is_h2c()) {
-        xrt_logmsg(XRT_ERROR, "%s: queue is read only", __func__);
-        return -EINVAL;
-    }
-
-    if ((wr->flag & XCL_QUEUE_REQ_NONBLOCKING) &&
-        !mAioEnabled && !(qcb->queue_aio_ctx_enabled())) {
-         xrt_logmsg(XRT_ERROR, "%s: NONBLOCK but aio NOT enabled.\n", __func__);
-         return -EINVAL;
-    }
-
-    if (!(wr->flag & XCL_QUEUE_REQ_EOT)) {
-        for (unsigned i = 0; i < wr->buf_num; i++) {
-            if ((wr->bufs[i].len & 0xfff)) {
-                xrt_logmsg(XRT_ERROR, "%s: write w/o EOT len %lu != N*4K.\n",
-                                 __func__, wr->bufs[i].len);
-                return -EINVAL;
-            }
-        }
-    }
-
-    return qcb->queue_submit_io(wr, &mAioContext);
-}
-
-/*
- * xclReadQueue()
- */
-ssize_t shim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *wr)
-{
-    queue_cb *qcb = reinterpret_cast<queue_cb *>(q_hdl);
-
-    if (qcb->queue_is_h2c()) {
-        xrt_logmsg(XRT_ERROR, "%s: queue is write only", __func__);
-        return -EINVAL;
-    }
-
-    if ((wr->flag & XCL_QUEUE_REQ_NONBLOCKING) &&
-        !mAioEnabled && !(qcb->queue_aio_ctx_enabled())) {
-         xrt_logmsg(XRT_ERROR, "%s: NONBLOCK but aio NOT enabled.\n", __func__);
-         return -EINVAL;
-    }
-
-    return qcb->queue_submit_io(wr, &mAioContext);
 }
 
 uint32_t shim::xclGetNumLiveProcesses()
@@ -2352,13 +2157,100 @@ int shim::xclCloseIPInterruptNotify(int fd)
     return 0;
 }
 
+// open_context() - aka xclOpenContextByName
+xrt_core::cuidx_type
+shim::
+open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+{
+  // Alveo Linux PCIE does not yet support multiple xclbins.  Call
+  // regular flow.  Default access mode to shared unless explicitly
+  // exclusive.
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+  return cuidx;
+}
+
+// Assign xclbin with uuid to hardware resources and return a context id
+// The context handle is 1:1 with a slot idx
+uint32_t
+shim::
+create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+  // Explicit hardware contexts are not supported in Alveo.
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
+void
+shim::
+destroy_hw_context(uint32_t ctxhdl)
+{
+  // Explicit hardware contexts are not supported in Alveo.
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
+// Registers an xclbin, but does not load it.
+void
+shim::
+register_xclbin(const xrt::xclbin&)
+{
+  // Explicit hardware contexts are not supported in Alveo.
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
 } // namespace xocl
 
-/*******************************/
-/* GLOBAL DECLARATIONS *********/
-/*******************************/
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
 
-unsigned xclProbe()
+xclDeviceHandle
+open_by_bdf(const std::string& bdf)
+{
+  return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
+}
+
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
+{
+  auto shim = get_shim_object(handle);
+  return shim->open_cu_context(hwctx, cuname);
+}
+
+uint32_t // ctxhdl aka slotidx
+create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+  auto shim = get_shim_object(handle);
+  return shim->create_hw_context(xclbin_uuid, qos);
+}
+
+void
+destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+{
+  auto shim = get_shim_object(handle);
+  shim->destroy_hw_context(ctxhdl);
+}
+
+void
+register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
+{
+  auto shim = get_shim_object(handle);
+  shim->register_xclbin(xclbin);
+}
+
+
+} // xrt::shim_int
+////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////
+// Implementation of user exposed SHIM APIs
+// This are C level functions
+////////////////////////////////////////////////////////////////
+unsigned int
+xclProbe()
 {
   return xdp::hal::profiling_wrapper("xclProbe", [] {
     return pcidev::get_dev_ready();
@@ -2397,22 +2289,6 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
   }) ;
 }
 
-xclDeviceHandle
-xclOpenByBDF(const char *bdf)
-{
-  try {
-    return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-
-  return nullptr;
-}
-
 void xclClose(xclDeviceHandle handle)
 {
   xdp::hal::profiling_wrapper("xclClose", [handle] {
@@ -2426,55 +2302,23 @@ void xclClose(xclDeviceHandle handle)
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
-  return xdp::hal::profiling_wrapper("xclLoadXclBin",
-  [handle, buffer] {
-
-  try {
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    if (!drv) {
+  return xdp::hal::profiling_wrapper("xclLoadXclBin", [handle, buffer] {
+    try {
+      auto drv = xocl::shim::handleCheck(handle);
+      if (!drv)
         return -EINVAL;
+
+      return drv->xclLoadXclBin(buffer);
     }
-
-    xdp::hal::flush_device(handle);
-    xdp::aie::flush_device(handle);
-    xdp::pl_deadlock::flush_device(handle);
-
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-    int ret = 0;
-#else
-    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
-#endif
-
-    if (!ret) {
-      auto core_device = xrt_core::get_userpf_device(drv);
-      core_device->register_axlf(buffer);
-
-      xdp::hal::update_device(handle) ;
-      xdp::aie::update_device(handle);
-      xdp::pl_deadlock::update_device(handle);
-
-#ifndef DISABLE_DOWNLOAD_XCLBIN
-      //scheduler::init can not be skipped even for same_xclbin
-      //as in multiple process stress tests it fails as
-      //below init step is without a lock with above driver load xclbin step.
-      //New KDS fixes this by ensuring that scheduler init is done by driver itself
-      //along with icap download in single command call and then below init step in user space
-      //is ignored
-      ret = xrt_core::scheduler::init(handle, buffer);
-      START_DEVICE_PROFILING_CB(handle);
-#endif
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get_code();
     }
-    return ret;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -EINVAL;
-  }
-  }) ;
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return -EINVAL;
+    }
+  });
 }
 
 int xclLogMsg(xclDeviceHandle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
@@ -2793,121 +2637,34 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   });
 }
 
-int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int
+xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   return xdp::hal::profiling_wrapper("xclOpenContext",
   [handle, xclbinId, ipIndex, shared] {
-
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-  return 0;
-#endif
-
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+    try {
+      xocl::shim *drv = xocl::shim::handleCheck(handle);
+      return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get_code();
+    }
   }) ;
-}
-
-int
-xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
-{
-  try {
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclOpenContext(slot, xclbin_uuid, cuname, shared) : -ENODEV;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
 }
 
 int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
   return xdp::hal::profiling_wrapper("xclCloseContext",
   [handle, xclbinId, ipIndex] {
-
-#ifdef DISABLE_DOWNLOAD_XCLBIN
-  return 0;
-#endif
-
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
   });
 }
 
 const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind)
 {
     return xclbin::get_axlf_section(top, kind);
-}
-
-// QDMA streaming APIs
-int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclCreateWriteQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclCreateReadQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
-}
-
-void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
-}
-
-int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
-}
-
-ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
-}
-
-ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
-}
-
-int xclSetQueueOpt(xclDeviceHandle handle, uint64_t q_hdl, int type, uint32_t val)
-{
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclSetQueueOpt(q_hdl, type, val) : -ENODEV;
-}
-
-int xclPollQueue(xclDeviceHandle handle, uint64_t q_hdl, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-        xocl::shim *drv = xocl::shim::handleCheck(handle);
-        return drv ? drv->xclPollQueue(q_hdl, min_compl, max_compl, comps, actual, timeout) : -ENODEV;
-}
-
-int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-  try {
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENODEV;
-  }
 }
 
 size_t xclGetDeviceTimestamp(xclDeviceHandle handle)

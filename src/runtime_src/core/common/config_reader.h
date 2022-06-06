@@ -351,7 +351,7 @@ get_aie_trace()
 inline bool
 get_aie_trace_flush()
 {
-  static bool value = detail::get_bool_value("Debug.aie_trace_flush", true);
+  static bool value = detail::get_bool_value("Debug.aie_trace_flush", false);
   return value;
 }
 
@@ -377,23 +377,26 @@ get_aie_trace_start_time()
 }
 
 inline bool
-get_aie_trace_user_control()
-{
-  static bool value = detail::get_bool_value("Debug.aie_trace_user_control", false);
-  return value;
-}
-
-inline bool
 get_aie_trace_periodic_offload()
 {
   static bool value = detail::get_bool_value("Debug.aie_trace_periodic_offload", true);
   return value;
 }
 
+/**
+ * Deprecated in future. Ms is too long for aie trace
+ */
 inline unsigned int
 get_aie_trace_buffer_offload_interval_ms()
 {
   static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_ms", 10);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_buffer_offload_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_us", 100);
   return value;
 }
 
@@ -830,6 +833,137 @@ get_flag_sw_emu_kernel_debug()
   static bool value = detail::get_bool_value("Emulation.kernel-dbg", false);
   return value;
 }
+
+// This flag is added to exit device offline status check loop forcibly.
+// By default, device offline status loop runs for 120 seconds.
+inline unsigned int
+get_device_offline_timer()
+{
+  static unsigned int value = detail::get_uint_value("Runtime.dev_offline_timer", 120);
+  return value;
+}
+
+// Configurations under AIE_profile_settings section
+inline unsigned int
+get_aie_profile_settings_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("AIE_profile_settings.interval_us", 1000) ;
+  return value ;
+}
+
+inline std::string
+get_aie_profile_settings_graph_core_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_core_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_graph_memory_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_memory_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_graph_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_graph_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_mem_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_core_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.core_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_memory_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.memory_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.mem_tile_metrics", "");
+  return value;
+}
+
+// AIE_trace_settings
+
+/**
+ * off|time|graph|user
+ */
+inline std::string
+get_aie_trace_settings_start_type()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.start_type", "off");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_start_time()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.start_time", "0");
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_settings_start_iteration()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.start_iteration", 1);
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_graph_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.graph_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_aie_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.aie_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.mem_tile_metrics", "");
+  return value;
+}
+
+#if 0
+// Post 2022.2
+inline std::string
+get_aie_trace_settings_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.interface_tile_metrics", "");
+  return value;
+}
+#endif
+
 
 }} // config,xrt_core
 

@@ -10,6 +10,7 @@ add_library(core_common_api_library_objects OBJECT
   xrt_device.cpp
   xrt_enqueue.cpp
   xrt_error.cpp
+  xrt_hw_context.cpp
   xrt_ini.cpp
   xrt_ip.cpp
   xrt_kernel.cpp
@@ -28,6 +29,9 @@ if (DEFINED XRT_AIE_BUILD)
     aie/xrt_graph.cpp)
 endif()
 
+if (MCDM)
+  target_compile_definitions(core_common_api_library_objects PRIVATE MCDM)
+endif()
 
 target_include_directories(core_common_api_library_objects
   PRIVATE

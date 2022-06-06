@@ -29,21 +29,23 @@ TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
       major_version(0),
       minor_version(0)
 {
-    if(data) {
+    if (data) {
         properties = data->m_properties;
         major_version = data->m_major;
         minor_version = data->m_minor;
     }
+
+    mIsVersion2 = (major_version >= 2);
 }
 
-inline void TraceS2MM::write32(uint64_t offset, uint32_t val)
+void TraceS2MM::write32(uint64_t offset, uint32_t val)
 {
     write(offset, 4, &val);
 }
 
 void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 {
-    if(out_stream) {
+    if (out_stream) {
         (*out_stream) << " TraceS2MM::init " << std::endl;
     }
 
@@ -71,7 +73,7 @@ void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 
 bool TraceS2MM::isActive()
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::isActive " << std::endl;
 
     uint32_t regValue = 0;
@@ -81,7 +83,7 @@ bool TraceS2MM::isActive()
 
 void TraceS2MM::reset()
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::reset " << std::endl;
 
     // Init Sw Reset
@@ -95,22 +97,32 @@ void TraceS2MM::reset()
     mclockTrainingdone = false;
 }
 
-uint64_t TraceS2MM::getWordCount()
+uint64_t TraceS2MM::getWordCount(bool final)
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::getWordCount " << std::endl;
+
+    // Call flush on V2 datamover to ensure all data is written
+    if (final && isVersion2())
+        reset();
 
     uint32_t regValue = 0;
     read(TS2MM_WRITTEN_LOW, 4, &regValue);
-    uint64_t retValue = static_cast<uint64_t>(regValue);
+    uint64_t wordCount = static_cast<uint64_t>(regValue);
     read(TS2MM_WRITTEN_HIGH, 4, &regValue);
-    retValue |= static_cast<uint64_t>(regValue) << 32;
-    return retValue;
+    wordCount |= static_cast<uint64_t>(regValue) << 32;
+
+    // V2 datamover only writes data in bursts
+    // Only the final write can be a non multiple of burst length
+    if (!final && isVersion2())
+        wordCount -= wordCount % TS2MM_V2_BURST_LEN;
+
+    return wordCount;
 }
 
 uint8_t TraceS2MM::getMemIndex()
 {
-    if(out_stream) {
+    if (out_stream) {
         (*out_stream) << " TraceS2MM::getMemIndex " << std::endl;
     }
 
@@ -171,7 +183,7 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet)
 
 void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result)
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::parsePacket " << std::endl;
 
     result.Timestamp = (packet & 0x1FFFFFFFFFFF) - firstTimestamp;
@@ -204,7 +216,7 @@ void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceRe
 
 uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
 {
-  if(out_stream)
+  if (out_stream)
       (*out_stream) << " TraceS2MM::seekClockTraining " << std::endl;
 
   uint64_t n = 8;
@@ -227,7 +239,7 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
 
 void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector)
 {
-    if(out_stream)
+    if (out_stream)
         (*out_stream) << " TraceS2MM::parseTraceBuf " << std::endl;
 
     uint32_t packetSizeBytes = 8;
