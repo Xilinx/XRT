@@ -20,10 +20,14 @@
 
 
 #define AQUIRE_MUTEX() \
-mtx.lock(); \
+if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  }\
+std::lock_guard<std::mutex> socketlk{mtx}; 
 
-#define RELEASE_MUTEX() \
-mtx.unlock();
+
+// dummy Release Mutex Call.
+#define RELEASE_MUTEX() 
+
+
 
 #define RPC_PROLOGUE(func_name) \
     auto _s_inst = sock;  \
@@ -37,24 +41,24 @@ mtx.unlock();
     auto c_len = c_msg.ByteSize();                                      \
     buf_size = alloc_void(c_len);                                       \
     bool rv = c_msg.SerializeToArray(buf,c_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl; exit(1);} \
                                                                         \
     ci_msg.set_size(c_len);                                             \
     ci_msg.set_xcl_api(func_name##_n);                                  \
     auto ci_len = ci_msg.ByteSize();                                    \
     rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl; exit(1); } \
                                                                         \
     _s_inst->sk_write(ci_buf,ci_len);                                   \
     _s_inst->sk_write(buf,c_len);                                       \
                                                                         \
     _s_inst->sk_read(ri_buf,ri_msg.ByteSize());                         \
     rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize());               \
-    assert(true == rv);                                                 \
+    if (true != rv) { std::cerr<<"\n unable to get data from Protobuff or socket, so exit the application now!"; exit(0);  }                                                 \
     buf_size = alloc_void(ri_msg.size());                               \
     _s_inst->sk_read(buf,ri_msg.size());                                \
     rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
-    assert(true == rv);
+    if (true != rv){ std::cerr<<"\n unable to get data from Protobuff or socket, so exit- the application now!!!"; exit(0); }
 #else
 // More recent protoc handles 64 bit size objects and the 32 bit version is deprecated
 #define SERIALIZE_AND_SEND_MSG(func_name)                               \
