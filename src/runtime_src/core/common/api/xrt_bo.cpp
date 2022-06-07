@@ -93,6 +93,7 @@ private:
   mutable std::mutex async_bo_hdls_mutex;// Mutex for use with above map
 };
 
+//Used for AIE BO Transfer for all gmio names and bd numbers
 static aie_async_handle_map aie_async_info;
 
 XRT_CORE_UNUSED
