@@ -270,12 +270,20 @@ struct xrt_cu_log {
 #define CU_LOG_STAGE_SQ		3
 #define CU_LOG_STAGE_CQ		4
 
+struct xrt_cu_range {
+	struct mutex		  xcr_lock;
+	u32			  xcr_start;
+	u32			  xcr_end;
+};
+
 /* Supported event type */
 struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
 	struct resource		**res;
 	struct list_head	  cu;
+	/* Range of Read-only registers */
+	struct xrt_cu_range	  read_regs;
 	/* pending queue */
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;
