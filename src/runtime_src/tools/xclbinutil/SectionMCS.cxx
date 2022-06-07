@@ -32,8 +32,8 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionMCS::init SectionMCS::initializer;
 
-SectionMCS::init::init() 
-{ 
+SectionMCS::init::init()
+{
   auto sectionInfo = std::make_unique<SectionInfo>(MCS, "MCS", boost::factory<SectionMCS*>());
   sectionInfo->supportsSubSections = true;
   sectionInfo->subSections.push_back(getSubSectionName(MCS_PRIMARY));
@@ -49,41 +49,42 @@ SectionMCS::init::init()
 // --------------------------------------------------------------------------
 
 using SubSectionTableCollection = std::vector<std::pair<std::string, MCS_TYPE>>;
-static const SubSectionTableCollection& 
-  getSubSectionTable() {
+static const SubSectionTableCollection&
+getSubSectionTable()
+{
   static const SubSectionTableCollection subSectionTable = {
-    {"UNKNOWN", MCS_UNKNOWN},
-    {"PRIMARY", MCS_PRIMARY},
-    {"SECONDARY", MCS_SECONDARY}
+    { "UNKNOWN", MCS_UNKNOWN },
+    { "PRIMARY", MCS_PRIMARY },
+    { "SECONDARY", MCS_SECONDARY }
   };
 
   return subSectionTable;
 }
 
 
-MCS_TYPE 
-SectionMCS::getSubSectionEnum(const std::string & sSubSectionName) 
+MCS_TYPE
+SectionMCS::getSubSectionEnum(const std::string& sSubSectionName)
 {
   auto subSectionTable = getSubSectionTable();
-  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto& entry) {return boost::iequals(entry.first, sSubSectionName);});
 
   if (iter == subSectionTable.end())
     return MCS_UNKNOWN;
 
-  return iter->second; 
+  return iter->second;
 }
 
 // -------------------------------------------------------------------------
 
-const std::string &
+const std::string&
 SectionMCS::getSubSectionName(MCS_TYPE eSubSection)
 {
   auto subSectionTable = getSubSectionTable();
-  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto& entry) {return entry.second == eSubSection;});
 
   if (iter == subSectionTable.end())
     return getSubSectionName(MCS_UNKNOWN);
-  return iter->first; 
+  return iter->first;
 }
 
 // --------------------------------------------------------------------------
@@ -91,7 +92,8 @@ SectionMCS::getSubSectionName(MCS_TYPE eSubSection)
 void
 SectionMCS::marshalToJSON(char* _pDataSegment,
                           unsigned int _segmentSize,
-                          boost::property_tree::ptree& _ptree) const {
+                          boost::property_tree::ptree& _ptree) const
+{
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: MCS");
 
@@ -128,10 +130,10 @@ SectionMCS::marshalToJSON(char* _pDataSegment,
   for (int index = 0; index < pHdr->m_count; ++index) {
     boost::property_tree::ptree pt_mcs_chunk;
     XUtil::TRACE(boost::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx")
-                               % index
-                               % getSubSectionName((MCS_TYPE)pHdr->m_chunk[index].m_type)
-                               % pHdr->m_chunk[index].m_offset
-                               % pHdr->m_chunk[index].m_size);
+                 % index
+                 % getSubSectionName((MCS_TYPE)pHdr->m_chunk[index].m_type)
+                 % pHdr->m_chunk[index].m_offset
+                 % pHdr->m_chunk[index].m_size);
 
     XUtil::TRACE_BUF("m_chunk", reinterpret_cast<const char*>(&(pHdr->m_chunk[index])), sizeof(mcs_chunk));
 
@@ -164,7 +166,8 @@ SectionMCS::getSubPayload(char* _pDataSection,
                           unsigned int _sectionSize,
                           std::ostringstream& _buf,
                           const std::string& _sSubSectionName,
-                          Section::FormatType _eFormatType) const {
+                          Section::FormatType _eFormatType) const
+{
   // Make sure we support the subsystem
   if (Section::supportsSubSectionName(m_eKind, _sSubSectionName) == false) {
     auto errMsg = boost::format("ERROR: For section '%s' the subsystem '%s' is not supported.") % getSectionKindAsString() % _sSubSectionName;
@@ -173,7 +176,7 @@ SectionMCS::getSubPayload(char* _pDataSection,
 
   // Make sure we support the format type
   if (_eFormatType != FormatType::raw) {
-    auto errMsg = boost::format("ERROR: For section '%s' the format type (%d) is not supported.") % getSectionKindAsString() % (unsigned int) _eFormatType;
+    auto errMsg = boost::format("ERROR: For section '%s' the format type (%d) is not supported.") % getSectionKindAsString() % (unsigned int)_eFormatType;
     throw std::runtime_error(errMsg.str());
   }
 
@@ -188,7 +191,7 @@ SectionMCS::getSubPayload(char* _pDataSection,
 
   for (auto mcsBuffer : mcsBuffers) {
     if (mcsBuffer.first == eMCSType) {
-      const std::string &sBuffer = mcsBuffer.second->str();
+      const std::string& sBuffer = mcsBuffer.second->str();
       _buf.write(sBuffer.c_str(), sBuffer.size());
     }
   }
@@ -199,7 +202,8 @@ SectionMCS::getSubPayload(char* _pDataSection,
 void
 SectionMCS::extractBuffers(const char* _pDataSection,
                            unsigned int _sectionSize,
-                           std::vector<mcsBufferPair>& _mcsBuffers) const {
+                           std::vector<mcsBufferPair>& _mcsBuffers) const
+{
   XUtil::TRACE("Extracting: MCS buffers");
 
   // Do we have enough room to overlay the header structure
@@ -210,7 +214,7 @@ SectionMCS::extractBuffers(const char* _pDataSection,
 
   mcs* pHdr = (mcs*)_pDataSection;
 
-  XUtil::TRACE(boost::format("m_count: %d") % (uint32_t) pHdr->m_count);
+  XUtil::TRACE(boost::format("m_count: %d") % (uint32_t)pHdr->m_count);
   XUtil::TRACE_BUF("mcs", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_chunk[0]) - (uint64_t)pHdr));
 
   // Do we have something to extract.  Note: This should never happen.
@@ -230,10 +234,10 @@ SectionMCS::extractBuffers(const char* _pDataSection,
   // Examine and extract the data
   for (int index = 0; index < pHdr->m_count; ++index) {
     XUtil::TRACE(boost::format("[%d]: m_type: %s, m_offset: 0x%lx, m_size: 0x%lx")
-                               % index
-                               % getSubSectionName((MCS_TYPE)pHdr->m_chunk[index].m_type)
-                               % pHdr->m_chunk[index].m_offset
-                               % pHdr->m_chunk[index].m_size);
+                 % index
+                 % getSubSectionName((MCS_TYPE)pHdr->m_chunk[index].m_type)
+                 % pHdr->m_chunk[index].m_offset
+                 % pHdr->m_chunk[index].m_size);
 
     XUtil::TRACE_BUF("m_chunk", reinterpret_cast<const char*>(&(pHdr->m_chunk[index])), sizeof(mcs_chunk));
 
@@ -261,18 +265,19 @@ SectionMCS::extractBuffers(const char* _pDataSection,
 
 void
 SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
-                        std::ostringstream& _buffer) const {
+                        std::ostringstream& _buffer) const
+{
   XUtil::TRACE("Building: MCS buffers");
 
   // Must have something to work with
-  int count = (int) _mcsBuffers.size();
+  int count = (int)_mcsBuffers.size();
   if (count == 0)
     return;
 
-  mcs mcsHdr = mcs {0};
+  mcs mcsHdr = mcs{0};
   mcsHdr.m_count = (int8_t)count;
 
-  XUtil::TRACE(boost::format("m_count: %d") % (int) mcsHdr.m_count);
+  XUtil::TRACE(boost::format("m_count: %d") % (int)mcsHdr.m_count);
 
   // Write out the entire structure except for the mcs structure
   XUtil::TRACE_BUF("mcs - minus mcs_chunk", reinterpret_cast<const char*>(&mcsHdr), (sizeof(mcs) - sizeof(mcs_chunk)));
@@ -286,8 +291,8 @@ SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
                               (sizeof(mcs_chunk) * count));
 
     for (auto mcsEntry : _mcsBuffers) {
-      mcs_chunk mcsChunk = mcs_chunk {0};
-      mcsChunk.m_type = (uint8_t) mcsEntry.first;   // Record the MCS type
+      mcs_chunk mcsChunk = mcs_chunk{0};
+      mcsChunk.m_type = (uint8_t)mcsEntry.first;   // Record the MCS type
 
       mcsEntry.second->seekp(0, std::ios_base::end);
       mcsChunk.m_size = mcsEntry.second->tellp();
@@ -304,10 +309,10 @@ SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
     int index = 0;
     for (auto mcsChunk : mcsChunks) {
       XUtil::TRACE(boost::format("[%d]: m_type: %d, m_offset: 0x%lx, m_size: 0x%lx")
-                                 % index++
-                                 % mcsChunk.m_type
-                                 % mcsChunk.m_offset
-                                 % mcsChunk.m_size);
+                   % index++
+                   % mcsChunk.m_type
+                   % mcsChunk.m_offset
+                   % mcsChunk.m_size);
       XUtil::TRACE_BUF("mcs_chunk", reinterpret_cast<const char*>(&mcsChunk), sizeof(mcs_chunk));
       _buffer.write(reinterpret_cast<const char*>(&mcsChunk), sizeof(mcs_chunk));
     }
@@ -330,7 +335,8 @@ SectionMCS::readSubPayload(const char* _pOrigDataSection,
                            std::istream& _istream,
                            const std::string& _sSubSection,
                            Section::FormatType _eFormatType,
-                           std::ostringstream& _buffer) const {
+                           std::ostringstream& _buffer) const
+{
   // Determine subsection name
   MCS_TYPE eMCSType = getSubSectionEnum(_sSubSection);
 
@@ -341,7 +347,7 @@ SectionMCS::readSubPayload(const char* _pOrigDataSection,
 
   // Validate format type
   if (_eFormatType != Section::FormatType::raw) {
-      auto errMsg = boost::format("ERROR: Section '%s' only supports 'RAW' subsections.") % getSectionKindAsString();
+    auto errMsg = boost::format("ERROR: Section '%s' only supports 'RAW' subsections.") % getSectionKindAsString();
     throw std::runtime_error(errMsg.str());
   }
 
@@ -390,7 +396,8 @@ SectionMCS::readSubPayload(const char* _pOrigDataSection,
 // --------------------------------------------------------------------------
 
 bool
-SectionMCS::subSectionExists(const std::string& _sSubSectionName) const {
+SectionMCS::subSectionExists(const std::string& _sSubSectionName) const
+{
   // Get a list of the sections
   std::vector<mcsBufferPair> mcsBuffers;
   if (m_pBuffer != nullptr) {
@@ -411,10 +418,11 @@ SectionMCS::subSectionExists(const std::string& _sSubSectionName) const {
 
 // --------------------------------------------------------------------------
 
-void 
-SectionMCS::writeSubPayload(const std::string & _sSubSectionName,
-                            FormatType _eFormatType, 
-                            std::fstream&  _oStream) const {
+void
+SectionMCS::writeSubPayload(const std::string& _sSubSectionName,
+                            FormatType _eFormatType,
+                            std::fstream&  _oStream) const
+{
   // Validate format type
   if (_eFormatType != Section::FormatType::raw) {
     auto errMsg = boost::format("ERROR: Section '%s' only supports 'RAW' subsections.") % getSectionKindAsString();
@@ -431,14 +439,14 @@ SectionMCS::writeSubPayload(const std::string & _sSubSectionName,
   MCS_TYPE eMCSType = getSubSectionEnum(_sSubSectionName);
   for (auto mcsBuffer : mcsBuffers) {
     if (mcsBuffer.first == eMCSType) {
-      const std::string &buffer = mcsBuffer.second->str();
+      const std::string& buffer = mcsBuffer.second->str();
       _oStream.write(buffer.c_str(), buffer.size());
       return;
     }
   }
 
   // No collection entry
-  auto errMsg = boost::format("ERROR: Subsection '%s' of section '%s' does not exist") % _sSubSectionName %getSectionKindAsString();
+  auto errMsg = boost::format("ERROR: Subsection '%s' of section '%s' does not exist") % _sSubSectionName % getSectionKindAsString();
   throw std::runtime_error(errMsg.str());
 }
 

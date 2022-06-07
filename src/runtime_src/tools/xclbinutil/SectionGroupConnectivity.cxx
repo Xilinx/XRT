@@ -26,9 +26,9 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionGroupConnectivity::init SectionGroupConnectivity::initializer;
 
-SectionGroupConnectivity::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(ASK_GROUP_CONNECTIVITY, "GROUP_CONNECTIVITY", boost::factory<SectionGroupConnectivity*>()); 
+SectionGroupConnectivity::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(ASK_GROUP_CONNECTIVITY, "GROUP_CONNECTIVITY", boost::factory<SectionGroupConnectivity*>());
   sectionInfo->nodeName = "group_connectivity";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);
@@ -44,8 +44,9 @@ SectionGroupConnectivity::init::init()
 
 void
 SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
-                                   unsigned int _sectionSize,
-                                   boost::property_tree::ptree& _ptree) const {
+                                        unsigned int _sectionSize,
+                                        boost::property_tree::ptree& _ptree) const
+{
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: GROUP CONNECTIVITY");
   XUtil::TRACE_BUF("Section Buffer", reinterpret_cast<const char*>(_pDataSection), _sectionSize);
@@ -59,11 +60,11 @@ SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
   connectivity* pHdr = (connectivity*)_pDataSection;
   boost::property_tree::ptree connectivity;
 
-  XUtil::TRACE(boost::format("m_count: %d") % (unsigned int) pHdr->m_count);
+  XUtil::TRACE(boost::format("m_count: %d") % (unsigned int)pHdr->m_count);
 
   // Write out the entire structure except for the array structure
   XUtil::TRACE_BUF("connectivity", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_connection[0]) - (uint64_t)pHdr));
-  connectivity.put("m_count", (boost::format("%d") % (unsigned int) pHdr->m_count).str());
+  connectivity.put("m_count", (boost::format("%d") % (unsigned int)pHdr->m_count).str());
 
   uint64_t expectedSize = ((uint64_t)&(pHdr->m_connection[0]) - (uint64_t)pHdr) + (sizeof(connection) * pHdr->m_count);
 
@@ -78,19 +79,19 @@ SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
 
 
     XUtil::TRACE(boost::format("[%d]: arg_index: %u, m_ip_layout_index: %u, mem_data_index: %u")
-                               % index
-                               % (unsigned int) pHdr->m_connection[index].arg_index
-                               % (unsigned int) pHdr->m_connection[index].m_ip_layout_index
-                               % (unsigned int) pHdr->m_connection[index].mem_data_index);
+                 % index
+                 % (unsigned int)pHdr->m_connection[index].arg_index
+                 % (unsigned int)pHdr->m_connection[index].m_ip_layout_index
+                 % (unsigned int)pHdr->m_connection[index].mem_data_index);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("connection", reinterpret_cast<const char*>(&(pHdr->m_connection[index])), sizeof(connection));
 
-    connection.put("arg_index", (boost::format("%d") % (unsigned int) pHdr->m_connection[index].arg_index).str());
-    connection.put("m_ip_layout_index", (boost::format("%d") % (unsigned int) pHdr->m_connection[index].m_ip_layout_index).str());
-    connection.put("mem_data_index", (boost::format("%d") % (unsigned int) pHdr->m_connection[index].mem_data_index).str());
+    connection.put("arg_index", (boost::format("%d") % (unsigned int)pHdr->m_connection[index].arg_index).str());
+    connection.put("m_ip_layout_index", (boost::format("%d") % (unsigned int)pHdr->m_connection[index].m_ip_layout_index).str());
+    connection.put("mem_data_index", (boost::format("%d") % (unsigned int)pHdr->m_connection[index].mem_data_index).str());
 
-    m_connection.push_back({"", connection});   // Used to make an array of objects
+    m_connection.push_back({ "", connection });   // Used to make an array of objects
   }
 
   connectivity.add_child("m_connection", m_connection);
@@ -102,10 +103,11 @@ SectionGroupConnectivity::marshalToJSON(char* _pDataSection,
 
 void
 SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
-                                     std::ostringstream& _buf) const {
+                                          std::ostringstream& _buf) const
+{
   const boost::property_tree::ptree& ptConnectivity = _ptSection.get_child("group_connectivity");
 
-  connectivity connectivityHdr = connectivity {0};
+  connectivity connectivityHdr = connectivity{0};
 
   // Read, store, and report mem_topology data
   connectivityHdr.m_count = ptConnectivity.get<uint32_t>("m_count");
@@ -127,7 +129,7 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
   unsigned int count = 0;
   const boost::property_tree::ptree connections = ptConnectivity.get_child("m_connection");
   for (const auto& kv : connections) {
-    connection connectionHdr = connection {0};
+    connection connectionHdr = connection{0};
     boost::property_tree::ptree ptConnection = kv.second;
 
     connectionHdr.arg_index = ptConnection.get<int32_t>("arg_index");
@@ -135,9 +137,9 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
     connectionHdr.mem_data_index = ptConnection.get<int32_t>("mem_data_index");
 
     XUtil::TRACE(boost::format("[%d]: arg_index: %d, m_ip_layout_index: %d, mem_data_index: %d")
-                               % count % (unsigned int) connectionHdr.arg_index
-                               % (unsigned int) connectionHdr.m_ip_layout_index
-                               % (unsigned int) connectionHdr.mem_data_index);
+                 % count % (unsigned int)connectionHdr.arg_index
+                 % (unsigned int)connectionHdr.m_ip_layout_index
+                 % (unsigned int)connectionHdr.mem_data_index);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("connection", reinterpret_cast<const char*>(&connectionHdr), sizeof(connection));
@@ -148,16 +150,16 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
   // -- The counts should match --
   if (count != (unsigned int)connectivityHdr.m_count) {
     auto errMsg = boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d")
-                                 % (unsigned int) count % (unsigned int) connectivityHdr.m_count;
+        % (unsigned int)count % (unsigned int)connectivityHdr.m_count;
     throw std::runtime_error(errMsg.str());
   }
-  
+
   // -- Buffer needs to be less than 64K--
-  unsigned int bufferSize = (unsigned int) _buf.str().size();
+  unsigned int bufferSize = (unsigned int)_buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
-  if ( bufferSize > maxBufferSize ) {
+  if (bufferSize > maxBufferSize) {
     auto errMsg = boost::format("CRITICAL WARNING: The buffer size for the CONNECTIVITY section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.")
-                                % (unsigned int) bufferSize % (unsigned int) maxBufferSize;
+        % (unsigned int)bufferSize % (unsigned int)maxBufferSize;
     std::cout << errMsg << std::endl;
   }
 }

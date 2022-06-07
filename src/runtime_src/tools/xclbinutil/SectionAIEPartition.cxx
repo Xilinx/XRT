@@ -25,7 +25,7 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionAIEPartition::init SectionAIEPartition::initializer;
 
-SectionAIEPartition::init::init() 
+SectionAIEPartition::init::init()
 {
   auto sectionInfo = std::make_unique<SectionInfo>(AIE_PARTITION, "AIE_PARTITION", boost::factory<SectionAIEPartition*>());
   sectionInfo->nodeName = "aie_partition";
@@ -53,7 +53,7 @@ SectionAIEPartition::marshalToJSON(char* pDataSection,
   // Do we have enough room to overlay the header structure
   if (sectionSize < sizeof(aie_partition)) {
     auto errMsg = boost::format("ERROR: Section size (%d) is smaller than the size of the aie_partition structure (%d)")
-                                 % sectionSize % sizeof(aie_partition);
+        % sectionSize % sizeof(aie_partition);
     throw std::runtime_error(errMsg.str());
   }
 
@@ -77,8 +77,8 @@ SectionAIEPartition::marshalToJSON(char* pDataSection,
 
     // -- start_column array
     XUtil::TRACE(boost::format("columns count: %d, offset: 0x%0x")
-                               % pHdr->info.start_columns_count
-                               % pHdr->info.mpo_auint16_start_columns);
+                 % pHdr->info.start_columns_count
+                 % pHdr->info.mpo_auint16_start_columns);
 
     if (pHdr->info.start_columns_count) {
       auto startColumns = reinterpret_cast<const uint16_t*>(reinterpret_cast<const uint8_t*>(pHdr) + pHdr->info.mpo_auint16_start_columns);
@@ -87,7 +87,7 @@ SectionAIEPartition::marshalToJSON(char* pDataSection,
       for (size_t index = 0; index < pHdr->info.start_columns_count; index++) {
         boost::property_tree::ptree ptEntry;
         ptEntry.put("", std::to_string(startColumns[index]));
-        ptArray.push_back({"", ptEntry});   // Used to make an array of objects
+        ptArray.push_back({ "", ptEntry });   // Used to make an array of objects
       }
       ptPartitionInfo.add_child("start_columns", ptArray);
     }

@@ -16,7 +16,7 @@
 
 #include "ResourcesSmartNic.h"
 
-const std::string & getSmartNicSchema()
+const std::string& getSmartNicSchema()
 {
   static std::string SmartNicSchema = R"~~~~(
 {

@@ -23,28 +23,28 @@
 // ---------- C L A S S :   S e c t i o n S o f t K e r n e l ----------------
 class SectionSoftKernel : public Section {
  public:
-  enum SubSection{
+  enum SubSection {
     unknown,
     obj,
     metadata
   };
  public:
-  static SubSection getSubSectionEnum(const std::string & _sSubSectionName);
-  static const std::string & getSubSectionName(SubSection eSubSection);
+  static SubSection getSubSectionEnum(const std::string& _sSubSectionName);
+  static const std::string& getSubSectionName(SubSection eSubSection);
 
  public:
-  bool subSectionExists(const std::string &_sSubSectionName) const override;
-  void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader) override;
+  bool subSectionExists(const std::string& _sSubSectionName) const override;
+  void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader)override;
 
  protected:
-  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, Section::FormatType _eFormatType, std::ostringstream &_buffer) const override;
-  void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
+  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string& _sSubSection, Section::FormatType _eFormatType, std::ostringstream& _buffer) const override;
+  void writeSubPayload(const std::string& _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
 
  protected:
-   void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, std::ostringstream &_buffer) const;
-   void createDefaultImage(std::istream & _istream, std::ostringstream &_buffer) const;
-   void writeObjImage(std::ostream& _oStream) const;
-   void writeMetadata(std::ostream& _oStream) const;
+  void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, std::ostringstream& _buffer) const;
+  void createDefaultImage(std::istream& _istream, std::ostringstream& _buffer) const;
+  void writeObjImage(std::ostream& _oStream) const;
+  void writeMetadata(std::ostream& _oStream) const;
 
  private:
   // Static initializer helper class

@@ -20,21 +20,22 @@
 #include <stdexcept>
 
 
-SectionHeader::SectionHeader() 
-  : m_eType(BITSTREAM)
+SectionHeader::SectionHeader()
+    : m_eType(BITSTREAM)
 {
   // Empty
 }
 
 
 void
-SectionHeader::readXclBinBinarySection(std::fstream& _istream, unsigned int _section) {
+SectionHeader::readXclBinBinarySection(std::fstream& _istream, unsigned int _section)
+{
   // Find the section header data
   long long sectionOffset = sizeof(axlf) + (_section * sizeof(axlf_section_header)) - sizeof(axlf_section_header);
   _istream.seekg(sectionOffset);
 
   // Read in the data
-  axlf_section_header sectionHeader = axlf_section_header {0};
+  axlf_section_header sectionHeader = axlf_section_header{0};
   const unsigned int expectBufferSize = sizeof(axlf_section_header);
 
   _istream.read((char*)&sectionHeader, sizeof(axlf_section_header));
