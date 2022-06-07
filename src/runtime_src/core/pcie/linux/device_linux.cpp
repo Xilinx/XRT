@@ -537,7 +537,7 @@ struct aim_counter
     std::string aim_name("aximm_mon_");
     aim_name += std::to_string(dbg_ip_data->m_base_address);
 
-    result_type retval_buf(xdp::IP::AIM::NUM_COUNTERS_XBUTIL, 0);
+    result_type retval_buf(xdp::IP::AIM::NUM_COUNTERS_REPORT, 0);
 
     result_type val_buf = get_counter_status_from_sysfs(aim_name, "counters", xdp::IP::AIM::NUM_COUNTERS, device);
 

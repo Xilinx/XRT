@@ -60,9 +60,9 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
     xdp::IP::AIM::AXI_LITE::LAST_READ_DATA_UPPER,
   };
 
-  std::vector<uint64_t> ret_val(xdp::IP::AIM::NUM_COUNTERS_XBUTIL);
+  std::vector<uint64_t> ret_val(xdp::IP::AIM::NUM_COUNTERS_REPORT);
 
-  uint32_t curr_data[xdp::IP::AIM::NUM_COUNTERS_XBUTIL] = {0};
+  uint32_t curr_data[xdp::IP::AIM::NUM_COUNTERS_REPORT] = {0};
 
   uint32_t sample_interval = 0;
 
@@ -73,7 +73,7 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
   if (dbg_ip_data->m_properties & xdp::IP::AIM::mask::PROPERTY_64BIT) {
-    for (int c = 0; c < xdp::IP::AIM::NUM_COUNTERS_XBUTIL; c++) {
+    for (int c = 0; c < xdp::IP::AIM::NUM_COUNTERS_REPORT; c++) {
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                     dbg_ip_data->m_base_address + aim_upper_offsets[c],
                     &curr_data[c], sizeof(uint32_t));
@@ -81,7 +81,7 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
     }
   }
 
-  for (int c = 0; c < xdp::IP::AIM::NUM_COUNTERS_XBUTIL; c++) {
+  for (int c = 0; c < xdp::IP::AIM::NUM_COUNTERS_REPORT; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                   dbg_ip_data->m_base_address + aim_offsets[c],
                   &curr_data[c], sizeof(uint32_t));
@@ -126,7 +126,7 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
   std::vector<uint64_t> ret_val(xdp::IP::AM::NUM_COUNTERS);
 
   // Read all metric counters
-  uint32_t curr_data[xdp::IP::AM::NUM_COUNTERS_XBUTIL] = {0};
+  uint32_t curr_data[xdp::IP::AM::NUM_COUNTERS_REPORT] = {0};
 
   uint32_t sample_interval = 0;
   // Read sample interval register to latch the sampled metric counters
@@ -142,7 +142,7 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
   if (dbg_ip_data->m_properties & xdp::IP::AIM::mask::PROPERTY_64BIT) {
-    for (int c = 0; c < xdp::IP::AM::NUM_COUNTERS_XBUTIL; c++) {
+    for (int c = 0; c < xdp::IP::AM::NUM_COUNTERS_REPORT; c++) {
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                     dbg_ip_data->m_base_address + am_upper_offsets[c],
                     &curr_data[c], sizeof(uint32_t));
@@ -179,7 +179,7 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
   }
 
   // Read the lower 32-bits and add it to the final return value
-  for (int c = 0; c < xdp::IP::AM::NUM_COUNTERS_XBUTIL; c++) {
+  for (int c = 0; c < xdp::IP::AM::NUM_COUNTERS_REPORT; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address+am_offsets[c], &curr_data[c], sizeof(uint32_t));
   }
 

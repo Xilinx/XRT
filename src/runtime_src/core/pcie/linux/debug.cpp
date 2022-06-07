@@ -211,7 +211,7 @@ namespace xocl {
     uint8_t  perfMonProperties[xdp::MAX_NUM_AIMS] = {};
     uint32_t numSlots = getIPCountAddrNames(AXI_MM_MONITOR, baseAddress, nullptr, perfMonProperties, nullptr, nullptr, xdp::MAX_NUM_AIMS);
 
-    uint32_t temp[xdp::IP::AIM::NUM_COUNTERS_XBUTIL];
+    uint32_t temp[xdp::IP::AIM::NUM_COUNTERS_REPORT];
 
     aCounterResults->NumSlots = numSlots;
     snprintf(aCounterResults->DevUserName, 256, "%s", mDevUserName.c_str());
@@ -224,7 +224,7 @@ namespace xocl {
 
       // If applicable, read the upper 32-bits of the 64-bit debug counters
       if (perfMonProperties[s] & xdp::IP::AIM::mask::PROPERTY_64BIT) {
-	for (int c = 0; c < xdp::IP::AIM::NUM_COUNTERS_XBUTIL; ++c) {
+	for (int c = 0; c < xdp::IP::AIM::NUM_COUNTERS_REPORT; ++c) {
 	  xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
 		  baseAddress[s] + aim_upper_offsets[c],
 		  &temp[c], 4) ;
@@ -240,7 +240,7 @@ namespace xocl {
 	aCounterResults->LastReadData[s]  = ((uint64_t)(temp[8])) << 32 ;
       }
 
-      for (int c=0; c < xdp::IP::AIM::NUM_COUNTERS_XBUTIL; c++)
+      for (int c=0; c < xdp::IP::AIM::NUM_COUNTERS_REPORT; c++)
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+aim_offsets[c], &temp[c], 4);
 
       aCounterResults->WriteBytes[s]    |= temp[0];
@@ -404,7 +404,7 @@ namespace xocl {
     uint32_t numSlots = getIPCountAddrNames(ACCEL_MONITOR, baseAddress, nullptr, accelmonProperties,
                                             accelmonMajorVersions, accelmonMinorVersions, xdp::MAX_NUM_AMS);
 
-    uint32_t temp[xdp::IP::AM::NUM_COUNTERS_XBUTIL] = {0};
+    uint32_t temp[xdp::IP::AM::NUM_COUNTERS_REPORT] = {0};
 
     samResult->NumSlots = numSlots;
     snprintf(samResult->DevUserName, 256, "%s", mDevUserName.c_str());
@@ -419,7 +419,7 @@ namespace xocl {
 
       // If applicable, read the upper 32-bits of the 64-bit debug counters
       if (accelmonProperties[s] & xdp::IP::AM::mask::PROPERTY_64BIT) {
-        for (int c = 0; c < xdp::IP::AM::NUM_COUNTERS_XBUTIL; ++c) {
+        for (int c = 0; c < xdp::IP::AM::NUM_COUNTERS_REPORT; ++c) {
           xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON,
             baseAddress[s] + am_upper_offsets[c],
             &temp[c], 4) ;
@@ -443,7 +443,7 @@ namespace xocl {
         }
       }
 
-      for (int c=0; c < xdp::IP::AM::NUM_COUNTERS_XBUTIL; c++)
+      for (int c=0; c < xdp::IP::AM::NUM_COUNTERS_REPORT; c++)
         size += xclRead(XCL_ADDR_SPACE_DEVICE_PERFMON, baseAddress[s]+am_offsets[c], &temp[c], 4);
 
       samResult->CuExecCount[s]      |= temp[0];

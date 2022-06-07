@@ -25,8 +25,8 @@ namespace xdp::IP::AM {
 
 // The total number of 64-bit counters accessible on the IP
 constexpr int NUM_COUNTERS = 10;
-// The number of 64-bit counters displayed when accessd via xbutil
-constexpr int NUM_COUNTERS_XBUTIL = 8;
+// The number of 64-bit counters displayed (as when accessed via xbutil)
+constexpr int NUM_COUNTERS_REPORT = 8;
 
 namespace AXI_LITE {
 // These are the actual physical offsets of the 32-bit registers in
