@@ -172,8 +172,10 @@ int main(int argc, char** argv) {
     double max_throughput = 0;
     int reps = stoi(iter_cnt);
 
-    // Starting at 4K and going up to 16M with increments of power of 2
-    for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
+    // Starting at 4K and going up to 1M with increments of power of 2
+    // The minimum size of host-mem user can reserve is 4M,
+    // The sum of the sizes of buffers can't excess the size of host-mem reserved.
+    for (uint32_t i = 4 * 1024; i <= 1 * 1024 * 1024; i *= 2) {
         unsigned int data_size = i;
 
         if (xcl::is_emulation()) {
