@@ -29,16 +29,16 @@
 #include "utils.h"
 #include "core/common/unistd.h"
 
+namespace {
 // Holds the parsed data from the memory topology object
 struct mem_bank_t
 {
   uint64_t m_base_address;
   uint64_t m_size;
-  int m_index;
-  mem_bank_t(int index, const struct mem_data& data) :
+  mem_bank_t(const struct mem_data& data) :
   m_base_address(data.m_base_address)
+  // In memory topology struct size is stored as KB. We convert to bytes for easy referencing
   , m_size(data.m_size * 1024)
-  , m_index(index)
   {}
 };
 
@@ -51,11 +51,13 @@ get_ddr_banks(const xrt_core::device* device)
   auto mt_raw = xrt_core::device_query<xrt_core::query::mem_topology_raw>(device);
   auto map = reinterpret_cast<const mem_topology*>(mt_raw.data());
 
-  for (decltype(map->m_count) i = 0; i < map->m_count; ++i) {
-      // If a memory bank is in use and is not a streaming bank emplace it into the bank list
-      if ( map->m_mem_data[i].m_used && map->m_mem_data[i].m_type != MEM_STREAMING )
-          banks.emplace_back(i, map->m_mem_data[i]);
-  }
+  // Iterate through all the existing memory banks. If they
+  // are in use and not streaming types add store the relevant information
+  std::for_each(map->m_mem_data, map->m_mem_data + map->m_count,
+    [&banks](const auto& mem) {
+    if (mem.m_used && mem.m_type != MEM_STREAMING)
+      banks.emplace_back(mem);
+    });
 
   // Sort banks based on their starting address
   // This is useful later on for processing
@@ -176,6 +178,8 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
   if (remaining_bytes_to_see > 0)
       throw std::runtime_error(boost::str(boost::format("Warning: Saw %llu bytes. Requested %llu bytes") % bytes_seen % size));
 }
+
+} // Empty namespace
 
 namespace xrt_core {
 
