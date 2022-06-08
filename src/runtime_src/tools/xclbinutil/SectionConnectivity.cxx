@@ -31,8 +31,16 @@ SectionConnectivity::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(CONNECTIVITY, "CONNECTIVITY", boost::factory<SectionConnectivity*>());  
   sectionInfo->nodeName = "connectivity";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
+
   addSectionType(std::move(sectionInfo));
 }
+
+// ----------------------------------------------------------------------------
 
 void
 SectionConnectivity::marshalToJSON(char* _pDataSection,
@@ -84,7 +92,7 @@ SectionConnectivity::marshalToJSON(char* _pDataSection,
     connection.put("m_ip_layout_index", (boost::format("%d") % (unsigned int)pHdr->m_connection[index].m_ip_layout_index).str());
     connection.put("mem_data_index", (boost::format("%d") % (unsigned int)pHdr->m_connection[index].mem_data_index).str());
 
-    m_connection.push_back(std::make_pair("", connection));   // Used to make an array of objects
+    m_connection.push_back({"", connection});   // Used to make an array of objects
   }
 
   connectivity.add_child("m_connection", m_connection);
@@ -156,24 +164,4 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
   }
 }
 
-bool 
-SectionConnectivity::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (_eFormatType == FormatType::JSON) {
-    return true;
-  }
-  return false;
-}
 
-bool 
-SectionConnectivity::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
-}

@@ -36,18 +36,56 @@ SectionSoftKernel::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(SOFT_KERNEL, "SOFT_KERNEL", boost::factory<SectionSoftKernel*>()); 
   sectionInfo->supportsSubSections = true;
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::obj));
+  sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));
+
   sectionInfo->supportsIndexing = true;
+
+  // Add format support empty (no support)
+  // The top-level section doesn't support any add syntax.
+  // Must use sub-sections
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
 
 // -------------------------------------------------------------------------
 
-bool
-SectionSoftKernel::doesSupportAddFormatType(FormatType _eFormatType) const {
-  // The Soft Kernel top-level section doesn't support any add syntax.
-  // Must use sub-sections
-  return false;
+using SubSectionTableCollection = std::vector<std::pair<std::string, SectionSoftKernel::SubSection>>;
+static const SubSectionTableCollection & 
+  getSubSectionTable() 
+{
+  static const SubSectionTableCollection subSectionTable = {
+                 {"UNKNOWN", SectionSoftKernel::SubSection::unknown},
+                 {"OBJ", SectionSoftKernel::SubSection::obj},
+                 {"METADATA", SectionSoftKernel::SubSection::metadata}
+  };
+  return subSectionTable;
+}
+
+SectionSoftKernel::SubSection 
+SectionSoftKernel::getSubSectionEnum(const std::string & sSubSectionName){
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
+
+  if (iter == subSectionTable.end())
+    return SubSection::unknown;
+
+  return iter->second; 
+}
+
+// -------------------------------------------------------------------------
+
+const std::string &
+SectionSoftKernel::getSubSectionName(SectionSoftKernel::SubSection eSubSection){
+  auto subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
+
+  if (iter == subSectionTable.end()) 
+    return getSubSectionName(SubSection::unknown);
+
+  return iter->first; 
 }
 
 // -------------------------------------------------------------------------
@@ -68,7 +106,7 @@ SectionSoftKernel::subSectionExists(const std::string& _sSubSectionName) const {
   // Extract the sub-section entry type
   SubSection eSS = getSubSectionEnum(_sSubSectionName);
 
-  if (eSS == SS_METADATA) {
+  if (eSS == SubSection::metadata) {
     // Extract the binary data as a JSON string
     std::ostringstream buffer;
     writeMetadata(buffer);
@@ -99,33 +137,6 @@ SectionSoftKernel::subSectionExists(const std::string& _sSubSectionName) const {
 
 // -------------------------------------------------------------------------
 
-bool
-SectionSoftKernel::supportsSubSection(const std::string& _sSubSectionName) const {
-  if (getSubSectionEnum(_sSubSectionName) == SS_UNKNOWN) {
-    return false;
-  }
-
-  return true;
-}
-
-// -------------------------------------------------------------------------
-
-enum SectionSoftKernel::SubSection
-SectionSoftKernel::getSubSectionEnum(const std::string _sSubSectionName) const {
-
-  // Case-insensitive
-  std::string sSubSection = _sSubSectionName;
-  boost::to_upper(sSubSection);
-
-  // Convert string to the enumeration value
-  if (sSubSection == "OBJ") {return SS_OBJ;}
-  if (sSubSection == "METADATA") {return SS_METADATA;}
-
-  return SS_UNKNOWN;
-}
-
-
-// -------------------------------------------------------------------------
 void
 SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
                                             unsigned int _origSectionSize,
@@ -143,7 +154,7 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   soft_kernel softKernelHdr = { 0 };      // Header buffer
   std::ostringstream stringBlock;         // String block (stored immediately after the header)
 
-  const soft_kernel* pHdr = reinterpret_cast<const soft_kernel*>(_pOrigDataSection);
+  auto pHdr = reinterpret_cast<const soft_kernel*>(_pOrigDataSection);
 
   XUtil::TRACE_BUF("soft_kernel-original", reinterpret_cast<const char*>(pHdr), sizeof(soft_kernel));
   XUtil::TRACE(boost::format("Original: \n"
@@ -188,8 +199,8 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_name
   {
-    std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(soft_kernel) + pHdr->mpo_name;
-    std::string sValue = ptSK.get<std::string>("mpo_name", sDefault);
+    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(soft_kernel) + pHdr->mpo_name;
+    auto sValue = ptSK.get<std::string>("mpo_name", sDefault);
 
     if (sValue.compare(getSectionIndexName()) != 0) {
       auto errMsg = boost::format("ERROR: Metadata data mpo_name '%s' does not match expected section name '%s'") % sValue % getSectionIndexName();
@@ -203,8 +214,8 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_version
   {
-    std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(soft_kernel) + pHdr->mpo_version;
-    std::string sValue = ptSK.get<std::string>("mpo_version", sDefault);
+    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(soft_kernel) + pHdr->mpo_version;
+    auto sValue = ptSK.get<std::string>("mpo_version", sDefault);
     softKernelHdr.mpo_version = sizeof(soft_kernel) + stringBlock.tellp();
     stringBlock << sValue << '\0';
     XUtil::TRACE(boost::format("  mpo_version (0x%lx): '%s'") % softKernelHdr.mpo_version % sValue);
@@ -212,8 +223,8 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_md5_value
   {
-    std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(soft_kernel) + pHdr->mpo_md5_value;
-    std::string sValue = ptSK.get<std::string>("mpo_md5_value", sDefault);
+    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(soft_kernel) + pHdr->mpo_md5_value;
+    auto sValue = ptSK.get<std::string>("mpo_md5_value", sDefault);
     softKernelHdr.mpo_md5_value = sizeof(soft_kernel) + stringBlock.tellp();
     stringBlock << sValue << '\0';
     XUtil::TRACE(boost::format("  mpo_md5_value (0x%lx): '%s'") % softKernelHdr.mpo_md5_value % sValue);
@@ -221,8 +232,8 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // mpo_symbol_name
   {
-    std::string sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(soft_kernel) + pHdr->mpo_symbol_name;
-    std::string sValue = ptSK.get<std::string>("mpo_symbol_name", sDefault);
+    auto sDefault = reinterpret_cast<const char*>(pHdr) + sizeof(soft_kernel) + pHdr->mpo_symbol_name;
+    auto sValue = ptSK.get<std::string>("mpo_symbol_name", sDefault);
     softKernelHdr.mpo_symbol_name = sizeof(soft_kernel) + stringBlock.tellp();
     stringBlock << sValue << '\0';
     XUtil::TRACE(boost::format("  mpo_symbol_name (0x%lx): '%s'") % softKernelHdr.mpo_symbol_name % sValue);
@@ -328,20 +339,20 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
                                   unsigned int _origSectionSize,
                                   std::istream& _istream,
                                   const std::string& _sSubSectionName,
-                                  enum Section::FormatType _eFormatType,
+                                  Section::FormatType _eFormatType,
                                   std::ostringstream& _buffer) const {
   // Determine the sub-section of interest
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_OBJ:
+    case SubSection::obj:
       // Some basic DRC checks
       if (_pOrigDataSection != nullptr) {
         std::string errMsg = "ERROR: Soft kernel object image already exists.";
         throw std::runtime_error(errMsg);
       }
 
-      if (_eFormatType != Section::FormatType::RAW) {
+      if (_eFormatType != Section::FormatType::raw) {
         std::string errMsg = "ERROR: Soft kernel's object only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -349,14 +360,14 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
       createDefaultImage(_istream, _buffer);
       break;
 
-    case SS_METADATA: {
+    case SubSection::metadata: {
         // Some basic DRC checks
         if (_pOrigDataSection == nullptr) {
           std::string errMsg = "ERROR: Missing soft kernel object image.  Add the SOFT_KERNEL-OBJ image prior to changing its metadata.";
           throw std::runtime_error(errMsg);
         }
 
-        if (_eFormatType != Section::FormatType::JSON) {
+        if (_eFormatType != Section::FormatType::json) {
           std::string errMsg = "ERROR: SOFT_KERNEL-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -365,7 +376,7 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::unknown:
     default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());
@@ -388,9 +399,9 @@ SectionSoftKernel::writeObjImage(std::ostream& _oStream) const {
   }
 
   // No look at the data
-  soft_kernel* pHdr = reinterpret_cast<soft_kernel *>(m_pBuffer);
+  auto pHdr = reinterpret_cast<soft_kernel *>(m_pBuffer);
 
-  const char* pFWBuffer = reinterpret_cast<const char *>(pHdr) + pHdr->m_image_offset;
+  auto pFWBuffer = reinterpret_cast<const char *>(pHdr) + pHdr->m_image_offset;
   _oStream.write(pFWBuffer, pHdr->m_image_size);
 }
 
@@ -407,7 +418,7 @@ SectionSoftKernel::writeMetadata(std::ostream& _oStream) const {
     throw std::runtime_error(errMsg.str());
   }
 
-  soft_kernel* pHdr = reinterpret_cast<soft_kernel *>(m_pBuffer);
+  auto pHdr = reinterpret_cast<soft_kernel *>(m_pBuffer);
 
   XUtil::TRACE(boost::format("Original: \n"
                              "  mpo_name (0x%lx): '%s'\n"
@@ -453,9 +464,9 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
   switch (eSubSection) {
-    case SS_OBJ:
+    case SubSection::obj:
       // Some basic DRC checks
-      if (_eFormatType != Section::FormatType::RAW) {
+      if (_eFormatType != Section::FormatType::raw) {
         std::string errMsg = "ERROR: SOFT_KERNEL-OBJ only supports the RAW format.";
         throw std::runtime_error(errMsg);
       }
@@ -463,8 +474,8 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
       writeObjImage(_oStream);
       break;
 
-    case SS_METADATA: {
-        if (_eFormatType != Section::FormatType::JSON) {
+    case SubSection::metadata: {
+        if (_eFormatType != Section::FormatType::json) {
           std::string errMsg = "ERROR: SOFT_KERNEL-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
         }
@@ -473,7 +484,7 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
       }
       break;
 
-    case SS_UNKNOWN:
+    case SubSection::unknown:
     default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());

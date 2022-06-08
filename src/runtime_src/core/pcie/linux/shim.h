@@ -130,6 +130,7 @@ public:
   int xclExecWait(int timeoutMilliSec);
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
   int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
+  int xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size);
 
   int getBoardNumber( void ) { return mBoardNumber; }
 
@@ -175,7 +176,13 @@ private:
    * Mapped CU register space for xclRegRead/Write(). We support at most
    * 128 CUs and each CU map is a pair <address, size>.
    */
-  std::vector<std::pair<uint32_t*, uint32_t>> mCuMaps;
+  struct CuData {
+      uint32_t* addr;
+      uint32_t  size;
+      uint32_t  start;
+      uint32_t  end;
+  };
+  std::vector<CuData> mCuMaps;
   std::mutex mCuMapLock;
 
   bool zeroOutDDR();

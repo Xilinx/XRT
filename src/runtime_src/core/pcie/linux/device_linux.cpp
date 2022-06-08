@@ -1085,6 +1085,9 @@ initialize_query_table()
   emplace_sysfs_get<query::hwmon_sdm_mac_addr1>                ("hwmon_sdm", "mac_addr1");
   emplace_sysfs_get<query::hwmon_sdm_fan_presence>             ("hwmon_sdm", "fan_presence");
   emplace_sysfs_get<query::hwmon_sdm_revision>                 ("hwmon_sdm", "revision");
+
+  emplace_sysfs_get<query::cu_size>                            ("", "size");
+  emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
 }
 
 struct X { X() { initialize_query_table(); }};

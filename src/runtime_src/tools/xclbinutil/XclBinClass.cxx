@@ -278,7 +278,7 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
     unsigned int runningOffset = (unsigned int)_ostream.tellp();
     unsigned int bytePadding = XUtil::bytesToAlign(runningOffset);
     if (bytePadding != 0) {
-      static char holePack[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0 };
+      static const char holePack[] = { (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0, (char)0 };
       _ostream.write(holePack, bytePadding);
       _ostream.flush();
     }
@@ -312,8 +312,9 @@ XclBin::writeXclBinBinarySections(std::ostream& _ostream, boost::property_tree::
       pt_sectionHeader.put("Size", (boost::format("0x%lx") % sectionHeader[index].m_sectionSize).str());
 
       boost::property_tree::ptree pt_Payload;
-      if (m_sections[index]->doesSupportAddFormatType(Section::FormatType::JSON) &&
-          m_sections[index]->doesSupportDumpFormatType(Section::FormatType::JSON)) {
+
+      if (Section::doesSupportAddFormatType(m_sections[index]->getSectionKind(), Section::FormatType::json) &&
+          Section::doesSupportDumpFormatType(m_sections[index]->getSectionKind(), Section::FormatType::json)) {
         m_sections[index]->getPayload(pt_Payload);
       }
 
@@ -521,16 +522,16 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
   // Clear the previous header information
   _axlfHeader = { 0 };
 
-  std::string sMagic = _ptHeader.get<std::string>("Magic");
+  auto sMagic = _ptHeader.get<std::string>("Magic");
   XUtil::safeStringCopy((char*)&_axlfHeader.m_magic, sMagic, sizeof(axlf::m_magic));
   _axlfHeader.m_signature_length = _ptHeader.get<int32_t>("SignatureLength", -1);
-  std::string sKeyBlock = _ptHeader.get<std::string>("KeyBlock");
+  auto sKeyBlock = _ptHeader.get<std::string>("KeyBlock");
   XUtil::hexStringToBinaryBuffer(sKeyBlock, (unsigned char*)&_axlfHeader.m_keyBlock, sizeof(axlf::m_keyBlock));
   _axlfHeader.m_uniqueId = XUtil::stringToUInt64(_ptHeader.get<std::string>("UniqueID"), true /*forceHex*/);
 
   _axlfHeader.m_header.m_timeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("TimeStamp"));
   _axlfHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(_ptHeader.get<std::string>("FeatureRomTimeStamp"));
-  std::string sVersion = _ptHeader.get<std::string>("Version");
+  auto sVersion = _ptHeader.get<std::string>("Version");
   getVersionMajorMinorPath(sVersion.c_str(),
                            _axlfHeader.m_header.m_versionMajor,
                            _axlfHeader.m_header.m_versionMinor,
@@ -538,16 +539,16 @@ XclBin::readXclBinHeader(const boost::property_tree::ptree& _ptHeader,
 
   _axlfHeader.m_header.m_mode = _ptHeader.get<uint16_t>("Mode");
 
-  std::string sFeatureRomUUID = _ptHeader.get<std::string>("FeatureRomUUID");
+  auto sFeatureRomUUID = _ptHeader.get<std::string>("FeatureRomUUID");
   XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&_axlfHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
-  std::string sPlatformVBNV = _ptHeader.get<std::string>("PlatformVBNV");
+  auto sPlatformVBNV = _ptHeader.get<std::string>("PlatformVBNV");
   XUtil::safeStringCopy((char*)&_axlfHeader.m_header.m_platformVBNV,
 
                         sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
-  std::string sXclBinUUID = _ptHeader.get<std::string>("XclBinUUID");
+  auto sXclBinUUID = _ptHeader.get<std::string>("XclBinUUID");
   XUtil::hexStringToBinaryBuffer(sXclBinUUID, (unsigned char*)&_axlfHeader.m_header.uuid, sizeof(axlf_header::uuid));
 
-  std::string sDebugBin = _ptHeader.get<std::string>("DebugBin");
+  auto sDebugBin = _ptHeader.get<std::string>("DebugBin");
   XUtil::safeStringCopy((char*)&_axlfHeader.m_header.m_debug_bin, sDebugBin, sizeof(axlf_header::m_debug_bin));
 
   XUtil::TRACE("Done Reading via JSON mirror xclbin header information.");
@@ -655,7 +656,7 @@ XclBin::addMergeSection(ParameterSectionData& _PSD)
   enum axlf_section_kind eKind;
   Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
-  if (_PSD.getFormatType() != Section::FormatType::JSON) {
+  if (_PSD.getFormatType() != Section::FormatType::json) {
     std::string errMsg = "ERROR: Adding or merging of sections are only supported with the JSON format.";
     throw std::runtime_error(errMsg);
   }
@@ -734,7 +735,7 @@ XclBin::removeSection(const Section* _pSection)
   }
 
   auto errMsg = boost::format("ERROR: Section '%s' (%d) not found") % _pSection->getSectionKindAsString() % (unsigned int) _pSection->getSectionKind();
-  throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg.str());
+  throw XUtil::XclBinUtilException(xet_missing_section, errMsg.str());
 }
 
 Section*
@@ -799,7 +800,7 @@ XclBin::removeSection(const std::string& _sSectionToRemove)
   const Section* pSection = findSection(_eKind, sectionIndexName);
   if (pSection == nullptr) {
     auto errMsg = boost::format("ERROR: Section '%s' is not part of the xclbin archive.") % _sSectionToRemove;
-    throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg.str());
+    throw XUtil::XclBinUtilException(xet_missing_section, errMsg.str());
   }
 
   removeSection(pSection);
@@ -826,7 +827,7 @@ XclBin::replaceSection(ParameterSectionData& _PSD)
   Section* pSection = findSection(eKind);
   if (pSection == nullptr) {
     auto errMsg = boost::format("ERROR: Section '%s' does not exist.") % _PSD.getSectionName();
-    throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg.str());
+    throw XUtil::XclBinUtilException(xet_missing_section, errMsg.str());
   }
 
   std::string sSectionFileName = _PSD.getFile();
@@ -882,12 +883,12 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     m_xclBinHeader.m_header.m_featureRomTimeStamp = XUtil::stringToUInt64(featureRom.get<std::string>("timeSinceEpoch", "0"));
 
     // Feature ROM UUID
-    std::string sFeatureRomUUID = featureRom.get<std::string>("uuid", "00000000000000000000000000000000");
+    auto sFeatureRomUUID = featureRom.get<std::string>("uuid", "00000000000000000000000000000000");
     sFeatureRomUUID.erase(std::remove(sFeatureRomUUID.begin(), sFeatureRomUUID.end(), '-'), sFeatureRomUUID.end()); // Remove the '-'
     XUtil::hexStringToBinaryBuffer(sFeatureRomUUID, (unsigned char*)&m_xclBinHeader.m_header.rom_uuid, sizeof(axlf_header::rom_uuid));
 
     // Feature ROM VBNV
-    std::string sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
+    auto sPlatformVBNV = featureRom.get<std::string>("vbnvName", "");
     XUtil::safeStringCopy((char*)&m_xclBinHeader.m_header.m_platformVBNV, sPlatformVBNV, sizeof(axlf_header::m_platformVBNV));
 
     // Examine OLD names -- // This code can be removed AFTER v++ has been updated to use the new format
@@ -931,7 +932,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
   bool bNewSection = false;
   if (pSection != nullptr) {
     // Check to see if the subsection is supported
-    if (pSection->supportsSubSection(sSubSection) == false) {
+    if (Section::supportsSubSectionName(pSection->getSectionKind(), sSubSection) == false) {
       auto errMsg = boost::format("ERROR: Section '%s' does not support the subsection: '%s'") % pSection->getSectionKindAsString() % sSubSection;
       throw std::runtime_error(boost::str(errMsg));
     }
@@ -947,7 +948,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
     bNewSection = true;
 
     // Check to see if the subsection is supported
-    if (pSection->supportsSubSection(sSubSection) == false) {
+    if (Section::supportsSubSectionName(pSection->getSectionKind(), sSubSection) == false) {
       auto errMsg = boost::format("ERROR: Section '%s' does not support the subsection: '%s'") % pSection->getSectionKindAsString() % sSubSection;
       throw std::runtime_error(boost::str(errMsg));
     }
@@ -1012,7 +1013,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
     std::unique_ptr<Section> pSection(Section::createSectionObjectOfKind(eKind));
 
     if (!_PSD.getSubSectionName().empty() ||       // A subsection name has been added
-        pSection.get()->supportsSubSection("")) {  // The section supports default empty subsection 
+        Section::supportsSubSectionName(pSection->getSectionKind(), "")) {  // The section supports default empty subsection 
       addSubSection(_PSD);
       return;
     }
@@ -1037,7 +1038,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
   pSection = Section::createSectionObjectOfKind(eKind);
 
   // Check to see if the given format type is supported
-  if (pSection->doesSupportAddFormatType(_PSD.getFormatType()) == false) {
+  if (Section::doesSupportAddFormatType(pSection->getSectionKind(), _PSD.getFormatType()) == false) {
     auto errMsg = boost::format("ERROR: The %s section does not support reading the %s file type.")
                                 % pSection->getSectionKindAsString()
                                 % _PSD.getFormatTypeAsStr();
@@ -1054,7 +1055,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
   pSection->setName(sBaseName);
 
   bool bAllowZeroSize = ((pSection->getSectionKind() == DEBUG_DATA)
-                         && (_PSD.getFormatType() == Section::FormatType::RAW));
+                         && (_PSD.getFormatType() == Section::FormatType::raw));
 
   if ((!bAllowZeroSize) && (pSection->getSize() == 0)) {
     XUtil::QUIET("");
@@ -1091,7 +1092,7 @@ XclBin::addSections(ParameterSectionData& _PSD)
     throw std::runtime_error(errMsg);
   }
 
-  if (_PSD.getFormatType() != Section::FormatType::JSON) {
+  if (_PSD.getFormatType() != Section::FormatType::json) {
     auto errMsg = boost::format("ERROR: Expecting JSON format type, got '%s'.") % _PSD.getFormatTypeAsStr();
     throw std::runtime_error(errMsg.str());
   }
@@ -1177,7 +1178,7 @@ XclBin::appendSections(ParameterSectionData& _PSD)
     throw std::runtime_error(errMsg);
   }
 
-  if (_PSD.getFormatType() != Section::FormatType::JSON) {
+  if (_PSD.getFormatType() != Section::FormatType::json) {
     auto errMsg = boost::format("ERROR: Expecting JSON format type, got '%s'.") % _PSD.getFormatTypeAsStr();
     throw std::runtime_error(errMsg.str());
   }
@@ -1268,7 +1269,7 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
   }
 
   // Check to see if the subsection is supported
-  if (pSection->supportsSubSection(sSubSection) == false) {
+  if (Section::supportsSubSectionName(pSection->getSectionKind(), sSubSection) == false) {
     auto errMsg = boost::format("ERROR: Section '%s' does not support the subsection: '%s'") % pSection->getSectionKindAsString() % sSubSection;
     throw std::runtime_error(boost::str(errMsg));
   }
@@ -1320,7 +1321,7 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
     std::unique_ptr<Section> pSection(Section::createSectionObjectOfKind(eKind));
 
     if (!_PSD.getSubSectionName().empty() ||       // A subsection name has been added
-        pSection.get()->supportsSubSection("")) {  // The section supports default empty subsection 
+        Section::supportsSubSectionName(pSection.get()->getSectionKind(), "")) {  // The section supports default empty subsection 
       dumpSubSection(_PSD);
       return;
     }
@@ -1329,20 +1330,20 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
   const Section* pSection = findSection(eKind);
   if (pSection == nullptr) {
     auto errMsg = boost::format("ERROR: Section '%s' does not exists.") % _PSD.getSectionName();
-    throw XUtil::XclBinUtilException(XET_MISSING_SECTION, boost::str(errMsg));
+    throw XUtil::XclBinUtilException(xet_missing_section, boost::str(errMsg));
   }
 
-  if (_PSD.getFormatType() == Section::FormatType::UNKNOWN) {
+  if (_PSD.getFormatType() == Section::FormatType::unknown) {
     std::string errMsg = "ERROR: Unknown format type '" + _PSD.getFormatTypeAsStr() + "' in the dump section option: '" + _PSD.getOriginalFormattedString() + "'";
     throw std::runtime_error(errMsg);
   }
 
-  if (_PSD.getFormatType() == Section::FormatType::UNDEFINED) {
+  if (_PSD.getFormatType() == Section::FormatType::undefined) {
     std::string errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>.  See help for more format details.";
     throw std::runtime_error(errMsg);
   }
 
-  if (pSection->doesSupportDumpFormatType(_PSD.getFormatType()) == false) {
+  if (Section::doesSupportDumpFormatType(pSection->getSectionKind(), _PSD.getFormatType()) == false) {
     auto errMsg = boost::format("ERROR: The %s section does not support writing to a %s file type.")
                                 % pSection->getSectionKindAsString()
                                 % _PSD.getFormatTypeAsStr();
@@ -1375,7 +1376,7 @@ XclBin::dumpSections(ParameterSectionData& _PSD)
     throw std::runtime_error(errMsg);
   }
 
-  if (_PSD.getFormatType() != Section::FormatType::JSON) {
+  if (_PSD.getFormatType() != Section::FormatType::json) {
     auto errMsg = boost::format("ERROR: Expecting JSON format type, got '%s'.") % _PSD.getFormatTypeAsStr();
     throw std::runtime_error(errMsg.str());
   }
@@ -1390,7 +1391,7 @@ XclBin::dumpSections(ParameterSectionData& _PSD)
   }
 
   switch (_PSD.getFormatType()) {
-    case Section::FormatType::JSON: {
+    case Section::FormatType::json: {
         boost::property_tree::ptree pt;
         for (const auto pSection : m_sections) {
           std::string sectionName = pSection->getSectionKindAsString();
@@ -1401,11 +1402,11 @@ XclBin::dumpSections(ParameterSectionData& _PSD)
         boost::property_tree::write_json(oDumpFile, pt, true /*Pretty print*/);
         break;
       }
-    case Section::FormatType::HTML:
-    case Section::FormatType::RAW:
-    case Section::FormatType::TXT:
-    case Section::FormatType::UNDEFINED:
-    case Section::FormatType::UNKNOWN:
+    case Section::FormatType::html:
+    case Section::FormatType::raw:
+    case Section::FormatType::txt:
+    case Section::FormatType::undefined:
+    case Section::FormatType::unknown:
     default:
       break;
   }
@@ -1590,7 +1591,7 @@ XclBin::setKeyValue(const std::string& _keyValue)
     // Now create a new tree to add back into the section
     boost::property_tree::ptree ptKeyValuesNew;
     for (const auto &keyvalue : keyValues) {
-      ptKeyValuesNew.push_back(std::make_pair("", keyvalue));
+      ptKeyValuesNew.push_back({"", keyvalue});
     }
 
     boost::property_tree::ptree ptKeyValueMetadataNew;
@@ -1646,7 +1647,7 @@ XclBin::removeKey(const std::string& _sKey)
   // Now create a new tree to add back into the section
   boost::property_tree::ptree ptKeyValuesNew;
   for (const auto &keyvalue : keyValues) {
-    ptKeyValuesNew.push_back(std::make_pair("", keyvalue));
+    ptKeyValuesNew.push_back({"", keyvalue});
   }
 
   boost::property_tree::ptree ptKeyValueMetadataNew;
@@ -1825,7 +1826,7 @@ XclBin::addPsKernel(const std::string& encodedString)
   // Now add each of the kernel SOFT_KERNEL sections
   for (const auto& ptKernel : kernels) {
     // Determine if this section already exists
-    const std::string & kernelName = ptKernel.get<std::string>("name");
+    const auto & kernelName = ptKernel.get<std::string>("name");
     Section* pSection = findSection(SOFT_KERNEL, kernelName);
     if (pSection != nullptr) {
       auto errMsg = boost::format("ERROR: The PS Kernel (e.g SOFT_KERNEL) section with the symbolic name '%s' already exists") % kernelName;
@@ -1844,7 +1845,7 @@ XclBin::addPsKernel(const std::string& encodedString)
       throw std::runtime_error(errMsg);
     }
 
-    pSection->readSubPayload(iSectionFile, "OBJ", Section::FormatType::RAW);
+    pSection->readSubPayload(iSectionFile, "OBJ", Section::FormatType::raw);
 
     // -- Add the metadata
     XUtil::TRACE(boost::format("Adding PS Kernel SubSection '%s' METADATA") % kernelName);
@@ -1861,7 +1862,7 @@ XclBin::addPsKernel(const std::string& encodedString)
     std::ostringstream buffer;
     boost::property_tree::write_json(buffer, ptRTD);
     std::istringstream iSectionMetadata(buffer.str());
-    pSection->readSubPayload(iSectionMetadata, "METADATA", Section::FormatType::JSON);
+    pSection->readSubPayload(iSectionMetadata, "METADATA", Section::FormatType::json);
 
     // -- Now add the section to the collection and report our successful status
     addSection(pSection);

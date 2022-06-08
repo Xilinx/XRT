@@ -44,17 +44,17 @@ typedef struct {
 } DataFormatElement;
 
 static const std::vector< DataFormatElement > _DataFormatTable = {
-  { FDTProperty::DF_au8,     1,  true,  "_au8",  "array uint8_t" },
-  { FDTProperty::DF_au16,    2,  true,  "_au16", "array uint16_t" },
-  { FDTProperty::DF_au32,    4,  true,  "_au32", "array uint32_t" },
-  { FDTProperty::DF_au64,    8,  true,  "_au64", "array uint64_t" },
-  { FDTProperty::DF_asz,     1,  true,  "_asz",  "string" },
-  { FDTProperty::DF_u16,     2,  false, "_u16",  "uint16_t" },
-  { FDTProperty::DF_u32,     4,  false, "_u32",  "uint32_t" },
-  { FDTProperty::DF_u64,     8,  false, "_u64",  "uint64_t" },
-  { FDTProperty::DF_u128,    16, false, "_u128", "uint128_t" },
-  { FDTProperty::DF_sz,      1,  false,  "_sz",  "string" },
-  { FDTProperty::DF_unknown, 1,  true,  "", "Unknown (default array uint8_t)" }
+  { FDTProperty::DataFormat::au8,     1,  true,  "_au8",  "array uint8_t" },
+  { FDTProperty::DataFormat::au16,    2,  true,  "_au16", "array uint16_t" },
+  { FDTProperty::DataFormat::au32,    4,  true,  "_au32", "array uint32_t" },
+  { FDTProperty::DataFormat::au64,    8,  true,  "_au64", "array uint64_t" },
+  { FDTProperty::DataFormat::asz,     1,  true,  "_asz",  "string" },
+  { FDTProperty::DataFormat::u16,     2,  false, "_u16",  "uint16_t" },
+  { FDTProperty::DataFormat::u32,     4,  false, "_u32",  "uint32_t" },
+  { FDTProperty::DataFormat::u64,     8,  false, "_u64",  "uint64_t" },
+  { FDTProperty::DataFormat::u128,    16, false, "_u128", "uint128_t" },
+  { FDTProperty::DataFormat::sz,      1,  false,  "_sz",  "string" },
+  { FDTProperty::DataFormat::unknown, 1,  true,  "", "Unknown (default array uint8_t)" }
 };
 
 FDTProperty::DataFormat
@@ -73,7 +73,7 @@ FDTProperty::getDataFormat(const std::string & _variableName) const
     }
   }
 
-  return DF_unknown;
+  return DataFormat::unknown;
 }
 
 const std::string &
@@ -86,7 +86,7 @@ FDTProperty::getDataFormatPrettyName(DataFormat _eDataFormat) const
   }
 
   // Should never get here, but just in case we do
-  return getDataFormatPrettyName(DF_unknown);
+  return getDataFormatPrettyName(DataFormat::unknown);
 }
 
 unsigned int
@@ -118,7 +118,7 @@ FDTProperty::isDataFormatArray(DataFormat _eDataFormat) const
 FDTProperty::FDTProperty()
   : m_dataLength(0)
   , m_pDataBuffer(nullptr)
-  , m_eDataFormat(DF_unknown)
+  , m_eDataFormat(DataFormat::unknown)
 {
   // Empty
 }
@@ -243,7 +243,7 @@ FDTProperty::au8MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   for (unsigned int index = 0; index < m_dataLength; ++index) {
     boost::property_tree::ptree ptChildArrayElement;
     ptChildArrayElement.put("", (boost::format("0x%x") % uint8Array[index]).str());
-    ptProperty.push_back(std::make_pair("", ptChildArrayElement));
+    ptProperty.push_back({"", ptChildArrayElement});
   }
   _ptTree.add_child(m_name.c_str(), ptProperty);
 }
@@ -254,7 +254,7 @@ FDTProperty::au16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   XUtil::TRACE("   Type: Array of 16 bits");
 
   // Check and make sure that all is good
-  static unsigned int byteBoundary = 2;
+  static const unsigned int byteBoundary = 2;
   if ((m_dataLength % byteBoundary) != 0) {
     auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 2-byte boundary.") % m_dataLength;
     throw std::runtime_error(errMsg.str());
@@ -267,7 +267,7 @@ FDTProperty::au16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   for (unsigned int index = 0; index < numElements; ++index) {
     boost::property_tree::ptree ptChildArrayElement;
     ptChildArrayElement.put("", (boost::format("0x%x") % ntohs(uint16Array[index])).str());
-    ptProperty.push_back(std::make_pair("", ptChildArrayElement));
+    ptProperty.push_back({"", ptChildArrayElement});
   }
   _ptTree.add_child(m_name.c_str(), ptProperty);
 }
@@ -291,7 +291,7 @@ FDTProperty::au32MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   for (unsigned int index = 0; index < numElements; ++index) {
     boost::property_tree::ptree ptChildArrayElement;
     ptChildArrayElement.put("", (boost::format("0x%x") % ntohl(uint32Array[index])).str());
-    ptProperty.push_back(std::make_pair("", ptChildArrayElement));
+    ptProperty.push_back({"", ptChildArrayElement});
   }
   _ptTree.add_child(m_name.c_str(), ptProperty);
 }
@@ -302,7 +302,7 @@ FDTProperty::u16MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   XUtil::TRACE("   Type: 16 bits");
 
   // Check and make sure that all is good
-  static unsigned int byteBoundary = 2;
+  static const unsigned int byteBoundary = 2;
   if ((m_dataLength % byteBoundary) != 0) {
     auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 2-byte boundary.") % m_dataLength;
     throw std::runtime_error(errMsg.str());
@@ -333,7 +333,7 @@ FDTProperty::u128MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   XUtil::TRACE("   Type: 128 bits");
 
   // Check and make sure that all is good
-  static unsigned int expectedSize = 16;
+  static const unsigned int expectedSize = 16;
   if (m_dataLength != expectedSize) {
     auto errMsg = boost::format("ERROR: Data length for a 128-bit word is invalid: Expected: %d, Actual: %d") % expectedSize % m_dataLength;
     throw std::runtime_error(errMsg.str());
@@ -367,7 +367,7 @@ FDTProperty::au64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
   XUtil::TRACE("   Type: Array 64 bits");
 
   // Check and make sure that all is good
-  static unsigned int byteBoundary = 8;
+  static const unsigned int byteBoundary = 8;
   if ((m_dataLength % byteBoundary) != 0) {
     auto errMsg = boost::format("ERROR: Data length (%d) does not end on a 8-byte boundary.") % m_dataLength;
     throw std::runtime_error(errMsg.str());
@@ -379,7 +379,7 @@ FDTProperty::au64MarshalToJSON(boost::property_tree::ptree &_ptTree) const
     std::string s64Hex;
     XUtil::binaryBufferToHexString((const unsigned char *) &m_pDataBuffer[index], byteBoundary, s64Hex);
     ptChildArrayElement.put("", (boost::format("0x%s") % s64Hex).str());
-    ptProperty.push_back(std::make_pair("", ptChildArrayElement));
+    ptProperty.push_back({"", ptChildArrayElement});
   }
 
   _ptTree.add_child(m_name.c_str(), ptProperty);
@@ -415,7 +415,7 @@ FDTProperty::aszMarshalToJSON(boost::property_tree::ptree &_ptTree) const
   for (auto sString : arrayOfStrings) {
     boost::property_tree::ptree ptChildArrayElement;
     ptChildArrayElement.put("", sString.c_str());
-    ptProperty.push_back(std::make_pair("", ptChildArrayElement));
+    ptProperty.push_back({"", ptChildArrayElement});
     XUtil::TRACE(boost::format("String: %s") % sString);
   }
 
@@ -450,14 +450,14 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
   XUtil::TRACE(boost::format("Storing property: '%s' with value: '%s'") % m_name % _sData);
 
   switch (_eDataFormat) {
-    case DF_sz:
-    case DF_asz:
+    case DataFormat::sz:
+    case DataFormat::asz:
       // Copy the string + the '\0' byte
       memcpy(_buffer, _sData.c_str(), (_sData.size() + 1));
       bytesWritten = _sData.size() + 1;
       break;
 
-    case DF_au8:
+    case DataFormat::au8:
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
         if (dataWord > UINT8_MAX) {
@@ -471,8 +471,8 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
       }
       break;
 
-    case DF_au16:
-    case DF_u16:
+    case DataFormat::au16:
+    case DataFormat::u16:
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
         if (dataWord > UINT16_MAX) {
@@ -487,8 +487,8 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
       }
       break;
 
-    case DF_au32:
-    case DF_u32:
+    case DataFormat::au32:
+    case DataFormat::u32:
       {
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
         if (dataWord > UINT32_MAX) {
@@ -503,8 +503,8 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
       }
       break;
 
-    case DF_au64:
-    case DF_u64:
+    case DataFormat::au64:
+    case DataFormat::u64:
       {
         errno = 0; 
         uint64_t dataWord = std::strtoul(_sData.c_str(), NULL, 0);
@@ -524,7 +524,7 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
       }
       break;
 
-    case DF_u128:
+    case DataFormat::u128:
       {
         // Only support hex values
         if ((_sData.compare(0, 2, "0x") != 0) &&
@@ -558,7 +558,7 @@ FDTProperty::writeDataWord(DataFormat _eDataFormat,
       }
       break;
 
-    case DF_unknown:
+    case DataFormat::unknown:
     default:
       {
         auto errMsg = boost::format("ERROR: Unknown data type for property '%s'") % m_name;
@@ -595,7 +595,7 @@ FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _
   if (isDataFormatArray(m_eDataFormat) == false) {
     std::string sData = ptData.data();
 
-    if (m_eDataFormat == DF_sz) {
+    if (m_eDataFormat == DataFormat::sz) {
       m_dataLength = (unsigned int) sData.size() + 1; // Add room for the '\0' character
     } else {
       m_dataLength = wordSizeBytes;
@@ -607,7 +607,7 @@ FDTProperty::marshalDataFromJSON(boost::property_tree::ptree::const_iterator & _
   }
 
   // Just arrays are remaining
-  if (m_eDataFormat == DF_asz) {
+  if (m_eDataFormat == DataFormat::asz) {
     m_dataLength = 0;
     for (auto localIter : ptData) {
       std::string sData = localIter.second.data();
@@ -657,18 +657,18 @@ FDTProperty::marshalToJSON(boost::property_tree::ptree &_ptTree,
   boost::property_tree::ptree ptProperty;
 
   switch (eDataFormat) {
-    case DF_au8:  au8MarshalToJSON(_ptTree);  break;
-    case DF_au16: au16MarshalToJSON(_ptTree); break;
-    case DF_au32: au32MarshalToJSON(_ptTree); break;
-    case DF_au64: au64MarshalToJSON(_ptTree); break;
+    case DataFormat::au8:  au8MarshalToJSON(_ptTree);  break;
+    case DataFormat::au16: au16MarshalToJSON(_ptTree); break;
+    case DataFormat::au32: au32MarshalToJSON(_ptTree); break;
+    case DataFormat::au64: au64MarshalToJSON(_ptTree); break;
 
-    case DF_u16: u16MarshalToJSON(_ptTree); break;
-    case DF_u32: u32MarshalToJSON(_ptTree); break;
-    case DF_u64: u64MarshalToJSON(_ptTree); break;
-    case DF_u128: u128MarshalToJSON(_ptTree); break;
+    case DataFormat::u16: u16MarshalToJSON(_ptTree); break;
+    case DataFormat::u32: u32MarshalToJSON(_ptTree); break;
+    case DataFormat::u64: u64MarshalToJSON(_ptTree); break;
+    case DataFormat::u128: u128MarshalToJSON(_ptTree); break;
 
-    case DF_asz: aszMarshalToJSON(_ptTree); break;
-    case DF_sz: szMarshalToJSON(_ptTree); break;
+    case DataFormat::asz: aszMarshalToJSON(_ptTree); break;
+    case DataFormat::sz: szMarshalToJSON(_ptTree); break;
 
     default: au8MarshalToJSON(_ptTree); break;
   }

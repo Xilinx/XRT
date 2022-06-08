@@ -29,6 +29,10 @@ SectionEmbeddedMetadata::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(EMBEDDED_METADATA, "EMBEDDED_METADATA", boost::factory<SectionEmbeddedMetadata*>()); 
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
+
   addSectionType(std::move(sectionInfo));
 }
 

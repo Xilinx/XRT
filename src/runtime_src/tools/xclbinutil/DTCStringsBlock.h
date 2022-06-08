@@ -30,7 +30,7 @@ class DTCStringsBlock {
   ~DTCStringsBlock();
 
  public:
-  uint32_t addString(const std::string _dtcString);
+  uint32_t addString(const std::string & _dtcString);
   std::string getString(unsigned int _offset) const;
 
   void parseDTCStringsBlock(const char* _pBuffer, const unsigned int _size);

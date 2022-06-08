@@ -95,6 +95,8 @@ private:
 class bo : public xrt::bo
 {
 public:
+  class async_handle_impl;
+
   /**
    * bo() - Constructor BO that is used for AIE GMIO.
    *
@@ -105,6 +107,24 @@ public:
   bo(Args&&... args)
     : xrt::bo(std::forward<Args>(args)...)
   {}
+
+  /**
+   * async() - Async transfer of data between BO and Shim DMA channel.
+   *
+   * @param port
+   *  GMIO port name.
+   * @param dir
+   *  GM to AIE or AIE to GM
+   * @param sz
+   *  Size of data to transfer
+   * @param offset
+   *  Offset within BO
+   *
+   * Asynchronously transfer the buffer contents from BO offset to offset + sz
+   * between GMIO and AIE.
+   */
+  async_handle 
+  async(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset);
 
   /**
    * sync() - Transfer data between BO and Shim DMA channel.
