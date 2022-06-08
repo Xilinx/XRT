@@ -11,10 +11,10 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
-#include "experimental/xrt_hw_context.h"
 
 #ifdef __cplusplus
 # include "experimental/xrt_enqueue.h"
+# include "experimental/xrt_hw_context.h"
 # include <chrono>
 # include <cstdint>
 # include <functional>
