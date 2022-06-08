@@ -7,6 +7,7 @@
 
 #include "xrt.h"
 #include "xrt_mem.h"
+#include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
 # include <memory>
@@ -66,6 +67,32 @@ struct pid_type { pid_t pid; };
 class bo_impl;
 class bo
 {
+public:
+  /*!
+   * @class async_handle
+   *
+   * @brief
+   * xrt::bo::async_handle represents an asynchronously operation
+   *
+   * @details
+   * A handle object is returned from asynchronous buffer object
+   * operations.  It can be used to wait for the operation to
+   * complete.
+   */
+  class async_handle_impl;
+  class async_handle : public detail::pimpl<async_handle_impl>
+  {
+  public:
+    explicit
+    async_handle(std::shared_ptr<async_handle_impl> handle)
+      : detail::pimpl<async_handle_impl>(std::move(handle))
+    {}
+
+    XCL_DRIVER_DLLESPEC
+    void
+    wait();
+  };
+
 public:
   /**
    * @enum flags - buffer object flags
@@ -362,6 +389,41 @@ public:
   XCL_DRIVER_DLLESPEC
   xclBufferExportHandle
   export_buffer();
+
+  /**
+   * async() - Start buffer content txfer with device side
+   *
+   * @param dir
+   *  To device or from device
+   * @param sz
+   *  Size of data to synchronize
+   * @param offset
+   *  Offset within the BO
+   *
+   * Asynchronously transfer specified size bytes of buffer
+   * starting at specified offset.
+   */
+  XCL_DRIVER_DLLESPEC
+  async_handle
+  async(xclBOSyncDirection dir, size_t sz, size_t offset);
+
+  /**
+   * async() - Start buffer content txfer with device side
+   *
+   * @param dir
+   *  To device or from device
+   * @param sz
+   *  Size of data to synchronize
+   * @param offset
+   *  Offset within the BO
+   *
+   * Asynchronously transfer entire buffer content in specified direction
+   */
+  async_handle
+  async(xclBOSyncDirection dir)
+  {
+    return async(dir, size(), 0);
+  }
 
   /**
    * sync() - Synchronize buffer content with device side
