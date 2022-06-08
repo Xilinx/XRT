@@ -25,6 +25,10 @@ SectionDesignCheckPoint::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(DESIGN_CHECK_POINT, "DESIGN_CHECKPOINT", boost::factory<SectionDesignCheckPoint*>()); 
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
+
   addSectionType(std::move(sectionInfo));
 }
 

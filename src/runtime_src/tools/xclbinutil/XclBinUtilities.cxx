@@ -910,7 +910,7 @@ transformMemoryBankGroupingCollections(const std::vector<boost::property_tree::p
 
     // Determine if the connection is a valid grouping connection
     // Algorithm: Look at the memory type and if the memory is used
-    std::string memType = groupTopology[memIndex].get<std::string>("m_type");
+    auto memType = groupTopology[memIndex].get<std::string>("m_type");
     if (memType.compare("MEM_DRAM") == 0)
         memType = "MEM_HBM";
 
@@ -1003,7 +1003,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
       {
         boost::property_tree::ptree ptConnection;
         for (const auto & connection : groupConnectivity) 
-          ptConnection.push_back(std::make_pair("", connection));
+          ptConnection.push_back({"", connection});
     
         boost::property_tree::ptree ptGroupConnection;
         ptGroupConnection.add_child("m_connection", ptConnection);
@@ -1024,7 +1024,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   {
     boost::property_tree::ptree ptMemData;
     for (const auto & mem_data : groupTopology) 
-      ptMemData.push_back(std::make_pair("", mem_data));
+      ptMemData.push_back({"", mem_data});
 
     boost::property_tree::ptree ptGroupTopology;
     ptGroupTopology.add_child("m_mem_data", ptMemData);
@@ -1100,7 +1100,7 @@ XclBinUtilities::createAIEPartition(XclBin & xclbin)
   std::ostringstream buffer;
   boost::property_tree::write_json(buffer, ptRoot);
   std::istringstream iSectionMetadata(buffer.str());
-  pSection->readPayload(iSectionMetadata, Section::FormatType::JSON);
+  pSection->readPayload(iSectionMetadata, Section::FormatType::json);
 
   // -- Now add the section to the collection and report our successful status
   XUtil::TRACE("Adding AIE_PARTITION section to xclbin");

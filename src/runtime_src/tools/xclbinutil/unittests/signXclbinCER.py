@@ -1,5 +1,5 @@
-import subprocess
 import os
+import subprocess
 
 # Start of our unit test
 # -- main() -------------------------------------------------------------------

@@ -15,7 +15,7 @@ import subprocess
 #       and classes have been defined and the syntax validated
 def main():
   # -- Configure the argument parser
-  parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description='description:\n  Unit test wrapper use to validated single subsection sections')
+  parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description='description:\n  Unit test wrapper use to validated MCS section')
   parser.add_argument('--resource-dir', nargs='?', default=".", help='directory containing data to be used by this unit test')
   args = parser.parse_args()
 
@@ -34,38 +34,37 @@ def main():
 
   # ---------------------------------------------------------------------------
 
-  step = "1) Create working xclbin container with multiple single vender sections"
+  step = "1) Create working xclbin container with a MCS section"
 
-  inputVenderMetadata1 = os.path.join(args.resource_dir, "sample_data1.txt")
-  inputVenderMetadata1Name = "ACME";
-  inputVenderMetadata2 = os.path.join(args.resource_dir, "sample_data2.txt")
-  inputVenderMetadata2Name = "Xilinx";
+  inputMCSPrimaryImage = os.path.join(args.resource_dir, "sample_data1.txt")
+  inputMCSSecondaryImage = os.path.join(args.resource_dir, "sample_data2.txt")
   workingXCLBIN = "working.xclbin"
 
-  cmd = [xclbinutil, "--add-section", "VENDER_METADATA[" + inputVenderMetadata1Name + "]:RAW:" + inputVenderMetadata1, 
-                     "--add-section", "VENDER_METADATA[" + inputVenderMetadata2Name + "]:RAW:" + inputVenderMetadata2, 
+  cmd = [xclbinutil, "--add-section", "MCS-PRIMARY:RAW:" + inputMCSPrimaryImage, 
+                     "--add-section", "MCS-SECONDARY:RAW:" + inputMCSSecondaryImage, 
                      "--output", workingXCLBIN, 
-                     "--force" 
+                     "--force"
                      ]
   execCmd(step, cmd)
 
 
   # ---------------------------------------------------------------------------
 
-  step = "2) Read in a PS kernel, updated and validate the sections"
-  outputVenderMetadata1 = "output_sample_data1.txt";
-  outputVenderMetadata2 = "output_sample_data2.txt";
+  step = "2) Read in the working xclbin image and validate the MCS section"
+  outputMCSPrimaryImage = "output_primary_image.txt";
+  outputMCSSecondaryImage = "output_secondary_image.txt";
 
   cmd = [xclbinutil, "--input", workingXCLBIN,
-                     "--dump-section", "VENDER_METADATA[" + inputVenderMetadata1Name + "]:RAW:" + outputVenderMetadata1, 
-                     "--dump-section", "VENDER_METADATA[" + inputVenderMetadata2Name + "]:RAW:" + outputVenderMetadata2, 
+                     "--dump-section", "MCS-PRIMARY:RAW:" + outputMCSPrimaryImage, 
+                     "--dump-section", "MCS-SECONDARY:RAW:" + outputMCSSecondaryImage, 
                      "--force"
                      ]
+
   execCmd(step, cmd)
 
   # Validate the contents of the various sections
-  textFileCompare(inputVenderMetadata1, outputVenderMetadata1)
-  textFileCompare(inputVenderMetadata2, outputVenderMetadata2)
+  textFileCompare(inputMCSPrimaryImage, outputMCSPrimaryImage)
+  textFileCompare(inputMCSSecondaryImage, outputMCSSecondaryImage)
 
   # ---------------------------------------------------------------------------
 
@@ -103,6 +102,33 @@ def textFileCompare(file1, file2):
 
         raise Exception("Error: The given files are not the same")
 
+def jsonFileCompare(file1, file2):
+  if not os.path.isfile(file1):
+    raise Exception("Error: The following json file does not exist: '" + file1 +"'")
+
+  with open(file1) as f:
+    data1 = json.dumps(json.load(f), indent=2)
+
+  if not os.path.isfile(file2):
+    raise Exception("Error: The following json file does not exist: '" + file2 +"'")
+
+  with open(file2) as f:
+    data2 = json.dumps(json.load(f), indent=2)
+
+  if data1 != data2:
+      # Print out the contents of file 1
+      print ("\nFile1 : "+ file1)
+      print ("vvvvv")
+      print (data1)
+      print ("^^^^^")
+
+      # Print out the contents of file 1
+      print ("\nFile2 : "+ file2)
+      print ("vvvvv")
+      print (data2)
+      print ("^^^^^")
+
+      raise Exception("Error: The two files are not the same")
 
 def testDivider():
   print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")

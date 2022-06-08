@@ -31,8 +31,16 @@ SectionBuildMetadata::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(BUILD_METADATA, "BUILD_METADATA", boost::factory<SectionBuildMetadata*>()); 
   sectionInfo->nodeName = "build_metadata";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+
   addSectionType(std::move(sectionInfo));
 }
+
+// ----------------------------------------------------------------------------
 
 void 
 SectionBuildMetadata::marshalToJSON(char* _pDataSection, 
@@ -73,27 +81,5 @@ SectionBuildMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSect
    ptWritable.put("build_metadata.xclbin.packaged_by.hash", xrt_build_version_hash);
    ptWritable.put("build_metadata.xclbin.packaged_by.time_stamp", xrt_build_version_date_rfc);
    boost::property_tree::write_json(_buf, ptWritable, false );
-}
-
-bool 
-SectionBuildMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if ((_eFormatType == FormatType::JSON) ||
-      (_eFormatType == FormatType::RAW)){
-    return true;
-  }
-  return false;
-}
-
-bool 
-SectionBuildMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML))
-    {
-      return true;
-    }
-
-    return false;
 }
 

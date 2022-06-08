@@ -34,9 +34,17 @@ SectionPartitionMetadata::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(PARTITION_METADATA, "PARTITION_METADATA", boost::factory<SectionPartitionMetadata *>()); 
   sectionInfo->nodeName = "partition_metadata";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
+
   addSectionType(std::move(sectionInfo));
 }
 
+// ----------------------------------------------------------------------------
 
 template <typename T>
 std::vector<T> as_vector(boost::property_tree::ptree const& pt, 
@@ -51,25 +59,25 @@ std::vector<T> as_vector(boost::property_tree::ptree const& pt,
 
 // Variable name to data size mapping table
 const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFormat = {
-  { "__INFO", FDTProperty::DF_sz },
-  { "alias_name", FDTProperty::DF_sz },
-  { "compatible", FDTProperty::DF_asz },
-  { "firmware_branch_name", FDTProperty::DF_sz },
-  { "firmware_product_name", FDTProperty::DF_sz },
-  { "firmware_version_major", FDTProperty::DF_u32 },
-  { "firmware_version_minor", FDTProperty::DF_u32 },
-  { "firmware_version_revision", FDTProperty::DF_u32 },
-  { "interface_uuid", FDTProperty::DF_sz },
-  { "interrupt_alias", FDTProperty::DF_asz },
-  { "interrupts", FDTProperty::DF_au32 },
-  { "logic_uuid", FDTProperty::DF_sz },
-  { "major", FDTProperty::DF_u32 },
-  { "minor", FDTProperty::DF_u32 },
-  { "pcie_bar_mapping", FDTProperty::DF_u32},
-  { "pcie_physical_function", FDTProperty::DF_u32},
-  { "range", FDTProperty::DF_u64 },
-  { "reg", FDTProperty::DF_au64 },
-  { "resolves_interface_uuid", FDTProperty::DF_sz },
+  { "__INFO", FDTProperty::DataFormat::sz },
+  { "alias_name", FDTProperty::DataFormat::sz },
+  { "compatible", FDTProperty::DataFormat::asz },
+  { "firmware_branch_name", FDTProperty::DataFormat::sz },
+  { "firmware_product_name", FDTProperty::DataFormat::sz },
+  { "firmware_version_major", FDTProperty::DataFormat::u32 },
+  { "firmware_version_minor", FDTProperty::DataFormat::u32 },
+  { "firmware_version_revision", FDTProperty::DataFormat::u32 },
+  { "interface_uuid", FDTProperty::DataFormat::sz },
+  { "interrupt_alias", FDTProperty::DataFormat::asz },
+  { "interrupts", FDTProperty::DataFormat::au32 },
+  { "logic_uuid", FDTProperty::DataFormat::sz },
+  { "major", FDTProperty::DataFormat::u32 },
+  { "minor", FDTProperty::DataFormat::u32 },
+  { "pcie_bar_mapping", FDTProperty::DataFormat::u32},
+  { "pcie_physical_function", FDTProperty::DataFormat::u32},
+  { "range", FDTProperty::DataFormat::u64 },
+  { "reg", FDTProperty::DataFormat::au64 },
+  { "resolves_interface_uuid", FDTProperty::DataFormat::sz },
 };
 
 // -- Helper transformation helper functions ---------------------------------
@@ -144,7 +152,7 @@ SchemaTransform_nameValue( const std::string & _valueName,
   }
 
   // Copy the name and value to the transform property tree
-  const std::string & sValue = _ptOriginal.get<std::string>(_valueName.c_str());
+  const auto & sValue = _ptOriginal.get<std::string>(_valueName.c_str());
 
   if (_transformedName.empty()) {
     _ptTransformed.put(_valueName.c_str(), sValue.c_str());
@@ -193,10 +201,10 @@ SchemaTransformUniversal_schema_version( const boost::property_tree::ptree& _ptO
     throw std::runtime_error("Error: schema_version.minor key not found.");
   }
 
-  std::string sMajor = _ptOriginal.get<std::string>("major");
+  auto sMajor = _ptOriginal.get<std::string>("major");
   int major = sMajor.empty() ? -1 : std::stoi(sMajor.c_str(), 0, 16);
 
-  std::string sMinor = _ptOriginal.get<std::string>("minor");
+  auto sMinor = _ptOriginal.get<std::string>("minor");
   int minor = sMinor.empty() ? -1 : std::stoi(sMinor.c_str(), 0 , 16);
 
   if ((major != 1) || (minor != 0)) {
@@ -255,8 +263,8 @@ SchemaTransformToDTC_pcie( const boost::property_tree::ptree& _ptOriginal,
       ptRegRange.put("", _ptBarOriginalEntry.get<std::string>("range").c_str());
       boost::property_tree::ptree ptReg;
 
-      ptReg.push_back(std::make_pair("", ptRegOffset));
-      ptReg.push_back(std::make_pair("", ptRegRange));
+      ptReg.push_back({"", ptRegOffset});
+      ptReg.push_back({"", ptRegRange});
       ptBarEntry.add_child("reg", ptReg);
     }
 
@@ -342,8 +350,8 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
     ptRegRange.put("", _ptOriginal.get<std::string>("range").c_str());
 
     boost::property_tree::ptree ptReg;
-    ptReg.push_back(std::make_pair("", ptRegOffset));
-    ptReg.push_back(std::make_pair("", ptRegRange));
+    ptReg.push_back({"", ptRegOffset});
+    ptReg.push_back({"", ptRegRange});
 
     _ptTransformed.add_child("reg", ptReg);
   }
@@ -353,7 +361,7 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
 
   // -- Transform 'register_abstraction_name' to 'compatible'
   if (_ptOriginal.find("register_abstraction_name") != _ptOriginal.not_found()) {
-    std::string sAbstractName = _ptOriginal.get<std::string>("register_abstraction_name");
+    auto sAbstractName = _ptOriginal.get<std::string>("register_abstraction_name");
 
     const std::string delimiters = ":";      // Our delimiter
 
@@ -389,8 +397,8 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
     ptCompLine2.put("", tokens[2].c_str());
 
     boost::property_tree::ptree ptCompatible;
-    ptCompatible.push_back(std::make_pair("", ptCompLine1));
-    ptCompatible.push_back(std::make_pair("", ptCompLine2));
+    ptCompatible.push_back({"", ptCompLine1});
+    ptCompatible.push_back({"", ptCompLine2});
 
     _ptTransformed.add_child("compatible", ptCompatible);
   }
@@ -413,7 +421,7 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
         (_ptOriginal.find("msix_interrupt_end_index") != _ptOriginal.not_found())) {
 
       boost::property_tree::ptree ptStartRange;
-      std::string sInterruptStart = _ptOriginal.get<std::string>("msix_interrupt_start_index");
+      auto sInterruptStart = _ptOriginal.get<std::string>("msix_interrupt_start_index");
       ptStartRange.put("", sInterruptStart.c_str());
 
       boost::property_tree::ptree ptEndRange;
@@ -421,8 +429,8 @@ SchemaTransformToDTC_addressable_endpoint( const std::string _sEndPointName,
       ptEndRange.put("", sInterruptEnd.c_str());
 
       boost::property_tree::ptree ptInterrupts;
-      ptInterrupts.push_back(std::make_pair("", ptStartRange));
-      ptInterrupts.push_back(std::make_pair("", ptEndRange));
+      ptInterrupts.push_back({"", ptStartRange});
+      ptInterrupts.push_back({"", ptEndRange});
 
 
       _ptTransformed.add_child("interrupts", ptInterrupts);
@@ -554,7 +562,7 @@ SchemaTransformToPM_pcie( const boost::property_tree::ptree& _ptOriginal,
       }
     }
 
-    ptBarArray.push_back(std::make_pair("", ptBarEntry));
+    ptBarArray.push_back({"", ptBarEntry});
   }
 
   _ptTransformed.add_child("bars", ptBarArray);
@@ -581,7 +589,7 @@ SchemaTransformToPM_interrupt_endpoint( const boost::property_tree::ptree& _ptOr
     for (const std::string & interruptValue : interruptVector) {
       boost::property_tree::ptree ptValue;
       ptValue.put("", interruptValue.c_str());
-      _ptTransformed.push_back(std::make_pair("", ptValue));
+      _ptTransformed.push_back({"", ptValue});
     }
   }
 }
@@ -615,7 +623,7 @@ SchemaTransformToPM_interfaces( const boost::property_tree::ptree& _ptOriginal,
     boost::property_tree::ptree ptInterface;
 
     SchemaTransform_nameValue("interface_uuid", "", true  /*required*/, interface.second, ptInterface);
-    _ptTransformed.push_back(std::make_pair("", ptInterface));
+    _ptTransformed.push_back({"", ptInterface});
   }
 }
 
@@ -744,7 +752,7 @@ SchemaTransformToPM_partition_info( const boost::property_tree::ptree& _ptOrigin
   }
 
   // Convert the JSON string to a boost property tree
-  std::string sInfo = _ptOriginal.get<std::string>("__INFO");
+  auto sInfo = _ptOriginal.get<std::string>("__INFO");
 
   // Convert the JSON file to a boost property tree
   std::istringstream is(sInfo);
@@ -782,29 +790,6 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
   SchemaTransform_subNode( "partition_info", false /*required*/, 
                            SchemaTransformToPM_partition_info,
                            _ptOriginal, _ptTransformed);
-}
-
-bool 
-SectionPartitionMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (( _eFormatType == FormatType::JSON ) ||
-      ( _eFormatType == FormatType::RAW )) {
-    return true;
-  }
-  return false;
-}
-
-bool 
-SectionPartitionMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
 }
 
 void

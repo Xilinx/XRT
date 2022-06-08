@@ -29,19 +29,19 @@ class DTCStringsBlock;
 
 class FDTProperty {
  public: 
-  typedef enum {
-   DF_unknown,
-   DF_au8,
-   DF_au16,
-   DF_au32,
-   DF_au64,
-   DF_u16,
-   DF_u32,
-   DF_u64,
-   DF_u128,
-   DF_sz,
-   DF_asz,
-  } DataFormat;
+  enum class DataFormat{
+   unknown,
+   au8,
+   au16,
+   au32,
+   au64,
+   u16,
+   u32,
+   u64,
+   u128,
+   sz,
+   asz,
+  };
 
  public:
   typedef std::map<const std::string, DataFormat> PropertyNameFormat;

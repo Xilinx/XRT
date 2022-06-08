@@ -190,7 +190,7 @@ enum class DW_TAG {
 
 
 // Collection of TAGs that is used to convert between human readable and enumeration value
-static const std::vector<std::pair<enum DW_TAG, std::string>> 
+static const std::vector<std::pair<DW_TAG, std::string>> 
 DWTags = {
   { DW_TAG::unknown, "DW_TAG_unknown" },
   { DW_TAG::subprogram, "DW_TAG_subprogram" },
@@ -204,7 +204,7 @@ DWTags = {
   { DW_TAG::structure_type, "DW_TAG_structure_type" },
 };
 
-static enum DW_TAG 
+static DW_TAG 
 get_DW_TAG(const std::string& tagString)
 {
   for (const auto& entry : DWTags)
@@ -215,7 +215,7 @@ get_DW_TAG(const std::string& tagString)
 }
 
 static const std::string &
-enum_DW_TAG_to_string(enum DW_TAG eTag)
+enum_DW_TAG_to_string(DW_TAG eTag)
 {
   for (const auto& entry : DWTags)
     if (entry.first == eTag)
@@ -561,14 +561,14 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
   if (ptTag.empty())
     throw std::runtime_error("ERROR: No cache value found for: '" + typeOffset + "'");
 
-  enum DW_TAG dwTag = get_DW_TAG(ptTag.get<std::string>("DW_TAG"));
+  DW_TAG dwTag = get_DW_TAG(ptTag.get<std::string>("DW_TAG"));
 
   switch (dwTag) {
     case DW_TAG::pointer_type: {
         evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type",""), argTags, ptArgument);
         ptArgument.put("primitive-byte-size", ptTag.get<std::string>("DW_AT_byte_size"));
         // Add pointer
-        std::string argType = ptArgument.get<std::string>("type", "") + "*";
+        auto argType = ptArgument.get<std::string>("type", "") + "*";
         ptArgument.put<std::string>("type", argType);
         ptArgument.put("address-qualifier", "GLOBAL");
         break;
@@ -590,7 +590,7 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
     case DW_TAG::const_type: {
         evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type",""), argTags, ptArgument);
         // Add const
-        std::string argType = "const " + ptArgument.get<std::string>("type", "");
+        auto argType = "const " + ptArgument.get<std::string>("type", "");
         ptArgument.put<std::string>("type", argType);
         break;
       }
@@ -731,7 +731,7 @@ add_DWTAG_subprogram(size_t& index,
     // Examine this argument
     boost::property_tree::ptree ptArg;
     add_formal_parameter(index, dwarfEntries, argTags, ptArg);
-    ptArgsArray.push_back(std::make_pair("", ptArg));
+    ptArgsArray.push_back({"", ptArg});
   }
 
   if (!ptArgsArray.empty()) {
@@ -745,7 +745,7 @@ add_DWTAG_subprogram(size_t& index,
   ptFunction.put("signature", create_function_signature(ptArgsArray));
 
   // The the kernel to the collection
-  ptFunctionArray.push_back(std::make_pair("", ptFunction));
+  ptFunctionArray.push_back({"", ptFunction});
 }
 
 static void

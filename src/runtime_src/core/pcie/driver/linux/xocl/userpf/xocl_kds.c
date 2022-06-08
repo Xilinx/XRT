@@ -2129,3 +2129,9 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	kds_reset(&XDEV(xdev)->kds);
 }
 
+int xocl_kds_set_cu_read_range(struct xocl_dev *xdev, u32 cu_idx,
+			       u32 start, u32 size)
+{
+	return kds_set_cu_read_range(&XDEV(xdev)->kds, cu_idx, start, size);
+}
+
