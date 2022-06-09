@@ -495,16 +495,33 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 	return 0;
 }
 
+static u32*
+kds_client_domain_refcnt(struct kds_client *client, int domain)
+{
+	u32 *refs;
+
+	switch (domain) {
+	case DOMAIN_PL:
+		refs = client->refcnt->cu_refs;
+		break;
+	case DOMAIN_PS:
+		refs = client->refcnt->scu_refs;
+		break;
+	default:
+		refs = NULL;
+		kds_err(client, "Domain(%d) is not expected. Please check domain or extend domain type", domain);
+		break;
+	}
+	return refs;
+}
+
 static int
 kds_test_and_refcnt_incr(struct kds_client *client, int domain, int cu_idx)
 {
 	int prev;
 	u32 *refs;
 
-	if (domain == DOMAIN_PL || domain == DOMAIN_VIRT)
-		refs = client->refcnt->cu_refs;
-	else
-		refs = client->refcnt->scu_refs;
+	refs = kds_client_domain_refcnt(client, domain);
 	mutex_lock(&client->refcnt->lock);
 	prev = refs[cu_idx];
 	++refs[cu_idx];
@@ -518,10 +535,7 @@ kds_test_and_refcnt_decr(struct kds_client *client, int domain, int cu_idx)
 	int prev;
 	u32 *refs;
 
-	if (domain == DOMAIN_PL || domain == DOMAIN_VIRT)
-		refs = client->refcnt->cu_refs;
-	else
-		refs = client->refcnt->scu_refs;
+	refs = kds_client_domain_refcnt(client, domain);
 	mutex_lock(&client->refcnt->lock);
 	prev = refs[cu_idx];
 	if (prev > 0) {
@@ -980,6 +994,7 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 
 	client->refcnt = kzalloc(sizeof(struct kds_client_cu_refcnt), GFP_KERNEL);
 	if (!client->refcnt) {
+		free_percpu(client->stats);
 		return -ENOMEM;
 	}
 
@@ -1022,10 +1037,7 @@ kds_client_get_cu_refcnt(struct kds_client *client, int domain, int idx)
 	u32 ret;
 	u32 *refs;
 
-	if (domain == DOMAIN_PL)
-		refs = client->refcnt->cu_refs;
-	else
-		refs = client->refcnt->scu_refs;
+	refs = kds_client_domain_refcnt(client, domain);
 
 	ret = MAX_CUS;
 	mutex_lock(&client->refcnt->lock);
@@ -1043,10 +1055,7 @@ kds_client_set_cu_refs_zero(struct kds_client *client, int domain)
 	u32 *dst;
 	u32 len = MAX_CUS * sizeof(u32);
 
-	if (domain == DOMAIN_PL)
-		dst = client->refcnt->cu_refs;
-	else
-		dst = client->refcnt->scu_refs;
+	dst = kds_client_domain_refcnt(client, domain);
 	mutex_lock(&client->refcnt->lock);
 	memset(dst, 0, len);
 	mutex_unlock(&client->refcnt->lock);
@@ -1157,7 +1166,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		/* a special handling for m2m cu :( */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
-			kds_test_and_refcnt_incr(client, cu_domain, i);
+			kds_test_and_refcnt_incr(client, DOMAIN_PL, i);
 			mutex_lock(&kds->cu_mgmt.lock);
 			++kds->cu_mgmt.cu_refs[i];
 			mutex_unlock(&kds->cu_mgmt.lock);
@@ -1203,7 +1212,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		/* a special handling for m2m cu :( */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
-			if (!kds_test_and_refcnt_decr(client, cu_domain, i)) {
+			if (!kds_test_and_refcnt_decr(client, DOMAIN_PL, i)) {
 				kds_err(client, "never reserved cmda");
 				return -EINVAL;
 			}
