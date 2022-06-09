@@ -302,8 +302,8 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     auto index = str2index(deviceBDF, in_user_domain);    // Can throw
     if(in_user_domain)
       return xrt_core::get_userpf_device(index);
-    else
-      return xrt_core::get_mgmtpf_device(index);
+
+    return xrt_core::get_mgmtpf_device(index);
   }
 
 void

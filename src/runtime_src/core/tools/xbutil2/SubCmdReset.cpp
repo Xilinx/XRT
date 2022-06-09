@@ -146,11 +146,11 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   } catch(const xrt_core::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     std::cout << boost::format("Reset failed on Device[%s]\n") 
-      % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+                 % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
   } catch (std::exception& ex) {
     std::cerr << "ERROR:" << ex.what() << std::endl;
     std::cout << boost::format("Reset failed on Device[%s]\n") 
-      % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+                 % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
   }
 
 }
