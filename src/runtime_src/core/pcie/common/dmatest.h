@@ -95,7 +95,7 @@ namespace xcldev {
              *          4        |   2   |     b+4
              */
             unsigned int len = (((unsigned int)(e - b)) < count) ? 1 : ((unsigned int)(e - b))/count;
-            unsigned int bo_cnt = ((unsigned int)(e - b));
+            auto bo_cnt = static_cast<unsigned int>(e - b);
             const auto adjust_e = b + len * ((len == 1) ? bo_cnt : std::min<unsigned int>(count, len));
 
             std::vector<std::future<int>> threads;
