@@ -237,7 +237,8 @@ struct sdm_sensor_info
        */
       std::string tpath = path + "/" + type + std::to_string(start_id) + "_";
       data = parse_sysfs_nodes(device, tpath, &next_id);
-      output.push_back(data);
+      if (!data.label.empty())
+        output.push_back(data);
 
       start_id++;
     } //while (!next_id)
