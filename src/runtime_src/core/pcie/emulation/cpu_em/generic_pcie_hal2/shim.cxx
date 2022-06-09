@@ -42,8 +42,6 @@ namespace xclcpuemhal2 {
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
-    ,mDSAMajorVersion(DSA_MAJOR_VERSION)
-    ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
     ,mIsDeviceProcessStarted(false)
   {

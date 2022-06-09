@@ -3,7 +3,6 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_hwemu.h"
-#include "xcl_perfmon_parameters.h"
 #include "plugin/xdp/device_offload.h"
 
 #include "core/include/xclbin.h"
@@ -25,7 +24,8 @@
 #include <set>
 #include <vector>
 
-
+#include "core/include/xdp/fifo.h"
+#include "core/include/xdp/trace.h"
 
 #define SEND_RESP2QDMA() \
     { \
@@ -1755,16 +1755,20 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // *_RPC_CALL uses unix_socket
 #endif
     Event eventObj;
-    uint32_t numSlots = getPerfMonNumberSlots(XCL_PERF_MON_MEMORY);
+    uint32_t numSlots = getPerfMonNumberSlots(xdp::MonitorType::memory);
     bool ack = true;
     for(unsigned int counter = 0 ; counter < numSlots; counter++)
     {
       unsigned int samplessize = 0;
-      if (counter == XPAR_AIM0_HOST_SLOT)
+
+      // This used to compare to XPAR_AIM0_HOST_SLOT, which is a meaningless
+      // definition now.  Changing it to the equivalent 0 for now, but this
+      // section should be revisited.
+      if (counter == 0)
         continue;
 
       char slotname[128];
-      getPerfMonSlotName(XCL_PERF_MON_MEMORY,counter,slotname,128);
+      getPerfMonSlotName(xdp::MonitorType::memory,counter,slotname,128);
 
       if (simulator_started == true)
       {
@@ -2012,8 +2016,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     FeatureRomHeader &fRomHeader, const boost::property_tree::ptree& platformData)
     :mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
-    ,mDSAMajorVersion(DSA_MAJOR_VERSION)
-    ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
     ,mCuIndx(0)
   {
@@ -2279,7 +2281,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return deviceTimeStamp;
   }
 
-  void HwEmShim::xclReadBusStatus(xclPerfMonType type) {
+  void HwEmShim::xclReadBusStatus(xdp::MonitorType type) {
 
     bool is_bus_idle = true;
     uint64_t l_idle_bus_cycles = 0;
@@ -3266,9 +3268,9 @@ int HwEmShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 
 int HwEmShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+  uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
 
-  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
 
   return 0;
@@ -3281,7 +3283,7 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
 
     uint32_t size = 0;
 
-    wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+    wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
     uint32_t numWords = numSamples * wordsPerSample;
 
 //    alignas is defined in c++11
@@ -3289,9 +3291,9 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
     /* Alignment is limited to 16 by PPC64LE : so , should it be
     alignas(16) uint32_t hostbuf[traceBufSzInWords];
     */
-    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+    alignas(xdp::IP::FIFO::alignment) uint32_t hostbuf[traceBufWordSz];
 #else
-    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(xdp::IP::FIFO::alignment, traceBufWordSz);
     uint32_t* hostbuf = alignedBuffer.getBuffer();
 #endif
 
@@ -3377,34 +3379,34 @@ double HwEmShim::xclGetKernelWriteMaxBandwidthMBps()
   return 19250.00;
 }
 
-uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)
+uint32_t HwEmShim::getPerfMonNumberSlots(xdp::MonitorType type)
 {
-  if (type == XCL_PERF_MON_MEMORY)
+  if (type == xdp::MonitorType::memory)
     return mMemoryProfilingNumberSlots;
-  if (type == XCL_PERF_MON_ACCEL)
+  if (type == xdp::MonitorType::accel)
     return mAccelProfilingNumberSlots;
-  if (type == XCL_PERF_MON_STALL)
+  if (type == xdp::MonitorType::stall)
     return mStallProfilingNumberSlots;
-  if (type == XCL_PERF_MON_HOST)
+  if (type == xdp::MonitorType::host)
     return 1;
-  if (type == XCL_PERF_MON_STR)
+  if (type == xdp::MonitorType::str)
     return mStreamProfilingNumberSlots;
 
   return 0;
 }
 
 // Get slot name
-void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
+void HwEmShim::getPerfMonSlotName(xdp::MonitorType type, uint32_t slotnum,
                                   char* slotName, uint32_t length) {
   std::string str = "";
-  if (type == XCL_PERF_MON_MEMORY) {
-    str = (slotnum < XAIM_MAX_NUMBER_SLOTS) ? mPerfMonSlotName[slotnum] : "";
+  if (type == xdp::MonitorType::memory) {
+    str = (slotnum < xdp::MAX_NUM_AIMS) ? mPerfMonSlotName[slotnum] : "";
   }
-  if (type == XCL_PERF_MON_ACCEL) {
-    str = (slotnum < XAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+  if (type == xdp::MonitorType::accel) {
+    str = (slotnum < xdp::MAX_NUM_AMS) ? mAccelMonSlotName[slotnum] : "";
   }
-  if (type == XCL_PERF_MON_STR) {
-    str = (slotnum < XASM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
+  if (type == xdp::MonitorType::str) {
+    str = (slotnum < xdp::MAX_NUM_ASMS) ? mStreamMonSlotName[slotnum] : "";
   }
   if(str.length() < length) {
    strncpy(slotName, str.c_str(), length);

@@ -22,27 +22,29 @@
  * under the License.
  */
 
-#include "xclhal2.h"
-
-#include "xdp/config.h"
-
-#include "profile_ip_access.h"
-#include "aim.h"
-#include "am.h"
-#include "asm.h"
-#include "noc.h"
-#include "traceFifoLite.h"
-#include "traceFifoFull.h"
-#include "traceFunnel.h"
-#include "traceS2MM.h"
-#include "add.h"
-
+#include <cassert>
 #include <fstream>
 #include <list>
 #include <map>
-#include <cassert>
-#include <vector>
 #include <mutex>
+#include <vector>
+
+#include "core/include/xclhal2.h"
+#include "core/include/xdp/common.h"
+#include "core/include/xdp/trace.h"
+
+#include "xdp/config.h"
+
+#include "xdp/profile/device/add.h"
+#include "xdp/profile/device/aim.h"
+#include "xdp/profile/device/am.h"
+#include "xdp/profile/device/asm.h"
+#include "xdp/profile/device/noc.h"
+#include "xdp/profile/device/profile_ip_access.h"
+#include "xdp/profile/device/traceFifoFull.h"
+#include "xdp/profile/device/traceFifoLite.h"
+#include "xdp/profile/device/traceFunnel.h"
+#include "xdp/profile/device/traceS2MM.h"
 
 namespace xdp {
 
@@ -71,9 +73,9 @@ class DeviceIntf {
     void readDebugIPlayout();
 
     XDP_EXPORT
-    uint32_t getNumMonitors(xclPerfMonType type);
+    uint32_t getNumMonitors(xdp::MonitorType type);
     XDP_EXPORT
-    std::string getMonitorName(xclPerfMonType type, uint32_t index);
+    std::string getMonitorName(xdp::MonitorType type, uint32_t index);
     XDP_EXPORT
     uint64_t getFifoSize();
 
@@ -87,7 +89,7 @@ class DeviceIntf {
     XDP_EXPORT
     size_t stopCounters();
     XDP_EXPORT
-    size_t readCounters(xclCounterResults& counterResults);
+    size_t readCounters(xdp::CounterResults& counterResults);
 
     // Accelerator Monitor
     XDP_EXPORT
@@ -160,7 +162,7 @@ class DeviceIntf {
     XDP_EXPORT
     uint8_t  getTS2MmMemIndex(uint64_t index);
     XDP_EXPORT
-    void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector);
+      void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xdp::TraceEvent>& traceVector);
 
     XDP_EXPORT
     void resetAIETs2mm(uint64_t index);

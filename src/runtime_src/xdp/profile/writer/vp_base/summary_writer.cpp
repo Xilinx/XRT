@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -744,7 +745,7 @@ namespace xdp {
 
       // For every xclbin that was loaded on this device
       for (auto xclbin : device->loadedXclbins) {
-        xclCounterResults values =
+        xdp::CounterResults values =
           (db->getDynamicInfo()).getCounterResults(deviceId, xclbin->uuid) ;
 
         // For every compute unit in the xclbin
@@ -831,7 +832,7 @@ namespace xdp {
     {
       for (auto xclbin : device->loadedXclbins)
       {
-        xclCounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
+        xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
         uint64_t j = 0 ;      
         for (auto cu : (xclbin->pl.cus))
         {
@@ -1064,7 +1065,7 @@ namespace xdp {
     bool printTable = false ;
     for (auto device : infos) {
       for (auto xclbin : device->loadedXclbins) {
-        xclCounterResults values =
+        xdp::CounterResults values =
           db->getDynamicInfo().getCounterResults(device->deviceId,
                                                  xclbin->uuid) ;
         for (auto cu : xclbin->pl.cus) {
@@ -1105,7 +1106,7 @@ namespace xdp {
     {
       for (auto xclbin : device->loadedXclbins)
       {
-        xclCounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
+        xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
         for (auto cu : xclbin->pl.cus)
         {
           std::vector<uint32_t>* asmMonitors = (cu.second)->getASMs() ;
@@ -1210,7 +1211,7 @@ namespace xdp {
         if (monitor->name.find("Host to Device") != std::string::npos)
         {
           // This is the monitor we are looking for
-          xclCounterResults values =
+          xdp::CounterResults values =
             (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
 
           if (values.WriteTranx[AIMIndex] > 0)
@@ -1321,7 +1322,7 @@ namespace xdp {
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Peer to Peer") != std::string::npos) {
             // This is the monitor we're looking for
-            xclCounterResults values =
+            xdp::CounterResults values =
               db->getDynamicInfo().getCounterResults(device->deviceId,
                                                      xclbin->uuid) ;
             if (values.WriteTranx[AIMIndex] > 0 ||
@@ -1358,7 +1359,7 @@ namespace xdp {
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Peer to Peer") != std::string::npos) {
             // This is the monitor we are looking for
-            xclCounterResults values =
+            xdp::CounterResults values =
               db->getDynamicInfo().getCounterResults(device->deviceId,
                                                      xclbin->uuid) ;
             if (values.WriteTranx[AIMIndex] > 0) {
@@ -1470,7 +1471,7 @@ namespace xdp {
     for (auto device : infos) {
       for (auto xclbin : device->loadedXclbins) {
         uint64_t AIMIndex = 0;
-        xclCounterResults values =
+        xdp::CounterResults values =
           db->getDynamicInfo().getCounterResults(device->deviceId,
                                                  xclbin->uuid) ;
         for (auto aim : xclbin->pl.aims) {
@@ -1530,7 +1531,7 @@ namespace xdp {
         uint64_t AIMIndex = 0 ;
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Memory to Memory") != std::string::npos) {
-            xclCounterResults values =
+            xdp::CounterResults values =
               (db->getDynamicInfo()).getCounterResults(device->deviceId,
                                                        xclbin->uuid) ;
             if (values.WriteTranx[AIMIndex] > 0 ||
@@ -1568,7 +1569,7 @@ namespace xdp {
         for (auto monitor : xclbin->pl.aims) {
           if (monitor->name.find("Memory to Memory") != std::string::npos) {
             // This is the monitor we are looking for
-            xclCounterResults values =
+            xdp::CounterResults values =
               (db->getDynamicInfo()).getCounterResults(device->deviceId,
                                                        xclbin->uuid) ;
             if (values.WriteTranx[AIMIndex] > 0) {
@@ -1684,7 +1685,7 @@ namespace xdp {
     {
       for (auto xclbin : device->loadedXclbins)
       {
-        xclCounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
+        xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
 
         // Counter results don't use the slotID.  Instead, they are filled
         //  in the struct in the order in which we found them.
@@ -1819,7 +1820,7 @@ namespace xdp {
 
       for (auto xclbin : device->loadedXclbins)
       {
-        xclCounterResults values =
+        xdp::CounterResults values =
           (db->getDynamicInfo()).getCounterResults(deviceId, xclbin->uuid) ;
 
         for (auto cu : xclbin->pl.cus)

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019-2022 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -19,6 +20,8 @@
 #define XDP_PROFILE_DEVICE_ASM_H
 
 #include <stdexcept>
+
+#include "core/include/xdp/counters.h"
 #include "profile_ip_access.h"
 
 namespace xdp {
@@ -60,7 +63,7 @@ public:
 
     virtual size_t startCounter();
     virtual size_t stopCounter();
-    virtual size_t readCounter(xclCounterResults& counterResult);
+    virtual size_t readCounter(xdp::CounterResults& counterResult);
 
     virtual size_t triggerTrace(uint32_t traceOption /*startTrigger*/); 
 
