@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,7 +22,11 @@
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
 #include "core/common/utils.h"
-#include "core/include/xcl_app_debug.h"
+#include "core/include/xdp/aim.h"
+#include "core/include/xdp/am.h"
+#include "core/include/xdp/asm.h"
+#include "core/include/xdp/app_debug.h"
+#include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 #include "xrt.h"
@@ -533,22 +538,22 @@ struct aim_counter
     std::string aim_name("aximm_mon_");
     aim_name += std::to_string(dbg_ip_data->m_base_address);
 
-    result_type retval_buf(XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
+    result_type retval_buf(xdp::IP::AIM::NUM_COUNTERS_REPORT, 0);
 
-    result_type val_buf = get_counter_status_from_sysfs(aim_name, "counters", XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT, device);
+    result_type val_buf = get_counter_status_from_sysfs(aim_name, "counters", xdp::IP::AIM::NUM_COUNTERS, device);
 
     /* Note that required return values are NOT in contiguous sequential order 
      * in AIM subdevice file. So, need to read only a few isolated indices in val_buf.
      */
-    retval_buf[XAIM_WRITE_BYTES_INDEX]        = val_buf[XAIM_IOCTL_WRITE_BYTES_INDEX];
-    retval_buf[XAIM_WRITE_TRANX_INDEX]        = val_buf[XAIM_IOCTL_WRITE_TRANX_INDEX];
-    retval_buf[XAIM_READ_BYTES_INDEX]         = val_buf[XAIM_IOCTL_READ_BYTES_INDEX];
-    retval_buf[XAIM_READ_TRANX_INDEX]         = val_buf[XAIM_IOCTL_READ_TRANX_INDEX];
-    retval_buf[XAIM_OUTSTANDING_COUNT_INDEX]  = val_buf[XAIM_IOCTL_OUTSTANDING_COUNT_INDEX];
-    retval_buf[XAIM_WRITE_LAST_ADDRESS_INDEX] = val_buf[XAIM_IOCTL_WRITE_LAST_ADDRESS_INDEX];
-    retval_buf[XAIM_WRITE_LAST_DATA_INDEX]    = val_buf[XAIM_IOCTL_WRITE_LAST_DATA_INDEX];
-    retval_buf[XAIM_READ_LAST_ADDRESS_INDEX]  = val_buf[XAIM_IOCTL_READ_LAST_ADDRESS_INDEX];
-    retval_buf[XAIM_READ_LAST_DATA_INDEX]     = val_buf[XAIM_IOCTL_READ_LAST_DATA_INDEX];
+    retval_buf[xdp::IP::AIM::report::WRITE_BYTES] = val_buf[xdp::IP::AIM::sysfs::WRITE_BYTES];
+    retval_buf[xdp::IP::AIM::report::WRITE_TRANX] = val_buf[xdp::IP::AIM::sysfs::WRITE_TRANX];
+    retval_buf[xdp::IP::AIM::report::READ_BYTES] = val_buf[xdp::IP::AIM::sysfs::READ_BYTES];
+    retval_buf[xdp::IP::AIM::report::READ_TRANX] = val_buf[xdp::IP::AIM::sysfs::READ_TRANX];
+    retval_buf[xdp::IP::AIM::report::OUTSTANDING_COUNT] = val_buf[xdp::IP::AIM::sysfs::OUTSTANDING_COUNT];
+    retval_buf[xdp::IP::AIM::report::WRITE_LAST_ADDRESS] = val_buf[xdp::IP::AIM::sysfs::WRITE_LAST_ADDRESS];
+    retval_buf[xdp::IP::AIM::report::WRITE_LAST_DATA] = val_buf[xdp::IP::AIM::sysfs::WRITE_LAST_DATA];
+    retval_buf[xdp::IP::AIM::report::READ_LAST_ADDRESS] = val_buf[xdp::IP::AIM::sysfs::READ_LAST_ADDRESS];
+    retval_buf[xdp::IP::AIM::report::READ_LAST_DATA] = val_buf[xdp::IP::AIM::sysfs::READ_LAST_DATA];
 
     return retval_buf;
   }
@@ -571,7 +576,7 @@ struct am_counter
     std::string am_name("accel_mon_");
     am_name += std::to_string(dbg_ip_data->m_base_address);
 
-    result_type val_buf = get_counter_status_from_sysfs(am_name, "counters", XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT, device);
+    result_type val_buf = get_counter_status_from_sysfs(am_name, "counters", xdp::IP::AM::NUM_COUNTERS, device);
 
     return val_buf;
   }
@@ -594,7 +599,7 @@ struct asm_counter
     std::string asm_name("axistream_mon_");
     asm_name += std::to_string(dbg_ip_data->m_base_address);
 
-    result_type val_buf = get_counter_status_from_sysfs(asm_name, "counters", XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, device);
+    result_type val_buf = get_counter_status_from_sysfs(asm_name, "counters", xdp::IP::ASM::NUM_COUNTERS, device);
 
     return val_buf;
   }
@@ -616,7 +621,7 @@ struct lapc_status
     std::string lapc_name("lapc_");
     lapc_name += std::to_string(dbg_ip_data->m_base_address);
 
-    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(lapc_name, "status", XLAPC_STATUS_PER_SLOT, device);
+    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(lapc_name, "status", xdp::IP::LAPC::NUM_COUNTERS, device);
 
     result_type ret_val;
     for(auto& e: val_buf) {
@@ -643,7 +648,7 @@ struct spc_status
     std::string spc_name("spc_");
     spc_name += std::to_string(dbg_ip_data->m_base_address);
 
-    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(spc_name, "status", XSPC_STATUS_PER_SLOT, device);
+    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(spc_name, "status", xdp::IP::SPC::NUM_COUNTERS, device);
 
     result_type ret_val;
     for(auto& e: val_buf) {

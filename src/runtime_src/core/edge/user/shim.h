@@ -13,8 +13,7 @@
 #include "core/common/device.h"
 #include "core/common/bo_cache.h"
 #include "core/common/xrt_profiling.h"
-
-#include "core/include/xcl_app_debug.h"
+#include "core/include/xdp/app_debug.h"
 #include "core/include/experimental/xrt_hw_context.h"
 
 #include <cstdint>
@@ -112,11 +111,11 @@ public:
   int xclIPName2Index(const char *name);
 
   // Application debug path functionality for xbutil
-  size_t xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults);
-  size_t xclDebugReadCounters(xclDebugCountersResults* aCounterResults);
-  size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
-  size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults);
-  size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults);
+  size_t xclDebugReadCheckers(xdp::LAPCCounterResults* aCheckerResults);
+  size_t xclDebugReadCounters(xdp::AIMCounterResults* aCounterResults);
+  size_t xclDebugReadAccelMonitorCounters(xdp::AMCounterResults* samResult);
+  size_t xclDebugReadStreamingCounters(xdp::ASMCounterResults* aCounterResults);
+  size_t xclDebugReadStreamingCheckers(xdp::SPCCounterResults* aStreamingCheckerResults);
   uint32_t getIPCountAddrNames(int type, uint64_t* baseAddress,
                               std::string* portNames,
                               uint8_t* properties, uint8_t* majorVersions,

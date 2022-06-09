@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -369,7 +370,7 @@ namespace xdp {
 
   void VPDynamicDatabase::setCounterResults(const uint64_t deviceId,
                                             xrt_core::uuid uuid,
-                                            xclCounterResults& values)
+                                            xdp::CounterResults& values)
   {
     std::lock_guard<std::mutex> lock(ctrLock) ;
     std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
@@ -377,8 +378,8 @@ namespace xdp {
     deviceCounters[index] = values ;
   }
 
-  xclCounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId,
-                                                         xrt_core::uuid uuid)
+  xdp::CounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId,
+                                                           xrt_core::uuid uuid)
   {
     std::lock_guard<std::mutex> lock(ctrLock) ;
     std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
