@@ -30,8 +30,15 @@ SectionAIEMetadata::init::init()
 {
   auto sectionInfo = std::make_unique<SectionInfo>(AIE_METADATA, "AIE_METADATA", boost::factory<SectionAIEMetadata*>());
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+
   addSectionType(std::move(sectionInfo));
 }
+
 // ----------------------------------------------------------------------------
 
 void 
@@ -72,23 +79,4 @@ SectionAIEMetadata::marshalFromJSON( const boost::property_tree::ptree& _ptSecti
    boost::property_tree::write_json(_buf, ptWritable, false );
 }
 
-bool 
-SectionAIEMetadata::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if ((_eFormatType == FormatType::JSON) ||
-      (_eFormatType == FormatType::RAW)) {
-    return true;
-  }
-  return false;
-}
-
-bool 
-SectionAIEMetadata::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML)) {
-      return true;
-    }
-    return false;
-}
 

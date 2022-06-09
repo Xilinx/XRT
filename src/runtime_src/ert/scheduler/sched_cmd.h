@@ -19,6 +19,8 @@
 #include "xgq_impl.h"
 #include "xgq_cmd_ert.h"
 
+#define XGQ_CMD_DEBUG
+
 /* One CU command. */
 struct sched_cmd {
 	uint64_t cc_addr;
@@ -45,6 +47,9 @@ static inline void cmd_load_header(struct sched_cmd *cu_cmd)
 	 */
 	if (cu_cmd->cc_header.hdr.header[0] != 0)
 		cu_cmd->cc_header.hdr.header[0] = reg_read((uint64_t)(uintptr_t)&ch->hdr.header[0]);
+#endif
+#ifdef XGQ_CMD_DEBUG
+	cu_cmd->cc_header.hdr.header[1] = reg_read((uint64_t)(uintptr_t)&ch->hdr.header[1]);
 #endif
 }
 

@@ -28,11 +28,11 @@ namespace xrt { namespace detail {
 template<typename ImplType>
 class pimpl
 {
+protected:
+  ~pimpl() = default;
+
 public:
   pimpl() = default;
-
-  virtual
-  ~pimpl() = default;
 
   explicit
   pimpl(std::shared_ptr<ImplType> handle)

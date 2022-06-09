@@ -22,10 +22,6 @@
 
 // -------- C L A S S :   S e c t i o n A I E P a r t i t i o n --------------
 class SectionAIEPartition : public Section {
- public:
-  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
-  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
-
  protected:
   void marshalToJSON(char* pDataSection, unsigned int sectionSize, boost::property_tree::ptree& ptReturn) const override;
   void marshalFromJSON(const boost::property_tree::ptree& ptSection, std::ostringstream& buf) const override;

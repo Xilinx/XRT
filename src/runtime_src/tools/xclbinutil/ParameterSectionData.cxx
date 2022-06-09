@@ -23,7 +23,7 @@
 namespace XUtil = XclBinUtilities;
 
 ParameterSectionData::ParameterSectionData(const std::string &_formattedString)
-  : m_formatType(Section::FormatType::UNKNOWN)
+  : m_formatType(Section::FormatType::unknown)
   , m_formatTypeStr("")
   , m_file("")
   , m_section("")
@@ -42,7 +42,7 @@ ParameterSectionData::~ParameterSectionData()
 
 
 void 
-ParameterSectionData::transformFormattedString(const std::string _formattedString)
+ParameterSectionData::transformFormattedString(const std::string &_formattedString)
 // Items being parsed:
 // -- Section --
 //    Syntax: <section>:<formatType>:<filename>
@@ -98,7 +98,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   // -- Retrieve the section --
   std::string sSection = tokens[0];
   
-  if ( sSection.empty() && (m_formatType != Section::FormatType::JSON)) {
+  if ( sSection.empty() && (m_formatType != Section::FormatType::json)) {
     std::string errMsg = "Error: Empty sections names are only permitted with JSON format files.";
     throw std::runtime_error(errMsg);
   }
@@ -145,7 +145,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
     }
 
     // Is the section name is valid
-    enum axlf_section_kind eKind;
+    axlf_section_kind eKind;
     Section::translateSectionKindStrToKind(m_section, eKind);
 
     // Does the section support subsections
@@ -168,7 +168,7 @@ ParameterSectionData::getFile()
   return m_file;
 }
 
-enum Section::FormatType 
+Section::FormatType 
 ParameterSectionData::getFormatType()
 {
   return m_formatType;
@@ -192,7 +192,7 @@ ParameterSectionData::getSectionIndexName()
   return m_sectionIndex;
 }
 
-enum axlf_section_kind &
+axlf_section_kind &
 ParameterSectionData::getSectionKind()
 {
   return m_eKind;

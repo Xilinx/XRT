@@ -25,6 +25,10 @@ SectionSchedulerFW::init::init()
 { 
   auto sectionInfo = std::make_unique<SectionInfo>(SCHED_FIRMWARE, "SCHED_FIRMWARE", boost::factory<SectionSchedulerFW*>()); 
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
+
   addSectionType(std::move(sectionInfo));
 }
 

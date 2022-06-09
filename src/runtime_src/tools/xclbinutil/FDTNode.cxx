@@ -207,7 +207,7 @@ FDTNode::marshalFromDTC( const char* _pBuffer,
 
   XUtil::TRACE_BUF("Structure Block", _pBuffer, _size);
 
-  const static unsigned int MinSizeBytes = sizeof(uint32_t) * 3; // 3 Words
+  static const unsigned int MinSizeBytes = sizeof(uint32_t) * 3; // 3 Words
   if (_size < MinSizeBytes) {
     auto errMsg = boost::format("ERROR: The size of the structure block is too small.  Minimum size: 0x%x") % MinSizeBytes;
     throw std::runtime_error(errMsg.str());
@@ -294,7 +294,7 @@ FDTNode::marshalSubNodeToJSON(boost::property_tree::ptree& _ptTree,
   if (m_name.length() != 0) 
     _ptTree.add_child(m_name.c_str(), ptSubNode);
   else 
-    _ptTree.push_back(std::make_pair("", ptSubNode));
+    _ptTree.push_back({"", ptSubNode});
 }
 
 

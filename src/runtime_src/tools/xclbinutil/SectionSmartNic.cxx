@@ -43,29 +43,17 @@ SectionSmartNic::init::init()
   auto sectionInfo = std::make_unique<SectionInfo>(SMARTNIC, "SMARTNIC", boost::factory<SectionSmartNic*>()); 
   sectionInfo->nodeName = "smartnic";
 
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
+
   addSectionType(std::move(sectionInfo));
 }
 
-
-bool
-SectionSmartNic::doesSupportAddFormatType(FormatType _eFormatType) const {
-  if ((_eFormatType == FormatType::JSON) ||
-      (_eFormatType == FormatType::RAW))
-    return true;
-
-  return false;
-}
-
-bool
-SectionSmartNic::doesSupportDumpFormatType(FormatType _eFormatType) const {
-  if ((_eFormatType == FormatType::JSON) ||
-      (_eFormatType == FormatType::HTML) ||
-      (_eFormatType == FormatType::RAW))
-    return true;
-
-  return false;
-}
-
+// ----------------------------------------------------------------------------
 
 void
 SectionSmartNic::marshalToJSON(char* _pDataSection,
@@ -137,7 +125,7 @@ void rename_file_node(const std::string & fileNodeName,
                       rapidjson::Document::AllocatorType& allocator)
 {
   // Remove the subname (e.g., _file) from the existing key
-  const static std::string removeSubName = "_file";
+  static const std::string removeSubName = "_file";
 
   std::string newKey = fileNodeName;              
   auto index = newKey.find(removeSubName); 
@@ -381,8 +369,8 @@ merge_node( boost::property_tree::ptree &ptParent,
   // Are we at a graph end node
   if (!appendPath.empty() && ptAppend.empty()) {
     // Check to see if data already exists, if so validate that it isn't changing
-    const std::string & parentValue = ptParent.get<std::string>(appendPath,"");
-    const std::string & appendValue = ptAppend.data();
+    const auto & parentValue = ptParent.get<std::string>(appendPath,"");
+    const auto & appendValue = ptAppend.data();
 
     if (!parentValue.empty()) {
       // Check to see if the data is the same, if not produce an error
@@ -467,7 +455,7 @@ merge_node_array( const std::string &nodeName,
    // Rebuild the node array and add it back into the property tree
    boost::property_tree::ptree ptArrayNode;
    for (auto & nodeEntry : workingNodeArray) 
-     ptArrayNode.push_back(std::make_pair("", nodeEntry));   // Used to make an array of objects
+     ptArrayNode.push_back({"", nodeEntry});   // Used to make an array of objects
 
    ptParent.add_child(nodeName, ptArrayNode);
 }

@@ -47,7 +47,7 @@ int addressQualifierStrToInt(const std::string& addressQualifier)
 }
 
 #define TYPESIZE(VAR) {#VAR, sizeof(VAR)}
-static std::vector<std::pair<std::string, std::size_t>> scalarTypes = {
+static const std::vector<std::pair<std::string, std::size_t>> scalarTypes = {
   TYPESIZE(char), TYPESIZE(unsigned char),
   TYPESIZE(float),
   TYPESIZE(int8_t), TYPESIZE(uint8_t),
@@ -113,7 +113,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
 {
   const boost::property_tree::ptree ptEmpty;
 
-  const std::string& kernelName = ptKernel.get<std::string>("name", "");
+  const auto & kernelName = ptKernel.get<std::string>("name", "");
   if (kernelName.empty())
     throw std::runtime_error("Missing kernel name");
 
@@ -142,12 +142,12 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     boost::property_tree::ptree ptArgAttributes;
 
     // Argument name
-    const std::string& name = ptArgument.get<std::string>("name", "");
+    const auto & name = ptArgument.get<std::string>("name", "");
     if (name.empty())
       throw std::runtime_error("Missing argument name");
 
     // Address qualifier
-    const std::string& addressQualifier = ptArgument.get<std::string>("address-qualifier", "");
+    const auto & addressQualifier = ptArgument.get<std::string>("address-qualifier", "");
     if (addressQualifier.empty())
       throw std::runtime_error("Missing address qualifier");
 
@@ -167,7 +167,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
                    : ptArgument.get<size_t>("byte-size");
 
     // Offset
-    const std::string& offset = ptArgument.get<std::string>("offset", "");
+    const auto & offset = ptArgument.get<std::string>("offset", "");
     if (offset.empty())
       throw std::runtime_error("Missing offset value");
 
@@ -192,7 +192,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
   for (const auto& instance : ptInstances) {
     const boost::property_tree::ptree& ptInstance = instance.second;
 
-    const std::string& instanceName = ptInstance.get<std::string>("name", "");
+    const auto & instanceName = ptInstance.get<std::string>("name", "");
     if (instanceName.empty())
       throw std::runtime_error("Missing kernel instance name value");
 
@@ -242,7 +242,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
   XUtil::TRACE_PrintTree("KernelXML", ptKernelXML);
 
   // Validate that there is no other kernels with the same name.
-  const std::string& kernelName = ptKernelXML.get<std::string>("<xmlattr>.name");
+  const auto & kernelName = ptKernelXML.get<std::string>("<xmlattr>.name");
 
   boost::property_tree::ptree& ptCore = ptEmbeddedData.get_child("project.platform.device.core", ptEmpty);
 
@@ -251,7 +251,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
       continue;
 
     const auto& ptKernelEntry = entry.second;
-    const std::string& kernelEntryName = ptKernelEntry.get<std::string>("<xmlattr>.name", "");
+    const auto & kernelEntryName = ptKernelEntry.get<std::string>("<xmlattr>.name", "");
 
     if (kernelEntryName == kernelName)
       throw std::runtime_error("Kernel name already exists in the EMBEDDED_METADATA section: '" + kernelName + "'");
@@ -276,7 +276,7 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
 
     // Determine if there should be a memory connection, if so add it
     static const std::string NOT_DEFINED = "<not defined>";
-    std::string memoryConnection = ptArg.get<std::string>("memory-connection", NOT_DEFINED);
+    auto memoryConnection = ptArg.get<std::string>("memory-connection", NOT_DEFINED);
 
     // An empty memory connection indicates that we should connect it to a yet to be define PS kernel memory entry
     if (memoryConnection.empty()) {
@@ -334,7 +334,7 @@ void transformVectorToPtree(const std::vector<boost::property_tree::ptree>& vect
   // Create an array of property trees
   boost::property_tree::ptree ptArray;
   for (const auto& entry : vectorOfPtree)
-    ptArray.push_back(std::make_pair("", entry));
+    ptArray.push_back({"", entry});
 
   ptBase.add_child(arrayName, ptArray);
 
@@ -351,7 +351,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
   XUtil::TRACE_PrintTree("IP_LAYOUT ROOT", ptIPLayoutRoot);
 
   const boost::property_tree::ptree ptEmpty;
-  const std::string& kernelName = ptKernel.get<std::string>("name", "");
+  const auto & kernelName = ptKernel.get<std::string>("name", "");
   if (kernelName.empty())
     throw std::runtime_error("Missing kernel name");
 
@@ -370,7 +370,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     const auto& ptInstance = instance.second;
 
     // Make sure that the instance name is valid
-    const std::string& instanceName = ptInstance.get<std::string>("name", "");
+    const auto & instanceName = ptInstance.get<std::string>("name", "");
     if (instanceName.empty())
       throw std::runtime_error("Empty instance name for kernel: '" + kernelName + "'");
 
@@ -410,7 +410,7 @@ validateSignature(std::vector<boost::property_tree::ptree> functions,
   if (functions.empty())
     return;
 
-  const std::string functionType = functions[0].get<std::string>("type");
+  const auto functionType = functions[0].get<std::string>("type");
 
   if (functions.size() > 1) {
     std::vector<std::string> functionsFound;
@@ -426,7 +426,7 @@ validateSignature(std::vector<boost::property_tree::ptree> functions,
   // Validate name
   const std::string expectedName = kernelName + "_" + ptFunction.get<std::string>("type");
 
-  const std::string& name = ptFunction.get<std::string>("name");
+  const auto & name = ptFunction.get<std::string>("name");
   if (name != expectedName)
     throw std::runtime_error("Error: The " + ptFunction.get<std::string>("type") + " kernel does not have the same base name as the kernel.\n"
                              "Shared Library: '" + kernelLibrary + "'\n"
@@ -499,17 +499,17 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
                              "Kernels: " + boost::algorithm::join(functionsFound, ", "));
   }
 
-  const std::string& kernelName = kernels[0].get<std::string>("name");
+  const auto & kernelName = kernels[0].get<std::string>("name");
 
   // -- Validate _init function
   if (!initKernels.empty()) {
-    static std::vector<std::string> argsExpected = { "xclDeviceHandle", "const unsigned char*" };
+    static const std::vector<std::string> argsExpected = { "xclDeviceHandle", "const unsigned char*" };
     validateSignature(initKernels, argsExpected, kernelName, kernelLibrary);
   }
 
   // -- Validate _fini function
   if (!finiKernels.empty()) {
-    static std::vector<std::string> argsExpected = { "xrtHandles*" };
+    static const std::vector<std::string> argsExpected = { "xrtHandles*" };
     validateSignature(finiKernels, argsExpected, kernelName, kernelLibrary);
   }
 
@@ -580,7 +580,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
       if (entry.get<int>("use-id", 1) != 1) 
         ptArg.put("use-id", "0");
 
-      ptArgArray.push_back(std::make_pair("", ptArg));   // Used to make an array of objects
+      ptArgArray.push_back({"", ptArg});   // Used to make an array of objects
     }
     ptKernel.add_child("arguments", ptArgArray);
 
@@ -593,7 +593,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
     }
     ptKernel.add_child("instances", ptInstanceArray);
 
-    ptKernelArray.push_back(std::make_pair("", ptKernel));
+    ptKernelArray.push_back({"", ptKernel});
   }
 
   // DRC check, make sure we have some kernels

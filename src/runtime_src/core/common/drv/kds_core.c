@@ -1153,12 +1153,18 @@ int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	mutex_lock(&cu_mgmt->lock);
+	if (cu_mgmt->xcus[idx]->read_regs.xcr_start != -1) {
+		goto get_cu_addr;
+	}
+
 	/* WORKAROUND: If rw_shared is true, allow map shared CU */
 	if (!cu_mgmt->rw_shared && !(cu_mgmt->cu_refs[idx] & CU_EXCLU_MASK)) {
 		kds_err(client, "cu(%d) isn't exclusively reserved\n", idx);
 		mutex_unlock(&cu_mgmt->lock);
 		return -EINVAL;
 	}
+
+get_cu_addr:
 	mutex_unlock(&cu_mgmt->lock);
 
 	*addrp = kds_get_cu_addr(kds, idx);
@@ -1280,6 +1286,37 @@ u32 kds_get_cu_proto(struct kds_sched *kds, int idx)
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 
 	return cu_mgmt->xcus[idx]->info.protocol;
+}
+
+int kds_set_cu_read_range(struct kds_sched *kds, u32 cu_idx, u32 start, u32 size)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+
+	if (cu_idx >= MAX_CUS)
+		return -EINVAL;
+
+	if (size % sizeof(u32))
+		return -EINVAL;
+
+	/* Registers at offset 0x0, 0x4, 0x8 and 0xc is for control. Not allow to read. */
+	if ((start < 0x10) || (start + size > cu_mgmt->xcus[cu_idx]->info.size))
+		return -EINVAL;
+
+	/* To simplify the use case, only allow shared CU context to set read
+	 * only range. The exclusive CU context will keep old behavior.
+	 */
+	mutex_lock(&cu_mgmt->lock);
+	if (cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK) {
+		mutex_unlock(&cu_mgmt->lock);
+		return -EINVAL;
+	}
+	mutex_unlock(&cu_mgmt->lock);
+
+	mutex_lock(&cu_mgmt->xcus[cu_idx]->read_regs.xcr_lock);
+	cu_mgmt->xcus[cu_idx]->read_regs.xcr_start = start;
+	cu_mgmt->xcus[cu_idx]->read_regs.xcr_end = start + size - 1;
+	mutex_unlock(&cu_mgmt->xcus[cu_idx]->read_regs.xcr_lock);
+	return 0;
 }
 
 int kds_get_max_regmap_size(struct kds_sched *kds)

@@ -477,7 +477,7 @@ int main_(int argc, const char** argv) {
   for (const auto &section : sectionsToAdd) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
-        psd.getFormatType() == Section::FormatType::JSON) {
+        psd.getFormatType() == Section::FormatType::json) {
       xclBin.addSections(psd);
     } else {
       xclBin.addSection(psd);
@@ -494,7 +494,7 @@ int main_(int argc, const char** argv) {
   for (const auto &section : sectionsToAppend) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
-        psd.getFormatType() == Section::FormatType::JSON) {
+        psd.getFormatType() == Section::FormatType::json) {
       xclBin.appendSections(psd);
     } else {
       std::string errMsg = "ERROR: Appending of sections only supported via wildcards and the JSON format (e.g. :JSON:appendfile.rtd).";
@@ -544,7 +544,7 @@ int main_(int argc, const char** argv) {
   for (const auto &section : sectionsToDump) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
-        psd.getFormatType() == Section::FormatType::JSON) {
+        psd.getFormatType() == Section::FormatType::json) {
       xclBin.dumpSections(psd);
     } else {
       xclBin.dumpSection(psd);

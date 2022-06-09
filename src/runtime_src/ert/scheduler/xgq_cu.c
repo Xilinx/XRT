@@ -36,6 +36,7 @@ inline void xgq_cu_init(struct xgq_cu *xc, struct xgq *q, struct sched_cu *cu)
 	xc->xc_cmd_running = 0;
 	cmd_set_addr(cmd, 0);
 	cmd_clear_header(cmd, 0);
+    cu_verify_ctrl(cu, 0xC, "CU initial status is not idle/ready");
 	cu_set_status(cu, SCHED_AP_IDLE);
 }
 

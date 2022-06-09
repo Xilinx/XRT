@@ -52,6 +52,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/mgmtpf/99-xclmgmt.rules
   xocl/mgmtpf/Makefile
   xocl/devices.h
+  xocl/xocl_types.h
   xocl/xocl_drv.h
   xocl/xocl_drm.h
   xocl/xocl_subdev.c

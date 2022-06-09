@@ -651,16 +651,6 @@ namespace xdp {
   // Set metrics for all specified AIE counters on this device
   bool AIEProfilingPlugin::setMetrics(uint64_t deviceId, void* handle)
   {
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
-    xaiefal::XAieDev* aieDevice =
-      static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
-    if (!aieDevInst || !aieDevice) {
-      xrt_core::message::send(severity_level::warning, "XRT", 
-          "Unable to get AIE device. There will be no AIE profiling.");
-      return false;
-    }
-
     int counterId = 0;
     bool runtimeCounters = false;
     constexpr int NUM_MODULES = 3;
@@ -867,6 +857,18 @@ namespace xdp {
     }
   }
 
+  bool AIEProfilingPlugin::checkAieDevice(uint64_t deviceId, void* handle)
+  {
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+    aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
+    if (!aieDevInst || !aieDevice) {
+      xrt_core::message::send(severity_level::warning, "XRT", 
+          "Unable to get AIE device. There will be no AIE profiling.");
+      return false;
+    }
+    return true;
+  }
+
   void AIEProfilingPlugin::updateAIEDevice(void* handle)
   {
     // Don't update if no profiling is requested
@@ -898,7 +900,13 @@ namespace xdp {
 
       // 1. Runtime-defined counters
       // NOTE: these take precedence
-      bool runtimeCounters = setMetrics(deviceId, handle);
+
+      if(!checkAieDevice(deviceId, handle))
+        return;
+
+      bool runtimeCounters = setMetricsSettings(deviceId, handle);
+      if(!runtimeCounters) 
+        runtimeCounters = setMetrics(deviceId, handle);
 
       // 2. Compiler-defined counters
       if (!runtimeCounters) {
@@ -984,4 +992,250 @@ namespace xdp {
     mThreadMap.clear();
   }
 
+  // Set metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
+  bool AIEProfilingPlugin::setMetricsSettings(uint64_t deviceId, void* handle)
+  {
+    int counterId = 0;
+    bool runtimeCounters = false;
+
+    // Currently supporting Core, Memory, Interface Tile metrics only. Need to add Memory Tile metrics
+    constexpr int NUM_MODULES = 3;
+
+    // Get the metrics settings
+    std::vector<std::string> metricsConfig;
+
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_core_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_memory_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_interface_tile_metrics());
+//    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_mem_tile_metrics());
+
+    // Process AIE_profile_settings metrics
+    // Each of the metrics can have ; separated multiple values. Process and save all
+    std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
+
+    std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
+
+    for(int module = 0; module < NUM_MODULES; ++module) {
+      if (metricsConfig.empty()){
+#if 0
+// No need to add the warning message here, as all the tests are using configs under Debug
+        std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
+        std::string metricMsg = "No metric set specified for " + modName + " module. " +
+                                "Please specify the AIE_profile_settings." + modName + "_metrics setting in your xrt.ini.";
+        xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
+#endif
+        continue;
+      }
+      boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
+    }
+
+    // Get AIE clock frequency
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+
+    // Get Channel Id in interface metric ; check all the entries
+    for(auto &interfaceMetric : metricsSettings) {
+      if(3 == interfaceMetric.size()) {
+        // current entry has channel ID
+        try {
+          mChannelId = std::stoi(interfaceMetric.at(2));
+          // Found one channel id, now break the loop
+          break;
+        }
+        catch (...) {
+          mChannelId = -1;
+        }
+      }
+    }
+
+    int numCounters[NUM_MODULES] =
+        {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
+    XAie_ModuleType falModuleTypes[NUM_MODULES] = 
+        {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
+
+    // Configure core, memory, and shim counters
+    for (int module=0; module < NUM_MODULES; ++module) {
+
+      for(auto &metricsStr : metricsSettings[module]) { 
+
+        int NUM_COUNTERS       = numCounters[module];
+        XAie_ModuleType mod    = falModuleTypes[module];
+        std::string moduleName = moduleNames[module];
+        auto metricSet         = getMetricSet(mod, metricsStr);
+        auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
+
+
+        // Ask Resource manager for resource availability
+        auto numFreeCounters   = getNumFreeCtr(aieDevice, tiles, mod, metricSet);
+        if (numFreeCounters == 0)
+          continue;
+
+        // Get vector of pre-defined metrics for this set
+        uint8_t resetEvent = 0;
+        auto startEvents = (mod == XAIE_CORE_MOD) ? mCoreStartEvents[metricSet]
+                         : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet] 
+                         : mShimStartEvents[metricSet]);
+        auto endEvents   = (mod == XAIE_CORE_MOD) ? mCoreEndEvents[metricSet]
+                         : ((mod == XAIE_MEM_MOD) ? mMemoryEndEvents[metricSet] 
+                         : mShimEndEvents[metricSet]);
+
+        int numTileCounters[NUM_COUNTERS+1] = {0};
+      
+        // Iterate over tiles and metrics to configure all desired counters
+        for (auto& tile : tiles) {
+          int numCounters = 0;
+          auto col = tile.col;
+          auto row = tile.row;
+        
+          // NOTE: resource manager requires absolute row number
+          auto loc        = (mod == XAIE_PL_MOD) ? XAie_TileLoc(col, 0) 
+                          : XAie_TileLoc(col, row + 1);
+          auto& xaieTile  = (mod == XAIE_PL_MOD) ? aieDevice->tile(col, 0) 
+                          : aieDevice->tile(col, row + 1);
+          auto xaieModule = (mod == XAIE_CORE_MOD) ? xaieTile.core()
+                          : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
+                          : xaieTile.pl());
+        
+          for (int i=0; i < numFreeCounters; ++i) {
+            auto startEvent = startEvents.at(i);
+            auto endEvent   = endEvents.at(i);
+
+            // Request counter from resource manager
+            auto perfCounter = xaieModule.perfCounter();
+            auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
+            if (ret != XAIE_OK) break;
+            ret = perfCounter->reserve();
+            if (ret != XAIE_OK) break;
+          
+            configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
+            configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, startEvent, metricSet);
+          
+            // Start the counters after group events have been configured
+            ret = perfCounter->start();
+            if (ret != XAIE_OK) break;
+            mPerfCounters.push_back(perfCounter);
+
+            // Convert enums to physical event IDs for reporting purposes
+            uint8_t tmpStart;
+            uint8_t tmpEnd;
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
+            uint16_t phyStartEvent = (mod == XAIE_CORE_MOD) ? tmpStart
+                                   : ((mod == XAIE_MEM_MOD) ? (tmpStart + BASE_MEMORY_COUNTER)
+                                   : (tmpStart + BASE_SHIM_COUNTER));
+            uint16_t phyEndEvent   = (mod == XAIE_CORE_MOD) ? tmpEnd
+                                   : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
+                                   : (tmpEnd + BASE_SHIM_COUNTER));
+
+            auto payload = getCounterPayload(aieDevInst, tile, col, row, startEvent);
+  
+            // Store counter info in database
+            std::string counterName = "AIE Counter " + std::to_string(counterId);
+            (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
+                phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz, 
+                moduleName, counterName);
+            counterId++;
+            numCounters++;
+          }
+
+          std::stringstream msg;
+          msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+          numTileCounters[numCounters]++;
+        }
+
+        // Report counters reserved per tile
+        {
+          std::stringstream msg;
+          msg << "AIE profile counters reserved in " << moduleName << " modules - ";
+          for (int n=0; n <= NUM_COUNTERS; ++n) {
+            if (numTileCounters[n] == 0) continue;
+            msg << n << ": " << numTileCounters[n] << " tiles";
+            if (n != NUM_COUNTERS) msg << ", ";
+
+            (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], module);
+          }
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+        }
+
+        runtimeCounters = true;
+      } // multiple metrics
+    } // for module
+
+    return runtimeCounters;
+  }
+
+  // Set Graph Metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
+  bool AIEProfilingPlugin::setGraphMetricsSettings(uint64_t deviceId, void* handle)
+  {
+// This method is not called now. The handling of graph metrics needs to be combined appropriately with other metrics
+    if (!checkAieDevice(deviceId, handle))
+      return false;
+
+    int counterId = 0;
+    bool runtimeCounters = false;
+
+    // Currently supporting Core, Memory, Interface Tile metrics only. Need to add Memory Tile metrics
+    constexpr int NUM_MODULES = 3;
+
+    // Get the metrics settings
+    std::vector<std::string> metricsConfig;
+
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_core_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_memory_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_interface_tile_metrics());
+//    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_mem_tile_metrics());
+
+    // Process AIE_profile_settings metrics
+    // Each of the metrics can have ; separated multiple values. Process and save all
+    std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
+
+    std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
+
+    for(int module = 0; module < NUM_MODULES; ++module) {
+      if (metricsConfig.empty()){
+#if 0
+// No need to add the warning message here, as all the tests are using configs under Debug
+        std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
+        std::string metricMsg = "No graph_metric set specified for " + modName + " module. " +
+                                "Please specify the AIE_profile_settings. graph_" + modName + "_metrics setting in your xrt.ini.";
+        xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
+#endif
+        continue;
+      }
+      boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
+
+    }
+
+    // Get AIE clock frequency
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+
+    // Get Channel Id in interface metric ; check all the entries
+    for(auto &interfaceMetric : metricsSettings) {
+      if(3 == interfaceMetric.size()) {
+        // current entry has channel ID
+        try {
+          mChannelId = std::stoi(interfaceMetric.at(2));
+          // Found one channel id, now break the loop
+          break;
+        }
+        catch (...) {
+          mChannelId = -1;
+        }
+      }
+    }
+
+    int numCounters[NUM_MODULES] =
+        {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
+    XAie_ModuleType falModuleTypes[NUM_MODULES] = 
+        {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
+
+    // Configure core, memory, and shim counters
+    for (int module=0; module < NUM_MODULES; ++module) {
+      // Implementation
+    }
+    return true;
+  }
+ 
 } // end namespace xdp
