@@ -32,9 +32,9 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionSoftKernel::init SectionSoftKernel::initializer;
 
-SectionSoftKernel::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(SOFT_KERNEL, "SOFT_KERNEL", boost::factory<SectionSoftKernel*>()); 
+SectionSoftKernel::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(SOFT_KERNEL, "SOFT_KERNEL", boost::factory<SectionSoftKernel*>());
   sectionInfo->supportsSubSections = true;
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::obj));
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));
@@ -53,45 +53,48 @@ SectionSoftKernel::init::init()
 // -------------------------------------------------------------------------
 
 using SubSectionTableCollection = std::vector<std::pair<std::string, SectionSoftKernel::SubSection>>;
-static const SubSectionTableCollection & 
-  getSubSectionTable() 
+static const SubSectionTableCollection&
+getSubSectionTable()
 {
   static const SubSectionTableCollection subSectionTable = {
-                 {"UNKNOWN", SectionSoftKernel::SubSection::unknown},
-                 {"OBJ", SectionSoftKernel::SubSection::obj},
-                 {"METADATA", SectionSoftKernel::SubSection::metadata}
+    { "UNKNOWN", SectionSoftKernel::SubSection::unknown },
+    { "OBJ", SectionSoftKernel::SubSection::obj },
+    { "METADATA", SectionSoftKernel::SubSection::metadata }
   };
   return subSectionTable;
 }
 
-SectionSoftKernel::SubSection 
-SectionSoftKernel::getSubSectionEnum(const std::string & sSubSectionName){
+SectionSoftKernel::SubSection
+SectionSoftKernel::getSubSectionEnum(const std::string& sSubSectionName)
+{
   auto subSectionTable = getSubSectionTable();
-  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto& entry) {return boost::iequals(entry.first, sSubSectionName);});
 
   if (iter == subSectionTable.end())
     return SubSection::unknown;
 
-  return iter->second; 
+  return iter->second;
 }
 
 // -------------------------------------------------------------------------
 
-const std::string &
-SectionSoftKernel::getSubSectionName(SectionSoftKernel::SubSection eSubSection){
+const std::string&
+SectionSoftKernel::getSubSectionName(SectionSoftKernel::SubSection eSubSection)
+{
   auto subSectionTable = getSubSectionTable();
-  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto& entry) {return entry.second == eSubSection;});
 
-  if (iter == subSectionTable.end()) 
+  if (iter == subSectionTable.end())
     return getSubSectionName(SubSection::unknown);
 
-  return iter->first; 
+  return iter->first;
 }
 
 // -------------------------------------------------------------------------
 
 bool
-SectionSoftKernel::subSectionExists(const std::string& _sSubSectionName) const {
+SectionSoftKernel::subSectionExists(const std::string& _sSubSectionName) const
+{
 
   // No buffer no subsections
   if (m_pBuffer == nullptr) {
@@ -99,10 +102,10 @@ SectionSoftKernel::subSectionExists(const std::string& _sSubSectionName) const {
   }
 
   // There is a sub-system
-  
+
   // Determine if the metadata section has been initialized by the user.
   // If not then it doesn't really exist
-  
+
   // Extract the sub-section entry type
   SubSection eSS = getSubSectionEnum(_sSubSectionName);
 
@@ -141,7 +144,8 @@ void
 SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
                                             unsigned int _origSectionSize,
                                             std::istream& _istream,
-                                            std::ostringstream& _buffer) const {
+                                            std::ostringstream& _buffer) const
+{
   XUtil::TRACE("SectionSoftKernel::CopyBufferUpdateMetadata");
 
   // Do we have enough room to overlay the header structure
@@ -164,12 +168,12 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
                              "  mpo_md5_value (0x%lx): '%s'\n"
                              "  mpo_symbol_name (0x%lx): '%s'\n"
                              "  m_num_instances: %d")
-                             % pHdr->mpo_name % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_name)
-                             % pHdr->m_image_offset % pHdr->m_image_size
-                             % pHdr->mpo_version % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_version)
-                             % pHdr->mpo_md5_value % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_md5_value)
-                             % pHdr->mpo_symbol_name % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_symbol_name)
-                             % pHdr->m_num_instances);
+               % pHdr->mpo_name % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_name)
+               % pHdr->m_image_offset % pHdr->m_image_size
+               % pHdr->mpo_version % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_version)
+               % pHdr->mpo_md5_value % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_md5_value)
+               % pHdr->mpo_symbol_name % (reinterpret_cast<const char*>(pHdr) + pHdr->mpo_symbol_name)
+               % pHdr->m_num_instances);
 
   // Get the JSON metadata
   _istream.seekg(0, _istream.end);             // Go to the beginning
@@ -208,7 +212,7 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     }
 
     softKernelHdr.mpo_name = sizeof(soft_kernel) + stringBlock.tellp();
-    stringBlock << sValue << '\0';   
+    stringBlock << sValue << '\0';
     XUtil::TRACE(boost::format("  mpo_name (0x%lx): '%s'") % softKernelHdr.mpo_name % sValue);
   }
 
@@ -241,8 +245,8 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     // DRC Check checking to see if the maximum symbol name length has been violated
     constexpr unsigned int MAX_SYMBOL_NAME_LENGTH = 19;
     if (sValue.length() > MAX_SYMBOL_NAME_LENGTH) {
-      auto errMsg = boost::format("ERROR: The given symbol name '%s' (length %d) exceeds the maximum support length of %d characters.") 
-                                  % sValue % sValue.length() % MAX_SYMBOL_NAME_LENGTH;
+      auto errMsg = boost::format("ERROR: The given symbol name '%s' (length %d) exceeds the maximum support length of %d characters.")
+          % sValue % sValue.length() % MAX_SYMBOL_NAME_LENGTH;
       throw std::runtime_error(errMsg.str());
     }
   }
@@ -285,7 +289,8 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 // -------------------------------------------------------------------------
 
 void
-SectionSoftKernel::createDefaultImage(std::istream& _istream, std::ostringstream& _buffer) const {
+SectionSoftKernel::createDefaultImage(std::istream& _istream, std::ostringstream& _buffer) const
+{
   XUtil::TRACE("SOFT_KERNEL-OBJ");
 
   soft_kernel softKernelHdr = soft_kernel{0};
@@ -295,10 +300,10 @@ SectionSoftKernel::createDefaultImage(std::istream& _istream, std::ostringstream
   {
     // Have all of the mpo (member, point, offset) values point to the zero length terminate string
     softKernelHdr.mpo_name = sizeof(soft_kernel) + stringBlock.tellp();
-    stringBlock << getSectionIndexName() << '\0';   
+    stringBlock << getSectionIndexName() << '\0';
 
-    uint32_t mpo_emptyChar = sizeof(soft_kernel) + stringBlock.tellp();   
-    stringBlock << '\0';   
+    uint32_t mpo_emptyChar = sizeof(soft_kernel) + stringBlock.tellp();
+    stringBlock << '\0';
 
     softKernelHdr.mpo_version = mpo_emptyChar;
     softKernelHdr.mpo_md5_value = mpo_emptyChar;
@@ -326,7 +331,7 @@ SectionSoftKernel::createDefaultImage(std::istream& _istream, std::ostringstream
     std::unique_ptr<unsigned char> memBuffer(new unsigned char[softKernelHdr.m_image_size]);
     _istream.seekg(0);
     _istream.clear();
-    _istream.read(reinterpret_cast<char *>(memBuffer.get()), softKernelHdr.m_image_size);
+    _istream.read(reinterpret_cast<char*>(memBuffer.get()), softKernelHdr.m_image_size);
 
     _buffer.write(reinterpret_cast<const char*>(memBuffer.get()), softKernelHdr.m_image_size);
   }
@@ -340,7 +345,8 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
                                   std::istream& _istream,
                                   const std::string& _sSubSectionName,
                                   Section::FormatType _eFormatType,
-                                  std::ostringstream& _buffer) const {
+                                  std::ostringstream& _buffer) const
+{
   // Determine the sub-section of interest
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
@@ -388,7 +394,8 @@ SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
 // -------------------------------------------------------------------------
 
 void
-SectionSoftKernel::writeObjImage(std::ostream& _oStream) const {
+SectionSoftKernel::writeObjImage(std::ostream& _oStream) const
+{
   XUtil::TRACE("SectionSoftKernel::writeObjImage");
 
   // Overlay the structure
@@ -399,16 +406,17 @@ SectionSoftKernel::writeObjImage(std::ostream& _oStream) const {
   }
 
   // No look at the data
-  auto pHdr = reinterpret_cast<soft_kernel *>(m_pBuffer);
+  auto pHdr = reinterpret_cast<soft_kernel*>(m_pBuffer);
 
-  auto pFWBuffer = reinterpret_cast<const char *>(pHdr) + pHdr->m_image_offset;
+  auto pFWBuffer = reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset;
   _oStream.write(pFWBuffer, pHdr->m_image_size);
 }
 
 // -------------------------------------------------------------------------
 
 void
-SectionSoftKernel::writeMetadata(std::ostream& _oStream) const {
+SectionSoftKernel::writeMetadata(std::ostream& _oStream) const
+{
   XUtil::TRACE("SOFTKERNEL-METADATA");
 
   // Overlay the structure
@@ -418,7 +426,7 @@ SectionSoftKernel::writeMetadata(std::ostream& _oStream) const {
     throw std::runtime_error(errMsg.str());
   }
 
-  auto pHdr = reinterpret_cast<soft_kernel *>(m_pBuffer);
+  auto pHdr = reinterpret_cast<soft_kernel*>(m_pBuffer);
 
   XUtil::TRACE(boost::format("Original: \n"
                              "  mpo_name (0x%lx): '%s'\n"
@@ -427,20 +435,20 @@ SectionSoftKernel::writeMetadata(std::ostream& _oStream) const {
                              "  mpo_md5_value (0x%lx): '%s'\n"
                              "  mpo_symbol_name (0x%lx): '%s'\n"
                              "  m_num_instances: %d")
-                             % pHdr->mpo_name % (reinterpret_cast<char *>(pHdr) + pHdr->mpo_name)
-                             % pHdr->m_image_offset % pHdr->m_image_size
-                             % pHdr->mpo_version % (reinterpret_cast<char *>(pHdr) + pHdr->mpo_version)
-                             % pHdr->mpo_md5_value % (reinterpret_cast<char *>(pHdr) + pHdr->mpo_md5_value)
-                             % pHdr->mpo_symbol_name % (reinterpret_cast<char *>(pHdr) + pHdr->mpo_symbol_name)
-                             % pHdr->m_num_instances);
+               % pHdr->mpo_name % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_name)
+               % pHdr->m_image_offset % pHdr->m_image_size
+               % pHdr->mpo_version % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_version)
+               % pHdr->mpo_md5_value % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_md5_value)
+               % pHdr->mpo_symbol_name % (reinterpret_cast<char*>(pHdr) + pHdr->mpo_symbol_name)
+               % pHdr->m_num_instances);
 
   // Convert the data from the binary format to JSON
   boost::property_tree::ptree ptSoftKernel;
 
-  ptSoftKernel.put("mpo_name", reinterpret_cast<char *>(pHdr) + pHdr->mpo_name);
-  ptSoftKernel.put("mpo_version", reinterpret_cast<char *>(pHdr) + pHdr->mpo_version);
-  ptSoftKernel.put("mpo_md5_value", reinterpret_cast<char *>(pHdr) + pHdr->mpo_md5_value);
-  ptSoftKernel.put("mpo_symbol_name", reinterpret_cast<char *>(pHdr) + pHdr->mpo_symbol_name);
+  ptSoftKernel.put("mpo_name", reinterpret_cast<char*>(pHdr) + pHdr->mpo_name);
+  ptSoftKernel.put("mpo_version", reinterpret_cast<char*>(pHdr) + pHdr->mpo_version);
+  ptSoftKernel.put("mpo_md5_value", reinterpret_cast<char*>(pHdr) + pHdr->mpo_md5_value);
+  ptSoftKernel.put("mpo_symbol_name", reinterpret_cast<char*>(pHdr) + pHdr->mpo_symbol_name);
   ptSoftKernel.put("m_num_instances", (boost::format("%d") % pHdr->m_num_instances).str());
 
   boost::property_tree::ptree root;
@@ -454,7 +462,8 @@ SectionSoftKernel::writeMetadata(std::ostream& _oStream) const {
 void
 SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
                                    FormatType _eFormatType,
-                                   std::fstream&  _oStream) const {
+                                   std::fstream&  _oStream) const
+{
   // Some basic DRC checks
   if (m_pBuffer == nullptr) {
     std::string errMsg = "ERROR: Soft Kernel section does not exist.";
@@ -494,7 +503,8 @@ SectionSoftKernel::writeSubPayload(const std::string& _sSubSectionName,
 }
 
 void
-SectionSoftKernel::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader) {
+SectionSoftKernel::readXclBinBinary(std::istream& _istream, const axlf_section_header& _sectionHeader)
+{
   Section::readXclBinBinary(_istream, _sectionHeader);
 
   // Extract the binary data as a JSON string
@@ -514,7 +524,7 @@ SectionSoftKernel::readXclBinBinary(std::istream& _istream, const axlf_section_h
   boost::property_tree::ptree& ptSoftKernel = pt.get_child("soft_kernel_metadata");
 
   XUtil::TRACE_PrintTree("Current SOFT_KERNEL contents", pt);
-  std::string sName = ptSoftKernel.get<std::string>("mpo_name"); 
+  std::string sName = ptSoftKernel.get<std::string>("mpo_name");
 
   Section::m_sIndexName = sName;
 }

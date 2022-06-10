@@ -25,7 +25,7 @@
 namespace XUtil = XclBinUtilities;
 
 std::string
-XclBinUtilities::enum_to_string(MajorTypes const majorType) 
+XclBinUtilities::enum_to_string(MajorTypes const majorType)
 {
   switch (majorType) {
     case MajorTypes::positive_integer:
@@ -53,7 +53,7 @@ XclBinUtilities::enum_to_string(MajorTypes const majorType)
 
 std::string
 XclBinUtilities::encode_major_type(const MajorTypes majorType,
-                                   const uint64_t count) 
+                                   const uint64_t count)
 {
   XUtil::TRACE((boost::format("CBOR: [Encode] %s(%d), Count: %d") % enum_to_string(majorType) % static_cast<unsigned int>(majorType) % count).str());
 
@@ -101,19 +101,19 @@ XclBinUtilities::encode_major_type(const MajorTypes majorType,
 }
 
 std::string
-XclBinUtilities::encode_positive_integer(const uint64_t intValue) 
+XclBinUtilities::encode_positive_integer(const uint64_t intValue)
 {
   return encode_major_type(MajorTypes::positive_integer, intValue);
 }
 
 std::string
-XclBinUtilities::encode_negative_integer(const uint64_t intValue) 
+XclBinUtilities::encode_negative_integer(const uint64_t intValue)
 {
   return encode_major_type(MajorTypes::negative_integer, intValue);
 }
 
 std::string
-XclBinUtilities::encode_text_string(const std::string& text_string) 
+XclBinUtilities::encode_text_string(const std::string& text_string)
 {
   std::string encodeBuf = encode_major_type(MajorTypes::text_string, text_string.length());
   encodeBuf += text_string;
@@ -123,7 +123,7 @@ XclBinUtilities::encode_text_string(const std::string& text_string)
 }
 
 std::string
-XclBinUtilities::encode_byte_string(const std::string& byte_string) 
+XclBinUtilities::encode_byte_string(const std::string& byte_string)
 {
   std::string encodeBuf = encode_major_type(MajorTypes::byte_string, byte_string.length());
   encodeBuf += byte_string;
@@ -135,7 +135,7 @@ XclBinUtilities::encode_byte_string(const std::string& byte_string)
 
 static
 void
-read_buffer(std::istream& istr, uint8_t* outBuffer, uint64_t size) 
+read_buffer(std::istream& istr, uint8_t* outBuffer, uint64_t size)
 {
   istr.read(reinterpret_cast<char*>(outBuffer), size);
 
@@ -149,7 +149,7 @@ read_buffer(std::istream& istr, uint8_t* outBuffer, uint64_t size)
 
 static
 uint8_t
-get_char(std::istream& istr) 
+get_char(std::istream& istr)
 {
   uint8_t nextChar = 0;
   read_buffer(istr, &nextChar, sizeof(uint8_t));
@@ -158,7 +158,7 @@ get_char(std::istream& istr)
 }
 
 std::string
-XclBinUtilities::get_string(std::istream& istr, uint64_t size) 
+XclBinUtilities::get_string(std::istream& istr, uint64_t size)
 {
   // Reserve and initialize the memory to copy the string into
   std::vector<uint8_t> vecBuffer(size, 0);
@@ -169,7 +169,7 @@ XclBinUtilities::get_string(std::istream& istr, uint64_t size)
 
 void
 XclBinUtilities::get_next_type_and_count(std::istream& istr,
-                                         MajorTypes& majorType, uint64_t& count) 
+                                         MajorTypes& majorType, uint64_t& count)
 {
   // Make sure we have data that can be examined
   uint8_t commandByte = get_char(istr);
