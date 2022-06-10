@@ -49,7 +49,7 @@ GetBMCFWImage( "AlveoGen1" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmwar
 GetBMCFWImage( "AlveoGen2" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/master-U280/BMC-card-firmware" )
 GetBMCFWImage( "AlveoGen3" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/U280-prod/BMC-card-firmware" )
 GetBMCFWImage( "AlveoGen4" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/U50/BMC-card-firmware")
-GetBMCFWImage( "AlveoGen5" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/V350/BMC-card-firmware")
+GetBMCFWImage( "AlveoGen5" "https://raw.gitenterprise.xilinx.com/XBB/BMC-firmware-binaries/v350/BMC-card-firmware")
 
 # ================= INSTALL FIRMWARE IMAGES =========================
 install (FILES ${ALVEO_FW_FILES} DESTINATION ${ERT_INSTALL_PREFIX})
