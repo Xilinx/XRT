@@ -2,9 +2,9 @@
 # Signing xclbin images are currently only support on Linux
 
 # cmake 3.19 and after emits warning about this policy not being set
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)
+if((CMAKE_VERSION VERSION_GREATER 3.19) OR (CMAKE_VERSION VERSION_EQUAL 3.19))
   cmake_policy(SET CMP0110 NEW)
-endif(CMAKE_VERSION VERSION_GREATER_EQUAL 3.19)
+endif()
 
 if(NOT WIN32)
   find_package(OpenSSL REQUIRED)
