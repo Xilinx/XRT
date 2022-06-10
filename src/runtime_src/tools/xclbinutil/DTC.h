@@ -29,21 +29,21 @@ class DTC {
   DTC();
 
  public:
-  DTC(const char* _pBuffer, const unsigned int _size, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
-  DTC(const boost::property_tree::ptree &_ptDTC, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
+  DTC(const char* _pBuffer, const unsigned int _size, const FDTProperty::PropertyNameFormat& _propertyNameFormat);
+  DTC(const boost::property_tree::ptree& _ptDTC, const FDTProperty::PropertyNameFormat& _propertyNameFormat);
   virtual ~DTC();
 
  public:
-  void marshalToJSON(boost::property_tree::ptree &_dtcTree, const FDTProperty::PropertyNameFormat & _propertyNameFormat) const;
+  void marshalToJSON(boost::property_tree::ptree& _dtcTree, const FDTProperty::PropertyNameFormat& _propertyNameFormat) const;
   void marshalToDTC(std::ostringstream& _buf) const;
 
  protected:
-  void marshalFromDTCImage( const char* _pBuffer, const unsigned int _size, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
-  void marshalFromJSON(const boost::property_tree::ptree &_ptDTC, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
+  void marshalFromDTCImage(const char* _pBuffer, const unsigned int _size, const FDTProperty::PropertyNameFormat& _propertyNameFormat);
+  void marshalFromJSON(const boost::property_tree::ptree& _ptDTC, const FDTProperty::PropertyNameFormat& _propertyNameFormat);
 
  private:
   DTCStringsBlock m_DTCStringsBlock;    // Block of property strings
-  FDTNode * m_pTopFDTNode;              // Top FDTNode
+  FDTNode* m_pTopFDTNode;              // Top FDTNode
 };
 
 #endif

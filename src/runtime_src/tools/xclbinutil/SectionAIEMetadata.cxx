@@ -26,7 +26,7 @@ namespace XUtil = XclBinUtilities;
 // ----------------------------------------------------------------------------
 SectionAIEMetadata::init SectionAIEMetadata::initializer;
 
-SectionAIEMetadata::init::init() 
+SectionAIEMetadata::init::init()
 {
   auto sectionInfo = std::make_unique<SectionInfo>(AIE_METADATA, "AIE_METADATA", boost::factory<SectionAIEMetadata*>());
 
@@ -41,42 +41,42 @@ SectionAIEMetadata::init::init()
 
 // ----------------------------------------------------------------------------
 
-void 
-SectionAIEMetadata::marshalToJSON( char* _pDataSection, 
-                                   unsigned int _sectionSize, 
-                                   boost::property_tree::ptree& _ptree) const
+void
+SectionAIEMetadata::marshalToJSON(char* _pDataSection,
+                                  unsigned int _sectionSize,
+                                  boost::property_tree::ptree& _ptree) const
 {
-    XUtil::TRACE("");
-    XUtil::TRACE("Extracting: AIE_METADATA");
+  XUtil::TRACE("");
+  XUtil::TRACE("Extracting: AIE_METADATA");
 
-    std::vector <unsigned char> memBuffer(_sectionSize + 1);  // Extra byte for "null terminate" char
-    memcpy((char *) memBuffer.data(), _pDataSection, _sectionSize);
-    memBuffer[_sectionSize] = '\0';
+  std::vector<unsigned char> memBuffer(_sectionSize + 1);  // Extra byte for "null terminate" char
+  memcpy((char*)memBuffer.data(), _pDataSection, _sectionSize);
+  memBuffer[_sectionSize] = '\0';
 
-    std::stringstream ss((char*) memBuffer.data());
+  std::stringstream ss((char*)memBuffer.data());
 
-    // TODO: Catch the exception (if any) from this call and produce a nice message
-    XUtil::TRACE_BUF("AIE_METADATA", (const char *) memBuffer.data(), _sectionSize+1);
-    try {
-      boost::property_tree::ptree pt;
-      boost::property_tree::read_json(ss, pt);
-      boost::property_tree::ptree &buildMetaData = pt.get_child("aie_metadata");
-      _ptree.add_child("aie_metadata", buildMetaData);
-    } catch (const std::exception & e) {
-      std::string msg("ERROR: Bad JSON format detected while marshaling AIE metadata (");
-      msg += e.what();
-      msg += ").";
-      throw std::runtime_error(msg);
-    }
+  // TODO: Catch the exception (if any) from this call and produce a nice message
+  XUtil::TRACE_BUF("AIE_METADATA", (const char*)memBuffer.data(), _sectionSize + 1);
+  try {
+    boost::property_tree::ptree pt;
+    boost::property_tree::read_json(ss, pt);
+    boost::property_tree::ptree& buildMetaData = pt.get_child("aie_metadata");
+    _ptree.add_child("aie_metadata", buildMetaData);
+  } catch (const std::exception& e) {
+    std::string msg("ERROR: Bad JSON format detected while marshaling AIE metadata (");
+    msg += e.what();
+    msg += ").";
+    throw std::runtime_error(msg);
+  }
 }
 
-void 
-SectionAIEMetadata::marshalFromJSON( const boost::property_tree::ptree& _ptSection, 
-                                       std::ostringstream& _buf) const
+void
+SectionAIEMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
+                                    std::ostringstream& _buf) const
 {
-   XUtil::TRACE("AIE_METADATA");
-   boost::property_tree::ptree ptWritable = _ptSection;
-   boost::property_tree::write_json(_buf, ptWritable, false );
+  XUtil::TRACE("AIE_METADATA");
+  boost::property_tree::ptree ptWritable = _ptSection;
+  boost::property_tree::write_json(_buf, ptWritable, false);
 }
 
 

@@ -32,9 +32,9 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionBMC::init SectionBMC::initializer;
 
-SectionBMC::init::init() 
+SectionBMC::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(BMC, "BMC", boost::factory<SectionBMC*>()); 
+  auto sectionInfo = std::make_unique<SectionInfo>(BMC, "BMC", boost::factory<SectionBMC*>());
   sectionInfo->supportsSubSections = true;
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::fw));
   sectionInfo->subSections.push_back(getSubSectionName(SubSection::metadata));
@@ -49,48 +49,50 @@ SectionBMC::init::init()
 }
 
 using SubSectionTableCollection = std::vector<std::pair<std::string, SectionBMC::SubSection>>;
-static const SubSectionTableCollection & 
-  getSubSectionTable() 
+static const SubSectionTableCollection&
+getSubSectionTable()
 {
   static const SubSectionTableCollection subSectionTable = {
-    {"UNKNOWN", SectionBMC::SubSection::unknown},
-    {"FW", SectionBMC::SubSection::fw},
-    {"METADATA", SectionBMC::SubSection::metadata}
+    { "UNKNOWN", SectionBMC::SubSection::unknown },
+    { "FW", SectionBMC::SubSection::fw },
+    { "METADATA", SectionBMC::SubSection::metadata }
   };
 
   return subSectionTable;
 }
 
 
-SectionBMC::SubSection 
-SectionBMC::getSubSectionEnum(const std::string & sSubSectionName)
+SectionBMC::SubSection
+SectionBMC::getSubSectionEnum(const std::string& sSubSectionName)
 {
-  const auto & subSectionTable = getSubSectionTable();
-  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return boost::iequals(entry.first, sSubSectionName); });
+  const auto& subSectionTable = getSubSectionTable();
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto& entry) {return boost::iequals(entry.first, sSubSectionName);});
 
   if (iter == subSectionTable.end())
     return SubSection::unknown;
 
-  return iter->second; 
+  return iter->second;
 }
 
 // -------------------------------------------------------------------------
 
-const std::string &
-SectionBMC::getSubSectionName(SectionBMC::SubSection eSubSection) {
+const std::string&
+SectionBMC::getSubSectionName(SectionBMC::SubSection eSubSection)
+{
   auto subSectionTable = getSubSectionTable();
-  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto &entry) { return entry.second == eSubSection; });
+  auto iter = std::find_if(subSectionTable.begin(), subSectionTable.end(), [&](const auto& entry) {return entry.second == eSubSection;});
 
   if (iter == subSectionTable.end())
     return getSubSectionName(SubSection::unknown);
 
-  return iter->first; 
+  return iter->first;
 }
 
 // -------------------------------------------------------------------------
 
 bool
-SectionBMC::subSectionExists(const std::string& _sSubSectionName) const {
+SectionBMC::subSectionExists(const std::string& _sSubSectionName) const
+{
   // No buffer no subsections
   if (m_pBuffer == nullptr) {
     return false;
@@ -99,24 +101,24 @@ SectionBMC::subSectionExists(const std::string& _sSubSectionName) const {
   SubSection eSS = getSubSectionEnum(_sSubSectionName);
 
   if (eSS == SubSection::metadata) {
-     std::ostringstream buffer;
-     writeMetadata(buffer);
+    std::ostringstream buffer;
+    writeMetadata(buffer);
 
-     std::stringstream ss;
-     const std::string &sBuffer = buffer.str();
-     ss.write((char*) sBuffer.c_str(), sBuffer.size());
+    std::stringstream ss;
+    const std::string& sBuffer = buffer.str();
+    ss.write((char*)sBuffer.c_str(), sBuffer.size());
 
-     boost::property_tree::ptree pt;
-     boost::property_tree::read_json(ss, pt);
+    boost::property_tree::ptree pt;
+    boost::property_tree::read_json(ss, pt);
 
-     boost::property_tree::ptree &ptBMC = pt.get_child("bmc_metadata");
+    boost::property_tree::ptree& ptBMC = pt.get_child("bmc_metadata");
 
-     if ((ptBMC.get<std::string>("m_image_name") == "") &&
-         (ptBMC.get<std::string>("m_device_name") == "") &&
-         (ptBMC.get<std::string>("m_version") == "") &&
-         (ptBMC.get<std::string>("m_md5value") == "")) {
-       return false;
-     }
+    if ((ptBMC.get<std::string>("m_image_name") == "") &&
+        (ptBMC.get<std::string>("m_device_name") == "") &&
+        (ptBMC.get<std::string>("m_version") == "") &&
+        (ptBMC.get<std::string>("m_md5value") == "")) {
+      return false;
+    }
   }
   return true;
 }
@@ -124,10 +126,10 @@ SectionBMC::subSectionExists(const std::string& _sSubSectionName) const {
 // -------------------------------------------------------------------------
 
 void
-SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection, 
-                                     unsigned int _origSectionSize,  
-                                     std::istream& _istream, 
-                                     std::ostringstream &_buffer) const
+SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
+                                     unsigned int _origSectionSize,
+                                     std::istream& _istream,
+                                     std::ostringstream& _buffer) const
 {
   XUtil::TRACE("SectionBMC::CopyBufferUpdateMetadata");
 
@@ -139,27 +141,27 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // Overlay the structure
   // Do we have enough room to overlay the header structure
-  if ( _origSectionSize < sizeof(bmc) ) {
+  if (_origSectionSize < sizeof(bmc)) {
     auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)") % _origSectionSize % sizeof(bmc);
     throw std::runtime_error(errMsg.str());
   }
 
-  bmc *pHdr = (bmc *) copyBuffer.get();
+  bmc* pHdr = (bmc*)copyBuffer.get();
 
   XUtil::TRACE_BUF("bmc", reinterpret_cast<const char*>(pHdr), sizeof(bmc));
-  
-  XUtil::TRACE(boost::format("Original: m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'") 
-                             % pHdr->m_offset
-                             % pHdr->m_size
-                             % pHdr->m_image_name
-                             % pHdr->m_device_name
-                             % pHdr->m_version
-                             % pHdr->m_md5value);
+
+  XUtil::TRACE(boost::format("Original: m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'")
+               % pHdr->m_offset
+               % pHdr->m_size
+               % pHdr->m_image_name
+               % pHdr->m_device_name
+               % pHdr->m_version
+               % pHdr->m_md5value);
 
   uint64_t expectedSize = pHdr->m_offset + pHdr->m_size;
 
-  // Check to see if array size  
-  if ( expectedSize > _origSectionSize ) {
+  // Check to see if array size
+  if (expectedSize > _origSectionSize) {
     auto errMsg = boost::format("ERROR: bmc section size (0x%lx) exceeds the given segment size (0x%lx).") % expectedSize % _origSectionSize;
     throw std::runtime_error(errMsg.str());
   }
@@ -167,7 +169,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   // ----------------------
 
   // Get the JSON metadata
-  _istream.seekg( 0, _istream.end );
+  _istream.seekg(0, _istream.end);
   std::streamsize fileSize = _istream.tellg();
 
   std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
@@ -179,7 +181,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // Convert the JSON file to a boost property tree
   std::stringstream ss;
-  ss.write((char*) memBuffer.get(), fileSize);
+  ss.write((char*)memBuffer.get(), fileSize);
 
   boost::property_tree::ptree pt;
   boost::property_tree::read_json(ss, pt);
@@ -187,82 +189,82 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   // ----------------------
 
   // Extract and update the data
-  boost::property_tree::ptree &ptBMC = pt.get_child("bmc_metadata");
+  boost::property_tree::ptree& ptBMC = pt.get_child("bmc_metadata");
 
   // Image Name
   auto sImageName = ptBMC.get<std::string>("m_image_name");
-  if ( sImageName.length() >= sizeof(bmc::m_image_name) ) {
+  if (sImageName.length() >= sizeof(bmc::m_image_name)) {
     auto errMsg = boost::format("ERROR: The m_image_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
-                                % (int) sImageName.length() % (unsigned int) sizeof(bmc::m_image_name) % sImageName;
+        % (int)sImageName.length() % (unsigned int)sizeof(bmc::m_image_name) % sImageName;
     throw std::runtime_error(errMsg.str());
   }
-  memcpy( pHdr->m_image_name, sImageName.c_str(), sImageName.length() + 1);
+  memcpy(pHdr->m_image_name, sImageName.c_str(), sImageName.length() + 1);
 
   // Device Name
   auto sDeviceName = ptBMC.get<std::string>("m_device_name");
-  if ( sDeviceName.length() >= sizeof(bmc::m_device_name) ) {
+  if (sDeviceName.length() >= sizeof(bmc::m_device_name)) {
     auto errMsg = boost::format("ERROR: The m_device_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
-                                % (int) sDeviceName.length() % (unsigned int) sizeof(bmc::m_device_name) % sDeviceName;
+        % (int)sDeviceName.length() % (unsigned int)sizeof(bmc::m_device_name) % sDeviceName;
     throw std::runtime_error(errMsg.str());
   }
-  memcpy( pHdr->m_device_name, sDeviceName.c_str(), sDeviceName.length() + 1);
+  memcpy(pHdr->m_device_name, sDeviceName.c_str(), sDeviceName.length() + 1);
 
   // Version
   auto sVersion = ptBMC.get<std::string>("m_version");
-  if ( sVersion.length() >= sizeof(bmc::m_version) ) {
+  if (sVersion.length() >= sizeof(bmc::m_version)) {
     auto errMsg = boost::format("ERROR: The m_version entry length (%d), exceeds the allocated space (%d).  Version: '%s'")
-                                % (int) sVersion.length() % (unsigned int) sizeof(bmc::m_version) % sVersion;
+        % (int)sVersion.length() % (unsigned int)sizeof(bmc::m_version) % sVersion;
     throw std::runtime_error(errMsg.str());
   }
-  memcpy( pHdr->m_version, sVersion.c_str(), sVersion.length() + 1);
+  memcpy(pHdr->m_version, sVersion.c_str(), sVersion.length() + 1);
 
   // MD5 Value
   auto sMD5Value = ptBMC.get<std::string>("m_md5value");
-  if ( sMD5Value.length() >= sizeof(bmc::m_md5value) ) {
+  if (sMD5Value.length() >= sizeof(bmc::m_md5value)) {
     auto errMsg = boost::format("ERROR: The m_md5value entry length (%d), exceeds the allocated space (%d).  Value: '%s'")
-                                % (int) sMD5Value.length() % (unsigned int) sizeof(bmc::m_md5value) % sMD5Value;
+        % (int)sMD5Value.length() % (unsigned int)sizeof(bmc::m_md5value) % sMD5Value;
     throw std::runtime_error(errMsg.str());
   }
-  memcpy( pHdr->m_md5value, sMD5Value.c_str(), sMD5Value.length() + 1);
+  memcpy(pHdr->m_md5value, sMD5Value.c_str(), sMD5Value.length() + 1);
 
   XUtil::TRACE(boost::format("Modified: m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'")
-                             % pHdr->m_offset
-                             % pHdr->m_size
-                             % pHdr->m_image_name
-                             % pHdr->m_device_name
-                             % pHdr->m_version
-                             % pHdr->m_md5value);
-  // ----------------------  
+               % pHdr->m_offset
+               % pHdr->m_size
+               % pHdr->m_image_name
+               % pHdr->m_device_name
+               % pHdr->m_version
+               % pHdr->m_md5value);
+  // ----------------------
 
   // Copy the output to the output buffer.
-  _buffer.write((const char *) copyBuffer.get(), _origSectionSize);
+  _buffer.write((const char*)copyBuffer.get(), _origSectionSize);
 }
 
 // -------------------------------------------------------------------------
 
 void
-SectionBMC::createDefaultFWImage(std::istream & _istream, std::ostringstream &_buffer) const
+SectionBMC::createDefaultFWImage(std::istream& _istream, std::ostringstream& _buffer) const
 {
-  bmc bmcHdr = bmc {0};
+  bmc bmcHdr = bmc{0};
 
   XUtil::TRACE("BMC-FW");
-  
+
   // Determine if the file can be opened and its size
   {
-    _istream.seekg( 0, _istream.end );
+    _istream.seekg(0, _istream.end);
 
     static_assert(sizeof(std::streamsize) <= sizeof(uint64_t), "std::streamsize precision is greater then 64 bits");
-    bmcHdr.m_size = (uint64_t) _istream.tellg();
+    bmcHdr.m_size = (uint64_t)_istream.tellg();
     bmcHdr.m_offset = sizeof(bmc);
   }
-  
-  XUtil::TRACE(boost::format("Default: m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'") 
-                             % bmcHdr.m_offset
-                             % bmcHdr.m_size
-                             % bmcHdr.m_image_name
-                             % bmcHdr.m_device_name
-                             % bmcHdr.m_version
-                             % bmcHdr.m_md5value);
+
+  XUtil::TRACE(boost::format("Default: m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'")
+               % bmcHdr.m_offset
+               % bmcHdr.m_size
+               % bmcHdr.m_image_name
+               % bmcHdr.m_device_name
+               % bmcHdr.m_version
+               % bmcHdr.m_md5value);
 
   XUtil::TRACE_BUF("bmc", reinterpret_cast<const char*>(&bmcHdr), sizeof(bmc));
 
@@ -273,24 +275,24 @@ SectionBMC::createDefaultFWImage(std::istream & _istream, std::ostringstream &_b
   {
 
 
-    std::unique_ptr<unsigned char> memBuffer( new unsigned char[ bmcHdr.m_size ] );
+    std::unique_ptr<unsigned char> memBuffer(new unsigned char[bmcHdr.m_size]);
     _istream.seekg(0);
     _istream.clear();
-    _istream.read( (char*) memBuffer.get(), bmcHdr.m_size );
+    _istream.read((char*)memBuffer.get(), bmcHdr.m_size);
 
-    _buffer.write(reinterpret_cast<const char*>(memBuffer.get()), bmcHdr.m_size );
+    _buffer.write(reinterpret_cast<const char*>(memBuffer.get()), bmcHdr.m_size);
   }
 }
 
 // -------------------------------------------------------------------------
 
-void 
-SectionBMC::readSubPayload(const char* _pOrigDataSection, 
-                           unsigned int _origSectionSize,  
-                           std::istream& _istream, 
-                           const std::string & _sSubSectionName, 
+void
+SectionBMC::readSubPayload(const char* _pOrigDataSection,
+                           unsigned int _origSectionSize,
+                           std::istream& _istream,
+                           const std::string& _sSubSectionName,
                            Section::FormatType _eFormatType,
-                           std::ostringstream &_buffer) const
+                           std::ostringstream& _buffer) const
 {
   SubSection eSubSection = getSubSectionEnum(_sSubSectionName);
 
@@ -310,8 +312,7 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
       createDefaultFWImage(_istream, _buffer);
       break;
 
-    case SubSection::metadata:
-      {
+    case SubSection::metadata: {
         // Some basic DRC checks
         if (_pOrigDataSection == nullptr) {
           std::string errMsg = "ERROR: Missing firmware image.  Add the BMC-FW image prior to change its metadata.";
@@ -328,8 +329,7 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
       break;
 
     case SubSection::unknown:
-    default:
-      {
+    default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());
       }
@@ -338,40 +338,42 @@ SectionBMC::readSubPayload(const char* _pOrigDataSection,
 }
 
 void
-SectionBMC::writeFWImage(std::ostream& _oStream) const {
+SectionBMC::writeFWImage(std::ostream& _oStream) const
+{
   // Overlay the structure
   // Do we have enough room to overlay the header structure
-  if ( m_bufferSize < sizeof(bmc) ) {
+  if (m_bufferSize < sizeof(bmc)) {
     auto errMsg = boost::format("ERROR: Segment size (%u) is smaller than the size of the bmc structure (%d)") % m_bufferSize % sizeof(bmc);
     throw std::runtime_error(errMsg.str());
   }
 
-  bmc *pHdr = (bmc *) m_pBuffer;
+  bmc* pHdr = (bmc*)m_pBuffer;
 
-  char *pFWBuffer = (char *) pHdr + pHdr->m_offset;
+  char* pFWBuffer = (char*)pHdr + pHdr->m_offset;
   _oStream.write(pFWBuffer, pHdr->m_size);
 }
 
 void
-SectionBMC::writeMetadata(std::ostream& _oStream) const {
+SectionBMC::writeMetadata(std::ostream& _oStream) const
+{
   XUtil::TRACE("BMC-METADATA");
 
   // Overlay the structure
   // Do we have enough room to overlay the header structure
-  if ( m_bufferSize < sizeof(bmc) ) {
+  if (m_bufferSize < sizeof(bmc)) {
     auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)") % m_bufferSize % sizeof(bmc);
     throw std::runtime_error(errMsg.str());
   }
 
-  bmc *pHdr = (bmc *) m_pBuffer;
+  bmc* pHdr = (bmc*)m_pBuffer;
 
   XUtil::TRACE(boost::format("m_offset: 0x%lx, m_size: 0x%lx, m_image_name: '%s', m_device_name: '%s', m_version: '%s', m_md5Value: '%s'")
-                             % pHdr->m_offset
-                             % pHdr->m_size
-                             % pHdr->m_image_name
-                             % pHdr->m_device_name
-                             % pHdr->m_version
-                             % pHdr->m_md5value);
+               % pHdr->m_offset
+               % pHdr->m_size
+               % pHdr->m_image_name
+               % pHdr->m_device_name
+               % pHdr->m_version
+               % pHdr->m_md5value);
 
   // Image Name
   boost::property_tree::ptree ptBMC;
@@ -389,10 +391,11 @@ SectionBMC::writeMetadata(std::ostream& _oStream) const {
 }
 
 
-void 
-SectionBMC::writeSubPayload(const std::string & _sSubSectionName,
-                            FormatType _eFormatType, 
-                            std::fstream&  _oStream) const {
+void
+SectionBMC::writeSubPayload(const std::string& _sSubSectionName,
+                            FormatType _eFormatType,
+                            std::fstream&  _oStream) const
+{
   // Some basic DRC checks
   if (m_pBuffer == nullptr) {
     std::string errMsg = "ERROR: BMC section does not exist.";
@@ -412,8 +415,7 @@ SectionBMC::writeSubPayload(const std::string & _sSubSectionName,
       writeFWImage(_oStream);
       break;
 
-    case SubSection::metadata:
-      {
+    case SubSection::metadata: {
         if (_eFormatType != Section::FormatType::json) {
           std::string errMsg = "ERROR: BMC-METADATA only supports the JSON format.";
           throw std::runtime_error(errMsg);
@@ -424,8 +426,7 @@ SectionBMC::writeSubPayload(const std::string & _sSubSectionName,
       break;
 
     case SubSection::unknown:
-    default:
-      {
+    default: {
         auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s") % _sSubSectionName.c_str() % getSectionKindAsString();
         throw std::runtime_error(errMsg.str());
       }

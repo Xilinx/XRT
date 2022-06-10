@@ -21,9 +21,9 @@
 // Static Variables / Classes
 SectionEmulationData::init SectionEmulationData::initializer;
 
-SectionEmulationData::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(EMULATION_DATA, "EMULATION_DATA", boost::factory<SectionEmulationData*>()); 
+SectionEmulationData::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(EMULATION_DATA, "EMULATION_DATA", boost::factory<SectionEmulationData*>());
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
