@@ -1173,7 +1173,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 		goto out_free;
 	}
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0) || defined(RHEL_8_5_GE)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 	ret = drm_prime_sg_to_page_array(sgt, importing_xobj->pages,
 			attach->dmabuf->size >> PAGE_SHIFT);
 #else
