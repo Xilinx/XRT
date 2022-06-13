@@ -263,7 +263,7 @@ kds_scu_config(struct kds_cu_mgmt *scu_mgmt, struct kds_command *xcmd)
 static bool
 kds_test_refcnt(struct kds_client *client, int domain, u32 idx)
 {
-	u32 *refs;
+	u32 *refs = NULL;
 	bool is_set = false;
 
 	if (domain == DOMAIN_PL)
@@ -498,7 +498,7 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 static u32*
 kds_client_domain_refcnt(struct kds_client *client, int domain)
 {
-	u32 *refs;
+	u32 *refs = NULL;
 
 	switch (domain) {
 	case DOMAIN_PL:
@@ -508,8 +508,7 @@ kds_client_domain_refcnt(struct kds_client *client, int domain)
 		refs = client->refcnt->scu_refs;
 		break;
 	default:
-		refs = NULL;
-		kds_err(client, "Domain(%d) is not expected. Please check domain or extend domain type", domain);
+		kds_err(client, "Domain(%d) is not expected", domain);
 		break;
 	}
 	return refs;
@@ -518,8 +517,8 @@ kds_client_domain_refcnt(struct kds_client *client, int domain)
 static int
 kds_test_and_refcnt_incr(struct kds_client *client, int domain, int cu_idx)
 {
-	int prev;
-	u32 *refs;
+	int prev = 0;
+	u32 *refs = NULL;
 
 	refs = kds_client_domain_refcnt(client, domain);
 	mutex_lock(&client->refcnt->lock);
@@ -532,8 +531,8 @@ kds_test_and_refcnt_incr(struct kds_client *client, int domain, int cu_idx)
 static int
 kds_test_and_refcnt_decr(struct kds_client *client, int domain, int cu_idx)
 {
-	int prev;
-	u32 *refs;
+	int prev = 0;
+	u32 *refs = NULL;
 
 	refs = kds_client_domain_refcnt(client, domain);
 	mutex_lock(&client->refcnt->lock);
@@ -1034,8 +1033,8 @@ is_cu_in_ctx_slot(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit, u
 static u32
 kds_client_get_cu_refcnt(struct kds_client *client, int domain, int idx)
 {
-	u32 ret;
-	u32 *refs;
+	u32 ret = 0;
+	u32 *refs = NULL;
 
 	refs = kds_client_domain_refcnt(client, domain);
 
@@ -1052,7 +1051,7 @@ kds_client_get_cu_refcnt(struct kds_client *client, int domain, int idx)
 static void
 kds_client_set_cu_refs_zero(struct kds_client *client, int domain)
 {
-	u32 *dst;
+	u32 *dst = NULL;
 	u32 len = MAX_CUS * sizeof(u32);
 
 	dst = kds_client_domain_refcnt(client, domain);
