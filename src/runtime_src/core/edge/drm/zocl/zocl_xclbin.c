@@ -285,6 +285,7 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 	uint64_t offset;
 	uint64_t size;
 	void **sect_tmp = (void *)sect;
+	uint64_t copy_size, copy_offset, chunk_size;
 	int err = 0;
 
 	err = xrt_xclbin_section_info(axlf_full, kind, &offset, &size);
@@ -298,9 +299,36 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 	}
 
 	*sect_tmp = vmalloc(size);
+#if defined(CONFIG_PREEMPT)
+	/*
+	 * For pre-emptible kernel copy_from_user fails to copy buffer
+	 * with size greater than 4K bytes
+	 */
+	copy_size = size;
+	chunk_size = 4 * 1024;
+	copy_offset = 0;
+
+	while (copy_size > 0 && !err) {
+		if (copy_size < chunk_size) {
+			err = copy_from_user(*sect_tmp + copy_offset,
+					&xclbin_ptr[offset + copy_offset], copy_size);
+			copy_size = 0;
+		}
+		else {
+			err = copy_from_user(*sect_tmp + copy_offset,
+					&xclbin_ptr[offset + copy_offset], chunk_size);
+			copy_size -= chunk_size;
+			if (err)
+				err += copy_size;
+		}
+		copy_offset += chunk_size;
+	}
+#else
 	err = copy_from_user(*sect_tmp, &xclbin_ptr[offset], size);
+#endif
+
 	if (err) {
-		DRM_WARN("copy_from_user for section %s err: %d ",
+		DRM_WARN("copy_from_user for section %s failed to copy %d bytes",
 		    xrt_xclbin_kind_to_string(kind), err);
 		vfree(*sect_tmp);
 		sect = NULL;
