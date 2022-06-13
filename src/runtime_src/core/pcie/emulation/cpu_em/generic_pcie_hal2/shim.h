@@ -45,7 +45,7 @@
 
 namespace xclcpuemhal2 {
   using key_type = xrt_core::query::key_type;
-  const uint64_t MEMSIZE = 0x0000000080000000;
+  const uint64_t MEMSIZE = 0x0000000200000000;
   const auto endOfSimulationString = "received request to end simulation from connected initiator";
 
   // XDMA Shim

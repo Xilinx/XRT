@@ -169,7 +169,14 @@ namespace xclemulation {
 
   static inline bool is_cacheable(const struct drm_xocl_bo *bo) {
     return (bo->flags & XCL_BO_FLAGS_CACHEABLE);
-  }  
+  }
+
+  static inline bool is_zero_copy(const struct drm_xocl_bo *bo) {
+    bool isCacheable = xclemulation::is_cacheable(bo);
+    bool memCheck = xclemulation::no_host_memory(bo) || xclemulation::xocl_bo_host_only(bo);
+    bool zeroCopy = (memCheck || !isCacheable) ? true : false;
+    return zeroCopy;
+  }
 }
 
 /**

@@ -69,7 +69,7 @@ namespace xclcpuemhal2 {
     buf_size = 0;
 
     deviceName = "device"+std::to_string(deviceIndex);
-    deviceDirectory = xclemulation::getRunDirectory() + "/"+std::to_string(getpid())+"/sw_emu/"+deviceName;
+    deviceDirectory = xclemulation::getRunDirectory() + "/"+std::to_string(getpid()) + "/sw_emu/" + deviceName;
     simulator_started = false;
     mVerbosity = XCL_INFO;
 
@@ -1187,10 +1187,8 @@ namespace xclcpuemhal2 {
   }
   void CpuemShim::resetProgram(bool callingFromClose)
   {
-    auto ismMapEnabled= std::getenv("VITIS_SW_EMU_ENABLE_SINGLE_MMAP");
-    if (ismMapEnabled) {
-      mFdToFileNameMap.clear();
-    } else {
+    auto isSinglemMapDisabled = std::getenv("VITIS_SW_EMU_DISABLE_SINGLE_MMAP");
+    if (isSinglemMapDisabled) {
       for (auto &it : mFdToFileNameMap)
       {
         int fd = it.first;
@@ -1200,6 +1198,8 @@ namespace xclcpuemhal2 {
         close(fd);
       }
 
+      mFdToFileNameMap.clear();      
+    } else {
       mFdToFileNameMap.clear();
     }
 
@@ -1435,14 +1435,10 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   //struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
   auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   xobj->flags = info->flags;
-  /* check whether buffer is p2p or not*/
-  bool isCacheable = xclemulation::is_cacheable(xobj.get());
-  bool memCheck = xclemulation::no_host_memory(xobj.get()) || xclemulation::xocl_bo_host_only(xobj.get());
 
-  // Moving to file handle mechanism, if the memory is either non-cacheable or opted for p2p or host_only
-  bool zeroCopy = (memCheck || !isCacheable) ? true : false;
+  bool zeroCopy = xclemulation::is_zero_copy(xobj.get());
   if (mLogStream.is_open())
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", isCacheable: " << isCacheable << ", memCheck: " << memCheck << ", zeroCopy: "<< zeroCopy << std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", zeroCopy: " << zeroCopy << std::endl;
 
   std::string sFileName("");
   xobj->base = xclAllocDeviceBuffer2(size, XCL_MEM_DEVICE_RAM, ddr, zeroCopy, sFileName);
@@ -1458,6 +1454,14 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
 
   info->handle = mBufferCount;
+
+  if (mLogStream.is_open())
+  {
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << " mBufferCount: " << mBufferCount << " ,sFileName:  " 
+    << sFileName <<" , deviceName: " << deviceName << std::endl;
+  }
+
+  DEBUG_MSGS("%s, %d( mBufferCount: %x sFileName: %s deviceName: %s)\n", __func__, __LINE__, mBufferCount, sFileName.c_str(), deviceName.c_str());  
   mXoclObjMap[mBufferCount++] = xobj.release();
   return 0;
 }
@@ -1508,15 +1512,18 @@ int CpuemShim::xclExportBO(unsigned int boHandle)
   if(!bo)
     return -1;
 
-  std::string sFileName = bo->filename;
-  DEBUG_MSGS("%s, %d(sFileName: %s)\n", __func__, __LINE__, sFileName.c_str());
-  if(sFileName.empty()) {
-    std::cout<<"Exported Buffer is not P2P "<<std::endl;
+  bool zeroCopy = xclemulation::is_zero_copy(bo);
+
+  if (!zeroCopy) {
+    std::cerr<<"Exported Buffer is not P2P "<<std::endl;
     PRINTENDFUNC;
-    return -1;
+    return -1;    
   }
 
+  std::string sFileName = bo->filename;
   uint64_t size = bo->size;
+  DEBUG_MSGS("%s, %d(sFileName: %s bo->base: %lx size: %lx)\n", __func__, __LINE__, sFileName.c_str(), bo->base, size);
+
   int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
   if (fd == -1) {
     printf("Error opening exported BO file.\n");
@@ -1525,14 +1532,8 @@ int CpuemShim::xclExportBO(unsigned int boHandle)
   }
 
   char *data = nullptr;
-  auto ismMapEnabled = std::getenv("VITIS_SW_EMU_ENABLE_SINGLE_MMAP");
-  if (ismMapEnabled) {
-    data = (char*)mmap(0, MEMSIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
-    data += bo->base;
-
-    DEBUG_MSGS("%s, %d( sFileName: %s MEMSIZE: %lx )\n", __func__, __LINE__, sFileName.c_str(), size);
-    mFdToFileNameMap[fd] = std::make_tuple(sFileName, size, (void*)data);
-  } else {
+  auto isSinglemMapDisabled = std::getenv("VITIS_SW_EMU_DISABLE_SINGLE_MMAP");
+  if (isSinglemMapDisabled) {
     data = (char*)mmap(0, bo->size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
     if (!data) {
       PRINTENDFUNC;
@@ -1546,12 +1547,16 @@ int CpuemShim::xclExportBO(unsigned int boHandle)
       return -1;
     }
 
-    DEBUG_MSGS("%s, %d( sFileName: %s size: %lx )\n", __func__, __LINE__, sFileName.c_str(), size);
+    DEBUG_MSGS("%s, %d( sFileName: %s size: %lx fd: %x )\n", __func__, __LINE__, sFileName.c_str(), size, fd);
+    mFdToFileNameMap[fd] = std::make_tuple(sFileName, size, (void*)data);    
+  } else {
+    data = (char*)mmap(0, MEMSIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, bo->base);
+    DEBUG_MSGS("%s, %d( sFileName: %s bo->base: %lx size: %lx fd: %x )\n", __func__, __LINE__, sFileName.c_str(), bo->base, size, fd);
     mFdToFileNameMap[fd] = std::make_tuple(sFileName, size, (void*)data);
   }
 
   PRINTENDFUNC;
-  DEBUG_MSGS("%s, %d( fd: %d ENDED )\n", __func__, __LINE__, fd);
+  DEBUG_MSGS("%s, %d( fd: %x ENDED )\n", __func__, __LINE__, fd);
   return fd;
 }
 /***************************************************************************************/
@@ -1569,28 +1574,22 @@ unsigned int CpuemShim::xclImportBO(int boGlobalHandle, unsigned flags)
   auto itr = mFdToFileNameMap.find(boGlobalHandle);
   if(itr != mFdToFileNameMap.end()) {
 
-    const std::string& fileName = std::get<0>((*itr).second);
     uint64_t size = std::get<1>((*itr).second);
 
-    DEBUG_MSGS("%s, %d( fileName: %s size: %zx )\n", __func__, __LINE__, fileName.c_str(), size);
+    DEBUG_MSGS("%s, %d(size: %zx )\n", __func__, __LINE__, size);
 
     unsigned int importedBo = xclAllocBO(size, 0, flags);
 
     xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
     if(!bo) {
-      std::cout<<"ERROR HERE in importBO "<<std::endl;
+      std::cerr<<"ERROR HERE in importBO "<<std::endl;
       return -1;
     }
 
     mImportedBOs.insert(importedBo);
     bo->fd = boGlobalHandle;
 
-    bool ack;
-    xclImportBO_RPC_CALL(xclImportBO, fileName, bo->base, size);
-
-    if(!ack)
-      return -1;
-
+    DEBUG_MSGS("%s, %d( bo->base: %lx size: %zx )\n", __func__, __LINE__, bo->base, size);
     PRINTENDFUNC;
 
     DEBUG_MSGS("%s, %d( ENDED )\n", __func__, __LINE__);
@@ -1610,7 +1609,7 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
       << ", "<< src_boHandle << ", "<< size <<"," << dst_offset << ", " << src_offset << std::endl;
   }
 
-  DEBUG_MSGS("%s, %d( src_boHandle: %x size: %zx  dst_offset: %zx src_offset: %zx )\n", __func__, __LINE__, src_boHandle, size, dst_offset, src_offset);
+  DEBUG_MSGS("%s, %d( src_boHandle: %x dst_boHandle: %x size: %zx  dst_offset: %zx src_offset: %zx )\n", __func__, __LINE__, src_boHandle, dst_boHandle, size, dst_offset, src_offset);
 
   xclemulation::drm_xocl_bo* sBO = xclGetBoByHandle(src_boHandle);
   if(!sBO) {
@@ -1651,32 +1650,32 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
     }
   }
   else if (dBO->fd >= 0) {
-    int ack = false;
     auto fItr = mFdToFileNameMap.find(dBO->fd);
     if (fItr != mFdToFileNameMap.end()) {
-      const std::string& sFileName = std::get<0>((*fItr).second);
-      DEBUG_MSGS("%s, %d( dBO->fd: %d  sFileName: %s sBO->base: %lx dBO->base: %lx)\n", __func__, __LINE__, dBO->fd, sFileName.c_str(), sBO->base, dBO->base);
-      auto ismMapEnabled= std::getenv("VITIS_SW_EMU_ENABLE_SINGLE_MMAP");
-      if (ismMapEnabled) {
-        xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dBO->base + dst_offset);
-      } else {
-        xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
-      }
-    }
-    if (!ack)
+      void* lmapData = std::get<2>((*fItr).second);
+
+      DEBUG_MSGS("%s, %d( dBO->fd: %x sBO->base: %lx dBO->base: %lx)\n", __func__, __LINE__, dBO->fd, sBO->base, dBO->base);
+      if (xclCopyBufferDevice2Host(lmapData, sBO->base, size, src_offset) != size) {
+        std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
+        return -1;
+       }
+    } else {
       return -1;
+    }
   }
   else if (sBO->fd >= 0) {
-    int ack = false;
     auto fItr = mFdToFileNameMap.find(sBO->fd);
     if (fItr != mFdToFileNameMap.end()) {
-      const std::string& sFileName = std::get<0>((*fItr).second);
-      DEBUG_MSGS("%s, %d( sBO->fd: %d  sFileName: %s)\n", __func__, __LINE__, sBO->fd, sFileName.c_str());
-      xclCopyBOFromFd_RPC_CALL(xclCopyBOFromFd, sFileName, dBO->base, size, src_offset, dst_offset);
-    }
+      void* lmapData = std::get<2>((*fItr).second);;
+      DEBUG_MSGS("%s, %d( sBO->fd: %d)\n", __func__, __LINE__, sBO->fd);
 
-    if (!ack)
+      if (xclCopyBufferHost2Device(dBO->base, lmapData, size, dst_offset) != size) {
+        std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
+        return -1;
+      }
+    } else {
       return -1;
+    }
   }
   else {
     std::cerr << "ERROR: Copy buffer from source to destination failed" << std::endl;
@@ -1704,10 +1703,12 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
     return nullptr;
   }
 
-  std::string sFileName = bo->filename;
-  DEBUG_MSGS("%s, %d(sFileName: %s)\n", __func__, __LINE__, sFileName.c_str());
-  if(!sFileName.empty()) //P2P or non cacheable scenario: TODO: modify the condition to check for flags instead of filename empty check
+  bool zeroCopy = xclemulation::is_zero_copy(bo);
+  if (zeroCopy)
   {
+    std::string sFileName = bo->filename;
+    DEBUG_MSGS("%s, %d(zero copy design sFileName: %s)\n", __func__, __LINE__, sFileName.c_str());
+
     int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
     if (fd == -1) {
       printf("Error opening exported BO file.\n");
@@ -1715,19 +1716,9 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
     };
 
     char* data = nullptr;
-    auto ismMapEnabled= std::getenv("VITIS_SW_EMU_ENABLE_SINGLE_MMAP");
-    if (ismMapEnabled) {
-      data = (char*) mmap(0, MEMSIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
-      data += bo->base;
-
-      if(!data)
-        return nullptr;
-
-      mFdToFileNameMap[fd] = std::make_tuple(sFileName, MEMSIZE, (void*)data);
-
-    } else {
+    auto isSinglemMapDisabled = std::getenv("VITIS_SW_EMU_DISABLE_SINGLE_MMAP");
+    if (isSinglemMapDisabled) {
       data = (char*) mmap(0, bo->size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
-
       if(!data)
         return nullptr;
 
@@ -1737,19 +1728,26 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
         munmap(data, bo->size);
         return nullptr;
       }
-      mFdToFileNameMap[fd] = std::make_tuple(sFileName, bo->size, (void*)data);
+      mFdToFileNameMap[fd] = std::make_tuple(sFileName, bo->size, (void*)data);      
+    } else {
+      data = (char*) mmap(0, MEMSIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, bo->base);
+      if(!data)
+        return nullptr;
+
+      mFdToFileNameMap[fd] = std::make_tuple(sFileName, MEMSIZE, (void*)data);
     }
 
     bo->buf = data;
 
-    DEBUG_MSGS("%s, %d(bo->base: %lx bo->buf: %p fd: %d)\n", __func__, __LINE__, bo->base, bo->buf, fd);
+    DEBUG_MSGS("%s, %d(bo->base: %lx bo->buf: %p fd: %x)\n", __func__, __LINE__, bo->base, bo->buf, fd);
     PRINTENDFUNC;
 
     DEBUG_MSGS("%s, %d(ENDED )\n", __func__, __LINE__);
     return data;
   }
-  else { // NON P2P cacheable scenario
+  else { //NON zeroCopy scenario
 
+    DEBUG_MSGS("%s, %d(non zero copy design)\n", __func__, __LINE__);
     void *pBuf = nullptr;
     if (posix_memalign(&pBuf, getpagesize(), bo->size)) {
       if (mLogStream.is_open())
