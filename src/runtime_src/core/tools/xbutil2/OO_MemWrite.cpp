@@ -38,7 +38,7 @@ namespace po = boost::program_options;
 
 OO_MemWrite::OO_MemWrite( const std::string &_longName, bool _isHidden)
     : OptionOptions(_longName, _isHidden, "Write to a given memory address")
-    , m_device({})
+    , m_device("")
     , m_baseAddress("")
     , m_sizeBytes("")
     , m_fill("")
@@ -46,7 +46,7 @@ OO_MemWrite::OO_MemWrite( const std::string &_longName, bool _isHidden)
 
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->multitoken()->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("address", boost::program_options::value<decltype(m_baseAddress)>(&m_baseAddress)->required(), "Base address to start from")
     ("size", boost::program_options::value<decltype(m_sizeBytes)>(&m_sizeBytes)->required(), "Size (bytes) to write")
     ("fill,f", boost::program_options::value<decltype(m_fill)>(&m_fill), "The byte value to fill the memory with")
@@ -80,19 +80,8 @@ XBU::verbose("SubCommand option: read mem");
   unsigned int fill_byte = 'J';
 
   try {
-    //-- Device
-    if(m_device.size() > 1)
-      throw xrt_core::error("Multiple devices not supported. Please specify a single device");
-    
-    // Collect the device of interest
-    std::set<std::string> deviceNames;
-    xrt_core::device_collection deviceCollection;
-    for (const auto & deviceName : m_device) 
-      deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-    
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection); // Can throw
-    // set working variable
-    device = deviceCollection.front();
+    // Find device of interest
+    auto device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
 
   } catch (const xrt_core::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();

@@ -149,38 +149,18 @@ OO_AieClockFreq::execute(const SubCmdOptions& _options) const
   if(!vm.count("partition"))
       std::cout << "WARNING: 'partition' option is not provided, using default partition id value '1'" << std::endl;
 
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  xrt_core::device_collection deviceCollection;
-  deviceNames.insert(boost::algorithm::to_lower_copy(m_device));
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
 
   try {
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
-
-    std::stringstream errmsg;
-    if(deviceCollection.size() == 0) {
-      errmsg << "No devices present\n";
-      throw xrt_core::error(std::errc::operation_canceled, errmsg.str());
-    }
-    // We support only single device
-    if(deviceCollection.size() > 1) {
-      errmsg << "Multiple devices are not supported. Please specify a single device using --device option\n\n";
-      errmsg << "List of available devices:\n";
-      boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
-      for(auto& kd : available_devices) {
-        boost::property_tree::ptree& _dev = kd.second;
-        errmsg << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-      }
-      throw xrt_core::error(std::errc::operation_canceled, errmsg.str());
-    }
-  }
-  catch (const std::exception& e){
+    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Do operations on the device collected
-  auto device = deviceCollection.front();
   if(m_get) {
     double freq_part = get_aie_part_freq(device, m_partition_id);
     std::cout << boost::format("INFO: Clock frequency of AIE partition(%d) is: %.2f MHz\n") % m_partition_id % freq_part ;

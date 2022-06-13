@@ -466,14 +466,14 @@ update_default_only(xrt_core::device* device, bool value)
 // Update shell and sc firmware on the device automatically
 // Refactor code to support only 1 device.
 static void
-auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_FlasherType flashType, const std::string& image = "")
+auto_flash(std::shared_ptr<xrt_core::device> & device, Flasher::E_FlasherType flashType, const std::string& image = "")
 {
   // Get platform information
   boost::property_tree::ptree pt;
   boost::property_tree::ptree ptDevice;
   auto rep = std::make_unique<ReportPlatform>();
-  rep->getPropertyTreeInternal(working_device.get(), ptDevice);
-  pt.push_back(std::make_pair(std::to_string(working_device->get_device_id()), ptDevice));
+  rep->getPropertyTreeInternal(device.get(), ptDevice);
+  pt.push_back(std::make_pair(std::to_string(device->get_device_id()), ptDevice));
 
   // Collect all indexes of boards need updating
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
@@ -481,7 +481,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
   std::string image_path = image; // Set default image path
   if (image_path.empty()) {
     static boost::property_tree::ptree ptEmpty;
-    auto available_shells = pt.get_child(std::to_string(working_device->get_device_id()) + ".platform.available_shells", ptEmpty);
+    auto available_shells = pt.get_child(std::to_string(device->get_device_id()) + ".platform.available_shells", ptEmpty);
 
     // Check if any base packages are available
     if (available_shells.empty()) {
@@ -500,7 +500,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
   DSAInfo dsa(image_path);
 
   // If the shell is not up-to-date and dsa has a flash image, queue the board for update
-  boost::property_tree::ptree& pt_dev = pt.get_child(std::to_string(working_device->get_device_id()));
+  boost::property_tree::ptree& pt_dev = pt.get_child(std::to_string(device->get_device_id()));
   bool same_shell = (dsa.name == pt_dev.get<std::string>("platform.current_shell.vbnv", ""))
                       && (dsa.matchId(pt_dev.get<std::string>("platform.current_shell.id", "")));
 
@@ -509,7 +509,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
                   (dsa.bmcVer == sc) || (sc.find("FIXED") != std::string::npos));
 
   // Always update Arista devices
-  auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(working_device);
+  auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(device);
   if (vendor == ARISTA_ID)
     same_shell = false;
 
@@ -522,7 +522,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
     if (!dsa.hasFlashImage)
       throw xrt_core::error("Flash image is not available");
 
-    boardsToUpdate.push_back(std::make_pair(working_device->get_device_id(), dsa));
+    boardsToUpdate.push_back(std::make_pair(device->get_device_id(), dsa));
   }
 
   // Is there anything to flash
@@ -553,7 +553,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
     try {
       std::cout << std::endl;
       // 1) Flash the Satellite Controller image
-      if (xrt_core::device_query<xrt_core::query::is_mfg>(working_device.get()) || xrt_core::device_query<xrt_core::query::is_recovery>(working_device.get()))
+      if (xrt_core::device_query<xrt_core::query::is_mfg>(device.get()) || xrt_core::device_query<xrt_core::query::is_recovery>(device.get()))
         report_stream << boost::format("  [%s] : Factory or Recovery image detected. Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
       else {
         if (update_sc(p.first, p.second) == true)  {
@@ -720,7 +720,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::vector<std::string> device;
+  std::string device_str;
   std::string plp = "";
   std::string update = "";
   std::string xclbin = "";
@@ -732,7 +732,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the partition.")
     ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
@@ -775,49 +775,15 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("  Base: %s") % update));
 
   // -- process "device" option -----------------------------------------------
-  //enforce device specification
-  if (device.empty()) {
-    std::cout << "\nERROR: Device not specified.\n";
-    std::cout << "\nList of available devices:" << std::endl;
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
-    for (auto& kd : available_devices) {
-      boost::property_tree::ptree& dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
-    }
-    std::cout << std::endl;
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+  try {
+    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), false /*inUserDomain*/);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-
-  xrt_core::device_collection deviceCollection;
-  for (const auto & deviceName : device)
-    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-
-  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
-
-  // Enforce 1 device specification
-  if (deviceCollection.size() > 1) {
-    std::cerr << "\nERROR: Multiple device programming is not supported. Please specify a single"
-                 " device using --device option\n\n";
-    std::cout << "List of available devices:" << std::endl;
-
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
-    for(auto& kd : available_devices) {
-      boost::property_tree::ptree& _dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-    }
-
-    std::cout << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // Make sure we have at least 1 device
-  if (deviceCollection.size() == 0)
-    throw std::runtime_error("No devices found.");
-  // Get the device
-  auto & working_device = deviceCollection[0];
 
   // Only two images options are supported
   if (image.size() > 2)
@@ -828,7 +794,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
         "Overriding flash mode is not recommended.\nYou may damage your device with this option.");
   }
-  Flasher working_flasher(working_device->get_device_id());
+  Flasher working_flasher(device->get_device_id());
   auto flash_type = working_flasher.getFlashType(flashType);
 
   if (!update.empty()) {
@@ -836,16 +802,16 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     XBU::sudo_or_throw("Root privileges are required to update the devices flash image");
     // User did not provide an image for all. Select image automatically.
     if (update.compare("all") == 0) {
-      update_default_only(working_device.get(), false);
+      update_default_only(device.get(), false);
       if (image.empty()) {
-        auto_flash(working_device, flash_type);
+        auto_flash(device, flash_type);
         return;
       }
     }
     else if (update.compare("no-backup") == 0) {
       if (image.empty()) {
-        update_default_only(working_device.get(), true);
-        auto_flash(working_device, flash_type);
+        update_default_only(device.get(), true);
+        auto_flash(device, flash_type);
         return;
       }
     }
@@ -875,24 +841,24 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     }
 
     if (update.compare("all") == 0) {
-        update_default_only(working_device.get(), false);
-        auto_flash(working_device, flash_type, validated_image_map["primary"]);
+        update_default_only(device.get(), false);
+        auto_flash(device, flash_type, validated_image_map["primary"]);
     }
     // For the following two if conditions regarding the validated images portion
     // The user may have provided an image, but, it may not exist or the shell name is wrong
     else if (update.compare("sc") == 0) {
-      update_SC(working_device.get()->get_device_id(), validated_image_map["primary"]);
+      update_SC(device.get()->get_device_id(), validated_image_map["primary"]);
     }
     else if (update.compare("shell") == 0) {
-      update_default_only(working_device.get(), false);
-      update_shell(working_device.get()->get_device_id(), validated_image_map, flash_type);
+      update_default_only(device.get(), false);
+      update_shell(device.get()->get_device_id(), validated_image_map, flash_type);
       std::cout << "****************************************************\n";
       std::cout << "Cold reboot machine to load the new image on device.\n";
       std::cout << "****************************************************\n";
     }
     else if (update.compare("no-backup") == 0) {
-      update_default_only(working_device.get(), true);
-      auto_flash(working_device, flash_type, validated_image_map["primary"]);
+      update_default_only(device.get(), true);
+      auto_flash(device, flash_type, validated_image_map["primary"]);
     }
     else
       throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base [all|sc|shell]"
@@ -907,17 +873,14 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     bool has_reset = false;
 
     std::vector<Flasher> flasher_list;
-    for (const auto & dev : deviceCollection) {
-      //collect information of all the devices that will be reset
-      Flasher flasher(dev->get_device_id());
-      if(!flasher.isValid()) {
-        xrt_core::error(boost::str(boost::format("%d is an invalid index") % dev->get_device_id()));
-        continue;
-      }
-      std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device ["
-        % flasher.sGetDBDF() % "] back to factory mode.";
-      flasher_list.push_back(flasher);
-    }
+    //collect information of all the devices that will be reset
+    Flasher flasher(device->get_device_id());
+    if(!flasher.isValid())
+      xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
+
+    std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device ["
+      % flasher.sGetDBDF() % "] back to factory mode.";
+    flasher_list.push_back(flasher);
 
     XBUtilities::sudo_or_throw("Root privileges are required to revert the device to its golden flash image");
 
@@ -946,17 +909,12 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   // -- process "plp" option ---------------------------------------
   if (!plp.empty()) {
     XBU::verbose(boost::str(boost::format("  shell: %s") % plp));
-    //only 1 device and name
-    if (deviceCollection.size() > 1)
-      throw xrt_core::error("Please specify a single device");
 
-    auto dev = deviceCollection.front();
-
-    Flasher flasher(dev->get_device_id());
+    Flasher flasher(device->get_device_id());
     if (!flasher.isValid())
-      throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % dev->get_device_id()));
+      throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
 
-    if (xrt_core::device_query<xrt_core::query::interface_uuids>(dev).empty())
+    if (xrt_core::device_query<xrt_core::query::interface_uuids>(device).empty())
       throw xrt_core::error("Can not get BLP interface uuid. Please make sure corresponding BLP package"
                             " is installed.");
 
@@ -972,9 +930,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     for (const auto& uuid : dsa.uuids) {
 
       //check if plp is compatible with the installed blp
-      if (xrt_core::device_query<xrt_core::query::interface_uuids>(dev).front().compare(uuid) == 0) {
+      if (xrt_core::device_query<xrt_core::query::interface_uuids>(device).front().compare(uuid) == 0) {
         XBUtilities::sudo_or_throw("Root privileges are required to load the PLP image");
-        program_plp(dev.get(), dsa.file);
+        program_plp(device.get(), dsa.file);
         return;
       }
     }
@@ -987,10 +945,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if (!xclbin.empty()) {
     XBU::verbose(boost::str(boost::format("  xclbin: %s") % xclbin));
     XBU::sudo_or_throw("Root privileges are required to download xclbin");
-    //only 1 device and name
-    if (deviceCollection.size() > 1)
-      throw xrt_core::error("Please specify a single device");
-    auto dev = deviceCollection.front();
 
     std::ifstream stream(xclbin, std::ios::binary);
     if (!stream)
@@ -1003,10 +957,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     std::vector<char> xclbin_buffer(size);
     stream.read(xclbin_buffer.data(), size);
 
-    auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
+    auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
     std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
     try {
-      dev->xclmgmt_load_xclbin(xclbin_buffer.data());
+      device->xclmgmt_load_xclbin(xclbin_buffer.data());
     } catch (xrt_core::error& e) {
       std::cout << "ERROR: " << e.what() << std::endl;
       throw xrt_core::error(std::errc::operation_canceled);
@@ -1018,9 +972,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   // -- process "boot" option ------------------------------------------
   if (!boot.empty()) {
     if (boost::iequals(boot, "DEFAULT"))
-      switch_partition(working_device.get(), 0);
+      switch_partition(device.get(), 0);
     else if (boost::iequals(boot, "BACKUP"))
-      switch_partition(working_device.get(), 1);
+      switch_partition(device.get(), 1);
     else {
       std::cout << "ERROR: Invalid value.\n"
                 << "Usage: xbmgmt program --device='0000:00:00.0' --boot [default|backup]"

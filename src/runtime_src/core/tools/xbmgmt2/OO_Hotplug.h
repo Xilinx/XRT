@@ -27,7 +27,7 @@ class OO_Hotplug : public OptionOptions {
   OO_Hotplug( const std::string &_longName, bool _isHidden = false);
 
  private:
-  std::vector<std::string> m_devices;
+  std::string m_devices;
   std::string m_action;
   bool m_help;
 };

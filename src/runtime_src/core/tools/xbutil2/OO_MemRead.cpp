@@ -37,14 +37,14 @@ namespace po = boost::program_options;
 
 OO_MemRead::OO_MemRead( const std::string &_longName, bool _isHidden )
     : OptionOptions(_longName, _isHidden, "Read from the given memory address" )
-    , m_device({})
+    , m_device("")
     , m_baseAddress("")
     , m_sizeBytes("")
     , m_outputFile("")
     , m_help(false)
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->multitoken()->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("output,o", boost::program_options::value<decltype(m_outputFile)>(&m_outputFile)->required(), "Output file")
     ("address", boost::program_options::value<decltype(m_baseAddress)>(&m_baseAddress)->required(), "Base address to start from")
     ("size", boost::program_options::value<decltype(m_sizeBytes)>(&m_sizeBytes)->required(), "Size (bytes) to read")
@@ -81,15 +81,8 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     if(m_device.size() > 1)
       throw xrt_core::error("Multiple devices not supported. Please specify a single device");
     
-    // Collect the device of interest
-    std::set<std::string> deviceNames;
-    xrt_core::device_collection deviceCollection;
-    for (const auto & deviceName : m_device) 
-      deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-    
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection); // Can throw
-    // set working variable
-    device = deviceCollection.front();
+    // Find device of interest
+    auto device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
 
     //-- Output file
     if (!m_outputFile.empty() && boost::filesystem::exists(m_outputFile) && !XBU::getForce())

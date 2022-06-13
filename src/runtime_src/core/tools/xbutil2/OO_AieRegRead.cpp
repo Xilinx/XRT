@@ -432,13 +432,11 @@ OO_AieRegRead::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  xrt_core::device_collection deviceCollection;
-  deviceNames.insert(boost::algorithm::to_lower_copy(m_device));
-  
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+
   try {
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -446,14 +444,12 @@ OO_AieRegRead::execute(const SubCmdOptions& _options) const
   }
 
   bool errorOccured = false;
-  for (auto& device : deviceCollection) {
-    try {
-      uint32_t val = xrt_core::device_query<qr::aie_reg_read>(device, m_row, m_col, m_reg);
-      std::cout << boost::format("Register %s Value of Row:%d Column:%d is 0x%08x\n") % m_reg.c_str() % m_row %  m_col % val;
-    } catch (const std::exception& e){
-      std::cerr << boost::format("ERROR: %s\n") % e.what();
-      errorOccured = true;
-    }
+  try {
+    uint32_t val = xrt_core::device_query<qr::aie_reg_read>(device, m_row, m_col, m_reg);
+    std::cout << boost::format("Register %s Value of Row:%d Column:%d is 0x%08x\n") % m_reg.c_str() % m_row %  m_col % val;
+  } catch (const std::exception& e){
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
+    errorOccured = true;
   }
 
   if (errorOccured)

@@ -87,7 +87,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 
   // Option Variables
-  std::vector<std::string> devices;
+  std::string device_str;
   std::vector<std::string> reportNames;
   std::vector<std::string> elementsFilter;
   std::string sFormat = "";
@@ -97,7 +97,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // -- Retrieve and parse the subcommand options -----------------------------
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(devices)>(&devices), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
@@ -118,7 +118,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // Determine report leveld
   if (reportNames.empty()) {
-    if (devices.empty())
+    if (device_str.empty())
       reportNames.push_back("host");
     else
       reportNames.push_back("platform");
@@ -148,29 +148,21 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   if (!sOutput.empty() && boost::filesystem::exists(sOutput) && !XBU::getForce()) 
       throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
 
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  for (const auto & deviceName : devices) 
-    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-
-  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
-
-  // enforce 1 device specification if multiple reports are requested
-  if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)) {
-    std::cerr << "\nERROR: Examining multiple devices is not supported. Please specify a single device using --device option\n\n";
-    std::cout << "List of available devices:" << std::endl;
-    const boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
-    for(const auto& kd : available_devices) {
-      const boost::property_tree::ptree& _dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-    }
-    std::cout << std::endl;
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+  
+  try {
+    if(reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)
+      device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), false /*inUserDomain*/);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   bool is_report_output_valid = true;
   // DRC check on devices and reports
-  if (deviceCollection.empty()) {
+  if (!device) {
     std::vector<std::string> missingReports;
     for (const auto & report : reportsToProcess) {
       if (report->isDeviceRequired())

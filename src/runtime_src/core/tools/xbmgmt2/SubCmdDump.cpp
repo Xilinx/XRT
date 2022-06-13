@@ -128,7 +128,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: dump");
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::vector<std::string> devices;
+  std::string device_str;
   std::string output = "";
   bool flash = false;
   bool config = false;
@@ -136,7 +136,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration, requires a .ini output file by -o option")
     ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image, requires a .bin output file by -o option")
     ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
@@ -160,37 +160,19 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   // -- process "device" option -----------------------------------------------
   XBU::verbose("Option: device");
-  for (auto & str : devices)
+  for (auto & str : device_str)
     XBU::verbose(std::string(" ") + str);
 
-  if(devices.empty()) {
-    std::cerr << "ERROR: Please specify a single device using --device option" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  xrt_core::device_collection deviceCollection;  // The collection of devices to examine
-  for (const auto & deviceName : devices)
-    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
 
   try {
-    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+    device = XBU::get_device(device_str, true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-
-  // enforce 1 device specification
-  if(deviceCollection.size() != 1) {
-    std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  std::shared_ptr<xrt_core::device>& workingDevice = deviceCollection[0];
 
   // -- process "output" option -----------------------------------------------
   // Output file
@@ -208,11 +190,11 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   //decide the contents of the dump file
   if(flash) {
-    flash_dump(workingDevice, output);
+    flash_dump(device, output);
     return;
   }
   if (config) {
-    config_dump(workingDevice, output);
+    config_dump(device, output);
     return;
   }
 

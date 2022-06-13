@@ -41,13 +41,13 @@ host_mem(xrt_core::device* device, bool action, uint64_t size)
 
 OO_HostMem::OO_HostMem( const std::string &_longName, bool _isHidden )
     : OptionOptions(_longName, _isHidden, "Controls host-mem functionality")
-    , m_devices({})
+    , m_device("")
     , m_action("")
     , m_size("")
     , m_help(false)
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: ENABLE or DISABLE")
     ("size,s", boost::program_options::value<decltype(m_size)>(&m_size), "Size of host memory (bytes) to be enabled (e.g. 256M, 1G)")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
@@ -86,7 +86,7 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-  if(m_devices.empty()) {
+  if(m_device.empty()) {
     std::cerr << boost::format("ERROR: A device needs to be specified.\n");
     throw xrt_core::error(std::errc::operation_canceled);
   }
@@ -114,30 +114,11 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     // size is not 0 or size is not a power of 2
     if(enable && ((size == 0) || !XBUtilities::is_power_of_2(size)))
       throw xrt_core::error(std::errc::invalid_argument, "Please specify a non-zero memory size between 4M and 1G as a power of 2.");
-
-    // Collect all of the devices of interest
-    std::set<std::string> deviceNames;
-    xrt_core::device_collection deviceCollection;
-    for (const auto & deviceName : m_devices) 
-      deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
     
-    XBUtilities::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
-
-    // enforce 1 device specification
-    if(deviceCollection.size() > 1) {
-      std::stringstream errmsg;
-      errmsg << "Multiple devices are not supported. Please specify a single device using --device option\n\n";
-      errmsg << "List of available devices:\n";
-      boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
-      for(auto& kd : available_devices) {
-        boost::property_tree::ptree& _dev = kd.second;
-        errmsg << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-      }
-      throw xrt_core::error(std::errc::operation_canceled, errmsg.str());
-    }
-
+    // Find device of interest
+    auto device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
     //Set host-mem
-    host_mem(deviceCollection[0].get(), enable, size);
+    host_mem(device.get(), enable, size);
     std::cout << boost::format("\nHost-mem %s successfully\n") % (enable ? "enabled" : "disabled");
   }
   catch(const xrt_core::error& e) {

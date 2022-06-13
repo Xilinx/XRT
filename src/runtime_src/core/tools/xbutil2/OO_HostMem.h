@@ -27,7 +27,7 @@ class OO_HostMem : public OptionOptions {
   OO_HostMem( const std::string &_longName, bool _isHidden = false);
 
  private:
-  std::vector<std::string> m_devices;
+  std::string m_device;
   std::string m_action;
   std::string m_size;
   bool m_help;

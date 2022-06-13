@@ -260,12 +260,12 @@ p2p(xrt_core::device* device, action_type action, bool force)
 
 OO_P2P::OO_P2P( const std::string &_longName, bool _isHidden )
     : OptionOptions(_longName, _isHidden, "Controls P2P functionality")
-    , m_devices({})
+    , m_device("")
     , m_action("")
     , m_help(false)
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: ENABLE, DISABLE, or VALIDATE")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
@@ -309,41 +309,25 @@ OO_P2P::execute(const SubCmdOptions& _options) const
 
 
   // Validate the correct action value is used
-  if (m_devices.empty()) {
+  if (m_device.empty()) {
     std::cerr << boost::format("ERROR: A device needs to be specified.\n");
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  xrt_core::device_collection deviceCollection;
 
-  for (const auto & deviceName : m_devices)
-    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+  
   try {
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // enforce 1 device specification
-  if(deviceCollection.size() > 1) {
-    std::cerr << "\nERROR: Multiple devices are not supported. Please specify a single device using --device option\n\n";
-    std::cout << "List of available devices:" << std::endl;
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
-    for(auto& kd : available_devices) {
-      boost::property_tree::ptree& _dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-    }
-    std::cout << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
   try {
-    p2p(deviceCollection[0].get(), action, XBU::getForce());
+    p2p(device.get(), action, XBU::getForce());
   } catch (const xrt_core::system_error& ex) {
     std::cerr << "ERROR: " << ex.what() << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);

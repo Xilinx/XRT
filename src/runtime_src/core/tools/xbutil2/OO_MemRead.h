@@ -28,7 +28,7 @@ class OO_MemRead : public OptionOptions {
   OO_MemRead( const std::string &_longName, bool _isHidden = false );
 
  private:
-   std::vector<std::string> m_device;
+   std::string m_device;
    std::string m_baseAddress;
    std::string m_sizeBytes;
    std::string m_outputFile;

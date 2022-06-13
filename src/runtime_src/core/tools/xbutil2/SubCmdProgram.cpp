@@ -58,13 +58,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: program");
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::vector<std::string> device;
+  std::string device_str;
   std::string xclbin;
   bool help = false;
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("user,u", boost::program_options::value<std::string>(&xclbin), "The name (and path) of the xclbin to be loaded")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -85,43 +85,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("  XclBin: %s") % xclbin));
 
   // -- process "device" option -----------------------------------------------
-  //enforce device specification
-  if(device.empty()) {
-    std::cout << "\nERROR: Device not specified.\n";
-    std::cout << "\nList of available devices:" << std::endl;
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
-    for(auto& kd : available_devices) {
-      boost::property_tree::ptree& dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
-    }
-    std::cout << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  xrt_core::device_collection deviceCollection;
-  for (const auto & deviceName : device) 
-    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
   try {
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // enforce 1 device specification
-  if(deviceCollection.size() > 1) {
-    std::cerr << "\nERROR: Programming multiple device is not supported. Please specify a single device using --device option\n\n";
-    std::cout << "List of available devices:" << std::endl;
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
-    for(auto& kd : available_devices) {
-      boost::property_tree::ptree& _dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-    }
-    std::cout << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -142,14 +112,12 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     if (v != "xclbin2")
       throw xrt_core::error(boost::str(boost::format("Bad binary version '%s'") % v));
 
-    for (const auto & dev : deviceCollection) {
-      auto hdl = dev->get_device_handle();
-      auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
-      if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
-        throw xrt_core::error(err, "Could not program device " + bdf);
+    auto hdl = device->get_device_handle();
+    auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+    if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
+      throw xrt_core::error(err, "Could not program device " + bdf);
 
-      std::cout << "INFO: xbutil program succeeded on " << bdf << std::endl;
-    }
+    std::cout << "INFO: xbutil program succeeded on " << bdf << std::endl;
     return;
   }
 
