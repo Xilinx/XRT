@@ -209,8 +209,8 @@ process_PDI_file(const boost::property_tree::ptree& ptAIEPartitionPDI,
   read_file_into_buffer(fileName, relativeFromDir, buffer);
 
   // Store file image in the heap
-  aiePartitionPDI.pdi_image.size = buffer.size();
-  aiePartitionPDI.pdi_image.offset = heap.getNextBufferOffset();
+  aiePartitionPDI.pdi_image.size = static_cast<decltype(aiePartitionPDI.pdi_image.size)>(buffer.size());
+  aiePartitionPDI.pdi_image.offset = static_cast<decltype(aiePartitionPDI.pdi_image.offset)>(heap.getNextBufferOffset());
   heap.write(reinterpret_cast<const char*>(buffer.data()), buffer.size());
 }
 
@@ -224,14 +224,14 @@ process_pre_cdo_groups(const boost::property_tree::ptree& ptAIECDOGroup,
   XUtil::TRACE("Processing Pre CDO Groups");
 
   std::vector<std::string> preCDOGroups = XUtil::as_vector_simple<std::string>(ptAIECDOGroup, "pre_cdo_groups");
-  aieCDOGroup.pre_cdo_groups.size = preCDOGroups.size();
+  aieCDOGroup.pre_cdo_groups.size = static_cast<decltype(aieCDOGroup.pre_cdo_groups.size)>(preCDOGroups.size());
 
   // It is O.K. not to have any CDO groups
   if (aieCDOGroup.pre_cdo_groups.size == 0)
     return;
 
   // Record where the CDO group array starts.
-  aieCDOGroup.pre_cdo_groups.offset = heap.getNextBufferOffset();
+  aieCDOGroup.pre_cdo_groups.offset = static_cast<decltype(aieCDOGroup.pre_cdo_groups.offset)>(heap.getNextBufferOffset());
 
   // Write out the CDO value to the heap.
   for (const auto& element : preCDOGroups) {
@@ -253,7 +253,7 @@ process_PDI_cdo_groups(const boost::property_tree::ptree& ptAIEPartitionPDI,
   XUtil::TRACE("Processing CDO Groups");
 
   std::vector<boost::property_tree::ptree> ptCDOs = XUtil::as_vector<boost::property_tree::ptree>(ptAIEPartitionPDI, "cdo_groups");
-  aiePDI.cdo_groups.size = ptCDOs.size();
+  aiePDI.cdo_groups.size = static_cast<decltype(aiePDI.cdo_groups.size)>(ptCDOs.size());
 
   if (aiePDI.cdo_groups.size == 0)
     throw std::runtime_error("Error: There are no cdo groups in the PDI node AIE Partition section.");
@@ -265,11 +265,11 @@ process_PDI_cdo_groups(const boost::property_tree::ptree& ptAIEPartitionPDI,
 
     // Name
     auto name = element.get<std::string>("name", "");
-    aieCDOGroup.mpo_name = heap.getNextBufferOffset();
+    aieCDOGroup.mpo_name = static_cast<decltype(aieCDOGroup.mpo_name)>(heap.getNextBufferOffset());
     heap.write(reinterpret_cast<const char*>(name.c_str()), name.size() + 1 /*Null CharL*/);
 
     // Type
-    aieCDOGroup.cdo_type = getCDOTypesEnum(element.get<std::string>("type", ""));
+    aieCDOGroup.cdo_type = static_cast<decltype(aieCDOGroup.cdo_type)>(getCDOTypesEnum(element.get<std::string>("type", "")));
 
     // PDI ID
     auto sPDIValue = element.get<std::string>("pdi_id", "");
@@ -291,7 +291,7 @@ process_PDI_cdo_groups(const boost::property_tree::ptree& ptAIEPartitionPDI,
   }
 
   // Write out the CDO group array.  Note: The CDO group element is 64-bit aligned.
-  aiePDI.cdo_groups.offset = heap.getNextBufferOffset();
+  aiePDI.cdo_groups.offset = static_cast<decltype(aiePDI.cdo_groups.offset)>(heap.getNextBufferOffset());
   for (const auto& element : vCDOs)
     heap.write(reinterpret_cast<const char*>(&element), sizeof(cdo_group));
 }
@@ -307,7 +307,7 @@ process_PDIs(const boost::property_tree::ptree& ptAIEPartition,
   XUtil::TRACE("Processing PDIs");
 
   std::vector<boost::property_tree::ptree> ptPDIs = XUtil::as_vector<boost::property_tree::ptree>(ptAIEPartition, "PDIs");
-  aiePartitionHdr.aie_pdi.size = ptPDIs.size();
+  aiePartitionHdr.aie_pdi.size = static_cast<decltype(aiePartitionHdr.aie_pdi.size)>(ptPDIs.size());
 
   if (aiePartitionHdr.aie_pdi.size == 0)
     throw std::runtime_error("Error: There are no PDI nodes in the AIE Partition section.");
@@ -326,7 +326,7 @@ process_PDIs(const boost::property_tree::ptree& ptAIEPartition,
   }
 
   // Write out the PDI array.  Note: The PDI elements are 64-bit aligned.
-  aiePartitionHdr.aie_pdi.offset = heap.getNextBufferOffset();
+  aiePartitionHdr.aie_pdi.offset = static_cast<decltype(aiePartitionHdr.aie_pdi.offset)>(heap.getNextBufferOffset());
   for (const auto& element : vPDIs)
     heap.write(reinterpret_cast<const char*>(&element), sizeof(aie_pdi));
 }
@@ -355,13 +355,13 @@ process_partition_info(const boost::property_tree::ptree& ptAIEPartition,
 
   // Parse the start columns
   std::vector<uint16_t> startColumns = XUtil::as_vector_simple<uint16_t>(ptPartition, "start_columns");
-  partitionInfo.start_columns.size = startColumns.size();
+  partitionInfo.start_columns.size = static_cast<decltype(partitionInfo.start_columns.size)>(startColumns.size());
 
   if (partitionInfo.start_columns.size == 0)
     throw std::runtime_error("Error: Missing start columns for the AIE partition.");
 
   // Write out the 16-bit array.
-  partitionInfo.start_columns.offset = heap.getNextBufferOffset();
+  partitionInfo.start_columns.offset = static_cast<decltype(partitionInfo.start_columns.offset)>(heap.getNextBufferOffset());
   for (const auto element : startColumns)
     heap.write(reinterpret_cast<const char*>(&element), sizeof(uint16_t), false /*align*/);
 
@@ -392,7 +392,7 @@ createAIEPartitionImage(const std::string& sectionIndexName,
   // Initialized the start of the section heap
   SectionHeap heap(sizeof(aie_partition));
 
-  aie_partitionHdr.mpo_name = heap.getNextBufferOffset();
+  aie_partitionHdr.mpo_name = static_cast<decltype(aie_partitionHdr.mpo_name)>(heap.getNextBufferOffset());
   heap.write(sectionIndexName.c_str(), sectionIndexName.size() + 1 /*Null char*/);
 
   //  Process the nodes
@@ -408,7 +408,7 @@ createAIEPartitionImage(const std::string& sectionIndexName,
 
 void
 SectionAIEPartition::readSubPayload(const char* pOrigDataSection,
-                                    unsigned int origSectionSize,
+                                    unsigned int /*origSectionSize*/,
                                     std::istream& iStream,
                                     const std::string& sSubSectionName,
                                     Section::FormatType eFormatType,
