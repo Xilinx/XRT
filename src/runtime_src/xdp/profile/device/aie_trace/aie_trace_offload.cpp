@@ -338,23 +338,25 @@ void AIETraceOffload::checkCircularBufferSupport()
   if (!isPLIO || !deviceIntf->supportsCircBufAIE())
     return;
 
-  if (offloadIntervalUs != 0) {
+  if (offloadIntervalUs)
     circ_buf_cur_rate_plio = bufAllocSz * (1e6 / offloadIntervalUs);
-    if (circ_buf_cur_rate_plio >= circ_buf_min_rate_plio)
-      mEnCircularBuf = true;
-  } else {
-    mEnCircularBuf = true;
-  }
+  else
+    circ_buf_cur_rate_plio = circ_buf_min_rate_plio;
+
+  bool buffer_large_enough = (bufAllocSz >= AIE_MIN_SIZE_CIRCULAR_BUF);
+  bool  offload_fast_enough = (circ_buf_cur_rate_plio >= circ_buf_min_rate_plio);
+  mEnCircularBuf = (buffer_large_enough && offload_fast_enough);
 
   if (!mEnCircularBuf &&
       (xrt_core::config::get_verbosity() >= static_cast<unsigned int>(xrt_core::message::severity_level::info))) {
 
-    std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF)
-      + " Minimum required offload rate (bytes per second) : "
-      + std::to_string(circ_buf_min_rate_plio)
-      + " Requested offload rate : "
-      + std::to_string(circ_buf_cur_rate_plio);
-    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+    std::stringstream msg;
+    msg << AIE_TS2MM_WARN_MSG_CIRC_BUF
+        << " Minimum required offload rate (trace buffer bytes/sec) : " << circ_buf_min_rate_plio
+        << " Requested rate : " << circ_buf_cur_rate_plio
+        << ". Minimum required trace buffer bytes : " << AIE_MIN_SIZE_CIRCULAR_BUF
+        << " Requested bytes : " << bufAllocSz;
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
   }
 
   debug_stream
