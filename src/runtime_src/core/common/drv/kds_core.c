@@ -255,6 +255,25 @@ kds_scu_config(struct kds_cu_mgmt *scu_mgmt, struct kds_command *xcmd)
 	return 0;
 }
 
+static u32*
+kds_client_domain_refcnt(struct kds_client *client, int domain)
+{
+	u32 *refs = NULL;
+
+	switch (domain) {
+	case DOMAIN_PL:
+		refs = client->refcnt->cu_refs;
+		break;
+	case DOMAIN_PS:
+		refs = client->refcnt->scu_refs;
+		break;
+	default:
+		kds_err(client, "Domain(%d) is not expected", domain);
+		break;
+	}
+	return refs;
+}
+
 /**
  * kds_test_refcnt - Determine whether the cu_refs[idx] is set
  *
@@ -266,16 +285,73 @@ kds_test_refcnt(struct kds_client *client, int domain, u32 idx)
 	u32 *refs = NULL;
 	bool is_set = false;
 
-	if (domain == DOMAIN_PL)
-		refs = client->refcnt->cu_refs;
-	else
-		refs = client->refcnt->scu_refs;
+	refs = kds_client_domain_refcnt(client, domain);
 	mutex_lock(&client->refcnt->lock);
 	if (refs[idx] > 0) {
 		is_set = true;
 	}
 	mutex_unlock(&client->refcnt->lock);
 	return is_set;
+}
+
+static int
+kds_test_and_refcnt_incr(struct kds_client *client, int domain, int cu_idx)
+{
+	int prev = 0;
+	u32 *refs = NULL;
+
+	refs = kds_client_domain_refcnt(client, domain);
+	mutex_lock(&client->refcnt->lock);
+	prev = refs[cu_idx];
+	++refs[cu_idx];
+	mutex_unlock(&client->refcnt->lock);
+	return prev;
+}
+
+static int
+kds_test_and_refcnt_decr(struct kds_client *client, int domain, int cu_idx)
+{
+	int prev = 0;
+	u32 *refs = NULL;
+
+	refs = kds_client_domain_refcnt(client, domain);
+	mutex_lock(&client->refcnt->lock);
+	prev = refs[cu_idx];
+	if (prev > 0) {
+		--refs[cu_idx];
+	}
+	mutex_unlock(&client->refcnt->lock);
+	return prev;
+}
+
+static u32
+kds_client_get_cu_refcnt(struct kds_client *client, int domain, int idx)
+{
+	u32 ret = 0;
+	u32 *refs = NULL;
+
+	refs = kds_client_domain_refcnt(client, domain);
+
+	ret = MAX_CUS;
+	mutex_lock(&client->refcnt->lock);
+	if (idx > -1 && idx < MAX_CUS)
+		ret = refs[idx];
+	else
+		kds_err(client, "Client context cu index out of range");
+	mutex_unlock(&client->refcnt->lock);
+	return ret;
+}
+
+static void
+kds_client_set_cu_refs_zero(struct kds_client *client, int domain)
+{
+	u32 *dst = NULL;
+	u32 len = MAX_CUS * sizeof(u32);
+
+	dst = kds_client_domain_refcnt(client, domain);
+	mutex_lock(&client->refcnt->lock);
+	memset(dst, 0, len);
+	mutex_unlock(&client->refcnt->lock);
 }
 
 /**
@@ -493,55 +569,6 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 	ert->submit(ert, xcmd);
 	set_xcmd_timestamp(xcmd, KDS_QUEUED);
 	return 0;
-}
-
-static u32*
-kds_client_domain_refcnt(struct kds_client *client, int domain)
-{
-	u32 *refs = NULL;
-
-	switch (domain) {
-	case DOMAIN_PL:
-		refs = client->refcnt->cu_refs;
-		break;
-	case DOMAIN_PS:
-		refs = client->refcnt->scu_refs;
-		break;
-	default:
-		kds_err(client, "Domain(%d) is not expected", domain);
-		break;
-	}
-	return refs;
-}
-
-static int
-kds_test_and_refcnt_incr(struct kds_client *client, int domain, int cu_idx)
-{
-	int prev = 0;
-	u32 *refs = NULL;
-
-	refs = kds_client_domain_refcnt(client, domain);
-	mutex_lock(&client->refcnt->lock);
-	prev = refs[cu_idx];
-	++refs[cu_idx];
-	mutex_unlock(&client->refcnt->lock);
-	return prev;
-}
-
-static int
-kds_test_and_refcnt_decr(struct kds_client *client, int domain, int cu_idx)
-{
-	int prev = 0;
-	u32 *refs = NULL;
-
-	refs = kds_client_domain_refcnt(client, domain);
-	mutex_lock(&client->refcnt->lock);
-	prev = refs[cu_idx];
-	if (prev > 0) {
-		--refs[cu_idx];
-	}
-	mutex_unlock(&client->refcnt->lock);
-	return prev;
 }
 
 static int
@@ -1028,36 +1055,6 @@ is_cu_in_ctx_slot(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit, u
 		return true;
 
 	return false;
-}
-
-static u32
-kds_client_get_cu_refcnt(struct kds_client *client, int domain, int idx)
-{
-	u32 ret = 0;
-	u32 *refs = NULL;
-
-	refs = kds_client_domain_refcnt(client, domain);
-
-	ret = MAX_CUS;
-	mutex_lock(&client->refcnt->lock);
-	if (idx > -1 && idx < MAX_CUS)
-		ret = refs[idx];
-	else
-		kds_err(client, "Client context cu index out of range");
-	mutex_unlock(&client->refcnt->lock);
-	return ret;
-}
-
-static void
-kds_client_set_cu_refs_zero(struct kds_client *client, int domain)
-{
-	u32 *dst = NULL;
-	u32 len = MAX_CUS * sizeof(u32);
-
-	dst = kds_client_domain_refcnt(client, domain);
-	mutex_lock(&client->refcnt->lock);
-	memset(dst, 0, len);
-	mutex_unlock(&client->refcnt->lock);
 }
 
 static inline void
