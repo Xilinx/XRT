@@ -277,18 +277,21 @@ kds_client_domain_refcnt(struct kds_client *client, int domain)
 /**
  * kds_test_refcnt - Determine whether the cu_refs[idx] is set
  *
- * return: True meaning that the cu has been set and vice verse
+ * return: 1 meaning that the cu has been set and vice verse, minus means parameter invalid
  */
-static bool
+static int
 kds_test_refcnt(struct kds_client *client, int domain, u32 idx)
 {
 	u32 *refs = NULL;
-	bool is_set = false;
+	int is_set = 0;
 
 	refs = kds_client_domain_refcnt(client, domain);
+	if (!refs) {
+		return -EINVAL;
+	}
 	mutex_lock(&client->refcnt->lock);
 	if (refs[idx] > 0) {
-		is_set = true;
+		is_set = 1;
 	}
 	mutex_unlock(&client->refcnt->lock);
 	return is_set;
@@ -301,6 +304,9 @@ kds_test_and_refcnt_incr(struct kds_client *client, int domain, int cu_idx)
 	u32 *refs = NULL;
 
 	refs = kds_client_domain_refcnt(client, domain);
+	if (!refs) {
+		return -EINVAL;
+	}
 	mutex_lock(&client->refcnt->lock);
 	prev = refs[cu_idx];
 	++refs[cu_idx];
@@ -315,6 +321,9 @@ kds_test_and_refcnt_decr(struct kds_client *client, int domain, int cu_idx)
 	u32 *refs = NULL;
 
 	refs = kds_client_domain_refcnt(client, domain);
+	if (!refs) {
+		return -EINVAL;
+	}
 	mutex_lock(&client->refcnt->lock);
 	prev = refs[cu_idx];
 	if (prev > 0) {
@@ -324,14 +333,16 @@ kds_test_and_refcnt_decr(struct kds_client *client, int domain, int cu_idx)
 	return prev;
 }
 
-static u32
+static int
 kds_client_get_cu_refcnt(struct kds_client *client, int domain, int idx)
 {
-	u32 ret = 0;
+	int ret = 0;
 	u32 *refs = NULL;
 
 	refs = kds_client_domain_refcnt(client, domain);
-
+	if (!refs) {
+		return -EINVAL;
+	}
 	ret = MAX_CUS;
 	mutex_lock(&client->refcnt->lock);
 	if (idx > -1 && idx < MAX_CUS)
@@ -342,16 +353,22 @@ kds_client_get_cu_refcnt(struct kds_client *client, int domain, int idx)
 	return ret;
 }
 
-static void
+static int
 kds_client_set_cu_refs_zero(struct kds_client *client, int domain)
 {
 	u32 *dst = NULL;
 	u32 len = MAX_CUS * sizeof(u32);
+	int ret = 0;
 
 	dst = kds_client_domain_refcnt(client, domain);
+
+	if (!dst) {
+		return -EINVAL;
+	}
 	mutex_lock(&client->refcnt->lock);
 	memset(dst, 0, len);
 	mutex_unlock(&client->refcnt->lock);
+	return ret;
 }
 
 /**
@@ -386,6 +403,8 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, int domain, struct kds_command *xcmd
 	/* Check if CU is added in the context */
 	for (i = 0; i < num_marked; ++i) {
 		cu_set = kds_test_refcnt(client, domain, user_cus[i]);
+		if (cu_set < 0)
+			return -EINVAL;
 		if (cu_set) {
 			valid_cus[num_valid] = user_cus[i];
 			++num_valid;
@@ -422,9 +441,13 @@ out:
 	if (domain == DOMAIN_PL) {
 		client_stat_inc(client, s_cnt[index]);
 		cu_set = kds_test_refcnt(client, domain, index);
+		if (cu_set < 0)
+			return -EINVAL;
 	} else {
 		client_stat_inc(client, scu_s_cnt[index]);
 		cu_set = kds_test_refcnt(client, domain, index);
+		if (cu_set < 0)
+			return -EINVAL;
 	}
 	xcmd->cu_idx = index;
 	if (unlikely(!cu_set)) {
@@ -589,6 +612,8 @@ kds_add_cu_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	cu_set = kds_test_and_refcnt_incr(client, domain, cu_idx);
+	if (cu_set < 0)
+		return cu_set;
 
 	prop = info->flags & CU_CTX_PROP_MASK;
 	shared = (prop != CU_CTX_EXCLUSIVE);
@@ -620,7 +645,8 @@ kds_add_cu_context(struct kds_sched *kds, struct kds_client *client,
 	return 0;
 err:
 	mutex_unlock(&cu_mgmt->lock);
-	kds_test_and_refcnt_decr(client, domain, cu_idx);
+	if (kds_test_and_refcnt_decr(client, domain, cu_idx) < 0)
+		ret = -EINVAL;
 	return ret;
 }
 
@@ -644,6 +670,8 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	cu_set = kds_test_and_refcnt_decr(client, domain, cu_idx);
+	if (cu_set < 0) 
+		return -EINVAL;
 	if (!cu_set) {
 		kds_err(client, "Client pid(%d) Domain(%d) CU(%d) has never been reserved",
 			pid_nr(client->pid), domain, cu_idx);
@@ -833,6 +861,9 @@ int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx)
 		kds_err(client, "CU(%d) not found", cu_idx);
 		return -EINVAL;
 	}
+
+	if (kds_test_refcnt(client, DOMAIN_PL, cu_idx) < 0)
+		return -EINVAL;
 
 	if (!kds_test_refcnt(client, DOMAIN_PL, cu_idx)) {
 		kds_err(client, "cu(%d) isn't reserved\n", cu_idx);
@@ -1162,7 +1193,8 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		/* a special handling for m2m cu :( */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
-			kds_test_and_refcnt_incr(client, DOMAIN_PL, i);
+			if (kds_test_and_refcnt_incr(client, DOMAIN_PL, i) < 0)
+				return -EINVAL;
 			mutex_lock(&kds->cu_mgmt.lock);
 			++kds->cu_mgmt.cu_refs[i];
 			mutex_unlock(&kds->cu_mgmt.lock);
@@ -1208,6 +1240,8 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		/* a special handling for m2m cu :( */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
+			if (kds_test_and_refcnt_decr(client, DOMAIN_PL, i) < 0)
+				return -EINVAL;
 			if (!kds_test_and_refcnt_decr(client, DOMAIN_PL, i)) {
 				kds_err(client, "never reserved cmda");
 				return -EINVAL;
@@ -1243,6 +1277,9 @@ int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		kds_err(client, "cu(%d) out of range\n", idx);
 		return -EINVAL;
 	}
+
+	if (!kds_test_refcnt(client, DOMAIN_PL, idx))
+		return -EINVAL;
 
 	if (!kds_test_refcnt(client, DOMAIN_PL, idx)) {
 		kds_err(client, "cu(%d) isn't reserved\n", idx);
