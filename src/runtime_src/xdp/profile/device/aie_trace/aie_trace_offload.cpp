@@ -81,6 +81,9 @@ bool AIETraceOffload::initReadTrace()
     gmioDMAInsts.resize(numStream);
   }
 
+  if (isPLIO && continuousTrace())
+    checkCircularBufferSupport();
+
   for(uint64_t i = 0; i < numStream ; ++i) {
     buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
     if(!buffers[i].boHandle) {
@@ -95,8 +98,6 @@ bool AIETraceOffload::initReadTrace()
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.c_str());
 
     if (isPLIO) {
-      if (continuousTrace())
-        checkCircularBufferSupport();
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i, mEnCircularBuf);
     } else {
 #ifdef XRT_ENABLE_AIE
