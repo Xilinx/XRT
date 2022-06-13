@@ -274,7 +274,7 @@ SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
   if (count == 0)
     return;
 
-  mcs mcsHdr = mcs{0};
+  mcs mcsHdr = mcs{};
   mcsHdr.m_count = (int8_t)count;
 
   XUtil::TRACE(boost::format("m_count: %d") % (int)mcsHdr.m_count);
@@ -291,7 +291,7 @@ SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
                               (sizeof(mcs_chunk) * count));
 
     for (auto mcsEntry : _mcsBuffers) {
-      mcs_chunk mcsChunk = mcs_chunk{0};
+      mcs_chunk mcsChunk = mcs_chunk{};
       mcsChunk.m_type = (uint8_t)mcsEntry.first;   // Record the MCS type
 
       mcsEntry.second->seekp(0, std::ios_base::end);

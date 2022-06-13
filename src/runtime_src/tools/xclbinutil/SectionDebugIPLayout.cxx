@@ -164,7 +164,7 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
   XUtil::TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_debug_ip_data[0]) - (uint64_t)pHdr));
   debug_ip_layout.put("m_count", (boost::format("%d") % static_cast<unsigned int>(pHdr->m_count)).str());
 
-  debug_ip_data mydata = debug_ip_data{0};
+  debug_ip_data mydata = debug_ip_data{};
 
 
   XUtil::TRACE(boost::format("Size of debug_ip_data: %d\nSize of mydata: %d") % sizeof(debug_ip_data) % sizeof(mydata));
@@ -223,7 +223,7 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
   const boost::property_tree::ptree& ptDebugIPLayout = _ptSection.get_child("debug_ip_layout");
 
   // Initialize the memory to zero's
-  debug_ip_layout debugIpLayoutHdr = debug_ip_layout{0};
+  debug_ip_layout debugIpLayoutHdr = debug_ip_layout{};
 
   // Read, store, and report mem_topology data
   debugIpLayoutHdr.m_count = ptDebugIPLayout.get<uint16_t>("m_count");
@@ -244,7 +244,7 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
   unsigned int count = 0;
   const boost::property_tree::ptree debugIpDatas = ptDebugIPLayout.get_child("m_debug_ip_data");
   for (const auto& kv : debugIpDatas) {
-    debug_ip_data debugIpDataHdr = debug_ip_data{0};
+    debug_ip_data debugIpDataHdr = debug_ip_data{};
     boost::property_tree::ptree ptDebugIPData = kv.second;
 
     auto sm_type = ptDebugIPData.get<std::string>("m_type");

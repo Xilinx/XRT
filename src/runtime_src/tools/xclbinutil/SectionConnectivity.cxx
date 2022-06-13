@@ -109,7 +109,7 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
 {
   const boost::property_tree::ptree& ptConnectivity = _ptSection.get_child("connectivity");
 
-  connectivity connectivityHdr = connectivity{0};
+  connectivity connectivityHdr = connectivity{};
 
   // Read, store, and report mem_topology data
   connectivityHdr.m_count = ptConnectivity.get<uint32_t>("m_count");
@@ -131,7 +131,7 @@ SectionConnectivity::marshalFromJSON(const boost::property_tree::ptree& _ptSecti
   unsigned int count = 0;
   const boost::property_tree::ptree connections = ptConnectivity.get_child("m_connection");
   for (const auto& kv : connections) {
-    connection connectionHdr = connection{0};
+    connection connectionHdr = connection{};
     boost::property_tree::ptree ptConnection = kv.second;
 
     connectionHdr.arg_index = ptConnection.get<int32_t>("arg_index");

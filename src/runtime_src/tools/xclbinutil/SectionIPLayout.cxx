@@ -237,7 +237,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   const boost::property_tree::ptree& ptIPLayout = _ptSection.get_child("ip_layout");
 
   // Initialize the memory to zero's
-  ip_layout ipLayoutHdr = ip_layout{0};
+  ip_layout ipLayoutHdr = ip_layout{};
 
   // Read, store, and report mem_topology data
   ipLayoutHdr.m_count = ptIPLayout.get<uint32_t>("m_count");
@@ -259,7 +259,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   unsigned int count = 0;
   boost::property_tree::ptree ipDatas = ptIPLayout.get_child("m_ip_data");
   for (const auto& kv : ipDatas) {
-    ip_data ipDataHdr = ip_data{0};
+    ip_data ipDataHdr = ip_data{};
     boost::property_tree::ptree ptIPData = kv.second;
 
     auto sm_type = ptIPData.get<std::string>("m_type");

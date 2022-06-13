@@ -301,7 +301,7 @@ SectionFlash::createDefaultImage(std::istream& _istream, std::ostringstream& _bu
 {
   XUtil::TRACE("FLASH-DATA");
 
-  flash flashHdr = flash{0};
+  flash flashHdr = flash{};
   std::ostringstream stringBlock;       // String block (stored immediately after the header)
 
   // Initialize type

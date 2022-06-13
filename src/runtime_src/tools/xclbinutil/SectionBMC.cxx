@@ -245,7 +245,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 void
 SectionBMC::createDefaultFWImage(std::istream& _istream, std::ostringstream& _buffer) const
 {
-  bmc bmcHdr = bmc{0};
+  bmc bmcHdr = bmc{};
 
   XUtil::TRACE("BMC-FW");
 

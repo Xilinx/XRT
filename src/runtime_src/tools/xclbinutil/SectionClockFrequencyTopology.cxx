@@ -105,7 +105,7 @@ SectionClockFrequencyTopology::marshalToJSON(char* _pDataSection,
   XUtil::TRACE_BUF("clock_freq", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_clock_freq[0]) - (uint64_t)pHdr));
   clock_freq_topology.put("m_count", (boost::format("%d") % (unsigned int)pHdr->m_count).str());
 
-  clock_freq mydata = clock_freq{0};
+  clock_freq mydata = clock_freq{};
 
   XUtil::TRACE(boost::format("Size of clock_freq: %d\nSize of mydata: %d")
                % sizeof(clock_freq)
@@ -152,7 +152,7 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
   const boost::property_tree::ptree& ptClockFreqTopo = _ptSection.get_child("clock_freq_topology");
 
   // Initialize the memory to zero's
-  clock_freq_topology clockFreqTopologyHdr = clock_freq_topology{0};
+  clock_freq_topology clockFreqTopologyHdr = clock_freq_topology{};
 
   // Read, store, and report clock frequency topology data
   clockFreqTopologyHdr.m_count = ptClockFreqTopo.get<uint16_t>("m_count");
@@ -173,7 +173,7 @@ SectionClockFrequencyTopology::marshalFromJSON(const boost::property_tree::ptree
   unsigned int count = 0;
   const boost::property_tree::ptree clockFreqs = ptClockFreqTopo.get_child("m_clock_freq");
   for (const auto& kv : clockFreqs) {
-    clock_freq clockFreqHdr = clock_freq{0};
+    clock_freq clockFreqHdr = clock_freq{};
     boost::property_tree::ptree ptClockFreq = kv.second;
 
     clockFreqHdr.m_freq_Mhz = ptClockFreq.get<uint16_t>("m_freq_Mhz");

@@ -845,9 +845,9 @@ get_aie_partition(const axlf* top)
 
   auto begin = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
   auto aiep = reinterpret_cast<const aie_partition*>(begin);
-  auto scp = reinterpret_cast<const uint16_t*>(begin + aiep->info.mpo_auint16_start_columns);
+  auto scp = reinterpret_cast<const uint16_t*>(begin + aiep->info.start_columns.offset);
 
-  return {aiep->info.column_width, {scp, scp + aiep->info.start_columns_count}, begin + aiep->mpo_name};
+  return {aiep->info.column_width, {scp, scp + aiep->info.start_columns.size}, begin + aiep->mpo_name};
 }
 
 size_t
