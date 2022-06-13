@@ -533,42 +533,42 @@ extern "C" {
     };
 
     struct cdo_group {
-        uint32_t mpo_name;              // Name of the CDO group (Null terminated string)
-        uint8_t cdo_type;               // CDO group type (CDO_Type)
+        uint32_t mpo_name;                  // Name of the CDO group (Null terminated string)
+        uint8_t cdo_type;                   // CDO group type (CDO_Type)
         uint8_t padding[3];             
-        uint64_t pdi_id;                // PDI ID
-        uint64_t dpu_kernel_id;         // DPU kernel ID
-        array_offset pre_cdo_groups;    // Array of Pre CDO Group IDs (uint32_t)
-        uint8_t reserved[64];           // Reserved
+        uint64_t pdi_id;                    // PDI ID
+        uint64_t dpu_kernel_id;             // DPU kernel ID
+        struct array_offset pre_cdo_groups; // Array of Pre CDO Group IDs (uint32_t)
+        uint8_t reserved[64];               // Reserved
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct cdo_group) == 96, "cdo_group structure no longer is 96 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct cdo_group) % sizeof(uint64_t) == 0, "cdo_group structure needs to be 64-bit word aligned");
 
 
     struct aie_pdi {
-        xuid_t uuid;                    // PDI container UUID (16 bytes)
-        array_offset pdi_image;         // PDI Image (uint8_t)
-        array_offset cdo_groups;        // Array of cdo_groups (cdo_group)
-        uint8_t reserved[64];           // Reserved
+        xuid_t uuid;                        // PDI container UUID (16 bytes)
+        struct array_offset pdi_image;      // PDI Image (uint8_t)
+        struct array_offset cdo_groups;     // Array of cdo_groups (cdo_group)
+        uint8_t reserved[64];               // Reserved
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_pdi) == 96, "aie_pdi structure no longer is 96 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_pdi) % sizeof(uint64_t) == 0, "aie_pdi structure needs to be 64-bit word aligned");
 
     struct aie_partition_info {
-        uint16_t column_width;          // Width of the partition
-        uint8_t padding[6];             // Byte alignment
-        array_offset start_columns;     // Array of start column identifiers (uint16_t)
-        uint8_t reserved[72];           // Reserved
+        uint16_t column_width;              // Width of the partition
+        uint8_t padding[6];                 // Byte alignment
+        struct array_offset start_columns;  // Array of start column identifiers (uint16_t)
+        uint8_t reserved[72];               // Reserved
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition_info) == 88, "partition_info structure no longer is 88 bytes in size");
     
     struct aie_partition {
-        uint8_t schema_version;         // Group schema version (default 0)
-        uint8_t padding0[3];            // Byte alignment          
-        uint32_t mpo_name;              // Name of the aie_partition 
-        struct aie_partition_info info; // Partition information
-        array_offset aie_pdi;           // PDI Array (aie_partition_info)
-        uint8_t reserved[54];           // Reserved
+        uint8_t schema_version;             // Group schema version (default 0)
+        uint8_t padding0[3];                // Byte alignment          
+        uint32_t mpo_name;                  // Name of the aie_partition 
+        struct aie_partition_info info;     // Partition information
+        struct array_offset aie_pdi;        // PDI Array (aie_partition_info)
+        uint8_t reserved[54];               // Reserved
     };
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 160, "aie_partition structure no longer is 160 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) % sizeof(uint64_t) == 0, "aie_partition structure needs to be 64-bit word aligned");
