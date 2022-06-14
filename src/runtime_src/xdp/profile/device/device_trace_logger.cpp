@@ -704,6 +704,7 @@ namespace xdp {
     static double y2 = 0.0;
     static double x1 = 0.0;
     static double x2 = 0.0;
+
     if (!y1 && !x1) {
       y1 = static_cast <double> (hostTimestamp);
       x1 = static_cast <double> (deviceTimestamp);
@@ -731,13 +732,12 @@ namespace xdp {
 
   void DeviceTraceLogger::processTraceData(void* data, uint64_t numBytes)
   {
-    if (numBytes == 0)      return ;
-    if (!VPDatabase::alive()) return ;
+    if (numBytes == 0)
+      return ;
+    if (!VPDatabase::alive())
+      return ;
 
-    uint32_t modulus = 0 ;
-    uint64_t clockTrainingHostTimestamp = 0 ;
     uint64_t numPackets = numBytes / sizeof(uint64_t) ;
-
     uint64_t start = 0 ;
 
     // Try to find 8 contiguous clock training packets.  Anything before that
@@ -748,18 +748,22 @@ namespace xdp {
       for (uint64_t i = 0 ; i < numPackets - 8 ; ++i) {
         for (uint64_t j = i ; j < i + 8 ; ++j) {
           uint64_t packet = (static_cast<uint64_t*>(data))[j] ;
-          if (!isClockTraining(packet)) {
+          if (!isClockTraining(packet))
             break ;
-          }
           if (j == (i + 7)) {
             start = i ;
             found = true ;
           }
         }
-        if (found) break ;
+        if (found)
+          break ;
       }
     }
-    
+
+    // Clock Training state is preserved across calls
+    static uint32_t modulus = 0 ;
+    static uint64_t clockTrainingHostTimestamp = 0 ;
+
     for (uint64_t i = start ; i < numPackets ; ++i) {
       uint64_t packet = (static_cast<uint64_t*>(data))[i] ;
       auto deviceTimestamp = getDeviceTimestamp(packet) ;
