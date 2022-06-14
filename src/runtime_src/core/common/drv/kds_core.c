@@ -334,26 +334,6 @@ kds_test_and_refcnt_decr(struct kds_client *client, int domain, int cu_idx)
 }
 
 static int
-kds_client_get_cu_refcnt(struct kds_client *client, int domain, int idx)
-{
-	int ret = 0;
-	u32 *refs = NULL;
-
-	refs = kds_client_domain_refcnt(client, domain);
-	if (!refs) {
-		return -EINVAL;
-	}
-	ret = MAX_CUS;
-	mutex_lock(&client->refcnt->lock);
-	if (idx > -1 && idx < MAX_CUS)
-		ret = refs[idx];
-	else
-		kds_err(client, "Client context cu index out of range");
-	mutex_unlock(&client->refcnt->lock);
-	return ret;
-}
-
-static int
 kds_client_set_cu_refs_zero(struct kds_client *client, int domain)
 {
 	u32 *dst = NULL;
@@ -1093,7 +1073,6 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_ctx *cctx)
 {
 	struct kds_ctx_info info;
-	u32 count;
 	u32 count_idx;
 
 	kds_info(client, "Client pid(%d) has %d opening context for %d slot",
@@ -1117,7 +1096,6 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 			kds_del_context(kds, client, &info);
 		}
 		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
-		count = kds_client_get_cu_refcnt(client, DOMAIN_PS, count_idx);
 		count_idx += 1;
 	};
 	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
@@ -1132,7 +1110,6 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 			kds_del_context(kds, client, &info);
 		}
 		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
-		count = kds_client_get_cu_refcnt(client, DOMAIN_PL, count_idx);
 		count_idx += 1;
 	};
 	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
