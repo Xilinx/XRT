@@ -24,7 +24,7 @@
 class SectionVenderMetadata : public Section {
  public:
   bool subSectionExists(const std::string& _sSubSectionName) const override;
-  void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader)override;
+  void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader) override;
 
  protected:
   void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string& _sSubSection, Section::FormatType _eFormatType, std::ostringstream& _buffer) const override;

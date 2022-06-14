@@ -130,12 +130,12 @@ private:
     AIEOffloadThreadStatus offloadStatus;
     std::thread offloadThread;
 
-  //Circular Buffer Tracking
-  bool mEnCircularBuf;
-  // 1000 mb of trace per second
-  // Very high bandwidth requirement
-  uint64_t circ_buf_min_rate_plio = TS2MM_DEF_BUF_SIZE * 1000;
-  uint64_t circ_buf_cur_rate_plio;
+    //Circular Buffer Tracking
+    bool mEnCircularBuf;
+    // 1000 mb of trace per second
+    // Very high bandwidth requirement
+    uint64_t circ_buf_min_rate_plio = TS2MM_DEF_BUF_SIZE * 1000;
+    uint64_t circ_buf_cur_rate_plio;
 
 private:
     void continuousOffload();

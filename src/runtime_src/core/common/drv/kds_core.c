@@ -1786,7 +1786,7 @@ void start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	}
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
-	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
 	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
 
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
@@ -1806,7 +1806,7 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	}
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
-	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
 	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
 
 	/* Copy resigter map into info and isize is the size of info in bytes.
@@ -1834,7 +1834,7 @@ void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	}
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
-	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
 	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
 
 	/* Copy resigter map into info and isize is the size of info in bytes.
@@ -1861,7 +1861,7 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	}
 
 	xcmd->cu_mask[0] = ecmd->cu_mask;
-	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks * sizeof(u32));
 	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
 
 	/* Copy descriptor into info and isize is the size of info in bytes.

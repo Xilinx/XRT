@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -107,7 +107,7 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
 {
   const boost::property_tree::ptree& ptConnectivity = _ptSection.get_child("group_connectivity");
 
-  connectivity connectivityHdr = connectivity{0};
+  connectivity connectivityHdr = connectivity{};
 
   // Read, store, and report mem_topology data
   connectivityHdr.m_count = ptConnectivity.get<uint32_t>("m_count");
@@ -129,7 +129,7 @@ SectionGroupConnectivity::marshalFromJSON(const boost::property_tree::ptree& _pt
   unsigned int count = 0;
   const boost::property_tree::ptree connections = ptConnectivity.get_child("m_connection");
   for (const auto& kv : connections) {
-    connection connectionHdr = connection{0};
+    connection connectionHdr = connection{};
     boost::property_tree::ptree ptConnection = kv.second;
 
     connectionHdr.arg_index = ptConnection.get<int32_t>("arg_index");
