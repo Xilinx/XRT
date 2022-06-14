@@ -192,6 +192,7 @@ XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
 full=0
 archiver=0
+gen_sysroot=0
 SSTATE_CACHE=""
 SETTINGS_FILE="petalinux.build"
 while [ $# -gt 0 ]; do
@@ -215,6 +216,9 @@ while [ $# -gt 0 ]; do
 			;;
 		-archiver | archiver )
 			archiver=1
+			;;
+		-sysroot | sysroot )
+			gen_sysroot=1
 			;;
 		-cache )
                         shift
@@ -350,6 +354,9 @@ if [[ $full == 1 ]]; then
   $PETA_BIN/petalinux-config -c rootfs --silentconfig
   echo "[CMD]: petalinux-build"
   $PETA_BIN/petalinux-build
+  if [[ $gen_sysroot == 1 ]]; then
+        $PETA_BIN/petalinux-build --sdk
+  fi
 else
 #Run just xrt build if -full option is not provided
   echo "[CMD]: petalinux-build -c zocl"
