@@ -494,7 +494,7 @@ Section::readPayload(std::istream& _istream, FormatType _eFormatType)
 {
   switch (_eFormatType) {
     case FormatType::raw: {
-        axlf_section_header sectionHeader = axlf_section_header{0};
+        axlf_section_header sectionHeader = axlf_section_header{};
         sectionHeader.m_sectionKind = getSectionKind();
         sectionHeader.m_sectionOffset = 0;
         _istream.seekg(0, _istream.end);

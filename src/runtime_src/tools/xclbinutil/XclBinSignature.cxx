@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -275,7 +275,7 @@ void signXclBinImage(const std::string& _fileOnDisk,
   }
 
   // ** Now update the xclbin archive image **
-  axlf xclBinHeader = {0};
+  axlf xclBinHeader = {};
   {
     std::fstream iofXclBin;
     iofXclBin.open(_fileOnDisk, std::ios::in | std::ios::out | std::ios::binary);

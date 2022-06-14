@@ -293,7 +293,7 @@ SectionSoftKernel::createDefaultImage(std::istream& _istream, std::ostringstream
 {
   XUtil::TRACE("SOFT_KERNEL-OBJ");
 
-  soft_kernel softKernelHdr = soft_kernel{0};
+  soft_kernel softKernelHdr = soft_kernel{};
   std::ostringstream stringBlock;       // String block (stored immediately after the header)
 
   // Initialize default values

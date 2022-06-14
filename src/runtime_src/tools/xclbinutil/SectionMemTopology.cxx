@@ -187,7 +187,7 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
 {
   const boost::property_tree::ptree& ptMemtopPayload = _ptSection.get_child("mem_topology");
 
-  mem_topology memTopologyHdr = mem_topology{0};
+  mem_topology memTopologyHdr = mem_topology{};
 
   // Read, store, and report mem_topology data
   memTopologyHdr.m_count = ptMemtopPayload.get<uint32_t>("m_count");
@@ -209,7 +209,7 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
   unsigned int count = 0;
   boost::property_tree::ptree memDatas = ptMemtopPayload.get_child("m_mem_data");
   for (const auto& kv : memDatas) {
-    mem_data memData = mem_data{0};
+    mem_data memData = mem_data{};
     boost::property_tree::ptree ptMemData = kv.second;
 
     auto sm_type = ptMemData.get<std::string>("m_type");

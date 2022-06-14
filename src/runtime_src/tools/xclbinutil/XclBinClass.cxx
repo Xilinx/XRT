@@ -1,6 +1,6 @@
 /**
- * Copyright (C) 2018-2021 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. 
+ * Copyright (C) 2018-2022 Xilinx, Inc Copyright (C) 2022 
+ * Advanced Micro Devices, Inc. 
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -142,7 +142,7 @@ XclBin::readXclBinBinarySections(std::fstream& _istream)
     _istream.seekg(sectionOffset);
 
     // Read in the section header
-    axlf_section_header sectionHeader = axlf_section_header{0};
+    axlf_section_header sectionHeader = axlf_section_header{};
     const unsigned int expectBufferSize = sizeof(axlf_section_header);
 
     _istream.read((char*)&sectionHeader, sizeof(axlf_section_header));
@@ -970,6 +970,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
   }
 
   // Read in the data
+  pSection->setPathAndName(sSectionFileName);
   pSection->readSubPayload(iSectionFile, _PSD.getSubSectionName(), _PSD.getFormatType());
 
   // Clean-up
@@ -1010,10 +1011,8 @@ XclBin::addSection(ParameterSectionData& _PSD)
 
   // See if the user is attempting to add a sub-section
   {
-    std::unique_ptr<Section> pSection(Section::createSectionObjectOfKind(eKind));
-
     if (!_PSD.getSubSectionName().empty() ||       // A subsection name has been added
-        Section::supportsSubSectionName(pSection->getSectionKind(), "")) {  // The section supports default empty subsection 
+        Section::supportsSubSectionName(eKind, "")) {  // The section supports default empty subsection 
       addSubSection(_PSD);
       return;
     }
@@ -1291,7 +1290,9 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
     throw std::runtime_error(errMsg);
   }
 
+  pSection->setPathAndName(sDumpFileName);
   pSection->dumpSubSection(oDumpFile, sSubSection, _PSD.getFormatType());
+
   XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
   XUtil::QUIET("");
 
@@ -1318,16 +1319,14 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
 
   // See if the user is attempting to dump a sub-section
   {
-    std::unique_ptr<Section> pSection(Section::createSectionObjectOfKind(eKind));
-
-    if (!_PSD.getSubSectionName().empty() ||       // A subsection name has been added
-        Section::supportsSubSectionName(pSection.get()->getSectionKind(), "")) {  // The section supports default empty subsection 
+    if (!_PSD.getSubSectionName().empty() ||           // A subsection name has been added
+        Section::supportsSubSectionName(eKind, "")) {  // The section supports default empty subsection 
       dumpSubSection(_PSD);
       return;
     }
   }
 
-  const Section* pSection = findSection(eKind);
+  Section* pSection = findSection(eKind);
   if (pSection == nullptr) {
     auto errMsg = boost::format("ERROR: Section '%s' does not exists.") % _PSD.getSectionName();
     throw XUtil::XclBinUtilException(xet_missing_section, boost::str(errMsg));
@@ -1359,7 +1358,9 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
     throw std::runtime_error(errMsg);
   }
 
+  pSection->setPathAndName(sDumpFileName);
   pSection->dumpContents(oDumpFile, _PSD.getFormatType());
+
   XUtil::TRACE(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % (unsigned int) pSection->getSectionKind());
   XUtil::QUIET("");
   XUtil::QUIET(boost::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'")
