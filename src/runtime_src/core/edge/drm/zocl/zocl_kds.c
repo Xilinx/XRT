@@ -967,9 +967,9 @@ int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 	}
 
 	zocl_detect_fa_cmdmem(zdev, slot);
-	
+
 	// Default supporting interrupt mode
-	zdev->kds.cu_intr_cap = 1;	
+	zdev->kds.cu_intr_cap = 1;
 
 	for (i = 0; i < MAX_CUS; i++) {
 		struct xrt_cu *xcu;

@@ -155,6 +155,11 @@ static inline void process_cq(struct xrt_cu *xcu)
 		--xcu->num_cq;
 		xcu->cu_stat.usage++;
 	}
+	if (xcu->thread) {
+		if (xcu->poll_count == xcu->poll_threshold)
+			xrt_cu_disable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+		xcu->poll_count = 0;
+	}
 }
 
 /**
@@ -422,9 +427,9 @@ int xrt_cu_intr_thread(void *data)
 	int ret = 0;
 	int loop_cnt = 0;
 
+	xcu->poll_count = 0;
 	xcu_info(xcu, "CU[%d] start", xcu->info.cu_idx);
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
-	xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
 	while (!xcu->stop) {
 		/* Make sure to submit as many commands as possible.
 		 * This is why we call continue here. This is important to make
@@ -433,30 +438,43 @@ int xrt_cu_intr_thread(void *data)
 		if (process_rq(xcu))
 			continue;
 
+		process_cq(xcu);
 		if (xcu->num_sq || is_zero_credit(xcu)) {
-			xrt_cu_check(xcu);
-			if (!xcu->done_cnt || !xcu->ready_cnt) {
-				xcu->sleep_cnt++;
-				/* Don't use down_interruptible() here.
-				 * If CU hang, this thread would keep waiting.
-				 * Host application is not able to exit since
-				 * there are outstading commands.
-				 *
-				 * CU_TIMER is runing at low frequence. For
-				 * normal CU, it will unlikely timeout.
+			if (xcu->poll_count < xcu->poll_threshold) {
+				/* Use this special code to measure time of a loop.
+				 * On APU, it takes about 2us on each loop.
+				 *   xrt_cu_circ_produce(xcu, 5, 0);
 				 */
-				if (down_timeout(&xcu->sem_cu, CU_TIMER))
-					ret = -ERESTARTSYS;
-				xrt_cu_check(xcu);
+				process_sq(xcu);
+				xcu->poll_count++;
+				/* If poll_count reach threshold, switch to
+				 * interrupt mode.
+				 */
+				if (xcu->poll_count == xcu->poll_threshold)
+					xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+			} else {
+				if (!xcu->done_cnt || !xcu->ready_cnt) {
+					xcu->sleep_cnt++;
+					/* Don't use down_interruptible() here.
+					 * If CU hang, this thread would keep waiting.
+					 * Host application is not able to exit since
+					 * there are outstading commands.
+					 *
+					 * CU_TIMER is runing at low frequence. For
+					 * normal CU, it will unlikely timeout.
+					 */
+					if (down_timeout(&xcu->sem_cu, CU_TIMER))
+						ret = -ERESTARTSYS;
+					xrt_cu_check(xcu);
+				}
+				__process_sq(xcu);
 			}
-			__process_sq(xcu);
 		}
 
-		process_cq(xcu);
 		process_hpq(xcu);
 
 		/* Avoid large num_rq leads to more 120 sec blocking */
-		if (++loop_cnt == 8) {
+		if (++loop_cnt == MAX_CU_LOOP) {
 			loop_cnt = 0;
 			schedule();
 		}
@@ -759,6 +777,7 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	atomic_set(&xcu->tick, 0);
 	xcu->start_tick = 0;
 	xcu->thread = NULL;
+	xcu->poll_threshold = CU_DEFAULT_POLL_THRESHOLD;
 
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	return err;

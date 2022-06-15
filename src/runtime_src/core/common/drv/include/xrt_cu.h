@@ -27,6 +27,14 @@
 #define ioremap_nocache         ioremap
 #endif
 
+/* Avoid the CU soft lockup warning when CU thread keep busy.
+ * Small value leads to lower performance on APU.
+ */
+#define MAX_CU_LOOP 100
+
+/* If poll count reach this threashold, switch to interrupt mode */
+#define CU_DEFAULT_POLL_THRESHOLD 30 /* About 60 us on APU */
+
 /* The normal CU in ip_layout would assign a interrupt
  * ID in range 0 to 127. Use 128 for m2m cu could ensure
  * m2m CU is at the end of the CU, which is compatible with
@@ -340,6 +348,8 @@ struct xrt_cu {
 	 * one for submit, one for complete
 	 */
 	struct task_struct	  *thread;
+	u32			   poll_count;
+	u32                        poll_threshold;
 	/* Good for debug */
 	u32			   sleep_cnt;
 	u32			   max_running;

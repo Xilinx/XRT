@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -46,7 +46,7 @@
 
 #define CQ_STATUS_ADDR 0x58
 
-#define CTRL_XGQ_SLOT_SIZE          512	
+#define CTRL_XGQ_SLOT_SIZE          512
 
 /* XGQ IP offsets */
 #define XGQ_SQ_REG		0x0

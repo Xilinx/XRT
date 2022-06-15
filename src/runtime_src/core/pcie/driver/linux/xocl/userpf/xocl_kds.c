@@ -1621,7 +1621,7 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 	cfg_start->num_cus = num_cus;
 	cfg_start->i2h = 1;
 	cfg_start->i2e = 1;
-	cfg_start->cui = 0;
+	cfg_start->cui = 1;
 	cfg_start->mode = 0;
 	cfg_start->echo = 0;
 	cfg_start->verbose = 0;
@@ -1725,6 +1725,8 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info
 		cfg_cu->cu_idx = i;
 		cfg_cu->cu_domain = DOMAIN_PL;
 		cfg_cu->ip_ctrl = cu_info[i].protocol;
+		cfg_cu->intr_id = cu_info[i].intr_id;
+		cfg_cu->intr_enable = cu_info[i].intr_enable;
 		cfg_cu->map_size = cu_info[i].size;
 		cfg_cu->laddr = cu_info[i].addr;
 		cfg_cu->haddr = cu_info[i].addr >> 32;

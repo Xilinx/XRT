@@ -150,6 +150,7 @@ struct drm_zocl_dev {
 	struct list_head	 ctx_list;
 
 	struct zocl_cu_subdev	 cu_subdev;
+	struct platform_device	*cu_intc;
 	struct kds_sched	 kds;
 
 	/*

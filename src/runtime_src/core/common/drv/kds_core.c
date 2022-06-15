@@ -194,7 +194,7 @@ static int kds_polling_thread(void *data)
 			usleep_range(kds->interval, kds->interval + 3);
 
 		/* Avoid large num_rq leads to more 120 sec blocking */
-		if (++loop_cnt == 8) {
+		if (++loop_cnt == MAX_CU_LOOP) {
 			loop_cnt = 0;
 			schedule();
 		}
@@ -1094,13 +1094,13 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 			info.cu_domain = DOMAIN_PS;
 			info.curr_ctx = cctx;
 			kds_del_context(kds, client, &info);
+			kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
 		}
-		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
 		count_idx += 1;
 	};
 	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
-	count_idx = 0;
 
+	count_idx = 0;
 	while (count_idx < MAX_CUS) {
 		/* Check whether this CU belongs to current slot */
 		if (is_cu_in_ctx_slot(kds, cctx, count_idx, DOMAIN_PL)) {
@@ -1108,8 +1108,8 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 			info.cu_domain = DOMAIN_PL;
 			info.curr_ctx = cctx;
 			kds_del_context(kds, client, &info);
+			kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
 		}
-		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
 		count_idx += 1;
 	};
 	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
