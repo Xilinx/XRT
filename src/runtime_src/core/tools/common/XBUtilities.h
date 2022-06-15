@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,16 +23,37 @@
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
 
+#include <chrono>
+#include <iostream>
 #include <string>
 #include <memory>
 #include <map>
-#include <iostream>
 #include <vector>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/program_options.hpp>
+
 #include <boost/algorithm/string.hpp>
+#include <boost/program_options.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 namespace XBUtilities {
+
+  class Timer {
+  private:
+    std::chrono::high_resolution_clock::time_point m_time_start;
+
+  public:
+    Timer() { reset(); }
+
+    std::chrono::duration<double> get_time() 
+    {
+      std::chrono::high_resolution_clock::time_point time_end = std::chrono::high_resolution_clock::now();
+      return std::chrono::duration<double>(time_end - m_time_start);
+    }
+
+    void reset() { m_time_start = std::chrono::high_resolution_clock::now(); }
+
+    static std::string
+    format_time(std::chrono::duration<double> duration);
+  };
  
   void can_proceed_or_throw(const std::string& info, const std::string& error);
 
