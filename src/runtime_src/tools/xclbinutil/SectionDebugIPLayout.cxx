@@ -76,6 +76,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(DEBUG_IP_TYPE _debugIpType) const
       return "AXI_NOC";
     case ACCEL_DEADLOCK_DETECTOR:
       return "ACCEL_DEADLOCK_DETECTOR";
+    case HSDP_TRACE:
+      return "HSDP_TRACE";
     case DEBUG_IP_TYPE_MAX:
       return "DEBUG_IP_TYPE_MAX";
   }
@@ -127,6 +129,9 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const
 
   if (_sDebugIPType == "ACCEL_DEADLOCK_DETECTOR")
     return ACCEL_DEADLOCK_DETECTOR;
+
+  if (_sDebugIPType == "HSDP_TRACE")
+    return HSDP_TRACE;
 
   if (_sDebugIPType == "UNDEFINED")
     return UNDEFINED;

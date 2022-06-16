@@ -549,6 +549,7 @@ DeviceIntf::~DeviceIntf()
               mDeadlockDetector = new DeadlockDetector(mDevice, i, &(map->m_debug_ip_data[i]));
               break;
             case AXI_STREAM_PROTOCOL_CHECKER :
+            case HSDP_TRACE :
             default : 
               break;
           }
