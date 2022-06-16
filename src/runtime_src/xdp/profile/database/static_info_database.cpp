@@ -1382,11 +1382,7 @@ namespace xdp {
      */
     devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
 
-    if (!setXclbinName(currentXclbin, device)) {
-      // If there is no SYSTEM_METADATA section, use a default name
-      currentXclbin->name = "default.xclbin";
-    }
-    if (!initializeComputeUnits(currentXclbin, device)) {
+    if (!initializeStructure(currentXclbin, device)) {
       delete currentXclbin;
       return;
     }
@@ -1414,32 +1410,26 @@ namespace xdp {
     return true;
   }
 
-  bool VPStaticDatabase::setXclbinName(XclbinInfo* currentXclbin, const std::shared_ptr<xrt_core::device>& device)
+  void VPStaticDatabase::setXclbinName(XclbinInfo* currentXclbin,
+                                       const char* systemMetadataSection,
+                                       size_t systemMetadataSz)
   {
-    // Get SYSTEM_METADATA section
-    std::pair<const char*, size_t> systemMetadata = device->get_axlf_section(SYSTEM_METADATA);
-    const char* systemMetadataSection = systemMetadata.first;
-    size_t      systemMetadataSz      = systemMetadata.second;
-    if(systemMetadataSection == nullptr) return false;
+    if (currentXclbin == nullptr)
+      return;
 
-    // For now, also update the System metadata for the run summary.
-    //  TODO: Expand this so that multiple devices and multiple xclbins
-    //  don't overwrite the single system diagram information
-    std::ostringstream buf ;
-    for (size_t index = 0 ; index < systemMetadataSz ; ++index)
-    {
-      buf << std::hex << std::setw(2) << std::setfill('0') << (unsigned int)(systemMetadataSection[index]);
-    }
-    {
-      std::lock_guard<std::mutex> lock(summaryLock) ;
-      systemDiagram = buf.str() ;
+    const char* defaultName = "default.xclbin";
+
+    if (systemMetadataSection == nullptr || systemMetadataSz <= 0) {
+      // If there is no SYSTEM_METADATA section, use a default name
+      currentXclbin->name = defaultName;
+      return;
     }
 
     try {
       std::stringstream ss;
       ss.write(systemMetadataSection, systemMetadataSz);
 
-      // Create a property tree and determine if the variables are all default values
+      // Create a property tree based off of the JSON
       boost::property_tree::ptree pt;
       boost::property_tree::read_json(ss, pt);
 
@@ -1448,23 +1438,94 @@ namespace xdp {
         currentXclbin->name += ".xclbin";
       }
     } catch(...) {
-      // keep default value in "currentXclbin.name" i.e. empty string
+      currentXclbin->name = defaultName;
     }
+  }
+
+  void VPStaticDatabase::updateSystemDiagram(const char* systemMetadataSection,
+                                             size_t systemMetadataSz)
+  {
+    if (systemMetadataSection == nullptr || systemMetadataSz <= 0)
+      return;
+
+    // For now, also update the System metadata for the run summary.
+    //  TODO: Expand this so that multiple devices and multiple xclbins
+    //  don't overwrite the single system diagram information
+    std::ostringstream buf ;
+    for (size_t index = 0 ; index < systemMetadataSz ; ++index) {
+      buf << std::hex << std::setw(2) << std::setfill('0')
+          << (unsigned int)(systemMetadataSection[index]);
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(summaryLock) ;
+      systemDiagram = buf.str() ;
+    }
+  }
+
+  bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin,
+                                             const std::shared_ptr<xrt_core::device>& device)
+  {
+    // Step 1 -> Create the compute units based on the IP_LAYOUT section
+    const ip_layout* ipLayoutSection =
+      device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
+
+    if(ipLayoutSection == nullptr)
+      return true;
+
+    createComputeUnits(currentXclbin, ipLayoutSection);
+
+    // Step 2 -> Create the memory layout based on the MEM_TOPOLOGY section
+    const mem_topology* memTopologySection =
+      device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
+
+    if(memTopologySection == nullptr)
+      return false;
+
+    createMemories(currentXclbin, memTopologySection);
+
+    // Step 3 -> Connect the CUs with the memory resources using the
+    //           CONNECTIVITY section
+    const connectivity* connectivitySection =
+      device->get_axlf_section<const connectivity*>(CONNECTIVITY);
+
+    if(connectivitySection == nullptr)
+      return true;
+
+    createConnections(currentXclbin, ipLayoutSection, memTopologySection,
+                      connectivitySection);
+
+    // Step 4 -> Annotate all the compute units with workgroup size using
+    //           the EMBEDDED_METADATA section
+    std::pair<const char*, size_t> embeddedMetadata =
+      device->get_axlf_section(EMBEDDED_METADATA);
+
+    annotateWorkgroupSize(currentXclbin, embeddedMetadata.first,
+                          embeddedMetadata.second);
+
+    // Step 5 -> Fill in the details like the name of the xclbin using
+    //           the SYSTEM_METADATA section
+    std::pair<const char*, size_t> systemMetadata =
+      device->get_axlf_section(SYSTEM_METADATA);
+
+    setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
+    updateSystemDiagram(systemMetadata.first, systemMetadata.second);
+
     return true;
   }
 
-  bool VPStaticDatabase::initializeComputeUnits(XclbinInfo* currentXclbin, const std::shared_ptr<xrt_core::device>& device)
+  void VPStaticDatabase::createComputeUnits(XclbinInfo* currentXclbin,
+                                            const ip_layout* ipLayoutSection)
   {
-    // Get IP_LAYOUT section 
-    const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
-    if(ipLayoutSection == nullptr) return true;
+    if (currentXclbin == nullptr || ipLayoutSection == nullptr)
+      return;
 
     ComputeUnitInstance* cu = nullptr;
-    for(int32_t i = 0; i < ipLayoutSection->m_count; i++) {
+    for(int32_t i = 0; i < ipLayoutSection->m_count; ++i) {
       const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[i]);
-      if(ipData->m_type != IP_KERNEL) {
+      if(ipData->m_type != IP_KERNEL)
         continue;
-      }
+
       std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
       if(std::string::npos != cuName.find(":dm_")) {
         /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
@@ -1481,25 +1542,37 @@ namespace xdp {
         cu->setFaEnabled(true);
       }
     }
+  }
 
-    // Get MEM_TOPOLOGY section 
-    const mem_topology* memTopologySection = device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
-    if(memTopologySection == nullptr) return false;
+  void VPStaticDatabase::createMemories(XclbinInfo* currentXclbin,
+                                        const mem_topology* memTopologySection)
+  {
+    if (currentXclbin == nullptr || memTopologySection == nullptr)
+      return;
 
-    for(int32_t i = 0; i < memTopologySection->m_count; i++) {
+    for(int32_t i = 0; i < memTopologySection->m_count; ++i) {
       const struct mem_data* memData = &(memTopologySection->m_mem_data[i]);
-      currentXclbin->pl.memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
-                                          reinterpret_cast<const char*>(memData->m_tag), memData->m_used);
+      currentXclbin->pl.memoryInfo[i] =
+        new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
+                   reinterpret_cast<const char*>(memData->m_tag),
+                   memData->m_used);
     }
+  }
 
-    // Look into the connectivity section and load information about Compute Units and their Memory connections
-    // Get CONNECTIVITY section
-    const connectivity* connectivitySection = device->get_axlf_section<const connectivity*>(CONNECTIVITY);    
-    if(connectivitySection == nullptr) return true;
+  void VPStaticDatabase::createConnections(XclbinInfo* currentXclbin,
+                                           const ip_layout* ipLayoutSection,
+                                           const mem_topology* memTopologySection,
+                                           const connectivity* connectivitySection)
+  {
+    if (currentXclbin == nullptr
+        || ipLayoutSection == nullptr
+        || memTopologySection == nullptr
+        || connectivitySection == nullptr)
+      return;
 
     // Now make the connections
-    cu = nullptr;
-    for(int32_t i = 0; i < connectivitySection->m_count; i++) {
+    ComputeUnitInstance* cu = nullptr;
+    for(int32_t i = 0; i < connectivitySection->m_count; ++i) {
       const struct connection* connctn = &(connectivitySection->m_connection[i]);
 
       if(currentXclbin->pl.cus.find(connctn->m_ip_layout_index) == currentXclbin->pl.cus.end()) {
@@ -1535,11 +1608,16 @@ namespace xdp {
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
+  }
 
-    // Set Static WorkGroup Size of CUs using the EMBEDDED_METADATA section
-    std::pair<const char*, size_t> embeddedMetadata = device->get_axlf_section(EMBEDDED_METADATA);
-    const char* embeddedMetadataSection = embeddedMetadata.first;
-    size_t      embeddedMetadataSz      = embeddedMetadata.second;
+  void VPStaticDatabase::annotateWorkgroupSize(XclbinInfo* currentXclbin,
+                                               const char* embeddedMetadataSection,
+                                               size_t embeddedMetadataSz)
+  {
+    if (currentXclbin == nullptr
+        || embeddedMetadataSection == nullptr
+        || embeddedMetadataSz <= 0)
+      return;
 
     boost::property_tree::ptree xmlProject;
     std::stringstream xmlStream;
@@ -1580,8 +1658,6 @@ namespace xdp {
         cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
       }
     }
-
-    return true;
   }
 
   void VPStaticDatabase::initializeAM(DeviceInfo* devInfo,
