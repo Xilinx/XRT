@@ -843,11 +843,29 @@ get_aie_partition(const axlf* top)
   if (!pSection)
     return {};
 
-  auto begin = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
-  auto aiep = reinterpret_cast<const aie_partition*>(begin);
-  auto scp = reinterpret_cast<const uint16_t*>(begin + aiep->info.start_columns.offset);
+  auto topbase = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
+  auto aiep = reinterpret_cast<const aie_partition*>(topbase);
+  auto scp = reinterpret_cast<const uint16_t*>(topbase + aiep->info.start_columns.offset);
 
-  return {aiep->info.column_width, {scp, scp + aiep->info.start_columns.size}, begin + aiep->mpo_name};
+  aie_partition_obj obj{aiep->info.column_width, {scp, scp + aiep->info.start_columns.size}, topbase + aiep->mpo_name};
+
+  for (uint32_t i = 0; i < aiep->aie_pdi.size; i++) {
+    aie_pdi_obj pdiobj;
+    auto aiepdip = reinterpret_cast<const aie_pdi*>(topbase + aiep->aie_pdi.offset + i * sizeof(aie_pdi));
+
+    uuid_copy(pdiobj.uuid, aiepdip->uuid);
+    pdiobj.pdi.resize(aiepdip->pdi_image.size);
+    memcpy(pdiobj.pdi.data(), topbase + aiepdip->pdi_image.offset, pdiobj.pdi.size());
+    for (uint32_t j = 0; j < aiepdip->cdo_groups.size; j++) {
+      auto cdop = reinterpret_cast<const cdo_group*>(topbase + aiepdip->cdo_groups.offset + j * sizeof(cdo_group));
+
+      pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name, cdop->cdo_type, cdop->pdi_id, cdop->dpu_kernel_id});
+    }
+
+    obj.pdis.emplace_back(std::move(pdiobj));
+  }
+
+  return obj;
 }
 
 size_t
