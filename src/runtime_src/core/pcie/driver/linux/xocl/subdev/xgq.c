@@ -695,7 +695,8 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN && 
 	    opcode != XGQ_CMD_OP_DOWNLOAD_PDI &&
-	    opcode != XGQ_CMD_OP_LOAD_APUBIN) {
+	    opcode != XGQ_CMD_OP_LOAD_APUBIN &&
+	    opcode != XGQ_CMD_OP_PROGRAM_SCFW) {
 		XGQ_WARN(xgq, "unsupported opcode %d", opcode);
 		return -EINVAL;
 	}
@@ -727,8 +728,12 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 		&(cmd->xgq_cmd_entry.pdi_payload) :
 		&(cmd->xgq_cmd_entry.xclbin_payload);
 
-	/* copy buf data onto shared memory with device */
-	memcpy_to_device(xgq, address, buf, len);
+	/*
+	 * copy buf data onto shared memory with device.
+	 * Note: if len == 0, it is PROGRAME_SCFW, no payload to copyin
+	 */
+	if (len > 0)
+		memcpy_to_device(xgq, address, buf, len);
 	payload->address = address;
 	payload->size = len;
 	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
@@ -796,6 +801,14 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 		XGQ_CMD_OP_LOAD_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
 
 	return ret == xclbin_len ? 0 : -EIO;
+}
+
+static int xgq_program_scfw(struct platform_device *pdev)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+
+	return xgq_transfer_data(xgq, NULL, 0,
+		XGQ_CMD_OP_PROGRAM_SCFW, XOCL_XGQ_DOWNLOAD_TIME);
 }
 
 static int xgq_log_page_fw(struct platform_device *pdev,
@@ -1829,7 +1842,7 @@ static ssize_t program_sc_store(struct device *dev,
 	}
 
 	if (val) {
-		ret = vmr_control_op(to_platform_device(dev), XGQ_CMD_PROGRAM_SC);
+		ret = xgq_program_scfw(to_platform_device(dev));
 		if (ret) {
 			XGQ_ERR(xgq, "failed: %d", ret);
 			return -EINVAL;

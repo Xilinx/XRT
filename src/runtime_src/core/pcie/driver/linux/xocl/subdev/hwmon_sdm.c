@@ -314,11 +314,21 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	}
 
 	mutex_lock(&sdm->sdm_lock);
-	get_sensors_data(sdm->pdev, repo_id);
+	/*
+	 * In sensor data record, sensor's value, average, max and status fields
+	 * will only change and all other fields remains static.
+	 * So, request sensor data only for the dynamic fields and skip for other fields.
+	 */
+	if ((field_id == SYSFS_SDR_INS_VAL) ||
+	    (field_id == SYSFS_SDR_MAX_VAL) ||
+	    (field_id == SYSFS_SDR_AVG_VAL) ||
+	    (field_id == SYSFS_SDR_STATUS_VAL))
+		get_sensors_data(sdm->pdev, repo_id);
 
 	if ((sdm->sensor_data[repo_id] == NULL) || (!sdm->sensor_data_avail[repo_id])) {
 		xocl_dbg(&sdm->pdev->dev, "sensor_data is empty for repo_id: 0x%x\n", repo_id);
 		sz = sprintf(buf, "%d\n", 0);
+		goto done;
 	}
 
 	if ((field_id == SYSFS_SDR_NAME) ||
@@ -364,6 +374,7 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 		sz = sprintf(buf, "%d\n", 0);
 	}
 
+done:
 	mutex_unlock(&sdm->sdm_lock);
 
 	return sz;
