@@ -389,6 +389,44 @@ static void xgq_vmr_log_dump_all(struct xocl_xgq_vmr *xgq)
 	xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, false);
 }
 
+static struct opcode_name {
+	const char 	*name;
+	int 		opcode;
+} opcode_names[] = {
+	{"LOAD XCLBIN", XGQ_CMD_OP_LOAD_XCLBIN},
+	{"GET LOG PAGE", XGQ_CMD_OP_GET_LOG_PAGE},
+	{"DOWNLOAD PDI", XGQ_CMD_OP_DOWNLOAD_PDI},
+	{"CLOCK", XGQ_CMD_OP_CLOCK},
+	{"SENSOR", XGQ_CMD_OP_SENSOR},
+	{"LOAD APUBIN", XGQ_CMD_OP_LOAD_APUBIN},
+	{"VMR CONTROL", XGQ_CMD_OP_VMR_CONTROL},
+	{"PROGRAM SCFW", XGQ_CMD_OP_PROGRAM_SCFW},
+};
+
+const char *get_opcode_name(int opcode)
+{
+	int i = 0;
+	const char *unknown = "UNKNOWN";
+
+	for (i = 0; i < ARRAY_SIZE(opcode_names); i++) {
+		if (opcode_names[i].opcode == opcode)
+			return opcode_names[i].name;
+	}
+
+	return unknown;
+}
+
+static void xgq_vmr_log_dump_debug(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
+{
+	XGQ_WARN(xgq, "opcode: %s(0x%x), rcode: %d, check debug trace for detailed log.",
+		get_opcode_name(cmd->xgq_cmd_entry.hdr.opcode),
+		cmd->xgq_cmd_entry.hdr.opcode,
+		cmd->xgq_cmd_rcode);
+
+	/* Dump VMR logs into xclmgmt debugfs */
+	xgq_vmr_log_dump(xgq, 20, true);
+}
+
 /*
  * stop service will be called from driver remove or found timeout cmd from health_worker
  * 3 steps to stop the service:
@@ -771,7 +809,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
-		XGQ_INFO(xgq, "ret: %d, check VMR log for more info.", cmd->xgq_cmd_rcode);
+		xgq_vmr_log_dump_debug(xgq, cmd);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
 		ret = len;
