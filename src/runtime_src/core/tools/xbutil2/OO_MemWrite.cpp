@@ -82,17 +82,26 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  if (m_count == 0) {
+    std::cerr << boost::format("ERROR: Value for --count must be greater than 0\n");
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
   // check option combinations
   // mutually exclusive options
-  if (!m_inputFile.empty() && !m_fill.empty())
-    throw xrt_core::error(std::errc::operation_canceled, "Please specify either '--input' or '--fill'");
+  if (!m_inputFile.empty() && !m_fill.empty()) {
+    std::cerr << "Please specify either '--input' or '--fill'\n";
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 
   //-- Working variables
   std::shared_ptr<xrt_core::device> device;
 
   //-- Device
-  if (m_device.size() > 1)
-    throw xrt_core::error(std::errc::operation_canceled, "Multiple devices not supported. Please specify a single device");
+  if (m_device.size() > 1) {
+    std::cerr << "Multiple devices not supported. Please specify a single device\n";
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 
   try {
     // Collect the device of interest
@@ -138,11 +147,18 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  if (size == 0) {
+    std::cerr << boost::format("ERROR: Value for --size must be greater than 0\n");
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
   // Parse the input option path
   if (!m_inputFile.empty()) {
     // Verify that the file exists and is not a directory
-    if (!boost::filesystem::exists(m_inputFile) && boost::filesystem::is_regular_file(m_inputFile))
-      throw xrt_core::error(std::errc::operation_canceled, (boost::format("Input file does not exist: '%s'") % m_inputFile).str());
+    if (!boost::filesystem::exists(m_inputFile) && boost::filesystem::is_regular_file(m_inputFile)) {
+      std::cerr << boost::format("Input file does not exist: '%s'\n") % m_inputFile;
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
 
     // Open the input file stream after validating the file path and name
     std::ifstream input_stream(m_inputFile, std::ios::binary);
@@ -159,16 +175,15 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
 
       if (m_sizeBytes.empty()) // update size
         size = validated_length;
+
       // Set count such that the entire input stream is written to the device
       // Add size to the validated length to account for truncation due to division
+      // If the given size is 0 set the block count to 0
       count = (validated_length + size - 1) / size;
       input_stream.seekg(0, input_stream.beg);
     }
     else
       count = m_count;
-
-    if (count <= 0)
-      throw xrt_core::error(std::errc::operation_canceled, "Value for --count must be greater than 0");
 
     // Logging information
     XBU::verbose(boost::str(boost::format("Device: %s") % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device))));
@@ -180,7 +195,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
 
     // Write to device memory
     XBU::xclbin_lock xclbin_lock(device);
-    
+
     try {
       for (decltype(count) c = 0; c < count; c++) {
         XBU::verbose(boost::str(boost::format("[%d / %llu] Writing to Address: %s, Size: %llu bytes") % c % count % addr % size));
@@ -204,13 +219,11 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
 
   // Parse the fill option path
   if(!m_fill.empty()) {
-    // Validate the block count. This cannot be done as the --input path may create its own block count
-    if (m_count <= 0)
-      throw xrt_core::error(std::errc::operation_canceled, "Value for --count must be greater than 0");
-    
     // Validate the number of bytes to write
-    if (m_sizeBytes.empty())
-      throw xrt_core::error(std::errc::operation_canceled, "Value required for --size when using --fill");
+    if (m_sizeBytes.empty()) {
+      std::cerr << "Value required for --size when using --fill\n";
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
 
     char fill_byte = 'J';
     try {
@@ -232,7 +245,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
 
     // Write to device memory
     XBU::xclbin_lock xclbin_lock(device);
-    
+
     try {
       // Generate the fill vector
       std::vector<char> buffer(size);

@@ -24,10 +24,10 @@
 #include <numeric>
 #include <vector>
 
+#include "core/common/unistd.h"
 #include "memalign.h"
 #include "query_requests.h"
 #include "utils.h"
-#include "core/common/unistd.h"
 
 namespace {
 // Holds the parsed data from the memory topology object
@@ -36,9 +36,8 @@ struct mem_bank_t
   uint64_t m_base_address;
   uint64_t m_size;
   mem_bank_t(const struct mem_data& data) :
-  m_base_address(data.m_base_address)
-  // In memory topology struct size is stored as KB. We convert to bytes for easy referencing
-  , m_size(data.m_size * 1024)
+    m_base_address(data.m_base_address)
+    , m_size(data.m_size * 1024) // In memory topology struct size is stored as KB. We convert to bytes for easy referencing
   {}
 };
 
@@ -55,16 +54,16 @@ get_ddr_banks(const xrt_core::device* device)
   // are in use and not streaming types add store the relevant information
   std::for_each(map->m_mem_data, map->m_mem_data + map->m_count,
     [&banks](const auto& mem) {
-    if (mem.m_used && mem.m_type != MEM_STREAMING)
-      banks.emplace_back(mem);
+      if (mem.m_used && mem.m_type != MEM_STREAMING)
+        banks.emplace_back(mem);
     });
 
   // Sort banks based on their starting address
   // This is useful later on for processing
   std::sort (banks.begin(), banks.end(),
-              [] (const mem_bank_t& a, const mem_bank_t& b) {
-                return a.m_base_address < b.m_base_address;
-              });
+    [] (const mem_bank_t& a, const mem_bank_t& b) {
+      return a.m_base_address < b.m_base_address;
+    });
 
   return banks;
 }
@@ -73,9 +72,9 @@ static uint64_t
 get_starting_address(const std::vector<mem_bank_t>& vec_banks, const uint64_t start_addr)
 {
   auto valid_bank =  std::find_if(vec_banks.begin(), vec_banks.end(),
-            [](const mem_bank_t& item) {
-              return item.m_size;
-            });
+    [](const mem_bank_t& item) {
+      return item.m_size;
+    });
 
   if (valid_bank == vec_banks.end())
     throw xrt_core::error(std::errc::operation_canceled, "ERROR: Couldn't find valid memory banks");
@@ -93,9 +92,9 @@ get_starting_bank(std::vector<mem_bank_t>& vec_banks, const uint64_t start_addr)
 {
   // Sanity check start address
   auto start_bank = std::find_if(vec_banks.begin(), vec_banks.end(),
-              [=](const mem_bank_t& item) {
-                return ((start_addr >= item.m_base_address) && (start_addr < (item.m_base_address+item.m_size)));
-              });
+    [=](const mem_bank_t& item) {
+      return ((start_addr >= item.m_base_address) && (start_addr < (item.m_base_address+item.m_size)));
+    });
 
   if (start_bank == vec_banks.end())
     throw xrt_core::error(std::errc::operation_canceled,  boost::str(boost::format("Start address 0x%x is not valid") % start_addr));
@@ -108,9 +107,9 @@ get_available_memory_size(std::vector<mem_bank_t>& vec_banks, std::vector<mem_ba
 {
   // Validate the amount of accessable memory
   uint64_t available_size = std::accumulate(start_bank, vec_banks.end(), (uint64_t)0,
-          [](uint64_t result, const mem_bank_t& obj) {
-            return result + obj.m_size;
-          }) ;
+    [](uint64_t result, const mem_bank_t& obj) {
+      return result + obj.m_size;
+    }) ;
 
   available_size -= start_addr - start_bank->m_base_address;
 

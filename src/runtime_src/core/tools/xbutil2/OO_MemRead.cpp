@@ -112,7 +112,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   }
 
   if (m_count <= 0) {
-    std::cerr << "ERROr: Please specify a number of blocks greater than zero\n";
+    std::cerr << "ERROR: Please specify a number of blocks greater than zero\n";
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -131,8 +131,6 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   try {
     if (!m_sizeBytes.empty()) {
       size = XBUtilities::string_to_base_units(m_sizeBytes, XBUtilities::unit::bytes);
-      if (size <= 0)
-        throw xrt_core::error(std::errc::operation_canceled, "Size must be greater than 0");
     }
   }
   catch (const xrt_core::error& e) {
@@ -149,7 +147,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
 
   //read mem
   XBU::xclbin_lock xclbin_lock(device);
-  
+
   // Open the output file and write the data as we receive it
   std::ofstream out_file(m_outputFile, std::ofstream::out | std::ofstream::binary | std::ofstream::app);
   try{
