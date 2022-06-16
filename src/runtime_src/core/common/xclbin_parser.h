@@ -19,6 +19,7 @@
 #include "config.h"
 #include "cuidx_type.h"
 #include "core/include/xclbin.h"
+#include "core/include/xrt/xrt_uuid.h"
 
 #include <array>
 #include <limits>
@@ -116,7 +117,7 @@ struct aie_cdo_group_obj
 // @pdi: PDI blob
 struct aie_pdi_obj
 {
-  xuid_t uuid;
+  xrt::uuid uuid;
   std::vector<aie_cdo_group_obj> cdo_groups;
   std::vector<uint8_t> pdi;
 };

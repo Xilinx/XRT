@@ -853,7 +853,7 @@ get_aie_partition(const axlf* top)
     aie_pdi_obj pdiobj;
     auto aiepdip = reinterpret_cast<const aie_pdi*>(topbase + aiep->aie_pdi.offset + i * sizeof(aie_pdi));
 
-    uuid_copy(pdiobj.uuid, aiepdip->uuid);
+    pdiobj.uuid = aiepdip->uuid;
     pdiobj.pdi.resize(aiepdip->pdi_image.size);
     memcpy(pdiobj.pdi.data(), topbase + aiepdip->pdi_image.offset, pdiobj.pdi.size());
     for (uint32_t j = 0; j < aiepdip->cdo_groups.size; j++) {
