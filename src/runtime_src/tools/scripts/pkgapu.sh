@@ -169,7 +169,13 @@ PKG_VER=`cat $IMAGES_DIR/rootfs.manifest | grep "^xrt " | sed s/.*\ //`
 if [[ "X$PKG_VER" == "X" ]]; then
 	error "Can not get package version"
 fi
-echo VERSION "$PKG_VER"
+
+# Add patch number in version if 'APU_VERSION_PATCH' env variable is defined
+if [[ ! -z $APU_VERSION_PATCH ]]; then
+	PKG_VER=${PKG_VER%.*}.$APU_VERSION_PATCH
+fi
+
+echo APU Package version : "$PKG_VER"
 
 if [ -d $BUILD_DIR ]; then
 	rm -rf $BUILD_DIR
