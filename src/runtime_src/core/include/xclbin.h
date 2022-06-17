@@ -375,6 +375,7 @@ extern "C" {
         TRACE_S2MM_FULL,
         AXI_NOC,
         ACCEL_DEADLOCK_DETECTOR,
+        HSDP_TRACE,
         DEBUG_IP_TYPE_MAX
     };
 
