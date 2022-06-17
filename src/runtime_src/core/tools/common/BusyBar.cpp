@@ -58,7 +58,7 @@ BusyBar::~BusyBar()
 bool
 BusyBar::start()
 {
-  std::lock_guard<std::mutex> lock(m_data_guard);
+  std::lock_guard lock(m_data_guard);
   if (m_is_running)
     return false;
   // Reset all data fields
@@ -67,7 +67,7 @@ BusyBar::start()
   m_is_running = true;
   m_output << fmtUpdate % "" % m_op_name % Timer::format_time(std::chrono::seconds(0));
   m_output.flush();
-  busy_thread = std::thread(&BusyBar::update, this);
+  busy_thread = std::thread([&] { update(); });
   return true;
 }
 
@@ -75,7 +75,7 @@ void
 BusyBar::finish()
 {
   // Protect the class data here
-  std::unique_lock<std::mutex> lock(m_data_guard);
+  std::unique_lock lock(m_data_guard);
   if (m_is_running) {
     m_is_running = false;
     // Unlock the mutex before joining the thread
@@ -93,8 +93,8 @@ BusyBar::finish()
 void
 BusyBar::check_timeout(const std::chrono::seconds& max_duration)
 {
-  std::unique_lock<std::mutex> lock(m_data_guard);
-  if (m_timer.get_time() >= max_duration) {
+  std::unique_lock lock(m_data_guard);
+  if (m_timer.get_elapsed_time() >= max_duration) {
     lock.unlock();
     finish();
     throw std::runtime_error("Time Out");
@@ -110,7 +110,7 @@ BusyBar::update()
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // Protext class data
-   std::lock_guard<std::mutex> lock(m_data_guard);
+   std::lock_guard lock(m_data_guard);
     // Create the busy bar filled with spaces and a symbol at the end
     const static std::string symbol = "<->";
     // Add one so that character goes to the end of the bar
@@ -124,7 +124,7 @@ BusyBar::update()
 
     // // Write the new progress bar
     m_output << EscapeCodes::cursor().prev_line()
-             << fmtUpdate % busy_bar % m_op_name % Timer::format_time(m_timer.get_time());
+             << fmtUpdate % busy_bar % m_op_name % Timer::format_time(m_timer.get_elapsed_time());
 
     m_output.flush();
 

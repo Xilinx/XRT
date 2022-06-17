@@ -642,7 +642,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   XBU::Timer timer;
   if (xclCopyBO(handle, bo_tgt, bo_src, bo_size, 0, 0))
     return bandwidth;
-  double timer_duration_sec = timer.get_time().count();
+  double timer_duration_sec = timer.get_elapsed_time().count();
 
   if(xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
     free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
@@ -708,13 +708,13 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
   //if no xclbin is loaded, locate the default xclbin
   //check if a 2RP platform
   std::vector<std::string> logic_uuid;
-  try{
+  try {
     logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(dev);
   } catch(...) { }
 
   std::string xclbinPath;
   auto xclbin_location = ptTest.get<std::string>("xclbin_directory", "");
-  if(!xclbin_location.empty()) {
+  if (!xclbin_location.empty()) {
     xclbinPath = xclbin_location + xclbin;
   }
   else if(!logic_uuid.empty()) {

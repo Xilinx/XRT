@@ -25,14 +25,14 @@
 
 #include <chrono>
 #include <iostream>
-#include <string>
-#include <memory>
 #include <map>
+#include <memory>
+#include <string>
 #include <vector>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/algorithm/string.hpp>
 
 namespace XBUtilities {
 
@@ -43,7 +43,7 @@ namespace XBUtilities {
   public:
     Timer() { reset(); }
 
-    std::chrono::duration<double> get_time() 
+    std::chrono::duration<double> get_elapsed_time() 
     {
       std::chrono::high_resolution_clock::time_point time_end = std::chrono::high_resolution_clock::now();
       return std::chrono::duration<double>(time_end - m_time_start);
