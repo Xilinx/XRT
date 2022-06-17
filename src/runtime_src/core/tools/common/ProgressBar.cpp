@@ -87,7 +87,7 @@ ProgressBar::finish(bool _successful, const std::string &_msg)
 
   // -- Batch --
   if (m_isBatch) {
-    m_ostr << fmtBatchPF % (_successful ? "PASSED" : "FAILED") % _msg % Timer::format_time(m_timer.get_time());
+    m_ostr << fmtBatchPF % (_successful ? "PASSED" : "FAILED") % _msg % Timer::format_time(m_timer.get_elapsed_time());
     m_ostr.flush();
     return;
   }
@@ -96,7 +96,7 @@ ProgressBar::finish(bool _successful, const std::string &_msg)
   boost::format &fmt = _successful ? fmtPassed : fmtFailed;
   m_ostr << EscapeCodes::cursor().prev_line()
          << EscapeCodes::cursor().clear_line()
-         << fmt % _msg % Timer::format_time(m_timer.get_time())
+         << fmt % _msg % Timer::format_time(m_timer.get_elapsed_time())
          << std::endl << EscapeCodes::cursor().show();
 
   m_ostr.flush();
@@ -168,7 +168,7 @@ ProgressBar::update(unsigned int _iteration)
 
   // Write the new progress bar
   m_ostr << EscapeCodes::cursor().prev_line()
-         << fmtUpdate % progressBar % runningPercent % m_opName % Timer::format_time(m_timer.get_time())
+         << fmtUpdate % progressBar % runningPercent % m_opName % Timer::format_time(m_timer.get_elapsed_time())
          << std::endl;
 
   m_ostr.flush();
