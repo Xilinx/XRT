@@ -19,7 +19,7 @@
 #include "xgq_impl.h"
 #include "xgq_cmd_ert.h"
 
-#define XGQ_CMD_DEBUG
+//#define XGQ_CMD_DEBUG
 
 /* One CU command. */
 struct sched_cmd {
