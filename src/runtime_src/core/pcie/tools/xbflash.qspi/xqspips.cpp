@@ -19,6 +19,7 @@
 #include <iostream>
 #include <cassert>
 #include <cstring>
+#include <array>
 #include "xqspips.h"
 
 #include "unistd.h"
