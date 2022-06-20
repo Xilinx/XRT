@@ -2202,14 +2202,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	/*
-	ret = xgq_download_apu_firmware(pdev);
-	if (ret) {
-		XGQ_WARN(xgq, "unable to download APU, ret: %d", ret);
-		ret = 0;
-	}
-	*/
-		
+	XGQ_WARN(xgq, "APU firmware will be loaded via separate worker.");
+
 	ret = xocl_subdev_create(xdev, &subdev_info);
 	if (ret) {
 		XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
