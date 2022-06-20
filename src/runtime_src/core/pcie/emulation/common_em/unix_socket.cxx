@@ -280,7 +280,6 @@ void unix_socket::monitor_socket_thread() {
       std::cerr<<"\n Client socket state has changed & it is not readable anymore! So application will exit now.";
       m_is_socket_live.store(false);
       server_started.store(false);                              // Let's other monitoring threads exit
-      std::this_thread::sleep_for(5s);                          // provide some time so that spawned threads will terminate themselves messagesThread.
       break;
     }
 

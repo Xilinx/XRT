@@ -1680,7 +1680,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       return;
     }
     // All RPC calls fail if no socket is live.
-    if (sock->m_is_socket_live != false) {
+    if ( !sock->m_is_socket_live ) {
       resetProgram(false);      
     }
     
