@@ -1481,6 +1481,7 @@ static int xgq_download_apu_firmware(struct platform_device *pdev)
 		return ret;
 	}
 
+	XGQ_INFO(xgq, "start requesting apu firmware");
 	ret = xocl_request_firmware(&pcidev->dev, apu_bin,
 			&apu_bin_buf, &apu_bin_len);
 	if (ret)
@@ -2201,11 +2202,13 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	/*
 	ret = xgq_download_apu_firmware(pdev);
 	if (ret) {
 		XGQ_WARN(xgq, "unable to download APU, ret: %d", ret);
 		ret = 0;
 	}
+	*/
 		
 	ret = xocl_subdev_create(xdev, &subdev_info);
 	if (ret) {

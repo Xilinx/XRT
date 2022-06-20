@@ -1240,7 +1240,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	store_pcie_link_info(lro);
 
 	/* Notify our peer that we're listening. */
-	xclmgmt_connect_notify(lro, true);
+	(void) xocl_queue_work(lro, XOCL_WORK_READY_NOTIFY_PEER, 0);
 	xocl_info(&pdev->dev, "device fully initialized\n");
 	return;
 
@@ -1305,6 +1305,11 @@ static void xclmgmt_work_cb(struct work_struct *work)
 		ret = xclmgmt_program_shell(lro);
 		if (!ret)
 			xclmgmt_connect_notify(lro, true);
+		break;
+	case XOCL_WORK_READY_NOTIFY_PEER:
+		/* -ENODEV or download failed, either way we can continue */
+		xocl_download_apu_firmware(lro);
+		xclmgmt_connect_notify(lro, true);
 		break;
 	default:
 		mgmt_err(lro, "Invalid op code %d", _work->op);
