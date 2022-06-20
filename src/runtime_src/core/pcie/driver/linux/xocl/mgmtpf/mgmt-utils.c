@@ -383,10 +383,12 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_clear_pci_errors(lro);
 	store_pcie_link_info(lro);
 
-	if (xrt_reset_syncup)
+	if (xrt_reset_syncup) {
 		xocl_set_master_on(lro);
-	else if (!force)
+	} else if (!force) {
+		xocl_download_apu_firmware(lro);
 		xclmgmt_connect_notify(lro, true);
+	}
 
 	return 0;
 
