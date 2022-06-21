@@ -1480,7 +1480,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     uint64_t finalSize = size+(2*paddingFactor*size);
     mAddrMap[finalValidAddress] = finalSize;
     bool ack = false;
-    if(sock && (boFlags & XCL_BO_FLAGS_P2P))
+    if (sock && (boFlags & XCL_BO_FLAGS_P2P))
     {
       if (boFlags & XCL_BO_FLAGS_HOST_ONLY) { // bypassed the xclAllocDeviceBuffer RPC call for Slave Bridge (host only buffer)
       } else {
