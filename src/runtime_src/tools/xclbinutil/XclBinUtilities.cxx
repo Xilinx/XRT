@@ -337,7 +337,7 @@ XclBinUtilities::hexStringToBinaryBuffer(const std::string& _inputString,
 uint64_t
 XclBinUtilities::stringToUInt64(const std::string& _sInteger, bool _bForceHex) {
   // Is it a hex value
-  if ( _bForceHex ) {
+  if (_bForceHex) {
     return std::stoul(_sInteger, nullptr, 16);
   }
 
