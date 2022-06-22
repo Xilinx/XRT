@@ -1327,7 +1327,7 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("aux-connection", "Check if auxiliary power is connected", ""), auxConnectionTest },
   { create_init_test("pcie-link", "Check if PCIE link is active", ""), pcieLinkTest },
   { create_init_test("sc-version", "Check if SC firmware is up-to-date", ""), scVersionTest },
-  { create_init_test("verify", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
+  { create_init_test("verify", "Run 'Hello World' PL kernel test", "verify.xclbin"), verifyKernelTest },
   { create_init_test("dma", "Run dma test", "verify.xclbin"), dmaTest },
   { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin"), iopsTest },
   { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
@@ -1336,11 +1336,11 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
-  { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest },
-  { create_init_test("aie-ps", "Run AIE PS test", "ps_aie.xclbin"), psAieTest },
-  { create_init_test("bw-ps", "Run bandwidth PS test", "ps_bandwidth.xclbin"), psBandwidthTest },
-  { create_init_test("validate-ps", "Run validation PS test", "ps_validate_bandwidth.xclbin"), psValidateTest },
-  { create_init_test("iops-ps", "Run IOPS PS test", "ps_validate_bandwidth.xclbin"), psIopsTest }
+  { create_init_test("pl-aie", "Run PL controlled AIE test", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest },
+  { create_init_test("ps-aie", "Run PS controlled AIE test", "ps_aie.xclbin"), psAieTest },
+  { create_init_test("ps-pl-verify", "Run PS controlled 'Hello World' PL kernel test", "ps_bandwidth.xclbin"), psBandwidthTest },
+  { create_init_test("ps-verify", "Run 'Hello World' PS kernel test", "ps_validate_bandwidth.xclbin"), psValidateTest },
+  { create_init_test("ps-iops", "Run IOPS PS test", "ps_validate_bandwidth.xclbin"), psIopsTest }
 };
 
 
@@ -1538,7 +1538,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "aie-ps", "bw-ps", "validate-ps", "iops-ps"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "pl-aie", "ps-aie", "ps-pl-verify", "ps-verify", "ps-iops"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
