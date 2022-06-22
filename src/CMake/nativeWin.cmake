@@ -46,6 +46,10 @@ add_compile_definitions("BOOST_BIND_GLOBAL_PLACEHOLDERS")
 # the warning is bogus.  Remove defintion when fixed
 add_compile_definitions("_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING")
 
+if (MSVC)
+  add_compile_options(/Zc:__cplusplus)
+endif()
+
 INCLUDE (FindGTest)
 
 # --- XRT Variables ---
