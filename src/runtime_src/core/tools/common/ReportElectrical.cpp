@@ -51,12 +51,17 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
                                std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
+  const boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
 
   _output << "Electrical\n";
-  const boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
-  _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A");
-  _output << boost::format("  %-23s: %s Watts\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts", "N/A");
-  _output << boost::format("  %-23s: %s\n\n") % "Power Warning" % _pt.get<std::string>("electrical.power_consumption_warning", "N/A");
+  _output << boost::format("  %-23s: %s %s\n") % "Max Power" %
+	  _pt.get<std::string>("electrical.power_consumption_max", "N/A") %
+	  _pt.get<std::string>("electrical.power_consumption_max_units", "N/A");
+  _output << boost::format("  %-23s: %s %s\n") % "Power" %
+	  _pt.get<std::string>("electrical.power_consumption", "N/A") %
+	  _pt.get<std::string>("electrical.power_consumption_units", "N/A");
+  _output << boost::format("  %-23s: %s\n\n") % "Power Warning" %
+	  _pt.get<std::string>("electrical.power_consumption_warning", "N/A");
   _output << boost::format("  %-23s: %6s   %6s\n") % "Power Rails" % "Voltage" % "Current";
   for(auto& kv : electricals) {
     const boost::property_tree::ptree& pt_sensor = kv.second;
@@ -65,11 +70,15 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
     auto amps_is_present = pt_sensor.get<bool>("current.is_present");
 
     if(volts_is_present && amps_is_present)
-      _output << boost::format("  %-23s: %6s V, %6s A\n") % name % pt_sensor.get<std::string>("voltage.volts") % pt_sensor.get<std::string>("current.amps");
+      _output << boost::format("  %-23s: %6s %s, %6s %s\n") % name %
+		  pt_sensor.get<std::string>("voltage.volts") % pt_sensor.get<std::string>("voltage.units") %
+		  pt_sensor.get<std::string>("current.amps") % pt_sensor.get<std::string>("current.units");
     else if(volts_is_present)
-      _output << boost::format("  %-23s: %6s V\n") % name % pt_sensor.get<std::string>("voltage.volts");
+      _output << boost::format("  %-23s: %6s %s\n") % name %
+		  pt_sensor.get<std::string>("voltage.volts") % pt_sensor.get<std::string>("voltage.units");
     else if(amps_is_present)
-      _output << boost::format("  %-23s: %16s A\n") % name % pt_sensor.get<std::string>("current.amps");
+      _output << boost::format("  %-23s: %16s %s\n") % name %
+		  pt_sensor.get<std::string>("current.amps") % pt_sensor.get<std::string>("current.units");
   }
   _output << std::endl;
 

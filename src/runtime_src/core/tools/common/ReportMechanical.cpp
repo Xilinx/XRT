@@ -55,8 +55,11 @@ ReportMechanical::writeReport( const xrt_core::device* /*_pDevice*/,
       continue;
     }
     _output << boost::format("    %-10s\n") % pt_fan.get<std::string>("description");
-    _output << boost::format("      %-22s: %s C\n") % "Critical Trigger Temp" % pt_fan.get<std::string>("critical_trigger_temp_C");
-    _output << boost::format("      %-22s: %s RPM\n") % "Speed" % pt_fan.get<std::string>("speed_rpm");
+    _output << boost::format("      %-22s: %s %s\n") % "Critical Trigger Temp" %
+		pt_fan.get<std::string>("critical_trigger_temp_C") %
+		pt_fan.get<std::string>("critical_trigger_temp_C.units");
+    _output << boost::format("      %-22s: %s %s\n") % "Speed" %
+		pt_fan.get<std::string>("speed_rpm") % pt_fan.get<std::string>("speed_rpm.units");
   }
   _output << std::endl;
 }

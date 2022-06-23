@@ -57,6 +57,7 @@ populate_sensor(const xrt_core::device * device,
     pt.put("voltage.error_msg", ex.what());
   }
   pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(voltage));
+  pt.put("voltage.units", "Volts");
   pt.put("voltage.is_present", voltage != 0 ? "true" : "false");
 
   try {
@@ -67,6 +68,7 @@ populate_sensor(const xrt_core::device * device,
     pt.put("current.error_msg", ex.what());
   }
   pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(current));
+  pt.put("current.units", "Amps");
   pt.put("current.is_present", current != 0 ? "true" : "false");
 
   return pt;
@@ -90,6 +92,7 @@ populate_temp(const xrt_core::device * device,
   pt.put("location_id", loc_id);
   pt.put("description", desc);
   pt.put("temp_C", temp_C);
+  pt.put("units", "Celcius");
   pt.put("is_present", temp_C != 0 ? "true" : "false");
 
   return pt;
@@ -130,7 +133,9 @@ populate_fan(const xrt_core::device * device,
   pt.put("location_id", loc_id);
   pt.put("description", desc);
   pt.put("critical_trigger_temp_C", temp_C);
+//  pt.put("critical_trigger_temp_C.units", "Celcius");
   pt.put("speed_rpm", rpm);
+  //pt.put("speed_rpm.units", "RPM");
   pt.put("is_present", xq::fan_fan_presence::to_string(is_present));
 
   return pt;
@@ -163,6 +168,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(tmp.input));
     pt.put("voltage.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
     pt.put("voltage.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    pt.put("voltage.units", tmp.units);
     // these fields are also needed to differentiate between sensor types
     pt.put("voltage.is_present", "true");
     pt.put("current.is_present", "false");
@@ -184,6 +190,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
         kv.second.put("current.amps", amps);
         kv.second.put("current.max", max);
         kv.second.put("current.average", avg);
+        kv.second.put("current.units", tmp.units);
         kv.second.put("current.is_present", "true");
         found = true;
         break;
@@ -198,6 +205,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(tmp.input));
     pt.put("current.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
     pt.put("current.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    pt.put("current.units", tmp.units);
     // these fields are also needed to differentiate between sensor types
     pt.put("current.is_present", "true");
     pt.put("voltage.is_present", "false");
@@ -205,17 +213,22 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   }
 
   uint64_t bd_power;
+  std::string power_units;
   // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power) {
-    if (boost::iequals(tmp.label, "Total Power"))
+    if (boost::iequals(tmp.label, "Total Power")) {
       bd_power = tmp.input;
+	  power_units = tmp.units;
+	}
   }
   ptree_type root;
 
   root.add_child("power_rails", sensor_array);
 
-  root.put("power_consumption_watts", bd_power);
-  root.put("power_consumption_max_watts", "NA");
+  root.put("power_consumption", bd_power);
+  root.put("power_consumption_units", power_units);
+  root.put("power_consumption_max", "NA");
+  root.put("power_consumption_max_units", "NA");
   root.put("power_consumption_warning", "NA");
 
   return root;
@@ -232,6 +245,7 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
     ptree_type pt;
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
+    pt.put("units", tmp.units);
     pt.put("temp_C", tmp.input);
     pt.put("is_present", "true");
     thermal_array.push_back({"", pt});
@@ -252,6 +266,7 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output)
   for (const auto& tmp : output) {
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
+    pt.put("units", tmp.units);
     pt.put("critical_trigger_temp_C", "N/A");
     pt.put("speed_rpm", tmp.input);
     pt.put("is_present", "true");
@@ -400,8 +415,10 @@ read_legacy_electrical(const xrt_core::device * device)
 
   ptree_type root;
   root.add_child("power_rails", sensor_array);
-  root.put("power_consumption_max_watts", max_power_watts);
-  root.put("power_consumption_watts", power_watts);
+  root.put("power_consumption_max", max_power_watts);
+  root.put("power_consumption_max_units", "Watts");
+  root.put("power_consumption", power_watts);
+  root.put("power_consumption_units", "Watts");
   root.put("power_consumption_warning", warning);
 
   return root;

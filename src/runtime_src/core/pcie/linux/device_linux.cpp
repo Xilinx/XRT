@@ -151,7 +151,7 @@ struct sdm_sensor_info
   {
     auto pdev = get_pcidev(device);
     //sensors are stored in hwmon sysfs dir with name ends with as follows.
-    std::array<std::string, 6> sname_end = {"label", "input", "max", "average", "highest", "status"};
+    std::array<std::string, 7> sname_end = {"label", "input", "max", "average", "highest", "status", "units"};
     int max_end_types = sname_end.size();
     std::string errmsg, str_op, target_snode;
     // data_type has default constructor that initializes data members appropriately,
@@ -207,6 +207,12 @@ struct sdm_sensor_info
         pdev->sysfs_get("", target_snode, errmsg, str_op);
         if (errmsg.empty())
           data.status = str_op;
+        break;
+      case 6:
+        // read sysfs node <tpath>units
+        pdev->sysfs_get("", target_snode, errmsg, str_op);
+        if (errmsg.empty())
+          data.units = str_op;
         break;
       }
     }
