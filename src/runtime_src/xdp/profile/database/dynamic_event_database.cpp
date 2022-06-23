@@ -429,7 +429,10 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addAIETraceData(uint64_t deviceId,
-                             uint64_t strmIndex, void* buffer, uint64_t bufferSz)
+                                          uint64_t strmIndex,
+                                          void* buffer,
+                                          uint64_t bufferSz,
+                                          bool copy)
   {
     std::lock_guard<std::mutex> lock(aieLock);
 
@@ -442,11 +445,16 @@ namespace xdp {
       aieTraceData[deviceId][strmIndex] = new AIETraceDataType;
     }
 
+    void* trace_buffer = buffer;
     // We need to copy trace buffer data as it could be be overwritten by datamover
-    auto buffer_copy = std::make_unique<unsigned char[]>(bufferSz);
-    std::memcpy(buffer_copy.get(), buffer, bufferSz);
-    aieTraceData[deviceId][strmIndex]->buffer.push_back(std::move(buffer_copy));
+    if (copy) {
+      trace_buffer = std::malloc(bufferSz);
+      std::memcpy(trace_buffer, buffer, bufferSz);
+    }
+
+    aieTraceData[deviceId][strmIndex]->buffer.push_back(trace_buffer);
     aieTraceData[deviceId][strmIndex]->bufferSz.push_back(bufferSz);
+    aieTraceData[deviceId][strmIndex]->owner = copy;
   }
 
   AIETraceDataType* VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)

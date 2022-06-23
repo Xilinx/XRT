@@ -383,6 +383,13 @@ get_aie_trace_periodic_offload()
   return value;
 }
 
+inline bool
+get_aie_trace_reuse_buffer()
+{
+  static bool value = detail::get_bool_value("Debug.aie_trace_reuse_buffer", false);
+  return value;
+}
+
 /**
  * Deprecated in future. Ms is too long for aie trace
  */
@@ -406,6 +413,7 @@ get_aie_trace_file_dump_interval_s()
   static unsigned int value = detail::get_uint_value("Debug.aie_trace_file_dump_interval_s", 5);
   return value;
 }
+
 
 inline std::string
 get_aie_profile_core_metrics()
