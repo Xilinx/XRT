@@ -414,7 +414,6 @@ get_aie_trace_file_dump_interval_s()
   return value;
 }
 
-
 inline std::string
 get_aie_profile_core_metrics()
 {
