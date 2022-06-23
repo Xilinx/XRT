@@ -445,10 +445,10 @@ namespace xdp {
       aieTraceData[deviceId][strmIndex] = new AIETraceDataType;
     }
 
-    void* trace_buffer = buffer;
+    unsigned char* trace_buffer = static_cast<unsigned char *>(buffer);
     // We need to copy trace buffer data as it could be be overwritten by datamover
     if (copy) {
-      trace_buffer = std::malloc(bufferSz);
+      trace_buffer = new unsigned char[bufferSz];
       std::memcpy(trace_buffer, buffer, bufferSz);
     }
 

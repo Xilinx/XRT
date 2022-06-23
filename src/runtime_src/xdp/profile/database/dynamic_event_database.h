@@ -40,7 +40,7 @@ namespace xdp {
 
   // AIE Trace data type
   struct AIETraceDataType {
-    std::vector<void *> buffer;
+    std::vector<unsigned char *> buffer;
     std::vector<uint64_t> bufferSz;
     bool owner;
   };

@@ -100,7 +100,7 @@ namespace xdp {
 
       // Free the memory immediately if we own it
       if (traceData->owner)
-        std::free(traceData->buffer[j]);
+        delete[] (traceData->buffer[j]);
     }
     fout << std::endl;
     delete traceData;
