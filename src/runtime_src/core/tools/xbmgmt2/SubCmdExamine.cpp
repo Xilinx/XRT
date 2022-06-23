@@ -126,8 +126,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest
-  xrt_core::device_collection deviceCollection;  // The collection of devices to examine
-  Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
 
   // Collect the reports to be processed
   XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
@@ -140,7 +138,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     sFormat = "json";
 
   // Output Format
-  schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
+  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
   if (schemaVersion == Report::SchemaVersion::unknown) 
     throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
@@ -195,7 +193,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // Create the report
   std::ostringstream oSchemaOutput;
   try {
-    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+    XBU::produce_reports(device, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
     is_report_output_valid = false;

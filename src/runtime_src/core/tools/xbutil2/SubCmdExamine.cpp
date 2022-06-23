@@ -182,7 +182,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
 // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest
-  xrt_core::device_collection deviceCollection;  // The collection of devices to examine
 
   bool is_report_output_valid = true;
   // Collect the reports to be processed
@@ -201,7 +200,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   }
 
   // DRC check on devices and reports
-  if (deviceCollection.empty()) {
+  if (!device) {
     std::vector<std::string> missingReports;
     for (const auto & report : reportsToProcess) {
       if (report->isDeviceRequired())
@@ -234,7 +233,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // Create the report
   std::ostringstream oSchemaOutput;
   try {
-    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+    XBU::produce_reports(device, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
     is_report_output_valid = false;

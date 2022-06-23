@@ -45,7 +45,7 @@ namespace XBUtilities {
                                   ReportCollection & reportsToUse);
 
   void 
-     produce_reports( xrt_core::device_collection devices, 
+     produce_reports( const std::shared_ptr<xrt_core::device>& device, 
                       const ReportCollection & reportsToProcess, 
                       Report::SchemaVersion schema, 
                       std::vector<std::string> & elementFilter,
