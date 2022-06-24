@@ -155,6 +155,9 @@ else ()
   SET (CPACK_GENERATOR "TGZ")
 endif()
 
+# On Amazon Linux CPACK_REL_VER is just '2' and it is hard to
+# distinguish it as AL package, so adding CPACK_FLOVOR (eg: amzn) 
+# to package name
 if (${LINUX_FLAVOR} MATCHES "^Amazon")
   execute_process(
     COMMAND awk -F= "$1==\"ID\" {print $2}" /etc/os-release
