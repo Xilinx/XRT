@@ -1021,8 +1021,8 @@ namespace xdp {
     std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
 
     bool newConfigUsed = false;
-    for(int module = 0; module < NUM_MODULES; ++module) {
-      if (metricsConfig[module].empty()){
+    for (int module = 0; module < NUM_MODULES; ++module) {
+      if (metricsConfig[module].empty()) {
 #if 0
 // No need to add the warning message here, as all the tests are using configs under Debug
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
@@ -1068,7 +1068,7 @@ namespace xdp {
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
 
-      for(auto &metricsStr : metricsSettings[module]) { 
+      for (auto &metricsStr : metricsSettings[module]) { 
 
         int NUM_COUNTERS       = numCounters[module];
         XAie_ModuleType mod    = falModuleTypes[module];
