@@ -1624,8 +1624,8 @@ static int vmr_enable_multiboot(struct platform_device *pdev)
 		xgq->xgq_boot_from_backup ? XGQ_CMD_BOOT_BACKUP : XGQ_CMD_BOOT_DEFAULT);
 }
 
-static int xgq_collect_sensors(struct platform_device *pdev, int sid,
-	char *data_buf, uint32_t len)
+static int xgq_collect_sensors(struct platform_device *pdev, int aid, int sid,
+                               char *data_buf, uint32_t len, uint8_t sensor_id)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -1658,8 +1658,12 @@ static int xgq_collect_sensors(struct platform_device *pdev, int sid,
 	payload = &(cmd->xgq_cmd_entry.sensor_payload);
 	payload->address = address;
 	payload->size = len;
-	payload->aid = XGQ_CMD_SENSOR_AID_GET_SDR;
+	//Sensor API ID
+	payload->aid = aid;
+	//Sensor request ID
 	payload->sid = sid;
+	//Sensor ID
+	payload->sensor_id = sensor_id;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_SENSOR;
@@ -1711,10 +1715,16 @@ acquire_failed:
 	return ret;
 }
 
-static int xgq_collect_sensors_by_id(struct platform_device *pdev, char *buf,
-	 uint8_t id, uint32_t len)
+static int xgq_collect_sensors_by_repo_id(struct platform_device *pdev, char *buf,
+	 uint8_t repo_id, uint32_t len)
 {
-	return xgq_collect_sensors(pdev, id, buf, len);
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_AID_GET_SDR, repo_id, buf, len, 0);
+}
+
+static int xgq_collect_sensors_by_sensor_id(struct platform_device *pdev, char *buf,
+	 uint8_t repo_id, uint32_t len, uint8_t sensor_id)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_AID_GET_SINGLE_SDR, repo_id, buf, len, sensor_id);
 }
 
 /* sysfs */
@@ -2272,7 +2282,8 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,
-	.xgq_collect_sensors_by_id = xgq_collect_sensors_by_id,
+	.xgq_collect_sensors_by_repo_id = xgq_collect_sensors_by_repo_id,
+	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.vmr_load_firmware = xgq_log_page_fw,
 };
 

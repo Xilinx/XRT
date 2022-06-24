@@ -1042,6 +1042,7 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 		goto done;
 
 	mb_req->req = XCL_MAILBOX_REQ_SDR_DATA;
+	mb_req->flags = 0x0;
 	subdev_peer.size = resp_len;
 	subdev_peer.kind = kind;
 	subdev_peer.entries = 1;
