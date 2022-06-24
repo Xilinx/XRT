@@ -46,6 +46,13 @@ struct process_data
     char etime[MAX_DATA_LENGTH];
     char cpu[MAX_DATA_LENGTH];
     char cpu_util[MAX_DATA_LENGTH];
+
+    friend std::ostream& operator<<(std::ostream& out, const struct process_data& d)
+    {
+        out << d.name << " " << d.etime << " " << d.vsz 
+            << " " << d.stat << " " << d.cpu << " " << d.cpu_util;
+        return out;
+    }
 };
 
 int main(int argc, char** argv) {
@@ -93,7 +100,6 @@ int main(int argc, char** argv) {
 
     auto uuid = device.load_xclbin(binaryfile);
     auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
-    auto loop_hello_world = xrt::kernel(device, uuid.get(), "loop_hello_world");
 
     const size_t DATA_SIZE = COUNT * sizeof(char);
     auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
@@ -101,23 +107,17 @@ int main(int argc, char** argv) {
     std::fill(bo0_map, bo0_map + COUNT, 0);
 
     bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
-    
-    auto run_loop = loop_hello_world(15);
+
     auto run = hello_world(bo0, COUNT);
     run.wait();
-    run_loop.wait();
-    
+
     //Get the output;
     bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
     struct process_header* header = (struct process_header*) bo0_map;
     std::cout << "Data Count: " << header->count << std::endl;
     struct process_data* data = (struct process_data*) (bo0_map + sizeof(struct process_header));
     for (int i = 0; i < header->count; i++) {
-        struct process_data& d = data[i];
-        std::cout << "  Name: " << d.name << " Elapsed Time: " << d.etime
-                  << " VSZ: " << d.vsz << " Status: " << d.stat << " CPU: "
-                  << d.cpu << " CPU%: " << d.cpu_util << std::endl;
+        std::cout << data[i] << std::endl;
     }
-    std::cout << "TEST PASSED\n";
     return 0;
 }
