@@ -81,8 +81,7 @@ XBU::verbose("SubCommand option: read mem");
 
   try {
     // Find device of interest
-    auto device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
-
+    device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const xrt_core::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();

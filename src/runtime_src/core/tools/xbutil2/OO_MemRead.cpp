@@ -82,7 +82,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
       throw xrt_core::error("Multiple devices not supported. Please specify a single device");
     
     // Find device of interest
-    auto device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
 
     //-- Output file
     if (!m_outputFile.empty() && boost::filesystem::exists(m_outputFile) && !XBU::getForce())
