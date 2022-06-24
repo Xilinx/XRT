@@ -26,8 +26,6 @@ else()
 )
 endif()
 
-include (CMake/glibc.cmake)
-
 SET(PACKAGE_KIND "TGZ")
 if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   execute_process(

@@ -19,6 +19,7 @@
 
 #include "core/common/config.h"
 #include "xclbin.h"
+#include <limits>
 #include <string>
 #include <vector>
 
