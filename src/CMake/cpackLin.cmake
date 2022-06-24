@@ -157,7 +157,8 @@ endif()
 
 if (${LINUX_FLAVOR} MATCHES "^Amazon")
   execute_process(
-    COMMAND bash "-c" "cat /etc/os-release | grep '^ID=' | awk -F= '{print $2}' | tr -d '\"'"
+    COMMAND awk -F= "$1==\"ID\" {print $2}" /etc/os-release
+    COMMAND tr -d "\""
     OUTPUT_VARIABLE CPACK_FLAVOR
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
