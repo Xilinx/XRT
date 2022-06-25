@@ -1191,6 +1191,18 @@ static int vmr_endpoint_info_query(struct platform_device *pdev,
 	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_ENDPOINT);
 }
 
+static int vmr_task_info_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_TASK_STATS);
+}
+
+static int vmr_memory_info_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_MEM_STATS);
+}
+
 /* On versal, verify is enforced. */
 static int xgq_freq_scaling(struct platform_device *pdev,
 	unsigned short *freqs, int num_freqs, int verify)
@@ -1957,7 +1969,6 @@ static ssize_t vmr_verbose_info_show(struct device *dev,
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 
-	/* update boot status */
 	if (vmr_verbose_info_query(xgq->xgq_pdev, buf, &cnt))
 		return -EINVAL;
 
@@ -1971,13 +1982,38 @@ static ssize_t vmr_endpoint_show(struct device *dev,
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 
-	/* update boot status */
 	if (vmr_endpoint_info_query(xgq->xgq_pdev, buf, &cnt))
 		return -EINVAL;
 
 	return cnt;
 }
 static DEVICE_ATTR_RO(vmr_endpoint);
+
+static ssize_t vmr_task_stats_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	if (vmr_task_info_query(xgq->xgq_pdev, buf, &cnt))
+		return -EINVAL;
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(vmr_task_stats);
+
+static ssize_t vmr_mem_stats_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	if (vmr_memory_info_query(xgq->xgq_pdev, buf, &cnt))
+		return -EINVAL;
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(vmr_mem_stats);
 
 static ssize_t vmr_debug_type_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -2009,6 +2045,8 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_vmr_status.attr,
 	&dev_attr_vmr_verbose_info.attr,
 	&dev_attr_vmr_endpoint.attr,
+	&dev_attr_vmr_task_stats.attr,
+	&dev_attr_vmr_mem_stats.attr,
 	&dev_attr_program_sc.attr,
 	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_vmr_debug_dump.attr,
