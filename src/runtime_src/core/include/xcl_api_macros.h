@@ -72,13 +72,13 @@ std::lock_guard<std::mutex> socketlk{mtx};
     auto c_len = c_msg.ByteSizeLong();                                  \
     buf_size = alloc_void(c_len);                                       \
     bool rv = c_msg.SerializeToArray(buf,c_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+    if (rv == false) { std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed" << std::endl; exit(1); } \
                                                                         \
     ci_msg.set_size(c_len);                                             \
     ci_msg.set_xcl_api(func_name##_n);                                  \
     auto ci_len = ci_msg.ByteSizeLong();                                \
     rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+    if (rv == false) { std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed" << std::endl; exit(1); } \
                                                                         \
     _s_inst->sk_write(ci_buf,ci_len);                                   \
     _s_inst->sk_write(buf,c_len);                                       \
@@ -1037,3 +1037,16 @@ std::lock_guard<std::mutex> socketlk{mtx};
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclLoadXclbinContent_SET_PROTO_RESPONSE(); \
     xclLoadXclbinContent_RETURN();
+
+#define swemuDriverVersion_SET_PROTOMESSAGE(version) \
+  c_msg.set_version(version);
+
+#define swemuDriverVersion_SET_PROTO_RESPONSE() \
+  success = r_msg.success();
+
+#define swemuDriverVersion_RPC_CALL(func_name, version) \
+  RPC_PROLOGUE(func_name);                              \
+  swemuDriverVersion_SET_PROTOMESSAGE(version);         \
+  SERIALIZE_AND_SEND_MSG(func_name)                     \
+  swemuDriverVersion_SET_PROTO_RESPONSE();              
+
