@@ -68,6 +68,7 @@ enum xgq_cmd_sensor_page_id {
 	XGQ_CMD_SENSOR_SID_POWER	= 0x5,
 	XGQ_CMD_SENSOR_SID_QSFP		= 0x6,
 	XGQ_CMD_SENSOR_SID_ALL		= 0x7,
+	XGQ_CMD_SENSOR_SID_MAX		= 0x8,
 };
 
 /**
