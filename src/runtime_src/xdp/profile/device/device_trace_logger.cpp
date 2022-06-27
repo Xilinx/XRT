@@ -238,7 +238,7 @@ namespace xdp {
     if(-1 != mon->memIndex) {
       Memory* mem = db->getStaticInfo().getMemory(deviceId, mon->memIndex);
       if(nullptr != mem) {
-        memStrId = db->getDynamicInfo().addString(mem->name);
+        memStrId = db->getDynamicInfo().addString(mem->spTag);
       }
     }
 
@@ -548,7 +548,7 @@ namespace xdp {
       if(-1 != mon->memIndex) {
         Memory* mem = db->getStaticInfo().getMemory(deviceId, mon->memIndex);
         if(nullptr != mem) {
-          memStrId = db->getDynamicInfo().addString(mem->name);
+          memStrId = db->getDynamicInfo().addString(mem->spTag);
         }
       }
 
@@ -585,7 +585,7 @@ namespace xdp {
       if(-1 != mon->memIndex) {
         Memory* mem = db->getStaticInfo().getMemory(deviceId, mon->memIndex);
         if(nullptr != mem) {
-          memStrId = db->getDynamicInfo().addString(mem->name);
+          memStrId = db->getDynamicInfo().addString(mem->spTag);
         }
       }
 

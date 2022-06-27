@@ -53,20 +53,6 @@
 #define XAM_STALL_PROPERTY_MASK        0x4
 #define XMON_TRACE_PROPERTY_MASK       0x1
 
-static std::string convertMemoryName(const std::string &mem)
-{
-  if (0 == mem.compare("DDR[0]"))
-    return "bank0";
-  if (0 == mem.compare("DDR[1]"))
-    return "bank1";
-  if (0 == mem.compare("DDR[2]"))
-    return "bank2";
-  if (0 == mem.compare("DDR[3]"))
-    return "bank3";
-
-  return mem;
-}
-
 namespace xdp {
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d)
@@ -1463,6 +1449,89 @@ namespace xdp {
     }
   }
 
+  void VPStaticDatabase::addPortInfo(XclbinInfo* currentXclbin,
+                                     const char* systemMetadataSection,
+                                     size_t systemMetadataSz)
+  {
+    if (currentXclbin == nullptr || systemMetadataSection == nullptr ||
+        systemMetadataSz <= 0)
+      return;
+
+    // Parse the SYSTEM_METADATA section using boost property trees, which
+    // could throw exceptions in multiple ways.
+    try {
+      std::stringstream ss;
+      ss.write(systemMetadataSection, systemMetadataSz);
+
+      // Create a property tree based off of the JSON
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+
+      auto top = pt.get_child("system_diagram_metadata");
+
+      // Parse the xsa section for memory topology information
+      auto xsa = top.get_child("xsa");
+      auto device_topology = xsa.get_child("device_topology");
+
+      // Parse the xclbin section for compute unit port information
+      auto xclbin = top.get_child("xclbin");
+      auto user_regions = xclbin.get_child("user_regions");
+
+      // Temp data structure to hold mappings
+      std::map<std::string, int32_t> argumentToMemoryIndex;
+
+      // We also need to know which argument goes to which memory
+      for (auto& region : user_regions) {
+        for (auto& connection : region.second.get_child("connectivity")) {
+          auto node1 = connection.second.get_child("node1");
+          auto node2 = connection.second.get_child("node2");
+
+          auto arg = node1.get<std::string>("arg_name");
+          auto id = node2.get<std::string>("id");
+
+          argumentToMemoryIndex[arg] = std::stoi(id);
+        }
+      }
+
+      auto tolower = [](char c) { return static_cast<char>(std::tolower(c));};
+
+      // Now go through each of the kernels to determine the port information
+      for (auto& region : user_regions) {
+        for (auto& kernel : region.second.get_child("kernels")) {
+          auto kernelName = kernel.second.get<std::string>("name", "");
+          for (auto& port : kernel.second.get_child("ports")) {
+            auto portName = port.second.get<std::string>("name");
+            if (portName == "S_AXI_CONTROL")
+              continue;
+            auto portWidth = port.second.get<std::string>("data_width");
+	    std::transform(portName.begin(), portName.end(), portName.begin(),
+                           tolower);
+
+            currentXclbin->pl.addComputeUnitPorts(kernelName,
+                                                  portName,
+                                                  std::stoi(portWidth));
+          }
+          for (auto& arg : kernel.second.get_child("arguments")) {
+            auto portName = arg.second.get<std::string>("port");
+            if (portName == "S_AXI_CONTROL")
+              continue;
+	    std::transform(portName.begin(), portName.end(), portName.begin(),
+                           tolower);
+            auto argName = arg.second.get<std::string>("name");
+            auto memId = argumentToMemoryIndex[argName];
+
+            currentXclbin->pl.addArgToPort(kernelName, argName, portName);
+            currentXclbin->pl.connectArgToMemory(kernelName, portName,
+                                                 argName, memId);
+          }
+        }
+      }
+
+    } catch(...) {
+      //std::cout << "Caught exception: " << e.what() << std::endl ;
+    }
+  }
+
   bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin,
                                              const std::shared_ptr<xrt_core::device>& device)
   {
@@ -1510,6 +1579,7 @@ namespace xdp {
 
     setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
     updateSystemDiagram(systemMetadata.first, systemMetadata.second);
+    addPortInfo(currentXclbin, systemMetadata.first, systemMetadata.second);
 
     return true;
   }
@@ -1733,13 +1803,11 @@ namespace xdp {
     }
 
     std::string memName = "" ;
-    std::string memName1 = "" ;
     std::string portName = "" ;
     size_t pos1 = name.find('-');
     if(pos1 != std::string::npos) {
       memName = name.substr(pos1+1);
       portName = name.substr(pos+1, pos1-pos-1);
-      memName1 = convertMemoryName(memName);
     }
 
     ComputeUnitInstance* cuObj = nullptr ;
@@ -1756,14 +1824,18 @@ namespace xdp {
       }
     }
     for(auto mem : xclbin->pl.memoryInfo) {
-      if (0 == memName1.compare(mem.second->name) || 0 == memName.compare(mem.second->name)) {
+      if (0 == memName.compare(mem.second->spTag)) {
         memId = mem.second->index;
         break;
       }
     }
+
     Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
                                index, debugIpData->m_name, cuId, memId);
-    mon->port = portName;
+
+    if (cuObj) {
+      mon->cuPort = cuObj->getPort(portName);
+    }
     if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) {
       mon->traceEnabled = true ;
     }
@@ -1853,7 +1925,9 @@ namespace xdp {
     Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
                                index, debugIpData->m_name,
                                cuId);
-    mon->port = portName;
+    //mon->port = portName;
+    if (cuObj)
+      mon->cuPort = cuObj->getPort(portName);
     if (debugIpData->m_properties & 0x2) {
       mon->isStreamRead = true;
     }
@@ -1953,15 +2027,11 @@ namespace xdp {
     return true; 
   }
 
-
-
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {
     std::lock_guard<std::mutex> lock(openCLLock) ;
 
     commandQueueAddresses.emplace(a) ;
   }
-
-
 
 } // end namespace xdp

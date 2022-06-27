@@ -42,6 +42,44 @@ namespace xdp {
     }
   }
 
+  void PLInfo::addComputeUnitPorts(const std::string& kernelName,
+                                   const std::string& portName,
+                                   int32_t portWidth)
+  {
+    for (auto iter : cus) {
+      auto cu = iter.second;
+      if (cu->getKernelName() == kernelName)
+        cu->addPort(portName, portWidth);
+    }
+  }
+
+  void PLInfo::addArgToPort(const std::string& kernelName,
+                            const std::string& argName,
+                            const std::string& portName)
+  {
+    for (auto iter : cus) {
+      auto cu = iter.second;
+      if (cu->getKernelName() == kernelName)
+        cu->addArgToPort(argName, portName);
+    }
+  }
+
+  void PLInfo::connectArgToMemory(const std::string& kernelName,
+                                  const std::string& portName,
+                                  const std::string& argName,
+                                  int32_t memId)
+  {
+    if (memoryInfo.find(memId) == memoryInfo.end())
+      return;
+
+    Memory* mem = memoryInfo[memId];
+    for (auto iter : cus) {
+      auto cu = iter.second;
+      if (cu->getKernelName() == kernelName)
+        cu->connectArgToMemory(portName, argName, mem);
+    }
+  }
+
   AIEInfo::~AIEInfo()
   {
     for (auto i : nocList) {

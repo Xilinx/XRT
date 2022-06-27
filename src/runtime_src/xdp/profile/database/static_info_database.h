@@ -116,6 +116,7 @@ namespace xdp {
     void annotateWorkgroupSize(XclbinInfo*, const char*, size_t);
     void setXclbinName(XclbinInfo*, const char*, size_t);
     void updateSystemDiagram(const char*, size_t);
+    void addPortInfo(XclbinInfo*, const char*, size_t);
 
     // Functions that initialize the structure of the debug/profiling IP
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);

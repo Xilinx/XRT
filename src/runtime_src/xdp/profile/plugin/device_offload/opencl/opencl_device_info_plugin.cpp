@@ -37,45 +37,6 @@
 
 // Anonymous namespace for helper functions used only in this file
 namespace {
-  static std::string 
-  getMemoryNameFromID(const std::shared_ptr<xocl::compute_unit> cu,
-                      const size_t index)
-  {
-    std::string memoryName = "" ;
-    try {
-      auto memidx_mask = cu->get_memidx(index) ;
-      for (unsigned int memidx = 0 ; memidx < memidx_mask.size() ; ++memidx) {
-        if (memidx_mask.test(memidx)) {
-          // Get bank tag string from index
-          memoryName = "DDR";
-          auto device_id = cu->get_device() ;
-          if (device_id->is_active())
-            memoryName = device_id->get_xclbin().memidx_to_banktag(memidx);
-          break;
-        }
-      }
-    } catch (const std::runtime_error&) {
-      memoryName = "DDR" ;
-    }
-
-    // If we find the old "bank" format, just return it as is since our
-    //  monitor name could also have "bank" in it.  We'll check
-    //  if converting the name to DDR works separately.
-
-    return memoryName.substr(0, memoryName.find_last_of("[")) ;
-  }
-
-  static std::string convertBankToDDR(const std::string& name)
-  {
-    auto loc = name.find("bank") ;
-    if (loc == std::string::npos)
-      return name ;
-
-    std::string ddr = "DDR[" ;
-    ddr += name.substr(loc + 4) ;
-    ddr += "]" ;
-    return ddr ;
-  }
 
   static std::string debugIPLayoutPath(xrt_xocl::device* device)
   {
@@ -179,126 +140,13 @@ namespace xdp {
     //  be needed later.
     (db->getStaticInfo()).updateDevice(deviceId, device->get_xcl_handle()) ;
     (db->getStaticInfo()).setDeviceName(deviceId, device->getName()) ;
-
-    updateOpenCLInfo(deviceId) ;
   }
 
   void OpenCLDeviceInfoPlugin::updateOpenCLInfo(uint64_t deviceId)
   {
-    // *******************************************************
-    // OpenCL specific info 1: Argument lists for each monitor
-    // *******************************************************
-    // Argument information on each port is only available on via
-    //  accessing XOCL constructs.  We should only add port information
-    //  based on the debug monitors that exist, however, so we need to
-    //  cross-reference our data structures with the XOCL constructs.
-    DeviceInfo* storedDevice = (db->getStaticInfo()).getDeviceInfo(deviceId) ;
-    if (storedDevice == nullptr)
-      return ;
-    XclbinInfo* xclbin = storedDevice->currentXclbin() ;
-    if (xclbin == nullptr)
-      return ;
-
-    for (auto iter : xclbin->pl.cus)
-    {
-      ComputeUnitInstance* cu = iter.second ;
-
-      // Find the Compute unit on the XOCL side that matches this compute unit
-      std::shared_ptr<xocl::compute_unit> matchingCU ;
-      for (auto xoclDeviceId : platform->get_device_range()) {
-        for (auto& xoclCU : xocl::xocl(xoclDeviceId)->get_cus()) {
-          if (xoclCU->get_name() == cu->getName()) {
-            matchingCU = xoclCU ;
-            break ;
-          }
-        }
-      }
-
-      // Now go through all the monitors on the compute unit and set
-      //  information in our data structures based on XOCL info.
-      std::vector<uint32_t>* AIMIds = cu->getAIMs() ;
-      for (uint32_t AIMIndex : (*AIMIds)) {
-        Monitor* monitor =
-          (db->getStaticInfo()).getAIMonitor(deviceId, xclbin, AIMIndex) ;
-        if (!monitor)
-          continue ;
-
-        // Construct the argument list of each port
-        std::string arguments = "" ;
-        for (const auto& arg : matchingCU->get_args()) {
-          if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
-            continue;
-
-          if (arg.type != xrt_core::xclbin::kernel_argument::argtype::global
-              && arg.type != xrt_core::xclbin::kernel_argument::argtype::stream)
-            continue;
-
-          // Is this particular argument attached to the right port?
-          std::string lowerPort = arg.port ;
-          std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
-                         [](char c) { return (char)(std::tolower(c)); }) ;
-          if ((monitor->name).find(lowerPort) == std::string::npos)
-            continue ;
-
-          // Is this particular argument heading to the right memory?
-          std::string memoryName = getMemoryNameFromID(matchingCU, arg.index) ;
-          std::string convertedName = convertBankToDDR(memoryName) ;
-          if (monitor->name.find(memoryName) == std::string::npos &&
-              monitor->name.find(convertedName) == std::string::npos )
-            continue ;
-
-          if (arguments != "")
-            arguments += "|" ;
-          arguments += arg.name ;
-
-          // Also, set the port width for this monitor explicitly
-          monitor->portWidth = arg.port_width ;
-        }
-        monitor->args = arguments ;
-      }
-
-      std::vector<uint32_t>* ASMIds = cu->getASMs() ;
-      for (uint32_t ASMIndex : (*ASMIds)) {
-        Monitor* monitor =
-          (db->getStaticInfo()).getASMonitor(deviceId, xclbin, ASMIndex) ;
-        if (!monitor)
-          continue ;
-
-        // Construct the argument list of each port
-        std::string arguments = "" ;
-        for (auto arg : matchingCU->get_args()) {
-          if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
-            continue;
-
-          if (arg.type != xrt_core::xclbin::kernel_argument::argtype::global
-              && arg.type != xrt_core::xclbin::kernel_argument::argtype::stream)
-            continue;
-
-          // Is this particular argument attached to the right port?
-          std::string lowerPort = arg.port ;
-          std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
-                         [](char c) { return (char)(std::tolower(c)); }) ;
-          if ((monitor->name).find(lowerPort) == std::string::npos)
-            continue ;
-
-          // Is this particular argument heading to the right memory?
-          std::string memoryName = getMemoryNameFromID(matchingCU, arg.index) ;
-          std::string convertedName = convertBankToDDR(memoryName) ;
-          if (monitor->name.find(memoryName) == std::string::npos &&
-              monitor->name.find(convertedName) == std::string::npos) {
-            continue ;
-          }
-
-          if (arguments != "")
-            arguments += "|" ;
-          arguments += arg.name ;
-
-          // Also, set the port width for this monitor explicitly
-          monitor->portWidth = arg.port_width ;
-        }
-        monitor->args = arguments ;
-      }
-    }
+    // The argument list is now available due to the parsing of the
+    // SYSTEM_METADATA section, so we don't need to update it based off of
+    // OpenCL metadata.
   }
 
   void OpenCLDeviceInfoPlugin::updateSWEmulationGuidance()

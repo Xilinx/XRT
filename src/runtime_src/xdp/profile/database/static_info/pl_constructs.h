@@ -34,6 +34,43 @@
 
 namespace xdp {
 
+  // Forward declaration
+  struct Memory;
+
+  // The Port struct collects the information regarding a single port
+  // on a compute unit.  This port may or may not have monitors attached.
+  // This struct allows us to get argument information even on native XRT
+  // applications when available and is used when we calculate maximum
+  // and achieved bandwidth values.
+  struct Port
+  {
+  public:
+    // The name of the port in lower case (ex: m_axi_gmem)
+    std::string name = "";
+
+    // The width of the port connection in bits.  This is necessary
+    // for comparing seen throughput versus maximum throughput
+    uint32_t bitWidth = 0;
+
+    // A single port can go to multiple memory resources, such as PLRAM
+    // and DDR.  This keeps track of memory resources this port is connected
+    // to but does not own the object.
+    std::vector<Memory*> memories;
+
+    // The HLS arguments mapped to this particular port.  Each argument
+    // can be mapped into any memory connected to this port
+    std::vector<std::string> args;
+
+    // Every argument goes to a single memory resource
+    std::map<std::string, Memory*> argToMemory;
+
+  public:
+    Port() = delete;
+    explicit Port(const std::string& n, uint32_t w) : name(n), bitWidth(w) {};
+    ~Port() = default;
+    void addMemoryConnection(Memory* mem);
+  };
+
   // The Monitor struct collects the information on a single
   //  Accelerator Monitor (AM), AXI Interface Monitor (AIM), or
   //  AXI Stream Monitor (ASM).  Every xclbin will have a different
@@ -64,22 +101,12 @@ namespace xdp {
     //  information on the connection or compute unit being monitored
     std::string name ;
 
-    // The OpenCL arguments associated with this Monitor (if any).  This
-    //  information is only filled in by OpenCL applications as it requires
-    //  information not in the xclbin and only in the OpenCL meta-data.
-    std::string args = "" ;
-
-    // The name of the port on the associated compute unit this Monitor
-    //  is attached to (if any).  This information is only filled in
-    //  by OpenCL applications as it requires information not in the xclbin
-    //  and only in the OpenCL meta-data.
-    std::string port = "" ;
-
-    // The bit-width of the port on the associated compute unit this Monitor
-    //  is attached to (if any).  This information is only filled in
-    //  by OpenCL applications as it requires information not in the xclbin
-    //  and only in the OpenCL meta-data.
-    uint64_t portWidth = 0 ;
+    // If this monitor is observing a port on a compute unit, we will
+    // point to it here.  This will encapsulate the name of the port,
+    // the bit-width of the port, and any arguments associated with that port.
+    // This should point to an object inside a vector, so there should
+    // be no memory cleanup done here.
+    Port* cuPort = nullptr;
 
     // For ASMs only, we need to keep track of if the stream we are monitoring
     //  should count as a read or a write since stream transactions could
@@ -178,6 +205,11 @@ namespace xdp {
     //  structure for this compute unit.
     int32_t amId = -1 ;
 
+    // Regardless of if a monitor is attached or not, we keep track of all
+    // the master ports of this compute unit that could connect to a memory
+    // resource
+    std::vector<Port> masterPorts;
+
     // If this compute unit has any AIMs or ASMs attached to its ports,
     //  then these vectors will keep track of the slot IDs inside the
     //  xdp::CounterResults structure for all of the attached monitors.
@@ -223,6 +255,15 @@ namespace xdp {
     XDP_EXPORT std::string getDim() ; // Construct a string from the dimensions
     XDP_EXPORT void addConnection(int32_t argIdx, int32_t memIdx) ;
 
+    XDP_EXPORT void addPort(const std::string& n, int32_t w);
+    XDP_EXPORT void addArgToPort(const std::string& arg,
+                                 const std::string& portName);
+    XDP_EXPORT void addMemoryToPort(Memory* mem, const std::string& portName);
+    XDP_EXPORT void connectArgToMemory(const std::string& portName,
+                                       const std::string& arg,
+                                       Memory* mem);
+    XDP_EXPORT Port* getPort(const std::string& portName);
+
     XDP_EXPORT explicit ComputeUnitInstance(int32_t i, const std::string& n) ;
     XDP_EXPORT ~ComputeUnitInstance() = default ;
   } ;
@@ -250,7 +291,11 @@ namespace xdp {
 
     // The name of the memory resource (as defined by the "tag" in
     //  the MEM_TOPOLOGY section)
-    std::string name ;
+    std::string tag ;
+
+    // The name of the memory resource (after converting "bank" to "DDR" in
+    // the tag from the MEM_TOPOLOGY section)
+    std::string spTag;
 
     // A memory resource is considered "used" in an xclbin if it is
     //  connected to either a compute unit or the host memory.  This is
@@ -263,10 +308,15 @@ namespace xdp {
       , index(idx)
       , baseAddress(baseAddr)
       , size(sz)
-      , name(n)
+      , tag(n)
+      , spTag("")
       , used(u)
     {
+      convertBankToDDR();
     }
+
+  private:
+    void convertBankToDDR();
   } ;
   
 } // end namespace xdp
