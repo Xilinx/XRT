@@ -796,7 +796,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   RPC_PROLOGUE(func_name); \
   xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap); \
   SERIALIZE_AND_SEND_MSG(func_name) \
-  xclSetupInstance_SET_PROTO_RESPONSE();
+  xclSetupInstance_SET_PROTO_RESPONSE(); \
 
 //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-XRT Graph Api's-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 //-----------xclGraphInit-----------------
