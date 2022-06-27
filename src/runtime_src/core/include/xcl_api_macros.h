@@ -48,7 +48,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     auto c_len = c_msg.ByteSize();                                      \
     buf_size = alloc_void(c_len);                                       \
     bool rv = c_msg.SerializeToArray(buf,c_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed for allc_void call"<<std::endl; exit(1);} \
+    if (!rv) { std::cerr << "FATAL ERROR:protobuf SerializeToArray failed for alloc_void call" << std::endl; std::exit(1); } \
                                                                         \
     ci_msg.set_size(c_len);                                             \
     ci_msg.set_xcl_api(func_name##_n);                                  \
