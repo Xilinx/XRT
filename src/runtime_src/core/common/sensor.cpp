@@ -132,10 +132,10 @@ populate_fan(const xrt_core::device * device,
 
   pt.put("location_id", loc_id);
   pt.put("description", desc);
-  pt.put("critical_trigger_temp_C", temp_C);
-//  pt.put("critical_trigger_temp_C.units", "Celcius");
-  pt.put("speed_rpm", rpm);
-  //pt.put("speed_rpm.units", "RPM");
+  pt.put("critical_trigger_temp", temp_C);
+  pt.put("critical_trigger_temp_units", "Celcius");
+  pt.put("fan_speed", rpm);
+  pt.put("fan_speed_units", "RPM");
   pt.put("is_present", xq::fan_fan_presence::to_string(is_present));
 
   return pt;
@@ -218,8 +218,8 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   for (const auto& tmp : power) {
     if (boost::iequals(tmp.label, "Total Power")) {
       bd_power = tmp.input;
-	  power_units = tmp.units;
-	}
+      power_units = tmp.units;
+    }
   }
   ptree_type root;
 
@@ -267,8 +267,10 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output)
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
     pt.put("units", tmp.units);
-    pt.put("critical_trigger_temp_C", "N/A");
-    pt.put("speed_rpm", tmp.input);
+    pt.put("critical_trigger_temp", "N/A");
+    pt.put("critical_trigger_temp_units", "");
+    pt.put("fan_speed", tmp.input);
+    pt.put("fan_speed_units", "RPM");
     pt.put("is_present", "true");
     fan_array.push_back({"", pt});
   }

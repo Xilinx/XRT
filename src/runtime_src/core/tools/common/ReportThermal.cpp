@@ -53,7 +53,6 @@ ReportThermal::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << "Thermals\n";
   const boost::property_tree::ptree& thermals = _pt.get_child("thermals", empty_ptree);
 
-  //_output << boost::format("  %-23s: %6s\n") % "Temperature" % "Celcius";
   _output << boost::format("  %-23s:\n") % "Temperature";
   for(auto& kv : thermals) {
     const boost::property_tree::ptree& pt_temp = kv.second;
