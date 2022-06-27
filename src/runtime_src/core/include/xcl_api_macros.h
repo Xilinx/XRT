@@ -19,12 +19,12 @@
 #include "xcl_macros.h"
 
 #define SCOPE_GUARD_MUTEX() \
-if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  } \
+if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  }\
 std::lock_guard<std::mutex> socketlk{mtx}; 
 
 
 #define AQUIRE_MUTEX() \
-if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  } \
+if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  }\
 std::lock_guard<std::mutex> socketlk{mtx}; 
 
 
@@ -796,20 +796,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   RPC_PROLOGUE(func_name); \
   xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap); \
   SERIALIZE_AND_SEND_MSG(func_name) \
-  xclSetupInstance_SET_PROTO_RESPONSE(); \
-
-#define swemuDriverVersion_SET_PROTOMESSAGE(version) \
-  c_msg.set_version(version);
-
-#define swemuDriverVersion_SET_PROTO_RESPONSE() \
-  success = r_msg.success();
-
-#define swemuDriverVersion_RPC_CALL(func_name, version) \
-  RPC_PROLOGUE(func_name);                              \
-  swemuDriverVersion_SET_PROTOMESSAGE(version);         \
-  SERIALIZE_AND_SEND_MSG(func_name)                     \
-  swemuDriverVersion_SET_PROTO_RESPONSE();              
-
+  xclSetupInstance_SET_PROTO_RESPONSE();
 
 //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-XRT Graph Api's-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 //-----------xclGraphInit-----------------
@@ -1050,3 +1037,16 @@ std::lock_guard<std::mutex> socketlk{mtx};
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclLoadXclbinContent_SET_PROTO_RESPONSE(); \
     xclLoadXclbinContent_RETURN();
+
+#define swemuDriverVersion_SET_PROTOMESSAGE(version) \
+  c_msg.set_version(version);
+
+#define swemuDriverVersion_SET_PROTO_RESPONSE() \
+  success = r_msg.success();
+
+#define swemuDriverVersion_RPC_CALL(func_name, version) \
+  RPC_PROLOGUE(func_name);                              \
+  swemuDriverVersion_SET_PROTOMESSAGE(version);         \
+  SERIALIZE_AND_SEND_MSG(func_name)                     \
+  swemuDriverVersion_SET_PROTO_RESPONSE();              
+
