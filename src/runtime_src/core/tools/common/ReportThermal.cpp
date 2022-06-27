@@ -60,7 +60,7 @@ ReportThermal::writeReport( const xrt_core::device* /*_pDevice*/,
       continue;
 
     thermals_present = true;
-    _output << boost::format("  %-23s: %6s %s\n") % pt_temp.get<std::string>("description") %
+    _output << boost::format("  %-23s: %s %s\n") % pt_temp.get<std::string>("description") %
 		pt_temp.get<std::string>("temp_C") % pt_temp.get<std::string>("units");
   }
 
