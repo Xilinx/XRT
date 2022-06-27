@@ -85,7 +85,7 @@ namespace xclcpuemhal2 {
 
       //Configuration
       void socketConnection(bool isTCPSocket);
-      void setDriverVersion(const std::string &version);
+      void setDriverVersion(const std::string& version);
       void xclOpen(const char* logfileName);
       int xclLoadXclBin(const xclBin *buffer);
       int xclLoadXclBinNewFlow(const xclBin *buffer);
