@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -90,6 +91,7 @@ namespace xdp {
 
     db->registerPlugin(this);
     db->registerInfo(info::aie_profile);
+    db->getStaticInfo().setAieApplication();
     getPollingInterval();
 
     //
@@ -339,7 +341,7 @@ namespace xdp {
     return numFreeCtr;
   }
 
-  std::string AIEProfilingPlugin::getMetricSet(const XAie_ModuleType mod, const std::string& metricsStr)
+  std::string AIEProfilingPlugin::getMetricSet(const XAie_ModuleType mod, const std::string& metricsStr, bool ignoreOldConfig)
   {
     std::vector<std::string> vec;
 
@@ -374,6 +376,9 @@ namespace xdp {
       std::stringstream msg;
       msg << "Unable to find " << moduleName << " metric set " << metricSet
           << ". Using default of " << defaultSet << ".";
+      if (ignoreOldConfig) {
+        msg << " As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
+      }
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       metricSet = defaultSet;
     }
@@ -1269,7 +1274,7 @@ namespace xdp {
 
     std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
 
-    int numCounters[NUM_MODULES] =
+    int numCountersMod[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
     XAie_ModuleType falModuleTypes[NUM_MODULES] = 
         {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
@@ -1297,6 +1302,7 @@ namespace xdp {
 
     mConfigMetricsForAllTiles.resize(NUM_MODULES);
 
+    bool newConfigUsed = false;
     for(int module = 0; module < NUM_MODULES; ++module) {
       bool findTileMetric = false;
       if (!metricsConfig[module].empty()) {
@@ -1326,17 +1332,19 @@ namespace xdp {
 #endif
       }
       if(findTileMetric) {
+        newConfigUsed = true;
         getConfigMetricsForTiles(module, 
                                  metricsSettings[module], 
                                  graphmetricsSettings[module], 
                                  falModuleTypes[module],
                                  handle);
       }
-    }
+   }
 
-    // Chnnel Id
-    int numCountersMod[NUM_MODULES] =
-        {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
+    if (!newConfigUsed) {
+      // None of the new style AIE profile metrics have been used. So check for old style.
+      return false;
+    }
 
     for(int module = 0; module < NUM_MODULES; ++module) {
       int numTileCounters[numCountersMod[module]+1] = {0};
@@ -1449,12 +1457,12 @@ namespace xdp {
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
 
-      for(auto &metricsStr : metricsSettings[module]) { 
+      for (auto &metricsStr : metricsSettings[module]) { 
 
         int NUM_COUNTERS       = numCounters[module];
         XAie_ModuleType mod    = falModuleTypes[module];
         std::string moduleName = moduleNames[module];
-        auto metricSet         = getMetricSet(mod, metricsStr);
+        auto metricSet         = getMetricSet(mod, metricsStr, true);
         auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
 
 

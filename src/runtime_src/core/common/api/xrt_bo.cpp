@@ -549,9 +549,11 @@ async(xrt::bo& bo, xclBOSyncDirection dir, size_t sz, size_t offset)
 {
   throw std::runtime_error("Unsupported feature");
 
+#if 0
   //TODO for Alveo; base xrt::bo class
   auto a_bo_impl = std::make_shared<xrt::bo::async_handle_impl>(bo);
   return xrt::bo::async_handle{a_bo_impl};
+#endif
 }
 
 // class buffer_ubuf - User provide host side buffer

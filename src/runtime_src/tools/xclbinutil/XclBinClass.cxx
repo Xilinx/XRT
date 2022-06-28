@@ -490,16 +490,16 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   }
 
   // Bring the mirror metadata into memory
-  std::unique_ptr<unsigned char> memBuffer(new unsigned char[bufferSize]);
+  std::vector<unsigned char> memBuffer(bufferSize);
   _istream.clear();
   _istream.seekg(startOffset);
-  _istream.read((char*)memBuffer.get(), bufferSize);
+  _istream.read((char*)memBuffer.data(), bufferSize);
 
-  XUtil::TRACE_BUF("Buffer", (char*)memBuffer.get(), bufferSize);
+  XUtil::TRACE_BUF("Buffer", (char*)memBuffer.data(), bufferSize);
 
   // Convert the JSON file to a boost property tree
   std::stringstream ss;
-  ss.write((char*)memBuffer.get(), bufferSize);
+  ss.write((char*)memBuffer.data(), bufferSize);
 
   try {
     boost::property_tree::read_json(ss, _mirrorData);

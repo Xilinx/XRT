@@ -105,6 +105,7 @@ config_versal_project()
     sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_gdb.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_valgrind.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-core-ssh-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
 
 
@@ -356,6 +357,7 @@ if [[ $full == 1 ]]; then
   $PETA_BIN/petalinux-build
   if [[ $gen_sysroot == 1 ]]; then
         $PETA_BIN/petalinux-build --sdk
+        echo "Run $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/sdk.sh to generate the syroot"
   fi
 else
 #Run just xrt build if -full option is not provided

@@ -18,18 +18,29 @@
 //Initialize Messages
 #include "xcl_macros.h"
 
+#define SCOPE_GUARD_MUTEX() \
+if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  }\
+std::lock_guard<std::mutex> socketlk{mtx}; 
+
 
 #define AQUIRE_MUTEX() \
-mtx.lock(); \
+if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  }\
+std::lock_guard<std::mutex> socketlk{mtx}; 
 
-#define RELEASE_MUTEX() \
-mtx.unlock();
+
+// dummy Release Mutex Call.
+//#define RELEASE_MUTEX() 
+
+
 
 #define RPC_PROLOGUE(func_name) \
     auto _s_inst = sock;  \
     func_name##_call c_msg; \
     func_name##_response r_msg; \
-    AQUIRE_MUTEX()
+    SCOPE_GUARD_MUTEX()
+
+
+//    AQUIRE_MUTEX() - will be deleted.
 
 #if GOOGLE_PROTOBUF_VERSION < 3006001
 // Use the deprecated 32 bit version of the size
@@ -37,24 +48,24 @@ mtx.unlock();
     auto c_len = c_msg.ByteSize();                                      \
     buf_size = alloc_void(c_len);                                       \
     bool rv = c_msg.SerializeToArray(buf,c_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed for allc_void call"<<std::endl; exit(1);} \
                                                                         \
     ci_msg.set_size(c_len);                                             \
     ci_msg.set_xcl_api(func_name##_n);                                  \
     auto ci_len = ci_msg.ByteSize();                                    \
     rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl; exit(1); } \
                                                                         \
     _s_inst->sk_write(ci_buf,ci_len);                                   \
     _s_inst->sk_write(buf,c_len);                                       \
                                                                         \
     _s_inst->sk_read(ri_buf,ri_msg.ByteSize());                         \
     rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize());               \
-    assert(true == rv);                                                 \
+    if (true != rv) { std::cerr<<"\n ParseFromArray failed, sk_read/sk_write failed, so exit the application now!"; exit(0);  }                                                 \
     buf_size = alloc_void(ri_msg.size());                               \
     _s_inst->sk_read(buf,ri_msg.size());                                \
     rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
-    assert(true == rv);
+    if (true != rv){ std::cerr<<"\n ParseFromArray failed, sk_read failed for alloc_void, so exit- the application now!!!"; exit(0); }
 #else
 // More recent protoc handles 64 bit size objects and the 32 bit version is deprecated
 #define SERIALIZE_AND_SEND_MSG(func_name)                               \
@@ -82,8 +93,8 @@ mtx.unlock();
 #endif
 
 //RELEASE BUFFER MEMORIES
-#define FREE_BUFFERS() \
-  RELEASE_MUTEX()
+//#define FREE_BUFFERS() 
+//  RELEASE_MUTEX()
 
 #define xclSetEnvironment_SET_PROTOMESSAGE() \
   for (auto i : mEnvironmentNameValueMap) \
@@ -105,7 +116,6 @@ mtx.unlock();
     xclSetEnvironment_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclSetEnvironment_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclSetEnvironment_RETURN();
 
 
@@ -135,7 +145,6 @@ mtx.unlock();
     xclLoadBitstream_SET_PROTOMESSAGE(func_name,xmlfile,dlopenfilename,deviceDirectory,binaryDirectory,verbose); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclLoadBitstream_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclLoadBitstream_RETURN();
 
 
@@ -158,7 +167,6 @@ mtx.unlock();
     xclAllocDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress,size,p2pbuffer); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclAllocDeviceBuffer_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclAllocDeviceBuffer_RETURN();
 
 #define xclFreeDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress) \
@@ -177,7 +185,6 @@ mtx.unlock();
     xclFreeDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclFreeDeviceBuffer_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclFreeDeviceBuffer_RETURN();
 //------------------------------------------------------------
 //--------------------xclWriteAddrSpaceDeviceRam--------------------------------
@@ -203,7 +210,6 @@ mtx.unlock();
     xclWriteAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,address,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclWriteAddrSpaceDeviceRam_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclWriteAddrSpaceDeviceRam_RETURN();
 
 //--------------------xclWriteAddrKernelCtrl--------------------------------
@@ -235,7 +241,6 @@ mtx.unlock();
     xclWriteAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,address,data,size,kernelArgsInfo,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclWriteAddrKernelCtrl_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclWriteAddrKernelCtrl_RETURN();
 
 //--------------------xclRegWrite--------------------------------
@@ -258,7 +263,6 @@ mtx.unlock();
     xclRegWrite_SET_PROTOMESSAGE(func_name,baseaddress,offset,data,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclRegWrite_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclRegWrite_RETURN();
 
 //-----------------------xclReadAddrSpaceDeviceRam----------------------------
@@ -286,7 +290,6 @@ mtx.unlock();
     xclReadAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,address,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclReadAddrSpaceDeviceRam_SET_PROTO_RESPONSE(data,size); \
-    FREE_BUFFERS(); \
     xclReadAddrSpaceDeviceRam_RETURN();
 //-----------------------xclReadAddrKernelCtrl----------------------------
 //Generate call and info message
@@ -313,7 +316,6 @@ mtx.unlock();
     xclReadAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,address,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclReadAddrKernelCtrl_SET_PROTO_RESPONSE(data,size); \
-    FREE_BUFFERS(); \
     xclReadAddrKernelCtrl_RETURN();
 //-----------------------xclRegRead----------------------------
 #define xclRegRead_SET_PROTOMESSAGE(func_name,baseaddress,offset,data,size,pf_id,bar_id) \
@@ -337,7 +339,6 @@ mtx.unlock();
     xclRegRead_SET_PROTOMESSAGE(func_name,baseaddress,offset,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name) \
     xclRegRead_SET_PROTO_RESPONSE(data,size); \
-    FREE_BUFFERS(); \
     xclRegRead_RETURN();
 
 //-------------------xclClose---------------------------------
@@ -356,7 +357,6 @@ mtx.unlock();
     xclClose_SET_PROTOMESSAGE(func_name,dev_handle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclClose_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS();
   //  xclClose_RETURN();
 
 //-----------xclCopyBufferHost2Device-----------------
@@ -380,7 +380,6 @@ mtx.unlock();
     xclCopyBufferHost2Device_SET_PROTOMESSAGE(func_name,dev_handle,dest,src,size,seek,space); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclCopyBufferHost2Device_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclCopyBufferHost2Device_RETURN();
 
 //-----------xclCopyBufferDevice2Host-----------------
@@ -405,7 +404,6 @@ mtx.unlock();
     xclCopyBufferDevice2Host_SET_PROTOMESSAGE(func_name,dev_handle,dest,src,size,skip,space); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclCopyBufferDevice2Host_SET_PROTO_RESPONSE(dest); \
-    FREE_BUFFERS(); \
     xclCopyBufferDevice2Host_RETURN();
 
 
@@ -414,7 +412,6 @@ mtx.unlock();
 #define xclPerfMonReadCounters_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
-      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_slotname(slotname); \
@@ -438,14 +435,12 @@ mtx.unlock();
     xclPerfMonReadCounters_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadCounters_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclPerfMonReadCounters_RETURN();
 
 //----------xclPerfMonReadCounters(Streaming)------------
 #define xclPerfMonReadCounters_Streaming_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
-      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_slotname(slotname);
@@ -466,14 +461,12 @@ mtx.unlock();
     xclPerfMonReadCounters_Streaming_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadCounters_Streaming_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclPerfMonReadCounters_Streaming_RETURN();
 
 //----------xclPerfMonGetTraceCount------------
 #define xclPerfMonGetTraceCount_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
-      RELEASE_MUTEX();\
       return 0; \
     }\
   c_msg.set_ack(ack); \
@@ -489,13 +482,11 @@ mtx.unlock();
     xclPerfMonGetTraceCount_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonGetTraceCount_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS();
 
 //----------xclPerfMonReadTrace------------
 #define xclPerfMonReadTrace_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
-      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_ack(ack); \
@@ -510,13 +501,11 @@ mtx.unlock();
     xclPerfMonReadTrace_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadTrace_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS();
 
 //----------xclPerfMonReadTrace(Streaming)------------
 #define xclPerfMonReadTrace_Streaming_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
-      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_ack(ack); \
@@ -530,13 +519,11 @@ mtx.unlock();
     xclPerfMonReadTrace_Streaming_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadTrace_Streaming_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS();
 
 //----------xclWriteHostEvent------------
 #define xclWriteHostEvent_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
-      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_ack(ack); \
@@ -550,13 +537,11 @@ mtx.unlock();
     xclWriteHostEvent_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclWriteHostEvent_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS();
 
 //----------xclGetDeviceTimestamp------------
 #define xclGetDeviceTimestamp_SET_PROTOMESSAGE() \
   if(simulator_started == false) \
     {\
-      RELEASE_MUTEX();\
       return 0; \
     }\
   c_msg.set_ack(ack);
@@ -569,13 +554,11 @@ mtx.unlock();
     xclGetDeviceTimestamp_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGetDeviceTimestamp_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS();
 
 //----------xclReadBusStatus-------------------
 #define xclReadBusStatus_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
-      RELEASE_MUTEX();\
       return; \
     }\
     c_msg.set_slot_n(slot_n);
@@ -588,13 +571,11 @@ mtx.unlock();
   xclReadBusStatus_SET_PROTOMESSAGE(); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclReadBusStatus_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //----------xclGetDebugMessages-------------------
 #define xclGetDebugMessages_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
-      RELEASE_MUTEX();\
       return; \
     }\
     c_msg.set_ack(ack); \
@@ -610,7 +591,6 @@ mtx.unlock();
   xclGetDebugMessages_SET_PROTOMESSAGE(); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclGetDebugMessages_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //----------xclCopyBO-------------------
 #define xclCopyBO_SET_PROTOMESSAGE(src_boHandle,filename,size,src_offset,dst_offset) \
@@ -628,7 +608,6 @@ mtx.unlock();
   xclCopyBO_SET_PROTOMESSAGE(src_boHandle,filename,size,src_offset,dst_offset); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclCopyBO_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //----------xclCopyBOFromFd-------------------
 #define xclCopyBOFromFd_SET_PROTOMESSAGE(filename,dest_boHandle,size,src_offset,dst_offset) \
@@ -646,7 +625,6 @@ mtx.unlock();
   xclCopyBOFromFd_SET_PROTOMESSAGE(filename, dest_boHandle, size, src_offset, dst_offset); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclCopyBOFromFd_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //----------xclImportBO-------------------
 #define xclImportBO_SET_PROTOMESSAGE(filename,offset,size) \
@@ -662,7 +640,6 @@ mtx.unlock();
   xclImportBO_SET_PROTOMESSAGE(filename,offset,size); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclImportBO_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //----------xclCreateQueue-------------------
 #define xclCreateQueue_SET_PROTOMESSAGE(q_ctx,bWrite) \
@@ -683,7 +660,6 @@ mtx.unlock();
   xclCreateQueue_SET_PROTOMESSAGE(q_ctx, bWrite); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclCreateQueue_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //----------xclWriteQueue-------------------
 #define xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size) \
@@ -702,7 +678,6 @@ mtx.unlock();
   xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclWriteQueue_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //----------xclReadQueue-------------------
 #define xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size) \
@@ -722,7 +697,6 @@ mtx.unlock();
   xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclReadQueue_SET_PROTO_RESPONSE(dest); \
-  FREE_BUFFERS();
 
 //----------xclPollCompletion-------------------
 #define xclPollCompletion_SET_PROTOMESSAGE(reqcounter) \
@@ -748,7 +722,6 @@ mtx.unlock();
   xclPollCompletion_SET_PROTOMESSAGE(reqcounter); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclPollCompletion_SET_PROTO_RESPONSE(vaLenMap); \
-  FREE_BUFFERS();
 
 //----------xclPollQueue-------------------
 #define xclPollQueue_SET_PROTOMESSAGE(q_handle,reqcounter) \
@@ -775,7 +748,6 @@ mtx.unlock();
   xclPollQueue_SET_PROTOMESSAGE(q_handle, reqcounter); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclPollQueue_SET_PROTO_RESPONSE(vaLenMap); \
-  FREE_BUFFERS();
 
 //----------xclSetQueueOpt-------------------
 #define xclSetQueueOpt_SET_PROTOMESSAGE(q_handle,type,val) \
@@ -791,7 +763,6 @@ mtx.unlock();
   xclSetQueueOpt_SET_PROTOMESSAGE(q_handle,type,val); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclSetQueueOpt_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //----------xclDestroyQueue-------------------
 #define xclDestroyQueue_SET_PROTOMESSAGE(q_handle) \
@@ -805,7 +776,6 @@ mtx.unlock();
   xclDestroyQueue_SET_PROTOMESSAGE(q_handle); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclDestroyQueue_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //----------xclSetupInstance-------------------
 #define xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap) \
@@ -827,7 +797,6 @@ mtx.unlock();
   xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclSetupInstance_SET_PROTO_RESPONSE(); \
-  FREE_BUFFERS();
 
 //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-XRT Graph Api's-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 //-----------xclGraphInit-----------------
@@ -847,7 +816,6 @@ mtx.unlock();
     xclGraphInit_SET_PROTOMESSAGE(func_name,graphhandle,graphname); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphInit_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclGraphInit_RETURN();
 
 //-----------xclGraphRun-----------------
@@ -867,7 +835,6 @@ mtx.unlock();
     xclGraphRun_SET_PROTOMESSAGE(func_name,graphhandle,iterations); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphRun_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclGraphRun_RETURN();
 
 //-----------xclGraphWait-----------------
@@ -886,7 +853,6 @@ mtx.unlock();
     xclGraphWait_SET_PROTOMESSAGE(func_name,graphhandle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphWait_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclGraphWait_RETURN();
 
 //-----------xclGraphEnd-----------------
@@ -905,7 +871,6 @@ mtx.unlock();
     xclGraphEnd_SET_PROTOMESSAGE(func_name,graphhandle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphEnd_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclGraphEnd_RETURN();
 
 //-----------xclGraphUpdateRTP-----------------
@@ -928,7 +893,6 @@ mtx.unlock();
     xclGraphUpdateRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphUpdateRTP_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclGraphUpdateRTP_RETURN();
 
 //-----------xclGraphReadRTP-----------------
@@ -952,7 +916,6 @@ mtx.unlock();
     xclGraphReadRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphReadRTP_SET_PROTO_RESPONSE(buffer); \
-    FREE_BUFFERS(); \
     xclGraphReadRTP_RETURN();
 
 //-----------xclSyncBOAIENB-----------------
@@ -976,7 +939,6 @@ mtx.unlock();
     xclSyncBOAIENB_SET_PROTOMESSAGE(func_name,gmioname,dir,size,offset,boh); \
     SERIALIZE_AND_SEND_MSG(func_name); \
     xclSyncBOAIENB_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclSyncBOAIENB_RETURN();
 
 //-----------xclGMIOWait-----------------
@@ -995,7 +957,6 @@ mtx.unlock();
     xclGMIOWait_SET_PROTOMESSAGE(func_name,gmioname); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGMIOWait_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclGMIOWait_RETURN();
 
 //-----------xclGraphTimedWait-----------------
@@ -1015,7 +976,6 @@ mtx.unlock();
     xclGraphTimedWait_SET_PROTOMESSAGE(func_name,graphhandle,cycle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphTimedWait_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclGraphTimedWait_RETURN();
 
 //-----------xclGraphTimedEnd-----------------
@@ -1035,7 +995,6 @@ mtx.unlock();
     xclGraphTimedEnd_SET_PROTOMESSAGE(func_name,graphhandle,cycle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphTimedEnd_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclGraphTimedEnd_RETURN();
 
 //-----------xclGraphResume-----------------
@@ -1054,7 +1013,6 @@ mtx.unlock();
     xclGraphResume_SET_PROTOMESSAGE(func_name,graphhandle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphResume_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclGraphResume_RETURN();
 
 //-----------xclLoadXclbinContent-----------------
@@ -1078,5 +1036,4 @@ mtx.unlock();
     xclLoadXclbinContent_SET_PROTOMESSAGE(func_name,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize,keepdir); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclLoadXclbinContent_SET_PROTO_RESPONSE(); \
-    FREE_BUFFERS(); \
     xclLoadXclbinContent_RETURN();

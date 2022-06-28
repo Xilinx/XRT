@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -89,6 +90,7 @@ namespace xdp {
 
     db->registerPlugin(this);
     db->registerInfo(info::aie_trace);
+    db->getStaticInfo().setAieApplication();
 
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
@@ -339,7 +341,7 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
-  std::string AieTracePlugin::getMetricSet(void* handle, const std::string& metricsStr)
+  std::string AieTracePlugin::getMetricSet(void* handle, const std::string& metricsStr, bool ignoreOldConfig)
   {
 
     std::vector<std::string> vec;
@@ -365,6 +367,9 @@ namespace xdp {
       std::stringstream msg;
       msg << "Unable to find AIE trace metric set " << metricSet 
           << ". Using default of " << defaultSet << ".";
+      if (ignoreOldConfig) {
+        msg << " As new AIE_trace_settings section is given, old style configurations, if any, are ignored.";
+      }
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       metricSet = defaultSet;
     }
@@ -1484,8 +1489,11 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       std::string msg("AIE_trace_settings.aie_tile_metrics and mem_tile_metrics were not specified in xrt.ini. AIE event trace will not be available.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
 #endif
+#if 0
+      // Need to check whether Debug configs are present
       if (!runtimeMetrics)
         return true;
+#endif
       return false;
     }
 
@@ -1495,8 +1503,8 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
 
     std::string moduleNames[NUM_MODULES] = {"aie tile", "memory tile"};
 
-    for(int module = 0; module < NUM_MODULES; ++module) {
-      if (metricsConfig[module].empty()){
+    for (int module = 0; module < NUM_MODULES; ++module) {
+      if (metricsConfig[module].empty()) {
 #if 0
 // No need to add the warning message here, as all the tests are using configs under Debug
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
@@ -1512,11 +1520,14 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
    // Configure aie, memory tiles
     for (int module=0; module < NUM_MODULES; ++module) {
 
-      for(auto &metricsStr : metricsSettings[module]) {
-        auto metricSet = getMetricSet(handle, metricsStr);
+      for (auto &metricsStr : metricsSettings[module]) {
+        auto metricSet = getMetricSet(handle, metricsStr, true);
         if (metricSet.empty()) {
+#if 0
+          // Need to check whether Debug configs are present
           if (!runtimeMetrics)
             return true;
+#endif
           return false;
         }
 

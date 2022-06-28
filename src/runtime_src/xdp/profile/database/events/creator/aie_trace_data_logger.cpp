@@ -31,12 +31,12 @@ AIETraceDataLogger::~AIETraceDataLogger()
 {
 }
 
-void AIETraceDataLogger::addAIETraceData(uint64_t strmIndex, void* buffer, uint64_t bufferSz)
+void AIETraceDataLogger::addAIETraceData(uint64_t strmIndex, void* buffer, uint64_t bufferSz, bool copy)
 {
   if(!VPDatabase::alive()) {
     return;
   }
-  db->getDynamicInfo().addAIETraceData(deviceId, strmIndex, buffer, bufferSz);
+  db->getDynamicInfo().addAIETraceData(deviceId, strmIndex, buffer, bufferSz, copy);
 }
 
 }

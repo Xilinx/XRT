@@ -2913,6 +2913,27 @@ struct xocl_subdev_map {
 		.board_name = "vck5000",				\
 		.vbnv       = "xilinx_vck5000"				\
 	}
+#define	XOCL_BOARD_V70_MGMT_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_VERSAL |				\
+			XOCL_DSAFLAG_FIXED_INTR |			\
+			XOCL_DSAFLAG_DYNAMIC_IP,			\
+		.subdev_info = RES_MGMT_VSEC,				\
+		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
+		.flash_type = FLASH_TYPE_OSPI_VERSAL,			\
+		.board_name = "v70",				\
+		.vbnv       = "xilinx_v70"				\
+	}
+#define	XOCL_BOARD_V70_USER_RAPTOR2_ES3				\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
+			XOCL_DSAFLAG_VERSAL_ES3 |			\
+			XOCL_DSAFLAG_VERSAL,				\
+		.subdev_info = RES_USER_VERSAL_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC),		\
+		.board_name = "v70",				\
+		.vbnv       = "xilinx_v70"				\
+	}
 
 /*********************************VCK190 MGMTPF START*******************/
 
@@ -3399,6 +3420,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5028, PCI_ANY_ID, MGMT_VERSAL) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5044, PCI_ANY_ID, MGMT_VERSAL) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5048, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5094, PCI_ANY_ID, V70_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6098, PCI_ANY_ID, VCK190_MGMT_RAPTOR2) },    \
 	{ XOCL_PCI_DEVID(0x10EE, 0xE098, PCI_ANY_ID, XBB_MFG_VCK190) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5078, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
@@ -3475,6 +3497,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5029, PCI_ANY_ID, USER_XDMA_VERSAL) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5045, PCI_ANY_ID, USER_XDMA_VERSAL) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5049, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0x5095, PCI_ANY_ID, V70_USER_RAPTOR2_ES3) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x6099, PCI_ANY_ID, VCK190_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5079, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }
 
@@ -3548,6 +3571,14 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x5049, PCI_ANY_ID,					\
 		.vbnv = "xilinx_vck5000",				\
 		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2_ES3,	\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5094, PCI_ANY_ID,					\
+		.vbnv = "xilinx_v70",				\
+		.priv_data = &XOCL_BOARD_V70_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5095, PCI_ANY_ID,					\
+		.vbnv = "xilinx_v70",				\
+		.priv_data = &XOCL_BOARD_V70_USER_RAPTOR2_ES3,	\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x6098, PCI_ANY_ID,					\
                 .vbnv = "xilinx_vck190",				\
