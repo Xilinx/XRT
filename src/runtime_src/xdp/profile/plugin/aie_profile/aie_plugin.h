@@ -62,6 +62,17 @@ namespace xdp {
 
     bool checkAieDevice(uint64_t deviceId, void* handle);
 
+    std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
+                                                        std::string graph,
+                                                        void* handle);
+    std::vector<tile_type> getAllTilesForShimProfiling(void* handle);
+
+    void getConfigMetricsForTiles(int moduleIdx, std::vector<std::string> metricsSettings,
+                                               std::vector<std::string> graphmetricsSettings,
+                                               const XAie_ModuleType mod,
+                                               void* handle);
+
+
     std::string getMetricSet(const XAie_ModuleType mod, 
                              const std::string& metricsStr);
     std::vector<tile_type> getTilesForProfiling(const XAie_ModuleType mod,
@@ -130,6 +141,8 @@ namespace xdp {
     std::map<std::string, std::vector<std::string>> mCoreEventStrings;
     std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
     std::map<std::string, std::vector<std::string>> mShimEventStrings;
+
+    std::vector<std::map<tile_type, std::string>> mConfigMetrics; 
   };
 
 } // end namespace xdp
