@@ -69,6 +69,7 @@ enum class test_status
 };
 
 constexpr uint64_t operator"" _gb(unsigned long long v)  { return 1024u * 1024u * 1024u * v; }
+constexpr static int MAX_TEST_DURATION = 300; //5 minutes
 
 static const std::string test_token_skipped = "SKIPPED";
 static const std::string test_token_failed = "FAILED";
@@ -305,6 +306,50 @@ find_xrt_testcase_path(const std::string& py, boost::property_tree::ptree& _ptTe
 }
 
 /*
+ * Spawn a testcase process.
+ */
+bool
+spawn_testcase(boost::property_tree::ptree& _ptTest, const std::string& xrtTestCasePath,
+               std::ostringstream & os_stdout, std::ostringstream & os_stderr,
+               std::vector<std::string> args, const std::string& mode)
+{
+  int exit_code;
+  try {
+    if (mode.compare("json_exists") == 0) {
+      exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+    } else if (mode.compare("support") == 0) {
+      exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Checking Test Support", "Test Support Check Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+    } else if (mode.compare("json_dne") == 0) {
+      if (_ptTest.get<std::string>("py").find(".exe") != std::string::npos)
+        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+      else
+        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+    } else {
+      return false; //Mode was not specified correctly.
+    }
+
+    if (exit_code == EOPNOTSUPP) {
+      logger(_ptTest, "Details", "Test is not supported on current device.");
+      _ptTest.put("status", test_token_skipped);
+      return false;
+    } else if (exit_code == EXIT_SUCCESS) {
+      if (mode.compare("support") != 0)
+        _ptTest.put("status", test_token_passed);
+      return true;
+    } else {
+      logger(_ptTest, "Error", os_stdout.str());
+      logger(_ptTest, "Error", os_stderr.str());
+      _ptTest.put("status", test_token_failed);
+      return false;
+    }
+  } catch (const std::exception& e) {
+    logger(_ptTest, "Error", e.what());
+    _ptTest.put("status", test_token_failed);
+    return false;
+  }
+}
+
+/*
  * helper funtion for kernel and bandwidth test cases
  * Steps:
  * 1. Find xclbin after determining if the shell is 1RP or 2RP
@@ -313,10 +358,11 @@ find_xrt_testcase_path(const std::string& py, boost::property_tree::ptree& _ptTe
  * 4. Check results
  */
 void
-runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& py,
-             const std::string& xclbin,
-             boost::property_tree::ptree& _ptTest)
+runTestCase(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
+  auto xclbin = _ptTest.get<std::string>("xclbin");
+  auto py = _ptTest.get<std::string>("py");
+
   std::string xclbinPath;
   try {
     xclbinPath = find_xclbin_path(_dev, xclbin, _ptTest);
@@ -342,54 +388,16 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
 
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-  constexpr static int MAX_TEST_DURATION = 300; //5 minutes
 
   if(json_exists()) {
     std::vector<std::string> args = { "-p", test_dir,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
-    try {
-      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
-      if (exit_code == EOPNOTSUPP) {
-        _ptTest.put("status", test_token_skipped);
-      }
-      else if (exit_code == EXIT_SUCCESS) {
-        _ptTest.put("status", test_token_passed);
-      }
-      else {
-        logger(_ptTest, "Error", os_stdout.str());
-        logger(_ptTest, "Error", os_stderr.str());
-        _ptTest.put("status", test_token_failed);
-      }
-    } catch (const std::exception& e) {
-      logger(_ptTest, "Error", e.what());
-      _ptTest.put("status", test_token_failed);
-    }
+    spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, "json_exists");
   }
   else {
     std::vector<std::string> args = { "-k", xclbinPath,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
-    int exit_code;
-    try {
-      if (py.find(".exe") != std::string::npos)
-        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr, true);
-      else
-        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr, true);
-
-      if (exit_code == EOPNOTSUPP) {
-        _ptTest.put("status", test_token_skipped);
-      }
-      else if (exit_code == EXIT_SUCCESS) {
-        _ptTest.put("status", test_token_passed);
-      }
-      else {
-        logger(_ptTest, "Error", os_stdout.str());
-        logger(_ptTest, "Error", os_stderr.str());
-        _ptTest.put("status", test_token_failed);
-      }
-    } catch (const std::exception& e) {
-      logger(_ptTest, "Error", e.what());
-      _ptTest.put("status", test_token_failed);
-    }
+    spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, "json_dne");
   }
 
   // Get out max thruput for bandwidth testcase
@@ -827,7 +835,6 @@ clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle
 static bool
 ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
 {
-
   if(!bist_alloc_execbuf_and_wait(handle, ERT_ACCESS_TEST_C, _ptTest))
     return false;
 
@@ -864,13 +871,9 @@ ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle hand
   }
 
   logger(_ptTest, "Details",  boost::str(boost::format("ERT sleep/wake successfully")));
-
-
   return true;
 }
-/*
- * TEST #1
- */
+
 void
 auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
@@ -907,9 +910,6 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   _ptTest.put("status", test_token_passed);
 }
 
-/*
- * TEST #2
- */
 void
 pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
@@ -925,9 +925,6 @@ pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree
   _ptTest.put("status", test_token_passed);
 }
 
-/*
- * TEST #3
- */
 void
 scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
@@ -946,18 +943,6 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
   _ptTest.put("status", test_token_passed);
 }
 
-/*
- * TEST #4
- */
-void
-verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
-{
-  runTestCase(_dev, "22_verify.py", _ptTest.get<std::string>("xclbin"), _ptTest);
-}
-
-/*
- * TEST #5
- */
 void
 dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
@@ -1040,9 +1025,6 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   }
 }
 
-/*
- * TEST #6
- */
 void
 bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
@@ -1054,13 +1036,10 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
     _ptTest.put("status", test_token_failed);
     return;
   }
-  std::string testcase = (name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py";
-  runTestCase(_dev, testcase, _ptTest.get<std::string>("xclbin"), _ptTest);
+  _ptTest.put("py", ((name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py"));
+  runTestCase(_dev, _ptTest);
 }
 
-/*
- * TEST #7
- */
 void
 p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
@@ -1133,9 +1112,6 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
 }
 
-/*
- * TEST #8
- */
 void
 m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
@@ -1203,9 +1179,6 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   _ptTest.put("status", test_token_passed);
 }
 
-/*
- * TEST #9
- */
 void
 hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
@@ -1223,12 +1196,9 @@ hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost:
       _ptTest.put("status", test_token_skipped);
       return;
   }
-  runTestCase(_dev, "host_mem_23_bandwidth.py", _ptTest.get<std::string>("xclbin"), _ptTest);
+  runTestCase(_dev, _ptTest);
 }
 
-/*
- * TEST #10
- */
 void
 bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
@@ -1261,33 +1231,6 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
     _ptTest.put("status", test_token_failed);
 
   _ptTest.put("status", test_token_passed);
-}
-
-/*
- * TEST #11
- */
-void
-vcuKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
-{
-  runTestCase(_dev, "xcl_vcu_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
-}
-
-/*
- * TEST #12
- */
-void
-iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
-{
-  runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
-}
-
-/*
- * TEST #13
- */
-void
-aiePlTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
-{
-  runTestCase(_dev, "aie_pl.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
 }
 
 /*
@@ -1348,36 +1291,12 @@ check_test_supported(const std::shared_ptr<xrt_core::device>& _dev, boost::prope
 
   // log testcase path for debugging purposes
   logger(_ptTest, "Testcase", xrtTestCasePath);
-
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-  constexpr static int MAX_TEST_DURATION = 300; //5 minutes
 
-  // Ensure that test is supported
   std::vector<std::string> args = { "-p", test_dir,
                                     "-s" };
-
-  try {
-    int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Checking Test Support", "Test Support Check Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
-    if (exit_code == EOPNOTSUPP) {
-      logger(_ptTest, "Details", "Test is not supported on current device.");
-      _ptTest.put("status", test_token_skipped);
-      return false;
-    }
-    else if (exit_code == EXIT_SUCCESS) {
-      return true;
-    }
-    else {
-      logger(_ptTest, "Error", os_stdout.str());
-      logger(_ptTest, "Error", os_stderr.str());
-      _ptTest.put("status", test_token_failed);
-      return false;
-    }
-  } catch (const std::exception& e) {
-    logger(_ptTest, "Error", e.what());
-    _ptTest.put("status", test_token_failed);
-    return false;
-  }
+  return spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, "support");
 }
 
 /*
@@ -1406,16 +1325,16 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("aux-connection", "Check if auxiliary power is connected", "", ""), auxConnectionTest },
   { create_init_test("pcie-link", "Check if PCIE link is active", "", ""), pcieLinkTest },
   { create_init_test("sc-version", "Check if SC firmware is up-to-date", "", ""), scVersionTest },
-  { create_init_test("verify", "Run 'Hello World' kernel test", "verify.xclbin", "22_verify.py"), verifyKernelTest },
+  { create_init_test("verify", "Run 'Hello World' kernel test", "verify.xclbin", "22_verify.py"), runTestCase },
   { create_init_test("dma", "Run dma test", "verify.xclbin", ""), dmaTest },
-  { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin", "xcl_iops_test.exe"), iopsTest },
+  { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin", "xcl_iops_test.exe"), runTestCase },
   { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin", "versal_23_bandwidth.py"), bandwidthKernelTest },
   { create_init_test("p2p", "Run P2P test", "bandwidth.xclbin", ""), p2pTest },
   { create_init_test("m2m", "Run M2M test", "bandwidth.xclbin", ""), m2mTest },
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin", "host_mem_23_bandwidth.py"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", "", true), bistTest },
-  { create_init_test("vcu", "Run decoder test", "transcode.xclbin", "xcl_vcu_test.exe"), vcuKernelTest },
-  { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin", "aie_pl.exe"), aiePlTest }
+  { create_init_test("vcu", "Run decoder test", "transcode.xclbin", "xcl_vcu_test.exe"), runTestCase },
+  { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin", "aie_pl.exe"), runTestCase }
 };
 
 
