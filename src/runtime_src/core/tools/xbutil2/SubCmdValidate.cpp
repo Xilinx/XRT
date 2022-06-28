@@ -424,19 +424,17 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
  * helper function for P2P test
  */
 static bool
-p2ptest_set_or_cmp(char *boptr, size_t size, char *valid_data, size_t valid_buf_size, bool set)
+p2ptest_set_or_cmp(char *boptr, size_t size, char *valid_data, size_t valid_data_size, bool set)
 {
   int stride = xrt_core::getpagesize();
 
   assert((size % stride) == 0);
+  assert(size > valid_data_size);
   for (size_t i = 0; i < size; i += stride) {
     if (set)
-      std::memcpy(&(boptr[i]), valid_data, valid_buf_size);
-    else {
-      // Verify all of the written bytes
-      if (std::memcmp(&(boptr[i]), valid_data, valid_buf_size) != 0)
+      std::memcpy(&(boptr[i]), valid_data, valid_data_size);
+    else if (std::memcmp(&(boptr[i]), valid_data, valid_data_size) != 0) // Verify the written bytes
         return false;
-    }
   }
   return true;
 }
@@ -468,16 +466,16 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
     return false;
 
   // Generate the valid data vector
-  const size_t write_size = 1024;
-  char valid_data[write_size];
-  std::memset(valid_data, 'A', write_size);
+  const size_t valid_data_size = 1024;
+  char valid_data[valid_data_size];
+  std::memset(valid_data, 'A', valid_data_size);
 
   // Perform a memory write larger than 512 bytes to trigger a write combine
   auto buf_size = xrt_core::getpagesize() * 1;
-  p2ptest_set_or_cmp(buf, buf_size, valid_data, write_size, true);
+  p2ptest_set_or_cmp(buf, buf_size, valid_data, valid_data_size, true);
   if (xclUnmgdPwrite(handle, 0, buf, buf_size, dev_addr) < 0)
     return false;
-  if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, write_size, false))
+  if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, valid_data_size, false))
     return false;
 
   // Default to testing with small write to reduce test time
