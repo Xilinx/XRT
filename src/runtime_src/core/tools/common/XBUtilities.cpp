@@ -260,13 +260,8 @@ XBUtilities::xrt_xbutil_version_cmp()
     const boost::property_tree::ptree& driver = drv.second;
     std::string drv_name = driver.get<std::string>("name", "N/A");
     std::string drv_version = driver.get<std::string>("version", "N/A");
-    if (drv_name.compare("xocl") == 0) {
-      if (drv_version.compare("unknown") == 0)
-        throw std::runtime_error(boost::str(boost::format("XRT Driver version unknown. Expected %s, to match XRT tools.") % xrt_version));
-      if (xrt_version.compare(drv_version) != 0)
-        throw std::runtime_error(boost::str(boost::format("Unexpected XRT Driver version (%s) was found. Expected %s, to match XRT tools.") % drv_version % xrt_version));
-      break;
-    }
+    if (drv_name.compare("xocl") == 0 && drv_version.compare("unknown") != 0 && xrt_version.compare(drv_version) != 0)
+      throw std::runtime_error(boost::str(boost::format("Unexpected XRT Driver version (%s) was found. Expected %s, to match XRT tools.") % drv_version % xrt_version));
   }
 }
 
