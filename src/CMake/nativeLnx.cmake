@@ -167,7 +167,6 @@ add_subdirectory(xma)
 #XMA settings END
 
 # --- Python bindings ---
-set(PY_INSTALL_DIR "${XRT_INSTALL_DIR}/python")
 add_subdirectory(python)
 
 # --- Python tests ---

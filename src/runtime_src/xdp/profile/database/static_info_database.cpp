@@ -119,6 +119,17 @@ namespace xdp {
     applicationStartTime = t ;
   }
 
+  bool VPStaticDatabase::getAieApplication() const
+  {
+    return aieApplication;
+  }
+
+  void VPStaticDatabase::setAieApplication()
+  {
+    std::lock_guard<std::mutex> lock(summaryLock);
+    aieApplication = true;
+  }
+
   // ***************************************************
   // ***** Functions related to OpenCL information *****
 

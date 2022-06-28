@@ -63,7 +63,8 @@ namespace xdp {
     bool checkAieDevice(uint64_t deviceId, void* handle);
 
     std::string getMetricSet(const XAie_ModuleType mod, 
-                             const std::string& metricsStr);
+                             const std::string& metricsStr,
+                             bool  ignoreOldConfig = false);
     std::vector<tile_type> getTilesForProfiling(const XAie_ModuleType mod,
                                                 const std::string& metricsStr,
                                                 void* handle);

@@ -66,7 +66,8 @@ static const char* debugIpNames[DEBUG_IP_TYPE_MAX] = {
   "AxiDMA",
   "TS2MMFull",
   "AxiNOC",
-  "Accelerator Deadlock Detector (accel_deadlock_detector)"
+  "Accelerator Deadlock Detector (accel_deadlock_detector)",
+  "High Speed Debug Port Trace IP (hsdp_trace)",
 };
 
 static size_t cuNameMaxStrLen[DEBUG_IP_TYPE_MAX] = {0};
@@ -126,6 +127,7 @@ private :
   void populateSPCResults(boost::property_tree::ptree &_pt);
   void populateILAResults(boost::property_tree::ptree &_pt);
   void populateAccelDeadlockResults(boost::property_tree::ptree &_pt);
+  void populateHSDPTraceResults(boost::property_tree::ptree &_pt);
 
 };
 
@@ -235,6 +237,12 @@ DebugIpStatusCollector::getDebugIpData()
       {
         if(debugIpOpt[ACCEL_DEADLOCK_DETECTOR])
           readAccelDeadlockDetector(&(dbgIpLayout->m_debug_ip_data[i]));
+        break;
+      }
+      case HSDP_TRACE :
+      {
+        if (debugIpOpt[HSDP_TRACE])
+          ++debugIpNum[HSDP_TRACE];
         break;
       }
       default: break;
@@ -525,6 +533,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
       case AXI_STREAM_PROTOCOL_CHECKER:
       case TRACE_S2MM:
       case ACCEL_DEADLOCK_DETECTOR:
+      case HSDP_TRACE:
         ++count;
         ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
         break;
@@ -570,6 +579,7 @@ DebugIpStatusCollector::populateAllResults(boost::property_tree::ptree &_pt)
   populateSPCResults(_pt);
   populateILAResults(_pt);
   populateAccelDeadlockResults(_pt);
+  populateHSDPTraceResults(_pt);
 
 }
 
@@ -783,6 +793,20 @@ DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree
   accel_deadlock_pt.put("is_deadlocked", accelDeadlockResults.DeadlockStatus);
 
   _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
+}
+
+void 
+DebugIpStatusCollector::populateHSDPTraceResults(boost::property_tree::ptree &_pt)
+{
+  if(0 == debugIpNum[HSDP_TRACE]) {
+    return;
+  }
+
+  boost::property_tree::ptree hsdpTrace_pt;
+  hsdpTrace_pt.put("description", "Offloads trace events via High Speed Debug Port");
+  hsdpTrace_pt.put("count",debugIpNum[HSDP_TRACE]);
+
+  _pt.add_child("Trace via High Speed Debug Port", hsdpTrace_pt);
 }
 
 // ----- Supporting Functions -------------------------------------------
@@ -1220,6 +1244,24 @@ reportAccelDeadlock(std::ostream& _output, const boost::property_tree::ptree& _p
   }
 }
 
+void
+reportHSDPTrace(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace via High Speed Debug Port");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for HSDP Trace IP enabled but currently loaded xclbin does not have it. So, HSDP Trace IP status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& hsdpTrace_pt = child.get();
+
+  _output << "\nTrace via High Speed Debug Port" << std::endl
+          << "  " << hsdpTrace_pt.get<std::string>("description") << std::endl
+          << "  Found : " << hsdpTrace_pt.get<uint64_t>("count") << std::endl;
+}
+
 void 
 processElementFilter(bool *debugIpOpt, const std::vector<std::string> & _elementsFilter)
 {
@@ -1245,6 +1287,8 @@ processElementFilter(bool *debugIpOpt, const std::vector<std::string> & _element
       debugIpOpt[ILA] = true;
     } else if(itr == "accel_deadlock_detector") {
       debugIpOpt[ACCEL_DEADLOCK_DETECTOR] = true;
+    } else if(itr == "hsdp_trace") {
+      debugIpOpt[HSDP_TRACE] = true;
     }
   }
 }
@@ -1334,6 +1378,9 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   }
   if (true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) {
     reportAccelDeadlock( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[HSDP_TRACE]) {
+    reportHSDPTrace(_output, dbgIpStatus_pt, filter);
   }
 
   return;
