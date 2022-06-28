@@ -58,7 +58,6 @@ namespace xdp {
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
     bool setMetricsSettings(uint64_t deviceId, void* handle);
-    bool setGraphMetricsSettings(uint64_t deviceId, void* handle);
 
     bool checkAieDevice(uint64_t deviceId, void* handle);
 
