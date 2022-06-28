@@ -1072,7 +1072,8 @@ namespace xdp {
 
     bool allGraphsDone = false;
 
-    // Step 1 : Parse per-graph or per-kernel settings
+    // STEP 1 : Parse per-graph or per-kernel settings
+
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * "graphmetricsSettings" contains each metric value
      * graph_core_metrics = <graph name|all>:<kernel name|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>
@@ -1080,13 +1081,17 @@ namespace xdp {
      * graph_interface_tile_metrics = <graph name|all>:<port name|all>:<off|input_bandwidths|output_bandwidths|packets>
      * graph_mem_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
      */
+
+    std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
+
+    // Graph Pass 1 : process only "all" metric setting 
     for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
       /* Note : only graph_mem_tile_metrics can have more than 3 items in a metric value
        * mem_tile_metrics is not handled now. Add handling later
        */
-      std::vector<std::string> graphmetrics;
-      boost::split(graphmetrics, graphmetricsSettings[i], boost::is_any_of(":"));
-      if (3 > graphmetrics.size()) {
+      // split done only in Pass 1
+      boost::split(graphmetrics[i], graphmetricsSettings[i], boost::is_any_of(":"));
+      if (3 > graphmetrics[i].size()) {
         // Add unexpected format warning
         continue;
       }
@@ -1098,7 +1103,7 @@ namespace xdp {
        * Shim profiling uses all tiles utilized by PLIOs
        */
       if (XAIE_CORE_MOD == mod || XAIE_MEM_MOD == mod) {
-        if (0 == graphmetrics[0].compare("all")) {
+        if (0 == graphmetrics[i][0].compare("all")) {
           // Capture all tiles across all graphs
           auto graphs = xrt_core::edge::aie::get_graphs(device.get());
           for (auto& graph : graphs) {
@@ -1106,20 +1111,45 @@ namespace xdp {
             tiles.insert(tiles.end(), nwTiles.begin(), nwTiles.end());
           } 
           allGraphsDone = true;
-        } else {
-          // Capture all tiles in the given graph
-          tiles = getAllTilesForCoreMemoryProfiling(mod, graphmetrics[0], handle);
-        }
+        } // "all" 
       } else if (XAIE_PL_MOD == mod) {
+        // XAIE_PL_MOD for graph metrics processed only here
         tiles = getAllTilesForShimProfiling(handle);
         allGraphsDone = true;
       }
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = graphmetrics[2];
+        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
         // check if same tiles are recognized
       }
-    } 
-    // Step 2 : Parse per-tile settings: all, bounding box, and/or single tiles
+    }  // Graph Pass 1
+
+    // Graph Pass 2 : process per graph metric setting 
+    for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
+      /* Note : only graph_mem_tile_metrics can have more than 3 items in a metric value
+       * mem_tile_metrics is not handled now. Add handling later
+       */
+      std::vector<tile_type> tiles;
+      // kernel name, port name ??
+      /*
+       * Core profiling uses all unique core tiles in aie control
+       * Memory profiling uses all unique core + dma tiles in aie control
+       * Shim profiling uses all tiles utilized by PLIOs
+       */
+      if (XAIE_CORE_MOD == mod || XAIE_MEM_MOD == mod) {
+        if (0 != graphmetrics[i][0].compare("all")) {
+          // Capture all tiles in the given graph
+          tiles = getAllTilesForCoreMemoryProfiling(mod, graphmetrics[i][0] /*graph name*/, handle);
+        }
+      }
+      for (auto &e : tiles) {
+        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+        // check if same tiles are recognized
+      }
+    }  // Graph Pass 2
+
+
+    // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
+
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * core_metrics = [[{<column>,<row>}|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]]
      *
@@ -1160,7 +1190,7 @@ namespace xdp {
           // check if same tiles are recognized
         }
       }
-    } // Pass 1 : process only "all" metric setting 
+    } // Pass 1 
 
     // Pass 2 : process only range of tiles metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
