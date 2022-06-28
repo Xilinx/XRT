@@ -272,7 +272,6 @@ namespace xclhwemhal2
    */
   void HwEmShim::messagesThread()
   {
-    using namespace std::chrono_literals;
     if (xclemulation::config::getInstance()->isSystemDPAEnabled() == false)
     {
       return;
@@ -288,11 +287,7 @@ namespace xclhwemhal2
       sleep(10);
       if (not get_simulator_started())
        break;
-      // If socket is not live then what's the point of having fetchAndPrintMessages? Let's return!
-      if (sock->server_started == false) {
-        std::cout<<"\n messageThread is exiting now\n";
-        return;
-      }
+
       auto l_time_end = std::chrono::high_resolution_clock::now();
       // My wait time > 300 seconds, Let's fetch the exact details behind late connection with Simulator.
       if (std::chrono::duration_cast<std::chrono::seconds>(l_time_end - l_time).count() > kMaxTimeToConnectSimulator) {
@@ -307,15 +302,17 @@ namespace xclhwemhal2
 
       auto end_time = std::chrono::high_resolution_clock::now();
       if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= kMaxTimeToConnectSimulator) {
-        
+
         std::lock_guard<std::mutex> guard(mPrintMessagesLock);
+
         if (get_simulator_started() == false) 
           return;
         // Any status message found in parse log file?
         lParseLog.parseLog();         
         parseCount++;
         if (parseCount%5 == 0) {
-          std::this_thread::sleep_for(5s);
+            // Sleep for 10, 20, 30 ...etc
+            std::this_thread::sleep_for(std::chrono::seconds(10*(parseCount/5)));
         }
       }
       

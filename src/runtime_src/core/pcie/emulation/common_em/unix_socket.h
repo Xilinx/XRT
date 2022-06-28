@@ -23,45 +23,31 @@
 #include "system_utils.h"
 #include "xclhal2.h"
 // c-style system headers
-#include <poll.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
 // C++ headers
 #include <atomic>
 #include <boost/algorithm/string.hpp>
-#include <chrono>
 #include <iostream>
-#include <thread>
 
 class unix_socket {
   private:
-    int fd;                                     // A valid file descriptor - Client or Server
+    int fd;
     std::string name;
-    std::thread mthread;                        // Let's start socket monitor thread.
-    struct pollfd mpoll_on_filedescriptor;      // Let's perform poll on Connected Client Socket only.
 public:
-    std::atomic<bool> server_started;           // Is Server Socket/Client Socket started?
-    std::atomic<bool> m_is_socket_live;         // Is Server socket Live?
-    std::atomic<bool> mNonBlocking;             // send/recv flags to set.
+    std::atomic<bool> server_started;
     void set_name(const std::string &sock_name) { name = sock_name;}
     std::string get_name() { return name;}
     unix_socket(const std::string& env = "EMULATION_SOCKETID", const std::string& sock_id="xcl_sock",double timeout_insec=300,bool fatal_error=true);
     ~unix_socket()
     {
-      server_started = false;
-      // Let's join the thread if spawned already.
-      if ( mthread.joinable() )
-        mthread.join();
-
-      close(fd);
+       server_started = false;
+       close(fd);
     }
     void start_server(double timeout_insec,bool fatal_error);
     ssize_t sk_write(const void *wbuf, size_t count);
     ssize_t sk_read(void *rbuf, size_t count);
-    void monitor_socket();                    //API to shim layer that can requested to monitor the client socket fd.
-    void monitor_socket_thread();             // A Thread where actual monitoring performed.
-
 };
 
 

@@ -18,29 +18,18 @@
 //Initialize Messages
 #include "xcl_macros.h"
 
-#define SCOPE_GUARD_MUTEX() \
-if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  }\
-std::lock_guard<std::mutex> socketlk{mtx}; 
-
 
 #define AQUIRE_MUTEX() \
-if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  }\
-std::lock_guard<std::mutex> socketlk{mtx}; 
+mtx.lock(); \
 
-
-// dummy Release Mutex Call.
-//#define RELEASE_MUTEX() 
-
-
+#define RELEASE_MUTEX() \
+mtx.unlock();
 
 #define RPC_PROLOGUE(func_name) \
     auto _s_inst = sock;  \
     func_name##_call c_msg; \
     func_name##_response r_msg; \
-    SCOPE_GUARD_MUTEX()
-
-
-//    AQUIRE_MUTEX() - will be deleted.
+    AQUIRE_MUTEX()
 
 #if GOOGLE_PROTOBUF_VERSION < 3006001
 // Use the deprecated 32 bit version of the size
@@ -48,24 +37,24 @@ std::lock_guard<std::mutex> socketlk{mtx};
     auto c_len = c_msg.ByteSize();                                      \
     buf_size = alloc_void(c_len);                                       \
     bool rv = c_msg.SerializeToArray(buf,c_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed for allc_void call"<<std::endl; exit(1);} \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
                                                                         \
     ci_msg.set_size(c_len);                                             \
     ci_msg.set_xcl_api(func_name##_n);                                  \
     auto ci_len = ci_msg.ByteSize();                                    \
     rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl; exit(1); } \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
                                                                         \
     _s_inst->sk_write(ci_buf,ci_len);                                   \
     _s_inst->sk_write(buf,c_len);                                       \
                                                                         \
     _s_inst->sk_read(ri_buf,ri_msg.ByteSize());                         \
     rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize());               \
-    if (true != rv) { std::cerr<<"\n ParseFromArray failed, sk_read/sk_write failed, so exit the application now!"; exit(0);  }                                                 \
+    assert(true == rv);                                                 \
     buf_size = alloc_void(ri_msg.size());                               \
     _s_inst->sk_read(buf,ri_msg.size());                                \
     rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
-    if (true != rv){ std::cerr<<"\n ParseFromArray failed, sk_read failed for alloc_void, so exit- the application now!!!"; exit(0); }
+    assert(true == rv);
 #else
 // More recent protoc handles 64 bit size objects and the 32 bit version is deprecated
 #define SERIALIZE_AND_SEND_MSG(func_name)                               \
@@ -93,8 +82,8 @@ std::lock_guard<std::mutex> socketlk{mtx};
 #endif
 
 //RELEASE BUFFER MEMORIES
-//#define FREE_BUFFERS() 
-//  RELEASE_MUTEX()
+#define FREE_BUFFERS() \
+  RELEASE_MUTEX()
 
 #define xclSetEnvironment_SET_PROTOMESSAGE() \
   for (auto i : mEnvironmentNameValueMap) \
@@ -116,6 +105,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclSetEnvironment_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclSetEnvironment_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclSetEnvironment_RETURN();
 
 
@@ -145,6 +135,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclLoadBitstream_SET_PROTOMESSAGE(func_name,xmlfile,dlopenfilename,deviceDirectory,binaryDirectory,verbose); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclLoadBitstream_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclLoadBitstream_RETURN();
 
 
@@ -167,6 +158,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclAllocDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress,size,p2pbuffer); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclAllocDeviceBuffer_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclAllocDeviceBuffer_RETURN();
 
 #define xclFreeDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress) \
@@ -185,6 +177,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclFreeDeviceBuffer_SET_PROTOMESSAGE(func_name,ddraddress); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclFreeDeviceBuffer_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclFreeDeviceBuffer_RETURN();
 //------------------------------------------------------------
 //--------------------xclWriteAddrSpaceDeviceRam--------------------------------
@@ -210,6 +203,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclWriteAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,address,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclWriteAddrSpaceDeviceRam_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclWriteAddrSpaceDeviceRam_RETURN();
 
 //--------------------xclWriteAddrKernelCtrl--------------------------------
@@ -241,6 +235,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclWriteAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,address,data,size,kernelArgsInfo,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclWriteAddrKernelCtrl_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclWriteAddrKernelCtrl_RETURN();
 
 //--------------------xclRegWrite--------------------------------
@@ -263,6 +258,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclRegWrite_SET_PROTOMESSAGE(func_name,baseaddress,offset,data,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclRegWrite_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclRegWrite_RETURN();
 
 //-----------------------xclReadAddrSpaceDeviceRam----------------------------
@@ -290,6 +286,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclReadAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,address,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclReadAddrSpaceDeviceRam_SET_PROTO_RESPONSE(data,size); \
+    FREE_BUFFERS(); \
     xclReadAddrSpaceDeviceRam_RETURN();
 //-----------------------xclReadAddrKernelCtrl----------------------------
 //Generate call and info message
@@ -316,6 +313,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclReadAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,address,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclReadAddrKernelCtrl_SET_PROTO_RESPONSE(data,size); \
+    FREE_BUFFERS(); \
     xclReadAddrKernelCtrl_RETURN();
 //-----------------------xclRegRead----------------------------
 #define xclRegRead_SET_PROTOMESSAGE(func_name,baseaddress,offset,data,size,pf_id,bar_id) \
@@ -339,6 +337,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclRegRead_SET_PROTOMESSAGE(func_name,baseaddress,offset,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name) \
     xclRegRead_SET_PROTO_RESPONSE(data,size); \
+    FREE_BUFFERS(); \
     xclRegRead_RETURN();
 
 //-------------------xclClose---------------------------------
@@ -357,6 +356,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclClose_SET_PROTOMESSAGE(func_name,dev_handle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclClose_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
   //  xclClose_RETURN();
 
 //-----------xclCopyBufferHost2Device-----------------
@@ -380,6 +380,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclCopyBufferHost2Device_SET_PROTOMESSAGE(func_name,dev_handle,dest,src,size,seek,space); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclCopyBufferHost2Device_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclCopyBufferHost2Device_RETURN();
 
 //-----------xclCopyBufferDevice2Host-----------------
@@ -404,6 +405,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclCopyBufferDevice2Host_SET_PROTOMESSAGE(func_name,dev_handle,dest,src,size,skip,space); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclCopyBufferDevice2Host_SET_PROTO_RESPONSE(dest); \
+    FREE_BUFFERS(); \
     xclCopyBufferDevice2Host_RETURN();
 
 
@@ -412,6 +414,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
 #define xclPerfMonReadCounters_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
+      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_slotname(slotname); \
@@ -435,12 +438,14 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclPerfMonReadCounters_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadCounters_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclPerfMonReadCounters_RETURN();
 
 //----------xclPerfMonReadCounters(Streaming)------------
 #define xclPerfMonReadCounters_Streaming_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
+      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_slotname(slotname);
@@ -461,12 +466,14 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclPerfMonReadCounters_Streaming_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadCounters_Streaming_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclPerfMonReadCounters_Streaming_RETURN();
 
 //----------xclPerfMonGetTraceCount------------
 #define xclPerfMonGetTraceCount_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
+      RELEASE_MUTEX();\
       return 0; \
     }\
   c_msg.set_ack(ack); \
@@ -482,11 +489,13 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclPerfMonGetTraceCount_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonGetTraceCount_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
 
 //----------xclPerfMonReadTrace------------
 #define xclPerfMonReadTrace_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
+      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_ack(ack); \
@@ -501,11 +510,13 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclPerfMonReadTrace_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadTrace_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
 
 //----------xclPerfMonReadTrace(Streaming)------------
 #define xclPerfMonReadTrace_Streaming_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
+      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_ack(ack); \
@@ -519,11 +530,13 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclPerfMonReadTrace_Streaming_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclPerfMonReadTrace_Streaming_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
 
 //----------xclWriteHostEvent------------
 #define xclWriteHostEvent_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
+      RELEASE_MUTEX();\
       return 0; \
     }\
     c_msg.set_ack(ack); \
@@ -537,11 +550,13 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclWriteHostEvent_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclWriteHostEvent_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
 
 //----------xclGetDeviceTimestamp------------
 #define xclGetDeviceTimestamp_SET_PROTOMESSAGE() \
   if(simulator_started == false) \
     {\
+      RELEASE_MUTEX();\
       return 0; \
     }\
   c_msg.set_ack(ack);
@@ -554,11 +569,13 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGetDeviceTimestamp_SET_PROTOMESSAGE(); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGetDeviceTimestamp_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS();
 
 //----------xclReadBusStatus-------------------
 #define xclReadBusStatus_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
+      RELEASE_MUTEX();\
       return; \
     }\
     c_msg.set_slot_n(slot_n);
@@ -571,11 +588,13 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclReadBusStatus_SET_PROTOMESSAGE(); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclReadBusStatus_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //----------xclGetDebugMessages-------------------
 #define xclGetDebugMessages_SET_PROTOMESSAGE() \
     if(simulator_started == false) \
     {\
+      RELEASE_MUTEX();\
       return; \
     }\
     c_msg.set_ack(ack); \
@@ -591,6 +610,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclGetDebugMessages_SET_PROTOMESSAGE(); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclGetDebugMessages_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //----------xclCopyBO-------------------
 #define xclCopyBO_SET_PROTOMESSAGE(src_boHandle,filename,size,src_offset,dst_offset) \
@@ -608,6 +628,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclCopyBO_SET_PROTOMESSAGE(src_boHandle,filename,size,src_offset,dst_offset); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclCopyBO_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //----------xclCopyBOFromFd-------------------
 #define xclCopyBOFromFd_SET_PROTOMESSAGE(filename,dest_boHandle,size,src_offset,dst_offset) \
@@ -625,6 +646,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclCopyBOFromFd_SET_PROTOMESSAGE(filename, dest_boHandle, size, src_offset, dst_offset); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclCopyBOFromFd_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //----------xclImportBO-------------------
 #define xclImportBO_SET_PROTOMESSAGE(filename,offset,size) \
@@ -640,6 +662,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclImportBO_SET_PROTOMESSAGE(filename,offset,size); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclImportBO_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //----------xclCreateQueue-------------------
 #define xclCreateQueue_SET_PROTOMESSAGE(q_ctx,bWrite) \
@@ -660,6 +683,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclCreateQueue_SET_PROTOMESSAGE(q_ctx, bWrite); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclCreateQueue_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //----------xclWriteQueue-------------------
 #define xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size) \
@@ -678,6 +702,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclWriteQueue_SET_PROTOMESSAGE(q_handle,src,size); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclWriteQueue_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //----------xclReadQueue-------------------
 #define xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size) \
@@ -697,6 +722,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclReadQueue_SET_PROTOMESSAGE(q_handle,dest,size); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclReadQueue_SET_PROTO_RESPONSE(dest); \
+  FREE_BUFFERS();
 
 //----------xclPollCompletion-------------------
 #define xclPollCompletion_SET_PROTOMESSAGE(reqcounter) \
@@ -722,6 +748,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclPollCompletion_SET_PROTOMESSAGE(reqcounter); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclPollCompletion_SET_PROTO_RESPONSE(vaLenMap); \
+  FREE_BUFFERS();
 
 //----------xclPollQueue-------------------
 #define xclPollQueue_SET_PROTOMESSAGE(q_handle,reqcounter) \
@@ -748,6 +775,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclPollQueue_SET_PROTOMESSAGE(q_handle, reqcounter); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclPollQueue_SET_PROTO_RESPONSE(vaLenMap); \
+  FREE_BUFFERS();
 
 //----------xclSetQueueOpt-------------------
 #define xclSetQueueOpt_SET_PROTOMESSAGE(q_handle,type,val) \
@@ -763,6 +791,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclSetQueueOpt_SET_PROTOMESSAGE(q_handle,type,val); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclSetQueueOpt_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //----------xclDestroyQueue-------------------
 #define xclDestroyQueue_SET_PROTOMESSAGE(q_handle) \
@@ -776,6 +805,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclDestroyQueue_SET_PROTOMESSAGE(q_handle); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclDestroyQueue_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //----------xclSetupInstance-------------------
 #define xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap) \
@@ -797,6 +827,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
   xclSetupInstance_SET_PROTOMESSAGE(route, argFlowIdMap); \
   SERIALIZE_AND_SEND_MSG(func_name) \
   xclSetupInstance_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
 
 //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-XRT Graph Api's-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 //-----------xclGraphInit-----------------
@@ -816,6 +847,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGraphInit_SET_PROTOMESSAGE(func_name,graphhandle,graphname); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphInit_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclGraphInit_RETURN();
 
 //-----------xclGraphRun-----------------
@@ -835,6 +867,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGraphRun_SET_PROTOMESSAGE(func_name,graphhandle,iterations); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphRun_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclGraphRun_RETURN();
 
 //-----------xclGraphWait-----------------
@@ -853,6 +886,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGraphWait_SET_PROTOMESSAGE(func_name,graphhandle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphWait_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclGraphWait_RETURN();
 
 //-----------xclGraphEnd-----------------
@@ -871,6 +905,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGraphEnd_SET_PROTOMESSAGE(func_name,graphhandle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphEnd_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclGraphEnd_RETURN();
 
 //-----------xclGraphUpdateRTP-----------------
@@ -893,6 +928,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGraphUpdateRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphUpdateRTP_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclGraphUpdateRTP_RETURN();
 
 //-----------xclGraphReadRTP-----------------
@@ -916,6 +952,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGraphReadRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphReadRTP_SET_PROTO_RESPONSE(buffer); \
+    FREE_BUFFERS(); \
     xclGraphReadRTP_RETURN();
 
 //-----------xclSyncBOAIENB-----------------
@@ -939,6 +976,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclSyncBOAIENB_SET_PROTOMESSAGE(func_name,gmioname,dir,size,offset,boh); \
     SERIALIZE_AND_SEND_MSG(func_name); \
     xclSyncBOAIENB_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclSyncBOAIENB_RETURN();
 
 //-----------xclGMIOWait-----------------
@@ -957,6 +995,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGMIOWait_SET_PROTOMESSAGE(func_name,gmioname); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGMIOWait_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclGMIOWait_RETURN();
 
 //-----------xclGraphTimedWait-----------------
@@ -976,6 +1015,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGraphTimedWait_SET_PROTOMESSAGE(func_name,graphhandle,cycle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphTimedWait_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclGraphTimedWait_RETURN();
 
 //-----------xclGraphTimedEnd-----------------
@@ -995,6 +1035,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGraphTimedEnd_SET_PROTOMESSAGE(func_name,graphhandle,cycle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphTimedEnd_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclGraphTimedEnd_RETURN();
 
 //-----------xclGraphResume-----------------
@@ -1013,6 +1054,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclGraphResume_SET_PROTOMESSAGE(func_name,graphhandle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphResume_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclGraphResume_RETURN();
 
 //-----------xclLoadXclbinContent-----------------
@@ -1036,4 +1078,5 @@ std::lock_guard<std::mutex> socketlk{mtx};
     xclLoadXclbinContent_SET_PROTOMESSAGE(func_name,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize,keepdir); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclLoadXclbinContent_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
     xclLoadXclbinContent_RETURN();
