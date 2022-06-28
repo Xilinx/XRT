@@ -424,37 +424,36 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
  * helper function for P2P test
  */
 static bool
-p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
+p2ptest_set_or_cmp(char *boptr, size_t size, char *valid_data, size_t valid_buf_size, bool set)
 {
   int stride = xrt_core::getpagesize();
 
-  // Generate the valid data vector
-  const size_t write_size = 1024;
-  char valid_data[write_size];
-  std::memset(valid_data, pattern, write_size);
-
   assert((size % stride) == 0);
   for (size_t i = 0; i < size; i += stride) {
-    // Due to test timeout we can only have one large write to test write combines
-    // The first write in a memory segment is a large write combine while all others are single bytes
     if (set)
-      if(i == 0)
-        // Write a large block of data to trigger a write combine
-        std::memcpy(&(boptr[i]), valid_data, write_size);
-      else
-        boptr[i] = pattern;
+      std::memcpy(&(boptr[i]), valid_data, valid_buf_size);
     else {
       // Verify all of the written bytes
-      // These could be combined into one statement but it is nice to match the writes above
-      // in terms of what each if statement represents.
-      // The first if represent the large write while the second covers the single byte writes
-      if ((i == 0) && (std::memcmp(&(boptr[i]), valid_data, write_size) != 0))
-        return false;
-      else if (boptr[i] != pattern)
+      if (std::memcmp(&(boptr[i]), valid_data, valid_buf_size) != 0)
         return false;
     }
   }
   return true;
+}
+
+/*
+ * helper function for P2P test
+ */
+static bool
+p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
+{
+  int stride = xrt_core::getpagesize();
+
+  // Generate the valid data vector using the given pattern
+  char valid_data[stride];
+  valid_data[0] = pattern;
+
+  return p2ptest_set_or_cmp(boptr, size, valid_data, 1, set);
 }
 
 /*
@@ -468,6 +467,20 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   if (xrt_core::posix_memalign(reinterpret_cast<void **>(&buf), xrt_core::getpagesize(), size))
     return false;
 
+  // Generate the valid data vector
+  const size_t write_size = 1024;
+  char valid_data[write_size];
+  std::memset(valid_data, 'A', write_size);
+
+  // Perform a memory write larger than 512 bytes to trigger a write combine
+  auto buf_size = xrt_core::getpagesize() * 1;
+  p2ptest_set_or_cmp(buf, buf_size, valid_data, write_size, true);
+  if (xclUnmgdPwrite(handle, 0, buf, buf_size, dev_addr) < 0)
+    return false;
+  if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, write_size, false))
+    return false;
+
+  // Default to testing with small write to reduce test time
   p2ptest_set_or_cmp(buf, size, 'A', true);
   if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0)
     return false;
