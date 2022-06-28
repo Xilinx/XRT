@@ -1268,11 +1268,21 @@ namespace xdp {
     } // Pass 3 
 
 
-    // check validity and set default
+    // check validity, set default and remove "off" tiles
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
                            : ((mod == XAIE_MEM_MOD) ? "memory" 
                            : "interface tile");
+
+    std::vector<tile_type> offTiles;
+
     for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+
+      // save list of "off" tiles
+      if (0 == tileMetric.second.compare("off")) {
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
+
       // Ensure requested metric set is supported (if not, use default)
       if (((mod == XAIE_CORE_MOD) && (mCoreStartEvents.find(tileMetric.second) == mCoreStartEvents.end()))
           || ((mod == XAIE_MEM_MOD) && (mMemoryStartEvents.find(tileMetric.second) == mMemoryStartEvents.end()))
@@ -1285,6 +1295,11 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         tileMetric.second = defaultSet;
       }
+    }
+
+    // remove all the "off" tiles
+    for (auto &t : offTiles) {
+      mConfigMetrics[moduleIdx].erase(t);
     }
   }
 
