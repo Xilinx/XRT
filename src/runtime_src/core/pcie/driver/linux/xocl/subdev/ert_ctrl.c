@@ -436,7 +436,7 @@ int __ert_ctrl_submit(struct ert_ctrl *ec, struct xgq_cmd_sq_hdr *req, uint32_t 
 		ret = xgq_consume(&ec->ec_ctrl_xgq, &slot_addr);
 		if (!ret) {
 			xocl_memcpy_fromio(resp, (void __iomem *)slot_addr, resp_size);
-			xocl_memcpy_fromio(&cq_hdr, (void __iomem *)slot_addr, sizeof(cq_hdr));
+			memcpy_fromio(&cq_hdr, (void __iomem *)slot_addr, sizeof(cq_hdr));
 			xgq_notify_peer_consumed(&ec->ec_ctrl_xgq);
 			break;
 		}
