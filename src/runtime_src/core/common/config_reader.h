@@ -321,13 +321,6 @@ get_opencl_trace()
 }
 
 inline bool
-get_opencl_summary()
-{
-  static bool value = detail::get_bool_value("Debug.opencl_summary", false);
-  return value;
-}
-
-inline bool
 get_opencl_device_counter()
 {
   static bool value = detail::get_bool_value("Debug.opencl_device_counter", false);
