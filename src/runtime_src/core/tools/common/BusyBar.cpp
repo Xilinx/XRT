@@ -127,14 +127,14 @@ BusyBar::update()
     // Sleep for some time to prevent updating to quickly
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Protext class data
+    // Protect class data
    std::lock_guard lock(m_data_guard);
     // Create the busy bar filled with spaces and a symbol at the end
     const static std::string symbol = "<->";
     auto bar_end = busy_bar_width - symbol.length();
-    // Add one so that character goes to the end of the bar
-    // It is very unsatisfying otherwise
+    // Use 2 times the length to handle going backwards!
     auto bar_length = m_iteration % (bar_end * 2);
+    // Backwards logic
     if (bar_length > bar_end)
       bar_length = (bar_end * 2) - bar_length;
     std::string busy_bar = std::string(bar_length, ' ');
