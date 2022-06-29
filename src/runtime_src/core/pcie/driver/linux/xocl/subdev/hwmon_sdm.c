@@ -245,6 +245,10 @@ static int hwmon_sdm_read_from_peer(struct platform_device *pdev, int repo_type,
 	ret = xocl_peer_request(xdev, mb_req, reqlen, in_buf, &resp_len, NULL, NULL, 0, 0);
 	if (!ret) {
 		repo_id = sdr_get_id(repo_type);
+		if (repo_id < 0) {
+			xocl_warn(&pdev->dev, "repo_id: 0x%x is corrupted or not supported\n", repo_id);
+			goto done;
+		}
 		memcpy(sdm->sensor_data[repo_id], in_buf, resp_len);
 	}
 
