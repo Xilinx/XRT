@@ -762,7 +762,7 @@ int bitstream_ioctl_axlf(struct awsmgmt_dev *lro, const void __user *arg)
 
 	//TODO: Once xlnx_bitstream is used in xclbin.h , need to add to this offset.
 	buffer = (char __user *)bitstream_obj.xclbin;
-	err = !access_ok(VERIFY_READ, buffer, bin_obj.m_header.m_length);
+	err = !AWSMGMT_ACCESS_OK(VERIFY_READ, buffer, bin_obj.m_header.m_length);
 	if (err) {
 		err = -EFAULT;
 		goto done;
