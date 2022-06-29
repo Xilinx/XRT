@@ -55,10 +55,10 @@ ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << "Electrical\n";
   const boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
   _output << boost::format("  %-23s: %s %s\n") % "Max Power" %
-	  _pt.get<std::string>("electrical.power_consumption_max", "N/A") %
+	  _pt.get<std::string>("electrical.power_consumption_max_watts", "N/A") %
 	  _pt.get<std::string>("electrical.power_consumption_max_units", "N/A");
   _output << boost::format("  %-23s: %s %s\n") % "Power" %
-	  _pt.get<std::string>("electrical.power_consumption", "N/A") %
+	  _pt.get<std::string>("electrical.power_consumption_watts", "N/A") %
 	  _pt.get<std::string>("electrical.power_consumption_units", "N/A");
   _output << boost::format("  %-23s: %s\n\n") % "Power Warning" %
 	  _pt.get<std::string>("electrical.power_consumption_warning", "N/A");

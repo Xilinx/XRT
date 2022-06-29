@@ -132,9 +132,9 @@ populate_fan(const xrt_core::device * device,
 
   pt.put("location_id", loc_id);
   pt.put("description", desc);
-  pt.put("critical_trigger_temp", temp_C);
+  pt.put("critical_trigger_temp_C", temp_C);
   pt.put("critical_trigger_temp_units", "Celcius");
-  pt.put("fan_speed", rpm);
+  pt.put("speed_rpm", rpm);
   pt.put("fan_speed_units", "RPM");
   pt.put("is_present", xq::fan_fan_presence::to_string(is_present));
 
@@ -225,10 +225,10 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
 
   root.add_child("power_rails", sensor_array);
 
-  root.put("power_consumption", bd_power);
+  root.put("power_consumption_watts", bd_power);
   root.put("power_consumption_units", power_units);
-  root.put("power_consumption_max", "NA");
-  root.put("power_consumption_max_units", "NA");
+  root.put("power_consumption_max_watts", "NA");
+  root.put("power_consumption_max_units", "");
   root.put("power_consumption_warning", "NA");
 
   return root;
@@ -267,9 +267,9 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output)
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
     pt.put("units", tmp.units);
-    pt.put("critical_trigger_temp", "N/A");
+    pt.put("critical_trigger_temp_C", "N/A");
     pt.put("critical_trigger_temp_units", "");
-    pt.put("fan_speed", tmp.input);
+    pt.put("speed_rpm", tmp.input);
     pt.put("fan_speed_units", "RPM");
     pt.put("is_present", "true");
     fan_array.push_back({"", pt});
@@ -417,9 +417,9 @@ read_legacy_electrical(const xrt_core::device * device)
 
   ptree_type root;
   root.add_child("power_rails", sensor_array);
-  root.put("power_consumption_max", max_power_watts);
+  root.put("power_consumption_max_watts", max_power_watts);
   root.put("power_consumption_max_units", "Watts");
-  root.put("power_consumption", power_watts);
+  root.put("power_consumption_watts", power_watts);
   root.put("power_consumption_units", "Watts");
   root.put("power_consumption_warning", warning);
 
