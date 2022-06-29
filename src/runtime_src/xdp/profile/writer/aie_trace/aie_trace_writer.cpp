@@ -83,7 +83,7 @@ namespace xdp {
 
     size_t num = traceData->buffer.size();
     for (size_t j = 0; j < num; j++) {
-      void*    buf = traceData->buffer[j].get();
+      void*    buf = traceData->buffer[j];
       // We write 4 bytes at a time
       // Max chunk size should be multiple of 4
       // If last chunk is not multiple of 4 then in worst case, 
@@ -98,8 +98,9 @@ namespace xdp {
       for (uint64_t i = 0; i < bufferSz; i++)
         fout << "0x" << std::hex << dataBuffer[i] << std::endl;
 
-      // Free the memory immediately
-      traceData->buffer[j].reset();
+      // Free the memory immediately if we own it
+      if (traceData->owner)
+        delete[] (traceData->buffer[j]);
     }
     fout << std::endl;
     delete traceData;

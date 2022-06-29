@@ -334,49 +334,15 @@ XclBinUtilities::hexStringToBinaryBuffer(const std::string& _inputString,
   }
 }
 
-#ifdef _WIN32
 uint64_t
 XclBinUtilities::stringToUInt64(const std::string& _sInteger, bool _bForceHex) {
-  uint64_t value = 0;
-
   // Is it a hex value
-  if ( _bForceHex || 
-       ((_sInteger.length() > 2) &&
-        (_sInteger[0] == '0') && (_sInteger[1] == 'x'))) {
-    if (1 == sscanf_s(_sInteger.c_str(), "%" PRIx64 "", &value)) {
-      return value;
-    }
-  } else {
-    if (1 == sscanf_s(_sInteger.c_str(), "%" PRId64 "", &value)) {
-      return value;
-    }
+  if (_bForceHex) {
+    return std::stoul(_sInteger, nullptr, 16);
   }
 
-  std::string errMsg = "ERROR: Invalid integer string in JSON file: '" + _sInteger + "'";
-  throw std::runtime_error(errMsg);
+  return std::stoul(_sInteger, nullptr, 0); // Allow standard library to determine the base
 }
-#else
-uint64_t
-XclBinUtilities::stringToUInt64(const std::string& _sInteger, bool _bForceHex) {
-  uint64_t value = 0;
-
-  // Is it a hex value
-  if (_bForceHex || 
-      ((_sInteger.length() > 2) &&
-       (_sInteger[0] == '0') && (_sInteger[1] == 'x'))) {
-    if (1 == sscanf(_sInteger.c_str(), "%" PRIx64 "", &value)) {
-      return value;
-    }
-  } else {
-    if (1 == sscanf(_sInteger.c_str(), "%" PRId64 "", &value)) {
-      return value;
-    }
-  }
-
-  std::string errMsg = "ERROR: Invalid integer string in JSON file: '" + _sInteger + "'";
-  throw std::runtime_error(errMsg);
-}
-#endif
 
 void
 XclBinUtilities::printKinds() {

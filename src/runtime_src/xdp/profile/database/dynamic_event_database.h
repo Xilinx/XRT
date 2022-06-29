@@ -40,8 +40,9 @@ namespace xdp {
 
   // AIE Trace data type
   struct AIETraceDataType {
-    std::vector<std::unique_ptr<unsigned char[]>> buffer;
+    std::vector<unsigned char *> buffer;
     std::vector<uint64_t> bufferSz;
+    bool owner;
   };
   typedef std::vector<AIETraceDataType*> AIETraceDataVector;
 
@@ -225,7 +226,7 @@ namespace xdp {
     XDP_EXPORT std::map<uint64_t, std::vector<uint64_t>> getDependencyMap() ;
 
     // Add and get AIE Trace Data Buffer 
-    XDP_EXPORT void addAIETraceData(uint64_t deviceId, uint64_t strmIndex, void* buffer, uint64_t bufferSz);
+    XDP_EXPORT void addAIETraceData(uint64_t deviceId, uint64_t strmIndex, void* buffer, uint64_t bufferSz, bool copy);
     XDP_EXPORT AIETraceDataType* getAIETraceData(uint64_t deviceId, uint64_t strmIndex);
 
     // Functions that are used by counter-based plugins

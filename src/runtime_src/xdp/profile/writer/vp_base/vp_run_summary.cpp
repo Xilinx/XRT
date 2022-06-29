@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -77,13 +78,14 @@ namespace xdp {
     {
       boost::property_tree::ptree ptSchema ;
       ptSchema.put("major", "1") ;
-      ptSchema.put("minor", "2") ;
+      ptSchema.put("minor", "3") ;
       ptSchema.put("patch", "0") ; 
       ptRunSummary.add_child("schema_version", ptSchema) ;
     }
 
     {
       auto pid = (db->getStaticInfo()).getPid() ;
+      bool aieApplication = db->getStaticInfo().getAieApplication();
       auto timestamp = (std::chrono::system_clock::now()).time_since_epoch() ;
       auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
       uint64_t timeMsec = value.count() ;
@@ -109,6 +111,19 @@ namespace xdp {
       ptGeneration.put("source", "vp") ;
       ptGeneration.put("PID", std::to_string(pid)) ;
       ptGeneration.put("timestamp", std::to_string(timeMsec)) ;
+      // Adding a generic flag field to handle arbitrary information
+      boost::property_tree::ptree flags;
+      if (aieApplication) {
+        boost::property_tree::ptree flag;
+        flag.put("", "aie");
+        flags.push_back(std::make_pair("", flag));
+      }
+      else {
+        // If empty, make sure we output a list with nothing in it
+	boost::property_tree::ptree empty;
+        flags.push_back(std::make_pair("", empty));
+      }
+      ptGeneration.add_child("flags", flags);
       ptRunSummary.add_child("generation", ptGeneration) ;
     }
 

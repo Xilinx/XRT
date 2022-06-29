@@ -206,8 +206,12 @@ namespace xclhwemhal2 {
             if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
               logMessage(line);
               parsedMsgs.push_back(line);
-              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR"))
-                 std::cout << "SIMULATION EXITED" << std::endl;
+              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR")) {
+                  std::cout << "SIMULATION EXITED" << std::endl;
+                  this->xclClose();                                               // Let's have a proper clean if xsim is NOT running
+                  exit(0);                                                        // It's a clean exit only.
+              }
+                
             }
           }
         }
@@ -988,6 +992,7 @@ namespace xclhwemhal2 {
 
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
+    sock->monitor_socket();
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
       std::cout<<"\n messages Thread is created\n";
@@ -1674,9 +1679,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       }
       return;
     }
-
-    resetProgram(false);
-
+    // All RPC calls fail if no socket is live.
+    if ( !sock->m_is_socket_live ) {
+      resetProgram(false);      
+    }
+    
     int status = 0;
     xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
     if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
@@ -1803,8 +1810,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     xclGetDebugMessages(true);
     try {
       std::lock_guard<std::mutex> guard(mPrintMessagesLock);
-      fetchAndPrintMessages();
       simulator_started = false;
+      fetchAndPrintMessages();
+      
     }
     catch (std::exception& ex) {
       if (mLogStream.is_open())
