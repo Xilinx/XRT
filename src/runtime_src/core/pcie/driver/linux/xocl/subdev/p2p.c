@@ -27,26 +27,28 @@ MODULE_PARM_DESC(p2p_max_bar_size,
 	"Maximum P2P BAR size in GB, default is 128");
 
 
-#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-#define P2P_API_V0
+#if defined(RHEL_RELEASE_VERSION) /* CentOS/RedHat specific check */
+	#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 3) && \
+		  RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7, 6)
+		#define P2P_API_V1
+	#elif RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6) && \
+		  RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 6)
+		#define P2P_API_V2
+	#else
+		#define P2P_API_V3
+	#endif
+
+#elif KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE && \
+	  (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+	#define P2P_API_V0
 #elif KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
-#define P2P_API_V1
+	  (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0))
+	#define P2P_API_V1
 #elif KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE && \
-	(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0))
-#define P2P_API_V2
+	  (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0))
+	#define P2P_API_V2
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
-#define P2P_API_V3
-#elif defined(RHEL_RELEASE_VERSION) /* CentOS/RedHat specific check */
-
-#if RHEL_RELEASE_CODE > RHEL_RELEASE_VERSION(7, 3) && \
-	RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(7, 6)
-#define P2P_API_V1
-#elif RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(7, 6)
-#define P2P_API_V2
-#endif
-
+	#define P2P_API_V3
 #endif
 
 
@@ -387,22 +389,22 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 		chk->xpmc_pgmap.res = res;
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 0)
-#if defined(RHEL_RELEASE_CODE)
-#if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 2)
+	#if defined(RHEL_RELEASE_CODE)
+		#if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 2)
+			chk->xpmc_pgmap.ref = pref;
+			chk->xpmc_pgmap.altmap_valid = false;
+			#if RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(8, 1)
+				chk->xpmc_pgmap.kill = p2p_percpu_ref_kill_noop;
+			#endif
+		#else
+			chk->xpmc_pgmap.type = MEMORY_DEVICE_PCI_P2PDMA;
+		#endif
+	#else
 		chk->xpmc_pgmap.ref = pref;
 		chk->xpmc_pgmap.altmap_valid = false;
-#if RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(8, 1)
-		chk->xpmc_pgmap.kill = p2p_percpu_ref_kill_noop;
-#endif
+	#endif
 #else
-		chk->xpmc_pgmap.type = MEMORY_DEVICE_PCI_P2PDMA;
-#endif
-#else
-		chk->xpmc_pgmap.ref = pref;
-		chk->xpmc_pgmap.altmap_valid = false;
-#endif
-#else
-		chk->xpmc_pgmap.type = MEMORY_DEVICE_PCI_P2PDMA;
+	chk->xpmc_pgmap.type = MEMORY_DEVICE_PCI_P2PDMA;
 #endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 2) && \

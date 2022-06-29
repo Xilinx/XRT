@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -32,11 +33,12 @@
  * under the License.
  */
 
+#include "core/include/xdp/counters.h"
+#include "core/include/xdp/aim.h"
 // Local/XRT headers
 #include "config.h"
 #include "shim.h"
 #include "xclbin.h"
-#include "xcl_perfmon_parameters.h"
 // C++ headers
 #include <algorithm>
 #include <cassert>
@@ -79,18 +81,18 @@ namespace xclhwemhal2
       mLogStream << "debug_ip_layout: reading profile addresses and names..." << std::endl;
     }
 
-    memset(mPerfmonProperties, 0, sizeof(uint8_t) * XAIM_MAX_NUMBER_SLOTS);
-    memset(mAccelmonProperties, 0, sizeof(uint8_t) * XAM_MAX_NUMBER_SLOTS);
-    memset(mStreamMonProperties, 0, sizeof(uint8_t) * XASM_MAX_NUMBER_SLOTS);
+    memset(mPerfmonProperties, 0, sizeof(uint8_t) * xdp::MAX_NUM_AIMS);
+    memset(mAccelmonProperties, 0, sizeof(uint8_t) * xdp::MAX_NUM_AMS);
+    memset(mStreamMonProperties, 0, sizeof(uint8_t) * xdp::MAX_NUM_ASMS);
 
     mMemoryProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_MM_MONITOR, mPerfMonBaseAddress,
-                                                      mPerfMonSlotName, mPerfmonProperties, XAIM_MAX_NUMBER_SLOTS);
+                                                      mPerfMonSlotName, mPerfmonProperties, xdp::MAX_NUM_AIMS);
 
     mAccelProfilingNumberSlots = getIPCountAddrNames(debugFileName, ACCEL_MONITOR, mAccelMonBaseAddress,
-                                                     mAccelMonSlotName, mAccelmonProperties, XAM_MAX_NUMBER_SLOTS);
+                                                     mAccelMonSlotName, mAccelmonProperties, xdp::MAX_NUM_AMS);
 
     mStreamProfilingNumberSlots = getIPCountAddrNames(debugFileName, AXI_STREAM_MONITOR, mStreamMonBaseAddress,
-                                                      mStreamMonSlotName, mStreamMonProperties, XASM_MAX_NUMBER_SLOTS);
+                                                      mStreamMonSlotName, mStreamMonProperties, xdp::MAX_NUM_ASMS);
 
     mIsDeviceProfiling = (mMemoryProfilingNumberSlots > 0 || mAccelProfilingNumberSlots > 0 || mStreamProfilingNumberSlots > 0);
 
@@ -164,7 +166,7 @@ namespace xclhwemhal2
     // NOTE: host is always index 0
     if (type == AXI_MM_MONITOR)
     {
-      properties[0] = XAIM_HOST_PROPERTY_MASK;
+      properties[0] = xdp::IP::AIM::mask::PROPERTY_HOST;
       portNames[0] = "host/host";
       ++count;
     }
@@ -270,6 +272,7 @@ namespace xclhwemhal2
    */
   void HwEmShim::messagesThread()
   {
+    using namespace std::chrono_literals;
     if (xclemulation::config::getInstance()->isSystemDPAEnabled() == false)
     {
       return;
@@ -285,7 +288,11 @@ namespace xclhwemhal2
       sleep(10);
       if (not get_simulator_started())
        break;
-
+      // If socket is not live then what's the point of having fetchAndPrintMessages? Let's return!
+      if (sock->server_started == false) {
+        std::cout<<"\n messageThread is exiting now\n";
+        return;
+      }
       auto l_time_end = std::chrono::high_resolution_clock::now();
       // My wait time > 300 seconds, Let's fetch the exact details behind late connection with Simulator.
       if (std::chrono::duration_cast<std::chrono::seconds>(l_time_end - l_time).count() > kMaxTimeToConnectSimulator) {
@@ -300,17 +307,15 @@ namespace xclhwemhal2
 
       auto end_time = std::chrono::high_resolution_clock::now();
       if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= kMaxTimeToConnectSimulator) {
-
+        
         std::lock_guard<std::mutex> guard(mPrintMessagesLock);
-
         if (get_simulator_started() == false) 
           return;
         // Any status message found in parse log file?
         lParseLog.parseLog();         
         parseCount++;
         if (parseCount%5 == 0) {
-            // Sleep for 10, 20, 30 ...etc
-            std::this_thread::sleep_for(std::chrono::seconds(10*(parseCount/5)));
+          std::this_thread::sleep_for(5s);
         }
       }
       

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -116,6 +117,17 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(summaryLock) ;
     applicationStartTime = t ;
+  }
+
+  bool VPStaticDatabase::getAieApplication() const
+  {
+    return aieApplication;
+  }
+
+  void VPStaticDatabase::setAieApplication()
+  {
+    std::lock_guard<std::mutex> lock(summaryLock);
+    aieApplication = true;
   }
 
   // ***************************************************
@@ -1637,12 +1649,12 @@ namespace xdp {
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < MIN_TRACE_ID_AIM) {
+    if (index < min_trace_id_aim) {
       std::stringstream msg;
       msg << "AIM with incorrect index: " << index ;
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
                               msg.str());
-      index = MIN_TRACE_ID_AIM ;
+      index = min_trace_id_aim ;
     }
 
     // Parse name to find CU Name and Memory.  We expect the name in
@@ -1718,12 +1730,12 @@ namespace xdp {
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < MIN_TRACE_ID_ASM) {
+    if (index < min_trace_id_asm) {
       std::stringstream msg;
       msg << "ASM with incorrect index: " << index ;
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
                               msg.str());
-      index = MIN_TRACE_ID_ASM ;
+      index = min_trace_id_asm ;
     }
 
     // Parse out the name of the compute unit this monitor is attached to if

@@ -199,6 +199,22 @@ crc_buf_show(struct file *filp, struct kobject *kobj,
 	return xrt_cu_circ_consume_all(xcu, buf, count);
 }
 
+static ssize_t
+read_range_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	u32 start = 0;
+	u32 end = 0;
+
+	mutex_lock(&cu->base.read_regs.xcr_lock);
+	start = cu->base.read_regs.xcr_start;
+	end = cu->base.read_regs.xcr_end;
+	mutex_unlock(&cu->base.read_regs.xcr_lock);
+	return sprintf(buf, "0x%x 0x%x\n", start, end);
+}
+static DEVICE_ATTR_RO(read_range);
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
@@ -210,6 +226,7 @@ static struct attribute *cu_attrs[] = {
 	&dev_attr_size.attr,
 	&dev_attr_stat.attr,
 	&dev_attr_is_ucu.attr,
+	&dev_attr_read_range.attr,
 	NULL,
 };
 

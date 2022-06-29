@@ -1,26 +1,16 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+#include "shim.h"
+#include "system_hwemu.h"
+#include "plugin/xdp/device_offload.h"
+
+#include "core/include/xclbin.h"
 
 #include "core/common/AlignedAllocator.h"
 #include "core/common/xclbin_parser.h"
-#include "plugin/xdp/device_offload.h"
-#include "shim.h"
-#include "system_hwemu.h"
-#include "xclbin.h"
-#include "xcl_perfmon_parameters.h"
+#include "core/common/api/hw_context_int.h"
+#include "core/common/api/xclbin_int.h"
 
 #include <unistd.h>
 
@@ -34,7 +24,8 @@
 #include <set>
 #include <vector>
 
-
+#include "core/include/xdp/fifo.h"
+#include "core/include/xdp/trace.h"
 
 #define SEND_RESP2QDMA() \
     { \
@@ -215,8 +206,12 @@ namespace xclhwemhal2 {
             if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
               logMessage(line);
               parsedMsgs.push_back(line);
-              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR"))
-                 std::cout << "SIMULATION EXITED" << std::endl;
+              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR")) {
+                  std::cout << "SIMULATION EXITED" << std::endl;
+                  this->xclClose();                                               // Let's have a proper clean if xsim is NOT running
+                  exit(0);                                                        // It's a clean exit only.
+              }
+                
             }
           }
         }
@@ -940,7 +935,7 @@ namespace xclhwemhal2 {
 
           // This is temporary solution to enable the support for V70 platform. Will remove this once we have the device based DTB solution.
           // We have separate DTB for the V70 platform (sv60 device).
-          if (fpgaDeviceName.find("xcvc2802:") != std::string::npos 
+          if (fpgaDeviceName.find("xcvc2802:") != std::string::npos
             && fs::exists(sim_path + "/emulation_data/board-versal-xcvc2802-ps-cosim-vitis-virt.dtb") ){
             launcherArgs += " -qemu-dtb " + sim_path + "/emulation_data/board-versal-xcvc2802-ps-cosim-vitis-virt.dtb";
           }
@@ -997,6 +992,7 @@ namespace xclhwemhal2 {
 
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
+    sock->monitor_socket();
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
       std::cout<<"\n messages Thread is created\n";
@@ -1683,9 +1679,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       }
       return;
     }
-
-    resetProgram(false);
-
+    // All RPC calls fail if no socket is live.
+    if ( !sock->m_is_socket_live ) {
+      resetProgram(false);      
+    }
+    
     int status = 0;
     xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
     if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
@@ -1764,16 +1762,20 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // *_RPC_CALL uses unix_socket
 #endif
     Event eventObj;
-    uint32_t numSlots = getPerfMonNumberSlots(XCL_PERF_MON_MEMORY);
+    uint32_t numSlots = getPerfMonNumberSlots(xdp::MonitorType::memory);
     bool ack = true;
     for(unsigned int counter = 0 ; counter < numSlots; counter++)
     {
       unsigned int samplessize = 0;
-      if (counter == XPAR_AIM0_HOST_SLOT)
+
+      // This used to compare to XPAR_AIM0_HOST_SLOT, which is a meaningless
+      // definition now.  Changing it to the equivalent 0 for now, but this
+      // section should be revisited.
+      if (counter == 0)
         continue;
 
       char slotname[128];
-      getPerfMonSlotName(XCL_PERF_MON_MEMORY,counter,slotname,128);
+      getPerfMonSlotName(xdp::MonitorType::memory,counter,slotname,128);
 
       if (simulator_started == true)
       {
@@ -1808,8 +1810,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     xclGetDebugMessages(true);
     try {
       std::lock_guard<std::mutex> guard(mPrintMessagesLock);
-      fetchAndPrintMessages();
       simulator_started = false;
+      fetchAndPrintMessages();
+      
     }
     catch (std::exception& ex) {
       if (mLogStream.is_open())
@@ -2021,8 +2024,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     FeatureRomHeader &fRomHeader, const boost::property_tree::ptree& platformData)
     :mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
-    ,mDSAMajorVersion(DSA_MAJOR_VERSION)
-    ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
     ,mCuIndx(0)
   {
@@ -2288,7 +2289,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return deviceTimeStamp;
   }
 
-  void HwEmShim::xclReadBusStatus(xclPerfMonType type) {
+  void HwEmShim::xclReadBusStatus(xdp::MonitorType type) {
 
     bool is_bus_idle = true;
     uint64_t l_idle_bus_cycles = 0;
@@ -3181,25 +3182,43 @@ int HwEmShim::xclExecWait(int timeoutMilliSec)
 ////////////////////////////////////////////////////////////////
 int
 HwEmShim::
-xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
-  return 0; // success
+  // When properly implemented this function must throw on error
+  // and any exception must be caught by global xclOpenContext and
+  // converted to error code
+  return 0;
+}
+
+int
+HwEmShim::
+xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
+{
+  return 0;
 }
 
 // aka xclOpenContextByName, internal shim API for native C++ applications only
 // Once properly implemented, this API should throw on error
-void
+xrt_core::cuidx_type
 HwEmShim::
-open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
+  // Emulation does not yet support multiple xclbins.  Call
+  // regular flow.  Default access mode to shared unless explicitly
+  // exclusive.
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+  return cuidx;
 }
 
 // aka xclCreateHWContext, internal shim API for native C++ applications only
 // Once properly implemented, this API should throw on error
 uint32_t // ctx handle aka slot idx
 HwEmShim::
-create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const
+create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
 {
   // Explicit hardware contexts are not yet supported
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -3209,7 +3228,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const
 // Once properly implemented, this API should throw on error
 void
 HwEmShim::
-destroy_hw_context(uint32_t ctxhdl) const
+destroy_hw_context(uint32_t ctxhdl)
 {
   // Explicit hardware contexts are not yet supported
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -3219,7 +3238,7 @@ destroy_hw_context(uint32_t ctxhdl) const
 // Once properly implemented, this API should throw on error
 void
 HwEmShim::
-register_xclbin(const xrt::xclbin&) const
+register_xclbin(const xrt::xclbin&)
 {
   // Explicit hardware contexts are not yet supported
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -3257,9 +3276,9 @@ int HwEmShim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 
 int HwEmShim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+  uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
 
-  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
 
   return 0;
@@ -3272,7 +3291,7 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
 
     uint32_t size = 0;
 
-    wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+    wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
     uint32_t numWords = numSamples * wordsPerSample;
 
 //    alignas is defined in c++11
@@ -3280,9 +3299,9 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
     /* Alignment is limited to 16 by PPC64LE : so , should it be
     alignas(16) uint32_t hostbuf[traceBufSzInWords];
     */
-    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+    alignas(xdp::IP::FIFO::alignment) uint32_t hostbuf[traceBufWordSz];
 #else
-    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(xdp::IP::FIFO::alignment, traceBufWordSz);
     uint32_t* hostbuf = alignedBuffer.getBuffer();
 #endif
 
@@ -3368,34 +3387,34 @@ double HwEmShim::xclGetKernelWriteMaxBandwidthMBps()
   return 19250.00;
 }
 
-uint32_t HwEmShim::getPerfMonNumberSlots(xclPerfMonType type)
+uint32_t HwEmShim::getPerfMonNumberSlots(xdp::MonitorType type)
 {
-  if (type == XCL_PERF_MON_MEMORY)
+  if (type == xdp::MonitorType::memory)
     return mMemoryProfilingNumberSlots;
-  if (type == XCL_PERF_MON_ACCEL)
+  if (type == xdp::MonitorType::accel)
     return mAccelProfilingNumberSlots;
-  if (type == XCL_PERF_MON_STALL)
+  if (type == xdp::MonitorType::stall)
     return mStallProfilingNumberSlots;
-  if (type == XCL_PERF_MON_HOST)
+  if (type == xdp::MonitorType::host)
     return 1;
-  if (type == XCL_PERF_MON_STR)
+  if (type == xdp::MonitorType::str)
     return mStreamProfilingNumberSlots;
 
   return 0;
 }
 
 // Get slot name
-void HwEmShim::getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum,
+void HwEmShim::getPerfMonSlotName(xdp::MonitorType type, uint32_t slotnum,
                                   char* slotName, uint32_t length) {
   std::string str = "";
-  if (type == XCL_PERF_MON_MEMORY) {
-    str = (slotnum < XAIM_MAX_NUMBER_SLOTS) ? mPerfMonSlotName[slotnum] : "";
+  if (type == xdp::MonitorType::memory) {
+    str = (slotnum < xdp::MAX_NUM_AIMS) ? mPerfMonSlotName[slotnum] : "";
   }
-  if (type == XCL_PERF_MON_ACCEL) {
-    str = (slotnum < XAM_MAX_NUMBER_SLOTS) ? mAccelMonSlotName[slotnum] : "";
+  if (type == xdp::MonitorType::accel) {
+    str = (slotnum < xdp::MAX_NUM_AMS) ? mAccelMonSlotName[slotnum] : "";
   }
-  if (type == XCL_PERF_MON_STR) {
-    str = (slotnum < XASM_MAX_NUMBER_SLOTS) ? mStreamMonSlotName[slotnum] : "";
+  if (type == xdp::MonitorType::str) {
+    str = (slotnum < xdp::MAX_NUM_ASMS) ? mStreamMonSlotName[slotnum] : "";
   }
   if(str.length() < length) {
    strncpy(slotName, str.c_str(), length);

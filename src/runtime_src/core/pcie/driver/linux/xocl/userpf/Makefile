@@ -16,7 +16,8 @@
 obj-m	+= xocl.o
 ccflags-y := -Iinclude/drm
 
-include $(PWD)/../lib/Makefile.in
+export module_path ?= $(PWD)
+include $(module_path)/../lib/Makefile.in
 
 # Base on Linux Documentation/kbuild/modules.txt.
 # $(src) provides the absolute path by pointing to the directory

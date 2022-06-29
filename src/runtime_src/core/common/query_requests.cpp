@@ -6,6 +6,7 @@
 #include <string>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace xrt_core { namespace query {
 
@@ -158,6 +159,22 @@ to_map(const result_type& value)
   for (const auto& data : value)
     s2u.emplace(data.slot, xrt::uuid{data.uuid});
   return s2u;
+}
+
+xrt_core::query::cu_read_range::range_data
+xrt_core::query::cu_read_range::
+to_range(const std::string& range_str)
+{
+  using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+  xrt_core::query::cu_read_range::range_data range = {0, 0};
+
+  tokenizer tokens(range_str);
+  const int radix = 16;
+  tokenizer::iterator tok_it = tokens.begin();
+  range.start = std::stoul(std::string(*tok_it++), nullptr, radix);
+  range.end = std::stoul(std::string(*tok_it++), nullptr, radix);
+
+  return range;
 }
 
 }} // query, xrt_core

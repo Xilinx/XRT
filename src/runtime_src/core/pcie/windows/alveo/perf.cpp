@@ -63,36 +63,36 @@ double xclGetKernelWriteMaxBandwidthMBps(xclDeviceHandle handle)
 
 #if 0
 
-void xclSetProfilingNumberSlots(xclDeviceHandle handle, enum xclPerfMonType type,
+void xclSetProfilingNumberSlots(xclDeviceHandle handle, enum xdp::MonitorType type,
                                 uint32_t numSlots)
 {
 }
 
-uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, enum xclPerfMonType type)
+uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, enum xdp::MonitorType type)
 {
 }
 
-void xclGetProfilingSlotName(xclDeviceHandle handle, enum xclPerfMonType type,
+void xclGetProfilingSlotName(xclDeviceHandle handle, enum xdp::MonitorType type,
                              uint32_t slotnum, char* slotName, uint32_t length)
 {
 }
 
-uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, enum xclPerfMonType type,
+uint32_t xclGetProfilingSlotProperties(xclDeviceHandle handle, enum xdp::MonitorType type,
                                        uint32_t slotnum)
 {
 }
 
-size_t xclPerfMonClockTraining(xclDeviceHandle handle, enum xclPerfMonType type);
+size_t xclPerfMonClockTraining(xclDeviceHandle handle, enum xdp::MonitorType type);
 
-void xclPerfMonConfigureDataflow(xclDeviceHandle handle, enum xclPerfMonType type, unsigned *ip_data);
+void xclPerfMonConfigureDataflow(xclDeviceHandle handle, enum xdp::MonitorType type, unsigned *ip_data);
 
-size_t xclPerfMonStartCounters(xclDeviceHandle handle, enum xclPerfMonType type);
+size_t xclPerfMonStartCounters(xclDeviceHandle handle, enum xdp::MonitorType type);
 
-size_t xclPerfMonStopCounters(xclDeviceHandle handle, enum xclPerfMonType type);
+size_t xclPerfMonStopCounters(xclDeviceHandle handle, enum xdp::MonitorType type);
 
 
-size_t xclPerfMonReadCounters(xclDeviceHandle handle, enum xclPerfMonType type,
-                                      xclCounterResults& counterResults);
+size_t xclPerfMonReadCounters(xclDeviceHandle handle, enum xdp::MonitorType type,
+                              xdp::CounterResults& counterResults);
 
 
 
@@ -100,16 +100,16 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
                                                        void* debugResults);
 
 
-size_t xclPerfMonStartTrace(xclDeviceHandle handle, enum xclPerfMonType type,
+size_t xclPerfMonStartTrace(xclDeviceHandle handle, enum xdp::MonitorType type,
                                     uint32_t startTrigger);
 
-size_t xclPerfMonStopTrace(xclDeviceHandle handle, enum xclPerfMonType type);
+size_t xclPerfMonStopTrace(xclDeviceHandle handle, enum xdp::MonitorType type);
 
-uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, enum xclPerfMonType type);
+uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, enum xdp::MonitorType type);
 
 
 
-size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclPerfMonType type,
-                                   xclTraceResultsVector& traceVector);
+size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xdp::MonitorType type,
+                           xdp::TraceEventsVector& traceVector);
 
 #endif

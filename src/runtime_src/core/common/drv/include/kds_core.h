@@ -215,6 +215,7 @@ int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);
 /* Use this function in xclbin download flow for config commands */
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd);
+int kds_set_cu_read_range(struct kds_sched *kds, u32 cu_idx, u32 start, u32 size);
 
 struct kds_command *kds_alloc_command(struct kds_client *client, u32 size);
 

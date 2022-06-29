@@ -5,8 +5,9 @@
 // core/include/experimental/xrt_queue.h
 #define XRT_API_SOURCE         // exporting xrt_hwcontext.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
-#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #include "core/include/experimental/xrt_hw_context.h"
+#include "hw_context_int.h"
 
 #include "core/common/device.h"
 
@@ -122,10 +123,10 @@ public:
 ////////////////////////////////////////////////////////////////
 namespace xrt_core { namespace hw_context_int {
 
-xcl_hwctx_handle
-get_xcl_handle(const xrt::hw_context& hwctx)
+std::shared_ptr<xrt_core::device>
+get_core_device(const xrt::hw_context& hwctx)
 {
-  return hwctx.get_handle()->get_xcl_handle();
+  return hwctx.get_handle()->get_core_device();
 }
 
 xrt_core::device*
@@ -178,6 +179,12 @@ hw_context::
 get_qos() const
 {
   return get_handle()->get_qos();
+}
+
+hw_context::
+operator xcl_hwctx_handle() const
+{
+  return get_handle()->get_xcl_handle();
 }
 
 } // xrt

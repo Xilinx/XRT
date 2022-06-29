@@ -23,12 +23,12 @@
 // -------- C L A S S :   S e c t i o n A I E P a r t i t i o n --------------
 class SectionAIEPartition : public Section {
  public:
-  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
-  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
+  bool subSectionExists(const std::string& sSubSectionName) const override;
+  void readXclBinBinary(std::istream& _istream, const struct axlf_section_header& _sectionHeader) override;
 
  protected:
-  void marshalToJSON(char* pDataSection, unsigned int sectionSize, boost::property_tree::ptree& ptReturn) const override;
-  void marshalFromJSON(const boost::property_tree::ptree& ptSection, std::ostringstream& buf) const override;
+  void readSubPayload(const char* pOrigDataSection, unsigned int origSectionSize,  std::istream& iStream, const std::string& sSubSection, Section::FormatType eFormatType, std::ostringstream& buffer) const override;
+  void writeSubPayload(const std::string&  sSubSectionName, FormatType eFormatType, std::fstream&  oStream) const override;
 
  private:
   // Static initializer helper class

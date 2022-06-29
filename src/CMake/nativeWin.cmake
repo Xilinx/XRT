@@ -46,11 +46,15 @@ add_compile_definitions("BOOST_BIND_GLOBAL_PLACEHOLDERS")
 # the warning is bogus.  Remove defintion when fixed
 add_compile_definitions("_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING")
 
+if (MSVC)
+  add_compile_options(/Zc:__cplusplus)
+endif()
+
 INCLUDE (FindGTest)
 
 # --- XRT Variables ---
 set (XRT_INSTALL_DIR "xrt")
-set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
+set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}")
 set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
 set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib")

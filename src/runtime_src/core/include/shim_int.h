@@ -5,11 +5,13 @@
 #define SHIM_INT_H_
 
 #include "core/include/xrt.h"
+#include "core/common/cuidx_type.h"
 
 #include <string>
 
 namespace xrt {
 
+class hw_context;
 class xclbin;
 class uuid;
 
@@ -37,9 +39,8 @@ open_by_bdf(const std::string& bdf);
 // @shared:        Shared access or exclusive access
 //
 // Throws on error
-XCL_DRIVER_DLLESPEC
-void
-open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared);
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname);
 
 // create_hw_context() -
 uint32_t // ctxhdl aka slotidx

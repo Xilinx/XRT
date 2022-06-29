@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2022, Advanced Micro Devices - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -20,6 +21,10 @@
 
 /* This header file is included from include.xrt.h, it is not
  * Not a stand-alone header file */
+
+// Including the deprecated xcl_app_debug.h file for the xclDebugReadIPStatus
+// function enum parameter definition.
+#include "deprecated/xcl_app_debug.h"
 
 #ifdef __GNUC__
 # define XRT_DEPRECATED __attribute__ ((deprecated))
@@ -190,6 +195,35 @@ XCL_DRIVER_DLLESPEC
 int
 xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
                        size_t num_bo_in_wait_list, xclBufferHandle *bo_wait_list);
+
+/* Not supported */
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+size_t
+xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
+                     void* debugResults);
+
+/* 
+ * This function is for internal use. We don't want outside user to use it.
+ * Once the internal project move to XRT APIs. Then we can create an internal function
+ * and remove this one.
+ */
+ /*
+  * @handle: Device handle
+  * @ipIndex: IP index
+  * @start: the start offset of the read-only register range
+  * @size: the size of the read-only register range
+  * Return: 0 on success or appropriate error number
+  *
+  * This function is to set the read-only register range on a CU. It will be system-wide impact.
+  * This is used when open a CU in shared context. It allows multiple users to call xclRegRead()
+  * to access CU without impact KDS/ERT scheduling. It is not able to change the range after
+  * the first xclRegRead().
+  * This function returns error when called in an exclusive context.
+  */
+XCL_DRIVER_DLLESPEC
+int
+xclIPSetReadRange(xclDeviceHandle handle, uint32_t ipIndex, uint32_t start, uint32_t size);
 
 #ifdef __cplusplus
 }

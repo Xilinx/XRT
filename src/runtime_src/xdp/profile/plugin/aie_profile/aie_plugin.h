@@ -57,9 +57,14 @@ namespace xdp {
   private:
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
+    bool setMetricsSettings(uint64_t deviceId, void* handle);
+    bool setGraphMetricsSettings(uint64_t deviceId, void* handle);
+
+    bool checkAieDevice(uint64_t deviceId, void* handle);
 
     std::string getMetricSet(const XAie_ModuleType mod, 
-                             const std::string& metricsStr);
+                             const std::string& metricsStr,
+                             bool  ignoreOldConfig = false);
     std::vector<tile_type> getTilesForProfiling(const XAie_ModuleType mod,
                                                 const std::string& metricsStr,
                                                 void* handle);
@@ -104,6 +109,9 @@ namespace xdp {
 
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     std::map<void*,std::thread> mThreadMap;
+
+    XAie_DevInst*     aieDevInst = nullptr;
+    xaiefal::XAieDev* aieDevice  = nullptr;
 
     std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
 

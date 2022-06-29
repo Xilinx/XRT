@@ -339,13 +339,15 @@ read_trace_s2mm(bool force)
       bd.used_size = bd.alloc_size;
     }
 
-    debug_stream
-      << "ts2mm_" << i << " Reading from 0x"
-      << std::hex << bd.offset << " to 0x" << bd.used_size << std::dec
-      << " Bytes Read : " << bytes_read
-      << " Bytes Written : " << bytes_written
-      << " Rollovers : " << bd.rollover_count
-      << std::endl;
+    if (bd.offset != bd.used_size) {
+      debug_stream
+        << "ts2mm_" << i << " Reading from 0x"
+        << std::hex << bd.offset << " to 0x" << bd.used_size << std::dec
+        << " Bytes Read : " << bytes_read
+        << " Bytes Written : " << bytes_written
+        << " Rollovers : " << bd.rollover_count
+        << std::endl;
+    }
 
     if (!sync_and_log(i))
       continue;

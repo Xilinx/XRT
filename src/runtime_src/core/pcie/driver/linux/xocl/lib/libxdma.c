@@ -3232,7 +3232,7 @@ static ssize_t fastpath_start(struct xdma_engine *engine, u64 endpoint_addr,
 {
 	dma_addr_t addr;
 	int i, ret = 0;
-	u32 len, rest, adj;
+	u32 len, rest, adj, desc_num = 0;
 	ssize_t total = 0;
 
 	for (i = 0; i < F_DESC_NUM && *sg; i++) {
@@ -3247,18 +3247,21 @@ static ssize_t fastpath_start(struct xdma_engine *engine, u64 endpoint_addr,
 			*sg = sg_next(*sg);
 		}
 
-		fastpath_desc_set(engine, engine->f_descs + i, addr, endpoint_addr, len);
-		endpoint_addr += len;
-		total += len;
+		if (len) {
+			fastpath_desc_set(engine, engine->f_descs + desc_num, addr, endpoint_addr, len);
+			endpoint_addr += len;
+			total += len;
+			desc_num++;
+		}
 	}
-	fastpath_desc_set_last(engine, i);
-	engine->f_submitted_desc_cnt = i;
+	fastpath_desc_set_last(engine, desc_num);
+	engine->f_submitted_desc_cnt = desc_num;
 
 	enable_interrupts(engine);
-	if (i >= F_DESC_ADJACENT)
+	if (desc_num >= F_DESC_ADJACENT)
 		adj = F_DESC_ADJACENT;
 	else
-		adj = i;
+		adj = desc_num;
 	if (adj != *last_adj) {
 		write_register(adj - 1, &engine->sgdma_regs->first_desc_adjacent,
 			       (unsigned long)(&engine->sgdma_regs->first_desc_adjacent) -

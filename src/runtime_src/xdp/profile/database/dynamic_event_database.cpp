@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -369,7 +370,7 @@ namespace xdp {
 
   void VPDynamicDatabase::setCounterResults(const uint64_t deviceId,
                                             xrt_core::uuid uuid,
-                                            xclCounterResults& values)
+                                            xdp::CounterResults& values)
   {
     std::lock_guard<std::mutex> lock(ctrLock) ;
     std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
@@ -377,8 +378,8 @@ namespace xdp {
     deviceCounters[index] = values ;
   }
 
-  xclCounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId,
-                                                         xrt_core::uuid uuid)
+  xdp::CounterResults VPDynamicDatabase::getCounterResults(uint64_t deviceId,
+                                                           xrt_core::uuid uuid)
   {
     std::lock_guard<std::mutex> lock(ctrLock) ;
     std::pair<uint64_t, xrt_core::uuid> index = std::make_pair(deviceId, uuid) ;
@@ -428,7 +429,10 @@ namespace xdp {
   }
 
   void VPDynamicDatabase::addAIETraceData(uint64_t deviceId,
-                             uint64_t strmIndex, void* buffer, uint64_t bufferSz)
+                                          uint64_t strmIndex,
+                                          void* buffer,
+                                          uint64_t bufferSz,
+                                          bool copy)
   {
     std::lock_guard<std::mutex> lock(aieLock);
 
@@ -441,11 +445,16 @@ namespace xdp {
       aieTraceData[deviceId][strmIndex] = new AIETraceDataType;
     }
 
+    unsigned char* trace_buffer = static_cast<unsigned char *>(buffer);
     // We need to copy trace buffer data as it could be be overwritten by datamover
-    auto buffer_copy = std::make_unique<unsigned char[]>(bufferSz);
-    std::memcpy(buffer_copy.get(), buffer, bufferSz);
-    aieTraceData[deviceId][strmIndex]->buffer.push_back(std::move(buffer_copy));
+    if (copy) {
+      trace_buffer = new unsigned char[bufferSz];
+      std::memcpy(trace_buffer, buffer, bufferSz);
+    }
+
+    aieTraceData[deviceId][strmIndex]->buffer.push_back(trace_buffer);
     aieTraceData[deviceId][strmIndex]->bufferSz.push_back(bufferSz);
+    aieTraceData[deviceId][strmIndex]->owner = copy;
   }
 
   AIETraceDataType* VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)

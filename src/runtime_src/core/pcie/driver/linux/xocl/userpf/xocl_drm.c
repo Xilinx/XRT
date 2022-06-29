@@ -432,6 +432,8 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_FREE_CMA, xocl_free_cma_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_SET_CU_READONLY_RANGE, xocl_set_cu_read_only_range_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 
 /* LINUX KERNEL-SPACE IOCTLS - The following entries are meant to be
  * accessible only from Linux Kernel and need be grouped to at the end
@@ -573,8 +575,14 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 	 * should be skipped starting from that version.
 	 * https://github.com/torvalds/linux/commit/b347e04452ff6382ace8fba9c81f5bcb63be17a6
 	 */
+#if defined(RHEL_RELEASE_VERSION)
+#if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 6)
+	ddev->pdev = XDEV(xdev_hdl)->pdev;
+#endif
+#else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0)
 	ddev->pdev = XDEV(xdev_hdl)->pdev;
+#endif
 #endif
 
 	ret = drm_dev_register(ddev, 0);

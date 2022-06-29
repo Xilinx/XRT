@@ -53,14 +53,14 @@ else
     echo Autocomplete not enabled for XRT tools
 fi
 
-# To use the newest version of the XRT tools, either uncomment or set 
+# To use the newest version of the XRT tools, either uncomment or set
 # the following environment variable in your profile:
 #   export XRT_TOOLS_NEXTGEN=true
 
 export XILINX_XRT
-export LD_LIBRARY_PATH=$XILINX_XRT/lib:$LD_LIBRARY_PATH
-export PATH=$XILINX_XRT/bin:$PATH
-export PYTHONPATH=$XILINX_XRT/python:$PYTHONPATH
+export LD_LIBRARY_PATH=$XILINX_XRT/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export PATH=$XILINX_XRT/bin${PATH:+:$PATH}
+export PYTHONPATH=$XILINX_XRT/python${PYTHONPATH:+:$PYTHONPATH}
 
 echo "XILINX_XRT        : $XILINX_XRT"
 echo "PATH              : $PATH"

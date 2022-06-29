@@ -1,19 +1,7 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2019 Samsung Semiconductor, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2019 Samsung Semiconductor, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "shim.h"
@@ -30,8 +18,10 @@
 #include "core/common/xclbin_parser.h"
 #include "core/common/xrt_profiling.h"
 #include "core/common/AlignedAllocator.h"
-
-#include "core/include/xcl_perfmon_parameters.h"
+#include "core/common/api/hw_context_int.h"
+#include "core/include/xdp/fifo.h"
+#include "core/include/xdp/trace.h"
+#include "core/include/experimental/xrt_hw_context.h"
 
 #include <windows.h>
 #include <winioctl.h>
@@ -380,7 +370,7 @@ done:
 
 
   int
-  open_context(const xuid_t xclbin_id, unsigned int ip_idx, bool shared) const
+  open_cu_context(const xuid_t xclbin_id, unsigned int ip_idx, bool shared)
   {
     HANDLE deviceHandle = m_dev;
     XOCL_CTX_ARGS ctxArgs = { 0 };
@@ -1415,12 +1405,18 @@ done:
   // Internal SHIM APIs
   ////////////////////////////////////////////////////////////////
   // aka xclOpenContextByName
-  void
-  open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+  xrt_core::cuidx_type
+  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   {
-    // Alveo Windows PCIE does not yet support multiple xclbins.
-    // Call regular flow
-    open_context(xclbin_uuid.get(), m_core_device->get_cuidx(slot, cuname).index, shared);
+    // Alveo PCIE does not yet support multiple xclbins.  Call
+    // regular flow.  Default access mode to shared unless explicitly
+    // exclusive.
+    auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+    auto cuidx = m_core_device->get_cuidx(ctxhdl, cuname);
+    open_cu_context(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+    return cuidx;
   }
 
 }; // struct shim
@@ -1585,11 +1581,11 @@ get_kds_custat(xclDeviceHandle hdl, char* buffer, DWORD size, int* size_ret)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
-void
-open_context(xclDeviceHandle handle, uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared)
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
 {
   auto shim = get_shim_object(handle);
-  shim->open_context(slot, xclbin_uuid, cuname, shared);
+  return shim->open_cu_context(hwctx, cuname);
 }
 
 } // namespace xrt::shim_int
@@ -1771,7 +1767,7 @@ xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipInd
   //Virtual resources are not currently supported by driver
   return (ipIndex == (unsigned int)-1)
 	  ? 0
-	  : shim->open_context(xclbinId, ipIndex, shared);
+	  : shim->open_cu_context(xclbinId, ipIndex, shared);
 }
 
 int
@@ -1983,8 +1979,8 @@ xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples,
                       uint32_t& traceSamples, uint32_t& traceBufSz)
 {
   xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "xclGetTraceBufferInfo()");
-  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
-  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
+  traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
   return 0;
 }
@@ -2001,10 +1997,10 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
   const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
   uint32_t size = 0;
 
-  wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+  wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
   uint32_t numWords = numSamples * wordsPerSample;
 
-  xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+  xrt_core::AlignedAllocator<uint32_t> alignedBuffer(xdp::IP::FIFO::alignment, traceBufWordSz);
   uint32_t* hostbuf = alignedBuffer.getBuffer();
 
   // Now read trace data
@@ -2022,10 +2018,10 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
       #if 0
           if(mLogStream.is_open())
             mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
-                          << (void *)(hostbuf + words) << std::dec << std::endl;
+                       << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                       << (void *)(hostbuf + words) << std::dec << std::endl;
       #endif
-      shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
       size += chunkSizeBytes;
     }
   }
@@ -2036,11 +2032,11 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
 #if 0
       if(mLogStream.is_open()) {
         mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
-                      << (void *)(hostbuf + words) << std::dec << std::endl;
+                   << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                   << (void *)(hostbuf + words) << std::dec << std::endl;
       }
 #endif
-    shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+    shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
     size += chunkSizeBytes;
   }
 #if 0
