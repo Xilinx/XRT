@@ -1278,7 +1278,7 @@ namespace xdp {
     for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
 
       // save list of "off" tiles
-      if (0 == tileMetric.second.compare("off")) {
+      if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
         offTiles.push_back(tileMetric.first);
         continue;
       }
@@ -1345,7 +1345,7 @@ namespace xdp {
     std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
     std::vector<std::vector<std::string>> graphmetricsSettings(NUM_MODULES);
 
-    mConfigMetricsForAllTiles.resize(NUM_MODULES);
+    mConfigMetrics.resize(NUM_MODULES);
 
     bool newConfigUsed = false;
     for(int module = 0; module < NUM_MODULES; ++module) {
