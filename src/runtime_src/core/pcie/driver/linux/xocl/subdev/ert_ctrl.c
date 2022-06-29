@@ -422,7 +422,7 @@ int __ert_ctrl_submit(struct ert_ctrl *ec, struct xgq_cmd_sq_hdr *req, uint32_t 
 	req->cid = g_ctrl_xgq_cid++;
 
 	ert_ctrl_pre_process(ec, req->opcode, (void *)slot_addr);
-	memcpy_toio((void __iomem *)slot_addr, req, req_size);
+	xocl_memcpy_toio((void __iomem *)slot_addr, req, req_size);
 
 	xgq_notify_peer_produced(&ec->ec_ctrl_xgq);
 
@@ -435,8 +435,8 @@ int __ert_ctrl_submit(struct ert_ctrl *ec, struct xgq_cmd_sq_hdr *req, uint32_t 
 
 		ret = xgq_consume(&ec->ec_ctrl_xgq, &slot_addr);
 		if (!ret) {
-			memcpy_fromio(resp, (void __iomem *)slot_addr, resp_size);
-			memcpy_fromio(&cq_hdr, (void __iomem *)slot_addr, sizeof(cq_hdr));
+			xocl_memcpy_fromio(resp, (void __iomem *)slot_addr, resp_size);
+			xocl_memcpy_fromio(&cq_hdr, (void __iomem *)slot_addr, sizeof(cq_hdr));
 			xgq_notify_peer_consumed(&ec->ec_ctrl_xgq);
 			break;
 		}
