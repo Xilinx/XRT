@@ -24,6 +24,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <atomic>
 
 // ------ N A M E S P A C E ---------------------------------------------------
 
@@ -34,7 +35,7 @@ class BusyBar {
   BusyBar(const std::string &op_name, std::ostream &output);
 
   bool
-  start();
+  start(const bool is_batch);
 
   void
   finish();
@@ -49,13 +50,16 @@ class BusyBar {
   std::string m_op_name;
   unsigned int m_iteration;
   std::mutex m_data_guard;
-  bool m_is_running;
+  std::atomic_bool m_is_running;
   std::ostream &m_output;
   Timer m_timer;
   std::thread busy_thread;
 
   void
   update();
+
+  void
+  update_batch();
 };
 }
 

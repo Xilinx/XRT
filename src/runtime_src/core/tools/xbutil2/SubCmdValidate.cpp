@@ -941,7 +941,7 @@ void
 dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   XBUtilities::BusyBar busy_bar("Running Test", std::cout);
-  busy_bar.start();
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
 
   _ptTest.put("status", test_token_skipped);
   if (!search_and_program_xclbin(_dev, _ptTest)) {

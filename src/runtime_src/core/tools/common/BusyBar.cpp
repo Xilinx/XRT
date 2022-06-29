@@ -56,7 +56,7 @@ BusyBar::~BusyBar()
 }
 
 bool
-BusyBar::start()
+BusyBar::start(const bool is_batch)
 {
   std::lock_guard lock(m_data_guard);
   if (m_is_running)
@@ -65,28 +65,21 @@ BusyBar::start()
   m_timer.reset();
   m_iteration = 0;
   m_is_running = true;
-  m_output << fmtUpdate % "" % m_op_name % Timer::format_time(std::chrono::seconds(0));
-  m_output.flush();
-  busy_thread = std::thread([&] { update(); });
+  // Batch mode does not use escape codes
+  if (is_batch)
+    busy_thread = std::thread([&] { update_batch(); });
+  else
+    busy_thread = std::thread([&] { update(); });
   return true;
 }
 
 void
 BusyBar::finish()
 {
-  // Protect the class data here
-  std::unique_lock lock(m_data_guard);
+  // This is an atomic bool that does not need a lock
   if (m_is_running) {
     m_is_running = false;
-    // Unlock the mutex before joining the thread
-    // This allows the thread to claim the lock and shut down properly
-    lock.unlock();
     busy_thread.join();
-    // Clear the busy bar text from the command line after joining the thread
-    // to clear the busy bar text. Also put the cursor back onto the screen!
-    m_output << EscapeCodes::cursor().prev_line() << std::string(80, ' ') << std::endl;
-    m_output << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().show();
-    m_output.flush();
   }
 }
 
@@ -102,10 +95,35 @@ BusyBar::check_timeout(const std::chrono::seconds& max_duration)
 }
 
 void
+BusyBar::update_batch()
+{
+  m_output << "Running Test: ";
+  m_output.flush();
+  // Loop until the main thread commands this thread to stop
+  while (m_is_running) {
+    // Sleep for some time to prevent updating to quickly
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    // Protext class data
+   std::lock_guard lock(m_data_guard);
+
+    // Write the new progress bar
+    m_output << ".";
+
+    m_output.flush();
+  }
+  // Add a newline to seperate the details from the running bar
+  m_output << "\n";
+  m_output.flush();
+}
+
+void
 BusyBar::update()
 {
+  m_output << fmtUpdate % "" % m_op_name % Timer::format_time(std::chrono::seconds(0));
+  m_output.flush();
   // Loop until the main thread commands this thread to stop
-  while (true) {
+  while (m_is_running) {
     // Sleep for some time to prevent updating to quickly
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -113,23 +131,28 @@ BusyBar::update()
    std::lock_guard lock(m_data_guard);
     // Create the busy bar filled with spaces and a symbol at the end
     const static std::string symbol = "<->";
+    auto bar_end = busy_bar_width - symbol.length();
     // Add one so that character goes to the end of the bar
     // It is very unsatisfying otherwise
-    auto bar_length = m_iteration % (busy_bar_width - symbol.length() + 1);
+    auto bar_length = m_iteration % (bar_end * 2);
+    if (bar_length > bar_end)
+      bar_length = (bar_end * 2) - bar_length;
     std::string busy_bar = std::string(bar_length, ' ');
     busy_bar.append(symbol);
 
     // Update the time and iteration after printing the first block
     m_iteration++;
 
-    // // Write the new progress bar
+    // Write the new progress bar
     m_output << EscapeCodes::cursor().prev_line()
              << fmtUpdate % busy_bar % m_op_name % Timer::format_time(m_timer.get_elapsed_time());
 
     m_output.flush();
-
-    // Stop when the main thread commands it
-    if (!m_is_running) 
-      return;
   }
+
+  // Clear the busy bar text from the command line after joining the thread
+  // to clear the busy bar text. Also put the cursor back onto the screen!
+  m_output << EscapeCodes::cursor().prev_line() << std::string(80, ' ') << std::endl;
+  m_output << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().show();
+  m_output.flush();
 }
