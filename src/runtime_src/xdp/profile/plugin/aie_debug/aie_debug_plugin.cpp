@@ -420,7 +420,7 @@ namespace xdp {
     db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Create and register aie shim status writer
-    filename = "aieshim_status_" + devicename + ".json";
+    filename = "aieshim_status_" + devicename + "_" + currentTime + ".json";
     VPWriter* aieshimWriter = new AIEShimDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
     writers.push_back(aieshimWriter);
     db->getStaticInfo().addOpenedFile(aieshimWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
