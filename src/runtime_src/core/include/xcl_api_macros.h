@@ -19,7 +19,7 @@
 #include "xcl_macros.h"
 
 #define SCOPE_GUARD_MUTEX() \
-if ( sock->server_started == false ) { mLogStream << __func__ << "\n socket communication is not possible now!"; exit(0);  } \
+if ( sock->server_started == false ) { if (mLogStream.is_open()) mLogStream << __func__ << "\n socket communication is not possible now!"; exit(0);  } \
 std::lock_guard<std::mutex> socketlk{mtx}; 
 
 #define RPC_PROLOGUE(func_name) \
@@ -47,11 +47,11 @@ std::lock_guard<std::mutex> socketlk{mtx};
                                                                         \
     _s_inst->sk_read(ri_buf,ri_msg.ByteSize());                         \
     rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize());               \
-    if (true != rv) { mLogStream << __func__ << "\n ParseFromArray failed, sk_read/sk_write failed, so exit the application now!"; exit(0);  } \
+    if (true != rv) { if (mLogStream.is_open()) mLogStream << __func__ << "\n ParseFromArray failed, sk_read/sk_write failed, so exit the application now!"; exit(0);  } \
     buf_size = alloc_void(ri_msg.size());                               \
     _s_inst->sk_read(buf,ri_msg.size());                                \
     rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
-    if (true != rv) { mLogStream << __func__ << "\n ParseFromArray failed, sk_read failed for alloc_void, so exit- the application now!!!"; exit(0); }
+    if (true != rv) { if (mLogStream.is_open()) mLogStream << __func__ << "\n ParseFromArray failed, sk_read failed for alloc_void, so exit- the application now!!!"; exit(0); }
 #else
 // More recent protoc handles 64 bit size objects and the 32 bit version is deprecated
 #define SERIALIZE_AND_SEND_MSG(func_name)                               \
