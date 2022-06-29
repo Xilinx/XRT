@@ -28,6 +28,7 @@
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 #include "core/edge/user/shim.h"
+#include <set>
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -211,6 +212,8 @@ namespace xdp {
     // Reset values
     constexpr uint32_t CORE_RESET_STATUS  = 0x2;
     constexpr uint32_t CORE_ENABLE_MASK  = 0x1;
+    // Tiles already reported with error(s)
+    std::set<tile_type> errorTileSet;
     // Graph -> total stuck core cycles
     std::map<std::string, uint64_t> graphStallTotalMap;
     // Core -> total stall cycles
@@ -285,21 +288,26 @@ namespace xdp {
           coreStatusMap[tile] = coreStatus;
 
           // Check for errors in tile
-          uint8_t coreErrors0 = 0;
-          uint8_t coreErrors1 = 0;
-          uint8_t memErrors = 0;
-          auto loc = XAie_TileLoc(tile.col, tile.row + 1);
-          XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
-            XAIE_EVENT_GROUP_ERRORS_0_CORE, &coreErrors0);
-          XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
-            XAIE_EVENT_GROUP_ERRORS_1_CORE, &coreErrors1);
-          XAie_EventReadStatus(aieDevInst, loc, XAIE_MEM_MOD, 
-            XAIE_EVENT_GROUP_ERRORS_MEM, &memErrors);
-          if (coreErrors0 || coreErrors1 || memErrors) {
-            std::stringstream errorMessage;
-            errorMessage << "Error(s) found in tile (" << tile.col << "," << tile.row 
-                         << "). Please view status in Vitis Analyzer for specifics.";
-            xrt_core::message::send(severity_level::warning, "XRT", errorMessage.str());
+          // NOTE: warning is only issued once per tile
+          if (errorTileSet.find(tile) == errorTileSet.end()) {
+            uint8_t coreErrors0 = 0;
+            uint8_t coreErrors1 = 0;
+            uint8_t memErrors = 0;
+            auto loc = XAie_TileLoc(tile.col, tile.row + 1);
+            XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
+              XAIE_EVENT_GROUP_ERRORS_0_CORE, &coreErrors0);
+            XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
+              XAIE_EVENT_GROUP_ERRORS_1_CORE, &coreErrors1);
+            XAie_EventReadStatus(aieDevInst, loc, XAIE_MEM_MOD, 
+              XAIE_EVENT_GROUP_ERRORS_MEM, &memErrors);
+            
+            if (coreErrors0 || coreErrors1 || memErrors) {
+              std::stringstream errorMessage;
+              errorMessage << "Error(s) found in tile (" << tile.col << "," << tile.row 
+                          << "). Please view status in Vitis Analyzer for specifics.";
+              xrt_core::message::send(severity_level::warning, "XRT", errorMessage.str());
+              errorTileSet.insert(tile);
+            }
           }
         } // For tiles in graph
 
