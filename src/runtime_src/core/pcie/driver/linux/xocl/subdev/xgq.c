@@ -1156,6 +1156,8 @@ static int vmr_info_query_op(struct platform_device *pdev,
 			ret = -EINVAL;
 		} else {
 			char *info_data = vmalloc(info_size + 1);
+			size_t count = 0;
+
 			if (info_data == NULL) {
 				XGQ_ERR(xgq, "vmalloc failed");
 				ret = -ENOMEM;
@@ -1163,7 +1165,14 @@ static int vmr_info_query_op(struct platform_device *pdev,
 			}
 			memcpy_from_device(xgq, address, info_data, info_size);
 			info_data[info_size] = '\0'; /* terminate the string */
-			*cnt += sprintf(buf, "%s", info_data);
+
+			/* text buffer for sysfs node should be limited to PAGE_SIZE */
+			count = snprintf(buf, PAGE_SIZE, "%s", info_data);
+			if (count > PAGE_SIZE) {
+				XGQ_WARN(xgq, "message size %d exceeds %ld",
+					info_size, PAGE_SIZE);
+			}
+			*cnt = min(count, PAGE_SIZE);
 			vfree(info_data);
 		}
 	}
@@ -1189,6 +1198,18 @@ static int vmr_endpoint_info_query(struct platform_device *pdev,
 	char *buf, size_t *cnt)
 {
 	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_ENDPOINT);
+}
+
+static int vmr_task_info_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_TASK_STATS);
+}
+
+static int vmr_memory_info_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_MEM_STATS);
 }
 
 /* On versal, verify is enforced. */
@@ -1957,7 +1978,6 @@ static ssize_t vmr_verbose_info_show(struct device *dev,
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 
-	/* update boot status */
 	if (vmr_verbose_info_query(xgq->xgq_pdev, buf, &cnt))
 		return -EINVAL;
 
@@ -1971,13 +1991,38 @@ static ssize_t vmr_endpoint_show(struct device *dev,
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 
-	/* update boot status */
 	if (vmr_endpoint_info_query(xgq->xgq_pdev, buf, &cnt))
 		return -EINVAL;
 
 	return cnt;
 }
 static DEVICE_ATTR_RO(vmr_endpoint);
+
+static ssize_t vmr_task_stats_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	if (vmr_task_info_query(xgq->xgq_pdev, buf, &cnt))
+		return -EINVAL;
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(vmr_task_stats);
+
+static ssize_t vmr_mem_stats_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	if (vmr_memory_info_query(xgq->xgq_pdev, buf, &cnt))
+		return -EINVAL;
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(vmr_mem_stats);
 
 static ssize_t vmr_debug_type_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -2009,6 +2054,8 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_vmr_status.attr,
 	&dev_attr_vmr_verbose_info.attr,
 	&dev_attr_vmr_endpoint.attr,
+	&dev_attr_vmr_task_stats.attr,
+	&dev_attr_vmr_mem_stats.attr,
 	&dev_attr_program_sc.attr,
 	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_vmr_debug_dump.attr,
