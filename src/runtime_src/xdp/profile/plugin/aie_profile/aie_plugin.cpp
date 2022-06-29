@@ -341,7 +341,7 @@ namespace xdp {
     return numFreeCtr;
   }
 
-  std::string AIEProfilingPlugin::getMetricSet(const XAie_ModuleType mod, const std::string& metricsStr)
+  std::string AIEProfilingPlugin::getMetricSet(const XAie_ModuleType mod, const std::string& metricsStr, bool ignoreOldConfig)
   {
     std::vector<std::string> vec;
 
@@ -376,6 +376,9 @@ namespace xdp {
       std::stringstream msg;
       msg << "Unable to find " << moduleName << " metric set " << metricSet
           << ". Using default of " << defaultSet << ".";
+      if (ignoreOldConfig) {
+        msg << " As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
+      }
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       metricSet = defaultSet;
     }
@@ -1017,8 +1020,9 @@ namespace xdp {
 
     std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
 
-    for(int module = 0; module < NUM_MODULES; ++module) {
-      if (metricsConfig.empty()){
+    bool newConfigUsed = false;
+    for (int module = 0; module < NUM_MODULES; ++module) {
+      if (metricsConfig[module].empty()) {
 #if 0
 // No need to add the warning message here, as all the tests are using configs under Debug
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
@@ -1028,7 +1032,13 @@ namespace xdp {
 #endif
         continue;
       }
+      newConfigUsed = true;
       boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
+    }
+
+    if (!newConfigUsed) {
+      // None of the new style AIE profile metrics have been used. So check for old style.
+      return false;
     }
 
     // Get AIE clock frequency
@@ -1058,12 +1068,12 @@ namespace xdp {
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
 
-      for(auto &metricsStr : metricsSettings[module]) { 
+      for (auto &metricsStr : metricsSettings[module]) { 
 
         int NUM_COUNTERS       = numCounters[module];
         XAie_ModuleType mod    = falModuleTypes[module];
         std::string moduleName = moduleNames[module];
-        auto metricSet         = getMetricSet(mod, metricsStr);
+        auto metricSet         = getMetricSet(mod, metricsStr, true);
         auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
 
 
