@@ -41,8 +41,10 @@ xocl_lib-y	+=  \
 		../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/eqdma_soft_access/eqdma_soft_access.o \
 		../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/eqdma_soft_access/eqdma_soft_reg_dump.o \
 		../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_soft_access/qdma_soft_access.o \
-		../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_s80_hard_access/qdma_s80_hard_access.o \
-		../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_s80_hard_access/qdma_s80_hard_reg_dump.o
+		../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_cpm4_access/qdma_cpm4_access.o \
+		../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_cpm4_access/qdma_cpm4_reg_dump.o \
+		../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/eqdma_cpm5_access/eqdma_cpm5_access.o \
+		../lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/eqdma_cpm5_access/eqdma_cpm5_reg_dump.o
 
 libfdt-y	:= ../lib/libfdt/fdt.o		\
 		../lib/libfdt/fdt_addresses.o	\
