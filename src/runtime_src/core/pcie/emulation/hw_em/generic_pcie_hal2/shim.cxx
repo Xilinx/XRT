@@ -995,7 +995,6 @@ namespace xclhwemhal2 {
     sock->monitor_socket();
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
-      std::cout<<"\n messages Thread is created\n";
       mMessengerThread = std::thread([this]() { messagesThread(); } );
       mMessengerThreadStarted = true;
     }
@@ -1679,14 +1678,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       }
       return;
     }
-    // All RPC calls fail if no socket is live.
-    if ( !sock->m_is_socket_live ) {
+    // All RPC calls fail if no socket is live. so skipping of sending RPC calls if no socket connection is present.
+    if (sock->m_is_socket_live)
       resetProgram(false);      
-    }
+    
     
     int status = 0;
     xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
-    if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
+    if ((lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
       && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
       std::string waitingMsg ="INFO: [HW-EMU 06-0] Waiting for the simulator process to exit";
@@ -1694,10 +1693,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     //bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    if(!mSimDontRun)
+    if (!mSimDontRun)
       while (-1 == waitpid(0, &status, 0));
 
-    if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
+    if ((lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
       && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
       std::string waitingMsg ="INFO: [HW-EMU 06-1] All the simulator processes exited successfully";
@@ -1708,7 +1707,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     saveWaveDataBase();
-    if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
+    if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
       systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
     google::protobuf::ShutdownProtobufLibrary();
     PRINTENDFUNC;
