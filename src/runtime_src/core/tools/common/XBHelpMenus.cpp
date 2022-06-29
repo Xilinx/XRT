@@ -293,8 +293,11 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
       }
     }
 
-    if (!ptDevice.empty())
-      ptRoot.add_child("devices", ptDevice);
+    if (!ptDevice.empty()) {
+      boost::property_tree::ptree ptDevices;
+      ptDevices.push_back(std::make_pair("", ptDevice));
+      ptRoot.add_child("devices", ptDevices);
+    }
   }
 
   // -- Write the formatted output 
