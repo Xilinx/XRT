@@ -445,13 +445,12 @@ p2ptest_set_or_cmp(char *boptr, size_t size, char *valid_data, size_t valid_data
 static bool
 p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
 {
-  int stride = xrt_core::getpagesize();
 
   // Generate the valid data vector using the given pattern
-  char valid_data[stride];
-  valid_data[0] = pattern;
+  std::vector<char> valid_data;
+  valid_data.push_back(pattern);
 
-  return p2ptest_set_or_cmp(boptr, size, valid_data, 1, set);
+  return p2ptest_set_or_cmp(boptr, size, valid_data.data(), 1, set);
 }
 
 /*
