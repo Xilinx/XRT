@@ -404,8 +404,17 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string devicename { info.mName };
 
+    std::string currentTime = "0000_00_00_0000";
+    auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    struct tm* p_tstruct = std::localtime(&time);
+    if (p_tstruct) {
+      char buf[80] = {0};
+      strftime(buf, sizeof(buf), "%Y_%m_%d_%H%M%S", p_tstruct);
+      currentTime = std::string(buf);
+    }
+
     // Create and register aie status writer
-    std::string filename = "aie_status_" + devicename + ".json";
+    std::string filename = "aie_status_" + devicename + "_" + currentTime + ".json";
     VPWriter* aieWriter = new AIEDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
     writers.push_back(aieWriter);
     db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
