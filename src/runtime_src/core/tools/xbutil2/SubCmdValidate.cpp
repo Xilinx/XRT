@@ -67,6 +67,7 @@ enum class test_status
   warning = 1,
   failed = 2
 };
+enum class test_mode { support, json, no_json };
 
 constexpr uint64_t operator"" _gb(unsigned long long v)  { return 1024u * 1024u * 1024u * v; }
 constexpr static int MAX_TEST_DURATION = 300; //5 minutes
@@ -213,12 +214,11 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
 }
 
 /*
- * Find xclbin path, throw error if issue in doing so.
+ * Find xclbin after determining if the shell is 1RP or 2RP, throw error if issue in doing so.
  */
 std::string
 find_xclbin_path( const std::shared_ptr<xrt_core::device>& _dev,
-                  const std::string& xclbin,
-                  boost::property_tree::ptree& _ptTest)
+                  boost::property_tree::ptree& _ptTest, const std::string& xclbin)
 {
   std::string name;
   try {
@@ -229,7 +229,7 @@ find_xclbin_path( const std::shared_ptr<xrt_core::device>& _dev,
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  //check if a 2RP platform
+  // Check if a 2RP platform
   std::vector<std::string> logic_uuid;
   try{
     logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(_dev);
@@ -270,7 +270,7 @@ find_xclbin_path( const std::shared_ptr<xrt_core::device>& _dev,
  * Find XRT testcase path, throw error if issue in doing so.
  */
 std::string
-find_xrt_testcase_path(const std::string& py, boost::property_tree::ptree& _ptTest, bool json_exists)
+find_xrt_testcase_path(boost::property_tree::ptree& _ptTest, const std::string& file, bool json_exists)
 {
   std::string xrtTestCasePath;
   if (json_exists) {
@@ -286,14 +286,14 @@ find_xrt_testcase_path(const std::string& py, boost::property_tree::ptree& _ptTe
 
     // Validate the legacy names
     // If no legacy name exists use the passed in test name
-    std::string test_name = py;
-    if (test_map.find(py) != test_map.end())
-      test_name = test_map.find(py)->second;
+    std::string test_name = file;
+    if (test_map.find(file) != test_map.end())
+      test_name = test_map.find(file)->second;
 
     // Parse if the file exists here
     xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
   } else {
-    xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
+    xrtTestCasePath = "/opt/xilinx/xrt/test/" + file;
   }
   boost::filesystem::path xrt_path(xrtTestCasePath);
   if (!boost::filesystem::exists(xrt_path)) {
@@ -311,21 +311,25 @@ find_xrt_testcase_path(const std::string& py, boost::property_tree::ptree& _ptTe
 bool
 spawn_testcase(boost::property_tree::ptree& _ptTest, const std::string& xrtTestCasePath,
                std::ostringstream & os_stdout, std::ostringstream & os_stderr,
-               std::vector<std::string> args, const std::string& mode)
+               std::vector<std::string> args, const test_mode& mode)
 {
   int exit_code;
   try {
-    if (mode.compare("json_exists") == 0) {
-      exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
-    } else if (mode.compare("support") == 0) {
-      exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Checking Test Support", "Test Support Check Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
-    } else if (mode.compare("json_dne") == 0) {
-      if (_ptTest.get<std::string>("py").find(".exe") != std::string::npos)
-        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
-      else
-        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
-    } else {
-      return false; //Mode was not specified correctly.
+    switch (mode) {
+      case test_mode::json:
+        exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+        break;
+      case test_mode::support:
+        exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Checking Test Support", "Test Support Check Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+        break;
+      case test_mode::no_json:
+        if (_ptTest.get<std::string>("file").find(".exe") != std::string::npos)
+          exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+        else
+          exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+        break;
+      default:
+        return false; //Mode was not specified correctly.
     }
 
     if (exit_code == EOPNOTSUPP) {
@@ -333,7 +337,7 @@ spawn_testcase(boost::property_tree::ptree& _ptTest, const std::string& xrtTestC
       _ptTest.put("status", test_token_skipped);
       return false;
     } else if (exit_code == EXIT_SUCCESS) {
-      if (mode.compare("support") != 0)
+      if (mode == test_mode::support)
         _ptTest.put("status", test_token_passed);
       return true;
     } else {
@@ -350,65 +354,73 @@ spawn_testcase(boost::property_tree::ptree& _ptTest, const std::string& xrtTestC
 }
 
 /*
- * helper funtion for kernel and bandwidth test cases
- * Steps:
- * 1. Find xclbin after determining if the shell is 1RP or 2RP
- * 2. Find testcase
- * 3. Spawn a testcase process
- * 4. Check results
+ * Helper function to query support for black-box tests or run them.
  */
-void
-runTestCase(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+bool
+runFileTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest,
+            std::ostringstream & os_stdout, std::ostringstream & os_stderr, bool check_supported)
 {
-  auto xclbin = _ptTest.get<std::string>("xclbin");
-  auto py = _ptTest.get<std::string>("py");
-
   std::string xclbinPath;
   try {
-    xclbinPath = find_xclbin_path(_dev, xclbin, _ptTest);
+    xclbinPath = find_xclbin_path(_dev, _ptTest, _ptTest.get<std::string>("xclbin"));
   } catch (...) {
-    return;
+    return false;
   }
 
   boost::filesystem::path xclbin_path(xclbinPath);
   auto test_dir = xclbin_path.parent_path().string();
+  if (check_supported)
+    logger(_ptTest, "Xclbin", test_dir);
 
-  auto json_exists = [test_dir]() {
-    const static std::string platform_metadata = "/platform.json";
-    std::string platform_json_path(test_dir + platform_metadata);
-    return boost::filesystem::exists(platform_json_path) ? true : false;
-  };
+  bool json_exists = boost::filesystem::exists(test_dir + "/platform.json") ? true : false;
+
+  // Need json_exists to check if test is supported.
+  if (check_supported && !json_exists) {
+    _ptTest.put("status", test_token_skipped);
+    return false;
+  }
 
   std::string xrtTestCasePath;
   try {
-    xrtTestCasePath = find_xrt_testcase_path(py, _ptTest, json_exists());
+    xrtTestCasePath = find_xrt_testcase_path(_ptTest, _ptTest.get<std::string>("file"), json_exists);
   } catch (...) {
-    return;
+    return false;
   }
 
-  std::ostringstream os_stdout;
-  std::ostringstream os_stderr;
-
-  if(json_exists()) {
+  if (check_supported) {
+    logger(_ptTest, "Testcase", xrtTestCasePath);
+    std::vector<std::string> args = { "-p", test_dir,
+                                      "-s" };
+    return spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, test_mode::support);
+  } else if (json_exists) {
     std::vector<std::string> args = { "-p", test_dir,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
-    spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, "json_exists");
-  }
-  else {
+    return spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, test_mode::json);
+  } else {
     std::vector<std::string> args = { "-k", xclbinPath,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
-    spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, "json_dne");
+    return spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, test_mode::no_json);
   }
+}
+
+/*
+ * Run a test case that requires a py/exe and check results.
+ */
+void
+runTestCase(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+{
+  std::ostringstream os_stdout;
+  std::ostringstream os_stderr;
+  runFileTest(_dev, _ptTest, os_stdout, os_stderr, false);
 
   // Get out max thruput for bandwidth testcase
-  if(xclbin.compare("bandwidth.xclbin") == 0) {
+  if(_ptTest.get<std::string>("xclbin").compare("bandwidth.xclbin") == 0) {
     // old testcases where we have "Maximum throughput:"
     size_t st = os_stdout.str().find("Maximum");
     if (st != std::string::npos) {
       size_t end = os_stdout.str().find("\n", st);
       logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
-    }
-    else {
+    } else {
       // new test cases to find "Throughput (Type: {...}) (Bank count: {...}):"
       auto str = os_stdout.str().find("Throughput", 0);
       while(str != std::string::npos) {
@@ -419,7 +431,7 @@ runTestCase(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree:
     }
   }
 
-  if (py.compare("xcl_iops_test.exe") == 0) {
+  if (_ptTest.get<std::string>("file").compare("xcl_iops_test.exe") == 0) {
     auto st = os_stdout.str().find("IOPS:");
     if (st != std::string::npos) {
       size_t end = os_stdout.str().find("\n", st);
@@ -1026,21 +1038,6 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 }
 
 void
-bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
-{
-  std::string name;
-  try {
-    name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
-  } catch(...) {
-    logger(_ptTest, "Error", "Unable to find device VBNV");
-    _ptTest.put("status", test_token_failed);
-    return;
-  }
-  _ptTest.put("py", ((name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py"));
-  runTestCase(_dev, _ptTest);
-}
-
-void
 p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   uint32_t no_dma = 0;
@@ -1180,26 +1177,6 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 }
 
 void
-hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
-{
-  uint64_t shared_host_mem = 0;
-  try {
-    shared_host_mem = xrt_core::device_query<xrt_core::query::shared_host_mem>(_dev);
-  } catch(...) {
-    logger(_ptTest, "Details", "Address translator IP is not available");
-    _ptTest.put("status", test_token_skipped);
-    return;
-  }
-
-  if (!shared_host_mem) {
-      logger(_ptTest, "Details", "Host memory is not enabled");
-      _ptTest.put("status", test_token_skipped);
-      return;
-  }
-  runTestCase(_dev, _ptTest);
-}
-
-void
 bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
   /* We can only test ert validate on SSv3 platform, skip if it's not a SSv3 platform */
@@ -1239,14 +1216,14 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
 bool
 check_test_supported(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  // If there is no "py", the test has its own checks.
-  auto py = _ptTest.get<std::string>("py");
-  if (py.compare("") == 0) {
+  // If there is no extra test file, skip to the testHandle.
+  auto file = _ptTest.get<std::string>("file");
+  if (file.compare("") == 0)
     return true;
-  }
 
-  // In the case of mem-bw, py depends on vck5000
-  if (py.compare("versal_23_bandwidth.py") == 0) {
+  // In the case of mem-bw, file depends on vck5000. This check is necessary to update the ptree for runTestCase.
+  // It would be more optimal if the .py handled the vck5000 case instead of here.
+  if (file.compare("versal_23_bandwidth.py") == 0) {
     std::string name;
     try {
       name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
@@ -1255,60 +1232,42 @@ check_test_supported(const std::shared_ptr<xrt_core::device>& _dev, boost::prope
       _ptTest.put("status", test_token_failed);
       return false;
     }
-    py = (name.find("vck5000") != std::string::npos) ? py : "23_bandwidth.py";
+    file = (name.find("vck5000") != std::string::npos) ? file : "23_bandwidth.py";
+    _ptTest.put("file", file);
   }
 
-  std::string xclbinPath;
-  try {
-    xclbinPath = find_xclbin_path(_dev, _ptTest.get<std::string>("xclbin"), _ptTest);
-  } catch (...) {
-    return false;
+  // hostMemBandwidthKernelTest has additional checks.
+  if (file.compare("host_mem_23_bandwidth.py") == 0) {
+    uint64_t shared_host_mem = 0;
+    try {
+      shared_host_mem = xrt_core::device_query<xrt_core::query::shared_host_mem>(_dev);
+    } catch (...) {
+      logger(_ptTest, "Details", "Address translator IP is not available");
+      _ptTest.put("status", test_token_skipped);
+      return false;
+    }
+    if (!shared_host_mem) {
+      logger(_ptTest, "Details", "Host memory is not enabled");
+      _ptTest.put("status", test_token_skipped);
+      return false;
+    }
   }
 
-  // log xclbin test dir for debugging purposes
-  boost::filesystem::path xclbin_path(xclbinPath);
-  auto test_dir = xclbin_path.parent_path().string();
-  logger(_ptTest, "Xclbin", test_dir);
-
-  auto json_exists = [test_dir]() {
-    const static std::string platform_metadata = "/platform.json";
-    std::string platform_json_path(test_dir + platform_metadata);
-    return boost::filesystem::exists(platform_json_path) ? true : false;
-  };
-
-  if (!json_exists()) {
-    // Need json_exists to check if test is supported.
-    _ptTest.put("status", test_token_skipped);
-    return false;
-  }
-
-  std::string xrtTestCasePath;
-  try {
-    xrtTestCasePath = find_xrt_testcase_path(py, _ptTest, json_exists());
-  } catch (...) {
-    return false;
-  }
-
-  // log testcase path for debugging purposes
-  logger(_ptTest, "Testcase", xrtTestCasePath);
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-
-  std::vector<std::string> args = { "-p", test_dir,
-                                    "-s" };
-  return spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, "support");
+  return runFileTest(_dev, _ptTest, os_stdout, os_stderr, true);
 }
 
 /*
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
-create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin, const std::string& py, bool is_explicit = false) {
+create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin, const std::string& file, bool is_explicit = false) {
   boost::property_tree::ptree _ptTest;
   _ptTest.put("name", name);
   _ptTest.put("description", desc);
   _ptTest.put("xclbin", xclbin);
-  _ptTest.put("py", py);
+  _ptTest.put("file", file);
   _ptTest.put("explicit", is_explicit);
   return _ptTest;
 }
@@ -1328,10 +1287,10 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("verify", "Run 'Hello World' kernel test", "verify.xclbin", "22_verify.py"), runTestCase },
   { create_init_test("dma", "Run dma test", "verify.xclbin", ""), dmaTest },
   { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin", "xcl_iops_test.exe"), runTestCase },
-  { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin", "versal_23_bandwidth.py"), bandwidthKernelTest },
+  { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin", "versal_23_bandwidth.py"), runTestCase },
   { create_init_test("p2p", "Run P2P test", "bandwidth.xclbin", ""), p2pTest },
   { create_init_test("m2m", "Run M2M test", "bandwidth.xclbin", ""), m2mTest },
-  { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin", "host_mem_23_bandwidth.py"), hostMemBandwidthKernelTest },
+  { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin", "host_mem_23_bandwidth.py"), runTestCase },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", "", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin", "xcl_vcu_test.exe"), runTestCase },
   { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin", "aie_pl.exe"), runTestCase }
