@@ -1156,6 +1156,8 @@ static int vmr_info_query_op(struct platform_device *pdev,
 			ret = -EINVAL;
 		} else {
 			char *info_data = vmalloc(info_size + 1);
+			size_t count = 0;
+
 			if (info_data == NULL) {
 				XGQ_ERR(xgq, "vmalloc failed");
 				ret = -ENOMEM;
@@ -1163,7 +1165,14 @@ static int vmr_info_query_op(struct platform_device *pdev,
 			}
 			memcpy_from_device(xgq, address, info_data, info_size);
 			info_data[info_size] = '\0'; /* terminate the string */
-			*cnt += sprintf(buf, "%s", info_data);
+
+			/* text buffer for sysfs node should be limited to PAGE_SIZE */
+			count = snprintf(buf, PAGE_SIZE, "%s", info_data);
+			if (count > PAGE_SIZE) {
+				XGQ_WARN(xgq, "message size %d exceeds %ld",
+					info_size, PAGE_SIZE);
+			}
+			*cnt = min(count, PAGE_SIZE);
 			vfree(info_data);
 		}
 	}
