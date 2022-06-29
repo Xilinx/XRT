@@ -143,24 +143,6 @@ get_container()
 }
 
 inline std::string
-get_data_transfer_trace()
-{
-  static std::string value = detail::get_string_value("Debug.data_transfer_trace","off");
-  return value;
-}
-
-inline std::string
-get_data_transfer_trace_dep_message()
-{
-  static bool emitted = false ;
-  if (!emitted) {
-    emitted = true ;
-    return "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;
-  }
-  return "" ;
-}
-
-inline std::string
 get_device_trace()
 {
   static std::string value = detail::get_string_value("Debug.device_trace", "off");
@@ -237,11 +219,8 @@ get_noc_profile_interval_ms()
 inline std::string
 get_stall_trace()
 {
-  static bool data_transfer_enabled =
-    (get_data_transfer_trace() != "off") || (get_device_trace() != "off") ;
-  static std::string value =
-    (!data_transfer_enabled) ? "off" :
-    detail::get_string_value("Debug.stall_trace", "off");
+  static std::string value = (get_device_trace() == "off") ? "off"
+                             : detail::get_string_value("Debug.stall_trace", "off");
   return value;
 }
 

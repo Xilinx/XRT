@@ -35,9 +35,6 @@ namespace xdp {
                  "Generation of Native XRT API function trace");
     addParameter("xrt_trace", xrt_core::config::get_xrt_trace(),
                  "Generation of hardware SHIM function trace");
-    addParameter("data_transfer_trace",
-                 xrt_core::config::get_data_transfer_trace(),
-                 "Collection of data from PL monitors and added to summary and trace (deprecated)");
     addParameter("device_trace",
                  xrt_core::config::get_device_trace(),
                  "Collection of data from PL monitors and added to summary and trace");

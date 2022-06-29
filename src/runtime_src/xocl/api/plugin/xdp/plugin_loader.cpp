@@ -41,24 +41,13 @@ namespace plugins {
       xocl::profile::load_xdp_opencl_counters() ;
     }
 
-    if (xrt_core::config::get_data_transfer_trace() != "off" ||
-        xrt_core::config::get_device_trace() != "off" ||
+    if (xrt_core::config::get_device_trace() != "off" ||
         xrt_core::config::get_device_counters()) {
       xdp::device_offload::load() ;
     }
 
     if (xrt_core::config::get_lop_trace()) {
       xdp::lop::load() ;
-    }
-
-    // Deprecation warnings specific to the .ini flags
-    if (xrt_core::config::get_data_transfer_trace() != "off") {
-      std::string msg = xrt_core::config::get_data_transfer_trace_dep_message();
-      if (msg != "") {
-        xrt_core::message::send(xrt_core::message::severity_level::warning,
-                                "XRT",
-                                msg) ;
-      }
     }
 
     return true ;
