@@ -101,6 +101,8 @@ xilinx_xrt()
   if (xrt.empty()){
 #if defined (__aarch64__) || defined (__arm__)
     xrt = bfs::path("/usr");
+#elif defined (_WIN32)
+    xrt = bfs::path("C:/Windows/System32/AMD");
 #else
     throw std::runtime_error("XILINX_XRT not set");
 #endif
@@ -114,7 +116,7 @@ module_path(const std::string& module)
 {
   auto path = xilinx_xrt();
 #ifdef _WIN32
-  path /= "bin/" + module + ".dll";
+  path /= module + ".dll";
 #else
   path /= "lib/xrt/module/lib" + module + ".so";
 #endif
@@ -133,7 +135,7 @@ shim_path()
   auto name = shim_name();
 
 #ifdef _WIN32
-  path /= "bin/" + name + ".dll";
+  path /= name + ".dll";
 #else
   path /= "lib/lib" + name + ".so." + XRT_VERSION_MAJOR;
 #endif
