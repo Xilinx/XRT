@@ -2078,6 +2078,7 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
 			  struct ps_kernel_node *ps_kernel)
 {
 	int ret = 0;
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
 
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
@@ -2090,6 +2091,11 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
 		goto out;
 	}
 
+	axlf_obj = xocl_query_cache_xclbin(xdev, uuid);
+	if (!axlf_obj) {
+		ret = -EINVAL;
+		goto out;
+	}
 	/* Try config legacy ERT firmware */
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0)) {
 		if (slot_hdl) {
@@ -2097,11 +2103,11 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
 			ret = -EINVAL;
 			goto out;
 		}
-		ret = xocl_kds_update_legacy(xdev, XDEV(xdev)->kds_cfg, ip_layout, ps_kernel);
+		ret = xocl_kds_update_legacy(xdev, axlf_obj->kds_cfg, ip_layout, ps_kernel);
 		goto out;
 	}
 
-	ret = xocl_kds_update_xgq(xdev, slot_hdl, uuid, XDEV(xdev)->kds_cfg, ip_layout, ps_kernel);
+	ret = xocl_kds_update_xgq(xdev, slot_hdl, uuid, axlf_obj->kds_cfg, ip_layout, ps_kernel);
 out:
 	return ret;
 }
@@ -2109,6 +2115,7 @@ out:
 void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 {
 	int ret = 0;
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
 
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
@@ -2121,9 +2128,14 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
 		return;
 
+	/* TODO : Need to retrive uuid from slot structure */
+	axlf_obj = XDEV(xdev)->axlf_obj[slot_hdl];
+	if (!axlf_obj)
+		return;
+
 	// Work-around to unconfigure PS kernel
 	// Will be removed once unconfigure command is there
-	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, 0, 0);
+	ret = xocl_kds_xgq_cfg_start(xdev, axlf_obj->kds_cfg, 0, 0);
 	ret = xocl_kds_xgq_cfg_end(xdev);
 	xocl_ert_ctrl_unset_xgq(xdev);
 	kds_reset(&XDEV(xdev)->kds);

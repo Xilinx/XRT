@@ -342,35 +342,26 @@ static bool xocl_xclbin_in_use(struct xocl_dev *xdev)
 	return false;
 }
 
-static int
-xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
+int
+xocl_download_axlf_helper(struct xocl_drm *drm_p, struct xocl_axlf_obj_cache *axlf_obj,
+	       	uint32_t *slot_hndl)
 {
 	long err = 0;
 	struct axlf *axlf = NULL;
-	struct axlf bin_obj;
 	size_t size = 0;
 	int preserve_mem = 0;
 	struct mem_topology *new_topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;
-	const struct axlf_section_header * dtbHeader = NULL;
-	void *ulp_blob;
-	void *kernels;
 	int rc;
 	bool force_download = false;
 
-	if (!xocl_is_unified(xdev)) {
-		userpf_err(xdev, "XOCL: not unified Shell\n");
+	if (!axlf_obj) {
+		userpf_err(xdev, "XCLBIN Download failed. Invalid XCLBIN\n");
 		return -EINVAL;
 	}
 
-	if (copy_from_user(&bin_obj, axlf_ptr->xclbin, sizeof(struct axlf)))
-		return -EFAULT;
-	if (memcmp(bin_obj.m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
-		userpf_err(xdev, "invalid xclbin magic string\n");
-		return -EINVAL;
-	}
-	if (uuid_is_null(&bin_obj.m_header.uuid)) {
-		userpf_err(xdev, "invalid xclbin uuid\n");
+	if (!xocl_is_unified(xdev)) {
+		userpf_err(xdev, "XOCL: not unified Shell\n");
 		return -EINVAL;
 	}
 
@@ -379,9 +370,16 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
+	axlf = axlf_obj->xclbin;
+	if (!axlf) {
+		userpf_err(xdev, "Invalid cached XCLBIN\n");
+                return -EINVAL;
+        }
+
+	mutex_lock(&xdev->dev_lock);
 	//
-	if (xclbin_downloaded(xdev, &bin_obj.m_header.uuid)) {
-		if ((axlf_ptr->flags & XOCL_AXLF_FORCE_PROGRAM)) {
+	if (xclbin_downloaded(xdev, &axlf->m_header.uuid)) {
+		if ((axlf_obj->flags & XOCL_AXLF_FORCE_PROGRAM)) {
 			// We come here if user sets force_xclbin_program
 			// option "true" in xrt.ini under [Runtime] section
 			DRM_WARN("%s Force xclbin download", __func__);
@@ -404,67 +402,32 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	/* All contexts are closed. No outstanding commands */
 
 	/* Really need to download, sanity check xclbin, first. */
-	if (xocl_xrt_version_check(xdev, &bin_obj, true)) {
+	if (xocl_xrt_version_check(xdev, axlf, true)) {
 		userpf_err(xdev, "Xclbin isn't supported by current XRT\n");
 		err = -EINVAL;
 		goto done;
 	}
 
 	if (!xocl_verify_timestamp(xdev,
-		bin_obj.m_header.m_featureRomTimeStamp)) {
+		axlf->m_header.m_featureRomTimeStamp)) {
 		userpf_err(xdev, "TimeStamp of ROM did not match Xclbin\n");
 		err = -EOPNOTSUPP;
 		goto done;
 	}
 
-	/* Copy bitstream from user space and proceed. */
-	axlf = vmalloc(bin_obj.m_header.m_length);
-	if (!axlf) {
-		userpf_err(xdev, "Unable to alloc mem for xclbin, size=%llu\n",
-			bin_obj.m_header.m_length);
-		err = -ENOMEM;
-		goto done;
-	}
-	if (copy_from_user(axlf, axlf_ptr->xclbin, bin_obj.m_header.m_length)) {
-		err = -EFAULT;
-		goto done;
-	}
-
-	dtbHeader = xocl_axlf_section_header(xdev, axlf,
-		PARTITION_METADATA);
-	if (dtbHeader) {
-		ulp_blob = (char*)axlf + dtbHeader->m_sectionOffset;
-		if (fdt_check_header(ulp_blob) || fdt_totalsize(ulp_blob) >
-				dtbHeader->m_sectionSize) {
-			userpf_err(xdev, "Invalid PARTITION_METADATA");
+	/*
+	 * don't check uuid if the xclbin is a lite one
+	 * the lite xclbin will not have BITSTREAM 
+	 */
+	if (xocl_axlf_section_header(xdev, axlf, BITSTREAM)) {
+		xocl_xdev_info(xdev, "check interface uuid");
+		err = xocl_fdt_check_uuids(xdev,
+				(const void *)XDEV(xdev)->fdt_blob,
+				(const void *)((char*)axlf_obj->ulp_blob));
+		if (err) {
+			userpf_err(xdev, "interface uuids do not match");
 			err = -EINVAL;
 			goto done;
-		}
-
-		if (xdev->ulp_blob)
-			vfree(xdev->ulp_blob);
-
-		xdev->ulp_blob = vmalloc(fdt_totalsize(ulp_blob));
-		if (!xdev->ulp_blob) {
-			err = -ENOMEM;
-			goto done;
-		}
-		memcpy(xdev->ulp_blob, ulp_blob, fdt_totalsize(ulp_blob));
-
-		/*
-		 * don't check uuid if the xclbin is a lite one
-		 * the lite xclbin will not have BITSTREAM 
-		 */
-		if (xocl_axlf_section_header(xdev, axlf, BITSTREAM)) {
-			xocl_xdev_info(xdev, "check interface uuid");
-			err = xocl_fdt_check_uuids(xdev,
-				(const void *)XDEV(xdev)->fdt_blob,
-				(const void *)((char*)xdev->ulp_blob));
-			if (err) {
-				userpf_err(xdev, "interface uuids do not match");
-				err = -EINVAL;
-				goto done;
-			}
 		}
 	}
 
@@ -492,36 +455,6 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 			goto done;
 	}
 
-	if (XDEV(xdev)->kernels != NULL) {
-		vfree(XDEV(xdev)->kernels);
-		XDEV(xdev)->kernels = NULL;
-		XDEV(xdev)->ksize = 0;
-	}
-
-	/* There is a corner case.
-	 * A xclbin might only have an ap_ctrl_none kernel in ip_layout and
-	 * without any arguments. In this case, ksize would be 0, there is no
-	 * kernel information anywhere.
-	 */
-	if (axlf_ptr->ksize) {
-		kernels = vmalloc(axlf_ptr->ksize);
-		if (!kernels) {
-			userpf_err(xdev, "Unable to alloc mem for kernels, size=%u\n",
-				   axlf_ptr->ksize);
-			err = -ENOMEM;
-			goto done;
-		}
-		if (copy_from_user(kernels, axlf_ptr->kernels, axlf_ptr->ksize)) {
-			vfree(kernels);
-			err = -EFAULT;
-			goto done;
-		}
-		XDEV(xdev)->ksize = axlf_ptr->ksize;
-		XDEV(xdev)->kernels = kernels;
-	}
-
-	memcpy(&XDEV(xdev)->kds_cfg, &axlf_ptr->kds_cfg, sizeof(axlf_ptr->kds_cfg));
-
 	err = xocl_icap_download_axlf(xdev, axlf, force_download);
 	/*
 	 * Don't just bail out here, always recreate drm mem
@@ -542,38 +475,234 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	/* The finial step is to update KDS configuration */
 	if (!err) {
-		err = xocl_kds_update(xdev, axlf_ptr->kds_cfg);
+		err = xocl_kds_update(xdev, axlf_obj->kds_cfg);
 		if (err) {
 			xocl_icap_clean_bitstream(xdev);
 		}
 	}
 
 done:
-	if (size < 0)
-		err = size;
-	if (err) {
-		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
+	mutex_unlock(&xdev->dev_lock);
+	if (size < 0) {
+		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", size);
+		return size;
 	}
-	else
-		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
+	
+	// TODO : Default Slot 
+	*slot_hndl = 0;
+	userpf_info(xdev, "Loaded xclbin %pUb to Slot : %d", &axlf->m_header.uuid,
+			*slot_hndl);
 
-	vfree(axlf);
 	return err;
+}
+
+static int
+get_next_free_cache_index(struct xocl_dev *xdev, const xuid_t *uuid)
+{
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
+	int i = 0;
+
+	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
+
+	/* First check whether uuid exists or not */
+	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+		axlf_obj = XDEV(xdev)->axlf_obj[i];
+		if (!axlf_obj)
+			continue;
+			
+		/* Check if this uuid already exists */
+		if (uuid_equal(axlf_obj->uuid, uuid))
+			return i;
+	}
+
+	/* Check for first free slot */
+	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+		axlf_obj = XDEV(xdev)->axlf_obj[i];
+		/* First free Index */
+		if (!axlf_obj)
+			return i;
+	}
+
+
+	/* SAIF TODO : Check the ref_cnt of axlf_obj, to delete
+	 * some unused xclbin cache data to make some room for
+	 * new xclbin.
+	 */	
+	return -EINVAL;
+}
+
+int xocl_register_axlf_ioctl(struct drm_device *dev,
+			 void *data,
+			 struct drm_file *filp)
+{
+	struct drm_xocl_axlf *axlf_ptr = (struct drm_xocl_axlf *)data;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+	struct xocl_dev_core *xdev_core = XDEV(xdev);
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
+	struct axlf bin_obj;
+	void *ulp_blob;
+	const struct axlf_section_header * dtbHeader = NULL;
+	int cache_idx = 0;
+	long err = 0;
+
+	if (copy_from_user(&bin_obj, axlf_ptr->xclbin, sizeof(struct axlf)))
+		return -EFAULT;
+
+	if (memcmp(bin_obj.m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
+		userpf_err(xdev, "invalid xclbin magic string\n");
+		return -EINVAL;
+	}
+	if (uuid_is_null(&bin_obj.m_header.uuid)) {
+		userpf_err(xdev, "invalid xclbin uuid\n");
+		return -EINVAL;
+	}
+
+	axlf_obj = vmalloc(sizeof(struct xocl_axlf_obj_cache));
+	if (!axlf_obj) {
+		userpf_err(xdev, "Unable to alloc mem for axlf_obj");
+		return -ENOMEM;
+	}
+
+	/* Copy bitstream from user space and proceed. */
+	axlf_obj->xclbin = vmalloc(bin_obj.m_header.m_length);
+	if (!axlf_obj->xclbin) {
+		userpf_err(xdev, "Unable to alloc mem for xclbin, size=%llu\n",
+			bin_obj.m_header.m_length);
+		err = -ENOMEM;
+		goto error_cache;
+	}
+	if (copy_from_user(axlf_obj->xclbin, axlf_ptr->xclbin, bin_obj.m_header.m_length)) {
+		err = -EFAULT;
+		goto error_axlf;
+	}
+
+	dtbHeader = xocl_axlf_section_header(xdev, axlf_obj->xclbin,
+		PARTITION_METADATA);
+	if (dtbHeader) {
+		ulp_blob = (char*)axlf_obj->xclbin + dtbHeader->m_sectionOffset;
+		if (fdt_check_header(ulp_blob) || fdt_totalsize(ulp_blob) >
+				dtbHeader->m_sectionSize) {
+			userpf_err(xdev, "Invalid PARTITION_METADATA");
+			err = -EINVAL;
+			goto error_axlf;
+		}
+
+		axlf_obj->ulp_blob = vmalloc(fdt_totalsize(ulp_blob));
+		if (!axlf_obj->ulp_blob) {
+			err = -ENOMEM;
+			goto error_axlf;
+		}
+		memcpy(axlf_obj->ulp_blob, ulp_blob, fdt_totalsize(ulp_blob));
+	}
+
+	/* There is a corner case.
+	 * A xclbin might only have an ap_ctrl_none kernel in ip_layout and
+	 * without any arguments. In this case, ksize would be 0, there is no
+	 * kernel information anywhere.
+	 */
+	if (axlf_ptr->ksize) {
+		axlf_obj->kernels = vmalloc(axlf_ptr->ksize);
+		if (!axlf_obj->kernels) {
+			userpf_err(xdev, "Unable to alloc mem for kernels, size=%u\n",
+				   axlf_ptr->ksize);
+			err = -ENOMEM;
+			goto error_ulp;
+		}
+		if (copy_from_user(axlf_obj->kernels, axlf_ptr->kernels, axlf_ptr->ksize)) {
+			err = -EFAULT;
+			goto error_kernels;
+		}
+		axlf_obj->ksize = axlf_ptr->ksize;
+	}
+
+	/* Cache the flags */
+	axlf_obj->flags = axlf_ptr->flags;
+
+	memcpy(&axlf_obj->kds_cfg, &axlf_ptr->kds_cfg, sizeof(axlf_ptr->kds_cfg));
+
+	axlf_obj->uuid = vzalloc(sizeof(xuid_t));
+	if (!axlf_obj->uuid) {
+		err = -EINVAL;
+		goto error_kernels;
+	}
+	uuid_copy(axlf_obj->uuid, &bin_obj.m_header.uuid);
+
+	mutex_lock(&xdev->dev_lock);
+	cache_idx = get_next_free_cache_index(xdev, axlf_obj->uuid);
+	if (cache_idx < 0) {
+			mutex_unlock(&xdev->dev_lock);
+			userpf_err(xdev, "XCLBIN Regstration failed.");
+			err = -EINVAL;
+			goto error_uuid;
+	}
+	axlf_obj->idx = cache_idx;
+	axlf_obj->ref_cnt = 0;
+	xdev_core->axlf_obj[cache_idx] = axlf_obj;		
+	mutex_unlock(&xdev->dev_lock);
+
+	return cache_idx;
+
+error_uuid:
+	vfree(axlf_obj->uuid);
+error_kernels:
+	vfree(axlf_obj->kernels);
+error_ulp:
+	vfree(axlf_obj->ulp_blob);
+error_axlf:
+	vfree(axlf_obj->xclbin);
+error_cache:
+	vfree(axlf_obj);
+	return err;
+}
+
+int xocl_unregister_axlf_by_index(struct xocl_dev *xdev, uint32_t idx)
+{
+	struct xocl_dev_core *xdev_core = XDEV(xdev);
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
+
+	mutex_lock(&xdev->dev_lock);
+	axlf_obj = xdev_core->axlf_obj[idx];
+	if (!axlf_obj) {
+		mutex_unlock(&xdev->dev_lock);
+		return -EINVAL;
+	}
+	xdev_core->axlf_obj[idx] = NULL;
+	mutex_unlock(&xdev->dev_lock);
+
+	vfree(axlf_obj->ulp_blob);
+	vfree(axlf_obj->kernels);
+	vfree(axlf_obj->xclbin);
+	vfree(axlf_obj->uuid);
+	vfree(axlf_obj);
+
+	return 0;
 }
 
 int xocl_read_axlf_ioctl(struct drm_device *dev,
 			 void *data,
 			 struct drm_file *filp)
 {
-	struct drm_xocl_axlf *axlf_obj_ptr = data;
+	struct xocl_axlf_obj_cache *axlf_obj_ptr = NULL;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
-	int err = 0;
+	int cache_idx = 0;
+	uint32_t slot_hndl = 0;
 
-	mutex_lock(&xdev->dev_lock);
-	err = xocl_read_axlf_helper(drm_p, axlf_obj_ptr);
-	mutex_unlock(&xdev->dev_lock);
-	return err;
+	cache_idx = xocl_register_axlf_ioctl(dev, data, filp);
+	if (cache_idx < 0) {
+		userpf_err(xdev, "XCLBIN Regstration failed.");
+		return cache_idx;
+	}
+
+	axlf_obj_ptr = XDEV(xdev)->axlf_obj[cache_idx];
+	if (!axlf_obj_ptr) {
+		userpf_err(xdev, "XCLBIN Regstration failed. Invalid cache index %d",
+				cache_idx);
+		return -EINVAL;
+	}
+
+	return xocl_download_axlf_helper(drm_p, axlf_obj_ptr, &slot_hndl);
 }
 
 int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,

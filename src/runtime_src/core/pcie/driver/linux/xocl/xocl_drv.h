@@ -556,6 +556,26 @@ struct pci_bars {
         u64 range;
 };
 
+#define MAX_SLOT_SUPPORT        128
+struct xocl_axlf_obj_cache {
+	/* Private fields */
+        uint32_t                idx;
+        /* This counter indicates how many times this xclbin
+         * has been loaded actively into different slots.
+         */
+        int                     ref_cnt;
+        xuid_t                  *uuid;
+       
+        /* Xclbin specific fileds */	
+	void                    *ulp_blob;
+        
+	struct axlf             *xclbin;
+        int                      ksize;
+        char                    *kernels;
+        struct drm_xocl_kds      kds_cfg;
+        uint32_t                 flags;
+};
+
 #define SERIAL_NUM_LEN	32
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
@@ -605,16 +625,6 @@ struct xocl_dev_core {
 	struct completion	api_comp;
 	int			api_call_cnt;
 
-	struct xocl_xclbin 	*xdev_xclbin;
-
-	/*
-	 * To cache user space pass down kernel metadata when load xclbin.
-	 * Maybe we would have a better place, like fdt. Before that, keep this.
-	 */
-	int			ksize;
-	char			*kernels;
-	struct drm_xocl_kds	kds_cfg;
-
 	/*
 	 * Store information about pci bar mappings of CPM.
 	 */
@@ -626,6 +636,9 @@ struct xocl_dev_core {
 	 * Having SN info available also implies there is a working SC
 	 */
 	char			serial_num[SERIAL_NUM_LEN];
+
+	/* XOCL Should cache all the XCLBINs which registered for this device */
+	struct xocl_axlf_obj_cache *axlf_obj[MAX_SLOT_SUPPORT];
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -2056,23 +2069,55 @@ static inline void xocl_queue_destroy(xdev_handle_t xdev_hdl)
 	mutex_unlock(&xdev->wq_lock);
 }
 
+/* Retrive XOCL device cached data using uuid*/
+static inline struct xocl_axlf_obj_cache *
+xocl_query_cache_xclbin(xdev_handle_t xdev_hdl, xuid_t *xclbin)
+{
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
+	int i = 0;
+
+	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+		axlf_obj = XDEV(xdev_hdl)->axlf_obj[i];
+		if (!axlf_obj)
+			continue;
+
+		if (xclbin && uuid_equal(xclbin, axlf_obj->uuid)) {
+			return axlf_obj;
+		}
+	}
+
+	return NULL;
+}
+
+/* Retrive kernel information from XOCL device cached data */
 static inline struct kernel_info *
 xocl_query_kernel(xdev_handle_t xdev_hdl, const char *name)
 {
-	struct xocl_dev_core *xdev = XDEV(xdev_hdl);
-	struct kernel_info *kernel;
+	struct kernel_info *kernel = NULL;
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
 	int off = 0;
+	int i = 0;
 
-	while (off < xdev->ksize) {
-		kernel = (struct kernel_info *)(xdev->kernels + off);
-		if (!strcmp(kernel->name, name))
-			break;
-		off += sizeof(struct kernel_info);
-		off += sizeof(struct argument_info) * kernel->anums;
+	/* SAIF TODO : Assumption that no two kernel names are same for
+	 * two different XCLBIN.
+	 */
+	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+		axlf_obj = XDEV(xdev_hdl)->axlf_obj[i];
+		if (!axlf_obj)
+			continue;
+
+		while (off < axlf_obj->ksize) {
+			kernel = (struct kernel_info *)(axlf_obj->kernels + off);
+			if (!strcmp(kernel->name, name))
+				break;
+
+			off += sizeof(struct kernel_info);
+			off += sizeof(struct argument_info) * kernel->anums;
+		}
+
+		if (off < axlf_obj->ksize)
+			return kernel;
 	}
-
-	if (off < xdev->ksize)
-		return kernel;
 
 	return NULL;
 }
