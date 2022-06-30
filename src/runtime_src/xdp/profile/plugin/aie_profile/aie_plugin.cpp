@@ -1291,7 +1291,8 @@ namespace xdp {
                                  : ((mod == XAIE_MEM_MOD) ? "conflicts" : "input_bandwidths");
         std::stringstream msg;
         msg << "Unable to find " << moduleName << " metric set " << tileMetric.second
-            << ". Using default of " << defaultSet << ".";
+            << ". Using default of " << defaultSet << "."
+            << " As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         tileMetric.second = defaultSet;
       }
