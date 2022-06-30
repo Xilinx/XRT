@@ -337,7 +337,7 @@ spawn_testcase(boost::property_tree::ptree& _ptTest, const std::string& xrtTestC
       _ptTest.put("status", test_token_skipped);
       return false;
     } else if (exit_code == EXIT_SUCCESS) {
-      if (mode == test_mode::support)
+      if (mode != test_mode::support)
         _ptTest.put("status", test_token_passed);
       return true;
     } else {
