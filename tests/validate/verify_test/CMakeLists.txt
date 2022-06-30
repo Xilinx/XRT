@@ -3,7 +3,6 @@
 #
 set(TESTNAME "validate.exe")
 
-set(xrt_core_LIBRARY xrt_core)
 set(xrt_coreutil_LIBRARY xrt_coreutil)
 
 include_directories(
@@ -20,7 +19,7 @@ add_executable(${TESTNAME}
 target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 
 if (NOT WIN32)
-  target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY}  pthread ${xrt_coreutil_LIBRARY} ${xrt_core_LIBRARY})
+  target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY}  pthread ${xrt_coreutil_LIBRARY})
 endif(NOT WIN32)
 
 if (NOT DEFINED XRT_VALIDATE_DIR)

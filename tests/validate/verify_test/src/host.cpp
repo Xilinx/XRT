@@ -64,16 +64,14 @@ int main(int argc, char** argv) {
     auto krnl = xrt::kernel(device, xclbin_uuid, "verify");
 
     // Allocate the output buffer to hold the kernel ooutput
-    auto bank_grp_arg0 = krnl.group_id(0);
-    auto output_buffer = xrt::bo(device, sizeof(char) * LENGTH, bank_grp_arg0);
+    auto output_buffer = xrt::bo(device, sizeof(char) * LENGTH, krnl.group_id(0));
 
     // Run the kernel and store its contents within the allocated output buffer
     auto run = krnl(output_buffer);
     run.wait();
 
     // Prepare local buffer
-    char received_data[LENGTH];
-    std::memset(received_data, 0, LENGTH);
+    char received_data[LENGTH] = {};
 
     // Acquire and read the buffer data
     output_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
