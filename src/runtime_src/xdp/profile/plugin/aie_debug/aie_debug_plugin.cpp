@@ -29,6 +29,7 @@
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 #include "core/edge/user/shim.h"
+#include <set>
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -107,7 +108,7 @@ namespace xdp {
     }
 
     // Report tiles (debug only)
-    {
+    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
       std::stringstream msg;
       msg << "Tiles used for AIE debug:\n";
       for (const auto& kv : mGraphCoreTilesMap) {
@@ -123,44 +124,50 @@ namespace xdp {
   std::string AIEDebugPlugin::getCoreStatusString(uint32_t status) {
     std::string statusStr;
 
-    if (status & 0x1)
+    if (status & 0x000001)
       statusStr += "Enable,";
-    if (status & 0x2)
+    if (status & 0x000002)
       statusStr += "Reset,";
-    if (status & 0x4)
+    if (status & 0x000004)
       statusStr += "Memory_Stall_S,";
-    if (status & 0x8)
+    if (status & 0x000008)
       statusStr += "Memory_Stall_W,";
-    if (status & 0x10)
+    if (status & 0x000010)
       statusStr += "Memory_Stall_N,";
-    if (status & 0x20)
+    if (status & 0x000020)
       statusStr += "Memory_Stall_E,";
-    if (status & 0x40)
+    if (status & 0x000040)
       statusStr += "Lock_Stall_S,";
-    if (status & 0x80)
+    if (status & 0x000080)
       statusStr += "Lock_Stall_W,";
-    if (status & 0x100)
+    if (status & 0x000100)
       statusStr += "Lock_Stall_N,";
-    if (status & 0x200)
+    if (status & 0x000200)
       statusStr += "Lock_Stall_E,";
-    if (status & 0x400)
+    if (status & 0x000400)
       statusStr += "Stream_Stall_SS0,";
-    if (status & 0x800)
+    if (status & 0x000800)
       statusStr += "Stream_Stall_SS1,";
-    if (status & 0x1000)
+    if (status & 0x001000)
       statusStr += "Stream_Stall_MS0,";
-    if (status & 0x2000)
+    if (status & 0x002000)
       statusStr += "Stream_Stall_MS1,";
-    if (status & 0x4000)
+    if (status & 0x004000)
       statusStr += "Cascade_Stall_SCD,";
-    if (status & 0x8000)
+    if (status & 0x008000)
       statusStr += "Cascade_Stall_MCD,";
-    if (status & 0x10000)
+    if (status & 0x010000)
       statusStr += "Debug_Halt,";
-    if (status & 0x20000)
+    if (status & 0x020000)
       statusStr += "ECC_Error_Stall,";
-    if (status & 0x40000)
+    if (status & 0x040000)
       statusStr += "ECC_Scrubbing_Stall,";
+    if (status & 0x080000)
+      statusStr += "Error_Halt,";
+    if (status & 0x100000)
+      statusStr += "Core_Done,";
+    if (status & 0x200000)
+      statusStr += "Core_Processor_Bus_Stall,";
 
     // remove trailing comma
     if (!statusStr.empty())
@@ -207,6 +214,8 @@ namespace xdp {
     // Reset values
     constexpr uint32_t CORE_RESET_STATUS  = 0x2;
     constexpr uint32_t CORE_ENABLE_MASK  = 0x1;
+    // Tiles already reported with error(s)
+    std::set<tile_type> errorTileSet;
     // Graph -> total stuck core cycles
     std::map<std::string, uint64_t> graphStallTotalMap;
     // Core -> total stall cycles
@@ -279,6 +288,29 @@ namespace xdp {
           }
 
           coreStatusMap[tile] = coreStatus;
+
+          // Check for errors in tile
+          // NOTE: warning is only issued once per tile
+          if (errorTileSet.find(tile) == errorTileSet.end()) {
+            uint8_t coreErrors0 = 0;
+            uint8_t coreErrors1 = 0;
+            uint8_t memErrors = 0;
+            auto loc = XAie_TileLoc(tile.col, tile.row + 1);
+            XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
+              XAIE_EVENT_GROUP_ERRORS_0_CORE, &coreErrors0);
+            XAie_EventReadStatus(aieDevInst, loc, XAIE_CORE_MOD, 
+              XAIE_EVENT_GROUP_ERRORS_1_CORE, &coreErrors1);
+            XAie_EventReadStatus(aieDevInst, loc, XAIE_MEM_MOD, 
+              XAIE_EVENT_GROUP_ERRORS_MEM, &memErrors);
+            
+            if (coreErrors0 || coreErrors1 || memErrors) {
+              std::stringstream errorMessage;
+              errorMessage << "Error(s) found in tile (" << tile.col << "," << tile.row 
+                          << "). Please view status in Vitis Analyzer for specifics.";
+              xrt_core::message::send(severity_level::warning, "XRT", errorMessage.str());
+              errorTileSet.insert(tile);
+            }
+          }
         } // For tiles in graph
 
         std::stringstream warningMessage;
@@ -372,14 +404,23 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string devicename { info.mName };
 
+    std::string currentTime = "0000_00_00_0000";
+    auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    struct tm* p_tstruct = std::localtime(&time);
+    if (p_tstruct) {
+      char buf[80] = {0};
+      strftime(buf, sizeof(buf), "%Y_%m_%d_%H%M%S", p_tstruct);
+      currentTime = std::string(buf);
+    }
+
     // Create and register aie status writer
-    std::string filename = "aie_status_" + devicename + ".json";
+    std::string filename = "aie_status_" + devicename + "_" + currentTime + ".json";
     VPWriter* aieWriter = new AIEDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
     writers.push_back(aieWriter);
     db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Create and register aie shim status writer
-    filename = "aieshim_status_" + devicename + ".json";
+    filename = "aieshim_status_" + devicename + "_" + currentTime + ".json";
     VPWriter* aieshimWriter = new AIEShimDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
     writers.push_back(aieshimWriter);
     db->getStaticInfo().addOpenedFile(aieshimWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
