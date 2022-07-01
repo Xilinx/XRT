@@ -77,6 +77,8 @@
  * 11   Send an execute job to a compute unit  DRM_IOCTL_XOCL_EXECBUF         drm_xocl_execbuf
  * 12   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
  *      interrupt
+ * 13   Register a specifi xclbin image with   DRM_IOCTL_XOCL_REGISTER_AXLF   drm_xocl_axlf
+ *      the device
  * 13   Update device view with a specific     DRM_IOCTL_XOCL_READ_AXLF       drm_xocl_axlf
  *      xclbin image
  * 14   Obtain info of bo                      DRM_IOCTL_XOCL_INFO            drm_xocl_info_bo
@@ -152,6 +154,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_EXECBUF,
 	/* Register eventfd for user interrupts */
 	DRM_XOCL_USER_INTR,
+	/* Register xclbin/axlf */
+	DRM_XOCL_REGISTER_AXLF,
 	/* Read xclbin/axlf */
 	DRM_XOCL_READ_AXLF,
 	/* Hot reset request */
@@ -500,6 +504,9 @@ struct drm_xocl_pread_bo {
 enum drm_xocl_ctx_code {
 	XOCL_CTX_OP_ALLOC_CTX = 0,
 	XOCL_CTX_OP_FREE_CTX,
+	XOCL_CTX_OP_ALLOC_HW_CTX,
+	XOCL_CTX_OP_FREE_HW_CTX,
+	XOCL_CTX_OP_OPEN_CU_CTX,
 	XOCL_CTX_OP_OPEN_UCU_FD,
 };
 
@@ -510,7 +517,8 @@ enum drm_xocl_ctx_code {
  * struct drm_xocl_ctx - Open or close a context on a compute unit on device
  * used with DRM_XOCL_CTX ioctl
  *
- * @op:            Alloc or free a context (XOCL_CTX_OP_ALLOC_CTX/XOCL_CTX_OP_FREE_CTX)
+ * @op:            Alloc or free a context (XOCL_CTX_OP_ALLOC_CTX/XOCL_CTX_OP_FREE_CTX/
+ * 					XOCL_CTX_OP_ALLOC_HW_CTX/XOCL_CTX_OP_FREE_HW_CTX)
  * @xclbin_id:	   UUID of the device image (xclbin)
  * @cu_index:	   Index of the compute unit in the device inage for which
  *                 the request is being made
@@ -522,8 +530,8 @@ struct drm_xocl_ctx {
 	xuid_t   xclbin_id;
 	uint32_t cu_index;
 	uint32_t flags;
-	// unused, in future it would return context id
-	uint32_t handle;
+	// it return context id
+	uint32_t  handle;
 };
 
 struct drm_xocl_info {
@@ -699,6 +707,7 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_CTX		XOCL_IOC_ARG(CTX, ctx)
 #define	DRM_IOCTL_XOCL_INFO		XOCL_IOC_ARG(INFO, info)
 #define	DRM_IOCTL_XOCL_READ_AXLF	XOCL_IOC_ARG(READ_AXLF, axlf)
+#define	DRM_IOCTL_XOCL_REGISTER_AXLF	XOCL_IOC_ARG(REGISTER_AXLF, axlf)
 #define	DRM_IOCTL_XOCL_PWRITE_UNMGD	XOCL_IOC_ARG(PWRITE_UNMGD, pwrite_unmgd)
 #define	DRM_IOCTL_XOCL_PREAD_UNMGD	XOCL_IOC_ARG(PREAD_UNMGD, pread_unmgd)
 #define	DRM_IOCTL_XOCL_USAGE_STAT	XOCL_IOC_ARG(USAGE_STAT, usage_stat)

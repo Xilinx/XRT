@@ -1394,6 +1394,122 @@ xclLoadXclBin(const xclBin *buffer)
 }
 
 /*
+ * xclRegisterAxlf()
+ */
+int shim::xclRegisterAxlf(const axlf *buffer)
+{
+    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
+    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
+    unsigned int flags = XOCL_AXLF_BASE;
+    int off = 0;
+
+    auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
+    if(force_program) {
+        axlf_obj.flags = flags | XOCL_AXLF_FORCE_PROGRAM;
+    }
+
+    auto kernels = xrt_core::xclbin::get_kernels(buffer);
+    /* Calculate size of kernels */
+    for (auto& kernel : kernels) {
+        axlf_obj.ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
+    /* To enhance CU subdevice and KDS/ERT, driver needs all details about kernels
+     * while load xclbin.
+     *
+     * Why we extract data from XML metadata?
+     *  1. Kernel is NOT a good place to parse xml. It prefers binary.
+     *  2. All kernel details are in the xml today.
+     *
+     * What would happen in the future?
+     *  XCLBIN would contain fdt as metadata. At that time, this
+     *  could be removed.
+     *
+     * Binary format:
+     * +-----------------------+
+     * | Kernel[0]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[1]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[...]           |
+     * |   ...                 |
+     * +-----------------------+
+     */
+    std::vector<char> krnl_binary(axlf_obj.ksize);
+    axlf_obj.kernels = krnl_binary.data();
+    for (auto& kernel : kernels) {
+        auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.kernels + off);
+        if (kernel.name.size() > sizeof(krnl->name))
+            return -EINVAL;
+        std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+        krnl->name[sizeof(krnl->name)-1] = '\0';
+        krnl->anums = kernel.args.size();
+        krnl->range = kernel.range;
+
+        krnl->features = 0;
+        if (kernel.sw_reset)
+            krnl->features |= KRNL_SW_RESET;
+
+        int ai = 0;
+        for (auto& arg : kernel.args) {
+            if (arg.name.size() > sizeof(krnl->args[ai].name)) {
+                xrt_logmsg(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
+                return -EINVAL;
+            }
+            std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+            krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+            krnl->args[ai].offset = arg.offset;
+            krnl->args[ai].size   = arg.size;
+            // XCLBIN doesn't define argument direction yet and it only support
+            // input arguments.
+            // Driver use 1 for input argument and 2 for output.
+            // Let's refine this line later.
+            krnl->args[ai].dir    = 1;
+            ai++;
+        }
+        off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
+    /* To make download xclbin and configure KDS/ERT as an atomic operation. */
+    axlf_obj.kds_cfg.ert = xrt_core::config::get_ert();
+    axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
+    axlf_obj.kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
+    axlf_obj.kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(buffer);
+    axlf_obj.kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
+    axlf_obj.kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(buffer);
+    axlf_obj.kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
+
+    /* TODO: In scheduler.cpp init() function, it use get_ert_slots(void) to get slot size.
+     * But we cannot do this here, since the xclbin is not registered.
+     * Currently, emulation flow use get_ert_slots() as well.
+     * We will consider how to better determine slot size in new kds.
+     */
+    //axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots().second;
+    auto xml_hdr = xrt_core::xclbin::get_axlf_section(buffer, EMBEDDED_METADATA);
+    if (!xml_hdr)
+        throw std::runtime_error("No xml metadata in xclbin");
+    auto xml_size = xml_hdr->m_sectionSize;
+    auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) + xml_hdr->m_sectionOffset);
+    axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
+
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_REGISTER_AXLF, &axlf_obj);
+    if (ret)
+        return -errno;
+
+    return ret;
+}
+
+/*
  * xclLoadAxlf()
  */
 int shim::xclLoadAxlf(const axlf *buffer)
@@ -2170,15 +2286,15 @@ xrt_core::cuidx_type
 shim::
 open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  // Alveo Linux PCIE does not yet support multiple xclbins.  Call
-  // regular flow.  Default access mode to shared unless explicitly
-  // exclusive.
-  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
-  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
-  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
-  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+    auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+    unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
+    drm_xocl_ctx ctx = {XOCL_CTX_OP_OPEN_CU_CTX};
+    ctx.flags = flags;
+    ctx.handle = static_cast<xcl_hwctx_handle>(hwctx);
+    if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx))
+        throw xrt_core::system_error(errno, "failed to open ip context");
 
-  return cuidx;
+    return xrt_core::cuidx_type{ctx.cu_index};
 }
 
 // Assign xclbin with uuid to hardware resources and return a context id
@@ -2187,25 +2303,36 @@ uint32_t
 shim::
 create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
 {
-  // Explicit hardware contexts are not supported in Alveo.
-  throw xrt_core::ishim::not_supported_error{__func__};
+    drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_HW_CTX};
+    std::memcpy(ctx.xclbin_id, &xclbin_uuid, sizeof(uuid_t));
+    ctx.flags = qos;
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    if (ret)
+        throw xrt_core::system_error(errno, "failed to open hw context");
+
+    return ctx.handle;
 }
 
 void
 shim::
 destroy_hw_context(uint32_t ctxhdl)
 {
-  // Explicit hardware contexts are not supported in Alveo.
-  throw xrt_core::ishim::not_supported_error{__func__};
+    drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_HW_CTX};
+    ctx.handle = ctxhdl;
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    if (ret)
+      throw xrt_core::system_error(errno, "failed to destroy hw context");
 }
 
 // Registers an xclbin, but does not load it.
 void
 shim::
-register_xclbin(const xrt::xclbin&)
+register_xclbin(const xrt::xclbin& xclbin)
 {
-  // Explicit hardware contexts are not supported in Alveo.
-  throw xrt_core::ishim::not_supported_error{__func__};
+    auto top = reinterpret_cast<const axlf*>(xclbin.get_axlf());
+    int ret = xclRegisterAxlf(top);
+    if (ret)
+        throw xrt_core::system_error(errno, "failed to register xclbin");
 }
 
 } // namespace xocl
