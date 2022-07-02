@@ -376,8 +376,6 @@ xocl_download_axlf_helper(struct xocl_drm *drm_p, struct xocl_axlf_obj_cache *ax
                 return -EINVAL;
         }
 
-	mutex_lock(&xdev->dev_lock);
-	//
 	if (xclbin_downloaded(xdev, &axlf->m_header.uuid)) {
 		if ((axlf_obj->flags & XOCL_AXLF_FORCE_PROGRAM)) {
 			// We come here if user sets force_xclbin_program
@@ -482,7 +480,6 @@ xocl_download_axlf_helper(struct xocl_drm *drm_p, struct xocl_axlf_obj_cache *ax
 	}
 
 done:
-	mutex_unlock(&xdev->dev_lock);
 	if (size < 0) {
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", size);
 		return size;
@@ -531,19 +528,15 @@ get_next_free_cache_index(struct xocl_dev *xdev, const xuid_t *uuid)
 	return -EINVAL;
 }
 
-int xocl_register_axlf_ioctl(struct drm_device *dev,
-			 void *data,
-			 struct drm_file *filp)
+static int xocl_register_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
+                uint32_t *cache_idx)
 {
-	struct drm_xocl_axlf *axlf_ptr = (struct drm_xocl_axlf *)data;
-	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	struct xocl_dev_core *xdev_core = XDEV(xdev);
 	struct xocl_axlf_obj_cache *axlf_obj = NULL;
 	struct axlf bin_obj;
 	void *ulp_blob;
 	const struct axlf_section_header * dtbHeader = NULL;
-	int cache_idx = 0;
 	long err = 0;
 
 	if (copy_from_user(&bin_obj, axlf_ptr->xclbin, sizeof(struct axlf)))
@@ -628,20 +621,18 @@ int xocl_register_axlf_ioctl(struct drm_device *dev,
 	}
 	uuid_copy(axlf_obj->uuid, &bin_obj.m_header.uuid);
 
-	mutex_lock(&xdev->dev_lock);
-	cache_idx = get_next_free_cache_index(xdev, axlf_obj->uuid);
-	if (cache_idx < 0) {
+	*cache_idx = get_next_free_cache_index(xdev, axlf_obj->uuid);
+	if (*cache_idx < 0) {
 			mutex_unlock(&xdev->dev_lock);
 			userpf_err(xdev, "XCLBIN Regstration failed.");
 			err = -EINVAL;
 			goto error_uuid;
 	}
-	axlf_obj->idx = cache_idx;
+	axlf_obj->idx = *cache_idx;
 	axlf_obj->ref_cnt = 0;
-	xdev_core->axlf_obj[cache_idx] = axlf_obj;		
-	mutex_unlock(&xdev->dev_lock);
+	xdev_core->axlf_obj[*cache_idx] = axlf_obj;		
 
-	return cache_idx;
+	return 0;
 
 error_uuid:
 	vfree(axlf_obj->uuid);
@@ -679,30 +670,66 @@ int xocl_unregister_axlf_by_index(struct xocl_dev *xdev, uint32_t idx)
 	return 0;
 }
 
+int xocl_register_axlf_ioctl(struct drm_device *dev,
+			 void *data,
+			 struct drm_file *filp)
+{
+	struct drm_xocl_axlf *axlf_ptr = (struct drm_xocl_axlf *)data;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+	int cache_idx = 0;
+	int ret = 0;
+
+	mutex_lock(&xdev->dev_lock);
+	ret = xocl_register_axlf_helper(drm_p, axlf_ptr, &cache_idx);
+	if (ret) {
+		userpf_err(xdev, "XCLBIN Regstration failed.");
+		mutex_unlock(&xdev->dev_lock);
+		return ret;
+	}
+
+	mutex_unlock(&xdev->dev_lock);
+	return 0;
+}
+
 int xocl_read_axlf_ioctl(struct drm_device *dev,
 			 void *data,
 			 struct drm_file *filp)
 {
 	struct xocl_axlf_obj_cache *axlf_obj_ptr = NULL;
+	struct drm_xocl_axlf *axlf_ptr = (struct drm_xocl_axlf *)data;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	int cache_idx = 0;
 	uint32_t slot_hndl = 0;
+	int ret = 0;
 
-	cache_idx = xocl_register_axlf_ioctl(dev, data, filp);
-	if (cache_idx < 0) {
+	mutex_lock(&xdev->dev_lock);
+	ret = xocl_register_axlf_helper(drm_p, axlf_ptr, &cache_idx);
+	if (ret) {
 		userpf_err(xdev, "XCLBIN Regstration failed.");
-		return cache_idx;
+		goto error;
 	}
 
 	axlf_obj_ptr = XDEV(xdev)->axlf_obj[cache_idx];
 	if (!axlf_obj_ptr) {
 		userpf_err(xdev, "XCLBIN Regstration failed. Invalid cache index %d",
 				cache_idx);
-		return -EINVAL;
+		goto error;
 	}
 
-	return xocl_download_axlf_helper(drm_p, axlf_obj_ptr, &slot_hndl);
+	ret = xocl_download_axlf_helper(drm_p, axlf_obj_ptr, &slot_hndl);
+	if (ret) {
+		userpf_err(xdev, "XCLBIN Download failed.");
+		goto error;
+	}
+	mutex_unlock(&xdev->dev_lock);
+	
+	return 0;
+
+error:
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
 }
 
 int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,

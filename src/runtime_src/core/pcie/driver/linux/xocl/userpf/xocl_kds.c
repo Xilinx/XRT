@@ -179,6 +179,126 @@ xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
 		info->flags = CU_CTX_SHARED;
 }
 
+static int
+xocl_cu_ctx_to_info(struct xocl_dev *xdev, 
+		struct drm_xocl_ctx *args, struct kds_ctx_info *info)
+{
+	uint32_t slot_hndl = args->handle; // Get the slot handler
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	char *kname_p = args->cu_name;
+	struct xrt_cu *xcu = NULL;
+	uint32_t cu_index;
+	char iname[64];
+	char kname[64];
+	int i = 0;
+
+	strcpy(kname, strsep(&kname_p, ":"));
+	strcpy(iname, strsep(&kname_p, ":"));
+
+	/* Retrive the CU index from the given slot */
+	for (i = 0; i < MAX_CUS; i++) {
+		xcu = kds->cu_mgmt.xcus[i];
+		if (!xcu)
+			continue; 
+
+		if ((xcu->info.slot_idx == slot_hndl) &&
+				(!strcmp(xcu->info.kname, kname)) &&
+				(!strcmp(xcu->info.iname, iname))) {
+			cu_index = i;
+			info->cu_domain = DOMAIN_PL;
+			goto done;
+		}
+	}
+
+	/* Retrive the CU index from the given slot */
+	for (i = 0; i < MAX_CUS; i++) {
+		xcu = kds->scu_mgmt.xcus[i];
+		if (!xcu)
+			continue; 
+
+		if ((xcu->info.slot_idx == slot_hndl) &&
+				(!strcmp(xcu->info.kname, kname)) &&
+				(!strcmp(xcu->info.iname, iname))) {
+			cu_index = i;
+			info->cu_domain = DOMAIN_PS;
+			goto done;
+		}
+	}
+
+	return -EINVAL;
+
+done:
+	info->cu_idx = get_domain_idx(cu_index);
+
+	if (args->flags == XOCL_CTX_EXCLUSIVE)
+		info->flags = CU_CTX_EXCLUSIVE;
+	else
+		info->flags = CU_CTX_SHARED;
+
+	return 0;
+}
+
+static int xocl_open_cu_context(struct xocl_dev *xdev, struct kds_client *client,
+			    struct drm_xocl_ctx *args)
+{
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
+	struct kds_ctx_info	 info;
+	xuid_t *uuid;
+	int ret;
+
+	mutex_lock(&client->lock);
+	/* If this client has no opened context, lock bitstream */
+	if (!client->ctx) {
+		/* Allocate the new client context and store the xclbin */
+		client->ctx = vzalloc(sizeof(struct kds_client_ctx));
+		if (!client->ctx) {
+			ret = -ENOMEM;
+			goto out;
+		}
+
+		/* SAIF TODO : Currently using cache index.. This should be slot index */
+		axlf_obj = XDEV(xdev)->axlf_obj[args->handle];
+		if (!axlf_obj)
+			goto out1;
+
+		ret = xocl_icap_lock_bitstream(xdev, axlf_obj->uuid);
+		if (ret)
+			goto out1;
+		uuid = vzalloc(sizeof(*uuid));
+		if (!uuid) {
+			ret = -ENOMEM;
+			goto out1;
+		}
+		uuid_copy(uuid, axlf_obj->uuid);
+		client->ctx->xclbin_id = uuid;
+
+		list_add_tail(&client->ctx->link, &client->ctx_list);
+	}
+
+	/* Bitstream is locked. No one could load a new one
+	 * until this client close all of the contexts.
+	 */
+	ret = xocl_cu_ctx_to_info(xdev, args, &info);
+	if (ret)
+		goto out1;
+
+	info.curr_ctx = (void *)client->ctx;
+	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
+
+out1:
+	/* If client still has no opened context at this point */
+	if (!client->ctx) {
+		if (client->ctx->xclbin_id)
+			vfree(client->ctx->xclbin_id);
+		client->ctx->xclbin_id = NULL;
+		(void) xocl_icap_unlock_bitstream(xdev, axlf_obj->uuid);
+	}
+out:
+	mutex_unlock(&client->lock);
+	return ret;
+}
+
+
 static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
@@ -277,6 +397,67 @@ out:
 	return ret;
 }
 
+static int xocl_add_hw_context(struct xocl_dev *xdev, struct kds_client *client,
+			    struct drm_xocl_ctx *args)
+{
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
+	xuid_t *uuid = NULL;
+	uint32_t slot_hndl = 0;
+	int ret;
+
+	uuid = vzalloc(sizeof(*uuid));
+	if (!uuid) {
+		return -ENOMEM;
+	}
+	uuid_copy(uuid, &args->xclbin_id);
+	axlf_obj = xocl_query_cache_xclbin(xdev, uuid); 
+	if (!axlf_obj) {
+		vfree(uuid);
+		return -EINVAL;
+	}
+
+	mutex_lock(&client->lock);
+	ret = xocl_download_axlf_helper(XDEV(xdev)->drm, axlf_obj, &slot_hndl);
+	if (ret) {
+		vfree(uuid);
+		mutex_unlock(&client->lock);
+		return -EINVAL;
+	}
+
+	/* Slot handler should return from here. 
+	 * Same should use as hw context handler */
+	args->handle = slot_hndl;
+	mutex_unlock(&client->lock);
+	vfree(uuid);
+
+	return ret;
+}
+
+static int xocl_del_hw_context(struct xocl_dev *xdev, struct kds_client *client,
+			    struct drm_xocl_ctx *args)
+{
+	uint32_t slot_hndl;
+	int ret = 0;
+
+	mutex_lock(&client->lock);
+
+	/* xclCloseContext() would send xclbin_id and cu_idx.
+	 * Be more cautious while delete. Do sanity check */
+	if (client->ctx) {
+		userpf_err(xdev, "Already some contexts are still open");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	slot_hndl = args->handle;
+	/* TODO : We need to make use this slot to clean the slot information
+	 * from the device */
+out:
+	mutex_unlock(&client->lock);
+	return ret;
+}
+
+
 static int
 xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
 	      struct drm_xocl_ctx *args)
@@ -313,6 +494,15 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 		break;
 	case XOCL_CTX_OP_FREE_CTX:
 		ret = xocl_del_context(xdev, client, args);
+		break;
+	case XOCL_CTX_OP_ALLOC_HW_CTX:
+		ret = xocl_add_hw_context(xdev, client, args);
+		break;
+	case XOCL_CTX_OP_FREE_HW_CTX:
+		ret = xocl_del_hw_context(xdev, client, args);
+		break;
+	case XOCL_CTX_OP_OPEN_CU_CTX:
+		ret = xocl_open_cu_context(xdev, client, args);
 		break;
 	case XOCL_CTX_OP_OPEN_UCU_FD:
 		ret = xocl_open_ucu(xdev, client, args);

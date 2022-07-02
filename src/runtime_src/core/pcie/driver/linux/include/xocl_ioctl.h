@@ -528,6 +528,7 @@ enum drm_xocl_ctx_code {
 struct drm_xocl_ctx {
 	enum drm_xocl_ctx_code op;
 	xuid_t   xclbin_id;
+	char	 cu_name[64];
 	uint32_t cu_index;
 	uint32_t flags;
 	// it return context id

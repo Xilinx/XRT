@@ -1506,6 +1506,7 @@ int shim::xclRegisterAxlf(const axlf *buffer)
     if (ret)
         return -errno;
 
+    legacyCtxSupport = false; 
     return ret;
 }
 
@@ -1654,6 +1655,9 @@ int shim::xclLoadAxlf(const axlf *buffer)
             return -EIO;
         }
     }
+
+    legacyCtxSupport = true; 
+
     return ret;
 }
 
@@ -2291,6 +2295,8 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
     drm_xocl_ctx ctx = {XOCL_CTX_OP_OPEN_CU_CTX};
     ctx.flags = flags;
     ctx.handle = static_cast<xcl_hwctx_handle>(hwctx);
+    std::strcpy(ctx.cu_name, cuname.c_str());
+
     if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx))
         throw xrt_core::system_error(errno, "failed to open ip context");
 
@@ -2303,6 +2309,9 @@ uint32_t
 shim::
 create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
 {
+    if (legacyCtxSupport)
+    	throw xrt_core::ishim::not_supported_error{__func__};
+
     drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_HW_CTX};
     std::memcpy(ctx.xclbin_id, &xclbin_uuid, sizeof(uuid_t));
     ctx.flags = qos;
@@ -2317,6 +2326,9 @@ void
 shim::
 destroy_hw_context(uint32_t ctxhdl)
 {
+    if (legacyCtxSupport)
+    	throw xrt_core::ishim::not_supported_error{__func__};
+
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_HW_CTX};
     ctx.handle = ctxhdl;
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);

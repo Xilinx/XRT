@@ -36,7 +36,7 @@ static void printHelp() {
 int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
-    std::string b_file = "/ps_validate_bandwidth.xclbin";
+    std::string b_file = "/verify.xclbin";
     bool flag_s = false;
     for (int i = 1; i < argc; i++) {
         if ((strcmp(argv[i], "-p") == 0) || (strcmp(argv[i], "--path") == 0)) {
@@ -78,8 +78,8 @@ int main(int argc, char** argv) {
 
     auto uuid = device.register_xclbin(xrt::xclbin{binaryfile});
     xrt::hw_context ctx{device, uuid};
-    //auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
-    auto hello_world = xrt::kernel(ctx, "hello_world");
+    //auto hello_world = xrt::kernel(device, uuid.get(), "verify");
+    auto hello_world = xrt::kernel(ctx, "verify");
     const size_t DATA_SIZE = COUNT * sizeof(int);
     auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
     auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));

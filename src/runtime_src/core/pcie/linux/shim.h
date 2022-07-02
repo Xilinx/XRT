@@ -158,6 +158,7 @@ public:
   register_xclbin(const xrt::xclbin&);
 
 private:
+  bool legacyCtxSupport;
   std::shared_ptr<xrt_core::device> mCoreDevice;
   std::shared_ptr<pcidev::pci_device> mDev;
   std::ofstream mLogStream;
