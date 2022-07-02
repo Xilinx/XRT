@@ -90,7 +90,7 @@ set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
 # If XRT_DEV_COMPONENT is same DEFAULT_COMPONENT then only that package
 # is created with both development and run-time content.
 #set (XRT_DEV_COMPONENT "xrt-dev")
-set (XRT_DEV_COMPONENT "xrt")
+option (XRT_DEV_COMPONENT "Set to 'xrt-dev' to split dev artifacts into separate component&package" "xrt")
 
 # Enable static package by setting XRT_STATIC_COMPONENT to "xrt-static"
 # If XRT_STATIC_COMPONENT is same DEFAULT_COMPONENT then only that package
@@ -98,7 +98,7 @@ set (XRT_DEV_COMPONENT "xrt")
 # It should also be possible to set it to "xrt-dev" if you have XRT_DEV_COMPONENT
 # set to "xrt-dev" and you want to bundle the static librares into the development package.
 #set (XRT_STATIC_COMPONENT "xrt-static"
-set (XRT_STATIC_COMPONENT "xrt")
+option (XRT_STATIC_COMPONENT "Set to 'xrt-static' to split static libs into separate component&package" "xrt")
 
 # Version adjusted to 2.14 for 2022.2
 set(XRT_VERSION_RELEASE 202220)
