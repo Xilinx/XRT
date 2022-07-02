@@ -2290,17 +2290,30 @@ xrt_core::cuidx_type
 shim::
 open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-    auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
-    unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
-    drm_xocl_ctx ctx = {XOCL_CTX_OP_OPEN_CU_CTX};
-    ctx.flags = flags;
-    ctx.handle = static_cast<xcl_hwctx_handle>(hwctx);
-    std::strcpy(ctx.cu_name, cuname.c_str());
+    if (legacyCtxSupport) {
+      	// Alveo Linux PCIE does not yet support multiple xclbins.  Call
+  	// regular flow.  Default access mode to shared unless explicitly
+  	// exclusive.
+  	auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  	auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  	auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  	xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
-    if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx))
-        throw xrt_core::system_error(errno, "failed to open ip context");
+        return cuidx;
+    }
+    else {
+        auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+        unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
+        drm_xocl_ctx ctx = {XOCL_CTX_OP_OPEN_CU_CTX};
+        ctx.flags = flags;
+        ctx.handle = static_cast<xcl_hwctx_handle>(hwctx);
+        std::strcpy(ctx.cu_name, cuname.c_str());
 
-    return xrt_core::cuidx_type{ctx.cu_index};
+        if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx))
+            throw xrt_core::system_error(errno, "failed to open ip context");
+
+        return xrt_core::cuidx_type{ctx.cu_index};
+    }
 }
 
 // Assign xclbin with uuid to hardware resources and return a context id
