@@ -256,7 +256,7 @@ static int xocl_open_cu_context(struct xocl_dev *xdev, struct kds_client *client
 			goto out;
 		}
 
-		/* SAIF TODO : Currently using cache index.. This should be slot index */
+		/* TODO : Currently using cache index.. This should be slot index */
 		axlf_obj = XDEV(xdev)->axlf_obj[args->handle];
 		if (!axlf_obj)
 			goto out1;

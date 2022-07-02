@@ -521,7 +521,7 @@ get_next_free_cache_index(struct xocl_dev *xdev, const xuid_t *uuid)
 	}
 
 
-	/* SAIF TODO : Check the ref_cnt of axlf_obj, to delete
+	/* TODO : Check the ref_cnt of axlf_obj, to delete
 	 * some unused xclbin cache data to make some room for
 	 * new xclbin.
 	 */	

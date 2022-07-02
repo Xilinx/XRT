@@ -2098,7 +2098,7 @@ xocl_query_kernel(xdev_handle_t xdev_hdl, const char *name)
 	int off = 0;
 	int i = 0;
 
-	/* SAIF TODO : Assumption that no two kernel names are same for
+	/* TODO : Assumption that no two kernel names are same for
 	 * two different XCLBIN.
 	 */
 	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
