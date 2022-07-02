@@ -86,11 +86,19 @@ endif()
 # link libraries and header which are then excluded from runtime component
 set (CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "xrt")
 
-# Enable development package by specifying development component name
+# Enable development package by setting XRT_DEV_COMPONENT to "xrt-dev"
 # If XRT_DEV_COMPONENT is same DEFAULT_COMPONENT then only that package
 # is created with both development and run-time content.
 #set (XRT_DEV_COMPONENT "xrt-dev")
 set (XRT_DEV_COMPONENT "xrt")
+
+# Enable static package by setting XRT_STATIC_COMPONENT to "xrt-static"
+# If XRT_STATIC_COMPONENT is same DEFAULT_COMPONENT then only that package
+# is created with both dynamic and static content
+# It should also be possible to set it to "xrt-dev" if you have XRT_DEV_COMPONENT
+# set to "xrt-dev" and you want to bundle the static librares into the development package.
+#set (XRT_STATIC_COMPONENT "xrt-static"
+set (XRT_STATIC_COMPONENT "xrt")
 
 # Version adjusted to 2.14 for 2022.2
 set(XRT_VERSION_RELEASE 202220)
