@@ -639,6 +639,9 @@ struct xocl_dev_core {
 
 	/* XOCL Should cache all the XCLBINs which registered for this device */
 	struct xocl_axlf_obj_cache *axlf_obj[MAX_SLOT_SUPPORT];
+
+	/* FIXME : Once multiple XCLBIN support then remove this */
+	uint32_t 		curr_cache;
 };
 
 #define XOCL_DRM(xdev_hdl)					\
@@ -2091,33 +2094,27 @@ xocl_query_cache_xclbin(xdev_handle_t xdev_hdl, xuid_t *xclbin)
 
 /* Retrive kernel information from XOCL device cached data */
 static inline struct kernel_info *
-xocl_query_kernel(xdev_handle_t xdev_hdl, const char *name)
+xocl_query_kernel(xdev_handle_t xdev_hdl, uint32_t cache_idx, const char *name)
 {
 	struct kernel_info *kernel = NULL;
 	struct xocl_axlf_obj_cache *axlf_obj = NULL;
 	int off = 0;
-	int i = 0;
+	
+	axlf_obj = XDEV(xdev_hdl)->axlf_obj[cache_idx];
+	if (!axlf_obj)
+		return NULL;
 
-	/* TODO : Assumption that no two kernel names are same for
-	 * two different XCLBIN.
-	 */
-	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
-		axlf_obj = XDEV(xdev_hdl)->axlf_obj[i];
-		if (!axlf_obj)
-			continue;
+	while (off < axlf_obj->ksize) {
+		kernel = (struct kernel_info *)(axlf_obj->kernels + off);
+		if (!strcmp(kernel->name, name))
+			break;
 
-		while (off < axlf_obj->ksize) {
-			kernel = (struct kernel_info *)(axlf_obj->kernels + off);
-			if (!strcmp(kernel->name, name))
-				break;
-
-			off += sizeof(struct kernel_info);
-			off += sizeof(struct argument_info) * kernel->anums;
-		}
-
-		if (off < axlf_obj->ksize)
-			return kernel;
+		off += sizeof(struct kernel_info);
+		off += sizeof(struct argument_info) * kernel->anums;
 	}
+
+	if (off < axlf_obj->ksize)
+		return kernel;
 
 	return NULL;
 }

@@ -1568,7 +1568,7 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
 	 * - misc: software, number of resourse ...
 	 */
 	for (i = 0; i < num_cus; i++) {
-		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname);
+		krnl_info = xocl_query_kernel(xdev, XDEV(xdev)->curr_cache, cu_info[i].kname);
 		if (!krnl_info) {
 			userpf_info(xdev, "%s has no metadata. Ignore", cu_info[i].kname);
 			continue;
@@ -1628,7 +1628,7 @@ xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip
 		cu_info[i].num_args = 0;
 		cu_info[i].args = NULL;
 
-		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname);
+		krnl_info = xocl_query_kernel(xdev, XDEV(xdev)->curr_cache, cu_info[i].kname);
 		if (!krnl_info) {
 			/* Workaround for U30, maybe we can remove this in the future */
 			userpf_info(xdev, "%s has no metadata. Use default", cu_info[i].kname);
