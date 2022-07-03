@@ -59,6 +59,8 @@ usage()
     echo "[-verbose]                  Turn on verbosity when compiling"
     echo "[-ertbsp <dir>]             Path to directory with pre-downloaded BSP files for building ERT (default: download BSP files during build time)"
     echo "[-ertfw <dir>]              Path to directory with pre-built ert firmware (default: build the firmware)"
+    echo "[-split-dev]                XRT_DEV_COMPONENT=xrt-dev to create seperate xrt-dev packages"
+    echo "[-split-static]             XRT_STATIC_COMPONENT=xrt-static to separate static libs into their own packages"
     echo ""
     echo "ERT firmware is built if and only if MicroBlaze gcc compiler can be located."
     echo "When compiler is not accesible, use -ertfw to specify path to directory with"
@@ -92,6 +94,8 @@ ertbsp=""
 ertfw=""
 werror=1
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+split_dev=0
+split_static=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -191,6 +195,14 @@ while [ $# -gt 0 ]; do
             static_boost=$1
             shift
             ;;
+	-split-dev)
+            split_dev=1
+            shift
+            ;;
+	-split-static)
+            split_static=1
+            shift
+            ;;
         *)
             echo "unknown option"
             usage
@@ -206,6 +218,19 @@ edge_dir=${EDGE_DIR:-Edge}
 # Update every time CMake is generating makefiles.
 # Disable with '-disable-werror' option.
 cmake_flags+=" -DXRT_ENABLE_WERROR=$werror"
+
+if [[ $split_static == 1 ]]; then
+    cmake_flags+=" -DXRT_STATIC_COMPONENT=xrt-static"
+
+    if [[ $split_dev == 1 ]]; then
+	cmake_flags+=" -DXRT_DEV_COMPONENT=xrt-dev"
+    fi
+elif [[ $split_dev == 1 ]]; then
+    # only have -split_dev but it doesn't make sense to put the static libs in the runtime package
+    # so we also set XRT_STATIC_COMPONENT to xrt-dev
+    cmake_flags+=" -DXRT_DEV_COMPONENT=xrt-dev -DXRT_STATIC_COMPONENT=xrt-dev"
+fi
+
 
 here=$PWD
 cd $BUILDDIR
