@@ -2,7 +2,7 @@
 
 ..
    comment:: SPDX-License-Identifier: Apache-2.0
-   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+   comment:: Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 
 Building the XRT Software Stack
 -------------------------------
@@ -13,7 +13,7 @@ Building the XRT Installation Package
 Installing Building Dependencies
 ................................
 
-XRT requires C++14 compiler and a few development libraries bundled
+XRT requires C++17 compiler and a few development libraries bundled
 with modern Linux distribution. Please install the necessary tools and
 dependencies using the provided ``xrtdeps.sh``.
 
@@ -26,13 +26,8 @@ for the tools and libraries XRT depends on. If any system libraries
 XRT depends on (for example Boost libraries) are updated to non
 standard versions, then XRT must be rebuilt.
 
-On RHEL7.x/CentOS7.x use devtoolset to switch to C++14 devlopment
-environment. This step is not applicable to Ubuntu, which already has
-C++14 capable GCC.
-
-::
-
-   scl enable devtoolset-9 bash
+On RHEL7.x/CentOS7.x devtoolset-9 is required to switch to a C++17 devlopment
+environment.
 
 XRT includes source code for ERT firmware. 
 It needs to be compiled with the MicroBlaze GCC compiler, which is available in `Xilinx Vitis™ Software Platform <https://www.xilinx.com/products/design-tools/vitis.html>`_. 
@@ -51,10 +46,6 @@ Building the XRT Runtime
    ./build.sh
 
 ``build.sh`` script builds for both Debug and Release profiles.  
-
-On RHEL/CentOS, if ``build.sh`` was accidentally run prior to enabling
-the devtoolset, then it is necessary to clean stale files makefiles by
-running ``build.sh clean`` prior to the next build.
 
 Please check ERT firmware is built properly at ``build/Release/opt/xilinx/xrt/share/fw/sched*.bin``.
 
