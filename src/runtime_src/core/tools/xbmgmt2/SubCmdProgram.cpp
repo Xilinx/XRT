@@ -137,6 +137,16 @@ is_SC_fixed(unsigned int index)
   }
 }
 
+// Function to print progress using dots
+static void
+progressReporter(bool& done)
+{
+  while (!done) {
+    std::cout << "." << std::flush;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+}
+
 // Update SC firmware on the board
 static void
 update_SC(unsigned int  index, const std::string& file)
@@ -151,10 +161,20 @@ update_SC(unsigned int  index, const std::string& file)
   //versal flow to flash sc
   try {
     uint32_t val = xrt_core::query::program_sc::value_type(1);
+    bool done = false;
+    // Print progress while sc is flashed
+    std::thread t(progressReporter, std::ref(done));
     xrt_core::device_update<xrt_core::query::program_sc>(dev.get(), val);
+    done = true;
+    t.join();
+    std::cout << std::endl;
+	std::cout << boost::format("%-8s : %s \n\n") % "INFO" % "SC firmware image has been programmed successfully.";
     return;
   }
-  catch (const xrt_core::query::exception&) {
+  catch (const xrt_core::query::sysfs_error &e) {
+    throw xrt_core::error(std::string("Failed to update SC flash image, Error accessing sysfs entry : ") + e.what());
+  }
+  catch (const xrt_core::query::not_supported&) {
     // this flow is not supported on the device
     // continue with the other flow
   }
@@ -214,6 +234,7 @@ update_SC(unsigned int  index, const std::string& file)
   if (wait == dev_timeout)
     throw xrt_core::error("User function is not back online. Please warm reboot.");
 #endif
+  std::cout << boost::format("%-8s : %s \n\n") % "INFO" % "SC firmware image has been programmed successfully.";
 }
 
 // Helper function for header info
@@ -383,7 +404,7 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
   }
 
   // -- Program the SC image --
-  boost::format programFmt("[%s] : %s...\n");
+  boost::format programFmt("[%s] : %s\n");
   std::cout << programFmt % flasher.sGetDBDF() % "Updating Satellite Controller (SC) firmware flash image";
   update_SC(boardIdx, candidate.file);
   std::cout << std::endl;
