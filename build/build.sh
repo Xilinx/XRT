@@ -3,11 +3,25 @@
 set -e
 
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
+MAJOR=${VERSION%.*}
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
 CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
 CPU=`uname -m`
+
+# Documentation states that devtoolset-9 is a requirement for building on RHEL/CentOS 7.x
+if [[ ( $OSDIST == "rhel" || $OSDIST == "centos" ) && $MAJOR -lt "8" ]]; then
+    echo "Setting up devtoolset-9"
+    {
+        # Try
+	source scl_source enable devtoolset-9
+    } || {
+        # Except
+	echo "devtoolset-9 is not installed, please run xrtdeps.sh" && exit 1
+    }
+fi
 
 if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
     if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
