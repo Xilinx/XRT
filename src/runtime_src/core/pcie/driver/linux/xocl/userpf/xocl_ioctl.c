@@ -487,6 +487,7 @@ done:
 	
 	// TODO : Default Slot 
 	*slot_hndl = 0;
+	XDEV(xdev)->curr_cache = axlf_obj->idx;
 	userpf_info(xdev, "Loaded xclbin %pUb to Slot : %d", &axlf->m_header.uuid,
 			*slot_hndl);
 
