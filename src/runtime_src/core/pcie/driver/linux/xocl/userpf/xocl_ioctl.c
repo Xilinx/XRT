@@ -369,7 +369,8 @@ xocl_download_axlf_helper(struct xocl_drm *drm_p, struct xocl_axlf_obj_cache *ax
 		err = -EDEADLK;
 		goto done;
 	}
-
+	
+	XDEV(xdev)->curr_cache = axlf_obj->idx;
 	axlf = axlf_obj->xclbin;
 	if (!axlf) {
 		userpf_err(xdev, "Invalid cached XCLBIN\n");
@@ -487,7 +488,6 @@ done:
 	
 	// TODO : Default Slot 
 	*slot_hndl = 0;
-	XDEV(xdev)->curr_cache = axlf_obj->idx;
 	userpf_info(xdev, "Loaded xclbin %pUb to Slot : %d", &axlf->m_header.uuid,
 			*slot_hndl);
 

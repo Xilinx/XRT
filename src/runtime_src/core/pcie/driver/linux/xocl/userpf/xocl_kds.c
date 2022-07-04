@@ -2281,7 +2281,7 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
 		goto out;
 	}
 
-	axlf_obj = xocl_query_cache_xclbin(xdev, uuid);
+	axlf_obj = XDEV(xdev)->axlf_obj[XDEV(xdev)->curr_cache];
 	if (!axlf_obj) {
 		ret = -EINVAL;
 		goto out;
@@ -2319,7 +2319,7 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		return;
 
 	/* TODO : Need to retrive uuid from slot structure */
-	axlf_obj = XDEV(xdev)->axlf_obj[slot_hdl];
+	axlf_obj = XDEV(xdev)->axlf_obj[XDEV(xdev)->curr_cache];
 	if (!axlf_obj)
 		return;
 
