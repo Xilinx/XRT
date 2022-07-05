@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -90,6 +91,7 @@ namespace xdp {
 
     db->registerPlugin(this);
     db->registerInfo(info::aie_profile);
+    db->getStaticInfo().setAieApplication();
     getPollingInterval();
 
     //
@@ -165,16 +167,14 @@ namespace xdp {
 
     // **** PL/Shim Counters ****
     mShimStartEvents = {
-      {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
-      {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
-      {"input_stalls_idle",     {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}},
-      {"output_stalls_idle",    {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
+      {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
+      {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
+      {"packets",               {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL}}
     };
     mShimEndEvents = {
-      {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
-      {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
-      {"input_stalls_idle",     {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}},
-      {"output_stalls_idle",    {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
+      {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
+      {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
+      {"packets",               {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL}}
     };
 
     // String event values for guidance and output
@@ -211,10 +211,9 @@ namespace xdp {
                                  "DMA_S2MM_1_FINISHED_BD_MEM"}}
     };
     mShimEventStrings = {
-      {"input_bandwidths",      {"PORT_RUNNING_0_PL", "PORT_TLAST_0_PL"}},
-      {"output_bandwidths",     {"PORT_RUNNING_0_PL", "PORT_TLAST_0_PL"}},
-      {"input_stalls_idle",     {"PORT_IDLE_0_PL",    "PORT_STALLED_0_PL"}},
-      {"output_stalls_idle",    {"PORT_IDLE_0_PL",    "PORT_STALLED_0_PL"}}
+      {"input_bandwidths",      {"PORT_RUNNING_0_PL", "PORT_STALLED_0_PL"}},
+      {"output_bandwidths",     {"PORT_RUNNING_0_PL", "PORT_STALLED_0_PL"}},
+      {"packets",               {"PORT_TLAST_0_PL",   "PORT_TLAST_1_PL"}}
     };
   }
 
@@ -339,7 +338,7 @@ namespace xdp {
     return numFreeCtr;
   }
 
-  std::string AIEProfilingPlugin::getMetricSet(const XAie_ModuleType mod, const std::string& metricsStr)
+  std::string AIEProfilingPlugin::getMetricSet(const XAie_ModuleType mod, const std::string& metricsStr, bool ignoreOldConfig)
   {
     std::vector<std::string> vec;
 
@@ -374,6 +373,9 @@ namespace xdp {
       std::stringstream msg;
       msg << "Unable to find " << moduleName << " metric set " << metricSet
           << ". Using default of " << defaultSet << ".";
+      if (ignoreOldConfig) {
+        msg << " As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
+      }
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       metricSet = defaultSet;
     }
@@ -435,9 +437,7 @@ namespace xdp {
             // NOTE: input = slave (data flowing from PLIO)
             //       output = master (data flowing to PLIO)
             if ((isMaster && (metricsStr == "input_bandwidths"))
-                || (isMaster && (metricsStr == "input_stalls_idle"))
-                || (!isMaster && (metricsStr == "output_bandwidths"))
-                || (!isMaster && (metricsStr == "output_stalls_idle")))
+                || (!isMaster && (metricsStr == "output_bandwidths")))
               continue;
 
             tempTiles.push_back(tile_type());
@@ -552,8 +552,7 @@ namespace xdp {
   {
     // Currently only used to monitor trace and PL stream
     if ((metricSet != "aie_trace") && (metricSet != "input_bandwidths")
-        && (metricSet != "output_bandwidths") && (metricSet != "input_stalls_idle")
-        && (metricSet != "output_stalls_idle"))
+        && (metricSet != "output_bandwidths") && (metricSet != "packets"))
       return;
 
     if (metricSet == "aie_trace") {
@@ -1015,8 +1014,9 @@ namespace xdp {
 
     std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
 
-    for(int module = 0; module < NUM_MODULES; ++module) {
-      if (metricsConfig.empty()){
+    bool newConfigUsed = false;
+    for (int module = 0; module < NUM_MODULES; ++module) {
+      if (metricsConfig[module].empty()) {
 #if 0
 // No need to add the warning message here, as all the tests are using configs under Debug
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
@@ -1026,7 +1026,13 @@ namespace xdp {
 #endif
         continue;
       }
+      newConfigUsed = true;
       boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
+    }
+
+    if (!newConfigUsed) {
+      // None of the new style AIE profile metrics have been used. So check for old style.
+      return false;
     }
 
     // Get AIE clock frequency
@@ -1056,12 +1062,12 @@ namespace xdp {
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
 
-      for(auto &metricsStr : metricsSettings[module]) { 
+      for (auto &metricsStr : metricsSettings[module]) { 
 
         int NUM_COUNTERS       = numCounters[module];
         XAie_ModuleType mod    = falModuleTypes[module];
         std::string moduleName = moduleNames[module];
-        auto metricSet         = getMetricSet(mod, metricsStr);
+        auto metricSet         = getMetricSet(mod, metricsStr, true);
         auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
 
 
