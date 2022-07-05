@@ -13,8 +13,8 @@ Building the XRT Installation Package
 Installing Building Dependencies
 ................................
 
-XRT requires C++17 compiler and a few development libraries bundled
-with modern Linux distribution. Please install the necessary tools and
+XRT requires a C++17 compiler and a few development libraries bundled
+with modern Linux distributions. Please install the necessary tools and
 dependencies using the provided ``xrtdeps.sh``.
 
 ::
@@ -26,8 +26,7 @@ for the tools and libraries XRT depends on. If any system libraries
 XRT depends on (for example Boost libraries) are updated to non
 standard versions, then XRT must be rebuilt.
 
-On RHEL7.x/CentOS7.x devtoolset-9 is required to switch to a C++17 devlopment
-environment.
+Note: Standard RHEL7.x/CentOS7.x distributions and associated YUM repositories do not provide a C++17 capable g++.
 
 XRT includes source code for ERT firmware. 
 It needs to be compiled with the MicroBlaze GCC compiler, which is available in `Xilinx Vitis™ Software Platform <https://www.xilinx.com/products/design-tools/vitis.html>`_. 
