@@ -78,8 +78,8 @@ int main(int argc, char** argv) {
     output_buffer.read(received_data);
 
     // Compare received data against expected data
-    char expected_data[LENGTH] = "Hello World\n";
-    if (std::memcmp(expected_data, received_data, LENGTH) != 0) {
+    std::string expected_data = "Hello World\n";
+    if (std::memcmp(expected_data.c_str(), received_data, expected_data.size()) != 0) {
         std::cout << "TEST FAILED\n";
         throw std::runtime_error("Value read back does not match reference");
     }
