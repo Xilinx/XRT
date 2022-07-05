@@ -167,8 +167,7 @@ update_SC(unsigned int  index, const std::string& file)
     xrt_core::device_update<xrt_core::query::program_sc>(dev.get(), val);
     done = true;
     t.join();
-    std::cout << std::endl;
-	std::cout << boost::format("%-8s : %s \n\n") % "INFO" % "SC firmware image has been programmed successfully.";
+    std::cout << boost::format("\n%-8s : %s \n\n") % "INFO" % "SC firmware image has been programmed successfully.";
     return;
   }
   catch (const xrt_core::query::sysfs_error &e) {
