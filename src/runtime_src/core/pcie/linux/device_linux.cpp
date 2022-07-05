@@ -693,14 +693,14 @@ struct program_sc
 {
   using value_type = query::program_sc::value_type;
   using result_type = query::program_sc::value_type;
-  static const std::string subdev;
-  static const std::string entry;
 
   static result_type
   get(const xrt_core::device* device, key_type key)
   {
     std::string err;
     value_type value;
+    const std::string subdev = "xgq_vmr";
+    const std::string entry = "program_sc";
     get_pcidev(device)->sysfs_get(subdev, entry, err, value, static_cast<value_type>(-1));
     if (!err.empty())
       throw xrt_core::query::sysfs_error(err);
@@ -712,6 +712,8 @@ struct program_sc
   put(const xrt_core::device* device, key_type key, const boost::any& val)
   {
     auto pdev = get_pcidev(device);
+    const std::string subdev = "xgq_vmr";
+    const std::string entry = "program_sc";
     //check for exsistence of sysfs node
     std::string sysfs_path = pdev->get_sysfs_path(subdev, entry);
     if(sysfs_path.empty()) {
@@ -724,8 +726,6 @@ struct program_sc
       throw xrt_core::query::sysfs_error(err);
   }
 };
-const std::string program_sc::subdev = "xgq_vmr";
-const std::string program_sc::entry = "program_sc";
 
 // Specialize for other value types.
 template <typename ValueType>
