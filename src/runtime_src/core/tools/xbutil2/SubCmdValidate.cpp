@@ -226,12 +226,12 @@ find_xclbin_path( const std::shared_ptr<xrt_core::device>& _dev,
   } catch(...) {
     logger(_ptTest, "Error", "Unable to find device VBNV");
     _ptTest.put("status", test_token_failed);
-    throw xrt_core::error(std::errc::operation_canceled);
+    throw;
   }
 
   // Check if a 2RP platform
   std::vector<std::string> logic_uuid;
-  try{
+  try {
     logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(_dev);
   } catch(...) { }
 
@@ -251,7 +251,7 @@ find_xclbin_path( const std::shared_ptr<xrt_core::device>& _dev,
   // 0RP (nonDFX) flat shell support.
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
-  if(!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
+  if (!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
     logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", test_token_skipped);
     throw xrt_core::error(std::errc::operation_canceled);
@@ -329,7 +329,7 @@ spawn_testcase(boost::property_tree::ptree& _ptTest, const std::string& xrtTestC
           exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
         break;
       default:
-        return false; //Mode was not specified correctly.
+        throw std::runtime_error("Invalid test mode specified"); //Mode was not specified correctly.
     }
 
     if (exit_code == EOPNOTSUPP) {
@@ -351,6 +351,7 @@ spawn_testcase(boost::property_tree::ptree& _ptTest, const std::string& xrtTestC
     _ptTest.put("status", test_token_failed);
     return false;
   }
+  return false;
 }
 
 /*
