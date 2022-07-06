@@ -1016,7 +1016,7 @@ namespace xdp {
   }
 
   std::vector<tile_type>
-  AIEProfilingPlugin::getAllTilesForShimProfiling(void* handle)
+  AIEProfilingPlugin::getAllTilesForShimProfiling(void* handle, std::string metricsStr)
   {
     std::vector<tile_type> tiles;
 
@@ -1114,7 +1114,7 @@ namespace xdp {
         } // "all" 
       } else if (XAIE_PL_MOD == mod) {
         // XAIE_PL_MOD for graph metrics processed only here
-        tiles = getAllTilesForShimProfiling(handle);
+        tiles = getAllTilesForShimProfiling(handle, graphmetrics[i][2]);
         allGraphsDone = true;
       }
       for (auto &e : tiles) {
@@ -1181,7 +1181,7 @@ namespace xdp {
             } 
             allGraphsDone = true;
           } else if (XAIE_PL_MOD == mod) {
-            tiles = getAllTilesForShimProfiling(handle);
+            tiles = getAllTilesForShimProfiling(handle, metrics[i][1]);
             allGraphsDone = true; // ??
           }
         } // allGraphsDone
@@ -1392,14 +1392,18 @@ namespace xdp {
       return false;
     }
 
+    auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
+
     for(int module = 0; module < NUM_MODULES; ++module) {
       int numTileCounters[numCountersMod[module]+1] = {0};
+      XAie_ModuleType mod    = falModuleTypes[module];
+
       // Iterate over tiles and metrics to configure all desired counters
-      for (auto& tileMetric : mConfigMetric[module]) {
+      for (auto& tileMetric : mConfigMetrics[module]) {
         int numCounters = 0;
         auto col = tileMetric.first.col;
         auto row = tileMetric.first.row;
-        
+
         // NOTE: resource manager requires absolute row number
         auto loc        = (mod == XAIE_PL_MOD) ? XAie_TileLoc(col, 0) 
                         : XAie_TileLoc(col, row + 1);
@@ -1408,26 +1412,47 @@ namespace xdp {
         auto xaieModule = (mod == XAIE_CORE_MOD) ? xaieTile.core()
                         : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
                         : xaieTile.pl());
+
+        auto numFreeCtr = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
         
-//        for (int i=0; i < numFreeCounters; ++i) {
         auto startEvents = (mod == XAIE_CORE_MOD) ? mCoreStartEvents[tileMetric.second]
                          : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[tileMetric.second] 
                          : mShimStartEvents[tileMetric.second]);
         auto endEvents   = (mod == XAIE_CORE_MOD) ? mCoreEndEvents[tileMetric.second]
                          : ((mod == XAIE_MEM_MOD) ? mMemoryEndEvents[tileMetric.second] 
                          : mShimEndEvents[tileMetric.second]);
+
+        auto numTotalReqEvents = startEvents.size();
+        if (numFreeCtr < numTotalReqEvents) {
+          // warning
+ #if 0
+          std::stringstream msg;
+          msg << "Only " << numFreeCtr << " out of " << numTotalEvents
+              << " metrics were available for AIE "
+              << moduleName << " profiling due to resource constraints. "
+              << "AIE profiling uses performance counters which could be already used by AIE trace, ECC, etc."
+              << std::endl;
+
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+ #endif
+        }
+        for (int i=0; i < numFreeCtr; ++i) {
+
+            // Get vector of pre-defined metrics for this set
+            uint8_t resetEvent = 0;
+
             auto startEvent = startEvents.at(i);
             auto endEvent   = endEvents.at(i);
 
             // Request counter from resource manager
-       
+            auto perfCounter = xaieModule.perfCounter();
             auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
             if (ret != XAIE_OK) break;
             ret = perfCounter->reserve();
             if (ret != XAIE_OK) break;
           
             configGroupEvents(aieDevInst, loc, mod, startEvent, tileMetric.second);
-            configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, startEvent, tileMetric.second);
+            configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, startEvent, tileMetric.second);
           
             // Start the counters after group events have been configured
             ret = perfCounter->start();
@@ -1446,16 +1471,16 @@ namespace xdp {
                                    : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
                                    : (tmpEnd + BASE_SHIM_COUNTER));
 
-            auto payload = getCounterPayload(aieDevInst, tile, col, row, startEvent);
+            auto payload = getCounterPayload(aieDevInst, tileMetric.first, col, row, startEvent);
   
             // Store counter info in database
             std::string counterName = "AIE Counter " + std::to_string(counterId);
             (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz, 
-                moduleName, counterName);
+                moduleNames[module], counterName);
             counterId++;
             numCounters++;
-//          }
+          }
 
           std::stringstream msg;
           msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
@@ -1466,11 +1491,11 @@ namespace xdp {
         // Report counters reserved per tile
         {
           std::stringstream msg;
-          msg << "AIE profile counters reserved in " << moduleName << " modules - ";
-          for (int n=0; n <= NUM_COUNTERS; ++n) {
+          msg << "AIE profile counters reserved in " << moduleNames[module] << " modules - ";
+          for (int n=0; n <= numCountersMod[module]; ++n) {
             if (numTileCounters[n] == 0) continue;
             msg << n << ": " << numTileCounters[n] << " tiles";
-            if (n != NUM_COUNTERS) msg << ", ";
+            if (n != numCountersMod[module]) msg << ", ";
 
             (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], module);
           }
