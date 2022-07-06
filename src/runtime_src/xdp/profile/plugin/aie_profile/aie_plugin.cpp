@@ -1339,7 +1339,7 @@ namespace xdp {
     graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_core_metrics());
     graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_memory_metrics());
     graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_interface_tile_metrics());
-//    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_mem_tile_metrics());
+//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_mem_tile_metrics());
 
     // Process AIE_profile_settings metrics
     // Each of the metrics can have ; separated multiple values. Process and save all
