@@ -388,20 +388,26 @@ runFileTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree:
     return false;
   }
 
+  std::vector<std::string> args = { "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+
   if (check_supported) {
     logger(_ptTest, "Testcase", xrtTestCasePath);
-    std::vector<std::string> args = { "-p", test_dir,
-                                      "-s" };
+    args.push_back("-p");
+    args.push_back(test_dir);
+    args.push_back("-s");
     return spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, test_mode::support);
-  } else if (json_exists) {
-    std::vector<std::string> args = { "-p", test_dir,
-                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+  }
+
+  if (json_exists) {
+    args.push_back("-p");
+    args.push_back(test_dir);
     return spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, test_mode::json);
   } else {
-    std::vector<std::string> args = { "-k", xclbinPath,
-                                      "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
+    args.push_back("-k");
+    args.push_back(xclbinPath);
     return spawn_testcase(_ptTest, xrtTestCasePath, os_stdout, os_stderr, args, test_mode::no_json);
   }
+  return false;
 }
 
 /*
