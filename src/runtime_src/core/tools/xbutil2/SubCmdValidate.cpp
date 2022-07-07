@@ -342,23 +342,13 @@ spawn_testcase(boost::property_tree::ptree& _ptTest, const std::string& xrtTestC
         _ptTest.put("status", test_token_passed);
       return true;
     } else {
-      // logger(_ptTest, "Error", os_stdout.str());
-      // logger(_ptTest, "Error", os_stderr.str());
-      if (mode == test_mode::support) {
-        logger(_ptTest, "Error", "Failed while checking support.");
-      } else {
-        logger(_ptTest, "Error", "Failed while running test.");
-      }
+      logger(_ptTest, "Error", os_stdout.str());
+      logger(_ptTest, "Error", os_stderr.str());
       _ptTest.put("status", test_token_failed);
       return false;
     }
   } catch (const std::exception& e) {
-    // logger(_ptTest, "Error", e.what());
-    if (mode == test_mode::support) {
-      logger(_ptTest, "Error", "Caught exception while checking support.");
-    } else {
-      logger(_ptTest, "Error", "Caught exception while running test.");
-    }
+    logger(_ptTest, "Error", e.what());
     _ptTest.put("status", test_token_failed);
     return false;
   }
