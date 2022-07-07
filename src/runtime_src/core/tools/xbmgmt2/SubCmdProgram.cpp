@@ -172,15 +172,13 @@ update_SC(unsigned int  index, const std::string& file)
     return;
   }
   catch (const xrt_core::query::sysfs_error& e) {
-    done = true;
-    t.join();
+    std::cout << std::endl;
     throw xrt_core::error(std::string("Failed to update SC flash image, Error accessing sysfs entry : ") + e.what());
   }
   catch (const xrt_core::query::not_supported&) {
     // this flow is not supported on the device
     // continue with the other flow
-    done = true;
-    t.join();
+    std::cout << std::endl;
   }
 
   //if factory image, update SC
