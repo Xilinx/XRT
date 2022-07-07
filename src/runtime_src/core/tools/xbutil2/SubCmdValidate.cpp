@@ -1260,9 +1260,10 @@ check_test_supported(const std::shared_ptr<xrt_core::device>& _dev, boost::prope
     }
   }
 
-  std::ostringstream os_stdout;
-  std::ostringstream os_stderr;
-  return runFileTest(_dev, _ptTest, os_stdout, os_stderr, true);
+  // std::ostringstream os_stdout;
+  // std::ostringstream os_stderr;
+  // return runFileTest(_dev, _ptTest, os_stdout, os_stderr, true);
+  return true;
 }
 
 /*

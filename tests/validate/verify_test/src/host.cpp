@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
             std::cout << "\nNOT SUPPORTED" << std::endl;
             return EOPNOTSUPP;
         } else {
-            // std::cout << "\nSUPPORTED" << std::endl;
+            std::cout << "\nSUPPORTED" << std::endl;
             return EXIT_SUCCESS;
         }
     }
