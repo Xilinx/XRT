@@ -259,6 +259,7 @@ find_xclbin_path( const std::shared_ptr<xrt_core::device>& _dev,
 
   // check if xclbin is present
   if (xclbinPath.empty() || !boost::filesystem::exists(xclbinPath)) {
+    logger(_ptTest, "Details", "xclbin not available or not found. Skipping validation.");
     _ptTest.put("status", test_token_skipped);
     throw xrt_core::error(std::errc::operation_canceled);
   }
@@ -290,11 +291,11 @@ find_xrt_testcase_path(boost::property_tree::ptree& _ptTest, const std::string& 
     if (test_map.find(file) != test_map.end())
       test_name = test_map.find(file)->second;
 
-    // Parse if the file exists here
     xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
   } else {
     xrtTestCasePath = "/opt/xilinx/xrt/test/" + file;
   }
+  // Parse if the file exists here
   boost::filesystem::path xrt_path(xrtTestCasePath);
   if (!boost::filesystem::exists(xrt_path)) {
     logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
@@ -341,13 +342,23 @@ spawn_testcase(boost::property_tree::ptree& _ptTest, const std::string& xrtTestC
         _ptTest.put("status", test_token_passed);
       return true;
     } else {
-      logger(_ptTest, "Error", os_stdout.str());
-      logger(_ptTest, "Error", os_stderr.str());
+      // logger(_ptTest, "Error", os_stdout.str());
+      // logger(_ptTest, "Error", os_stderr.str());
+      if (mode == test_mode::support) {
+        logger(_ptTest, "Error", "Failed while checking support.");
+      } else {
+        logger(_ptTest, "Error", "Failed while running test.");
+      }
       _ptTest.put("status", test_token_failed);
       return false;
     }
   } catch (const std::exception& e) {
-    logger(_ptTest, "Error", e.what());
+    // logger(_ptTest, "Error", e.what());
+    if (mode == test_mode::support) {
+      logger(_ptTest, "Error", "Caught exception while checking support.");
+    } else {
+      logger(_ptTest, "Error", "Caught exception while running test.");
+    }
     _ptTest.put("status", test_token_failed);
     return false;
   }
@@ -1260,10 +1271,9 @@ check_test_supported(const std::shared_ptr<xrt_core::device>& _dev, boost::prope
     }
   }
 
-  // std::ostringstream os_stdout;
-  // std::ostringstream os_stderr;
-  // return runFileTest(_dev, _ptTest, os_stdout, os_stderr, true);
-  return true;
+  std::ostringstream os_stdout;
+  std::ostringstream os_stderr;
+  return runFileTest(_dev, _ptTest, os_stdout, os_stderr, true);
 }
 
 /*
