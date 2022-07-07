@@ -145,6 +145,7 @@ progressReporter(bool& done)
     std::cout << "." << std::flush;
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
+  std::cout << std::endl;
 }
 
 // Update SC firmware on the board
@@ -167,15 +168,19 @@ update_SC(unsigned int  index, const std::string& file)
     xrt_core::device_update<xrt_core::query::program_sc>(dev.get(), val);
     done = true;
     t.join();
-    std::cout << boost::format("\n%-8s : %s \n\n") % "INFO" % "SC firmware image has been programmed successfully.";
+    std::cout << boost::format("%-8s : %s \n\n") % "INFO" % "SC firmware image has been programmed successfully.";
     return;
   }
-  catch (const xrt_core::query::sysfs_error &e) {
+  catch (const xrt_core::query::sysfs_error& e) {
+    done = true;
+    t.join();
     throw xrt_core::error(std::string("Failed to update SC flash image, Error accessing sysfs entry : ") + e.what());
   }
   catch (const xrt_core::query::not_supported&) {
     // this flow is not supported on the device
     // continue with the other flow
+    done = true;
+    t.join();
   }
 
   //if factory image, update SC
