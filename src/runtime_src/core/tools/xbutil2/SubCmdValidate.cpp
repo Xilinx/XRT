@@ -378,6 +378,7 @@ runFileTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree:
 
   // Need json_exists to check if test is supported.
   if (check_supported && !json_exists) {
+    logger(_ptTest, "Details", "Unable to check for test support. Skipping validation.");
     _ptTest.put("status", test_token_skipped);
     return false;
   }
