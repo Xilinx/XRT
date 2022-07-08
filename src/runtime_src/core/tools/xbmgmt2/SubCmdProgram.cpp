@@ -137,17 +137,6 @@ is_SC_fixed(unsigned int index)
   }
 }
 
-// Function to print progress using dots
-static void
-progressReporter(bool& done)
-{
-  while (!done) {
-    std::cout << "." << std::flush;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-  std::cout << std::endl;
-}
-
 // Update SC firmware on the board
 static void
 update_SC(unsigned int  index, const std::string& file)
@@ -160,11 +149,19 @@ update_SC(unsigned int  index, const std::string& file)
   auto dev = xrt_core::get_mgmtpf_device(index);
 
   //versal flow to flash sc
+  std::thread t;
+  bool done;
   try {
     uint32_t val = xrt_core::query::program_sc::value_type(1);
-    bool done = false;
+    done = false;
     // Print progress while sc is flashed
-    std::thread t(progressReporter, std::ref(done));
+    t = std::thread([&done]() {
+                     while (!done) {
+                       std::cout << "." << std::flush;
+                       std::this_thread::sleep_for(std::chrono::seconds(1));
+                     }
+                     std::cout << std::endl;
+                   });
     xrt_core::device_update<xrt_core::query::program_sc>(dev.get(), val);
     done = true;
     t.join();
@@ -172,13 +169,15 @@ update_SC(unsigned int  index, const std::string& file)
     return;
   }
   catch (const xrt_core::query::sysfs_error& e) {
-    std::cout << std::endl;
+    done = true;
+    t.join();
     throw xrt_core::error(std::string("Failed to update SC flash image, Error accessing sysfs entry : ") + e.what());
   }
   catch (const xrt_core::query::not_supported&) {
     // this flow is not supported on the device
     // continue with the other flow
-    std::cout << std::endl;
+    done = true;
+    t.join();
   }
 
   //if factory image, update SC
