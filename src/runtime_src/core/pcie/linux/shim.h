@@ -70,6 +70,9 @@ public:
   int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
 
   // Bitstream/bin download
+  int xclDownloadAxlf(drm_xocl_axlf *axlf_obj);
+  int xclRegisterAxlf(drm_xocl_axlf *axlf_obj);
+  int load_xclbin(const axlf *top);
   int xclLoadXclBin(const xclBin *buffer);
   int xclGetErrorStatus(xclErrorStatus *info);
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
