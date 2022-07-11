@@ -1328,18 +1328,18 @@ namespace xdp {
     // Get the metrics settings
     std::vector<std::string> metricsConfig;
 
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_core_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_memory_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_interface_tile_metrics());
-//    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_mem_tile_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_core_module_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_memory_module_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
+//    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics());
 
     // Get the graph metrics settings
     std::vector<std::string> graphmetricsConfig;
 
-    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_core_metrics());
-    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_memory_metrics());
-    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_interface_tile_metrics());
-//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_mem_tile_metrics());
+    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_core_module_metrics());
+    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_memory_module_metrics());
+    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
+//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
 
     // Process AIE_profile_settings metrics
     // Each of the metrics can have ; separated multiple values. Process and save all

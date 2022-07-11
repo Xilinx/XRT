@@ -859,58 +859,58 @@ get_aie_profile_settings_interval_us()
 }
 
 inline std::string
-get_aie_profile_settings_graph_core_metrics()
+get_aie_profile_settings_graph_based_core_module_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_core_metrics", "");
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_core_module_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_settings_graph_memory_metrics()
+get_aie_profile_settings_graph_based_memory_module_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_memory_metrics", "");
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_memory_module_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_settings_graph_interface_tile_metrics()
+get_aie_profile_settings_graph_based_interface_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_interface_tile_metrics", "");
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_interface_tile_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_settings_graph_mem_tile_metrics()
+get_aie_profile_settings_graph_based_mem_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_mem_tile_metrics", "");
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_mem_tile_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_settings_core_metrics()
+get_aie_profile_settings_tile_based_core_module_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.core_metrics", "");
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_core_module_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_settings_memory_metrics()
+get_aie_profile_settings_tile_based_memory_module_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.memory_metrics", "");
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_memory_module_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_settings_interface_tile_metrics()
+get_aie_profile_settings_tile_based_interface_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.interface_tile_metrics", "");
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_interface_tile_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_settings_mem_tile_metrics()
+get_aie_profile_settings_tile_based_mem_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_profile_settings.mem_tile_metrics", "");
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_mem_tile_metrics", "");
   return value;
 }
 
@@ -941,32 +941,32 @@ get_aie_trace_settings_start_iteration()
 }
 
 inline std::string
-get_aie_trace_settings_graph_metrics()
+get_aie_trace_settings_graph_based_engine_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_trace_settings.graph_metrics", "");
+  static std::string value = detail::get_string_value("AIE_trace_settings.graph_based_engine_tile_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_trace_settings_aie_tile_metrics()
+get_aie_trace_settings_tile_based_engine_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_trace_settings.aie_tile_metrics", "");
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_engine_tile_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_trace_settings_mem_tile_metrics()
+get_aie_trace_settings_tile_based_mem_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_trace_settings.mem_tile_metrics", "");
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_mem_tile_metrics", "");
   return value;
 }
 
 #if 0
 // Post 2022.2
 inline std::string
-get_aie_trace_settings_interface_tile_metrics()
+get_aie_trace_settings_tile_based_interface_tile_metrics()
 {
-  static std::string value = detail::get_string_value("AIE_trace_settings.interface_tile_metrics", "");
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_interface_tile_metrics", "");
   return value;
 }
 #endif
