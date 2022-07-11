@@ -19,19 +19,8 @@
 #include "xcl_macros.h"
 
 #define SCOPE_GUARD_MUTEX() \
-if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  }\
+if ( sock->server_started == false ) { if (mLogStream.is_open()) mLogStream << __func__ << "\n socket communication is not possible now!"; exit(0);  } \
 std::lock_guard<std::mutex> socketlk{mtx}; 
-
-
-#define AQUIRE_MUTEX() \
-if ( sock->server_started == false ) { std::cerr<<"\n socket communication is not possible now!"; exit(0);  }\
-std::lock_guard<std::mutex> socketlk{mtx}; 
-
-
-// dummy Release Mutex Call.
-//#define RELEASE_MUTEX() 
-
-
 
 #define RPC_PROLOGUE(func_name) \
     auto _s_inst = sock;  \
@@ -39,46 +28,43 @@ std::lock_guard<std::mutex> socketlk{mtx};
     func_name##_response r_msg; \
     SCOPE_GUARD_MUTEX()
 
-
-//    AQUIRE_MUTEX() - will be deleted.
-
 #if GOOGLE_PROTOBUF_VERSION < 3006001
 // Use the deprecated 32 bit version of the size
 #define SERIALIZE_AND_SEND_MSG(func_name)                               \
     auto c_len = c_msg.ByteSize();                                      \
     buf_size = alloc_void(c_len);                                       \
     bool rv = c_msg.SerializeToArray(buf,c_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed for allc_void call"<<std::endl; exit(1);} \
+    if (rv == false) { std::cerr << "FATAL ERROR:protobuf SerializeToArray failed for alloc_void call." << std::endl; exit(1);} \
                                                                         \
     ci_msg.set_size(c_len);                                             \
     ci_msg.set_xcl_api(func_name##_n);                                  \
     auto ci_len = ci_msg.ByteSize();                                    \
     rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl; exit(1); } \
+    if (rv == false) { std::cerr <<"FATAL ERROR:protobuf SerializeToArray failed." << std::endl; exit(1); } \
                                                                         \
     _s_inst->sk_write(ci_buf,ci_len);                                   \
     _s_inst->sk_write(buf,c_len);                                       \
                                                                         \
     _s_inst->sk_read(ri_buf,ri_msg.ByteSize());                         \
     rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize());               \
-    if (true != rv) { std::cerr<<"\n ParseFromArray failed, sk_read/sk_write failed, so exit the application now!"; exit(0);  }                                                 \
+    if (true != rv) { if (mLogStream.is_open()) mLogStream << __func__ << "\n ParseFromArray failed, sk_read/sk_write failed, so exit the application now!"; exit(0);  } \
     buf_size = alloc_void(ri_msg.size());                               \
     _s_inst->sk_read(buf,ri_msg.size());                                \
     rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
-    if (true != rv){ std::cerr<<"\n ParseFromArray failed, sk_read failed for alloc_void, so exit- the application now!!!"; exit(0); }
+    if (true != rv) { if (mLogStream.is_open()) mLogStream << __func__ << "\n ParseFromArray failed, sk_read failed for alloc_void, so exit- the application now!!!"; exit(0); }
 #else
 // More recent protoc handles 64 bit size objects and the 32 bit version is deprecated
 #define SERIALIZE_AND_SEND_MSG(func_name)                               \
     auto c_len = c_msg.ByteSizeLong();                                  \
     buf_size = alloc_void(c_len);                                       \
     bool rv = c_msg.SerializeToArray(buf,c_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+    if (rv == false) { std::cerr << "FATAL ERROR:protobuf SerializeToArray failed." << std::endl; exit(1); } \
                                                                         \
     ci_msg.set_size(c_len);                                             \
     ci_msg.set_xcl_api(func_name##_n);                                  \
     auto ci_len = ci_msg.ByteSizeLong();                                \
     rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
-    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+    if (rv == false) { std::cerr << "FATAL ERROR:protobuf SerializeToArray failed." << std::endl; exit(1); } \
                                                                         \
     _s_inst->sk_write(ci_buf,ci_len);                                   \
     _s_inst->sk_write(buf,c_len);                                       \
@@ -91,10 +77,6 @@ std::lock_guard<std::mutex> socketlk{mtx};
     rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
     assert(true == rv);
 #endif
-
-//RELEASE BUFFER MEMORIES
-//#define FREE_BUFFERS() 
-//  RELEASE_MUTEX()
 
 #define xclSetEnvironment_SET_PROTOMESSAGE() \
   for (auto i : mEnvironmentNameValueMap) \
@@ -1037,3 +1019,16 @@ std::lock_guard<std::mutex> socketlk{mtx};
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclLoadXclbinContent_SET_PROTO_RESPONSE(); \
     xclLoadXclbinContent_RETURN();
+
+#define swemuDriverVersion_SET_PROTOMESSAGE(version) \
+  c_msg.set_version(version);
+
+#define swemuDriverVersion_SET_PROTO_RESPONSE() \
+  success = r_msg.success();
+
+#define swemuDriverVersion_RPC_CALL(func_name, version) \
+  RPC_PROLOGUE(func_name);                              \
+  swemuDriverVersion_SET_PROTOMESSAGE(version);         \
+  SERIALIZE_AND_SEND_MSG(func_name)                     \
+  swemuDriverVersion_SET_PROTO_RESPONSE();              
+

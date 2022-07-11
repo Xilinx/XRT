@@ -245,6 +245,10 @@ static int hwmon_sdm_read_from_peer(struct platform_device *pdev, int repo_type,
 	ret = xocl_peer_request(xdev, mb_req, reqlen, in_buf, &resp_len, NULL, NULL, 0, 0);
 	if (!ret) {
 		repo_id = sdr_get_id(repo_type);
+		if (repo_id < 0) {
+			xocl_warn(&pdev->dev, "repo_id: 0x%x is corrupted or not supported\n", repo_id);
+			goto done;
+		}
 		memcpy(sdm->sensor_data[repo_id], in_buf, resp_len);
 	}
 
@@ -457,6 +461,9 @@ static int sdr_get_id(int repo_type)
 	int id = 0;
 
 	switch(repo_type) {
+		case SDR_TYPE_GET_SIZE:
+			id = XGQ_CMD_SENSOR_SID_GET_SIZE;
+			break;
 		case SDR_TYPE_BDINFO:
 			id = XGQ_CMD_SENSOR_SID_BDINFO;
 			break;
@@ -546,7 +553,7 @@ static int parse_single_sdr_info(struct xocl_hwmon_sdm *sdm, char *in_buf,
 	uint32_t sdr_index = (data_args >> 16) & 0xFFF;
 	uint8_t field_id = (data_args >> 8) & 0xF;
 	uint8_t completion_code, repo_type, val_len;
-	int buf_index;
+	int buf_index, rcvd_rid;
 
 	completion_code = in_buf[SDR_COMPLETE_IDX];
 	if(completion_code != SDR_CODE_OP_SUCCESS) {
@@ -554,14 +561,16 @@ static int parse_single_sdr_info(struct xocl_hwmon_sdm *sdm, char *in_buf,
 		return -EINVAL;
 	}
 
-	repo_type = in_buf[SDR_REPO_IDX];
-	repo_id = sdr_get_id(repo_type);
-	if (repo_id < 0) {
-		xocl_err(&sdm->pdev->dev, "SDR Responce has INVALID REPO TYPE: %d", repo_type);
+	buf_index = SDR_REPO_IDX;
+	repo_type = in_buf[buf_index];
+	rcvd_rid = sdr_get_id(repo_type);
+	if ((rcvd_rid < 0) || (rcvd_rid != repo_id) ||
+		(repo_id >= XGQ_CMD_SENSOR_SID_MAX)) {
+		xocl_err(&sdm->pdev->dev, "SDR Responce has invalid REPO TYPE: %d", repo_type);
 		return -EINVAL;
 	}
 
-	buf_index = SDR_REPO_IDX + 1;
+	buf_index = buf_index + 1;
 	val_len = in_buf[buf_index];
 
 	buf_index = buf_index + 1;

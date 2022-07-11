@@ -30,8 +30,7 @@ namespace xocl {
       inline void
       set_event_action(xocl::event* e, F&& f, Args&&... args)
       {
-	if (xrt_core::config::get_opencl_summary() ||
-            xrt_core::config::get_opencl_trace() ||
+	if (xrt_core::config::get_opencl_trace() ||
             xrt_core::config::get_host_trace())
 	  e->set_profile_counter_action(f(std::forward<Args>(args)...)) ;
       }

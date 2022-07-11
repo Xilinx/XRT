@@ -495,6 +495,9 @@ public:
    * Copy source data to host buffer of this buffer object.
    * ``seek`` specifies how many bytes to skip at the beginning
    * of the BO before copying-in ``size`` bytes to host buffer.
+   *
+   * If BO has no host backing storage, e.g. a device only buffer,
+   * then write is directly to the device buffer.
    */
   XCL_DRIVER_DLLESPEC
   void
@@ -507,6 +510,9 @@ public:
    *  Source data pointer
    *
    * Copy specified source data to host buffer of this buffer object.
+   *
+   * If BO has no host backing storage, e.g. a device only buffer,
+   * then write is directly to the device buffer.
    */
   void
   write(const void* src)
@@ -528,6 +534,9 @@ public:
    * destination.  ``skip`` specifies how many bytes to skip from the
    * beginning of the BO before copying-out ``size`` bytes of host
    * buffer.
+   *
+   * If BO has no host backing storage, e.g. a device only buffer,
+   * then read is directly from the device buffer.
    */
   XCL_DRIVER_DLLESPEC
   void
@@ -541,6 +550,9 @@ public:
    *
    * Copy content of host buffer of this buffer object to specified
    * destination.
+   *
+   * If BO has no host backing storage, e.g. a device only buffer,
+   * then read is directly from the device buffer.
    */
   void
   read(void* dst)
