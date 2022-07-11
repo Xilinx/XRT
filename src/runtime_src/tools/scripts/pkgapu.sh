@@ -297,6 +297,13 @@ fi
 dodeb $INSTALL_ROOT
 dorpm $INSTALL_ROOT
 
-cp -v $BUILD_DIR/${PKG_NAME}*.rpm $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}.noarch.rpm
-cp -v $BUILD_DIR/${PKG_NAME}*.deb $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_all.deb
+# Add _petalinux in apu package name for xrt pipeline build
+# remove this check after apu package build is removed from emb pipeline
+if [[ ! -z $XRT_VERSION_PATCH ]]; then
+    cp -v $BUILD_DIR/${PKG_NAME}*.rpm $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_petalinux.noarch.rpm
+    cp -v $BUILD_DIR/${PKG_NAME}*.deb $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_petalinux_all.deb
+else
+    cp -v $BUILD_DIR/${PKG_NAME}*.rpm $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}.noarch.rpm
+    cp -v $BUILD_DIR/${PKG_NAME}*.deb $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_all.deb
+fi
 rm -rf $BUILD_DIR
