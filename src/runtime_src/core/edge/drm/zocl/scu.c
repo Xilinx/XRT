@@ -32,8 +32,8 @@ struct zocl_scu {
 	 * soft cu pid and parent pid. This can be used to identify if the
 	 * soft cu is still running or not. The parent should never crash
 	 */
-	uint32_t		sc_pid;
-	uint32_t		sc_parent_pid;
+	u32		sc_pid;
+	u32		sc_parent_pid;
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -92,11 +92,33 @@ stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(stat);
 
+ssize_t show_sc_pid(u32 sc_pid, char *buf)
+{
+	ssize_t sz = 0;
+	char *fmt = "%u\n";
+
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt,
+			sc_pid);
+
+	return sz;
+}
+
+static ssize_t
+sc_pid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_scu *scu = platform_get_drvdata(pdev);
+
+	return show_sc_pid(scu->sc_pid, buf);
+}
+static DEVICE_ATTR_RO(sc_pid);
+
 static struct attribute *scu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
 	&dev_attr_cu_info.attr,
 	&dev_attr_stat.attr,
+	&dev_attr_sc_pid.attr,
 	NULL,
 };
 
