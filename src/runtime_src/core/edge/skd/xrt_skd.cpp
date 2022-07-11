@@ -86,6 +86,11 @@ namespace xrt {
     }
     args = xrt_core::xclbin::get_kernel_arguments((char *)buf,prop.size,sk_name);
     num_args = args.size();
+    if(args[num_args-1].type == xrt_core::xclbin::kernel_argument::argtype::global)
+      return_offset = (args[num_args-1].offset+PS_KERNEL_REG_OFFSET+16)/4;
+    else
+      return_offset = (args[num_args-1].offset+PS_KERNEL_REG_OFFSET+((args[num_args-1].size>4)?8:4))/4;
+    syslog(LOG_INFO,"Return offset = %d\n",return_offset);
     syslog(LOG_INFO,"Num args = %d\n",num_args);
     munmap(buf, prop.size);
 
@@ -213,7 +218,7 @@ namespace xrt {
       }
 
       ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
-      args_from_host[1] = (uint32_t)kernel_return;
+      args_from_host[return_offset] = (uint32_t)kernel_return;
 
       // Unmap Buffers
       for(auto i:bo_list) {

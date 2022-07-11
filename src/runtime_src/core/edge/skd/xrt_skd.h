@@ -109,6 +109,7 @@ class skd
     ffi_cif cif;
     bool pass_xrtHandles = false;
     int num_args;
+    int return_offset;
     
     int waitNextCmd();
     int createSoftKernelFile(xclDeviceHandle handle, int bohdl);
