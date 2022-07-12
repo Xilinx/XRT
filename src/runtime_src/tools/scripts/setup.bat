@@ -9,7 +9,7 @@ REM be sourced from that location
 
 set XILINX_XRT=%~dp0
 
-set PATH=%XILINX_XRT%\bin;%XILINX_XRT%\ext\bin;%PATH%
+set PATH=%XILINX_XRT%;%XILINX_XRT%\ext\bin;%PATH%
 
 echo XILINX_XRT      : %XILINX_XRT%
 echo PATH            : %PATH%

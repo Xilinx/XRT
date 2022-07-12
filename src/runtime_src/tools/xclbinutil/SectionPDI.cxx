@@ -21,9 +21,9 @@
 // Static Variables / Classes
 SectionPDI::init SectionPDI::initializer;
 
-SectionPDI::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(PDI, "PDI", boost::factory<SectionPDI*>()); 
+SectionPDI::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(PDI, "PDI", boost::factory<SectionPDI*>());
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

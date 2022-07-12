@@ -105,6 +105,17 @@ namespace xdp {
     applicationStartTime = t ;
   }
 
+  bool VPStaticDatabase::getAieApplication() const
+  {
+    return aieApplication;
+  }
+
+  void VPStaticDatabase::setAieApplication()
+  {
+    std::lock_guard<std::mutex> lock(summaryLock);
+    aieApplication = true;
+  }
+
   // ***************************************************
   // ***** Functions related to OpenCL information *****
 
@@ -742,6 +753,9 @@ namespace xdp {
     XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
     if (!xclbin)
       return nullptr ;
+
+    if (0 == xclbin->aie.aieList.size()) 
+      return nullptr;
 
     return xclbin->aie.aieList[idx] ;
   }

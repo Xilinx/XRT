@@ -72,6 +72,7 @@ namespace xdp {
     // ********* Information specific to each host execution **********
     int pid ;
     uint64_t applicationStartTime = 0 ;
+    bool aieApplication = false;
     
     // The files that need to be included in the run summary for
     //  consumption by Vitis_Analyzer
@@ -146,6 +147,9 @@ namespace xdp {
     //  are loaded.
     XDP_EXPORT uint64_t getApplicationStartTime() const ;
     XDP_EXPORT void setApplicationStartTime(uint64_t t) ;
+
+    XDP_EXPORT bool getAieApplication() const ;
+    XDP_EXPORT void setAieApplication() ;
 
     // Due to changes in hardware IP, we can only support profiling on
     //  xclbins built using 2019.2 or later tools.

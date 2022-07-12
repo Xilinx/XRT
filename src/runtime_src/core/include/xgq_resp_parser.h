@@ -61,6 +61,8 @@
 #define THRESHOLD_SENSOR_AVG_MASK		(0x1 << 6)
 #define THRESHOLD_SENSOR_MAX_MASK		(0x1 << 7)
 
+#define SENSOR_IDS_MAX				256
+
 enum xgq_sdr_repo_type {
     SDR_TYPE_GET_SIZE     = 0x00,
     SDR_TYPE_BDINFO       = 0xC0,

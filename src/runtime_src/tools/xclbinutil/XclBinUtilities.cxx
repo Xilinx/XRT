@@ -334,49 +334,15 @@ XclBinUtilities::hexStringToBinaryBuffer(const std::string& _inputString,
   }
 }
 
-#ifdef _WIN32
 uint64_t
 XclBinUtilities::stringToUInt64(const std::string& _sInteger, bool _bForceHex) {
-  uint64_t value = 0;
-
   // Is it a hex value
-  if ( _bForceHex || 
-       ((_sInteger.length() > 2) &&
-        (_sInteger[0] == '0') && (_sInteger[1] == 'x'))) {
-    if (1 == sscanf_s(_sInteger.c_str(), "%" PRIx64 "", &value)) {
-      return value;
-    }
-  } else {
-    if (1 == sscanf_s(_sInteger.c_str(), "%" PRId64 "", &value)) {
-      return value;
-    }
+  if (_bForceHex) {
+    return std::stoul(_sInteger, nullptr, 16);
   }
 
-  std::string errMsg = "ERROR: Invalid integer string in JSON file: '" + _sInteger + "'";
-  throw std::runtime_error(errMsg);
+  return std::stoul(_sInteger, nullptr, 0); // Allow standard library to determine the base
 }
-#else
-uint64_t
-XclBinUtilities::stringToUInt64(const std::string& _sInteger, bool _bForceHex) {
-  uint64_t value = 0;
-
-  // Is it a hex value
-  if (_bForceHex || 
-      ((_sInteger.length() > 2) &&
-       (_sInteger[0] == '0') && (_sInteger[1] == 'x'))) {
-    if (1 == sscanf(_sInteger.c_str(), "%" PRIx64 "", &value)) {
-      return value;
-    }
-  } else {
-    if (1 == sscanf(_sInteger.c_str(), "%" PRId64 "", &value)) {
-      return value;
-    }
-  }
-
-  std::string errMsg = "ERROR: Invalid integer string in JSON file: '" + _sInteger + "'";
-  throw std::runtime_error(errMsg);
-}
-#endif
 
 void
 XclBinUtilities::printKinds() {
@@ -454,7 +420,7 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
   }
 
   // We have a signature read it in
-  XUtil::SignatureHeader signature = {0};
+  XUtil::SignatureHeader signature = {};
 
   _istream.seekg(signatureOffset);
   _istream.read((char*)&signature, sizeof(XUtil::SignatureHeader));
@@ -555,7 +521,7 @@ XclBinUtilities::removeSignature(const std::string& _sInputFile, const std::stri
 void
 createSignatureBufferImage(std::ostringstream& _buf, const std::string & _sSignature, const std::string & _sSignedBy)
 {
-  XUtil::SignatureHeader signature = {0};
+  XUtil::SignatureHeader signature = {};
   std::string magicValue = getSignatureMagicValue();
 
   // Initialize the structure
@@ -1038,77 +1004,6 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
     pGroupTopologySection->readJSONSectionImage(ptTop);
     xclbin.addSection(pGroupTopologySection);
   }
-}
-
-
-void 
-XclBinUtilities::createAIEPartition(XclBin & xclbin)
-{
-  const boost::property_tree::ptree ptEmpty;
-
-  // -- DRC checks
-  const auto pAIEMetadataSection = xclbin.findSection(AIE_METADATA);
-  if (!pAIEMetadataSection)
-    throw std::runtime_error("ERROR: AIE_METADATA section does not exist.  Unable to auto create the AIE Partition.");
-
-  if (xclbin.findSection(AIE_PARTITION))
-    throw std::runtime_error("ERROR: AIE_PARTITION section arleady exist.  Unable to auto create the AIE Partition from the AIE_METADATA.");
-
-  // -- Get and examine the AIE metadata
-  boost::property_tree::ptree ptAIEMetadata;
-  pAIEMetadataSection->getPayload(ptAIEMetadata);
-
-  XUtil::TRACE_PrintTree("AIE_METADATA", ptAIEMetadata);
-  const auto & ptDriverConfig = ptAIEMetadata.get_child("aie_metadata.driver_config", ptEmpty);
-
-  // The AIE partition information in the in driver_config node.
-  if (ptDriverConfig.empty()) {
-    XUtil::TRACE("aie_partition section not created: driver_config node not found aie_metadata");
-    return;
-  }
-    
-  // Check to see if this data is present
-  auto numColumns = ptDriverConfig.get<uint32_t>("partition_num_cols", 0);
-  auto & ptPartitionStartColumns = ptDriverConfig.get_child("partition_overlay_start_cols", ptEmpty);
-  if ((numColumns == 0 ) || (ptPartitionStartColumns.empty())) {
-      XUtil::TRACE("aie_partition section not created: No overlay start columns.");
-      return;
-  }
-
-  // Build the AIE PARTITION JSON
-  XUtil::TRACE("Creating AIE_PARTITION property tree");
-  
-  boost::property_tree::ptree ptAIEPartition;
-  ptAIEPartition.put("schema_version", 0);
-  ptAIEPartition.put("name", "xclbinutil-generated");
-
-  boost::property_tree::ptree ptPartitionInfo;
-  ptPartitionInfo.put("column_width", std::to_string(numColumns));
-  ptPartitionInfo.add_child("start_columns", ptPartitionStartColumns);
-
-  ptAIEPartition.add_child("partition_info", ptPartitionInfo);
-  
-  boost::property_tree::ptree ptRoot;
-  ptRoot.add_child("aie_partition", ptAIEPartition);
-
-  XUtil::TRACE_PrintTree("AIE_PARTITION to be added", ptRoot);
-
-  // Create and add the section
-  XUtil::TRACE("Creating AIE_PARTITION section");
-  auto pSection = Section::createSectionObjectOfKind(AIE_PARTITION);
-
-  std::ostringstream buffer;
-  boost::property_tree::write_json(buffer, ptRoot);
-  std::istringstream iSectionMetadata(buffer.str());
-  pSection->readPayload(iSectionMetadata, Section::FormatType::json);
-
-  // -- Now add the section to the collection and report our successful status
-  XUtil::TRACE("Adding AIE_PARTITION section to xclbin");
-  xclbin.addSection(pSection);
-  std::string sSectionAddedName = pSection->getSectionKindAsString();
-
-  XUtil::QUIET("");
-  XUtil::QUIET("Section: AIE_PARTITION was successfully added.");
 }
 
 
