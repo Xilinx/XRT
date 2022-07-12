@@ -20,7 +20,7 @@
 namespace xdp {
 namespace OpenCL {
 
-const char* APIs[] = {
+constexpr const char* APIs[] = {
   "clBuildProgram",
   "clCompileProgram",
   "clCreateBuffer",

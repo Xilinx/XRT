@@ -384,6 +384,13 @@ namespace xdp {
     xclbin->aie.gmioList.clear() ;
   }
 
+  double DeviceInfo::getMaxClockRatePLMHz()
+  {
+    if (deviceName.find("aws") != std::string::npos)
+      return 250.0;
+    return 300.0;
+  }
+
   bool DeviceInfo::hasAIMNamed(const std::string& name)
   {
     XclbinInfo* xclbin = currentXclbin() ;

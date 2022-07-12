@@ -59,7 +59,6 @@ namespace {
   // AIM monitor names on ports are in the form of:
   // <compute unit>/<port name>-<memory resource>
   // so we can use the slash and the dash to break out the different parts
-  /*
   std::string extractComputeUnitName(const std::string& aimMonitorName)
   {
     size_t slashPosition = aimMonitorName.find("/");
@@ -68,7 +67,6 @@ namespace {
 
     return aimMonitorName.substr(0, slashPosition);
   }
-  */
 
   std::string extractPortName(const std::string& aimMonitorName)
   {
@@ -1480,10 +1478,53 @@ namespace xdp {
     }
   }
 
+  void SummaryWriter::writeSingleDataTransfer(const std::string& deviceName,
+                                              const std::string& cuName,
+                                              const std::string& portName,
+                                              const std::string& args,
+                                              const std::string& memoryName,
+                                              bool isRead,
+                                              double numTransactions,
+                                              double totalTransferTime,
+                                              double bytes,
+                                              double maxAchievableBW,
+                                              double maxTheoreticalBW,
+                                              double latency)
+  {
+    double transferRate =
+      (totalTransferTime == zero) ? zero :
+                                    bytes / (one_thousand * totalTransferTime);
+
+    // Bandwidth percentages against both what the connection is and
+    // what the connection could be
+    double achievedBW = (one_hundred * transferRate) / maxAchievableBW;
+    double idealBW = (one_hundred * transferRate) / maxTheoreticalBW;
+
+    if (achievedBW > one_hundred)
+      achievedBW = one_hundred;
+    if (idealBW > one_hundred)
+      idealBW = one_hundred;
+
+    auto aveSize = (bytes / numTransactions) / one_thousand;
+    auto aveLatency = latency / numTransactions;
+
+    fout << deviceName << ",";
+    fout << cuName << "/" << portName << ",";
+    fout << args << ",";
+    fout << memoryName << ",";
+    (isRead) ? (fout << "READ,") : (fout << "WRITE,");
+    fout << numTransactions << ",";
+    fout << transferRate << ",";
+    fout << achievedBW << ",";
+    fout << idealBW << ",";
+    fout << aveSize << ",";
+    fout << aveLatency << ",\n";
+  }
+
   void SummaryWriter::writeDataTransferKernelsToGlobalMemory()
   {
     // Only print out the table if there are any AIMs in any of the xclbins
-    // we executed.
+    // we executed connected to compute unit ports.
     if (!AIMsExistOnComputeUnits())
       return;
 
@@ -1491,18 +1532,17 @@ namespace xdp {
     fout << "Data Transfer: Kernels to Global Memory\n" ;
 
     // Column headers
-    fout << "Device"                            << ","
-         << "Compute Unit/Port Name"            << ","
-         << "Kernel Arguments"                  << ","
-         << "Memory Resources"                  << ","
-         << "Transfer Type"                     << ","
-         << "Number Of Transfers"               << ","
-         << "Transfer Rate (MB/s)"              << ","
-      //         << "Max Transfer Rate On Port (MB/s)"  << "," // New column
-         << "Average Bandwidth Utilization (%)" << ","
-         << "Average Size (KB)"                 << ","
-         << "Average Latency (ns)"              << "," 
-         << std::endl ;
+    fout << "Device,"
+         << "Compute Unit/Port Name,"
+         << "Kernel Arguments,"
+         << "Memory Resources,"
+         << "Transfer Type,"
+         << "Number Of Transfers,"
+         << "Transfer Rate (MB/s),"
+         << "Bandwidth Utilization On Current Port (%),"
+         << "Bandwidth Utilization On Ideal Port (%),"
+         << "Average Size (KB),"
+         << "Average Latency (ns),\n";
 
     std::vector<DeviceInfo*> infos = db->getStaticInfo().getDeviceInfos();
     for (auto device : infos) {
@@ -1514,122 +1554,76 @@ namespace xdp {
         //  in the struct in the order in which we found them.
         uint64_t monitorId = 0 ;
         for (auto monitor : xclbin->pl.aims) {
-          if (monitor->cuIndex == -1) {
+          if (monitor->cuIndex == -1 || monitor->cuPort == nullptr) {
             // This AIM is either a shell or floating 
             ++monitorId;
             continue;
           }
 
+          // Determine the strings for the row
+	  std::string cuName     = extractComputeUnitName(monitor->name);
+          std::string portName   = extractPortName(monitor->name) ;
+          std::string memoryName = extractMemoryResource(monitor->name);
+	  std::string arguments =
+            monitor->cuPort->constructArgumentList(memoryName);
+
+          // Determine the maximum achievable and theoretical bandwidths
+          // Maximum bandwidth (achievable) based on:
+          //   1) Port bitwidth
+          //   2) Speed of the compute unit
+
+          double maxAchievableBW = // In Megabytes per second
+            (static_cast<double>(monitor->cuPort->bitWidth)/8.0) *
+            xclbin->pl.clockRatePLMHz;
+
+          // Maximum Theoretical bandwidth (possible on the platform) based on:
+          //   1) Maximum bitwidth of the connection
+          //   2) Maximum possible speed of the kernel on the platform
+
+          double maxTheoreticalBW = // In Megabytes per second
+            (static_cast<double>(device->maxConnectionBitWidth) / 8) *
+            device->getMaxClockRatePLMHz();
+
           auto writeTranx = values.WriteTranx[monitorId];
           auto readTranx  = values.ReadTranx[monitorId];
 
-          uint64_t totalReadBusyCycles  = values.ReadBusyCycles[monitorId];
-          uint64_t totalWriteBusyCycles = values.WriteBusyCycles[monitorId];
-
-          double denom = one_thousand * xclbin->pl.clockRatePLMHz ;
-
-          double totalReadTime =
-            static_cast<double>(totalReadBusyCycles) / denom;
-          double totalWriteTime =
-            static_cast<double>(totalWriteBusyCycles) / denom;
-
-	  //          double totalReadTime =
-	  //            (double)(totalReadBusyCycles) / (one_thousand * xclbin->pl.clockRatePLMHz);
-	  //          double totalWriteTime =
-	  //            (double)(totalWriteBusyCycles) / (one_thousand * xclbin->pl.clockRatePLMHz);
-
-          // Use the name of the monitor to determine the port and memory
-          std::string portName   = extractPortName(monitor->name) ;
-          std::string memoryName = extractMemoryResource(monitor->name);
-
-	  /*
-          size_t slashPosition = (monitor->name).find("/") ;
-          if (slashPosition != std::string::npos) {
-            auto position = slashPosition + 1 ;
-            auto length = (monitor->name).size() - position ;
-
-            // Split the monitor name into port and memory position
-            std::string lastHalf = (monitor->name).substr(position, length) ;
-
-            size_t dashPosition = lastHalf.find("-") ;
-            if (dashPosition != std::string::npos) {
-              auto remainingLength = lastHalf.size() - dashPosition - 1 ;
-              portName = lastHalf.substr(0, dashPosition) ;
-              memoryName = lastHalf.substr(dashPosition + 1, remainingLength);
-            }
-            else {
-              portName = lastHalf ;
-            }
-          }
-	  */
           if (writeTranx > 0) {
-            double transferRate = (totalWriteTime == zero) ? 0 :
-              (double)(values.WriteBytes[monitorId]) / (one_thousand * totalWriteTime);
-            double aveBW = (one_hundred * transferRate) / xclbin->pl.kernelMaxWriteBW;
-            if (aveBW > one_hundred) aveBW = one_hundred;
-            auto aveLatency =
-              static_cast<double>(values.WriteLatency[monitorId]) /
-              static_cast<double>(writeTranx) ;
+            double transferTime =
+              static_cast<double>(values.WriteBusyCycles[monitorId]) /
+              (one_thousand * xclbin->pl.clockRatePLMHz);
 
-	    std::string arguments = "";
-            if (monitor->cuPort) {
-              bool first = true;
-              for (auto& arg : monitor->cuPort->args) {
-                if (monitor->cuPort->argToMemory[arg]->spTag == memoryName) {
-                  if (!first)
-                    arguments += "|";
-                  arguments += arg ;
-                  first = false;
-		}
-              }
-            }
-
-            fout << device->getUniqueDeviceName() << ","
-                 << xclbin->pl.cus[monitor->cuIndex]->getName() << "/"
-                 << portName << ","
-                 << arguments << ","
-                 << memoryName << ","
-                 << "WRITE" << ","
-                 << writeTranx << ","
-                 << transferRate << ","
-                 << aveBW << ","
-                 << (double)(values.WriteBytes[monitorId] / writeTranx) / one_thousand << ","
-                 << aveLatency << ",\n" ;
+            writeSingleDataTransfer(device->getUniqueDeviceName(),
+                                    cuName,
+                                    portName,
+                                    arguments,
+                                    memoryName,
+                                    false, // isRead
+                                    static_cast<double>(writeTranx),
+                                    transferTime,
+                                    static_cast<double>(values.WriteBytes[monitorId]),
+                                    maxAchievableBW,
+                                    maxTheoreticalBW,
+                                    static_cast<double>(values.WriteLatency[monitorId]));
           }
           if (readTranx > 0) {
-              double transferRate = (totalReadTime == zero) ? 0 :
-                (double)(values.ReadBytes[monitorId]) / (one_thousand * totalReadTime);
-              double aveBW = (one_hundred * transferRate) / xclbin->pl.kernelMaxReadBW;
-              if (aveBW > one_hundred) aveBW = one_hundred;
-              auto aveLatency =
-                static_cast<double>(values.ReadLatency[monitorId]) /
-                static_cast<double>(readTranx);
+            double transferTime =
+              static_cast<double>(values.ReadBusyCycles[monitorId]) /
+              (one_thousand * xclbin->pl.clockRatePLMHz);
 
-              std::string arguments = "";
-              if (monitor->cuPort) {
-                bool first = true;
-                for (auto& arg : monitor->cuPort->args) {
-                  if (monitor->cuPort->argToMemory[arg]->spTag == memoryName) {
-                    if (!first)
-                      arguments += "|";
-                    arguments += arg ;
-                    first = false;
-                  }
-                }
-              }
-
-              fout << device->getUniqueDeviceName() << ","
-                   << xclbin->pl.cus[monitor->cuIndex]->getName() << "/"
-                   << portName << ","
-                   << arguments << ","
-                   << memoryName << ","
-                   << "READ" << ","
-                   << readTranx << ","
-                   << transferRate << ","
-                   << aveBW << ","
-                   << (double)(values.ReadBytes[monitorId] / readTranx) / one_thousand << ","
-                   << aveLatency << ",\n" ;
+            writeSingleDataTransfer(device->getUniqueDeviceName(),
+                                    cuName,
+                                    portName,
+                                    arguments,
+                                    memoryName,
+                                    true, // isRead
+                                    static_cast<double>(readTranx),
+                                    transferTime,
+                                    static_cast<double>(values.ReadBytes[monitorId]),
+                                    maxAchievableBW,
+                                    maxTheoreticalBW,
+                                    static_cast<double>(values.ReadLatency[monitorId]));
           }
+
           ++monitorId ;
         }
       }

@@ -69,6 +69,7 @@ namespace xdp {
     explicit Port(const std::string& n, uint32_t w) : name(n), bitWidth(w) {};
     ~Port() = default;
     void addMemoryConnection(Memory* mem);
+    std::string constructArgumentList(const std::string& memoryName);
   };
 
   // The Monitor struct collects the information on a single
@@ -301,6 +302,12 @@ namespace xdp {
     //  connected to either a compute unit or the host memory.  This is
     //  set based on information in the MEM_TOPOLOGY section
     bool used ;
+
+    // The maximum clock rate of this memory resource on the platform in MHz
+    double maxSpeed = 0.0;
+
+    // The clock rate of the memory resource in this xclbin in MHz
+    double speed = 0.0;
 
     Memory(uint8_t ty, int32_t idx, uint64_t baseAddr, uint64_t sz,
            const char* n, bool u)

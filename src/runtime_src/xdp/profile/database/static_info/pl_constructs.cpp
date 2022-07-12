@@ -32,6 +32,21 @@ namespace xdp {
     memories.push_back(mem);
   }
 
+  std::string Port::constructArgumentList(const std::string& memoryName)
+  {
+    std::string argList = "";
+    bool first = true;
+    for (auto& arg : args) {
+      if (argToMemory[arg] && argToMemory[arg]->spTag == memoryName) {
+        if (!first)
+          argList += "|";
+        argList += arg;
+        first = false;
+      }
+    }
+    return argList;
+  }
+
   ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string& n)
     : index(i)
   {

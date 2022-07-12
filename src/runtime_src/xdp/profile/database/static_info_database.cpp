@@ -1249,12 +1249,6 @@ namespace xdp {
     return false ;
   }
 
-
-
-
-
-
-
   double VPStaticDatabase::findClockRate(std::shared_ptr<xrt_core::device> device)
   {
     double defaultClockSpeed = 300.0 ;
@@ -1361,7 +1355,6 @@ namespace xdp {
     XclbinInfo* currentXclbin = new XclbinInfo() ;
     currentXclbin->uuid = device->get_xclbin_uuid() ;
     currentXclbin->pl.clockRatePLMHz = findClockRate(device) ;
-
 
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
@@ -1489,7 +1482,8 @@ namespace xdp {
           auto arg = node1.get<std::string>("arg_name");
           auto id = node2.get<std::string>("id");
 
-          argumentToMemoryIndex[arg] = std::stoi(id);
+          if (id != "" && arg != "")
+            argumentToMemoryIndex[arg] = std::stoi(id);
         }
       }
 

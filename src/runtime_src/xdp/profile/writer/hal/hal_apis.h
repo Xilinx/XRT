@@ -20,7 +20,7 @@
 namespace xdp {
 namespace hal {
 
-const char* APIs[] = {
+constexpr const char* APIs[]= {
   "xclLoadXclbin",
   "xclProbe",
   "xclOpen",

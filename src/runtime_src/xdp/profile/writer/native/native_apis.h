@@ -20,7 +20,7 @@
 namespace xdp {
 namespace native {
 
-const char* APIs[] = {
+constexpr const char* APIs[] = {
   "xrt::bo::bo",
   "xrt::bo::size",
   "xrt::bo::address",
