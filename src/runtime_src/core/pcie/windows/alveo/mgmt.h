@@ -43,9 +43,6 @@ void
 get_dev_info(xclDeviceHandle hdl, XCLMGMT_DEVICE_INFO* value);
 
 void
-get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[4]);
-
-void
 get_flash_addr(xclDeviceHandle hdl, uint64_t& value);
 
 void

@@ -9,6 +9,7 @@
 #include "shim.h"
 #include "core/common/query_requests.h"
 #include "core/common/utils.h"
+#include "core/common/system.h"
 #include "core/include/xrt.h"
 #include "core/include/xclfeatures.h"
 
@@ -648,33 +649,22 @@ struct bdf
     uint16_t function = 0;
   };
 
-  static void
-  init_bdf(const xrt_core::device* dev, bdf_type* bdf)
-  {
-    if (auto mhdl = dev->get_mgmt_handle())
-      mgmtpf::get_bdf_info(mhdl, reinterpret_cast<uint16_t*>(bdf));
-    else if (auto uhdl = dev->get_user_handle())
-      userpf::get_bdf_info(uhdl, reinterpret_cast<uint16_t*>(bdf));
-    else
-      throw xrt_core::internal_error("bdf::init_bdf - No device handle");
-  }
-
   static result_type
   get_bdf(const xrt_core::device* device)
   {
-    static std::map<const xrt_core::device*, bdf_type> bdfmap;
+    static std::map<const xrt_core::device*, result_type> bdfmap;
     static std::mutex mutex;
     std::lock_guard<std::mutex> lk(mutex);
     auto it = bdfmap.find(device);
     if (it == bdfmap.end()) {
-      bdf_type bdf;
-      init_bdf(device, &bdf);
-      auto ret = bdfmap.emplace(device,bdf);
-      it = ret.first;
+      // Get the device BDF and emplace it into the map paired with the device
+      if (dev->get_mgmt_handle())
+        it = bdfmap.emplace(device, get_bdf_info(device->get_device_id(), false)).first;
+      else if (dev->get_user_handle())
+        it = bdfmap.emplace(device, get_bdf_info(device->get_device_id(), true)).first;
     }
 
-    auto& bdf = (*it).second;
-    return std::make_tuple(bdf.domain, bdf.bus, bdf.device, bdf.function);
+    return (*it).second;
   }
 
   static result_type

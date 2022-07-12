@@ -1340,30 +1340,6 @@ done:
     if (!status || bytes != sizeof(xcl_firewall))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_FIREWALL_INFO (get_firewall_info) failed");
   }
-  void
-  get_bdf_info(uint16_t bdf[3])
-  {
-    // TODO: code share with mgmt
-    GUID guid = GUID_DEVINTERFACE_XOCL_USER;
-    auto hdevinfo = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
-    SP_DEVINFO_DATA dev_info_data;
-    dev_info_data.cbSize = sizeof(dev_info_data);
-    DWORD size;
-    SetupDiEnumDeviceInfo(hdevinfo, m_devidx, &dev_info_data);
-    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
-                                     nullptr, nullptr, 0, &size);
-    std::string buf(static_cast<size_t>(size), 0);
-    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
-                                     nullptr, (PBYTE)buf.data(), size, nullptr);
-
-    std::regex regex("\\D+(\\d+)\\D+(\\d+)\\D+(\\d+)");
-    std::smatch match;
-    if (std::regex_search(buf, match, regex))
-      std::transform(match.begin() + 1, match.end(), bdf,
-                     [](const auto& m) {
-                       return static_cast<uint16_t>(std::stoi(m.str()));
-                     });
-  }
 
   void
   get_kds_custat(char* buffer, DWORD output_sz, int* size_ret)
@@ -1502,15 +1478,6 @@ get_debug_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
         send(xrt_core::message::severity_level::debug, "XRT", "get_debug_ip_layout()");
     auto shim = get_shim_object(hdl);
     shim->get_debug_ip_layout(buffer, size, size_ret);
-}
-
-void
-get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
-{
-  xrt_core::message::
-    send(xrt_core::message::severity_level::debug, "XRT", "get_bdf_info()");
-  auto shim = get_shim_object(hdl);
-  shim->get_bdf_info(bdf);
 }
 
 void
