@@ -151,6 +151,11 @@ namespace xdp {
       EventVector memoryCounterResetEvents;
       ValueVector memoryCounterEventValues;
 
+      /* For now, only engine_tile metrics are used. 
+       * So we need only one map for the metrics.
+       * In future while supporting mem/interface_tile metrics,
+       * we will need to add new map or vector of maps.
+       */
       std::map<tile_type, std::string> mConfigMetrics;
 //      std::vector<std::map<tile_type, std::string>> mConfigMetrics;
   };
