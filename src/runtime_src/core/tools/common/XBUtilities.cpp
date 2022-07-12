@@ -196,9 +196,10 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
   // This must not open any devices! Doing do would slow down the software
   // quite a bit and cause other undesirable side affects
   auto devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
+  std::cout << "Number of devices: " << devices << std::endl;
   for (decltype(devices) i = 0; i < devices; i++) {
     auto bdf = xrt_core::get_bdf_info(i, _inUserDomain);
-
+    std::cout << "Found BDF: " << std::get<0>(bdf) << " " << std::get<1>(bdf) << " " << std::get<2>(bdf) << " " << std::get<3>(bdf) << std::endl;
     //if the user specifies func, compare
     //otherwise safely ignore
     auto cmp_func = [bdf](uint16_t func)
@@ -210,6 +211,8 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
 
     if (domain == std::get<0>(bdf) && bus == std::get<1>(bdf) && dev == std::get<2>(bdf) && cmp_func(func))
       return static_cast<uint16_t>(i);
+    else
+      std::cout << "Rejected BDF. Expected: " << domain << " " << bus << " " << dev << " " << func << std::endl;
   }
 
   throw std::runtime_error(boost::str(boost::format("Specified device BDF '%s' not found") % bdfstr) + str_available_devs(_inUserDomain));

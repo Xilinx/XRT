@@ -13,6 +13,8 @@
 #include "device_windows.h"
 #include "gen/version.h"
 #include "mgmt.h"
+#include "core/pcie/driver/windows/alveo/include/XoclUser_INTF.h"
+
 #include <map>
 #include <memory>
 #include <chrono>
@@ -26,6 +28,8 @@
 #ifdef _WIN32
 # pragma warning (disable : 4996)
 #endif
+
+#pragma comment (lib, "Setupapi.lib")
 
 namespace {
 
