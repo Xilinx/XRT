@@ -65,6 +65,10 @@ namespace xdp {
 
       bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
 
+      void getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
+                                    std::vector<std::string> graphmetricsSettings,
+                                    void* handle);
+
       void setFlushMetrics(uint64_t deviceId, void* handle);
       void setTraceStartControl(void* handle);
 
@@ -146,6 +150,9 @@ namespace xdp {
       EventVector memoryCounterEndEvents;
       EventVector memoryCounterResetEvents;
       ValueVector memoryCounterEventValues;
+
+      std::map<tile_type, std::string> mConfigMetrics;
+//      std::vector<std::map<tile_type, std::string>> mConfigMetrics;
   };
     
 }   

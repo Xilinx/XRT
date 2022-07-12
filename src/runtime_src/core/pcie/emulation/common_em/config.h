@@ -30,6 +30,9 @@
 #include <tuple>
 #include <vector>
 
+#define DEBUG_MSGS_COUT(x) 
+//#define DEBUG_MSGS_COUT(x) std::cout<<std::endl<<__func__<<__LINE__<<x<<std::endl;
+
 namespace xclemulation{
   
   // KB

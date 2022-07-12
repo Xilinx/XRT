@@ -128,7 +128,7 @@ ccflags-y += -g
 endif
 
 QDMA_PATH := $(src)/../lib/libqdma/QDMA/linux-kernel/driver/libqdma/
-ccflags-y += -I$(QDMA_PATH) -I$(QDMA_PATH)/qdma_access/ -I$(QDMA_PATH)/qdma_access/qdma_soft_access/ -I$(QDMA_PATH)/qdma_access/qdma_s80_hard_access -I$(QDMA_PATH)/qdma_access/eqdma_soft_access
+ccflags-y += -I$(QDMA_PATH) -I$(QDMA_PATH)/qdma_access/ -I$(QDMA_PATH)/qdma_access/qdma_soft_access/ -I$(QDMA_PATH)/qdma_access/eqdma_soft_access -I$(QDMA_PATH)/qdma_access/qdma_cpm4_access/ -I$(QDMA_PATH)/qdma_access/eqdma_cpm5_access/
 
 all:
 	@echo $(PWD)
