@@ -45,13 +45,6 @@ get_total_devices(bool) const
   return {count, count};
 }
 
-std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
-system_mcdm::
-get_bdf_info(device::id_type id, bool is_user) const
-{
-  return std::make_tuple(0, 0, id, (is_user ? 1 : 0));
-}
-
 std::shared_ptr<device>
 system_mcdm::
 get_userpf_device(device::id_type id) const

@@ -29,9 +29,6 @@ public:
   std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user) const;
 
-  std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
-  get_bdf_info(device::id_type id, bool is_user = true) const;
-
   std::shared_ptr<xrt_core::device>
   get_userpf_device(device::id_type id) const;
 

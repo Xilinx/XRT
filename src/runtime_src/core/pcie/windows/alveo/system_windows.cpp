@@ -19,6 +19,7 @@
 #include <thread>
 #include <ctime>
 #include <windows.h>
+#include <setupapi.h>
 
 #include <boost/format.hpp>
 
