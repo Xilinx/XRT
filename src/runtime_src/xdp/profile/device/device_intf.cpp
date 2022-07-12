@@ -83,9 +83,16 @@ namespace xdp {
 // settings from xrt.ini
 uint64_t GetTS2MMBufSize(bool isAIETrace)
 {
-  std::string size_str = isAIETrace ?
-                         xrt_core::config::get_aie_trace_buffer_size() :
-                         xrt_core::config::get_trace_buffer_size();
+  std::string size_str;
+  if (isAIETrace) {
+    size_str = xrt_core::config::get_aie_trace_settings_buffer_size();
+    if (0 == size_str.compare("8M")) {
+      // if default value is set, then check for old style config
+      size_str = xrt_core::config::get_aie_trace_buffer_size();
+    }
+  } else {
+    size_str = xrt_core::config::get_trace_buffer_size();
+  }
   std::smatch pieces_match;
   
   // Default is 1M

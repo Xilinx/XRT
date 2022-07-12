@@ -99,6 +99,7 @@ namespace xdp {
                  "Interval for reading AI Engine debug/status registers (in us)");
     addParameter("vitis_ai_profile", xrt_core::config::get_vitis_ai_profile(),
                  "Generation of Vitis AI summary and trace (Vitis AI designs only)");
+
   }
 
   IniParameters::~IniParameters()

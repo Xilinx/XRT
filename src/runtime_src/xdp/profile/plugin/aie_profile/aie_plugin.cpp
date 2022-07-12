@@ -240,7 +240,11 @@ namespace xdp {
   void AIEProfilingPlugin::getPollingInterval()
   {
     // Get polling interval (in usec; minimum is 100)
-    mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
+    mPollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
+    if (1000 == mPollingInterval) {
+      // If set to default value, then check for old style config 
+      mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
+    }
   }
 
   void AIEProfilingPlugin::printTileModStats(xaiefal::XAieDev* aieDevice, 

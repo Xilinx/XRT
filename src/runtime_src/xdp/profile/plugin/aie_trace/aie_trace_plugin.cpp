@@ -94,9 +94,11 @@ namespace xdp {
 
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
-    continuousTrace = xrt_core::config::get_aie_trace_periodic_offload();
+    // Default value is true, so check whether any of the 2 style configs is set to false
+    continuousTrace = (xrt_core::config::get_aie_trace_settings_periodic_offload() 
+                        && xrt_core::config::get_aie_trace_periodic_offload());
     if (continuousTrace) {
-      auto offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
+      auto offloadIntervalms = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_ms();
       if (offloadIntervalms != 10) {
         std::stringstream msg;
         msg << "aie_trace_buffer_offload_interval_ms will be deprecated in future. "
@@ -104,7 +106,11 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
         offloadIntervalUs = offloadIntervalms * 1e3;
       } else {
-        offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
+        offloadIntervalUs = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us();
+        if (100 == offloadIntervalUs) {
+          // if default value is set, then check for old style config
+          offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
+        }
       }
     }
 
@@ -149,7 +155,12 @@ namespace xdp {
     // NOTE 2: These counters are required HW workarounds with thresholds chosen 
     //         to produce events before hitting the bug. For example, sync packets 
     //         occur after 1024 cycles and with no events, is incorrectly repeated.
-    auto counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
+    auto counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
+
+    if (0 == counterScheme.compare("es2")) {
+      // if default value is set, then check for old style config
+      counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
+    }
 
     if (counterScheme == "es1") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
@@ -179,7 +190,11 @@ namespace xdp {
     }
 
     //Process the file dump interval
-    aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
+    aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_settings_file_dump_interval_s();
+    if (5 == aie_trace_file_dump_int_s) {
+      // if deafult value is set, then check for old style config
+      aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
+    }
     if (aie_trace_file_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S) {
       aie_trace_file_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
@@ -1415,7 +1430,10 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     bool ts2mmFlushSupported = false;
     if (deviceIntf)
       ts2mmFlushSupported = deviceIntf->supportsflushAIE();
-    if (runtimeMetrics && xrt_core::config::get_aie_trace_flush() && !ts2mmFlushSupported) {
+    if (runtimeMetrics 
+        && (xrt_core::config::get_aie_trace_settings_flush()
+              || xrt_core::config::get_aie_trace_flush()) 
+        && !ts2mmFlushSupported) {
       setFlushMetrics(deviceId, handle);
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
