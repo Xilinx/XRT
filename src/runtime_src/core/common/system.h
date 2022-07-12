@@ -69,6 +69,11 @@ public:
 
   /**
    */
+  virtual std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
+  get_bdf_info(device::id_type id, bool is_user = true) const = 0;//{ return std::make_tuple(0, 0, 0, 0); }
+
+  /**
+   */
   virtual std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user = true) const = 0;
 
@@ -165,6 +170,16 @@ get_os_info(boost::property_tree::ptree& pt);
 XRT_CORE_COMMON_EXPORT
 void
 get_devices(boost::property_tree::ptree& pt);
+
+/**
+ * @brief Get the bdf info object
+ * 
+ * @param id 
+ * @param is_user 
+ * @return std::tuple<uint16_t, uint16_t, uint16_t, uint16_t> 
+ */
+std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
+get_bdf_info(device::id_type id, bool is_user = true);
 
 /**
  * get_total_devices() - Get total devices and total usable devices

@@ -147,6 +147,34 @@ get_total_devices(bool is_user) const
   return std::make_pair(count, count);
 }
 
+std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
+system_windows::
+get_bdf_info(device::id_type id, bool is_user) const
+{
+  GUID guid = GUID_DEVINTERFACE_XOCL_USER;
+  auto hdevinfo = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
+  SP_DEVINFO_DATA dev_info_data;
+  dev_info_data.cbSize = sizeof(dev_info_data);
+  DWORD size;
+  SetupDiEnumDeviceInfo(hdevinfo, id, &dev_info_data);
+  SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
+                                    nullptr, nullptr, 0, &size);
+  std::string buf(static_cast<size_t>(size), 0);
+  SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
+                                    nullptr, (PBYTE)buf.data(), size, nullptr);
+
+  std::regex regex("\\D+(\\d+)\\D+(\\d+)\\D+(\\d+)");
+  std::smatch match;
+  uint16_t bdf[4];
+  if (std::regex_search(buf, match, regex))
+    std::transform(match.begin() + 1, match.end(), bdf,
+                    [](const auto& m) {
+                      return static_cast<uint16_t>(std::stoi(m.str()));
+                    });
+
+  return std::make_tuple(bdf[0], bdf[1], bdf[2], (is_user ? 1 : 0));
+}
+
 void
 system_windows::
 scan_devices(bool verbose, bool json) const

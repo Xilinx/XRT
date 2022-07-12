@@ -171,6 +171,13 @@ get_total_devices(bool is_user) const
   return std::make_pair(num, num);
 }
 
+std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
+system_linux::
+get_bdf_info(device::id_type id, bool is_user) const
+{
+  return std::make_tuple(0,0,0,0);
+}
+
 void
 system_linux::
 scan_devices(bool verbose, bool json) const

@@ -145,7 +145,7 @@ str_available_devs(bool _inUserDomain)
   std::stringstream available_devs;
   available_devs << "\n Available devices:\n";
   boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(_inUserDomain);
-  for(auto& kd : available_devices) {
+  for (auto& kd : available_devices) {
     boost::property_tree::ptree& dev = kd.second;
     available_devs << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
   }
@@ -159,7 +159,7 @@ str_available_devs(bool _inUserDomain)
 static uint16_t
 bdf2index(const std::string& bdfstr, bool _inUserDomain)
 {
-  if(!std::regex_match(bdfstr,std::regex("[A-Za-z0-9:.]+")))
+  if (!std::regex_match(bdfstr,std::regex("[A-Za-z0-9:.]+")))
     throw std::runtime_error("Invalid BDF format. Please specify valid BDF" + str_available_devs(_inUserDomain));
 
   std::vector<std::string> tokens;
@@ -172,33 +172,32 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
 
   // check if we have 2-3 tokens: domain, bus, device.function
   // domain is optional
-  if(tokens.size() <= 1 || tokens.size() > 3)
+  if (tokens.size() <= 1 || tokens.size() > 3)
     throw std::runtime_error(boost::str(boost::format("Invalid BDF '%s'. Please spcify the BDF using 'DDDD:BB:DD.F' format") % bdfstr) + str_available_devs(_inUserDomain));
 
   std::reverse(std::begin(tokens), std::end(tokens));
 
   //check if func was specified. func is optional
   auto pos_of_func = tokens[0].find('.');
-  if(pos_of_func != std::string::npos) {
+  if (pos_of_func != std::string::npos) {
     dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0].substr(0, pos_of_func)), nullptr, radix));
     func = static_cast<uint16_t>(std::stoi(std::string(tokens[0].substr(pos_of_func+1)), nullptr, radix));
   }
-  else{
+  else
     dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0]), nullptr, radix));
-  }
+
   bus = static_cast<uint16_t>(std::stoi(std::string(tokens[1]), nullptr, radix));
 
   // domain is not mandatory if it is "0000"
   if(tokens.size() > 2)
     domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
 
+  // Iterate through the available devices to find a BDF match
+  // This must not open any devices! Doing do would slow down the software
+  // quite a bit and cause other undesirable side affects
   auto devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
   for (decltype(devices) i = 0; i < devices; i++) {
-    std::shared_ptr<xrt_core::device> device;
-    try{
-      device = _inUserDomain ? xrt_core::get_userpf_device(i) : xrt_core::get_mgmtpf_device(i);
-    } catch (...) { continue; }
-    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
+    auto bdf = xrt_core::get_bdf_info(i, _inUserDomain);
 
     //if the user specifies func, compare
     //otherwise safely ignore
@@ -225,7 +224,7 @@ str2index(const std::string& str, bool _inUserDomain)
 {
   //throw an error if no devices are present
   uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
-  if(devices == 0)
+  if (devices == 0)
     throw std::runtime_error("No devices found");
   try {
     int idx(boost::lexical_cast<int>(str));
@@ -233,7 +232,7 @@ str2index(const std::string& str, bool _inUserDomain)
 
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
     // if the bdf is zero, we are dealing with an edge device
-    if(std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0 && std::get<3>(bdf) == 0)
+    if (std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0 && std::get<3>(bdf) == 0)
       return deviceId2index();
   } catch (...) {
     /* not an edge device so safe to ignore this error */
