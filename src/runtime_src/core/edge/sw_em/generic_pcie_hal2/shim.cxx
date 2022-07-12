@@ -1,28 +1,12 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
-/**
- * Copyright (C) 2015 Xilinx, Inc
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2015-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "system_swemu.h"
-#include "xclbin.h"
-#include "core/common/xclbin_parser.h"
 #include "pllauncher_defines.h"
+#include "core/include/xclbin.h"
+#include "core/common/xclbin_parser.h"
+#include "core/common/api/hw_context_int.h"
 #include <errno.h>
 #include <unistd.h>
 #include <boost/property_tree/xml_parser.hpp>
@@ -166,8 +150,6 @@ namespace xclcpuemhal2 {
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
-    ,mDSAMajorVersion(DSA_MAJOR_VERSION)
-    ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
   {
     binaryCounter = 0;
@@ -621,6 +603,15 @@ namespace xclcpuemhal2 {
     }
   }
 
+  void CpuemShim::setDriverVersion(const std::string& version)
+  {
+    bool success = false;
+    swemuDriverVersion_RPC_CALL(swemuDriverVersion, version);
+
+    if (mLogStream.is_open())
+      mLogStream << __func__ << " success " << success << std::endl;
+  }
+
   int CpuemShim::xclLoadXclBin(const xclBin *header)
   {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -839,7 +830,10 @@ namespace xclcpuemhal2 {
       bool verbose = false;
       if(mLogStream.is_open())
         verbose = true;
+
+      setDriverVersion("2.0");
       xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
+
       if(!ack)
         return -1;
     }
@@ -2106,8 +2100,11 @@ int CpuemShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const cha
 /*
 * xclOpenContext
 */
-int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
+  // When properly implemented this function must throw on error
+  // and any exception must be caught by global xclOpenContext and
+  // converted to error code
   return 0;
 }
 
@@ -2156,7 +2153,7 @@ int CpuemShim::xclExecBuf(unsigned int cmdBO)
 /*
 * xclCloseContext
 */
-int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const
+int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 {
   return 0;
 }
@@ -2170,13 +2167,19 @@ int CpuemShim::xclIPName2Index(const char *name)
 }
 
 // open_context() - aka xclOpenContextByName
-void
+xrt_core::cuidx_type
 CpuemShim::
-open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) const
+open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  // Alveo Linux PCIE does not yet support multiple xclbins.
-  // Call regular flow
-  xclOpenContext(xclbin_uuid.get(), mCoreDevice->get_cuidx(slot, cuname).index, shared);
+  // Edge does not yet support multiple xclbins.  Call
+  // regular flow.  Default access mode to shared unless explicitly
+  // exclusive.
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+  return cuidx;
 }
 
 /******************************* XRT Graph API's **************************************************/

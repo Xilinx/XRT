@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015-2022, Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -44,8 +45,6 @@
 #endif
 
 #include "xclbin.h"
-#include "xclperf.h"
-#include "xcl_app_debug.h"
 #include "xclerr.h"
 #include "xclhal2_mem.h"
 
@@ -782,11 +781,6 @@ xclExecWait(xclDeviceHandle handle, int timeoutMilliSec);
 XCL_DRIVER_DLLESPEC
 const struct axlf_section_header*
 wrap_get_axlf_section(const struct axlf* top, enum axlf_section_kind kind);
-
-XCL_DRIVER_DLLESPEC
-size_t
-xclDebugReadIPStatus(xclDeviceHandle handle, enum xclDebugReadType type,
-                     void* debugResults);
 
 #ifdef __cplusplus
 }

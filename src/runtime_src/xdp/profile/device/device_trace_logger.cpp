@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -99,7 +100,7 @@ namespace xdp {
     uint64_t eventFlags = getEventFlags(trace) ;
     uint64_t deviceTimestamp = getDeviceTimestamp(trace) ;
 
-    if (!(eventFlags & XAM_TRACE_CU_MASK)) {
+    if (!(eventFlags & CU_MASK)) {
       // End event
       std::tuple<VTFEventType, uint64_t, double, uint64_t> e =
         db->getDynamicInfo().matchingDeviceEventStart(monTraceId, KERNEL);
@@ -177,8 +178,8 @@ namespace xdp {
     uint64_t traceID = getTraceId(trace) ;
     uint64_t deviceTimestamp = getDeviceTimestamp(trace) ;
 
-    uint32_t slot = (traceID - MIN_TRACE_ID_AM) / 16 ;
-    uint64_t monTraceID = slot * 16 + MIN_TRACE_ID_AM ;
+    uint32_t slot = (traceID - min_trace_id_am) / 16 ;
+    uint64_t monTraceID = slot * 16 + min_trace_id_am ;
 
     Monitor* mon = db->getStaticInfo().getAMonitor(deviceId, xclbin, slot) ;
     if (!mon) {
@@ -193,20 +194,20 @@ namespace xdp {
 
     // A single trace packet could have multiple events happening simultaneously
 
-    if (traceID & XAM_TRACE_CU_MASK) {
+    if (traceID & CU_MASK) {
       addCUEvent(trace, hostTimestamp, slot, monTraceID, cuId);
     }
-    if (traceID & XAM_TRACE_STALL_INT_MASK) {
+    if (traceID & STALL_INT_MASK) {
       addStallEvent(trace, hostTimestamp, slot, monTraceID, cuId,
-                    KERNEL_STALL_DATAFLOW, XAM_TRACE_STALL_INT_MASK);
+                    KERNEL_STALL_DATAFLOW, STALL_INT_MASK);
     }
-    if (traceID & XAM_TRACE_STALL_STR_MASK) {
+    if (traceID & STALL_STR_MASK) {
       addStallEvent(trace, hostTimestamp, slot, monTraceID, cuId,
-                    KERNEL_STALL_PIPE, XAM_TRACE_STALL_STR_MASK);
+                    KERNEL_STALL_PIPE, STALL_STR_MASK);
     }
-    if (traceID & XAM_TRACE_STALL_EXT_MASK) {
+    if (traceID & STALL_EXT_MASK) {
       addStallEvent(trace, hostTimestamp, slot, monTraceID, cuId,
-                    KERNEL_STALL_EXT_MEM, XAM_TRACE_STALL_EXT_MASK);
+                    KERNEL_STALL_EXT_MEM, STALL_EXT_MASK);
     }
 
     traceIDs[slot] ^= (traceID & 0xf);
@@ -214,7 +215,7 @@ namespace xdp {
 
     // If a CU just ended completely, we need to tie off any hanging
     //  reads, writes, and stalls
-    if ((traceID & XAM_TRACE_CU_MASK) && cuStarts[slot].empty()) {
+    if ((traceID & CU_MASK) && cuStarts[slot].empty()) {
       addApproximateDataTransferEndEvents(cuId);
       addApproximateStallEndEvents(trace, hostTimestamp, slot, monTraceID, cuId);
     }
@@ -252,7 +253,7 @@ namespace xdp {
     auto traceId = getTraceId(trace) ;
     auto eventFlags = getEventFlags(trace) ;
     auto deviceTimestamp = getDeviceTimestamp(trace) ;
-    auto slot = traceId - MIN_TRACE_ID_ASM ;
+    auto slot = traceId - min_trace_id_asm ;
 
     Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, slot);
     if (!mon) {
@@ -571,7 +572,7 @@ namespace xdp {
          aimIndex < (db->getStaticInfo()).getNumAIM(deviceId, xclbin) ;
          ++aimIndex) {
 
-      uint64_t aimSlotID = (aimIndex * 2) + MIN_TRACE_ID_AIM ;
+      uint64_t aimSlotID = (aimIndex * 2) + min_trace_id_aim ;
       Monitor* mon =
         db->getStaticInfo().getAIMonitor(deviceId, xclbin, aimIndex);
       if (!mon)
@@ -603,7 +604,7 @@ namespace xdp {
     // Find unfinished ASM events
     bool unfinishedASMevents = false;
     for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumUserASMWithTrace(deviceId, xclbin); ++asmIndex) {
-      uint64_t asmTraceID = asmIndex + MIN_TRACE_ID_ASM;
+      uint64_t asmTraceID = asmIndex + min_trace_id_asm;
       Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, asmIndex);
       if(!mon) {
         continue;
@@ -646,17 +647,17 @@ namespace xdp {
     // There are some stall events still outstanding that need to be closed
     const double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
 
-    if (traceIDs[s] & XAM_TRACE_STALL_INT_MASK) {
+    if (traceIDs[s] & STALL_INT_MASK) {
       addStallEvent(trace, hostTimestamp-halfCycleTimeInMs, s, monTraceID, cuId,
-                    KERNEL_STALL_DATAFLOW, XAM_TRACE_STALL_INT_MASK);
+                    KERNEL_STALL_DATAFLOW, STALL_INT_MASK);
     }
-    if (traceIDs[s] & XAM_TRACE_STALL_STR_MASK) {
+    if (traceIDs[s] & STALL_STR_MASK) {
       addStallEvent(trace, hostTimestamp-halfCycleTimeInMs, s, monTraceID,
-                    cuId, KERNEL_STALL_PIPE, XAM_TRACE_STALL_STR_MASK);
+                    cuId, KERNEL_STALL_PIPE, STALL_STR_MASK);
     }
-    if (traceIDs[s] & XAM_TRACE_STALL_EXT_MASK) {
+    if (traceIDs[s] & STALL_EXT_MASK) {
       addStallEvent(trace, hostTimestamp-halfCycleTimeInMs, s, monTraceID, cuId,
-                    KERNEL_STALL_EXT_MEM, XAM_TRACE_STALL_EXT_MASK);
+                    KERNEL_STALL_EXT_MEM, STALL_EXT_MASK);
     }
   }
 
@@ -703,6 +704,7 @@ namespace xdp {
     static double y2 = 0.0;
     static double x1 = 0.0;
     static double x2 = 0.0;
+
     if (!y1 && !x1) {
       y1 = static_cast <double> (hostTimestamp);
       x1 = static_cast <double> (deviceTimestamp);
@@ -730,13 +732,12 @@ namespace xdp {
 
   void DeviceTraceLogger::processTraceData(void* data, uint64_t numBytes)
   {
-    if (numBytes == 0)      return ;
-    if (!VPDatabase::alive()) return ;
+    if (numBytes == 0)
+      return ;
+    if (!VPDatabase::alive())
+      return ;
 
-    uint32_t modulus = 0 ;
-    uint64_t clockTrainingHostTimestamp = 0 ;
     uint64_t numPackets = numBytes / sizeof(uint64_t) ;
-
     uint64_t start = 0 ;
 
     // Try to find 8 contiguous clock training packets.  Anything before that
@@ -747,18 +748,22 @@ namespace xdp {
       for (uint64_t i = 0 ; i < numPackets - 8 ; ++i) {
         for (uint64_t j = i ; j < i + 8 ; ++j) {
           uint64_t packet = (static_cast<uint64_t*>(data))[j] ;
-          if (!isClockTraining(packet)) {
+          if (!isClockTraining(packet))
             break ;
-          }
           if (j == (i + 7)) {
             start = i ;
             found = true ;
           }
         }
-        if (found) break ;
+        if (found)
+          break ;
       }
     }
-    
+
+    // Clock Training state is preserved across calls
+    static uint32_t modulus = 0 ;
+    static uint64_t clockTrainingHostTimestamp = 0 ;
+
     for (uint64_t i = start ; i < numPackets ; ++i) {
       uint64_t packet = (static_cast<uint64_t*>(data))[i] ;
       auto deviceTimestamp = getDeviceTimestamp(packet) ;
@@ -796,11 +801,11 @@ namespace xdp {
         continue;
       }
 
-      bool AMPacket  = (traceId >= MIN_TRACE_ID_AM &&
-                        traceId <= MAX_TRACE_ID_AM);
-      bool AIMPacket = (traceId <= MAX_TRACE_ID_AIM); // MIN TRACE ID AIM == 0
-      bool ASMPacket = (traceId >= MIN_TRACE_ID_ASM &&
-                        traceId < MAX_TRACE_ID_ASM);
+      bool AMPacket  = (traceId >= min_trace_id_am &&
+                        traceId <= max_trace_id_am);
+      bool AIMPacket = (traceId <= max_trace_id_aim); // min trace id aim == 0
+      bool ASMPacket = (traceId >= min_trace_id_asm &&
+                        traceId <  max_trace_id_asm);
       if (!AMPacket && !AIMPacket && !ASMPacket) {
         continue;
       }

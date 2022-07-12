@@ -25,7 +25,7 @@
 #include "../xocl_drv.h"
 #include "xclfeatures.h"
 
-#define SYSFS_COUNT_PER_SENSOR          5
+#define SYSFS_COUNT_PER_SENSOR          12
 #define SYSFS_NAME_LEN                  30
 #define HWMON_SDM_DEFAULT_EXPIRE_SECS   1
 
@@ -43,11 +43,18 @@ enum sensor_data_status {
 };
 
 enum sysfs_sdr_field_ids {
-	SYSFS_SDR_NAME		= 0,
-	SYSFS_SDR_INS_VAL	= 1,
-	SYSFS_SDR_MAX_VAL	= 2,
-	SYSFS_SDR_AVG_VAL	= 3,
-	SYSFS_SDR_STATUS_VAL	= 4,
+	SYSFS_SDR_NAME                  = 0,
+	SYSFS_SDR_INS_VAL               = 1,
+	SYSFS_SDR_MAX_VAL               = 2,
+	SYSFS_SDR_AVG_VAL               = 3,
+	SYSFS_SDR_STATUS_VAL            = 4,
+	SYSFS_SDR_UNIT_TYPE_VAL         = 5,
+	SYSFS_SDR_UPPER_WARN_VAL        = 6,
+	SYSFS_SDR_UPPER_CRITICAL_VAL    = 7,
+	SYSFS_SDR_UPPER_FATAL_VAL       = 8,
+	SYSFS_SDR_LOWER_WARN_VAL        = 9,
+	SYSFS_SDR_LOWER_CRITICAL_VAL    = 0xA,
+	SYSFS_SDR_LOWER_FATAL_VAL       = 0xB,
 };
 
 struct xocl_sdr_bdinfo {
@@ -75,11 +82,13 @@ struct xocl_hwmon_sdm {
 	/* Keep sensor data for maitaining hwmon sysfs nodes */
 	char                    *sensor_data[SDR_TYPE_MAX];
 	bool                    sensor_data_avail[SDR_TYPE_MAX];
+	uint16_t                sensor_ids[SDR_TYPE_MAX][SENSOR_IDS_MAX];
+	uint16_t                sensor_ids_max[SDR_TYPE_MAX];
 	struct xocl_sdr_bdinfo	bdinfo;
 
 	struct mutex            sdm_lock;
 	u64                     cache_expire_secs;
-	ktime_t                 cache_expires[SDR_TYPE_MAX];
+	ktime_t                 cache_expires[SDR_TYPE_MAX][SENSOR_IDS_MAX];
 };
 
 #define SDM_BUF_IDX_INCR(buf_index, len, buf_len) \
@@ -92,11 +101,13 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm,
 static void hwmon_sdm_get_sensors_list(struct platform_device *pdev,
                                        bool create_sysfs);
 static int hwmon_sdm_update_sensors(struct platform_device *pdev,
-                                    uint8_t repo_id);
+                                    uint8_t repo_id, uint64_t data_args);
 static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
                                             enum xgq_sdr_repo_type repo_type,
-                                            bool create_sysfs);
+                                            bool create_sysfs, uint64_t data_args);
 static void destroy_hwmon_sysfs(struct platform_device *pdev);
+static int parse_single_sdr_info(struct xocl_hwmon_sdm *sdm, char *in_buf,
+                                 uint8_t repo_id, uint64_t data_args);
 
 static int to_sensor_repo_type(int repo_id)
 {
@@ -188,9 +199,10 @@ static int get_sdr_type(enum xcl_group_kind kind)
 	return type;
 }
 
-static void update_cache_expiry_time(struct xocl_hwmon_sdm *sdm, uint8_t repo_id)
+static void update_cache_expiry_time(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
+                                     uint8_t sensor_id)
 {
-	sdm->cache_expires[repo_id] = ktime_add(ktime_get_boottime(),
+	sdm->cache_expires[repo_id][sensor_id] = ktime_add(ktime_get_boottime(),
                                       ktime_set(sdm->cache_expire_secs, 0));
 }
 
@@ -199,7 +211,8 @@ static void update_cache_expiry_time(struct xocl_hwmon_sdm *sdm, uint8_t repo_id
  * This API prepares mailbox request with sensor repo type and send to mailbox
  * It receives the response and store it to sensor_data
  */
-static int hwmon_sdm_read_from_peer(struct platform_device *pdev, int repo_type)
+static int hwmon_sdm_read_from_peer(struct platform_device *pdev, int repo_type,
+                                    int32_t kind, uint64_t data_args)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
@@ -209,14 +222,8 @@ static int hwmon_sdm_read_from_peer(struct platform_device *pdev, int repo_type)
 	struct xcl_mailbox_req *mb_req = NULL;
 	size_t resp_len = RESP_LEN;
 	char *in_buf = NULL;
-	int repo_id, kind;
+	int repo_id;
 	int ret = 0;
-
-	kind = to_xcl_sdr_type(repo_type);
-	if (kind < 0) {
-		xocl_err(&pdev->dev, "received invalid xcl grp type: %d", kind);
-		return -EINVAL;
-	}
 
 	mb_req = vmalloc(reqlen);
 	if (!mb_req)
@@ -227,6 +234,8 @@ static int hwmon_sdm_read_from_peer(struct platform_device *pdev, int repo_type)
 		goto done;
 
 	mb_req->req = XCL_MAILBOX_REQ_SDR_DATA;
+	mb_req->flags = data_args;
+
 	subdev_peer.size = resp_len;
 	subdev_peer.kind = kind;
 	subdev_peer.entries = 1;
@@ -236,6 +245,10 @@ static int hwmon_sdm_read_from_peer(struct platform_device *pdev, int repo_type)
 	ret = xocl_peer_request(xdev, mb_req, reqlen, in_buf, &resp_len, NULL, NULL, 0, 0);
 	if (!ret) {
 		repo_id = sdr_get_id(repo_type);
+		if (repo_id < 0) {
+			xocl_warn(&pdev->dev, "repo_id: 0x%x is corrupted or not supported\n", repo_id);
+			goto done;
+		}
 		memcpy(sdm->sensor_data[repo_id], in_buf, resp_len);
 	}
 
@@ -247,21 +260,23 @@ done:
 }
 
 /*
- * get_sensors_data(): Used to check the cache timer and updates the sensor data
+ * get_sensors_data_by_sensor_id(): Used to check the cache timer and updates the sensor data
  */
-static int get_sensors_data(struct platform_device *pdev, uint8_t repo_id)
+static int get_sensors_data_by_sensor_id(struct platform_device *pdev,
+                                         uint8_t repo_id, uint64_t data_args)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
+	uint8_t sensor_id = data_args & 0xFF;
 	ktime_t now = ktime_get_boottime();
 
-	if (ktime_compare(now, sdm->cache_expires[repo_id]) > 0)
-		return hwmon_sdm_update_sensors(pdev, repo_id);
+	if (ktime_compare(now, sdm->cache_expires[repo_id][sensor_id]) > 0)
+		return hwmon_sdm_update_sensors(pdev, repo_id, data_args);
 
 	return 0;
 }
 
 static ssize_t show_hwmon_name(struct device *dev, struct device_attribute *da,
-	char *buf)
+                               char *buf)
 {
 	struct FeatureRomHeader rom = { {0} };
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
@@ -279,6 +294,28 @@ static ssize_t show_hwmon_name(struct device *dev, struct device_attribute *da,
 }
 static struct sensor_device_attribute name_attr =
 	SENSOR_ATTR(name, 0444, show_hwmon_name, NULL, 0);
+
+static int16_t get_sensor_index(uint16_t sid[], uint32_t sid_len, uint32_t buf_index)
+{
+	int16_t sensor_index;
+	int id;
+
+	//Handle corner cases
+	if (buf_index <= sid[0])
+		return -EINVAL;
+
+	if (buf_index >= sid[sid_len - 1])
+		return sid[sid_len - 1];
+
+	for (id = 0; id < sid_len; id++)
+	{
+		if (buf_index <= sid[id])
+			break;
+		sensor_index = sid[id];
+	}
+
+	return sensor_index;
+}
 
 /*
  * hwmon_sensor_show(): This API is called when hwmon sysfs node is read
@@ -300,6 +337,10 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	char output[64];
 	uint32_t uval = 0;
 	ssize_t sz = 0;
+	uint32_t sid_len = sdm->sensor_ids_max[repo_id];
+	uint8_t target_sensor_id = 0;
+	int16_t sensor_index = 0;
+	uint64_t data_args = ((u64)buf_index << 16) | (field_id << 8);
 
 	if (repo_id >= SDR_TYPE_MAX) {
 		xocl_dbg(&sdm->pdev->dev, "repo_id: 0x%x is corrupted or not supported\n", repo_id);
@@ -307,18 +348,45 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	}
 
 	mutex_lock(&sdm->sdm_lock);
-	get_sensors_data(sdm->pdev, repo_id);
+	/*
+	 * In sensor data record, sensor's value, average, max and status fields
+	 * will only change and all other fields remains static.
+	 * So, request sensor data only for the dynamic fields and skip for other fields.
+	 */
+	if ((field_id == SYSFS_SDR_INS_VAL) ||
+	    (field_id == SYSFS_SDR_MAX_VAL) ||
+	    (field_id == SYSFS_SDR_AVG_VAL) ||
+	    (field_id == SYSFS_SDR_STATUS_VAL)) {
+		sensor_index = get_sensor_index(sdm->sensor_ids[repo_id], sid_len, buf_index);
+		if (sensor_index < 0) {
+			xocl_dbg(&sdm->pdev->dev, "Invalid request with buf_index: %d is received for repo_id: 0x%x\n",
+buf_index, repo_id);
+			sz = sprintf(buf, "%d\n", 0);
+			goto done;
+		}
+		target_sensor_id = sdm->sensor_data[repo_id][sensor_index];
+		data_args |= target_sensor_id;
+		get_sensors_data_by_sensor_id(sdm->pdev, repo_id, data_args);
+	}
 
 	if ((sdm->sensor_data[repo_id] == NULL) || (!sdm->sensor_data_avail[repo_id])) {
 		xocl_dbg(&sdm->pdev->dev, "sensor_data is empty for repo_id: 0x%x\n", repo_id);
 		sz = sprintf(buf, "%d\n", 0);
+		goto done;
 	}
 
-	if (field_id == SYSFS_SDR_NAME) {
+	if ((field_id == SYSFS_SDR_NAME) ||
+	   (field_id == SYSFS_SDR_UNIT_TYPE_VAL)) {
 		memcpy(output, &sdm->sensor_data[repo_id][buf_index], buf_len);
 		sz = snprintf(buf, buf_len + 2, "%s\n", output);
 	} else if ((field_id == SYSFS_SDR_INS_VAL) ||
                (field_id == SYSFS_SDR_AVG_VAL) ||
+               (field_id == SYSFS_SDR_UPPER_WARN_VAL) ||
+               (field_id == SYSFS_SDR_UPPER_FATAL_VAL) ||
+               (field_id == SYSFS_SDR_UPPER_CRITICAL_VAL) ||
+               (field_id == SYSFS_SDR_LOWER_CRITICAL_VAL) ||
+               (field_id == SYSFS_SDR_LOWER_WARN_VAL) ||
+               (field_id == SYSFS_SDR_LOWER_FATAL_VAL) ||
                (field_id == SYSFS_SDR_MAX_VAL)) {
 		if (buf_len > 4) {
 			//TODO: fix this case
@@ -350,6 +418,7 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 		sz = sprintf(buf, "%d\n", 0);
 	}
 
+done:
 	mutex_unlock(&sdm->sdm_lock);
 
 	return sz;
@@ -392,6 +461,9 @@ static int sdr_get_id(int repo_type)
 	int id = 0;
 
 	switch(repo_type) {
+		case SDR_TYPE_GET_SIZE:
+			id = XGQ_CMD_SENSOR_SID_GET_SIZE;
+			break;
 		case SDR_TYPE_BDINFO:
 			id = XGQ_CMD_SENSOR_SID_BDINFO;
 			break;
@@ -458,6 +530,68 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 		memcpy(&sdm->bdinfo.oem_id, &sdm->sensor_data[repo_id][ins_index], val_len);
 }
 
+static void dump_error_message(struct xocl_hwmon_sdm *sdm, uint8_t completion_code)
+{
+	if(completion_code == SDR_CODE_NOT_AVAILABLE)
+		xocl_err(&sdm->pdev->dev, "Error: SDR Code Not Available");
+	else if(completion_code == SDR_CODE_OP_FAILED)
+		xocl_err(&sdm->pdev->dev, "Error: SDR Code Operation Failed");
+	else if(completion_code == SDR_CODE_FLOW_CONTROL_READ_STALE)
+		xocl_err(&sdm->pdev->dev, "Error: SDR Code Flow Control Read Stale");
+	else if(completion_code == SDR_CODE_FLOW_CONTROL_WRITE_ERROR)
+		xocl_err(&sdm->pdev->dev, "Error: SDR Code Flow Control Write Error");
+	else if(completion_code == SDR_CODE_INVALID_SENSOR_ID)
+		xocl_err(&sdm->pdev->dev, "Error: SDR Code Invalid Sensor ID");
+	else
+		xocl_err(&sdm->pdev->dev, "Failed in sending SDR Repository command, completion_code: 0x%x", completion_code);
+}
+
+static int parse_single_sdr_info(struct xocl_hwmon_sdm *sdm, char *in_buf,
+                                 uint8_t repo_id, uint64_t data_args)
+{
+	uint8_t sensor_id = data_args & 0xFF;
+	uint32_t sdr_index = (data_args >> 16) & 0xFFF;
+	uint8_t field_id = (data_args >> 8) & 0xF;
+	uint8_t completion_code, repo_type, val_len;
+	int buf_index, rcvd_rid;
+
+	completion_code = in_buf[SDR_COMPLETE_IDX];
+	if(completion_code != SDR_CODE_OP_SUCCESS) {
+		dump_error_message(sdm, completion_code);
+		return -EINVAL;
+	}
+
+	buf_index = SDR_REPO_IDX;
+	repo_type = in_buf[buf_index];
+	rcvd_rid = sdr_get_id(repo_type);
+	if ((rcvd_rid < 0) || (rcvd_rid != repo_id) ||
+		(repo_id >= XGQ_CMD_SENSOR_SID_MAX)) {
+		xocl_err(&sdm->pdev->dev, "SDR Responce has invalid REPO TYPE: %d", repo_type);
+		return -EINVAL;
+	}
+
+	buf_index = buf_index + 1;
+	val_len = in_buf[buf_index];
+
+	buf_index = buf_index + 1;
+	if (field_id == SYSFS_SDR_INS_VAL)
+		memcpy(&sdm->sensor_data[repo_id][sdr_index], &in_buf[buf_index], val_len);
+
+	buf_index = buf_index + val_len;
+	if (field_id == SYSFS_SDR_AVG_VAL)
+		memcpy(&sdm->sensor_data[repo_id][sdr_index], &in_buf[buf_index], val_len);
+
+	buf_index = buf_index + val_len;
+	if (field_id == SYSFS_SDR_MAX_VAL)
+		memcpy(&sdm->sensor_data[repo_id][sdr_index], &in_buf[buf_index], val_len);
+
+	buf_index = buf_index + val_len;
+	if (field_id == SYSFS_SDR_STATUS_VAL)
+		sdm->sensor_data[repo_id][sdr_index] = in_buf[buf_index];
+
+	return 0;
+}
+
 /*
  * parse_sdr_info(): Parse the received buffer and creates sysfs node under hwmon driver
  * This API parses the buffer received from XGQ driver.
@@ -467,30 +601,18 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_sysfs)
 {
 	bool create = false;
-	uint8_t status;
-	int buf_index, err, repo_id;
-	uint8_t remaining_records, completion_code, repo_type;
+	int buf_index, err, repo_id, sid = 0;
+	uint8_t remaining_records, completion_code, repo_type, status;
 	uint8_t name_length, name_type_length, sys_index, fan_index;
 	uint8_t val_len, value_type_length, threshold_support_byte;
-	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
-	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0, status_index;
+	uint8_t bu_len = 0, sensor_id, base_unit_type_length, unit_modifier_byte;
+	uint32_t buf_size = 0, name_index = 0, ins_index = 0, max_index = 0, avg_index = 0, status_index = 0, unit_type_index = 0;
+	uint32_t upper_warning = 0, upper_critical = 0, upper_fatal = 0;
+	uint32_t lower_warning = 0, lower_critical = 0, lower_fatal = 0;
 
 	completion_code = in_buf[SDR_COMPLETE_IDX];
-
-	if(completion_code != SDR_CODE_OP_SUCCESS)
-	{
-		if(completion_code == SDR_CODE_NOT_AVAILABLE)
-			xocl_err(&sdm->pdev->dev, "Error: SDR Code Not Available");
-		else if(completion_code == SDR_CODE_OP_FAILED)
-			xocl_err(&sdm->pdev->dev, "Error: SDR Code Operation Failed");
-		else if(completion_code == SDR_CODE_FLOW_CONTROL_READ_STALE)
-			xocl_err(&sdm->pdev->dev, "Error: SDR Code Flow Control Read Stale");
-		else if(completion_code == SDR_CODE_FLOW_CONTROL_WRITE_ERROR)
-			xocl_err(&sdm->pdev->dev, "Error: SDR Code Flow Control Write Error");
-		else if(completion_code == SDR_CODE_INVALID_SENSOR_ID)
-			xocl_err(&sdm->pdev->dev, "Error: SDR Code Invalid Sensor ID");
-		else
-			xocl_err(&sdm->pdev->dev, "Failed in sending SDR Repository command, completion_code: 0x%x", completion_code);
+	if(completion_code != SDR_CODE_OP_SUCCESS) {
+		dump_error_message(sdm, completion_code);
 		return -EINVAL;
 	}
 
@@ -516,8 +638,13 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	if (repo_type == SDR_TYPE_VOLTAGE)
 		sys_index = 0;
 
+	if (create_sysfs)
+		sdm->sensor_ids_max[repo_id] = remaining_records;
+
 	while((remaining_records > 0) && (buf_index < buf_size))
 	{
+		if (create_sysfs)
+			sdm->sensor_ids[repo_id][sid++] = buf_index;
 		sensor_id = in_buf[buf_index++];
 
 		name_type_length = in_buf[buf_index++];
@@ -539,6 +666,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 		base_unit_type_length = in_buf[buf_index++];
 		if(base_unit_type_length != SDR_NULL_BYTE)
 		{
+			unit_type_index = buf_index;
 			bu_len = base_unit_type_length & SDR_LENGTH_MASK;
 			buf_index = SDM_BUF_IDX_INCR(buf_index, bu_len, buf_size);
 			if (buf_index < 0)
@@ -554,6 +682,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_UPPER_WARNING_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				upper_warning = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -562,6 +691,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_UPPER_CRITICAL_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				upper_critical = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -570,6 +700,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_UPPER_FATAL_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				upper_fatal = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -578,6 +709,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_LOWER_WARNING_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				lower_warning = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -586,6 +718,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_LOWER_CRITICAL_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				lower_critical = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -594,6 +727,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			if(threshold_support_byte & THRESHOLD_LOWER_FATAL_MASK)
 			{
 				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				lower_fatal = buf_index;
 				if (buf_index < 0)
 					goto abort;
 			}
@@ -637,16 +771,30 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 						sprintf(sysfs_name[SYSFS_SDR_NAME], "fan%d_label", fan_index);
 						fan_index++;
 					} else {
+						sprintf(sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], "temp%d_units", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "temp%d_status", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "temp%d_average", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "temp%d_max", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_INS_VAL], "temp%d_input", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_NAME], "temp%d_label", sys_index);
+						if (upper_warning != 0)
+							sprintf(sysfs_name[SYSFS_SDR_UPPER_WARN_VAL], "temp%d_upper_warn", sys_index);
+						if (upper_critical != 0)
+							sprintf(sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL], "temp%d_upper_critical", sys_index);
+						if (upper_fatal != 0)
+							sprintf(sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL], "temp%d_upper_fatal", sys_index);
+						if (lower_warning != 0)
+							sprintf(sysfs_name[SYSFS_SDR_LOWER_WARN_VAL], "temp%d_lower_warn", sys_index);
+						if (lower_critical != 0)
+							sprintf(sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL], "temp%d_lower_critical", sys_index);
+						if (lower_fatal != 0)
+							sprintf(sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL], "temp%d_lower_fatal", sys_index);
 						sys_index++;
 					}
 					create = true;
 					break;
 				case SDR_TYPE_VOLTAGE:
+					sprintf(sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], "in%d_units", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "in%d_status", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "in%d_average", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "in%d_max", sys_index);
@@ -656,6 +804,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					create = true;
 					break;
 				case SDR_TYPE_CURRENT:
+					sprintf(sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], "curr%d_units", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "curr%d_status", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "curr%d_average", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "curr%d_max", sys_index);
@@ -665,11 +814,24 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					create = true;
 					break;
 				case SDR_TYPE_POWER:
+					sprintf(sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], "power%d_units", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "power%d_status", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "power%d_average", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_MAX_VAL], "power%d_max", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_INS_VAL], "power%d_input", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_NAME], "power%d_label", sys_index);
+					if (upper_warning != 0)
+						sprintf(sysfs_name[SYSFS_SDR_UPPER_WARN_VAL], "power%d_upper_warn", sys_index);
+					if (upper_critical != 0)
+						sprintf(sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL], "power%d_upper_critical", sys_index);
+					if (upper_fatal != 0)
+						sprintf(sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL], "power%d_upper_fatal", sys_index);
+					if (lower_warning != 0)
+						sprintf(sysfs_name[SYSFS_SDR_LOWER_WARN_VAL], "power%d_lower_warn", sys_index);
+					if (lower_critical != 0)
+						sprintf(sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL], "power%d_lower_critical", sys_index);
+					if (lower_fatal != 0)
+						sprintf(sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL], "power%d_lower_fatal", sys_index);
 					sys_index++;
 					create = true;
 					break;
@@ -726,6 +888,68 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_STATUS_VAL], repo_id, SYSFS_SDR_STATUS_VAL, status_index, 1);
 					if (err) {
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_STATUS_VAL], err);
+					}
+				}
+
+				//Create *_units sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], repo_id, SYSFS_SDR_UNIT_TYPE_VAL, unit_type_index, bu_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], err);
+					}
+				}
+
+				//Create *_upper_warn sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_UPPER_WARN_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UPPER_WARN_VAL], repo_id,
+                                             SYSFS_SDR_UPPER_WARN_VAL, upper_warning, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UPPER_WARN_VAL], err);
+					}
+				}
+
+				//Create *_upper_critical sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL], repo_id,
+                                             SYSFS_SDR_UPPER_CRITICAL_VAL, upper_critical, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UPPER_CRITICAL_VAL], err);
+					}
+				}
+
+				//Create *_upper_fatal sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL], repo_id,
+                                             SYSFS_SDR_UPPER_FATAL_VAL, upper_fatal, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UPPER_FATAL_VAL], err);
+					}
+				}
+
+				//Create *_lower_warn sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_LOWER_WARN_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_LOWER_WARN_VAL], repo_id,
+                                             SYSFS_SDR_LOWER_WARN_VAL, lower_warning, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_LOWER_WARN_VAL], err);
+					}
+				}
+
+				//Create *_lower_critical sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL], repo_id,
+                                             SYSFS_SDR_LOWER_CRITICAL_VAL, lower_critical, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_LOWER_CRITICAL_VAL], err);
+					}
+				}
+
+				//Create *_lower_fatal sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL], repo_id,
+                                             SYSFS_SDR_LOWER_FATAL_VAL, lower_fatal, val_len);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_LOWER_FATAL_VAL], err);
 					}
 				}
 			}
@@ -1025,11 +1249,12 @@ failed:
  */
 static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
                                             enum xgq_sdr_repo_type repo_type,
-                                            bool create_sysfs)
+                                            bool create_sysfs, uint64_t data_args)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
+	uint8_t sensor_id = data_args & 0xFF;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	int repo_id, ret;
+	int repo_id, kind = 0, ret = 0;
 
 	repo_id = sdr_get_id(repo_type);
 	if (repo_id < 0) {
@@ -1037,24 +1262,43 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	if (!sdm->privileged)
-		return hwmon_sdm_read_from_peer(pdev, repo_type);
+	if (!sdm->privileged) {
+		kind = to_xcl_sdr_type(repo_type);
+		if (kind < 0) {
+			xocl_err(&pdev->dev, "received invalid xcl grp type: %d", kind);
+			return -EINVAL;
+		}
+		return hwmon_sdm_read_from_peer(pdev, repo_type, kind, data_args);
+	}
 
 	if (!sdm->sensor_data[repo_id])
 		sdm->sensor_data[repo_id] = (char*)devm_kzalloc(&sdm->pdev->dev, sizeof(char) * RESP_LEN, GFP_KERNEL);
 
-	ret = xocl_xgq_collect_sensors_by_id(xdev, sdm->sensor_data[repo_id],
+	if (sensor_id == 0) {
+		ret = xocl_xgq_collect_sensors_by_repo_id(xdev, sdm->sensor_data[repo_id],
                                          repo_id, RESP_LEN);
-
-	if (!ret) {
-		ret = parse_sdr_info(sdm->sensor_data[repo_id], sdm, create_sysfs);
-		if (!ret)
-			sdm->sensor_data_avail[repo_id] = true;
+		if (!ret) {
+			ret = parse_sdr_info(sdm->sensor_data[repo_id], sdm, create_sysfs);
+			if (!ret)
+				sdm->sensor_data_avail[repo_id] = true;
+		} else {
+			xocl_err(&pdev->dev, "request is failed with err: %d", ret);
+			sdm->sensor_data_avail[repo_id] = false;
+		}
 	} else {
-		xocl_err(&pdev->dev, "request is failed with err: %d", ret);
-		sdm->sensor_data_avail[repo_id] = false;
+		char* single_sdr_buf = vzalloc(128);
+		if (!single_sdr_buf)
+			goto done;
+		ret = xocl_xgq_collect_sensors_by_sensor_id(xdev, single_sdr_buf,
+                                         repo_id, RESP_LEN, sensor_id);
+		if (!ret)
+			ret = parse_single_sdr_info(sdm, single_sdr_buf, repo_id, data_args);
+		else
+			xocl_err(&pdev->dev, "sensor_id request is failed with err: %d", ret);
+		vfree(single_sdr_buf);
 	}
 
+done:
 	return ret;
 }
 
@@ -1065,11 +1309,11 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
  */
 static void hwmon_sdm_get_sensors_list(struct platform_device *pdev, bool create_sysfs)
 {
-	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_BDINFO, create_sysfs);
-	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_TEMP, create_sysfs);
-	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_CURRENT, create_sysfs);
-	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_POWER, create_sysfs);
-	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_VOLTAGE, create_sysfs);
+	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_BDINFO, create_sysfs, 0);
+	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_TEMP, create_sysfs, 0);
+	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_CURRENT, create_sysfs, 0);
+	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_POWER, create_sysfs, 0);
+	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_VOLTAGE, create_sysfs, 0);
 }
 
 /*
@@ -1079,20 +1323,29 @@ static void hwmon_sdm_get_sensors_list(struct platform_device *pdev, bool create
  * In unprivileged mode:
  *    It prepares mailbox request to receive the required sensors.
  */
-static int hwmon_sdm_update_sensors(struct platform_device *pdev, uint8_t repo_id)
+static int hwmon_sdm_update_sensors(struct platform_device *pdev, uint8_t repo_id,
+                                    uint64_t data_args)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
+	uint8_t sensor_id = data_args & 0xFF;
 	int repo_type;
-	int ret = 0;
+	int ret = 0, kind = 0;
 
 	repo_type = to_sensor_repo_type(repo_id);
-	if (sdm->privileged)
-		ret = hwmon_sdm_update_sensors_by_type(pdev, repo_type, false);
-	else
-		ret = hwmon_sdm_read_from_peer(pdev, repo_type);
+
+	if (sdm->privileged) {
+		ret = hwmon_sdm_update_sensors_by_type(pdev, repo_type, false, data_args);
+	} else {
+		kind = to_xcl_sdr_type(repo_type);
+		if (kind < 0) {
+			xocl_err(&pdev->dev, "received invalid xcl grp type: %d", kind);
+			return -EINVAL;
+		}
+		ret = hwmon_sdm_read_from_peer(pdev, repo_type, kind, data_args);
+	}
 
 	if (!ret)
-		update_cache_expiry_time(sdm, repo_id);
+		update_cache_expiry_time(sdm, repo_id, sensor_id);
 
 	return ret;
 }
@@ -1101,8 +1354,8 @@ static int hwmon_sdm_update_sensors(struct platform_device *pdev, uint8_t repo_i
  * hwmon_sdm_get_sensors(): used to read sensors of given sensor group
  * This API is a callback called from mgmt driver
  */
-static int hwmon_sdm_get_sensors(struct platform_device *pdev,
-                                 char *resp, enum xcl_group_kind kind)
+static int hwmon_sdm_get_sensors(struct platform_device *pdev, char *resp,
+                                 enum xcl_group_kind kind, uint64_t data_args)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	int repo_type, repo_id;
@@ -1120,7 +1373,7 @@ static int hwmon_sdm_get_sensors(struct platform_device *pdev,
 		return -EINVAL;
 	}
 
-	ret = hwmon_sdm_update_sensors_by_type(pdev, repo_type, false);
+	ret = hwmon_sdm_update_sensors_by_type(pdev, repo_type, false, data_args);
 	if (!ret)
 		memcpy(resp, sdm->sensor_data[repo_id], RESP_LEN);
 

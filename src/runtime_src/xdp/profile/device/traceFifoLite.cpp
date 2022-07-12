@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,6 +14,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
+#include "core/include/xdp/trace.h"
 
 #include "traceFifoLite.h"
 
@@ -47,7 +50,7 @@ uint32_t TraceFifoLite::getNumTraceSamples()
     read(AXI_FIFO_RLR, 4, &fifoCount);
     // Read bits 22:0 per AXI-Stream FIFO product guide (PG080, 10/1/14)
     numBytes = fifoCount & 0x7FFFFF;
-    numSamples = numBytes / (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH/8);
+    numSamples = numBytes / (xdp::TRACE_FIFO_WORD_WIDTH/8);
 
     if(out_stream /*  && out_stream->is_open() && out_stream->is_open() out_stream->is_open()*/)
       (*out_stream) << "  No. of trace samples = " << std::dec << numSamples

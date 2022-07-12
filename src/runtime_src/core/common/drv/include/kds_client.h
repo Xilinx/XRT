@@ -36,6 +36,12 @@ struct kds_client_ctx {
 	u32			  virt_cu_ref;
 };
 
+struct kds_client_cu_refcnt {
+	struct mutex	          lock;
+	u32                       cu_refs[MAX_CUS];
+	u32                       scu_refs[MAX_CUS];
+};
+
 /**
  * struct kds_client: Manage user client
  * Whenever user applciation open the device, a client would be created.
@@ -68,9 +74,8 @@ struct kds_client {
 	struct list_head          graph_list;
 	spinlock_t                graph_list_lock;
 	u32                       aie_ctx;
+	struct kds_client_cu_refcnt  *refcnt;
 
-	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
-	DECLARE_BITMAP(scu_bitmap, MAX_CUS);
 	/* Per client statistics. Use percpu variable for two reasons
 	 * 1. no lock is need while modifying these counters
 	 * 2. do not need to worry about cache false share

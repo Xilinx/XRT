@@ -5,8 +5,9 @@
 // core/include/experimental/xrt_queue.h
 #define XRT_API_SOURCE         // exporting xrt_hwcontext.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_xclbin.h
-#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
 #include "core/include/experimental/xrt_hw_context.h"
+#include "hw_context_int.h"
 
 #include "core/common/device.h"
 
@@ -22,16 +23,14 @@ namespace xrt {
 //
 class hw_context_impl
 {
-  using qos_type = uint32_t; // TBD
+  using qos_type = xrt::hw_context::qos;
 
-
-  // Managed context handle with special handling for flows
+  // Managed context handle with exceptional handling for flows
   // or applications that use load_xclbin (legacy Alveo)
   struct ctx_handle
   {
-    using ctx_handle_type = uint32_t;
     const xrt_core::device* m_device;
-    ctx_handle_type m_hdl;
+    xcl_hwctx_handle m_hdl;
     bool m_destroy_context = true;
 
     ctx_handle(const xrt_core::device* device, const xrt::uuid& uuid, qos_type qos)
@@ -42,7 +41,7 @@ class hw_context_impl
         // or (2) create_hw_context is not supported. (2) => (1) so
         // in both cases simply lookup the slot into which the xclbin
         // has been loaded.
-        m_hdl = m_device->create_hw_context(uuid.get(), qos);
+        m_hdl = m_device->create_hw_context(uuid.get(), static_cast<xcl_qos_type>(qos));
       }
       catch (const xrt_core::ishim::not_supported_error&) {
         // xclbin must have been loaded, get the slot id for the xclbin
@@ -66,27 +65,27 @@ class hw_context_impl
     }
   };
 
-  qos_type
-  priority_to_qos(xrt::hw_context::priority /*qos*/)
-  {
-    return 0; // TBD
-  }
-
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
   qos_type m_qos;
   ctx_handle m_ctx_handle;
 
 public:
-  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, xrt::hw_context::priority qos)
+  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, xrt::hw_context::qos qos)
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
-    , m_qos(priority_to_qos(qos))
+    , m_qos(qos)
     , m_ctx_handle{m_core_device.get(), xclbin_id, m_qos}
   {
   }
 
-  std::shared_ptr<xrt_core::device>
+  void
+  set_exclusive()
+  {
+    m_qos = xrt::hw_context::qos::exclusive;
+  }
+
+  const std::shared_ptr<xrt_core::device>&
   get_core_device() const
   {
     return m_core_device;
@@ -110,8 +109,8 @@ public:
     return m_qos;
   }
 
-  uint32_t
-  get_slot() const
+  xcl_hwctx_handle
+  get_xcl_handle() const
   {
     return m_ctx_handle.m_hdl;
   }
@@ -124,10 +123,22 @@ public:
 ////////////////////////////////////////////////////////////////
 namespace xrt_core { namespace hw_context_int {
 
-uint32_t
-get_slot(const xrt::hw_context& hwctx)
+std::shared_ptr<xrt_core::device>
+get_core_device(const xrt::hw_context& hwctx)
 {
-  return hwctx.get_handle()->get_slot();
+  return hwctx.get_handle()->get_core_device();
+}
+
+xrt_core::device*
+get_core_device_raw(const xrt::hw_context& hwctx)
+{
+  return hwctx.get_handle()->get_core_device().get();
+}
+
+void
+set_exclusive(xrt::hw_context& hwctx)
+{
+  hwctx.get_handle()->set_exclusive();
 }
 
 }} // hw_context_int, xrt_core
@@ -138,7 +149,7 @@ get_slot(const xrt::hw_context& hwctx)
 namespace xrt {
 
 hw_context::
-hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, xrt::hw_context::priority qos)
+hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, xrt::hw_context::qos qos)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, qos))
 {}
 
@@ -161,6 +172,19 @@ hw_context::
 get_xclbin() const
 {
   return get_handle()->get_xclbin();
+}
+
+hw_context::qos
+hw_context::
+get_qos() const
+{
+  return get_handle()->get_qos();
+}
+
+hw_context::
+operator xcl_hwctx_handle() const
+{
+  return get_handle()->get_xcl_handle();
 }
 
 } // xrt
