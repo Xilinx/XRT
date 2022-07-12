@@ -210,7 +210,7 @@ std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
 system_linux::
 get_bdf_info(device::id_type id, bool is_user) const
 {
-  auto pdev = pcidev::get_dev(id);
+  auto pdev = pcidev::get_dev(id, is_user);
   return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
 }
 

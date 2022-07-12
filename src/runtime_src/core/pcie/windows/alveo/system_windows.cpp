@@ -20,6 +20,7 @@
 #include <chrono>
 #include <thread>
 #include <ctime>
+#include <regex>
 #include <windows.h>
 #include <setupapi.h>
 
