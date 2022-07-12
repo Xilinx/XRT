@@ -244,6 +244,10 @@ namespace xdp {
     if (1000 == mPollingInterval) {
       // If set to default value, then check for old style config 
       mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
+      if (1000 != mPollingInterval) {
+        xrt_core::message::send(severity_level::warning, "XRT", 
+          "The xrt.ini flag \"aie_profile_interval_us\" is deprcated and will be removed in future release. Please use \"interval_us\" under \"AIE_profile_settings\" section.");
+      }
     }
   }
 
