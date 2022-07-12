@@ -254,6 +254,7 @@ enum class key_type
   ert_cu_write,
   ert_cu_read,
   ert_data_integrity,
+  ert_status,
 
   aim_counter,
   am_counter,
@@ -2766,6 +2767,19 @@ struct ert_data_integrity : request
   {
     return value ? "Pass" : "Fail";
   }
+};
+
+struct ert_status : request
+{
+    struct data {
+        bool        connected;
+        // add more in the future
+    };
+    using result_type = struct data;
+    static const key_type key = key_type::ert_status;
+
+    virtual boost::any
+    get(const device*) const = 0;
 };
 
 struct noop : request
