@@ -936,6 +936,65 @@ get_aie_trace_settings_tile_based_interface_tile_metrics()
 }
 #endif
 
+inline std::string
+get_aie_trace_settings_buffer_size()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.buffer_size", "8M");
+  return value;
+}
+
+inline bool
+get_aie_trace_settings_flush()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.flush", false);
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_counter_scheme()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.counter_scheme", "es2");
+  return value;
+}
+
+inline bool
+get_aie_trace_settings_periodic_offload()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.periodic_offload", true);
+  return value;
+}
+
+inline bool
+get_aie_trace_settings_reuse_buffer()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.reuse_buffer", false);
+  return value;
+}
+
+/**
+ * Deprecated in future. Ms is too long for aie trace
+ */
+inline unsigned int
+get_aie_trace_settings_buffer_offload_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.buffer_offload_interval_ms", 10);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_settings_buffer_offload_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.buffer_offload_interval_us", 100);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_settings_file_dump_interval_s()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.file_dump_interval_s", 5);
+  return value;
+}
+
 
 }} // config,xrt_core
 
