@@ -688,17 +688,17 @@ namespace xdp {
     for (int module=0; module < NUM_MODULES; ++module) {
       std::string metricsStr = metricSettings[module];
       if (metricsStr.empty()){
-        std::string metricMsg = "No metric set specified for "  + moduleNames[module]
-          + ". Please specify AIE_profile_settings.tile_based_" + moduleNames[module] 
-                                                   + "_metrics setting in your xrt.ini.";
+        std::string metricMsg = "No metric set specified for " + moduleNames[module]
+                              + ". Please specify tile_based_" + moduleNames[module] 
+                              + "_metrics under \"AIE_profile_settings\" section in your xrt.ini.";
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
       } else {
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find("_"));
         std::string depMsg  = "The xrt.ini flag \"aie_profile_" + modName + "_metrics\" is deprecated "
                               + " and will be removed in future release. Please use"
-                              + " AIE_profile_settings.tile_based_" + moduleNames[module] + "_metrics"
-                              + " setting in your xrt.ini.";
+                              + " tile_based_" + moduleNames[module] + "_metrics"
+                              + " under \"AIE_profile_settings\" section.";
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
       }
       int NUM_COUNTERS       = numCounters[module];
@@ -930,10 +930,8 @@ namespace xdp {
         auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
 
         if (counters.empty()) {
-          std::string msg = "AIE Profile Counters were not found for this design. "
-                            "Please specify aie_profile_core_metrics, aie_profile_memory_metrics, "
-                            "and/or aie_profile_interface_metrics in your xrt.ini.";
-          xrt_core::message::send(severity_level::warning, "XRT", msg);
+          xrt_core::message::send(severity_level::warning, "XRT", 
+            "AIE Profile Counters were not found for this design. Please specify tile_based_[core_module|memory_module|interface_tile]_metrics under \"AIE_profile_settings\" section in your xrt.ini.");
           (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
           return;
         }
