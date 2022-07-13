@@ -14,13 +14,12 @@
 * under the License.
 */
 
-#include "xrt/xrt_device.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 
-#include <boost/filesystem.hpp>
+#include <string.h>
 #include <algorithm>
-#include <vector>
 #define LENGTH 64
 
 static void printHelp() {
@@ -79,7 +78,7 @@ int main(int argc, char** argv) {
 
     // Compare received data against expected data
     std::string expected_data = "Hello World\n";
-    if (std::memcmp(expected_data.c_str(), received_data, expected_data.size()) != 0) {
+    if (std::equal(expected_data.begin(), expected_data.end(), received_data)) {
         std::cout << "TEST FAILED\n";
         throw std::runtime_error("Value read back does not match reference");
     }
