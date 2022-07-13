@@ -683,50 +683,6 @@ struct accel_deadlock_status
   }
 };
 
-/*
-* Versal devices with PCIe interface program sc using xgq's
-* Transaction is initiated by writing to sysfs entry
-* This function throws different exceptions for 1.sysfs entry not present 2.sysfs access failure
-* Current sysfs access returns error string for both sysfs entry not present and sysfs access error
-*/
-struct program_sc
-{
-  using value_type = query::program_sc::value_type;
-  using result_type = query::program_sc::value_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type key)
-  {
-    std::string err;
-    value_type value;
-    const std::string subdev = "xgq_vmr";
-    const std::string entry = "program_sc";
-    get_pcidev(device)->sysfs_get(subdev, entry, err, value, static_cast<value_type>(-1));
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-
-    return value;
-  }
-
-  static void
-  put(const xrt_core::device* device, key_type key, const boost::any& val)
-  {
-    auto pdev = get_pcidev(device);
-    const std::string subdev = "xgq_vmr";
-    const std::string entry = "program_sc";
-    //check for exsistence of sysfs node
-    std::string sysfs_path = pdev->get_sysfs_path(subdev, entry);
-    if(sysfs_path.empty()) {
-      throw xrt_core::query::not_supported(entry + " sysfs node doesnot exist");
-    }
-
-    std::string err;
-    pdev->sysfs_put(subdev, entry, err, boost::any_cast<value_type>(val));
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error(err);
-  }
-};
-
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -884,24 +840,6 @@ struct function4_get : virtual QueryRequestType
   }
 };
 
-template <typename QueryRequestType, typename GetterSetter>
-struct function0_getput : virtual QueryRequestType
-{
-  boost::any
-  get(const xrt_core::device* device) const
-  {
-    auto k = QueryRequestType::key;
-    return GetterSetter::get(device, k);
-  }
-
-  void
-  put(const xrt_core::device* device, const boost::any& arg1) const
-  {
-    auto k = QueryRequestType::key;
-    GetterSetter::put(device, k, arg1);
-  }
-};
-
 static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> query_tbl;
 
 template <typename QueryRequestType>
@@ -942,14 +880,6 @@ emplace_sysfs_getput(const char* subdev, const char* entry)
 {
   auto x = QueryRequestType::key;
   query_tbl.emplace(x, std::make_unique<sysfs_getput<QueryRequestType>>(subdev, entry));
-}
-
-template <typename QueryRequestType, typename GetterSetter>
-static void
-emplace_func0_getput()
-{
-  auto k = QueryRequestType::key;
-  query_tbl.emplace(k, std::make_unique<function0_getput<QueryRequestType, GetterSetter>>());
 }
 
 static void
@@ -1098,6 +1028,7 @@ initialize_query_table()
   emplace_sysfs_get<query::is_mfg>                             ("", "mfg");
   emplace_sysfs_get<query::mfg_ver>                            ("", "mfg_ver");
   emplace_sysfs_get<query::is_recovery>                        ("", "recovery");
+  emplace_sysfs_get<query::is_versal>                          ("", "versal");
   emplace_sysfs_get<query::is_ready>                           ("", "ready");
   emplace_sysfs_get<query::is_offline>                         ("", "dev_offline");
   emplace_sysfs_get<query::f_flash_type>                       ("flash", "flash_type");
@@ -1143,7 +1074,7 @@ initialize_query_table()
 
   emplace_sysfs_getput<query::boot_partition>                  ("xgq_vmr", "boot_from_backup");
   emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
-  emplace_func0_getput<query::program_sc,                      program_sc>();
+  emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
   emplace_sysfs_get<query::extended_vmr_status>                ("xgq_vmr", "vmr_verbose_info");
 

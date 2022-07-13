@@ -49,19 +49,20 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // ---- Reports ------
+#include "ReportPlatform.h"
 #include "tools/common/Report.h"
 #include "tools/common/ReportHost.h"
-#include "ReportPlatform.h"
 
 // System - Include Files
-#include <iostream>
-#include <fstream>
-#include <thread>
+#include <atomic>
 #include <chrono>
 #include <ctime>
+#include <fcntl.h>
+#include <fstream>
+#include <iostream>
 #include <locale>
 #include <map>
-#include <fcntl.h>
+#include <thread>
 
 #ifdef _WIN32
 #pragma warning(disable : 4996) //std::asctime
@@ -137,6 +138,40 @@ is_SC_fixed(unsigned int index)
   }
 }
 
+//versal flow to flash sc
+static void
+update_versal_SC(std::shared_ptr<xrt_core::device> dev)
+{
+  std::thread t;
+  std::atomic<bool> done(false);
+  std::shared_ptr<XBU::ProgressBar> progress_reporter;
+  try {
+    uint32_t val = xrt_core::query::program_sc::value_type(1);
+    // timeout for xgq is 300 seconds
+    unsigned int max_duration = 300;
+    progress_reporter = std::make_shared<XBU::ProgressBar>("Programming SC", 
+                                max_duration, true /*batch mode for dots*/, std::cout); 
+    progress_reporter.get()->setPrintPercentBatch(false);
+    // Print progress while sc is flashed
+    t = std::thread([&progress_reporter, &done]() {
+      unsigned int counter = 0;
+      while ((counter < progress_reporter.get()->getMaxIterations()) && !done) {
+        progress_reporter.get()->update(counter++);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
+    });
+    xrt_core::device_update<xrt_core::query::program_sc>(dev.get(), val);
+    done = true;
+    progress_reporter.get()->finish(true, "SC firmware image has been programmed successfully.");
+    t.join();
+  }
+  catch (const xrt_core::query::sysfs_error& e) {
+    done = true;
+    progress_reporter.get()->finish(false, "Failed to update SC flash image.");
+    throw xrt_core::error(std::string("Error accessing sysfs entry : ") + e.what());
+  }
+}
+
 // Update SC firmware on the board
 static void
 update_SC(unsigned int  index, const std::string& file)
@@ -148,36 +183,10 @@ update_SC(unsigned int  index, const std::string& file)
 
   auto dev = xrt_core::get_mgmtpf_device(index);
 
-  //versal flow to flash sc
-  std::thread t;
-  bool done;
-  try {
-    uint32_t val = xrt_core::query::program_sc::value_type(1);
-    done = false;
-    // Print progress while sc is flashed
-    t = std::thread([&done]() {
-                     while (!done) {
-                       std::cout << "." << std::flush;
-                       std::this_thread::sleep_for(std::chrono::seconds(1));
-                     }
-                     std::cout << std::endl;
-                   });
-    xrt_core::device_update<xrt_core::query::program_sc>(dev.get(), val);
-    done = true;
-    t.join();
-    std::cout << boost::format("%-8s : %s \n\n") % "INFO" % "SC firmware image has been programmed successfully.";
+  bool is_versal = xrt_core::device_query<xrt_core::query::is_versal>(dev);
+  if (is_versal) {
+    update_versal_SC(dev);
     return;
-  }
-  catch (const xrt_core::query::sysfs_error& e) {
-    done = true;
-    t.join();
-    throw xrt_core::error(std::string("Failed to update SC flash image, Error accessing sysfs entry : ") + e.what());
-  }
-  catch (const xrt_core::query::not_supported&) {
-    // this flow is not supported on the device
-    // continue with the other flow
-    done = true;
-    t.join();
   }
 
   //if factory image, update SC

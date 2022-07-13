@@ -82,6 +82,7 @@ ProgressBar::ProgressBar(const std::string &_opNname, unsigned int _maxNumIterat
     , m_maxNumIterations(_maxNumIterations)
     , m_isBatch(_isBatch)
     , m_ostr(_ostr)
+    , m_printPercentBatch(true)
     , m_runningIteration(0)
     , m_finished(false)
     , m_elapsedTime(std::chrono::seconds(0))
@@ -142,13 +143,13 @@ ProgressBar::update(unsigned int _iteration)
 
   // Going back in time (e.g., the iteration values are getting smaller)
   assert(_iteration >= m_runningIteration);
-  if (_iteration > m_maxNumIterations) 
+  if (_iteration > m_maxNumIterations)
     _iteration = m_maxNumIterations;
 
   // -- Batch --
   if (m_isBatch) {
     // Has progress been made?
-    if (_iteration == m_runningIteration) 
+    if (_iteration == m_runningIteration)
       return;
 
     // Bring the current iterator up to the the latest
@@ -157,17 +158,20 @@ ProgressBar::update(unsigned int _iteration)
          ++currentIteration) {
       m_ostr << ".";            // Progressd period '.'
 
-      // Now determine percentage progress values
-      static const std::vector<unsigned int> reportPercentages = { 25, 50, 75, 100 };
-      unsigned int prevPercent = currentIteration == 0 ? 0 : (100 * (currentIteration - 1)) / m_maxNumIterations;
-      unsigned int nextPercent = (100 * currentIteration) / m_maxNumIterations;
-
-      for (const auto &reportPercent : reportPercentages) {
-        if ((reportPercent > prevPercent) && (reportPercent <= nextPercent)) {
-          m_ostr << std::to_string(reportPercent) << "%";
+      if (m_printPercentBatch) {
+        // Now determine percentage progress values
+        static const std::vector<unsigned int> reportPercentages = { 25, 50, 75, 100 };
+        unsigned int prevPercent = currentIteration == 0 ? 0 : (100 * (currentIteration - 1)) / m_maxNumIterations;
+        unsigned int nextPercent = (100 * currentIteration) / m_maxNumIterations;
+        
+        for (const auto &reportPercent : reportPercentages) {
+          if ((reportPercent > prevPercent) && (reportPercent <= nextPercent)) {
+            m_ostr << std::to_string(reportPercent) << "%";
+          }
         }
       }
     }
+    
     m_runningIteration = _iteration;
     m_ostr.flush();
     return;

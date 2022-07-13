@@ -55,6 +55,7 @@ class ProgressBar {
   formatTime(std::chrono::duration<double> duration);
 
   unsigned int getMaxIterations() {return m_maxNumIterations;}
+  void setPrintPercentBatch(bool val) {m_printPercentBatch = val;};
   
   ~ProgressBar();
   ProgressBar() = delete;
@@ -64,6 +65,7 @@ class ProgressBar {
   unsigned int m_maxNumIterations;
   bool m_isBatch;
   std::ostream &m_ostr;
+  bool m_printPercentBatch;
   unsigned int m_runningIteration;
   bool m_finished;
   Timer m_timer;
