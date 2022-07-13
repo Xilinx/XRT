@@ -301,7 +301,6 @@ command_queue_check_csr(struct command_queue *cmd_queue)
 	struct xrt_ert_command *ecmd = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(cmd_queue->pdev);
 
-	CMDQUEUE_INFO(cmd_queue, "minm cmd_queue->polling_mode %d\n", cmd_queue->polling_mode);
 	for (section_idx = 0; section_idx < 4; ++section_idx) {
 		mask = xocl_intc_ert_read32(xdev, (section_idx<<2));
 		if (!mask)
@@ -533,7 +532,8 @@ command_queue_config(uint32_t slot_size, bool polling_mode, void *ert_handle, vo
 	 *  2. the slot num max: 128
 	 */
 
-	CMDQUEUE_INFO(cmd_queue, "configuring scheduler cq_size(%lld)\n", cmd_queue->cq_range);
+	CMDQUEUE_INFO(cmd_queue, "configuring scheduler cq_size(%lld) polling_mode(%d) \n",
+		      cmd_queue->cq_range, cmd_queue->polling_mode);
 	if (!cmd_queue->cq_range || !slot_size) {
 		CMDQUEUE_ERR(cmd_queue, "should not have zero cq_range %lld, slot_size=%d",
 			cmd_queue->cq_range, slot_size);

@@ -401,7 +401,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		scmd = (struct ert_start_kernel_cmd *)ecmd;
 		if (scmd->state < ERT_CMD_STATE_COMPLETED)
 			/* It is old shell, return code is missing */
-			scmd->return_code = -ENODATA;
+			ert_write_return_code(scmd, -ENODATA);
 		status = scmd->state;
 	} else {
 		if (xcmd->opcode == OP_GET_STAT)
@@ -458,7 +458,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 		struct ert_start_kernel_cmd *scmd;
 
 		scmd = (struct ert_start_kernel_cmd *)ecmd;
-		scmd->return_code = xcmd->rcode;
+		ert_write_return_code(scmd, xcmd->rcode);
 
 		client_stat_inc(client, scu_c_cnt[xcmd->cu_idx]);
 	}

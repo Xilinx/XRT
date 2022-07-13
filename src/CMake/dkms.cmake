@@ -141,10 +141,14 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_soft_access/qdma_soft_access.c
   xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_soft_access/qdma_soft_access.h
   xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_soft_access/qdma_soft_reg.h
-  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_s80_hard_access/qdma_s80_hard_access.c
-  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_s80_hard_access/qdma_s80_hard_reg_dump.c
-  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_s80_hard_access/qdma_s80_hard_access.h
-  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_s80_hard_access/qdma_s80_hard_reg.h
+  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_cpm4_access/qdma_cpm4_access.c
+  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_cpm4_access/qdma_cpm4_reg_dump.c
+  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_cpm4_access/qdma_cpm4_access.h
+  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/qdma_cpm4_access/qdma_cpm4_reg.h
+  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/eqdma_cpm5_access/eqdma_cpm5_access.c
+  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/eqdma_cpm5_access/eqdma_cpm5_reg_dump.c
+  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/eqdma_cpm5_access/eqdma_cpm5_access.h
+  xocl/lib/libqdma/QDMA/linux-kernel/driver/libqdma/qdma_access/eqdma_cpm5_access/eqdma_cpm5_reg.h
   xocl/lib/libfdt/fdt.c
   xocl/lib/libfdt/fdt.h
   xocl/lib/libfdt/fdt_addresses.c
