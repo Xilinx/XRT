@@ -90,7 +90,7 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
       // if set to default value, then check for old style config
       size_str = xrt_core::config::get_aie_trace_buffer_size();
 
-      xrt_core::message::send(severity_level::warning, "XRT", 
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
         "The xrt.ini flag \"aie_trace_buffer_size\" is deprecated and will be removed in future release. Please use \"buffer_size\" under \"AIE_trace_settings\" section.");
     }
   } else {
