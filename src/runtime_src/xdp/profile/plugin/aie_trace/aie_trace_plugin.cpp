@@ -102,12 +102,10 @@ namespace xdp {
         "The xrt.ini flag \"aie_trace_periodic_offload\" is deprecated and will be removed in future release. Please use \"periodic_offload\" under \"AIE_trace_settings\" section.");
     }
     if (continuousTrace) {
-      auto offloadIntervalms = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_ms();
+      auto offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
       if (offloadIntervalms != 10) {
-        std::stringstream msg;
-        msg << "aie_trace_buffer_offload_interval_ms will be deprecated in future. "
-            << "Please use aie_trace_buffer_offload_interval_us instead.";
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+          "The xrt.ini flag \"aie_trace_buffer_offload_interval_ms\" is deprecated and will be removed in future release. Please use \"buffer_offload_interval_us\" under \"AIE_trace_settings\" section.");
         offloadIntervalUs = offloadIntervalms * 1e3;
       } else {
         offloadIntervalUs = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us();
