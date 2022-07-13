@@ -658,10 +658,10 @@ struct bdf
     auto it = bdfmap.find(device);
     if (it == bdfmap.end()) {
       // Get the device BDF and emplace it into the map paired with the device
-      if (dev->get_mgmt_handle())
-        it = bdfmap.emplace(device, get_bdf_info(device->get_device_id(), false)).first;
-      else if (dev->get_user_handle())
-        it = bdfmap.emplace(device, get_bdf_info(device->get_device_id(), true)).first;
+      if (device->get_mgmt_handle())
+        it = bdfmap.emplace(device, xrt_core::get_bdf_info(device->get_device_id(), false)).first;
+      else if (device->get_user_handle())
+        it = bdfmap.emplace(device, xrt_core::get_bdf_info(device->get_device_id(), true)).first;
     }
 
     return (*it).second;
