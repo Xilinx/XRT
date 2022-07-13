@@ -625,7 +625,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
 
       // AIE config object for this tile
       auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row + 1);
-      cfgTile.trace_metric_set = metricSet;
+      cfgTile->trace_metric_set = metricSet;
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
@@ -1752,7 +1752,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
 
       // AIE config object for this tile
       auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row + 1);
-      cfgTile.trace_metric_set = metricSet;
+      cfgTile->trace_metric_set = metricSet;
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
