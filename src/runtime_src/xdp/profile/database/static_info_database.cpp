@@ -1447,7 +1447,7 @@ namespace xdp {
     std::ostringstream buf ;
     for (size_t index = 0 ; index < systemMetadataSz ; ++index) {
       buf << std::hex << std::setw(2) << std::setfill('0')
-          << (unsigned int)(systemMetadataSection[index]);
+          << static_cast<unsigned int>(systemMetadataSection[index]);
     }
 
     {
@@ -1536,7 +1536,7 @@ namespace xdp {
       }
 
     } catch(...) {
-      //std::cout << "Caught exception: " << e.what() << std::endl ;
+      // If we catch an exception, leave the rest of the port info as is.
     }
   }
 
