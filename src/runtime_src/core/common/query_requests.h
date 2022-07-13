@@ -2771,15 +2771,18 @@ struct ert_data_integrity : request
 
 struct ert_status : request
 {
-    struct data {
-        bool        connected;
-        // add more in the future
-    };
-    using result_type = struct data;
-    static const key_type key = key_type::ert_status;
+  struct ert_status_data {
+    bool        connected;
+    // add more in the future
+  };
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::ert_status;
 
-    virtual boost::any
-    get(const device*) const = 0;
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static ert_status_data
+  to_ert_status(const result_type& strs);
 };
 
 struct noop : request
