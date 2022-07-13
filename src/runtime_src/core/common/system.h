@@ -70,7 +70,10 @@ public:
   /**
    */
   virtual std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
-  get_bdf_info(device::id_type, bool) const { return std::make_tuple(0, 0, 0, 0); }
+  get_bdf_info(device::id_type, bool) const
+  {
+    return std::make_tuple(0, 0, 0, 0);
+  }
 
   /**
    */
