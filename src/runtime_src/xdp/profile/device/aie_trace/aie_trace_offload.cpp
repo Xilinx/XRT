@@ -346,8 +346,13 @@ void AIETraceOffload::checkCircularBufferSupport()
   if (!deviceIntf->supportsCircBufAIE())
     return;
 
-  mEnCircularBuf = (xrt_core::config::get_aie_trace_settings_reuse_buffer()
-                     || xrt_core::config::get_aie_trace_reuse_buffer());
+  mEnCircularBuf = xrt_core::config::get_aie_trace_settings_reuse_buffer();
+  if (!mEnCircularBuf) {
+    mEnCircularBuf = xrt_core::config::get_aie_trace_reuse_buffer();
+    if (mEnCircularBuf)
+      xrt_core::message::send(severity_level::warning, "XRT",
+        "The xrt.ini flag \"aie_trace_reuse_buffer\" is deprecated and will be removed in future release. Please use \"reuse_buffer\" under \"AIE_trace_settings\" section.");
+  }
 
   if (!mEnCircularBuf)
     return;

@@ -95,8 +95,12 @@ namespace xdp {
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
     // Default value is true, so check whether any of the 2 style configs is set to false
-    continuousTrace = (xrt_core::config::get_aie_trace_settings_periodic_offload() 
-                        && xrt_core::config::get_aie_trace_periodic_offload());
+    continuousTrace = xrt_core::config::get_aie_trace_settings_periodic_offload();
+    if (false == xrt_core::config::get_aie_trace_periodic_offload()) {
+      continuousTrace = false;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+        "The xrt.ini flag \"aie_trace_periodic_offload\" is deprecated and will be removed in future release. Please use \"periodic_offload\" under \"AIE_trace_settings\" section.");
+    }
     if (continuousTrace) {
       auto offloadIntervalms = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_ms();
       if (offloadIntervalms != 10) {
@@ -108,8 +112,11 @@ namespace xdp {
       } else {
         offloadIntervalUs = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us();
         if (100 == offloadIntervalUs) {
-          // if default value is set, then check for old style config
+          // if set to default value, then check for old style config
           offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
+          if (100 != offloadIntervalUs)
+            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+              "The xrt.ini flag \"aie_trace_buffer_offload_interval_us\" is deprecated and will be removed in future release. Please use \"buffer_offload_interval_us\" under \"AIE_trace_settings\" section.");
         }
       }
     }
@@ -158,8 +165,11 @@ namespace xdp {
     auto counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
 
     if (0 == counterScheme.compare("es2")) {
-      // if default value is set, then check for old style config
+      // if set to default value, then check for old style config
       counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
+      if (0 != counterScheme.compare("es2"))
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "The xrt.ini flag \"aie_trace_counter_scheme\" is deprecated and will be removed in future release. Please use \"counter_scheme\" under \"AIE_trace_settings\" section.");
     }
 
     if (counterScheme == "es1") {
@@ -192,8 +202,11 @@ namespace xdp {
     //Process the file dump interval
     aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_settings_file_dump_interval_s();
     if (5 == aie_trace_file_dump_int_s) {
-      // if deafult value is set, then check for old style config
+      // if set to default value, then check for old style config
       aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
+      if (5 != aie_trace_file_dump_int_s)
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "The xrt.ini flag \"aie_trace_file_dump_interval_s\" is deprecated and will be removed in future release. Please use \"file_dump_interval_s\" under \"AIE_trace_settings\" section.");
     }
     if (aie_trace_file_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S) {
       aie_trace_file_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
@@ -1430,10 +1443,17 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     bool ts2mmFlushSupported = false;
     if (deviceIntf)
       ts2mmFlushSupported = deviceIntf->supportsflushAIE();
-    if (runtimeMetrics 
-        && (xrt_core::config::get_aie_trace_settings_flush()
-              || xrt_core::config::get_aie_trace_flush()) 
-        && !ts2mmFlushSupported) {
+
+    bool flush = xrt_core::config::get_aie_trace_settings_flush();
+    if (!flush) {
+      // if set to default value, then check for old style config
+      flush = xrt_core::config::get_aie_trace_flush();
+      if (flush)
+        xrt_core::message::send(severity_level::warning, "XRT",
+          "The xrt.ini flag \"aie_trace_flush\" is deprecated and will be removed in future release. Please use \"flush\" under \"AIE_trace_settings\" section.");
+    }
+
+    if (runtimeMetrics && flush && !ts2mmFlushSupported) {
       setFlushMetrics(deviceId, handle);
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
