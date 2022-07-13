@@ -621,8 +621,8 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
   {
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
-      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will not be available.");
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
+      xrt_core::message::send(severity_level::warning, "XRT",
+        "No runtime trace metrics was specified in xrt.ini. So, AIE event trace will not be available. Please use \"[graph|tile]_based_engine_tile_metrics\" under \"AIE_trace_settings\" section.");
       if (!runtimeMetrics)
         return true;
       return false;
