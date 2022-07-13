@@ -1442,16 +1442,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     if (deviceIntf)
       ts2mmFlushSupported = deviceIntf->supportsflushAIE();
 
-    bool flush = xrt_core::config::get_aie_trace_settings_flush();
-    if (!flush) {
-      // if set to default value, then check for old style config
-      flush = xrt_core::config::get_aie_trace_flush();
-      if (flush)
-        xrt_core::message::send(severity_level::warning, "XRT",
-          "The xrt.ini flag \"aie_trace_flush\" is deprecated and will be removed in future release. Please use \"flush\" under \"AIE_trace_settings\" section.");
-    }
-
-    if (runtimeMetrics && flush && !ts2mmFlushSupported) {
+    if (runtimeMetrics && xrt_core::config::get_aie_trace_flush() && !ts2mmFlushSupported) {
       setFlushMetrics(deviceId, handle);
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }

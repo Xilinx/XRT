@@ -936,13 +936,6 @@ get_aie_trace_settings_buffer_size()
   return value;
 }
 
-inline bool
-get_aie_trace_settings_flush()
-{
-  static bool value = detail::get_bool_value("AIE_trace_settings.flush", false);
-  return value;
-}
-
 inline std::string
 get_aie_trace_settings_counter_scheme()
 {
