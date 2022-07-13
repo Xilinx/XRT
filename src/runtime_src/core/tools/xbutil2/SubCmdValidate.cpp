@@ -424,33 +424,19 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
  * helper function for P2P test
  */
 static bool
-p2ptest_set_or_cmp(char *boptr, size_t size, char *valid_data, size_t valid_data_size, bool set)
+p2ptest_set_or_cmp(char *boptr, size_t size, std::vector<char>& valid_data, bool set)
 {
   int stride = xrt_core::getpagesize();
 
   assert((size % stride) == 0);
-  assert(size > valid_data_size);
+  assert(size > valid_data.size());
   for (size_t i = 0; i < size; i += stride) {
     if (set)
-      std::memcpy(&(boptr[i]), valid_data, valid_data_size);
-    else if (std::memcmp(&(boptr[i]), valid_data, valid_data_size) != 0) // Verify the written bytes
-        return false;
+      std::memcpy(&(boptr[i]), valid_data.data(), valid_data.size());
+    else // Verify the written bytes
+      return std::equal(valid_data.begin(), valid_data.end(), &(boptr[i]));
   }
   return true;
-}
-
-/*
- * helper function for P2P test
- */
-static bool
-p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
-{
-
-  // Generate the valid data vector using the given pattern
-  std::vector<char> valid_data;
-  valid_data.push_back(pattern);
-
-  return p2ptest_set_or_cmp(boptr, size, valid_data.data(), 1, set);
 }
 
 /*
@@ -465,29 +451,35 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
     return false;
 
   // Generate the valid data vector
-  const size_t valid_data_size = 1024;
-  char valid_data[valid_data_size];
-  std::memset(valid_data, 'A', valid_data_size);
-
   // Perform a memory write larger than 512 bytes to trigger a write combine
-  auto buf_size = xrt_core::getpagesize() * 1;
-  p2ptest_set_or_cmp(buf, buf_size, valid_data, valid_data_size, true);
+  // The chosen size is 1024
+  const size_t valid_data_size = 1024;
+  std::vector<char> valid_data(valid_data_size);
+  std::fill(valid_data.begin(), valid_data.end(), 'A');
+
+  // Perform one large write
+  auto buf_size = xrt_core::getpagesize();
+  p2ptest_set_or_cmp(buf, buf_size, valid_data, true);
   if (xclUnmgdPwrite(handle, 0, buf, buf_size, dev_addr) < 0)
     return false;
-  if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, valid_data_size, false))
+  if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, false))
     return false;
 
   // Default to testing with small write to reduce test time
-  p2ptest_set_or_cmp(buf, size, 'A', true);
+  valid_data.clear();
+  valid_data.push_back('A');
+  p2ptest_set_or_cmp(buf, size, valid_data, true);
   if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0)
     return false;
-  if (!p2ptest_set_or_cmp(boptr, size, 'A', false))
+  if (!p2ptest_set_or_cmp(boptr, size, valid_data, false))
     return false;
 
-  p2ptest_set_or_cmp(boptr, size, 'B', true);
+  valid_data.clear();
+  valid_data.push_back('B');
+  p2ptest_set_or_cmp(boptr, size, valid_data, true);
   if (xclUnmgdPread(handle, 0, buf, size, dev_addr) < 0)
     return false;
-  if (!p2ptest_set_or_cmp(buf, size, 'B', false))
+  if (!p2ptest_set_or_cmp(buf, size, valid_data, false))
     return false;
 
   free(buf);
@@ -525,7 +517,9 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
     return false;
   }
 
-  if (!p2ptest_set_or_cmp(boptr, bo_size, 'A', false)){
+  std::vector<char> data;
+  data.push_back('A');
+  if (!p2ptest_set_or_cmp(boptr, bo_size, data, false)){
     return false;
   }
 
@@ -555,7 +549,9 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
     return false;
   }
 
-  if (!p2ptest_set_or_cmp(boptr, bo_size, 'B', false)){
+  data.clear();
+  data.push_back('B');
+  if (!p2ptest_set_or_cmp(boptr, bo_size, data, false)){
     return false;
   }
 
