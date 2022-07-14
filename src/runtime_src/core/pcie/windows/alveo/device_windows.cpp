@@ -642,13 +642,6 @@ struct bdf
 {
   using result_type = query::pcie_bdf::result_type;
 
-  struct bdf_type {
-    uint16_t domain = 0;
-    uint16_t bus = 0;
-    uint16_t device = 0;
-    uint16_t function = 0;
-  };
-
   static result_type
   get_bdf(const xrt_core::device* device)
   {
