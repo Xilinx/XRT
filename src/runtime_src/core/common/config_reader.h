@@ -957,16 +957,6 @@ get_aie_trace_settings_reuse_buffer()
   return value;
 }
 
-/**
- * Deprecated in future. Ms is too long for aie trace
- */
-inline unsigned int
-get_aie_trace_settings_buffer_offload_interval_ms()
-{
-  static unsigned int value = detail::get_uint_value("AIE_trace_settings.buffer_offload_interval_ms", 10);
-  return value;
-}
-
 inline unsigned int
 get_aie_trace_settings_buffer_offload_interval_us()
 {
