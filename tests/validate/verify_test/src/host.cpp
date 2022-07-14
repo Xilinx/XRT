@@ -18,8 +18,7 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 
-#include <string.h>
-#include <algorithm>
+#include <cstring>
 #define LENGTH 64
 
 static void printHelp() {
@@ -78,7 +77,7 @@ int main(int argc, char** argv) {
 
     // Compare received data against expected data
     std::string expected_data = "Hello World\n";
-    if (std::equal(expected_data.begin(), expected_data.end(), received_data)) {
+    if (std::memcmp(received_data, expected_data.data(), expected_data.size())) {
         std::cout << "TEST FAILED\n";
         throw std::runtime_error("Value read back does not match reference");
     }
