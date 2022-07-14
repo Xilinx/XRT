@@ -1748,6 +1748,12 @@ static int xgq_collect_sensors_by_sensor_id(struct platform_device *pdev, char *
 	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_AID_GET_SINGLE_SDR, repo_id, buf, len, sensor_id);
 }
 
+static int xgq_collect_all_inst_sensors(struct platform_device *pdev, char *buf,
+	 uint8_t repo_id, uint32_t len)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_AID_GET_ALL_SDR, repo_id, buf, len, 0);
+}
+
 /* sysfs */
 static ssize_t boot_from_backup_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -2331,6 +2337,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.vmr_enable_multiboot = vmr_enable_multiboot,
 	.xgq_collect_sensors_by_repo_id = xgq_collect_sensors_by_repo_id,
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
+	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
 	.vmr_load_firmware = xgq_log_page_fw,
 };
 
