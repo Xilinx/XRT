@@ -151,16 +151,16 @@ namespace xdp {
                  "Size of buffer to allocate for AI Engine trace");
     addParameter("AIE_trace_settings.periodic_offload",
                  xrt_core::config::get_aie_trace_settings_periodic_offload(),
-                 "Periodic offloading of aie trace from memory to host");
+                 "Periodic offloading of AI Engine trace from memory to host");
     addParameter("AIE_trace_settings.reuse_buffer",
                  xrt_core::config::get_aie_trace_settings_reuse_buffer(),
-                 "Enable use of circular buffer for aie trace");
+                 "Enable use of circular buffer for AI Engine trace");
     addParameter("AIE_trace_settings.buffer_offload_interval_us",
                  xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us(),
-                 "Interval for reading of device aie trace data to host (in us)");
+                 "Interval for reading of device AI Engine trace data to host (in us)");
     addParameter("AIE_trace_settings.file_dump_interval_s",
                  xrt_core::config::get_aie_trace_settings_file_dump_interval_s(),
-                 "Interval for dumping aie trace files to host (in s)");  
+                 "Interval for dumping AI Engine trace files to host (in s)");  
   }
 
   IniParameters::~IniParameters()
