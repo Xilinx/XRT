@@ -94,17 +94,28 @@ namespace xdp {
 
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
-    continuousTrace = xrt_core::config::get_aie_trace_periodic_offload();
+    // Default value is true, so check whether any of the 2 style configs is set to false
+    continuousTrace = xrt_core::config::get_aie_trace_settings_periodic_offload();
+    if (false == xrt_core::config::get_aie_trace_periodic_offload()) {
+      continuousTrace = false;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+        "The xrt.ini flag \"aie_trace_periodic_offload\" is deprecated and will be removed in future release. Please use \"periodic_offload\" under \"AIE_trace_settings\" section.");
+    }
     if (continuousTrace) {
       auto offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
       if (offloadIntervalms != 10) {
-        std::stringstream msg;
-        msg << "aie_trace_buffer_offload_interval_ms will be deprecated in future. "
-            << "Please use aie_trace_buffer_offload_interval_us instead.";
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+          "The xrt.ini flag \"aie_trace_buffer_offload_interval_ms\" is deprecated and will be removed in future release. Please use \"buffer_offload_interval_us\" under \"AIE_trace_settings\" section.");
         offloadIntervalUs = offloadIntervalms * 1e3;
       } else {
-        offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
+        offloadIntervalUs = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us();
+        if (100 == offloadIntervalUs) {
+          // if set to default value, then check for old style config
+          offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
+          if (100 != offloadIntervalUs)
+            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+              "The xrt.ini flag \"aie_trace_buffer_offload_interval_us\" is deprecated and will be removed in future release. Please use \"buffer_offload_interval_us\" under \"AIE_trace_settings\" section.");
+        }
       }
     }
 
@@ -149,7 +160,15 @@ namespace xdp {
     // NOTE 2: These counters are required HW workarounds with thresholds chosen 
     //         to produce events before hitting the bug. For example, sync packets 
     //         occur after 1024 cycles and with no events, is incorrectly repeated.
-    auto counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
+    auto counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
+
+    if (0 == counterScheme.compare("es2")) {
+      // if set to default value, then check for old style config
+      counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
+      if (0 != counterScheme.compare("es2"))
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "The xrt.ini flag \"aie_trace_counter_scheme\" is deprecated and will be removed in future release. Please use \"counter_scheme\" under \"AIE_trace_settings\" section.");
+    }
 
     if (counterScheme == "es1") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
@@ -179,7 +198,14 @@ namespace xdp {
     }
 
     //Process the file dump interval
-    aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
+    aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_settings_file_dump_interval_s();
+    if (5 == aie_trace_file_dump_int_s) {
+      // if set to default value, then check for old style config
+      aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
+      if (5 != aie_trace_file_dump_int_s)
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "The xrt.ini flag \"aie_trace_file_dump_interval_s\" is deprecated and will be removed in future release. Please use \"file_dump_interval_s\" under \"AIE_trace_settings\" section.");
+    }
     if (aie_trace_file_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S) {
       aie_trace_file_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
@@ -593,8 +619,8 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
   {
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
-      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will not be available.");
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
+      xrt_core::message::send(severity_level::warning, "XRT",
+        "No runtime trace metrics was specified in xrt.ini. So, AIE event trace will not be available. Please use \"[graph|tile]_based_engine_tile_metrics\" under \"AIE_trace_settings\" section.");
       if (!runtimeMetrics)
         return true;
       return false;
@@ -1416,6 +1442,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     bool ts2mmFlushSupported = false;
     if (deviceIntf)
       ts2mmFlushSupported = deviceIntf->supportsflushAIE();
+
     if (runtimeMetrics && xrt_core::config::get_aie_trace_flush() && !ts2mmFlushSupported) {
       setFlushMetrics(deviceId, handle);
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
