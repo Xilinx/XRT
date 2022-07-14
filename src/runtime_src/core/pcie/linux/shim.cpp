@@ -1335,7 +1335,7 @@ shim::
 xclLoadXclBin(const xclBin *buffer)
 {
   auto top = reinterpret_cast<const axlf*>(buffer);
-  auto xclbin = mCoreDevice->get_xclbin(top->m_header.uuid);
+  auto xclbin = xrt::xclbin{top};
   register_xclbin(xclbin);
 
   auto uuid = xclbin.get_uuid();
@@ -1471,6 +1471,9 @@ int shim::xclLoadAxlf(const axlf *buffer)
         }
     }
     
+    // Success
+    mCoreDevice->register_axlf(buffer);
+
     return ret;
 }
 
@@ -2190,9 +2193,6 @@ create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
 
         throw xrt_core::system_error(errno, "failed to create hw context");
     }
-
-    // Success
-    mCoreDevice->register_axlf(buffer);
 
     xdp::hal::update_device(this);
     xdp::aie::update_device(this);
