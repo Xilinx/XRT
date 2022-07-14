@@ -58,12 +58,23 @@ namespace xdp {
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
     bool setMetricsSettings(uint64_t deviceId, void* handle);
-    bool setGraphMetricsSettings(uint64_t deviceId, void* handle);
 
     bool checkAieDevice(uint64_t deviceId, void* handle);
 
+    std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
+                                                        std::string graph,
+                                                        void* handle);
+    std::vector<tile_type> getAllTilesForShimProfiling(void* handle, std::string metricStr);
+
+    void getConfigMetricsForTiles(int moduleIdx, std::vector<std::string> metricsSettings,
+                                               std::vector<std::string> graphmetricsSettings,
+                                               const XAie_ModuleType mod,
+                                               void* handle);
+
+
     std::string getMetricSet(const XAie_ModuleType mod, 
-                             const std::string& metricsStr);
+                             const std::string& metricsStr,
+                             bool  ignoreOldConfig = false);
     std::vector<tile_type> getTilesForProfiling(const XAie_ModuleType mod,
                                                 const std::string& metricsStr,
                                                 void* handle);
@@ -130,6 +141,8 @@ namespace xdp {
     std::map<std::string, std::vector<std::string>> mCoreEventStrings;
     std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
     std::map<std::string, std::vector<std::string>> mShimEventStrings;
+
+    std::vector<std::map<tile_type, std::string>> mConfigMetrics; 
   };
 
 } // end namespace xdp

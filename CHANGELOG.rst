@@ -3,9 +3,14 @@ XRT ChangeLog
 
 2.14.0 (202210.2.14.x)
 ~~~~~~~~~~~~~~~~~~~~~~
+Added
+.....
+* Support generic AsyncBO transfer for AIE via xrt::bo C++ APIs.
+
 Removed
 .......
 * XRT streaming APIs used with QDMA PCIe DMA engine have been removed per deprecation announcement in 2.11.x
+* All XCL APIs are deprecated and will be removed in future release.
 
 Changed
 .......

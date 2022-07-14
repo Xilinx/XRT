@@ -39,7 +39,6 @@ namespace xdp {
     bpt::ptree EventTraceConfigs_C, EventTraceConfigs;
 
     EventTraceConfigs_C.put("datacorrelation", 1);
-    EventTraceConfigs_C.put("event_trace_name", traceMetricString);
     EventTraceConfigs_C.put("timestamp", 0);
 
     bpt::ptree TraceConfig;
@@ -55,6 +54,7 @@ namespace xdp {
 
         TileTraceConfig_C.put("column", tile->column);
         TileTraceConfig_C.put("row", tile->row);
+        TileTraceConfig_C.put("event_trace_name", tile->trace_metric_set);
 
         /*
          * Core Trace

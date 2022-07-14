@@ -32,9 +32,9 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionVenderMetadata::init SectionVenderMetadata::initializer;
 
-SectionVenderMetadata::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(VENDER_METADATA, "VENDER_METADATA", boost::factory<SectionVenderMetadata*>()); 
+SectionVenderMetadata::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(VENDER_METADATA, "VENDER_METADATA", boost::factory<SectionVenderMetadata*>());
   sectionInfo->supportsSubSections = true;
 
   // There is only one-subsection that is supported.  By default it is not named.
@@ -74,7 +74,7 @@ SectionVenderMetadata::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   // Do we have enough room to overlay the header structure
   if (_origSectionSize < sizeof(vender_metadata)) {
     auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the vender_metadata structure (%d)")
-                                % _origSectionSize % sizeof(vender_metadata);
+        % _origSectionSize % sizeof(vender_metadata);
     throw std::runtime_error(boost::str(errMsg));
   }
 
@@ -125,7 +125,7 @@ SectionVenderMetadata::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
     if (sValue.compare(getSectionIndexName()) != 0) {
       auto errMsg = boost::format("ERROR: Metadata data mpo_name '%s' does not match expected section name '%s'")
-                                  % sValue % getSectionIndexName();
+          % sValue % getSectionIndexName();
       throw std::runtime_error(boost::str(errMsg));
     }
 
@@ -161,7 +161,7 @@ SectionVenderMetadata::createDefaultImage(std::istream& _istream, std::ostringst
 {
   XUtil::TRACE("VENDER_METADATA IMAGE");
 
-  vender_metadata venderMetadataHdr = vender_metadata{0};
+  vender_metadata venderMetadataHdr = vender_metadata{};
   std::ostringstream stringBlock;       // String block (stored immediately after the header)
 
   // Initialize default values
@@ -210,7 +210,7 @@ SectionVenderMetadata::readSubPayload(const char* _pOrigDataSection,
   // Only default (e.g. empty) sub sections are supported
   if (!_sSubSectionName.empty()) {
     auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s")
-                                % _sSubSectionName % getSectionKindAsString();
+        % _sSubSectionName % getSectionKindAsString();
     throw std::runtime_error(boost::str(errMsg));
   }
 
@@ -238,11 +238,11 @@ SectionVenderMetadata::writeObjImage(std::ostream& _oStream) const
   // Overlay the structure
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(vender_metadata)) {
-    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)") % m_bufferSize % sizeof(vender_metadata);
+    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the vendor metadata structure (%d)") % m_bufferSize % sizeof(vender_metadata);
     throw std::runtime_error(boost::str(errMsg));
   }
 
-  // No look at the data
+  // Now look at the data
   auto pHdr = reinterpret_cast<vender_metadata*>(m_pBuffer);
 
   auto pFWBuffer = reinterpret_cast<const char*>(pHdr) + pHdr->m_image_offset;
@@ -259,7 +259,7 @@ SectionVenderMetadata::writeMetadata(std::ostream& _oStream) const
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(vender_metadata)) {
     auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the vender_metadata structure (%d)")
-                                % m_bufferSize % sizeof(vender_metadata);
+        % m_bufferSize % sizeof(vender_metadata);
     throw std::runtime_error(boost::str(errMsg));
   }
 
@@ -297,7 +297,7 @@ SectionVenderMetadata::writeSubPayload(const std::string& _sSubSectionName,
 
   if (!_sSubSectionName.empty()) {
     auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s")
-                                % _sSubSectionName % getSectionKindAsString();
+        % _sSubSectionName % getSectionKindAsString();
     throw std::runtime_error(boost::str(errMsg));
   }
 

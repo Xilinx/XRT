@@ -113,7 +113,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
 {
   const boost::property_tree::ptree ptEmpty;
 
-  const auto & kernelName = ptKernel.get<std::string>("name", "");
+  const auto& kernelName = ptKernel.get<std::string>("name", "");
   if (kernelName.empty())
     throw std::runtime_error("Missing kernel name");
 
@@ -142,18 +142,18 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     boost::property_tree::ptree ptArgAttributes;
 
     // Argument name
-    const auto & name = ptArgument.get<std::string>("name", "");
+    const auto& name = ptArgument.get<std::string>("name", "");
     if (name.empty())
       throw std::runtime_error("Missing argument name");
 
     // Address qualifier
-    const auto & addressQualifier = ptArgument.get<std::string>("address-qualifier", "");
+    const auto& addressQualifier = ptArgument.get<std::string>("address-qualifier", "");
     if (addressQualifier.empty())
       throw std::runtime_error("Missing address qualifier");
 
     // ID value
     std::string strID = std::to_string(argID++);
-    // Assume that the ID will always be automatically set.  
+    // Assume that the ID will always be automatically set.
     if (ptArgument.get<int>("use-id", 1) == 0)
       strID.clear();
 
@@ -162,12 +162,12 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     if (argType.empty())
       throw std::runtime_error("Missing argument type");
 
-    size_t argSize = isFixedPS 
-                   ? getTypeSize(argType, isFixedPS) 
-                   : ptArgument.get<size_t>("byte-size");
+    size_t argSize = isFixedPS
+        ? getTypeSize(argType, isFixedPS)
+        : ptArgument.get<size_t>("byte-size");
 
     // Offset
-    const auto & offset = ptArgument.get<std::string>("offset", "");
+    const auto& offset = ptArgument.get<std::string>("offset", "");
     if (offset.empty())
       throw std::runtime_error("Missing offset value");
 
@@ -192,7 +192,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
   for (const auto& instance : ptInstances) {
     const boost::property_tree::ptree& ptInstance = instance.second;
 
-    const auto & instanceName = ptInstance.get<std::string>("name", "");
+    const auto& instanceName = ptInstance.get<std::string>("name", "");
     if (instanceName.empty())
       throw std::runtime_error("Missing kernel instance name value");
 
@@ -242,7 +242,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
   XUtil::TRACE_PrintTree("KernelXML", ptKernelXML);
 
   // Validate that there is no other kernels with the same name.
-  const auto & kernelName = ptKernelXML.get<std::string>("<xmlattr>.name");
+  const auto& kernelName = ptKernelXML.get<std::string>("<xmlattr>.name");
 
   boost::property_tree::ptree& ptCore = ptEmbeddedData.get_child("project.platform.device.core", ptEmpty);
 
@@ -251,7 +251,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
       continue;
 
     const auto& ptKernelEntry = entry.second;
-    const auto & kernelEntryName = ptKernelEntry.get<std::string>("<xmlattr>.name", "");
+    const auto& kernelEntryName = ptKernelEntry.get<std::string>("<xmlattr>.name", "");
 
     if (kernelEntryName == kernelName)
       throw std::runtime_error("Kernel name already exists in the EMBEDDED_METADATA section: '" + kernelName + "'");
@@ -281,9 +281,9 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
     // An empty memory connection indicates that we should connect it to a yet to be define PS kernel memory entry
     if (memoryConnection.empty()) {
       // Look for entry.  If it doesn't exist create one
-      auto iter = std::find_if(memTopology.begin(), memTopology.end(), 
+      auto iter = std::find_if(memTopology.begin(), memTopology.end(),
                                [](const boost::property_tree::ptree& pt)
-                               {return pt.get<std::string>("m_type", "") == "MEM_PS_KERNEL";});
+      {return pt.get<std::string>("m_type", "") == "MEM_PS_KERNEL";});
       if (iter == memTopology.end()) {
         XUtil::TRACE("MEM Entry of PS Kernel memory not found, creating one.");
         boost::property_tree::ptree ptMemData;
@@ -299,9 +299,9 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
 
     // Do we have a connection to perform?
     if (memoryConnection != NOT_DEFINED) {
-      auto iter = std::find_if(memTopology.begin(), memTopology.end(), 
+      auto iter = std::find_if(memTopology.begin(), memTopology.end(),
                                [memoryConnection](const boost::property_tree::ptree& pt)
-                               {return pt.get<std::string>("m_tag", "") == memoryConnection;});
+      {return pt.get<std::string>("m_tag", "") == memoryConnection;});
 
       if (iter == memTopology.end())
         throw std::runtime_error("Error: Memory tag '" + memoryConnection + "' not found in the MEM_TOPOLOGY section.");
@@ -334,7 +334,7 @@ void transformVectorToPtree(const std::vector<boost::property_tree::ptree>& vect
   // Create an array of property trees
   boost::property_tree::ptree ptArray;
   for (const auto& entry : vectorOfPtree)
-    ptArray.push_back({"", entry});
+    ptArray.push_back({ "", entry });
 
   ptBase.add_child(arrayName, ptArray);
 
@@ -351,7 +351,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
   XUtil::TRACE_PrintTree("IP_LAYOUT ROOT", ptIPLayoutRoot);
 
   const boost::property_tree::ptree ptEmpty;
-  const auto & kernelName = ptKernel.get<std::string>("name", "");
+  const auto& kernelName = ptKernel.get<std::string>("name", "");
   if (kernelName.empty())
     throw std::runtime_error("Missing kernel name");
 
@@ -370,7 +370,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     const auto& ptInstance = instance.second;
 
     // Make sure that the instance name is valid
-    const auto & instanceName = ptInstance.get<std::string>("name", "");
+    const auto& instanceName = ptInstance.get<std::string>("name", "");
     if (instanceName.empty())
       throw std::runtime_error("Empty instance name for kernel: '" + kernelName + "'");
 
@@ -426,7 +426,7 @@ validateSignature(std::vector<boost::property_tree::ptree> functions,
   // Validate name
   const std::string expectedName = kernelName + "_" + ptFunction.get<std::string>("type");
 
-  const auto & name = ptFunction.get<std::string>("name");
+  const auto& name = ptFunction.get<std::string>("name");
   if (name != expectedName)
     throw std::runtime_error("Error: The " + ptFunction.get<std::string>("type") + " kernel does not have the same base name as the kernel.\n"
                              "Shared Library: '" + kernelLibrary + "'\n"
@@ -499,7 +499,7 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
                              "Kernels: " + boost::algorithm::join(functionsFound, ", "));
   }
 
-  const auto & kernelName = kernels[0].get<std::string>("name");
+  const auto& kernelName = kernels[0].get<std::string>("name");
 
   // -- Validate _init function
   if (!initKernels.empty()) {
@@ -541,7 +541,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
     // Build up the PSKernel property tree
     boost::property_tree::ptree ptKernel;
 
-    const auto & kernelName = ptFunction.get<std::string>("name");
+    const auto& kernelName = ptFunction.get<std::string>("name");
     ptKernel.put("name", kernelName);
 
     // Gather arguments
@@ -551,24 +551,24 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
     for (const auto& entry : args) {
       boost::property_tree::ptree ptArg;
 
-      const auto & argName = entry.get<std::string>("name");
+      const auto& argName = entry.get<std::string>("name");
       ptArg.put("name", argName);
       ptArg.put("type", entry.get<std::string>("type"));
 
       // Determine the primitive byte size
       auto byteSize = entry.get<uint64_t>("primitive-byte-size", 0);
-      if (!byteSize) 
+      if (!byteSize)
         throw std::runtime_error("Error: The kernel '" + kernelName + "' argument '" + argName + "' doesn't have a size.");
 
       ptArg.put("primitive-byte-size", entry.get<std::string>("primitive-byte-size"));
       byteSize = entry.get<uint64_t>("primitive-byte-size");
 
-      const auto & addrQualifier = entry.get<std::string>("address-qualifier");
+      const auto& addrQualifier = entry.get<std::string>("address-qualifier");
       ptArg.put("address-qualifier", addrQualifier);
 
       if (addrQualifier == "GLOBAL") {
         byteSize = 16;
-        if (entry.get<int>("use-id", 1)) 
+        if (entry.get<int>("use-id", 1))
           ptArg.put("memory-connection", "");
       }
 
@@ -577,10 +577,10 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
       offset += byteSize;
 
       // Determine if the ID value should be set.
-      if (entry.get<int>("use-id", 1) != 1) 
+      if (entry.get<int>("use-id", 1) != 1)
         ptArg.put("use-id", "0");
 
-      ptArgArray.push_back({"", ptArg});   // Used to make an array of objects
+      ptArgArray.push_back({ "", ptArg });   // Used to make an array of objects
     }
     ptKernel.add_child("arguments", ptArgArray);
 
@@ -593,7 +593,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
     }
     ptKernel.add_child("instances", ptInstanceArray);
 
-    ptKernelArray.push_back({"", ptKernel});
+    ptKernelArray.push_back({ "", ptKernel });
   }
 
   // DRC check, make sure we have some kernels

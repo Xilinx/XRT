@@ -150,8 +150,6 @@ namespace xclcpuemhal2 {
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
-    ,mDSAMajorVersion(DSA_MAJOR_VERSION)
-    ,mDSAMinorVersion(DSA_MINOR_VERSION)
     ,mDeviceIndex(deviceIndex)
   {
     binaryCounter = 0;
@@ -605,6 +603,15 @@ namespace xclcpuemhal2 {
     }
   }
 
+  void CpuemShim::setDriverVersion(const std::string& version)
+  {
+    bool success = false;
+    swemuDriverVersion_RPC_CALL(swemuDriverVersion, version);
+
+    if (mLogStream.is_open())
+      mLogStream << __func__ << " success " << success << std::endl;
+  }
+
   int CpuemShim::xclLoadXclBin(const xclBin *header)
   {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -823,7 +830,10 @@ namespace xclcpuemhal2 {
       bool verbose = false;
       if(mLogStream.is_open())
         verbose = true;
+
+      setDriverVersion("2.0");
       xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
+
       if(!ack)
         return -1;
     }

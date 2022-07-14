@@ -31,7 +31,7 @@ class SectionGroupConnectivity : public Section {
   static class init {
    public:
     init();
-  } initializer; 
+  } initializer;
 };
 
 #endif

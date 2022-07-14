@@ -10,6 +10,10 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 set(XILINX_XRT $ENV{XILINX_XRT})
 set(XRT_CORE_LIBRARY xrt_core)
 
+if (MSVC)
+  add_compile_options(/Zc:__cplusplus)
+endif()
+
 if (NOT DEFINED ${INSTALL_DIR})
   set(INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/${CMAKE_SYSTEM_NAME}/${CMAKE_BUILD_TYPE}/${MODE}")
 endif()
@@ -39,4 +43,3 @@ add_subdirectory(cdma)
 add_subdirectory(cuselect)
 add_subdirectory(subdevice)
 add_subdirectory(vadd_bank3)
-
