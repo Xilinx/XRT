@@ -263,36 +263,20 @@ static int xocl_open_cu_context(struct xocl_dev *xdev, struct kds_client *client
 			ret = -ENOMEM;
 			goto out;
 		}
-
-		uuid = vzalloc(sizeof(*uuid));
-		if (!uuid) {
-			ret = -ENOMEM;
-			vfree(client->ctx);
-			goto out;
-		}
-
-		/* TODO : We need to use hw_context here to get uuid from a slot
-		 * for multi slot case. 
+		
+		/* TODO : We need to use args->hw_context here to get uuid from a slot
+		 * for multi slot case.
 		 **/
 		ret = XOCL_GET_XCLBIN_ID(xdev, uuid);
 		if (ret) {
-			ret = -EINVAL;
 			vfree(client->ctx);
-			vfree(uuid);
+			client->ctx = NULL;
 			goto out;
 		}
-
-		ret = xocl_icap_lock_bitstream(xdev, uuid);
-		if (ret) {
-			XOCL_PUT_XCLBIN_ID(xdev);
-			ret = -EINVAL;
-			vfree(client->ctx);
-			vfree(uuid);
-			goto out;
-		}
-		XOCL_PUT_XCLBIN_ID(xdev);
 
 		client->ctx->xclbin_id = uuid;
+		XOCL_PUT_XCLBIN_ID(xdev);
+
 		client->ctx->slot_idx = args->hw_context;
 		list_add_tail(&client->ctx->link, &client->ctx_list);
 	}
@@ -302,16 +286,16 @@ static int xocl_open_cu_context(struct xocl_dev *xdev, struct kds_client *client
 	 */
 	ret = xocl_cu_ctx_to_info(xdev, args, &info);
 	if (ret) {
-		//ret = -EINVAL;
-		//vfree(client->ctx);
-		//vfree(uuid);
+		userpf_err(xdev, "Invalid context specified");
 		goto out;
 	}
 
 	info.curr_ctx = (void *)client->ctx;
 	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
-	if (ret)
-		goto out1;
+	if (ret) {
+		userpf_err(xdev, "KDS context failed");
+		goto out;
+	}
 
 	/* Returns the CU index encoded with CU domain */
 	args->cu_index = set_domain(info.cu_domain, info.cu_idx);
@@ -319,14 +303,7 @@ static int xocl_open_cu_context(struct xocl_dev *xdev, struct kds_client *client
 	/* Cache the cu index here. We need this to delete hw context */
 	client->ctx->cu_idx = args->cu_index;
 	client->ctx->flags = info.flags;
-out1:
-	/* If client still has no opened context at this point */
-	if (!client->ctx) {
-		(void) xocl_icap_unlock_bitstream(xdev, client->ctx->xclbin_id);
-		if (client->ctx->xclbin_id)
-			vfree(client->ctx->xclbin_id);
-		client->ctx->xclbin_id = NULL;
-	}
+
 out:
 	mutex_unlock(&client->lock);
 	return ret;
@@ -350,16 +327,27 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			goto out;
 		}
 
-		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id);
-		if (ret)
+		/* TODO : We need to use args->hw_context here to get uuid from a slot
+		 * for multi slot case.
+		 **/
+		ret = XOCL_GET_XCLBIN_ID(xdev, uuid);
+		if (ret) {
+			vfree(client->ctx);
+			client->ctx = NULL;
 			goto out;
-		uuid = vzalloc(sizeof(*uuid));
-		if (!uuid) {
-			ret = -ENOMEM;
-			goto out1;
 		}
-		uuid_copy(uuid, &args->xclbin_id);
+		
+		/* If xclbin id looks good, unlock bitstream should not fail. */
+		if (!uuid_equal(uuid, &args->xclbin_id)) {
+			vfree(client->ctx); 
+			client->ctx = NULL;
+			userpf_err(xdev, "Try to open an Invalid CTX on wrong xclbin");
+			ret = -EINVAL;
+			goto out;
+		}
+
 		client->ctx->xclbin_id = uuid;
+		XOCL_PUT_XCLBIN_ID(xdev);
 
 		list_add_tail(&client->ctx->link, &client->ctx_list);
 	}
@@ -371,14 +359,6 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	info.curr_ctx = (void *)client->ctx;
 	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
 
-out1:
-	/* If client still has no opened context at this point */
-	if (!client->ctx) {
-		if (client->ctx->xclbin_id)
-			vfree(client->ctx->xclbin_id);
-		client->ctx->xclbin_id = NULL;
-		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
-	}
 out:
 	mutex_unlock(&client->lock);
 	return ret;
@@ -393,15 +373,15 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 
 	mutex_lock(&client->lock);
 
-	uuid = client->ctx->xclbin_id;
 	/* xclCloseContext() would send xclbin_id and cu_idx.
 	 * Be more cautious while delete. Do sanity check */
-	if (!uuid) {
+	if (!client->ctx) {
 		userpf_err(xdev, "No context was opened");
 		ret = -EINVAL;
 		goto out;
 	}
 
+	uuid = client->ctx->xclbin_id;
 	/* If xclbin id looks good, unlock bitstream should not fail. */
 	if (!uuid_equal(uuid, &args->xclbin_id)) {
 		userpf_err(xdev, "Try to delete CTX on wrong xclbin");
@@ -416,11 +396,9 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret)
 		goto out;
 
-	/* unlock bitstream if there is no opening context */
+	/* Delete the context if there are no references */
 	if (!client->ctx->num_ctx) {
-		vfree(client->ctx->xclbin_id);
 		client->ctx->xclbin_id = NULL;
-		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
 		list_del(&client->ctx->link);
 		vfree(client->ctx);
 		client->ctx = NULL;
@@ -443,15 +421,28 @@ static int xocl_add_hw_context(struct xocl_dev *xdev, struct kds_client *client,
 	if (!uuid) {
 		return -ENOMEM;
 	}
+	
+	mutex_lock(&client->lock);
+
 	uuid_copy(uuid, &args->xclbin_id);
+
+	/* Retrive the cache data based on the give xclbin_id */
 	axlf_obj = xocl_query_cache_xclbin(xdev, uuid); 
 	if (!axlf_obj) {
 		vfree(uuid);
 		return -EINVAL;
 	}
 
-	mutex_lock(&client->lock);
+	/* Download the xclbin to the device */
 	ret = xocl_download_axlf_helper(XDEV(xdev)->drm, axlf_obj, &slot_hndl);
+	if (ret) {
+		vfree(uuid);
+		mutex_unlock(&client->lock);
+		return -EINVAL;
+	}
+
+	/* Lock the bitstream */
+	ret = xocl_icap_lock_bitstream(xdev, uuid);
 	if (ret) {
 		vfree(uuid);
 		mutex_unlock(&client->lock);
@@ -461,8 +452,8 @@ static int xocl_add_hw_context(struct xocl_dev *xdev, struct kds_client *client,
 	/* Slot handler should return from here. 
 	 * Same should use as hw context handler */
 	args->hw_context = slot_hndl;
-	mutex_unlock(&client->lock);
 	vfree(uuid);
+	mutex_unlock(&client->lock);
 
 	return ret;
 }
@@ -470,49 +461,26 @@ static int xocl_add_hw_context(struct xocl_dev *xdev, struct kds_client *client,
 static int xocl_del_hw_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_client_ctx *cctx = NULL;
-	xuid_t *slot_uuid = NULL;
 	xuid_t *uuid = NULL;
 	int ret = 0;
 
 	mutex_lock(&client->lock);
-
-	cctx = client->ctx;
-	if (!cctx) {	
-                userpf_err(xdev, "No context was opened");
-                ret = -EINVAL;
-                goto out;
+	if (client->ctx) {	
+                userpf_err(xdev, "Some open context exists!!");
+		mutex_unlock(&client->lock);
+                return -EINVAL;
 	}
 	
-	slot_uuid = vzalloc(sizeof(*uuid));
-	if (!slot_uuid) {
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	/* TODO : We need to use hw_context here to get uuid from a slot
-	 * for multi slot case. 
+	/* TODO : We need to use args->hw_context here to get uuid from a slot
+	 * for multi slot case.
 	 **/
-	ret = XOCL_GET_XCLBIN_ID(xdev, slot_uuid);
-	/* If xclbin id looks good, unlock bitstream should not fail. */
-	if (!uuid_equal(cctx->xclbin_id, slot_uuid)) {
-		userpf_err(xdev, "Try to delete CTX on wrong xclbin");
-		ret = -EBUSY;
-		goto out;
-	}
+	ret = XOCL_GET_XCLBIN_ID(xdev, uuid);
+
+	/* Release this slot */
+	(void) xocl_icap_unlock_bitstream(xdev, uuid);
 
 	XOCL_PUT_XCLBIN_ID(xdev);
-	/* unlock bitstream if there is no opening context */
-	if (!cctx->num_ctx) {
-		vfree(cctx->xclbin_id);
-		cctx->xclbin_id = NULL;
-		(void) xocl_icap_unlock_bitstream(xdev, cctx->xclbin_id);
-		list_del(&cctx->link);
-		vfree(cctx);
-		client->ctx = NULL;
-	}
 
-out:
 	mutex_unlock(&client->lock);
 	return ret;
 }
@@ -1147,7 +1115,7 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 	kds_fini_client(kds, client);
 	if (client->ctx && client->ctx->xclbin_id) {
 		(void) xocl_icap_unlock_bitstream(xdev, client->ctx->xclbin_id);
-		vfree(client->ctx->xclbin_id);
+		client->ctx->xclbin_id = NULL;
 	}
 	kfree(client);
 	userpf_info(xdev, "client exits pid(%d)\n", pid);

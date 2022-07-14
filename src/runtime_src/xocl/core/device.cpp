@@ -852,9 +852,6 @@ load_program(program* program)
   }
 
   m_active = program;
-
-  // In order to use virtual CUs (KDMA) we must open a virtual context
-  m_xdevice->acquire_cu_context(-1,true);
 }
 
 void
@@ -864,8 +861,6 @@ unload_program(const program* program)
   if (m_active == program) {
     clear_cus();
     m_active = nullptr;
-    if (!m_parent.get())
-      m_xdevice->release_cu_context(-1); // release virtual CU context
   }
 }
 

@@ -101,8 +101,12 @@ int main(int argc, char** argv) {
 	    std::cout << bo_data[i];
     
     std::cout << std::endl;
-    if (!std::equal(std::begin(gold), std::end(gold), bo_data))
-	    throw std::runtime_error("Incorrect value obtained");
+    if (!std::equal(std::begin(gold), std::end(gold), bo_data)) {
+	std::cout << "Incorrect value obtained" << std::endl;
+    	std::cout << "TEST FAILED\n";
+
+	return EXIT_FAILURE;
+    }
 
     std::cout << "TEST PASSED\n";
     return 0;
