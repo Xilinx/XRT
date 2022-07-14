@@ -274,7 +274,7 @@ void unix_socket::monitor_socket_thread() {
     auto retval = poll(&mpoll_on_filedescriptor, 1, 500); // Let's do polling on it for utmost 500 ms
     if (retval < 0)
     {
-      DEBUG_MSGS_COUT("poll is failed");
+      DEBUG_MSG_COUT("poll is failed");
       continue;
     }
     if (retval == 0)
@@ -283,7 +283,7 @@ void unix_socket::monitor_socket_thread() {
     // The same logic can be implemented by looking at ~POLLIN or POLLRDHUP & POLLERR & POLLHUP
     if (mpoll_on_filedescriptor.revents & POLLHUP)
     {
-      DEBUG_MSGS_COUT("Client socket state has changed & it is not readable anymore! So application will exit now.");
+      DEBUG_MSG_COUT("Client socket state has changed & it is not readable anymore! So application will exit now.");
       m_is_socket_live.store(false);
       server_started.store(false); // Let's other monitoring threads exit
       break;
@@ -291,7 +291,7 @@ void unix_socket::monitor_socket_thread() {
 
     if (mpoll_on_filedescriptor.revents & POLLERR)
     {
-      DEBUG_MSGS_COUT("Hurrah! client connection is lost.");
+      DEBUG_MSG_COUT("Hurrah! client connection is lost.");
       m_is_socket_live.store(false);
       server_started.store(false);
       break;

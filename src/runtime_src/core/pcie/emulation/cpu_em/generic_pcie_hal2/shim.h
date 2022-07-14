@@ -569,6 +569,7 @@ namespace xclcpuemhal2
     */
     void closeApplicationOnMagicStrFound(const std::string &matchString)
     {
+      DEBUG_MSG_COUT("start");
       std::string line;
       while (std::getline(file, line))
       {
@@ -578,6 +579,7 @@ namespace xclcpuemhal2
           mCpuShimPtr->xclClose();
         }
       }
+      DEBUG_MSG_COUT("end");
     }
 
     //**********************************************************************************//
@@ -591,7 +593,7 @@ namespace xclcpuemhal2
       {
         if (boost::filesystem::exists(mFileName))
         {
-          file.open(mFileName);
+          file.open(mFileName,std::ios::in);
           if (file.is_open())
             mFileExists = true;
         }

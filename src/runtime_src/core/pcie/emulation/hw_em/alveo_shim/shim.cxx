@@ -198,7 +198,7 @@ namespace xclhwemhal2 {
                                          "SystemC TLM functional mode",
                                          "HLS_PRINT",
                                          "Exiting xsim",
-                                         "FATAL_ERROR"};
+                                         "ERROR"};
 
     std::ifstream ifs(getSimPath() + "/simulate.log");
 
@@ -211,7 +211,7 @@ namespace xclhwemhal2 {
             if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
               logMessage(line);
               parsedMsgs.push_back(line);
-              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR")) {
+              if (!matchString.compare("Exiting xsim") || !matchString.compare("ERROR")) {
                   std::cout << "SIMULATION EXITED" << std::endl;
                   this->xclClose();                                               // Let's have a proper clean if xsim is NOT running
                   exit(0);                                                        // It's a clean exit only.
@@ -444,7 +444,7 @@ namespace xclhwemhal2 {
     std::string aie_sim_options = xrt_core::config::get_aie_sim_options();
 
     if (mLogStream.is_open()) {
-      //    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << args.m_zipFile << std::endl;
+         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " <<  std::endl;
     }
     mCuIndx = 0;
     //TBD the file read may slowdown things...whenever xclLoadBitStream hal API implementation changes, we also need to make changes.
@@ -746,6 +746,18 @@ namespace xclhwemhal2 {
         }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
+
+        const char* ldisplay = std::getenv("DISPLAY");
+        if(!ldisplay)
+        {
+          if (mLogStream.is_open())
+          {
+            mLogStream << __func__ << " DISPLAY environment is not available so expect exit from the application " << std::endl;
+            DEBUG_MSG_COUT(" DISPLAY environment is not available so expect exit from the application ");
+          }
+          exit(0);
+        }
+        
       }
 
       if (lWaveform == xclemulation::debug_mode::batch)
@@ -1036,10 +1048,20 @@ namespace xclhwemhal2 {
         //if (!xclemulation::file_exists(sim_file))
         if (!boost::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
+          
+        if (mLogStream.is_open() )
+            mLogStream << __TIME__ <<"\t"<< __func__ << " before launching xsim process sim_file::"<<sim_file  << std::endl;
+
+        if (mLogStream.is_open() )
+            mLogStream << __TIME__ <<"\t"<< __func__ << " The simulate script is "  <<sim_file  << std::endl;
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
-        fclose(stdout);
         if (r == -1){ std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1); }
+
+        if (mLogStream.is_open() )
+            mLogStream << __TIME__ <<"\t"<< __func__ << " After launching xsim process"  << std::endl;
+
+        fclose(stdout);
         exit(0);
       }
 #endif
@@ -1052,7 +1074,8 @@ namespace xclhwemhal2 {
     {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
-
+    // check for any errors if present in simulate.log, if yes then log them onto screen.
+    parseLog();
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
     sock->monitor_socket();

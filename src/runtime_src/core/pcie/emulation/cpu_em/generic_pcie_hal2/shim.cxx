@@ -1310,14 +1310,17 @@ namespace xclcpuemhal2
 
   void CpuemShim::closeMessengerThread()
   {
+    mIsDeviceProcessStarted = false;
     if (mMessengerThread.joinable())
       mMessengerThread.join();
   }
 
   void CpuemShim::messagesThread()
   {
+    DEBUG_MSG_COUT("start");
     auto start_time = std::chrono::high_resolution_clock::now();
     auto lpath = getDeviceProcessLogPath();
+    DEBUG_MSG_COUT("The file path is::"<<lpath);
     sParseLog deviceProcessLog(this, lpath);
     int count = 0;
     while (mIsDeviceProcessStarted)
