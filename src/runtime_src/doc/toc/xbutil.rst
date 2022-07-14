@@ -100,7 +100,7 @@ The command ``xbutil validate`` validates the installed card by running precompi
     - ``bist``: Run BIST test
     - ``vcu``: Run decoder test (only applicable for specific platform).
     - ``quick``: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)
-    - ``pl-aie``: Run PL controlled AIE test
+    - ``aie``: Run PL controlled AIE test
     - ``ps-aie``: Run PS controlled AIE test
     - ``ps-pl-verify``: Run PS controlled 'Hello World' PL kernel test
     - ``ps-verify``: Run 'Hello World' PS kernel test
