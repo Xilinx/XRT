@@ -699,7 +699,7 @@ namespace xdp {
                               + " and will be removed in future release. Please use"
                               + " tile_based_" + moduleNames[module] + "_metrics"
                               + " under \"AIE_profile_settings\" section.";
-        xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
+        xrt_core::message::send(severity_level::warning, "XRT", depMsg);
       }
       int NUM_COUNTERS       = numCounters[module];
       XAie_ModuleType mod    = falModuleTypes[module];
