@@ -1421,7 +1421,7 @@ failed:
  * This API requests given sensor type to XGQ driver and stores the received
  * buffer into sensor_data
  */
-static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev, char *resp,
+static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
                                             enum xgq_sdr_repo_type repo_type,
                                             bool create_sysfs, uint64_t data_args,
                                             char *resp)
