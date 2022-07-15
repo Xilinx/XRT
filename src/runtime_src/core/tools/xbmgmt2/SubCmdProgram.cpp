@@ -146,9 +146,9 @@ update_versal_SC(std::shared_ptr<xrt_core::device> dev)
   std::atomic<bool> done(false);
   std::shared_ptr<XBU::ProgressBar> progress_reporter;
   try {
-    uint32_t val = xrt_core::query::program_sc::value_type(1);
+    const uint32_t val = xrt_core::query::program_sc::value_type(1);
     // timeout for xgq is 300 seconds
-    unsigned int max_duration = 300;
+    const unsigned int max_duration = 300;
     progress_reporter = std::make_shared<XBU::ProgressBar>("Programming SC", 
                                 max_duration, true /*batch mode for dots*/, std::cout); 
     progress_reporter.get()->setPrintPercentBatch(false);
