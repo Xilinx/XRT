@@ -19,6 +19,9 @@
 #include "xrt/xrt_kernel.h"
 
 #include <cstring>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 #define LENGTH 64
 
 static void printHelp() {
