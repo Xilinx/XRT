@@ -390,7 +390,6 @@ add_library(xdp_system_compiler_plugin MODULE ${XRT_XDP_SYSTEM_COMPILER_PLUGIN_F
 add_library(xdp_noc_plugin MODULE ${XRT_XDP_PROFILE_NOC_PLUGIN_FILES})
 add_library(xdp_vart_plugin MODULE ${XRT_XDP_PROFILE_VART_PLUGIN_FILES})
 add_library(xdp_hw_emu_device_offload_plugin MODULE ${XRT_XDP_HW_EMU_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
-add_library(xdp_aie_trace_new_plugin MODULE ${XRT_XDP_AIE_TRACE_NEW_PLUGIN_FILES})
 
 add_dependencies(xdp_debug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
@@ -399,7 +398,6 @@ add_dependencies(xdp_system_compiler_plugin xdp_core)
 add_dependencies(xdp_noc_plugin xdp_core xrt_core)
 add_dependencies(xdp_vart_plugin xdp_core xrt_core)
 add_dependencies(xdp_hw_emu_device_offload_plugin xdp_core xrt_coreutil xrt_hwemu)
-add_dependencies(xdp_aie_trace_new_plugin xdp_core xrt_core)
 
 target_link_libraries(xdp_debug_plugin PRIVATE xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin PRIVATE xrt_coreutil xilinxopencl)
@@ -408,7 +406,6 @@ target_link_libraries(xdp_system_compiler_plugin xdp_core)
 target_link_libraries(xdp_noc_plugin PRIVATE xdp_core xrt_core)
 target_link_libraries(xdp_vart_plugin PRIVATE xdp_core xrt_core)
 target_link_libraries(xdp_hw_emu_device_offload_plugin PRIVATE xdp_core xrt_coreutil xrt_hwemu)
-target_link_libraries(xdp_aie_trace_new_plugin PRIVATE xdp_core xrt_core)
 
 set_target_properties(xdp_noc_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_vart_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -417,9 +414,14 @@ set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRIN
 set_target_properties(xdp_power_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_system_compiler_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hw_emu_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
-set_target_properties(xdp_aie_trace_new_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-target_compile_definitions(xdp_aie_trace_new_plugin PRIVATE XRT_NATIVE_BUILD=1)
+# x86 AI Engine Plugin
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_NEW_PLUGIN_FILES})
+  target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core)
+  set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+  target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_NATIVE_BUILD=1)
+endif()
 
 # AI Engine plugins are Edge only.
 # With x86 sw_emu support of AIE, XRT_AIE_BUILD is defined even on x86

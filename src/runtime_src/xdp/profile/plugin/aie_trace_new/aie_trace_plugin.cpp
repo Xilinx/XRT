@@ -79,11 +79,17 @@ namespace xdp {
   uint64_t AieTracePlugin::getDeviceIDFromHandle(void* handle) {
     constexpr uint32_t PATH_LENGTH = 512;
 
+    auto itr = metadata->HandleToDeviceID.find(handle);
+    if (itr != metadata->HandleToDeviceID.end())
+      return itr->second;
+
     char pathBuf[PATH_LENGTH];
     memset(pathBuf, 0, PATH_LENGTH);
     xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
     std::string sysfspath(pathBuf);
-    return db->addDevice(sysfspath); // Get the unique device Id
+    uint64_t deviceID =  db->addDevice(sysfspath); // Get the unique device Id
+    metadata->HandleToDeviceID[handle] = deviceID;
+    return deviceID;
   }
 
   void AieTracePlugin::updateAIEDevice(void* handle)
@@ -93,7 +99,6 @@ namespace xdp {
 
     auto deviceID = getDeviceIDFromHandle(handle);
     metadata->setDeviceId(deviceID);
-    metadata->HandleToDeviceID[handle] = deviceID;
     // handle is not owned by XDP
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
@@ -264,7 +269,6 @@ namespace xdp {
   {
     auto deviceID = getDeviceIDFromHandle(handle);
     metadata->setDeviceId(deviceID);
-    metadata->HandleToDeviceID[handle] = deviceID;
 
     if (offloadersMap.find(deviceID) != offloadersMap.end())
       (std::get<0>(offloadersMap[deviceID]))->readTrace(true);
@@ -277,16 +281,13 @@ namespace xdp {
   {
     auto deviceID = getDeviceIDFromHandle(handle);
     metadata->setDeviceId(deviceID);
-    metadata->HandleToDeviceID[handle] = deviceID;
 
     if (offloadersMap.find(deviceID) != offloadersMap.end()) {
       auto& offloader = std::get<0>(offloadersMap[deviceID]);
-
       if (offloader->continuousTrace()) {
         offloader->stopOffload();
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
       }
-
       offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
@@ -303,19 +304,16 @@ namespace xdp {
   {
     for (auto& o : offloadersMap) {
       auto& offloader = std::get<0>(o.second);
-
       if (offloader->continuousTrace()) {
         offloader->stopOffload() ;
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
       }
-
       offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();
     }
     offloadersMap.clear();
-
     XDPPlugin::endWrite();
   }
 
