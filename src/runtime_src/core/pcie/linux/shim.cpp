@@ -1383,7 +1383,7 @@ xclLoadXclBin(const xclBin *buffer)
 
   START_DEVICE_PROFILING_CB(this);
 
-  return ret;
+  return 0;
 }
 
 /*
