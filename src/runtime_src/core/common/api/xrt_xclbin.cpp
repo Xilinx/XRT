@@ -907,6 +907,13 @@ get_ips() const
   return handle ? handle->get_ips() : std::vector<xclbin::ip>{};
 }
 
+std::vector<xclbin::ip>
+xclbin::
+get_ips(const std::string& name) const
+{
+  return handle ? handle->get_ips(name) : std::vector<xclbin::ip>{};
+}
+
 xclbin::ip
 xclbin::
 get_ip(const std::string& name) const
