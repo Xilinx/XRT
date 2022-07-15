@@ -1061,6 +1061,7 @@ initialize_query_table()
   emplace_sysfs_get<query::ert_cu_read>                        ("ert_ctrl", "cu_read_cnt");
   emplace_sysfs_get<query::ert_cu_write>                       ("ert_ctrl", "cu_write_cnt");
   emplace_sysfs_get<query::ert_data_integrity>                 ("ert_ctrl", "data_integrity");
+  emplace_sysfs_get<query::ert_status>                         ("ert_ctrl", "status");
   emplace_sysfs_getput<query::config_mailbox_channel_disable>  ("", "config_mailbox_channel_disable");
   emplace_sysfs_getput<query::config_mailbox_channel_switch>   ("", "config_mailbox_channel_switch");
   emplace_sysfs_getput<query::config_xclbin_change>            ("", "config_xclbin_change");
