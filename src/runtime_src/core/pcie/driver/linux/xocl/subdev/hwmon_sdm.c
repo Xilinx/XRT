@@ -55,6 +55,7 @@ enum sysfs_sdr_field_ids {
 	SYSFS_SDR_LOWER_WARN_VAL        = 9,
 	SYSFS_SDR_LOWER_CRITICAL_VAL    = 0xA,
 	SYSFS_SDR_LOWER_FATAL_VAL       = 0xB,
+	SYSFS_SDR_UNIT_MODIFIER_VAL     = 0xC,
 };
 
 struct xocl_sdr_bdinfo {
@@ -340,6 +341,7 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	uint32_t sid_len = sdm->sensor_ids_max[repo_id];
 	uint8_t target_sensor_id = 0;
 	int16_t sensor_index = 0;
+	int8_t unitm = 0;
 	uint64_t data_args = ((u64)buf_index << 16) | (field_id << 8);
 
 	if (repo_id >= SDR_TYPE_MAX) {
@@ -394,6 +396,9 @@ buf_index, repo_id);
 		}
 		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
 		sz = sprintf(buf, "%u\n", uval);
+	} else if (field_id == SYSFS_SDR_UNIT_MODIFIER_VAL) {
+		memcpy(&unitm, &sdm->sensor_data[repo_id][buf_index], buf_len);
+		sz = sprintf(buf, "%d\n", unitm);
 	} else if (field_id == SYSFS_SDR_STATUS_VAL) {
 		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
 		switch(uval) {
@@ -601,11 +606,11 @@ static int parse_single_sdr_info(struct xocl_hwmon_sdm *sdm, char *in_buf,
 static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_sysfs)
 {
 	bool create = false;
-	int buf_index, err, repo_id, sid = 0;
+	int buf_index, err, repo_id, sid = 0, unit_modifier_index;
 	uint8_t remaining_records, completion_code, repo_type, status;
 	uint8_t name_length, name_type_length, sys_index, fan_index;
 	uint8_t val_len, value_type_length, threshold_support_byte;
-	uint8_t bu_len = 0, sensor_id, base_unit_type_length, unit_modifier_byte;
+	uint8_t bu_len = 0, sensor_id, base_unit_type_length;
 	uint32_t buf_size = 0, name_index = 0, ins_index = 0, max_index = 0, avg_index = 0, status_index = 0, unit_type_index = 0;
 	uint32_t upper_warning = 0, upper_critical = 0, upper_fatal = 0;
 	uint32_t lower_warning = 0, lower_critical = 0, lower_fatal = 0;
@@ -673,7 +678,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 				goto abort;
 		}
 
-		unit_modifier_byte = in_buf[buf_index++];
+		unit_modifier_index = buf_index++;
 		threshold_support_byte = in_buf[buf_index++];
 
 		if(threshold_support_byte != SDR_NULL_BYTE)
@@ -771,6 +776,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 						sprintf(sysfs_name[SYSFS_SDR_NAME], "fan%d_label", fan_index);
 						fan_index++;
 					} else {
+						sprintf(sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL], "temp%d_unitm", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], "temp%d_units", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "temp%d_status", sys_index);
 						sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "temp%d_average", sys_index);
@@ -794,6 +800,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					create = true;
 					break;
 				case SDR_TYPE_VOLTAGE:
+					sprintf(sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL], "in%d_unitm", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], "in%d_units", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "in%d_status", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "in%d_average", sys_index);
@@ -804,6 +811,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					create = true;
 					break;
 				case SDR_TYPE_CURRENT:
+					sprintf(sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL], "curr%d_unitm", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], "curr%d_units", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "curr%d_status", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "curr%d_average", sys_index);
@@ -814,6 +822,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					create = true;
 					break;
 				case SDR_TYPE_POWER:
+					sprintf(sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL], "power%d_unitm", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], "power%d_units", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_STATUS_VAL], "power%d_status", sys_index);
 					sprintf(sysfs_name[SYSFS_SDR_AVG_VAL], "power%d_average", sys_index);
@@ -896,6 +905,15 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], repo_id, SYSFS_SDR_UNIT_TYPE_VAL, unit_type_index, bu_len);
 					if (err) {
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], err);
+					}
+				}
+
+				//Create *_unitm sysfs node
+				if(strlen(sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL]) != 0) {
+					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL], repo_id,
+											 SYSFS_SDR_UNIT_MODIFIER_VAL, unit_modifier_index, 1);
+					if (err) {
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL], err);
 					}
 				}
 

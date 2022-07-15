@@ -907,6 +907,9 @@ struct sdm_sensor_info : request
    *  max      : maximum value
    *  average  : average value
    *  highest  : highest value (used for temperature sensors)
+   *  status   : sensor status
+   *  units    : sensor value units
+   *  unitm    : unit modifier value used to get actual sensor value
    */
   struct sensor_data {
     std::string label;
@@ -915,6 +918,8 @@ struct sdm_sensor_info : request
     uint32_t average {};
     uint32_t highest {};
     std::string status;
+    std::string units;
+    int8_t unitm;
   };
   using result_type = std::vector<sensor_data>;
   using req_type = sdr_req_type;
