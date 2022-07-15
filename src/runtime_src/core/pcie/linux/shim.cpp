@@ -1338,10 +1338,7 @@ xclLoadXclBin(const xclBin *buffer)
   auto xclbin = xrt::xclbin{top};
   register_xclbin(xclbin);
 
-  auto uuid = xclbin.get_uuid();
-  auto ret = create_hw_context(uuid, 0);
-
-  return ret;
+  return 0;
 }
 
 /*
