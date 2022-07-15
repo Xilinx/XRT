@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -98,8 +98,8 @@ namespace xdp {
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Delete the old offloader
-      if (implementation->aieOffloaders.find(deviceID) != implementation->aieOffloaders.end())
-        implementation->aieOffloaders.erase(deviceID);
+      if (offloadersMap.find(deviceID) != offloadersMap.end())
+        offloadersMap.erase(deviceID);
 
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceID, handle);
@@ -127,9 +127,7 @@ namespace xdp {
 
     metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
     if (metadata->getNumStreams() == 0) {
-      // no AIE Trace Stream to offload trace, so return
-      std::string msg("Neither PLIO nor GMIO trace infrastucture is found in the given design. So, AIE event trace will not be available.");
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
+      xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_UNAVAILABLE);
       return;
     }
 
@@ -157,8 +155,11 @@ namespace xdp {
       //  configure it.  I'm not sure yet what is needed for this
 
       std::string configFile = "aie_event_runtime_config.json";
-      VPWriter* writer = new AieTraceConfigWriter(configFile.c_str(),
-                                                  deviceID, implementation->getMetricSet()) ;
+      VPWriter* writer = new AieTraceConfigWriter
+      ( configFile.c_str()
+      , deviceID
+      , implementation->getMetricSet()
+      );
       writers.push_back(writer);
       (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_RUNTIME_CONFIG");
 
@@ -166,11 +167,15 @@ namespace xdp {
 
     for (uint64_t n = 0; n < implementation->getNumStreams(); ++n) {
 	    std::string fileName = "aie_trace_" + std::to_string(deviceID) + "_" + std::to_string(n) + ".txt";
-      VPWriter* writer = new AIETraceWriter(fileName.c_str(), deviceID, n,
-                                            "", // version
-                                            "", // creation time
-                                            "", // xrt version
-                                            ""); // tool version
+      VPWriter* writer = new AIETraceWriter
+      ( fileName.c_str()
+      , deviceID
+      , n
+      , "" // version
+      , "" // creation time
+      , "" // xrt version
+      , "" // tool version
+      );
       writers.push_back(writer);
       db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_TRACE");
 
@@ -185,12 +190,10 @@ namespace xdp {
 
     if (implementation->getContinuousTrace()) {
       // Continuous Trace Offload is supported only for PLIO flow
-      if (isPLIO) {
+      if (isPLIO)
         XDPPlugin::startWriteThread(implementation->getFileDumpIntS(), "AIE_EVENT_TRACE", false);
-      } else {
-        std::string msg("Continuous offload of AIE Trace is not supported for GMIO mode. So, AIE Trace for GMIO mode will be offloaded only at the end of application.");
-        xrt_core::message::send(severity_level::warning, "XRT", msg);
-      }
+      else
+        xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_PERIODIC_OFFLOAD_UNSUPPORTED);
     }
 
     // First, check against memory bank size
@@ -202,7 +205,8 @@ namespace xdp {
 
       if ((fullBankSize > 0) && (aieTraceBufSize > fullBankSize)) {
         aieTraceBufSize = fullBankSize;
-        std::string msg = "Requested AIE trace buffer is too big for memory resource. Limiting to " + std::to_string(fullBankSize) + "." ;
+        std::string msg = "Requested AIE trace buffer is too big for memory resource. Limiting to "
+                        + std::to_string(fullBankSize) + "." ;
         xrt_core::message::send(severity_level::warning, "XRT", msg);
       }
     }
@@ -210,22 +214,24 @@ namespace xdp {
     aieTraceBufSize = implementation->checkTraceBufSize(aieTraceBufSize);
 
     // Create AIE Trace Offloader
-    auto aieTraceLogger = std::make_unique<AIETraceDataLogger>(deviceID);
+    auto traceLogger = std::make_unique<AIETraceDataLogger>(deviceID);
 
     if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
       std::string flowType = (isPLIO) ? "PLIO" : "GMIO";
       std::stringstream msg;
-      msg << "Total size of " << std::fixed << std::setprecision(3) << (aieTraceBufSize / (1024.0 * 1024.0))
-          << " MB is used for AIE trace buffer for " << std::to_string(implementation->getNumStreams()) << " " << flowType 
+      msg << "Total size of " << std::fixed << std::setprecision(3)
+          << (aieTraceBufSize / (1024.0 * 1024.0))
+          << " MB is used for AIE trace buffer for "
+          << std::to_string(implementation->getNumStreams()) << " " << flowType
           << " streams.";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 
-    auto aieTraceOffloader = std::make_unique<AIETraceOffload>
+    auto offloader = std::make_unique<AIETraceOffload>
     ( handle
     , deviceID
     , deviceIntf
-    , aieTraceLogger.get()
+    , traceLogger.get()
     , isPLIO              // isPLIO?
     , aieTraceBufSize     // total trace buffer size
     , implementation->getNumStreams()
@@ -234,21 +240,24 @@ namespace xdp {
 
     // Can't call init without setting important details in offloader
     if (implementation->getContinuousTrace() && isPLIO) {
-      aieTraceOffloader->setContinuousTrace();
-      aieTraceOffloader->setOffloadIntervalUs(implementation->getOffloadIntervalUs());
+      offloader->setContinuousTrace();
+      offloader->setOffloadIntervalUs(implementation->getOffloadIntervalUs());
     }
 
-    if (!aieTraceOffloader->initReadTrace()) {
-      std::string msg = "Allocation of buffer for AIE trace failed. AIE trace will not be available.";
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
+    if (!offloader->initReadTrace()) {
+      xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
       return;
     }
 
     // Continuous Trace Offload is supported only for PLIO flow
     if (implementation->getContinuousTrace() && isPLIO)
-      aieTraceOffloader->startOffload();
+      offloader->startOffload();
 
-    implementation->aieOffloaders[deviceID] = std::make_tuple(std::move(aieTraceOffloader), std::move(aieTraceLogger), deviceIntf);
+    offloadersMap[deviceID] = std::make_tuple
+    ( std::move(offloader)
+    , std::move(traceLogger)
+    ,  deviceIntf
+    );
   }
 
   void AieTracePlugin::flushAIEDevice(void* handle)
@@ -256,6 +265,9 @@ namespace xdp {
     auto deviceID = getDeviceIDFromHandle(handle);
     metadata->setDeviceId(deviceID);
     metadata->HandleToDeviceID[handle] = deviceID;
+
+    if (offloadersMap.find(deviceID) != offloadersMap.end())
+      (std::get<0>(offloadersMap[deviceID]))->readTrace(true);
 
     if (implementation)
       implementation->flushDevice(handle);
@@ -267,13 +279,29 @@ namespace xdp {
     metadata->setDeviceId(deviceID);
     metadata->HandleToDeviceID[handle] = deviceID;
 
+    if (offloadersMap.find(deviceID) != offloadersMap.end()) {
+      auto& offloader = std::get<0>(offloadersMap[deviceID]);
+
+      if (offloader->continuousTrace()) {
+        offloader->stopOffload();
+        while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
+      }
+
+      offloader->readTrace(true);
+      if (offloader->isTraceBufferFull())
+        xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
+      offloader->endReadTrace();
+    }
+
     if (implementation)
       implementation->finishFlushDevice(handle);
+
+     offloadersMap.erase(deviceID);
   }
 
   void AieTracePlugin::writeAll(bool openNewFiles)
   {
-    for (auto& o : implementation->aieOffloaders) {
+    for (auto& o : offloadersMap) {
       auto& offloader = std::get<0>(o.second);
 
       if (offloader->continuousTrace()) {
@@ -286,7 +314,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();
     }
-    implementation->aieOffloaders.clear();
+    offloadersMap.clear();
 
     XDPPlugin::endWrite();
   }

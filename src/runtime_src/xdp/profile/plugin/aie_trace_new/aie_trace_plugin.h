@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -29,6 +29,11 @@ namespace xdp {
     std::unique_ptr<AieTraceImpl> implementation;
     std::shared_ptr<AieTraceMetadata> metadata;
     static bool live;
+
+    typedef std::tuple<std::unique_ptr<AIETraceOffload>,
+                       std::unique_ptr<AIETraceLogger>,
+                       DeviceIntf*> AIEData;
+    std::map<uint32_t, AIEData>  offloadersMap;
 
   public:
     XDP_EXPORT AieTracePlugin();

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,14 +39,7 @@ namespace xdp {
     VPDatabase* db = nullptr;
     std::shared_ptr<AieTraceMetadata> metadata;
 
-    typedef std::tuple<std::unique_ptr<AIETraceOffload>,
-                       std::unique_ptr<AIETraceLogger>,
-                       DeviceIntf*> AIEData;
-    std::vector<void*> deviceHandles;
-
   public:
-    std::map<uint32_t, AIEData>  aieOffloaders;
-
     AieTraceImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
       :db(database), metadata(metadata) {}
 

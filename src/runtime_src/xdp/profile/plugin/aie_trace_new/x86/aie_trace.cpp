@@ -59,35 +59,10 @@ namespace xdp {
   }
 
   void AieTrace_x86Impl::flushDevice(void* handle) {
-    if (handle == nullptr)
-      return;
-
-    auto deviceID = metadata->HandleToDeviceID[handle];
-    if (aieOffloaders.find(deviceID) != aieOffloaders.end())
-      (std::get<0>(aieOffloaders[deviceID]))->readTrace(true);
-
   }
 
-  void AieTrace_x86Impl::finishFlushDevice(void* handle){
-    if (handle == nullptr)
-      return;
-
-    auto deviceID = metadata->HandleToDeviceID[handle];
-    if (aieOffloaders.find(deviceID) != aieOffloaders.end()) {
-      auto& offloader = std::get<0>(aieOffloaders[deviceID]);
-
-      if (offloader->continuousTrace()) {
-        offloader->stopOffload();
-        while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
-      }
-
-      offloader->readTrace(true);
-      if (offloader->isTraceBufferFull())
-        xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
-      offloader->endReadTrace();
-
-      aieOffloaders.erase(deviceID);
-    }
+  void AieTrace_x86Impl::finishFlushDevice(void* handle) {
+    // Do things like releaseing aie resources here
   }
 
   bool AieTrace_x86Impl::isEdge(){
