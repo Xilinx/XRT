@@ -25,7 +25,8 @@ namespace xdp {
 
   class AieTraceEdgeImpl : public AieTraceImpl{
     public:
-      AieTraceEdgeImpl(VPDatabase* database, AieTraceMetadata* metadata) : AieTraceImpl(database, metadata){}
+      AieTraceEdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
+        : AieTraceImpl(database, metadata){}
       ~AieTraceEdgeImpl();
 
       void updateDevice(void* handle);

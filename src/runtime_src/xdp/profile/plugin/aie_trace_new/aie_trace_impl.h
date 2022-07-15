@@ -37,7 +37,7 @@ namespace xdp {
 
   protected:
     VPDatabase* db = nullptr;
-    std::unique_ptr<AieTraceMetadata> metadata;
+    std::shared_ptr<AieTraceMetadata> metadata;
 
     typedef std::tuple<std::unique_ptr<AIETraceOffload>,
                        std::unique_ptr<AIETraceLogger>,
@@ -47,7 +47,9 @@ namespace xdp {
   public:
     std::map<uint32_t, AIEData>  aieOffloaders;
 
-    AieTraceImpl(VPDatabase* database, AieTraceMetadata* metadata) : db(database), metadata(metadata) {}
+    AieTraceImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
+      :db(database), metadata(metadata) {}
+
     AieTraceImpl() = delete;
     virtual ~AieTraceImpl() {};
 
@@ -55,9 +57,10 @@ namespace xdp {
     virtual void flushDevice(void* handle) = 0;
     virtual void finishFlushDevice(void* handle) = 0;
     virtual bool isEdge() = 0;
+    virtual uint64_t checkTraceBufSize(uint64_t size) = 0;
   
     uint64_t getNumStreams() {return metadata->getNumStreams();}
-    uint64_t getDeviceId() {return metadata->getDeviceId();}
+    uint64_t getDeviceID() {return metadata->getDeviceId();}
     uint64_t getContinuousTrace() {return metadata->continuousTrace;}
     std::string getMetricSet(){return metadata->metricSet;}
     unsigned int getFileDumpIntS() {return metadata->aie_trace_file_dump_int_s;}

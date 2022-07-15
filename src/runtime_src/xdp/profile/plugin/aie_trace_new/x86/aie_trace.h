@@ -25,7 +25,8 @@ namespace xdp {
 
   class AieTrace_x86Impl : public AieTraceImpl{
     public:
-      AieTrace_x86Impl(VPDatabase* database, AieTraceMetadata* metadata) : AieTraceImpl(database, metadata){}
+      AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
+        : AieTraceImpl(database, metadata){}
       ~AieTrace_x86Impl() = default;
 
       void updateDevice(void* handle);
@@ -33,6 +34,7 @@ namespace xdp {
       void finishFlushDevice(void* handle);
       bool setMetrics(uint64_t deviceId, void* handle);
       bool isEdge();
+      uint64_t checkTraceBufSize(uint64_t size);
   };
 
 }   

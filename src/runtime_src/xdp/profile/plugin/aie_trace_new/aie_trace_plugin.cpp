@@ -20,6 +20,7 @@
 #include <memory>
 
 #include "core/common/message.h"
+#include "core/common/xrt_profiling.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -55,7 +56,8 @@ namespace xdp {
     // #ifdef EDGE_BUILD
     // implementation = std::make_unique<AieTrace_EdgeImpl>(db, nullptr);
     // #else
-    implementation = std::make_unique<AieTrace_x86Impl>(db, nullptr);
+    metadata = std::make_shared<AieTraceMetadata>();
+    implementation = std::make_unique<AieTrace_x86Impl>(db, metadata);
     // #endif
   }
 
@@ -74,15 +76,62 @@ namespace xdp {
     AieTracePlugin::live = false;
   }
 
+  uint64_t AieTracePlugin::getDeviceIDFromHandle(void* handle) {
+    constexpr uint32_t PATH_LENGTH = 512;
+
+    char pathBuf[PATH_LENGTH];
+    memset(pathBuf, 0, PATH_LENGTH);
+    xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
+    std::string sysfspath(pathBuf);
+    return db->addDevice(sysfspath); // Get the unique device Id
+  }
+
   void AieTracePlugin::updateAIEDevice(void* handle)
   {
     if (!handle || !implementation)
       return;
 
+    auto deviceID = getDeviceIDFromHandle(handle);
+    metadata->setDeviceId(deviceID);
+    metadata->HandleToDeviceID[handle] = deviceID;
+    // handle is not owned by XDP
+
+    if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
+      // Delete the old offloader
+      if (implementation->aieOffloaders.find(deviceID) != implementation->aieOffloaders.end())
+        implementation->aieOffloaders.erase(deviceID);
+
+      // Update the static database with information from xclbin
+      (db->getStaticInfo()).updateDevice(deviceID, handle);
+      {
+        struct xclDeviceInfo2 info;
+        if (xclGetDeviceInfo2(handle, &info) == 0)
+          (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+      }
+    }
+
     //Sets up and calls the PS kernel on x86 implementation
     //Sets up and the hardware on the edge implementation
     implementation->updateDevice(handle);
-    auto deviceID = implementation->getDeviceId();
+
+    if (!(db->getStaticInfo()).isGMIORead(deviceID)) {
+      // Update the AIE specific portion of the device
+      // When new xclbin is loaded, the xclbin specific datastructure is already recreated
+      std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;
+      if (device != nullptr) {
+        for (auto& gmio : metadata->get_trace_gmios(device.get()))
+          (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, gmio.channelNum, gmio.streamId, gmio.burstLength);
+      }
+      (db->getStaticInfo()).setIsGMIORead(deviceID, true);
+    }
+
+    metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
+    if (metadata->getNumStreams() == 0) {
+      // no AIE Trace Stream to offload trace, so return
+      std::string msg("Neither PLIO nor GMIO trace infrastucture is found in the given design. So, AIE event trace will not be available.");
+      xrt_core::message::send(severity_level::warning, "XRT", msg);
+      return;
+    }
 
     // Add all the writers
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
@@ -156,55 +205,9 @@ namespace xdp {
         std::string msg = "Requested AIE trace buffer is too big for memory resource. Limiting to " + std::to_string(fullBankSize) + "." ;
         xrt_core::message::send(severity_level::warning, "XRT", msg);
       }
-    } 
-
-// Check against amount dedicated as device memory (Edge Linux only)
-#if ! defined (XRT_NATIVE_BUILD) && ! defined (_WIN32)
-    try {
-      std::string line;
-      std::ifstream ifs;
-      ifs.open("/proc/meminfo");
-      while (getline(ifs, line)) {
-        if (line.find("CmaTotal") == std::string::npos)
-          continue;
-          
-        // Memory sizes are always expressed in kB
-        std::vector<std::string> cmaVector;
-        boost::split(cmaVector, line, boost::is_any_of(":"));
-        auto deviceMemorySize = std::stoull(cmaVector.at(1)) * 1024;
-        if (deviceMemorySize == 0)
-          break;
-
-        double percentSize = (100.0 * aieTraceBufSize) / deviceMemorySize;
-        std::stringstream percentSizeStr;
-        percentSizeStr << std::fixed << std::setprecision(3) << percentSize;
-
-        // Limit size of trace buffer if requested amount is too high
-        if (percentSize >= 80.0) {
-          uint64_t newAieTraceBufSize = (uint64_t)std::ceil(0.8 * deviceMemorySize);
-          aieTraceBufSize = newAieTraceBufSize;
-
-          std::stringstream newBufSizeStr;
-          newBufSizeStr << std::fixed << std::setprecision(3) << (newAieTraceBufSize / (1024.0 * 1024.0));
-          
-          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory."
-              + " You may run into errors depending upon memory usage of your application."
-              + " Limiting to " + newBufSizeStr.str() + " MB.";
-          xrt_core::message::send(severity_level::warning, "XRT", msg);
-        }
-        else {
-          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory.";
-          xrt_core::message::send(severity_level::info, "XRT", msg);
-        }
-        
-        break;
-      }
-      ifs.close();
     }
-    catch (...) {
-        // Do nothing
-    }
-#endif
+    // Platform specific things like CMA
+    aieTraceBufSize = implementation->checkTraceBufSize(aieTraceBufSize);
 
     // Create AIE Trace Offloader
     auto aieTraceLogger = std::make_unique<AIETraceDataLogger>(deviceID);
@@ -250,12 +253,20 @@ namespace xdp {
 
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
+    auto deviceID = getDeviceIDFromHandle(handle);
+    metadata->setDeviceId(deviceID);
+    metadata->HandleToDeviceID[handle] = deviceID;
+
     if (implementation)
       implementation->flushDevice(handle);
   }
 
   void AieTracePlugin::finishFlushAIEDevice(void* handle)
   {
+    auto deviceID = getDeviceIDFromHandle(handle);
+    metadata->setDeviceId(deviceID);
+    metadata->HandleToDeviceID[handle] = deviceID;
+
     if (implementation)
       implementation->finishFlushDevice(handle);
   }

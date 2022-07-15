@@ -27,6 +27,7 @@ namespace xdp {
   {
   private:
     std::unique_ptr<AieTraceImpl> implementation;
+    std::shared_ptr<AieTraceMetadata> metadata;
     static bool live;
 
   public:
@@ -37,6 +38,9 @@ namespace xdp {
     XDP_EXPORT void finishFlushAIEDevice(void* handle);
     XDP_EXPORT virtual void writeAll(bool openNewFiles);
     XDP_EXPORT static bool alive();
+
+  private:
+      uint64_t getDeviceIDFromHandle(void* handle);
   };
 
 }   

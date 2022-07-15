@@ -24,21 +24,14 @@
 
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
-//#include "core/edge/user/shim.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/plugin/aie_trace_new/aie_trace_metadata.h"
-#include "xdp/profile/plugin/aie_trace_new/aie_trace_plugin.h"
-#include "xdp/profile/plugin/vp_base/info.h"
-#include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
-#include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 
 #include "xrt/xrt_kernel.h"
 
@@ -53,103 +46,35 @@ namespace xdp {
   using module_type = xrt_core::edge::aie::module_type;
 
   void AieTrace_x86Impl::updateDevice(void* handle) {
-
-    metadata = std::make_unique<AieTraceMetadata>();
-
     if (handle == nullptr)
       return;
 
-    char pathBuf[512];
-    memset(pathBuf, 0, 512);
-    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
-
-    std::string sysfspath(pathBuf);
-
-    metadata->setDeviceId(db->addDevice(sysfspath));
-    // uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
-
-    metadata->deviceIdToHandle[metadata->getDeviceId()] = handle;
-    // handle is not added to "deviceHandles" as this is user provided handle, not owned by XDP
-
-    if (!(db->getStaticInfo()).isDeviceReady(metadata->getDeviceId())) {
-
-      // Delete the old offloader as data is already from it
-      if (aieOffloaders.find(metadata->getDeviceId()) !=aieOffloaders.end())
-        aieOffloaders.erase(metadata->getDeviceId());
-
-      // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(metadata->getDeviceId(), handle);
-      {
-        struct xclDeviceInfo2 info;
-        if(xclGetDeviceInfo2(handle, &info) == 0) {
-          (db->getStaticInfo()).setDeviceName(metadata->getDeviceId(), std::string(info.mName));
-        }
-      }
-    }  
-
+    auto deviceID = metadata->HandleToDeviceID[handle];
     // Set metrics for counters and trace events 
-    if (!setMetrics(metadata->getDeviceId(), handle)) {
+    if (!setMetrics(deviceID, handle)) {
       std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       return;
     }
-
-    if (!(db->getStaticInfo()).isGMIORead(metadata->getDeviceId())) {
-      // Update the AIE specific portion of the device
-      // When new xclbin is loaded, the xclbin specific datastructure is already recreated
-      std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;
-      if (device != nullptr) {
-        for (auto& gmio : metadata->get_trace_gmios(device.get())) {
-          (db->getStaticInfo()).addTraceGMIO(metadata->getDeviceId(), gmio.id, gmio.shimColumn, gmio.channelNum, gmio.streamId, gmio.burstLength) ;
-        }
-      }
-      (db->getStaticInfo()).setIsGMIORead(metadata->getDeviceId(), true);
-    }
-
-    metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(metadata->getDeviceId()));
-    if (metadata->getNumStreams() == 0) {
-      // no AIE Trace Stream to offload trace, so return
-      std::string msg("Neither PLIO nor GMIO trace infrastucture is found in the given design. So, AIE event trace will not be available.");
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
-      return;
-    }
-
   }
 
-  void AieTrace_x86Impl::flushDevice(void* handle){
+  void AieTrace_x86Impl::flushDevice(void* handle) {
     if (handle == nullptr)
       return;
 
-    char pathBuf[512];
-    memset(pathBuf, 0, 512);
-    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
-
-    std::string sysfspath(pathBuf);
-    uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
-
-    if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
-      (std::get<0>(aieOffloaders[deviceId]))->readTrace(true);
-    }
+    auto deviceID = metadata->HandleToDeviceID[handle];
+    if (aieOffloaders.find(deviceID) != aieOffloaders.end())
+      (std::get<0>(aieOffloaders[deviceID]))->readTrace(true);
 
   }
 
   void AieTrace_x86Impl::finishFlushDevice(void* handle){
     if (handle == nullptr)
       return;
-    
-    char pathBuf[512];
-    memset(pathBuf, 0, 512);
-    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
 
-    std::string sysfspath(pathBuf);
-    metadata->setDeviceId(db->addDevice(sysfspath)); // Get the unique device Id
-    auto itr =  metadata->deviceIdToHandle.find(metadata->getDeviceId());
-
-    if ((itr == metadata->deviceIdToHandle.end()) || (itr->second != handle))
-      return;
-
-    if (aieOffloaders.find(metadata->getDeviceId()) != aieOffloaders.end()) {
-      auto& offloader = std::get<0>(aieOffloaders[metadata->getDeviceId()]);
+    auto deviceID = metadata->HandleToDeviceID[handle];
+    if (aieOffloaders.find(deviceID) != aieOffloaders.end()) {
+      auto& offloader = std::get<0>(aieOffloaders[deviceID]);
 
       if (offloader->continuousTrace()) {
         offloader->stopOffload();
@@ -161,12 +86,17 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();
 
-      aieOffloaders.erase(metadata->getDeviceId());
+      aieOffloaders.erase(deviceID);
     }
   }
 
-   bool AieTrace_x86Impl::isEdge(){
+  bool AieTrace_x86Impl::isEdge(){
     return false;
+  }
+
+  // No CMA checks on x86
+  uint64_t AieTrace_x86Impl::checkTraceBufSize(uint64_t size) {
+    return size;
   }
 
   bool AieTrace_x86Impl::setMetrics(uint64_t deviceId, void* handle) {

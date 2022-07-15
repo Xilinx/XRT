@@ -69,7 +69,7 @@ class AieTraceMetadata{
     uint64_t offloadIntervalUs;
     unsigned int aie_trace_file_dump_int_s;
 
-    std::map<uint64_t, void*> deviceIdToHandle;
+    std::map<void*, uint64_t> HandleToDeviceID;
 
     // Trace metrics
     std::string metricSet;    
