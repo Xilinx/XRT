@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,13 +20,17 @@
 namespace xdp {
 namespace built_in {
 
-  enum MetricSet : uint8_t { FUNCTIONS = 0,
-                   PARTIAL_STALLS = 1,
-                   ALL_STALLS = 2,
-                   ALL = 3
-                 };
+  enum class MetricSet {
+    FUNCTIONS = 0,
+    PARTIAL_STALLS = 1,
+    ALL_STALLS = 2,
+    ALL = 3
+  };
 
-  enum CounterScheme : uint8_t { ES1 = 0, ES2 = 1};
+  enum class CounterScheme {
+    ES1 = 0,
+    ES2 = 1
+  };
 
   // This struct is used for input for the PS kernel.  It contains all of
   // the information gathered from the user controls in the xrt.ini file

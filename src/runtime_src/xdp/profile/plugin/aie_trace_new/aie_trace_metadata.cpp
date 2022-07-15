@@ -52,8 +52,8 @@ namespace xdp{
   using severity_level = xrt_core::message::severity_level;
   constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0;
   
-  AieTraceMetadata::AieTraceMetadata(){
-    
+  AieTraceMetadata::AieTraceMetadata()
+  {
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
     continuousTrace = xrt_core::config::get_aie_trace_periodic_offload();
@@ -94,6 +94,10 @@ namespace xdp{
   }
 
   std::string AieTraceMetadata::getMetricSet(void* handle){
+    static bool parsed = false;
+    if (parsed)
+      return metricSet;
+
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto compilerOptions = get_aiecompiler_options(device.get());
@@ -140,7 +144,7 @@ namespace xdp{
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       metricSet = defaultSet;
     }
-
+    parsed = true;
     return metricSet;
   }
 
@@ -237,7 +241,8 @@ namespace xdp{
 
   //locally defined xrt::core::edge functions 
 
-  adf::aiecompiler_options AieTraceMetadata::get_aiecompiler_options(const xrt_core::device* device){
+  adf::aiecompiler_options AieTraceMetadata::get_aiecompiler_options(const xrt_core::device* device)
+  {
     auto data = device->get_axlf_section(AIE_METADATA);
     if (!data.first || !data.second)
       return {};
@@ -250,7 +255,8 @@ namespace xdp{
     return aiecompiler_options;
   }
 
-  std::vector<std::string> AieTraceMetadata::get_graphs(const xrt_core::device* device){
+  std::vector<std::string> AieTraceMetadata::get_graphs(const xrt_core::device* device)
+  {
     auto data = device->get_axlf_section(AIE_METADATA);
     if (!data.first || !data.second)
       return {};
@@ -267,12 +273,14 @@ namespace xdp{
     return graphs;
   }
 
-  inline void throw_if_error(bool err, const char* msg){
+  inline void throw_if_error(bool err, const char* msg)
+  {
     if (err)
       throw std::runtime_error(msg);
   }
 
-  std::vector<tile_type> AieTraceMetadata::get_tiles(const xrt_core::device* device, const std::string& graph_name){
+  std::vector<tile_type> AieTraceMetadata::get_tiles(const xrt_core::device* device, const std::string& graph_name)
+  {
     auto data = device->get_axlf_section(AIE_METADATA);
     if (!data.first || !data.second)
       return {};
@@ -324,7 +332,8 @@ namespace xdp{
     return tiles;    
   }
 
-  double AieTraceMetadata::get_clock_freq_mhz(const xrt_core::device* device){
+  double AieTraceMetadata::get_clock_freq_mhz(const xrt_core::device* device)
+  {
     auto data = device->get_axlf_section(AIE_METADATA);
     if (!data.first || !data.second)
       return 1000.0;  // magic
@@ -336,7 +345,8 @@ namespace xdp{
     return clockFreqMhz;
   }
 
-  std::vector<gmio_type> AieTraceMetadata::get_trace_gmios(const xrt_core::device* device){
+  std::vector<gmio_type> AieTraceMetadata::get_trace_gmios(const xrt_core::device* device)
+  {
     auto data = device->get_axlf_section(AIE_METADATA);
     if (!data.first || !data.second)
       return {};
@@ -365,12 +375,5 @@ namespace xdp{
 
     return gmios;
   }
-
-  void AieTraceMetadata::setRunTimeMetrics(bool value) {runtimeMetrics = value;}
-  bool AieTraceMetadata::getRunTimeMetrics(){return runtimeMetrics;}
-  void AieTraceMetadata::setDeviceId(uint64_t value) {deviceId = value;}
-  uint64_t AieTraceMetadata::getDeviceId(){return deviceId;}
-  void AieTraceMetadata::setNumStreams(uint64_t value){numAIETraceOutput = value;}
-  uint64_t AieTraceMetadata::getNumStreams(){return numAIETraceOutput;}
   
 }

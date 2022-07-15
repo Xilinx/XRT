@@ -54,11 +54,6 @@ namespace xdp {
   
     uint64_t getNumStreams() {return metadata->getNumStreams();}
     uint64_t getDeviceID() {return metadata->getDeviceId();}
-    uint64_t getContinuousTrace() {return metadata->continuousTrace;}
-    std::string getMetricSet(){return metadata->metricSet;}
-    unsigned int getFileDumpIntS() {return metadata->aie_trace_file_dump_int_s;}
-    uint64_t getOffloadIntervalUs() {return metadata->offloadIntervalUs;}
-    bool isRuntimeMetrics(){return metadata->getRunTimeMetrics();}
   };
 
 } // namespace xdp

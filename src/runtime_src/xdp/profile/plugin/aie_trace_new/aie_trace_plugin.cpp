@@ -155,7 +155,10 @@ namespace xdp {
     // configure dataflow etc. may not be required here as those are for PL side
     }
 
-    if (implementation->isRuntimeMetrics()) {
+    // This also checks for runtime metrics
+    std::string metricSet = metadata->getMetricSet(handle);
+
+    if (metadata->isRuntimeMetrics()) {
       // This code needs to get the actual metric set so we can
       //  configure it.  I'm not sure yet what is needed for this
 
@@ -163,14 +166,14 @@ namespace xdp {
       VPWriter* writer = new AieTraceConfigWriter
       ( configFile.c_str()
       , deviceID
-      , implementation->getMetricSet()
+      , metricSet
       );
       writers.push_back(writer);
       (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_RUNTIME_CONFIG");
 
     }
 
-    for (uint64_t n = 0; n < implementation->getNumStreams(); ++n) {
+    for (uint64_t n = 0; n < metadata->getNumStreams(); ++n) {
 	    std::string fileName = "aie_trace_" + std::to_string(deviceID) + "_" + std::to_string(n) + ".txt";
       VPWriter* writer = new AIETraceWriter
       ( fileName.c_str()
@@ -193,10 +196,10 @@ namespace xdp {
     uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
     bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceID) ? true : false;
 
-    if (implementation->getContinuousTrace()) {
+    if (metadata->getContinuousTrace()) {
       // Continuous Trace Offload is supported only for PLIO flow
       if (isPLIO)
-        XDPPlugin::startWriteThread(implementation->getFileDumpIntS(), "AIE_EVENT_TRACE", false);
+        XDPPlugin::startWriteThread(metadata->getFileDumpIntS(), "AIE_EVENT_TRACE", false);
       else
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_PERIODIC_OFFLOAD_UNSUPPORTED);
     }
@@ -227,7 +230,7 @@ namespace xdp {
       msg << "Total size of " << std::fixed << std::setprecision(3)
           << (aieTraceBufSize / (1024.0 * 1024.0))
           << " MB is used for AIE trace buffer for "
-          << std::to_string(implementation->getNumStreams()) << " " << flowType
+          << std::to_string(metadata->getNumStreams()) << " " << flowType
           << " streams.";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
@@ -239,14 +242,14 @@ namespace xdp {
     , traceLogger.get()
     , isPLIO              // isPLIO?
     , aieTraceBufSize     // total trace buffer size
-    , implementation->getNumStreams()
+    , metadata->getNumStreams()
     , implementation->isEdge()
     );
 
     // Can't call init without setting important details in offloader
-    if (implementation->getContinuousTrace() && isPLIO) {
+    if (metadata->getContinuousTrace() && isPLIO) {
       offloader->setContinuousTrace();
-      offloader->setOffloadIntervalUs(implementation->getOffloadIntervalUs());
+      offloader->setOffloadIntervalUs(metadata->getOffloadIntervalUs());
     }
 
     if (!offloader->initReadTrace()) {
@@ -255,7 +258,7 @@ namespace xdp {
     }
 
     // Continuous Trace Offload is supported only for PLIO flow
-    if (implementation->getContinuousTrace() && isPLIO)
+    if (metadata->getContinuousTrace() && isPLIO)
       offloader->startOffload();
 
     offloadersMap[deviceID] = std::make_tuple

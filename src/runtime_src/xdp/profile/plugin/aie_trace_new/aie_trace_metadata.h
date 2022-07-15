@@ -38,9 +38,20 @@ class AieTraceMetadata{
   private:
     uint64_t deviceId;
     uint64_t numAIETraceOutput;
-
     // Runtime or compile-time specified trace metrics?
     bool runtimeMetrics;
+     // Trace metrics
+    std::string metricSet;
+    std::set<std::string> metricSets;
+    // These flags are used to decide configuration at various points
+    bool mUseDelay = false;
+    uint32_t mDelayCycles = 0;
+
+    bool continuousTrace;
+    uint64_t offloadIntervalUs;
+    unsigned int aie_trace_file_dump_int_s;
+
+    void setRunTimeMetrics(bool value) {runtimeMetrics = value;}
 
   public:
     AieTraceMetadata();
@@ -54,34 +65,23 @@ class AieTraceMetadata{
     double get_clock_freq_mhz(const xrt_core::device* device);
     std::vector<gmio_type> get_trace_gmios(const xrt_core::device* device);
 
-    void setRunTimeMetrics(bool value);
-    bool getRunTimeMetrics();
-    void setDeviceId(uint64_t value);
-    uint64_t getDeviceId();
-    void setNumStreams(uint64_t value);
-    uint64_t getNumStreams();
+    bool getRunTimeMetrics() {return runtimeMetrics;}
+    void setDeviceId(uint64_t value) {deviceId = value;}
+    uint64_t getDeviceId() {return deviceId;}
+    void setNumStreams(uint64_t value) {numAIETraceOutput = value;}
+    uint64_t getNumStreams() {return numAIETraceOutput;}
 
-    // These flags are used to decide configuration at various points
-    bool mUseDelay = false;
-    uint32_t mDelayCycles = 0;
-
-    bool continuousTrace;
-    uint64_t offloadIntervalUs;
-    unsigned int aie_trace_file_dump_int_s;
+    uint64_t getContinuousTrace() {return continuousTrace;}
+    unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
+    uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
+    bool isRuntimeMetrics() {return runtimeMetrics;}
+    uint32_t getDelay() {
+      if (mUseDelay)
+        return mDelayCycles;
+      return 0;
+    }
 
     std::map<void*, uint64_t> HandleToDeviceID;
-
-    // Trace metrics
-    std::string metricSet;    
-    std::set<std::string> metricSets;
-
-    // AIE profile counters
-    std::vector<xrt_core::edge::aie::tile_type> mCoreCounterTiles;
-
-    // Counter metrics (same for all sets)
-    ValueVector coreCounterEventValues;
-    ValueVector memoryCounterEventValues;
-
   };
 
 }

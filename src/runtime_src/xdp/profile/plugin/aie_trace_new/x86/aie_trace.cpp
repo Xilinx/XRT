@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -62,7 +62,7 @@ namespace xdp {
   }
 
   void AieTrace_x86Impl::finishFlushDevice(void* handle) {
-    // Do things like releaseing aie resources here
+    // Release aie resources here
   }
 
   bool AieTrace_x86Impl::isEdge(){
@@ -84,7 +84,7 @@ namespace xdp {
     auto tiles = metadata->getTilesForTracing(handle);
     uint32_t delayCycles = static_cast<uint32_t>(metadata->getTraceStartDelayCycles(handle));
     bool userControl = xrt_core::config::get_aie_trace_settings_start_type() == "user";
-    bool useDelay = metadata->mUseDelay;
+    bool useDelay = (metadata->getDelay() != 0);
 
     uint16_t rows[MAX_TILES];
     uint16_t cols[MAX_TILES];
