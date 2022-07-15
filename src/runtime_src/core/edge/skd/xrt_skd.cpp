@@ -86,6 +86,9 @@ namespace xrt {
     }
     args = xrt_core::xclbin::get_kernel_arguments((char *)buf,prop.size,sk_name);
     num_args = args.size();
+    // Calculate offset to write return code into
+    // If the last argument is a global which means there will be 64-bit address and 64-bit size for total of 16 bytes
+    // Else the last argument size will be either 4-bytes or 8 bytes since arguments are 32-bit aligned
     if(args[num_args-1].type == xrt_core::xclbin::kernel_argument::argtype::global)
       return_offset = (args[num_args-1].offset+PS_KERNEL_REG_OFFSET+16)/4;
     else
