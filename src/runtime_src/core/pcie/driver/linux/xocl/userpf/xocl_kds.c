@@ -2103,10 +2103,13 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
 
 	ret = xocl_kds_update_xgq(xdev, slot_hdl, uuid, XDEV(xdev)->kds_cfg, ip_layout, ps_kernel);
 out:
+	if (ret)
+		XDEV(xdev)->kds.bad_state = 1;
+
 	return ret;
 }
 
-void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
+int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 {
 	int ret = 0;
 
@@ -2115,18 +2118,23 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	if (ret) {
 		userpf_info_once(xdev, "ERT will be disabled, ret %d\n", ret);
 		XDEV(xdev)->kds.ert_disable = true;
-		return;
+		return ret;
 	}
 
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
-		return;
+		return ret;
 
 	// Work-around to unconfigure PS kernel
 	// Will be removed once unconfigure command is there
 	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, 0, 0);
 	ret = xocl_kds_xgq_cfg_end(xdev);
 	xocl_ert_ctrl_unset_xgq(xdev);
-	kds_reset(&XDEV(xdev)->kds);
+	if (ret)
+		XDEV(xdev)->kds.bad_state = 1;
+	else
+		kds_reset(&XDEV(xdev)->kds);
+
+	return ret;
 }
 
 int xocl_kds_set_cu_read_range(struct xocl_dev *xdev, u32 cu_idx,
