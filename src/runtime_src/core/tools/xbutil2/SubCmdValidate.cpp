@@ -1333,20 +1333,20 @@ get_test_name(const std::string& input_name)
 }
 
 /*
- * print basic information about a test
+ * Print basic information about a test.
  */
 static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
-                       std::ostream & _ostream, const std::string& bdf)
+                       std::ostream & _ostream, const std::string& bdf, bool singleton)
 {
-  // If the status is anything other than skipped print the test name
+  // If the status is anything other than skipped, print the test name
   auto _status = test.get<std::string>("status", "");
-  if (!boost::equals(_status, test_token_skipped)) {
+  if (!boost::equals(_status, test_token_skipped) || singleton) {
     std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
     // Only use the long name option when displaying the test
     _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name", "<unknown>");
 
-    if (XBU::getVerbose())
+    if (XBU::getVerbose() || singleton)
       XBU::message(boost::str(boost::format("    %-22s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
   }
   else if (XBU::getVerbose()) {
@@ -1358,11 +1358,11 @@ pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
 }
 
 /*
- * print test run
+ * Print information on how a test run went.
  */
 static void
 pretty_print_test_run(const boost::property_tree::ptree& test,
-                      test_status& status, std::ostream & _ostream)
+                      test_status& status, std::ostream & _ostream, bool singleton)
 {
   auto _status = test.get<std::string>("status", "");
   std::string prev_tag = "";
@@ -1374,8 +1374,10 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if not supported: verbose
   auto redirect_log = [&](const std::string& tag, const std::string& log_str) {
     std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
-    if(boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
-      if(XBU::getVerbose())
+    if (!boost::equals(_status, test_token_passed) && singleton)
+      status = test_status::failed;  // Failed AND skipped single tests display 'Validation Failed'
+    if (boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
+      if (XBU::getVerbose() || singleton)
         XBU::message(log_str, false, _ostream);
       else
         return;
@@ -1411,10 +1413,10 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   }
   catch(...) {}
 
-  if(error) {
+  if (error) {
     status = test_status::failed;
   }
-  else if(warn) {
+  else if (warn) {
     _status.append(" with warnings");
     status = test_status::warning;
   }
@@ -1428,7 +1430,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
  * print final status of the card
  */
 static void
-print_status(test_status status, std::ostream & _ostream)
+print_status(test_status status, std::ostream & _ostream, bool singleton)
 {
   if (status == test_status::failed)
     _ostream << "Validation failed";
@@ -1436,7 +1438,7 @@ print_status(test_status status, std::ostream & _ostream)
     _ostream << "Validation completed";
   if (status == test_status::warning)
     _ostream << ", but with warnings";
-  if(!XBU::getVerbose())
+  if(!XBU::getVerbose() && !singleton)
     _ostream << ". Please run the command '--verbose' option for more details";
   _ostream << std::endl;
 }
@@ -1496,6 +1498,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   std::cout << "-------------------------------------------------------------------------------" << std::endl;
 
   int test_idx = 0;
+  bool singleton = (testObjectsToRun.size() == 1);
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
@@ -1510,23 +1513,23 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
 
     if(is_black_box_test())
-      pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
+      pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf), singleton);
 
     testPtr->testHandle(device, ptTest);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
 
     if(!is_black_box_test())
-      pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
+      pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf), singleton);
 
-    pretty_print_test_run(ptTest, status, std::cout);
+    pretty_print_test_run(ptTest, status, std::cout, singleton);
 
     // If a test fails, don't test the remaining ones
-    if(status == test_status::failed) {
+    if (status == test_status::failed) {
       break;
     }
   }
 
-  print_status(status, std::cout);
+  print_status(status, std::cout, singleton);
 
   ptDeviceInfo.put_child("tests", ptDeviceTestSuite);
   ptDevCollectionTestSuite.push_back( std::make_pair("", ptDeviceInfo) );
