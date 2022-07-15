@@ -200,9 +200,6 @@ namespace xdp {
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
 
-    for (auto h : deviceHandles)
-      xclClose(h);
-
     AieTracePlugin::live = false;
   }
 

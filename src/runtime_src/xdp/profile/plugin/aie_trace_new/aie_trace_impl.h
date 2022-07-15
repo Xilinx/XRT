@@ -39,9 +39,9 @@ namespace xdp {
     VPDatabase* db = nullptr;
     std::unique_ptr<AieTraceMetadata> metadata;
 
-    typedef std::tuple<AIETraceOffload*, 
-                        AIETraceLogger*,
-                        DeviceIntf*> AIEData;
+    typedef std::tuple<std::unique_ptr<AIETraceOffload>,
+                       std::unique_ptr<AIETraceLogger>,
+                       DeviceIntf*> AIEData;
     std::vector<void*> deviceHandles;
 
   public:

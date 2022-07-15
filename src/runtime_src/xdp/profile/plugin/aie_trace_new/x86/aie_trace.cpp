@@ -24,7 +24,7 @@
 
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
-#include "core/edge/user/shim.h"
+//#include "core/edge/user/shim.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -34,18 +34,19 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/tracedefs.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
+#include "xdp/profile/plugin/aie_trace_new/aie_trace_metadata.h"
+#include "xdp/profile/plugin/aie_trace_new/aie_trace_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
+
 #include "xrt/xrt_kernel.h"
 
 #include "aie_trace_kernel_config.h"
 #include "aie_trace.h"
 
-#define MAX_TILES 400
-#define MAX_LENGTH 4096
+constexpr uint32_t MAX_TILES = 400;
+constexpr uint32_t MAX_LENGTH = 4096;
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -71,20 +72,10 @@ namespace xdp {
     // handle is not added to "deviceHandles" as this is user provided handle, not owned by XDP
 
     if (!(db->getStaticInfo()).isDeviceReady(metadata->getDeviceId())) {
-      // first delete the offloader, logger
+
       // Delete the old offloader as data is already from it
-      if(aieOffloaders.find(metadata->getDeviceId()) !=aieOffloaders.end()) {
-        auto entry = aieOffloaders[metadata->getDeviceId()];
-
-        auto aieOffloader = std::get<0>(entry);
-        auto aieLogger    = std::get<1>(entry);
-
-        delete aieOffloader;
-        delete aieLogger;
-        // don't delete DeviceIntf
-
+      if (aieOffloaders.find(metadata->getDeviceId()) !=aieOffloaders.end())
         aieOffloaders.erase(metadata->getDeviceId());
-      }
 
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(metadata->getDeviceId(), handle);
@@ -151,32 +142,18 @@ namespace xdp {
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
 
     std::string sysfspath(pathBuf);
-
     metadata->setDeviceId(db->addDevice(sysfspath)); // Get the unique device Id
-
     auto itr =  metadata->deviceIdToHandle.find(metadata->getDeviceId());
+
     if ((itr == metadata->deviceIdToHandle.end()) || (itr->second != handle))
       return;
 
-    // Set metrics to flush the trace FIFOs
-    // NOTE 1: The data mover uses a burst length of 128, so we need dummy packets
-    //         to ensure all execution trace gets written to DDR.
-    // NOTE 2: This flush mechanism is only valid for runtime event trace
-    if (metadata->getRunTimeMetrics() && xrt_core::config::get_aie_trace_flush()) {
-      // setFlushMetrics(metadata->getDeviceId(), handle);
-      // std::cout << "I Finished The SetFlushMetrics()" << std::endl;
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-
-    std::cout << "I Finished Sleep" << std::endl;
-
-    if(aieOffloaders.find(metadata->getDeviceId()) != aieOffloaders.end()) {
-      auto offloader = std::get<0>(aieOffloaders[metadata->getDeviceId()]);
-      auto logger    = std::get<1>(aieOffloaders[metadata->getDeviceId()]);
+    if (aieOffloaders.find(metadata->getDeviceId()) != aieOffloaders.end()) {
+      auto& offloader = std::get<0>(aieOffloaders[metadata->getDeviceId()]);
 
       if (offloader->continuousTrace()) {
-        offloader->stopOffload() ;
-        while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
+        offloader->stopOffload();
+        while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
       }
 
       offloader->readTrace(true);
@@ -184,13 +161,8 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();
 
-      delete (offloader);
-      delete (logger);
-
       aieOffloaders.erase(metadata->getDeviceId());
     }
-    std::cout << "Finished Final Flush!" << std::endl;
-
   }
 
    bool AieTrace_x86Impl::isEdge(){
@@ -206,7 +178,7 @@ namespace xdp {
 
     auto tiles = metadata->getTilesForTracing(handle);
     uint32_t delayCycles = static_cast<uint32_t>(metadata->getTraceStartDelayCycles(handle));
-    bool userControl = xrt_core::config::get_aie_trace_user_control();
+    bool userControl = xrt_core::config::get_aie_trace_settings_start_type() == "user";
     bool useDelay = metadata->mUseDelay;
 
     uint16_t rows[MAX_TILES];
@@ -220,19 +192,19 @@ namespace xdp {
       numTiles++;
     }
 
-    if (counterScheme.compare("es1")){
+    if (counterScheme.compare("es1")) {
       counterSchemeInt = 0;
-    }else {
+    } else {
       counterSchemeInt = 1;
     }
 
     if (metricSet.compare("functions") == 0){
       metricSetInt = 0;
-    }else if (metricSet.compare("functions_partial_stalls") == 0){
+    } else if (metricSet.compare("functions_partial_stalls") == 0){
       metricSetInt = 1;
-    }else if (metricSet.compare("functions_all_stalls") == 0){
+    } else if (metricSet.compare("functions_all_stalls") == 0){
       metricSetInt = 2;
-    }else { //all
+    } else { //all
       metricSetInt = 3;
     }
 
@@ -253,7 +225,7 @@ namespace xdp {
       counter += 1;
     }
 
-    std::size_t total_size = sizeof(xdp::built_in::InputConfiguration) + sizeof(uint16_t[(numTiles * 2) - 1]);
+    total_size = sizeof(xdp::built_in::InputConfiguration) + sizeof(uint16_t[(numTiles * 2) - 1]);
 
     //Cast struct to uint8_t pointer and pass this data
     uint8_t* input = reinterpret_cast<uint8_t*>(input_params);
