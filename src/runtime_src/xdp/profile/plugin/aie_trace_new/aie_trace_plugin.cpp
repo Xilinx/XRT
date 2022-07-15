@@ -22,7 +22,6 @@
 
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
-#include "core/edge/user/shim.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
@@ -35,16 +34,17 @@
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 
 // #ifdef EDGE_BUILD
 // #include "edge/aie_trace.h"
+// #include "core/edge/user/shim.h"
 // #else
 #include "x86/aie_trace.h"
 // #endif
 
 #include "aie_trace_impl.h"
 #include "aie_trace_plugin.h"
+#include "aie_trace_metadata.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -58,9 +58,9 @@ namespace xdp {
     db->registerInfo(info::aie_trace);
 
     // #ifdef EDGE_BUILD
-    // implementation = std::make_unique<AieTrace_x86HostImpl>(db, nullptr);
+    // implementation = std::make_unique<AieTrace_EdgeImpl>(db, nullptr);
     // #else
-    implementation = std::make_unique<AieTrace_x86HostImpl>(db, nullptr);
+    implementation = std::make_unique<AieTrace_x86Impl>(db, nullptr);
     // #endif
   }
 
@@ -237,7 +237,8 @@ namespace xdp {
                                               deviceIntf, aieTraceLogger,
                                               isPLIO,              // isPLIO?
                                               aieTraceBufSize,     // total trace buffer size
-                                              implementation->getNumStreams());  // numStream
+                                              implementation->getNumStreams(),
+                                              implementation->isEdge());  // numStream
 
 
     // Can't call init without setting important details in offloader
@@ -246,7 +247,7 @@ namespace xdp {
       aieTraceOffloader->setOffloadIntervalUs(implementation->getOffloadIntervalUs());
     }
 
-    if (!aieTraceOffloader->initReadTrace(implementation->isEdge())) {
+    if (!aieTraceOffloader->initReadTrace()) {
       std::string msg = "Allocation of buffer for AIE trace failed. AIE trace will not be available.";
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       delete aieTraceOffloader;

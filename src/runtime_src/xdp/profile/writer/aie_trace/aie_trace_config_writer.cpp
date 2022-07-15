@@ -111,7 +111,7 @@ namespace xdp {
 
         {
           bpt::ptree performance_counter_config;
-          for (int i=0; i <tile->core_trace_config.pc.size(); i++) {
+          for (unsigned int i=0; i <tile->core_trace_config.pc.size(); i++) {
             bpt::ptree counter;
             auto& ctr = tile->core_trace_config.pc[i];
             counter.put("start_event",   ctr.start_event);
@@ -200,7 +200,7 @@ namespace xdp {
 
         {
           bpt::ptree performance_counter_config;
-          for (int i=0; i <tile->memory_trace_config.pc.size(); i++) {
+          for (unsigned int i=0; i <tile->memory_trace_config.pc.size(); i++) {
             bpt::ptree counter;
             auto& ctr = tile->memory_trace_config.pc[i];
             counter.put("start_event",   ctr.start_event);

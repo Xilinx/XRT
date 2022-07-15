@@ -18,8 +18,11 @@
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_H_
 
 #include "xdp/config.h"
-#include "core/edge/user/aie/aie.h"
 #include "xdp/profile/device/tracedefs.h"
+
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#include "core/edge/user/aie/aie.h"
+#endif
 
 namespace xdp {
 
@@ -49,12 +52,14 @@ struct AIETraceBufferInfo
   {}
 };
 
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
 struct AIETraceGmioDMAInst
 {
   // C_RTS Shim DMA to where this GMIO object is mapped
   XAie_DmaDesc shimDmaInst;
   XAie_LocType gmioTileLoc;
 };
+#endif
 
 enum class AIEOffloadThreadStatus {
   IDLE,
@@ -71,7 +76,8 @@ class AIETraceOffload
                     DeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
                     uint64_t totalSize,
-                    uint64_t numStrm);
+                    uint64_t numStrm,
+                    bool isEdge);
 
     XDP_EXPORT
     virtual ~AIETraceOffload();
@@ -112,6 +118,7 @@ private:
     bool     isPLIO;
     uint64_t totalSz;
     uint64_t numStream;
+    bool isEdge;
 
     // Set this to true for more verbose trace offload
     // Internal use only
@@ -120,7 +127,10 @@ private:
     uint64_t bufAllocSz;
 
     std::vector<AIETraceBufferInfo>  buffers;
+
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
     std::vector<AIETraceGmioDMAInst> gmioDMAInsts;
+#endif
 
     // Continuous Trace Offload (For PLIO)
     bool traceContinuous;

@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef AIE_TRACE_PLUGIN_H
-#define AIE_TRACE_PLUGIN_H
+#ifndef AIE_TRACE_H
+#define AIE_TRACE_H
 
 #include <cstdint>
 

@@ -26,7 +26,7 @@
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 
-#ifdef XRT_ENABLE_AIE
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
 #include <sys/mman.h>
 #include "core/include/xrt.h"
 #include "core/edge/user/shim.h"
@@ -42,6 +42,7 @@ AIETraceOffload::AIETraceOffload
   , bool isPlio
   , uint64_t totalSize
   , uint64_t numStrm
+  , bool isEdge
   )
   : deviceHandle(handle)
   , deviceId(id)
@@ -50,6 +51,7 @@ AIETraceOffload::AIETraceOffload
   , isPLIO(isPlio)
   , totalSz(totalSize)
   , numStream(numStrm)
+  , isEdge(isEdge)
   , traceContinuous(false)
   , offloadIntervalUs(0)
   , bufferInitialized(false)
@@ -78,8 +80,10 @@ bool AIETraceOffload::initReadTrace()
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
   } else {
     memIndex = 0;  // for now
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
     gmioDMAInsts.clear();
     gmioDMAInsts.resize(numStream);
+#endif
   }
 
   checkCircularBufferSupport();
@@ -100,7 +104,7 @@ bool AIETraceOffload::initReadTrace()
     if (isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i, mEnCircularBuf);
     } else {
-#ifdef XRT_ENABLE_AIE
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
@@ -170,7 +174,7 @@ void AIETraceOffload::endReadTrace()
       deviceIntf->resetAIETs2mm(i);
 //      deviceIntf->freeTraceBuf(b.boHandle);
     } else {
-#ifdef XRT_ENABLE_AIE
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 

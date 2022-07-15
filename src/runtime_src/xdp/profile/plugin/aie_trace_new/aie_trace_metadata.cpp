@@ -18,7 +18,6 @@
 #include <cstdint>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_metadata.h"
 #include "core/common/message.h"
 #include "xdp/profile/device/tracedefs.h"
 
@@ -29,7 +28,7 @@
 
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
-#include "core/edge/user/shim.h"
+//#include "core/edge/user/shim.h"
 #include "core/edge/common/aie_parser.h"
 
 #include <boost/property_tree/ptree.hpp>
@@ -41,10 +40,12 @@
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
+
+#include "aie_trace_metadata.h"
+#include "aie_trace_plugin.h"
 
 namespace xdp{
   namespace pt = boost::property_tree;
@@ -116,7 +117,7 @@ namespace xdp{
     std::vector<std::string> vec;
     boost::split(vec, metricsStr, boost::is_any_of(":"));
 
-    for (int i=0; i < vec.size(); ++i) {
+    for (unsigned int i=0; i < vec.size(); ++i) {
       boost::replace_all(vec.at(i), "{", "");
       boost::replace_all(vec.at(i), "}", "");
     }

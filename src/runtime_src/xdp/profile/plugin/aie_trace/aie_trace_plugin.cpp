@@ -1108,7 +1108,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     if (runtimeMetrics) {
       std::string configFile = "aie_event_runtime_config.json";
       VPWriter* writer = new AieTraceConfigWriter(configFile.c_str(),
-                                                  deviceId, metricSet) ;
+                                                  deviceId, metricSet);
       writers.push_back(writer);
       (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_RUNTIME_CONFIG");
     }
@@ -1222,7 +1222,8 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
                                               deviceIntf, aieTraceLogger,
                                               isPLIO,              // isPLIO?
                                               aieTraceBufSize,     // total trace buffer size
-                                              numAIETraceOutput);  // numStream
+                                              numAIETraceOutput,  // numStream
+                                              true);              // isEdge
 
     // Can't call init without setting important details in offloader
     if (continuousTrace && isPLIO) {

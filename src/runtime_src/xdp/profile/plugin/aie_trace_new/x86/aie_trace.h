@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef AIE_TRACE_PLUGIN_H
-#define AIE_TRACE_PLUGIN_H
+#ifndef AIE_TRACE_DOT_H
+#define AIE_TRACE_DOT_H
 
 #include <cstdint>
 
@@ -23,10 +23,10 @@
 
 namespace xdp {
 
-  class AieTracex86Impl : public AieTraceImpl{
+  class AieTrace_x86Impl : public AieTraceImpl{
     public:
-      AieTracex86Impl(VPDatabase* database, AieTraceMetadata* metadata) : AieTraceImpl(database, metadata){}
-      ~AieTracex86Impl() = default;
+      AieTrace_x86Impl(VPDatabase* database, AieTraceMetadata* metadata) : AieTraceImpl(database, metadata){}
+      ~AieTrace_x86Impl() = default;
 
       void updateDevice(void* handle);
       void flushDevice(void* handle);

@@ -51,7 +51,7 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using module_type = xrt_core::edge::aie::module_type;
 
-  void AieTrace_x86HostImpl::updateDevice(void* handle) {
+  void AieTrace_x86Impl::updateDevice(void* handle) {
 
     metadata = std::make_unique<AieTraceMetadata>();
 
@@ -125,7 +125,7 @@ namespace xdp {
 
   }
 
-  void AieTrace_x86HostImpl::flushDevice(void* handle){
+  void AieTrace_x86Impl::flushDevice(void* handle){
     if (handle == nullptr)
       return;
 
@@ -142,7 +142,7 @@ namespace xdp {
 
   }
 
-  void AieTrace_x86HostImpl::finishFlushDevice(void* handle){
+  void AieTrace_x86Impl::finishFlushDevice(void* handle){
     if (handle == nullptr)
       return;
     
@@ -193,11 +193,11 @@ namespace xdp {
 
   }
 
-   bool AieTrace_x86HostImpl::isEdge(){
+   bool AieTrace_x86Impl::isEdge(){
     return false;
   }
 
-  bool AieTrace_x86HostImpl::setMetrics(uint64_t deviceId, void* handle) {
+  bool AieTrace_x86Impl::setMetrics(uint64_t deviceId, void* handle) {
     // Create struct to pass to PS kernel
     std::string counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
     std::string metricSet = metadata->getMetricSet(handle);

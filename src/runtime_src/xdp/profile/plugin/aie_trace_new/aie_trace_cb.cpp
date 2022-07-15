@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#include "xdp/profile/plugin/aie_trace/aie_trace_cb.h"
-#include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
+#include "aie_trace_cb.h"
+#include "aie_trace_plugin.h"
 
 namespace xdp {
 

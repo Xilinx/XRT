@@ -20,12 +20,12 @@
 #include <iostream>
 #include <memory>
 #include "core/edge/common/aie_parser.h"
-#include "xaiefal/xaiefal.hpp"
+//#include "xaiefal/xaiefal.hpp"
 #include <boost/property_tree/ptree.hpp>
 
-extern "C" {
-#include <xaiengine.h>
-}
+//extern "C" {
+//#include <xaiengine.h>
+//}
 
 namespace xdp {
 
@@ -69,9 +69,6 @@ class AieTraceMetadata{
     uint64_t offloadIntervalUs;
     unsigned int aie_trace_file_dump_int_s;
 
-    // Trace Runtime Status
-    AieRC mConfigStatus = XAIE_OK;
-
     std::map<uint64_t, void*> deviceIdToHandle;
 
     // Trace metrics
@@ -82,10 +79,7 @@ class AieTraceMetadata{
     std::vector<xrt_core::edge::aie::tile_type> mCoreCounterTiles;
 
     // Counter metrics (same for all sets)
-    EventType   coreTraceStartEvent;
-    EventType   coreTraceEndEvent;  
     ValueVector coreCounterEventValues;
-
     ValueVector memoryCounterEventValues;
 
   };
