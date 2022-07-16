@@ -277,6 +277,17 @@ static int get_sensors_data_by_sensor_id(struct platform_device *pdev,
 	return 0;
 }
 
+/*
+ * parse_inst_sensors_info(): Parses the GET_ALL_SENSOR_DATA API's response buffer received from XGQ driver (VMR firmware).
+ * Response format:
+ *  Length Byte : Description
+ *  1 : completion code
+ *  1 : SDR record type
+ *  1 : Size = Number of sensors * Size of ( Sizeof (Sensor value) + ins value + Max + Average + Status)
+ *  Size : Data Payload = [value size, value , Max, Average, Status) ] * Number of Sensor in Requested Record
+ * Note: sensor status is always 1 Byte.
+ * While parsing, it saves the sensor's value, max value, average value & status information.
+ */
 static int parse_inst_sensors_info(struct xocl_hwmon_sdm *sdm, char *in_buf,
                                    char *buf, uint8_t repo_id)
 {
@@ -354,9 +365,12 @@ static int show_sensors_raw(struct xocl_hwmon_sdm *sdm, char *buf,
 	int repo_type;
 	uint64_t data_args = 0;
 
+	mutex_lock(&sdm->sdm_lock);
 	sdr_buf = vzalloc(resp_len);
-	if (!sdr_buf)
+	if (!sdr_buf) {
+		ret = -ENOMEM;
 		goto done;
+	}
 
 	if (sdm->privileged) {
 		ret = xocl_xgq_collect_all_inst_sensors(xdev, sdr_buf, repo_id, RESP_LEN);
@@ -365,7 +379,8 @@ static int show_sensors_raw(struct xocl_hwmon_sdm *sdm, char *buf,
 		kind = to_xcl_sdr_type(repo_type);
 		if (kind < 0) {
 			xocl_err(&sdm->pdev->dev, "received invalid xcl grp type: %d", kind);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto free_buf;
 		}
 		data_args = 0x1 << MBREQ_INST_SENSORS_ENABLE_BIT;
 		ret = hwmon_sdm_read_from_peer(sdm->pdev, repo_type, kind, sdr_buf, resp_len, data_args);
@@ -375,8 +390,10 @@ static int show_sensors_raw(struct xocl_hwmon_sdm *sdm, char *buf,
 	else
 		xocl_err(&sdm->pdev->dev, "inst_sensor request for repo_id is failed with err: %d", ret);
 
+free_buf:
 	vfree(sdr_buf);
 done:
+	mutex_unlock(&sdm->sdm_lock);
 	return ret;
 }
 
@@ -387,9 +404,8 @@ voltage_sensors_raw_show(struct device *dev, struct device_attribute *attr,
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 	ssize_t ret;
 
-	mutex_lock(&sdm->sdm_lock);
 	ret = show_sensors_raw(sdm, buf, sdr_get_id(SDR_TYPE_VOLTAGE));
-	mutex_unlock(&sdm->sdm_lock);
+
 	return ret;
 }
 static DEVICE_ATTR_RO(voltage_sensors_raw);
@@ -401,9 +417,8 @@ current_sensors_raw_show(struct device *dev, struct device_attribute *attr,
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 	ssize_t ret;
 
-	mutex_lock(&sdm->sdm_lock);
 	ret = show_sensors_raw(sdm, buf, sdr_get_id(SDR_TYPE_CURRENT));
-	mutex_unlock(&sdm->sdm_lock);
+
 	return ret;
 }
 static DEVICE_ATTR_RO(current_sensors_raw);
@@ -415,9 +430,8 @@ temp_sensors_raw_show(struct device *dev, struct device_attribute *attr,
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 	ssize_t ret;
 
-	mutex_lock(&sdm->sdm_lock);
 	ret = show_sensors_raw(sdm, buf, sdr_get_id(SDR_TYPE_TEMP));
-	mutex_unlock(&sdm->sdm_lock);
+
 	return ret;
 }
 static DEVICE_ATTR_RO(temp_sensors_raw);
@@ -698,6 +712,17 @@ static void dump_error_message(struct xocl_hwmon_sdm *sdm, uint8_t completion_co
 		xocl_err(&sdm->pdev->dev, "Failed in sending SDR Repository command, completion_code: 0x%x", completion_code);
 }
 
+/*
+ * parse_single_sdr_info(): Parses GET_SINGLE_SENSOR_DATA API's response buffer received from XGQ driver (VMR firmware).
+ * Response format:
+ *  Length Byte : Description
+ *  1 : completion code
+ *  1 : SDR record type
+ *  1 : Length = Size of (Sensor value)
+ *  Data Payload = [value, Max, Average, Status]
+ * Note: sensor status is always 1 Byte.
+ * While parsing, it saves the sensor's value, max value, average value & status information.
+ */
 static int parse_single_sdr_info(struct xocl_hwmon_sdm *sdm, char *in_buf,
                                  uint8_t repo_id, uint64_t data_args)
 {
