@@ -2478,15 +2478,15 @@ static inline int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uu
 {
 	return 0;
 }
-static inline void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
+static inline int xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
 {
-	return;
+	return 0;
 }
 #else
 int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
 		      struct ip_layout *ip_layout,
 		      struct ps_kernel_node *ps_kernel);
-void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
+int xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
 #endif
 
 /* context helpers */

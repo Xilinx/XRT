@@ -155,13 +155,26 @@ class ip_impl
       : m_device(xrt_core::hw_context_int::get_core_device(xhwctx))
       , m_hwctx(std::move(xhwctx))
     {
-      std::string ipnm = nm;
-      auto pos1 = ipnm.find(":{");
-      if (pos1 != std::string::npos && ipnm.rfind('}') == nm.size() - 1)
-        ipnm.erase(pos1 + 1, 1).pop_back();
-
       auto xclbin = m_hwctx.get_xclbin();
-      m_ip = xclbin.get_ip(ipnm);
+
+      // nm can be in three forms, but must identify exactly one IP
+      // 1. base name (kname) without an embedded ":"
+      // 2. curly brace syntax (kname:{inst})
+      // 3. fully qualified / canonical ip name (kname:inst)
+      if (nm.find(":") == std::string::npos || nm.find(":{") != std::string::npos) {
+        // case 1 and 2 use get_ips to do name matching
+        auto ips = xclbin.get_ips(nm);
+
+        if (ips.size() > 1)
+          throw xrt_core::error(EINVAL, "More than one IP matching '" + nm + "'");
+
+        if (ips.size() == 1)
+          m_ip = ips.front();
+      }
+      else {
+        // case 3 use get_ip
+        m_ip = xclbin.get_ip(nm);
+      }
 
       if (!m_ip)
         throw xrt_core::error(EINVAL, "No IP matching '" + nm + "'");
@@ -170,7 +183,7 @@ class ip_impl
       m_size = m_ip.get_size();
 
       // context, driver allows shared context per xrt.ini
-      m_idx = m_device->open_cu_context(m_hwctx, ipnm);
+      m_idx = m_device->open_cu_context(m_hwctx, m_ip.get_name());
     }
 
     ~ip_context()

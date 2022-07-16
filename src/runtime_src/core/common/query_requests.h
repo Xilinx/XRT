@@ -254,6 +254,7 @@ enum class key_type
   ert_cu_write,
   ert_cu_read,
   ert_data_integrity,
+  ert_status,
 
   aim_counter,
   am_counter,
@@ -907,6 +908,9 @@ struct sdm_sensor_info : request
    *  max      : maximum value
    *  average  : average value
    *  highest  : highest value (used for temperature sensors)
+   *  status   : sensor status
+   *  units    : sensor value units
+   *  unitm    : unit modifier value used to get actual sensor value
    */
   struct sensor_data {
     std::string label;
@@ -915,6 +919,8 @@ struct sdm_sensor_info : request
     uint32_t average {};
     uint32_t highest {};
     std::string status;
+    std::string units;
+    int8_t unitm;
   };
   using result_type = std::vector<sensor_data>;
   using req_type = sdr_req_type;
@@ -2766,6 +2772,22 @@ struct ert_data_integrity : request
   {
     return value ? "Pass" : "Fail";
   }
+};
+
+struct ert_status : request
+{
+  struct ert_status_data {
+    bool        connected;
+    // add more in the future
+  };
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::ert_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static ert_status_data
+  to_ert_status(const result_type& strs);
 };
 
 struct noop : request

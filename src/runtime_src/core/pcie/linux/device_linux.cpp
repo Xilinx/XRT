@@ -189,13 +189,14 @@ struct sdm_sensor_info
   {
     auto pdev = get_pcidev(device);
     //sensors are stored in hwmon sysfs dir with name ends with as follows.
-    std::array<std::string, 5> sname_end = {"label", "input", "max", "average", "status"};
+    std::array<std::string, 7> sname_end = {"label", "input", "max", "average", "status", "units", "unitm"};
     int max_end_types = sname_end.size();
     std::string errmsg, str_op, target_snode;
     // data_type has default constructor that initializes data members appropriately,
     // So, don't use "= {0}", it can only be used for fundamental types.
     data_type data {};
     uint32_t uint_op = 0;
+    int8_t unitm = 0;
 
     //Starting from index 0 in sname_end array, read and store all the sysfs nodes information
     for (int end_id = 0; end_id < max_end_types; end_id++)
@@ -239,6 +240,18 @@ struct sdm_sensor_info
         pdev->sysfs_get("", target_snode, errmsg, str_op);
         if (errmsg.empty())
           data.status = str_op;
+        break;
+      case 5:
+        // read sysfs node <tpath>units
+        pdev->sysfs_get("", target_snode, errmsg, str_op);
+        if (errmsg.empty())
+          data.units = str_op;
+        break;
+      case 6:
+        // read sysfs node <tpath>unitm
+        pdev->sysfs_get<int8_t>("", target_snode, errmsg, unitm, 0);
+        if (errmsg.empty())
+          data.unitm = unitm;
         break;
       }
     }
@@ -1089,6 +1102,7 @@ initialize_query_table()
   emplace_sysfs_get<query::ert_cu_read>                        ("ert_ctrl", "cu_read_cnt");
   emplace_sysfs_get<query::ert_cu_write>                       ("ert_ctrl", "cu_write_cnt");
   emplace_sysfs_get<query::ert_data_integrity>                 ("ert_ctrl", "data_integrity");
+  emplace_sysfs_get<query::ert_status>                         ("ert_ctrl", "status");
   emplace_sysfs_getput<query::config_mailbox_channel_disable>  ("", "config_mailbox_channel_disable");
   emplace_sysfs_getput<query::config_mailbox_channel_switch>   ("", "config_mailbox_channel_switch");
   emplace_sysfs_getput<query::config_xclbin_change>            ("", "config_xclbin_change");

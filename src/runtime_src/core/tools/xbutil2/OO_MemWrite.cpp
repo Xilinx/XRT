@@ -83,13 +83,13 @@ XBU::verbose("SubCommand option: read mem");
     //-- Device
     if(m_device.size() > 1)
       throw xrt_core::error("Multiple devices not supported. Please specify a single device");
-    
+
     // Collect the device of interest
     std::set<std::string> deviceNames;
     xrt_core::device_collection deviceCollection;
-    for (const auto & deviceName : m_device) 
+    for (const auto & deviceName : m_device)
       deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-    
+
     XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection); // Can throw
     // set working variable
     device = deviceCollection.front();
@@ -139,8 +139,8 @@ XBU::verbose("SubCommand option: read mem");
   XBU::verbose(boost::str(boost::format("Fill pattern: %s") % m_fill));
 
   //read mem
-  XBU::xclbin_lock xclbin_lock(device);
-  
+  XBU::xclbin_lock xclbin_lock(device.get());
+
   try {
     xrt_core::mem_write(device.get(), addr, size, fill_byte);
   } catch(const xrt_core::error& e) {
@@ -149,4 +149,3 @@ XBU::verbose("SubCommand option: read mem");
   }
   std::cout << "Memory write succeeded" << std::endl;
 }
-
