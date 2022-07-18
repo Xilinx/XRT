@@ -224,6 +224,7 @@ enum class key_type
   is_mfg,
   mfg_ver,
   is_recovery,
+  is_versal,
   is_ready,
   is_offline,
   f_flash_type,
@@ -2498,6 +2499,21 @@ struct is_recovery : request
 {
   using result_type = bool;
   static const key_type key = key_type::is_recovery;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+/*
+ * struct is_versal - check if device is versal or not
+ * A value of true means it is a versal device.
+ * This entry is needed as some of the operations are handled
+ * differently on versal devices compared to Alveo devices
+ */
+struct is_versal : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::is_versal;
 
   virtual boost::any
   get(const device*) const = 0;
