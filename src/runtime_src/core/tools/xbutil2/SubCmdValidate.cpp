@@ -1295,7 +1295,7 @@ aiePlTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::p
 * helper function to initialize test info
 */
 static boost::property_tree::ptree
-create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin, bool is_explicit = false) {
+create_init_test(const std::string& name, const std::string& desc, const std::string& xclbin = "", bool is_explicit = false) {
   boost::property_tree::ptree _ptTest;
   _ptTest.put("name", name);
   _ptTest.put("description", desc);
@@ -1313,19 +1313,19 @@ struct TestCollection {
 * create test suite
 */
 static std::vector<TestCollection> testSuite = {
-  { create_init_test("aux-connection", "Check if auxiliary power is connected", ""), auxConnectionTest },
-  { create_init_test("pcie-link", "Check if PCIE link is active", ""), pcieLinkTest },
-  { create_init_test("sc-version", "Check if SC firmware is up-to-date", ""), scVersionTest },
-  { create_init_test("verify", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
+  { create_init_test("aux-connection", "Check if auxiliary power is connected"), auxConnectionTest },
+  { create_init_test("pcie-link", "Check if PCIE link is active"), pcieLinkTest },
+  { create_init_test("sc-version", "Check if SC firmware is up-to-date"), scVersionTest },
+  { create_init_test("verify", "Run 'Hello World' kernel test"), verifyKernelTest },
   { create_init_test("dma", "Run dma test", "verify.xclbin"), dmaTest },
   { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin"), iopsTest },
-  { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
+  { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput"), bandwidthKernelTest },
   { create_init_test("p2p", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("m2m", "Run M2M test", "bandwidth.xclbin"), m2mTest },
-  { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
+  { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
-  { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
-  { create_init_test("aie-pl", "Run AIE PL test", "vck5000_pcie_pl_controller.xclbin.xclbin"), aiePlTest }
+  { create_init_test("vcu", "Run decoder test"), vcuKernelTest },
+  { create_init_test("aie-pl", "Run AIE PL test"), aiePlTest }
 };
 
 
