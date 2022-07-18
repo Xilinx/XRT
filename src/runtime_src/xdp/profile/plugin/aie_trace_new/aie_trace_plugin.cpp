@@ -300,6 +300,9 @@ namespace xdp {
       return;
 
     auto& AIEData = itr->second;
+    if (!AIEData.supported)
+      return;
+
     auto& offloader = AIEData.offloader;
     if (offloader) {
       if (offloader->continuousTrace()) {
@@ -319,7 +322,10 @@ namespace xdp {
   void AieTracePlugin::writeAll(bool openNewFiles)
   {
     for (const auto& kv : handleToAIEData) {
-      auto& offloader = kv.second.offloader;
+      auto& AIEData = kv.second;
+      if (!AIEData.supported)
+        continue;
+      auto& offloader = AIEData.offloader;
       if (offloader->continuousTrace()) {
         offloader->stopOffload() ;
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
