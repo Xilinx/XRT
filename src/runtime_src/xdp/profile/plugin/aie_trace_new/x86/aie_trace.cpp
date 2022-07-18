@@ -146,7 +146,7 @@ namespace xdp {
     auto run = aie_trace_kernel(bo0);
     run.wait();
 
-    delete input_params;
+    free(input_params);
 
   // auto device = xrt::device("0");
   // auto uuid = device.load_xclbin(xclbin_fnm);
