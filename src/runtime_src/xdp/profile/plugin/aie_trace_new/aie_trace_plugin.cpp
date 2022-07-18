@@ -46,19 +46,13 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   bool AieTracePlugin::live = false;
 
-  AieTracePlugin::AieTracePlugin() : XDPPlugin()
+  AieTracePlugin::AieTracePlugin()
+  : XDPPlugin()
   {
     AieTracePlugin::live = true;
 
     db->registerPlugin(this);
     db->registerInfo(info::aie_trace);
-
-    // #ifdef EDGE_BUILD
-    // implementation = std::make_unique<AieTrace_EdgeImpl>(db, nullptr);
-    // #else
-    metadata = std::make_shared<AieTraceMetadata>();
-    implementation = std::make_unique<AieTrace_x86Impl>(db, metadata);
-    // #endif
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -79,33 +73,44 @@ namespace xdp {
   uint64_t AieTracePlugin::getDeviceIDFromHandle(void* handle) {
     constexpr uint32_t PATH_LENGTH = 512;
 
-    auto itr = metadata->HandleToDeviceID.find(handle);
-    if (itr != metadata->HandleToDeviceID.end())
-      return itr->second;
+    auto itr = handleToAIEData.find(handle);
+    if (itr != handleToAIEData.end())
+      return itr->second.deviceID;
 
     char pathBuf[PATH_LENGTH];
     memset(pathBuf, 0, PATH_LENGTH);
     xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
     std::string sysfspath(pathBuf);
     uint64_t deviceID =  db->addDevice(sysfspath); // Get the unique device Id
-    metadata->HandleToDeviceID[handle] = deviceID;
     return deviceID;
   }
 
   void AieTracePlugin::updateAIEDevice(void* handle)
   {
-    if (!handle || !implementation)
+    if (!handle)
       return;
 
+    // delete old data
+    if (handleToAIEData.find(handle) != handleToAIEData.end())
+        handleToAIEData.erase(handle);
+    auto& AIEData = handleToAIEData[handle];
+
     auto deviceID = getDeviceIDFromHandle(handle);
-    metadata->setDeviceId(deviceID);
-    // handle is not owned by XDP
+    AIEData.deviceID = deviceID;
+    AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
+    auto& metadata = AIEData.metadata;
+
+// #ifdef XRT_NATIVE_BUILD
+    AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, metadata);
+// #else
+// AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, nullptr);
+// #endif
+
+    auto& implementation = AIEData.implementation;
+
+    // Todo: set supported flag here
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
-      // Delete the old offloader
-      if (offloadersMap.find(deviceID) != offloadersMap.end())
-        offloadersMap.erase(deviceID);
-
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceID, handle);
       {
@@ -114,10 +119,6 @@ namespace xdp {
           (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
       }
     }
-
-    //Sets up and calls the PS kernel on x86 implementation
-    //Sets up and the hardware on the edge implementation
-    implementation->updateDevice(handle);
 
     if (!(db->getStaticInfo()).isGMIORead(deviceID)) {
       // Update the AIE specific portion of the device
@@ -132,15 +133,21 @@ namespace xdp {
 
     metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
     if (metadata->getNumStreams() == 0) {
+      AIEData.supported = false;
       xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_UNAVAILABLE);
       return;
     }
+
+    //Sets up and calls the PS kernel on x86 implementation
+    //Sets up and the hardware on the edge implementation
+    implementation->updateDevice();
 
     // Add all the writers
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
     if (deviceIntf == nullptr) {
     // If DeviceIntf is not already created, create a new one to communicate with physical device
     DeviceIntf* deviceIntf = new DeviceIntf();
+    AIEData.devIntf = deviceIntf;
     try {
       deviceIntf->setDevice(new HalDevice(handle));
       deviceIntf->readDebugIPlayout();
@@ -156,9 +163,9 @@ namespace xdp {
     }
 
     // This also checks for runtime metrics
-    std::string metricSet = metadata->getMetricSet(handle);
+    std::string metricSet = metadata->getMetricSet();
 
-    if (metadata->isRuntimeMetrics()) {
+    if (metadata->getRuntimeMetrics()) {
       // This code needs to get the actual metric set so we can
       //  configure it.  I'm not sure yet what is needed for this
 
@@ -222,7 +229,7 @@ namespace xdp {
     aieTraceBufSize = implementation->checkTraceBufSize(aieTraceBufSize);
 
     // Create AIE Trace Offloader
-    auto traceLogger = std::make_unique<AIETraceDataLogger>(deviceID);
+    AIEData.logger = std::make_unique<AIETraceDataLogger>(deviceID);
 
     if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug)) {
       std::string flowType = (isPLIO) ? "PLIO" : "GMIO";
@@ -235,16 +242,17 @@ namespace xdp {
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 
-    auto offloader = std::make_unique<AIETraceOffload>
+    AIEData.offloader = std::make_unique<AIETraceOffload>
     ( handle
     , deviceID
     , deviceIntf
-    , traceLogger.get()
+    , AIEData.logger.get()
     , isPLIO              // isPLIO?
     , aieTraceBufSize     // total trace buffer size
     , metadata->getNumStreams()
     , implementation->isEdge()
     );
+    auto& offloader = AIEData.offloader;
 
     // Can't call init without setting important details in offloader
     if (metadata->getContinuousTrace() && isPLIO) {
@@ -260,33 +268,40 @@ namespace xdp {
     // Continuous Trace Offload is supported only for PLIO flow
     if (metadata->getContinuousTrace() && isPLIO)
       offloader->startOffload();
-
-    offloadersMap[deviceID] = std::make_tuple
-    ( std::move(offloader)
-    , std::move(traceLogger)
-    ,  deviceIntf
-    );
   }
 
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
-    auto deviceID = getDeviceIDFromHandle(handle);
-    metadata->setDeviceId(deviceID);
+    if (!handle)
+      return;
 
-    if (offloadersMap.find(deviceID) != offloadersMap.end())
-      (std::get<0>(offloadersMap[deviceID]))->readTrace(true);
+    auto itr = handleToAIEData.find(handle);
+    if (itr == handleToAIEData.end())
+      return;
 
-    if (implementation)
-      implementation->flushDevice(handle);
+    auto& AIEData = itr->second;
+    if (!AIEData.supported)
+      return;
+
+    if (AIEData.offloader)
+      AIEData.offloader->readTrace(true);
+
+    if (AIEData.implementation)
+      AIEData.implementation->flushDevice();
   }
 
   void AieTracePlugin::finishFlushAIEDevice(void* handle)
   {
-    auto deviceID = getDeviceIDFromHandle(handle);
-    metadata->setDeviceId(deviceID);
+    if (!handle)
+      return;
 
-    if (offloadersMap.find(deviceID) != offloadersMap.end()) {
-      auto& offloader = std::get<0>(offloadersMap[deviceID]);
+    auto itr = handleToAIEData.find(handle);
+    if (itr == handleToAIEData.end())
+      return;
+
+    auto& AIEData = itr->second;
+    auto& offloader = AIEData.offloader;
+    if (offloader) {
       if (offloader->continuousTrace()) {
         offloader->stopOffload();
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
@@ -297,16 +312,14 @@ namespace xdp {
       offloader->endReadTrace();
     }
 
-    if (implementation)
-      implementation->finishFlushDevice(handle);
-
-     offloadersMap.erase(deviceID);
+    if (AIEData.implementation)
+      AIEData.implementation->finishFlushDevice();
   }
 
   void AieTracePlugin::writeAll(bool openNewFiles)
   {
-    for (auto& o : offloadersMap) {
-      auto& offloader = std::get<0>(o.second);
+    for (const auto& kv : handleToAIEData) {
+      auto& offloader = kv.second.offloader;
       if (offloader->continuousTrace()) {
         offloader->stopOffload() ;
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
@@ -316,7 +329,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
       offloader->endReadTrace();
     }
-    offloadersMap.clear();
+    handleToAIEData.clear();
     XDPPlugin::endWrite();
   }
 

@@ -23,18 +23,7 @@
 
 namespace xdp {
 
-  class AieTracePlugin : public XDPPlugin
-  {
-  private:
-    std::unique_ptr<AieTraceImpl> implementation;
-    std::shared_ptr<AieTraceMetadata> metadata;
-    static bool live;
-
-    typedef std::tuple<std::unique_ptr<AIETraceOffload>,
-                       std::unique_ptr<AIETraceLogger>,
-                       DeviceIntf*> AIEData;
-    std::map<uint32_t, AIEData>  offloadersMap;
-
+  class AieTracePlugin : public XDPPlugin {
   public:
     XDP_EXPORT AieTracePlugin();
     XDP_EXPORT ~AieTracePlugin();
@@ -45,7 +34,20 @@ namespace xdp {
     XDP_EXPORT static bool alive();
 
   private:
-      uint64_t getDeviceIDFromHandle(void* handle);
+    uint64_t getDeviceIDFromHandle(void* handle);
+
+  private:
+    static bool live;
+    struct AIEData {
+      uint64_t deviceID;
+      bool supported;
+      DeviceIntf* devIntf;
+      std::unique_ptr<AIETraceOffload> offloader;
+      std::unique_ptr<AIETraceLogger> logger;
+      std::unique_ptr<AieTraceImpl> implementation;
+      std::shared_ptr<AieTraceMetadata> metadata;
+    };
+    std::map<void*, AIEData>  handleToAIEData;
   };
 
 }   

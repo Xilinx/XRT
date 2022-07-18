@@ -36,7 +36,9 @@ typedef std::vector<uint32_t>  ValueVector;
 
 class AieTraceMetadata{
   private:
-    uint64_t deviceId;
+    uint64_t deviceID;
+    void* handle;
+
     uint64_t numAIETraceOutput;
     // Runtime or compile-time specified trace metrics?
     bool runtimeMetrics;
@@ -51,13 +53,11 @@ class AieTraceMetadata{
     uint64_t offloadIntervalUs;
     unsigned int aie_trace_file_dump_int_s;
 
-    void setRunTimeMetrics(bool value) {runtimeMetrics = value;}
-
   public:
-    AieTraceMetadata();
-    std::string getMetricSet(void* handle);
-    std::vector<tile_type> getTilesForTracing(void* handle); 
-    uint64_t getTraceStartDelayCycles(void* handle);
+    AieTraceMetadata(uint64_t deviceID, void* handle);
+    std::string getMetricSet();
+    std::vector<tile_type> getTilesForTracing();
+    uint64_t getTraceStartDelayCycles();
     adf::aiecompiler_options get_aiecompiler_options(const xrt_core::device* device);
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
     std::vector<tile_type> get_tiles(const xrt_core::device* device, const std::string& graph_name);
@@ -65,23 +65,19 @@ class AieTraceMetadata{
     double get_clock_freq_mhz(const xrt_core::device* device);
     std::vector<gmio_type> get_trace_gmios(const xrt_core::device* device);
 
-    bool getRunTimeMetrics() {return runtimeMetrics;}
-    void setDeviceId(uint64_t value) {deviceId = value;}
-    uint64_t getDeviceId() {return deviceId;}
+    bool getRuntimeMetrics() {return runtimeMetrics;}
+    uint64_t getDeviceID() {return deviceID;}
+    void* getHandle() {return handle;}
     void setNumStreams(uint64_t value) {numAIETraceOutput = value;}
     uint64_t getNumStreams() {return numAIETraceOutput;}
-
     uint64_t getContinuousTrace() {return continuousTrace;}
     unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
-    bool isRuntimeMetrics() {return runtimeMetrics;}
     uint32_t getDelay() {
       if (mUseDelay)
         return mDelayCycles;
       return 0;
     }
-
-    std::map<void*, uint64_t> HandleToDeviceID;
   };
 
 }

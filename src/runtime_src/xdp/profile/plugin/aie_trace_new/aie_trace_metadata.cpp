@@ -47,12 +47,14 @@
 #include "aie_trace_metadata.h"
 #include "aie_trace_plugin.h"
 
-namespace xdp{
+namespace xdp {
   namespace pt = boost::property_tree;
   using severity_level = xrt_core::message::severity_level;
   constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0;
   
-  AieTraceMetadata::AieTraceMetadata()
+  AieTraceMetadata::AieTraceMetadata(uint64_t deviceID, void* handle)
+  : deviceID(deviceID)
+  , handle(handle)
   {
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
@@ -72,7 +74,7 @@ namespace xdp{
 
     // Set Delay parameters
     // Update delay with clock cycles when we get device handle later
-    mDelayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(nullptr));
+    mDelayCycles = static_cast<uint32_t>(getTraceStartDelayCycles());
     mUseDelay = (mDelayCycles > 0) ? true : false;
 
     // Pre-defined metric sets
@@ -91,19 +93,19 @@ namespace xdp{
       aie_trace_file_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
     }
-  }
-
-  std::string AieTraceMetadata::getMetricSet(void* handle){
-    static bool parsed = false;
-    if (parsed)
-      return metricSet;
 
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto compilerOptions = get_aiecompiler_options(device.get());
-    setRunTimeMetrics(compilerOptions.event_trace == "runtime");
+    runtimeMetrics = (compilerOptions.event_trace == "runtime");
+  }
 
-    if (!getRunTimeMetrics()) {
+  std::string AieTraceMetadata::getMetricSet()
+  {
+    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
+    if (!getRuntimeMetrics()) {
+      std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+      auto compilerOptions = get_aiecompiler_options(device.get());
       std::stringstream msg;
       msg << "Found compiler trace option of " << compilerOptions.event_trace
           << ". No runtime AIE metrics will be changed.";
@@ -144,11 +146,10 @@ namespace xdp{
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       metricSet = defaultSet;
     }
-    parsed = true;
     return metricSet;
   }
 
-  std::vector<tile_type> AieTraceMetadata::getTilesForTracing(void* handle)
+  std::vector<tile_type> AieTraceMetadata::getTilesForTracing()
   {
     std::vector<tile_type> tiles;
     // Create superset of all tiles across all graphs
@@ -173,7 +174,7 @@ namespace xdp{
     return tiles;
   }
 
-  uint64_t AieTraceMetadata::getTraceStartDelayCycles(void* handle)
+  uint64_t AieTraceMetadata::getTraceStartDelayCycles()
   {
     double freqMhz = AIE_DEFAULT_FREQ_MHZ;
 

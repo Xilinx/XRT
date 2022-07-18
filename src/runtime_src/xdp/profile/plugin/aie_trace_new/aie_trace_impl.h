@@ -46,14 +46,11 @@ namespace xdp {
     AieTraceImpl() = delete;
     virtual ~AieTraceImpl() {};
 
-    virtual void updateDevice(void* handle) = 0;
-    virtual void flushDevice(void* handle) = 0;
-    virtual void finishFlushDevice(void* handle) = 0;
+    virtual void updateDevice() = 0;
+    virtual void flushDevice() = 0;
+    virtual void finishFlushDevice() = 0;
     virtual bool isEdge() = 0;
     virtual uint64_t checkTraceBufSize(uint64_t size) = 0;
-  
-    uint64_t getNumStreams() {return metadata->getNumStreams();}
-    uint64_t getDeviceID() {return metadata->getDeviceId();}
   };
 
 } // namespace xdp

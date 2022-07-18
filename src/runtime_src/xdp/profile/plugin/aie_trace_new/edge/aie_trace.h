@@ -29,14 +29,13 @@ namespace xdp {
         : AieTraceImpl(database, metadata){}
       ~AieTraceEdgeImpl();
 
-      void updateDevice(void* handle);
-      void flushDevice(void* handle);
-      void finishFlushDevice(void* handle);
+      void updateDevice();
+      void flushDevice();
+      void finishFlushDevice();
       bool isEdge();
 
       bool setMetrics(uint64_t deviceId, void* handle);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
-      void setFlushMetrics(uint64_t deviceId, void* handle);
       bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
       inline uint32_t bcIdToEvent(int bcId);

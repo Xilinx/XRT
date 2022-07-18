@@ -45,23 +45,19 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using module_type = xrt_core::edge::aie::module_type;
 
-  void AieTrace_x86Impl::updateDevice(void* handle) {
-    if (handle == nullptr)
-      return;
-
-    auto deviceID = metadata->HandleToDeviceID[handle];
+  void AieTrace_x86Impl::updateDevice() {
     // Set metrics for counters and trace events 
-    if (!setMetrics(deviceID, handle)) {
+    if (!setMetrics(metadata->getDeviceID(), metadata->getHandle())) {
       std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       return;
     }
   }
 
-  void AieTrace_x86Impl::flushDevice(void* handle) {
+  void AieTrace_x86Impl::flushDevice() {
   }
 
-  void AieTrace_x86Impl::finishFlushDevice(void* handle) {
+  void AieTrace_x86Impl::finishFlushDevice() {
     // Release aie resources here
   }
 
@@ -77,12 +73,12 @@ namespace xdp {
   bool AieTrace_x86Impl::setMetrics(uint64_t deviceId, void* handle) {
     // Create struct to pass to PS kernel
     std::string counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
-    std::string metricSet = metadata->getMetricSet(handle);
+    std::string metricSet = metadata->getMetricSet();
     uint8_t counterSchemeInt;
     uint8_t metricSetInt;
 
-    auto tiles = metadata->getTilesForTracing(handle);
-    uint32_t delayCycles = static_cast<uint32_t>(metadata->getTraceStartDelayCycles(handle));
+    auto tiles = metadata->getTilesForTracing();
+    uint32_t delayCycles = static_cast<uint32_t>(metadata->getTraceStartDelayCycles());
     bool userControl = xrt_core::config::get_aie_trace_settings_start_type() == "user";
     bool useDelay = (metadata->getDelay() != 0);
 

@@ -29,9 +29,9 @@ namespace xdp {
         : AieTraceImpl(database, metadata){}
       ~AieTrace_x86Impl() = default;
 
-      void updateDevice(void* handle);
-      void flushDevice(void* handle);
-      void finishFlushDevice(void* handle);
+      void updateDevice();
+      void flushDevice();
+      void finishFlushDevice();
       bool setMetrics(uint64_t deviceId, void* handle);
       bool isEdge();
       uint64_t checkTraceBufSize(uint64_t size);
