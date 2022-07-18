@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
-set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/generic_pcie_hal2")
-set(EM_PLUGIN_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generic_pcie_hal2/plugin/xdp")
+set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/alveo_shim")
+set(EM_PLUGIN_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/alveo_shim/plugin/xdp")
 set(COMMON_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../common_em")
 set(COMMON_EM_GEN_DIR  "${CMAKE_CURRENT_BINARY_DIR}/../common_em")
 set(COMMON_PCIE_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../common")
