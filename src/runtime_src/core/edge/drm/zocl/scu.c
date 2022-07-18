@@ -92,33 +92,32 @@ stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(stat);
 
-ssize_t show_sc_pid(u32 sc_pid, char *buf)
+ssize_t show_status(struct zocl_scu *scu, char *buf)
 {
 	ssize_t sz = 0;
-	char *fmt = "%u\n";
 
-	sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt,
-			sc_pid);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "PID:%u\n",
+			scu->sc_pid);
 
 	return sz;
 }
 
 static ssize_t
-sc_pid_show(struct device *dev, struct device_attribute *attr, char *buf)
+status_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct zocl_scu *scu = platform_get_drvdata(pdev);
 
-	return show_sc_pid(scu->sc_pid, buf);
+	return show_status(scu, buf);
 }
-static DEVICE_ATTR_RO(sc_pid);
+static DEVICE_ATTR_RO(status);
 
 static struct attribute *scu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
 	&dev_attr_cu_info.attr,
 	&dev_attr_stat.attr,
-	&dev_attr_sc_pid.attr,
+	&dev_attr_status.attr,
 	NULL,
 };
 
@@ -304,7 +303,7 @@ int zocl_scu_wait_ready(struct platform_device *pdev)
 	int ret = 0;
 
 	// Wait for PS kernel initizliation complete
-	if(down_timeout(&zcu->sc_sem,100)) {
+	if(down_timeout(&zcu->sc_sem,msecs_to_jiffies(1000))) {
 		zocl_err(&pdev->dev, "PS kernel initialization timed out!");
 		return -ETIME;
 	}
@@ -366,7 +365,7 @@ void zocl_scu_sk_shutdown(struct platform_device *pdev)
 	}
 	put_pid(p);
 
-	if (down_timeout(&zcu->sc_sem,100))
+	if (down_timeout(&zcu->sc_sem,msecs_to_jiffies(1000)))
 		DRM_WARN("Wait for PS kernel timeout\n");
  skip_kill:
 	return;
