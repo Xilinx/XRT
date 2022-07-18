@@ -1499,6 +1499,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
   int test_idx = 0;
   bool singleton = (testObjectsToRun.size() == 1);
+  bool all_tests_skipped = true;
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
@@ -1523,11 +1524,17 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
     pretty_print_test_run(ptTest, status, std::cout, singleton);
 
+    if (!boost::equals(ptTest.get<std::string>("status", ""), test_token_skipped))
+      all_tests_skipped = false;
+
     // If a test fails, don't test the remaining ones
     if (status == test_status::failed) {
       break;
     }
   }
+
+  if (all_tests_skipped)
+    status = test_status::failed;
 
   print_status(status, std::cout, singleton);
 
