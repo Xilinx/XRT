@@ -31,6 +31,8 @@ struct kds_client_ctx {
 	struct list_head          link;
 	void			 *xclbin_id;
 	u32			  slot_idx;
+	u32			  cu_idx;
+	u32			  flags;
 	u32			  num_ctx;
 	u32			  num_scu_ctx;
 	u32			  virt_cu_ref;

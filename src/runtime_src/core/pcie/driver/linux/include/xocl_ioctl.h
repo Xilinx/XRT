@@ -79,13 +79,15 @@
  *      interrupt
  * 13   Update device view with a specific     DRM_IOCTL_XOCL_READ_AXLF       drm_xocl_axlf
  *      xclbin image
- * 14   Obtain info of bo                      DRM_IOCTL_XOCL_INFO            drm_xocl_info_bo
- * 15   Obtain bo related statistics           DRM_IOCTL_XOCL_OCL_USAGE_STAT  drm_xocl_usage_stat
- * 16   Perform hot reset                      DRM_IOCTL_XOCL_HOT_RESET       N/A
- * 17   Perform clock scaling                  DRM_IOCTL_XOCL_RECLOCK         drm_xocl_reclock_info
- * 18   Allocate buffer on host memory         DRM_IOCTL_XOCL_ALLOC_CMA       drm_xocl_alloc_cma_info
- * 19   Free host memory buffer                DRM_IOCTL_XOCL_FREE_CMA        N/A
- * 20   Copy bo buffers                        DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
+ * 14   Register device view with a specific   DRM_IOCTL_XOCL_REGISTER_AXLF   drm_xocl_axlf
+ *      xclbin image
+ * 15   Obtain info of bo                      DRM_IOCTL_XOCL_INFO            drm_xocl_info_bo
+ * 16   Obtain bo related statistics           DRM_IOCTL_XOCL_OCL_USAGE_STAT  drm_xocl_usage_stat
+ * 17   Perform hot reset                      DRM_IOCTL_XOCL_HOT_RESET       N/A
+ * 18   Perform clock scaling                  DRM_IOCTL_XOCL_RECLOCK         drm_xocl_reclock_info
+ * 19   Allocate buffer on host memory         DRM_IOCTL_XOCL_ALLOC_CMA       drm_xocl_alloc_cma_info
+ * 20   Free host memory buffer                DRM_IOCTL_XOCL_FREE_CMA        N/A
+ * 21   Copy bo buffers                        DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
  * ==== ====================================== ============================== ==================================
  */
 
@@ -154,6 +156,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_USER_INTR,
 	/* Read xclbin/axlf */
 	DRM_XOCL_READ_AXLF,
+	/* Register xclbin/axlf */
+	DRM_XOCL_REGISTER_AXLF,
 	/* Hot reset request */
 	DRM_XOCL_HOT_RESET,
 	/* Reclock through userpf*/
@@ -444,7 +448,7 @@ enum drm_xocl_axlf_flags {
 
 /**
  * struct drm_xocl_axlf - load xclbin (AXLF) device image
- * used with DRM_IOCTL_XOCL_READ_AXLF ioctl
+ * used with DRM_IOCTL_XOCL_READ_AXLFDRM_IOCTL_XOCL_REGISTER_AXLF ioctl
  * NOTE: This ioctl will be removed in next release
  *
  * @xclbin:	Pointer to user's xclbin structure in memory
@@ -501,6 +505,10 @@ enum drm_xocl_ctx_code {
 	XOCL_CTX_OP_ALLOC_CTX = 0,
 	XOCL_CTX_OP_FREE_CTX,
 	XOCL_CTX_OP_OPEN_UCU_FD,
+	XOCL_CTX_OP_ALLOC_HW_CTX,
+	XOCL_CTX_OP_FREE_HW_CTX,
+	XOCL_CTX_OP_OPEN_CU_CTX,
+	XOCL_CTX_OP_FREE_CU_CTX
 };
 
 #define	XOCL_CTX_SHARED		0x0
@@ -512,18 +520,21 @@ enum drm_xocl_ctx_code {
  *
  * @op:            Alloc or free a context (XOCL_CTX_OP_ALLOC_CTX/XOCL_CTX_OP_FREE_CTX)
  * @xclbin_id:	   UUID of the device image (xclbin)
+ * @cu_name:	   Name of the compute unit in the device inage for which
+ *                 the request is being made
  * @cu_index:	   Index of the compute unit in the device inage for which
  *                 the request is being made
  * @flags:	   Shared or exclusive context (XOCL_CTX_SHARED/XOCL_CTX_EXCLUSIVE)
- * @handle:	   Unused
+ * @hw_context:	   Context handle
  */
 struct drm_xocl_ctx {
 	enum drm_xocl_ctx_code op;
 	xuid_t   xclbin_id;
+	char 	 cu_name[64];
 	uint32_t cu_index;
 	uint32_t flags;
-	// unused, in future it would return context id
-	uint32_t handle;
+	// return context id
+	uint32_t hw_context;
 };
 
 struct drm_xocl_info {
@@ -699,6 +710,7 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_CTX		XOCL_IOC_ARG(CTX, ctx)
 #define	DRM_IOCTL_XOCL_INFO		XOCL_IOC_ARG(INFO, info)
 #define	DRM_IOCTL_XOCL_READ_AXLF	XOCL_IOC_ARG(READ_AXLF, axlf)
+#define	DRM_IOCTL_XOCL_REGISTER_AXLF	XOCL_IOC_ARG(REGISTER_AXLF, axlf)
 #define	DRM_IOCTL_XOCL_PWRITE_UNMGD	XOCL_IOC_ARG(PWRITE_UNMGD, pwrite_unmgd)
 #define	DRM_IOCTL_XOCL_PREAD_UNMGD	XOCL_IOC_ARG(PREAD_UNMGD, pread_unmgd)
 #define	DRM_IOCTL_XOCL_USAGE_STAT	XOCL_IOC_ARG(USAGE_STAT, usage_stat)

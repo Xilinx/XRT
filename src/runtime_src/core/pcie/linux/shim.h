@@ -70,7 +70,11 @@ public:
   int xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties);
 
   // Bitstream/bin download
+  int xclDownloadAxlf(drm_xocl_axlf *axlf_obj);
+  int xclRegisterAxlf(drm_xocl_axlf *axlf_obj);
+  // SAIF int load_xclbin(const axlf *top);
   int xclLoadXclBin(const xclBin *buffer);
+  int xclLoadAxlf(const axlf *buffer, bool register_only);
   int xclGetErrorStatus(xclErrorStatus *info);
   int xclGetDeviceInfo2(xclDeviceInfo2 *info);
   bool isGood() const;
@@ -146,6 +150,9 @@ public:
   xrt_core::cuidx_type
   open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
 
+  uint32_t
+  create_hw_context_helper(const xrt::uuid& xclbin_uuid, uint32_t qos);
+
   uint32_t // ctx handle aka slot idx
   create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos);
 
@@ -163,6 +170,7 @@ private:
   int mUserHandle;
   int mStreamHandle;
   int mBoardNumber;
+  bool hw_context_enable;
   uint64_t mOffsets[XCL_ADDR_SPACE_MAX];
   xclDeviceInfo2 mDeviceInfo;
   uint32_t mMemoryProfilingNumberSlots;
@@ -193,7 +201,7 @@ private:
   int dev_init();
   void dev_fini();
 
-  int xclLoadAxlf(const axlf *buffer);
+  int xclRegisterAxlf(const axlf *buffer);
   void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
   void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
   void xclSysfsGetErrorStatus(xclErrorStatus& stat);

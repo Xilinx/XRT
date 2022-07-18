@@ -103,8 +103,6 @@ struct xocl_dev	{
 	struct xocl_subdev	*dyn_subdev_store;
 	int			dyn_subdev_num;
 
-	void			*ulp_blob;
-
 	unsigned int		mbx_offset;
 
 	uint64_t		mig_cache_expire_secs;
@@ -161,6 +159,8 @@ int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_read_axlf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_register_axlf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_reclock_ioctl(struct drm_device *dev, void *data,
@@ -193,7 +193,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 void user_pci_reset_prepare(struct pci_dev *pdev);
 void user_pci_reset_done(struct pci_dev *pdev);
 #endif
-
+int xocl_unregister_axlf_by_index(struct xocl_dev *xdev, uint32_t idx);
+int xocl_download_axlf_helper(struct xocl_drm *drm_p, 
+		struct xocl_axlf_obj_cache *axlf_obj, uint32_t *slot_hndl);
 int xocl_refresh_subdevs(struct xocl_dev *xdev);
 
 u32 get_live_clients(struct xocl_dev *xdev, pid_t **pid_list);

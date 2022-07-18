@@ -560,6 +560,7 @@ shim(unsigned index)
   , mCuMaps{128, {nullptr, 0, 0, 0}}
 {
   init(index);
+  hw_context_enable = xrt_core::config::get_hw_context_flag();
 }
 
 int shim::dev_init()
@@ -1334,12 +1335,15 @@ int
 shim::
 xclLoadXclBin(const xclBin *buffer)
 {
+  int ret = 0;
   xdp::hal::flush_device(this);
   xdp::aie::flush_device(this);
   xdp::pl_deadlock::flush_device(this);
 
   auto top = reinterpret_cast<const axlf*>(buffer);
-  if (auto ret = xclLoadAxlf(top)) {
+  ret = xclLoadAxlf(top, false); // This is the legacy context support 
+
+  if (ret) {
     // Something wrong, determine what
     if (ret == -EOPNOTSUPP) {
       xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
@@ -1387,15 +1391,60 @@ xclLoadXclBin(const xclBin *buffer)
 }
 
 /*
+ * xclDownloadAxlf()
+ */
+int shim::xclDownloadAxlf(drm_xocl_axlf *axlf_obj)
+{
+  int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, axlf_obj);
+  if (ret && errno == EAGAIN) {
+    //special case for aws
+    //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
+    //wait and reload 2nd time -- this time the there will be no device id
+    //change, hence no pcie removal&rescan, anymore
+    //we need to close the device otherwise the removal&rescan (unload driver) will hang
+    //we also need to reopen the device once removal&rescan completes
+    int dev_hotplug_done = 0;
+    std::string err;
+    dev_fini();
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    while (!dev_hotplug_done) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+          "dev_hotplug_done", err, dev_hotplug_done, 0);
+    }
+    dev_init();
+    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+  }
+
+  if (ret)
+    return -errno;
+    
+  return ret;
+}
+
+/*
+ * xclRegisterAxlf()
+ */
+int shim::xclRegisterAxlf(drm_xocl_axlf *axlf_obj)
+{
+  int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_REGISTER_AXLF, axlf_obj);
+  if (ret)
+    return -errno;
+    
+  return ret;
+}
+
+/*
  * xclLoadAxlf()
  */
-int shim::xclLoadAxlf(const axlf *buffer)
+int shim::xclLoadAxlf(const axlf *buffer, bool register_only)
 {
-    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
     drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
     unsigned int flags = XOCL_AXLF_BASE;
     int off = 0;
+    int ret = 0;
 
+    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
     auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
     if(force_program) {
         axlf_obj.flags = flags | XOCL_AXLF_FORCE_PROGRAM;
@@ -1495,26 +1544,13 @@ int shim::xclLoadAxlf(const axlf *buffer)
     auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) + xml_hdr->m_sectionOffset);
     axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
 
-    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-    if (ret && errno == EAGAIN) {
-        //special case for aws
-        //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
-        //wait and reload 2nd time -- this time the there will be no device id
-        //change, hence no pcie removal&rescan, anymore
-	//we need to close the device otherwise the removal&rescan (unload driver) will hang
-	//we also need to reopen the device once removal&rescan completes
-        int dev_hotplug_done = 0;
-        std::string err;
-        dev_fini();
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        while (!dev_hotplug_done) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
-                "dev_hotplug_done", err, dev_hotplug_done, 0);
-        }
-        dev_init();
-        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-    }
+    /* For register xclbin case only xclbin need to register but should not download.
+     * But for the LoadXclBin case we need to download the xclbin.
+     */
+    if (register_only)
+        ret = xclRegisterAxlf(&axlf_obj);    
+    else
+        ret = xclDownloadAxlf(&axlf_obj);
 
     if (ret)
         return -errno;
@@ -1531,6 +1567,7 @@ int shim::xclLoadAxlf(const axlf *buffer)
             return -EIO;
         }
     }
+    
     return ret;
 }
 
@@ -1799,6 +1836,7 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 {
     std::lock_guard<std::mutex> l(mCuMapLock);
+    drm_xocl_ctx ctx;
 
     if (ipIndex < mCuMaps.size()) {
 	    // Make sure no MMIO register space access when CU is released.
@@ -1808,7 +1846,11 @@ int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
         }
     }
 
-    drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
+    if (!hw_context_enable)
+        ctx = {XOCL_CTX_OP_FREE_CTX};
+    else
+        ctx = {XOCL_CTX_OP_FREE_CU_CTX};
+
     std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
     ctx.cu_index = ipIndex;
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
@@ -2163,16 +2205,119 @@ xrt_core::cuidx_type
 shim::
 open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  // Alveo Linux PCIE does not yet support multiple xclbins.  Call
-  // regular flow.  Default access mode to shared unless explicitly
-  // exclusive.
-  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
-  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
-  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
-  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+    auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
 
-  return cuidx;
+    if (!hw_context_enable) {
+        // Alveo Linux PCIE does not yet support multiple xclbins.  Call
+        // regular flow.  Default access mode to shared unless explicitly
+        // exclusive.
+        auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+        auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+        xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+        return cuidx;
+    }
+    else {
+	/* This is for multi slot case. New IOCTL should call */
+        unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
+        // Pass Input 
+        drm_xocl_ctx cu_ctx = {XOCL_CTX_OP_OPEN_CU_CTX};
+        cu_ctx.flags = flags;
+        cu_ctx.hw_context = static_cast<xcl_hwctx_handle>(hwctx);
+        std::strcpy(cu_ctx.cu_name, cuname.c_str());
+
+        if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &cu_ctx))
+	    throw xrt_core::system_error(errno, "failed to open ip context");
+
+       	// Retrive the return value
+        return xrt_core::cuidx_type{cu_ctx.cu_index};
+    }
 }
+
+// Assign xclbin with uuid to hardware resources and return a context id
+// The context handle is 1:1 with a slot idx
+uint32_t
+shim::
+create_hw_context_helper(const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+    xdp::hal::flush_device(this);
+    xdp::aie::flush_device(this);
+    xdp::pl_deadlock::flush_device(this);
+    auto xclbin = mCoreDevice->get_xclbin(xclbin_uuid);
+    auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
+
+    drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_HW_CTX};
+    std::memcpy(ctx.xclbin_id, &xclbin_uuid, sizeof(uuid_t));
+    ctx.flags = qos;
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    if (ret) {
+	if (errno == EAGAIN) {
+            //special case for aws
+            //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
+            //wait and reload 2nd time -- this time the there will be no device id
+            //change, hence no pcie removal&rescan, anymore
+            //we need to close the device otherwise the removal&rescan (unload driver) will hang
+            //we also need to reopen the device once removal&rescan completes
+            int dev_hotplug_done = 0;
+            std::string err;
+            dev_fini();
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            while (!dev_hotplug_done) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+                    "dev_hotplug_done", err, dev_hotplug_done, 0);
+            }
+            dev_init();
+            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+            if (ret)
+	    	xrt_logmsg(XRT_ERROR, "failed to open hw context.");
+	}
+	// Something wrong, determine what
+	else if (ret == -EOPNOTSUPP) {
+	    xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
+	    auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(buffer);
+            auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
+	    if (xclbin_vbnv != shell_vbnv) {
+	    	xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
+	    	xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
+	    }
+	    xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
+	}
+	else if (ret == -EBUSY) {
+	    xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
+	}
+	else if (ret == -EKEYREJECTED) {
+	    xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
+	}
+	else if (ret == -E2BIG) {
+	    xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
+	}
+	else if (ret == -ETIMEDOUT) {
+	    xrt_logmsg(XRT_ERROR,
+	    	"Can't reach out to mgmt for xclbin downloading");
+	    xrt_logmsg(XRT_ERROR,
+	   	"Is xclmgmt driver loaded? Or is MSD/MPD running?");
+	}
+	else if (ret == -EDEADLK) {
+	    xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
+	    xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
+	}
+
+        throw xrt_core::system_error(errno, "failed to create hw context");
+    }
+
+    xdp::hal::update_device(this);
+    xdp::aie::update_device(this);
+    xdp::pl_deadlock::update_device(this);
+
+    START_DEVICE_PROFILING_CB(this);
+
+    // Success
+    mCoreDevice->register_axlf(buffer);
+
+    return ctx.hw_context;
+}
+
 
 // Assign xclbin with uuid to hardware resources and return a context id
 // The context handle is 1:1 with a slot idx
@@ -2180,25 +2325,41 @@ uint32_t
 shim::
 create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
 {
-  // Explicit hardware contexts are not supported in Alveo.
-  throw xrt_core::ishim::not_supported_error{__func__};
+    if (!hw_context_enable) {
+         // Alveo Linux PCIE does not yet support multiple xclbins.  Call
+         // regular flow.  Default access mode to shared unless explicitly
+	 return 0;
+    }
+    	
+    return create_hw_context_helper(xclbin_uuid, qos);
 }
 
 void
 shim::
 destroy_hw_context(uint32_t ctxhdl)
 {
-  // Explicit hardware contexts are not supported in Alveo.
-  throw xrt_core::ishim::not_supported_error{__func__};
+    if (!hw_context_enable) {
+         // Alveo Linux PCIE does not yet support multiple xclbins.  Call
+         // regular flow.  Default access mode to shared unless explicitly
+	 return;
+    }
+
+    drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_HW_CTX};
+    ctx.hw_context = ctxhdl;
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    if (ret)
+      throw xrt_core::system_error(errno, "failed to destroy hw context");
 }
 
 // Registers an xclbin, but does not load it.
 void
 shim::
-register_xclbin(const xrt::xclbin&)
+register_xclbin(const xrt::xclbin& xclbin)
 {
-  // Explicit hardware contexts are not supported in Alveo.
-  throw xrt_core::ishim::not_supported_error{__func__};
+    auto top = reinterpret_cast<const axlf*>(xclbin.get_axlf());
+    auto ret = xclLoadAxlf(top, true); // This only register xclbin 
+    if (ret)
+        throw xrt_core::system_error(errno, "failed to register xclbin");
 }
 
 } // namespace xocl

@@ -1163,6 +1163,20 @@ static int identify_bar(struct xocl_dev *xdev)
 		identify_bar_legacy(xdev);
 }
 
+static void xocl_unregister_axlf(struct xocl_dev *xdev)
+{
+        int i = 0;
+        struct xocl_dev_core *xdev_core = XDEV(xdev);
+
+        /* Check if this uuid already exists */
+        for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+                if (!xdev_core->axlf_obj[i])
+                        continue;
+		
+		xocl_unregister_axlf_by_index(xdev, i);
+        }
+}
+
 void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
@@ -1208,8 +1222,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	unmap_bar(xdev);
 
 	xocl_subdev_fini(xdev);
-	if (xdev->ulp_blob)
-		vfree(xdev->ulp_blob);
+	xocl_unregister_axlf(xdev);
 	mutex_destroy(&xdev->dev_lock);
 
 	if (xdev->core.bars)
