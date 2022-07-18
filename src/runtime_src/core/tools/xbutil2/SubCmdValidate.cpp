@@ -424,7 +424,7 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
  * helper function for P2P test
  */
 static bool
-p2ptest_set_or_cmp(char *boptr, size_t size, const std::vector<char>& valid_data, bool set)
+p2ptest_set_or_cmp(char *boptr, size_t size, std::vector<char>& valid_data, bool set)
 {
   int stride = xrt_core::getpagesize();
 
@@ -433,8 +433,8 @@ p2ptest_set_or_cmp(char *boptr, size_t size, const std::vector<char>& valid_data
   for (size_t i = 0; i < size; i += stride) {
     if (set)
       std::memcpy(&(boptr[i]), valid_data.data(), valid_data.size());
-    else if (!std::equal(valid_data.begin(), valid_data.end(), &(boptr[i]))) // Move on unless data mismatch
-      return false;
+    else // Verify the written bytes
+      return std::equal(valid_data.begin(), valid_data.end(), &(boptr[i]));
   }
   return true;
 }
