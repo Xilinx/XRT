@@ -38,10 +38,10 @@ namespace xdp {
   struct Memory;
 
   // The Port struct collects the information regarding a single port
-  // on a compute unit.  This port may or may not have monitors attached.
-  // This struct allows us to get argument information even on native XRT
-  // applications when available and is used when we calculate maximum
-  // and achieved bandwidth values.
+  // on a compute unit to memory (not streaming ports).  This port may
+  // or may not have monitors attached.  This struct allows us to get
+  // argument information even on native XRT applications when available
+  // and is used when we calculate maximum and achieved bandwidth values.
   struct Port
   {
   public:
