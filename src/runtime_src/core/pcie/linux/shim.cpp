@@ -647,6 +647,8 @@ init(unsigned int index)
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
+    // flush aie trace and write outputs
+    xdp::aie::finish_flush_device(this) ;
 
     // The BO cache unmaps and releases all execbo, but this must
     // be done before the device is closed.
