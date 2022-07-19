@@ -1,8 +1,7 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
  * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- * 
- * Author: Sonal Santan
+ *
  * Simple command line utility to inetract with SDX PCIe devices
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -20,10 +19,11 @@
 #ifndef MEMACCESS_H
 #define MEMACCESS_H
 
+// Local includes
 #include "core/common/device.h"
 
+// System includes
 #include <string>
-
 namespace xrt_core {
 
 // This function safely reads from a device's memory banks. It will

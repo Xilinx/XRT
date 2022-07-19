@@ -19,14 +19,11 @@
 #include "XBUtilitiesCore.h"
 
 // 3rd Party Library - Include Files
+#include <boost/algorithm/string/split.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
-#include <boost/format.hpp>
-#include <boost/algorithm/string/split.hpp>
 
 // System - Include Files
-#include <iostream>
-#include <map>
 #include <regex>
 
 
@@ -184,6 +181,12 @@ void
 XBUtilities::verbose(const std::string& _msg, bool _endl)
 {
   message_(MT_VERBOSE, _msg, _endl);
+}
+
+void
+XBUtilities::verbose(const boost::format& _msg, bool _endl)
+{
+  verbose(_msg.str(), _endl);
 }
 
 void

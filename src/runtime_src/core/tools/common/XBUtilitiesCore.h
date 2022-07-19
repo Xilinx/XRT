@@ -17,14 +17,16 @@
 #ifndef __XBUtilitiesCore_h_
 #define __XBUtilitiesCore_h_
 
-#include <string>
+#include <iostream>
 #include <memory>
 #include <map>
-#include <iostream>
+#include <string>
 #include <vector>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/program_options.hpp>
+
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 namespace XBUtilities {
   typedef enum {
@@ -64,6 +66,7 @@ namespace XBUtilities {
   void warning(const std::string& _msg, bool _endl = true);
   void error(const std::string& _msg, bool _endl = true);
   void verbose(const std::string& _msg, bool _endl = true);
+  void verbose(const boost::format& _msg, bool _endl = true);
   void fatal(const std::string& _msg, bool _endl = true);
   void trace(const std::string& _msg, bool _endl = true);
 

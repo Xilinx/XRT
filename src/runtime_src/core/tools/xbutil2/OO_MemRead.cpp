@@ -17,11 +17,12 @@
  */
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
 #include "OO_MemRead.h"
+
+// Local - Include Files
+#include "core/common/memaccess.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
-#include "core/common/memaccess.h"
 #include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
@@ -129,9 +130,8 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   // This does not need to be defined for the --input option path
   uint64_t size = 0;
   try {
-    if (!m_sizeBytes.empty()) {
+    if (!m_sizeBytes.empty())
       size = XBUtilities::string_to_base_units(m_sizeBytes, XBUtilities::unit::bytes);
-    }
   }
   catch (const xrt_core::error& e) {
     std::cerr << boost::format("Value supplied to --size is invalid: %s\n") % e.what();
@@ -151,8 +151,8 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   // Open the output file and write the data as we receive it
   std::ofstream out_file(m_outputFile, std::ofstream::out | std::ofstream::binary | std::ofstream::app);
   try{
-    for(int c = 0; c < m_count; c++) {
-      XBU::verbose(boost::str(boost::format("[%d / %d] Reading from Address: %s, Size: %s bytes") % c % m_count % addr % size));
+    for(decltype(m_count) running_count = 0; running_count < m_count; running_count++) {
+      XBU::verbose(boost::str(boost::format("[%d / %d] Reading from Address: %s, Size: %s bytes") % running_count % m_count % addr % size));
       // Get the output from the device
       std::vector<char> data = xrt_core::device_mem_read(device.get(), addr, size);
       // Write output to the given file

@@ -1,8 +1,7 @@
 /**
  * Copyright (C) 2016-2021 Xilinx, Inc
  * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- * 
- * Author: Sonal Santan
+ *
  * Simple command line utility to interact with PCIe devices
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -20,14 +19,16 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "memaccess.h"
 
+// System includes
 #include <iostream>
 #include <numeric>
 #include <vector>
 
-#include "core/common/unistd.h"
+// Local includes
 #include "memalign.h"
 #include "query_requests.h"
 #include "utils.h"
+#include "core/common/unistd.h"
 
 namespace {
 // Holds the parsed data from the memory topology object
@@ -35,8 +36,8 @@ struct mem_bank_t
 {
   uint64_t m_base_address;
   uint64_t m_size;
-  mem_bank_t(const struct mem_data& data) :
-    m_base_address(data.m_base_address)
+  mem_bank_t(const struct mem_data& data)
+  : m_base_address(data.m_base_address)
     , m_size(data.m_size * 1024) // In memory topology struct size is stored as KB. We convert to bytes for easy referencing
   {}
 };
@@ -54,7 +55,7 @@ get_ddr_banks(const xrt_core::device* device)
   // are in use and not streaming types add store the relevant information
   std::for_each(map->m_mem_data, map->m_mem_data + map->m_count,
     [&banks](const auto& mem) {
-      if (mem.m_used && mem.m_type != MEM_STREAMING)
+      if (mem.m_used && (mem.m_type != MEM_STREAMING))
         banks.emplace_back(mem);
     });
 
@@ -96,8 +97,10 @@ get_starting_bank(std::vector<mem_bank_t>& vec_banks, const uint64_t start_addr)
       return ((start_addr >= item.m_base_address) && (start_addr < (item.m_base_address+item.m_size)));
     });
 
-  if (start_bank == vec_banks.end())
-    throw xrt_core::error(std::errc::operation_canceled,  boost::str(boost::format("Start address 0x%x is not valid") % start_addr));
+  if (start_bank == vec_banks.end()) {
+    auto error_msg = boost::format("Start address 0x%x is not valid") % start_addr;
+    throw xrt_core::error(std::errc::operation_canceled, error_msg.str());
+  }
 
   return start_bank;
 }
@@ -132,8 +135,10 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
   auto available_size = get_available_memory_size(vec_banks, start_bank, validated_start_addr);
 
   // Validate the size of the memory operation
-  if (size > available_size)
-    throw xrt_core::error(std::errc::operation_canceled, boost::str(boost::format("Cannot access %d bytes of memory from start address 0x%x\n") % size % start_addr));
+  if (size > available_size) {
+    auto err_msg = boost::format("Cannot access %d bytes of memory from start address 0x%x\n") % size % start_addr;
+    throw xrt_core::error(std::errc::operation_canceled, err_msg.str());
+  }
 
   auto validated_size = size;
   // If no size is specified for the read. Read all available memory
@@ -167,15 +172,15 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
       case operation_type::write:
         device->unmgd_pwrite(current_buffer_location, bytes_to_edit, validated_start_addr);
         break;
-      default:
-        throw std::runtime_error("perform_memory_action: Invalid action");
     }
     remaining_bytes_to_see -= bytes_to_edit;
     bytes_seen += bytes_to_edit;
   }
 
-  if (remaining_bytes_to_see > 0)
-      throw std::runtime_error(boost::str(boost::format("Warning: Saw %llu bytes. Requested %llu bytes") % bytes_seen % size));
+  if (remaining_bytes_to_see > 0) {
+    auto err_msg = boost::format("Warning: Saw %llu bytes. Requested %llu bytes") % bytes_seen % size;
+    throw std::runtime_error(err_msg.str());
+  }
 }
 
 } // Empty namespace
@@ -196,7 +201,7 @@ device_mem_read(device* device, const uint64_t start_addr, const uint64_t size)
 
   // Format the read data into the return object
   std::vector<char> data(size);
-  std::memcpy(data.data(), buf.get(), size);
+  std::memcpy(data.data(), buf.get(), data.size());
   return data;
 }
 
