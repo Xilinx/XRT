@@ -112,6 +112,7 @@ namespace xdp {
 
     auto& implementation = AIEData.implementation;
 
+    // Get Device info
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceID, handle);
@@ -121,30 +122,7 @@ namespace xdp {
           (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
       }
     }
-
-    if (!(db->getStaticInfo()).isGMIORead(deviceID)) {
-      // Update the AIE specific portion of the device
-      // When new xclbin is loaded, the xclbin specific datastructure is already recreated
-      std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;
-      if (device != nullptr) {
-        for (auto& gmio : metadata->get_trace_gmios(device.get()))
-          (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, gmio.channelNum, gmio.streamId, gmio.burstLength);
-      }
-      (db->getStaticInfo()).setIsGMIORead(deviceID, true);
-    }
-
-    metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
-    if (metadata->getNumStreams() == 0) {
-      AIEData.supported = false;
-      xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_UNAVAILABLE);
-      return;
-    }
-
-    //Sets up and calls the PS kernel on x86 implementation
-    //Sets up and the hardware on the edge implementation
-    implementation->updateDevice();
-
-    // Add all the writers
+    // Check for device interface
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
     if (deviceIntf == nullptr) {
     // If DeviceIntf is not already created, create a new one to communicate with physical device
@@ -158,19 +136,36 @@ namespace xdp {
       std::stringstream msg;
       msg << "Unable to read debug IP layout for device " << deviceID << ": " << e.what();
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      AIEData.supported = false;
       return;
     }
     (db->getStaticInfo()).setDeviceIntf(deviceID, deviceIntf);
     // configure dataflow etc. may not be required here as those are for PL side
     }
 
-    // This also checks for runtime metrics
+    // Create gmio metadata
+    if (!(db->getStaticInfo()).isGMIORead(deviceID)) {
+      // Update the AIE specific portion of the device
+      // When new xclbin is loaded, the xclbin specific datastructure is already recreated
+      std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;
+      if (device != nullptr) {
+        for (auto& gmio : metadata->get_trace_gmios(device.get()))
+          (db->getStaticInfo()).addTraceGMIO(deviceID, gmio.id, gmio.shimColumn, gmio.channelNum, gmio.streamId, gmio.burstLength);
+      }
+      (db->getStaticInfo()).setIsGMIORead(deviceID, true);
+    }
+
+    // Check if trace streams are available
+    metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
+    if (metadata->getNumStreams() == 0) {
+      AIEData.supported = false;
+      xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_UNAVAILABLE);
+      return;
+    }
+
+    // Needs to be changed later as there's no longer a global metric set
     std::string metricSet = metadata->getMetricSet();
-
     if (metadata->getRuntimeMetrics()) {
-      // This code needs to get the actual metric set so we can
-      //  configure it.  I'm not sure yet what is needed for this
-
       std::string configFile = "aie_event_runtime_config.json";
       VPWriter* writer = new AieTraceConfigWriter
       ( configFile.c_str()
@@ -179,15 +174,15 @@ namespace xdp {
       );
       writers.push_back(writer);
       (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_RUNTIME_CONFIG");
-
     }
 
+    // Add writer for every stream
     for (uint64_t n = 0; n < metadata->getNumStreams(); ++n) {
 	    std::string fileName = "aie_trace_" + std::to_string(deviceID) + "_" + std::to_string(n) + ".txt";
       VPWriter* writer = new AIETraceWriter
       ( fileName.c_str()
       , deviceID
-      , n
+      , n  // stream id
       , "" // version
       , "" // creation time
       , "" // xrt version
@@ -263,8 +258,13 @@ namespace xdp {
 
     if (!offloader->initReadTrace()) {
       xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
+      AIEData.supported = false;
       return;
     }
+
+    //Sets up and calls the PS kernel on x86 implementation
+    //Sets up and the hardware on the edge implementation
+    implementation->updateDevice();
 
     // Continuous Trace Offload is supported only for PLIO flow
     if (metadata->getContinuousTrace() && isPLIO)
