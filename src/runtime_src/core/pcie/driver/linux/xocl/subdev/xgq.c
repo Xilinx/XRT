@@ -76,7 +76,7 @@
 #define	XGQ_DEV_NAME "ospi_xgq" SUBDEV_SUFFIX
 
 static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
-#define XOCL_VMR_INVALID_CID	0xFFFF;
+#define XOCL_VMR_INVALID_CID	0xFFFF
 
 /* cmd timeout in seconds */
 #define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(600 * 1000) 
@@ -181,12 +181,15 @@ static void cmd_complete(struct xocl_xgq_vmr *xgq, struct xgq_com_queue_entry *c
 	}
 
 	XGQ_WARN(xgq, "unknown cid %d received", ccmd->hdr.cid);
-	/*
-	 * Note: xgq_lock mutex is on, release the lock and offline service.
-	 */
-	mutex_unlock(&xgq->xgq_lock);
-	xgq_offline_service(xgq);
-	mutex_lock(&xgq->xgq_lock);
+	if (ccmd->hdr.cid == XOCL_VMR_INVALID_CID) {
+		XGQ_ERR(xgq, "invalid cid %d, offlineing xgq services...", ccmd->hdr.cid);
+		/*
+		 * Note: xgq_lock mutex is on, release the lock and offline service.
+		 */
+		mutex_unlock(&xgq->xgq_lock);
+		xgq_offline_service(xgq);
+		mutex_lock(&xgq->xgq_lock);
+	}
 	return;
 }
 
