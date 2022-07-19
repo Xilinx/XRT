@@ -32,7 +32,7 @@ using namespace XBUtilities;
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
 static unsigned int busy_bar_width = 20;
 
-static boost::format fmtUpdate(EscapeCodes::cursor().hide()+
+static boost::format fmt_update(EscapeCodes::cursor().hide()+
                                EscapeCodes::fgcolor::reset()+ "[" +
                                // This formats the width of progress bar and accepts a string
                                // It breaks down into this %-20s which accepts a string that is 20 characters long
@@ -45,7 +45,7 @@ static boost::format fmtUpdate(EscapeCodes::cursor().hide()+
 BusyBar::BusyBar(const std::string &op_name, std::ostream &output)
   : m_op_name(op_name)
   , m_iteration(0)
-  , m_is_running(false)
+  , m_is_thread_running(false)
   , m_output(output)
 {}
 
@@ -55,31 +55,30 @@ BusyBar::~BusyBar()
   finish();
 }
 
-bool
+void
 BusyBar::start(const bool is_batch)
 {
   std::lock_guard lock(m_data_guard);
-  if (m_is_running)
-    return false;
+  if (m_is_thread_running)
+    throw std::runtime_error("Timer already running");
   // Reset all data fields
   m_timer.reset();
   m_iteration = 0;
-  m_is_running = true;
+  m_is_thread_running = true;
   // Batch mode does not use escape codes
   if (is_batch)
-    busy_thread = std::thread([&] { update_batch(); });
+    m_busy_thread = std::thread([&] { update_batch(); });
   else
-    busy_thread = std::thread([&] { update(); });
-  return true;
+    m_busy_thread = std::thread([&] { update(); });
 }
 
 void
 BusyBar::finish()
 {
   // This is an atomic bool that does not need a lock
-  if (m_is_running) {
-    m_is_running = false;
-    busy_thread.join();
+  if (m_is_thread_running) {
+    m_is_thread_running = false;
+    m_busy_thread.join();
   }
 }
 
@@ -100,7 +99,7 @@ BusyBar::update_batch()
   m_output << "Running Test: ";
   m_output.flush();
   // Loop until the main thread commands this thread to stop
-  while (m_is_running) {
+  while (m_is_thread_running) {
     // Sleep for some time to prevent updating to quickly
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -120,15 +119,15 @@ BusyBar::update_batch()
 void
 BusyBar::update()
 {
-  m_output << fmtUpdate % "" % m_op_name % Timer::format_time(std::chrono::seconds(0));
+  m_output << fmt_update % "" % m_op_name % Timer::format_time(std::chrono::seconds(0));
   m_output.flush();
   // Loop until the main thread commands this thread to stop
-  while (m_is_running) {
+  while (m_is_thread_running) {
     // Sleep for some time to prevent updating to quickly
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // Protect class data
-   std::lock_guard lock(m_data_guard);
+    std::lock_guard lock(m_data_guard);
     // Create the busy bar filled with spaces and a symbol at the end
     const static std::string symbol = "<->";
     auto bar_end = busy_bar_width - symbol.length();
@@ -145,7 +144,7 @@ BusyBar::update()
 
     // Write the new progress bar
     m_output << EscapeCodes::cursor().prev_line()
-             << fmtUpdate % busy_bar % m_op_name % Timer::format_time(m_timer.get_elapsed_time());
+             << fmt_update % busy_bar % m_op_name % Timer::format_time(m_timer.get_elapsed_time());
 
     m_output.flush();
   }

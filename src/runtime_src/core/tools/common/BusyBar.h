@@ -20,11 +20,11 @@
 #include "XBUtilities.h"
 
 // Please keep these to the bare minimum
+#include <atomic>
 #include <chrono>
 #include <mutex>
 #include <string>
 #include <thread>
-#include <atomic>
 
 // ------ N A M E S P A C E ---------------------------------------------------
 
@@ -34,7 +34,7 @@ class BusyBar {
  public:
   BusyBar(const std::string &op_name, std::ostream &output);
 
-  bool
+  void
   start(const bool is_batch);
 
   void
@@ -50,10 +50,10 @@ class BusyBar {
   std::string m_op_name;
   unsigned int m_iteration;
   std::mutex m_data_guard;
-  std::atomic_bool m_is_running;
+  std::atomic_bool m_is_thread_running;
   std::ostream &m_output;
   Timer m_timer;
-  std::thread busy_thread;
+  std::thread m_busy_thread;
 
   void
   update();
