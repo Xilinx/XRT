@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,13 +21,15 @@
 /* 4244 : Disable warning for conversion from "uint64_t" to "unsigned int" */
 #endif
 
-#include "xdp/profile/plugin/hal_api_interface/xdp_api_interface.h"
-
 #include <cassert>
-#include <iostream>
-#include <cstring>
 #include <chrono>
+#include <cstring>
+#include <iostream>
+
+#include "core/include/xdp/common.h"
+
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/plugin/hal_api_interface/xdp_api_interface.h"
 
 namespace xdp {
 
@@ -83,7 +86,7 @@ namespace xdp {
 
   void HALAPIInterface::readCounters()
   {
-    xclCounterResults counterResults;
+    xdp::CounterResults counterResults;
     for(auto itr : devices) {
       itr.second->readCounters(counterResults);
     }
@@ -124,15 +127,15 @@ namespace xdp {
     memcpy(results->deviceName, devInfo.mName, deviceNameSz);
     results->deviceName[deviceNameSz] = '\0';
     
-    results->numAIM = currDevice->getNumMonitors(XCL_PERF_MON_MEMORY);
-    results->numAM  = currDevice->getNumMonitors(XCL_PERF_MON_ACCEL);
-    results->numASM = currDevice->getNumMonitors(XCL_PERF_MON_STR);
+    results->numAIM = currDevice->getNumMonitors(xdp::MonitorType::memory);
+    results->numAM  = currDevice->getNumMonitors(xdp::MonitorType::accel);
+    results->numASM = currDevice->getNumMonitors(xdp::MonitorType::str);
     
     if(results->numAIM) {
       results->kernelTransferData = (KernelTransferData*)calloc(results->numAIM, sizeof(KernelTransferData));
       
       for(unsigned int i=0; i < results->numAIM ; ++i) {
-        std::string monName = currDevice->getMonitorName(XCL_PERF_MON_MEMORY, i);
+        std::string monName = currDevice->getMonitorName(xdp::MonitorType::memory, i);
         results->kernelTransferData[i].cuPortName = (char*)malloc(monName.length()+1);
         strcpy(results->kernelTransferData[i].cuPortName, monName.c_str());
 
@@ -145,7 +148,7 @@ namespace xdp {
       results->cuExecData = (CuExecData*)calloc(results->numAM, sizeof(CuExecData));
       
       for(unsigned int i=0; i < results->numAM ; ++i) {
-        std::string monName = currDevice->getMonitorName(XCL_PERF_MON_ACCEL, i);
+        std::string monName = currDevice->getMonitorName(xdp::MonitorType::accel, i);
         results->cuExecData[i].cuName = (char*)malloc((monName.length()+1)*sizeof(char));
         strcpy(results->cuExecData[i].cuName, monName.c_str());
         // kernel name
@@ -157,8 +160,9 @@ namespace xdp {
       results->streamData = (StreamTransferData*)calloc(results->numASM, sizeof(StreamTransferData));
       
       for(unsigned int i=0; i < results->numASM ; ++i) {
-        std::string monName = currDevice->getMonitorName(XCL_PERF_MON_STR, i);
-        std::size_t sepPos  = monName.find(IP_LAYOUT_SEP);
+        std::string monName = currDevice->getMonitorName(xdp::MonitorType::str, i);
+        // Stream monitors have the name structured as "Master-Slave"
+        std::size_t sepPos  = monName.find("-");
         if(sepPos == std::string::npos)
           continue;
 
@@ -176,7 +180,7 @@ namespace xdp {
  
   void HALAPIInterface::recordAMResult(ProfileResults* results, DeviceIntf* /*currDevice*/, const std::string& key)
   {
-    xclCounterResults& counterResults = mFinalCounterResultsMap[key];
+    xdp::CounterResults& counterResults = mFinalCounterResultsMap[key];
     
     for(unsigned int i = 0; i < results->numAM ; ++i) {
       
@@ -195,7 +199,7 @@ namespace xdp {
   
   void HALAPIInterface::recordAIMResult(ProfileResults* results, DeviceIntf* currDevice, const std::string& key)
   {
-    xclCounterResults& counterResults = mFinalCounterResultsMap[key];
+    xdp::CounterResults& counterResults = mFinalCounterResultsMap[key];
    
     for(unsigned int i = 0; i < results->numAIM ; ++i) {
       if(currDevice->isHostAIM(i)) {
@@ -218,7 +222,7 @@ namespace xdp {
   
   void HALAPIInterface::recordASMResult(ProfileResults* results, DeviceIntf* /*currDevice*/, const std::string& key)
   {
-    xclCounterResults& counterResults = mFinalCounterResultsMap[key];
+    xdp::CounterResults& counterResults = mFinalCounterResultsMap[key];
     
     for(unsigned int i = 0; i < results->numASM ; ++i) {
       results->streamData[i].strmNumTranx = counterResults.StrNumTranx[i];
@@ -249,7 +253,7 @@ namespace xdp {
     
     // Step 1: read counters from device
     
-    xclCounterResults counterResults;
+    xdp::CounterResults counterResults;
     currDevice->readCounters(counterResults);  // read from device
     
     ProfileResults* results = static_cast<ProfileResults*>(res);

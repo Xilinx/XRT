@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,17 +18,17 @@
 #ifndef VP_STATISTICS_DATABASE_DOT_H
 #define VP_STATISTICS_DATABASE_DOT_H
 
-#include <string>
-#include <mutex>
-#include <thread>
-#include <map>
-#include <vector>
 #include <fstream>
-#include <tuple>
 #include <list>
+#include <map>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <tuple>
+#include <vector>
 
 // For the device results structures
-#include "xclperf.h"
+#include "core/include/xdp/counters.h"
 
 #include "xdp/config.h"
 
@@ -372,8 +373,8 @@ namespace xdp {
                                  uint64_t commandQueueId) ;
 
     XDP_EXPORT void updateCounters(uint64_t deviceId, 
-                                   xclCounterResults& counters) ;
-    XDP_EXPORT void updateCounters(xclCounterResults& counters) ;
+                                   xdp::CounterResults& counters) ;
+    XDP_EXPORT void updateCounters(xdp::CounterResults& counters) ;
 
     // Getters and setters on statistical information
     XDP_EXPORT void setFirstKernelStartTime(double startTime) ;

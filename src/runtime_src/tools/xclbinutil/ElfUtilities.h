@@ -25,7 +25,7 @@
 
 namespace XclBinUtilities {
 
-void dataMineExportedFunctionsDWARF(const std::string& elfLibrary, boost::property_tree::ptree &ptFunctions);
+void dataMineExportedFunctionsDWARF(const std::string& elfLibrary, boost::property_tree::ptree& ptFunctions);
 
 };
 

@@ -34,32 +34,46 @@ def main():
 
   # ---------------------------------------------------------------------------
 
-  step = "1) Add and validate adding / dumping an AIE_PARTITION"
+  step = "1) Add the AIE parition to the xclbin image"
 
+  sectionname = "Flavor"
+  workingXclbin = "aiePartition.xclbin"
+  aiePartitionOutput1 = "aie_partition_output1.json"
   aiePartition = os.path.join(args.resource_dir, "aie_partition.json")
-  aiePartitionOutput = "aie_partition_output.json"
+  aiePartitionOutputExpected = os.path.join(args.resource_dir, "aie_partition_expected.json")
 
-  cmd = [xclbinutil, "--add-section", "AIE_PARTITION:JSON:" + aiePartition,
-                     "--dump-section", "AIE_PARTITION:JSON:" + aiePartitionOutput,
-                     "--force"
+  cmd = [xclbinutil, "--add-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartition,
+                     "--dump-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartitionOutput1,
+                     "--output", workingXclbin,
+                     "--force",
+                     "--trace"
                      ]
   execCmd(step, cmd)
-  jsonFileCompare(aiePartition, aiePartitionOutput)
+  jsonFileCompare(aiePartitionOutputExpected, aiePartitionOutput1)
 
   # ---------------------------------------------------------------------------
 
-  step = "2) Create an xclbin image with an AIE Parition"
-
-  aieMetadata = os.path.join(args.resource_dir, "aie_metadata.json")
-  aiePartitionExpected2 = os.path.join(args.resource_dir, "aie_partition_expected2.json")
+  step = "2) Read and dump the AIE parition"
   aiePartitionOutput2 = "aie_partition_output2.json"
 
-  cmd = [xclbinutil, "--add-section", "AIE_METADATA:JSON:" + aieMetadata,
-                     "--dump-section", "AIE_PARTITION:JSON:" + aiePartitionOutput2,
-                     "--force"
+  cmd = [xclbinutil, "--input", workingXclbin,
+                     "--dump-section", "AIE_PARTITION["+sectionname+"]:JSON:" + aiePartitionOutput2,
+                     "--force",
+                     "--trace"
                      ]
   execCmd(step, cmd)
-  jsonFileCompare(aiePartitionExpected2, aiePartitionOutput2)
+  jsonFileCompare(aiePartitionOutputExpected, aiePartitionOutput2)
+
+  # 1a) Check for the existance of the dummy PDI images
+  aiePartition1111PDIExpected = os.path.join(args.resource_dir, "1111.txt")
+  aiePartition1111PDIOutput = "00000000-0000-0000-0000-000000001111.pdi"
+  textFileCompare(aiePartition1111PDIExpected, aiePartition1111PDIOutput)
+
+  # 1b) Check for the existance of the dummy PDI images
+  aiePartition2222PDIExpected = os.path.join(args.resource_dir, "2222.txt")
+  aiePartition2222PDIOutput = "00000000-0000-0000-0000-000000002222.pdi"
+  textFileCompare(aiePartition2222PDIExpected, aiePartition2222PDIOutput)
+
 
   # ---------------------------------------------------------------------------
 

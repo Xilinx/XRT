@@ -21,9 +21,9 @@
 // Static Variables / Classes
 SectionClearBitstream::init SectionClearBitstream::initializer;
 
-SectionClearBitstream::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", boost::factory<SectionClearBitstream*>()); 
+SectionClearBitstream::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(CLEARING_BITSTREAM, "CLEARING_BITSTREAM", boost::factory<SectionClearBitstream*>());
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

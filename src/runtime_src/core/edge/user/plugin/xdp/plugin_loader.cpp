@@ -46,8 +46,7 @@ bool load()
       xrt_core::utils::load_host_trace())
     xdp::hal::load();
 
-  if (xrt_core::config::get_data_transfer_trace() != "off" ||
-      xrt_core::config::get_device_trace() != "off" ||
+  if (xrt_core::config::get_device_trace() != "off" ||
       xrt_core::config::get_device_counters())
     xdp::hal::device_offload::load() ;
 
@@ -79,11 +78,6 @@ bool load()
   if (xrt_core::config::get_pl_deadlock_detection())
     xdp::pl_deadlock::load();
 
-  if (xrt_core::config::get_data_transfer_trace() != "off") {
-    std::string msg = "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                            msg) ;
-  }
 #endif
   return true ;
 }
@@ -102,8 +96,7 @@ bool load()
       xrt_core::utils::load_host_trace())
     xdp::hal::load();
 
-  if (xrt_core::config::get_data_transfer_trace() != "off" ||
-      xrt_core::config::get_device_trace() != "off" ||
+  if (xrt_core::config::get_device_trace() != "off" ||
       xrt_core::config::get_device_counters())
     xdp::hal::hw_emu::device_offload::load() ;
 #endif

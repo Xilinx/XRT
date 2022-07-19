@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 #ifndef PCIE_LINUX_SHIM_H_
 #define PCIE_LINUX_SHIM_H_
 
@@ -11,6 +12,8 @@
 #include "core/common/xrt_profiling.h"
 #include "core/pcie/driver/linux/include/qdma_ioctl.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
+
+#include "core/include/xdp/app_debug.h"
 
 #include "core/include/xstream.h" /* for stream_opt_type */
 
@@ -99,11 +102,11 @@ public:
   uint32_t getIPCountAddrNames(int type, uint64_t *baseAddress, std::string * portNames,
                                uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                size_t size);
-  size_t xclDebugReadCounters(xclDebugCountersResults* debugResult);
-  size_t xclDebugReadCheckers(xclDebugCheckersResults* checkerResult);
-  size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* streamingResult);
-  size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* streamingCheckerResult);
-  size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
+  size_t xclDebugReadCounters(xdp::AIMCounterResults* debugResult);
+  size_t xclDebugReadCheckers(xdp::LAPCCounterResults* checkerResult);
+  size_t xclDebugReadStreamingCounters(xdp::ASMCounterResults* streamingResult);
+  size_t xclDebugReadStreamingCheckers(xdp::SPCCounterResults* streamingCheckerResult);
+  size_t xclDebugReadAccelMonitorCounters(xdp::AMCounterResults* samResult);
 
   // APIs using sysfs information
   uint32_t xclGetNumLiveProcesses();
@@ -119,9 +122,6 @@ public:
   int xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size);
   int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
   int xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample);
-
-  // Experimental debug profile device data API
-  int xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info);
 
   // Execute and interrupt abstraction
   int xclExecBuf(unsigned int cmdBO);

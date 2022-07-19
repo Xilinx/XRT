@@ -263,7 +263,7 @@ public:
     return export_handle;
   }
 
-  void
+  virtual void
   write(const void* src, size_t sz, size_t seek)
   {
     if (sz + seek > size)
@@ -272,7 +272,7 @@ public:
     std::memcpy(hbuf, src, sz);
   }
 
-  void
+  virtual void
   read(void* dst, size_t sz, size_t skip)
   {
     if (sz + skip > size)
@@ -549,9 +549,11 @@ async(xrt::bo& bo, xclBOSyncDirection dir, size_t sz, size_t offset)
 {
   throw std::runtime_error("Unsupported feature");
 
+#if 0
   //TODO for Alveo; base xrt::bo class
   auto a_bo_impl = std::make_shared<xrt::bo::async_handle_impl>(bo);
   return xrt::bo::async_handle{a_bo_impl};
+#endif
 }
 
 // class buffer_ubuf - User provide host side buffer
@@ -720,6 +722,22 @@ public:
   get_hbuf() const override
   {
     throw xrt_core::error(-EINVAL, "device only buffer has no host buffer");
+  }
+
+  void
+  read(void* dst, size_t sz, size_t skip) override
+  {
+    if (sz + skip > size)
+      throw xrt_core::error(-EINVAL,"attempting to read past buffer size");
+    device->unmgd_pread(dst, sz, get_address() + skip);
+  }
+
+  void
+  write(const void* src, size_t sz, size_t seek) override
+  {
+    if (sz + seek > size)
+      throw xrt_core::error(-EINVAL,"attempting to write past buffer size");
+    device->unmgd_pwrite(src, sz, get_address() + seek);
   }
 };
 

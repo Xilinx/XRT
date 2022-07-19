@@ -32,22 +32,22 @@ class FDTNode {
 
  private:
   FDTNode();
-  FDTNode(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock, unsigned int& _bytesExamined, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
-  FDTNode(const boost::property_tree::ptree& _ptDTC, std::string & _nodeName, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
+  FDTNode(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock, unsigned int& _bytesExamined, const FDTProperty::PropertyNameFormat& _propertyNameFormat);
+  FDTNode(const boost::property_tree::ptree& _ptDTC, std::string& _nodeName, const FDTProperty::PropertyNameFormat& _propertyNameFormat);
 
  public:
   ~FDTNode();
 
  public:
-  static FDTNode* marshalFromDTC(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
-  static FDTNode* marshalFromJSON(const boost::property_tree::ptree& _ptDTC, const FDTProperty::PropertyNameFormat & _propertyNameFormat);
+  static FDTNode* marshalFromDTC(const char* _pBuffer, const unsigned int _size, const DTCStringsBlock& _dtcStringsBlock, const FDTProperty::PropertyNameFormat& _propertyNameFormat);
+  static FDTNode* marshalFromJSON(const boost::property_tree::ptree& _ptDTC, const FDTProperty::PropertyNameFormat& _propertyNameFormat);
 
  public:
-  void marshalToJSON(boost::property_tree::ptree& _dtcTree, const FDTProperty::PropertyNameFormat & _propertyNameFormat) const;
+  void marshalToJSON(boost::property_tree::ptree& _dtcTree, const FDTProperty::PropertyNameFormat& _propertyNameFormat) const;
   void marshalToDTC(DTCStringsBlock& _dtcStringsBlock, std::ostream& _buf) const;
 
  protected:
-  void marshalSubNodeToJSON(boost::property_tree::ptree& _ptTree, const FDTProperty::PropertyNameFormat & _propertyNameFormat) const;
+  void marshalSubNodeToJSON(boost::property_tree::ptree& _ptTree, const FDTProperty::PropertyNameFormat& _propertyNameFormat) const;
   static void runningBufferCheck(const unsigned int _bytesExamined, const unsigned int _size);
 
  private:
