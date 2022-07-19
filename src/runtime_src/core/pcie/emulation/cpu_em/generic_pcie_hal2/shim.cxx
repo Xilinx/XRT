@@ -418,8 +418,7 @@ namespace xclcpuemhal2
           if (sLdLib)
             sLdLibs = std::string(sLdLib) + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fft_v9_1" + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fir_v7_0" + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fir_v7_1" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "opencv" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
@@ -763,7 +762,6 @@ namespace xclcpuemhal2
         std::string emuDataFilePath = binaryDirectory + "/emuDataFile";
         std::ofstream os(emuDataFilePath);
         os.write(emuData.get(), emuDataSize);
-        std::cout << "emuDataFilePath : " << emuDataFilePath << std::endl;
         systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, std::to_string(__LINE__));
         systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
       }
@@ -2154,7 +2152,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);     
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2167,9 +2166,11 @@ namespace xclcpuemhal2
     xclGraphInit_RPC_CALL(xclGraphInit, graphhandle, graphname);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2180,7 +2181,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+    
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2191,9 +2193,11 @@ namespace xclcpuemhal2
     xclGraphRun_RPC_CALL(xclGraphRun, graphhandle, iterations);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2207,7 +2211,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+    
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2218,9 +2223,11 @@ namespace xclcpuemhal2
     xclGraphWait_RPC_CALL(xclGraphWait, graphhandle);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2234,7 +2241,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);    
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2244,9 +2252,11 @@ namespace xclcpuemhal2
     xclGraphTimedWait_RPC_CALL(xclGraphTimedWait, graphhandle, cycle);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2269,7 +2279,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);     
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2278,11 +2289,14 @@ namespace xclcpuemhal2
     DEBUG_MSGS("%s, %d()\n", __func__, __LINE__);
     auto graphhandle = ghPtr->getGraphHandle();
     xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
+    
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2305,7 +2319,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+    
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2316,9 +2331,11 @@ namespace xclcpuemhal2
     xclGraphTimedEnd_RPC_CALL(xclGraphTimedEnd, graphhandle, cycle);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2331,7 +2348,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+    
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2342,9 +2360,11 @@ namespace xclcpuemhal2
     xclGraphResume_RPC_CALL(xclGraphResume, graphhandle);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2362,7 +2382,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+    
+    std::lock_guard<std::mutex> lk(mApiMtx);
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
       return -1;
@@ -2371,6 +2392,7 @@ namespace xclcpuemhal2
     auto graphhandle = ghPtr->getGraphHandle();
     xclGraphUpdateRTP_RPC_CALL(xclGraphUpdateRTP, graphhandle, hierPathPort, buffer, size);
     PRINTENDFUNC
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2391,7 +2413,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-      
+    
+    std::lock_guard<std::mutex> lk(mApiMtx);
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
       return -1;
@@ -2400,6 +2423,7 @@ namespace xclcpuemhal2
     auto graphhandle = ghPtr->getGraphHandle();
     xclGraphReadRTP_RPC_CALL(xclGraphReadRTP, graphhandle, hierPathPort, buffer, size);
     PRINTENDFUNC
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2423,6 +2447,7 @@ namespace xclcpuemhal2
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
 
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     if (!gmioname)
       return -1;
@@ -2437,9 +2462,11 @@ namespace xclcpuemhal2
     xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2455,6 +2482,7 @@ namespace xclcpuemhal2
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     if (!gmioname)
       return -1;
@@ -2463,9 +2491,11 @@ namespace xclcpuemhal2
     xclGMIOWait_RPC_CALL(xclGMIOWait, gmioname);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 

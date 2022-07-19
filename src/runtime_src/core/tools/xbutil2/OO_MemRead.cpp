@@ -109,8 +109,8 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("Output file: %s") % m_outputFile));
 
   //read mem
-  XBU::xclbin_lock xclbin_lock(device);
-  
+  XBU::xclbin_lock xclbin_lock(device.get());
+
   try{
     xrt_core::mem_read(device.get(), addr, size, m_outputFile);
   } catch(const xrt_core::error& e) {
@@ -119,4 +119,3 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   }
   std::cout << "Memory read succeeded" << std::endl;
 }
-

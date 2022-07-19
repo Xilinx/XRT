@@ -610,6 +610,22 @@ public:
   get_ips() const;
 
   /**
+   * get_ips() - Get list of ips that matches name
+   *
+   * @param name
+   *  Name to match against, prefixed with kernel name
+   * @return
+   *  A list of xrt::xclbin::ip objects that are compute units
+   *  of this kernel object and matches the specified name.
+   *
+   * The kernel name can optionally specify which kernel instance(s) to
+   * match "kernel:{ip1,ip2,...} syntax.
+   */
+  XCL_DRIVER_DLLESPEC
+  std::vector<ip>
+  get_ips(const std::string& name) const;
+
+  /**
    * get_ip() - Get a specific IP from the xclbin
    *
    * @return

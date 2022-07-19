@@ -872,6 +872,23 @@ struct recovery
   }
 };
 
+struct versal
+{
+  using result_type = bool;
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return false;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return false;
+  }
+};
+
 struct uuid
 {
   using result_type = boost::any;
@@ -1542,6 +1559,7 @@ initialize_query_table()
   emplace_function0_getter<query::memstat_raw,               memstat_raw>();
   emplace_function0_getter<query::memstat,                   memstat>();
   emplace_function0_getter<query::group_topology,            group_topology>();
+  emplace_function0_getter<query::is_versal,                 versal>();
 
   emplace_func4_request<query::aim_counter,                  aim_counter>();
   emplace_func4_request<query::am_counter,                   am_counter>();

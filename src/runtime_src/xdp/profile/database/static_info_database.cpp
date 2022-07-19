@@ -768,6 +768,9 @@ namespace xdp {
     if (!xclbin)
       return nullptr ;
 
+    if (0 == xclbin->aie.aieList.size()) 
+      return nullptr;
+
     return xclbin->aie.aieList[idx] ;
   }
 

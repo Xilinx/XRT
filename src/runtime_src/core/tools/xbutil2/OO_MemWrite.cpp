@@ -114,8 +114,8 @@ XBU::verbose("SubCommand option: read mem");
   XBU::verbose(boost::str(boost::format("Fill pattern: %s") % m_fill));
 
   //read mem
-  XBU::xclbin_lock xclbin_lock(device);
-  
+  XBU::xclbin_lock xclbin_lock(device.get());
+
   try {
     xrt_core::mem_write(device.get(), addr, size, fill_byte);
   } catch(const xrt_core::error& e) {
@@ -124,4 +124,3 @@ XBU::verbose("SubCommand option: read mem");
   }
   std::cout << "Memory write succeeded" << std::endl;
 }
-

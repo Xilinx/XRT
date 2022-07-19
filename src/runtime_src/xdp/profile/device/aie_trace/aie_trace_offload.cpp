@@ -346,8 +346,7 @@ void AIETraceOffload::checkCircularBufferSupport()
   if (!deviceIntf->supportsCircBufAIE())
     return;
 
-  mEnCircularBuf = xrt_core::config::get_aie_trace_reuse_buffer();
-
+  mEnCircularBuf = xrt_core::config::get_aie_trace_settings_reuse_buffer();
   if (!mEnCircularBuf)
     return;
 
