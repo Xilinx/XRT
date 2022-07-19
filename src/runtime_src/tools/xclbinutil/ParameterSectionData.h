@@ -29,31 +29,31 @@ class ParameterSectionData {
   ParameterSectionData();
 
  public:
-  ParameterSectionData(const std::string &_formattedString);
+  ParameterSectionData(const std::string& _formattedString);
   ~ParameterSectionData();
 
  public:
-  const std::string &getFile();
-  enum Section::FormatType getFormatType();
-  const std::string &getFormatTypeAsStr();
-  const std::string &getSectionName();
-  const std::string &getSubSectionName();
-  const std::string &getSectionIndexName();
-  enum axlf_section_kind &getSectionKind();
-  const std::string &getOriginalFormattedString();
-
-  protected:
-   void transformFormattedString(const std::string _formattedString);
+  const std::string& getFile();
+  Section::FormatType getFormatType();
+  const std::string& getFormatTypeAsStr();
+  const std::string& getSectionName();
+  const std::string& getSubSectionName();
+  const std::string& getSectionIndexName();
+  axlf_section_kind& getSectionKind();
+  const std::string& getOriginalFormattedString();
 
  protected:
-   enum Section::FormatType m_formatType;
-   std::string m_formatTypeStr;
-   std::string m_file;
-   std::string m_section;
-   std::string m_subSection;
-   std::string m_sectionIndex;
-   enum axlf_section_kind m_eKind;
-   std::string m_originalString;
+  void transformFormattedString(const std::string& _formattedString);
+
+ protected:
+  Section::FormatType m_formatType;
+  std::string m_formatTypeStr;
+  std::string m_file;
+  std::string m_section;
+  std::string m_subSection;
+  std::string m_sectionIndex;
+  axlf_section_kind m_eKind;
+  std::string m_originalString;
 };
 
 #endif

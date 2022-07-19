@@ -1,11 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+#
 include $(SRCDIR)/../ert.mk
 
 # BSP archive is created from SDK generated bsp
 # Extract to build dir in includes target
 # Also update the MicroBlaze linker script when it changes
-SRC := $(SRCDIR)/sched.c 
-XGQ_CTRL_SRC := $(SRCDIR)/xgq_ctrl.c
-XGQ_CU_SRC := $(SRCDIR)/xgq_cu.c
+RTS := $(SRCDIR)/../..
+HEADERS := $(SRCDIR)/*.h $(RTS)/core/include/xgq_impl.h $(RTS)/core/include/ert.h
+SRC := $(SRCDIR)/sched.c $(HEADERS)
+XGQ_CTRL_SRC := $(SRCDIR)/xgq_ctrl.c $(HEADERS)
+XGQ_CU_SRC := $(SRCDIR)/xgq_cu.c $(HEADERS)
 
 OBJ := $(BLDDIR)/sched.o
 XGQ_CTRL_OBJ := $(BLDDIR)/xgq_ctrl.o
@@ -13,7 +18,6 @@ XGQ_CU_OBJ := $(BLDDIR)/xgq_cu.o
 ELF := $(BLDDIR)/sched.elf
 BIN := $(BLDDIR)/sched.bin
 BSP := $(BLDDIR)/bsp
-RTS := $(SRCDIR)/../..
 
 ifndef SCHED_VERSION
  export SCHED_VERSION := 0x$(shell git rev-list -1 HEAD $(SRC) | cut -c1-8)
@@ -24,7 +28,7 @@ MYCFLAGS += -I$(BSP)/include -I$(RTS) -I$(RTS)/core/include $(DEFINES) -DERT_VER
 MYLFLAGS := -Wl,--defsym=_HEAP_SIZE=0x0 -Wl,--gc-sections
 MYLFLAGS += -Wl,-T,$(BLDDIR)/lscript.ld
 
-$(OBJ): $(SRC) $(BSP).extracted $(RTS)/core/include/ert.h
+$(OBJ): $(SRC) $(BSP).extracted
 	$(C) $(MYCFLAGS) -c -o $@ $<
 
 $(XGQ_CTRL_OBJ): $(XGQ_CTRL_SRC)

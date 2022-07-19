@@ -17,15 +17,15 @@
 #ifndef __XBUtilitiesCore_h_
 #define __XBUtilitiesCore_h_
 
-#include <iostream>
+#include <string>
 #include <memory>
 #include <map>
-#include <string>
+#include <iostream>
 #include <vector>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 namespace XBUtilities {

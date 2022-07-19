@@ -21,9 +21,13 @@
 // Static Variables / Classes
 SectionUserMetadata::init SectionUserMetadata::initializer;
 
-SectionUserMetadata::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(USER_METADATA, "USER_METADATA", boost::factory<SectionUserMetadata*>()); 
+SectionUserMetadata::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(USER_METADATA, "USER_METADATA", boost::factory<SectionUserMetadata*>());
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }

@@ -1,0 +1,3 @@
+[submodule "src/runtime_src/core/pcie/driver/linux/xocl/lib/libqdma"]
+	path = src/runtime_src/core/pcie/driver/linux/xocl/lib/libqdma
+	url = https://github.com/Xilinx/dma_ip_drivers.git

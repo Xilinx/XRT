@@ -2,6 +2,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Jan Stephan <j.stephan@hzdr.de>
  *
@@ -193,7 +194,7 @@ static bool is_mem_region_valid(struct xocl_drm *drm_p,
 		return true;
 
 	/* PLRAM does not have to be accessed by PS */
-	if (IS_PLRAM(mem_data->m_tag))
+	if (convert_mem_tag(mem_data->m_tag) == MEM_TAG_PLRAM)
 		return true;
 
 	blob = XDEV(xdev)->fdt_blob;
@@ -431,6 +432,8 @@ static const struct drm_ioctl_desc xocl_ioctls[] = {
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(XOCL_FREE_CMA, xocl_free_cma_ioctl,
 			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(XOCL_SET_CU_READONLY_RANGE, xocl_set_cu_read_only_range_ioctl,
+			  DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 
 /* LINUX KERNEL-SPACE IOCTLS - The following entries are meant to be
  * accessible only from Linux Kernel and need be grouped to at the end
@@ -572,8 +575,14 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 	 * should be skipped starting from that version.
 	 * https://github.com/torvalds/linux/commit/b347e04452ff6382ace8fba9c81f5bcb63be17a6
 	 */
+#if defined(RHEL_RELEASE_VERSION)
+#if RHEL_RELEASE_CODE < RHEL_RELEASE_VERSION(8, 6)
+	ddev->pdev = XDEV(xdev_hdl)->pdev;
+#endif
+#else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0)
 	ddev->pdev = XDEV(xdev_hdl)->pdev;
+#endif
 #endif
 
 	ret = drm_dev_register(ddev, 0);
@@ -660,7 +669,7 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, u32 mem_id,
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	for (i = 0; i < grp_topology->m_count; i++) {
-		if (IS_HOST_MEM(grp_topology->m_mem_data[i].m_tag) ||
+		if ((convert_mem_tag(grp_topology->m_mem_data[i].m_tag) == MEM_TAG_HOST) ||
 				XOCL_IS_PS_KERNEL_MEM(grp_topology, i))
 			continue;
 
@@ -840,7 +849,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 			if (XOCL_IS_STREAM(topology, i))
 				continue;
 
-			if (IS_HOST_MEM(topology->m_mem_data[i].m_tag))
+			if (convert_mem_tag(topology->m_mem_data[i].m_tag) == MEM_TAG_HOST)
 				xocl_addr_translator_clean(drm_p->xdev);
 
 			xocl_info(drm_p->ddev->dev, "Taking down DDR : %d", i);
@@ -1018,7 +1027,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		xocl_info(drm_p->ddev->dev, "  Size:0x%lx", ddr_bank_size);
 		xocl_info(drm_p->ddev->dev, "  Type:%d", mem_data->m_type);
 		xocl_info(drm_p->ddev->dev, "  Used:%d", mem_data->m_used);
-		if (IS_HOST_MEM(mem_data->m_tag))
+		if (convert_mem_tag(mem_data->m_tag) == MEM_TAG_HOST)
 			drm_p->cma_bank_idx = i;
 
 		if (!group_topo->m_mem_data[i].m_used)
@@ -1106,7 +1115,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		hash_add(drm_p->mm_range, &wrapper->node, wrapper->start_addr);
 #endif
 
-		if (IS_HOST_MEM(mem_data->m_tag)) {
+		if (convert_mem_tag(mem_data->m_tag) == MEM_TAG_HOST) {
 			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
 			if (err) {
 				xocl_err(drm_p->ddev->dev, "Run host_mem to setup host memory access, request 0x%lx bytes", ddr_bank_size);

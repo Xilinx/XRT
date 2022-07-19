@@ -22,17 +22,13 @@
 
 // ------ C L A S S :   S e c t i o n D e b u g I P L a y o u t --------------
 class SectionDebugIPLayout : public Section {
- public:
-  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
-  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
-
  protected:
   void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  protected:
-  const std::string getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const;
-  enum DEBUG_IP_TYPE getDebugIPType(std::string& _sDebugIPType) const;
+  const std::string getDebugIPTypeStr(DEBUG_IP_TYPE _debugIpType) const;
+  DEBUG_IP_TYPE getDebugIPType(std::string& _sDebugIPType) const;
 
  private:
   // Static initializer helper class

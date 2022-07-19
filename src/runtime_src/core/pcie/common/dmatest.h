@@ -84,11 +84,22 @@ namespace xcldev {
                 auto future0 = std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, e, dir);
                 return future0.get();
             }
-
+            /* Calculate the DMA workers number, the DMA may have one or more channels
+             * which means it's capable to run multi DMA transaction at the same time
+             *   mBOList.size()  |  len  |  ajust_e
+             * --------------------------------------
+             *          1        |   1   |     b+1
+             * --------------------------------------
+             *          2        |   1   |     b+2
+             * --------------------------------------
+             *          4        |   2   |     b+4
+             */
             unsigned int len = (((unsigned int)(e - b)) < count) ? 1 : ((unsigned int)(e - b))/count;
-            const auto ajust_e = b + len * std::min<unsigned int>(count, len);
+            auto bo_cnt = static_cast<unsigned int>(e - b);
+            const auto adjust_e = b + len * ((len == 1) ? bo_cnt : std::min<unsigned int>(count, len));
+
             std::vector<std::future<int>> threads;
-            while (b < ajust_e) {
+            while (b < adjust_e) {
                 threads.push_back(std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, b + len, dir));
                 b += len;
             }

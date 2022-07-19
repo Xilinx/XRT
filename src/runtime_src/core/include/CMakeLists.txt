@@ -16,6 +16,7 @@ set(XRT_HEADER_SRC
   xcl_app_debug.h
   xclperf.h
   xclhal2_mem.h
+  xcl_hwctx.h
   xrt_mem.h
   xrt_error_code.h
   xgq_cmd_common.h

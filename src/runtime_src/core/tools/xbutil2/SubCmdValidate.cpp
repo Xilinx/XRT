@@ -68,6 +68,8 @@ enum class test_status
   failed = 2
 };
 
+constexpr uint64_t operator"" _gb(unsigned long long v)  { return 1024u * 1024u * 1024u * v; }
+
 static const std::string test_token_skipped = "SKIPPED";
 static const std::string test_token_failed = "FAILED";
 static const std::string test_token_passed = "PASSED";
@@ -542,7 +544,7 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
  * helper function for P2P test
  */
 static bool
-p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::string m_tag,
+p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, const std::string&,
              unsigned int mem_idx, uint64_t addr, uint64_t bo_size, uint32_t no_dma)
 {
   const size_t chunk_size = 16 * 1024 * 1024; //16 MB
@@ -1001,7 +1003,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     if (xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev) == ARISTA_ID)
       totalSize = 0x20000000; // 512 MB
     else
-      totalSize = std::min((mem.m_size * 1024), XBU::string_to_base_units("2G", XBUtilities::unit::bytes)); // minimum of mem size in bytes and 2 GB
+      totalSize = std::min((mem.m_size * 1024), 2_gb); // minimum of mem size in bytes and 2 GB
 
     xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
     try {
@@ -1053,7 +1055,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   }
 
   std::string msg;
-  XBU::xclbin_lock xclbin_lock(_dev);
+  XBU::xclbin_lock xclbin_lock(_dev.get());
   std::vector<std::string> config;
   try {
     config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
@@ -1132,7 +1134,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     return;
   }
 
-  XBU::xclbin_lock xclbin_lock(_dev);
+  XBU::xclbin_lock xclbin_lock(_dev.get());
   // Assume m2m is not enabled
   uint32_t m2m_enabled = 0;
   try {
@@ -1230,7 +1232,7 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
     return;
   }
 
-  XBU::xclbin_lock xclbin_lock(_dev);
+  XBU::xclbin_lock xclbin_lock(_dev.get());
 
   if (!clock_calibration(_dev, _dev->get_device_handle(), _ptTest))
      _ptTest.put("status", test_token_failed);
@@ -1370,7 +1372,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if supported and details/error/warning: ostr
   // if supported and xclbin/testcase: verbose
   // if not supported: verbose
-  auto redirect_log = [&](std::string tag, std::string log_str) {
+  auto redirect_log = [&](const std::string& tag, const std::string& log_str) {
     std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
     if(boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
       if(XBU::getVerbose())
@@ -1480,7 +1482,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
 static test_status
 run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
                        Report::SchemaVersion schemaVersion,
-                       std::vector<TestCollection *> testObjectsToRun,
+                       const std::vector<TestCollection *>& testObjectsToRun,
                        boost::property_tree::ptree& ptDevCollectionTestSuite)
 {
   boost::property_tree::ptree ptDeviceTestSuite;
@@ -1535,7 +1537,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 static bool
 run_tests_on_devices( xrt_core::device_collection &deviceCollection,
                       Report::SchemaVersion schemaVersion,
-                      std::vector<TestCollection *> testObjectsToRun,
+                      const std::vector<TestCollection *>& testObjectsToRun,
                       std::ostream & output)
 {
   bool has_failures = false;

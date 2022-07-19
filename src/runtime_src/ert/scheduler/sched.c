@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,14 +22,11 @@
 #include <stdint.h>
 // includes from bsp
 #ifndef ERT_HW_EMU
-#include <xil_printf.h>
 #include <mb_interface.h>
 #include <xparameters.h>
-#else
-#include <stdio.h>
-#define xil_printf printf
 #endif
 
+#include "sched_print.h"
 #include "xgq_mb_plat.h"
 #include "core/include/xgq_impl.h"
 #include "sched_cmd.h"
@@ -39,10 +36,6 @@
 
 #define ERT_UNUSED __attribute__((unused))
 
-//#define ERT_VERBOSE
-#ifdef ERT_BUILD_V30
-#define CTRL_VERBOSE
-#endif
 //#define DEBUG_SLOT_STATE
 #define CU_STATUS_MASK_NUM          4
 
@@ -58,33 +51,6 @@
 #define SCRATCH_MODE                (1<<17)
 #define ECHO_MODE                   (1<<18)
 #define DMSG_ENABLE                 (1<<19)
-
-
-#ifdef ERT_VERBOSE
-# define ERT_PRINTF(format,...) xil_printf(format, ##__VA_ARGS__)
-# define ERT_DEBUGF(format,...) xil_printf(format, ##__VA_ARGS__)
-# define ERT_ASSERT(expr,msg) ((expr) ? ((void)0) : ert_assert(__FILE__,__LINE__,__FUNCTION__,#expr,msg))
-#else
-# define ERT_PRINTF(format,...) xil_printf(format, ##__VA_ARGS__)
-# define ERT_DEBUGF(format,...)
-# define ERT_ASSERT(expr,msg)
-#endif
-
-#ifdef CTRL_VERBOSE 
-#if defined(ERT_BUILD_V30)
-# define CTRL_DEBUG(msg) xil_printf(msg)
-# define CTRL_DEBUGF(format,...) xil_printf(format, ##__VA_ARGS__)
-# define DMSGF(format,...) if (dmsg) xil_printf(format, ##__VA_ARGS__)
-#else
-# define CTRL_DEBUG(msg)
-# define CTRL_DEBUGF(format,...)
-# define DMSGF(format,...)
-#endif
-#else
-# define CTRL_DEBUG(msg)
-# define CTRL_DEBUGF(format,...)
-# define DMSGF(format,...)
-#endif
 
 inline void
 exit(int32_t val)
@@ -403,6 +369,9 @@ configure_mb(struct sched_cmd *cmd)
   if (flatten_queue)
     cmd_queue_slot_size = 0;
 
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.i2h = 1;
   resp_cmd.i2e = 0;
   resp_cmd.cui = 0;
@@ -422,6 +391,9 @@ configure_mb_end(struct sched_cmd *cmd)
   struct xgq_com_queue_entry resp_cmd = {0};
   int ret = setup_cu_queue();
 
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   if (!ret)
@@ -473,6 +445,9 @@ save_cfg_cu(struct sched_cmd *cmd)
                                 cmd_queue_slot_size : cu->slot_size;
   }
 
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_com_queue_entry));
@@ -500,6 +475,9 @@ query_cu(struct sched_cmd *cmd)
   resp_cmd.xgq_id = cu_idx;
   resp_cmd.type = flatten_queue;
 
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   CTRL_DEBUGF("  cu_idx          %x\r\n", cu_idx);
@@ -521,6 +499,9 @@ get_clk_counter(struct sched_cmd *cmd)
 
   resp_cmd.timestamp = read_clk_counter();
   
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_clock_calib));
@@ -572,6 +553,9 @@ validate_mb(struct sched_cmd *cmd)
   CTRL_DEBUGF("resp_cmd.cq_write_single %d\r\n",resp_cmd.cq_write_single);
   CTRL_DEBUGF("resp_cmd.cu_read_single %d\r\n",resp_cmd.cu_read_single);
   CTRL_DEBUGF("resp_cmd.cu_write_single %d\r\n",resp_cmd.cu_write_single);    
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_access_valid));
@@ -626,6 +610,9 @@ data_integrity(struct sched_cmd *cmd)
       resp_cmd.d2cu_access = 0;
     }
   }
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = ret;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_data_integrity));
@@ -638,6 +625,9 @@ exit_mb(struct sched_cmd *cmd)
 {
   struct xgq_com_queue_entry resp_cmd = {0};
 
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
   resp_cmd.rcode = 0;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_com_queue_entry));
@@ -647,7 +637,6 @@ exit_mb(struct sched_cmd *cmd)
 #endif
   CTRL_DEBUGF("mb wakeup\r\n");
 }
-
 
 static int32_t
 identify_xgq(struct sched_cmd *cmd)
@@ -659,6 +648,12 @@ identify_xgq(struct sched_cmd *cmd)
 
   resp_cmd.rcode = 0;
 
+#ifdef XGQ_CMD_DEBUG
+  resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
+#endif
+#ifdef ERT_BUILD_V30
+  resp_cmd.resvd = read_clk_counter();
+#endif
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_identify));
 
   return 0;
@@ -681,6 +676,21 @@ process_ctrl_command()
 
   if (!cmd)
     return -ENOENT;
+
+#ifdef XGQ_CMD_DEBUG
+  {
+      /* CQ offset 0x610 is unused yet. */
+      struct xgq_cmd_sq_hdr *log = (void *)(ERT_CQ_BASE_ADDR + 0x610);
+      int i = 0;
+
+      for (i = 0; i < 3; i++) {
+          write_reg((uint32_t)(&log[i].header[0]), read_reg((uint32_t)(&log[i+1].header[0])));
+          write_reg((uint32_t)(&log[i].header[1]), read_reg((uint32_t)(&log[i+1].header[1])));
+      }
+      write_reg((uint32_t)(&log[i].header[0]), cmd->cc_header.hdr.header[0]);
+      write_reg((uint32_t)(&log[i].header[1]), cmd->cc_header.hdr.header[1]);
+  }
+#endif
 
   opcode = cmd_op_code(cmd);
 

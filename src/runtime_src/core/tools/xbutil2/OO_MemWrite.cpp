@@ -104,10 +104,14 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   }
 
   try {
+    //-- Device
+    if(m_device.size() > 1)
+      throw xrt_core::error("Multiple devices not supported. Please specify a single device");
+
     // Collect the device of interest
     std::set<std::string> deviceNames;
     xrt_core::device_collection deviceCollection;
-    for (const auto & deviceName : m_device) 
+    for (const auto & deviceName : m_device)
       deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
     XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection); // Can throw
@@ -195,7 +199,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     XBU::verbose(boost::format("Bytes to write: %lld") % 5);
 
     // Write to device memory
-    XBU::xclbin_lock xclbin_lock(device);
+    XBU::xclbin_lock xclbin_lock(device.get());
 
     try {
       for (decltype(count) running_count = 0; running_count < count; running_count++) {
@@ -244,7 +248,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     XBU::verbose(boost::format("Fill pattern: %s") % m_fill);
 
     // Write to device memory
-    XBU::xclbin_lock xclbin_lock(device);
+    XBU::xclbin_lock xclbin_lock(device.get());
 
     try {
       // Generate the fill vector
@@ -261,12 +265,9 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       return;
     }
     std::cout << "Memory write succeeded" << std::endl;
-
-    return;
   }
 
   std::cerr << "No valid options provided\n";
   printHelp();
   throw xrt_core::error(std::errc::operation_canceled);
 }
-

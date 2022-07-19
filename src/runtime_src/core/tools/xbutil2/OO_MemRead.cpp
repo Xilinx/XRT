@@ -87,13 +87,13 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     //-- Device
     if(m_device.size() > 1)
       throw xrt_core::error("Multiple devices not supported. Please specify a single device");
-    
+
     // Collect the device of interest
     std::set<std::string> deviceNames;
     xrt_core::device_collection deviceCollection;
-    for (const auto & deviceName : m_device) 
+    for (const auto & deviceName : m_device)
       deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-    
+
     XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection); // Can throw
     // set working variable
     device = deviceCollection.front();
@@ -146,7 +146,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("Bytes to read: %lld") % (m_count * size)));
 
   //read mem
-  XBU::xclbin_lock xclbin_lock(device);
+  XBU::xclbin_lock xclbin_lock(device.get());
 
   // Open the output file and write the data as we receive it
   std::ofstream out_file(m_outputFile, std::ofstream::out | std::ofstream::binary | std::ofstream::app);
@@ -170,4 +170,3 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
 
   std::cout << "Memory read succeeded" << std::endl;
 }
-

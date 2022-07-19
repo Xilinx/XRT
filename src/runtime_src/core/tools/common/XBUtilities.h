@@ -32,7 +32,7 @@
 #include <boost/algorithm/string.hpp>
 
 namespace XBUtilities {
- 
+
   void can_proceed_or_throw(const std::string& info, const std::string& error);
 
   void sudo_or_throw(const std::string& msg);
@@ -46,7 +46,7 @@ namespace XBUtilities {
 
   boost::property_tree::ptree
   get_available_devices(bool inUserDomain);
-  
+
    /**
    * get_axlf_section() - Get section from the file passed in
    *
@@ -72,15 +72,15 @@ namespace XBUtilities {
   get_xrt_pretty_version();
 
   /**
-   * OEM ID is a unique number called as the 
+   * OEM ID is a unique number called as the
    * Private Enterprise Number (PEN) maintained by IANA
-   * 
+   *
    * Return: Manufacturer's name
    */
-  std::string 
+  std::string
   parse_oem_id(const std::string& oemid);
 
-  std::string 
+  std::string
   parse_clock_id(const std::string& id);
 
 
@@ -95,7 +95,7 @@ namespace XBUtilities {
   uint64_t
   string_to_base_units(std::string str, const unit& conversion_unit);
 
-  inline bool 
+  inline bool
   is_power_of_2(const uint64_t x)
   {
     /*
@@ -111,29 +111,28 @@ namespace XBUtilities {
   */
   struct xclbin_lock
   {
-    xclDeviceHandle m_handle;
+    xrt_core::device* m_device;
     xuid_t m_uuid;
 
-    xclbin_lock(std::shared_ptr<xrt_core::device> _dev)
-      : m_handle(_dev->get_device_handle())
+    xclbin_lock(xrt_core::device* device)
+      : m_device(device)
     {
-      auto xclbinid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(_dev);
+      auto xclbinid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(m_device);
 
       uuid_parse(xclbinid.c_str(), m_uuid);
 
       if (uuid_is_null(m_uuid))
         throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
 
-      if (xclOpenContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max(), true))
-        throw std::runtime_error("'Failed to lock down xclbin");
+      m_device->open_context(m_uuid, std::numeric_limits<unsigned int>::max(), true);
     }
 
-    ~xclbin_lock(){
-      xclCloseContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max());
+    ~xclbin_lock()
+    {
+      m_device->close_context(m_uuid, std::numeric_limits<unsigned int>::max());
     }
   };
 
 };
 
 #endif
-

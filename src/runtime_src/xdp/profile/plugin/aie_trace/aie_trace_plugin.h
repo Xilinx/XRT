@@ -61,15 +61,25 @@ namespace xdp {
       inline uint32_t bcIdToEvent(int bcId);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
       bool setMetrics(uint64_t deviceId, void* handle);
+      bool setMetricsSettings(uint64_t deviceId, void* handle);
+
+      bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
+
+      void getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
+                                    std::vector<std::string> graphmetricsSettings,
+                                    void* handle);
+
       void setFlushMetrics(uint64_t deviceId, void* handle);
-      uint64_t getTraceStartDelayCycles(void* handle);
+      void setTraceStartControl(void* handle);
 
       // Aie resource manager utility functions
       bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+      bool configureStartDelay(xaiefal::XAieMod& core);
+      bool configureStartIteration(xaiefal::XAieMod& core);
 
       // Utility functions
-      std::string getMetricSet(void* handle);
+      std::string getMetricSet(void* handle, const std::string& metricStr, bool ignoreOldConfig = false);
       std::vector<tile_type> getTilesForTracing(void* handle);
 
     private:
@@ -81,11 +91,21 @@ namespace xdp {
       bool runtimeMetrics = true;
 
       // These flags are used to decide configuration at various points
+
+      // Start Delay in cycles
       bool mUseDelay = false;
-      uint32_t mDelayCycles = 0;
+      uint64_t mDelayCycles = 0;
+      bool mUseOneDelayCtr = true;
+
+      // Start Delay using graph iterator
+      bool mUseGraphIterator = false;
+      uint32_t mIterationCount = 0;
+
+      // Start using user control
+      bool mUseUserControl = false;
 
       bool continuousTrace;
-      uint64_t offloadIntervalms;
+      uint64_t offloadIntervalUs;
       unsigned int aie_trace_file_dump_int_s;
 
       // Trace Runtime Status
@@ -99,6 +119,9 @@ namespace xdp {
                          DeviceIntf*> AIEData;
 
       std::map<uint32_t, AIEData>  aieOffloaders;
+
+      XAie_DevInst*     aieDevInst = nullptr;
+      xaiefal::XAieDev* aieDevice  = nullptr;
 
       // Types
       typedef XAie_Events            EventType;
@@ -127,6 +150,9 @@ namespace xdp {
       EventVector memoryCounterEndEvents;
       EventVector memoryCounterResetEvents;
       ValueVector memoryCounterEventValues;
+
+      std::map<tile_type, std::string> mConfigMetrics;
+//      std::vector<std::map<tile_type, std::string>> mConfigMetrics;
   };
     
 }   

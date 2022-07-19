@@ -27,16 +27,6 @@
 #define ioremap_nocache         ioremap
 #endif
 
-#define MAX_CUS 128
-#define MAX_SLOT 32
-
-/* Soft kernel indices are numbered from 0 to some MAX_CUS
- * but are in a distinct domain which is indiciated by the
- * first 16 bit of the index used to identify the soft kernel
- */
-#define SCU_DOMAIN 0x10000
-#define	SOFT_KERNEL_REG_SIZE	4096
-
 /* The normal CU in ip_layout would assign a interrupt
  * ID in range 0 to 127. Use 128 for m2m cu could ensure
  * m2m CU is at the end of the CU, which is compatible with
@@ -280,12 +270,20 @@ struct xrt_cu_log {
 #define CU_LOG_STAGE_SQ		3
 #define CU_LOG_STAGE_CQ		4
 
+struct xrt_cu_range {
+	struct mutex		  xcr_lock;
+	u32			  xcr_start;
+	u32			  xcr_end;
+};
+
 /* Supported event type */
 struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
 	struct resource		**res;
 	struct list_head	  cu;
+	/* Range of Read-only registers */
+	struct xrt_cu_range	  read_regs;
 	/* pending queue */
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;

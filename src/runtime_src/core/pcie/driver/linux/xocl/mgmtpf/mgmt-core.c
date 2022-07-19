@@ -725,10 +725,12 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 	lro->userpf_blob_updated = false;
 }
 
-static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
+static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, void *data_ptr, void **resp, size_t *sz)
 {
 	size_t resp_sz = 0, current_sz = 0, entry_sz = 0, entries = 0;
-	struct xcl_mailbox_subdev_peer *subdev_req = (struct xcl_mailbox_subdev_peer *)data_ptr;
+	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data_ptr;
+	struct xcl_mailbox_subdev_peer *subdev_req =
+			(struct xcl_mailbox_subdev_peer *)req->data;
 	int ret = 0;
 
 	BUG_ON(!lro);
@@ -782,27 +784,27 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	case XCL_SDR_BDINFO:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO, req->flags);
 		break;
 	case XCL_SDR_TEMP:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_TEMP);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_TEMP, req->flags);
 		break;
 	case XCL_SDR_VOLTAGE:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_VOLTAGE);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_VOLTAGE, req->flags);
 		break;
 	case XCL_SDR_CURRENT:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_CURRENT);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_CURRENT, req->flags);
 		break;
 	case XCL_SDR_POWER:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_POWER);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_POWER, req->flags);
 		break;
 	default:
 		break;
@@ -999,7 +1001,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
-		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		ret = xclmgmt_read_subdev_req(lro, data, &resp, &sz);
 		if (ret) {
 			/* if can't get data, return 0 as response */
 			ret = 0;
@@ -1102,7 +1104,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
-		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		ret = xclmgmt_read_subdev_req(lro, data, &resp, &sz);
 		if (ret) {
 			/* if can't get data, return 0 as response */
 			ret = 0;

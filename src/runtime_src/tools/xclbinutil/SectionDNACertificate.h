@@ -22,9 +22,6 @@
 
 // ----- C L A S S :   S e c t i o n D N A C e r t i f i c a t e -------------
 class SectionDNACertificate : public Section {
- public:
-  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
-
  protected:
   void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
 

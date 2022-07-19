@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -50,8 +51,10 @@
 #include <linux/types.h>
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
+#include "xocl_types.h"
 #include "xclbin.h"
 #include "xrt_xclbin.h"
+#include "xocl_xclbin.h"
 #include "xrt_mem.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
@@ -473,8 +476,6 @@ static inline void xocl_subdev_dyn_free(struct xocl_subdev *subdev)
 		subdev->bar_idx = NULL;
 	}
 }
-
-typedef	void *xdev_handle_t;
 
 struct xocl_pci_funcs {
 	int (*intr_config)(xdev_handle_t xdev, u32 intr, bool enable);
@@ -1555,7 +1556,7 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
 	 topo->m_mem_data[idx].m_type == MEM_HBM) &&			\
-	!IS_HOST_MEM(topo->m_mem_data[idx].m_tag))
+	!(convert_mem_tag(topo->m_mem_data[idx].m_tag) == MEM_TAG_HOST))
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
@@ -1979,6 +1980,7 @@ struct xocl_ert_ctrl_funcs {
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
 	       void (* unset_xgq)(struct platform_device *pdev);
+	       void (* dump_xgq)(struct platform_device *pdev); /** TODO: Remove this line before 2022.2 release **/
 	};
 
 #define ERT_CTRL_DEV(xdev)     \
@@ -2011,6 +2013,11 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_unset_xgq(xdev) \
 	(ERT_CTRL_CB(xdev, unset_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev)) : NULL)
+/** TODO: Remove below debug function before 2022.2 release **/
+#define xocl_ert_ctrl_dump(xdev) \
+	(ERT_CTRL_CB(xdev, dump_xgq) ? \
+	 ERT_CTRL_OPS(xdev)->dump_xgq(ERT_CTRL_DEV(xdev)) : NULL)
+/** debug function end */
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2133,7 +2140,11 @@ struct xocl_xgq_vmr_funcs {
 		enum data_kind kind);
 	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 	int (*vmr_enable_multiboot)(struct platform_device *pdev);
-	int (*xgq_collect_sensors_by_id)(struct platform_device *pdev, char *buf,
+	int (*xgq_collect_sensors_by_repo_id)(struct platform_device *pdev, char *buf,
+                                     uint8_t id, uint32_t len);
+	int (*xgq_collect_sensors_by_sensor_id)(struct platform_device *pdev, char *buf,
+                                     uint8_t id, uint32_t len, uint8_t sid);
+	int (*xgq_collect_all_inst_sensors)(struct platform_device *pdev, char *buf,
                                      uint8_t id, uint32_t len);
 	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
 };
@@ -2169,9 +2180,15 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_vmr_enable_multiboot(xdev) 			\
 	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
 	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_sensors_by_id(xdev, buf, id, len)		\
-	(XGQ_CB(xdev, xgq_collect_sensors_by_id) ?		\
-	XGQ_OPS(xdev)->xgq_collect_sensors_by_id(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
+#define	xocl_xgq_collect_sensors_by_repo_id(xdev, buf, id, len)	\
+	(XGQ_CB(xdev, xgq_collect_sensors_by_repo_id) ?		\
+	XGQ_OPS(xdev)->xgq_collect_sensors_by_repo_id(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
+#define	xocl_xgq_collect_sensors_by_sensor_id(xdev, buf, id, len, sid)	\
+	(XGQ_CB(xdev, xgq_collect_sensors_by_sensor_id) ?	\
+	XGQ_OPS(xdev)->xgq_collect_sensors_by_sensor_id(XGQ_DEV(xdev), buf, id, len, sid) : -ENODEV)
+#define	xocl_xgq_collect_all_inst_sensors(xdev, buf, id, len)	\
+	(XGQ_CB(xdev, xgq_collect_all_inst_sensors) ?	\
+	XGQ_OPS(xdev)->xgq_collect_all_inst_sensors(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
 #define	xocl_vmr_load_firmware(xdev, fw, fw_size)		\
 	(XGQ_CB(xdev, vmr_load_firmware) ?			\
 	XGQ_OPS(xdev)->vmr_load_firmware(XGQ_DEV(xdev), fw, fw_size) : -ENODEV)
@@ -2180,7 +2197,7 @@ struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev, bool create_sysfs);
 	int (*hwmon_sdm_get_sensors)(struct platform_device *pdev, char *resp,
-                                 enum xcl_group_kind repo_type);
+                                 enum xcl_group_kind repo_type, uint64_t data_args);
 	int (*hwmon_sdm_create_sensors_sysfs)(struct platform_device *pdev, char *in_buf,
                                           size_t len, enum xcl_group_kind kind);
 };
@@ -2195,9 +2212,9 @@ struct xocl_sdm_funcs {
 #define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
 	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)
-#define	xocl_hwmon_sdm_get_sensors(xdev, resp, repo_type)		\
+#define	xocl_hwmon_sdm_get_sensors(xdev, resp, repo_type, data_args)	\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors) ?			\
-	SDM_OPS(xdev)->hwmon_sdm_get_sensors(SDM_DEV(xdev), resp, repo_type) : -ENODEV)
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors(SDM_DEV(xdev), resp, repo_type, data_args) : -ENODEV)
 #define	xocl_hwmon_sdm_create_sensors_sysfs(xdev, buf, size, kind)		\
 	(SDM_CB(xdev, hwmon_sdm_create_sensors_sysfs) ?			\
 	SDM_OPS(xdev)->hwmon_sdm_create_sensors_sysfs(SDM_DEV(xdev), buf, size, kind) : -ENODEV)
@@ -2461,15 +2478,15 @@ static inline int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uu
 {
 	return 0;
 }
-static inline void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
+static inline int xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
 {
-	return;
+	return 0;
 }
 #else
 int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
 		      struct ip_layout *ip_layout,
 		      struct ps_kernel_node *ps_kernel);
-void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
+int xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
 #endif
 
 /* context helpers */
@@ -2562,8 +2579,8 @@ void xocl_fini_feature_rom(void);
 int __init xocl_init_xdma(void);
 void xocl_fini_xdma(void);
 
-int __init xocl_init_qdma4(void);
-void xocl_fini_qdma4(void);
+int __init xocl_init_qdma(void);
+void xocl_fini_qdma(void);
 
 int __init xocl_init_xvc(void);
 void xocl_fini_xvc(void);

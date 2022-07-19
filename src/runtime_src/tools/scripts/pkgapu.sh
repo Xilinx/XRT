@@ -165,11 +165,21 @@ if [[ ! (`which mkimage` && `which bootgen` && `which xclbinutil`) ]]; then
 	error "Please source Xilinx VITIS and Petalinux tools to make sure mkimage, bootgen and xclbinutil is accessible."
 fi
 
-PKG_VER=`cat $IMAGES_DIR/rootfs.manifest | grep "^xrt " | sed s/.*\ //`
-if [[ "X$PKG_VER" == "X" ]]; then
+PKG_VER_WITH_RELEASE=`cat $IMAGES_DIR/rootfs.manifest | grep "^xrt " | sed s/.*\ //`
+if [[ "X$PKG_VER_WITH_RELEASE" == "X" ]]; then
 	error "Can not get package version"
 fi
-echo VERSION "$PKG_VER"
+
+PKG_VER=${PKG_VER_WITH_RELEASE#*.}
+PKG_RELEASE=${PKG_VER_WITH_RELEASE%%.*}
+
+# Add patch number in version if 'XRT_VERSION_PATCH' env variable is defined
+if [[ ! -z $XRT_VERSION_PATCH ]]; then
+	PKG_VER=${PKG_VER%.*}.$XRT_VERSION_PATCH
+fi
+
+echo APU Package version : "$PKG_VER"
+echo APU Package release : "$PKG_RELEASE"
 
 if [ -d $BUILD_DIR ]; then
 	rm -rf $BUILD_DIR
@@ -287,6 +297,13 @@ fi
 dodeb $INSTALL_ROOT
 dorpm $INSTALL_ROOT
 
-cp $BUILD_DIR/*.rpm $OUTPUT_DIR
-cp $BUILD_DIR/*.deb $OUTPUT_DIR
+# Add _petalinux in apu package name for xrt pipeline build
+# remove this check after apu package build is removed from emb pipeline
+if [[ ! -z $XRT_VERSION_PATCH ]]; then
+    cp -v $BUILD_DIR/${PKG_NAME}*.rpm $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_petalinux.noarch.rpm
+    cp -v $BUILD_DIR/${PKG_NAME}*.deb $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_petalinux_all.deb
+else
+    cp -v $BUILD_DIR/${PKG_NAME}*.rpm $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}.noarch.rpm
+    cp -v $BUILD_DIR/${PKG_NAME}*.deb $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_all.deb
+fi
 rm -rf $BUILD_DIR

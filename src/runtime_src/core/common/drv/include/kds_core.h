@@ -35,6 +35,44 @@
 #define kds_dbg(client, fmt, args...)			\
 	dev_dbg(client->dev, " %llx %s: "fmt, (u64)client->dev, __func__, ##args)
 
+/*
+ * A CU domain can contain the same type of CUs.
+ * CUs from different domain can have different implementation details.
+ * Typical domains: PL kernel domain, PS kernel domain
+ *
+ * The user space passed down cu index is encoding into
+ * domain + index of a domain in below format.
+ * +-------------------+-------------------+
+ * | 31    ...      16 | 15     ...      0 |
+ * +-------------------+-------------------+
+ * |     Domain        |   Domain index    |
+ * +-------------------+-------------------+
+ *
+ * Use below helper macros to handle user space cu index.
+ */
+enum kds_cu_domain {
+	/* Virtual CU index
+	 * This is useful when there is no need to open a context on hardware CU,
+	 * but still need to lockdown the xclbin.
+	 */
+	DOMAIN_VIRT = 0xFFFF,
+	DOMAIN_PL   = 0x0,
+	DOMAIN_PS,
+	MAX_DOMAIN /* always the last one */
+};
+#define DOMAIN_MASK  0xFFFF0000
+#define DOMAIN_INDEX_MASK  0x0000FFFF
+#define get_domain(idx) ((idx & DOMAIN_MASK) >> 16)
+#define get_domain_idx(idx) (idx & DOMAIN_INDEX_MASK)
+#define set_domain(domain, idx) ((domain << 16) + idx)
+
+/* MAX CUs per domain */
+#define MAX_CUS 128
+/* TODO: This is only used in print custat and scustat
+ * Is slot index in the range of 0 to 31 ??
+ */
+#define MAX_SLOT 32
+
 enum kds_type {
 	KDS_CU		= 0,
 	KDS_SCU,
@@ -42,16 +80,6 @@ enum kds_type {
 	KDS_MAX_TYPE, // always the last one
 };
 
-/* Context properties */
-#define	CU_CTX_PROP_MASK	0x0F
-#define	CU_CTX_SHARED		0x00
-#define	CU_CTX_EXCLUSIVE	0x01
-
-/* Virtual CU index
- * This is useful when there is no need to open a context on hardware CU,
- * but still need to lockdown the xclbin.
- */
-#define	CU_CTX_VIRT_CU		0xffffffff
 struct kds_ctx_info {
 	u32		  cu_domain;
 	u32		  cu_idx;
@@ -59,18 +87,10 @@ struct kds_ctx_info {
 	void		 *curr_ctx; // Holds the current context ptr for kds
 };
 
-/* TODO: PS kernel is very different with FPGA kernel.
- * Let's see if we can unify them later.
- */
-struct kds_scu_mgmt {
-	struct xrt_cu		 *xcus[MAX_CUS];
-	struct mutex		  lock;
-	int			  num_cus;
-	u32			  status[MAX_CUS];
-	char			  name[MAX_CUS][32];
-	u32			  cu_refs[MAX_CUS];
-	struct cu_stats __percpu *cu_stats;
-};
+/* Context properties */
+#define	CU_CTX_PROP_MASK	0x0F
+#define	CU_CTX_SHARED		0x00
+#define	CU_CTX_EXCLUSIVE	0x01
 
 /* the MSB of cu_refs is used for exclusive flag */
 #define CU_EXCLU_MASK		0x80000000
@@ -143,7 +163,7 @@ struct kds_sched {
 	struct mutex		lock;
 	bool			bad_state;
 	struct kds_cu_mgmt	cu_mgmt;
-	struct kds_scu_mgmt	scu_mgmt;
+	struct kds_cu_mgmt	scu_mgmt;
 	struct kds_ert	       *ert;
 	bool			xgq_enable;
 	u32			cu_intr_cap;
@@ -195,6 +215,7 @@ int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);
 /* Use this function in xclbin download flow for config commands */
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd);
+int kds_set_cu_read_range(struct kds_sched *kds, u32 cu_idx, u32 start, u32 size);
 
 struct kds_command *kds_alloc_command(struct kds_client *client, u32 size);
 

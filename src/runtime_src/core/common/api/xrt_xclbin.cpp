@@ -56,7 +56,7 @@ namespace {
 // NOLINTNEXTLINE
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
 
-constexpr size_t max_sections = 12;
+constexpr size_t max_sections = 13;
 static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
   AIE_METADATA,
@@ -69,7 +69,8 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
   SYSTEM_METADATA,
   CLOCK_FREQ_TOPOLOGY,
   BUILD_METADATA,
-  SOFT_KERNEL
+  SOFT_KERNEL,
+  AIE_PARTITION
 };
 
 XRT_CORE_UNUSED
@@ -904,6 +905,13 @@ xclbin::
 get_ips() const
 {
   return handle ? handle->get_ips() : std::vector<xclbin::ip>{};
+}
+
+std::vector<xclbin::ip>
+xclbin::
+get_ips(const std::string& name) const
+{
+  return handle ? handle->get_ips(name) : std::vector<xclbin::ip>{};
 }
 
 xclbin::ip

@@ -309,7 +309,7 @@ static void zert_unassign_cu_xgqs(struct zocl_ctrl_ert *zert)
 	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
 		idx = cu->zcec_xgq_idx;
 		if (idx != ZERT_INVALID_XGQ_ID) {
-			ret = zcu_xgq_unassign_cu(zert->zce_cu_xgqs[idx].zcecx_pdev, i, SCU_DOMAIN>>16);
+			ret = zcu_xgq_unassign_cu(zert->zce_cu_xgqs[idx].zcecx_pdev, i, DOMAIN_PS);
 			if (ret)
 				zert_err(zert, "Failed to unassign SCU %d to XGQ %d", i, idx);
 		}
@@ -411,7 +411,7 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 			}
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
-			ret = zcu_xgq_assign_cu(xgqpdev, i, 0);
+			ret = zcu_xgq_assign_cu(xgqpdev, i, DOMAIN_PL);
 			if (ret)
 				zert_err(zert, "Failed to assign CU %d to XGQ %d", i, idx);
 			else
@@ -431,7 +431,7 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 			}
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
-			ret = zcu_xgq_assign_cu(xgqpdev, i, SCU_DOMAIN>>16);
+			ret = zcu_xgq_assign_cu(xgqpdev, i, DOMAIN_PS);
 			if (ret)
 				zert_err(zert, "Failed to assign CU %d to XGQ %d", i, idx);
 			else
@@ -846,7 +846,7 @@ static void zert_cmd_cfg_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *c
 	int rc;
 	struct xgq_cmd_config_cu *c = (struct xgq_cmd_config_cu *)cmd;
 
-	if(c->cu_domain==(SCU_DOMAIN>>16)) {
+	if(c->cu_domain == DOMAIN_PS) {
 		rc = zert_create_scu(zert, c);
 		init_resp(resp, cmd->cid, rc);
 	} else {
@@ -862,7 +862,7 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 	struct xgq_cmd_query_cu *c = (struct xgq_cmd_query_cu *)cmd;
 	struct xgq_cmd_resp_query_cu *r = (struct xgq_cmd_resp_query_cu *)resp;
 
-	if(c->cu_domain == (SCU_DOMAIN>>16)) {
+	if(c->cu_domain == DOMAIN_PS) {
 		if (zert->zce_num_scus <= c->cu_idx) {
 			zert_err(zert, "SCU index (%d) out of range", c->cu_idx);
 			init_resp(resp, cmd->cid, -EINVAL);
@@ -899,7 +899,7 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 		r->offset = zert->zce_cu_xgqs[r->xgq_id].zcecx_ring - zert->zce_cq_start;
 		break;
 	case XGQ_CMD_QUERY_CU_STATUS:
-		if(c->cu_domain == (SCU_DOMAIN>>16)) {
+		if(c->cu_domain == DOMAIN_PS) {
 			r->status = zocl_scu_get_status(cu->zcec_pdev);
 		} else {
 			r->status = zocl_cu_get_status(cu->zcec_pdev);

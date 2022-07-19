@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2016-2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "program.h"
 #include "device.h"
 #include "kernel.h"
@@ -126,10 +113,12 @@ xrt_core::uuid
 program::
 get_xclbin_uuid(const device* d) const
 {
+  // switch to parent device if necessary
+  d = d->get_root_device();
   auto itr = m_binaries.find(d);
   if (itr == m_binaries.end())
     return {};
-  
+
   auto top = reinterpret_cast<const axlf*>((*itr).second.data());
   return top->m_header.uuid;
 }
@@ -170,7 +159,7 @@ get_num_kernels() const
     return metadata.num_kernels();
   return 0;
 }
-  
+
 std::vector<std::string>
 program::
 get_kernel_names() const

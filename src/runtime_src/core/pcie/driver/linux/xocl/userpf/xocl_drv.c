@@ -170,7 +170,7 @@ int xocl_register_cus(xdev_handle_t xdev_hdl, int slot_hdl, xuid_t *uuid,
 	return xocl_kds_register_cus(xdev, slot_hdl, uuid, ip_layout, ps_kernel);
 }
 
-void xocl_unregister_cus(xdev_handle_t xdev_hdl, int slot_hdl)
+int xocl_unregister_cus(xdev_handle_t xdev_hdl, int slot_hdl)
 {
 	struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
 
@@ -1042,6 +1042,7 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 		goto done;
 
 	mb_req->req = XCL_MAILBOX_REQ_SDR_DATA;
+	mb_req->flags = 0x0;
 	subdev_peer.size = resp_len;
 	subdev_peer.kind = kind;
 	subdev_peer.entries = 1;
@@ -1868,7 +1869,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_version_control,
 	xocl_init_iores,
 	xocl_init_xdma,
-	xocl_init_qdma4,
+	xocl_init_qdma,
 	xocl_init_mailbox,
 	xocl_init_xmc,
 	xocl_init_xmc_u2,
@@ -1911,7 +1912,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_version_control,
 	xocl_fini_iores,
 	xocl_fini_xdma,
-	xocl_fini_qdma4,
+	xocl_fini_qdma,
 	xocl_fini_mailbox,
 	xocl_fini_xmc,
 	xocl_fini_xmc_u2,

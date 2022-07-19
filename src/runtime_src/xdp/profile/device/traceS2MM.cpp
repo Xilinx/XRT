@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -38,7 +39,7 @@ TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
     mIsVersion2 = (major_version >= 2);
 }
 
-inline void TraceS2MM::write32(uint64_t offset, uint32_t val)
+void TraceS2MM::write32(uint64_t offset, uint32_t val)
 {
     write(offset, 4, &val);
 }
@@ -181,18 +182,17 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet)
     }
 }
 
-void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result)
+void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xdp::TraceEvent &result)
 {
     if (out_stream)
         (*out_stream) << " TraceS2MM::parsePacket " << std::endl;
 
     result.Timestamp = (packet & 0x1FFFFFFFFFFF) - firstTimestamp;
-    result.EventType = ((packet >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT :
-        XCL_PERF_MON_START_EVENT;
+    result.EventType = ((packet >> 45) & 0xF) ? xdp::TraceEventType::end :
+      xdp::TraceEventType::start;
     result.TraceID = (packet >> 49) & 0xFFF;
     result.Reserved = (packet >> 61) & 0x1;
     result.Overflow = (packet >> 62) & 0x1;
-    result.EventID = XCL_PERF_MON_HW_EVENT;
     result.EventFlags = ((packet >> 45) & 0xF) | ((packet >> 57) & 0x10);
     //result.isClockTrain = false;
     result.isClockTrain = 0 ;
@@ -237,7 +237,7 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
   return count;
 }
 
-void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector)
+void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xdp::TraceEvent>& traceVector)
 {
     if (out_stream)
         (*out_stream) << " TraceS2MM::parseTraceBuf " << std::endl;
@@ -286,7 +286,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResu
         }
       }
       else {
-        xclTraceResults result = {};
+        xdp::TraceEvent result = {};
         parsePacket(currentPacket, mPacketFirstTs, result);
         traceVector.push_back(result);
       }
