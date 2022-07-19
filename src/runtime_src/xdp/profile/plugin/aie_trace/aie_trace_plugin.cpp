@@ -226,9 +226,6 @@ namespace xdp {
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
 
-    for (auto h : deviceHandles)
-      xclClose(h);
-
     AieTracePlugin::live = false;
   }
 
@@ -1135,7 +1132,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     if (runtimeMetrics) {
       std::string configFile = "aie_event_runtime_config.json";
       VPWriter* writer = new AieTraceConfigWriter(configFile.c_str(),
-                                                  deviceId, metricSet) ;
+                                                  deviceId, metricSet);
       writers.push_back(writer);
       (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_RUNTIME_CONFIG");
     }

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020,2021,2022 Xilinx, Inc
  * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -41,8 +41,9 @@ class ProgressBar {
   static std::string
   formatTime(std::chrono::duration<double> duration);
 
-  unsigned int getMaxIterations() {return m_maxNumIterations;}
-  
+  unsigned int getMaxIterations() { return m_maxNumIterations; }
+  void setPrintPercentBatch(bool val) { m_printPercentBatch = val; }
+
   ~ProgressBar();
   ProgressBar() = delete;
 
@@ -51,6 +52,7 @@ class ProgressBar {
   unsigned int m_maxNumIterations;
   bool m_isBatch;
   std::ostream &m_ostr;
+  bool m_printPercentBatch;
   unsigned int m_runningIteration;
   bool m_finished;
   Timer m_timer;

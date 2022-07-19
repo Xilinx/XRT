@@ -647,6 +647,8 @@ init(unsigned int index)
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
+    // flush aie trace and write outputs
+    xdp::aie::finish_flush_device(this) ;
 
     // The BO cache unmaps and releases all execbo, but this must
     // be done before the device is closed.
@@ -1381,16 +1383,9 @@ xclLoadXclBin(const xclBin *buffer)
   xdp::aie::update_device(this);
   xdp::pl_deadlock::update_device(this);
 
-  // scheduler::init can not be skipped even for same_xclbin as in
-  // multiple process stress tests it fails as below init step is
-  // without a lock with above driver load xclbin step.  New KDS fixes
-  // this by ensuring that scheduler init is done by driver itself
-  // along with icap download in single command call and then below
-  // init step in user space is ignored
-  auto ret = xrt_core::scheduler::init(this, buffer);
   START_DEVICE_PROFILING_CB(this);
 
-  return ret;
+  return 0;
 }
 
 /*
