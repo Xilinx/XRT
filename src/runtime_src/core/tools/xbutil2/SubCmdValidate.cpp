@@ -1261,7 +1261,7 @@ iopsTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
  * TEST #13
  */
 void
-aiePlTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
+aieTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
     runTestCase(_dev, "aie_pl.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
 }
@@ -1336,10 +1336,10 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
-  { create_init_test("aie", "Run PL controlled AIE test"), aiePlTest },
-  { create_init_test("ps-aie", "Run PS controlled AIE test"), psAieTest },
-  { create_init_test("ps-pl-verify", "Run PS controlled 'Hello World' PL kernel test"), psBandwidthTest },
-  { create_init_test("ps-verify", "Run 'Hello World' PS kernel test"), psValidateTest },
+  { create_init_test("aie", "Run PL controlled AIE test", "vck5000_pcie_pl_controller.xclbin.xclbin"), aieTest },
+  { create_init_test("ps-aie", "Run PS controlled AIE test", "ps_aie.xclbin"), psAieTest },
+  { create_init_test("ps-pl-verify", "Run PS controlled 'Hello World' PL kernel test", "ps_bandwidth.xclbin"), psBandwidthTest },
+  { create_init_test("ps-verify", "Run 'Hello World' PS kernel test", "ps_validate_bandwidth.xclbin"), psValidateTest },
   { create_init_test("ps-iops", "Run IOPS PS test", "ps_validate_bandwidth.xclbin"), psIopsTest }
 };
 
