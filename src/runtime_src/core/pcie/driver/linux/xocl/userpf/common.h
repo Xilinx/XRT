@@ -155,6 +155,8 @@ int xocl_execbuf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_hw_ctx_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_read_axlf_ioctl(struct drm_device *dev, void *data,

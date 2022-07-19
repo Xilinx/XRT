@@ -168,12 +168,12 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 }
 
 static inline void
-xocl_hw_ctx_to_info(struct kds_client_ctx *ctx, struct kds_ctx_info *info)
+xocl_hw_ctx_to_info(struct  drm_xocl_hw_ctx *args, struct kds_ctx_info *info)
 {
-	info->cu_domain = get_domain(ctx->cu_idx);
-	info->cu_idx = get_domain_idx(ctx->cu_idx);
+	info->cu_domain = get_domain(args->cu_index);
+	info->cu_idx = get_domain_idx(args->cu_index);
 
-	if (ctx->flags == XOCL_CTX_EXCLUSIVE)
+	if (args->flags == XOCL_CTX_EXCLUSIVE)
 		info->flags = CU_CTX_EXCLUSIVE;
 	else
 		info->flags = CU_CTX_SHARED;
@@ -193,7 +193,7 @@ xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
 
 static int
 xocl_cu_ctx_to_info(struct xocl_dev *xdev, 
-		struct drm_xocl_ctx *args, struct kds_ctx_info *info)
+		struct drm_xocl_hw_ctx *args, struct kds_ctx_info *info)
 {
 	uint32_t slot_hndl = args->hw_context; // Get the slot handler
 	struct kds_sched *kds = &XDEV(xdev)->kds;
@@ -248,7 +248,7 @@ done:
 }
 
 static int xocl_open_cu_context(struct xocl_dev *xdev, struct kds_client *client,
-			    struct drm_xocl_ctx *args)
+			    struct drm_xocl_hw_ctx *args)
 {
 	struct kds_ctx_info	 info;
 	xuid_t *uuid;
@@ -310,7 +310,7 @@ out:
 }
 
 static int xocl_close_cu_context(struct xocl_dev *xdev, struct kds_client *client,
-                            struct drm_xocl_ctx *args)
+                            struct drm_xocl_hw_ctx *args)
 {
         struct kds_ctx_info      info;
         xuid_t *uuid;
@@ -334,7 +334,7 @@ static int xocl_close_cu_context(struct xocl_dev *xdev, struct kds_client *clien
                 goto out;
         }
 
-        xocl_ctx_to_info(args, &info);
+        xocl_hw_ctx_to_info(args, &info);
         /* Store the current context here. KDS required that later */
         info.curr_ctx = (void *)client->ctx;
         ret = kds_del_context(&XDEV(xdev)->kds, client, &info);
@@ -453,7 +453,7 @@ out:
 }
 
 static int xocl_add_hw_context(struct xocl_dev *xdev, struct kds_client *client,
-			    struct drm_xocl_ctx *args)
+			    struct drm_xocl_hw_ctx *args)
 {
 	struct xocl_axlf_obj_cache *axlf_obj = NULL;
 	xuid_t *uuid = NULL;
@@ -502,7 +502,7 @@ static int xocl_add_hw_context(struct xocl_dev *xdev, struct kds_client *client,
 }
 
 static int xocl_del_hw_context(struct xocl_dev *xdev, struct kds_client *client,
-			    struct drm_xocl_ctx *args)
+			    struct drm_xocl_hw_ctx *args)
 {
 	xuid_t *uuid = NULL;
 	int ret = 0;
@@ -569,6 +569,22 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 	case XOCL_CTX_OP_OPEN_UCU_FD:
 		ret = xocl_open_ucu(xdev, client, args);
 		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
+static int xocl_hw_context_ioctl(struct xocl_dev *xdev, void *data,
+			      struct drm_file *filp)
+{
+	struct drm_xocl_hw_ctx *args = data;
+	struct kds_client *client = filp->driver_priv;
+	int ret = 0;
+
+	switch(args->op) {
 	case XOCL_CTX_OP_ALLOC_HW_CTX:
 		ret = xocl_add_hw_context(xdev, client, args);
 		break;
@@ -1195,6 +1211,14 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 		 */
 		mutex_lock(&xdev->dev_lock);
 		ret = xocl_context_ioctl(xdev, data, filp);
+		mutex_unlock(&xdev->dev_lock);
+		break;
+	case DRM_XOCL_HW_CTX:
+		/* Open/close hw context would lock/unlock bitstream.
+		 * This and download xclbin are mutually exclusive.
+		 */
+		mutex_lock(&xdev->dev_lock);
+		ret = xocl_hw_context_ioctl(xdev, data, filp);
 		mutex_unlock(&xdev->dev_lock);
 		break;
 	case DRM_XOCL_EXECBUF:

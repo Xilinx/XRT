@@ -1836,7 +1836,7 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 {
     std::lock_guard<std::mutex> l(mCuMapLock);
-    drm_xocl_ctx ctx;
+    int ret = 0;
 
     if (ipIndex < mCuMaps.size()) {
 	    // Make sure no MMIO register space access when CU is released.
@@ -1846,14 +1846,21 @@ int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
         }
     }
 
-    if (!hw_context_enable)
+    if (!hw_context_enable) {
+    	drm_xocl_ctx ctx;
         ctx = {XOCL_CTX_OP_FREE_CTX};
-    else
-        ctx = {XOCL_CTX_OP_FREE_CU_CTX};
+        std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
+        ctx.cu_index = ipIndex;
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    }
+    else {
+    	drm_xocl_hw_ctx hw_ctx;
+        hw_ctx = {XOCL_CTX_OP_FREE_CU_CTX};
+    	std::memcpy(hw_ctx.xclbin_id, xclbinId, sizeof(uuid_t));
+    	hw_ctx.cu_index = ipIndex;
+    	ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_HW_CTX, &hw_ctx);
+    }
 
-    std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
-    ctx.cu_index = ipIndex;
-    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
     return ret ? -errno : ret;
 }
 
@@ -2221,12 +2228,12 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 	/* This is for multi slot case. New IOCTL should call */
         unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
         // Pass Input 
-        drm_xocl_ctx cu_ctx = {XOCL_CTX_OP_OPEN_CU_CTX};
+        drm_xocl_hw_ctx cu_ctx = {XOCL_CTX_OP_OPEN_CU_CTX};
         cu_ctx.flags = flags;
         cu_ctx.hw_context = static_cast<xcl_hwctx_handle>(hwctx);
         std::strcpy(cu_ctx.cu_name, cuname.c_str());
 
-        if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &cu_ctx))
+        if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_HW_CTX, &cu_ctx))
 	    throw xrt_core::system_error(errno, "failed to open ip context");
 
        	// Retrive the return value
@@ -2246,10 +2253,10 @@ create_hw_context_helper(const xrt::uuid& xclbin_uuid, uint32_t qos)
     auto xclbin = mCoreDevice->get_xclbin(xclbin_uuid);
     auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
 
-    drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_HW_CTX};
+    drm_xocl_hw_ctx ctx = {XOCL_CTX_OP_ALLOC_HW_CTX};
     std::memcpy(ctx.xclbin_id, &xclbin_uuid, sizeof(uuid_t));
     ctx.flags = qos;
-    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_HW_CTX, &ctx);
     if (ret) {
 	if (errno == EAGAIN) {
             //special case for aws
@@ -2268,7 +2275,7 @@ create_hw_context_helper(const xrt::uuid& xclbin_uuid, uint32_t qos)
                     "dev_hotplug_done", err, dev_hotplug_done, 0);
             }
             dev_init();
-            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_HW_CTX, &ctx);
             if (ret)
 	    	xrt_logmsg(XRT_ERROR, "failed to open hw context.");
 	}
@@ -2344,9 +2351,9 @@ destroy_hw_context(uint32_t ctxhdl)
 	 return;
     }
 
-    drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_HW_CTX};
+    drm_xocl_hw_ctx ctx = {XOCL_CTX_OP_FREE_HW_CTX};
     ctx.hw_context = ctxhdl;
-    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_HW_CTX, &ctx);
     if (ret)
       throw xrt_core::system_error(errno, "failed to destroy hw context");
 }

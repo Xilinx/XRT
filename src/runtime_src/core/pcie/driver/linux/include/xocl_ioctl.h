@@ -143,6 +143,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_OCL_RESET,
 	/* Open/close a context */
 	DRM_XOCL_CTX,
+	/* Open/close a HW context */
+	DRM_XOCL_HW_CTX,
 	/* Get information from device */
 	DRM_XOCL_INFO,
 	/* Unmanaged DMA from/to device */
@@ -502,23 +504,46 @@ struct drm_xocl_pread_bo {
 };
 
 enum drm_xocl_ctx_code {
-	XOCL_CTX_OP_ALLOC_CTX = 0,
-	XOCL_CTX_OP_FREE_CTX,
-	XOCL_CTX_OP_OPEN_UCU_FD,
-	XOCL_CTX_OP_ALLOC_HW_CTX,
-	XOCL_CTX_OP_FREE_HW_CTX,
-	XOCL_CTX_OP_OPEN_CU_CTX,
-	XOCL_CTX_OP_FREE_CU_CTX
+        XOCL_CTX_OP_ALLOC_CTX = 0, 
+        XOCL_CTX_OP_FREE_CTX,
+        XOCL_CTX_OP_OPEN_UCU_FD,
 };
 
-#define	XOCL_CTX_SHARED		0x0
-#define	XOCL_CTX_EXCLUSIVE	0x1
-#define	XOCL_CTX_VIRT_CU_INDEX	0xffffffff
+#define XOCL_CTX_SHARED         0x0
+#define XOCL_CTX_EXCLUSIVE      0x1
+#define XOCL_CTX_VIRT_CU_INDEX  0xffffffff
 /**
  * struct drm_xocl_ctx - Open or close a context on a compute unit on device
  * used with DRM_XOCL_CTX ioctl
  *
  * @op:            Alloc or free a context (XOCL_CTX_OP_ALLOC_CTX/XOCL_CTX_OP_FREE_CTX)
+ * @xclbin_id:     UUID of the device image (xclbin)
+ * @cu_index:      Index of the compute unit in the device inage for which
+ *                 the request is being made
+ * @flags:         Shared or exclusive context (XOCL_CTX_SHARED/XOCL_CTX_EXCLUSIVE)
+ * @handle:        Unused
+ */ 
+struct drm_xocl_ctx {
+        enum drm_xocl_ctx_code op;
+        xuid_t   xclbin_id;
+        uint32_t cu_index;
+        uint32_t flags;
+        // unused, in future it would return context id
+        uint32_t handle;
+};
+
+enum drm_xocl_hw_ctx_code {
+	XOCL_CTX_OP_ALLOC_HW_CTX = 0,
+	XOCL_CTX_OP_FREE_HW_CTX,
+	XOCL_CTX_OP_OPEN_CU_CTX,
+	XOCL_CTX_OP_FREE_CU_CTX
+};
+
+/**
+ * struct drm_xocl_hw_ctx - Open or close a context on a compute unit on device
+ * used with DRM_XOCL_HW_CTX ioctl
+ *
+ * @op:            Alloc or free a hw context (XOCL_CTX_OP_ALLOC_HW_CTX/XOCL_CTX_OP_FREE_HW_CTX)
  * @xclbin_id:	   UUID of the device image (xclbin)
  * @cu_name:	   Name of the compute unit in the device inage for which
  *                 the request is being made
@@ -527,8 +552,8 @@ enum drm_xocl_ctx_code {
  * @flags:	   Shared or exclusive context (XOCL_CTX_SHARED/XOCL_CTX_EXCLUSIVE)
  * @hw_context:	   Context handle
  */
-struct drm_xocl_ctx {
-	enum drm_xocl_ctx_code op;
+struct drm_xocl_hw_ctx {
+	enum drm_xocl_hw_ctx_code op;
 	xuid_t   xclbin_id;
 	char 	 cu_name[64];
 	uint32_t cu_index;
@@ -547,7 +572,6 @@ struct drm_xocl_info {
 	unsigned int pci_slot;
 	char reserved[64];
 };
-
 
 /**
  * struct drm_xocl_pwrite_unmgd - unprotected write to device memory
@@ -708,6 +732,7 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_PWRITE_BO	XOCL_IOC_ARG(PWRITE_BO, pwrite_bo)
 #define	DRM_IOCTL_XOCL_PREAD_BO		XOCL_IOC_ARG(PREAD_BO, pread_bo)
 #define	DRM_IOCTL_XOCL_CTX		XOCL_IOC_ARG(CTX, ctx)
+#define	DRM_IOCTL_XOCL_HW_CTX		XOCL_IOC_ARG(HW_CTX, ctx)
 #define	DRM_IOCTL_XOCL_INFO		XOCL_IOC_ARG(INFO, info)
 #define	DRM_IOCTL_XOCL_READ_AXLF	XOCL_IOC_ARG(READ_AXLF, axlf)
 #define	DRM_IOCTL_XOCL_REGISTER_AXLF	XOCL_IOC_ARG(REGISTER_AXLF, axlf)

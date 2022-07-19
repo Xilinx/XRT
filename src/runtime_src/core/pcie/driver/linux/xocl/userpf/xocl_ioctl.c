@@ -91,6 +91,22 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
         return ret;
 }
 
+/*
+ * Create a hw context. Take a lock on xclbin if
+ * it has not been acquired before. Shared the same lock for all context requests
+ * for that process
+ */
+int xocl_hw_ctx_ioctl(struct drm_device *dev, void *data,
+                   struct drm_file *filp)
+{
+        struct xocl_drm *drm_p = dev->dev_private;
+        int ret = 0;
+
+        ret = xocl_client_ioctl(drm_p->xdev, DRM_XOCL_HW_CTX, data, filp);
+
+        return ret;
+}
+
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *filp)
 {
