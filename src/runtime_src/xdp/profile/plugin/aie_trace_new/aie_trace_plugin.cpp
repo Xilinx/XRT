@@ -32,30 +32,31 @@
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 
-// #ifdef EDGE_BUILD
+// #ifdef XRT_NATIVE_BUILD
+#include "x86/aie_trace.h"
+// #else
 // #include "edge/aie_trace.h"
 // #include "core/edge/user/shim.h"
-// #else
-#include "x86/aie_trace.h"
 // #endif
+
 
 #include "aie_trace_impl.h"
 #include "aie_trace_plugin.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
-  bool AieTracePlugin::live = false;
+  bool AieTracePluginUnified::live = false;
 
-  AieTracePlugin::AieTracePlugin()
+  AieTracePluginUnified::AieTracePluginUnified()
   : XDPPlugin()
   {
-    AieTracePlugin::live = true;
+    AieTracePluginUnified::live = true;
 
     db->registerPlugin(this);
     db->registerInfo(info::aie_trace);
   }
 
-  AieTracePlugin::~AieTracePlugin()
+  AieTracePluginUnified::~AieTracePluginUnified()
   {
     if (VPDatabase::alive()) {
       try {
@@ -67,10 +68,11 @@ namespace xdp {
     }
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
-    AieTracePlugin::live = false;
+    AieTracePluginUnified::live = false;
   }
 
-  uint64_t AieTracePlugin::getDeviceIDFromHandle(void* handle) {
+  uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void* handle)
+  {
     constexpr uint32_t PATH_LENGTH = 512;
 
     auto itr = handleToAIEData.find(handle);
@@ -85,7 +87,7 @@ namespace xdp {
     return deviceID;
   }
 
-  void AieTracePlugin::updateAIEDevice(void* handle)
+  void AieTracePluginUnified::updateAIEDevice(void* handle)
   {
     if (!handle)
       return;
@@ -99,16 +101,16 @@ namespace xdp {
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
     auto& metadata = AIEData.metadata;
+    AIEData.supported = true; // initialize struct
+    AIEData.devIntf = nullptr;
 
 // #ifdef XRT_NATIVE_BUILD
     AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, metadata);
 // #else
-// AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, nullptr);
+// AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, metadata);
 // #endif
 
     auto& implementation = AIEData.implementation;
-
-    // Todo: set supported flag here
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
@@ -250,7 +252,6 @@ namespace xdp {
     , isPLIO              // isPLIO?
     , aieTraceBufSize     // total trace buffer size
     , metadata->getNumStreams()
-    , implementation->isEdge()
     );
     auto& offloader = AIEData.offloader;
 
@@ -270,7 +271,19 @@ namespace xdp {
       offloader->startOffload();
   }
 
-  void AieTracePlugin::flushAIEDevice(void* handle)
+  void AieTracePluginUnified::flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn)
+  {
+    if (offloader->continuousTrace()) {
+      offloader->stopOffload();
+      while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
+    }
+    offloader->readTrace(true);
+    if (warn && offloader->isTraceBufferFull())
+      xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
+    offloader->endReadTrace();
+  }
+
+  void AieTracePluginUnified::flushAIEDevice(void* handle)
   {
     if (!handle)
       return;
@@ -283,14 +296,12 @@ namespace xdp {
     if (!AIEData.supported)
       return;
 
-    if (AIEData.offloader)
-      AIEData.offloader->readTrace(true);
-
+    flushOffloader(AIEData.offloader, false);
     if (AIEData.implementation)
       AIEData.implementation->flushDevice();
   }
 
-  void AieTracePlugin::finishFlushAIEDevice(void* handle)
+  void AieTracePluginUnified::finishFlushAIEDevice(void* handle)
   {
     if (!handle)
       return;
@@ -303,45 +314,26 @@ namespace xdp {
     if (!AIEData.supported)
       return;
 
-    auto& offloader = AIEData.offloader;
-    if (offloader) {
-      if (offloader->continuousTrace()) {
-        offloader->stopOffload();
-        while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
-      }
-      offloader->readTrace(true);
-      if (offloader->isTraceBufferFull())
-        xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
-      offloader->endReadTrace();
-    }
-
+    flushOffloader(AIEData.offloader, true);
     if (AIEData.implementation)
       AIEData.implementation->finishFlushDevice();
   }
 
-  void AieTracePlugin::writeAll(bool openNewFiles)
+  void AieTracePluginUnified::writeAll(bool openNewFiles)
   {
     for (const auto& kv : handleToAIEData) {
       auto& AIEData = kv.second;
       if (!AIEData.supported)
         continue;
-      auto& offloader = AIEData.offloader;
-      if (offloader->continuousTrace()) {
-        offloader->stopOffload() ;
-        while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
-      }
-      offloader->readTrace(true);
-      if (offloader->isTraceBufferFull())
-        xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
-      offloader->endReadTrace();
+      flushOffloader(AIEData.offloader, true);
     }
     handleToAIEData.clear();
     XDPPlugin::endWrite();
   }
 
-  bool AieTracePlugin::alive()
+  bool AieTracePluginUnified::alive()
   {
-    return AieTracePlugin::live;
+    return AieTracePluginUnified::live;
   }
 
 } // end namespace xdp

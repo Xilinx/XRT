@@ -1219,8 +1219,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
                                               deviceIntf, aieTraceLogger,
                                               isPLIO,              // isPLIO?
                                               aieTraceBufSize,     // total trace buffer size
-                                              numAIETraceOutput,  // numStream
-                                              true);              // isEdge
+                                              numAIETraceOutput);  // numStream
 
     // Can't call init without setting important details in offloader
     if (continuousTrace && isPLIO) {

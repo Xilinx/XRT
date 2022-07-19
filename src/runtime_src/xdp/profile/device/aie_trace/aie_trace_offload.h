@@ -21,6 +21,20 @@
 #include "xdp/config.h"
 #include "xdp/profile/device/tracedefs.h"
 
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * We can only include/compile aie specific headers, when compiling for edge+versal.
+ *
+ * AIE specific edge code that needs to be protected includes:
+ * 1. Header file inclusions
+ * 2. GMIO driver specific definitions
+ * 3. GMIO driver calls to configure shim DMA
+ *
+ * When XRT_NATIVE_BUILD is defined, the offloading structure is:
+ * 1. For PL offload, same as edge
+ * 2. For GMIO offload, ps kernel needs to be used to initialize and read data
+ */
+
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
 #include "core/edge/user/aie/aie.h"
 #endif
@@ -53,6 +67,10 @@ struct AIETraceBufferInfo
   {}
 };
 
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
 struct AIETraceGmioDMAInst
 {
@@ -77,8 +95,8 @@ class AIETraceOffload
                     DeviceIntf*, AIETraceLogger*,
                     bool     isPlio,
                     uint64_t totalSize,
-                    uint64_t numStrm,
-                    bool isEdge);
+                    uint64_t numStrm
+                   );
 
     XDP_EXPORT
     virtual ~AIETraceOffload();
@@ -119,7 +137,6 @@ private:
     bool     isPLIO;
     uint64_t totalSz;
     uint64_t numStream;
-    bool isEdge;
 
     // Set this to true for more verbose trace offload
     // Internal use only
@@ -129,6 +146,10 @@ private:
 
     std::vector<AIETraceBufferInfo>  buffers;
 
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
     std::vector<AIETraceGmioDMAInst> gmioDMAInsts;
 #endif

@@ -23,10 +23,10 @@
 
 namespace xdp {
 
-  class AieTracePlugin : public XDPPlugin {
+  class AieTracePluginUnified : public XDPPlugin {
   public:
-    XDP_EXPORT AieTracePlugin();
-    XDP_EXPORT ~AieTracePlugin();
+    XDP_EXPORT AieTracePluginUnified();
+    XDP_EXPORT ~AieTracePluginUnified();
     XDP_EXPORT void updateAIEDevice(void* handle);
     XDP_EXPORT void flushAIEDevice(void* handle);
     XDP_EXPORT void finishFlushAIEDevice(void* handle);
@@ -35,6 +35,7 @@ namespace xdp {
 
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
+    void flushOffloader(const std::unique_ptr<AIETraceOffload>& offloader, bool warn);
 
   private:
     static bool live;

@@ -32,7 +32,6 @@ namespace xdp {
       void updateDevice();
       void flushDevice();
       void finishFlushDevice();
-      bool isEdge();
 
       bool setMetrics(uint64_t deviceId, void* handle);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);

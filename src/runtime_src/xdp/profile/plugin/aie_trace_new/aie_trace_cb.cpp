@@ -21,25 +21,25 @@ namespace xdp {
 
   // AIE Trace Plugin has only a static instance of the plugin object and a callback
 
-  static AieTracePlugin aieTracePluginInstance;
+  static AieTracePluginUnified aieTracePluginInstance;
 
   static void updateAIEDevice(void* handle)
   {
-    if (AieTracePlugin::alive()) {
+    if (AieTracePluginUnified::alive()) {
       aieTracePluginInstance.updateAIEDevice(handle);
     }
   }
 
   static void flushAIEDevice(void* handle)
   {
-    if (AieTracePlugin::alive()) {
+    if (AieTracePluginUnified::alive()) {
       aieTracePluginInstance.flushAIEDevice(handle);
     }
   }
 
   static void finishFlushAIEDevice(void* handle)
   {
-    if (AieTracePlugin::alive()) {
+    if (AieTracePluginUnified::alive()) {
       aieTracePluginInstance.finishFlushAIEDevice(handle);
     }
   }

@@ -17,9 +17,10 @@
 #ifdef  XDP_PLUGIN_AIE_TRACE_CB_H
 #define XDP_PLUGIN_AIE_TRACE_CB_H
 
-extern "C" 
+extern "C" {
 void updateAIEDevice(void* handle) ;
 void flushAIEDevice(void* handle) ;
 void finishFlushAIEDevice(void* handle) ;
+}
 
 #endif

@@ -27,6 +27,10 @@
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
 #include <sys/mman.h>
 #include "core/include/xrt.h"
@@ -43,7 +47,6 @@ AIETraceOffload::AIETraceOffload
   , bool isPlio
   , uint64_t totalSize
   , uint64_t numStrm
-  , bool isEdge
   )
   : deviceHandle(handle)
   , deviceId(id)
@@ -52,7 +55,6 @@ AIETraceOffload::AIETraceOffload
   , isPLIO(isPlio)
   , totalSz(totalSize)
   , numStream(numStrm)
-  , isEdge(isEdge)
   , traceContinuous(false)
   , offloadIntervalUs(0)
   , bufferInitialized(false)
@@ -81,6 +83,10 @@ bool AIETraceOffload::initReadTrace()
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
   } else {
     memIndex = 0;  // for now
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
     gmioDMAInsts.clear();
     gmioDMAInsts.resize(numStream);
@@ -105,6 +111,10 @@ bool AIETraceOffload::initReadTrace()
     if (isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i, mEnCircularBuf);
     } else {
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
@@ -175,6 +185,10 @@ void AIETraceOffload::endReadTrace()
       deviceIntf->resetAIETs2mm(i);
 //      deviceIntf->freeTraceBuf(b.boHandle);
     } else {
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);

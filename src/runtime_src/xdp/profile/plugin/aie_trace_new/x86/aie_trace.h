@@ -33,7 +33,6 @@ namespace xdp {
       void flushDevice();
       void finishFlushDevice();
       bool setMetrics(uint64_t deviceId, void* handle);
-      bool isEdge();
       uint64_t checkTraceBufSize(uint64_t size);
   };
 

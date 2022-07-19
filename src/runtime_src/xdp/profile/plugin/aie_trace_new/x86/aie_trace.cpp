@@ -61,10 +61,6 @@ namespace xdp {
     // Release aie resources here
   }
 
-  bool AieTrace_x86Impl::isEdge(){
-    return false;
-  }
-
   // No CMA checks on x86
   uint64_t AieTrace_x86Impl::checkTraceBufSize(uint64_t size) {
     return size;
@@ -129,9 +125,10 @@ namespace xdp {
     total_size = sizeof(xdp::built_in::InputConfiguration) + sizeof(uint16_t[(numTiles * 2) - 1]);
 
     //Cast struct to uint8_t pointer and pass this data
-    uint8_t* input = reinterpret_cast<uint8_t*>(input_params);
+    //uint8_t* input = reinterpret_cast<uint8_t*>(input_params);
 
     // needs to be modified
+/*
     auto device = xrt::device(0);
     auto uuid = device.load_xclbin("runtime_trace_kernel.xclbin");
     auto aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie_trace_kernel");
@@ -145,7 +142,7 @@ namespace xdp {
     bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, MAX_LENGTH, 0);
     auto run = aie_trace_kernel(bo0);
     run.wait();
-
+*/
     free(input_params);
 
   // auto device = xrt::device("0");

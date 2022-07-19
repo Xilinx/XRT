@@ -49,7 +49,6 @@ namespace xdp {
     virtual void updateDevice() = 0;
     virtual void flushDevice() = 0;
     virtual void finishFlushDevice() = 0;
-    virtual bool isEdge() = 0;
     virtual uint64_t checkTraceBufSize(uint64_t size) = 0;
   };
 
