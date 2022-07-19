@@ -458,7 +458,7 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   std::fill(valid_data.begin(), valid_data.end(), 'A');
 
   // Perform one large write
-  auto buf_size = xrt_core::getpagesize();
+  const auto buf_size = xrt_core::getpagesize();
   p2ptest_set_or_cmp(buf, buf_size, valid_data, true);
   if (xclUnmgdPwrite(handle, 0, buf, buf_size, dev_addr) < 0)
     return false;
