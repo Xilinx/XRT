@@ -144,6 +144,44 @@ struct sdm_sensor_info
   using data_type = query::sdm_sensor_info::data_type;
   using sdr_req_type = query::sdm_sensor_info::sdr_req_type;
 
+  static result_type
+  read_sensors_raw_data(const xrt_core::device* device,
+                        std::string sname)
+  {
+    auto pdev = get_pcidev(device);
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    result_type output;
+    std::vector<std::string> stats;
+    std::string errmsg;
+
+    // The voltage_sensors_raw is printing in formatted string of each line
+    // Format: "%s,%u,%u,%u,%u"
+    // Using comma as separator.
+    pdev->sysfs_get("hwmon_sdm", sname, errmsg, stats);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    for (auto& line : stats) {
+      boost::char_separator<char> sep(",");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 5)
+        throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
+
+      data_type data { };
+      tokenizer::iterator tok_it = tokens.begin();
+
+      data.label     = std::string(*tok_it++);
+      data.input     = std::stoi(std::string(*tok_it++));
+      data.average   = std::stoi(std::string(*tok_it++));
+      data.max       = std::stoi(std::string(*tok_it++));
+      data.status    = std::stoi(std::string(*tok_it++));
+      output.push_back(data);
+    }
+
+    return output;
+  }
+
   static data_type
   parse_sysfs_nodes(const xrt_core::device* device,
                     std::string tpath,
@@ -151,7 +189,7 @@ struct sdm_sensor_info
   {
     auto pdev = get_pcidev(device);
     //sensors are stored in hwmon sysfs dir with name ends with as follows.
-    std::array<std::string, 8> sname_end = {"label", "input", "max", "average", "highest", "status", "units", "unitm"};
+    std::array<std::string, 7> sname_end = {"label", "input", "max", "average", "status", "units", "unitm"};
     int max_end_types = sname_end.size();
     std::string errmsg, str_op, target_snode;
     // data_type has default constructor that initializes data members appropriately,
@@ -198,24 +236,18 @@ struct sdm_sensor_info
           data.average = uint_op;
         break;
       case 4:
-        // read sysfs node <tpath>highest
-        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
-        if (errmsg.empty())
-          data.highest = uint_op;
-        break;
-      case 5:
         // read sysfs node <tpath>status
         pdev->sysfs_get("", target_snode, errmsg, str_op);
         if (errmsg.empty())
           data.status = str_op;
         break;
-      case 6:
+      case 5:
         // read sysfs node <tpath>units
         pdev->sysfs_get("", target_snode, errmsg, str_op);
         if (errmsg.empty())
           data.units = str_op;
         break;
-      case 7:
+      case 6:
         // read sysfs node <tpath>unitm
         pdev->sysfs_get<int8_t>("", target_snode, errmsg, unitm, 0);
         if (errmsg.empty())
@@ -234,15 +266,24 @@ struct sdm_sensor_info
     result_type output;
     //sensors are stored in hwmon sysfs dir with name starts with as follows.
     std::array<std::string, 5> sname_start = {"curr", "in", "power", "temp", "fan"};
+    auto type = sname_start[(int)req_type];
+
+    if (!type.compare("in") || !type.compare("curr") || !type.compare("temp"))
+    {
+      std::string sysfs_name;
+      if (!type.compare("in"))
+        sysfs_name = "voltage_sensors_raw";
+      if (!type.compare("curr"))
+        sysfs_name = "current_sensors_raw";
+      if (!type.compare("temp"))
+        sysfs_name = "temp_sensors_raw";
+      output = read_sensors_raw_data(device, sysfs_name);
+      return output;
+    }
+
     bool next_id = false;
     //All sensor sysfs nodes starts with 1 as starting index.
     int start_id = 1;
-    auto type = sname_start[(int)req_type];
-
-    //voltage sensor sysfs node starts with "in" with 0 as starting index.
-    if (!type.compare("in"))
-      start_id = 0;
-
     while (!next_id)
     {
       data_type data;
@@ -1075,7 +1116,6 @@ initialize_query_table()
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
   emplace_func0_request<query::pcie_bdf,                       bdf>();
-  emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::instance,                       instance>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
 
