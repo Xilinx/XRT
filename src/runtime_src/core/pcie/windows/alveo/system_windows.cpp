@@ -177,7 +177,8 @@ get_bdf_info(device::id_type id, bool is_user) const
                       return static_cast<uint16_t>(std::stoi(m.str()));
                     });
 
-  return std::make_tuple(bdf[0], bdf[1], bdf[2], uint16_t(is_user ? 1 : 0));
+  bdf[3] = (is_user ? 1 : 0);
+  return std::make_tuple(bdf[0], bdf[1], bdf[2], bdf[3]);
 }
 
 void
