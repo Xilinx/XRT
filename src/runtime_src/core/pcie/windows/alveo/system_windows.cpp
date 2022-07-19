@@ -1,7 +1,6 @@
-/*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file is delivered with core library (libxrt_core), see
 // core/pcie/windows/CMakeLists.txt.  To prevent compilation of this
