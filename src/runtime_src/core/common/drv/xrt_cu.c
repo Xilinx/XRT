@@ -87,6 +87,18 @@ static void cu_timer(struct timer_list *t)
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 }
 
+static void xrt_cu_switch_to_interrupt(struct xrt_cu *xcu)
+{
+	xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+	xcu->interrupt_used = 1;
+}
+
+static void xrt_cu_switch_to_poll(struct xrt_cu *xcu)
+{
+	xrt_cu_disable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+	xcu->interrupt_used = 0;
+}
+
 static inline struct kds_client *
 first_event_client_or_null(struct xrt_cu *xcu)
 {
@@ -154,11 +166,6 @@ static inline void process_cq(struct xrt_cu *xcu)
 		xcmd->cb.free(xcmd);
 		--xcu->num_cq;
 		xcu->cu_stat.usage++;
-	}
-	if (xcu->thread) {
-		if (xcu->poll_count == xcu->poll_threshold)
-			xrt_cu_disable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
-		xcu->poll_count = 0;
 	}
 }
 
@@ -270,6 +277,11 @@ static inline int process_rq(struct xrt_cu *xcu)
 		return 0;
 	}
 	xrt_cu_start(xcu);
+	if (xcu->thread) {
+		xcu->poll_count = 0;
+		if (xcu->interrupt_used)
+			xrt_cu_switch_to_poll(xcu);
+	}
 	set_xcmd_timestamp(xcmd, KDS_RUNNING);
 	xrt_cu_circ_produce(xcu, CU_LOG_STAGE_RQ, (uintptr_t)xcmd);
 
@@ -427,7 +439,7 @@ int xrt_cu_intr_thread(void *data)
 	int ret = 0;
 	int loop_cnt = 0;
 
-	xcu->poll_count = 0;
+	xcu->interrupt_used = 0;
 	xcu_info(xcu, "CU[%d] start", xcu->info.cu_idx);
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	while (!xcu->stop) {
@@ -440,7 +452,7 @@ int xrt_cu_intr_thread(void *data)
 
 		process_cq(xcu);
 		if (xcu->num_sq || is_zero_credit(xcu)) {
-			if (xcu->poll_count < xcu->poll_threshold) {
+			if (!xcu->interrupt_used) {
 				/* Use this special code to measure time of a loop.
 				 * On APU, it takes about 2us on each loop.
 				 *   xrt_cu_circ_produce(xcu, 5, 0);
@@ -450,9 +462,10 @@ int xrt_cu_intr_thread(void *data)
 				/* If poll_count reach threshold, switch to
 				 * interrupt mode.
 				 */
-				if (xcu->poll_count == xcu->poll_threshold)
-					xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+				if (xcu->poll_count >= xcu->poll_threshold)
+					xrt_cu_switch_to_interrupt(xcu);
 			} else {
+				xrt_cu_check(xcu);
 				if (!xcu->done_cnt || !xcu->ready_cnt) {
 					xcu->sleep_cnt++;
 					/* Don't use down_interruptible() here.
@@ -778,6 +791,7 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	xcu->start_tick = 0;
 	xcu->thread = NULL;
 	xcu->poll_threshold = CU_DEFAULT_POLL_THRESHOLD;
+	xcu->interrupt_used = 0;
 
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	return err;

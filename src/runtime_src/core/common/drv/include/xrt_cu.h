@@ -350,6 +350,7 @@ struct xrt_cu {
 	struct task_struct	  *thread;
 	u32			   poll_count;
 	u32                        poll_threshold;
+	u32			   interrupt_used;
 	/* Good for debug */
 	u32			   sleep_cnt;
 	u32			   max_running;
