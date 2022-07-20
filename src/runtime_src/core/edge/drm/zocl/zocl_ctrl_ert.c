@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Author(s):
  *        Max Zhen <maxz@xilinx.com>
@@ -561,6 +562,7 @@ static int zert_cu_intc_init(struct zocl_ctrl_ert *zert)
 				   &zert->zce_cu_intc);
 	if (ret)
 		zert_err(zert, "Failed to create CU intc device: %d", ret);
+	kfree(irqs);
 
 out:
 	return 0;
