@@ -97,8 +97,8 @@ void  main_(int argc, char** argv,
   }
 
   // If not asking for version or help in xbutil, ensure the versions of XRT and xbutil match
-  if (!bHelp && !bForce && isUserDomain)
-    XBU::xrt_xbutil_version_cmp();
+  if (!bHelp && isUserDomain)
+    XBU::xrt_xbutil_version_cmp(bForce);
  
   // -- Enable/Disable helper "global" options
   XBU::disable_escape_codes( bBatchMode );

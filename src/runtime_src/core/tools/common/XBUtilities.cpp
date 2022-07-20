@@ -248,20 +248,27 @@ str2index(const std::string& str, bool _inUserDomain)
 }
 
 void
-XBUtilities::xrt_xbutil_version_cmp()
+XBUtilities::xrt_xbutil_version_cmp(bool force)
 {
   boost::property_tree::ptree pt_xrt;
   xrt_core::get_xrt_info(pt_xrt);
-  boost::property_tree::ptree empty_ptree;
+  const boost::property_tree::ptree empty_ptree;
 
-  std::string xrt_version = pt_xrt.get<std::string>("version", "N/A");
+  std::string xrt_version = pt_xrt.get<std::string>("version", "<unknown>");
   const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
-  for(auto& drv : available_drivers) {
+  for(const auto& drv : available_drivers) {
     const boost::property_tree::ptree& driver = drv.second;
-    std::string drv_name = driver.get<std::string>("name", "N/A");
-    std::string drv_version = driver.get<std::string>("version", "N/A");
-    if (drv_name.compare("xocl") == 0 && drv_version.compare("unknown") != 0 && xrt_version.compare(drv_version) != 0)
-      throw std::runtime_error(boost::str(boost::format("Unexpected XRT Driver version (%s) was found. Expected %s, to match XRT tools.") % drv_version % xrt_version));
+    std::string drv_name = driver.get<std::string>("name", "<unknown>");
+    std::string drv_version = driver.get<std::string>("version", "<unknown>");
+    if (drv_name.compare("xocl") == 0 && drv_version.compare("unknown") != 0 && xrt_version.compare(drv_version) != 0) {
+      const auto & errMsg = boost::str(boost::format("Unexpected XRT Driver version (%s) was found. Expected %s, to match XRT tools.") % drv_version % xrt_version);
+      if (force) {
+        std::cout << errMsg << std::endl;
+        std::cout << "Bypassing mismatch with --force." << std::endl;
+      } else {
+        throw std::runtime_error(errMsg);
+      }
+    }
   }
 }
 
