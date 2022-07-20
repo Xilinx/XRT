@@ -1509,7 +1509,7 @@ namespace xdp {
           auto kernelName = kernel.second.get<std::string>("name", "");
           for (auto& port : kernel.second.get_child("ports")) {
             auto portName = port.second.get<std::string>("name");
-            if (portName == "S_AXI_CONTROL")
+            if (portName == "S_AXI_CONTROL" || portName == "STREAM")
               continue;
             auto portWidth = port.second.get<std::string>("data_width");
 	    std::transform(portName.begin(), portName.end(), portName.begin(),
@@ -1521,7 +1521,7 @@ namespace xdp {
           }
           for (auto& arg : kernel.second.get_child("arguments")) {
             auto portName = arg.second.get<std::string>("port");
-            if (portName == "S_AXI_CONTROL")
+            if (portName == "S_AXI_CONTROL" || portName == "STREAM")
               continue;
 	    std::transform(portName.begin(), portName.end(), portName.begin(),
                            tolower);
