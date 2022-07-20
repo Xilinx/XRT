@@ -1509,8 +1509,10 @@ namespace xdp {
           auto kernelName = kernel.second.get<std::string>("name", "");
           for (auto& port : kernel.second.get_child("ports")) {
             auto portName = port.second.get<std::string>("name");
-            if (portName == "S_AXI_CONTROL" || portName == "STREAM")
+            auto portType = port.second.get<std::string>("port_type");
+            if (portName == "S_AXI_CONTROL" || portType == "stream")
               continue;
+
             auto portWidth = port.second.get<std::string>("data_width");
 	    std::transform(portName.begin(), portName.end(), portName.begin(),
                            tolower);
@@ -1521,11 +1523,15 @@ namespace xdp {
           }
           for (auto& arg : kernel.second.get_child("arguments")) {
             auto portName = arg.second.get<std::string>("port");
-            if (portName == "S_AXI_CONTROL" || portName == "STREAM")
+            auto portType = arg.second.get<std::string>("type");
+            if (portName == "S_AXI_CONTROL" ||
+                portType.find("stream") != std::string::npos)
               continue;
 	    std::transform(portName.begin(), portName.end(), portName.begin(),
                            tolower);
             auto argName = arg.second.get<std::string>("name");
+            if (argumentToMemoryIndex.find(argName) == argumentToMemoryIndex.end())
+              continue; // Skip streams not connected to memory
             auto memId = argumentToMemoryIndex[argName];
 
             currentXclbin->pl.addArgToPort(kernelName, argName, portName);
