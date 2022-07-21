@@ -165,7 +165,7 @@ struct sdm_sensor_info
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 5)
+      if (std::distance(tokens.begin(), tokens.end()) != 6)
         throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
       data_type data { };
@@ -176,6 +176,7 @@ struct sdm_sensor_info
       data.average   = std::stoi(std::string(*tok_it++));
       data.max       = std::stoi(std::string(*tok_it++));
       data.status    = std::stoi(std::string(*tok_it++));
+      data.unitm     = std::stoi(std::string(*tok_it++));
       output.push_back(data);
     }
 
