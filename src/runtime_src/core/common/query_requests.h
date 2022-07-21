@@ -283,8 +283,6 @@ enum class key_type
   hwmon_sdm_revision,
   hwmon_sdm_fan_presence,
   hotplug_offline,
-  pcie_device_online,
-  pcie_device_shutdown,
 
   cu_size,
   cu_read_range,
@@ -3077,24 +3075,6 @@ struct hotplug_offline : request
 {
   using result_type = bool;
   static const key_type key = key_type::hotplug_offline;
-
-  virtual boost::any
-  get(const device*) const = 0;
-};
-
-struct pcie_device_online : request
-{
-  using result_type = bool;
-  static const key_type key = key_type::pcie_device_online;
-
-  virtual boost::any
-  get(const device*) const = 0;
-};
-
-struct pcie_device_shutdown : request
-{
-  using result_type = bool;
-  static const key_type key = key_type::pcie_device_shutdown;
 
   virtual boost::any
   get(const device*) const = 0;

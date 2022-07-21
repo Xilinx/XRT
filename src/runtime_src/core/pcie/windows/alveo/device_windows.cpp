@@ -1305,43 +1305,6 @@ struct accel_deadlock_status
   }
 };
 
-struct pcie_device_shutdown
-{
-  using result_type = query::pcie_device_shutdown::result_type;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    throw xrt_core::error("device shutdown is not supported on user windows");
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    // add code to hot reset pcie device
-    // check xocl_hot_reset code for reference
-    return true;
-  }
-};
-
-struct pcie_device_online
-{
-  using result_type = query::pcie_device_online::result_type;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    throw xrt_core::error("device online is not supported on user windows");
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    // add code to bring back pcie device after hot reset
-    return true;
-  }
-};
-
 
 template <typename QueryRequestType, typename Getter>
 struct function0_getput : QueryRequestType
@@ -1608,8 +1571,6 @@ initialize_query_table()
   emplace_function0_getter<query::memstat,                   memstat>();
   emplace_function0_getter<query::group_topology,            group_topology>();
   emplace_function0_getter<query::is_versal,                 versal>();
-  emplace_function0_getter<query::pcie_device_online,        pcie_device_online>();
-  emplace_function0_getter<query::pcie_device_shutdown,      pcie_device_shutdown>();
 
   emplace_func4_request<query::aim_counter,                  aim_counter>();
   emplace_func4_request<query::am_counter,                   am_counter>();

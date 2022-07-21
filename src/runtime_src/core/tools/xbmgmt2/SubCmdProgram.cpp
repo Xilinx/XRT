@@ -206,7 +206,12 @@ update_SC(unsigned int  index, const std::string& file)
     throw xrt_core::error("SC is fixed, unable to flash image.");
 
   // Mgmt pf needs to shutdown so that the board doesn't brick
-  xrt_core::device_query<xrt_core::query::pcie_device_shutdown>(dev);
+  try {
+    dev->device_shutdown();
+  }
+  catch (const xrt_core::error& e) {
+    throw xrt_core::error(std::string("Only proceed with SC update if all user applications for the target card(s) are stopped. ") + e.what());
+  }
 
   std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file, BMC_FIRMWARE);
 
@@ -217,7 +222,12 @@ update_SC(unsigned int  index, const std::string& file)
     throw xrt_core::error("Failed to update SC flash image");
 
   // Bring back mgmt pf
-  xrt_core::device_query<xrt_core::query::pcie_device_online>(dev);
+  try {
+    dev->device_online();
+  }
+  catch (const xrt_core::error& e) {
+    throw xrt_core::error(e.what() + std::string(" Please warm reboot."));
+  }
 
   std::cout << boost::format("%-8s : %s \n\n") % "INFO" % "SC firmware image has been programmed successfully.";
 }

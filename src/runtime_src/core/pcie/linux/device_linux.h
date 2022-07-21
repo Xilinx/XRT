@@ -38,6 +38,8 @@ public:
   virtual void close(int dev_handle) const override;
   virtual void reset(query::reset_type&) const override;
   virtual void xclmgmt_load_xclbin(const char* buffer) const override;
+  virtual void device_shutdown() const override;
+  virtual void device_online() const override;
 
 public:
   ////////////////////////////////////////////////////////////////
