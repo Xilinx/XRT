@@ -103,7 +103,7 @@ ReportDynamicRegion::getPropertyTree20202( const xrt_core::device * _pDevice,
       if(cu.get<std::string>("type").compare("PS") != 0)
         continue;
 
-      for (const auto& ps_instance : ps_instance_data) {
+      for (const auto& ps_instance : ps_instance_data.get_child("ps_instances")) {
         const auto& ps_ptree = ps_instance.second;
         std::string kernel_name = ps_ptree.get<std::string>("ps_instance_meta.Kernel name");
         std::string instance_name = ps_ptree.get<std::string>("ps_instance_meta.Instance(CU) name");
@@ -175,7 +175,7 @@ ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
         auto rss_search = [](const std::pair<std::string, boost::property_tree::ptree>& node){ return boost::equal(node.second.get<std::string>("name"), std::string("VmRSS"));};
         const auto& vm_rss = std::find_if(process_status.begin(), process_status.end(), rss_search);
         _output << ps_cu_fmt % index++ % cu.get<std::string>("name") % cu.get<std::string>("usage")
-        % status_val % (*vm_size).second.get<std::string>("value") % (*vm_rss).second.get<std::string>("value");
+        % xrt_core::utils::parse_cu_status(status_val) % (*vm_size).second.get<std::string>("value") % (*vm_rss).second.get<std::string>("value");
       }
     }
     catch( std::exception const& e) {
