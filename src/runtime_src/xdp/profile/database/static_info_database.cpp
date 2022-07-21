@@ -1514,7 +1514,7 @@ namespace xdp {
               continue;
 
             auto portWidth = port.second.get<std::string>("data_width");
-	    std::transform(portName.begin(), portName.end(), portName.begin(),
+            std::transform(portName.begin(), portName.end(), portName.begin(),
                            tolower);
 
             currentXclbin->pl.addComputeUnitPorts(kernelName,
@@ -1527,7 +1527,7 @@ namespace xdp {
             if (portName == "S_AXI_CONTROL" ||
                 portType.find("stream") != std::string::npos)
               continue;
-	    std::transform(portName.begin(), portName.end(), portName.begin(),
+            std::transform(portName.begin(), portName.end(), portName.begin(),
                            tolower);
             auto argName = arg.second.get<std::string>("name");
             if (argumentToMemoryIndex.find(argName) == argumentToMemoryIndex.end())
