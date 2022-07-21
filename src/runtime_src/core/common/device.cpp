@@ -405,9 +405,9 @@ get_ert_slots(const char* xml_data, size_t xml_size) const
 
 std::pair<size_t, size_t>
 device::
-get_ert_slots() const
+get_ert_slots(const uuid& xclbin_id) const
 {
-  auto xml =  get_axlf_section(EMBEDDED_METADATA);
+  auto xml =  get_axlf_section(EMBEDDED_METADATA, xclbin_id);
   if (!xml.first)
     throw error(EINVAL, "No xml metadata in xclbin");
   return get_ert_slots(xml.first, xml.second);

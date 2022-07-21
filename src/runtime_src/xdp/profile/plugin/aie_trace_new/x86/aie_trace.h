@@ -1,7 +1,5 @@
-/*
- * Copyright (C) 2015-2022, Xilinx Inc - All rights reserved
+/**
  * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,9 +14,28 @@
  * under the License.
  */
 
-#ifndef _XCL_XRT_CORE_H_
-#define _XCL_XRT_CORE_H_
+#ifndef AIE_TRACE_DOT_H
+#define AIE_TRACE_DOT_H
 
-#include "deprecated/xrt.h"
+#include <cstdint>
+
+#include "xdp/profile/plugin/aie_trace_new/aie_trace_impl.h"
+
+namespace xdp {
+
+  class AieTrace_x86Impl : public AieTraceImpl{
+    public:
+      AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
+        : AieTraceImpl(database, metadata){}
+      ~AieTrace_x86Impl() = default;
+
+      void updateDevice();
+      void flushDevice();
+      void finishFlushDevice();
+      bool setMetrics(uint64_t deviceId, void* handle);
+      uint64_t checkTraceBufSize(uint64_t size);
+  };
+
+}   
 
 #endif

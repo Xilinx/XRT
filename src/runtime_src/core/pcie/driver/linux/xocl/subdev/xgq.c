@@ -76,6 +76,7 @@
 #define	XGQ_DEV_NAME "ospi_xgq" SUBDEV_SUFFIX
 
 static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
+#define XOCL_VMR_INVALID_CID	0xFFFF
 
 /* cmd timeout in seconds */
 #define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(600 * 1000) 
@@ -85,7 +86,6 @@ static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 
 #define MAX_WAIT 30
 #define WAIT_INTERVAL 1000 //ms
-
 /*
  * reserved shared memory size and number for log page.
  * currently, only 1 resource controlled by sema. Can be extended to n.
@@ -156,6 +156,7 @@ struct xocl_xgq_vmr {
 };
 
 static int vmr_status_query(struct platform_device *pdev);
+static void xgq_offline_service(struct xocl_xgq_vmr *xgq);
 
 /*
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
@@ -180,6 +181,15 @@ static void cmd_complete(struct xocl_xgq_vmr *xgq, struct xgq_com_queue_entry *c
 	}
 
 	XGQ_WARN(xgq, "unknown cid %d received", ccmd->hdr.cid);
+	if (ccmd->hdr.cid == XOCL_VMR_INVALID_CID) {
+		XGQ_ERR(xgq, "invalid cid %d, offlineing xgq services...", ccmd->hdr.cid);
+		/*
+		 * Note: xgq_lock mutex is on, release the lock and offline service.
+		 */
+		mutex_unlock(&xgq->xgq_lock);
+		xgq_offline_service(xgq);
+		mutex_lock(&xgq->xgq_lock);
+	}
 	return;
 }
 
@@ -438,6 +448,7 @@ static void xgq_vmr_log_dump_debug(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr
  */
 static void xgq_stop_services(struct xocl_xgq_vmr *xgq)
 {
+	XGQ_INFO(xgq, "halting xgq services");
 
 	/* stop receiving incoming commands */
 	mutex_lock(&xgq->xgq_lock);
@@ -463,8 +474,24 @@ static void xgq_stop_services(struct xocl_xgq_vmr *xgq)
 		msleep(XOCL_XGQ_MSLEEP_1S);
 		xgq_submitted_cmds_drain(xgq);
 	}
+
+	XGQ_INFO(xgq, "xgq service is halted");
 }
 
+static void xgq_offline_service(struct xocl_xgq_vmr *xgq)
+{
+	XGQ_INFO(xgq, "xgq service is going offline...");
+
+	/* If we see timeout cmd first time, dump log into dmesg */
+	if (!xgq->xgq_halted) {
+		xgq_vmr_log_dump_all(xgq);
+	}
+
+	/* then we stop service */
+	xgq_stop_services(xgq);
+
+	XGQ_INFO(xgq, "xgq service is offline");
+}
 
 /*
  * periodically check if there are outstanding timed out commands.
@@ -479,14 +506,7 @@ static int health_worker(void *data)
 		msleep(XOCL_XGQ_MSLEEP_1S * 10);
 
 		if (xgq_submitted_cmd_check(xgq)) {
-
-			/* If we see timeout cmd first time, dump log into dmesg */
-			if (!xgq->xgq_halted) {
-				xgq_vmr_log_dump_all(xgq);
-			}
-
-			/* then we stop service */
-			xgq_stop_services(xgq);
+			xgq_offline_service(xgq);
 		}
 
 		if (kthread_should_stop()) {
@@ -1748,6 +1768,12 @@ static int xgq_collect_sensors_by_sensor_id(struct platform_device *pdev, char *
 	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_AID_GET_SINGLE_SDR, repo_id, buf, len, sensor_id);
 }
 
+static int xgq_collect_all_inst_sensors(struct platform_device *pdev, char *buf,
+	 uint8_t repo_id, uint32_t len)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_AID_GET_ALL_SDR, repo_id, buf, len, 0);
+}
+
 /* sysfs */
 static ssize_t boot_from_backup_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -2331,6 +2357,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.vmr_enable_multiboot = vmr_enable_multiboot,
 	.xgq_collect_sensors_by_repo_id = xgq_collect_sensors_by_repo_id,
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
+	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
 	.vmr_load_firmware = xgq_log_page_fw,
 };
 

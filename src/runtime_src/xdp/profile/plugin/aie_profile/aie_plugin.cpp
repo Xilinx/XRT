@@ -240,7 +240,15 @@ namespace xdp {
   void AIEProfilingPlugin::getPollingInterval()
   {
     // Get polling interval (in usec; minimum is 100)
-    mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
+    mPollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
+    if (1000 == mPollingInterval) {
+      // If set to default value, then check for old style config 
+      mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
+      if (1000 != mPollingInterval) {
+        xrt_core::message::send(severity_level::warning, "XRT", 
+          "The xrt.ini flag \"aie_profile_interval_us\" is deprecated and will be removed in future release. Please use \"interval_us\" under \"AIE_profile_settings\" section.");
+      }
+    }
   }
 
   void AIEProfilingPlugin::printTileModStats(xaiefal::XAieDev* aieDevice, 
@@ -670,7 +678,7 @@ namespace xdp {
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
     XAie_ModuleType falModuleTypes[NUM_MODULES] = 
         {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
-    std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
+    std::string moduleNames[NUM_MODULES] = {"core_module", "memory_module", "interface_tile"};
     std::string metricSettings[NUM_MODULES] = 
         {xrt_core::config::get_aie_profile_core_metrics(),
          xrt_core::config::get_aie_profile_memory_metrics(),
@@ -680,11 +688,18 @@ namespace xdp {
     for (int module=0; module < NUM_MODULES; ++module) {
       std::string metricsStr = metricSettings[module];
       if (metricsStr.empty()){
-        std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
-        std::string metricMsg = "No metric set specified for " + modName + " module. "
-        "Please specify the aie_profile_" + modName + "_metrics setting in your xrt.ini.";
+        std::string metricMsg = "No metric set specified for " + moduleNames[module]
+                              + ". Please specify tile_based_" + moduleNames[module] 
+                              + "_metrics under \"AIE_profile_settings\" section in your xrt.ini.";
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
+      } else {
+        std::string modName = moduleNames[module].substr(0, moduleNames[module].find("_"));
+        std::string depMsg  = "The xrt.ini flag \"aie_profile_" + modName + "_metrics\" is deprecated "
+                              + " and will be removed in future release. Please use"
+                              + " tile_based_" + moduleNames[module] + "_metrics"
+                              + " under \"AIE_profile_settings\" section.";
+        xrt_core::message::send(severity_level::warning, "XRT", depMsg);
       }
       int NUM_COUNTERS       = numCounters[module];
       XAie_ModuleType mod    = falModuleTypes[module];
@@ -774,7 +789,7 @@ namespace xdp {
       // Report counters reserved per tile
       {
         std::stringstream msg;
-        msg << "AIE profile counters reserved in " << moduleName << " modules - ";
+        msg << "AIE profile counters reserved in " << moduleName << " - ";
         for (int n=0; n <= NUM_COUNTERS; ++n) {
           if (numTileCounters[n] == 0) continue;
           msg << n << ": " << numTileCounters[n] << " tiles";
@@ -915,10 +930,8 @@ namespace xdp {
         auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
 
         if (counters.empty()) {
-          std::string msg = "AIE Profile Counters were not found for this design. "
-                            "Please specify aie_profile_core_metrics, aie_profile_memory_metrics, "
-                            "and/or aie_profile_interface_metrics in your xrt.ini.";
-          xrt_core::message::send(severity_level::warning, "XRT", msg);
+          xrt_core::message::send(severity_level::warning, "XRT", 
+            "AIE Profile Counters were not found for this design. Please specify tile_based_[core_module|memory_module|interface_tile]_metrics under \"AIE_profile_settings\" section in your xrt.ini.");
           (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
           return;
         }
@@ -1265,9 +1278,9 @@ namespace xdp {
 
 
     // check validity, set default and remove "off" tiles
-    std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
-                           : ((mod == XAIE_MEM_MOD) ? "memory" 
-                           : "interface tile");
+    std::string moduleName = (mod == XAIE_CORE_MOD) ? "core_module" 
+                           : ((mod == XAIE_MEM_MOD) ? "memory_module" 
+                           : "interface_tile");
 
     std::vector<tile_type> offTiles;
 
@@ -1314,7 +1327,7 @@ namespace xdp {
     // Currently supporting Core, Memory, Interface Tile metrics only. Need to add Memory Tile metrics
     constexpr int NUM_MODULES = 3;
 
-    std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
+    std::string moduleNames[NUM_MODULES] = {"core_module", "memory_module", "interface_tile"};
 
     int numCountersMod[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
@@ -1487,7 +1500,7 @@ namespace xdp {
         // Report counters reserved per tile
         {
           std::stringstream msg;
-          msg << "AIE profile counters reserved in " << moduleNames[module] << " modules - ";
+          msg << "AIE profile counters reserved in " << moduleNames[module] << " - ";
           for (int n=0; n <= numCountersMod[module]; ++n) {
             if (numTileCounters[n] == 0) continue;
             msg << n << ": " << numTileCounters[n] << " tiles";
