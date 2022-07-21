@@ -1310,7 +1310,13 @@ struct pcie_device_shutdown
   using result_type = query::pcie_device_shutdown::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key)
+  user(const xrt_core::device* device, key_type key)
+  {
+    throw xrt_core::error("device shutdown is not supported on user windows");
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
   {
     // add code to hot reset pcie device
     // check xocl_hot_reset code for reference
@@ -1323,7 +1329,13 @@ struct pcie_device_online
   using result_type = query::pcie_device_online::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key)
+  user(const xrt_core::device* device, key_type key)
+  {
+    throw xrt_core::error("device online is not supported on user windows");
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
   {
     // add code to bring back pcie device after hot reset
     return true;
