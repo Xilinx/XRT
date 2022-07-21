@@ -226,9 +226,6 @@ namespace xdp {
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
 
-    for (auto h : deviceHandles)
-      xclClose(h);
-
     AieTracePlugin::live = false;
   }
 
@@ -651,6 +648,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
 
       // AIE config object for this tile
       auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row + 1);
+      cfgTile->trace_metric_set = metricSet;
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
@@ -1134,7 +1132,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     if (runtimeMetrics) {
       std::string configFile = "aie_event_runtime_config.json";
       VPWriter* writer = new AieTraceConfigWriter(configFile.c_str(),
-                                                  deviceId, metricSet) ;
+                                                  deviceId, metricSet);
       writers.push_back(writer);
       (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_RUNTIME_CONFIG");
     }
@@ -1770,6 +1768,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       auto  tile   = tileMetric.first;
       auto  col    = tile.col;
       auto  row    = tile.row;
+      auto& metricSet = tileMetric.second;
       // NOTE: resource manager requires absolute row number
       auto& core   = aieDevice->tile(col, row + 1).core();
       auto& memory = aieDevice->tile(col, row + 1).mem();
@@ -1777,16 +1776,17 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
 
       // AIE config object for this tile
       auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row + 1);
+      cfgTile->trace_metric_set = metricSet;
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
-      EventVector coreEvents = coreEventSets[tileMetric.second];
-      EventVector memoryCrossEvents = memoryEventSets[tileMetric.second];
+      EventVector coreEvents = coreEventSets[metricSet];
+      EventVector memoryCrossEvents = memoryEventSets[metricSet];
       EventVector memoryEvents;
 
       // Check Resource Availability
       // For now only counters are checked
-      if (!tileHasFreeRsc(aieDevice, loc, tileMetric.second)) {
+      if (!tileHasFreeRsc(aieDevice, loc, metricSet)) {
         xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
         printTileStats(aieDevice, tile);
         return false;
