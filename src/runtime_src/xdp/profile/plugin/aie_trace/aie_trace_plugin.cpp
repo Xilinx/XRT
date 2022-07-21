@@ -1729,9 +1729,9 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
   AieTracePlugin::setMetricsSettings(uint64_t deviceId, void* handle)
   {
     // TO DO : mem_tile
-    std::string metricsConfig = xrt_core::config::get_aie_trace_settings_tile_based_engine_tile_metrics();
+    std::string metricsConfig = xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics();
 
-    std::string graphmetricsConfig = xrt_core::config::get_aie_trace_settings_graph_based_engine_tile_metrics();
+    std::string graphmetricsConfig = xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics();
 
     if (metricsConfig.empty() && graphmetricsConfig.empty()) {
 #if 0
