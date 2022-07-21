@@ -404,7 +404,7 @@ public:
 
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
-  get_ert_slots() const;
+  get_ert_slots(const uuid& xclbin_id = uuid()) const;
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}

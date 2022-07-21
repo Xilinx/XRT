@@ -292,7 +292,12 @@ PYBIND11_MODULE(pyxrt, m) {
         .def(py::init([](const axlf* top) {
                           return new xrt::xclbin(top);
                       }))
-        .def("get_ips", &xrt::xclbin::get_ips)
+        .def("get_ips", ([](xrt::xclbin& xbin) {
+                         xbin.get_ips();
+                      }))
+        .def("get_ips", ([](xrt::xclbin& xbin, const std::string& nm) {
+                         xbin.get_ips(nm);
+                      }))
         .def("get_kernels", &xrt::xclbin::get_kernels, "Get list of kernels from xclbin")
         .def("get_xsa_name", &xrt::xclbin::get_xsa_name, "Get Xilinx Support Archive (XSA) name of xclbin")
         .def("get_uuid", &xrt::xclbin::get_uuid, "Get the uuid of the xclbin")

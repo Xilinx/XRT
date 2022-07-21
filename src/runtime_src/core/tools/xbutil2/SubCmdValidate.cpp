@@ -1055,7 +1055,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   }
 
   std::string msg;
-  XBU::xclbin_lock xclbin_lock(_dev);
+  XBU::xclbin_lock xclbin_lock(_dev.get());
   std::vector<std::string> config;
   try {
     config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
@@ -1134,7 +1134,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     return;
   }
 
-  XBU::xclbin_lock xclbin_lock(_dev);
+  XBU::xclbin_lock xclbin_lock(_dev.get());
   // Assume m2m is not enabled
   uint32_t m2m_enabled = 0;
   try {
@@ -1232,7 +1232,7 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
     return;
   }
 
-  XBU::xclbin_lock xclbin_lock(_dev);
+  XBU::xclbin_lock xclbin_lock(_dev.get());
 
   if (!clock_calibration(_dev, _dev->get_device_handle(), _ptTest))
      _ptTest.put("status", test_token_failed);

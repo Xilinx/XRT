@@ -110,8 +110,6 @@ namespace xdp {
 
       // Trace Runtime Status
       AieRC mConfigStatus = XAIE_OK;
-
-      std::vector<void*> deviceHandles;
       std::map<uint64_t, void*> deviceIdToHandle;
 
       typedef std::tuple<AIETraceOffload*, 
