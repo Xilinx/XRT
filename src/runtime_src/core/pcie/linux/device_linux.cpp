@@ -439,7 +439,7 @@ struct instance
 
 };
 
-struct hotplug_offline 
+struct hotplug_offline
 {
   using result_type = query::hotplug_offline::result_type;
 
@@ -451,6 +451,56 @@ struct hotplug_offline
     // Remove both user_pf and mgmt_pf
     if (pcidev::shutdown(mgmt_dev, true, true))
       throw xrt_core::query::sysfs_error("Hotplug offline failed");
+
+    return true;
+  }
+};
+
+struct pcie_device_shutdown
+{
+  using result_type = query::pcie_device_shutdown::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto mgmt_dev = pcidev::get_dev(device->get_device_id(), false);
+
+    // hot reset pcie device
+    if (pcidev::shutdown(mgmt_dev))
+      throw xrt_core::error("Only proceed with SC update if all user applications for the target card(s) are stopped.");
+
+    return true;
+  }
+};
+
+struct pcie_device_online
+{
+  using result_type = query::pcie_device_online::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto mgmt_dev = pcidev::get_dev(device->get_device_id(), false);
+    auto peer_dev = mgmt_dev->lookup_peer_dev();
+    std::string errmsg;
+
+    peer_dev->sysfs_put("", "shutdown", errmsg, "0\n");
+    if (!errmsg.empty())
+      throw xrt_core::error("Userpf is not online. Please warm reboot.");
+
+    const static int dev_timeout = 60;
+    int wait = 0;
+    do {
+      auto hdl = peer_dev->open("", O_RDWR);
+      if (hdl != -1) {
+        peer_dev->close(hdl);
+        break;
+      }
+      sleep(1);
+    } while (++wait < dev_timeout);
+
+    if (wait == dev_timeout)
+      throw xrt_core::error("User function is not back online. Please warm reboot.");
 
     return true;
   }
@@ -1119,6 +1169,8 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                       bdf>();
   emplace_func0_request<query::instance,                       instance>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
+  emplace_func0_request<query::pcie_device_online,             pcie_device_online>();
+  emplace_func0_request<query::pcie_device_shutdown,           pcie_device_shutdown>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_func4_request<query::am_counter,                     am_counter>();
