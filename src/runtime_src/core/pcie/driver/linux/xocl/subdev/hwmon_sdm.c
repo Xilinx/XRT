@@ -560,7 +560,6 @@ index, repo_id);
 		sz = sprintf(buf, "%u\n", uval);
 	} else if (field_id == SYSFS_SDR_UNIT_MODIFIER_VAL) {
 		memcpy(&unitm, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		xocl_err(&sdm->pdev->dev, "+++unitm: %d", unitm);
 		sz = sprintf(buf, "%d\n", unitm);
 	} else if (field_id == SYSFS_SDR_STATUS_VAL) {
 		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
@@ -1105,7 +1104,6 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 
 				//Create *_unitm sysfs node
 				if(strlen(sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL]) != 0) {
-					xocl_err(&sdm->pdev->dev, "+++unitm: %d", in_buf[unit_modifier_index]);
 					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL], repo_id,
 											 SYSFS_SDR_UNIT_MODIFIER_VAL, unit_modifier_index, 1);
 					if (err)
