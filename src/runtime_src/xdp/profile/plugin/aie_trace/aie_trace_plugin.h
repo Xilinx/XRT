@@ -149,6 +149,11 @@ namespace xdp {
       EventVector memoryCounterResetEvents;
       ValueVector memoryCounterEventValues;
 
+      /* Currently only "aie" tile metrics is supported for graph/tile based trace.
+       * So, a single map for tile and resolved metric is sufficient.
+       * In future, when mem_tile and interface_tile metrics will be supported, we will
+       * need separate map for each type or a vector of maps for all types together.
+       */
       std::map<tile_type, std::string> mConfigMetrics;
 //      std::vector<std::map<tile_type, std::string>> mConfigMetrics;
   };

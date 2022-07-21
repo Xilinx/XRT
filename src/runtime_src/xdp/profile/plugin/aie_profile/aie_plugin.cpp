@@ -1008,7 +1008,7 @@ namespace xdp {
 
   std::vector<tile_type>
   AIEProfilingPlugin::getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
-                                                        std::string graph,
+                                                        const std::string &graph,
                                                         void* handle)
   {
     std::vector<tile_type> tiles;
@@ -1025,7 +1025,7 @@ namespace xdp {
   }
 
   std::vector<tile_type>
-  AIEProfilingPlugin::getAllTilesForShimProfiling(void* handle, std::string metricsStr)
+  AIEProfilingPlugin::getAllTilesForShimProfiling(void* handle, const std::string &metricsStr)
   {
     std::vector<tile_type> tiles;
 
