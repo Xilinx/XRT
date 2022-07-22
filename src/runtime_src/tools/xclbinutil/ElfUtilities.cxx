@@ -33,14 +33,14 @@
 namespace XUtil = XclBinUtilities;
 
 static
-auto findExecutablePath(const std::string &executable)
+auto findExecutablePath(const std::string& executable)
 {
   boost::filesystem::path executablePath;
 
 #if 0                       // Only enabled for the Vitis version of xclbinutil
   // -- Check to see if XILINX_VITIS has been set
   const auto xilinxVitisEnv = std::getenv("XILINX_VITIS");
-  
+
   if (xilinxVitisEnv != nullptr) {
     executablePath = xilinxVitisEnv;
     executablePath = executablePath / "aietools" / "tps" / "lnx64" / "gcc" / "bin" / executable;
@@ -57,14 +57,14 @@ auto findExecutablePath(const std::string &executable)
   if (executablePath.string().empty()) {
     XUtil::TRACE("Step 2: Looking for executable path");
     executablePath = boost::process::search_path(executable);
-    if (!boost::filesystem::exists(executablePath)) 
+    if (!boost::filesystem::exists(executablePath))
       XUtil::TRACE("Not found");
 
   }
 #endif
- 
+
   // -- Default path /usr/bin
-  if (executablePath.string().empty()) 
+  if (executablePath.string().empty())
     executablePath = boost::filesystem::path("/usr") / "bin" / executable;
 
   return executablePath;
@@ -157,8 +157,8 @@ isTag(const std::string& entry)
   return true;
 }
 
-static unsigned long 
-readHexString(const std::string& entry, 
+static unsigned long
+readHexString(const std::string& entry,
               const size_t startPos)
 {
   size_t endIndex = entry.find_first_not_of("abcdefABCDEF0123456789", startPos);
@@ -190,8 +190,8 @@ enum class DW_TAG {
 
 
 // Collection of TAGs that is used to convert between human readable and enumeration value
-static const std::vector<std::pair<enum DW_TAG, std::string>> 
-DWTags = {
+static const std::vector<std::pair<DW_TAG, std::string>>
+    DWTags = {
   { DW_TAG::unknown, "DW_TAG_unknown" },
   { DW_TAG::subprogram, "DW_TAG_subprogram" },
   { DW_TAG::pointer_type, "DW_TAG_pointer_type" },
@@ -204,7 +204,7 @@ DWTags = {
   { DW_TAG::structure_type, "DW_TAG_structure_type" },
 };
 
-static enum DW_TAG 
+static DW_TAG
 get_DW_TAG(const std::string& tagString)
 {
   for (const auto& entry : DWTags)
@@ -214,8 +214,8 @@ get_DW_TAG(const std::string& tagString)
   return DW_TAG::unknown;
 }
 
-static const std::string &
-enum_DW_TAG_to_string(enum DW_TAG eTag)
+static const std::string&
+enum_DW_TAG_to_string(DW_TAG eTag)
 {
   for (const auto& entry : DWTags)
     if (entry.first == eTag)
@@ -225,7 +225,7 @@ enum_DW_TAG_to_string(enum DW_TAG eTag)
 }
 
 static std::string
-get_DW_AT_value(const std::string& entry, 
+get_DW_AT_value(const std::string& entry,
                 const std::string& tag,
                 bool findFirst = false)
 //    <434>   DW_AT_name        : (indirect string, offset: 0xa7): nullptr_t
@@ -250,7 +250,7 @@ get_DW_AT_value(const std::string& entry,
   return returnValue;
 }
 
-static void 
+static void
 if_exist_add_DW_AT_byte_size(const std::string& entry,
                              boost::property_tree::ptree& pt)
 //    <6f9>   DW_AT_byte_size   : 8
@@ -264,14 +264,14 @@ if_exist_add_DW_AT_byte_size(const std::string& entry,
   // Find the byte size value
   auto byteSizeValue  = tagValue;
   size_t valueIndex = tagValue.find_last_of(" ");
-  if (valueIndex != std::string::npos) 
+  if (valueIndex != std::string::npos)
     byteSizeValue = tagValue.substr(valueIndex);
 
   boost::algorithm::trim(byteSizeValue);
   pt.put(tag, byteSizeValue);
 }
 
-static void 
+static void
 if_exist_add_DW_AT_type(const std::string& entry,
                         boost::property_tree::ptree& pt)
 //    <cbf>   DW_AT_type        : <0xc73>
@@ -294,7 +294,8 @@ if_exist_add_DW_AT_type(const std::string& entry,
 }
 
 static void
-remove_helper_comment(std::string & tagValue) {
+remove_helper_comment(std::string& tagValue)
+{
   size_t startIndex = tagValue.find("(");
   size_t endIndex = tagValue.find(")");
   if ((startIndex != std::string::npos) && (endIndex != std::string::npos)) {
@@ -303,7 +304,7 @@ remove_helper_comment(std::string & tagValue) {
   }
 }
 
-static void 
+static void
 if_exist_add_DW_AT_name(const std::string& entry,
                         boost::property_tree::ptree& pt)
 //    <cc4>   DW_AT_name        : (indirect string, offset: 0x5ee): kernel0
@@ -327,7 +328,7 @@ if_exist_add_DW_AT_name(const std::string& entry,
 }
 
 
-static unsigned long 
+static unsigned long
 get_tag_offset(const std::string& entry)
 // <1><c79>: Abbrev Number: 62 (DW_TAG_class_type)
 {
@@ -341,7 +342,7 @@ get_tag_offset(const std::string& entry)
 }
 
 
-static void 
+static void
 add_DWTAG_pointerType(size_t& index,
                       const std::vector<std::string>& dwarfEntries,
                       AbbrevCollection& argTags)
@@ -368,7 +369,7 @@ add_DWTAG_pointerType(size_t& index,
   argTags.emplace_back(offset, ptDWTAG);
 }
 
-static void 
+static void
 add_DWTAG_referenceType(size_t& index,
                         const std::vector<std::string>& dwarfEntries,
                         AbbrevCollection& argTags)
@@ -391,7 +392,7 @@ add_DWTAG_referenceType(size_t& index,
   argTags.emplace_back(offset, ptDWTAG);
 }
 
-static void 
+static void
 add_DWTAG_typedef(size_t& index,
                   const std::vector<std::string>& dwarfEntries,
                   AbbrevCollection& argTags)
@@ -416,7 +417,7 @@ add_DWTAG_typedef(size_t& index,
   argTags.emplace_back(offset, ptDWTAG);
 }
 
-static void 
+static void
 add_DWTAG_base_type(size_t& index,
                     const std::vector<std::string>& dwarfEntries,
                     AbbrevCollection& argTags)
@@ -441,7 +442,7 @@ add_DWTAG_base_type(size_t& index,
   argTags.emplace_back(offset, ptDWTAG);
 }
 
-static void 
+static void
 add_DWTAG_class_type(size_t& index,
                      const std::vector<std::string>& dwarfEntries,
                      AbbrevCollection& argTags)
@@ -465,7 +466,7 @@ add_DWTAG_class_type(size_t& index,
   argTags.emplace_back(offset, ptDWTAG);
 }
 
-static void 
+static void
 add_DWTAG_const_type(size_t& index,
                      const std::vector<std::string>& dwarfEntries,
                      AbbrevCollection& argTags)
@@ -488,7 +489,7 @@ add_DWTAG_const_type(size_t& index,
   argTags.emplace_back(offset, ptDWTAG);
 }
 
-static void 
+static void
 add_DWTAG_structure_type(size_t& index,
                          const std::vector<std::string>& dwarfEntries,
                          AbbrevCollection& argTags)
@@ -516,7 +517,7 @@ add_DWTAG_structure_type(size_t& index,
 
 
 static const boost::property_tree::ptree&
-get_dw_type(const std::string& typeOffset, 
+get_dw_type(const std::string& typeOffset,
             const AbbrevCollection& argTags)
 // <0xcc3>
 // (ref4) <0xcbd>, xrtHandles
@@ -553,7 +554,7 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
 {
   // If there is no offset, do nothing.
   if (typeOffset.empty()) {
-    ptArgument.put("type","void");
+    ptArgument.put("type", "void");
     return;
   }
 
@@ -561,14 +562,14 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
   if (ptTag.empty())
     throw std::runtime_error("ERROR: No cache value found for: '" + typeOffset + "'");
 
-  enum DW_TAG dwTag = get_DW_TAG(ptTag.get<std::string>("DW_TAG"));
+  DW_TAG dwTag = get_DW_TAG(ptTag.get<std::string>("DW_TAG"));
 
   switch (dwTag) {
     case DW_TAG::pointer_type: {
-        evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type",""), argTags, ptArgument);
+        evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type", ""), argTags, ptArgument);
         ptArgument.put("primitive-byte-size", ptTag.get<std::string>("DW_AT_byte_size"));
         // Add pointer
-        std::string argType = ptArgument.get<std::string>("type", "") + "*";
+        auto argType = ptArgument.get<std::string>("type", "") + "*";
         ptArgument.put<std::string>("type", argType);
         ptArgument.put("address-qualifier", "GLOBAL");
         break;
@@ -578,7 +579,7 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
       break;
 
     case DW_TAG::_typedef:
-      evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type",""), argTags, ptArgument);
+      evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type", ""), argTags, ptArgument);
       ptArgument.put("type", ptTag.get<std::string>("DW_AT_name"));
       break;
 
@@ -588,17 +589,17 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
       break;
 
     case DW_TAG::const_type: {
-        evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type",""), argTags, ptArgument);
+        evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type", ""), argTags, ptArgument);
         // Add const
-        std::string argType = "const " + ptArgument.get<std::string>("type", "");
+        auto argType = "const " + ptArgument.get<std::string>("type", "");
         ptArgument.put<std::string>("type", argType);
         break;
       }
 
-    case DW_TAG::structure_type: 
+    case DW_TAG::structure_type:
       ptArgument.put("type", ptTag.get<std::string>("DW_AT_name"));
       break;
-      
+
     default:
       throw std::runtime_error("ERROR: DW enum not supported: " + enum_DW_TAG_to_string(dwTag));
       break;
@@ -731,13 +732,13 @@ add_DWTAG_subprogram(size_t& index,
     // Examine this argument
     boost::property_tree::ptree ptArg;
     add_formal_parameter(index, dwarfEntries, argTags, ptArg);
-    ptArgsArray.push_back(std::make_pair("", ptArg));
+    ptArgsArray.push_back({ "", ptArg });
   }
 
   if (!ptArgsArray.empty()) {
-      // If the function type is a kernel, the last argument should not have an ID
-      if (functionType == "kernel")
-        ptArgsArray.back().second.put("use-id", 0);
+    // If the function type is a kernel, the last argument should not have an ID
+    if (functionType == "kernel")
+      ptArgsArray.back().second.put("use-id", 0);
 
     ptFunction.add_child("args", ptArgsArray);
   }
@@ -745,7 +746,7 @@ add_DWTAG_subprogram(size_t& index,
   ptFunction.put("signature", create_function_signature(ptArgsArray));
 
   // The the kernel to the collection
-  ptFunctionArray.push_back(std::make_pair("", ptFunction));
+  ptFunctionArray.push_back({ "", ptFunction });
 }
 
 static void
@@ -837,7 +838,7 @@ dataMineExportedFunctionsReadElf(const std::string& elfLibrary,
                                  std::vector<std::string>& dwarfEntries)
 {
   // Call readelf to get the collection of functions
-  const auto readElfPath = findExecutablePath("readelf"); 
+  const auto readElfPath = findExecutablePath("readelf");
 
   const std::vector<std::string> cmdOptions = { "--wide", "-wi", elfLibrary };
   std::ostringstream os_stdout;

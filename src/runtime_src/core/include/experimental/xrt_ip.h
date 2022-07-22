@@ -1,14 +1,15 @@
-/**
- * Copyright (C) 2021-2022 Xilinx, Inc
- * SPDX-License-Identifier: Apache-2.0
- */
-#ifndef _XRT_IP_H_
-#define _XRT_IP_H_
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+#ifndef XRT_IP_H_
+#define XRT_IP_H_
 
 #include "xrt.h"
 #include "xrt/xrt_uuid.h"
 #include "xrt/xrt_device.h"
 #include "xrt/detail/pimpl.h"
+
+#include "experimental/xrt_hw_context.h"
 
 #ifdef __cplusplus
 # include <condition_variable>
@@ -140,6 +141,12 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   ip(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name);
+
+  /// @cond
+  /// Experimental in 2022.2
+  XCL_DRIVER_DLLESPEC
+  ip(const xrt::hw_context& ctx, const std::string& name);
+  /// @endcond
 
   /**
    * write_register() - Write to the address range of an ip

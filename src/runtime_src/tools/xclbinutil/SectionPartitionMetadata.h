@@ -24,16 +24,14 @@
 // --- C L A S S :   S e c t i o n P a r t i t i o n M e t a d a t a ---------
 class SectionPartitionMetadata : public Section {
  public:
-  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
-  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
-  void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo) override;
+  void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo)override;
 
  protected:
   void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  protected:
-   static const FDTProperty::PropertyNameFormat m_propertyNameFormat;
+  static const FDTProperty::PropertyNameFormat m_propertyNameFormat;
 
  private:
   // Static initializer helper class

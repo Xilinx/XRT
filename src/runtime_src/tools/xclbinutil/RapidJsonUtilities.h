@@ -47,11 +47,11 @@ void read_cbor(std::istream& istr, rapidjson::Document& doc);
 
 void TRACE_PrintTree(const std::string& msg, const rapidjson::Document& doc);
 
-void collect_key_types(const std::string & jsonSchema, KeyTypeCollection & key_type_collection);
+void collect_key_types(const std::string& jsonSchema, KeyTypeCollection& key_type_collection);
 
 std::string get_dtype_str(DType data_type);
-DType get_expected_type( const std::string& scope, const XclBinUtilities::KeyTypeCollection& keyTypeCollection);
-void validate_against_schema(const std::string & nodeName, const rapidjson::Document & doc, const std::string & schema);
+DType get_expected_type(const std::string& scope, const XclBinUtilities::KeyTypeCollection& keyTypeCollection);
+void validate_against_schema(const std::string& nodeName, const rapidjson::Document& doc, const std::string& schema);
 
 };
 #endif

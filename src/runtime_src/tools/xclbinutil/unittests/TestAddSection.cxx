@@ -70,7 +70,7 @@ TEST(AddSection, AddReplaceClearingBitstream) {
 
    // Record the contents that was read in
    std::ostringstream uniqueData1Contents;
-   pSection->dumpContents(uniqueData1Contents, Section::FormatType::RAW);
+   pSection->dumpContents(uniqueData1Contents, Section::FormatType::raw);
 
    {
       // Replace the contents of the CLEARING_BITSTREAM section
@@ -88,7 +88,7 @@ TEST(AddSection, AddReplaceClearingBitstream) {
 
    // Record the contents that was read in
    std::ostringstream uniqueData2Contents;
-   pSection->dumpContents(uniqueData2Contents, Section::FormatType::RAW);
+   pSection->dumpContents(uniqueData2Contents, Section::FormatType::raw);
 
    // Validate the data is different
    ASSERT_TRUE(uniqueData1Contents.str().compare(uniqueData2Contents.str())) << "Data contents was not replaced";
@@ -140,7 +140,7 @@ TEST(AddSection, AddMergeIPLayout) {
    const std::string outputFile = "ip_layout_merged_output.json";
    std::fstream oDumpFile(outputFile, std::ifstream::out | std::ifstream::binary);
    ASSERT_TRUE(oDumpFile.is_open()) << "Unable to open the file for writing: " << outputFile;
-   pSection->dumpContents(oDumpFile, Section::FormatType::JSON);
+   pSection->dumpContents(oDumpFile, Section::FormatType::json);
 
    // Validate the JSON images on disk
    std::stringstream obuffer;

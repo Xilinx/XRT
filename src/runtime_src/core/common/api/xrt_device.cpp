@@ -277,7 +277,7 @@ register_xclbin(const xclbin& xclbin)
 {
   return xdp::native::profiling_wrapper("xrt::device::register_xclbin",
   [this, &xclbin]{
-    handle->register_xclbin(xclbin);
+    handle->record_xclbin(xclbin);
     return xclbin.get_uuid();
   });
 }

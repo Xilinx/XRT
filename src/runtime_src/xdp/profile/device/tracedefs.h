@@ -73,10 +73,21 @@ buffer size and/or reduce trace_buffer_offload_interval."
 #define TS2MM_WARN_MSG_QUEUE_SZ        "Too much trace in processing queue. This could have negative impact on host memory utilization. \
 Please increase trace_buffer_size and trace_buffer_offload_interval together or use 'coarse' option for device_trace."
 
-#define AIE_TS2MM_WARN_MSG_BUF_FULL             "AIE Trace Buffer is full. Device trace could be incomplete."
-#define AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE   "Circular buffer overwrite was detected in device trace. AIE trace could be incomplete."
-#define AIE_TS2MM_WARN_MSG_CIRC_BUF             "AIE trace will be limited to trace buffer size due to insufficient trace offload rate. Please increase \
-aie_trace_buffer_size and/or reduce aie_trace_buffer_offload_interval_us."
+// Throw warning if less than 8M is used or rate is less than 8 GB/S
+#define AIE_MIN_SIZE_CIRCULAR_BUF 0x800000
+#define AIE_CIR_BUF_MIN_RATE_PLIO 0x200000000
+
+#define AIE_TRACE_UNAVAILABLE "Neither PLIO nor GMIO trace infrastucture is found in the given design. So, AIE event trace will not be available."
+#define AIE_TRACE_BUF_ALLOC_FAIL              "Allocation of buffer for AIE trace failed. AIE trace will not be available."
+#define AIE_TS2MM_WARN_MSG_BUF_FULL           "AIE Trace Buffer is full. Device trace could be incomplete."
+#define AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE "Circular buffer overwrite was detected in device trace. AIE trace could be incomplete."
+#define AIE_TRACE_BUF_REUSE_WARN              "AIE trace reuse setting may lead to buffer overrun. Please increase \
+aie_trace_buffer_size and/or reduce aie_trace_buffer_offload_interval_us. Recommended (min) trace buffer size per stream : \
+functions : 8M functions_partial_stalls : 16M functions_all_stalls 32M. For large AIE designs, use granular \
+trace settings."
+#define AIE_TRACE_WARN_REUSE_PERIODIC  "AIE Trace Buffer reuse only supported with periodic offload."
+#define AIE_TRACE_WARN_REUSE_GMIO      "AIE Trace buffer reuse is not supported on GMIO trace."
+#define AIE_TRACE_PERIODIC_OFFLOAD_UNSUPPORTED "Continuous offload of AIE Trace is not supported for GMIO mode. So, AIE Trace for GMIO mode will be offloaded only at the end of application."
 
 // Trace file Dump Settings and Warnings
 #define MIN_TRACE_DUMP_INTERVAL_S 1
@@ -85,5 +96,15 @@ aie_trace_buffer_size and/or reduce aie_trace_buffer_offload_interval_us."
 #define TRACE_DUMP_FILE_COUNT_WARN 10
 #define TRACE_DUMP_FILE_COUNT_WARN_MSG "Continuous Trace might create a large number of trace files. Please use trace_file_dump_interval \
 to control how often trace data is written."
+
+namespace xdp {
+
+// Ease of use constants
+constexpr unsigned int BITS_PER_WORD = 32;
+constexpr unsigned int BYTES_PER_WORD = 4;
+constexpr unsigned int BYTES_64BIT = 8;
+constexpr unsigned int BYTES_128BIT = 16;
+
+}
 
 #endif

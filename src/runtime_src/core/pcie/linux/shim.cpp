@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * XRT PCIe library layered on top of xocl kernel driver
  *
@@ -24,6 +25,9 @@
 #include "xclbin.h"
 
 #include "core/include/shim_int.h"
+#include "core/include/xdp/fifo.h"
+#include "core/include/xdp/trace.h"
+#include "core/include/experimental/xrt_hw_context.h"
 
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
@@ -32,6 +36,7 @@
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/AlignedAllocator.h"
+#include "core/common/api/hw_context_int.h"
 
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_api_interface.h"
@@ -75,11 +80,7 @@
 
 #define SHIM_QDMA_AIO_EVT_MAX   1024 * 64
 
-// Profiling
-#define AXI_FIFO_RDFD_AXI_FULL          0x1000
-#define MAX_TRACE_NUMBER_SAMPLES                        16384
-#define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
-
+namespace xq = xrt_core::query;
 namespace {
 
 template <typename ...Args>
@@ -117,6 +118,16 @@ inline int io_getevents(aio_context_t ctx, long min_nr, long max_nr,
                 struct io_event *events, struct timespec *timeout)
 {
   return syscall(__NR_io_getevents, ctx, min_nr, max_nr, events, timeout);
+}
+
+static
+xocl::shim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = xocl::shim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
 }
 
 } // namespace
@@ -546,7 +557,7 @@ shim(unsigned index)
   , mStallProfilingNumberSlots(0)
   , mStreamProfilingNumberSlots(0)
   , mCmdBOCache(nullptr)
-  , mCuMaps{128, {nullptr, 0}}
+  , mCuMaps{128, {nullptr, 0, 0, 0}}
 {
   init(index);
 }
@@ -636,6 +647,8 @@ init(unsigned int index)
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
+    // flush aie trace and write outputs
+    xdp::aie::finish_flush_device(this) ;
 
     // The BO cache unmaps and releases all execbo, but this must
     // be done before the device is closed.
@@ -643,9 +656,9 @@ shim::~shim()
 
     dev_fini();
 
-    for (auto p : mCuMaps) {
-        if (p.first)
-            (void) munmap(p.first, p.second);
+    for (const auto& p : mCuMaps) {
+        if (p.addr)
+            (void) munmap(p.addr, p.size);
     }
 }
 
@@ -1319,44 +1332,60 @@ bool shim::zeroOutDDR()
 /*
  * xclLoadXclBin()
  */
-int shim::xclLoadXclBin(const xclBin *buffer)
+int
+shim::
+xclLoadXclBin(const xclBin *buffer)
 {
-    auto top = reinterpret_cast<const axlf*>(buffer);
-    auto ret = xclLoadAxlf(top);
-    if (ret != 0) {
-      if (ret == -EOPNOTSUPP) {
-        xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
-        auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
-        auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
-        if (xclbin_vbnv != shell_vbnv) {
-          xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
-          xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
-        }
-        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
-      }
-      else if (ret == -EBUSY) {
-        xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
-      }
-      else if (ret == -EKEYREJECTED) {
-        xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
-      }
-      else if (ret == -E2BIG) {
-        xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
-      }
-      else if (ret == -ETIMEDOUT) {
-        xrt_logmsg(XRT_ERROR,
-                   "Can't reach out to mgmt for xclbin downloading");
-        xrt_logmsg(XRT_ERROR,
-                   "Is xclmgmt driver loaded? Or is MSD/MPD running?");
-      }
-      else if (ret == -EDEADLK) {
-        xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
-        xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
-      }
-      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
-    }
+  xdp::hal::flush_device(this);
+  xdp::aie::flush_device(this);
+  xdp::pl_deadlock::flush_device(this);
 
+  auto top = reinterpret_cast<const axlf*>(buffer);
+  if (auto ret = xclLoadAxlf(top)) {
+    // Something wrong, determine what
+    if (ret == -EOPNOTSUPP) {
+      xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
+      auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
+      auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
+      if (xclbin_vbnv != shell_vbnv) {
+        xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
+        xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
+      }
+      xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
+    }
+    else if (ret == -EBUSY) {
+      xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
+    }
+    else if (ret == -EKEYREJECTED) {
+      xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
+    }
+    else if (ret == -E2BIG) {
+      xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
+    }
+    else if (ret == -ETIMEDOUT) {
+      xrt_logmsg(XRT_ERROR,
+                 "Can't reach out to mgmt for xclbin downloading");
+      xrt_logmsg(XRT_ERROR,
+                 "Is xclmgmt driver loaded? Or is MSD/MPD running?");
+    }
+    else if (ret == -EDEADLK) {
+      xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
+      xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
+    }
+    xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
     return ret;
+  }
+
+  // Success
+  mCoreDevice->register_axlf(buffer);
+
+  xdp::hal::update_device(this);
+  xdp::aie::update_device(this);
+  xdp::pl_deadlock::update_device(this);
+
+  START_DEVICE_PROFILING_CB(this);
+
+  return 0;
 }
 
 /*
@@ -1668,16 +1697,18 @@ bool shim::isGood() const
  *
  * Returns pointer to valid handle on success, 0 on failure.
  */
-shim *shim::handleCheck(void *handle)
+xocl::shim*
+shim::
+handleCheck(void* handle)
 {
-    if (!handle) {
-        return 0;
-    }
-    if (!((shim *) handle)->isGood() ||
-      ((shim *) handle)->mUserHandle == -1) {
-        return 0;
-    }
-    return (shim *) handle;
+  if (!handle)
+    return 0;
+
+  auto shim = reinterpret_cast<xocl::shim*>(handle);
+  if (!shim->isGood() || shim->mUserHandle == -1)
+    return 0;
+
+  return shim;
 }
 
 /*
@@ -1748,27 +1779,20 @@ int shim::xclExecWait(int timeoutMilliSec)
     return mDev->poll(mUserHandle, POLLIN, timeoutMilliSec);
 }
 
-/*
- * xclOpenContext
- */
-int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
+// xclOpenContext
+int
+shim::
+xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
 {
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
-    int ret;
     drm_xocl_ctx ctx = {XOCL_CTX_OP_ALLOC_CTX};
     std::memcpy(ctx.xclbin_id, xclbinId, sizeof(uuid_t));
     ctx.cu_index = ipIndex;
     ctx.flags = flags;
-    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
-    return ret ? -errno : ret;
-}
+    if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx))
+      throw xrt_core::system_error(errno, "failed to open ip context");
 
-int shim::
-xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared) const
-{
-  // Alveo Linux PCIE does not yet support multiple xclbins.
-  // Call regular flow
-  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
+    return 0;
 }
 
 /*
@@ -1780,11 +1804,10 @@ int shim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 
     if (ipIndex < mCuMaps.size()) {
 	    // Make sure no MMIO register space access when CU is released.
-	    uint32_t *p = mCuMaps[ipIndex].first;
-	    if (p) {
-		(void) munmap(p, mCuMaps[ipIndex].second);
-		mCuMaps[ipIndex] = std::make_pair<uint32_t*, uint32_t>(nullptr, 0);
-	    }
+        if (auto p = mCuMaps[ipIndex].addr) {
+            std::ignore = munmap(p, mCuMaps[ipIndex].size);
+            mCuMaps[ipIndex] = {nullptr, 0, 0, 0};
+        }
     }
 
     drm_xocl_ctx ctx = {XOCL_CTX_OP_FREE_CTX};
@@ -1844,9 +1867,9 @@ int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t 
 
 int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+  uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
 
-  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
 
   return 0;
@@ -1859,7 +1882,7 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 
     uint32_t size = 0;
 
-    wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+    wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
     uint32_t numWords = numSamples * wordsPerSample;
 
 //    alignas is defined in c++11
@@ -1867,9 +1890,9 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
     /* Alignment is limited to 16 by PPC64LE : so , should it be
     alignas(16) uint32_t hostbuf[traceBufSzInWords];
     */
-    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+    alignas(xdp::IP::FIFO::alignment) uint32_t hostbuf[traceBufWordSz];
 #else
-    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(xdp::IP::FIFO::alignment, traceBufWordSz);
     uint32_t* hostbuf = alignedBuffer.getBuffer();
 #endif
 
@@ -1888,10 +1911,10 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
       for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
           if(mLogStream.is_open())
             mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+		       << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
                           << (void *)(hostbuf + words) << std::dec << std::endl;
 
-        xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+	  xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
 
         size += chunkSizeBytes;
       }
@@ -1903,11 +1926,11 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 
       if(mLogStream.is_open()) {
         mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+		   << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0]*/ << " and writing it to 0x"
                       << (void *)(hostbuf + words) << std::dec << std::endl;
       }
 
-      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
 
       size += chunkSizeBytes;
     }
@@ -1975,24 +1998,6 @@ int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath
   return 0;
 }
 
-int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
-{
-  auto dev = pcidev::get_dev(mBoardNumber);
-  uint16_t user_instance = dev->instance;
-  uint16_t nifd_instance = 0;
-  std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
-  std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
-  info->device_type = DeviceType::XBB;
-  info->device_index = mBoardNumber;
-  info->user_instance = user_instance;
-  info->nifd_instance = nifd_instance;
-  strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN - 1);
-  strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN - 1);
-  info->device_name[MAX_NAME_LEN-1] = '\0';
-  info->nifd_name[MAX_NAME_LEN-1] = '\0';
-  return 0;
-}
-
 int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
   std::lock_guard<std::mutex> lk(mCuMapLock);
@@ -2002,42 +2007,70 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     return -EINVAL;
   }
 
-  auto& cumap = mCuMaps[ipIndex];  // {base, size}
+  auto& cumap = mCuMaps[ipIndex];  // {base, size, start, end}
 
-  if (cumap.first == nullptr) {
+  if (cumap.addr == nullptr) {
     auto cu_subdev = "CU[" + std::to_string(ipIndex) + "]";
-    uint32_t size = 0;
-    std::string errmsg;
-    mDev->sysfs_get<uint32_t>(cu_subdev, "size", errmsg, size, 0);
-    if (size <= 0) {
+    auto size = xrt_core::device_query<xq::cu_size>(mCoreDevice, xq::request::modifier::subdev, cu_subdev);
+    if (size <= 0 || size > 0x10000) {
       xrt_logmsg(XRT_ERROR, "%s: incorrect cu size %d", __func__, size);
       return -EINVAL;
     }
+    auto range_str = xrt_core::device_query<xq::cu_read_range>(mCoreDevice, xq::request::modifier::subdev, cu_subdev);
+    auto range = xq::cu_read_range::to_range(range_str);
 
     void *p = mDev->mmap(mUserHandle, size, PROT_READ | PROT_WRITE,
                          MAP_SHARED, static_cast<off_t>(ipIndex + 1) * getpagesize());
     if (p != MAP_FAILED) {
-      cumap.first = static_cast<uint32_t*>(p);
-      cumap.second = size;
+      cumap.addr = static_cast<uint32_t*>(p);
+      cumap.size = size;
+      cumap.start = range.start;
+      cumap.end = range.end;
     }
 
-    if (cumap.first == nullptr) {
+    if (cumap.addr == nullptr) {
       xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
       return -EINVAL;
     }
   }
 
-  if (offset >= cumap.second || (offset & (sizeof(uint32_t) - 1)) != 0) {
+  if ((offset & (sizeof(uint32_t) - 1)) != 0) {
+    xrt_logmsg(XRT_ERROR, "%s: offset is not aligned in word: %d", __func__, offset);
+    return -EINVAL;
+  }
+
+  if (offset >= cumap.size) {
     xrt_logmsg(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
     return -EINVAL;
   }
 
+  if (cumap.start != 0xFFFFFFFF) {
+    if (!rd) {
+        xrt_logmsg(XRT_ERROR, "%s: read range is set, not allow write", __func__);
+        return -EINVAL;
+    }
+
+    if ((cumap.start > offset) || (cumap.end < offset)) {
+        xrt_logmsg(XRT_ERROR, "%s: CU offset %d out of read range, %d, %d", __func__, offset, cumap.start, cumap.end);
+        return -EINVAL;
+    }
+  }
+
   if (rd)
-    *datap = (cumap.first)[offset / sizeof(uint32_t)];
+    *datap = (cumap.addr)[offset / sizeof(uint32_t)];
   else
-    (cumap.first)[offset / sizeof(uint32_t)] = *datap;
+    (cumap.addr)[offset / sizeof(uint32_t)] = *datap;
 
   return 0;
+}
+
+int shim::xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    int ret = 0;
+    drm_xocl_set_cu_range range = {ipIndex, start, size};
+
+    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_SET_CU_READONLY_RANGE, &range);
+    return ret ? -errno : ret;
 }
 
 int shim::xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap)
@@ -2127,13 +2160,116 @@ int shim::xclCloseIPInterruptNotify(int fd)
     return 0;
 }
 
+// open_context() - aka xclOpenContextByName
+xrt_core::cuidx_type
+shim::
+open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+{
+  // Alveo Linux PCIE does not yet support multiple xclbins.  Call
+  // regular flow.  Default access mode to shared unless explicitly
+  // exclusive.
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+
+  return cuidx;
+}
+
+void
+shim::
+close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  // To-be-implemented
+  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+}
+
+// Assign xclbin with uuid to hardware resources and return a context id
+// The context handle is 1:1 with a slot idx
+uint32_t
+shim::
+create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+  // Explicit hardware contexts are not supported in Alveo.
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
+void
+shim::
+destroy_hw_context(uint32_t ctxhdl)
+{
+  // Explicit hardware contexts are not supported in Alveo.
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
+// Registers an xclbin, but does not load it.
+void
+shim::
+register_xclbin(const xrt::xclbin&)
+{
+  // Explicit hardware contexts are not supported in Alveo.
+  throw xrt_core::ishim::not_supported_error{__func__};
+}
+
 } // namespace xocl
 
-/*******************************/
-/* GLOBAL DECLARATIONS *********/
-/*******************************/
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
 
-unsigned xclProbe()
+xclDeviceHandle
+open_by_bdf(const std::string& bdf)
+{
+  return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
+}
+
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
+{
+  auto shim = get_shim_object(handle);
+  return shim->open_cu_context(hwctx, cuname);
+}
+
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  auto shim = get_shim_object(handle);
+  return shim->close_cu_context(hwctx, cuidx);
+}
+
+uint32_t // ctxhdl aka slotidx
+create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+{
+  auto shim = get_shim_object(handle);
+  return shim->create_hw_context(xclbin_uuid, qos);
+}
+
+void
+destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+{
+  auto shim = get_shim_object(handle);
+  shim->destroy_hw_context(ctxhdl);
+}
+
+void
+register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
+{
+  auto shim = get_shim_object(handle);
+  shim->register_xclbin(xclbin);
+}
+
+
+} // xrt::shim_int
+////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////
+// Implementation of user exposed SHIM APIs
+// This are C level functions
+////////////////////////////////////////////////////////////////
+unsigned int
+xclProbe()
 {
   return xdp::hal::profiling_wrapper("xclProbe", [] {
     return pcidev::get_dev_ready();
@@ -2172,22 +2308,6 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
   }) ;
 }
 
-xclDeviceHandle
-xclOpenByBDF(const char *bdf)
-{
-  try {
-    return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-
-  return nullptr;
-}
-
 void xclClose(xclDeviceHandle handle)
 {
   xdp::hal::profiling_wrapper("xclClose", [handle] {
@@ -2201,48 +2321,23 @@ void xclClose(xclDeviceHandle handle)
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
-  return xdp::hal::profiling_wrapper("xclLoadXclBin",
-  [handle, buffer] {
-
-  try {
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    if (!drv) {
+  return xdp::hal::profiling_wrapper("xclLoadXclBin", [handle, buffer] {
+    try {
+      auto drv = xocl::shim::handleCheck(handle);
+      if (!drv)
         return -EINVAL;
+
+      return drv->xclLoadXclBin(buffer);
     }
-
-    xdp::hal::flush_device(handle);
-    xdp::aie::flush_device(handle);
-    xdp::pl_deadlock::flush_device(handle);
-
-    auto ret = drv ? drv->xclLoadXclBin(buffer) : -ENODEV;
-    if (!ret) {
-      auto core_device = xrt_core::get_userpf_device(drv);
-      core_device->register_axlf(buffer);
-
-      xdp::hal::update_device(handle) ;
-      xdp::aie::update_device(handle);
-      xdp::pl_deadlock::update_device(handle);
-
-      //scheduler::init can not be skipped even for same_xclbin
-      //as in multiple process stress tests it fails as
-      //below init step is without a lock with above driver load xclbin step.
-      //New KDS fixes this by ensuring that scheduler init is done by driver itself
-      //along with icap download in single command call and then below init step in user space
-      //is ignored
-      ret = xrt_core::scheduler::init(handle, buffer);
-      START_DEVICE_PROFILING_CB(handle);
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get_code();
     }
-    return ret;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -EINVAL;
-  }
-  }) ;
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return -EINVAL;
+    }
+  });
 }
 
 int xclLogMsg(xclDeviceHandle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
@@ -2552,6 +2647,12 @@ int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, i
     return drv ? drv->xclRegisterEventNotify(userInterrupt, fd) : -ENODEV;
 }
 
+int xclIPSetReadRange(xclDeviceHandle handle, uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclIPSetReadRange(ipIndex, start, size) : -ENODEV;
+}
+
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
   return xdp::hal::profiling_wrapper("xclExecWait",
@@ -2561,30 +2662,20 @@ int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
   });
 }
 
-int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int
+xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   return xdp::hal::profiling_wrapper("xclOpenContext",
   [handle, xclbinId, ipIndex, shared] {
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+    try {
+      xocl::shim *drv = xocl::shim::handleCheck(handle);
+      return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+    }
+    catch (const xrt_core::error& ex) {
+      xrt_core::send_exception_message(ex.what());
+      return ex.get_code();
+    }
   }) ;
-}
-
-int
-xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
-{
-  try {
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclOpenContext(slot, xclbin_uuid, cuname, shared) : -ENODEV;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
 }
 
 int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
@@ -2700,12 +2791,6 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
   if (!drv)
     return -1;
   return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
-}
-
-int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
 int xclIPName2Index(xclDeviceHandle handle, const char *name)

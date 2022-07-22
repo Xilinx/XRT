@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -20,6 +21,8 @@
 
 #include <stdexcept>
 #include <vector>
+
+#include "core/include/xdp/trace.h"
 #include "profile_ip_access.h"
 
 namespace xdp {
@@ -70,11 +73,11 @@ public:
      * IP should support word packing if we want to support 512 bit words
      */
     virtual uint64_t getWordCount(bool final = false);
-    uint8_t getMemIndex();
+    virtual uint8_t getMemIndex();
     virtual void showStatus();	// ??
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
-    void parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector);
+    void parseTraceBuf(void* buf, uint64_t size, std::vector<xdp::TraceEvent>& traceVector);
 
     void setTraceFormat(uint32_t tf) { mTraceFormat = tf; }
 
@@ -93,18 +96,20 @@ public:
      */
     bool isVersion2() {return mIsVersion2;}
 
-private:
+protected:
     uint8_t properties;
+
+private:
     uint8_t major_version;
     uint8_t minor_version;
     uint32_t mTraceFormat = 0;
 
-private:
+protected:
     void write32(uint64_t offset, uint32_t val);
 
 protected:
     void parsePacketClockTrain(uint64_t packet);
-    void parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result);
+    void parsePacket(uint64_t packet, uint64_t firstTimestamp, xdp::TraceEvent &result);
     uint64_t seekClockTraining(uint64_t* arr, uint64_t count);
 
 protected:
@@ -115,7 +120,7 @@ protected:
     // Since clock training packets can be interspersed with other packets,
     //  we need to keep track of what we see until we see all four 
     //  clock training packets
-    xclTraceResults partialResult = {};
+    xdp::TraceEvent partialResult = {};
 
     // Members specific to version 2 datamover
     bool mIsVersion2 = false;

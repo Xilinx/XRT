@@ -7,6 +7,7 @@
 
 #include "xrt.h"
 #include "xrt_mem.h"
+#include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
 # include <memory>
@@ -66,6 +67,32 @@ struct pid_type { pid_t pid; };
 class bo_impl;
 class bo
 {
+public:
+  /*!
+   * @class async_handle
+   *
+   * @brief
+   * xrt::bo::async_handle represents an asynchronously operation
+   *
+   * @details
+   * A handle object is returned from asynchronous buffer object
+   * operations.  It can be used to wait for the operation to
+   * complete.
+   */
+  class async_handle_impl;
+  class async_handle : public detail::pimpl<async_handle_impl>
+  {
+  public:
+    explicit
+    async_handle(std::shared_ptr<async_handle_impl> handle)
+      : detail::pimpl<async_handle_impl>(std::move(handle))
+    {}
+
+    XCL_DRIVER_DLLESPEC
+    void
+    wait();
+  };
+
 public:
   /**
    * @enum flags - buffer object flags
@@ -364,6 +391,41 @@ public:
   export_buffer();
 
   /**
+   * async() - Start buffer content txfer with device side
+   *
+   * @param dir
+   *  To device or from device
+   * @param sz
+   *  Size of data to synchronize
+   * @param offset
+   *  Offset within the BO
+   *
+   * Asynchronously transfer specified size bytes of buffer
+   * starting at specified offset.
+   */
+  XCL_DRIVER_DLLESPEC
+  async_handle
+  async(xclBOSyncDirection dir, size_t sz, size_t offset);
+
+  /**
+   * async() - Start buffer content txfer with device side
+   *
+   * @param dir
+   *  To device or from device
+   * @param sz
+   *  Size of data to synchronize
+   * @param offset
+   *  Offset within the BO
+   *
+   * Asynchronously transfer entire buffer content in specified direction
+   */
+  async_handle
+  async(xclBOSyncDirection dir)
+  {
+    return async(dir, size(), 0);
+  }
+
+  /**
    * sync() - Synchronize buffer content with device side
    *
    * @param dir
@@ -433,6 +495,9 @@ public:
    * Copy source data to host buffer of this buffer object.
    * ``seek`` specifies how many bytes to skip at the beginning
    * of the BO before copying-in ``size`` bytes to host buffer.
+   *
+   * If BO has no host backing storage, e.g. a device only buffer,
+   * then write is directly to the device buffer.
    */
   XCL_DRIVER_DLLESPEC
   void
@@ -445,6 +510,9 @@ public:
    *  Source data pointer
    *
    * Copy specified source data to host buffer of this buffer object.
+   *
+   * If BO has no host backing storage, e.g. a device only buffer,
+   * then write is directly to the device buffer.
    */
   void
   write(const void* src)
@@ -466,6 +534,9 @@ public:
    * destination.  ``skip`` specifies how many bytes to skip from the
    * beginning of the BO before copying-out ``size`` bytes of host
    * buffer.
+   *
+   * If BO has no host backing storage, e.g. a device only buffer,
+   * then read is directly from the device buffer.
    */
   XCL_DRIVER_DLLESPEC
   void
@@ -479,6 +550,9 @@ public:
    *
    * Copy content of host buffer of this buffer object to specified
    * destination.
+   *
+   * If BO has no host backing storage, e.g. a device only buffer,
+   * then read is directly from the device buffer.
    */
   void
   read(void* dst)

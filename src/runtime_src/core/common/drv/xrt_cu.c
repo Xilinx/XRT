@@ -3,6 +3,7 @@
  * Xilinx Unify CU Model
  *
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -85,6 +86,18 @@ static void cu_timer(struct timer_list *t)
 	atomic_inc(&xcu->tick);
 
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
+}
+
+static void xrt_cu_switch_to_interrupt(struct xrt_cu *xcu)
+{
+	xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+	xcu->interrupt_used = 1;
+}
+
+static void xrt_cu_switch_to_poll(struct xrt_cu *xcu)
+{
+	xrt_cu_disable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
+	xcu->interrupt_used = 0;
 }
 
 static inline struct kds_client *
@@ -265,6 +278,11 @@ static inline int process_rq(struct xrt_cu *xcu)
 		return 0;
 	}
 	xrt_cu_start(xcu);
+	if (xcu->thread) {
+		xcu->poll_count = 0;
+		if (xcu->interrupt_used)
+			xrt_cu_switch_to_poll(xcu);
+	}
 	set_xcmd_timestamp(xcmd, KDS_RUNNING);
 	xrt_cu_circ_produce(xcu, CU_LOG_STAGE_RQ, (uintptr_t)xcmd);
 
@@ -422,9 +440,9 @@ int xrt_cu_intr_thread(void *data)
 	int ret = 0;
 	int loop_cnt = 0;
 
+	xcu->interrupt_used = 0;
 	xcu_info(xcu, "CU[%d] start", xcu->info.cu_idx);
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
-	xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
 	while (!xcu->stop) {
 		/* Make sure to submit as many commands as possible.
 		 * This is why we call continue here. This is important to make
@@ -433,30 +451,44 @@ int xrt_cu_intr_thread(void *data)
 		if (process_rq(xcu))
 			continue;
 
+		process_cq(xcu);
 		if (xcu->num_sq || is_zero_credit(xcu)) {
-			xrt_cu_check(xcu);
-			if (!xcu->done_cnt || !xcu->ready_cnt) {
-				xcu->sleep_cnt++;
-				/* Don't use down_interruptible() here.
-				 * If CU hang, this thread would keep waiting.
-				 * Host application is not able to exit since
-				 * there are outstading commands.
-				 *
-				 * CU_TIMER is runing at low frequence. For
-				 * normal CU, it will unlikely timeout.
+			if (!xcu->interrupt_used) {
+				/* Use this special code to measure time of a loop.
+				 * On APU, it takes about 2us on each loop.
+				 *   xrt_cu_circ_produce(xcu, 5, 0);
 				 */
-				if (down_timeout(&xcu->sem_cu, CU_TIMER))
-					ret = -ERESTARTSYS;
+				process_sq(xcu);
+				xcu->poll_count++;
+				/* If poll_count reach threshold, switch to
+				 * interrupt mode.
+				 */
+				if (xcu->poll_count >= xcu->poll_threshold)
+					xrt_cu_switch_to_interrupt(xcu);
+			} else {
 				xrt_cu_check(xcu);
+				if (!xcu->done_cnt || !xcu->ready_cnt) {
+					xcu->sleep_cnt++;
+					/* Don't use down_interruptible() here.
+					 * If CU hang, this thread would keep waiting.
+					 * Host application is not able to exit since
+					 * there are outstading commands.
+					 *
+					 * CU_TIMER is runing at low frequence. For
+					 * normal CU, it will unlikely timeout.
+					 */
+					if (down_timeout(&xcu->sem_cu, CU_TIMER))
+						ret = -ERESTARTSYS;
+					xrt_cu_check(xcu);
+				}
+				__process_sq(xcu);
 			}
-			__process_sq(xcu);
 		}
 
-		process_cq(xcu);
 		process_hpq(xcu);
 
 		/* Avoid large num_rq leads to more 120 sec blocking */
-		if (++loop_cnt == 8) {
+		if (++loop_cnt == MAX_CU_LOOP) {
 			loop_cnt = 0;
 			schedule();
 		}
@@ -738,6 +770,9 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	INIT_LIST_HEAD(&xcu->events);
 	sema_init(&xcu->sem, 0);
 	sema_init(&xcu->sem_cu, 0);
+	mutex_init(&xcu->read_regs.xcr_lock);
+	xcu->read_regs.xcr_start = -1;
+	xcu->read_regs.xcr_end = -1;
 
 	INIT_LIST_HEAD(&xcu->hpq);
 	spin_lock_init(&xcu->hpq_lock);
@@ -756,6 +791,8 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	atomic_set(&xcu->tick, 0);
 	xcu->start_tick = 0;
 	xcu->thread = NULL;
+	xcu->poll_threshold = CU_DEFAULT_POLL_THRESHOLD;
+	xcu->interrupt_used = 0;
 
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	return err;

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -356,7 +357,7 @@ public:
 
   // Following functions are profiling functions
   virtual hal::operations_result<size_t>
-  clockTraining(xclPerfMonType type) override
+  clockTraining(xdp::MonitorType type) override
   {
     if (!m_ops->mClockTraining)
       return hal::operations_result<size_t>();
@@ -364,7 +365,7 @@ public:
   }
 
   virtual hal::operations_result<uint32_t>
-  countTrace(xclPerfMonType type) override
+  countTrace(xdp::MonitorType type) override
   {
     if (!m_ops->mCountTrace)
       return hal::operations_result<uint32_t>();
@@ -420,7 +421,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  readCounters(xclPerfMonType type, xclCounterResults& results) override
+  readCounters(xdp::MonitorType type, xdp::CounterResults& results) override
   {
     if (!m_ops->mReadCounters)
       return hal::operations_result<size_t>();
@@ -436,7 +437,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  readTrace(xclPerfMonType type, xclTraceResultsVector& vec) override
+  readTrace(xdp::MonitorType type, xdp::TraceEventsVector& vec) override
   {
     if (!m_ops->mReadTrace)
       return hal::operations_result<size_t>();
@@ -470,7 +471,7 @@ public:
   }
 
   virtual hal::operations_result<void>
-  setProfilingSlots(xclPerfMonType type, uint32_t slots) override
+  setProfilingSlots(xdp::MonitorType type, uint32_t slots) override
   {
     if (!m_ops->mSetProfilingSlots)
       return hal::operations_result<void>();
@@ -479,7 +480,7 @@ public:
   }
 
   virtual hal::operations_result<uint32_t>
-  getProfilingSlots(xclPerfMonType type) override
+  getProfilingSlots(xdp::MonitorType type) override
   {
     if (!m_ops->mGetProfilingSlots)
       return hal::operations_result<uint32_t>();
@@ -487,7 +488,7 @@ public:
   }
 
   virtual hal::operations_result<void>
-  getProfilingSlotName(xclPerfMonType type, uint32_t slotnum,
+  getProfilingSlotName(xdp::MonitorType type, uint32_t slotnum,
                        char* slotName, uint32_t length) override
   {
     if (!m_ops->mGetProfilingSlotName)
@@ -497,7 +498,7 @@ public:
   }
 
   virtual hal::operations_result<uint32_t>
-  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum) override
+  getProfilingSlotProperties(xdp::MonitorType type, uint32_t slotnum) override
   {
     if (!m_ops->mGetProfilingSlotProperties)
       return hal::operations_result<uint32_t>();
@@ -505,7 +506,7 @@ public:
   }
 
   virtual hal::operations_result<void>
-  configureDataflow(xclPerfMonType type, unsigned *ip_config) override
+  configureDataflow(xdp::MonitorType type, unsigned *ip_config) override
   {
     if (!m_ops->mConfigureDataflow)
       return hal::operations_result<void>();
@@ -514,7 +515,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  startCounters(xclPerfMonType type) override
+  startCounters(xdp::MonitorType type) override
   {
     if (!m_ops->mStartCounters)
       return hal::operations_result<size_t>();
@@ -522,7 +523,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  startTrace(xclPerfMonType type, uint32_t options) override
+  startTrace(xdp::MonitorType type, uint32_t options) override
   {
     if (!m_ops->mStartTrace)
       return hal::operations_result<size_t>();
@@ -530,7 +531,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  stopCounters(xclPerfMonType type) override
+  stopCounters(xdp::MonitorType type) override
   {
     if (!m_ops->mStopCounters)
       return hal::operations_result<size_t>();
@@ -538,7 +539,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  stopTrace(xclPerfMonType type) override
+  stopTrace(xdp::MonitorType type) override
   {
     if (!m_ops->mStopTrace)
       return hal::operations_result<size_t>();

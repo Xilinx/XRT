@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,22 @@
  * under the License.
  */
 
-#ifndef xdp_profile_config_h_
-#define xdp_profile_config_h_
+// This file captures all the constants used to access the
+// System-level PL Accelerator Deadlock Detection IP (ADD).
 
-#include "xocl/core/debug.h"
-#include "xrt/util/debug.h"
+#ifndef ADD_DOT_H
+#define ADD_DOT_H
 
-#ifdef XDP_VERBOSE
-# define XDP_DEBUG(...) xrt_xocl::debug(__VA_ARGS__)
-# define XDP_LOG(format,...) ::xocl::logf(format, ##__VA_ARGS__)
-#else
-# define XDP_DEBUG(...)
-# define XDP_LOG(...)
-#endif
+namespace xdp::IP::ADD {
+
+namespace AXI_LITE {
+// These are the actual physical offsets of the 32-bit registers in
+// the ADD IP accessible over the AXI-Lite connection.  If using
+// xclRead or xclWrite, these offsets are used.
+constexpr int STATUS = 0x0;
+
+} // end namespace AXI_LITE
+
+} // end namespace xdp::IP::ADD
 
 #endif

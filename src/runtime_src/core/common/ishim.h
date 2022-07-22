@@ -14,6 +14,7 @@
 #include "xrt/xrt_graph.h"
 #include "xrt/xrt_uuid.h"
 
+#include "experimental/xrt_hw_context.h"
 #include "experimental/xrt-next.h"
 
 #include <stdexcept>
@@ -46,11 +47,15 @@ struct ishim
   virtual void
   close_device() = 0;
 
-  virtual void
-  open_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index, bool shared) = 0;
+  virtual cuidx_type
+  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) = 0;
 
   virtual void
-  open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) = 0;
+  close_cu_context(const xrt::hw_context& hwctx, cuidx_type ip_index) = 0;
+
+  // Legacy, to be removed
+  virtual void
+  open_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
   close_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index) = 0;
@@ -271,17 +276,23 @@ struct shim : public DeviceType
     xclClose(DeviceType::get_device_handle());
   }
 
+  cuidx_type
+  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) override
+  {
+    return xrt::shim_int::open_cu_context(DeviceType::get_device_handle(), hwctx, cuname);
+  }
+
+  void
+  close_cu_context(const xrt::hw_context& hwctx, cuidx_type cuidx) override
+  {
+    xrt::shim_int::close_cu_context(DeviceType::get_device_handle(), hwctx, cuidx);
+  }
+
+  // Legacy, to be removed
   void
   open_context(const xrt::uuid& xclbin_uuid , unsigned int ip_index, bool shared) override
   {
     if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid.get(), ip_index, shared))
-      throw system_error(ret, "failed to open ip context");
-  }
-
-  void
-  open_context(uint32_t slot, const xrt::uuid& xclbin_uuid, const std::string& cuname, bool shared) override
-  {
-    if (auto ret = xclOpenContextByName(DeviceType::get_device_handle(), slot, xclbin_uuid.get(), cuname.c_str(), shared))
       throw system_error(ret, "failed to open ip context");
   }
 

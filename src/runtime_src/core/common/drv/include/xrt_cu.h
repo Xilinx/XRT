@@ -3,6 +3,7 @@
  * Xilinx Unify CU Model
  *
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -26,6 +27,14 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define ioremap_nocache         ioremap
 #endif
+
+/* Avoid the CU soft lockup warning when CU thread keep busy.
+ * Small value leads to lower performance on APU.
+ */
+#define MAX_CU_LOOP 100
+
+/* If poll count reach this threashold, switch to interrupt mode */
+#define CU_DEFAULT_POLL_THRESHOLD 30 /* About 60 us on APU */
 
 /* The normal CU in ip_layout would assign a interrupt
  * ID in range 0 to 127. Use 128 for m2m cu could ensure
@@ -270,12 +279,20 @@ struct xrt_cu_log {
 #define CU_LOG_STAGE_SQ		3
 #define CU_LOG_STAGE_CQ		4
 
+struct xrt_cu_range {
+	struct mutex		  xcr_lock;
+	u32			  xcr_start;
+	u32			  xcr_end;
+};
+
 /* Supported event type */
 struct xrt_cu {
 	struct device		 *dev;
 	struct xrt_cu_info	  info;
 	struct resource		**res;
 	struct list_head	  cu;
+	/* Range of Read-only registers */
+	struct xrt_cu_range	  read_regs;
 	/* pending queue */
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;
@@ -332,6 +349,9 @@ struct xrt_cu {
 	 * one for submit, one for complete
 	 */
 	struct task_struct	  *thread;
+	u32			   poll_count;
+	u32                        poll_threshold;
+	u32			   interrupt_used;
 	/* Good for debug */
 	u32			   sleep_cnt;
 	u32			   max_running;

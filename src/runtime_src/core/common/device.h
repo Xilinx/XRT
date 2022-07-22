@@ -242,15 +242,18 @@ public:
     return qr.put(this, std::forward<Args>(args)...);
   }
 
-  // register_xclbin() - Registers an xclbin with the device
+  // record_xclbin() - Registers an xclbin with the device
   //
-  // This function registers an xclbin without loading it onto
-  // hardware resource.  Once registered, a hardware context
-  // can be created once or more times, which will assign the
-  // xclbin to hardware resources.
+  // This function records/registers an xclbin without loading it onto
+  // hardware resource.  Once registered, a hardware context can be
+  // created once or more times, which will assign the xclbin to
+  // hardware resources.
+  //
+  // Naming of "record" as in record_xclbin is to compensate for
+  // virtual register_xclbin which is defined by shim.
   XRT_CORE_COMMON_EXPORT
   void
-  register_xclbin(const xrt::xclbin& xclbin);
+  record_xclbin(const xrt::xclbin& xclbin);
 
   /**
    * load_xclbin() - Load an xclbin object on this device
@@ -401,7 +404,7 @@ public:
 
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
-  get_ert_slots() const;
+  get_ert_slots(const uuid& xclbin_id = uuid()) const;
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
@@ -422,6 +425,16 @@ public:
    * xclmgmt_load_xclbin() - loads the xclbin through the mgmt pf
    */
   virtual void xclmgmt_load_xclbin(const char*) const{}
+
+  /**
+   * shutdown_device() - hot reset the device, stop ongoing transactions
+   */
+  virtual void device_shutdown() const {}
+
+  /**
+   * online_device() - bring back the device online
+   */
+  virtual void device_online() const {}
 
   /**
    * open() - opens a device with an fd which can be used for non pcie read/write

@@ -1,32 +1,24 @@
-/**
- * Copyright (C) 2016-2019 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _HW_EM_SHIM_H_
 #define _HW_EM_SHIM_H_
 
 #ifndef _WINDOWS
 #include "config.h"
+#include "em_defines.h"
+
 #include "core/common/api/xclbin_int.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xrt_profiling.h"
+#include "core/include/experimental/xrt_hw_context.h"
 #include "core/include/experimental/xrt_xclbin.h"
-#include "em_defines.h"
+#include "core/include/xdp/common.h"
+#include "core/include/xdp/counters.h"
+
 #include "mbscheduler.h"
 #include "memorymanager.h"
 #include "mbscheduler_hwemu.h"
@@ -34,7 +26,6 @@
 #include "rpc_messages.pb.h"
 #include "xgq_hwemu.h"
 #include "xclbin.h"
-#include "xclperf.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "unix_socket.h"
@@ -126,14 +117,43 @@ using addr_type = uint64_t;
       static int xcl_LogMsg(xrtLogMsgLevel level, const char* tag, const char* format, ...);
       static int xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* format, va_list args1);
 
-      //P2P Support
+      // P2P Support
       int xclExportBO(unsigned int boHandle);
       unsigned int xclImportBO(int boGlobalHandle, unsigned flags);
       int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
 
-      //MB scheduler related API's
+      // MB scheduler related API's
       int xclExecBuf( unsigned int cmdBO);
       int xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list);
+
+      ////////////////////////////////////////////////////////////////
+      // Context handling
+      ////////////////////////////////////////////////////////////////
+      int
+      xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
+
+      int
+      xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
+
+      // aka xclOpenContextByName, internal shim API for native C++ applications only
+      xrt_core::cuidx_type
+      open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
+
+      void
+      close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
+
+      // aka xclCreateHWContext, internal shim API for native C++ applications only
+      uint32_t // ctx handle aka slot idx
+      create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos);
+
+      // aka xclDestroyHWContext, internal shim API for native C++ applications only
+      void
+      destroy_hw_context(uint32_t ctxhdl);
+
+      // aka xclRegisterXclbin, internal shim API for native C++ applications only
+      void
+      register_xclbin(const xrt::xclbin&);
+      ////////////////////////////////////////////////////////////////
 
       int xclRegisterEventNotify( unsigned int userInterrupt, int fd);
       int xclExecWait( int timeoutMilliSec);
@@ -179,7 +199,7 @@ using addr_type = uint64_t;
       double xclGetKernelReadMaxBandwidthMBps();
       double xclGetKernelWriteMaxBandwidthMBps();
       size_t xclGetDeviceTimestamp();
-      void xclReadBusStatus(xclPerfMonType type);
+      void xclReadBusStatus(xdp::MonitorType type);
       void xclGetDebugMessages(bool force = false);
       void logMessage(std::string& msg,int verbosity = 0);
 
@@ -187,8 +207,8 @@ using addr_type = uint64_t;
       void readDebugIpLayout(const std::string debugFileName);
       uint32_t getIPCountAddrNames(const std::string debugFileName, int type, uint64_t *baseAddress,
                                    std::string * portNames, uint8_t *properties, size_t size);
-      void getPerfMonSlotName(xclPerfMonType type, uint32_t slotnum, char* slotName, uint32_t length);
-      uint32_t getPerfMonNumberSlots(xclPerfMonType type);
+      void getPerfMonSlotName(xdp::MonitorType type, uint32_t slotnum, char* slotName, uint32_t length);
+      uint32_t getPerfMonNumberSlots(xdp::MonitorType type);
 
       int xclGetDebugIPlayoutPath(char* layoutPath, size_t size);
       int xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz);
@@ -320,11 +340,8 @@ using addr_type = uint64_t;
       //mutex to control parellel RPC calls
       std::mutex mtx;
       std::mutex mApiMtx;
-      std::vector<Event> list_of_events[XAIM_MAX_NUMBER_SLOTS];
+      std::vector<Event> list_of_events[xdp::MAX_NUM_AIMS];
       unsigned int tracecount_calls;
-      // In case support for different version DSAs is required
-      int mDSAMajorVersion;
-      int mDSAMinorVersion;
       static std::map<std::string, std::string> mEnvironmentNameValueMap;
 
       void* ci_buf;
@@ -372,15 +389,15 @@ using addr_type = uint64_t;
       uint64_t mPerfMonFifoCtrlBaseAddress;
       uint64_t mPerfMonFifoReadBaseAddress;
       uint64_t mTraceFunnelAddress;
-      uint64_t mPerfMonBaseAddress[XAIM_MAX_NUMBER_SLOTS];
-      uint64_t mAccelMonBaseAddress[XAM_MAX_NUMBER_SLOTS];
-      uint64_t mStreamMonBaseAddress[XASM_MAX_NUMBER_SLOTS];
-      std::string mPerfMonSlotName[XAIM_MAX_NUMBER_SLOTS];
-      std::string mAccelMonSlotName[XAM_MAX_NUMBER_SLOTS];
-      std::string mStreamMonSlotName[XASM_MAX_NUMBER_SLOTS];
-      uint8_t mPerfmonProperties[XAIM_MAX_NUMBER_SLOTS];
-      uint8_t mAccelmonProperties[XAM_MAX_NUMBER_SLOTS];
-      uint8_t mStreamMonProperties[XASM_MAX_NUMBER_SLOTS];
+      uint64_t mPerfMonBaseAddress[xdp::MAX_NUM_AIMS];
+      uint64_t mAccelMonBaseAddress[xdp::MAX_NUM_AMS];
+      uint64_t mStreamMonBaseAddress[xdp::MAX_NUM_ASMS];
+      std::string mPerfMonSlotName[xdp::MAX_NUM_AIMS];
+      std::string mAccelMonSlotName[xdp::MAX_NUM_AMS];
+      std::string mStreamMonSlotName[xdp::MAX_NUM_ASMS];
+      uint8_t mPerfmonProperties[xdp::MAX_NUM_AIMS];
+      uint8_t mAccelmonProperties[xdp::MAX_NUM_AMS];
+      uint8_t mStreamMonProperties[xdp::MAX_NUM_ASMS];
       std::vector<membank> mMembanks;
       static std::map<int, std::tuple<std::string,int,void*, unsigned int> > mFdToFileNameMap;
       std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
