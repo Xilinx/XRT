@@ -65,11 +65,12 @@ template <typename T>
 std::vector<T> as_vector_simple(const boost::property_tree::ptree& pt, 
                                 const boost::property_tree::ptree::key_type& key)
 {
-    std::vector<T> r;
+  static const boost::property_tree::ptree ptEmpty;
+  std::vector<T> r;
 
-    for (auto& item : pt.get_child(key))
-        r.push_back(item.second.get_value<T>());
-    return r;
+  for (auto& item : pt.get_child(key, ptEmpty))
+      r.push_back(item.second.get_value<T>());
+  return r;
 }
 
 
@@ -165,7 +166,6 @@ int exec(const boost::filesystem::path &cmd, const std::vector<std::string> &arg
 void write_htonl(std::ostream & _buf, uint32_t _word32);
 
 void createMemoryBankGrouping(XclBin & xclbin);
-void createAIEPartition(XclBin & xclbin);
 };
 
 #endif

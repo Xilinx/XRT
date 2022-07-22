@@ -29,21 +29,21 @@ class SectionBMC : public Section {
     metadata
   };
  public:
-  static SubSection getSubSectionEnum(const std::string & _sSubSectionName);
-  static const std::string & getSubSectionName(SubSection eSubSection);
+  static SubSection getSubSectionEnum(const std::string& _sSubSectionName);
+  static const std::string& getSubSectionName(SubSection eSubSection);
 
  public:
-  bool subSectionExists(const std::string &_sSubSectionName) const override;
+  bool subSectionExists(const std::string& _sSubSectionName) const override;
 
  protected:
-  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, Section::FormatType _eFormatType, std::ostringstream &_buffer) const override;
-  void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
+  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string& _sSubSection, Section::FormatType _eFormatType, std::ostringstream& _buffer) const override;
+  void writeSubPayload(const std::string& _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
 
  protected:
-   void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, std::ostringstream &_buffer) const;
-   void createDefaultFWImage(std::istream & _istream, std::ostringstream &_buffer) const;
-   void writeFWImage(std::ostream& _oStream) const;
-   void writeMetadata(std::ostream& _oStream) const;
+  void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, std::ostringstream& _buffer) const;
+  void createDefaultFWImage(std::istream& _istream, std::ostringstream& _buffer) const;
+  void writeFWImage(std::ostream& _oStream) const;
+  void writeMetadata(std::ostream& _oStream) const;
 
  private:
   // Static initializer helper class

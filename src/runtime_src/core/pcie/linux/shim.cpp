@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * XRT PCIe library layered on top of xocl kernel driver
  *
@@ -24,6 +25,8 @@
 #include "xclbin.h"
 
 #include "core/include/shim_int.h"
+#include "core/include/xdp/fifo.h"
+#include "core/include/xdp/trace.h"
 #include "core/include/experimental/xrt_hw_context.h"
 
 #include "core/common/bo_cache.h"
@@ -76,11 +79,6 @@
 #define ARRAY_SIZE(x)   (sizeof (x) / sizeof (x[0]))
 
 #define SHIM_QDMA_AIO_EVT_MAX   1024 * 64
-
-// Profiling
-#define AXI_FIFO_RDFD_AXI_FULL          0x1000
-#define MAX_TRACE_NUMBER_SAMPLES                        16384
-#define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
 
 namespace xq = xrt_core::query;
 namespace {
@@ -1874,9 +1872,9 @@ int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t 
 
 int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+  uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
 
-  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
 
   return 0;
@@ -1889,7 +1887,7 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 
     uint32_t size = 0;
 
-    wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+    wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
     uint32_t numWords = numSamples * wordsPerSample;
 
 //    alignas is defined in c++11
@@ -1897,9 +1895,9 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
     /* Alignment is limited to 16 by PPC64LE : so , should it be
     alignas(16) uint32_t hostbuf[traceBufSzInWords];
     */
-    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+    alignas(xdp::IP::FIFO::alignment) uint32_t hostbuf[traceBufWordSz];
 #else
-    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(xdp::IP::FIFO::alignment, traceBufWordSz);
     uint32_t* hostbuf = alignedBuffer.getBuffer();
 #endif
 
@@ -1918,10 +1916,10 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
       for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
           if(mLogStream.is_open())
             mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+		       << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
                           << (void *)(hostbuf + words) << std::dec << std::endl;
 
-        xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+	  xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
 
         size += chunkSizeBytes;
       }
@@ -1933,11 +1931,11 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 
       if(mLogStream.is_open()) {
         mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+		   << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0]*/ << " and writing it to 0x"
                       << (void *)(hostbuf + words) << std::dec << std::endl;
       }
 
-      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
 
       size += chunkSizeBytes;
     }
@@ -2002,24 +2000,6 @@ int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath
   std::string sysfsFullPath = dev->get_sysfs_path(subdev_str, entry_str);
   strncpy(sysfsPath, sysfsFullPath.c_str(), size);
   sysfsPath[size - 1] = '\0';
-  return 0;
-}
-
-int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
-{
-  auto dev = pcidev::get_dev(mBoardNumber);
-  uint16_t user_instance = dev->instance;
-  uint16_t nifd_instance = 0;
-  std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
-  std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
-  info->device_type = DeviceType::XBB;
-  info->device_index = mBoardNumber;
-  info->user_instance = user_instance;
-  info->nifd_instance = nifd_instance;
-  strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN - 1);
-  strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN - 1);
-  info->device_name[MAX_NAME_LEN-1] = '\0';
-  info->nifd_name[MAX_NAME_LEN-1] = '\0';
   return 0;
 }
 
@@ -2800,12 +2780,6 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
   if (!drv)
     return -1;
   return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
-}
-
-int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
 int xclIPName2Index(xclDeviceHandle handle, const char *name)

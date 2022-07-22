@@ -143,24 +143,6 @@ get_container()
 }
 
 inline std::string
-get_data_transfer_trace()
-{
-  static std::string value = detail::get_string_value("Debug.data_transfer_trace","off");
-  return value;
-}
-
-inline std::string
-get_data_transfer_trace_dep_message()
-{
-  static bool emitted = false ;
-  if (!emitted) {
-    emitted = true ;
-    return "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;
-  }
-  return "" ;
-}
-
-inline std::string
 get_device_trace()
 {
   static std::string value = detail::get_string_value("Debug.device_trace", "off");
@@ -237,11 +219,8 @@ get_noc_profile_interval_ms()
 inline std::string
 get_stall_trace()
 {
-  static bool data_transfer_enabled =
-    (get_data_transfer_trace() != "off") || (get_device_trace() != "off") ;
-  static std::string value =
-    (!data_transfer_enabled) ? "off" :
-    detail::get_string_value("Debug.stall_trace", "off");
+  static std::string value = (get_device_trace() == "off") ? "off"
+                             : detail::get_string_value("Debug.stall_trace", "off");
   return value;
 }
 
@@ -321,20 +300,6 @@ get_opencl_trace()
 }
 
 inline bool
-get_opencl_summary()
-{
-  static bool value = detail::get_bool_value("Debug.opencl_summary", false);
-  return value;
-}
-
-inline bool
-get_opencl_device_counter()
-{
-  static bool value = detail::get_bool_value("Debug.opencl_device_counter", false);
-  return value;
-}
-
-inline bool
 get_device_counters()
 {
   static bool value = detail::get_bool_value("Debug.device_counters", false);
@@ -380,6 +345,13 @@ inline bool
 get_aie_trace_periodic_offload()
 {
   static bool value = detail::get_bool_value("Debug.aie_trace_periodic_offload", true);
+  return value;
+}
+
+inline bool
+get_aie_trace_reuse_buffer()
+{
+  static bool value = detail::get_bool_value("Debug.aie_trace_reuse_buffer", false);
   return value;
 }
 

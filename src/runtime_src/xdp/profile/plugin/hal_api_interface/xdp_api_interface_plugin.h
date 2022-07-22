@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,8 +18,7 @@
 #ifndef XDP_API_INTERFACE_PLUGIN_DOT_H
 #define XDP_API_INTERFACE_PLUGIN_DOT_H
 
-#include "xclperf.h"
-
+#include "core/include/xdp/hal_api.h"
 #include "xdp/config.h"
 
 // Currently, the HAL API Interface does not require a proper
@@ -26,8 +26,9 @@
 //  Instead, it just directly communicates with the counters in hardware.
 
 extern "C" {
-  XDP_EXPORT void hal_api_interface_cb_func(HalInterfaceCallbackType cb_type, 
-					    void* payload) ;
+  XDP_EXPORT
+  void hal_api_interface_cb_func(xdp::HalInterfaceCallbackType cb_type,
+                                 void* payload) ;
 }
 
 #endif

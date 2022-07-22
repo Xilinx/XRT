@@ -23,13 +23,8 @@ namespace xdp {
 
   IniParameters::IniParameters()
   {
-    addParameter("opencl_summary", xrt_core::config::get_opencl_summary(),
-                 "Generation of OpenCL summary report (deprecated)");
     addParameter("opencl_trace", xrt_core::config::get_opencl_trace(),
                  "Generation of trace of OpenCL APIs and memory transfers");
-    addParameter("opencl_device_counter",
-                 xrt_core::config::get_opencl_device_counter(),
-                 "Hardware counters added to OpenCL summary file (deprecated)");
     addParameter("device_counters",
                  xrt_core::config::get_device_counters(),
                  "Hardware counters added to summary file");
@@ -40,9 +35,6 @@ namespace xdp {
                  "Generation of Native XRT API function trace");
     addParameter("xrt_trace", xrt_core::config::get_xrt_trace(),
                  "Generation of hardware SHIM function trace");
-    addParameter("data_transfer_trace",
-                 xrt_core::config::get_data_transfer_trace(),
-                 "Collection of data from PL monitors and added to summary and trace (deprecated)");
     addParameter("device_trace",
                  xrt_core::config::get_device_trace(),
                  "Collection of data from PL monitors and added to summary and trace");

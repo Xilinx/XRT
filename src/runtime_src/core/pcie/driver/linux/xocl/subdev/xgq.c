@@ -389,6 +389,44 @@ static void xgq_vmr_log_dump_all(struct xocl_xgq_vmr *xgq)
 	xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, false);
 }
 
+static struct opcode_name {
+	const char 	*name;
+	int 		opcode;
+} opcode_names[] = {
+	{"LOAD XCLBIN", XGQ_CMD_OP_LOAD_XCLBIN},
+	{"GET LOG PAGE", XGQ_CMD_OP_GET_LOG_PAGE},
+	{"DOWNLOAD PDI", XGQ_CMD_OP_DOWNLOAD_PDI},
+	{"CLOCK", XGQ_CMD_OP_CLOCK},
+	{"SENSOR", XGQ_CMD_OP_SENSOR},
+	{"LOAD APUBIN", XGQ_CMD_OP_LOAD_APUBIN},
+	{"VMR CONTROL", XGQ_CMD_OP_VMR_CONTROL},
+	{"PROGRAM SCFW", XGQ_CMD_OP_PROGRAM_SCFW},
+};
+
+const char *get_opcode_name(int opcode)
+{
+	int i = 0;
+	const char *unknown = "UNKNOWN";
+
+	for (i = 0; i < ARRAY_SIZE(opcode_names); i++) {
+		if (opcode_names[i].opcode == opcode)
+			return opcode_names[i].name;
+	}
+
+	return unknown;
+}
+
+static void xgq_vmr_log_dump_debug(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
+{
+	XGQ_WARN(xgq, "opcode: %s(0x%x), rcode: %d, check debug trace for detailed log.",
+		get_opcode_name(cmd->xgq_cmd_entry.hdr.opcode),
+		cmd->xgq_cmd_entry.hdr.opcode,
+		cmd->xgq_cmd_rcode);
+
+	/* Dump VMR logs into xclmgmt debugfs */
+	xgq_vmr_log_dump(xgq, 20, true);
+}
+
 /*
  * stop service will be called from driver remove or found timeout cmd from health_worker
  * 3 steps to stop the service:
@@ -695,7 +733,8 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN && 
 	    opcode != XGQ_CMD_OP_DOWNLOAD_PDI &&
-	    opcode != XGQ_CMD_OP_LOAD_APUBIN) {
+	    opcode != XGQ_CMD_OP_LOAD_APUBIN &&
+	    opcode != XGQ_CMD_OP_PROGRAM_SCFW) {
 		XGQ_WARN(xgq, "unsupported opcode %d", opcode);
 		return -EINVAL;
 	}
@@ -727,8 +766,12 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 		&(cmd->xgq_cmd_entry.pdi_payload) :
 		&(cmd->xgq_cmd_entry.xclbin_payload);
 
-	/* copy buf data onto shared memory with device */
-	memcpy_to_device(xgq, address, buf, len);
+	/*
+	 * copy buf data onto shared memory with device.
+	 * Note: if len == 0, it is PROGRAME_SCFW, no payload to copyin
+	 */
+	if (len > 0)
+		memcpy_to_device(xgq, address, buf, len);
 	payload->address = address;
 	payload->size = len;
 	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
@@ -766,7 +809,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
-		XGQ_INFO(xgq, "ret: %d, check VMR log for more info.", cmd->xgq_cmd_rcode);
+		xgq_vmr_log_dump_debug(xgq, cmd);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
 		ret = len;
@@ -796,6 +839,14 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 		XGQ_CMD_OP_LOAD_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
 
 	return ret == xclbin_len ? 0 : -EIO;
+}
+
+static int xgq_program_scfw(struct platform_device *pdev)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+
+	return xgq_transfer_data(xgq, NULL, 0,
+		XGQ_CMD_OP_PROGRAM_SCFW, XOCL_XGQ_DOWNLOAD_TIME);
 }
 
 static int xgq_log_page_fw(struct platform_device *pdev,
@@ -1105,6 +1156,8 @@ static int vmr_info_query_op(struct platform_device *pdev,
 			ret = -EINVAL;
 		} else {
 			char *info_data = vmalloc(info_size + 1);
+			size_t count = 0;
+
 			if (info_data == NULL) {
 				XGQ_ERR(xgq, "vmalloc failed");
 				ret = -ENOMEM;
@@ -1112,7 +1165,14 @@ static int vmr_info_query_op(struct platform_device *pdev,
 			}
 			memcpy_from_device(xgq, address, info_data, info_size);
 			info_data[info_size] = '\0'; /* terminate the string */
-			*cnt += sprintf(buf, "%s", info_data);
+
+			/* text buffer for sysfs node should be limited to PAGE_SIZE */
+			count = snprintf(buf, PAGE_SIZE, "%s", info_data);
+			if (count > PAGE_SIZE) {
+				XGQ_WARN(xgq, "message size %d exceeds %ld",
+					info_size, PAGE_SIZE);
+			}
+			*cnt = min(count, PAGE_SIZE);
 			vfree(info_data);
 		}
 	}
@@ -1138,6 +1198,18 @@ static int vmr_endpoint_info_query(struct platform_device *pdev,
 	char *buf, size_t *cnt)
 {
 	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_ENDPOINT);
+}
+
+static int vmr_task_info_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_TASK_STATS);
+}
+
+static int vmr_memory_info_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_MEM_STATS);
 }
 
 /* On versal, verify is enforced. */
@@ -1573,8 +1645,8 @@ static int vmr_enable_multiboot(struct platform_device *pdev)
 		xgq->xgq_boot_from_backup ? XGQ_CMD_BOOT_BACKUP : XGQ_CMD_BOOT_DEFAULT);
 }
 
-static int xgq_collect_sensors(struct platform_device *pdev, int sid,
-	char *data_buf, uint32_t len)
+static int xgq_collect_sensors(struct platform_device *pdev, int aid, int sid,
+                               char *data_buf, uint32_t len, uint8_t sensor_id)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -1607,8 +1679,12 @@ static int xgq_collect_sensors(struct platform_device *pdev, int sid,
 	payload = &(cmd->xgq_cmd_entry.sensor_payload);
 	payload->address = address;
 	payload->size = len;
-	payload->aid = XGQ_CMD_SENSOR_AID_GET_SDR;
+	//Sensor API ID
+	payload->aid = aid;
+	//Sensor request ID
 	payload->sid = sid;
+	//Sensor ID
+	payload->sensor_id = sensor_id;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_SENSOR;
@@ -1660,10 +1736,16 @@ acquire_failed:
 	return ret;
 }
 
-static int xgq_collect_sensors_by_id(struct platform_device *pdev, char *buf,
-	 uint8_t id, uint32_t len)
+static int xgq_collect_sensors_by_repo_id(struct platform_device *pdev, char *buf,
+	 uint8_t repo_id, uint32_t len)
 {
-	return xgq_collect_sensors(pdev, id, buf, len);
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_AID_GET_SDR, repo_id, buf, len, 0);
+}
+
+static int xgq_collect_sensors_by_sensor_id(struct platform_device *pdev, char *buf,
+	 uint8_t repo_id, uint32_t len, uint8_t sensor_id)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_AID_GET_SINGLE_SDR, repo_id, buf, len, sensor_id);
 }
 
 /* sysfs */
@@ -1829,7 +1911,7 @@ static ssize_t program_sc_store(struct device *dev,
 	}
 
 	if (val) {
-		ret = vmr_control_op(to_platform_device(dev), XGQ_CMD_PROGRAM_SC);
+		ret = xgq_program_scfw(to_platform_device(dev));
 		if (ret) {
 			XGQ_ERR(xgq, "failed: %d", ret);
 			return -EINVAL;
@@ -1896,7 +1978,6 @@ static ssize_t vmr_verbose_info_show(struct device *dev,
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 
-	/* update boot status */
 	if (vmr_verbose_info_query(xgq->xgq_pdev, buf, &cnt))
 		return -EINVAL;
 
@@ -1910,13 +1991,38 @@ static ssize_t vmr_endpoint_show(struct device *dev,
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 
-	/* update boot status */
 	if (vmr_endpoint_info_query(xgq->xgq_pdev, buf, &cnt))
 		return -EINVAL;
 
 	return cnt;
 }
 static DEVICE_ATTR_RO(vmr_endpoint);
+
+static ssize_t vmr_task_stats_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	if (vmr_task_info_query(xgq->xgq_pdev, buf, &cnt))
+		return -EINVAL;
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(vmr_task_stats);
+
+static ssize_t vmr_mem_stats_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	if (vmr_memory_info_query(xgq->xgq_pdev, buf, &cnt))
+		return -EINVAL;
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(vmr_mem_stats);
 
 static ssize_t vmr_debug_type_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -1948,6 +2054,8 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_vmr_status.attr,
 	&dev_attr_vmr_verbose_info.attr,
 	&dev_attr_vmr_endpoint.attr,
+	&dev_attr_vmr_task_stats.attr,
+	&dev_attr_vmr_mem_stats.attr,
 	&dev_attr_program_sc.attr,
 	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_vmr_debug_dump.attr,
@@ -2221,7 +2329,8 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,
-	.xgq_collect_sensors_by_id = xgq_collect_sensors_by_id,
+	.xgq_collect_sensors_by_repo_id = xgq_collect_sensors_by_repo_id,
+	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.vmr_load_firmware = xgq_log_page_fw,
 };
 

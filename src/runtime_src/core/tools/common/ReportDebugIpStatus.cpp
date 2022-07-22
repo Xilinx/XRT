@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -29,9 +30,14 @@ namespace XBU = XBUtilities;
 #include "core/common/utils.h"
 #include "core/common/error.h"
 #include "core/common/xrt_profiling.h"
-#include "core/include/xcl_perfmon_parameters.h"
-#include "core/include/xcl_axi_checker_codes.h"
 #include "core/include/experimental/xrt-next.h"
+#include "core/include/xdp/aim.h"
+#include "core/include/xdp/am.h"
+#include "core/include/xdp/asm.h"
+#include "core/include/xdp/axi_checker_codes.h"
+#include "core/include/xdp/common.h"
+#include "core/include/xdp/lapc.h"
+#include "core/include/xdp/spc.h"
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -60,7 +66,8 @@ static const char* debugIpNames[DEBUG_IP_TYPE_MAX] = {
   "AxiDMA",
   "TS2MMFull",
   "AxiNOC",
-  "Accelerator Deadlock Detector (accel_deadlock_detector)"
+  "Accelerator Deadlock Detector (accel_deadlock_detector)",
+  "High Speed Debug Port Trace IP (hsdp_trace)",
 };
 
 static size_t cuNameMaxStrLen[DEBUG_IP_TYPE_MAX] = {0};
@@ -80,12 +87,12 @@ class DebugIpStatusCollector
   std::vector<std::string> cuNames[DEBUG_IP_TYPE_MAX];
   std::vector<std::string> portNames[DEBUG_IP_TYPE_MAX];
 
-  xclDebugCountersResults          aimResults;
-  xclStreamingDebugCountersResults asmResults;
-  xclAccelMonitorCounterResults    amResults;
-  xclDebugCheckersResults          lapcResults;
-  xclDebugStreamingCheckersResults spcResults;
-  xclAccelDeadlockDetectorResults  accelDeadlockResults;
+  xdp::AIMCounterResults  aimResults;
+  xdp::ASMCounterResults  asmResults;
+  xdp::AMCounterResults   amResults;
+  xdp::LAPCCounterResults lapcResults;
+  xdp::SPCCounterResults  spcResults;
+  xdp::ADDCounterResults  accelDeadlockResults;
 
 public :
   DebugIpStatusCollector(xclDeviceHandle h, const xrt_core::device* d);
@@ -120,6 +127,7 @@ private :
   void populateSPCResults(boost::property_tree::ptree &_pt);
   void populateILAResults(boost::property_tree::ptree &_pt);
   void populateAccelDeadlockResults(boost::property_tree::ptree &_pt);
+  void populateHSDPTraceResults(boost::property_tree::ptree &_pt);
 
 };
 
@@ -231,6 +239,12 @@ DebugIpStatusCollector::getDebugIpData()
           readAccelDeadlockDetector(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
+      case HSDP_TRACE :
+      {
+        if (debugIpOpt[HSDP_TRACE])
+          ++debugIpNum[HSDP_TRACE];
+        break;
+      }
       default: break;
     }
   }
@@ -274,7 +288,7 @@ DebugIpStatusCollector::getStreamName(uint8_t dbgIpType,
                         std::string& slaveName)
 {
   // Slotnames are of the format "Master-Slave", split them and store in masterName and slaveName
-  size_t sepPos = dbgIpName.find(IP_LAYOUT_SEP, 0);
+  size_t sepPos = dbgIpName.find("-", 0);
   if(sepPos != std::string::npos) {
     masterName = dbgIpName.substr(0, sepPos);
     slaveName  = dbgIpName.substr(sepPos+1);
@@ -314,15 +328,15 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   aimResults.NumSlots = (unsigned int)debugIpNum[AXI_MM_MONITOR];
 
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo);
-  aimResults.WriteBytes[index]    = valBuf[XAIM_WRITE_BYTES_INDEX];
-  aimResults.WriteTranx[index]    = valBuf[XAIM_WRITE_TRANX_INDEX];
-  aimResults.ReadBytes[index]     = valBuf[XAIM_READ_BYTES_INDEX];
-  aimResults.ReadTranx[index]     = valBuf[XAIM_READ_TRANX_INDEX];
-  aimResults.OutStandCnts[index]  = valBuf[XAIM_OUTSTANDING_COUNT_INDEX];
-  aimResults.LastWriteAddr[index] = valBuf[XAIM_WRITE_LAST_ADDRESS_INDEX];
-  aimResults.LastWriteData[index] = valBuf[XAIM_WRITE_LAST_DATA_INDEX];
-  aimResults.LastReadAddr[index]  = valBuf[XAIM_READ_LAST_ADDRESS_INDEX];
-  aimResults.LastReadData[index]  = valBuf[XAIM_READ_LAST_DATA_INDEX];
+  aimResults.WriteBytes[index]    = valBuf[xdp::IP::AIM::report::WRITE_BYTES];
+  aimResults.WriteTranx[index]    = valBuf[xdp::IP::AIM::report::WRITE_TRANX];
+  aimResults.ReadBytes[index]     = valBuf[xdp::IP::AIM::report::READ_BYTES];
+  aimResults.ReadTranx[index]     = valBuf[xdp::IP::AIM::report::READ_TRANX];
+  aimResults.OutStandCnts[index]  = valBuf[xdp::IP::AIM::report::OUTSTANDING_COUNT];
+  aimResults.LastWriteAddr[index] = valBuf[xdp::IP::AIM::report::WRITE_LAST_ADDRESS];
+  aimResults.LastWriteData[index] = valBuf[xdp::IP::AIM::report::WRITE_LAST_DATA];
+  aimResults.LastReadAddr[index]  = valBuf[xdp::IP::AIM::report::READ_LAST_ADDRESS];
+  aimResults.LastReadData[index]  = valBuf[xdp::IP::AIM::report::READ_LAST_DATA];
 
 }
 
@@ -352,19 +366,21 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[ACCEL_MONITOR];
   amResults.NumSlots = (unsigned int)debugIpNum[ACCEL_MONITOR];
 
+  // The result comes back "as if" we read from sysfs, even though the
+  // actual implementation may be different.
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::am_counter>(device, dbgIpInfo);
-  amResults.CuExecCount[index]       = valBuf[XAM_IOCTL_EXECUTION_COUNT_INDEX];
-  amResults.CuStartCount[index]      = valBuf[XAM_IOCTL_START_COUNT_INDEX];
-  amResults.CuExecCycles[index]      = valBuf[XAM_IOCTL_EXECUTION_CYCLES_INDEX];
+  amResults.CuExecCount[index] = valBuf[xdp::IP::AM::sysfs::EXECUTION_COUNT];
+  amResults.CuStartCount[index] = valBuf[xdp::IP::AM::sysfs::TOTAL_CU_START];
+  amResults.CuExecCycles[index] = valBuf[xdp::IP::AM::sysfs::EXECUTION_CYCLES];
 
-  amResults.CuStallIntCycles[index]  = valBuf[XAM_IOCTL_STALL_INT_INDEX];
-  amResults.CuStallStrCycles[index]  = valBuf[XAM_IOCTL_STALL_STR_INDEX];
-  amResults.CuStallExtCycles[index]  = valBuf[XAM_IOCTL_STALL_EXT_INDEX];
+  amResults.CuStallIntCycles[index] = valBuf[xdp::IP::AM::sysfs::STALL_INT];
+  amResults.CuStallStrCycles[index] = valBuf[xdp::IP::AM::sysfs::STALL_STR];
+  amResults.CuStallExtCycles[index] = valBuf[xdp::IP::AM::sysfs::STALL_EXT];
 
-  amResults.CuBusyCycles[index]      = valBuf[XAM_IOCTL_BUSY_CYCLES_INDEX];
-  amResults.CuMaxParallelIter[index] = valBuf[XAM_IOCTL_MAX_PARALLEL_ITR_INDEX];
-  amResults.CuMaxExecCycles[index]   = valBuf[XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX];
-  amResults.CuMinExecCycles[index]   = valBuf[XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX];
+  amResults.CuBusyCycles[index]      = valBuf[xdp::IP::AM::sysfs::BUSY_CYCLES];
+  amResults.CuMaxParallelIter[index] = valBuf[xdp::IP::AM::sysfs::MAX_PARALLEL_ITER];
+  amResults.CuMaxExecCycles[index]   = valBuf[xdp::IP::AM::sysfs::MAX_EXECUTION_CYCLES];
+  amResults.CuMinExecCycles[index]   = valBuf[xdp::IP::AM::sysfs::MIN_EXECUTION_CYCLES];
 
 }
 
@@ -395,12 +411,14 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_STREAM_MONITOR];
   asmResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_MONITOR];
 
+  // This vector comes back as if we got it from sysfs, but the implementation
+  // might be different
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::asm_counter>(device, dbgIpInfo);
-  asmResults.StrNumTranx[index]     = valBuf[XASM_NUM_TRANX_INDEX];
-  asmResults.StrDataBytes[index]    = valBuf[XASM_DATA_BYTES_INDEX];
-  asmResults.StrBusyCycles[index]   = valBuf[XASM_BUSY_CYCLES_INDEX];
-  asmResults.StrStallCycles[index]  = valBuf[XASM_STALL_CYCLES_INDEX];
-  asmResults.StrStarveCycles[index] = valBuf[XASM_STARVE_CYCLES_INDEX];
+  asmResults.StrNumTranx[index]     = valBuf[xdp::IP::ASM::sysfs::NUM_TRANX];
+  asmResults.StrDataBytes[index]    = valBuf[xdp::IP::ASM::sysfs::DATA_BYTES];
+  asmResults.StrBusyCycles[index]   = valBuf[xdp::IP::ASM::sysfs::BUSY_CYCLES];
+  asmResults.StrStallCycles[index]  = valBuf[xdp::IP::ASM::sysfs::STALL_CYCLES];
+  asmResults.StrStarveCycles[index] = valBuf[xdp::IP::ASM::sysfs::STARVE_CYCLES];
 
 }
 
@@ -432,17 +450,17 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   lapcResults.NumSlots = (unsigned int)debugIpNum[LAPC];
 
   std::vector<uint32_t> valBuf = xrt_core::device_query<xrt_core::query::lapc_status>(device, dbgIpInfo);
-  lapcResults.OverallStatus[index]       = valBuf[XLAPC_OVERALL_STATUS];
+  lapcResults.OverallStatus[index] = valBuf[xdp::IP::LAPC::sysfs::STATUS];
 
-  lapcResults.CumulativeStatus[index][0] = valBuf[XLAPC_CUMULATIVE_STATUS_0];
-  lapcResults.CumulativeStatus[index][1] = valBuf[XLAPC_CUMULATIVE_STATUS_1];
-  lapcResults.CumulativeStatus[index][2] = valBuf[XLAPC_CUMULATIVE_STATUS_2];
-  lapcResults.CumulativeStatus[index][3] = valBuf[XLAPC_CUMULATIVE_STATUS_3];
+  lapcResults.CumulativeStatus[index][0] = valBuf[xdp::IP::LAPC::sysfs::CUMULATIVE_STATUS_0];
+  lapcResults.CumulativeStatus[index][1] = valBuf[xdp::IP::LAPC::sysfs::CUMULATIVE_STATUS_1];
+  lapcResults.CumulativeStatus[index][2] = valBuf[xdp::IP::LAPC::sysfs::CUMULATIVE_STATUS_2];
+  lapcResults.CumulativeStatus[index][3] = valBuf[xdp::IP::LAPC::sysfs::CUMULATIVE_STATUS_3];
 
-  lapcResults.SnapshotStatus[index][0]   = valBuf[XLAPC_SNAPSHOT_STATUS_0];
-  lapcResults.SnapshotStatus[index][1]   = valBuf[XLAPC_SNAPSHOT_STATUS_1];
-  lapcResults.SnapshotStatus[index][2]   = valBuf[XLAPC_SNAPSHOT_STATUS_2];
-  lapcResults.SnapshotStatus[index][3]   = valBuf[XLAPC_SNAPSHOT_STATUS_3];
+  lapcResults.SnapshotStatus[index][0]   = valBuf[xdp::IP::LAPC::sysfs::SNAPSHOT_STATUS_0];
+  lapcResults.SnapshotStatus[index][1]   = valBuf[xdp::IP::LAPC::sysfs::SNAPSHOT_STATUS_1];
+  lapcResults.SnapshotStatus[index][2]   = valBuf[xdp::IP::LAPC::sysfs::SNAPSHOT_STATUS_2];
+  lapcResults.SnapshotStatus[index][3]   = valBuf[xdp::IP::LAPC::sysfs::SNAPSHOT_STATUS_3];
 
 }
 
@@ -475,9 +493,9 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
 
   std::vector<uint32_t> valBuf = xrt_core::device_query<xrt_core::query::spc_status>(device, dbgIpInfo);
 
-  spcResults.PCAsserted[index] = valBuf[XSPC_PC_ASSERTED];
-  spcResults.CurrentPC[index]  = valBuf[XSPC_CURRENT_PC];
-  spcResults.SnapshotPC[index] = valBuf[XSPC_SNAPSHOT_PC];
+  spcResults.PCAsserted[index] = valBuf[xdp::IP::SPC::sysfs::PC_ASSERTED];
+  spcResults.CurrentPC[index]  = valBuf[xdp::IP::SPC::sysfs::CURRENT_PC];
+  spcResults.SnapshotPC[index] = valBuf[xdp::IP::SPC::sysfs::SNAPSHOT_PC];
 
 }
 
@@ -515,6 +533,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
       case AXI_STREAM_PROTOCOL_CHECKER:
       case TRACE_S2MM:
       case ACCEL_DEADLOCK_DETECTOR:
+      case HSDP_TRACE:
         ++count;
         ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
         break;
@@ -560,6 +579,7 @@ DebugIpStatusCollector::populateAllResults(boost::property_tree::ptree &_pt)
   populateSPCResults(_pt);
   populateILAResults(_pt);
   populateAccelDeadlockResults(_pt);
+  populateHSDPTraceResults(_pt);
 
 }
 
@@ -698,7 +718,7 @@ DebugIpStatusCollector::populateLAPCResults(boost::property_tree::ptree &_pt)
     entry.put("overall_status", lapcResults.OverallStatus[i]);
 
     boost::property_tree::ptree snapshot_pt;
-    for(size_t j = 0; j < XLAPC_STATUS_REG_NUM; j++) {
+    for(size_t j = 0; j < xdp::IP::LAPC::NUM_STATUS; j++) {
       boost::property_tree::ptree e_pt;
       e_pt.put_value(lapcResults.SnapshotStatus[i][j]);
       snapshot_pt.push_back(std::make_pair("", e_pt));
@@ -706,7 +726,7 @@ DebugIpStatusCollector::populateLAPCResults(boost::property_tree::ptree &_pt)
     entry.add_child("snapshot_status", snapshot_pt); 
 
     boost::property_tree::ptree cumulative_pt;
-    for(size_t j = 0; j < XLAPC_STATUS_REG_NUM; j++) {
+    for(size_t j = 0; j < xdp::IP::LAPC::NUM_STATUS; j++) {
       boost::property_tree::ptree e_pt;
       e_pt.put_value(lapcResults.CumulativeStatus[i][j]);
       cumulative_pt.push_back(std::make_pair("", e_pt));
@@ -773,6 +793,20 @@ DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree
   accel_deadlock_pt.put("is_deadlocked", accelDeadlockResults.DeadlockStatus);
 
   _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
+}
+
+void 
+DebugIpStatusCollector::populateHSDPTraceResults(boost::property_tree::ptree &_pt)
+{
+  if(0 == debugIpNum[HSDP_TRACE]) {
+    return;
+  }
+
+  boost::property_tree::ptree hsdpTrace_pt;
+  hsdpTrace_pt.put("description", "Offloads trace events via High Speed Debug Port");
+  hsdpTrace_pt.put("count",debugIpNum[HSDP_TRACE]);
+
+  _pt.add_child("Trace via High Speed Debug Port", hsdpTrace_pt);
 }
 
 // ----- Supporting Functions -------------------------------------------
@@ -992,17 +1026,16 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
   try {
     for(auto& ip : lapc_pt) {
       const boost::property_tree::ptree& entry = ip.second;
-      unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM]   = {0};
-      unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM] = {0};
+      unsigned int snapshotStatus[xdp::IP::LAPC::NUM_STATUS]   = {0};
+      unsigned int cumulativeStatus[xdp::IP::LAPC::NUM_STATUS] = {0};
 
       const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
       size_t idx = 0;
       for(auto& e : snapshot_pt) {
         snapshotStatus[idx] = e.second.get_value<unsigned int>();
         ++idx;
-        if(idx >= XLAPC_STATUS_REG_NUM) {
+        if(idx >= xdp::IP::LAPC::NUM_STATUS)
           break;
-        }  
       }
 
       const boost::property_tree::ptree& cumulative_pt = entry.get_child("cumulative_status");
@@ -1010,12 +1043,11 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
       for(auto& e : cumulative_pt) {
         cumulativeStatus[idx] = e.second.get_value<unsigned int>();
         ++idx;
-        if(idx >= XLAPC_STATUS_REG_NUM) {
+        if(idx >= xdp::IP::LAPC::NUM_STATUS)
           break;
-        }  
       }
 
-      if (!xclAXICheckerCodes::isValidAXICheckerCodes(entry.get<unsigned int>("overall_status"),
+      if (!xdp::isValidAXICheckerCodes(entry.get<unsigned int>("overall_status"),
                 snapshotStatus, cumulativeStatus)) {
 
         invalid_codes = true;
@@ -1028,16 +1060,16 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
         violations_found = true;
         _output << boost::format("CU Name: %s AXI Port: %s \n  First violation: \n    %s")
                     % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
-                    % xclAXICheckerCodes::decodeAXICheckerCodes(snapshotStatus) 
+                    % xdp::decodeAXICheckerCodes(snapshotStatus) 
                 << std::endl;
 
         // Snapshot reflects first violation, Cumulative has all violations
-        unsigned int transformedStatus[XLAPC_STATUS_REG_NUM] = {0};
-        std::transform(cumulativeStatus, cumulativeStatus+XLAPC_STATUS_REG_NUM /*past the last element*/,
+        unsigned int transformedStatus[xdp::IP::LAPC::NUM_STATUS] = {0};
+        std::transform(cumulativeStatus, cumulativeStatus+xdp::IP::LAPC::NUM_STATUS /*past the last element*/,
                        snapshotStatus,
                        transformedStatus,
                        std::bit_xor<unsigned int>());
-        std::string tStr = xclAXICheckerCodes::decodeAXICheckerCodes(transformedStatus);
+        std::string tStr = xdp::decodeAXICheckerCodes(transformedStatus);
         _output << boost::format("  Other violations: \n    %s") % (("" == tStr) ? "None" : tStr)
                 << std::endl;
       }
@@ -1059,17 +1091,16 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
 
       for(auto& ip : lapc_pt) {
         const boost::property_tree::ptree& entry = ip.second;
-        unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM]   = {0};
-        unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM] = {0};
+        unsigned int snapshotStatus[xdp::IP::LAPC::NUM_STATUS]   = {0};
+        unsigned int cumulativeStatus[xdp::IP::LAPC::NUM_STATUS] = {0};
   
         const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
         size_t idx = 0;
         for(auto& e : snapshot_pt) {
           snapshotStatus[idx] = e.second.get_value<unsigned int>(); 
           ++idx;
-          if(idx >= XLAPC_STATUS_REG_NUM) {
+          if(idx >= xdp::IP::LAPC::NUM_STATUS)
             break;
-          }  
         }
 
         const boost::property_tree::ptree& cumulative_pt = entry.get_child("cumulative_status");
@@ -1077,9 +1108,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
         for(auto& e : cumulative_pt) {
           cumulativeStatus[idx] = e.second.get_value<unsigned int>(); 
           ++idx;  
-          if(idx >= XLAPC_STATUS_REG_NUM) {
+          if(idx >= xdp::IP::LAPC::NUM_STATUS)
             break;
-          }  
         }
 
         _output << valueFormat
@@ -1214,6 +1244,24 @@ reportAccelDeadlock(std::ostream& _output, const boost::property_tree::ptree& _p
   }
 }
 
+void
+reportHSDPTrace(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace via High Speed Debug Port");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for HSDP Trace IP enabled but currently loaded xclbin does not have it. So, HSDP Trace IP status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& hsdpTrace_pt = child.get();
+
+  _output << "\nTrace via High Speed Debug Port" << std::endl
+          << "  " << hsdpTrace_pt.get<std::string>("description") << std::endl
+          << "  Found : " << hsdpTrace_pt.get<uint64_t>("count") << std::endl;
+}
+
 void 
 processElementFilter(bool *debugIpOpt, const std::vector<std::string> & _elementsFilter)
 {
@@ -1239,6 +1287,8 @@ processElementFilter(bool *debugIpOpt, const std::vector<std::string> & _element
       debugIpOpt[ILA] = true;
     } else if(itr == "accel_deadlock_detector") {
       debugIpOpt[ACCEL_DEADLOCK_DETECTOR] = true;
+    } else if(itr == "hsdp_trace") {
+      debugIpOpt[HSDP_TRACE] = true;
     }
   }
 }
@@ -1328,6 +1378,9 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   }
   if (true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) {
     reportAccelDeadlock( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[HSDP_TRACE]) {
+    reportHSDPTrace(_output, dbgIpStatus_pt, filter);
   }
 
   return;

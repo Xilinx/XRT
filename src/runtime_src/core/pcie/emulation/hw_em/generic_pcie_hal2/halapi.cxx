@@ -3,6 +3,7 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "core/include/shim_int.h"
+#include "core/include/xdp/app_debug.h"
 
 #include "core/common/device.h"
 #include "core/common/system.h"

@@ -75,7 +75,7 @@ namespace xdp {
       bool configureStartIteration(xaiefal::XAieMod& core);
 
       // Utility functions
-      std::string getMetricSet(void* handle, const std::string& metricStr);
+      std::string getMetricSet(void* handle, const std::string& metricStr, bool ignoreOldConfig = false);
       std::vector<tile_type> getTilesForTracing(void* handle);
 
     private:

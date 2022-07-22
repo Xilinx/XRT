@@ -422,6 +422,14 @@ message xclSetupInstance_response {
   optional bool success =1;
 }
 
+message swemuDriverVersion_call {
+  required string version = 1;
+}
+
+message swemuDriverVersion_response {
+  optional bool success = 1;
+}
+
 //messages for SSPM IP
 message xclPerfMonReadCounters_Streaming_call {
   required string slotname = 1;
