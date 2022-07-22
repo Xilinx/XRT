@@ -444,6 +444,12 @@ struct shim
     return m_pldev->open_cu_context(hwctx, cuname);
   }
 
+  void
+  close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+  {
+    return m_pldev->close_context(hwctx.get_xclbin_uuid(), cuidx.index);
+  }
+
   int
   close_context(const xrt::uuid& xid, unsigned int idx)
   {
@@ -605,6 +611,13 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
 {
   auto shim = get_shim_object(handle);
   return shim->open_cu_context(hwctx, cuname);
+}
+
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  auto shim = get_shim_object(handle);
+  return shim->close_cu_context(hwctx, cuidx);
 }
 
 uint32_t // ctxhdl aka slotidx

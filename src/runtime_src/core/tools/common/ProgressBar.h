@@ -14,8 +14,12 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#ifndef PROGRESS_BAR_H
+#define PROGRESS_BAR_H
 
 // Include files
+#include "XBUtilities.h"
+
 // Please keep these to the bare minimum
 #include <string>
 #include <chrono>
@@ -23,24 +27,6 @@
 // ------ N A M E S P A C E ---------------------------------------------------
 
 namespace XBUtilities {
-
-class Timer {
-  std::chrono::high_resolution_clock::time_point mTimeStart;
-
- public:
-  Timer() {
-    reset();
-  }
-
-  std::chrono::duration<double> stop() {
-    std::chrono::high_resolution_clock::time_point timeEnd = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration<double>(timeEnd - mTimeStart);
-  }
-
-  void reset() {
-    mTimeStart = std::chrono::high_resolution_clock::now();
-  }
-};
 
 class ProgressBar {
  public:
@@ -70,8 +56,7 @@ class ProgressBar {
   unsigned int m_runningIteration;
   bool m_finished;
   Timer m_timer;
-  std::chrono::duration<double> m_elapsedTime;
   std::chrono::high_resolution_clock::time_point m_lastUpdated;
 };
 }
-
+#endif

@@ -51,10 +51,7 @@ struct ishim
   open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) = 0;
 
   virtual void
-  close_cu_context(const xrt::hw_context& hwctx, cuidx_type ip_index)
-  {
-    close_context(hwctx.get_xclbin_uuid(), ip_index.index);
-  }
+  close_cu_context(const xrt::hw_context& hwctx, cuidx_type ip_index) = 0;
 
   // Legacy, to be removed
   virtual void
@@ -283,6 +280,12 @@ struct shim : public DeviceType
   open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) override
   {
     return xrt::shim_int::open_cu_context(DeviceType::get_device_handle(), hwctx, cuname);
+  }
+
+  void
+  close_cu_context(const xrt::hw_context& hwctx, cuidx_type cuidx) override
+  {
+    xrt::shim_int::close_cu_context(DeviceType::get_device_handle(), hwctx, cuidx);
   }
 
   // Legacy, to be removed
