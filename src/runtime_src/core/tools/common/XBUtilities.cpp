@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -72,6 +73,25 @@ struct fdt_header {
 namespace xq = xrt_core::query;
 
 // ------ F U N C T I O N S ---------------------------------------------------
+
+std::string
+XBUtilities::Timer::format_time(std::chrono::duration<double> duration) 
+{
+  auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+  auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+
+  std::string formatted_time;
+  if (hours.count() != 0) 
+    formatted_time += std::to_string(hours.count()) + "h ";
+
+  if (hours.count() != 0 || minutes.count() != 0) 
+    formatted_time += std::to_string(minutes.count() % 60) + "m ";
+
+  formatted_time += std::to_string(seconds.count() % 60) + "s";
+
+  return formatted_time;
+}
 
 boost::property_tree::ptree
 XBUtilities::get_available_devices(bool inUserDomain)

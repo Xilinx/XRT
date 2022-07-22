@@ -53,30 +53,6 @@ static boost::format fmtFailed(EscapeCodes::cursor().hide()+
 
 static boost::format fmtBatchPF("\n[%s]: %s < %s >\n");
 
-
-// ------ S T A T I C   F U N C T I O N S -------------------------------------
-
-std::string
-ProgressBar::formatTime(std::chrono::duration<double> duration) 
-{
-  auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
-  auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
-  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-
-  std::string formattedTime;
-  if (hours.count() != 0) 
-    formattedTime += std::to_string(hours.count()) + "h ";
-
-  if (hours.count() != 0 || minutes.count() != 0) 
-    formattedTime += std::to_string(minutes.count() % 60) + "m ";
-
-  formattedTime += std::to_string(seconds.count() % 60) + "s";
-
-  return formattedTime;
-}
-
-
-
 ProgressBar::ProgressBar(const std::string &_opNname, unsigned int _maxNumIterations,
                          bool _isBatch, std::ostream &_ostr)
     : m_opName(_opNname)
@@ -86,11 +62,10 @@ ProgressBar::ProgressBar(const std::string &_opNname, unsigned int _maxNumIterat
     , m_printPercentBatch(true)
     , m_runningIteration(0)
     , m_finished(false)
-    , m_elapsedTime(std::chrono::seconds(0))
     , m_lastUpdated(std::chrono::high_resolution_clock::now()) 
 {
   if (!m_isBatch) 
-    m_ostr << fmtUpdate % "" % /*Percent*/ 0 % m_opName % formatTime(m_elapsedTime) << std::endl;
+    m_ostr << fmtUpdate % "" % /*Percent*/ 0 % m_opName % Timer::format_time(std::chrono::seconds(0)) << std::endl;
   else 
     m_ostr << m_opName << ": ";
 
@@ -111,12 +86,9 @@ ProgressBar::finish(bool _successful, const std::string &_msg)
   // Should only be called once (not more then once)
   assert(m_finished == false);
 
-  // Update the runningTime
-  m_elapsedTime = m_timer.stop();
-
   // -- Batch --
   if (m_isBatch) {
-    m_ostr << fmtBatchPF % (_successful ? "PASSED" : "FAILED") % _msg % formatTime(m_elapsedTime);
+    m_ostr << fmtBatchPF % (_successful ? "PASSED" : "FAILED") % _msg % Timer::format_time(m_timer.get_elapsed_time());
     m_ostr.flush();
     return;
   }
@@ -125,7 +97,7 @@ ProgressBar::finish(bool _successful, const std::string &_msg)
   boost::format &fmt = _successful ? fmtPassed : fmtFailed;
   m_ostr << EscapeCodes::cursor().prev_line()
          << EscapeCodes::cursor().clear_line()
-         << fmt % _msg % formatTime(m_elapsedTime)
+         << fmt % _msg % Timer::format_time(m_timer.get_elapsed_time())
          << std::endl << EscapeCodes::cursor().show();
 
   m_ostr.flush();
@@ -157,7 +129,7 @@ ProgressBar::update(unsigned int _iteration)
     for (auto currentIteration = m_runningIteration + 1;
          currentIteration <= _iteration;
          ++currentIteration) {
-      m_ostr << ".";            // Progressd period '.'
+      m_ostr << ".";            // Progressed period '.'
 
       if (m_printPercentBatch) {
         // Now determine percentage progress values
@@ -191,7 +163,6 @@ ProgressBar::update(unsigned int _iteration)
   unsigned int runningPercent = (100 * m_runningIteration) / m_maxNumIterations;
 
   // Get the runningTime
-  m_elapsedTime = m_timer.stop();
   m_lastUpdated = std::chrono::high_resolution_clock::now();
 
   // Create the progress bar
@@ -201,9 +172,8 @@ ProgressBar::update(unsigned int _iteration)
 
   // Write the new progress bar
   m_ostr << EscapeCodes::cursor().prev_line()
-         << fmtUpdate % progressBar % runningPercent % m_opName % formatTime(m_elapsedTime)
+         << fmtUpdate % progressBar % runningPercent % m_opName % Timer::format_time(m_timer.get_elapsed_time())
          << std::endl;
 
   m_ostr.flush();
 }
-

@@ -26,6 +26,7 @@
 #include "tools/common/XBHelpMenus.h"
 #include "core/common/utils.h"
 #include "core/tools/common/ProgressBar.h"
+#include "core/tools/common/BusyBar.h"
 #include "core/tools/common/EscapeCodes.h"
 #include "core/tools/common/Process.h"
 #include "core/common/query_requests.h"
@@ -641,7 +642,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   XBU::Timer timer;
   if (xclCopyBO(handle, bo_tgt, bo_src, bo_size, 0, 0))
     return bandwidth;
-  double timer_duration_sec = timer.stop().count();
+  double timer_duration_sec = timer.get_elapsed_time().count();
 
   if(xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
     free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
@@ -705,36 +706,34 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
   std::string xclbin = ptTest.get<std::string>("xclbin", "");
 
   //if no xclbin is loaded, locate the default xclbin
-  if (uuid_is_null(uuid) && !xclbin.empty()) {
-    //check if a 2RP platform
-    std::vector<std::string> logic_uuid;
-    try{
-      logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(dev);
-    } catch(...) { }
+  //check if a 2RP platform
+  std::vector<std::string> logic_uuid;
+  try {
+    logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(dev);
+  } catch(...) { }
 
-    std::string xclbinPath;
-    auto xclbin_location = ptTest.get<std::string>("xclbin_directory", "");
-    if(!xclbin_location.empty()) {
-      xclbinPath = xclbin_location + xclbin;
-    }
-    else if(!logic_uuid.empty()) {
-      xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, ptTest);
-    } else {
-      auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
-      auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
-      xclbinPath = searchLegacyXclbin(vendor, name, xclbin, ptTest);
-    }
+  std::string xclbinPath;
+  auto xclbin_location = ptTest.get<std::string>("xclbin_directory", "");
+  if (!xclbin_location.empty()) {
+    xclbinPath = xclbin_location + xclbin;
+  }
+  else if(!logic_uuid.empty()) {
+    xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, ptTest);
+  } else {
+    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
+    auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
+    xclbinPath = searchLegacyXclbin(vendor, name, xclbin, ptTest);
+  }
 
-    if(!boost::filesystem::exists(xclbinPath)) {
-      logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin));
-      ptTest.put("status", test_token_skipped);
-      return false;
-    }
+  if(!boost::filesystem::exists(xclbinPath)) {
+    logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin));
+    ptTest.put("status", test_token_skipped);
+    return false;
+  }
 
-    if(program_xclbin(dev->get_device_handle(), xclbinPath, ptTest) != 0) {
-      ptTest.put("status", test_token_failed);
-      return false;
-    }
+  if(program_xclbin(dev->get_device_handle(), xclbinPath, ptTest) != 0) {
+    ptTest.put("status", test_token_failed);
+    return false;
   }
   return true;
 }
@@ -941,8 +940,11 @@ verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_
 void
 dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
+  XBUtilities::BusyBar busy_bar("Running Test", std::cout);
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
+
   _ptTest.put("status", test_token_skipped);
-  if(!search_and_program_xclbin(_dev, _ptTest)) {
+  if (!search_and_program_xclbin(_dev, _ptTest)) {
     return;
   }
 
@@ -1018,6 +1020,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
       logger(_ptTest, "Error", ex.what());
     }
   }
+  busy_bar.finish();
 }
 
 /*
@@ -1296,7 +1299,7 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("pcie-link", "Check if PCIE link is active", ""), pcieLinkTest },
   { create_init_test("sc-version", "Check if SC firmware is up-to-date", ""), scVersionTest },
   { create_init_test("verify", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
-  { create_init_test("dma", "Run dma test", "verify.xclbin"), dmaTest },
+  { create_init_test("dma", "Run dma test", "bandwidth.xclbin"), dmaTest },
   { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin"), iopsTest },
   { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("p2p", "Run P2P test", "bandwidth.xclbin"), p2pTest },
@@ -1502,7 +1505,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "dma"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
