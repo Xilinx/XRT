@@ -17,19 +17,80 @@
 
 #define XDP_SOURCE
 
+#include "core/common/config_reader.h"
+
 #include "xdp/profile/database/static_info/device_info.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/database/static_info/xclbin_info.h"
-#include "xdp/profile/writer/vp_base/summary_writer.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-
-#include "core/common/config_reader.h"
+#include "xdp/profile/writer/hal/hal_apis.h"
+#include "xdp/profile/writer/native/native_apis.h"
+#include "xdp/profile/writer/opencl/opencl_apis.h"
+#include "xdp/profile/writer/vp_base/summary_writer.h"
 
 #ifdef _WIN32
 /* Disable warning for use of localtime */
 #pragma warning(disable : 4996)
 #endif
+
+// Anonymous namespace for static helper functions
+namespace {
+  bool AIMsExistOnComputeUnits()
+  {
+    xdp::VPDatabase* db = xdp::VPDatabase::Instance();
+    std::vector<xdp::DeviceInfo*> infos = db->getStaticInfo().getDeviceInfos();
+    if (infos.size() == 0)
+      return false;
+
+    for (auto device : infos) {
+      for (auto xclbin : device->getLoadedXclbins()) {
+        for (auto aim : xclbin->pl.aims) {
+          // A CU index of -1 is a floating AIM not attached to a compute unit
+          if (aim->cuIndex != -1)
+            return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // AIM monitor names on ports are in the form of:
+  // <compute unit>/<port name>-<memory resource>
+  // so we can use the slash and the dash to break out the different parts
+  std::string extractComputeUnitName(const std::string& aimMonitorName)
+  {
+    size_t slashPosition = aimMonitorName.find("/");
+    if (slashPosition == std::string::npos)
+      return "";
+
+    return aimMonitorName.substr(0, slashPosition);
+  }
+
+  std::string extractPortName(const std::string& aimMonitorName)
+  {
+    size_t slashPosition = aimMonitorName.find("/");
+    size_t dashPosition = aimMonitorName.find("-");
+
+    if (slashPosition == std::string::npos || dashPosition == std::string::npos)
+      return "";
+
+    size_t length = dashPosition - slashPosition - 1;
+
+    return aimMonitorName.substr(slashPosition + 1, length);
+  }
+
+  std::string extractMemoryResource(const std::string& aimMonitorName)
+  {
+    size_t dashPosition = aimMonitorName.find("-");
+    if (dashPosition == std::string::npos)
+      return "";
+
+    return aimMonitorName.substr(dashPosition + 1);
+  }
+
+} // end anonymous namespace
 
 namespace xdp {
 
@@ -48,240 +109,14 @@ namespace xdp {
   void SummaryWriter::initializeAPIs()
   {
     // For each of the APIs, initialize the sets with the hard coded names
-    OpenCLAPIs.emplace("clBuildProgram") ;
-    OpenCLAPIs.emplace("clCompileProgram") ;
-    OpenCLAPIs.emplace("clCreateBuffer") ;
-    OpenCLAPIs.emplace("clCreateCommandQueue") ;
-    OpenCLAPIs.emplace("clCreateContext") ;
-    OpenCLAPIs.emplace("clCreateContextFromType") ;
-    OpenCLAPIs.emplace("clCreateImage2D") ;
-    OpenCLAPIs.emplace("clCreateImage3D") ;
-    OpenCLAPIs.emplace("clCreateImage") ;
-    OpenCLAPIs.emplace("clCreateKernel") ;
-    OpenCLAPIs.emplace("clCreateKernelsInProgram") ;
-    OpenCLAPIs.emplace("clCreatePipe") ;
-    OpenCLAPIs.emplace("clCreateProgramWithBinary") ;
-    OpenCLAPIs.emplace("clCreateProgramWithBuiltInKernels") ;
-    OpenCLAPIs.emplace("clCreateProgramWithSource") ;
-    OpenCLAPIs.emplace("clCreateSampler") ;
-    OpenCLAPIs.emplace("clCreateSubBuffer") ;
-    OpenCLAPIs.emplace("clCreateSubDevices") ;
-    OpenCLAPIs.emplace("clCreateUserEvent") ;
-    OpenCLAPIs.emplace("clEnqueueBarrier") ;
-    OpenCLAPIs.emplace("clEnqueueBarrierWithWaitList") ;
-    OpenCLAPIs.emplace("clEnqueueCopyBuffer") ;
-    OpenCLAPIs.emplace("clEnqueueCopyBufferRect") ;
-    OpenCLAPIs.emplace("clEnqueueCopyBufferToImage") ;
-    OpenCLAPIs.emplace("clEnqueueCopyImage") ;
-    OpenCLAPIs.emplace("clEnqueueCopyImageToBuffer") ;
-    OpenCLAPIs.emplace("clEnqueueFillBuffer") ;
-    OpenCLAPIs.emplace("clEnqueueFillImage") ;
-    OpenCLAPIs.emplace("clEnqueueMapBuffer") ;
-    OpenCLAPIs.emplace("clEnqueueMapImage") ;
-    OpenCLAPIs.emplace("clEnqueueMarker") ;
-    OpenCLAPIs.emplace("clEnqueueMarkerWithWaitList") ;
-    OpenCLAPIs.emplace("clEnqueueMigrateMemObjects") ;
-    OpenCLAPIs.emplace("clEnqueueNativeKernel") ;
-    OpenCLAPIs.emplace("clEnqueueNDRangeKernel") ;
-    OpenCLAPIs.emplace("clEnqueueReadBuffer") ;
-    OpenCLAPIs.emplace("clEnqueueReadBufferRect") ;
-    OpenCLAPIs.emplace("clEnqueueReadImage") ;
-    OpenCLAPIs.emplace("clEnqueueSVMMap") ;
-    OpenCLAPIs.emplace("clEnqueueSVMUnmap") ;
-    OpenCLAPIs.emplace("clEnqueueTask") ;
-    OpenCLAPIs.emplace("clEnqueueUnmapMemObject") ;
-    OpenCLAPIs.emplace("clEnqueueWaitForEvents") ;
-    OpenCLAPIs.emplace("clEnqueueWriteBuffer") ;
-    OpenCLAPIs.emplace("clEnqueueWriteBufferRect") ;
-    OpenCLAPIs.emplace("clEnqueueWriteImage") ;
-    OpenCLAPIs.emplace("clFinish") ;
-    OpenCLAPIs.emplace("clFlush") ;
-    OpenCLAPIs.emplace("clGetCommandQueueInfo") ;
-    OpenCLAPIs.emplace("clGetContextInfo") ;
-    OpenCLAPIs.emplace("clGetDeviceIDs") ;
-    OpenCLAPIs.emplace("clGetDeviceInfo") ;
-    OpenCLAPIs.emplace("clGetEventInfo") ;
-    OpenCLAPIs.emplace("clGetEventProfilingInfo") ;
-    OpenCLAPIs.emplace("clGetExtensionFunctionAddress") ;
-    OpenCLAPIs.emplace("clGetExtensionFunctionAddressForPlatform") ;
-    OpenCLAPIs.emplace("clGetImageInfo") ;
-    OpenCLAPIs.emplace("clGetKernelArgInfo") ;
-    OpenCLAPIs.emplace("clGetKernelInfo") ;
-    OpenCLAPIs.emplace("clGetKernelWorkGroupInfo") ;
-    OpenCLAPIs.emplace("clGetMemObjectInfo") ;
-    OpenCLAPIs.emplace("clGetPipeInfo") ;
-    OpenCLAPIs.emplace("clGetPlatformIDs") ;
-    OpenCLAPIs.emplace("clGetPlatformInfo") ;
-    OpenCLAPIs.emplace("clGetSamplerInfo") ;
-    OpenCLAPIs.emplace("clGetSupportedImageFormats") ;
-    OpenCLAPIs.emplace("clLinkProgram") ;
-    OpenCLAPIs.emplace("clReleaseCommandQueue") ;
-    OpenCLAPIs.emplace("clReleaseContext") ;
-    OpenCLAPIs.emplace("clReleaseDevice") ;
-    OpenCLAPIs.emplace("clReleaseEvent") ;
-    OpenCLAPIs.emplace("clReleaseKernel") ;
-    OpenCLAPIs.emplace("clReleaseMemObject") ;
-    OpenCLAPIs.emplace("clReleaseProgram") ;
-    OpenCLAPIs.emplace("clReleaseSampler") ;
-    OpenCLAPIs.emplace("clRetainContext") ;
-    OpenCLAPIs.emplace("clRetainDevice") ;
-    OpenCLAPIs.emplace("clRetainEvent") ;
-    OpenCLAPIs.emplace("clRetainKernel") ;
-    OpenCLAPIs.emplace("clRetainMemObject") ;
-    OpenCLAPIs.emplace("clRetainProgram") ;
-    OpenCLAPIs.emplace("clRetainSampler") ;
-    OpenCLAPIs.emplace("clSetCommandQueueProperty") ;
-    OpenCLAPIs.emplace("clSetEventCallback") ;
-    OpenCLAPIs.emplace("clSetKernelArg") ;
-    OpenCLAPIs.emplace("clSetKernelArgSMPointer") ;
-    OpenCLAPIs.emplace("clSetMemObjectDestructorCallback") ;
-    OpenCLAPIs.emplace("clSetPrintfCallback") ;
-    OpenCLAPIs.emplace("clSetUserEventStatus") ;
-    OpenCLAPIs.emplace("clSVMAlloc") ;
-    OpenCLAPIs.emplace("clSVMFree") ;
-    OpenCLAPIs.emplace("clUnloadCompiler") ;
-    OpenCLAPIs.emplace("clUnloadPlatformCompiler") ;
-    OpenCLAPIs.emplace("clWaitForEvents") ;
-    OpenCLAPIs.emplace("clCreateStream") ;
-    OpenCLAPIs.emplace("clCreateStreamBuffer") ;
-    OpenCLAPIs.emplace("clPollStream") ;
-    OpenCLAPIs.emplace("clPollStreams") ;
-    OpenCLAPIs.emplace("clReadStream") ;
-    OpenCLAPIs.emplace("clReleaseStream") ;
-    OpenCLAPIs.emplace("clReleaseStreamBuffer") ;
-    OpenCLAPIs.emplace("clSetStreamOpt") ;
-    OpenCLAPIs.emplace("clWriteStream") ;
-    OpenCLAPIs.emplace("xclGetComputeUnitInfo") ;
+    for (auto api : OpenCL::APIs)
+      OpenCLAPIs.emplace(api);
 
-    NativeAPIs.emplace("xrt::bo::bo");
-    NativeAPIs.emplace("xrt::bo::size");
-    NativeAPIs.emplace("xrt::bo::address");
-    NativeAPIs.emplace("xrt::bo::export_buffer");
-    NativeAPIs.emplace("xrt::bo::sync");
-    NativeAPIs.emplace("xrt::bo::map");
-    NativeAPIs.emplace("xrt::bo::write");
-    NativeAPIs.emplace("xrt::bo::read");
-    NativeAPIs.emplace("xrt::bo::copy");
-    NativeAPIs.emplace("xrtBOAllocUserPtr");
-    NativeAPIs.emplace("xrtBOAlloc");
-    NativeAPIs.emplace("xrtBOSubAlloc");
-    NativeAPIs.emplace("xrtBOImport");
-    NativeAPIs.emplace("xrtBOExport");
-    NativeAPIs.emplace("xrtBOFree");
-    NativeAPIs.emplace("xrtBOSize");
-    NativeAPIs.emplace("xrtBOSync");
-    NativeAPIs.emplace("xrtBOMap");
-    NativeAPIs.emplace("xrtBOWrite");
-    NativeAPIs.emplace("xrtBORead");
-    NativeAPIs.emplace("xrtBOCopy");
-    NativeAPIs.emplace("xrtBOAddress");
-    NativeAPIs.emplace("xrt::device::device");
-    NativeAPIs.emplace("xrt::device::load_xclbin");
-    NativeAPIs.emplace("xrt::device::get_xclbin_uuid");
-    NativeAPIs.emplace("xrt::device::reset");
-    NativeAPIs.emplace("xrt::device::get_xclbin_section");
-    NativeAPIs.emplace("xrtDeviceOpen");
-    NativeAPIs.emplace("xrtDeviceOpenByBDF");
-    NativeAPIs.emplace("xrtDeviceClose");
-    NativeAPIs.emplace("xrtDeviceLoadXclbin");
-    NativeAPIs.emplace("xrtDeviceLoadXclbinFile");
-    NativeAPIs.emplace("xrtDeviceLoadXclbinHandle");
-    NativeAPIs.emplace("xrtDeviceLoadXclbinUUID");
-    NativeAPIs.emplace("xrtDeviceGetXclbinUUID");
-    NativeAPIs.emplace("xrtDeviceToXclDevice");
-    NativeAPIs.emplace("xrtDeviceOpenFromXcl");
-    NativeAPIs.emplace("xrt::error::error");
-    NativeAPIs.emplace("xrt::error::get_timestamp");
-    NativeAPIs.emplace("xrt::error::get_error_code");
-    NativeAPIs.emplace("xrt::error::to_string");
-    NativeAPIs.emplace("xrtErrorGetLast");
-    NativeAPIs.emplace("xrtErrorGetString");
-    NativeAPIs.emplace("xrt::run::run");
-    NativeAPIs.emplace("xrt::run::start");
-    NativeAPIs.emplace("xrt::run::wait");
-    NativeAPIs.emplace("xrt::run::state");
-    NativeAPIs.emplace("xrt::run::set_event");
-    NativeAPIs.emplace("xrt::run::get_ert_packet");
-    NativeAPIs.emplace("xrt::kernel::kernel");
-    NativeAPIs.emplace("xrt::kernel::read_register");
-    NativeAPIs.emplace("xrt::kernel::write_register");
-    NativeAPIs.emplace("xrt::kernel::group_id");
-    NativeAPIs.emplace("xrt::kernel::offset");
-    NativeAPIs.emplace("xrtPLKernelOpen");
-    NativeAPIs.emplace("xrtPLKernelOpenExclusive");
-    NativeAPIs.emplace("xrtKernelClose");
-    NativeAPIs.emplace("xrtRunOpen");
-    NativeAPIs.emplace("xrtKernelArgGroupId");
-    NativeAPIs.emplace("xrtKernelArgOffset");
-    NativeAPIs.emplace("xrtKernelReadRegister");
-    NativeAPIs.emplace("xrtKernelWriteRegister");
-    NativeAPIs.emplace("xrtKernelRun");
-    NativeAPIs.emplace("xrtRunClose");
-    NativeAPIs.emplace("xrtRunState");
-    NativeAPIs.emplace("xrtRunWait");
-    NativeAPIs.emplace("xrtRunWaitFor");
-    NativeAPIs.emplace("xrtRunSetCallback");
-    NativeAPIs.emplace("xrtRunStart");
-    NativeAPIs.emplace("xrtRunUpdateArg");
-    NativeAPIs.emplace("xrtRunUpdateArgV");
-    NativeAPIs.emplace("xrtRunSetArg");
-    NativeAPIs.emplace("xrtRunSetArgV");
-    NativeAPIs.emplace("xrtRunGetArgV");
-    NativeAPIs.emplace("xrtRunGetArgVPP");
-    NativeAPIs.emplace("xrtXclbinAllocFilename");
-    NativeAPIs.emplace("xrtXclbinAllocRawData");
-    NativeAPIs.emplace("xrtXclbinFreeHandle");
-    NativeAPIs.emplace("xrtXclbinGetXSAName");
-    NativeAPIs.emplace("xrtXclbinGetUUID");
-    NativeAPIs.emplace("xrtXclbinGetData");
-    NativeAPIs.emplace("xrtXclbinUUID");
-    NativeAPIs.emplace("xrt::psrun::psrun");
-    NativeAPIs.emplace("xrt::psrun::start");
-    NativeAPIs.emplace("xrt::psrun::wait");
-    NativeAPIs.emplace("xrt::psrun::state");
-    NativeAPIs.emplace("xrt::psrun::set_event");
-    NativeAPIs.emplace("xrt::psrun::get_ert_packet");
-    NativeAPIs.emplace("xrt::pskernel::kernel");
-    NativeAPIs.emplace("xrt::pskernel::offset");
-    NativeAPIs.emplace("xrtPSKernelOpen");
-    NativeAPIs.emplace("xrtPSKernelOpenExclusive");
-    NativeAPIs.emplace("xrtPSKernelClose");
-    NativeAPIs.emplace("xrtPSRunOpen");
-    NativeAPIs.emplace("xrtPSKernelArgGroupId");
-    NativeAPIs.emplace("xrtPSKernelArgOffset");
-    NativeAPIs.emplace("xrtPSKernelRun");
-    NativeAPIs.emplace("xrtPSRunClose");
-    NativeAPIs.emplace("xrtPSRunState");
-    NativeAPIs.emplace("xrtPSRunWait");
-    NativeAPIs.emplace("xrtPSRunWaitFor");
-    NativeAPIs.emplace("xrtPSRunSetCalback");
-    NativeAPIs.emplace("xrtPSRunStart");
+    for (auto api : native::APIs)
+      NativeAPIs.emplace(api);
 
-    HALAPIs.emplace("xclLoadXclbin") ;
-    HALAPIs.emplace("xclProbe") ;
-    HALAPIs.emplace("xclOpen") ;
-    HALAPIs.emplace("xclClose") ;
-    HALAPIs.emplace("xclWrite") ;
-    HALAPIs.emplace("xclRead") ;
-    HALAPIs.emplace("xclAllocBO") ;
-    HALAPIs.emplace("xclAllocUserPtrBO") ;
-    HALAPIs.emplace("xclFreeBO") ;
-    HALAPIs.emplace("xclWriteBO") ;
-    HALAPIs.emplace("xclReadBO") ;
-    HALAPIs.emplace("xclMapBO") ;
-    HALAPIs.emplace("xclSyncBO") ;
-    HALAPIs.emplace("xclCopyBO") ;
-    HALAPIs.emplace("xclLockDevice") ;
-    HALAPIs.emplace("xclUnlockDevice") ;
-    HALAPIs.emplace("xclUnmgdPwrite") ;
-    HALAPIs.emplace("xclUnmgdPread") ;
-    HALAPIs.emplace("xclOpenContext") ;
-    HALAPIs.emplace("xclExecBuf") ;
-    HALAPIs.emplace("xclExecWait") ;
-    HALAPIs.emplace("xclCloseContext") ;
-    HALAPIs.emplace("xclGetBOProperties") ;
-    HALAPIs.emplace("xclRegWrite") ;
-    HALAPIs.emplace("xclRegRead") ;
+    for (auto api : hal::APIs)
+      HALAPIs.emplace(api);
   }
 
   void SummaryWriter::writeHeader()
@@ -513,7 +348,8 @@ namespace xdp {
     // On Edge hardware emuation, the numbers for the top kernel executions
     //  don't align with the other numbers we display, so don't print this
     //  table.
-    if (getFlowMode() == HW_EMU && isEdge()) return ;
+    if (getFlowMode() == HW_EMU && isEdge())
+      return;
 
     // We can get kernel executions from purely host information
     std::map<std::string, TimeStatistics> kernelExecutions = 
@@ -524,14 +360,13 @@ namespace xdp {
 
     // Caption
     fout << "Kernel Execution" ;
-    if (getFlowMode() == HW_EMU) {
+    if (getFlowMode() == HW_EMU)
       fout << " (includes estimated device time)" ;
-    }
     fout << "\n" ;
 
     // Column headers
     fout << "Kernel,Number Of Enqueues,Total Time (ms),Minimum Time (ms),"
-         << "Average Time (ms),Maximum Time (ms),\n" ; 
+         << "Average Time (ms),Maximum Time (ms),\n" ;
 
     for (auto execution : kernelExecutions) {
       fout << execution.first                         << ","
@@ -548,7 +383,8 @@ namespace xdp {
     // On Edge hardware emuation, the numbers for the top kernel executions
     //  don't align with the other numbers we display, so don't print this
     //  table.
-    if (getFlowMode() == HW_EMU && isEdge()) return ;
+    if (getFlowMode() == HW_EMU && isEdge())
+      return;
 
     if (db->getStats().getTopKernelExecutions().size() == 0)
       return ;
@@ -588,7 +424,7 @@ namespace xdp {
     fout << "Buffer Address,Context ID,Command Queue ID,Start Time (ms),"
          << "Duration (ms),Buffer Size (KB),Writing Rate(MB/s),\n" ;
 
-    for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostWrites().begin() ;
+    for (auto iter = (db->getStats()).getTopHostWrites().begin() ;
          iter != (db->getStats()).getTopHostWrites().end() ;
          ++iter) {
       double durationMS = (double)((*iter).duration) / one_million ;
@@ -622,7 +458,7 @@ namespace xdp {
     fout << "Buffer Address,Context ID,Command Queue ID,Start Time (ms),"
          << "Duration (ms),Buffer Size (KB),Reading Rate(MB/s),\n" ;
 
-    for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostReads().begin() ;
+    for (auto iter = (db->getStats()).getTopHostReads().begin() ;
          iter != (db->getStats()).getTopHostReads().end() ;
          ++iter) {
       double durationMS = (double)((*iter).duration) / one_million ;
@@ -1642,135 +1478,152 @@ namespace xdp {
     }
   }
 
+  void SummaryWriter::writeSingleDataTransfer(const std::string& deviceName,
+                                              const std::string& cuName,
+                                              const std::string& portName,
+                                              const std::string& args,
+                                              const std::string& memoryName,
+                                              bool isRead,
+                                              double numTransactions,
+                                              double totalTransferTime,
+                                              double bytes,
+                                              double maxAchievableBW,
+                                              double maxTheoreticalBW,
+                                              double latency)
+  {
+    double transferRate =
+      (totalTransferTime == zero) ? zero :
+                                    bytes / (one_thousand * totalTransferTime);
+
+    // Bandwidth percentages against both what the connection is and
+    // what the connection could be
+    double achievedBW = (one_hundred * transferRate) / maxAchievableBW;
+    double idealBW = (one_hundred * transferRate) / maxTheoreticalBW;
+
+    if (achievedBW > one_hundred)
+      achievedBW = one_hundred;
+    if (idealBW > one_hundred)
+      idealBW = one_hundred;
+
+    auto aveSize = (bytes / numTransactions) / one_thousand;
+    auto aveLatency = latency / numTransactions;
+
+    fout << deviceName << ",";
+    fout << cuName << "/" << portName << ",";
+    fout << args << ",";
+    fout << memoryName << ",";
+    (isRead) ? (fout << "READ,") : (fout << "WRITE,");
+    fout << numTransactions << ",";
+    fout << transferRate << ",";
+    fout << achievedBW << ",";
+    fout << idealBW << ",";
+    fout << aveSize << ",";
+    fout << aveLatency << ",\n";
+  }
+
   void SummaryWriter::writeDataTransferKernelsToGlobalMemory()
   {
-    // Only print out if information exists
-    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
-    if (infos.size() == 0) return ;
-
-    bool monitorsExist = false ;
-    for (auto device : infos) {
-      for (auto xclbin : device->getLoadedXclbins()) {
-        for (auto aim : xclbin->pl.aims) {
-          if (aim->cuIndex != -1) {
-            monitorsExist = true ;
-            break ;
-          }
-          // else a floating monitor or shell monitor not reported in this table
-        }
-        if (monitorsExist) break ;
-      }
-      if (monitorsExist) break ;
-    }
-
-    if (!monitorsExist) return ;
+    // Only print out the table if there are any AIMs in any of the xclbins
+    // we executed connected to compute unit ports.
+    if (!AIMsExistOnComputeUnits())
+      return;
 
     // Caption
     fout << "Data Transfer: Kernels to Global Memory\n" ;
 
     // Column headers
-    fout << "Device"                            << ","
-         << "Compute Unit/Port Name"            << ","
-         << "Kernel Arguments"                  << ","
-         << "Memory Resources"                  << ","
-         << "Transfer Type"                     << ","
-         << "Number Of Transfers"               << ","
-         << "Transfer Rate (MB/s)"              << ","
-         << "Average Bandwidth Utilization (%)" << ","
-         << "Average Size (KB)"                 << ","
-         << "Average Latency (ns)"              << "," 
-         << std::endl ;
+    fout << "Device,"
+         << "Compute Unit/Port Name,"
+         << "Kernel Arguments,"
+         << "Memory Resources,"
+         << "Transfer Type,"
+         << "Number Of Transfers,"
+         << "Transfer Rate (MB/s),"
+         << "Bandwidth Utilization On Current Port (%),"
+         << "Bandwidth Utilization On Ideal Port (%),"
+         << "Average Size (KB),"
+         << "Average Latency (ns),\n";
 
-    for (auto device : infos)
-    {
-      for (auto xclbin : device->loadedXclbins)
-      {
-        xdp::CounterResults values = (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
+    std::vector<DeviceInfo*> infos = db->getStaticInfo().getDeviceInfos();
+    for (auto device : infos) {
+      for (auto xclbin : device->loadedXclbins) {
+        xdp::CounterResults values =
+          db->getDynamicInfo().getCounterResults(device->deviceId,xclbin->uuid);
 
         // Counter results don't use the slotID.  Instead, they are filled
         //  in the struct in the order in which we found them.
         uint64_t monitorId = 0 ;
         for (auto monitor : xclbin->pl.aims) {
-          if (monitor->cuIndex == -1) {
+          if (monitor->cuIndex == -1 || monitor->cuPort == nullptr) {
             // This AIM is either a shell or floating 
-            ++monitorId ;
-            continue ;
+            ++monitorId;
+            continue;
           }
 
-          auto writeTranx = values.WriteTranx[monitorId] ;
-          auto readTranx  = values.ReadTranx[monitorId] ;
+          // Determine the strings for the row
+	  std::string cuName     = extractComputeUnitName(monitor->name);
+          std::string portName   = extractPortName(monitor->name) ;
+          std::string memoryName = extractMemoryResource(monitor->name);
+	  std::string arguments =
+            monitor->cuPort->constructArgumentList(memoryName);
 
-          uint64_t totalReadBusyCycles  = values.ReadBusyCycles[monitorId] ;
-          uint64_t totalWriteBusyCycles = values.WriteBusyCycles[monitorId] ;
+          // Determine the maximum achievable and theoretical bandwidths
+          // Maximum bandwidth (achievable) based on:
+          //   1) Port bitwidth
+          //   2) Speed of the compute unit
 
-          double totalReadTime = 
-            (double)(totalReadBusyCycles) / (one_thousand * xclbin->pl.clockRatePLMHz) ;
-          double totalWriteTime =
-            (double)(totalWriteBusyCycles) / (one_thousand * xclbin->pl.clockRatePLMHz) ;
+          double maxAchievableBW = // In Megabytes per second
+            (static_cast<double>(monitor->cuPort->bitWidth)/8.0) *
+            xclbin->pl.clockRatePLMHz;
 
-          // Use the name of the monitor to determine the port and memory
-          std::string portName   = "" ;
-          std::string memoryName = "" ;
-          size_t slashPosition = (monitor->name).find("/") ;
-          if (slashPosition != std::string::npos) {
-            auto position = slashPosition + 1 ;
-            auto length = (monitor->name).size() - position ;
+          // Maximum Theoretical bandwidth (possible on the platform) based on:
+          //   1) Maximum bitwidth of the connection
+          //   2) Maximum possible speed of the kernel on the platform
 
-            // Split the monitor name into port and memory position
-            std::string lastHalf = (monitor->name).substr(position, length) ;
-              
-            size_t dashPosition = lastHalf.find("-") ;
-            if (dashPosition != std::string::npos) {
-              auto remainingLength = lastHalf.size() - dashPosition - 1 ;
-              portName = lastHalf.substr(0, dashPosition) ;
-              memoryName = lastHalf.substr(dashPosition + 1, remainingLength);
-            }
-            else {
-              portName = lastHalf ;
-            }
-          }
+          double maxTheoreticalBW = // In Megabytes per second
+            (static_cast<double>(device->maxConnectionBitWidth) / 8) *
+            device->getMaxClockRatePLMHz();
+
+          auto writeTranx = values.WriteTranx[monitorId];
+          auto readTranx  = values.ReadTranx[monitorId];
+
           if (writeTranx > 0) {
-            double transferRate = (totalWriteTime == zero) ? 0 :
-              (double)(values.WriteBytes[monitorId]) / (one_thousand * totalWriteTime);
-            double aveBW = (one_hundred * transferRate) / xclbin->pl.kernelMaxWriteBW;
-            if (aveBW > one_hundred) aveBW = one_hundred;
-            auto aveLatency =
-              static_cast<double>(values.WriteLatency[monitorId]) /
-              static_cast<double>(writeTranx) ;
+            double transferTime =
+              static_cast<double>(values.WriteBusyCycles[monitorId]) /
+              (one_thousand * xclbin->pl.clockRatePLMHz);
 
-            fout << device->getUniqueDeviceName() << ","
-                 << xclbin->pl.cus[monitor->cuIndex]->getName() << "/"
-                 << portName << ","
-                 << (monitor->args) << ","
-                 << memoryName << ","
-                 << "WRITE" << ","
-                 << writeTranx << ","
-                 << transferRate << ","
-                 << aveBW << ","
-                 << (double)(values.WriteBytes[monitorId] / writeTranx) / one_thousand << ","
-                 << aveLatency << ",\n" ;
+            writeSingleDataTransfer(device->getUniqueDeviceName(),
+                                    cuName,
+                                    portName,
+                                    arguments,
+                                    memoryName,
+                                    false, // isRead
+                                    static_cast<double>(writeTranx),
+                                    transferTime,
+                                    static_cast<double>(values.WriteBytes[monitorId]),
+                                    maxAchievableBW,
+                                    maxTheoreticalBW,
+                                    static_cast<double>(values.WriteLatency[monitorId]));
           }
           if (readTranx > 0) {
-              double transferRate = (totalReadTime == zero) ? 0 :
-                (double)(values.ReadBytes[monitorId]) / (one_thousand * totalReadTime);
-              double aveBW = (one_hundred * transferRate) / xclbin->pl.kernelMaxReadBW;
-              if (aveBW > one_hundred) aveBW = one_hundred;
-              auto aveLatency =
-                static_cast<double>(values.ReadLatency[monitorId]) /
-                static_cast<double>(readTranx);
+            double transferTime =
+              static_cast<double>(values.ReadBusyCycles[monitorId]) /
+              (one_thousand * xclbin->pl.clockRatePLMHz);
 
-              fout << device->getUniqueDeviceName() << ","
-                   << xclbin->pl.cus[monitor->cuIndex]->getName() << "/"
-                   << portName << ","
-                   << (monitor->args) << ","
-                   << memoryName << ","
-                   << "READ" << ","
-                   << readTranx << ","
-                   << transferRate << ","
-                   << aveBW << ","
-                   << (double)(values.ReadBytes[monitorId] / readTranx) / one_thousand << ","
-                   << aveLatency << ",\n" ;
+            writeSingleDataTransfer(device->getUniqueDeviceName(),
+                                    cuName,
+                                    portName,
+                                    arguments,
+                                    memoryName,
+                                    true, // isRead
+                                    static_cast<double>(readTranx),
+                                    transferTime,
+                                    static_cast<double>(values.ReadBytes[monitorId]),
+                                    maxAchievableBW,
+                                    maxTheoreticalBW,
+                                    static_cast<double>(values.ReadLatency[monitorId]));
           }
+
           ++monitorId ;
         }
       }
@@ -1779,25 +1632,8 @@ namespace xdp {
 
   void SummaryWriter::writeTopDataTransferKernelAndGlobal()
   {
-    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
-    if (infos.size() == 0) return ;
-
-    bool monitorsExist = false ;
-    for (auto device : infos) {
-      for (auto xclbin : device->getLoadedXclbins()) {
-        for (auto aim : xclbin->pl.aims) {
-          if (aim->cuIndex != -1) {
-            monitorsExist = true ;
-            break ;
-          }
-          // else a floating monitor or shell monitor not reported in this table
-        }
-        if (monitorsExist) break ;
-      }
-      if (monitorsExist) break ;
-    }
-
-    if (!monitorsExist) return ;
+    if (!AIMsExistOnComputeUnits())
+      return;
 
     // Caption
     fout << "Top Data Transfer: Kernels to Global Memory" << std::endl ;
@@ -1814,6 +1650,7 @@ namespace xdp {
          << "Total Transfer Rate (MB/s)" << "," 
          << std::endl ;
 
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
     for (auto device : infos)
     {
       uint64_t deviceId = device->deviceId ;

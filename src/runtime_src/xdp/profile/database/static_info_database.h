@@ -107,9 +107,19 @@ namespace xdp {
 
     bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
-    // Helper functions that fill in device information
-    bool setXclbinName(XclbinInfo*, const std::shared_ptr<xrt_core::device>& device);
-    bool initializeComputeUnits(XclbinInfo*, const std::shared_ptr<xrt_core::device>&);
+    // Functions that create the overall structure of the Xclbin's PL region
+    bool initializeStructure(XclbinInfo*,
+                             const std::shared_ptr<xrt_core::device>&);
+    void createComputeUnits(XclbinInfo*, const ip_layout*);
+    void createMemories(XclbinInfo*, const mem_topology*);
+    void createConnections(XclbinInfo*, const ip_layout*, const mem_topology*,
+                           const connectivity*);
+    void annotateWorkgroupSize(XclbinInfo*, const char*, size_t);
+    void setXclbinName(XclbinInfo*, const char*, size_t);
+    void updateSystemDiagram(const char*, size_t);
+    void addPortInfo(XclbinInfo*, const char*, size_t);
+
+    // Functions that initialize the structure of the debug/profiling IP
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
     void initializeAM(DeviceInfo* devInfo, const std::string& name,
                       const struct debug_ip_data* debugIpData) ;
