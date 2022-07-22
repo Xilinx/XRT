@@ -439,7 +439,7 @@ struct instance
 
 };
 
-struct hotplug_offline 
+struct hotplug_offline
 {
   using result_type = query::hotplug_offline::result_type;
 
@@ -1256,6 +1256,41 @@ xclmgmt_load_xclbin(const char* buffer) const {
   if(ret != 0) {
     throw error(ret, "Failed to download xclbin");
   }
+}
+
+void
+device_linux::
+device_shutdown() const {
+  auto mgmt_dev = pcidev::get_dev(get_device_id(), false);
+  // hot reset pcie device
+  if (pcidev::shutdown(mgmt_dev))
+    throw xrt_core::error("Hot resetting pci device failed.");
+}
+
+void
+device_linux::
+device_online() const {
+  auto mgmt_dev = pcidev::get_dev(get_device_id(), false);
+  auto peer_dev = mgmt_dev->lookup_peer_dev();
+  std::string errmsg;
+
+  peer_dev->sysfs_put("", "shutdown", errmsg, "0\n");
+  if (!errmsg.empty())
+    throw xrt_core::error("Userpf is not online.");
+
+  const static int dev_timeout = 60;
+  int wait = 0;
+  do {
+    auto hdl = peer_dev->open("", O_RDWR);
+    if (hdl != -1) {
+      peer_dev->close(hdl);
+      break;
+    }
+    sleep(1);
+  } while (++wait < dev_timeout);
+
+  if (wait == dev_timeout)
+    throw xrt_core::error("User function is not back online.");
 }
 
 ////////////////////////////////////////////////////////////////

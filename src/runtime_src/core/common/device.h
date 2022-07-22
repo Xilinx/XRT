@@ -427,6 +427,16 @@ public:
   virtual void xclmgmt_load_xclbin(const char*) const{}
 
   /**
+   * shutdown_device() - hot reset the device, stop ongoing transactions
+   */
+  virtual void device_shutdown() const {}
+
+  /**
+   * online_device() - bring back the device online
+   */
+  virtual void device_online() const {}
+
+  /**
    * open() - opens a device with an fd which can be used for non pcie read/write
    * xospiversal and xspi use this
    */
