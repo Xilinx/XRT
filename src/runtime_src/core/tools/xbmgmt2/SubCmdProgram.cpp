@@ -462,11 +462,11 @@ update_default_only(xrt_core::device* device, bool value)
     // get boot on backup from vmr_status sysfs node
     boost::property_tree::ptree pt_empty;
     const auto pt = xrt_core::vmr::vmr_info(device).get_child("vmr", pt_empty);
-    for(auto& ks : pt) {
+    for (const auto& ks : pt) {
       const boost::property_tree::ptree& vmr_stat = ks.second;
-      if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
+      if (boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
         // if backup is booted, then do not proceed
-        if(std::stoi(vmr_stat.get<std::string>("value")) != 1) {
+        if (std::stoi(vmr_stat.get<std::string>("value")) != 1) {
           std::cout << "Backup image booted. Action will be performed only on default image.\n";
         }
         break;
@@ -649,12 +649,12 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
   std::vector<std::string> path_list;
   auto installedShells = firmwareImage::getIntalledDSAs();
 
-  for(const auto& img : image_list) {
+  for (const auto& img : image_list) {
     // Check if the passed in image is absolute path
     if (boost::filesystem::is_regular_file(img)){
       if (boost::filesystem::extension(img).compare(".xsabin") != 0) {
         std::cout << "Warning: Non-xsabin file detected. Development usage, this may damage the card\n";
-        if(!XBU::can_proceed(XBU::getForce()))
+        if (!XBU::can_proceed(XBU::getForce()))
           throw xrt_core::error(std::errc::operation_canceled);
       }
       path_list.push_back(img);
@@ -739,11 +739,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // -- Retrieve and parse the subcommand options -----------------------------
   std::string device_str;
-  std::string plp = "";
-  std::string update = "";
-  std::string xclbin = "";
-  std::string flashType = "";
-  std::string boot = "";
+  std::string plp;
+  std::string update;
+  std::string xclbin;
+  std::string flashType;
+  std::string boot;
   std::vector<std::string> image;
   bool revertToGolden = false;
   bool help = false;
@@ -846,7 +846,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       throw xrt_core::error("Please provide a valid xsabin file or specify the type of base to flash");
 
     std::map<std::string, std::string> validated_image_map;
-    switch(validated_images.size()) {
+    switch (validated_images.size()) {
       case 2:
         validated_image_map["primary"] = validated_images[0];
         validated_image_map["secondary"] = validated_images[1];
@@ -893,7 +893,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     std::vector<Flasher> flasher_list;
     //collect information of all the devices that will be reset
     Flasher flasher(device->get_device_id());
-    if(!flasher.isValid())
+    if (!flasher.isValid())
       xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
 
     std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device ["

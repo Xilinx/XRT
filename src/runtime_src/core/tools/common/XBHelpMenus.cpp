@@ -236,6 +236,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
       // proceed even if the platform name is not available
       platform = "<not defined>";
     }
+    // Bound the device description on top and bottom with '-' characters
     const std::string dev_desc = (boost::format("[%s] : %s\n") % ptDevice.get<std::string>("device_id") % platform).str();
     consoleStream << std::endl;
     consoleStream << std::string(dev_desc.length(), '-') << std::endl;
@@ -255,9 +256,8 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     // If the device is either of the following, most tests cannot be completed fully:
     // 1. Is in factory mode and is not in recovery mode
     // 2. Is not ready and is not in recovery mode
-    if ((is_mfg || !is_ready) && !is_recovery) {
+    if ((is_mfg || !is_ready) && !is_recovery)
       std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n\n";
-    }
 
     for (auto &report : reportsToProcess) {
       if (!report->isDeviceRequired())

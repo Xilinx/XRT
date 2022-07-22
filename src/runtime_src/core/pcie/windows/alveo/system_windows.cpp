@@ -9,19 +9,20 @@
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #include "system_windows.h"
+
+#include "core/pcie/driver/windows/alveo/include/XoclUser_INTF.h"
 #include "device_windows.h"
 #include "gen/version.h"
 #include "mgmt.h"
-#include "core/pcie/driver/windows/alveo/include/XoclUser_INTF.h"
 
+#include <chrono>
+#include <ctime>
 #include <map>
 #include <memory>
-#include <chrono>
-#include <thread>
-#include <ctime>
 #include <regex>
-#include <windows.h>
+#include <thread>
 #include <setupapi.h>
+#include <windows.h>
 
 #include <boost/format.hpp>
 
