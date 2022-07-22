@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -62,9 +63,9 @@ namespace xdp {
     bool checkAieDevice(uint64_t deviceId, void* handle);
 
     std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
-                                                        std::string graph,
+                                                        const std::string &graph,
                                                         void* handle);
-    std::vector<tile_type> getAllTilesForShimProfiling(void* handle, std::string metricStr);
+    std::vector<tile_type> getAllTilesForShimProfiling(void* handle, const std::string &metricStr);
 
     void getConfigMetricsForTiles(int moduleIdx, std::vector<std::string> metricsSettings,
                                                std::vector<std::string> graphmetricsSettings,

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -617,7 +617,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
       xrt_core::message::send(severity_level::warning, "XRT",
-        "No runtime trace metrics was specified in xrt.ini. So, AIE event trace will not be available. Please use \"[graph|tile]_based_engine_tile_metrics\" under \"AIE_trace_settings\" section.");
+        "No runtime trace metrics was specified in xrt.ini. So, AIE event trace will not be available. Please use \"[graph|tile]_based_aie_tile_metrics\" under \"AIE_trace_settings\" section.");
       if (!runtimeMetrics)
         return true;
       return false;
@@ -1729,9 +1729,9 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
   AieTracePlugin::setMetricsSettings(uint64_t deviceId, void* handle)
   {
     // TO DO : mem_tile
-    std::string metricsConfig = xrt_core::config::get_aie_trace_settings_tile_based_engine_tile_metrics();
+    std::string metricsConfig = xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics();
 
-    std::string graphmetricsConfig = xrt_core::config::get_aie_trace_settings_graph_based_engine_tile_metrics();
+    std::string graphmetricsConfig = xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics();
 
     if (metricsConfig.empty() && graphmetricsConfig.empty()) {
 #if 0
