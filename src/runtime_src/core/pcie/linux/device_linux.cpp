@@ -451,6 +451,111 @@ struct hotplug_offline
   }
 };
 
+struct clk_scaling_info
+{
+  using result_type = query::clk_scaling_info::result_type;
+  using data_type = query::clk_scaling_info::data_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+
+    std::vector<std::string> stats;
+    std::string errmsg;
+    result_type ctStats;
+
+    pdev->sysfs_get("xgq_vmr", "clk_scaling_stat_raw", errmsg, stats);
+    if (!errmsg.empty()) {
+      // Backward compatibilty check.
+      // Read XMC sysfs nodes
+      data_type data = { 0 };
+	  uint32_t uint_op = 0;
+
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_enabled", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.enable = uint_op ? true : false;
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_support", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.support = uint_op ? true : false;
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_critical_power_threshold", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.pwr_shutdown_limit = uint_op;
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_critical_temp_threshold", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.temp_shutdown_limit = uint_op;
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_power_limit", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.pwr_scaling_limit = uint_op;
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_temp_limit", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.temp_scaling_limit = uint_op;
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_temp_override", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.temp_scaling_ovrd_limit = uint_op;
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_power_override", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.pwr_scaling_ovrd_limit = uint_op;
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_power_override_en", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.pwr_scaling_ovrd_enable = uint_op ? true : false;
+      pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_temp_override_en", errmsg, uint_op, EINVAL);
+      if (errmsg.empty())
+        data.temp_scaling_ovrd_enable = uint_op ? true : false;
+      ctStats.push_back(data);
+      return ctStats;
+	}
+
+    data_type data = { 0 };
+    int id = 0;
+    //parse one line at a time
+    // The clk_scaling_stat_raw is printing in formatted string of each line
+    // Format: "%s:%u"
+    // Using colon ":" as separator.
+    for (auto& stat_raw : stats) {
+      std::vector<std::string> stat;
+      boost::split(stat, stat_raw, boost::is_any_of(":"));
+      uint16_t value = std::stoi(std::string(stat.at(1)));
+      switch (id) {
+      case 0:
+        data.support = value ? true : false;
+        break;
+      case 1:
+        data.enable = value ? true : false;
+        break;
+      case 2:
+        data.pwr_shutdown_limit = value;
+        break;
+      case 3:
+        data.temp_shutdown_limit = value;
+        break;
+      case 4:
+        data.pwr_scaling_limit = value;
+        break;
+      case 5:
+        data.temp_scaling_limit = value;
+        break;
+      case 6:
+        data.pwr_scaling_ovrd_limit = value;
+        break;
+      case 7:
+        data.temp_scaling_ovrd_limit = value;
+        break;
+      case 8:
+        data.pwr_scaling_ovrd_enable = value ? true : false;
+        break;
+      case 9:
+        data.temp_scaling_ovrd_enable = value ? true : false;
+        break;
+      }
+      ++id;
+    }
+    ctStats.push_back(data);
+
+    return ctStats;
+  }
+};
+
 struct kds_scu_info
 {
   using result_type = query::kds_scu_info::result_type;
@@ -1114,6 +1219,7 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                       bdf>();
   emplace_func0_request<query::instance,                       instance>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
+  emplace_func0_request<query::clk_scaling_info,               clk_scaling_info>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_func4_request<query::am_counter,                     am_counter>();
