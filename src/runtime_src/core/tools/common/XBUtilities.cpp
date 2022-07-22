@@ -3,9 +3,10 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
-// Local - Include Files
-#include "XBUtilitiesCore.h"
 #include "XBUtilities.h"
+#include "XBUtilitiesCore.h"
+
+// Local - Include Files
 #include "core/common/error.h"
 #include "core/common/utils.h"
 #include "core/common/message.h"
@@ -13,10 +14,10 @@
 #include "common/system.h"
 
 // 3rd Party Library - Include Files
+#include <boost/algorithm/string/split.hpp>
+#include <boost/format.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
-#include <boost/format.hpp>
-#include <boost/algorithm/string/split.hpp>
 
 // System - Include Files
 #include <iostream>
