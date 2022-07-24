@@ -55,17 +55,17 @@ const static int LEGACY_COUNT = 4;
 static int
 get_render_value(const std::string dir)
 {
-  static const std::string render_name = "renderD"; 
+  static const std::string render_name = "renderD";
   int instance_num = INVALID_ID;
   std::string sub;
 
   boost::filesystem::path render_dirs(dir);
   if (!boost::filesystem::is_directory(render_dirs))
     return instance_num;
- 
+
   boost::filesystem::recursive_directory_iterator end_iter;
     for(boost::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
-      if (iter->path().filename().string().compare(0,render_name.size(),render_name)== 0) {   
+      if (iter->path().filename().string().compare(0,render_name.size(),render_name)== 0) {
         sub = iter->path().filename().string().substr(render_name.size());
         instance_num = std::stoi(sub);
         break;
@@ -80,16 +80,16 @@ get_pcidev(const xrt_core::device* device)
   return pcidev::get_dev(device->get_device_id(), device->is_userpf());
 }
 
-static std::vector<uint64_t> 
-get_counter_status_from_sysfs(const std::string &mon_name_address, 
-                              const std::string &sysfs_file_name, 
-                              size_t size, 
+static std::vector<uint64_t>
+get_counter_status_from_sysfs(const std::string &mon_name_address,
+                              const std::string &sysfs_file_name,
+                              size_t size,
                               const xrt_core::device* device)
 {
   auto pdev = get_pcidev(device);
 
-  /* Get full path to "name" sysfs file. 
-   * Then use that path to form full path to "counters"/"status" sysfs file 
+  /* Get full path to "name" sysfs file.
+   * Then use that path to form full path to "counters"/"status" sysfs file
    * which contains counter/status data for the monitor
    */
   std::string name_path = pdev->get_sysfs_path(mon_name_address, "name");
@@ -417,7 +417,7 @@ struct kds_cu_info
   }
 };
 
-struct instance 
+struct instance
 {
   using result_type = query::instance::result_type;
 
@@ -433,7 +433,7 @@ struct instance
       pdev->instance = get_render_value(dev_root + sysfsname + "/drm");
     else
       pdev->sysfs_get("", "instance", errmsg, pdev->instance,static_cast<uint32_t>(INVALID_ID));
-  
+
     return pdev->instance;
   }
 
@@ -522,7 +522,7 @@ struct qspi_status
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
-  
+
     std::string status_str, errmsg;
     pdev->sysfs_get("xmc", "xmc_qspi_status", errmsg, status_str);
     if (!errmsg.empty())
@@ -578,9 +578,9 @@ struct mac_addr_list
   }
 };
 
-/* AIM counter values 
+/* AIM counter values
  * In PCIe Linux, access the sysfs file for AIM to retrieve the AIM counter values
- */ 
+ */
 struct aim_counter
 {
   using result_type = query::aim_counter::result_type;
@@ -597,7 +597,7 @@ struct aim_counter
 
     result_type val_buf = get_counter_status_from_sysfs(aim_name, "counters", xdp::IP::AIM::NUM_COUNTERS, device);
 
-    /* Note that required return values are NOT in contiguous sequential order 
+    /* Note that required return values are NOT in contiguous sequential order
      * in AIM subdevice file. So, need to read only a few isolated indices in val_buf.
      */
     retval_buf[xdp::IP::AIM::report::WRITE_BYTES] = val_buf[xdp::IP::AIM::sysfs::WRITE_BYTES];
@@ -616,9 +616,9 @@ struct aim_counter
 };
 
 
-/* AM counter values 
+/* AM counter values
  * In PCIe Linux, access the sysfs file for AM to retrieve the AM counter values
- */ 
+ */
 struct am_counter
 {
   using result_type = query::am_counter::result_type;
@@ -639,9 +639,9 @@ struct am_counter
 };
 
 
-/* ASM counter values 
+/* ASM counter values
  * In PCIe Linux, access the sysfs file for ASM to retrieve the ASM counter values
- */ 
+ */
 struct asm_counter
 {
   using result_type = query::asm_counter::result_type;
@@ -661,9 +661,9 @@ struct asm_counter
 };
 
 
-/* LAPC status 
- * In PCIe Linux, access the sysfs file for LAPC to retrieve the LAPC status 
- */ 
+/* LAPC status
+ * In PCIe Linux, access the sysfs file for LAPC to retrieve the LAPC status
+ */
 struct lapc_status
 {
   using result_type = query::lapc_status::result_type;
@@ -688,9 +688,9 @@ struct lapc_status
 };
 
 
-/* SPC status 
+/* SPC status
  * In PCIe Linux, access the sysfs file for SPC to retrieve the SPC status
- */ 
+ */
 struct spc_status
 {
   using result_type = query::spc_status::result_type;
@@ -715,9 +715,9 @@ struct spc_status
 };
 
 
-/* Accelerator Deadlock Detector status 
+/* Accelerator Deadlock Detector status
  * In PCIe Linux, access the sysfs file for Accelerator Deadlock Detector to retrieve the deadlock status
- */ 
+ */
 struct accel_deadlock_status
 {
   using result_type = query::accel_deadlock_status::result_type;
@@ -809,7 +809,7 @@ struct sysfs_fcn<std::vector<VectorValueType>>
     return value;
   }
 
-  static void 
+  static void
   put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
   {
     std::string err;
@@ -1213,7 +1213,7 @@ write(uint64_t offset, const void* buf, uint64_t len) const
 
 void
 device_linux::
-reset(query::reset_type& key) const 
+reset(query::reset_type& key) const
 {
   std::string err;
   pcidev::get_dev(get_device_id(), false)->sysfs_put(key.get_subdev(), key.get_entry(), err, key.get_value());
@@ -1298,6 +1298,14 @@ device_online() const {
 // Redefined from xrt_core::ishim for functions that are not
 // universally implemented by all shims
 ////////////////////////////////////////////////////////////////
+void
+device_linux::
+set_cu_read_range(cuidx_type cuidx, uint32_t start, uint32_t size)
+{
+  if (auto ret = xclIPSetReadRange(get_device_handle(), cuidx.domain_index, start, size))
+    throw xrt_core::error(ret, "failed to set cu read range");
+}
+
 // User Managed IP Interrupt Handling
 xclInterruptNotifyHandle
 device_linux::
@@ -1305,7 +1313,7 @@ open_ip_interrupt_notify(unsigned int ip_index)
 {
   return xclOpenIPInterruptNotify(get_device_handle(), ip_index, 0);
 }
-  
+
 void
 device_linux::
 close_ip_interrupt_notify(xclInterruptNotifyHandle handle)

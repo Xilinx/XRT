@@ -746,6 +746,12 @@ struct callable_traits<run>
 };
 /// @endcond
 
+
+/// @cond
+// Undocumented experimental API subject to be replaced
+void
+set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size);
+
 } // namespace xrt
 
 /// @cond
