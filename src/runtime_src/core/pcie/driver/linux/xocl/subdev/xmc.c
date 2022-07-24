@@ -350,6 +350,12 @@ struct xmc_pkt_hdr {
 	u32 op		: 8;
 };
 
+#define XMC_UNRECOVERABLE_ERR(val) \
+		((val == XMC_HOST_MSG_SAT_FW_WRITE_FAIL)  || \
+		 (val == XMC_HOST_MSG_SAT_FW_UPDATE_FAIL) || \
+		 (val == XMC_HOST_MSG_SAT_FW_LOAD_FAIL)   || \
+		 (val == XMC_HOST_MSG_SAT_FW_ERASE_FAIL))
+
 /* We have a 4k buffer for xmc mailbox */
 #define	XMC_PKT_MAX_SZ	1024 /* In u32 */
 #define	XMC_PKT_MAX_PAYLOAD_SZ	\
@@ -4221,8 +4227,14 @@ static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 
 	if (val) {
 		xocl_err(&xmc->pdev->dev, "XMC packet error: %d\n", val);
-		xocl_err(&xmc->pdev->dev, "Card requires pci hot reset\n");
-		xmc->state = XMC_STATE_ERROR;
+		/*
+		 *  We set the xmc state as XMC_STATE_ERROR only if it's unrecoverable.
+		 *  e.g. get error while upgrading the sc firmware.
+		 */
+		if (XMC_UNRECOVERABLE_ERR(val)) {
+			xocl_err(&xmc->pdev->dev, "Card requires pci hot reset\n");
+			xmc->state = XMC_STATE_ERROR;
+		}
 		safe_read32(xmc, XMC_CONTROL_REG, &ctrl_val);
 		safe_write32(xmc, XMC_CONTROL_REG, ctrl_val | XMC_CTRL_ERR_CLR);
 		return -EIO;
