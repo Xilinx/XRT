@@ -50,28 +50,27 @@ namespace {
 namespace query = xrt_core::query;
 using pdev = std::shared_ptr<pcidev::pci_device>;
 using key_type = query::key_type;
-const static int LEGACY_COUNT = 4;
 
 static int
-get_render_value(const std::string dir)
+get_render_value(const std::string& dir)
 {
   static const std::string render_name = "renderD";
-  int instance_num = INVALID_ID;
-  std::string sub;
+  int instance_num = INVALID_ID; // argh, what is this?
 
   boost::filesystem::path render_dirs(dir);
   if (!boost::filesystem::is_directory(render_dirs))
     return instance_num;
 
   boost::filesystem::recursive_directory_iterator end_iter;
-    for(boost::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
-      if (iter->path().filename().string().compare(0,render_name.size(),render_name)== 0) {
-        sub = iter->path().filename().string().substr(render_name.size());
-        instance_num = std::stoi(sub);
-        break;
-      }
+  for(boost::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
+    auto path = iter->path().filename().string();
+    if (!path.compare(0, render_name.size(), render_name)) {
+      auto sub = path.substr(render_name.size());
+      instance_num = std::stoi(sub);
+      break;
     }
-    return instance_num;
+  }
+  return instance_num;
 }
 
 inline pdev
@@ -267,20 +266,16 @@ struct sdm_sensor_info
     result_type output;
     //sensors are stored in hwmon sysfs dir with name starts with as follows.
     std::array<std::string, 5> sname_start = {"curr", "in", "power", "temp", "fan"};
-    auto type = sname_start[(int)req_type];
+    auto type = sname_start[static_cast<int>(req_type)];
 
-    if (!type.compare("in") || !type.compare("curr") || !type.compare("temp"))
-    {
-      std::string sysfs_name;
-      if (!type.compare("in"))
-        sysfs_name = "voltage_sensors_raw";
-      if (!type.compare("curr"))
-        sysfs_name = "current_sensors_raw";
-      if (!type.compare("temp"))
-        sysfs_name = "temp_sensors_raw";
-      output = read_sensors_raw_data(device, sysfs_name);
-      return output;
-    }
+    if (type == "in")
+      return read_sensors_raw_data(device, "voltage_sensors_raw");
+
+    if (type == "curr")
+      return read_sensors_raw_data(device, "current_sensors_raw");
+
+    if (type == "temp")
+      return read_sensors_raw_data(device,"temp_sensors_raw");
 
     bool next_id = false;
     //All sensor sysfs nodes starts with 1 as starting index.
@@ -551,9 +546,9 @@ struct mac_addr_list
   {
     std::vector<std::string> list;
     auto pdev = get_pcidev(device);
-
     //legacy code exposes only 4 mac addr sysfs nodes (0-3)
-    for (int i=0; i < LEGACY_COUNT; i++) {
+    constexpr int legacy_count = 4;
+    for (int i=0; i < legacy_count; i++) {
       std::string addr, errmsg;
       pdev->sysfs_get("xmc", "mac_addr"+std::to_string(i), errmsg, addr);
       if (!addr.empty())
