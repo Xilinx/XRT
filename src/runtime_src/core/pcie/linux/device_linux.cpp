@@ -1297,7 +1297,7 @@ void
 device_linux::
 set_cu_read_range(cuidx_type cuidx, uint32_t start, uint32_t size)
 {
-  if (auto ret = xclIPSetReadRange(get_device_handle(), cuidx.domain_index, start, size))
+  if (auto ret = xclIPSetReadRange(get_device_handle(), cuidx.index, start, size))
     throw xrt_core::error(ret, "failed to set cu read range");
 }
 
