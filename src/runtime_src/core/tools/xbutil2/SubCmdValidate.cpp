@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -1538,22 +1525,17 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 }
 
 static bool
-run_tests_on_devices( xrt_core::device_collection &deviceCollection,
+run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
                       Report::SchemaVersion schemaVersion,
                       const std::vector<TestCollection *>& testObjectsToRun,
                       std::ostream & output)
 {
-  bool has_failures = false;
   // -- Root property tree
   boost::property_tree::ptree ptDevCollectionTestSuite;
 
-  // -- Let the user know that the testing has started
-  std::cout << boost::format("Starting validation for %d devices\n\n") % deviceCollection.size();
-
   // -- Run the various tests and collect the test data
   boost::property_tree::ptree ptDeviceTested;
-  for(auto const& dev : deviceCollection)
-    has_failures |= (run_test_suite_device(dev, schemaVersion, testObjectsToRun, ptDeviceTested) == test_status::failed);
+  auto has_failures = (run_test_suite_device(device, schemaVersion, testObjectsToRun, ptDeviceTested) == test_status::failed);
 
   ptDevCollectionTestSuite.put_child("logical_devices", ptDeviceTested);
 
@@ -1661,7 +1643,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   const std::string formatRunValues = XBU::create_suboption_list_string(testNameDescription);
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::vector<std::string> device;
+  std::string device_str;
   std::vector<std::string> testsToRun = {"all"};
   std::string sFormat = "JSON";
   std::string sOutput;
@@ -1671,7 +1653,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Commmon Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The device of interest. This is specified as follows:\n"
+    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The device of interest. This is specified as follows:\n"
                                                                            "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)")
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("run,r", boost::program_options::value<decltype(testsToRun)>(&testsToRun)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
@@ -1761,29 +1743,13 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
 
 
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  xrt_core::device_collection deviceCollection;
-  for (const auto & deviceName : device)
-    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
   try {
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // enforce 1 device specification
-  if(deviceCollection.empty() || deviceCollection.size() > 1) {
-    std::cerr << "\nERROR: Please specify a single device using --device option\n\n";
-    std::cout << "List of available devices:" << std::endl;
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
-    for(auto& kd : available_devices) {
-      boost::property_tree::ptree& _dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-    }
-    std::cout << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -1836,7 +1802,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
-  bool has_failures = run_tests_on_devices(deviceCollection, schemaVersion, testObjectsToRun, oSchemaOutput);
+  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput);
 
   // -- Write output file ----------------------------------------------
   if (!sOutput.empty()) {

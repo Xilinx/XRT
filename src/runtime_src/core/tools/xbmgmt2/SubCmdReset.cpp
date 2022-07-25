@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -36,13 +23,11 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 static void
-pretty_print_action_list(xrt_core::device_collection& deviceCollection, xrt_core::query::reset_type& reset)
+pretty_print_action_list(xrt_core::device* device, xrt_core::query::reset_type& reset)
 {
   std::cout << "Performing '" << reset.get_name() << "' on " << std::endl;
-  for(const auto & device: deviceCollection) {
-      std::cout << boost::format("  -[%s]\n") % 
-        xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  }
+  std::cout << boost::format("  -[%s]\n") % 
+               xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
 
   if (!reset.get_warning().empty())
     std::cout << "WARNING: " << reset.get_warning() << std::endl;
@@ -108,13 +93,13 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: reset");
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::vector<std::string> devices;
+  std::string device_str;
   std::string resetType = "hot";
   bool help = false;
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
@@ -140,43 +125,26 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("  Reset: %s") % resetType));
 
   // -- process "device" option -----------------------------------------------
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  xrt_core::device_collection deviceCollection;  // The collection of devices to examine
-  for (const auto & deviceName : devices) 
-    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+
 
   try {
-    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), false /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-
-  // enforce 1 device specification
-  if(deviceCollection.size() != 1) {
-    std::cerr << "\nERROR: Multiple device reset is not supported. Please specify a single device using --device option\n\n";
-    std::cout << "List of available devices:" << std::endl;
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
-    for(auto& kd : available_devices) {
-      boost::property_tree::ptree& _dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-    }
-    std::cout << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
   
   xrt_core::query::reset_type type = XBU::str_to_reset_obj(resetType);
-  pretty_print_action_list(deviceCollection, type);
+  pretty_print_action_list(device.get(), type);
 
   // Ask user for permission
   XBUtilities::sudo_or_throw("Root privileges are required to perform management resets");
   if(!XBU::can_proceed(XBU::getForce()))
     throw xrt_core::error(std::errc::operation_canceled);
 
-  //perform reset actions
-  for (const auto & dev : deviceCollection) {
-    reset_device(dev, type);
-  }
+  //perform reset action
+  reset_device(device, type);
 }
