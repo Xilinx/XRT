@@ -47,6 +47,9 @@ public:
   // Redefined from xrt_core::ishim for functions that are not
   // universally implemented by all shims
   ////////////////////////////////////////////////////////////////
+  void
+  set_cu_read_range(cuidx_type ip_index, uint32_t start, uint32_t size) override;
+
   xclInterruptNotifyHandle
   open_ip_interrupt_notify(unsigned int ip_index) override;
 

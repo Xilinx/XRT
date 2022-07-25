@@ -167,6 +167,15 @@ struct ishim
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
+  // Interface for CU shared read range
+  // Implemented explicitly by concrete shim device class
+  // 2022.2: Only supported for Alveo Linux
+  virtual void
+  set_cu_read_range(cuidx_type /*ip_index*/, uint32_t /*start*/, uint32_t /*size*/)
+  { throw not_supported_error{__func__}; }
+  ////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////
   // Interfaces for custom IP interrupt handling
   // Implemented explicitly by concrete shim device class
   // 2021.1: Only supported for edge shim
