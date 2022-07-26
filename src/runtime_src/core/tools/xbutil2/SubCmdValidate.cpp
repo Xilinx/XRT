@@ -429,14 +429,21 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
 static bool
 p2ptest_set_or_cmp(char *boptr, size_t size, const std::vector<char>& valid_data, bool set)
 {
-  int stride = xrt_core::getpagesize();
+  // Validate the page size against the parameters
+  const size_t page_size = static_cast<size_t>(xrt_core::getpagesize());
+  assert((size % page_size) == 0);
+  assert(page_size >= valid_data.size());
 
-  assert((size % stride) == 0);
-  assert(size > valid_data.size());
-  for (size_t i = 0; i < size; i += stride) {
+  // Calculate the number of pages that will be accessed
+  const size_t num_of_pages = size / page_size;
+  assert(size >= valid_data.size());
+
+  // Go through each page to be accessed and perform the desired action
+  for (size_t page_index = 0; page_index < num_of_pages; page_index++) {
+    const size_t mem_index = page_index * page_size;
     if (set)
-      std::memcpy(&(boptr[i]), valid_data.data(), valid_data.size());
-    else if(!std::equal(valid_data.begin(), valid_data.end(), &(boptr[i]))) // Continue unless mismatch
+      std::memcpy(&(boptr[mem_index]), valid_data.data(), valid_data.size());
+    else if(!std::equal(valid_data.begin(), valid_data.end(), &(boptr[mem_index]))) // Continue unless mismatch
       return false;
   }
   return true;
