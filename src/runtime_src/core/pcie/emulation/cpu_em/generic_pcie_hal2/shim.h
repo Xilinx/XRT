@@ -409,10 +409,8 @@ namespace xclcpuemhal2
     // aka xclOpenContextByName
     xrt_core::cuidx_type
     open_cu_context(const xrt::hw_context &hwctx, const std::string &cuname);
-
     void
     close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
-
   private:
     std::shared_ptr<xrt_core::device> mCoreDevice;
     std::mutex mMemManagerMutex;
@@ -569,17 +567,16 @@ namespace xclcpuemhal2
     */
     void closeApplicationOnMagicStrFound(const std::string &matchString)
     {
-      DEBUG_MSG_COUT("start");
       std::string line;
       while (std::getline(file, line))
       {
         if (line.find(matchString) != std::string::npos)
         {
           std::cout << "Received request to end the application. Exiting the application." << std::endl;
-          mCpuShimPtr->xclClose();
+          //mCpuShimPtr->xclClose();
+          exit(0);
         }
       }
-      DEBUG_MSG_COUT("end");
     }
 
     //**********************************************************************************//
