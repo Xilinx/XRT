@@ -1064,13 +1064,13 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	mutex_lock(&client->lock);
 	/* Traverse through all the context and free them up */
 	list_for_each_entry(cu_ctx, &cctx->cu_ctx_list, link) {
-		if (cu_ctx->ref_cnt) {
-			kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
-					cu_ctx->cu_idx);
+		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
+				cu_ctx->cu_idx);
+		if (cu_ctx->ref_cnt)
 			kds_del_context(kds, client, cu_ctx);
-			list_del(&cu_ctx->link);
-			vfree(cu_ctx);
-		}
+	
+		list_del(&cu_ctx->link);
+		vfree(cu_ctx);
 	}
 	
 	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
