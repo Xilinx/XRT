@@ -34,6 +34,7 @@
 #endif
 
 // Local - Include Files
+#include "BusyBar.h"
 #include "ProgressBar.h"
 #include "Process.h"
 #include "EscapeCodes.h"
@@ -96,7 +97,7 @@ XBUtilities::runScript( const std::string & env,
                         const std::vector<std::string> & args,
                         const std::string & running_description,
                         const std::string & final_description,
-                        int max_running_duration,
+                        const std::chrono::seconds& max_running_duration,
                         std::ostringstream & os_stdout,
                         std::ostringstream & os_stderr,
                         bool /*erasePassFailMessage*/)
@@ -130,10 +131,8 @@ XBUtilities::runScript( const std::string & env,
   }
 
   // Kick off progress reporter
-  bool is_done = false;
-  // Fix: create busy bar
-  auto run_test = std::make_shared<XBUtilities::ProgressBar>(running_description, max_running_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
-  std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
+  BusyBar run_test(running_description, std::cout);
+  run_test.start(XBUtilities::is_escape_codes_disabled());
 
   // Close existing stderr and set it to be the write end of the pipe.
   // After fork below, our child process's stderr will point to the same fd.
@@ -163,14 +162,9 @@ XBUtilities::runScript( const std::string & env,
     }
   }
 
-  is_done = true;
+  run_test.finish();
   bool passed = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
   bool skipped = (os_stdout.str().find("NOT SUPPORTED") != std::string::npos) ? true : false;
-  run_test.get()->finish(passed, final_description);
-  // Workaround: Clear the default progress bar output so as to print the Error: before printing [FAILED]
-  // Remove this once busybar is implemented
-  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
-  t.join();
 
   if (skipped)
     return EOPNOTSUPP;
@@ -206,7 +200,7 @@ XBUtilities::runScript( const std::string & env,
                         const std::vector<std::string> & args,
                         const std::string & running_description,
                         const std::string & final_description,
-                        int max_running_duration,
+                        const std::chrono::seconds& max_running_duration,
                         std::ostringstream & os_stdout,
                         std::ostringstream & os_stderr,
                         bool erasePassFailMessage)
@@ -231,8 +225,8 @@ XBUtilities::runScript( const std::string & env,
   boost::process::environment _env = boost::this_process::environment();
   _env.erase("XCL_EMULATION_MODE");
 
-  // Please fix: Should be a busy bar and NOT a progress bar
-  ProgressBar run_test(running_description, max_running_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
+  BusyBar run_test(running_description, std::cout);
+  run_test.start(XBUtilities::is_escape_codes_disabled());
 
   // Execute the python script and capture the outputs
   boost::process::ipstream ip_stdout;
@@ -244,20 +238,14 @@ XBUtilities::runScript( const std::string & env,
                                         _env);
 
   // Wait for the process to finish and update the busy bar
-  unsigned int counter = 0;
   while (runningProcess.running()) {
-    run_test.update(counter++);
     std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    if (counter >= run_test.getMaxIterations()) {
-        if (erasePassFailMessage && (XBUtilities::is_escape_codes_disabled() == 0)) 
-          std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
-      throw std::runtime_error("Time Out");
-    }
+    run_test.check_timeout(max_running_duration);
   }
 
   // Not really needed, but should be added for completeness 
   runningProcess.wait();
+  run_test.finish();
 
   // boost::process::ipstream::rdbuf() gives conversion error in
   // 1.65.1 Base class is constructed with underlying buffer so just
@@ -271,11 +259,6 @@ XBUtilities::runScript( const std::string & env,
 
   // Obtain the exit code from the running process
   int exitCode = runningProcess.exit_code();
-  run_test.finish(exitCode == 0 /*Success or failure*/, final_description);
-
-  // Erase the "Pass Fail" message
-  if (erasePassFailMessage && (XBUtilities::is_escape_codes_disabled() == 0)) 
-    std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
 
   return exitCode;
 }
