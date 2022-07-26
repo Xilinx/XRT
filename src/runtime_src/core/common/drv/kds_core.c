@@ -1111,9 +1111,6 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 
 	BUG_ON(!mutex_is_locked(&client->lock));
 
-	if (!client->ctx)
-		return -EINVAL;
-
 	/* TODO: In lagcy KDS, there is a concept of implicit CUs.
 	 * It looks like that part is related to cdma. But it use the same
 	 * cu bit map and it relies on to how user open context.
@@ -1156,13 +1153,9 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 {
 	u32 cu_idx = cu_ctx->cu_idx;
 	u32 cu_domain = cu_ctx->cu_domain;
-	struct kds_client_ctx *cctx = (struct kds_client_ctx *)cu_ctx->ctx;
 	int i;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
-
-	if (!cctx)
-		return -EINVAL;
 
 	switch (cu_domain) {
 	case DOMAIN_VIRT:

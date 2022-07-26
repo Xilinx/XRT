@@ -112,8 +112,9 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
 	struct drm_zocl_slot *slot = NULL;
 	uuid_t *id = (uuid_t *)cctx->xclbin_id;
         struct kds_client_cu_ctx *cu_ctx = NULL;
+        struct kds_client_cu_ctx *tmp = NULL;
 
-	if (!cctx) 
+	if (!cctx)
 		return;
 
 	/* Get the corresponding slot for this xclbin */
@@ -121,12 +122,12 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
 	if (!slot)
 		return;
 
-	/* Traverse through all the context and free them up */
-	list_for_each_entry(cu_ctx, &cctx->cu_ctx_list, link) {
-		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
-				cu_ctx->cu_idx);
+	list_for_each_entry_safe(cu_ctx, tmp, &cctx->cu_ctx_list, link) {
+		kds_info(client, "Removing CU Domain[%d] CU Index [%d]",
+			 cu_ctx->cu_domain, cu_ctx->cu_idx);
+
 		if (cu_ctx->ref_cnt)
-			kds_del_context(kds, client, cu_ctx);
+			kds_del_context(&zdev->kds, client, cu_ctx);
 
 		list_del(&cu_ctx->link);
 		vfree(cu_ctx);
@@ -230,7 +231,7 @@ zocl_check_exists_context(struct kds_client *client, const uuid_t *id)
  *
  */
 static struct kds_client_cu_ctx *
-zocl_get_cu_ctx(struct zocl_dev *zdev, struct kds_client_ctx *cctx,
+zocl_get_cu_ctx(struct drm_zocl_dev *zdev, struct kds_client_ctx *cctx,
                 struct drm_zocl_ctx *args)
 {
         struct kds_client_ctx *client_ctx = cctx;
@@ -268,14 +269,14 @@ zocl_get_cu_ctx(struct zocl_dev *zdev, struct kds_client_ctx *cctx,
  *
  */
 static struct kds_client_cu_ctx *
-zocl_alloc_cu_ctx(struct zocl_dev *zdev, struct kds_client_ctx *cctx,
+zocl_alloc_cu_ctx(struct drm_zocl_dev *zdev, struct kds_client_ctx *cctx,
                 struct drm_zocl_ctx *args)
 {
         uint32_t cu_domain = get_domain(args->cu_index);
         uint32_t cu_idx = get_domain_idx(args->cu_index);
         struct kds_client_cu_ctx *cu_ctx = NULL;
 
-        cu_ctx = zocl_get_cu_ctx(xdev, cctx, args);
+        cu_ctx = zocl_get_cu_ctx(zdev, cctx, args);
         if (cu_ctx) {
                 if (IS_ERR(cu_ctx))
                         return NULL;
@@ -291,17 +292,17 @@ zocl_alloc_cu_ctx(struct zocl_dev *zdev, struct kds_client_ctx *cctx,
                 return NULL;
         }
 
-        cu_ctx->ctx = client->ctx;
+        cu_ctx->ctx = cctx;
         cu_ctx->cu_domain = cu_domain;
         cu_ctx->cu_idx = cu_idx;
         cu_ctx->ref_cnt = 0;
-        if (args->flags == XOCL_CTX_EXCLUSIVE)
+        if (args->flags == ZOCL_CTX_EXCLUSIVE)
                 cu_ctx->flags = CU_CTX_EXCLUSIVE;
         else
                 cu_ctx->flags = CU_CTX_SHARED;
 
         /* Add this Cu context to Client Context list */
-        list_add_tail(&cu_ctx->link, &client->ctx->cu_ctx_list);
+        list_add_tail(&cu_ctx->link, &cctx->cu_ctx_list);
 
         return cu_ctx;
 }
@@ -317,7 +318,7 @@ zocl_alloc_cu_ctx(struct zocl_dev *zdev, struct kds_client_ctx *cctx,
  *
  */
 static int
-zocl_free_cu_ctx(struct zocl_dev *zdev, struct kds_client_cu_ctx *cu_ctx)
+zocl_free_cu_ctx(struct drm_zocl_dev *zdev, struct kds_client_cu_ctx *cu_ctx)
 {
         if (!cu_ctx) {
 		DRM_ERROR("No CU Context available");
@@ -374,7 +375,7 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	/* Bitstream is locked. No one could load a new one
 	 * until this client close all of the contexts.
 	 */
-	cu_ctx = zocl_alloc_cu_ctx(xdev, cctx, args);
+	cu_ctx = zocl_alloc_cu_ctx(zdev, cctx, args);
 	if (!cu_ctx) {
 		ret = -EINVAL;
 		goto out;
@@ -412,8 +413,7 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 	uuid_copy(cctx->xclbin_id, &uuid_null);
 
 	args.cu_index = set_domain(cu_domain, cu_idx);
-	args.curr_ctx = cctx;
-	cu_ctx = zocl_alloc_cu_ctx(xdev, cctx, &args);
+	cu_ctx = zocl_alloc_cu_ctx(zdev, cctx, &args);
 	if (!cu_ctx) {
 		vfree(cctx->xclbin_id);
 		vfree(cctx);
@@ -450,7 +450,7 @@ int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
         if (ret)
                 return ret;
 
-        ret = zocl_free_cu_ctx(xdev, cu_ctx);
+        ret = zocl_free_cu_ctx(zdev, cu_ctx);
         if (ret)
                 return -EINVAL;
 
