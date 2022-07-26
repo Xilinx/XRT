@@ -82,13 +82,55 @@ setShellPathEnv(const std::string& var_name, const std::string& trailing_path)
 }
 
 static void 
-testCaseProgressReporter(std::shared_ptr<XBUtilities::ProgressBar> run_test, bool& is_done)
+run_script( const std::string& cmd,
+            std::ostringstream & os_stdout,
+            std::ostringstream & os_stderr,
+            bool& is_running)
 {
-  unsigned int counter = 0;
-  while((counter < run_test.get()->getMaxIterations()) && !is_done) {
-    run_test.get()->update(counter++);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+  int stderr_fds[2];
+  if (pipe(stderr_fds)== -1) {
+    os_stderr << "Unable to create pipe";
+    is_running = false;
+    return;
   }
+
+  // Save stderr
+  int stderr_save = dup(STDERR_FILENO);
+  if (stderr_save == -1) {
+    os_stderr << "Unable to duplicate stderr";
+    is_running = false;
+    return;
+  }
+
+  // Close existing stderr and set it to be the write end of the pipe.
+  // After fork below, our child process's stderr will point to the same fd.
+  dup2(stderr_fds[1], STDERR_FILENO);
+  close(stderr_fds[1]);
+  std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
+  std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
+  // Restore our normal stderr
+  dup2(stderr_save, STDERR_FILENO);
+  close(stderr_save);
+
+  if (stdout_child == nullptr) {
+    os_stderr << boost::str(boost::format("Failed to run %s") % cmd);
+    is_running = false;
+    return;
+  }
+
+  // Read child's stdout and stderr without parsing the content
+  char buf[1024];
+  while (!feof(stdout_child.get())) {
+    if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
+      os_stdout << buf;
+    }
+  }
+  while (stderr_child && !feof(stderr_child.get())) {
+    if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
+      os_stderr << buf;
+    }
+  }
+  is_running = false;
 }
 
 unsigned int
@@ -97,7 +139,7 @@ XBUtilities::runScript( const std::string & env,
                         const std::vector<std::string> & args,
                         const std::string & running_description,
                         const std::string & final_description,
-                        const std::chrono::seconds& max_running_duration,
+                        const std::chrono::seconds & max_duration_s,
                         std::ostringstream & os_stdout,
                         std::ostringstream & os_stderr,
                         bool /*erasePassFailMessage*/)
@@ -117,52 +159,25 @@ XBUtilities::runScript( const std::string & env,
   }
   cmd += script + " " + args_str.str();
 
-  int stderr_fds[2];
-  if (pipe(stderr_fds)== -1) {
-    os_stderr << "Unable to create pipe";
-    return errno;
-  }
+  BusyBar busy_bar(running_description, std::cout); 
+  busy_bar.start();
+  bool is_thread_running = true;
 
-  // Save stderr
-  int stderr_save = dup(STDERR_FILENO);
-  if (stderr_save == -1) {
-    os_stderr << "Unable to duplicate stderr";
-    return errno;
-  }
-
-  // Kick off progress reporter
-  BusyBar run_test(running_description, std::cout);
-  run_test.start(XBUtilities::is_escape_codes_disabled());
-
-  // Close existing stderr and set it to be the write end of the pipe.
-  // After fork below, our child process's stderr will point to the same fd.
-  dup2(stderr_fds[1], STDERR_FILENO);
-  close(stderr_fds[1]);
-  std::shared_ptr<FILE> stderr_child(fdopen(stderr_fds[0], "r"), fclose);
-  std::shared_ptr<FILE> stdout_child(popen(cmd.c_str(), "r"), pclose);
-  // Restore our normal stderr
-  dup2(stderr_save, STDERR_FILENO);
-  close(stderr_save);
-
-  if (stdout_child == nullptr) {
-    os_stderr << boost::str(boost::format("Failed to run %s") % cmd);
-    return errno;
-  }
-
-  // Read child's stdout and stderr without parsing the content
-  char buf[1024];
-  while (!feof(stdout_child.get())) {
-    if (fgets(buf, sizeof (buf), stdout_child.get()) != nullptr) {
-      os_stdout << buf;
+  // Start the test process
+  std::thread test_thread(run_script, cmd, std::ref(os_stdout), std::ref(os_stderr), std::ref(is_thread_running));
+  // Wait for the test process to finish
+  while (is_thread_running) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    try {
+      busy_bar.check_timeout(max_duration_s);
+    } catch(const std::exception& ex) {
+      test_thread.detach();
+      throw;
     }
   }
-  while (stderr_child && !feof(stderr_child.get())) {
-    if (fgets(buf, sizeof (buf), stderr_child.get()) != nullptr) {
-      os_stderr << buf;
-    }
-  }
+  test_thread.join();
+  busy_bar.finish();
 
-  run_test.finish();
   bool passed = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
   bool skipped = (os_stdout.str().find("NOT SUPPORTED") != std::string::npos) ? true : false;
 
@@ -237,7 +252,7 @@ XBUtilities::runScript( const std::string & env,
                                         boost::process::std_err > ip_stderr,
                                         _env);
 
-  // Wait for the process to finish and update the busy bar
+  // Wait for the process to finish
   while (runningProcess.running()) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     run_test.check_timeout(max_running_duration);
