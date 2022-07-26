@@ -134,15 +134,14 @@ run_script( const std::string& cmd,
 }
 
 unsigned int
-XBUtilities::runScript( const std::string & env, 
-                        const std::string & script, 
+XBUtilities::runScript( const std::string & env,
+                        const std::string & script,
                         const std::vector<std::string> & args,
                         const std::string & running_description,
                         const std::string & final_description,
                         const std::chrono::seconds & max_duration_s,
                         std::ostringstream & os_stdout,
-                        std::ostringstream & os_stderr,
-                        bool /*erasePassFailMessage*/)
+                        std::ostringstream & os_stderr)
 {
   // Fix environment variables before running test case
   setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
@@ -154,7 +153,7 @@ XBUtilities::runScript( const std::string & env,
   std::ostringstream args_str;
   std::copy(args.begin(), args.end(), std::ostream_iterator<std::string>(args_str, " "));
   std::string cmd;
-  if(env.compare("python") == 0) {
+  if (env.compare("python") == 0) {
     cmd = "/usr/bin/python3 ";
   }
   cmd += script + " " + args_str.str();
@@ -170,7 +169,7 @@ XBUtilities::runScript( const std::string & env,
     std::this_thread::sleep_for(std::chrono::seconds(1));
     try {
       busy_bar.check_timeout(max_duration_s);
-    } catch(const std::exception& ex) {
+    } catch (const std::exception& ex) {
       test_thread.detach();
       throw;
     }
@@ -196,7 +195,7 @@ boost::filesystem::path
 findEnvPath(const std::string & env)
 {
   boost::filesystem::path absPath;
-  if(env.compare("python") == 0) {
+  if (env.compare("python") == 0) {
     // Find the python executable
     absPath = boost::process::search_path("py");
     // Find python3 path on linux
@@ -211,14 +210,13 @@ findEnvPath(const std::string & env)
 
 unsigned int
 XBUtilities::runScript( const std::string & env,
-                        const std::string & script, 
+                        const std::string & script,
                         const std::vector<std::string> & args,
                         const std::string & running_description,
                         const std::string & final_description,
                         const std::chrono::seconds& max_running_duration,
                         std::ostringstream & os_stdout,
-                        std::ostringstream & os_stderr,
-                        bool erasePassFailMessage)
+                        std::ostringstream & os_stderr)
 {
   auto envPath = findEnvPath(env);
   

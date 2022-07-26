@@ -269,9 +269,9 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
 
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-  constexpr static std::chrono::seconds MAX_TEST_DURATION = 60 * 5; //5 minutes
+  static std::chrono::seconds MAX_TEST_DURATION(60 * 5); //5 minutes
 
-  if(json_exists()) {
+  if (json_exists()) {
     //map old testcase names to new testcase names
     static const std::map<std::string, std::string> test_map = {
       { "22_verify.py",             "validate.exe"    },
@@ -304,7 +304,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     std::vector<std::string> args = { "-p", test_dir,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     try {
-      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr);
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", test_token_skipped);
       }
@@ -339,9 +339,9 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     int exit_code;
     try {
       if (py.find(".exe") != std::string::npos)
-        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr);
       else
-        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr, true);
+        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr);
 
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", test_token_skipped);
