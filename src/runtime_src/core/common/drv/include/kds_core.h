@@ -80,13 +80,6 @@ enum kds_type {
 	KDS_MAX_TYPE, // always the last one
 };
 
-struct kds_ctx_info {
-	u32		  cu_domain;
-	u32		  cu_idx;
-	u32		  flags;
-	void		 *curr_ctx; // Holds the current context ptr for kds
-};
-
 /* Context properties */
 #define	CU_CTX_PROP_MASK	0x0F
 #define	CU_CTX_SHARED		0x00
@@ -206,9 +199,9 @@ u32 kds_get_cu_addr(struct kds_sched *kds, int idx);
 u32 kds_get_cu_proto(struct kds_sched *kds, int idx);
 int kds_get_max_regmap_size(struct kds_sched *kds);
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,
-		    struct kds_ctx_info *info);
+		    struct kds_client_cu_ctx *cu_ctx);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
-		    struct kds_ctx_info *info);
+		    struct kds_client_cu_ctx *cu_ctx);
 int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx);
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		    int idx, unsigned long size, u32 *addrp);
