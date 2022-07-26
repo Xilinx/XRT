@@ -1550,15 +1550,12 @@ namespace xdp {
         xdp::CounterResults values =
           db->getDynamicInfo().getCounterResults(device->deviceId,xclbin->uuid);
 
-        // Counter results don't use the slotID.  Instead, they are filled
-        //  in the struct in the order in which we found them.
-        uint64_t monitorId = 0 ;
         for (auto monitor : xclbin->pl.aims) {
-          if (monitor->cuIndex == -1 || monitor->cuPort == nullptr) {
-            // This AIM is either a shell or floating 
-            ++monitorId;
+          // Is this AIM is either a shell or floating?
+          if (monitor->cuIndex == -1 || monitor->cuPort == nullptr)
             continue;
-          }
+
+          auto monitorSlot = monitor->slotIndex;
 
           // Determine the strings for the row
 	  std::string cuName     = extractComputeUnitName(monitor->name);
@@ -1584,12 +1581,12 @@ namespace xdp {
             (static_cast<double>(device->maxConnectionBitWidth) / 8) *
             device->getMaxClockRatePLMHz();
 
-          auto writeTranx = values.WriteTranx[monitorId];
-          auto readTranx  = values.ReadTranx[monitorId];
+          auto writeTranx = values.WriteTranx[monitorSlot];
+          auto readTranx  = values.ReadTranx[monitorSlot];
 
           if (writeTranx > 0) {
             double transferTime =
-              static_cast<double>(values.WriteBusyCycles[monitorId]) /
+              static_cast<double>(values.WriteBusyCycles[monitorSlot]) /
               (one_thousand * xclbin->pl.clockRatePLMHz);
 
             writeSingleDataTransfer(device->getUniqueDeviceName(),
@@ -1600,14 +1597,14 @@ namespace xdp {
                                     false, // isRead
                                     static_cast<double>(writeTranx),
                                     transferTime,
-                                    static_cast<double>(values.WriteBytes[monitorId]),
+                                    static_cast<double>(values.WriteBytes[monitorSlot]),
                                     maxAchievableBW,
                                     maxTheoreticalBW,
-                                    static_cast<double>(values.WriteLatency[monitorId]));
+                                    static_cast<double>(values.WriteLatency[monitorSlot]));
           }
           if (readTranx > 0) {
             double transferTime =
-              static_cast<double>(values.ReadBusyCycles[monitorId]) /
+              static_cast<double>(values.ReadBusyCycles[monitorSlot]) /
               (one_thousand * xclbin->pl.clockRatePLMHz);
 
             writeSingleDataTransfer(device->getUniqueDeviceName(),
@@ -1618,13 +1615,11 @@ namespace xdp {
                                     true, // isRead
                                     static_cast<double>(readTranx),
                                     transferTime,
-                                    static_cast<double>(values.ReadBytes[monitorId]),
+                                    static_cast<double>(values.ReadBytes[monitorSlot]),
                                     maxAchievableBW,
                                     maxTheoreticalBW,
-                                    static_cast<double>(values.ReadLatency[monitorId]));
+                                    static_cast<double>(values.ReadLatency[monitorSlot]));
           }
-
-          ++monitorId ;
         }
       }
     }
