@@ -3106,6 +3106,8 @@ struct cu_read_range : request
   to_range(const std::string& str);
 };
 
+// query can_ps_kernel sysfs node on userpf.
+// this can tell if the device can support PS kernel or not.
 struct can_ps_kernel : request
 {
   using result_type = bool;
@@ -3119,7 +3121,7 @@ struct can_ps_kernel : request
   {
     return value ? "true" : "false";
   }
-}
+};
 
 } // query
 
