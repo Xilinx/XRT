@@ -111,24 +111,14 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
 {
 	struct drm_zocl_slot *slot = NULL;
 	uuid_t *id = (uuid_t *)cctx->xclbin_id;
-        struct kds_client_cu_ctx *cu_ctx = NULL;
-        struct kds_client_cu_ctx *tmp = NULL;
 
-	if (!cctx)
+	if (!list_empty(&cctx->cu_ctx_list))
 		return;
 
 	/* Get the corresponding slot for this xclbin */
 	slot = zocl_get_slot(zdev, id);
 	if (!slot)
 		return;
-
-	list_for_each_entry_safe(cu_ctx, tmp, &cctx->cu_ctx_list, link) {
-		DRM_ERROR("Removing CU Domain[%d] CU Index [%d]",
-			 cu_ctx->cu_domain, cu_ctx->cu_idx);
-
-		list_del(&cu_ctx->link);
-		vfree(cu_ctx);
-	}
 
 	/* Unlock this slot specific xclbin */
 	zocl_unlock_bitstream(slot, id);
@@ -305,9 +295,9 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 
 	/* Initialize this cu context with required iniformation */
 	zocl_initialize_cu_ctx(cctx, args, cu_ctx);
-
 	ret = kds_add_context(&zdev->kds, client, cu_ctx);
 	if (ret) {
+        	kds_free_cu_ctx(client, cu_ctx);
 		zocl_remove_client_context(zdev, client, cctx);
 		goto out;
 	}
@@ -436,6 +426,10 @@ zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	ret = kds_del_context(&zdev->kds, client, cu_ctx);
 	if (ret)
 		goto out;
+
+        ret = kds_free_cu_ctx(client, cu_ctx);
+        if (ret)
+                goto out;
 
 	/* Delete the current client context */
 	zocl_remove_client_context(zdev, client, cctx);
