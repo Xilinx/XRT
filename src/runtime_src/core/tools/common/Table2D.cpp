@@ -45,21 +45,22 @@ Table2D::addEntry(const std::vector<std::string>& entry)
 }
 
 void
-Table2D::appendToOutput(std::string& output, const ColumnData& column, const std::string& data) const
+Table2D::appendToOutput(std::string& output, const std::string& prefix, const ColumnData& column, const std::string& data) const
 {
     // Format for table data
-    boost::format fmt("%s%s%s  ");
+    boost::format fmt("%s%s%s%s  ");
     size_t left_blanks = 0;
     size_t right_blanks = 0;
     getBlankSizes(column, data.size(), left_blanks, right_blanks);
-    output.append(boost::str(fmt % std::string(left_blanks, ' ') % data % std::string(right_blanks, ' ')));
+    output.append(boost::str(fmt % prefix % std::string(left_blanks, ' ') % data % std::string(right_blanks, ' ')));
 }
 
-std::ostream&
-Table2D::print(std::ostream& os) const
+std::string
+Table2D::to_string(const std::string& prefix) const
 {
     // Iterate through each row and column of the table to format the output
     // Add one to account for the header row
+    std::stringstream os;
     for(size_t row = 0; row < m_table[0].data.size() + 1; row++) {
         std::string output_line;
         for (size_t col = 0; col < m_table.size(); col++) {
@@ -67,15 +68,22 @@ Table2D::print(std::ostream& os) const
 
             // For the first row add the headers
             if (row == 0)
-                appendToOutput(output_line, column, column.header.name);
+                appendToOutput(output_line, prefix, column, column.header.name);
             // For all other output lines add the entry associated with the current row/col index
             else
                 // Minus 1 to account for the first row being the headers
-                appendToOutput(output_line, column, column.data[row - 1]);
+                appendToOutput(output_line, prefix, column, column.data[row - 1]);
         }
         output_line.append("\n");
         os << output_line;
     }
+    return os.str();
+}
+
+std::ostream&
+Table2D::print(std::ostream& os) const
+{
+    os << boost::format("%s\n") % to_string();
     return os;
 }
 
@@ -84,11 +92,11 @@ Table2D::getBlankSizes(ColumnData col_data, size_t string_size, size_t& left_bla
 {
     const size_t required_buffer = col_data.max_element_size - string_size;
     switch (col_data.header.justification) {
-        case Justification::left:
+        case Justification::right:
             left_blanks = required_buffer;
             right_blanks = 0;
             break;
-        case Justification::right:
+        case Justification::left:
             left_blanks = 0;
             right_blanks = required_buffer;
             break;

@@ -48,6 +48,8 @@ class Table2D {
      */
     void addEntry(const std::vector<std::string>& entry);
 
+    std::string to_string(const std::string& prefix = "") const;
+
  private:
     typedef struct ColumnData {
         HeaderData header;
@@ -61,7 +63,7 @@ class Table2D {
 
     void getBlankSizes(ColumnData col_data, size_t string_size, size_t& left_blanks, size_t& right_blanks) const;
     void addHeader(const HeaderData& header);
-    void appendToOutput(std::string& output, const ColumnData& column, const std::string& data) const;
+    void appendToOutput(std::string& output, const std::string& prefix, const ColumnData& column, const std::string& data) const;
 
  public:
     friend std::ostream&

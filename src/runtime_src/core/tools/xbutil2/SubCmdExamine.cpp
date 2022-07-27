@@ -42,23 +42,24 @@ namespace po = boost::program_options;
 
 // ---- Reports ------
 #include "tools/common/Report.h"
-#include "tools/common/ReportHost.h"
-#include "tools/common/ReportDynamicRegion.h"
-#include "tools/common/ReportFirewall.h"
-#include "tools/common/ReportDebugIpStatus.h"
-#include "tools/common/ReportElectrical.h"
-#include "tools/common/ReportMechanical.h"
 #include "tools/common/ReportAie.h"
 #include "tools/common/ReportAieShim.h"
-#include "tools/common/ReportMemory.h"
-#include "tools/common/ReportThermal.h"
 #include "tools/common/ReportAsyncError.h"
-#include "tools/common/ReportPlatforms.h"
-#include "tools/common/ReportPcieInfo.h"
-#include "tools/common/ReportMailbox.h"
-#include "tools/common/ReportQspiStatus.h"
-#include "tools/common/ReportCmcStatus.h"
 #include "tools/common/ReportBOStats.h"
+#include "tools/common/ReportCmcStatus.h"
+#include "tools/common/ReportDynamicRegion.h"
+#include "tools/common/ReportDebugIpStatus.h"
+#include "tools/common/ReportElectrical.h"
+#include "tools/common/ReportFirewall.h"
+#include "tools/common/ReportHost.h"
+#include "tools/common/ReportMailbox.h"
+#include "tools/common/ReportMechanical.h"
+#include "tools/common/ReportMemory.h"
+#include "tools/common/ReportPcieInfo.h"
+#include "tools/common/ReportPlatforms.h"
+#include "tools/common/ReportPsKernels.h"
+#include "tools/common/ReportQspiStatus.h"
+#include "tools/common/ReportThermal.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
   static ReportCollection fullReportCollection = {
@@ -73,6 +74,7 @@ namespace po = boost::program_options;
     std::make_shared<ReportMemory>(),
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
+    std::make_shared<ReportPsKernels>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     std::make_shared<ReportCmcStatus>(),
