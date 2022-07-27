@@ -31,7 +31,6 @@
 
 #include <boost/any.hpp>
 #include <boost/format.hpp>
-#include <boost/property_tree/ptree.hpp>
 
 struct debug_ip_data;
 
