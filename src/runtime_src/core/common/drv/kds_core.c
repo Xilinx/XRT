@@ -1109,6 +1109,7 @@ kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
         uint32_t cu_domain = get_domain(cu_index);
         uint32_t cu_idx = get_domain_idx(cu_index);
         struct kds_client_cu_ctx *cu_ctx = NULL;
+	bool found = false;
 
         if (!ctx) {
 		kds_err(client, "No Client Context available");
@@ -1118,14 +1119,16 @@ kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
         /* Find out if same CU context is already exists  */
         list_for_each_entry(cu_ctx, &ctx->cu_ctx_list, link)
                 if ((cu_ctx->cu_idx == cu_idx) &&
-                                (cu_ctx->cu_domain == cu_domain))
-                        break;
+                                (cu_ctx->cu_domain == cu_domain)) {
+                        found = true;
+			break;
+		}
 
         /* CU context exists. Return the context */
-        if (&cu_ctx->link == &ctx->cu_ctx_list)
-                return NULL;
-
-        return cu_ctx;
+	if (found)
+        	return cu_ctx;
+                
+	return NULL;
 }
 
 struct kds_client_cu_ctx *
