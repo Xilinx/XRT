@@ -168,82 +168,24 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 	return 0;
 }
 
-static struct kds_client_cu_ctx *
-xocl_get_cu_ctx(struct xocl_dev *xdev, struct kds_client *client,
-	       	struct drm_xocl_ctx *args)
-{
-	struct kds_client_ctx *client_ctx = client->ctx;
-	uint32_t cu_domain = get_domain(args->cu_index);
-	uint32_t cu_index = get_domain_idx(args->cu_index);
-	struct kds_client_cu_ctx *cu_ctx = NULL;
-
-	if (!client_ctx) {
-		userpf_err(xdev, "No Client Context available");
-		return ERR_PTR(-EINVAL);
-	}
-
-	/* Find out if same CU context is already exists  */
-	list_for_each_entry(cu_ctx, &client_ctx->cu_ctx_list, link)
-		if ((cu_ctx->cu_idx == cu_index) &&
-				(cu_ctx->cu_domain == cu_domain))
-			break;
-
-	/* CU context exists. Return the context */
-	if (&cu_ctx->link == &client_ctx->cu_ctx_list)
-		return NULL;
-
-	return cu_ctx;
-}
-
-static struct kds_client_cu_ctx *
-xocl_alloc_cu_ctx(struct xocl_dev *xdev, struct kds_client *client,
-	       	struct drm_xocl_ctx *args)
-{
-	uint32_t cu_domain = get_domain(args->cu_index);
-	uint32_t cu_idx = get_domain_idx(args->cu_index);
-	struct kds_client_cu_ctx *cu_ctx = NULL;
-
-	cu_ctx = xocl_get_cu_ctx(xdev, client, args);
-	if (cu_ctx) {
-		if (IS_ERR(cu_ctx))
-			return NULL;
-
-		/* Valid CU context exists. Return this context here */
-		return cu_ctx;
-	}
-	
-	/* CU context doesn't exists. Create a new context */
-	cu_ctx = vzalloc(sizeof(struct kds_client_cu_ctx));
-	if (!cu_ctx) {
-		userpf_err(xdev, "Memory is not available for new context");
-		return NULL;
-	}
-
-	cu_ctx->ctx = client->ctx;
-	cu_ctx->cu_domain = cu_domain;
-	cu_ctx->cu_idx = cu_idx;
-	cu_ctx->ref_cnt = 0;
-	if (args->flags == XOCL_CTX_EXCLUSIVE)
-		cu_ctx->flags = CU_CTX_EXCLUSIVE;
-	else
-		cu_ctx->flags = CU_CTX_SHARED;
-
-	/* Add this Cu context to Client Context list */
-	list_add_tail(&cu_ctx->link, &client->ctx->cu_ctx_list);
-
-	return cu_ctx;
-}
-
 static int
-xocl_free_cu_ctx(struct xocl_dev *xdev, struct kds_client_cu_ctx *cu_ctx)
+xocl_initialize_cu_ctx(struct kds_client *client, struct drm_xocl_ctx *args,
+	       	struct kds_client_cu_ctx *cu_ctx)
 {
-	if (!cu_ctx) {
-		userpf_err(xdev, "No CU Context available");
+        uint32_t cu_domain = get_domain(args->cu_index);
+        uint32_t cu_idx = get_domain_idx(args->cu_index);
+
+	if (!cu_ctx)
 		return -EINVAL;
-	}
-	
-	list_del(&cu_ctx->link);
-	vfree(cu_ctx); 
+
+        cu_ctx->ctx = client->ctx;
+        cu_ctx->cu_domain = cu_domain;
+        cu_ctx->cu_idx = cu_idx;
+        cu_ctx->ref_cnt = 0;
+        if (args->flags == XOCL_CTX_EXCLUSIVE)
+                cu_ctx->flags = CU_CTX_EXCLUSIVE;
+        else
+                cu_ctx->flags = CU_CTX_SHARED;
 
 	return 0;
 }
@@ -285,11 +227,15 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	/* Bitstream is locked. No one could load a new one
 	 * until this client close all of the contexts.
 	 */
-	cu_ctx = xocl_alloc_cu_ctx(xdev, client, args);
+	/* Get a free CU context for the given CU index */
+	cu_ctx = kds_alloc_cu_ctx(client, client->ctx, args->cu_index);
 	if (!cu_ctx) {
 		ret = -EINVAL;
 		goto out1;
 	}
+	/* Initialize this cu context with required iniformation */
+	xocl_initialize_cu_ctx(client, args, cu_ctx);
+	 
 	ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
 
 out1:
@@ -330,7 +276,7 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 		goto out;
 	}
 
-	cu_ctx = xocl_get_cu_ctx(xdev, client, args);
+	cu_ctx = kds_get_cu_ctx(client, client->ctx, args->cu_index);
         if (!cu_ctx) {
 		userpf_err(xdev, "No CU context is open");
 		ret = -EINVAL;
@@ -341,7 +287,7 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret)
 		goto out;
 
-	ret = xocl_free_cu_ctx(xdev, cu_ctx);
+	ret = kds_free_cu_ctx(client, cu_ctx);
 	if (ret)
 		goto out;
 

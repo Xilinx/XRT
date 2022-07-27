@@ -1101,6 +1101,78 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	free_percpu(client->stats);
 }
 
+struct kds_client_cu_ctx *
+kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
+		uint32_t cu_index)
+{
+	/* cu_index has domain and index encoded */
+        uint32_t cu_domain = get_domain(cu_index);
+        uint32_t cu_idx = get_domain_idx(cu_index);
+        struct kds_client_cu_ctx *cu_ctx = NULL;
+
+        if (!ctx) {
+		kds_err(client, "No Client Context available");
+                return ERR_PTR(-EINVAL);
+        }
+
+        /* Find out if same CU context is already exists  */
+        list_for_each_entry(cu_ctx, &ctx->cu_ctx_list, link)
+                if ((cu_ctx->cu_idx == cu_idx) &&
+                                (cu_ctx->cu_domain == cu_domain))
+                        break;
+
+        /* CU context exists. Return the context */
+        if (&cu_ctx->link == &ctx->cu_ctx_list)
+                return NULL;
+
+        return cu_ctx;
+}
+
+struct kds_client_cu_ctx *
+kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
+		uint32_t cu_index)
+{
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+	cu_ctx = kds_get_cu_ctx(client, ctx, cu_index);
+	if (IS_ERR(cu_ctx))
+		return NULL;
+
+	/* Valid CU context exists. Return this context here */
+	if (cu_ctx)
+		return cu_ctx;
+
+	/* CU context doesn't exists. Create a new context */
+	cu_ctx = vzalloc(sizeof(struct kds_client_cu_ctx));
+	if (!cu_ctx) {
+		kds_err(client, "Memory is not available for new context");
+		return NULL;
+	}
+
+        /* Add this Cu context to Client Context list */
+        list_add_tail(&cu_ctx->link, &ctx->cu_ctx_list);
+
+	return cu_ctx;
+}
+
+int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx)
+{
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+	if (!cu_ctx && cu_ctx->ref_cnt) {
+		/* Reference count must be reset before free the context */
+		kds_err(client, "Invalid Context requested to free");
+		return -EINVAL;
+	}
+	
+	list_del(&cu_ctx->link);
+	vfree(cu_ctx); 
+
+	return 0;
+}
+
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_client_cu_ctx *cu_ctx)
 {

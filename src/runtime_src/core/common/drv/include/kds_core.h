@@ -3,6 +3,7 @@
  * Xilinx Kernel Driver Scheduler
  *
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -198,6 +199,11 @@ int kds_get_cu_total(struct kds_sched *kds);
 u32 kds_get_cu_addr(struct kds_sched *kds, int idx);
 u32 kds_get_cu_proto(struct kds_sched *kds, int idx);
 int kds_get_max_regmap_size(struct kds_sched *kds);
+struct kds_client_cu_ctx *
+kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx, uint32_t cu_index);
+struct kds_client_cu_ctx *
+kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx, uint32_t cu_index);
+int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx);
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_client_cu_ctx *cu_ctx);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
