@@ -31,9 +31,6 @@
 
 #include "scan.h"
 #include "xrt.h"
-#include "xrt/xrt_device.h"
-#include "xrt/xrt_kernel.h"
-#include "xrt/xrt_bo.h"
 
 #include <array>
 #include <fstream>
@@ -47,7 +44,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/tokenizer.hpp>
 
 namespace {
@@ -403,102 +399,6 @@ struct hotplug_offline
       throw xrt_core::query::sysfs_error("Hotplug offline failed");
 
     return true;
-  }
-};
-
-struct ps_kernel_data
-{
-  using result_type = query::ps_kernel_data::result_type;
-
-  static void
-  get_instance_data(const xrt_core::device * _pDevice, boost::property_tree::ptree &pt)
-  {
-    static size_t COUNT = 4096;
-    // TODO this will be removed when the PS kernel is built in
-    std::string b_file = "/ps_validate_bandwidth.xclbin";
-    std::string binaryfile = "/opt/xilinx/firmware/vck5000/gen4x8-qdma/base/test" + b_file;
-    auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_pDevice));
-    auto device = xrt::device {bdf};
-    auto uuid = device.load_xclbin(binaryfile);
-    // end TODO
-
-    // Always get a kernel reference to the build in kernel. Choose a better name though...
-    auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
-
-    // Format the amount of data depending on the number of programmed ps kernels
-    auto ps_data = xrt_core::device_query<xrt_core::query::kds_scu_info>(_pDevice);
-    const size_t DATA_SIZE = COUNT * sizeof(char) * ps_data.size();
-    auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
-    auto bo0_map = bo0.map<char*>();
-    std::fill(bo0_map, bo0_map + COUNT, 0);
-
-    bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
-
-    auto run = hello_world(bo0, DATA_SIZE);
-    run.wait();
-
-    //Get the output;
-    bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
-
-    // Parse the output into a useful format
-    std::istringstream json(bo0_map);
-    boost::property_tree::read_json(json, pt);
-  }
-
-  static result_type
-  get(const xrt_core::device* device, key_type)
-  {
-    result_type kernel_data;
-    get_instance_data(device, kernel_data);
-
-    // Parse the returned data
-    // Sort the ps kernel instance into arrays based on their kernels
-    std::vector<const boost::property_tree::ptree*> instance_list;
-    auto ptree_sorting = [](const boost::property_tree::ptree* a, const boost::property_tree::ptree* b) {
-      // First sort based on kernel name
-      const auto& a_name = a->get<std::string>("ps_instance_meta.Kernel name");
-      const auto& b_name = b->get<std::string>("ps_instance_meta.Kernel name");
-      const auto val = a_name.compare(b_name);
-      if (val < 0)
-        return true;
-      else if (val > 0)
-        return false;
-
-      // If the kernel names are equal sort based on the instance name
-      const auto& a_i_name = a->get<std::string>("ps_instance_meta.Instance(CU) name");
-      const auto& b_i_name = b->get<std::string>("ps_instance_meta.Instance(CU) name");
-      const auto val_i = a_i_name.compare(b_i_name);
-      if (val_i <= 0)
-        return true;
-      else
-        return false;
-    };
-
-    // Add each instance to a list for sorting
-    for(const auto& ps_instance : kernel_data.get_child("ps_instances"))
-      instance_list.push_back(&ps_instance.second);
-    std::sort(instance_list.begin(), instance_list.end(), ptree_sorting);
-
-    // Parse each instance into trees based on their kernel names
-    result_type sorted_instance_tree;
-    for (const auto& ps_instance_ptr : instance_list) {
-      const auto& kernel_name = ps_instance_ptr->get<std::string>("ps_instance_meta.Kernel name");
-      result_type empty_tree;
-      // Make sure there is a seperate tree for each kernel
-      auto& kernel_tree = sorted_instance_tree.get_child(kernel_name, empty_tree);
-      if (kernel_tree.empty()) {
-        kernel_tree.push_back(std::make_pair("", *ps_instance_ptr));
-        sorted_instance_tree.add_child(kernel_name, kernel_tree);
-      } else
-        kernel_tree.push_back(std::make_pair("", *ps_instance_ptr));
-    }
-
-    // Format the data into the controlled schema
-    result_type parsed_kernel_data;
-    parsed_kernel_data.add_child("schema_version", kernel_data.get_child("schema_version"));
-    parsed_kernel_data.add_child("os", kernel_data.get_child("os_data"));
-    parsed_kernel_data.add_child("ps_instances", sorted_instance_tree);
-    return parsed_kernel_data;
   }
 };
 
@@ -1158,7 +1058,6 @@ initialize_query_table()
   emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::kds_scu_info,                   kds_scu_info>();
   emplace_sysfs_get<query::ps_kernel>                          ("icap", "ps_kernel");
-  emplace_func0_request<query::ps_kernel_data,                 ps_kernel_data>();
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
   emplace_func0_request<query::pcie_bdf,                       bdf>();

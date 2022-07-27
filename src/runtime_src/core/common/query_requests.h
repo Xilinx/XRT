@@ -89,7 +89,6 @@ enum class key_type
   sdm_sensor_info,
   kds_scu_info,
   ps_kernel,
-  ps_kernel_data,
   xocl_errors,
   xclbin_full,
   ic_enable,
@@ -1262,15 +1261,6 @@ struct xmc_qspi_status : request
   // Returning qspi write protection status as <primary qspi, recovery qspi>
   using result_type = std::pair<std::string, std::string>;
   static const key_type key = key_type::xmc_qspi_status;
-
-  virtual boost::any
-  get(const device*) const = 0;
-};
-
-struct ps_kernel_data : request
-{
-  using result_type = boost::property_tree::ptree;
-  static const key_type key = key_type::ps_kernel_data;
 
   virtual boost::any
   get(const device*) const = 0;

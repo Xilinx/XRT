@@ -5,6 +5,7 @@
 // Local - Include Files
 #include "ReportPsKernels.h"
 
+#include "BuiltInPsKernels.h"
 #include "Table2D.h"
 
 #include "core/common/query_requests.h"
@@ -27,9 +28,9 @@ ReportPsKernels::getPropertyTree20202( const xrt_core::device * device,
                                            boost::property_tree::ptree &pt) const
 {
   try {
-    boost::property_tree::ptree p = xrt_core::device_query<qr::ps_kernel_data>(device);
+    boost::property_tree::ptree p = get_ps_instance_data(device);
     pt.add_child("instance_data", p);
-  } 
+  }
   catch (const qr::exception&) {}
 }
 
@@ -39,33 +40,26 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
                               const std::vector<std::string>& /*_elementsFilter*/,
                               std::ostream & output) const
 {
+  output << "Operating System:\n";
+  for (const auto& os_data : pt.get_child("instance_data.os"))
+      output << boost::format("  %s: %s\n") % os_data.first % os_data.second.data();
+
   // Loop through each kernel instance
   for (const auto& kernel_list : pt.get_child("instance_data.ps_instances")) {
     const auto& kernel_instance_ptree = kernel_list.second;
     std::string kernel_name = kernel_list.first;
     const size_t hyphen_length = 40;
     output << std::string(hyphen_length, '-') << std::endl;
-    output << boost::format("Kernel Name %s:\n") % kernel_name;
+    output << boost::format("Kernel Name: %s\n") % kernel_name;
 
     // Iterate through the instances that implement the above kernel
     for (const auto& ps_instance : kernel_instance_ptree) {
       const auto& ps_ptree = ps_instance.second;
-      const auto& data_pt = ps_ptree.get_child("process_status");
+      const auto& data_pt = ps_ptree.get_child("process_data");
 
       std::vector<boost::property_tree::ptree> instance_data;
       for (const auto& a : data_pt)
         instance_data.push_back(a.second);
-
-      auto ptree_sorting = [](const boost::property_tree::ptree& a, const boost::property_tree::ptree& b) {
-        const auto& a_name = a.get<std::string>("name");
-        const auto& b_name = b.get<std::string>("name");
-        const auto val = a_name.compare(b_name);
-        if (val <= 0)
-          return true;
-        else
-          return false; 
-      };
-      std::sort(instance_data.begin(), instance_data.end(), ptree_sorting);
 
       // Format the process status for each instance into a table
       Table2D::HeaderData name_type = {"Name", Table2D::Justification::left};
@@ -102,8 +96,8 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
       }
 
       // Output the instance data
-      std::string instance_name = ps_ptree.get<std::string>("ps_instance_meta.Instance(CU) name");
-      output << boost::format("  Instance name %s\n") % instance_name;
+      std::string instance_name = ps_ptree.get<std::string>("metadata.Instance(CU) name");
+      output << boost::format("  Instance name: %s\n") % instance_name;
       output << "    Process Status:\n";
       output << boost::format("%s\n") % instance_table.to_string("    ");
     }
