@@ -287,7 +287,6 @@ enum class key_type
   cu_size,
   cu_read_range,
 
-  can_ps_kernel,
   noop
 };
 
@@ -3104,23 +3103,6 @@ struct cu_read_range : request
 
   static range_data
   to_range(const std::string& str);
-};
-
-// query can_ps_kernel sysfs node on userpf.
-// this can tell if the device can support PS kernel or not.
-struct can_ps_kernel : request
-{
-  using result_type = bool;
-  static const key_type key = key_type::can_ps_kernel;
-
-  virtual boost::any
-  get(const device*) const = 0;
-
-  static std::string
-  to_string(result_type value)
-  {
-    return value ? "true" : "false";
-  }
 };
 
 } // query

@@ -765,7 +765,7 @@ static ssize_t host_mem_size_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(host_mem_size);
 
-static ssize_t can_ps_kernel_show(struct device *dev,
+static ssize_t versal_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
@@ -775,7 +775,7 @@ static ssize_t can_ps_kernel_show(struct device *dev,
 
 	return sprintf(buf, "%d\n", val);
 }
-static DEVICE_ATTR_RO(can_ps_kernel);
+static DEVICE_ATTR_RO(versal);
 
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
@@ -811,7 +811,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_mig_cache_update.attr,
 	&dev_attr_nodma.attr,
 	&dev_attr_host_mem_size.attr,
-	&dev_attr_can_ps_kernel.attr,
+	&dev_attr_versal.attr,
 	NULL,
 };
 

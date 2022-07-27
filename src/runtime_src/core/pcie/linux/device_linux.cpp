@@ -1140,8 +1140,6 @@ initialize_query_table()
 
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
-
-  emplace_sysfs_get<query::can_ps_kernel>                      ("", "can_ps_kernel");
 }
 
 struct X { X() { initialize_query_table(); }};
