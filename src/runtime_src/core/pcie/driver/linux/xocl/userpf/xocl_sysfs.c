@@ -765,6 +765,18 @@ static ssize_t host_mem_size_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(host_mem_size);
 
+static ssize_t can_ps_kernel_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	uint32_t val = 0;
+
+	val = (XOCL_DSA_IS_VERSAL_ES3(XDEV(xdev))) ? 1 : 0;
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(can_ps_kernel);
+
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
@@ -799,6 +811,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_mig_cache_update.attr,
 	&dev_attr_nodma.attr,
 	&dev_attr_host_mem_size.attr,
+	&dev_attr_can_ps_kernel.attr,
 	NULL,
 };
 
