@@ -45,6 +45,7 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
       output << boost::format("  %s: %s\n") % os_data.first % os_data.second.data();
 
   // Loop through each kernel instance
+  output << "PS Kernel Instances:\n";
   for (const auto& kernel_list : pt.get_child("instance_data.ps_instances")) {
     const auto& kernel_instance_ptree = kernel_list.second;
     std::string kernel_name = kernel_list.first;
