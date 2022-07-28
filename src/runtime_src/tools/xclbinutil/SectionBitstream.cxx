@@ -24,9 +24,13 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionBitstream::init SectionBitstream::initializer;
 
-SectionBitstream::init::init() 
-{ 
+SectionBitstream::init::init()
+{
   auto sectionInfo = std::make_unique<SectionInfo>(BITSTREAM, "BITSTREAM", boost::factory<SectionBitstream*>());
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
@@ -35,32 +39,32 @@ std::string
 SectionBitstream::getContentTypeAsString()
 {
   if (m_bufferSize < 8) {
-     return "Binary Image";
+    return "Binary Image";
   }
 
-  XUtil::TRACE_BUF("BUFFER", (const char*) m_pBuffer, 8);
+  XUtil::TRACE_BUF("BUFFER", (const char*)m_pBuffer, 8);
 
   // Bitstream
-  if (((unsigned char) m_pBuffer[0] == 0x00 ) &&
-      ((unsigned char) m_pBuffer[1] == 0x09 ) &&
-      ((unsigned char) m_pBuffer[2] == 0x0f ) &&
-      ((unsigned char) m_pBuffer[3] == 0xf0 ) &&
-      ((unsigned char) m_pBuffer[4] == 0x0f ) &&
-      ((unsigned char) m_pBuffer[5] == 0xf0 ) &&
-      ((unsigned char) m_pBuffer[6] == 0x0f ) &&
-      ((unsigned char) m_pBuffer[7] == 0xf0 )) {
-      return "Bitstream";
+  if (((unsigned char)m_pBuffer[0] == 0x00) &&
+      ((unsigned char)m_pBuffer[1] == 0x09) &&
+      ((unsigned char)m_pBuffer[2] == 0x0f) &&
+      ((unsigned char)m_pBuffer[3] == 0xf0) &&
+      ((unsigned char)m_pBuffer[4] == 0x0f) &&
+      ((unsigned char)m_pBuffer[5] == 0xf0) &&
+      ((unsigned char)m_pBuffer[6] == 0x0f) &&
+      ((unsigned char)m_pBuffer[7] == 0xf0)) {
+    return "Bitstream";
   }
 
   // ZIP
-  if (((unsigned char) m_pBuffer[0] == 0x50 ) &&
-      ((unsigned char) m_pBuffer[1] == 0x4B )) {
-    if ((((unsigned char) m_pBuffer[2] == 0x03 ) &&
-         ((unsigned char) m_pBuffer[3] == 0x04 )) ||
-        (((unsigned char) m_pBuffer[2] == 0x05 ) &&
-         ((unsigned char) m_pBuffer[3] == 0x06 )) ||
-        (((unsigned char) m_pBuffer[2] == 0x07 ) &&
-         ((unsigned char) m_pBuffer[3] == 0x08 ))) {
+  if (((unsigned char)m_pBuffer[0] == 0x50) &&
+      ((unsigned char)m_pBuffer[1] == 0x4B)) {
+    if ((((unsigned char)m_pBuffer[2] == 0x03) &&
+         ((unsigned char)m_pBuffer[3] == 0x04)) ||
+        (((unsigned char)m_pBuffer[2] == 0x05) &&
+         ((unsigned char)m_pBuffer[3] == 0x06)) ||
+        (((unsigned char)m_pBuffer[2] == 0x07) &&
+         ((unsigned char)m_pBuffer[3] == 0x08))) {
       if (m_name == "behav") {
         return "HW Emulation Binary";
       }
@@ -69,10 +73,10 @@ SectionBitstream::getContentTypeAsString()
   }
 
   // ELF
-  if (((unsigned char) m_pBuffer[0] == 0x7f ) &&
-      ((unsigned char) m_pBuffer[1] == 0x45 ) &&
-      ((unsigned char) m_pBuffer[2] == 0x4c ) &&
-      ((unsigned char) m_pBuffer[3] == 0x46 )) {
+  if (((unsigned char)m_pBuffer[0] == 0x7f) &&
+      ((unsigned char)m_pBuffer[1] == 0x45) &&
+      ((unsigned char)m_pBuffer[2] == 0x4c) &&
+      ((unsigned char)m_pBuffer[3] == 0x46)) {
     return "SW Emulation Binary";
   }
 

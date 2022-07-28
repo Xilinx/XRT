@@ -23,7 +23,10 @@ endif()
 
 add_compile_options("-fPIC")
 
-# TODO CL_TARGET_OPENCL_VERSION is not defined..
+if (XRT_ENABLE_WERROR)
+  list(APPEND XRT_WARN_OPTS "-Werror")
+endif(XRT_ENABLE_WERROR)
+
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_compile_options( ${XRT_WARN_OPTS} )
 endif()

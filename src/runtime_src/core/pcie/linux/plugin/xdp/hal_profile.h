@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,7 +18,6 @@
 #ifndef XDP_PROFILE_HAL_PLUGIN_H_
 #define XDP_PROFILE_HAL_PLUGIN_H_
 
-#include "core/include/xclperf.h"
 #include "core/include/xclhal2.h"
 
 #include "core/common/config_reader.h"

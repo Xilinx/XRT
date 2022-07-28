@@ -90,6 +90,7 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_SENSOR		= 0xc,
 	XGQ_CMD_OP_LOAD_APUBIN		= 0xd,
 	XGQ_CMD_OP_VMR_CONTROL		= 0xe,
+	XGQ_CMD_OP_PROGRAM_SCFW		= 0xf,
 
 	/* User command type */
 	XGQ_CMD_OP_START_CUIDX	        = 0x100,

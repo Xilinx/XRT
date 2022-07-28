@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -61,15 +62,25 @@ namespace xdp {
       inline uint32_t bcIdToEvent(int bcId);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
       bool setMetrics(uint64_t deviceId, void* handle);
+      bool setMetricsSettings(uint64_t deviceId, void* handle);
+
+      bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
+
+      void getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
+                                    std::vector<std::string> graphmetricsSettings,
+                                    void* handle);
+
       void setFlushMetrics(uint64_t deviceId, void* handle);
-      uint64_t getTraceStartDelayCycles(void* handle);
+      void setTraceStartControl(void* handle);
 
       // Aie resource manager utility functions
       bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+      bool configureStartDelay(xaiefal::XAieMod& core);
+      bool configureStartIteration(xaiefal::XAieMod& core);
 
       // Utility functions
-      std::string getMetricSet(void* handle);
+      std::string getMetricSet(void* handle, const std::string& metricStr, bool ignoreOldConfig = false);
       std::vector<tile_type> getTilesForTracing(void* handle);
 
     private:
@@ -81,8 +92,18 @@ namespace xdp {
       bool runtimeMetrics = true;
 
       // These flags are used to decide configuration at various points
+
+      // Start Delay in cycles
       bool mUseDelay = false;
-      uint32_t mDelayCycles = 0;
+      uint64_t mDelayCycles = 0;
+      bool mUseOneDelayCtr = true;
+
+      // Start Delay using graph iterator
+      bool mUseGraphIterator = false;
+      uint32_t mIterationCount = 0;
+
+      // Start using user control
+      bool mUseUserControl = false;
 
       bool continuousTrace;
       uint64_t offloadIntervalUs;
@@ -90,8 +111,6 @@ namespace xdp {
 
       // Trace Runtime Status
       AieRC mConfigStatus = XAIE_OK;
-
-      std::vector<void*> deviceHandles;
       std::map<uint64_t, void*> deviceIdToHandle;
 
       typedef std::tuple<AIETraceOffload*, 
@@ -99,6 +118,9 @@ namespace xdp {
                          DeviceIntf*> AIEData;
 
       std::map<uint32_t, AIEData>  aieOffloaders;
+
+      XAie_DevInst*     aieDevInst = nullptr;
+      xaiefal::XAieDev* aieDevice  = nullptr;
 
       // Types
       typedef XAie_Events            EventType;
@@ -127,6 +149,14 @@ namespace xdp {
       EventVector memoryCounterEndEvents;
       EventVector memoryCounterResetEvents;
       ValueVector memoryCounterEventValues;
+
+      /* Currently only "aie" tile metrics is supported for graph/tile based trace.
+       * So, a single map for tile and resolved metric is sufficient.
+       * In future, when mem_tile and interface_tile metrics will be supported, we will
+       * need separate map for each type or a vector of maps for all types together.
+       */
+      std::map<tile_type, std::string> mConfigMetrics;
+//      std::vector<std::map<tile_type, std::string>> mConfigMetrics;
   };
     
 }   

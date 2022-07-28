@@ -2,6 +2,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -46,7 +47,7 @@
 
 #define CQ_STATUS_ADDR 0x58
 
-#define CTRL_XGQ_SLOT_SIZE          512	
+#define CTRL_XGQ_SLOT_SIZE          512
 
 /* XGQ IP offsets */
 #define XGQ_SQ_REG		0x0
@@ -760,6 +761,10 @@ static void ert_ctrl_dump_xgq(struct platform_device *pdev)
 		print_hex_dump(KERN_INFO, "raw data: ", DUMP_PREFIX_OFFSET,
 				16, 4, data, 16, true);
 	}
+
+	/* special value at 0x600 */
+	print_hex_dump(KERN_INFO, "raw data: ", DUMP_PREFIX_OFFSET,
+		       16, 4, ec->ec_cq_base + 0x600, 48, true);
 }
 
 static int ert_ctrl_xgq_ip_init(struct platform_device *pdev)
@@ -777,7 +782,7 @@ static int ert_ctrl_xgq_ip_init(struct platform_device *pdev)
 	EC_INFO(ec, "Ring buffer %pR", res);
 
 	ec->ec_cq_range = res->end - res->start + 1;
-	ec->ec_cq_base = devm_ioremap_wc(&pdev->dev, res->start, ec->ec_cq_range);
+	ec->ec_cq_base = devm_ioremap(&pdev->dev, res->start, ec->ec_cq_range);
 	if (!ec->ec_cq_base) {
 		EC_ERR(ec, "failed to map %s", RESNAME_XGQ_USER_RING);
 		return -ENOMEM;
@@ -830,7 +835,7 @@ static int ert_ctrl_cq_init(struct platform_device *pdev)
 	EC_INFO(ec, "CQ %pR", res);
 
 	ec->ec_cq_range = res->end - res->start + 1;
-	ec->ec_cq_base = devm_ioremap_wc(&pdev->dev, res->start, ec->ec_cq_range);
+	ec->ec_cq_base = devm_ioremap(&pdev->dev, res->start, ec->ec_cq_range);
 	if (!ec->ec_cq_base) {
 		EC_ERR(ec, "failed to map CQ");
 		return -ENOMEM;

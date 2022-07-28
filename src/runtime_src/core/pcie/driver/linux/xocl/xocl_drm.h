@@ -2,6 +2,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Authors:
  *
@@ -23,9 +24,6 @@
 #endif
 
 typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
-
-#define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
-#define IS_PLRAM(m_tag)		(!strncmp(m_tag, "PLRAM[", 6))
 
 /**
  * struct drm_xocl_exec_metadata - Meta data for exec bo
