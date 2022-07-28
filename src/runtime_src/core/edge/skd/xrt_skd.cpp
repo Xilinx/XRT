@@ -21,6 +21,9 @@
 # pragma GCC diagnostic ignored "-Wformat-truncation"
 #endif
 
+using ms_t = std::chrono::microseconds;
+using Clock = std::chrono::high_resolution_clock;
+
 namespace xrt {
 
   /**
@@ -86,7 +89,14 @@ namespace xrt {
     }
     args = xrt_core::xclbin::get_kernel_arguments((char *)buf,prop.size,sk_name);
     num_args = args.size();
+    if(args[num_args-1].type == xrt_core::xclbin::kernel_argument::argtype::global)
+      return_offset = (args[num_args-1].offset+PS_KERNEL_REG_OFFSET+16)/4;
+    else
+      return_offset = (args[num_args-1].offset+PS_KERNEL_REG_OFFSET+((args[num_args-1].size>4)?8:4))/4;
+#ifdef SKD_DEBUG
+    syslog(LOG_INFO,"Return offset = %d\n",return_offset);
     syslog(LOG_INFO,"Num args = %d\n",num_args);
+#endif
     munmap(buf, prop.size);
 
     // new device handle for the current instance
@@ -175,11 +185,20 @@ namespace xrt {
     void* bos[num_args];
     uint64_t boSize[num_args];
     std::vector<int> bo_list;
+    Clock::time_point start;
+    Clock::time_point end;
+    Clock::time_point cmd_start;
+    Clock::time_point cmd_end;
 
     while (1) {
       ret = waitNextCmd();
+      cmd_start = Clock::now();
+#ifdef SKD_DEBUG
+      if(cmd_end < cmd_start)
+      	syslog(LOG_INFO, "PS Kernel Command interval = %ld us\n",(std::chrono::duration_cast<ms_t>(cmd_start - cmd_end)).count());
+#endif
 
-      if (ret) {
+      if (ret && (signal==SIGTERM)) {
 	/* We are told to exit the soft kernel loop */
 	syslog(LOG_INFO, "Exit soft kernel %s\n", sk_name);
 	break;
@@ -203,17 +222,32 @@ namespace xrt {
 	  uint64_t buf_size = reinterpret_cast<uint64_t>(*buf_size_ptr);
 	  boSize[i] = buf_size;
 
+	  Clock::time_point bo_start;
+	  Clock::time_point bo_gethostbo;
+	  Clock::time_point bo_mapbo;
+	  Clock::time_point bo_end;
+
+	  bo_start = Clock::now();
+	  syslog(LOG_INFO,"Argument BO Addr = 0x%lx, Size = %0x%ld\n",buf_addr,buf_size);
 	  boHandles[i] = xclGetHostBO(devHdl,buf_addr,buf_size);
+	  bo_gethostbo = Clock::now();
 	  bos[i] = xclMapBO(devHdl,boHandles[i],true);
+	  bo_mapbo = Clock::now();
 	  ffi_arg_values[i] = &bos[i];
 	  bo_list.emplace_back(i);
+	  bo_end = Clock::now();
+#ifdef SKD_DEBUG
+	  syslog(LOG_INFO, "BO duration = %ld us, GetHostBO = %ld us, MapBO = %ld us\n",(std::chrono::duration_cast<ms_t>(bo_end - bo_start)).count(), (std::chrono::duration_cast<ms_t>(bo_gethostbo - bo_start)).count(), (std::chrono::duration_cast<ms_t>(bo_mapbo - bo_gethostbo)).count());
+#endif
 	} else {
 	  ffi_arg_values[i] = &args_from_host[(args[i].offset+PS_KERNEL_REG_OFFSET)/4];
 	}
       }
 
+      start = Clock::now();
       ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
-      args_from_host[1] = (uint32_t)kernel_return;
+      end = Clock::now();
+      args_from_host[return_offset] = (uint32_t)kernel_return;
 
       // Unmap Buffers
       for(auto i:bo_list) {
@@ -222,6 +256,14 @@ namespace xrt {
       }
       bo_list.clear();
 
+#ifdef SKD_DEBUG
+      syslog(LOG_INFO, "PS Kernel duration = %ld us\n",(std::chrono::duration_cast<ms_t>(end - start)).count());
+#endif
+
+      cmd_end = Clock::now();
+#ifdef SKD_DEBUG
+      syslog(LOG_INFO, "PS Kernel Command duration = %ld us, Preproc = %ld us, Postproc = %ld us\n",(std::chrono::duration_cast<ms_t>(cmd_end - cmd_start)).count(), (std::chrono::duration_cast<ms_t>(start - cmd_start)).count(), (std::chrono::duration_cast<ms_t>(cmd_end - end)).count());
+#endif
     }
 
   }
@@ -274,6 +316,9 @@ namespace xrt {
   }
   int skd::waitNextCmd() {
     return xclSKReport(devHdl, cu_idx, XRT_SCU_STATE_DONE);
+  }
+  void skd::set_signal(int sig) {
+    signal = sig;
   }
 
   /*

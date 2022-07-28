@@ -84,6 +84,7 @@ class skd
   void
   fini();
 
+  void set_signal(int sig);
   void report_ready();
   void report_crash();
   void report_fini();
@@ -99,6 +100,7 @@ class skd
     int sk_bo;
     int sk_meta_bo;
     unsigned char xclbin_uuid[16];
+    int signal = 0;
     
     void* sk_handle;
     void* kernel;
@@ -109,6 +111,7 @@ class skd
     ffi_cif cif;
     bool pass_xrtHandles = false;
     int num_args;
+    int return_offset;
     
     int waitNextCmd();
     int createSoftKernelFile(xclDeviceHandle handle, int bohdl);

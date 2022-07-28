@@ -103,7 +103,6 @@ config_versal_project()
     sed -i 's/^CONFIG_imagefeature-ssh-server-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_imagefeature-package-management.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_gdb.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_valgrind.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_packagegroup-core-ssh-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
@@ -118,6 +117,7 @@ config_versal_project()
     sed -i 's/.*CONFIG_ldd is.*/CONFIG_ldd=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_binutils is.*/CONFIG_binutils=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_ai-engine-driver is.*/CONFIG_ai-engine-driver=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_gdb is.*/CONFIG_gdb=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_ADD_EXTRA_USERS is.*/CONFIG_ADD_EXTRA_USERS="petalinux:petalinux;"/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_ROOTFS_ROOT_PASSWD=\"root\".*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     echo "CONFIG_ROOTFS_ROOT_PASSWD=\"root\"" >> $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
@@ -330,8 +330,8 @@ echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\""
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/config 
 
 #Uncomment the following 2 lines to change TMP_DIR location
-#echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\""
-#echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\"" >> project-spec/configs/config 
+echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\""
+echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\"" >> project-spec/configs/config 
 
 if [ ! -z $SSTATE_CACHE ] && [ -d $SSTATE_CACHE ]; then
     echo "SSTATE-CACHE:${SSTATE_CACHE} added"
