@@ -1110,6 +1110,8 @@ kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
         uint32_t cu_idx = get_domain_idx(cu_index);
         struct kds_client_cu_ctx *cu_ctx = NULL;
 	bool found = false;
+	
+	BUG_ON(!mutex_is_locked(&client->lock));
 
         if (!ctx) {
 		kds_err(client, "No Client Context available");
