@@ -5,7 +5,7 @@
 // Local - Include Files
 #include "ReportPsKernels.h"
 
-#include "BuiltInPsKernels.h"
+#include "PsKernelUtilities.h"
 #include "Table2D.h"
 
 #include "core/common/query_requests.h"
@@ -28,6 +28,10 @@ ReportPsKernels::getPropertyTree20202( const xrt_core::device * device,
                                            boost::property_tree::ptree &pt) const
 {
   try {
+    // Validate if the device can support ps kernels
+    // auto is_versal = xrt_core::device_query<xrt_core::query::is_versal>(device);
+    // if (!is_versal)
+    //   return;
     boost::property_tree::ptree p = get_ps_instance_data(device);
     pt.add_child("instance_data", p);
   }
@@ -40,13 +44,18 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
                               const std::vector<std::string>& /*_elementsFilter*/,
                               std::ostream & output) const
 {
+  if (pt.empty()) {
+    output << "Report not valid for specified device\n";
+    return;
+  }
+
   output << "Operating System:\n";
-  for (const auto& os_data : pt.get_child("instance_data.os"))
+  for (const auto& os_data : pt.get_child("instance_data.apu_image"))
       output << boost::format("  %s: %s\n") % os_data.first % os_data.second.data();
 
   // Loop through each kernel instance
   output << "PS Kernel Instances:\n";
-  for (const auto& kernel_list : pt.get_child("instance_data.ps_instances")) {
+  for (const auto& kernel_list : pt.get_child("instance_data.ps_kernel_instances")) {
     const auto& kernel_instance_ptree = kernel_list.second;
     std::string kernel_name = kernel_list.first;
     const size_t hyphen_length = 40;
@@ -56,7 +65,7 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
     // Iterate through the instances that implement the above kernel
     for (const auto& ps_instance : kernel_instance_ptree) {
       const auto& ps_ptree = ps_instance.second;
-      const auto& data_pt = ps_ptree.get_child("process_data");
+      const auto& data_pt = ps_ptree.get_child("process_info");
 
       std::vector<boost::property_tree::ptree> instance_data;
       for (const auto& a : data_pt)
@@ -71,34 +80,26 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
       const size_t max_table_length = 20;
       for (size_t data_index = 0; data_index < max_table_length; data_index++) {
         std::vector<std::string> entry_data;
+        entry_data.push_back(instance_data[data_index].get<std::string>("name"));
+        entry_data.push_back(instance_data[data_index].get<std::string>("value"));
         if (data_index + (2 * max_table_length) < instance_data.size()) {
-          entry_data.push_back(instance_data[data_index].get<std::string>("name"));
-          entry_data.push_back(instance_data[data_index].get<std::string>("value"));
           entry_data.push_back(instance_data[data_index + max_table_length].get<std::string>("name"));
           entry_data.push_back(instance_data[data_index + max_table_length].get<std::string>("value"));
           entry_data.push_back(instance_data[data_index + 2 * max_table_length].get<std::string>("name"));
           entry_data.push_back(instance_data[data_index + 2 * max_table_length].get<std::string>("value"));
         } else if (data_index + max_table_length < instance_data.size()) {
-          entry_data.push_back(instance_data[data_index].get<std::string>("name"));
-          entry_data.push_back(instance_data[data_index].get<std::string>("value"));
           entry_data.push_back(instance_data[data_index + max_table_length].get<std::string>("name"));
           entry_data.push_back(instance_data[data_index + max_table_length].get<std::string>("value"));
-          entry_data.push_back("");
-          entry_data.push_back("");
-        } else {
-          entry_data.push_back(instance_data[data_index].get<std::string>("name"));
-          entry_data.push_back(instance_data[data_index].get<std::string>("value"));
-          entry_data.push_back("");
-          entry_data.push_back("");
-          entry_data.push_back("");
-          entry_data.push_back("");
         }
+        // Populate the missing entries with empty space
+        while (entry_data.size() < table_headers.size())
+          entry_data.push_back("");
+
         instance_table.addEntry(entry_data);
       }
 
       // Output the instance data
-      std::string instance_name = ps_ptree.get<std::string>("metadata.Instance(CU) name");
-      output << boost::format("  Instance name: %s\n") % instance_name;
+      output << boost::format("  Instance name: %s\n") % ps_ptree.get<std::string>("name");
       output << "    Process Status:\n";
       output << boost::format("%s\n") % instance_table.to_string("    ");
     }

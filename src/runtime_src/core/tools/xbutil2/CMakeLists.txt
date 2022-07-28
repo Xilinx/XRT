@@ -16,7 +16,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/ProgressBar.cpp"
   "../common/Process.cpp"
   "../common/Table2D.cpp"
-  "../common/BuiltInPsKernels.cpp"
+  "../common/PsKernelUtilities.cpp"
   "../common/SubCmdJSON.cpp"
 )
 

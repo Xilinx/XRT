@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-#ifndef __BuiltInPsKernels_h_
-#define __BuiltInPsKernels_h_
+#ifndef __PsKernelUtilities_h_
+#define __PsKernelUtilities_h_
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 #include "core/common/device.h"

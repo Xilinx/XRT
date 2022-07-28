@@ -15,7 +15,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/ProgressBar.cpp"
   "../common/Process.cpp"
   "../common/Report*.cpp"
-  "../common/BuiltInPsKernels.cpp"
+  "../common/PsKernelUtilities.cpp"
   "../common/Table2D.cpp"
 )
 
