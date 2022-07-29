@@ -98,6 +98,14 @@ static int scu_configure(void *core, u32 *data, size_t sz, int type)
 
 	num_reg = sz / sizeof(u32);
 	hdr = (struct xgq_cmd_sq_hdr *)data;
+#if 0
+	{
+		int i;
+		for (i = 0; i < hdr->count/sizeof(u32); i++) {
+			printk("DEBUG %s scu data(%d) 0x%x\n", __func__, i, data[i]);
+		}
+	}
+#endif
 	scu_xgq_start(scu, data);
 	return 0;
 }
