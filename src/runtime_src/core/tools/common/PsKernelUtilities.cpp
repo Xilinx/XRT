@@ -12,10 +12,11 @@
 #include <vector>
 
 #include <boost/property_tree/json_parser.hpp>
+namespace pt = boost::property_tree;
 
 
 static void
-get_all_instance_data(const xrt_core::device * _pDevice, boost::property_tree::ptree &pt)
+get_all_instance_data(const xrt_core::device * _pDevice, pt::ptree &pt)
 {
   static size_t COUNT = 4096;
   // TODO this will be removed when the PS kernel is built in
@@ -46,16 +47,16 @@ get_all_instance_data(const xrt_core::device * _pDevice, boost::property_tree::p
 
   // Parse the output into a useful format
   std::istringstream json(bo0_map);
-  boost::property_tree::read_json(json, pt);
+  pt::read_json(json, pt);
 }
 
-static std::vector<const boost::property_tree::ptree*>
-get_sorted_instance_list(const boost::property_tree::ptree& pt)
+static std::vector<const pt::ptree*>
+get_sorted_instance_list(const pt::ptree& pt)
 {
-  std::vector<const boost::property_tree::ptree*> instance_list;
+  std::vector<const pt::ptree*> instance_list;
   // Sorting lambda
   // Sort based on ps kernel instance kernel and instance names
-  auto ptree_sorting = [](const boost::property_tree::ptree* a, const boost::property_tree::ptree* b) {
+  auto ptree_sorting = [](const pt::ptree* a, const pt::ptree* b) {
     // First sort based on kernel name
     const auto& a_name = a->get<std::string>("kernel");
     const auto& b_name = b->get<std::string>("kernel");
@@ -84,24 +85,23 @@ get_sorted_instance_list(const boost::property_tree::ptree& pt)
 }
 
 
-static boost::property_tree::ptree
-parse_instance(const boost::property_tree::ptree& instance_pt)
+static pt::ptree
+parse_instance(const pt::ptree& instance_pt)
 {
   // Parse the instance status data
-  boost::property_tree::ptree parsed_pt;
+  pt::ptree parsed_pt;
 
   // Transfer metadata except process info array
   for (const auto& item : instance_pt)
     if (!boost::equal(item.first, std::string("process_info")))
       parsed_pt.put(item.first, item.second.data());
 
-  // Sort and parse the process info
+  // Sorting process info
   const auto& data_pt = instance_pt.get_child("process_info");
-  std::vector<const boost::property_tree::ptree*> instance_data;
+  std::vector<const pt::ptree*> instance_data;
   for (const auto& a : data_pt)
     instance_data.push_back(&a.second);
-
-  auto ptree_sorting = [](const boost::property_tree::ptree* a, const boost::property_tree::ptree* b) {
+  auto ptree_sorting = [](const pt::ptree* a, const pt::ptree* b) {
     const auto& a_name = a->get<std::string>("name");
     const auto& b_name = b->get<std::string>("name");
     const auto val = a_name.compare(b_name);
@@ -111,21 +111,20 @@ parse_instance(const boost::property_tree::ptree& instance_pt)
       return false;
   };
   std::sort(instance_data.begin(), instance_data.end(), ptree_sorting);
-  boost::property_tree::ptree status_pt;
+  // Parsing the process info data
+  pt::ptree status_pt;
   for (const auto& item : instance_data) {
-    // Remove '_' from name and convert to PascalCase
+    // Remove '_' from names and convert to PascalCase
     // IE Test_world => TestWorld
     std::string name = item->get<std::string>("name");
-    auto loc = name.find("_");
-    while (loc != std::string::npos) {
+    for (auto loc = name.find("_"); loc != std::string::npos; loc = name.find("_", loc)) {
       name.erase(loc, 1);
       // Capitalize the next letter if it exists
       if (loc < name.size())
         name[loc] = toupper(name[loc]);
-      loc = name.find("_", loc);
     }
     // Create the new data tree
-    boost::property_tree::ptree data_pt;
+    pt::ptree data_pt;
     data_pt.put("name", name);
     data_pt.put("value", item->get<std::string>("value"));
     status_pt.push_back(std::make_pair("", data_pt));
@@ -135,10 +134,10 @@ parse_instance(const boost::property_tree::ptree& instance_pt)
   return parsed_pt;
 }
 
-boost::property_tree::ptree
+pt::ptree
 get_ps_instance_data(const xrt_core::device* device)
 {
-  boost::property_tree::ptree all_instance_data;
+  pt::ptree all_instance_data;
   get_all_instance_data(device, all_instance_data);
 
   // Parse the returned data
@@ -146,15 +145,15 @@ get_ps_instance_data(const xrt_core::device* device)
   const auto instance_list = get_sorted_instance_list(all_instance_data);
 
   // Parse each instance into trees based on their kernel names
-  boost::property_tree::ptree sorted_instance_tree;
+  pt::ptree sorted_instance_tree;
   for (const auto& ps_instance_ptr : instance_list) {
     const auto& kernel_name = ps_instance_ptr->get<std::string>("kernel");
 
     // Parse the current instance into the approved schema
-    const boost::property_tree::ptree parsed_pt = parse_instance(*ps_instance_ptr);
+    const pt::ptree parsed_pt = parse_instance(*ps_instance_ptr);
 
     // Make sure there is a seperate tree for each kernel
-    boost::property_tree::ptree empty_tree;
+    pt::ptree empty_tree;
     auto& kernel_tree = sorted_instance_tree.get_child(kernel_name, empty_tree);
     // Check if the tree is empty before adding the current instance
     const auto is_tree_empty = kernel_tree.empty();
@@ -164,7 +163,7 @@ get_ps_instance_data(const xrt_core::device* device)
   }
 
   // Format the data into the controlled schema
-  boost::property_tree::ptree parsed_kernel_data;
+  pt::ptree parsed_kernel_data;
   parsed_kernel_data.add_child("apu_image", all_instance_data.get_child("os"));
   parsed_kernel_data.add_child("ps_kernel_instances", sorted_instance_tree);
   return parsed_kernel_data;

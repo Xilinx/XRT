@@ -9,14 +9,15 @@
 #include "Table2D.h"
 
 #include "core/common/query_requests.h"
+namespace qr = xrt_core::query;
 
 #include <boost/property_tree/json_parser.hpp>
+namespace pt = boost::property_tree;
 
-namespace qr = xrt_core::query;
 
 void
 ReportPsKernels::getPropertyTreeInternal(const xrt_core::device * device,
-                                              boost::property_tree::ptree &pt) const
+                                              pt::ptree &pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
@@ -25,14 +26,14 @@ ReportPsKernels::getPropertyTreeInternal(const xrt_core::device * device,
 
 void 
 ReportPsKernels::getPropertyTree20202( const xrt_core::device * device,
-                                           boost::property_tree::ptree &pt) const
+                                           pt::ptree &pt) const
 {
   try {
     // Validate if the device can support ps kernels
     // auto is_versal = xrt_core::device_query<xrt_core::query::is_versal>(device);
     // if (!is_versal)
     //   return;
-    boost::property_tree::ptree p = get_ps_instance_data(device);
+    pt::ptree p = get_ps_instance_data(device);
     pt.add_child("instance_data", p);
   }
   catch (const qr::exception&) {}
@@ -40,7 +41,7 @@ ReportPsKernels::getPropertyTree20202( const xrt_core::device * device,
 
 void 
 ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
-                              const boost::property_tree::ptree& pt,
+                              const pt::ptree& pt,
                               const std::vector<std::string>& /*_elementsFilter*/,
                               std::ostream & output) const
 {
@@ -67,7 +68,7 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
       const auto& ps_ptree = ps_instance.second;
       const auto& data_pt = ps_ptree.get_child("process_info");
 
-      std::vector<boost::property_tree::ptree> instance_data;
+      std::vector<pt::ptree> instance_data;
       for (const auto& a : data_pt)
         instance_data.push_back(a.second);
 
