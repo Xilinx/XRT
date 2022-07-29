@@ -200,9 +200,11 @@ u32 kds_get_cu_addr(struct kds_sched *kds, int idx);
 u32 kds_get_cu_proto(struct kds_sched *kds, int idx);
 int kds_get_max_regmap_size(struct kds_sched *kds);
 struct kds_client_cu_ctx *
-kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx, uint32_t cu_index);
+kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
+		struct kds_client_cu_info *cu_info);
 struct kds_client_cu_ctx *
-kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx, uint32_t cu_index);
+kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
+		struct kds_client_cu_info *cu_info);
 int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx);
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_client_cu_ctx *cu_ctx);

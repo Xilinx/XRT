@@ -96,6 +96,26 @@ static int copybo_ecmd2xcmd(struct drm_zocl_dev *zdev, struct drm_file *filp,
 }
 
 /*
+ * Initialize the CU info using the user input.
+ *
+ * @param       args:	Userspace ioctl arguments
+ * @param       cu_info: KDS client CU info structure
+ *
+ */
+static inline void
+zocl_ctx_to_info(struct drm_zocl_ctx *args, struct kds_client_cu_info *cu_info)
+{
+        cu_info->cu_domain = get_domain(args->cu_index);
+        cu_info->cu_idx = get_domain_idx(args->cu_index);
+
+        /* Ignore ZOCL_CTX_SHARED bit if ZOCL_CTX_EXCLUSIVE bit is set */
+        if (args->flags & ZOCL_CTX_EXCLUSIVE)
+                cu_info->flags = CU_CTX_EXCLUSIVE;
+        else
+                cu_info->flags = CU_CTX_SHARED;
+}
+
+/*
  * Remove the client context and free all the memeory.
  * This function is also unlock the bitstrean for the slot associated with
  * this context.
@@ -208,41 +228,6 @@ zocl_check_exists_context(struct kds_client *client, const uuid_t *id)
 }
 
 /*
- * Initialize the new CU context under this client context for this xclbin and add
- * it to the kds.
- *
- * @param       client:	KDS client data structure
- * @param       args:	Userspace ioctl arguments
- * @param       cu_ctx:	KDS client CU context structure
- *
- * @return      0 on success, error core on failure.
- *
- */
-static int
-zocl_initialize_cu_ctx(struct kds_client_ctx *cctx, struct drm_zocl_ctx *args,
-                struct kds_client_cu_ctx *cu_ctx)
-{
-        uint32_t cu_domain = get_domain(args->cu_index);
-        uint32_t cu_idx = get_domain_idx(args->cu_index);
-
-	if (!cu_ctx) {
-		DRM_ERROR("No CU Context available");
-                return -EINVAL;
-	}
-
-        cu_ctx->ctx = cctx;
-        cu_ctx->cu_domain = cu_domain;
-        cu_ctx->cu_idx = cu_idx;
-        cu_ctx->ref_cnt = 0;
-        if (args->flags == ZOCL_CTX_EXCLUSIVE)
-                cu_ctx->flags = CU_CTX_EXCLUSIVE;
-        else
-                cu_ctx->flags = CU_CTX_SHARED;
-
-        return 0;
-}
-
-/*
  * Create a new context if no active context present for this xclbin and add
  * it to the kds.
  *
@@ -259,6 +244,7 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 {
 	void *uuid_ptr = (void *)(uintptr_t)args->uuid_ptr;
 	struct kds_client_ctx *cctx = NULL;
+	struct kds_client_cu_info cu_info = { 0 };
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	uuid_t *id = NULL;
 	int ret = 0;
@@ -286,15 +272,15 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	/* Bitstream is locked. No one could load a new one
 	 * until this client close all of the contexts.
 	 */
-	cu_ctx = kds_alloc_cu_ctx(client, cctx, args->cu_index);
+
+	zocl_ctx_to_info(args, &cu_info);
+	cu_ctx = kds_alloc_cu_ctx(client, cctx, &cu_info);
 	if (!cu_ctx) {
 		zocl_remove_client_context(zdev, client, cctx);
 		ret = -EINVAL;
 		goto out;
 	}
 
-	/* Initialize this cu context with required iniformation */
-	zocl_initialize_cu_ctx(cctx, args, cu_ctx);
 	ret = kds_add_context(&zdev->kds, client, cu_ctx);
 	if (ret) {
         	kds_free_cu_ctx(client, cu_ctx);
@@ -311,7 +297,7 @@ out:
 int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 flags, u32 cu_domain)
 {
 	int ret = 0;
-	struct drm_zocl_ctx args = { 0 };
+	struct kds_client_cu_info cu_info = { 0 };
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_client_ctx *cctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
@@ -327,16 +313,16 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 	}
 	uuid_copy(cctx->xclbin_id, &uuid_null);
 
-	args.cu_index = set_domain(cu_domain, cu_idx);
-	cu_ctx = kds_alloc_cu_ctx(client, cctx, args.cu_index);
+	cu_info.cu_domain = cu_domain;
+	cu_info.cu_idx = cu_idx;
+	cu_info.flags = flags;
+
+	cu_ctx = kds_alloc_cu_ctx(client, cctx, &cu_info);
 	if (!cu_ctx) {
 		vfree(cctx->xclbin_id);
 		vfree(cctx);
 		return -EINVAL;
 	}
-	/* Initialize this cu context with required iniformation */
-	zocl_initialize_cu_ctx(cctx, &args, cu_ctx);
-	cu_ctx->flags = flags;
 	
 	mutex_lock(&client->lock);
 	list_add_tail(&(cctx->link), &client->ctx_list);
@@ -348,7 +334,7 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 cu_domain)
 {
 	int ret = 0;
-	uint32_t cu_index = set_domain(cu_domain, cu_idx);
+	struct kds_client_cu_info cu_info = { 0 };
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_client_ctx *cctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
@@ -358,7 +344,10 @@ int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 	if (cctx == NULL)
 		return -EINVAL;
 
-	cu_ctx = kds_get_cu_ctx(client, cctx, cu_index);
+        cu_info.cu_domain = cu_domain;
+        cu_info.cu_idx = cu_idx;
+	
+	cu_ctx = kds_get_cu_ctx(client, cctx, &cu_info);
         if (!cu_ctx)
                 return -EINVAL;
 
@@ -398,6 +387,7 @@ zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	uuid_t *id = NULL;
 	struct kds_client_ctx *cctx = NULL;
         struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_cu_info cu_info = { 0 };
 	int ret = 0;
 
 	id = vmalloc(sizeof(uuid_t));
@@ -417,7 +407,8 @@ zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 		goto out;
 	}
 
-	cu_ctx = kds_get_cu_ctx(client, cctx, args->cu_index);
+	zocl_ctx_to_info(args, &cu_info);
+	cu_ctx = kds_get_cu_ctx(client, cctx, &cu_info);
         if (!cu_ctx) {
 		ret = -EINVAL;
 		goto out;

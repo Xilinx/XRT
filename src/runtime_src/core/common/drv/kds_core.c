@@ -1057,20 +1057,17 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_ctx *cctx)
 {
 	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_cu_ctx *next = NULL;
 
 	kds_info(client, "Client pid(%d) has open context for %d slot",
 			pid_nr(client->pid), cctx->slot_idx);
 
 	mutex_lock(&client->lock);
 	/* Traverse through all the context and free them up */
-	list_for_each_entry(cu_ctx, &cctx->cu_ctx_list, link) {
+	list_for_each_entry_safe(cu_ctx, next, &cctx->cu_ctx_list, link) {
 		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
 				cu_ctx->cu_idx);
-		if (cu_ctx->ref_cnt)
-			kds_del_context(kds, client, cu_ctx);
-	
-		list_del(&cu_ctx->link);
-		vfree(cu_ctx);
+		kds_free_cu_ctx(client, cu_ctx);
 	}
 	
 	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
@@ -1103,11 +1100,10 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 
 struct kds_client_cu_ctx *
 kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
-		uint32_t cu_index)
+		struct kds_client_cu_info *cu_info)
 {
-	/* cu_index has domain and index encoded */
-        uint32_t cu_domain = get_domain(cu_index);
-        uint32_t cu_idx = get_domain_idx(cu_index);
+        uint32_t cu_domain = cu_info->cu_domain;
+        uint32_t cu_idx = cu_info->cu_idx;
         struct kds_client_cu_ctx *cu_ctx = NULL;
 	bool found = false;
 	
@@ -1133,15 +1129,33 @@ kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
 	return NULL;
 }
 
+static int
+kds_initialize_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx,
+		struct kds_client_cu_info *cu_info)
+{
+	if (!cu_ctx) {
+		kds_err(client, "No Client Context available");
+		return -EINVAL;
+	}
+
+	cu_ctx->ctx = client->ctx;
+	cu_ctx->cu_domain = cu_info->cu_domain;
+	cu_ctx->cu_idx = cu_info->cu_idx;
+	cu_ctx->ref_cnt = 0;
+	cu_ctx->flags = cu_info->flags;
+
+	return 0;
+}
+
 struct kds_client_cu_ctx *
 kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
-		uint32_t cu_index)
+		struct kds_client_cu_info *cu_info)
 {
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
 
-	cu_ctx = kds_get_cu_ctx(client, ctx, cu_index);
+	cu_ctx = kds_get_cu_ctx(client, ctx, cu_info);
 	if (IS_ERR(cu_ctx))
 		return NULL;
 
@@ -1157,7 +1171,10 @@ kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
 	}
 
         /* Add this Cu context to Client Context list */
-        list_add_tail(&cu_ctx->link, &ctx->cu_ctx_list);
+	list_add_tail(&cu_ctx->link, &ctx->cu_ctx_list);
+
+	/* Initialize this cu context with required iniformation */
+	kds_initialize_cu_ctx(client, cu_ctx, cu_info);
 
 	return cu_ctx;
 }

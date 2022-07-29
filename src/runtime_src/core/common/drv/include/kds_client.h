@@ -36,6 +36,13 @@ struct kds_client_cu_ctx {
 	struct list_head		link;
 };
 
+/* KDS CU information. */
+struct kds_client_cu_info {
+	u32				cu_idx;
+	u32		  		cu_domain;
+	u32				flags;
+};
+
 /* Multiple xclbin context can be active under a single client.
  * Client should maintain all the active XCLBIN.
  */
