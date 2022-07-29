@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,6 +40,44 @@ namespace xdp {
     }
     for (auto i : asms) {
       delete i ;
+    }
+  }
+
+  void PLInfo::addComputeUnitPorts(const std::string& kernelName,
+                                   const std::string& portName,
+                                   int32_t portWidth)
+  {
+    for (auto iter : cus) {
+      auto cu = iter.second;
+      if (cu->getKernelName() == kernelName)
+        cu->addPort(portName, portWidth);
+    }
+  }
+
+  void PLInfo::addArgToPort(const std::string& kernelName,
+                            const std::string& argName,
+                            const std::string& portName)
+  {
+    for (auto iter : cus) {
+      auto cu = iter.second;
+      if (cu->getKernelName() == kernelName)
+        cu->addArgToPort(argName, portName);
+    }
+  }
+
+  void PLInfo::connectArgToMemory(const std::string& kernelName,
+                                  const std::string& portName,
+                                  const std::string& argName,
+                                  int32_t memId)
+  {
+    if (memoryInfo.find(memId) == memoryInfo.end())
+      return;
+
+    Memory* mem = memoryInfo[memId];
+    for (auto iter : cus) {
+      auto cu = iter.second;
+      if (cu->getKernelName() == kernelName)
+        cu->connectArgToMemory(portName, argName, mem);
     }
   }
 

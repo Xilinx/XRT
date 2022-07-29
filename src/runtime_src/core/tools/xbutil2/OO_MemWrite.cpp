@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version
- * 2.0 (the "License"). You may not use this file except in
- * compliance with the License. A copy of the License is located
- * at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -42,8 +28,8 @@ namespace po = boost::program_options;
 
 OO_MemWrite::OO_MemWrite( const std::string &_longName, bool _isHidden)
     : OptionOptions(_longName, _isHidden, "Write to a given memory address")
-    , m_device({})
     , m_inputFile("")
+    , m_device("")
     , m_baseAddress("")
     , m_sizeBytes("")
     , m_count(0)
@@ -52,8 +38,8 @@ OO_MemWrite::OO_MemWrite( const std::string &_longName, bool _isHidden)
 
 {
   m_optionsDescription.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->multitoken()->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("input,i", boost::program_options::value<decltype(m_inputFile)>(&m_inputFile), "Input file")
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device)->required(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("address", boost::program_options::value<decltype(m_baseAddress)>(&m_baseAddress)->required(), "Base address to start from")
     ("size", boost::program_options::value<decltype(m_sizeBytes)>(&m_sizeBytes), "Block size (bytes) to write")
     ("count", boost::program_options::value<decltype(m_count)>(&m_count)->default_value(1), "Number of blocks to write")
@@ -104,20 +90,8 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   }
 
   try {
-    //-- Device
-    if(m_device.size() > 1)
-      throw xrt_core::error("Multiple devices not supported. Please specify a single device");
-
-    // Collect the device of interest
-    std::set<std::string> deviceNames;
-    xrt_core::device_collection deviceCollection;
-    for (const auto & deviceName : m_device)
-      deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection); // Can throw
-    // set working variable
-    device = deviceCollection.front();
-
+    // Find device of interest
+    device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const xrt_core::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();

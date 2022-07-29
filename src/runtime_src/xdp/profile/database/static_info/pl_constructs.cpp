@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +22,30 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 
 namespace xdp {
+
+  void Port::addMemoryConnection(Memory* mem)
+  {
+    for (auto m : memories) {
+      if (m == mem)
+        return;
+    }
+    memories.push_back(mem);
+  }
+
+  std::string Port::constructArgumentList(const std::string& memoryName)
+  {
+    std::string argList = "";
+    bool first = true;
+    for (auto& arg : args) {
+      if (argToMemory[arg] && argToMemory[arg]->spTag == memoryName) {
+        if (!first)
+          argList += "|";
+        argList += arg;
+        first = false;
+      }
+    }
+    return argList;
+  }
 
   ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string& n)
     : index(i)
@@ -51,6 +76,65 @@ namespace xdp {
       return ;
     }
     connections[argIdx].push_back(memIdx) ;
+  }
+
+  void ComputeUnitInstance::addPort(const std::string& n, int32_t w)
+  {
+    masterPorts.push_back(std::move(Port(n, w)));
+  }
+
+  void ComputeUnitInstance::addArgToPort(const std::string& arg,
+                                         const std::string& portName)
+  {
+    for (auto& port : masterPorts) {
+      if (port.name == portName)
+        port.args.push_back(arg);
+    }
+  }
+
+  void ComputeUnitInstance::addMemoryToPort(Memory* mem,
+                                            const std::string& portName)
+  {
+    if (mem == nullptr)
+      return;
+
+    for (auto& port : masterPorts) {
+      if (port.name == portName)
+        port.addMemoryConnection(mem);
+    }
+  }
+
+  void ComputeUnitInstance::connectArgToMemory(const std::string& portName,
+                                               const std::string& arg,
+                                               Memory* mem)
+  {
+    for (auto& port : masterPorts) {
+      if (port.name == portName)
+        port.argToMemory[arg] = mem;
+    }
+  }
+
+  Port* ComputeUnitInstance::getPort(const std::string& portName)
+  {
+    for (auto& port : masterPorts) {
+      if (port.name == portName)
+        return &port;
+    }
+    return nullptr;
+  }
+
+  void Memory::convertBankToDDR()
+  {
+    auto loc = tag.find("bank");
+    if (loc == std::string::npos) {
+      spTag = tag;
+      return;
+    }
+
+    std::string ddr = "DDR[";
+    ddr += tag.substr(loc + 4);
+    ddr += "]";
+    spTag = ddr;
   }
 
 } // end namespace xdp

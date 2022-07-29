@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -150,6 +151,7 @@ struct drm_zocl_dev {
 	struct list_head	 ctx_list;
 
 	struct zocl_cu_subdev	 cu_subdev;
+	struct platform_device	*cu_intc;
 	struct kds_sched	 kds;
 
 	/*

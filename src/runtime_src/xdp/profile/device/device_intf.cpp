@@ -178,6 +178,12 @@ DeviceIntf::~DeviceIntf()
       return;
     }
     mDevice = devHandle; 
+
+    // Once the device is connected, update the bandwidth numbers
+    setHostMaxBwRead();
+    setHostMaxBwWrite();
+    setKernelMaxBwRead();
+    setKernelMaxBwWrite();
   }
 
   // ***************************************************************************
