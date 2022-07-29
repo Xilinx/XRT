@@ -771,7 +771,8 @@ static ssize_t versal_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	uint32_t val = 0;
 
-	val = (XOCL_DSA_IS_VERSAL_ES3(XDEV(xdev))) ? 1 : 0;
+	val = (XOCL_DSA_IS_VERSAL(XDEV(xdev)) ||
+	       XOCL_DSA_IS_VERSAL_ES3(XDEV(xdev))) ? 1 : 0;
 
 	return sprintf(buf, "%d\n", val);
 }
