@@ -1185,7 +1185,7 @@ int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx)
 
 	if (!cu_ctx && cu_ctx->ref_cnt) {
 		/* Reference count must be reset before free the context */
-		kds_err(client, "Invalid Context requested to free");
+		kds_err(client, "Invalid CU Context requested to free");
 		return -EINVAL;
 	}
 	
