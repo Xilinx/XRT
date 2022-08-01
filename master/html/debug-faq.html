@@ -25,7 +25,7 @@ function OptanonWrapper() { }
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Security of Alveo Platform" href="security.html" /> 
+    <link rel="prev" title="XRT Python Bindings" href="pyxrt.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -96,9 +96,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -110,11 +111,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul class="current">
@@ -180,11 +186,10 @@ function OptanonWrapper() { }
 <dt><code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code></dt>
 <dd>Retrieve info from an xclbin</dd>
 <dt>XRT API Trace</dt>
-<dd><p class="first">Run failing application with XRT logging enabled in <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">Configuration File xrt.ini</span></a></p>
-<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">Runtime</span><span class="p">]</span>
-<span class="n">runtime_log</span><span class="o">=</span><span class="n">my_run</span><span class="o">.</span><span class="n">log</span>
-</pre></div>
-</div>
+<dd><p class="first">Run failing application with XRT logging enabled in <code class="docutils literal notranslate"><span class="pre">xrt.ini</span></code> file</p>
+<blockquote class="last">
+<div>[Runtime]
+runtime_log=my_run.log</div></blockquote>
 </dd>
 </dl>
 </div>
@@ -198,18 +203,17 @@ function OptanonWrapper() { }
 </pre></div>
 </div>
 <p>Check if XRT can see the board and reports sane values</p>
-<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">scan</span>
-<span class="n">xbutil</span> <span class="n">query</span>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">examine</span>
 </pre></div>
 </div>
 </dd>
 <dt>XSA Sanity Test</dt>
-<dd><p class="first">Card validation on kernel, bandwidth, dmatest and etc. (-d for pointing a specific board)</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">validate</span> <span class="o">-</span><span class="n">d</span> <span class="mi">0</span>
+<dd><p class="first">Card validation on kernel, bandwidth, dmatest and etc. (–device &lt;bdf&gt; for pointing a specific board)</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">validate</span> <span class="o">--</span><span class="n">device</span> <span class="o">&lt;</span><span class="n">bdf</span><span class="o">&gt;</span>
 </pre></div>
 </div>
 <p>Check DDR and PCIe bandwidth</p>
-<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">dmatest</span>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">validate</span> <span class="o">--</span><span class="n">device</span> <span class="o">&lt;</span><span class="n">bdf</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">run</span> <span class="n">dma</span>
 </pre></div>
 </div>
 </dd>
@@ -219,15 +223,15 @@ function OptanonWrapper() { }
 <h2>Common Reasons For Failures<a class="headerlink" href="#common-reasons-for-failures" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="incorrect-memory-topology-usage">
 <h3>Incorrect Memory Topology Usage<a class="headerlink" href="#incorrect-memory-topology-usage" title="Permalink to this headline">¶</a></h3>
-<p>5.0+ XSAs are considered dynamic platforms which use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section of xclbin. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified in flags to xclAllocBO() and xclAllocUserPtr().</p>
-<p>If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable XRT logging in <a class="reference internal" href="xrt_ini.html#xrt-ini-rst"><span class="std std-ref">Configuration File xrt.ini</span></a> and then carefully go through all buffer allocation requests.</p>
+<p>5.0+ XSAs are considered dynamic platforms which use sparse connectivity between acceleration kernels and memory controllers (MIGs). This means that a kernel port can only read/write from/to a specific MIG. This connectivity is frozen at xclbin generation time in specified in mem_topology section of xclbin. The host application needs to ensure that it uses the correct memory banks for buffer allocation using cl_mem_ext_ptr_t for OpenCL applications. For XRT native applications the bank is specified when allocating buffer using <code class="docutils literal notranslate"><span class="pre">xrt::kernel::group_id()</span></code>.</p>
+<p>If an application is producing incorrect results it is important to review the host code to ensure that host application and xclbin agree on memory topology. One way to validate this at runtime is to enable XRT logging in <code class="docutils literal notranslate"><span class="pre">xrt.ini</span></code> and then carefully go through all buffer allocation requests.</p>
 </div>
 <div class="section" id="memory-read-before-write">
 <h3>Memory Read Before Write<a class="headerlink" href="#memory-read-before-write" title="Permalink to this headline">¶</a></h3>
 <p>Read-Before-Write in 5.0+ XSAs will cause MIG <em>ECC</em> error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if – since the last bitstream download which results in MIG initialization – no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:</p>
 <ol class="arabic simple">
-<li>CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show that the CU is stuck in <em>BUSY</em> state and not making progress.</li>
-<li>AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with <em>SIGBUS</em> signal. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show if an AXI Firewall has indeed tripped including its timestamp.</li>
+<li>CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span> <span class="pre">--report</span> <span class="pre">dynamic-regions</span></code> will show that the CU is stuck in <em>BUSY</em> state and not making progress.</li>
+<li>AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with <em>SIGBUS</em> signal. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span> <span class="pre">--report</span> <span class="pre">firewall</span></code> will show if an AXI Firewall has indeed tripped including its timestamp.</li>
 </ol>
 <p>Users should review the host code carefully. One common example is compression where the size of the compressed data is not known upfront and an application may try to migrate more data to host than was produced by the kernel.</p>
 </div>
@@ -245,22 +249,22 @@ kernels will demonstrate weird behavior.</p>
 <li>When run several times, a CU may produce correct results a few times and incorrect results rest of the time</li>
 <li>A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct — typically 64 bytes or one AXI burst — segment followed by incorrect segments are generated.</li>
 </ol>
-<p>Users should check the frequency of the board with <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> and compare it against the metadata in xclbin. <code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code> may be used to extract metadata from xclbin.</p>
+<p>Users should check the frequency of the board with <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span> <span class="pre">--report</span> <span class="pre">platform</span></code> and compare it against the metadata in xclbin. <code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code> may be used to extract metadata from xclbin.</p>
 </div>
 <div class="section" id="cu-deadlock">
 <h3>CU Deadlock<a class="headerlink" href="#cu-deadlock" title="Permalink to this headline">¶</a></h3>
-<p>HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> where the CU will appear stuck in <em>START</em> or <em>—</em> state. Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.</p>
+<p>HLS scheduler bugs can also result in CU hangs. CU deadlocks AXI data bus at which point neither read nor write operation can make progress. The deadlocks can be observed with <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span> <span class="pre">--report</span> <span class="pre">dynamic-regions</span></code> where the CU will appear stuck in <em>START</em> or <em>—</em> state (can also be observed through debug-ip using the command <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span> <span class="pre">--report</span> <span class="pre">debug-ip-status</span></code>). Note this deadlock can cause other CUs which read/write from/to the same MIG to also hang.</p>
 </div>
 <div class="section" id="axi-bus-deadlock">
 <h3>AXI Bus Deadlock<a class="headerlink" href="#axi-bus-deadlock" title="Permalink to this headline">¶</a></h3>
-<p>AXI Bus deadlocks can be caused by <a class="reference internal" href="#memory-read-before-write">Memory Read Before Write</a> or <a class="reference internal" href="#cu-deadlock">CU Deadlock</a> described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> to check if CU is stuck in <em>START</em> or <em>–</em> state or if one of the AXI Firewall has tripped. If CU seems stuck we can confirm the deadlock by running <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">status</span></code> which should list and performance counter values. Optionally run <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">dmatest</span></code> which will force transfer over the deadlocked bus causing either DMA timeout or AXI Firewall trip.</p>
+<p>AXI Bus deadlocks can be caused by <a class="reference internal" href="#memory-read-before-write">Memory Read Before Write</a> or <a class="reference internal" href="#cu-deadlock">CU Deadlock</a> described above. These usually show up as CU hang and sometimes may cause AXI FireWall to trip. Run <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--device</span> <span class="pre">--report</span> <span class="pre">dynamic-regions</span></code> and <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--device</span> <span class="pre">--report</span> <span class="pre">firewall</span></code> to check if CU is stuck in <em>START</em> or <em>–</em> state or if one of the AXI Firewall has tripped.</p>
 </div>
 <div class="section" id="platform-bugs">
 <h3>Platform Bugs<a class="headerlink" href="#platform-bugs" title="Permalink to this headline">¶</a></h3>
 <dl class="docutils">
 <dt>Bitsream Download Failures</dt>
 <dd><p class="first">Bitstream download failures are usually
-caused because of incompatible <code class="docutils literal notranslate"><span class="pre">xclbin</span></code>s. <code class="docutils literal notranslate"><span class="pre">dmesg</span></code> log would
+caused because of incompatible xclbin(s). <code class="docutils literal notranslate"><span class="pre">dmesg</span></code> log would
 provide more insight into why the download failed. At OpenCL level
 they usually manifest as Invalid Binary (error -44).</p>
 <p class="last">Rarely MIG calibration might fail after bitstream download. This
@@ -275,7 +279,7 @@ messages in <code class="docutils literal notranslate"><span class="pre">dmesg</
 <div class="section" id="board-in-crashed-state">
 <h2>Board in Crashed State<a class="headerlink" href="#board-in-crashed-state" title="Permalink to this headline">¶</a></h2>
 <p>When board is in crashed state PCIe read operations start returning
-<code class="docutils literal notranslate"><span class="pre">0XFF</span></code>. In this state <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> query would show bizarre
+<code class="docutils literal notranslate"><span class="pre">0XFF</span></code>. In this state <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code> would show bizarre
 metrics. For example <code class="docutils literal notranslate"><span class="pre">Temp</span></code> would be very high. Boards in crashed state
 may be recovered with PCIe hot reset</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">reset</span>
@@ -285,7 +289,7 @@ may be recovered with PCIe hot reset</p>
 <p>If for some reason communication between xocl driver and management driver gets disrupted, <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code> may not be successful to reset the board. In those cases the following steps are recommended with the help of the sysadmin who has the root previledge</p>
 <ol class="arabic simple">
 <li>unload xocl driver (also shut down VM if xocl is running on a VM)</li>
-<li>Run <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span> <span class="pre">--hot</span></code></li>
+<li>Run <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span></code></li>
 </ol>
 </div>
 <div class="section" id="xrt-scheduling-options">
@@ -302,8 +306,7 @@ may be recovered with PCIe hot reset</p>
 <p>When creating bug reports please include the following:</p>
 <ol class="arabic simple">
 <li>Output of <code class="docutils literal notranslate"><span class="pre">dmesg</span></code></li>
-<li>Output of <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code></li>
-<li>Output of <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">scan</span></code></li>
+<li>Output of <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--device</span> <span class="pre">--report</span> <span class="pre">all</span></code></li>
 <li>Application binaries: xclbin, host executable and code, any data files used by the application</li>
 <li>XRT version</li>
 <li>XSA name and version</li>
@@ -325,7 +328,7 @@ may be recovered with PCIe hot reset</p>
                   </style>
 				  
 				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="security.html" class="btn btn-neutral float-left" title="Security of Alveo Platform" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="pyxrt.html" class="btn btn-neutral float-left" title="XRT Python Bindings" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

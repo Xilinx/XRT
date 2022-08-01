@@ -1,6 +1,7 @@
 <map id="/scratch/DOC/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h" name="/scratch/DOC/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h">
-<area shape="rect" id="node1" title=" " alt="" coords="107,5,301,61"/>
-<area shape="rect" id="node2" href="$xrt__device_8h.html" title=" " alt="" coords="111,109,297,165"/>
-<area shape="rect" id="node3" href="$xrt__kernel_8h.html" title=" " alt="" coords="5,213,192,269"/>
-<area shape="rect" id="node4" href="$xrt__ip_8h.html" title=" " alt="" coords="216,213,403,269"/>
+<area shape="rect" id="node1" title=" " alt="" coords="117,5,311,61"/>
+<area shape="rect" id="node2" href="$xrt__device_8h.html" title=" " alt="" coords="121,109,307,165"/>
+<area shape="rect" id="node3" href="$xrt__kernel_8h.html" title=" " alt="" coords="15,213,202,269"/>
+<area shape="rect" id="node5" href="$xrt__ip_8h.html" title=" " alt="" coords="226,213,413,269"/>
+<area shape="rect" id="node4" href="$xrt__mailbox_8h.html" title=" " alt="" coords="5,317,212,373"/>
 </map>

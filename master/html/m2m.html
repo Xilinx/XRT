@@ -101,9 +101,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -115,11 +116,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -150,8 +156,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="memory-to-memory-m2m">
-<span id="m2m-rst"></span><h1>Memory-to-Memory (M2M)<a class="headerlink" href="#memory-to-memory-m2m" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="m2m-rst"></span><div class="section" id="memory-to-memory-m2m">
+<h1>Memory-to-Memory (M2M)<a class="headerlink" href="#memory-to-memory-m2m" title="Permalink to this headline">¶</a></h1>
 <p>Some of the recent Alveo cards support direct Memory to Memory (M2M) data transfer whithin the card, improving the data transfer performance
 as data does not need to be transferred via host while moving from one DDR bank to another.</p>
 <div class="section" id="example-scenario">

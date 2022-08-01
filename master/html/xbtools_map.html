@@ -11,7 +11,7 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
-  <title>Legacy to new map &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Utility Migration Guide &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -26,7 +26,7 @@ function OptanonWrapper() { }
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="XRT Setup for Embedded Flow" href="yocto.html" />
-    <link rel="prev" title="xbmgmt (Next Generation)" href="xbmgmt2.html" /> 
+    <link rel="prev" title="xbtop" href="xbtop.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -97,11 +97,13 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Legacy to new map</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Utility Migration Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil">xbutil</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbmgmt">xbmgmt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#few-examples-of-legacy-vs-new-commands">Few examples of legacy vs new commands</a></li>
 </ul>
 </li>
 </ul>
@@ -115,11 +117,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -140,7 +147,7 @@ function OptanonWrapper() { }
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Legacy to new map</li>
+      <li>Utility Migration Guide</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/xbtools_map.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -150,8 +157,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="legacy-to-new-map">
-<span id="xbtools-map-rst"></span><h1>Legacy to new map<a class="headerlink" href="#legacy-to-new-map" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="xbtools-map-rst"></span><div class="section" id="utility-migration-guide">
+<h1>Utility Migration Guide<a class="headerlink" href="#utility-migration-guide" title="Permalink to this headline">¶</a></h1>
 <p>This document maps the legacy <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands to the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. It lists out the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> calls that replace the existing calls. A few points:</p>
 <blockquote>
 <div><ol class="arabic simple">
@@ -160,15 +167,15 @@ function OptanonWrapper() { }
 <li>The new command opions have both short and long format, for example <code class="docutils literal notranslate"><span class="pre">-d</span></code> or <code class="docutils literal notranslate"><span class="pre">--device</span></code>. In the table below, only the longer option format is used.</li>
 </ol>
 </div></blockquote>
-<p>You may refer the documentation of the new tools in the following links <a class="reference internal" href="xbutil2.html#xbutil2-rst"><span class="std std-ref">xbutil (Next Generation)</span></a> and <a class="reference internal" href="xbmgmt2.html#xbmgmt2-rst"><span class="std std-ref">xbmgmt (Next Generation)</span></a> .</p>
+<p>You may refer the documentation of the new tools in the following links <a class="reference internal" href="xbutil.html"><span class="doc">xbutil</span></a> and <a class="reference internal" href="xbmgmt.html"><span class="doc">xbmgmt</span></a> .</p>
 <div class="section" id="xbutil">
 <h2>xbutil<a class="headerlink" href="#xbutil" title="Permalink to this headline">¶</a></h2>
 <table border="1" class="docutils">
 <colgroup>
-<col width="19%" />
-<col width="19%" />
-<col width="30%" />
-<col width="32%" />
+<col width="18%" />
+<col width="20%" />
+<col width="29%" />
+<col width="33%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Subcommand
@@ -187,75 +194,136 @@ New</th>
 <td>&#160;</td>
 <td>&#160;</td>
 </tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">reset</span></code></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">version</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--version</span></code></td>
+<td>&#160;</td>
+<td>&#160;</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">reset</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">reset</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">validate</span></code></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">validate</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">validate</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">-q</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">quick</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">&lt;testname&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">&lt;type&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--output</span> <span class="pre">&lt;file&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">scan</span></code></td>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">scan</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">examine</span></code></td>
 <td>&#160;</td>
 <td>&#160;</td>
 </tr>
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">query</span></code></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">query</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">examine</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--report</span> <span class="pre">&lt;list&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--output</span> <span class="pre">&lt;file&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">dump</span></code></td>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">dump</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">examine</span></code></td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">&lt;type&gt;</span></code></td>
-</tr>
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">top</span></code></td>
-<td><code class="docutils literal notranslate"><span class="pre">top</span></code></td>
-<td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
-<td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
 <tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">program</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">program</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">dmatest</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">validate</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+</tr>
+<tr class="row-odd"><td>&#160;</td>
+<td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">DMA</span></code></td>
+</tr>
 <tr class="row-even"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">-b</span> <span class="pre">&lt;blksize</span> <span class="pre">kb&gt;</span></code></td>
+<td>n/a</td>
+</tr>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">&lt;xclbin&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">&lt;xclbin&gt;</span></code></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">host_mem</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">configure</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+</tr>
+<tr class="row-odd"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--enable</span></code>
+<code class="docutils literal notranslate"><span class="pre">--size</span> <span class="pre">&lt;sz&gt;</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--host-mem</span> <span class="pre">enable</span></code>
+<code class="docutils literal notranslate"><span class="pre">--size</span> <span class="pre">&lt;sz&gt;</span></code></td>
+</tr>
+<tr class="row-even"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--disable</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--host-mem</span> <span class="pre">disable</span></code></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">p2p</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">configure</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+</tr>
+<tr class="row-even"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--enable</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--p2p</span> <span class="pre">enable</span></code></td>
+</tr>
+<tr class="row-odd"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--disable</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--p2p</span> <span class="pre">disable</span></code></td>
+</tr>
+<tr class="row-even"><td>&#160;</td>
+<td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--p2p</span> <span class="pre">validate</span></code></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">mem</span></code></td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--read</span></code>
+<code class="docutils literal notranslate"><span class="pre">--write</span></code></td>
+<td>Not Supported</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">top</span></code></td>
+<td colspan="3">separate <code class="docutils literal notranslate"><span class="pre">xbtop</span></code> command</td>
 </tr>
 </tbody>
 </table>
@@ -265,9 +333,9 @@ New</th>
 <table border="1" class="docutils">
 <colgroup>
 <col width="15%" />
-<col width="13%" />
-<col width="32%" />
-<col width="40%" />
+<col width="15%" />
+<col width="31%" />
+<col width="39%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Subcommand
@@ -286,74 +354,145 @@ New</th>
 <td>&#160;</td>
 <td>&#160;</td>
 </tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">flash</span></code></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">version</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--version</span></code></td>
+<td>&#160;</td>
+<td>&#160;</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">flash</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">program</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--update</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--base</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--update</span> <span class="pre">--shell</span> <span class="pre">&lt;name&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--base</span> <span class="pre">--image</span> <span class="pre">&lt;name</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--factory_reset</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--revert-to-golden</span></code></td>
 </tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">partition</span></code></td>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">partition</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">program</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--card</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--program</span></code>
 <code class="docutils literal notranslate"><span class="pre">--name</span> <span class="pre">&lt;shell</span> <span class="pre">name&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--shell</span> <span class="pre">&lt;shell-file</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--path</span> <span class="pre">&lt;xclbin</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">&lt;xclbin</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">scan</span></code></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">scan</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">examine</span></code></td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--report</span> <span class="pre">host</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">examine</span></code></td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--report</span> <span class="pre">&lt;list&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">&lt;type&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--output</span> <span class="pre">&lt;file&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">reset</span></code></td>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">reset</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">reset</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">config</span></code></td>
+<td>&#160;</td>
+<td><p class="first"><code class="docutils literal notranslate"><span class="pre">--enable_retention</span></code></p>
+<p class="last"><code class="docutils literal notranslate"><span class="pre">--disable_retention</span></code></p>
+</td>
+<td>To be implemented in next release</td>
+</tr>
 </tbody>
 </table>
+</div>
+<div class="section" id="few-examples-of-legacy-vs-new-commands">
+<h2>Few examples of legacy vs new commands<a class="headerlink" href="#few-examples-of-legacy-vs-new-commands" title="Permalink to this headline">¶</a></h2>
+<p>Here are few example use-cases of legacy vs new commands</p>
+<p><strong>1. Getting all the information obtained from the userspace kernel driver</strong></p>
+<p><strong>Legacy command</strong></p>
+<p>There were two variants of legacy commands</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil query
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil dump
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil examine --device <span class="m">0000</span>:b3:00.1 --report all
+</pre></div>
+</div>
+<p><strong>2. Validate the card</strong></p>
+<p><strong>Legacy command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil validate
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil validate --device <span class="m">0000</span>:b3:00.1
+</pre></div>
+</div>
+<p><strong>3. Obtaining platform information such as SC version, flashed partition(s) running on the card, etc.</strong></p>
+<p><strong>Legacy command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt  flash --scan
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt examine --device <span class="m">0000</span>:b3:00.0 --report platform
+</pre></div>
+</div>
+<p>You need to use a combination of <code class="docutils literal notranslate"><span class="pre">xball</span> <span class="pre">xbmgmt</span></code> command if you prefer to see information from all the cards attached to the host server. Please see <code class="docutils literal notranslate"><span class="pre">xball</span></code> page for more details.</p>
+<p><strong>4. Programming the base partition</strong></p>
+<p><strong>Legacy command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt --update --shell &lt;partition name&gt;
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program --base --device <span class="m">0000</span>:d8:00.0 --base
+</pre></div>
+</div>
+<p>or when a specific partition to choose</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program --base --device <span class="m">0000</span>:d8:00.0 --base --image &lt;partition name&gt;
+</pre></div>
+</div>
+<p><strong>5. Resetting the device</strong></p>
+<p><strong>Legacy command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil --reset
+</pre></div>
+</div>
+<p><strong>New command</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil --reset --device <span class="m">0000</span>:d8:00.1
+</pre></div>
+</div>
 </div>
 </div>
 
@@ -371,7 +510,7 @@ New</th>
                   </style>
 				  
 				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="xbmgmt2.html" class="btn btn-neutral float-left" title="xbmgmt (Next Generation)" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="xbtop.html" class="btn btn-neutral float-left" title="xbtop" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="yocto.html" class="btn btn-neutral float-right" title="XRT Setup for Embedded Flow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

@@ -104,9 +104,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -118,11 +119,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -153,8 +159,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="xma-upper-edge-api-library">
-<span id="xmakernels-main-rst"></span><h1>XMA Upper Edge API Library<a class="headerlink" href="#xma-upper-edge-api-library" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="xmakernels-main-rst"></span><div class="section" id="xma-upper-edge-api-library">
+<h1>XMA Upper Edge API Library<a class="headerlink" href="#xma-upper-edge-api-library" title="Permalink to this headline">¶</a></h1>
 <p><strong>XMA Application Interface</strong></p>
 <p>The interface used by stand-alone XMA applications or plugins</p>
 <dl class="function">
@@ -433,7 +439,7 @@ xma_dec_session_create</dd>
 <dl class="function">
 <dt id="c.xma_dec_session_send_data">
 int32_t <code class="descname">xma_dec_session_send_data</code><span class="sig-paren">(</span>XmaDecoderSession *<em>&nbsp;session</em>, XmaDataBuffer *<em>&nbsp;data</em>, int32_t *<em>&nbsp;data_used</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_send_data" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function invokes plugin-&gt;send_data fucntion assigned to this session which handles sending data to the hardware decoder. Plugin and media framework (like FFMPEG) may handle events like errors, no empty lookup buffer, no output data, end of input stream, etc using XMA_FLUSH_AGAIN, XMA_TRY_AGAIN, XMA_SEND_MORE_DATA, XMA_EOS, XMA_ERROR, etc return codes</p>
+<dd><p>This function invokes plugin-&gt;send_data fucntion assigned to this session which handles sending data to the hardware decoder.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -445,6 +451,11 @@ int32_t <code class="descname">xma_dec_session_send_data</code><span class="sig-
 <dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">data_used</span></code></dt>
 <dd>Pointer to an integer to receive the amount of data used</dd>
 </dl>
+<p><strong>Description</strong></p>
+<p>Plugin and media framework (like FFMPEG) may handle events like
+errors, no empty lookup buffer, no output data, end of input stream, etc using
+XMA_FLUSH_AGAIN, XMA_TRY_AGAIN, XMA_SEND_MORE_DATA, XMA_EOS,
+XMA_ERROR, etc return codes</p>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
 <p>XMA_ERROR on error.</p>
@@ -467,7 +478,7 @@ int32_t <code class="descname">xma_dec_session_get_properties</code><span class=
 <dl class="function">
 <dt id="c.xma_dec_session_recv_frame">
 int32_t <code class="descname">xma_dec_session_recv_frame</code><span class="sig-paren">(</span>XmaDecoderSession *<em>&nbsp;session</em>, XmaFrame *<em>&nbsp;frame</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_recv_frame" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function invokes plugin-&gt;recv_frame assigned to this session which handles obtaining output frame from the hardware decoder. This function returns a frame if one is available. This function is called after calling the function xma_dec_session_send_data. If a frame is not ready to be returned, plugin function should return -1. In addition, the frame pointer should be set to NULL. If a frame is ready, a pointer to the frame will be set to a non-NULL value.</p>
+<dd><p>This function invokes plugin-&gt;recv_frame assigned to this session which handles obtaining output frame from the hardware decoder. This function returns a frame if one is available.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -477,6 +488,12 @@ int32_t <code class="descname">xma_dec_session_recv_frame</code><span class="sig
 <dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt>
 <dd>Pointer to a frame containing decoded data</dd>
 </dl>
+<p><strong>Description</strong></p>
+<p>This function is called after calling the function xma_dec_session_send_data.
+If a frame is not ready to be returned, plugin function should return -1.  In addition, the</p>
+<blockquote>
+<div>frame pointer should be set to NULL.  If a frame is ready, a pointer to the frame
+will be set to a non-NULL value.</div></blockquote>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
 <p>XMA_ERROR on error.</p>

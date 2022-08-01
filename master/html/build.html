@@ -106,9 +106,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -120,11 +121,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -155,8 +161,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="building-the-xrt-software-stack">
-<span id="build-rst"></span><h1>Building the XRT Software Stack<a class="headerlink" href="#building-the-xrt-software-stack" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="build-rst"></span><div class="section" id="building-the-xrt-software-stack">
+<h1>Building the XRT Software Stack<a class="headerlink" href="#building-the-xrt-software-stack" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="building-the-xrt-installation-package">
 <h2>Building the XRT Installation Package<a class="headerlink" href="#building-the-xrt-installation-package" title="Permalink to this headline">¶</a></h2>
 <div class="section" id="installing-building-dependencies">

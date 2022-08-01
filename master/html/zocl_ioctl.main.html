@@ -97,9 +97,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -111,11 +112,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -146,8 +152,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="zocl-driver-interfaces">
-<span id="zocl-ioctl-main-rst"></span><h1>ZOCL Driver Interfaces<a class="headerlink" href="#zocl-driver-interfaces" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="zocl-ioctl-main-rst"></span><div class="section" id="zocl-driver-interfaces">
+<h1>ZOCL Driver Interfaces<a class="headerlink" href="#zocl-driver-interfaces" title="Permalink to this headline">¶</a></h1>
 <p><strong>A GEM style driver for Xilinx edge based accelerators</strong></p>
 <p>File <em>zynq_ioctl.h</em> defines ioctl command codes and associated structures for interacting with
 <em>zocl</em> driver for Xilinx FPGA platforms(Zynq/ZynqMP/Versal).</p>
@@ -546,6 +552,7 @@ struct <code class="descname">kernel_info</code><a class="headerlink" href="#c.k
 <p><strong>Definition</strong></p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">kernel_info</span> <span class="p">{</span>
   <span class="n">char</span> <span class="n">name</span><span class="p">;</span>
+  <span class="n">uint32_t</span> <span class="nb">range</span><span class="p">;</span>
   <span class="nb">int</span> <span class="n">anums</span><span class="p">;</span>
   <span class="n">struct</span> <span class="n">argument_info</span> <span class="n">args</span><span class="p">;</span>
 <span class="p">};</span>
@@ -555,6 +562,8 @@ struct <code class="descname">kernel_info</code><a class="headerlink" href="#c.k
 <dl class="docutils">
 <dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt>
 <dd>kernel name</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">range</span></code></dt>
+<dd>kernel range</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">anums</span></code></dt>
 <dd>number of argument</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">args</span></code></dt>
@@ -589,6 +598,8 @@ struct <code class="descname">drm_zocl_axlf</code><a class="headerlink" href="#c
   <span class="n">uint32_t</span> <span class="n">za_flags</span><span class="p">;</span>
   <span class="nb">int</span> <span class="n">za_ksize</span><span class="p">;</span>
   <span class="n">char</span> <span class="o">*</span> <span class="n">za_kernels</span><span class="p">;</span>
+  <span class="n">uint32_t</span> <span class="n">za_slot_id</span><span class="p">;</span>
+  <span class="n">uint8_t</span> <span class="n">hw_gen</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
 </div>
@@ -602,6 +613,10 @@ struct <code class="descname">drm_zocl_axlf</code><a class="headerlink" href="#c
 <dd>size of kernels in bytes</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">za_kernels</span></code></dt>
 <dd>pointer of argument array</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">za_slot_id</span></code></dt>
+<dd>xclbin slot</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">hw_gen</span></code></dt>
+<dd>aie generation</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_zocl_sk_getcmd">
@@ -615,7 +630,9 @@ struct <code class="descname">drm_zocl_sk_getcmd</code><a class="headerlink" hre
   <span class="n">uint32_t</span> <span class="n">start_cuidx</span><span class="p">;</span>
   <span class="n">uint32_t</span> <span class="n">cu_nums</span><span class="p">;</span>
   <span class="n">char</span> <span class="n">name</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">bohdl</span><span class="p">;</span>
+  <span class="nb">int</span> <span class="n">bohdl</span><span class="p">;</span>
+  <span class="nb">int</span> <span class="n">meta_bohdl</span><span class="p">;</span>
+  <span class="n">unsigned</span> <span class="n">char</span> <span class="n">uuid</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
 </div>
@@ -631,6 +648,10 @@ struct <code class="descname">drm_zocl_sk_getcmd</code><a class="headerlink" hre
 <dd>symbol name of soft kernel</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">bohdl</span></code></dt>
 <dd>BO to hold soft kernel image</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">meta_bohdl</span></code></dt>
+<dd>BO to hold metadata</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uuid</span></code></dt>
+<dd>UUID for the xclbin</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_zocl_aie_cmd">
@@ -664,7 +685,7 @@ struct <code class="descname">drm_zocl_sk_create</code><a class="headerlink" hre
 <p><strong>Definition</strong></p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_sk_create</span> <span class="p">{</span>
   <span class="n">uint32_t</span> <span class="n">cu_idx</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
+  <span class="nb">int</span> <span class="n">handle</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
 </div>

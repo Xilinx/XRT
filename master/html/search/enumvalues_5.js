@@ -1,6 +1,4 @@
 var searchData=
 [
-  ['hbm_231',['hbm',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fae65e9faeec18c95733e43fb7b188ad85',1,'xrt::xclbin::mem']]],
-  ['host_232',['host',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa67b3dba8bc6778101892eb77249db32e',1,'xrt::xclbin::mem']]],
-  ['host_5fonly_233',['host_only',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda58a6d9caf38ddb91ad23015bcfc97abd',1,'xrt::bo']]]
+  ['fa_321',['fa',['../classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa89e6d2b383471fc370d828e552c19e65',1,'xrt::xclbin::ip']]]
 ];

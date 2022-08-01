@@ -69,7 +69,8 @@ $(function() {
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#namespaces">Namespaces</a> &#124;
 <a href="#typedef-members">Typedefs</a> &#124;
-<a href="#enum-members">Enumerations</a>  </div>
+<a href="#enum-members">Enumerations</a> &#124;
+<a href="#func-members">Functions</a>  </div>
   <div class="headertitle">
 <div class="title">xrt_device.h File Reference</div>  </div>
 </div><!--header-->
@@ -77,21 +78,23 @@ $(function() {
 <div class="textblock"><code>#include &quot;xrt.h&quot;</code><br />
 <code>#include &quot;<a class="el" href="xrt__uuid_8h_source.html">xrt/xrt_uuid.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="xrt__xclbin_8h_source.html">experimental/xrt_xclbin.h</a>&quot;</code><br />
+<code>#include &quot;xrt/detail/abi.h&quot;</code><br />
+<code>#include &quot;xrt/detail/any.h&quot;</code><br />
 <code>#include &quot;xrt/detail/param_traits.h&quot;</code><br />
 <code>#include &lt;memory&gt;</code><br />
-<code>#include &lt;boost/any.hpp&gt;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for xrt_device.h:</div>
 <div class="dyncontent">
 <div class="center"><img src="xrt__device_8h__incl.png" border="0" usemap="#_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__device_8h" alt=""/></div>
 <map name="_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__device_8h" id="_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__device_8h">
-<area shape="rect" title=" " alt="" coords="279,5,466,61"/>
+<area shape="rect" title=" " alt="" coords="353,5,539,61"/>
 <area shape="rect" title=" " alt="" coords="5,184,57,211"/>
 <area shape="rect" href="xrt__uuid_8h.html" title=" " alt="" coords="82,184,191,211"/>
 <area shape="rect" href="xrt__xclbin_8h.html" title=" " alt="" coords="174,109,363,136"/>
-<area shape="rect" title=" " alt="" coords="388,109,568,136"/>
-<area shape="rect" title=" " alt="" coords="593,109,670,136"/>
-<area shape="rect" title=" " alt="" coords="694,109,806,136"/>
+<area shape="rect" title=" " alt="" coords="387,109,505,136"/>
+<area shape="rect" title=" " alt="" coords="528,109,647,136"/>
+<area shape="rect" title=" " alt="" coords="671,109,851,136"/>
+<area shape="rect" title=" " alt="" coords="875,109,953,136"/>
 <area shape="rect" title=" " alt="" coords="89,259,184,285"/>
 <area shape="rect" title=" " alt="" coords="418,259,477,285"/>
 <area shape="rect" title=" " alt="" coords="216,184,289,211"/>
@@ -105,9 +108,10 @@ This graph shows which files directly or indirectly include this file:</div>
 <div class="dyncontent">
 <div class="center"><img src="xrt__device_8h__dep__incl.png" border="0" usemap="#_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__device_8hdep" alt=""/></div>
 <map name="_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__device_8hdep" id="_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__device_8hdep">
-<area shape="rect" title=" " alt="" coords="111,5,297,61"/>
-<area shape="rect" href="xrt__kernel_8h.html" title=" " alt="" coords="5,109,192,165"/>
-<area shape="rect" href="xrt__ip_8h.html" title=" " alt="" coords="216,109,403,165"/>
+<area shape="rect" title=" " alt="" coords="121,5,307,61"/>
+<area shape="rect" href="xrt__kernel_8h.html" title=" " alt="" coords="15,109,202,165"/>
+<area shape="rect" href="xrt__ip_8h.html" title=" " alt="" coords="226,109,413,165"/>
+<area shape="rect" href="xrt__mailbox_8h.html" title=" " alt="" coords="5,213,212,269"/>
 </map>
 </div>
 </div>
@@ -144,11 +148,32 @@ Enumerations</h2></td></tr>
 &#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4d65d483f53fd19eea5625721976b41e">xrt::info::device::m2m</a>, 
 <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aab068931cc450442b63f5b3d276ea4297">xrt::info::device::name</a>, 
 <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa360c16c37a28c145390c2155a4640dde">xrt::info::device::nodma</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa27a21354321dfbc28f0cb17b995bb9ca">xrt::info::device::offline</a>
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa27a21354321dfbc28f0cb17b995bb9ca">xrt::info::device::offline</a>, 
+<br />
+&#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa9d05d847ad3bf54e136d0bcdbf223aff">xrt::info::device::electrical</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa26a27f04d02b653b4b5b77b5d11d7bb9">xrt::info::device::thermal</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa7e3fdeae0d52916ea5c86c7e5291f5be">xrt::info::device::mechanical</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aacd69b4957f06cd818d7bf3d61980e291">xrt::info::device::memory</a>, 
+<br />
+&#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa34a6e5d64ade17ef4e51612c50dd72f5">xrt::info::device::platform</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aab44657f9077b7ce4684c449e5144e02e">xrt::info::device::pcie_info</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa67b3dba8bc6778101892eb77249db32e">xrt::info::device::host</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aaee998746ac0f9a4a542ba851c5d67041">xrt::info::device::aie</a>, 
+<br />
+&#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa81f8fb4ba59f55acb77c9927bb79df08">xrt::info::device::aie_shim</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aabf6e19331b5e8553e0cb930c1457eb3d">xrt::info::device::dynamic_regions</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4a64b1714b324eda3928be5f063f7b59">xrt::info::device::vmr</a>
 <br />
  }</td></tr>
 <tr class="memdesc:a7a27ce3a06c2a28f53579eb4f02a829a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Device information parameters.  <a href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a">More...</a><br /></td></tr>
 <tr class="separator:a7a27ce3a06c2a28f53579eb4f02a829a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
+Functions</h2></td></tr>
+<tr class="memitem:a275e303402d6e4f69d4e1eff0b149e68"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt.html#a275e303402d6e4f69d4e1eff0b149e68">xrt::operator==</a> (const device &amp;d1, const device &amp;d2)</td></tr>
+<tr class="separator:a275e303402d6e4f69d4e1eff0b149e68"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab050360d4970ca936ac2566b666d5645"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacexrt.html#ab050360d4970ca936ac2566b666d5645">xrt::operator!=</a> (const device &amp;d1, const device &amp;d2)</td></tr>
+<tr class="separator:ab050360d4970ca936ac2566b666d5645"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Typedef Documentation</h2>
 <a id="adfe3b0114657bf4f06299bf397c0d4e0"></a>

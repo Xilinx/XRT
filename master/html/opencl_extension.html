@@ -88,7 +88,6 @@ function OptanonWrapper() { }
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#dma-buf-apis">DMA-BUF APIs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#stream-or-qdma-platform-related-apis">Stream or QDMA Platform Related APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#miscellaneous-other-apis-and-parameter-extension">Miscellaneous other APIs and Parameter extension</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#api-to-get-compute-units-information">API to get Compute Units Information</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#parameter-extension-of-the-api-clgetkernelinfo">Parameter extension of the API <code class="docutils literal notranslate"><span class="pre">clGetKernelInfo</span></code></a></li>
@@ -119,9 +118,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -133,11 +133,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -168,8 +173,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="xilinx-opencl-extension">
-<span id="opencl-extension-rst"></span><h1>Xilinx OpenCL extension<a class="headerlink" href="#xilinx-opencl-extension" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="opencl-extension-rst"></span><div class="section" id="xilinx-opencl-extension">
+<h1>Xilinx OpenCL extension<a class="headerlink" href="#xilinx-opencl-extension" title="Permalink to this headline">¶</a></h1>
 <p>Please follow the general OpenCL guidelines to compile host applications that uses XRT OpenCL API with Xilinx OpenCL extensions.
 Xilinx OpenCL extension doesn’t require additional compiler features. Normally C99 or C++11 would be good.</p>
 <p>All the OpenCL extensions are described in the file <code class="docutils literal notranslate"><span class="pre">src/include/1_2/CL/cl_ext_xilinx.h</span></code></p>
@@ -253,11 +258,7 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 <li><code class="docutils literal notranslate"><span class="pre">xclGetMemObjectFromFd</span></code>: To obtain OpenCL memory object from FD</li>
 </ul>
 </div></blockquote>
-<p>The example of API usage in the p2p context can be found in OpenCL example code in P2P documentation <a class="reference internal" href="p2p.html#p2p-rst"><span class="std std-ref">PCIe Peer-to-Peer (P2P)</span></a></p>
-</div>
-<div class="section" id="stream-or-qdma-platform-related-apis">
-<h2>Stream or QDMA Platform Related APIs<a class="headerlink" href="#stream-or-qdma-platform-related-apis" title="Permalink to this headline">¶</a></h2>
-<p>For description of Stream or QDMA related APIs are described in OpenCL Streaming documentation <a class="reference internal" href="streaming_data_support.html#streaming-data-support-rst"><span class="std std-ref">XRT Streaming Platform Support</span></a></p>
+<p>The example of API usage in the p2p context can be found in OpenCL example code in P2P documentation <a class="reference internal" href="p2p.html"><span class="doc">PCIe Peer-to-Peer (P2P)</span></a></p>
 </div>
 <div class="section" id="miscellaneous-other-apis-and-parameter-extension">
 <h2>Miscellaneous other APIs and Parameter extension<a class="headerlink" href="#miscellaneous-other-apis-and-parameter-extension" title="Permalink to this headline">¶</a></h2>

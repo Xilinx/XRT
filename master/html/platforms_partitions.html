@@ -109,9 +109,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -123,11 +124,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -158,10 +164,10 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="alveo-platform-loading-overview">
-<span id="platform-partitions-rst"></span><h1>Alveo™ Platform Loading Overview<a class="headerlink" href="#alveo-platform-loading-overview" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="platform-partitions-rst"></span><div class="section" id="alveo-platform-loading-overview">
+<h1>Alveo™ Platform Loading Overview<a class="headerlink" href="#alveo-platform-loading-overview" title="Permalink to this headline">¶</a></h1>
 <p>Alveo platforms are architected as two physical FPGA partitions: <em>Shell</em> and <em>User</em>. Shell provides basic infrastructure
-for the platform like PCIe connectivity, board management, DFX support, sensors, clocking, reset, etc. <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a>
+for the platform like PCIe connectivity, board management, DFX support, sensors, clocking, reset, etc. <a class="reference internal" href="security.html"><span class="doc">Security of Alveo Platform</span></a>
 enumerates the shell functionality in detail. User partition contains user compiled binary called xclbin which is loaded by XRT using
 DFX technology.</p>
 <p>There is a variation of Alveo platform called two stage platform here where the Shell is further split into two partitions: a
@@ -199,7 +205,7 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
 <div class="align-center figure" id="id3">
 <img alt="_images/XSA-shell-partitions-2RP.svg" src="_images/XSA-shell-partitions-2RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for 2RP platform</span></p>
 </div>
-<p>In two stage platforms, Shell partition contains additional shell components such as PCIe DMA engine, AXI Firewalls, Address Re-mapper, ERT, etc. Shell partition is explicitly loaded by system administrator using <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">partition</span></code> command. After Shell partition is loaded, xclmgmt driver posts <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code> message to the xocl driver via mailbox to indicate shell has changed. xocl driver then requests for metadata via <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code> opcode. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA that should be managed by xocl driver. A system administrator can pre-load a Shell based on the workload the system is being provised for. A new Shell xsabin load clobbers previous Shell and User images.</p>
+<p>In two stage platforms, Shell partition contains additional shell components such as PCIe DMA engine, AXI Firewalls, Address Re-mapper, ERT, etc. Shell partition is explicitly loaded by system administrator using <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">program</span> <span class="pre">--shell</span> <span class="pre">&lt;shell-file</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code> command. After Shell partition is loaded, xclmgmt driver posts <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code> message to the xocl driver via mailbox to indicate shell has changed. xocl driver then requests for metadata via <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code> opcode. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA that should be managed by xocl driver. A system administrator can pre-load a Shell based on the workload the system is being provised for. A new Shell xsabin load clobbers previous Shell and User images.</p>
 </div>
 </div>
 <div class="section" id="user">
@@ -207,7 +213,7 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
 <p>User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API <code class="docutils literal notranslate"><span class="pre">xclLoadXclBin()</span></code> and command line utility <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code> to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Refer to <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.</p>
+<p class="last">Refer to <a class="reference internal" href="mailbox.main.html"><span class="doc">Mailbox Subdevice Driver</span></a> for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.</p>
 </div>
 </div>
 </div>

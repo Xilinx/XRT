@@ -97,9 +97,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -111,11 +112,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -146,8 +152,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="xocl-pcie-user-physical-function-driver-interfaces">
-<span id="xocl-ioctl-main-rst"></span><h1>XOCL (PCIe User Physical Function) Driver Interfaces<a class="headerlink" href="#xocl-pcie-user-physical-function-driver-interfaces" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="xocl-ioctl-main-rst"></span><div class="section" id="xocl-pcie-user-physical-function-driver-interfaces">
+<h1>XOCL (PCIe User Physical Function) Driver Interfaces<a class="headerlink" href="#xocl-pcie-user-physical-function-driver-interfaces" title="Permalink to this headline">¶</a></h1>
 <p><strong>A GEM style driver for Xilinx PCIe based accelerators</strong></p>
 <p>File <em>xocl_ioctl.h</em> defines ioctl command codes and associated structures for interacting with
 <em>xocl</em> PCI driver for Xilinx FPGA platforms.</p>
@@ -512,6 +518,29 @@ struct <code class="descname">drm_xocl_copy_bo</code><a class="headerlink" href=
 <dd>src offset</dd>
 </dl>
 <dl class="type">
+<dt id="c.drm_xocl_set_cu_range">
+struct <code class="descname">drm_xocl_set_cu_range</code><a class="headerlink" href="#c.drm_xocl_set_cu_range" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set CU range used with DRM_IOCTL_XOCL_SET_CU_READONLY_RANGE</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_set_cu_range</span> <span class="p">{</span>
+  <span class="n">uint32_t</span> <span class="n">cu_index</span><span class="p">;</span>
+  <span class="n">uint32_t</span> <span class="n">start</span><span class="p">;</span>
+  <span class="n">uint32_t</span> <span class="n">size</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">cu_index</span></code></dt>
+<dd>Index of the compute unit in the device inage for which</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">start</span></code></dt>
+<dd>Start offset of the range</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>Size of the range</dd>
+</dl>
+<dl class="type">
 <dt id="c.argument_info">
 struct <code class="descname">argument_info</code><a class="headerlink" href="#c.argument_info" title="Permalink to this definition">¶</a></dt>
 <dd><p>Kernel argument information</p>
@@ -548,6 +577,7 @@ struct <code class="descname">kernel_info</code><a class="headerlink" href="#c.k
   <span class="n">char</span> <span class="n">name</span><span class="p">;</span>
   <span class="n">uint32_t</span> <span class="nb">range</span><span class="p">;</span>
   <span class="nb">int</span> <span class="n">anums</span><span class="p">;</span>
+  <span class="nb">int</span> <span class="n">features</span><span class="p">;</span>
   <span class="n">struct</span> <span class="n">argument_info</span> <span class="n">args</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
@@ -559,6 +589,8 @@ struct <code class="descname">kernel_info</code><a class="headerlink" href="#c.k
 <dt><code class="docutils literal notranslate"><span class="pre">range</span></code></dt>
 <dd>kernel register range</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">anums</span></code></dt>
+<dd>number of argument</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">features</span></code></dt>
 <dd>number of argument</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">args</span></code></dt>
 <dd>argument array</dd>
@@ -641,6 +673,8 @@ struct <code class="descname">drm_xocl_axlf</code><a class="headerlink" href="#c
   <span class="n">struct</span> <span class="n">axlf</span> <span class="o">*</span> <span class="n">xclbin</span><span class="p">;</span>
   <span class="nb">int</span> <span class="n">ksize</span><span class="p">;</span>
   <span class="n">char</span> <span class="o">*</span> <span class="n">kernels</span><span class="p">;</span>
+  <span class="n">struct</span> <span class="n">drm_xocl_kds</span> <span class="n">kds_cfg</span><span class="p">;</span>
+  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
 </div>
@@ -652,6 +686,10 @@ struct <code class="descname">drm_xocl_axlf</code><a class="headerlink" href="#c
 <dd>size of kernels in bytes</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">kernels</span></code></dt>
 <dd>pointer of argument array</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">kds_cfg</span></code></dt>
+<dd>kds configuration</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt>
+<dd>flags passed while programming xclbin</dd>
 </dl>
 <p><strong>NOTE</strong></p>
 <p>This ioctl will be removed in next release</p>

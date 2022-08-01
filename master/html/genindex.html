@@ -96,9 +96,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -110,11 +111,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -149,16 +155,45 @@ function OptanonWrapper() { }
 
 <div class="genindex-jumpbox">
  <a href="#A"><strong>A</strong></a>
+ | <a href="#B"><strong>B</strong></a>
  | <a href="#D"><strong>D</strong></a>
  | <a href="#E"><strong>E</strong></a>
+ | <a href="#G"><strong>G</strong></a>
  | <a href="#K"><strong>K</strong></a>
+ | <a href="#L"><strong>L</strong></a>
+ | <a href="#M"><strong>M</strong></a>
+ | <a href="#N"><strong>N</strong></a>
+ | <a href="#P"><strong>P</strong></a>
+ | <a href="#R"><strong>R</strong></a>
+ | <a href="#S"><strong>S</strong></a>
+ | <a href="#T"><strong>T</strong></a>
+ | <a href="#U"><strong>U</strong></a>
+ | <a href="#W"><strong>W</strong></a>
  | <a href="#X"><strong>X</strong></a>
  
 </div>
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run.add_callback">add_callback() (pyxrt.run method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.address">address() (pyxrt.bo method)</a>
+</li>
       <li><a href="xocl_ioctl.main.html#c.argument_info">argument_info (C type)</a>, <a href="zocl_ioctl.main.html#c.argument_info">[1]</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="B">B</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo">bo (class in pyxrt)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.flags">bo.flags (class in pyxrt)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -166,6 +201,8 @@ function OptanonWrapper() { }
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.device">device (class in pyxrt)</a>
+</li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_alloc_cma_info">drm_xocl_alloc_cma_info (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_axlf">drm_xocl_axlf (C type)</a>
@@ -200,12 +237,14 @@ function OptanonWrapper() { }
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_reclock_info">drm_xocl_reclock_info (C type)</a>
 </li>
-      <li><a href="xocl_ioctl.main.html#c.drm_xocl_sync_bo">drm_xocl_sync_bo (C type)</a>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_set_cu_range">drm_xocl_set_cu_range (C type)</a>
 </li>
-      <li><a href="xocl_ioctl.main.html#c.drm_xocl_sync_bo_cb">drm_xocl_sync_bo_cb (C type)</a>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_sync_bo">drm_xocl_sync_bo (C type)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_sync_bo_cb">drm_xocl_sync_bo_cb (C type)</a>
+</li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_usage_stat">drm_xocl_usage_stat (C type)</a>
 </li>
       <li><a href="xocl_ioctl.main.html#c.drm_xocl_user_intr">drm_xocl_user_intr (C type)</a>
@@ -252,6 +291,10 @@ function OptanonWrapper() { }
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="ert.main.html#c.ert_abort_cmd">ert_abort_cmd (C type)</a>
 </li>
+      <li><a href="ert.main.html#c.ert_access_valid_cmd">ert_access_valid_cmd (C type)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.ert_cmd_state">ert_cmd_state (class in pyxrt)</a>
+</li>
       <li><a href="ert.main.html#c.ert_configure_cmd">ert_configure_cmd (C type)</a>
 </li>
       <li><a href="ert.main.html#c.ert_configure_sk_cmd">ert_configure_sk_cmd (C type)</a>
@@ -272,12 +315,10 @@ function OptanonWrapper() { }
 </li>
       <li><a href="ert.main.html#c.ERT_CU_OFFSET_ADDR">ERT_CU_OFFSET_ADDR (C function)</a>
 </li>
-      <li><a href="ert.main.html#c.ERT_CUISR_LUT_ADDR">ERT_CUISR_LUT_ADDR (C function)</a>
-</li>
-      <li><a href="ert.main.html#c.ERT_CUSTAT_VERSION_0">ERT_CUSTAT_VERSION_0 (C function)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ert.main.html#c.ERT_CUISR_LUT_ADDR">ERT_CUISR_LUT_ADDR (C function)</a>
+</li>
       <li><a href="ert.main.html#c.ERT_EXIT_CMD">ERT_EXIT_CMD (C function)</a>
 </li>
       <li><a href="ert.main.html#c.ERT_HLS_MODULE_IDLE">ERT_HLS_MODULE_IDLE (C function)</a>
@@ -307,10 +348,152 @@ function OptanonWrapper() { }
   </ul></td>
 </tr></table>
 
+<h2 id="G">G</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_base_address">get_base_address() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_index">get_index() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.device.get_info">get_info() (pyxrt.device method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_ips">get_ips() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_kernels">get_kernels() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_mems">get_mems() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinkernel.get_name">get_name() (pyxrt.xclbin.xclbinkernel method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinkernel.get_num_args">get_num_args() (pyxrt.xclbin.xclbinkernel method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_size_kb">get_size_kb() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_tag">get_tag() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_used">get_used() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_uuid">get_uuid() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.device.get_xclbin_uuid">get_xclbin_uuid() (pyxrt.device method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_xsa_name">get_xsa_name() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.kernel.group_id">group_id() (pyxrt.kernel method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="K">K</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.kernel">kernel (class in pyxrt)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.kernel.cu_access_mode">kernel.cu_access_mode (class in pyxrt)</a>
+</li>
       <li><a href="xocl_ioctl.main.html#c.kernel_info">kernel_info (C type)</a>, <a href="zocl_ioctl.main.html#c.kernel_info">[1]</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.device.load_xclbin">load_xclbin() (pyxrt.device method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="M">M</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.map">map() (pyxrt.bo method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="N">N</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.flags.name">name (pyxrt.bo.flags attribute)</a>
+
+      <ul>
+        <li><a href="pyxrt.html#pyxrt.ert_cmd_state.name">(pyxrt.ert_cmd_state attribute)</a>
+</li>
+        <li><a href="pyxrt.html#pyxrt.kernel.cu_access_mode.name">(pyxrt.kernel.cu_access_mode attribute)</a>
+</li>
+        <li><a href="pyxrt.html#pyxrt.xclBOSyncDirection.name">(pyxrt.xclBOSyncDirection attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+</tr></table>
+
+<h2 id="P">P</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#module-pyxrt">pyxrt (module)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="R">R</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.read">read() (pyxrt.bo method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run">run (class in pyxrt)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="S">S</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run.set_arg">set_arg() (pyxrt.run method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.bo.size">size() (pyxrt.bo method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run.start">start() (pyxrt.run method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.run.state">state() (pyxrt.run method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.bo.sync">sync() (pyxrt.bo method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="T">T</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.uuid.to_string">to_string() (pyxrt.uuid method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="U">U</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.uuid">uuid (class in pyxrt)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="W">W</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run.wait">wait() (pyxrt.run method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.write">write() (pyxrt.bo method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -354,71 +537,19 @@ function OptanonWrapper() { }
 </li>
       <li><a href="mailbox.proto.html#c.xcl_sw_chan">xcl_sw_chan (C type)</a>
 </li>
-      <li><a href="xrt.main.html#c.xclAllocBO">xclAllocBO (C function)</a>
+      <li><a href="pyxrt.html#pyxrt.xclbin">xclbin (class in pyxrt)</a>
 </li>
-      <li><a href="xrt.main.html#c.xclAllocUserPtrBO">xclAllocUserPtrBO (C function)</a>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinkernel">xclbin.xclbinkernel (class in pyxrt)</a>
 </li>
-      <li><a href="xrt.main.html#c.xclClose">xclClose (C function)</a>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem">xclbin.xclbinmem (class in pyxrt)</a>
 </li>
-      <li><a href="xrt.main.html#c.xclCloseContext">xclCloseContext (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclCopyBO">xclCopyBO (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclDeviceHandle">xclDeviceHandle (C type)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclExecBuf">xclExecBuf (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclExecWait">xclExecWait (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclExportBO">xclExportBO (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclFreeBO">xclFreeBO (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclGetBOProperties">xclGetBOProperties (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclGetDeviceInfo2">xclGetDeviceInfo2 (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclGetErrorStatus">xclGetErrorStatus (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclGetSectionInfo">xclGetSectionInfo (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclGetUsageInfo">xclGetUsageInfo (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclImportBO">xclImportBO (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclIPName2Index">xclIPName2Index (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclLoadXclBin">xclLoadXclBin (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclLogMsg">xclLogMsg (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclMapBO">xclMapBO (C function)</a>
+      <li><a href="pyxrt.html#pyxrt.xclBOSyncDirection">xclBOSyncDirection (class in pyxrt)</a>
 </li>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_bitstream_axlf">xclmgmt_ioc_bitstream_axlf (C type)</a>
 </li>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_freqscaling">xclmgmt_ioc_freqscaling (C type)</a>
 </li>
       <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_info">xclmgmt_ioc_info (C type)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclOpen">xclOpen (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclOpenContext">xclOpenContext (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclProbe">xclProbe (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclReadBO">xclReadBO (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclReClock2">xclReClock2 (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclSyncBO">xclSyncBO (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclUnmapBO">xclUnmapBO (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclUnmgdPread">xclUnmgdPread (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclUnmgdPwrite">xclUnmgdPwrite (C function)</a>
-</li>
-      <li><a href="xrt.main.html#c.xclWriteBO">xclWriteBO (C function)</a>
 </li>
       <li><a href="xmakernels.main.html#c.xma_dec_session_create">xma_dec_session_create (C function)</a>
 </li>
@@ -472,8 +603,6 @@ function OptanonWrapper() { }
 </li>
       <li><a href="xma.main.html#c.xma_plg_get_dev_handle">xma_plg_get_dev_handle (C function)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xma.main.html#c.xma_plg_is_work_item_done">xma_plg_is_work_item_done (C function)</a>
 </li>
       <li><a href="xma.main.html#c.xma_plg_schedule_work_item">xma_plg_schedule_work_item (C function)</a>
@@ -502,6 +631,8 @@ function OptanonWrapper() { }
 </li>
       <li><a href="xmakernels.main.html#c.XmaFilterProperties">XmaFilterProperties (C type)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xmakernels.main.html#c.XmaFilterType">XmaFilterType (C type)</a>
 </li>
       <li><a href="xmakernels.main.html#c.XmaKernelProperties">XmaKernelProperties (C type)</a>
@@ -515,6 +646,8 @@ function OptanonWrapper() { }
       <li><a href="xmakernels.main.html#c.XmaScalerProperties">XmaScalerProperties (C type)</a>
 </li>
       <li><a href="xmakernels.main.html#c.XmaScalerType">XmaScalerType (C type)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xrt_info_device">xrt_info_device (class in pyxrt)</a>
 </li>
       <li><a href="xrt_native.main.html#c.xrtBOAddress">xrtBOAddress (C function)</a>
 </li>

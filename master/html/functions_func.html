@@ -64,6 +64,9 @@ $(function() {
 &#160;
 
 <h3><a id="index_a"></a>- a -</h3><ul>
+<li>abort()
+: <a class="el" href="classxrt_1_1run.html#ac4697b4f95bbb0d67711772ced21b1cd">xrt::run</a>
+</li>
 <li>add_callback()
 : <a class="el" href="classxrt_1_1run.html#a268c7ad2d9bab32d6ba2878a0b00c628">xrt::run</a>
 </li>
@@ -72,6 +75,12 @@ $(function() {
 </li>
 <li>arg()
 : <a class="el" href="classxrt_1_1xclbin_1_1arg.html#ace0c1022e0b56765d9bfb8c4a887b24c">xrt::xclbin::arg</a>
+</li>
+<li>async()
+: <a class="el" href="classxrt_1_1bo.html#a1c360b1550ef213cc59d5920b0febf5e">xrt::bo</a>
+</li>
+<li>async_handle()
+: <a class="el" href="classxrt_1_1bo_1_1async__handle.html#a2b6ac7716242ebe5f1767b711cdbcf4c">xrt::bo::async_handle</a>
 </li>
 </ul>
 
@@ -118,19 +127,20 @@ $(function() {
 : <a class="el" href="classxrt_1_1uuid.html#a6360802cb258454a7aef1d5891b51677">xrt::uuid</a>
 </li>
 <li>get_arg()
-: <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a62bf76c1246a4face6174aebd9d11e86">xrt::xclbin::ip</a>
+: <a class="el" href="classxrt_1_1mailbox.html#a7149012b29d540bc9a520263191de51f">xrt::mailbox</a>
+, <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a62bf76c1246a4face6174aebd9d11e86">xrt::xclbin::ip</a>
 , <a class="el" href="classxrt_1_1xclbin_1_1kernel.html#af9ab604bab7d080bd98a8376941f98b2">xrt::xclbin::kernel</a>
 </li>
 <li>get_args()
 : <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a14a9fec0ed940e1afbb81ff2dcdbd96e">xrt::xclbin::ip</a>
 , <a class="el" href="classxrt_1_1xclbin_1_1kernel.html#a7cf639b4e3432161cabdf21428254526">xrt::xclbin::kernel</a>
 </li>
-<li>get_axlf()
-: <a class="el" href="classxrt_1_1xclbin.html#a9fe1ec500f446eb20f404aa1cab3d31c">xrt::xclbin</a>
-</li>
 <li>get_base_address()
 : <a class="el" href="classxrt_1_1xclbin_1_1ip.html#abb83f977227c8dd3a212b721df5980ab">xrt::xclbin::ip</a>
 , <a class="el" href="classxrt_1_1xclbin_1_1mem.html#a4fb8dcb441828b14ec068d7207ebc2e0">xrt::xclbin::mem</a>
+</li>
+<li>get_control_type()
+: <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a7a8a7d78c14b94660c5f8bb2c9bda932">xrt::xclbin::ip</a>
 </li>
 <li>get_cu()
 : <a class="el" href="classxrt_1_1xclbin_1_1kernel.html#ac008331e7c7d85f0abeb13bbc6db725a">xrt::xclbin::kernel</a>
@@ -138,11 +148,18 @@ $(function() {
 <li>get_cus()
 : <a class="el" href="classxrt_1_1xclbin_1_1kernel.html#a613a09678d939532288ad7876b9bb13d">xrt::xclbin::kernel</a>
 </li>
+<li>get_flags()
+: <a class="el" href="classxrt_1_1bo.html#a57adfdd61a2c128b354d049eb2fa42c8">xrt::bo</a>
+</li>
+<li>get_fpga_device_name()
+: <a class="el" href="classxrt_1_1xclbin.html#af08135286e0bd4a3bbbb047a42640725">xrt::xclbin</a>
+</li>
 <li>get_host_type()
 : <a class="el" href="classxrt_1_1xclbin_1_1arg.html#a9b4d4ae4c4aace3003c3acbde25509db">xrt::xclbin::arg</a>
 </li>
 <li>get_index()
-: <a class="el" href="classxrt_1_1xclbin_1_1mem.html#a193679b9234d832daf567655637eaa0b">xrt::xclbin::mem</a>
+: <a class="el" href="classxrt_1_1xclbin_1_1arg.html#af475fdad8a7d7709c132a4969a91d32e">xrt::xclbin::arg</a>
+, <a class="el" href="classxrt_1_1xclbin_1_1mem.html#a193679b9234d832daf567655637eaa0b">xrt::xclbin::mem</a>
 </li>
 <li>get_info()
 : <a class="el" href="classxrt_1_1device.html#a0db28f39fce7a94f84c31da71b6939fc">xrt::device</a>
@@ -159,11 +176,16 @@ $(function() {
 <li>get_kernels()
 : <a class="el" href="classxrt_1_1xclbin.html#ac8cc2768327b7456e943d97f2d5b8a27">xrt::xclbin</a>
 </li>
+<li>get_memory_group()
+: <a class="el" href="classxrt_1_1bo.html#a876dc0545d122b147c1b608b8c170f18">xrt::bo</a>
+</li>
 <li>get_mems()
 : <a class="el" href="classxrt_1_1xclbin_1_1arg.html#ae039158375adb0e3dddaf1de4d9c376b">xrt::xclbin::arg</a>
+, <a class="el" href="classxrt_1_1xclbin.html#a4af895598626ead2a3f478e149a05778">xrt::xclbin</a>
 </li>
 <li>get_name()
-: <a class="el" href="classxrt_1_1xclbin_1_1arg.html#a65941a31d2bcd97939452c7e050f2cc9">xrt::xclbin::arg</a>
+: <a class="el" href="classxrt_1_1kernel.html#a7babb100b77b633996f2db4f257277a8">xrt::kernel</a>
+, <a class="el" href="classxrt_1_1xclbin_1_1arg.html#a65941a31d2bcd97939452c7e050f2cc9">xrt::xclbin::arg</a>
 , <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a54a875884cecc8d34deac6ba6abee23b">xrt::xclbin::ip</a>
 , <a class="el" href="classxrt_1_1xclbin_1_1kernel.html#aa5af8049e3ffc3131575b2b2830d7f3d">xrt::xclbin::kernel</a>
 </li>
@@ -179,12 +201,16 @@ $(function() {
 </li>
 <li>get_size()
 : <a class="el" href="classxrt_1_1xclbin_1_1arg.html#a6d3a81ce7223bec8983482ad86dd6adf">xrt::xclbin::arg</a>
+, <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a94ddcf3220830a8215d25198eec106c5">xrt::xclbin::ip</a>
 </li>
 <li>get_size_kb()
 : <a class="el" href="classxrt_1_1xclbin_1_1mem.html#a9a125d6e97fc4458547c27c08d43603e">xrt::xclbin::mem</a>
 </li>
 <li>get_tag()
 : <a class="el" href="classxrt_1_1xclbin_1_1mem.html#a4980c74f81239e91e6a403cec2b27225">xrt::xclbin::mem</a>
+</li>
+<li>get_target_type()
+: <a class="el" href="classxrt_1_1xclbin.html#a02b5a6a297f231dbec7dde96f963088a">xrt::xclbin</a>
 </li>
 <li>get_type()
 : <a class="el" href="classxrt_1_1xclbin_1_1mem.html#af39986bcb9942e0f4e5c553e0ac74434">xrt::xclbin::mem</a>
@@ -194,6 +220,9 @@ $(function() {
 </li>
 <li>get_uuid()
 : <a class="el" href="classxrt_1_1xclbin.html#a650f8a98861909e1ddeb53d0d09b1e28">xrt::xclbin</a>
+</li>
+<li>get_xclbin()
+: <a class="el" href="classxrt_1_1kernel.html#af6084b7955eeace29fca2d6678b3b886">xrt::kernel</a>
 </li>
 <li>get_xclbin_section()
 : <a class="el" href="classxrt_1_1device.html#a36858644d072cefbfeeb584b62289afc">xrt::device</a>
@@ -220,7 +249,7 @@ $(function() {
 
 <h3><a id="index_k"></a>- k -</h3><ul>
 <li>kernel()
-: <a class="el" href="classxrt_1_1kernel.html#a80de053578d27cb63e23c6709cff0173">xrt::kernel</a>
+: <a class="el" href="classxrt_1_1kernel.html#a1f819540d433c87f27067166ab1e8bff">xrt::kernel</a>
 , <a class="el" href="classxrt_1_1xclbin_1_1kernel.html#aca6d5209b7075863fa5e83a4f2a40c76">xrt::xclbin::kernel</a>
 </li>
 </ul>
@@ -234,11 +263,14 @@ $(function() {
 
 
 <h3><a id="index_m"></a>- m -</h3><ul>
+<li>mailbox()
+: <a class="el" href="classxrt_1_1mailbox.html#a00f47492d1951c812b54690b0ef26376">xrt::mailbox</a>
+</li>
 <li>map()
 : <a class="el" href="classxrt_1_1bo.html#a7778be10aa42a273b879657c35b81f95">xrt::bo</a>
 </li>
 <li>mem()
-: <a class="el" href="classxrt_1_1xclbin_1_1mem.html#aa42f675b24bef11060db7161a5951a3b">xrt::xclbin::mem</a>
+: <a class="el" href="classxrt_1_1xclbin_1_1mem.html#a1f5d939413811332d2f7d91e4d861aab">xrt::xclbin::mem</a>
 </li>
 </ul>
 
@@ -257,7 +289,7 @@ $(function() {
 </li>
 <li>operator()()
 : <a class="el" href="classxrt_1_1kernel.html#a602dcd5ff860f31695abdf74d24116f9">xrt::kernel</a>
-, <a class="el" href="classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f">xrt::run</a>
+, <a class="el" href="classxrt_1_1run.html#a516813415547dd39c27d0219277f2513">xrt::run</a>
 </li>
 <li>operator&lt;()
 : <a class="el" href="classxrt_1_1run.html#af17b3aebcbcfc41859e109515fae3557">xrt::run</a>
@@ -270,7 +302,7 @@ $(function() {
 </li>
 <li>operator==()
 : <a class="el" href="classxrt_1_1bo.html#a138b3bdb54f8b5190c61bf5b36963c30">xrt::bo</a>
-, <a class="el" href="classxrt_1_1uuid.html#ad547caaed55745d6406d526580bf0312">xrt::uuid</a>
+, <a class="el" href="classxrt_1_1uuid.html#a72a29fe62b6fed3f8d44606740db2d5f">xrt::uuid</a>
 </li>
 </ul>
 
@@ -278,20 +310,22 @@ $(function() {
 <h3><a id="index_r"></a>- r -</h3><ul>
 <li>read()
 : <a class="el" href="classxrt_1_1bo.html#aa2521f36f0045047d34ce72bb4618ac2">xrt::bo</a>
+, <a class="el" href="classxrt_1_1mailbox.html#a87f01921036dbaa961fa09402ceb7588">xrt::mailbox</a>
 </li>
 <li>read_register()
 : <a class="el" href="classxrt_1_1ip.html#a619d7d9654eeb2e1d7dcc8a9d284f0b4">xrt::ip</a>
 , <a class="el" href="classxrt_1_1kernel.html#a5b9c53ff845a8086428b568ea8be6d5b">xrt::kernel</a>
 </li>
 <li>run()
-: <a class="el" href="classxrt_1_1run.html#a519b58fe315478c16889ceab6597a76a">xrt::run</a>
+: <a class="el" href="classxrt_1_1run.html#a43f61719426fff8f5f24f0d550e0f29f">xrt::run</a>
 </li>
 </ul>
 
 
 <h3><a id="index_s"></a>- s -</h3><ul>
 <li>set_arg()
-: <a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">xrt::run</a>
+: <a class="el" href="classxrt_1_1mailbox.html#a19128c7c9a17bafd51beffc432b45b17">xrt::mailbox</a>
+, <a class="el" href="classxrt_1_1run.html#a132df6dc0e490371ccb15d68211f9921">xrt::run</a>
 </li>
 <li>size()
 : <a class="el" href="classxrt_1_1bo.html#af1606fb5b8e71a072ad1101516f66975">xrt::bo</a>
@@ -301,6 +335,9 @@ $(function() {
 </li>
 <li>state()
 : <a class="el" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">xrt::run</a>
+</li>
+<li>stop()
+: <a class="el" href="classxrt_1_1run.html#ae133bb9766ad5daac80bbad0bc748720">xrt::run</a>
 </li>
 <li>sync()
 : <a class="el" href="classxrt_1_1bo.html#ab682cbb4ee9d69be401b202d17209e16">xrt::bo</a>
@@ -327,11 +364,13 @@ $(function() {
 
 <h3><a id="index_w"></a>- w -</h3><ul>
 <li>wait()
-: <a class="el" href="classxrt_1_1ip_1_1interrupt.html#ad088741f7d266edf27c23f1e39dddf42">xrt::ip::interrupt</a>
-, <a class="el" href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">xrt::run</a>
+: <a class="el" href="classxrt_1_1bo_1_1async__handle.html#aa3514ba288259b383c5734b36b59a6ba">xrt::bo::async_handle</a>
+, <a class="el" href="classxrt_1_1ip_1_1interrupt.html#ad088741f7d266edf27c23f1e39dddf42">xrt::ip::interrupt</a>
+, <a class="el" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">xrt::run</a>
 </li>
 <li>write()
-: <a class="el" href="classxrt_1_1bo.html#adbd9644b58d8866869621231d93d32b6">xrt::bo</a>
+: <a class="el" href="classxrt_1_1bo.html#aa119bfe3b4f2c95acd55d3b0455e1646">xrt::bo</a>
+, <a class="el" href="classxrt_1_1mailbox.html#a1f0b72b78c140a7c89bc35ad256f85f6">xrt::mailbox</a>
 </li>
 <li>write_register()
 : <a class="el" href="classxrt_1_1ip.html#a700445a4eebab2b6c01ed63403fe7d6e">xrt::ip</a>

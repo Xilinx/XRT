@@ -126,6 +126,12 @@ function OptanonWrapper() { }
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#xrt-error-api">XRT Error API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#asynchornous-programming-with-xrt-experimental">Asynchornous Programming with XRT (experimental)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#executing-synchronous-task-asynchronously">Executing synchronous task asynchronously</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#executing-multiple-tasks-through-queue">Executing multiple tasks through queue</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-events-to-synchronize-among-the-queues">Using events to synchronize among the queues</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
@@ -147,9 +153,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -161,11 +168,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -196,17 +208,16 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="xrt-native-apis">
-<span id="xrt-native-apis-rst"></span><h1>XRT Native APIs<a class="headerlink" href="#xrt-native-apis" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="xrt-native-apis-rst"></span><div class="section" id="xrt-native-apis">
+<h1>XRT Native APIs<a class="headerlink" href="#xrt-native-apis" title="Permalink to this headline">¶</a></h1>
 <p>From 2020.2 release XRT provides a new XRT API set in C, C++, and Python flavor.</p>
 <p>To use the native XRT APIs, the host application must link with the <strong>xrt_coreutil</strong> library.
-Compiling host code with XRT native C++ API requires C++ standard with -std=c++14 or newer.
-On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++14 is introduced to GCC from 4.9.0.</p>
+Compiling host code with XRT native C++ API requires C++ standard with -std=c++17 (or newer).</p>
 <p>Example g++ command</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>g++ -g -std<span class="o">=</span>c++14 -I<span class="nv">$XILINX_XRT</span>/include -L<span class="nv">$XILINX_XRT</span>/lib -o host.exe host.cpp -lxrt_coreutil -pthread
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>g++ -g -std<span class="o">=</span>c++17 -I<span class="nv">$XILINX_XRT</span>/include -L<span class="nv">$XILINX_XRT</span>/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 </pre></div>
 </div>
-<p>The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in <a class="reference external" href="./xrt_native.main.rst">./xrt_native.main.rst</a>.</p>
+<p>The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in :doc: <cite>xrt_native.main</cite>.</p>
 <p>The C++ Class objects used for the APIs are</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -408,7 +419,7 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 </div>
 <div class="section" id="iii-data-transfer-between-the-buffers-by-copy-api">
 <h4>III. Data transfer between the buffers by copy API<a class="headerlink" href="#iii-data-transfer-between-the-buffers-by-copy-api" title="Permalink to this headline">¶</a></h4>
-<p>XRT provides <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy()</span></code> API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in <a class="reference internal" href="m2m.html#m2m-rst"><span class="std std-ref">Memory-to-Memory (M2M)</span></a>). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).</p>
+<p>XRT provides <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy()</span></code> API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in <a class="reference internal" href="m2m.html"><span class="doc">Memory-to-Memory (M2M)</span></a>). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).</p>
 <pre class="code c++ literal-block">
 <span class="ln">25 </span>     <span class="name">dst_buffer</span><span class="punctuation">.</span><span class="name">copy</span><span class="punctuation">(</span><span class="name">src_buffer</span><span class="punctuation">,</span> <span class="name">copy_size_in_bytes</span><span class="punctuation">);</span>
 </pre>
@@ -420,12 +431,12 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <p>This section describes a few other specific use-cases using buffers.</p>
 <div class="section" id="dma-buf-api">
 <h4>DMA-BUF API<a class="headerlink" href="#dma-buf-api" title="Permalink to this headline">¶</a></h4>
-<p>XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes.</p>
+<p>XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. The buffer handle obtained from <code class="docutils literal notranslate"><span class="pre">xrt::bo::export_buffer()</span></code> is essentially a file descriptor, hence sending across the processes requires a suitable IPC mechanism (example, UDS or Unix Domain Socket) to translate the file descriptor of one process into another process.</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">xrt::bo::export_buffer()</span></code>: Export the buffer to an exported buffer handle</li>
 <li><code class="docutils literal notranslate"><span class="pre">xrt::bo()</span></code> constructor: Allocate a BO imported from exported buffer handle</li>
 </ul>
-<p>Consider the situation of exporting buffer from device 1 to device 2.</p>
+<p>Consider the situation of exporting buffer from device 1 to device 2 (inside same host process).</p>
 <pre class="code c++ literal-block">
 <span class="ln">18 </span>     <span class="keyword">auto</span> <span class="name">buffer_exported</span> <span class="operator">=</span> <span class="name">buffer_device_1</span><span class="punctuation">.</span><span class="name">export_buffer</span><span class="punctuation">();</span>
 <span class="ln">19 </span>     <span class="keyword">auto</span> <span class="name">buffer_device_2</span> <span class="operator">=</span> <span class="name">xrt</span><span class="operator">::</span><span class="name">bo</span><span class="punctuation">(</span><span class="name">device_2</span><span class="punctuation">,</span> <span class="name">buffer_exported</span><span class="punctuation">);</span>
@@ -863,6 +874,97 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <li>After timeout occurs from <code class="docutils literal notranslate"><span class="pre">xrt::graph::wait()</span></code> the member functions <code class="docutils literal notranslate"><span class="pre">xrt::error</span></code> class are called to retrieve asynchronous error code and timestamp</li>
 <li>Member function <code class="docutils literal notranslate"><span class="pre">xrt::error::to_string()</span></code> is called to obtain the error string.</li>
 </ul>
+</div>
+<div class="section" id="asynchornous-programming-with-xrt-experimental">
+<h2>Asynchornous Programming with XRT (experimental)<a class="headerlink" href="#asynchornous-programming-with-xrt-experimental" title="Permalink to this headline">¶</a></h2>
+<p>From the 22.1 release, XRT offers a simple asynchronous programming mechanism through the user-defined queues. The <code class="docutils literal notranslate"><span class="pre">xrt::queue</span></code> is lightweight, general-purpose queue implementation which is completely separated from core XRT native API data structures. If needed, the user can also use their own queue implementation instead of the implementation offered by <code class="docutils literal notranslate"><span class="pre">xrt::queue</span></code>.</p>
+<p>XRT queue implementation needs <code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&lt;experimental/xrt_queue.h</span></code> to be added as the header file. The implementation also use C++17 features so the host code must be compiled with <code class="docutils literal notranslate"><span class="pre">g++</span> <span class="pre">-std=c++17</span></code></p>
+<p>As a premise, by default, all XRT native APIs execute from the host-thread, so if an API has synchronous behavior the host-thread blocks until that task is finished. For example</p>
+<pre class="code c++ literal-block">
+<span class="ln">41 </span>    <span class="name">buffer</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="punctuation">);</span>
+</pre>
+<p>As <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync</span></code> is a synchronous API, the host thread blocks until its completion.</p>
+<p>XRT defines a queue with <code class="docutils literal notranslate"><span class="pre">xrt::queue</span></code> with the following properties</p>
+<blockquote>
+<div><ul>
+<li><p class="first">Any task enqueued on the queue runs parallel to the original host-thread. So the host threads does not wait for its completion and can do other tasks in parallel.</p>
+</li>
+<li><p class="first">The task enqueued on the queue must be synchronous in nature</p>
+</li>
+<li><p class="first">All the tasks enqueued on the queue will be completed in the order it is enqueued (strict in-order execution).</p>
+</li>
+<li><p class="first">The task enqueued on a queue can be any C++ Callable, which can conveniently be expressed by a C++ lambda</p>
+</li>
+<li><p class="first">When a synchronous task is enqueued on a queue, an event (<code class="docutils literal notranslate"><span class="pre">xrt::queue:event</span></code>) is returned. The event can be used for multiple purposes, such as:</p>
+<blockquote>
+<div><ul class="simple">
+<li>The host-thread can wait on that event to synchronize with the <code class="docutils literal notranslate"><span class="pre">queue::enqueue(task)</span></code> from where the event was generated.</li>
+<li>The event can be enqueued to other queues to synchronize among the queues</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<p>Let’s understand the above properties by reviewing the examples below</p>
+<div class="section" id="executing-synchronous-task-asynchronously">
+<h3>Executing synchronous task asynchronously<a class="headerlink" href="#executing-synchronous-task-asynchronously" title="Permalink to this headline">¶</a></h3>
+<pre class="code c++ literal-block">
+<span class="ln">41 </span>    <span class="keyword">auto</span> <span class="name">bo0</span> <span class="operator">=</span> <span class="name">xrt</span><span class="operator">::</span><span class="name">bo</span><span class="punctuation">(</span><span class="name">device</span><span class="punctuation">,</span> <span class="name">vector_size_bytes</span><span class="punctuation">,</span> <span class="name">krnl</span><span class="punctuation">.</span><span class="name">group_id</span><span class="punctuation">(</span><span class="literal number integer">0</span><span class="punctuation">));</span>
+<span class="ln">42 </span>    <span class="keyword">auto</span> <span class="name">bo0_map</span> <span class="operator">=</span> <span class="name">bo0</span><span class="punctuation">.</span><span class="name">map</span><span class="operator">&lt;</span><span class="name">dtype</span><span class="operator">*&gt;</span><span class="punctuation">();</span>
+<span class="ln">43 </span>    <span class="punctuation">....</span> <span class="comment single">// fill buffer content
+</span><span class="ln">44 </span><span class="comment single"></span>
+<span class="ln">45 </span>    <span class="name">xrt</span><span class="operator">::</span><span class="name">queue</span> <span class="name">my_queue</span><span class="punctuation">;</span>
+<span class="ln">46 </span>    <span class="keyword">auto</span> <span class="name">sync_event</span> <span class="operator">=</span> <span class="name">queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo0</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">bo0</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="punctuation">);</span> <span class="punctuation">});</span>
+<span class="ln">47 </span>
+<span class="ln">48 </span>    <span class="name">myCpuTask</span><span class="punctuation">(</span><span class="name">b</span><span class="punctuation">);</span>  <span class="comment single">// here we can perform other host task that will run parallel to the above bo::sync task
+</span><span class="ln">49 </span><span class="comment single"></span>
+<span class="ln">50 </span>    <span class="name">sync_event</span><span class="punctuation">.</span><span class="name">wait</span><span class="punctuation">();</span>  <span class="comment single">// stall the host-thread till sync operation completes</span>
+</pre>
+<p>The above code shows the synchronous API <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync</span></code> is enqueued through an <code class="docutils literal notranslate"><span class="pre">xrt::queue</span></code>. The argument of xrt::queue is unnamed callable written using C++ lambda capturing buffer object. This technique is useful to execute any synchronous task asynchronously from the host-thread, and while this task is ongoing, the host-thread can do other operation in parallel (<code class="docutils literal notranslate"><span class="pre">myCpuTask()</span></code> in the above code). The return type of <code class="docutils literal notranslate"><span class="pre">xrt::queue::enqueue()</span></code> is type of <code class="docutils literal notranslate"><span class="pre">xrt::queue::event</span></code> which is later synchronized to the host-thread by <code class="docutils literal notranslate"><span class="pre">xrt::queue::event::wait()</span></code> blocking function.</p>
+</div>
+<div class="section" id="executing-multiple-tasks-through-queue">
+<h3>Executing multiple tasks through queue<a class="headerlink" href="#executing-multiple-tasks-through-queue" title="Permalink to this headline">¶</a></h3>
+<p>Every new <code class="docutils literal notranslate"><span class="pre">xrt::queue</span></code> can be thought of as a new thread running parallel to the host-thread executing a series of synchronous tasks following the order they were submitted (enqueued) on the queue. For example, let’s consider tasks A, B, C and D as below</p>
+<blockquote>
+<div><ul class="simple">
+<li>Task A: Host to device data transfer (buffer bo0)</li>
+<li>Task B: Execute the kernel and wait for the kernel to finish execution</li>
+<li>Task C: Device to host data transfer (buffer bo_out)</li>
+<li>Task D: Check return data bo_out</li>
+</ul>
+</div></blockquote>
+<p>The above four tasks should be executed in-order for correct functionality. To execute them in parallel to the host-thread, these four tasks can be enqueued through a queue as below.</p>
+<pre class="code c++ literal-block">
+<span class="ln">41 </span>    <span class="name">xrt</span><span class="operator">::</span><span class="name">queue</span> <span class="name">queue</span><span class="punctuation">;</span>
+<span class="ln">42 </span>    <span class="name">queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo0</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">bo0</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="punctuation">);</span> <span class="punctuation">});</span>
+<span class="ln">43 </span>    <span class="name">queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">run</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">run</span><span class="punctuation">.</span><span class="name">start</span><span class="punctuation">();</span> <span class="name">run</span><span class="punctuation">.</span><span class="name">wait</span><span class="punctuation">();</span> <span class="punctuation">});</span>
+<span class="ln">44 </span>    <span class="name">queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo_out</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">bo_out</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_FROM_DEVICE</span><span class="punctuation">);</span> <span class="punctuation">});</span>
+<span class="ln">45 </span>    <span class="name">queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo_out_map</span><span class="punctuation">]{</span><span class="name">my_function_to_check_data</span><span class="punctuation">(</span><span class="name">bo_out_map</span><span class="punctuation">)});</span>
+</pre>
+<p>The user can create and use as many queues in the host code to overlap tasks in parallel. Next, we will see how it is possible to synchronize among the queues using the event.</p>
+</div>
+<div class="section" id="using-events-to-synchronize-among-the-queues">
+<h3>Using events to synchronize among the queues<a class="headerlink" href="#using-events-to-synchronize-among-the-queues" title="Permalink to this headline">¶</a></h3>
+<p>Let’s assume in the above example, it is required to do two host-to-device buffer transfers before the kernel execution. If using a single queue the code would appear as</p>
+<pre class="code c++ literal-block">
+<span class="ln">41 </span>    <span class="name">xrt</span><span class="operator">::</span><span class="name">queue</span> <span class="name">main_queue</span><span class="punctuation">;</span>
+<span class="ln">42 </span>    <span class="name">main_queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo0</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">bo0</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="punctuation">);</span> <span class="punctuation">});</span>
+<span class="ln">43 </span>    <span class="name">main_queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo1</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">bo1</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="punctuation">);</span> <span class="punctuation">});</span>
+<span class="ln">44 </span>    <span class="name">main_queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">run</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">run</span><span class="punctuation">.</span><span class="name">start</span><span class="punctuation">();</span> <span class="name">run</span><span class="punctuation">.</span><span class="name">wait</span><span class="punctuation">();</span> <span class="punctuation">});</span>
+<span class="ln">45 </span>    <span class="name">main_queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo_out</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">bo_out</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_FROM_DEVICE</span><span class="punctuation">);</span> <span class="punctuation">});</span>
+</pre>
+<p>In the above code, as a single queue (<code class="docutils literal notranslate"><span class="pre">main_queue</span></code>) is used, the host-to-device data transfers for buffer <code class="docutils literal notranslate"><span class="pre">bo0</span></code> and <code class="docutils literal notranslate"><span class="pre">bo1</span></code> would happen sequentially. In order to do parallel data transfer for <code class="docutils literal notranslate"><span class="pre">bo0</span></code> and <code class="docutils literal notranslate"><span class="pre">bo1</span></code>, a separate queue is needed for one of the buffers, and also it is required to ensure that the kernel executes only after both the buffer transfers are completed.</p>
+<pre class="code c++ literal-block">
+<span class="ln">41 </span>    <span class="name">xrt</span><span class="operator">::</span><span class="name">queue</span> <span class="name">main_queue</span><span class="punctuation">;</span>
+<span class="ln">42 </span>    <span class="name">xrt</span><span class="operator">::</span><span class="name">queue</span> <span class="name">queue_bo1</span><span class="punctuation">;</span>
+<span class="ln">43 </span>    <span class="name">main_queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo0</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">bo0</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="punctuation">);</span> <span class="punctuation">});</span>
+<span class="ln">44 </span>    <span class="keyword">auto</span> <span class="name">bo1_event</span> <span class="operator">=</span> <span class="name">queue_bo1</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo1</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">bo1</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="punctuation">);</span> <span class="punctuation">});</span>
+<span class="ln">45 </span>    <span class="name">main_queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">(</span><span class="name">bo1_event</span><span class="punctuation">);</span>
+<span class="ln">46 </span>    <span class="name">main_queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">run</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">run</span><span class="punctuation">.</span><span class="name">start</span><span class="punctuation">();</span> <span class="name">run</span><span class="punctuation">.</span><span class="name">wait</span><span class="punctuation">();</span> <span class="punctuation">});</span>
+<span class="ln">47 </span>    <span class="name">main_queue</span><span class="punctuation">.</span><span class="name">enqueue</span><span class="punctuation">([</span><span class="operator">&amp;</span><span class="name">bo_out</span><span class="punctuation">]</span> <span class="punctuation">{</span><span class="name">bo_out</span><span class="punctuation">.</span><span class="name">sync</span><span class="punctuation">(</span><span class="name">XCL_BO_SYNC_BO_FROM_DEVICE</span><span class="punctuation">);</span> <span class="punctuation">});</span>
+</pre>
+<p>In line number 43 and 44 <code class="docutils literal notranslate"><span class="pre">bo0</span></code> and <code class="docutils literal notranslate"><span class="pre">bo1</span></code> host-to-device data transfers are enqueued through two separate queues to achieve parallel transfers. To synchronize between these two queues the returned event from the <code class="docutils literal notranslate"><span class="pre">queue_bo1</span></code> is enqueued in the <code class="docutils literal notranslate"><span class="pre">main_queue</span></code>, similar to a task enqueue (line 45). As a result, any other task submitted after that event won’t execute until the event is finished. So in the above code example, subsequent task in the <code class="docutils literal notranslate"><span class="pre">main_queue</span></code> (such as kernel execution) would wait till the <code class="docutils literal notranslate"><span class="pre">bo1_event</span></code> is completed. By submitting an event returned from a <code class="docutils literal notranslate"><span class="pre">queue::enqueue</span></code> to another queue, we can synchronize among the queues.</p>
+</div>
 </div>
 </div>
 

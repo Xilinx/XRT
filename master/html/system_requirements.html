@@ -102,9 +102,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -116,11 +117,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -151,8 +157,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="system-requirements">
-<span id="system-requirements-rst"></span><h1>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="system-requirements-rst"></span><div class="section" id="system-requirements">
+<h1>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="host-platform-for-pcie-accelerator-cards">
 <h2>Host Platform for PCIe Accelerator Cards<a class="headerlink" href="#host-platform-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
@@ -160,16 +166,16 @@ function OptanonWrapper() { }
 <li>AARCH64</li>
 <li>PPC64LE</li>
 </ol>
-<p>Supported Xilinx® Accelerator Cards are listed in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">XRT and Vitis™ Platform Overview</span></a>.</p>
+<p>Supported Xilinx® Accelerator Cards are listed in <a class="reference internal" href="platforms.html"><span class="doc">XRT and Vitis™ Platform Overview</span></a> .</p>
 </div>
 <div class="section" id="xrt-software-stack-for-pcie-accelerator-cards">
 <h2>XRT Software Stack for PCIe Accelerator Cards<a class="headerlink" href="#xrt-software-stack-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
 <p>XRT software stack requires Linux kernel 3.10+.</p>
 <p>The XRT software stack is tested on RHEL/CentOS and Ubuntu.
-For the detailed list of supported OS, please refer to the specific release versions of <a class="reference external" href="https://www.xilinx.com/search/site-keyword-search.html#q=ug1451">UG1451 XRT Release Notes</a>.</p>
+For the detailed list of supported OS, please refer to the specific release versions of <a class="reference external" href="https://www.xilinx.com/support/documentation-navigation/see-all-versions.html?xlnxproducttypes=Design%20Tools&amp;xlnxdocumentid=UG1451">UG1451 XRT Release Notes</a>.</p>
 <p>XRT is needed on both application development and deployment environments.</p>
-<p>To install XRT on the host, please refer to page <a class="reference internal" href="install.html#install-rst"><span class="std std-ref">XRT Installation</span></a> for dependencies installation steps and XRT installation steps.</p>
-<p>To build a custom XRT package, please refer to page <a class="reference internal" href="build.html#build-rst"><span class="std std-ref">Building the XRT Software Stack</span></a> for dependencies installation steps and building steps.</p>
+<p>To install XRT on the host, please refer to page <a class="reference internal" href="install.html"><span class="doc">XRT Installation</span></a>. for dependencies installation steps and XRT installation steps.</p>
+<p>To build a custom XRT package, please refer to page <a class="reference internal" href="build.html"><span class="doc">Building the XRT Software Stack</span></a>. for dependencies installation steps and building steps.</p>
 </div>
 <div class="section" id="xrt-software-stack-for-embedded-platforms">
 <h2>XRT Software Stack for Embedded Platforms<a class="headerlink" href="#xrt-software-stack-for-embedded-platforms" title="Permalink to this headline">¶</a></h2>
@@ -178,7 +184,7 @@ For the detailed list of supported OS, please refer to the specific release vers
 <p>If embedded processor native compile is to be used, XRT, xrt-dev and GCC needs to be installed on the target embedded system rootfs.</p>
 <p>If application is developed on a server with cross compiling technique, XRT needs to be installed into sysroot. The application can be cross compiled against the sysroot.
 XRT for server is not required on the cross compile server.</p>
-<p>The embedded platform for deployment should have XRT and ZOCL installed. For details about building embedded platforms please refer to <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">XRT Setup for Embedded Flow</span></a>.</p>
+<p>The embedded platform for deployment should have XRT and ZOCL installed. For details about building embedded platforms please refer to <a class="reference internal" href="yocto.html"><span class="doc">XRT Setup for Embedded Flow</span></a>.</p>
 </div>
 </div>
 

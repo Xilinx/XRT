@@ -101,9 +101,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -115,11 +116,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -150,8 +156,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="xrt-installation">
-<span id="install-rst"></span><h1>XRT Installation<a class="headerlink" href="#xrt-installation" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="install-rst"></span><div class="section" id="xrt-installation">
+<h1>XRT Installation<a class="headerlink" href="#xrt-installation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="install-xrt-pre-requests-on-deployment-server">
 <h2>Install XRT Pre-requests on Deployment Server<a class="headerlink" href="#install-xrt-pre-requests-on-deployment-server" title="Permalink to this headline">¶</a></h2>
 <p>XRT requires EPEL to install dependencies during installation process. Please use the folloing steps to install EPEL on your system if it hasn’t been installed.</p>
@@ -171,7 +177,6 @@ function OptanonWrapper() { }
 </div>
 <p>Steps for CENTOS 7.x:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">yum</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">dl</span><span class="o">.</span><span class="n">fedoraproject</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">pub</span><span class="o">/</span><span class="n">epel</span><span class="o">/</span><span class="n">epel</span><span class="o">-</span><span class="n">release</span><span class="o">-</span><span class="n">latest</span><span class="o">-</span><span class="mf">7.</span><span class="n">noarch</span><span class="o">.</span><span class="n">rpm</span>
-<span class="n">yum</span> <span class="n">install</span> <span class="o">-</span><span class="n">y</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">dl</span><span class="o">.</span><span class="n">fedoraproject</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">pub</span><span class="o">/</span><span class="n">epel</span><span class="o">/</span><span class="n">epel</span><span class="o">-</span><span class="n">release</span><span class="o">-</span><span class="n">latest</span><span class="o">-</span><span class="mf">7.</span><span class="n">noarch</span><span class="o">.</span><span class="n">rpm</span>
 </pre></div>
 </div>
 <p>Steps for CENTOS 8.x:</p>
@@ -202,7 +207,14 @@ function OptanonWrapper() { }
 </div>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">If the XRT package is built locally, please make sure ERT firmware <code class="docutils literal notranslate"><span class="pre">sched*.bin</span></code> is built properly during build process and installed to <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code> after running the XRT installation command.</p>
+<ol class="last arabic">
+<li><p class="first">If the XRT package is built locally, please make sure ERT firmware <code class="docutils literal notranslate"><span class="pre">sched*.bin</span></code> is built properly during build process and installed to <code class="docutils literal notranslate"><span class="pre">/lib/firmware/xilinx</span></code> after running the XRT installation command.</p>
+</li>
+<li><p class="first">Secure boot enabled machines: Need to configure system to properly load DKMS modules.
+Please follow method-1 from following page. You do not need to disable secure boot. First time DKMS compiles XRT (or any other third party) driver it will generate a MOK key that needs to be registered with BIOS.</p>
+<p><a class="reference external" href="https://wiki.ubuntu.com/UEFI/SecureBoot/DKMS">https://wiki.ubuntu.com/UEFI/SecureBoot/DKMS</a></p>
+</li>
+</ol>
 </div>
 </div>
 </div>

@@ -25,7 +25,7 @@ function OptanonWrapper() { }
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Accessing vsec within VM" href="vsec.html" />
+    <link rel="next" title="FPGA device readiness within user VM" href="fpga_device_ready.html" />
     <link rel="prev" title="Mailbox Inter-domain Communication Protocol" href="mailbox.proto.html" /> 
 </head>
 
@@ -97,9 +97,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -116,13 +117,20 @@ function OptanonWrapper() { }
 <li class="toctree-l2"><a class="reference internal" href="#enhancement-to-mpd">Enhancement to MPD</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#example-mpd-plugin">Example MPD plugin</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#summary">Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#special-case">Special Case</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#note">Note</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -153,8 +161,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="msd-mpd-and-plugins">
-<span id="cloud-vendor-support-rst"></span><h1>MSD/MPD and Plugins<a class="headerlink" href="#msd-mpd-and-plugins" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="cloud-vendor-support-rst"></span><div class="section" id="msd-mpd-and-plugins">
+<h1>MSD/MPD and Plugins<a class="headerlink" href="#msd-mpd-and-plugins" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
 <p>When FPGAs are deployed at cloud vendors, either VM based (IaaS) or container based (PaaS), there are
@@ -217,6 +225,11 @@ Host&gt;$ sudo systemctl start msd
 
 <span class="c1"># Start MPD in VM</span>
 VM&gt;$ sudo systemctl start mpd
+
+<span class="c1">#Enable these services If you want them to be in active even after reboot</span>
+Host&gt;$ sudo systemctl <span class="nb">enable</span> msd
+
+VM&gt;$ sudo systemctl <span class="nb">enable</span> mpd
 </pre></div>
 </div>
 <p>The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as below:</p>
@@ -317,6 +330,23 @@ one or any other kind either</li>
 <p>The following picture illustrates how XRT is being deployed in different scenarios at cloud vendors</p>
 <div align="center" class="align-center"><img alt="_images/xrt-deployment-cloud.svg" src="_images/xrt-deployment-cloud.svg" /></div>
 </div>
+<div class="section" id="special-case">
+<h2>Special Case<a class="headerlink" href="#special-case" title="Permalink to this headline">¶</a></h2>
+<p>There is special case where download xclbin from within user VM is not required.</p>
+<p>In this special case, neither MSD/MPD nor plugins are required since no xclbin download is allowed from guest. xclbins can be preloaded
+either by hypervisor or dom0 type VM where the mgmt PF is assigned. The apps in user VM run without any change, i.e.
+xclbin download ioctl is still issued to xocl driver, xocl driver gets the uuid of the preloaded xclbin with a XCL_MAILBOX_REQ_PEER_DATA
+mailbox opcode to xclmgmt, and if the uuid matches with that of the xclbin requested for download, the ioctl returns immediately with success.
+If the uuids don’t match, download request in the guest fails.
+download happening.</p>
+</div>
+<div class="section" id="note">
+<h2>Note<a class="headerlink" href="#note" title="Permalink to this headline">¶</a></h2>
+<p>There are some machine configurations which prevents TCP connections. User should update the configurations to allow TCP connections.
+One of the configs is “Firwall” Settings to enable or disable:
+1. firewall disable command: ufw disable
+2. firewall enable command: ufw enable</p>
+</div>
 </div>
 
 
@@ -334,7 +364,7 @@ one or any other kind either</li>
 				  
 				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="mailbox.proto.html" class="btn btn-neutral float-left" title="Mailbox Inter-domain Communication Protocol" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="vsec.html" class="btn btn-neutral float-right" title="Accessing vsec within VM" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="fpga_device_ready.html" class="btn btn-neutral float-right" title="FPGA device readiness within user VM" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

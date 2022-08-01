@@ -75,16 +75,18 @@ $(function() {
 <div class="contents">
 <div class="textblock"><code>#include &quot;xrt.h&quot;</code><br />
 <code>#include &quot;xrt_mem.h&quot;</code><br />
+<code>#include &quot;xrt/detail/pimpl.h&quot;</code><br />
 <code>#include &lt;memory&gt;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for xrt_bo.h:</div>
 <div class="dyncontent">
 <div class="center"><img src="xrt__bo_8h__incl.png" border="0" usemap="#_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__bo_8h" alt=""/></div>
 <map name="_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__bo_8h" id="_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__bo_8h">
-<area shape="rect" title=" " alt="" coords="35,5,222,61"/>
+<area shape="rect" title=" " alt="" coords="105,5,291,61"/>
 <area shape="rect" title=" " alt="" coords="5,109,57,136"/>
 <area shape="rect" title=" " alt="" coords="82,109,175,136"/>
-<area shape="rect" title=" " alt="" coords="199,109,277,136"/>
+<area shape="rect" title=" " alt="" coords="200,109,335,136"/>
+<area shape="rect" title=" " alt="" coords="359,109,437,136"/>
 </map>
 </div>
 </div><div class="textblock"><div class="dynheader">
@@ -92,8 +94,9 @@ This graph shows which files directly or indirectly include this file:</div>
 <div class="dyncontent">
 <div class="center"><img src="xrt__bo_8h__dep__incl.png" border="0" usemap="#_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__bo_8hdep" alt=""/></div>
 <map name="_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__bo_8hdep" id="_2scratch_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__bo_8hdep">
-<area shape="rect" title=" " alt="" coords="5,5,192,61"/>
+<area shape="rect" title=" " alt="" coords="71,5,257,61"/>
 <area shape="rect" href="xrt__kernel_8h.html" title=" " alt="" coords="5,109,192,165"/>
+<area shape="rect" href="xrt__mailbox_8h.html" title=" " alt="" coords="61,213,267,269"/>
 </map>
 </div>
 </div>
@@ -101,7 +104,16 @@ This graph shows which files directly or indirectly include this file:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxcl__buffer__handle.html">xcl_buffer_handle</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Typed xclBufferHandle used to prevent ambiguity.  <a href="structxcl__buffer__handle.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structxrt_1_1pid__type.html">xrt::pid_type</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Typed pid_t used to prevent ambiguity when contructing bo with a process id.  <a href="structxrt_1_1pid__type.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo.html">xrt::bo</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1bo_1_1async__handle.html">xrt::bo::async_handle</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classxrt_1_1bo_1_1async__handle.html" title="xrt::bo::async_handle represents an asynchronously operation">xrt::bo::async_handle</a> represents an asynchronously operation  <a href="classxrt_1_1bo_1_1async__handle.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="namespaces"></a>

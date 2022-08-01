@@ -97,9 +97,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -111,11 +112,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -146,8 +152,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="mailbox-inter-domain-communication-protocol">
-<span id="mailbox-proto-rst"></span><h1>Mailbox Inter-domain Communication Protocol<a class="headerlink" href="#mailbox-inter-domain-communication-protocol" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="mailbox-proto-rst"></span><div class="section" id="mailbox-inter-domain-communication-protocol">
+<h1>Mailbox Inter-domain Communication Protocol<a class="headerlink" href="#mailbox-inter-domain-communication-protocol" title="Permalink to this headline">¶</a></h1>
 <dl class="type">
 <dt id="c.xcl_mailbox_request">
 enum <code class="descname">xcl_mailbox_request</code><a class="headerlink" href="#c.xcl_mailbox_request" title="Permalink to this definition">¶</a></dt>
@@ -188,6 +194,8 @@ enum <code class="descname">xcl_mailbox_request</code><a class="headerlink" href
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PROGRAM_SHELL</span></code></dt>
 <dd>request mgmt pf driver to reprogram shell</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_SDR_DATA</span></code></dt>
 <dd><em>undescribed</em></dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MAX</span></code></dt>
 <dd><em>undescribed</em></dd>
@@ -234,6 +242,16 @@ enum <code class="descname">xcl_group_kind</code><a class="headerlink" href="#c.
 <dd>Device DNA information</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_SUBDEV</span></code></dt>
 <dd>PLP subdevices information</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SDR_BDINFO</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SDR_TEMP</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SDR_VOLTAGE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SDR_CURRENT</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SDR_POWER</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
 <dl class="type">
 <dt id="c.xcl_board_info">
@@ -315,7 +333,7 @@ struct <code class="descname">xcl_mailbox_subdev_peer</code><a class="headerlink
 
 <p><strong>Definition</strong></p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_subdev_peer</span> <span class="p">{</span>
-  <span class="n">enum</span> <span class="n">xcl_group_kind</span> <span class="n">kind</span><span class="p">;</span>
+  <span class="n">int32_t</span> <span class="n">kind</span><span class="p">;</span>
   <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
@@ -323,7 +341,7 @@ struct <code class="descname">xcl_mailbox_subdev_peer</code><a class="headerlink
 <p><strong>Members</strong></p>
 <dl class="docutils">
 <dt><code class="docutils literal notranslate"><span class="pre">kind</span></code></dt>
-<dd>data group</dd>
+<dd>data group (enum xcl_group_kind)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
 <dd>buffer size for receiving response</dd>
 </dl>
@@ -364,7 +382,7 @@ struct <code class="descname">xcl_mailbox_conn_resp</code><a class="headerlink" 
   <span class="n">uint32_t</span> <span class="n">version</span><span class="p">;</span>
   <span class="n">uint64_t</span> <span class="n">conn_flags</span><span class="p">;</span>
   <span class="n">uint64_t</span> <span class="n">chan_switch</span><span class="p">;</span>
-  <span class="n">char</span> <span class="n">comm_id</span><span class="p">;</span>
+  <span class="n">int8_t</span> <span class="n">comm_id</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
 </div>
@@ -421,8 +439,8 @@ struct <code class="descname">xcl_mailbox_clock_freqscaling</code><a class="head
 
 <p><strong>Definition</strong></p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_clock_freqscaling</span> <span class="p">{</span>
-  <span class="n">unsigned</span> <span class="nb">int</span> <span class="n">region</span><span class="p">;</span>
-  <span class="n">unsigned</span> <span class="n">short</span> <span class="n">target_freqs</span><span class="p">;</span>
+  <span class="n">uint32_t</span> <span class="n">region</span><span class="p">;</span>
+  <span class="n">uint16_t</span> <span class="n">target_freqs</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
 </div>
@@ -442,8 +460,8 @@ struct <code class="descname">xcl_mailbox_req</code><a class="headerlink" href="
 <p><strong>Definition</strong></p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_req</span> <span class="p">{</span>
   <span class="n">uint64_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">enum</span> <span class="n">xcl_mailbox_request</span> <span class="n">req</span><span class="p">;</span>
-  <span class="n">char</span> <span class="n">data</span><span class="p">;</span>
+  <span class="n">int32_t</span> <span class="n">req</span><span class="p">;</span>
+  <span class="n">int32_t</span> <span class="n">data</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
 </div>
@@ -452,7 +470,7 @@ struct <code class="descname">xcl_mailbox_req</code><a class="headerlink" href="
 <dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt>
 <dd>flags of this message</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">req</span></code></dt>
-<dd>opcode</dd>
+<dd>opcode (enum xcl_mailbox_request)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
 <dd>payload of variable length</dd>
 </dl>
@@ -467,7 +485,7 @@ struct <code class="descname">xcl_sw_chan</code><a class="headerlink" href="#c.x
   <span class="n">uint64_t</span> <span class="n">sz</span><span class="p">;</span>
   <span class="n">uint64_t</span> <span class="n">flags</span><span class="p">;</span>
   <span class="n">uint64_t</span> <span class="nb">id</span><span class="p">;</span>
-  <span class="n">char</span> <span class="n">data</span><span class="p">;</span>
+  <span class="n">uint64_t</span> <span class="n">data</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
 </div>

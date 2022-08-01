@@ -97,9 +97,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -111,11 +112,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -146,11 +152,11 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="embedded-runtime-library">
-<span id="ert-main-rst"></span><h1>Embedded Runtime Library<a class="headerlink" href="#embedded-runtime-library" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="ert-main-rst"></span><div class="section" id="embedded-runtime-library">
+<h1>Embedded Runtime Library<a class="headerlink" href="#embedded-runtime-library" title="Permalink to this headline">¶</a></h1>
 <p><strong>XRT Embedded Runtime definition</strong></p>
 <p>Header file <em>ert.h</em> defines data structures used by Emebdded Runtime (ERT) and
-XRT <a class="reference internal" href="xrt.main.html#c.xclExecBuf" title="xclExecBuf"><code class="xref c c-func docutils literal notranslate"><span class="pre">xclExecBuf()</span></code></a> API.</p>
+XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">xclExecBuf()</span></code> API.</p>
 <dl class="type">
 <dt id="c.ert_packet">
 struct <code class="descname">ert_packet</code><a class="headerlink" href="#c.ert_packet" title="Permalink to this definition">¶</a></dt>
@@ -178,6 +184,7 @@ struct <code class="descname">ert_start_kernel_cmd</code><a class="headerlink" h
 <p><strong>Definition</strong></p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_start_kernel_cmd</span> <span class="p">{</span>
   <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
+  <span class="n">uint32_t</span> <span class="n">cu_mask</span><span class="p">;</span>
   <span class="n">uint32_t</span> <span class="n">data</span><span class="p">;</span>
 <span class="p">};</span>
 </pre></div>
@@ -186,6 +193,8 @@ struct <code class="descname">ert_start_kernel_cmd</code><a class="headerlink" h
 <dl class="docutils">
 <dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
 <dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_mask</span></code></dt>
+<dd>first mandatory CU mask</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
 <dd>count-1 number of words representing interpreted payload</dd>
 </dl>
@@ -330,6 +339,25 @@ struct <code class="descname">ert_abort_cmd</code><a class="headerlink" href="#c
 <p><strong>Definition</strong></p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_abort_cmd</span> <span class="p">{</span>
   <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
+  <span class="n">uint64_t</span> <span class="n">exec_bo_handle</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exec_bo_handle</span></code></dt>
+<dd>The bo handle of execbuf command to abort</dd>
+</dl>
+<dl class="type">
+<dt id="c.ert_validate_cmd">
+struct <code class="descname">ert_validate_cmd</code><a class="headerlink" href="#c.ert_validate_cmd" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_validate_cmd</span> <span class="p">{</span>
+  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
 <span class="p">};</span>
 </pre></div>
 </div>
@@ -339,12 +367,12 @@ struct <code class="descname">ert_abort_cmd</code><a class="headerlink" href="#c
 <dd>anonymous</dd>
 </dl>
 <dl class="type">
-<dt id="c.ert_validate_cmd">
-struct <code class="descname">ert_validate_cmd</code><a class="headerlink" href="#c.ert_validate_cmd" title="Permalink to this definition">¶</a></dt>
+<dt id="c.ert_access_valid_cmd">
+struct <code class="descname">ert_access_valid_cmd</code><a class="headerlink" href="#c.ert_access_valid_cmd" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_validate_cmd</span> <span class="p">{</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_access_valid_cmd</span> <span class="p">{</span>
   <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
 <span class="p">};</span>
 </pre></div>
@@ -466,12 +494,6 @@ MB(W)</p>
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>This value is per hardware BSP (XPAR_INTC_SINGLE_BASEADDR)</p>
-<dl class="function">
-<dt id="c.ERT_CUSTAT_VERSION_0">
-<code class="descname">ERT_CUSTAT_VERSION_0</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CUSTAT_VERSION_0" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<p><strong>Parameters</strong></p>
 <dl class="function">
 <dt id="c.ERT_CUISR_LUT_ADDR">
 <code class="descname">ERT_CUISR_LUT_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CUISR_LUT_ADDR" title="Permalink to this definition">¶</a></dt>

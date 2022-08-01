@@ -79,20 +79,22 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">XRT Native Library C++ API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#configuration-apis">Configuration APIs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#device-apis">Device APIs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xclbin-apis">XCLBIN APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#buffer-apis">Buffer APIs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#kernel-apis">Kernel APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-apis">Configuration APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#custom-ip-apis">Custom IP APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#device-apis">Device APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#info-apis">Info APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#kernel-apis">Kernel APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#message-apis">Message APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#system-apis">System APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#uuid-apis">UUID APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xclbin-apis">XCLBIN APIs</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="#id1">XRT Native Library C API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#id2">Configuration APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">Buffer APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">Configuration APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#device-and-xclbin-apis">Device and XCLBIN APIs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id3">Buffer APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id4">Kernel APIs</a></li>
 </ul>
 </li>
@@ -113,9 +115,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -127,11 +130,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -162,387 +170,46 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="xrt-native-library-c-api">
-<span id="xrt-native-main-rst"></span><h1>XRT Native Library C++ API<a class="headerlink" href="#xrt-native-library-c-api" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="configuration-apis">
-<h2>Configuration APIs<a class="headerlink" href="#configuration-apis" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="device-apis">
-<h2>Device APIs<a class="headerlink" href="#device-apis" title="Permalink to this headline">¶</a></h2>
-</div>
-<div class="section" id="xclbin-apis">
-<h2>XCLBIN APIs<a class="headerlink" href="#xclbin-apis" title="Permalink to this headline">¶</a></h2>
-</div>
+  <span class="target" id="xrt-native-main-rst"></span><div class="section" id="xrt-native-library-c-api">
+<h1>XRT Native Library C++ API<a class="headerlink" href="#xrt-native-library-c-api" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="buffer-apis">
 <h2>Buffer APIs<a class="headerlink" href="#buffer-apis" title="Permalink to this headline">¶</a></h2>
 </div>
-<div class="section" id="kernel-apis">
-<h2>Kernel APIs<a class="headerlink" href="#kernel-apis" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="configuration-apis">
+<h2>Configuration APIs<a class="headerlink" href="#configuration-apis" title="Permalink to this headline">¶</a></h2>
 </div>
 <div class="section" id="custom-ip-apis">
 <h2>Custom IP APIs<a class="headerlink" href="#custom-ip-apis" title="Permalink to this headline">¶</a></h2>
 </div>
+<div class="section" id="device-apis">
+<h2>Device APIs<a class="headerlink" href="#device-apis" title="Permalink to this headline">¶</a></h2>
+</div>
 <div class="section" id="info-apis">
 <h2>Info APIs<a class="headerlink" href="#info-apis" title="Permalink to this headline">¶</a></h2>
 </div>
+<div class="section" id="kernel-apis">
+<h2>Kernel APIs<a class="headerlink" href="#kernel-apis" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="message-apis">
+<h2>Message APIs<a class="headerlink" href="#message-apis" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="system-apis">
+<h2>System APIs<a class="headerlink" href="#system-apis" title="Permalink to this headline">¶</a></h2>
+</div>
 <div class="section" id="uuid-apis">
 <h2>UUID APIs<a class="headerlink" href="#uuid-apis" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="xclbin-apis">
+<h2>XCLBIN APIs<a class="headerlink" href="#xclbin-apis" title="Permalink to this headline">¶</a></h2>
 </div>
 </div>
 <div class="section" id="id1">
 <h1>XRT Native Library C API<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="id2">
-<h2>Configuration APIs<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
-<dl class="function">
-<dt id="c.xrtIniStringSet">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtIniStringSet</code><span class="sig-paren">(</span>const char *<em>&nbsp;key</em>, const char *<em>&nbsp;value</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtIniStringSet" title="Permalink to this definition">¶</a></dt>
-<dd><p>Change xrt.ini string value for specified key</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">key</span></code></dt>
-<dd>Key to change value for</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">value</span></code></dt>
-<dd>New value for key</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success, error if key value cannot be changed</p>
-<dl class="function">
-<dt id="c.xrtIniUintSet">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtIniUintSet</code><span class="sig-paren">(</span>const char *<em>&nbsp;key</em>, unsigned int<em>&nbsp;value</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtIniUintSet" title="Permalink to this definition">¶</a></dt>
-<dd><p>Change xrt.ini unsigned int value for specified key</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">key</span></code></dt>
-<dd>Key to change value for</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">value</span></code></dt>
-<dd>New value for key</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success, error if key value cannot be changed</p>
-</div>
-<div class="section" id="device-and-xclbin-apis">
-<h2>Device and XCLBIN APIs<a class="headerlink" href="#device-and-xclbin-apis" title="Permalink to this headline">¶</a></h2>
+<h2>Buffer APIs<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
 <dl class="type">
 <dt id="c.xrtDeviceHandle">
 typedef <code class="descname">xrtDeviceHandle</code><a class="headerlink" href="#c.xrtDeviceHandle" title="Permalink to this definition">¶</a></dt>
-<dd><p>opaque device handle</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="c.xrtDeviceOpen">
-XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a> <code class="descname">xrtDeviceOpen</code><span class="sig-paren">(</span>unsigned int<em>&nbsp;index</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceOpen" title="Permalink to this definition">¶</a></dt>
-<dd><p>Open a device and obtain its handle</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">index</span></code></dt>
-<dd>Device index</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>Handle representing the opened device, or nullptr on error</p>
-<dl class="function">
-<dt id="c.xrtDeviceOpenByBDF">
-XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a> <code class="descname">xrtDeviceOpenByBDF</code><span class="sig-paren">(</span>const char *<em>&nbsp;bdf</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceOpenByBDF" title="Permalink to this definition">¶</a></dt>
-<dd><p>Open a device and obtain its handle</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">bdf</span></code></dt>
-<dd>PCIe BDF identifying the device to open</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>Handle representing the opened device, or nullptr on error</p>
-<dl class="function">
-<dt id="c.xrtDeviceOpenFromXcl">
-XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a> <code class="descname">xrtDeviceOpenFromXcl</code><span class="sig-paren">(</span><a class="reference internal" href="xrt.main.html#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceOpenFromXcl" title="Permalink to this definition">¶</a></dt>
-<dd><p>Open a device from a shim xclDeviceHandle</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">xhdl</span></code></dt>
-<dd>Shim xclDeviceHandle</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>Handle representing the opened device, or nullptr on error</p>
-<p>The returned XRT device handle must be explicitly closed when
-nolonger needed.</p>
-<dl class="function">
-<dt id="c.xrtDeviceClose">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceClose</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceClose" title="Permalink to this definition">¶</a></dt>
-<dd><p>Close an opened device</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
-<dd>Handle to device previously opened with xrtDeviceOpen</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success, error otherwise</p>
-<dl class="function">
-<dt id="c.xrtDeviceLoadXclbin">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceLoadXclbin</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, const struct axlf *<em>&nbsp;xclbin</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceLoadXclbin" title="Permalink to this definition">¶</a></dt>
-<dd><p>Load an xclbin image</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
-<dd>Handle to device previously opened with xrtDeviceOpen</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">xclbin</span></code></dt>
-<dd>Pointer to complete axlf in memory image</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success, error otherwise</p>
-<p>The xclbin image can safely be deleted after calling
-this funciton.</p>
-<dl class="function">
-<dt id="c.xrtDeviceLoadXclbinFile">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceLoadXclbinFile</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, const char *<em>&nbsp;xclbin_fnm</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceLoadXclbinFile" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read and load an xclbin file</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
-<dd>Handle to device previously opened with xrtDeviceOpen</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">xclbin_fnm</span></code></dt>
-<dd>Full path to xclbin file</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success, error otherwise</p>
-<p>This function read the file from disk and loads
-the xclbin.   Using this function allows one time
-allocation of data that needs to be kept in memory.</p>
-<dl class="function">
-<dt id="c.xrtDeviceLoadXclbinHandle">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceLoadXclbinHandle</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, <a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceLoadXclbinHandle" title="Permalink to this definition">¶</a></dt>
-<dd><p>load an xclbin from an xrt::xclbin handle</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
-<dd>Handle to device previously opened with xrtDeviceOpen</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
-<dd>xrt::xclbin handle</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success, error otherwise</p>
-<p>This function uses the specified xrt::xclbin object created by
-caller.  The xrt::xclbin object must contain the complete axlf
-structure.</p>
-<dl class="function">
-<dt id="c.xrtDeviceLoadXclbinUUID">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceLoadXclbinUUID</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, const xuid_t<em>&nbsp;uuid</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceLoadXclbinUUID" title="Permalink to this definition">¶</a></dt>
-<dd><p>load an xclbin from an xrt::xclbin handle</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
-<dd>Handle to device previously opened with xrtDeviceOpen</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">uuid</span></code></dt>
-<dd>uuid_t struct of xclbin id</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success, error otherwise</p>
-<p>This function reads the xclbin id already loaded in the system and
-comapres it with the input uuid. If they match, load the cached
-xclbin metadata into caller’s process. Otherwise returns error.</p>
-<dl class="function">
-<dt id="c.xrtDeviceGetXclbinUUID">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceGetXclbinUUID</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, xuid_t<em>&nbsp;out</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceGetXclbinUUID" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get UUID of xclbin image loaded on device</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
-<dd>Handle to device previously opened with xrtDeviceOpen</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xuid_t</span> <span class="pre">out</span></code></dt>
-<dd>Return xclbin id in this uuid_t struct</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success or appropriate error number</p>
-<p>Note that current UUID can be different from the UUID of
-the xclbin loaded by this process using <strong>load_xclbin()</strong></p>
-<dl class="type">
-<dt id="c.xrtXclbinHandle">
-typedef <code class="descname">xrtXclbinHandle</code><a class="headerlink" href="#c.xrtXclbinHandle" title="Permalink to this definition">¶</a></dt>
-<dd><p>opaque xclbin handle</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="c.xrtXclbinAllocFilename">
-XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a> <code class="descname">xrtXclbinAllocFilename</code><span class="sig-paren">(</span>const char *<em>&nbsp;filename</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinAllocFilename" title="Permalink to this definition">¶</a></dt>
-<dd><p>Allocate a xclbin using xclbin filename</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">filename</span></code></dt>
-<dd>path to the xclbin file</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>xrtXclbinHandle on success or NULL with errno set</p>
-<dl class="function">
-<dt id="c.xrtXclbinAllocAxlf">
-XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a> <code class="descname">xrtXclbinAllocAxlf</code><span class="sig-paren">(</span>const struct axlf *<em>&nbsp;top_axlf</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinAllocAxlf" title="Permalink to this definition">¶</a></dt>
-<dd><p>Allocate a xclbin using an axlf</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">top_axlf</span></code></dt>
-<dd>an axlf</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>xrtXclbinHandle on success or NULL with errno set</p>
-<dl class="function">
-<dt id="c.xrtXclbinAllocRawData">
-XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a> <code class="descname">xrtXclbinAllocRawData</code><span class="sig-paren">(</span>const char *<em>&nbsp;data</em>, int<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinAllocRawData" title="Permalink to this definition">¶</a></dt>
-<dd><p>Allocate a xclbin using raw data</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
-<dd>raw data buffer of xclbin</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">size</span></code></dt>
-<dd>size (in bytes) of raw data buffer of xclbin</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>xrtXclbinHandle on success or NULL with errno set</p>
-<dl class="function">
-<dt id="c.xrtXclbinFreeHandle">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtXclbinFreeHandle</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinFreeHandle" title="Permalink to this definition">¶</a></dt>
-<dd><p>Deallocate the xclbin handle</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
-<dd>xclbin handle</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success, -1 on error</p>
-<dl class="function">
-<dt id="c.xrtXclbinGetXSAName">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtXclbinGetXSAName</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em>, char *<em>&nbsp;name</em>, int<em>&nbsp;size</em>, int *<em>&nbsp;ret_size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetXSAName" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get Xilinx Support Archive (XSA) Name of xclbin handle</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
-<dd>Xclbin handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
-<dd>Return name of XSA.
-If the value is nullptr, the content of this value will not be populated.
-Otherwise, the the content of this value will be populated.</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">size</span></code></dt>
-<dd>size (in bytes) of <strong>name</strong>.</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">*</span> <span class="pre">ret_size</span></code></dt>
-<dd>Return size (in bytes) of XSA name.
-If the value is nullptr, the content of this value will not be populated.
-Otherwise, the the content of this value will be populated.</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success or appropriate error number</p>
-<dl class="function">
-<dt id="c.xrtXclbinGetUUID">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtXclbinGetUUID</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em>, xuid_t<em>&nbsp;ret_uuid</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetUUID" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get UUID of xclbin handle</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
-<dd>Xclbin handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xuid_t</span> <span class="pre">ret_uuid</span></code></dt>
-<dd>Return xclbin id in this uuid_t struct</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success or appropriate error number</p>
-<dl class="function">
-<dt id="c.xrtXclbinGetNumKernels">
-XCL_DRIVER_DLLESPEC size_t <code class="descname">xrtXclbinGetNumKernels</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetNumKernels" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get number of PL kernels in xclbin</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
-<dd><em>undescribed</em></dd>
-</dl>
-<p><strong>Description</strong></p>
-<dl class="docutils">
-<dt><strong>param</strong> xhdl</dt>
-<dd>Xclbin handle obtained from an xrtXclbinAlloc function</dd>
-<dt><strong>return</strong></dt>
-<dd>The number of PL kernels in the xclbin</dd>
-</dl>
-<p>Kernels are extracted from embedded XML metadata in the xclbin.
-A kernel groups one or more compute units. A kernel has arguments
-from which offset, type, etc can be retrived.</p>
-<dl class="function">
-<dt id="c.xrtXclbinGetNumKernelComputeUnits">
-XCL_DRIVER_DLLESPEC size_t <code class="descname">xrtXclbinGetNumKernelComputeUnits</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetNumKernelComputeUnits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get number of CUs in xclbin</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
-<dd><em>undescribed</em></dd>
-</dl>
-<p><strong>Description</strong></p>
-<dl class="docutils">
-<dt><strong>param</strong> xhdl</dt>
-<dd>Xclbin handle obtained from an xrtXclbinAlloc function</dd>
-<dt><strong>return</strong></dt>
-<dd>The number of compute units</dd>
-</dl>
-<p>Compute units are associated with kernels.  This function returns
-the total number of compute units as the sum of compute units over
-all kernels.</p>
-<dl class="function">
-<dt id="c.xrtXclbinGetData">
-XCL_DRIVER_DLLESPEC int <code class="descname">xrtXclbinGetData</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em>, char *<em>&nbsp;data</em>, int<em>&nbsp;size</em>, int *<em>&nbsp;ret_size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetData" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the raw data of the xclbin handle</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="docutils">
-<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
-<dd>Xclbin handle</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
-<dd>Return raw data.
-If the value is nullptr, the content of this value will not be populated.
-Otherwise, the the content of this value will be populated.</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">size</span></code></dt>
-<dd>Size (in bytes) of <strong>data</strong></dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">*</span> <span class="pre">ret_size</span></code></dt>
-<dd>Return size (in bytes) of XSA name.
-If the value is nullptr, the content of this value will not be populated.
-Otherwise, the the content of this value will be populated.</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 on success or appropriate error number</p>
-</div>
-<div class="section" id="id3">
-<h2>Buffer APIs<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
-<dl class="type">
-<dt>
-typedef <code class="descname">xrtDeviceHandle</code></dt>
 <dd><p>opaque device handle</p>
 </dd></dl>
 
@@ -797,6 +464,343 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xrtBOCopy</code><span class="sig-
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>It is an error if sz is 0 bytes or sz + src/dst_offset is out of bounds.</p>
+</div>
+<div class="section" id="id3">
+<h2>Configuration APIs<a class="headerlink" href="#id3" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="c.xrtIniStringSet">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtIniStringSet</code><span class="sig-paren">(</span>const char *<em>&nbsp;key</em>, const char *<em>&nbsp;value</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtIniStringSet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change xrt.ini string value for specified key</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">key</span></code></dt>
+<dd>Key to change value for</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">value</span></code></dt>
+<dd>New value for key</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, error if key value cannot be changed</p>
+<dl class="function">
+<dt id="c.xrtIniUintSet">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtIniUintSet</code><span class="sig-paren">(</span>const char *<em>&nbsp;key</em>, unsigned int<em>&nbsp;value</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtIniUintSet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Change xrt.ini unsigned int value for specified key</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">key</span></code></dt>
+<dd>Key to change value for</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">value</span></code></dt>
+<dd>New value for key</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, error if key value cannot be changed</p>
+</div>
+<div class="section" id="device-and-xclbin-apis">
+<h2>Device and XCLBIN APIs<a class="headerlink" href="#device-and-xclbin-apis" title="Permalink to this headline">¶</a></h2>
+<dl class="type">
+<dt>
+typedef <code class="descname">xrtDeviceHandle</code></dt>
+<dd><p>opaque device handle</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.xrtDeviceOpen">
+XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a> <code class="descname">xrtDeviceOpen</code><span class="sig-paren">(</span>unsigned int<em>&nbsp;index</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceOpen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a device and obtain its handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">index</span></code></dt>
+<dd>Device index</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>Handle representing the opened device, or nullptr on error</p>
+<dl class="function">
+<dt id="c.xrtDeviceOpenByBDF">
+XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a> <code class="descname">xrtDeviceOpenByBDF</code><span class="sig-paren">(</span>const char *<em>&nbsp;bdf</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceOpenByBDF" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a device and obtain its handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">bdf</span></code></dt>
+<dd>PCIe BDF identifying the device to open</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>Handle representing the opened device, or nullptr on error</p>
+<dl class="function">
+<dt id="c.xrtDeviceOpenFromXcl">
+XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a> <code class="descname">xrtDeviceOpenFromXcl</code><span class="sig-paren">(</span>xclDeviceHandle<em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceOpenFromXcl" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a device from a shim xclDeviceHandle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">xhdl</span></code></dt>
+<dd>Shim xclDeviceHandle</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>Handle representing the opened device, or nullptr on error</p>
+<p>The returned XRT device handle must be explicitly closed when
+nolonger needed.</p>
+<dl class="function">
+<dt id="c.xrtDeviceClose">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceClose</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceClose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close an opened device</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
+<dd>Handle to device previously opened with xrtDeviceOpen</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, error otherwise</p>
+<dl class="function">
+<dt id="c.xrtDeviceLoadXclbin">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceLoadXclbin</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, const struct axlf *<em>&nbsp;xclbin</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceLoadXclbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load an xclbin image</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
+<dd>Handle to device previously opened with xrtDeviceOpen</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">xclbin</span></code></dt>
+<dd>Pointer to complete axlf in memory image</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, error otherwise</p>
+<p>The xclbin image can safely be deleted after calling
+this funciton.</p>
+<dl class="function">
+<dt id="c.xrtDeviceLoadXclbinFile">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceLoadXclbinFile</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, const char *<em>&nbsp;xclbin_fnm</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceLoadXclbinFile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read and load an xclbin file</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
+<dd>Handle to device previously opened with xrtDeviceOpen</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">xclbin_fnm</span></code></dt>
+<dd>Full path to xclbin file</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, error otherwise</p>
+<p>This function read the file from disk and loads
+the xclbin.   Using this function allows one time
+allocation of data that needs to be kept in memory.</p>
+<dl class="function">
+<dt id="c.xrtDeviceLoadXclbinHandle">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceLoadXclbinHandle</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, <a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceLoadXclbinHandle" title="Permalink to this definition">¶</a></dt>
+<dd><p>load an xclbin from an xrt::xclbin handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
+<dd>Handle to device previously opened with xrtDeviceOpen</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
+<dd>xrt::xclbin handle</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, error otherwise</p>
+<p>This function uses the specified xrt::xclbin object created by
+caller.  The xrt::xclbin object must contain the complete axlf
+structure.</p>
+<dl class="function">
+<dt id="c.xrtDeviceLoadXclbinUUID">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceLoadXclbinUUID</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, const xuid_t<em>&nbsp;uuid</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceLoadXclbinUUID" title="Permalink to this definition">¶</a></dt>
+<dd><p>load an xclbin from an xrt::xclbin handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
+<dd>Handle to device previously opened with xrtDeviceOpen</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">uuid</span></code></dt>
+<dd>uuid_t struct of xclbin id</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, error otherwise</p>
+<p>This function reads the xclbin id already loaded in the system and
+comapres it with the input uuid. If they match, load the cached
+xclbin metadata into caller’s process. Otherwise returns error.</p>
+<dl class="function">
+<dt id="c.xrtDeviceGetXclbinUUID">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtDeviceGetXclbinUUID</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtDeviceHandle" title="xrtDeviceHandle">xrtDeviceHandle</a><em>&nbsp;dhdl</em>, xuid_t<em>&nbsp;out</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtDeviceGetXclbinUUID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get UUID of xclbin image loaded on device</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtDeviceHandle</span> <span class="pre">dhdl</span></code></dt>
+<dd>Handle to device previously opened with xrtDeviceOpen</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xuid_t</span> <span class="pre">out</span></code></dt>
+<dd>Return xclbin id in this uuid_t struct</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success or appropriate error number</p>
+<p>Note that current UUID can be different from the UUID of
+the xclbin loaded by this process using <strong>load_xclbin()</strong></p>
+<dl class="type">
+<dt id="c.xrtXclbinHandle">
+typedef <code class="descname">xrtXclbinHandle</code><a class="headerlink" href="#c.xrtXclbinHandle" title="Permalink to this definition">¶</a></dt>
+<dd><p>opaque xclbin handle</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.xrtXclbinAllocFilename">
+XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a> <code class="descname">xrtXclbinAllocFilename</code><span class="sig-paren">(</span>const char *<em>&nbsp;filename</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinAllocFilename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate a xclbin using xclbin filename</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">filename</span></code></dt>
+<dd>path to the xclbin file</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>xrtXclbinHandle on success or NULL with errno set</p>
+<dl class="function">
+<dt id="c.xrtXclbinAllocAxlf">
+XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a> <code class="descname">xrtXclbinAllocAxlf</code><span class="sig-paren">(</span>const struct axlf *<em>&nbsp;top_axlf</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinAllocAxlf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate a xclbin using an axlf</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">top_axlf</span></code></dt>
+<dd>an axlf</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>xrtXclbinHandle on success or NULL with errno set</p>
+<dl class="function">
+<dt id="c.xrtXclbinAllocRawData">
+XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a> <code class="descname">xrtXclbinAllocRawData</code><span class="sig-paren">(</span>const char *<em>&nbsp;data</em>, int<em>&nbsp;size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinAllocRawData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Allocate a xclbin using raw data</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
+<dd>raw data buffer of xclbin</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">size</span></code></dt>
+<dd>size (in bytes) of raw data buffer of xclbin</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>xrtXclbinHandle on success or NULL with errno set</p>
+<dl class="function">
+<dt id="c.xrtXclbinFreeHandle">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtXclbinFreeHandle</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinFreeHandle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deallocate the xclbin handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
+<dd>xclbin handle</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success, -1 on error</p>
+<dl class="function">
+<dt id="c.xrtXclbinGetXSAName">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtXclbinGetXSAName</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em>, char *<em>&nbsp;name</em>, int<em>&nbsp;size</em>, int *<em>&nbsp;ret_size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetXSAName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get Xilinx Support Archive (XSA) Name of xclbin handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
+<dd>Xclbin handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span> <span class="pre">name</span></code></dt>
+<dd>Return name of XSA.
+If the value is nullptr, the content of this value will not be populated.
+Otherwise, the the content of this value will be populated.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">size</span></code></dt>
+<dd>size (in bytes) of <strong>name</strong>.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">*</span> <span class="pre">ret_size</span></code></dt>
+<dd>Return size (in bytes) of XSA name.
+If the value is nullptr, the content of this value will not be populated.
+Otherwise, the the content of this value will be populated.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success or appropriate error number</p>
+<dl class="function">
+<dt id="c.xrtXclbinGetUUID">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtXclbinGetUUID</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em>, xuid_t<em>&nbsp;ret_uuid</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetUUID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get UUID of xclbin handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
+<dd>Xclbin handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xuid_t</span> <span class="pre">ret_uuid</span></code></dt>
+<dd>Return xclbin id in this uuid_t struct</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success or appropriate error number</p>
+<dl class="function">
+<dt id="c.xrtXclbinGetNumKernels">
+XCL_DRIVER_DLLESPEC size_t <code class="descname">xrtXclbinGetNumKernels</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetNumKernels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get number of PL kernels in xclbin</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
+<dd>Xclbin handle obtained from an xrtXclbinAlloc function</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>The number of PL kernels in the xclbin</p>
+<p>Kernels are extracted from embedded XML metadata in the xclbin.
+A kernel groups one or more compute units. A kernel has arguments
+from which offset, type, etc can be retrived.</p>
+<dl class="function">
+<dt id="c.xrtXclbinGetNumKernelComputeUnits">
+XCL_DRIVER_DLLESPEC size_t <code class="descname">xrtXclbinGetNumKernelComputeUnits</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetNumKernelComputeUnits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get number of CUs in xclbin</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
+<dd>Xclbin handle obtained from an xrtXclbinAlloc function</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>The number of compute units</p>
+<p>Compute units are associated with kernels.  This function returns
+the total number of compute units as the sum of compute units over
+all kernels.</p>
+<dl class="function">
+<dt id="c.xrtXclbinGetData">
+XCL_DRIVER_DLLESPEC int <code class="descname">xrtXclbinGetData</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xrtXclbinHandle" title="xrtXclbinHandle">xrtXclbinHandle</a><em>&nbsp;xhdl</em>, char *<em>&nbsp;data</em>, int<em>&nbsp;size</em>, int *<em>&nbsp;ret_size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xrtXclbinGetData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the raw data of the xclbin handle</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xrtXclbinHandle</span> <span class="pre">xhdl</span></code></dt>
+<dd>Xclbin handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
+<dd>Return raw data.
+If the value is nullptr, the content of this value will not be populated.
+Otherwise, the the content of this value will be populated.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">size</span></code></dt>
+<dd>Size (in bytes) of <strong>data</strong></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">*</span> <span class="pre">ret_size</span></code></dt>
+<dd>Return size (in bytes) of XSA name.
+If the value is nullptr, the content of this value will not be populated.
+Otherwise, the the content of this value will be populated.</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>0 on success or appropriate error number</p>
 </div>
 <div class="section" id="id4">
 <h2>Kernel APIs<a class="headerlink" href="#id4" title="Permalink to this headline">¶</a></h2>

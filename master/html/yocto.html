@@ -26,7 +26,7 @@ function OptanonWrapper() { }
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Mailbox Subdevice Driver" href="mailbox.main.html" />
-    <link rel="prev" title="Legacy to new map" href="xbtools_map.html" /> 
+    <link rel="prev" title="Utility Migration Guide" href="xbtools_map.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -97,9 +97,10 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbflash2.html">xbflash2</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul class="current">
@@ -126,11 +127,16 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -161,8 +167,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="xrt-setup-for-embedded-flow">
-<span id="yocto-rst"></span><h1>XRT Setup for Embedded Flow<a class="headerlink" href="#xrt-setup-for-embedded-flow" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="yocto-rst"></span><div class="section" id="xrt-setup-for-embedded-flow">
+<h1>XRT Setup for Embedded Flow<a class="headerlink" href="#xrt-setup-for-embedded-flow" title="Permalink to this headline">¶</a></h1>
 <p>To use XRT on embedded designs, xrt and zocl two components need to be installed in the root file system.
 Xrt package contains user space libraries and zocl is a driver space module, which requires a device tree node.</p>
 <div class="section" id="install-xrt-from-package-feed">
@@ -338,7 +344,7 @@ $ petalinux-build
                   </style>
 				  
 				  <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="xbtools_map.html" class="btn btn-neutral float-left" title="Legacy to new map" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="xbtools_map.html" class="btn btn-neutral float-left" title="Utility Migration Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="mailbox.main.html" class="btn btn-neutral float-right" title="Mailbox Subdevice Driver" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
