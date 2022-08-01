@@ -137,6 +137,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a1517929bd43700d26af073a94a0b1761"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac539bf90de9be3b9e4ba202b70cbba40"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classxrt_1_1xclbin_1_1ip.html">ip</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#ac539bf90de9be3b9e4ba202b70cbba40">get_ips</a> () const</td></tr>
 <tr class="separator:ac539bf90de9be3b9e4ba202b70cbba40"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0fb71f2c018e5688a10132b7c0de00a8"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classxrt_1_1xclbin_1_1ip.html">ip</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a0fb71f2c018e5688a10132b7c0de00a8">get_ips</a> (const std::string &amp;name) const</td></tr>
+<tr class="separator:a0fb71f2c018e5688a10132b7c0de00a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0fd663b528ded292023776bbdb4c2a9c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1xclbin_1_1ip.html">ip</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a0fd663b528ded292023776bbdb4c2a9c">get_ip</a> (const std::string &amp;name) const</td></tr>
 <tr class="separator:a0fd663b528ded292023776bbdb4c2a9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4af895598626ead2a3f478e149a05778"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classxrt_1_1xclbin_1_1mem.html">mem</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a4af895598626ead2a3f478e149a05778">get_mems</a> () const</td></tr>
@@ -364,7 +366,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <a id="ac539bf90de9be3b9e4ba202b70cbba40"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac539bf90de9be3b9e4ba202b70cbba40">&#9670;&nbsp;</a></span>get_ips()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ac539bf90de9be3b9e4ba202b70cbba40">&#9670;&nbsp;</a></span>get_ips() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -380,6 +382,33 @@ Public Member Functions</h2></td></tr>
 <p><a class="el" href="classxrt_1_1xclbin.html#ac539bf90de9be3b9e4ba202b70cbba40">get_ips()</a> - Get a list of IPs from the xclbin</p>
 <dl class="section return"><dt>Returns</dt><dd>A list of <a class="el" href="classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin.">xrt::xclbin::ip</a> objects from xclbin.</dd></dl>
 <p>The returned <a class="el" href="classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin.">xrt::xclbin::ip</a> objects are extracted from the IP_LAYOUT section of the xclbin. </p>
+
+</div>
+</div>
+<a id="a0fb71f2c018e5688a10132b7c0de00a8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0fb71f2c018e5688a10132b7c0de00a8">&#9670;&nbsp;</a></span>get_ips() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;<a class="el" href="classxrt_1_1xclbin_1_1ip.html">ip</a>&gt; xrt::xclbin::get_ips </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>name</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1xclbin.html#ac539bf90de9be3b9e4ba202b70cbba40">get_ips()</a> - Get list of ips that matches name</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">name</td><td>Name to match against, prefixed with kernel name </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A list of <a class="el" href="classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin.">xrt::xclbin::ip</a> objects that are compute units of this kernel object and matches the specified name.</dd></dl>
+<p>The kernel name can optionally specify which kernel instance(s) to match "kernel:{ip1,ip2,...} syntax. </p>
 
 </div>
 </div>
@@ -510,7 +539,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>/scratch/udayd/DOC/XRT/src/runtime_src/core/include/experimental/<a class="el" href="xrt__xclbin_8h_source.html">xrt_xclbin.h</a></li>
+<li>/scratch/DOC/XRT/src/runtime_src/core/include/experimental/<a class="el" href="xrt__xclbin_8h_source.html">xrt_xclbin.h</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

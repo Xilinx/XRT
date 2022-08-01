@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.17"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>XRT: /scratch/udayd/DOC/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h Source File</title>
+<title>XRT: /scratch/DOC/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h Source File</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -306,105 +306,109 @@ $(function() {
 <div class="line"><a name="l00609"></a><span class="lineno">  609</span>&#160;  std::vector&lt;ip&gt;</div>
 <div class="line"><a name="l00610"></a><span class="lineno">  610</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#ac539bf90de9be3b9e4ba202b70cbba40">get_ips</a>() <span class="keyword">const</span>;</div>
 <div class="line"><a name="l00611"></a><span class="lineno">  611</span>&#160; </div>
-<div class="line"><a name="l00621"></a><span class="lineno">  621</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00622"></a><span class="lineno">  622</span>&#160;  ip</div>
-<div class="line"><a name="l00623"></a><span class="lineno">  623</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a0fd663b528ded292023776bbdb4c2a9c">get_ip</a>(<span class="keyword">const</span> std::string&amp; name) <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00624"></a><span class="lineno">  624</span>&#160; </div>
-<div class="line"><a name="l00634"></a><span class="lineno">  634</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00635"></a><span class="lineno">  635</span>&#160;  std::vector&lt;mem&gt;</div>
-<div class="line"><a name="l00636"></a><span class="lineno">  636</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a4af895598626ead2a3f478e149a05778">get_mems</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00637"></a><span class="lineno">  637</span>&#160; </div>
-<div class="line"><a name="l00646"></a><span class="lineno">  646</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00647"></a><span class="lineno">  647</span>&#160;  std::string</div>
-<div class="line"><a name="l00648"></a><span class="lineno">  648</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a523c96967160da1a6abf7f8029afac5f">get_xsa_name</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00649"></a><span class="lineno">  649</span>&#160; </div>
-<div class="line"><a name="l00656"></a><span class="lineno">  656</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00657"></a><span class="lineno">  657</span>&#160;  std::string</div>
-<div class="line"><a name="l00658"></a><span class="lineno">  658</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#af08135286e0bd4a3bbbb047a42640725">get_fpga_device_name</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00659"></a><span class="lineno">  659</span>&#160; </div>
-<div class="line"><a name="l00668"></a><span class="lineno">  668</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00669"></a><span class="lineno">  669</span>&#160;  uuid</div>
-<div class="line"><a name="l00670"></a><span class="lineno">  670</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a650f8a98861909e1ddeb53d0d09b1e28">get_uuid</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00671"></a><span class="lineno">  671</span>&#160; </div>
-<div class="line"><a name="l00678"></a><span class="lineno">  678</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00679"></a><span class="lineno">  679</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">target_type</a></div>
-<div class="line"><a name="l00680"></a><span class="lineno">  680</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a02b5a6a297f231dbec7dde96f963088a">get_target_type</a>() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00681"></a><span class="lineno">  681</span>&#160; </div>
-<div class="line"><a name="l00683"></a><span class="lineno">  683</span>&#160; </div>
-<div class="line"><a name="l00691"></a><span class="lineno">  691</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00692"></a><span class="lineno">  692</span>&#160;  <span class="keyword">const</span> axlf*</div>
-<div class="line"><a name="l00693"></a><span class="lineno">  693</span>&#160;  get_axlf() <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00694"></a><span class="lineno">  694</span>&#160; </div>
-<div class="line"><a name="l00710"></a><span class="lineno">  710</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> SectionType&gt;</div>
-<div class="line"><a name="l00711"></a><span class="lineno">  711</span>&#160;  SectionType</div>
-<div class="line"><a name="l00712"></a><span class="lineno">  712</span>&#160;  get_axlf_section(axlf_section_kind section)<span class="keyword"> const</span></div>
-<div class="line"><a name="l00713"></a><span class="lineno">  713</span>&#160;<span class="keyword">  </span>{</div>
-<div class="line"><a name="l00714"></a><span class="lineno">  714</span>&#160;    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span>SectionType<span class="keyword">&gt;</span>(get_axlf_section(section).first);</div>
-<div class="line"><a name="l00715"></a><span class="lineno">  715</span>&#160;  }</div>
-<div class="line"><a name="l00717"></a><span class="lineno">  717</span>&#160; </div>
-<div class="line"><a name="l00718"></a><span class="lineno">  718</span>&#160;<span class="keyword">private</span>:</div>
-<div class="line"><a name="l00719"></a><span class="lineno">  719</span>&#160;  XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00720"></a><span class="lineno">  720</span>&#160;  std::pair&lt;const char*, size_t&gt;</div>
-<div class="line"><a name="l00721"></a><span class="lineno">  721</span>&#160;  get_axlf_section(axlf_section_kind section) <span class="keyword">const</span>;</div>
-<div class="line"><a name="l00722"></a><span class="lineno">  722</span>&#160;};</div>
-<div class="line"><a name="l00723"></a><span class="lineno">  723</span>&#160;} <span class="comment">// namespace xrt</span></div>
-<div class="line"><a name="l00724"></a><span class="lineno">  724</span>&#160; </div>
-<div class="line"><a name="l00726"></a><span class="lineno">  726</span>&#160;<span class="keyword">extern</span> <span class="stringliteral">&quot;C&quot;</span> {</div>
-<div class="line"><a name="l00727"></a><span class="lineno">  727</span>&#160;<span class="preprocessor">#endif</span></div>
-<div class="line"><a name="l00728"></a><span class="lineno">  728</span>&#160; </div>
-<div class="line"><a name="l00735"></a><span class="lineno">  735</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00736"></a><span class="lineno">  736</span>&#160;<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div>
-<div class="line"><a name="l00737"></a><span class="lineno">  737</span>&#160;xrtXclbinAllocFilename(<span class="keyword">const</span> <span class="keywordtype">char</span>* filename);</div>
-<div class="line"><a name="l00738"></a><span class="lineno">  738</span>&#160; </div>
-<div class="line"><a name="l00739"></a><span class="lineno">  739</span>&#160; </div>
-<div class="line"><a name="l00746"></a><span class="lineno">  746</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00747"></a><span class="lineno">  747</span>&#160;<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div>
-<div class="line"><a name="l00748"></a><span class="lineno">  748</span>&#160;xrtXclbinAllocAxlf(<span class="keyword">const</span> <span class="keyword">struct</span> axlf* top_axlf);</div>
-<div class="line"><a name="l00749"></a><span class="lineno">  749</span>&#160; </div>
-<div class="line"><a name="l00757"></a><span class="lineno">  757</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00758"></a><span class="lineno">  758</span>&#160;<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div>
-<div class="line"><a name="l00759"></a><span class="lineno">  759</span>&#160;xrtXclbinAllocRawData(<span class="keyword">const</span> <span class="keywordtype">char</span>* data, <span class="keywordtype">int</span> size);</div>
-<div class="line"><a name="l00760"></a><span class="lineno">  760</span>&#160; </div>
-<div class="line"><a name="l00767"></a><span class="lineno">  767</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00768"></a><span class="lineno">  768</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00769"></a><span class="lineno">  769</span>&#160;xrtXclbinFreeHandle(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl);</div>
-<div class="line"><a name="l00770"></a><span class="lineno">  770</span>&#160; </div>
-<div class="line"><a name="l00784"></a><span class="lineno">  784</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00785"></a><span class="lineno">  785</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00786"></a><span class="lineno">  786</span>&#160;xrtXclbinGetXSAName(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl, <span class="keywordtype">char</span>* name, <span class="keywordtype">int</span> size, <span class="keywordtype">int</span>* ret_size);</div>
-<div class="line"><a name="l00787"></a><span class="lineno">  787</span>&#160; </div>
-<div class="line"><a name="l00795"></a><span class="lineno">  795</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00796"></a><span class="lineno">  796</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00797"></a><span class="lineno">  797</span>&#160;xrtXclbinGetUUID(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl, <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> ret_uuid);</div>
-<div class="line"><a name="l00798"></a><span class="lineno">  798</span>&#160; </div>
-<div class="line"><a name="l00809"></a><span class="lineno">  809</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00810"></a><span class="lineno">  810</span>&#160;<span class="keywordtype">size_t</span></div>
-<div class="line"><a name="l00811"></a><span class="lineno">  811</span>&#160;xrtXclbinGetNumKernels(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl);</div>
-<div class="line"><a name="l00812"></a><span class="lineno">  812</span>&#160; </div>
-<div class="line"><a name="l00823"></a><span class="lineno">  823</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00824"></a><span class="lineno">  824</span>&#160;<span class="keywordtype">size_t</span></div>
-<div class="line"><a name="l00825"></a><span class="lineno">  825</span>&#160;xrtXclbinGetNumKernelComputeUnits(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl);</div>
-<div class="line"><a name="l00826"></a><span class="lineno">  826</span>&#160; </div>
-<div class="line"><a name="l00840"></a><span class="lineno">  840</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00841"></a><span class="lineno">  841</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00842"></a><span class="lineno">  842</span>&#160;xrtXclbinGetData(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl, <span class="keywordtype">char</span>* data, <span class="keywordtype">int</span> size, <span class="keywordtype">int</span>* ret_size);</div>
-<div class="line"><a name="l00843"></a><span class="lineno">  843</span>&#160; </div>
-<div class="line"><a name="l00844"></a><span class="lineno">  844</span>&#160;<span class="comment">/*</span></div>
-<div class="line"><a name="l00845"></a><span class="lineno">  845</span>&#160;<span class="comment"> * xrtGetXclbinUUID() - Get UUID of xclbin image running on device</span></div>
-<div class="line"><a name="l00846"></a><span class="lineno">  846</span>&#160;<span class="comment"> *</span></div>
-<div class="line"><a name="l00847"></a><span class="lineno">  847</span>&#160;<span class="comment"> * @dhdl:   Device handle</span></div>
-<div class="line"><a name="l00848"></a><span class="lineno">  848</span>&#160;<span class="comment"> * @out:    Return xclbin id in this uuid_t struct</span></div>
-<div class="line"><a name="l00849"></a><span class="lineno">  849</span>&#160;<span class="comment"> * Return:  0 on success or appropriate error number</span></div>
-<div class="line"><a name="l00850"></a><span class="lineno">  850</span>&#160;<span class="comment"> */</span></div>
-<div class="line"><a name="l00851"></a><span class="lineno">  851</span>&#160;XCL_DRIVER_DLLESPEC</div>
-<div class="line"><a name="l00852"></a><span class="lineno">  852</span>&#160;<span class="keywordtype">int</span></div>
-<div class="line"><a name="l00853"></a><span class="lineno">  853</span>&#160;xrtXclbinUUID(xclDeviceHandle dhdl, <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> out);</div>
-<div class="line"><a name="l00854"></a><span class="lineno">  854</span>&#160; </div>
-<div class="line"><a name="l00856"></a><span class="lineno">  856</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
-<div class="line"><a name="l00857"></a><span class="lineno">  857</span>&#160;}</div>
-<div class="line"><a name="l00858"></a><span class="lineno">  858</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00624"></a><span class="lineno">  624</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00625"></a><span class="lineno">  625</span>&#160;  std::vector&lt;ip&gt;</div>
+<div class="line"><a name="l00626"></a><span class="lineno">  626</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#ac539bf90de9be3b9e4ba202b70cbba40">get_ips</a>(<span class="keyword">const</span> std::string&amp; name) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00627"></a><span class="lineno">  627</span>&#160; </div>
+<div class="line"><a name="l00637"></a><span class="lineno">  637</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00638"></a><span class="lineno">  638</span>&#160;  ip</div>
+<div class="line"><a name="l00639"></a><span class="lineno">  639</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a0fd663b528ded292023776bbdb4c2a9c">get_ip</a>(<span class="keyword">const</span> std::string&amp; name) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00640"></a><span class="lineno">  640</span>&#160; </div>
+<div class="line"><a name="l00650"></a><span class="lineno">  650</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00651"></a><span class="lineno">  651</span>&#160;  std::vector&lt;mem&gt;</div>
+<div class="line"><a name="l00652"></a><span class="lineno">  652</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a4af895598626ead2a3f478e149a05778">get_mems</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00653"></a><span class="lineno">  653</span>&#160; </div>
+<div class="line"><a name="l00662"></a><span class="lineno">  662</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00663"></a><span class="lineno">  663</span>&#160;  std::string</div>
+<div class="line"><a name="l00664"></a><span class="lineno">  664</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a523c96967160da1a6abf7f8029afac5f">get_xsa_name</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00665"></a><span class="lineno">  665</span>&#160; </div>
+<div class="line"><a name="l00672"></a><span class="lineno">  672</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00673"></a><span class="lineno">  673</span>&#160;  std::string</div>
+<div class="line"><a name="l00674"></a><span class="lineno">  674</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#af08135286e0bd4a3bbbb047a42640725">get_fpga_device_name</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00675"></a><span class="lineno">  675</span>&#160; </div>
+<div class="line"><a name="l00684"></a><span class="lineno">  684</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00685"></a><span class="lineno">  685</span>&#160;  uuid</div>
+<div class="line"><a name="l00686"></a><span class="lineno">  686</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a650f8a98861909e1ddeb53d0d09b1e28">get_uuid</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00687"></a><span class="lineno">  687</span>&#160; </div>
+<div class="line"><a name="l00694"></a><span class="lineno">  694</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00695"></a><span class="lineno">  695</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">target_type</a></div>
+<div class="line"><a name="l00696"></a><span class="lineno">  696</span>&#160;  <a class="code" href="classxrt_1_1xclbin.html#a02b5a6a297f231dbec7dde96f963088a">get_target_type</a>() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00697"></a><span class="lineno">  697</span>&#160; </div>
+<div class="line"><a name="l00699"></a><span class="lineno">  699</span>&#160; </div>
+<div class="line"><a name="l00707"></a><span class="lineno">  707</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00708"></a><span class="lineno">  708</span>&#160;  <span class="keyword">const</span> axlf*</div>
+<div class="line"><a name="l00709"></a><span class="lineno">  709</span>&#160;  get_axlf() <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00710"></a><span class="lineno">  710</span>&#160; </div>
+<div class="line"><a name="l00726"></a><span class="lineno">  726</span>&#160;  <span class="keyword">template</span> &lt;<span class="keyword">typename</span> SectionType&gt;</div>
+<div class="line"><a name="l00727"></a><span class="lineno">  727</span>&#160;  SectionType</div>
+<div class="line"><a name="l00728"></a><span class="lineno">  728</span>&#160;  get_axlf_section(axlf_section_kind section)<span class="keyword"> const</span></div>
+<div class="line"><a name="l00729"></a><span class="lineno">  729</span>&#160;<span class="keyword">  </span>{</div>
+<div class="line"><a name="l00730"></a><span class="lineno">  730</span>&#160;    <span class="keywordflow">return</span> <span class="keyword">reinterpret_cast&lt;</span>SectionType<span class="keyword">&gt;</span>(get_axlf_section(section).first);</div>
+<div class="line"><a name="l00731"></a><span class="lineno">  731</span>&#160;  }</div>
+<div class="line"><a name="l00733"></a><span class="lineno">  733</span>&#160; </div>
+<div class="line"><a name="l00734"></a><span class="lineno">  734</span>&#160;<span class="keyword">private</span>:</div>
+<div class="line"><a name="l00735"></a><span class="lineno">  735</span>&#160;  XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00736"></a><span class="lineno">  736</span>&#160;  std::pair&lt;const char*, size_t&gt;</div>
+<div class="line"><a name="l00737"></a><span class="lineno">  737</span>&#160;  get_axlf_section(axlf_section_kind section) <span class="keyword">const</span>;</div>
+<div class="line"><a name="l00738"></a><span class="lineno">  738</span>&#160;};</div>
+<div class="line"><a name="l00739"></a><span class="lineno">  739</span>&#160;} <span class="comment">// namespace xrt</span></div>
+<div class="line"><a name="l00740"></a><span class="lineno">  740</span>&#160; </div>
+<div class="line"><a name="l00742"></a><span class="lineno">  742</span>&#160;<span class="keyword">extern</span> <span class="stringliteral">&quot;C&quot;</span> {</div>
+<div class="line"><a name="l00743"></a><span class="lineno">  743</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00744"></a><span class="lineno">  744</span>&#160; </div>
+<div class="line"><a name="l00751"></a><span class="lineno">  751</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00752"></a><span class="lineno">  752</span>&#160;<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div>
+<div class="line"><a name="l00753"></a><span class="lineno">  753</span>&#160;xrtXclbinAllocFilename(<span class="keyword">const</span> <span class="keywordtype">char</span>* filename);</div>
+<div class="line"><a name="l00754"></a><span class="lineno">  754</span>&#160; </div>
+<div class="line"><a name="l00755"></a><span class="lineno">  755</span>&#160; </div>
+<div class="line"><a name="l00762"></a><span class="lineno">  762</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00763"></a><span class="lineno">  763</span>&#160;<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div>
+<div class="line"><a name="l00764"></a><span class="lineno">  764</span>&#160;xrtXclbinAllocAxlf(<span class="keyword">const</span> <span class="keyword">struct</span> axlf* top_axlf);</div>
+<div class="line"><a name="l00765"></a><span class="lineno">  765</span>&#160; </div>
+<div class="line"><a name="l00773"></a><span class="lineno">  773</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00774"></a><span class="lineno">  774</span>&#160;<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div>
+<div class="line"><a name="l00775"></a><span class="lineno">  775</span>&#160;xrtXclbinAllocRawData(<span class="keyword">const</span> <span class="keywordtype">char</span>* data, <span class="keywordtype">int</span> size);</div>
+<div class="line"><a name="l00776"></a><span class="lineno">  776</span>&#160; </div>
+<div class="line"><a name="l00783"></a><span class="lineno">  783</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00784"></a><span class="lineno">  784</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00785"></a><span class="lineno">  785</span>&#160;xrtXclbinFreeHandle(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl);</div>
+<div class="line"><a name="l00786"></a><span class="lineno">  786</span>&#160; </div>
+<div class="line"><a name="l00800"></a><span class="lineno">  800</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00801"></a><span class="lineno">  801</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00802"></a><span class="lineno">  802</span>&#160;xrtXclbinGetXSAName(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl, <span class="keywordtype">char</span>* name, <span class="keywordtype">int</span> size, <span class="keywordtype">int</span>* ret_size);</div>
+<div class="line"><a name="l00803"></a><span class="lineno">  803</span>&#160; </div>
+<div class="line"><a name="l00811"></a><span class="lineno">  811</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00812"></a><span class="lineno">  812</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00813"></a><span class="lineno">  813</span>&#160;xrtXclbinGetUUID(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl, <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> ret_uuid);</div>
+<div class="line"><a name="l00814"></a><span class="lineno">  814</span>&#160; </div>
+<div class="line"><a name="l00825"></a><span class="lineno">  825</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00826"></a><span class="lineno">  826</span>&#160;<span class="keywordtype">size_t</span></div>
+<div class="line"><a name="l00827"></a><span class="lineno">  827</span>&#160;xrtXclbinGetNumKernels(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl);</div>
+<div class="line"><a name="l00828"></a><span class="lineno">  828</span>&#160; </div>
+<div class="line"><a name="l00839"></a><span class="lineno">  839</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00840"></a><span class="lineno">  840</span>&#160;<span class="keywordtype">size_t</span></div>
+<div class="line"><a name="l00841"></a><span class="lineno">  841</span>&#160;xrtXclbinGetNumKernelComputeUnits(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl);</div>
+<div class="line"><a name="l00842"></a><span class="lineno">  842</span>&#160; </div>
+<div class="line"><a name="l00856"></a><span class="lineno">  856</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00857"></a><span class="lineno">  857</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00858"></a><span class="lineno">  858</span>&#160;xrtXclbinGetData(<a class="code" href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a> xhdl, <span class="keywordtype">char</span>* data, <span class="keywordtype">int</span> size, <span class="keywordtype">int</span>* ret_size);</div>
 <div class="line"><a name="l00859"></a><span class="lineno">  859</span>&#160; </div>
-<div class="line"><a name="l00860"></a><span class="lineno">  860</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00860"></a><span class="lineno">  860</span>&#160;<span class="comment">/*</span></div>
+<div class="line"><a name="l00861"></a><span class="lineno">  861</span>&#160;<span class="comment"> * xrtGetXclbinUUID() - Get UUID of xclbin image running on device</span></div>
+<div class="line"><a name="l00862"></a><span class="lineno">  862</span>&#160;<span class="comment"> *</span></div>
+<div class="line"><a name="l00863"></a><span class="lineno">  863</span>&#160;<span class="comment"> * @dhdl:   Device handle</span></div>
+<div class="line"><a name="l00864"></a><span class="lineno">  864</span>&#160;<span class="comment"> * @out:    Return xclbin id in this uuid_t struct</span></div>
+<div class="line"><a name="l00865"></a><span class="lineno">  865</span>&#160;<span class="comment"> * Return:  0 on success or appropriate error number</span></div>
+<div class="line"><a name="l00866"></a><span class="lineno">  866</span>&#160;<span class="comment"> */</span></div>
+<div class="line"><a name="l00867"></a><span class="lineno">  867</span>&#160;XCL_DRIVER_DLLESPEC</div>
+<div class="line"><a name="l00868"></a><span class="lineno">  868</span>&#160;<span class="keywordtype">int</span></div>
+<div class="line"><a name="l00869"></a><span class="lineno">  869</span>&#160;xrtXclbinUUID(xclDeviceHandle dhdl, <a class="code" href="xrt__uuid_8h.html#acc1e121f6e46b5d2345dc98581dd712d">xuid_t</a> out);</div>
+<div class="line"><a name="l00870"></a><span class="lineno">  870</span>&#160; </div>
+<div class="line"><a name="l00872"></a><span class="lineno">  872</span>&#160;<span class="preprocessor">#ifdef __cplusplus</span></div>
+<div class="line"><a name="l00873"></a><span class="lineno">  873</span>&#160;}</div>
+<div class="line"><a name="l00874"></a><span class="lineno">  874</span>&#160;<span class="preprocessor">#endif</span></div>
+<div class="line"><a name="l00875"></a><span class="lineno">  875</span>&#160; </div>
+<div class="line"><a name="l00876"></a><span class="lineno">  876</span>&#160;<span class="preprocessor">#endif</span></div>
 </div><!-- fragment --></div><!-- contents -->
 <div class="ttc" id="axrt__xclbin_8h_html_ad160435afaebb750f12f2478bbf29f0a"><div class="ttname"><a href="xrt__xclbin_8h.html#ad160435afaebb750f12f2478bbf29f0a">xrtXclbinHandle</a></div><div class="ttdeci">void * xrtXclbinHandle</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:22</div></div>
 <div class="ttc" id="aclassxrt_1_1xclbin_1_1kernel_html_af9ab604bab7d080bd98a8376941f98b2"><div class="ttname"><a href="classxrt_1_1xclbin_1_1kernel.html#af9ab604bab7d080bd98a8376941f98b2">xrt::xclbin::kernel::get_arg</a></div><div class="ttdeci">arg get_arg(int32_t index) const</div></div>
@@ -419,7 +423,7 @@ $(function() {
 <div class="ttc" id="aclassxrt_1_1xclbin_html_a0746e80e19df9bebf75e08af51e4401d"><div class="ttname"><a href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">xrt::xclbin::target_type</a></div><div class="ttdeci">target_type</div><div class="ttdoc">Type of xclbin.</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:82</div></div>
 <div class="ttc" id="aclassxrt_1_1xclbin_1_1mem_html_a4ae64153a1751d25c9b8e95fb3c7525fa67b3dba8bc6778101892eb77249db32e"><div class="ttname"><a href="classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa67b3dba8bc6778101892eb77249db32e">xrt::xclbin::mem::memory_type::host</a></div><div class="ttdeci">@ host</div></div>
 <div class="ttc" id="aclassxrt_1_1xclbin_html_af08135286e0bd4a3bbbb047a42640725"><div class="ttname"><a href="classxrt_1_1xclbin.html#af08135286e0bd4a3bbbb047a42640725">xrt::xclbin::get_fpga_device_name</a></div><div class="ttdeci">std::string get_fpga_device_name() const</div></div>
-<div class="ttc" id="anamespacexrt_html"><div class="ttname"><a href="namespacexrt.html">xrt</a></div><div class="ttdef"><b>Definition:</b> xrt_device.h:43</div></div>
+<div class="ttc" id="anamespacexrt_html"><div class="ttname"><a href="namespacexrt.html">xrt</a></div><div class="ttdef"><b>Definition:</b> xrt_device.h:29</div></div>
 <div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html_ae039158375adb0e3dddaf1de4d9c376b"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html#ae039158375adb0e3dddaf1de4d9c376b">xrt::xclbin::arg::get_mems</a></div><div class="ttdeci">std::vector&lt; mem &gt; get_mems() const</div></div>
 <div class="ttc" id="aclassxrt_1_1xclbin_html_a4af895598626ead2a3f478e149a05778"><div class="ttname"><a href="classxrt_1_1xclbin.html#a4af895598626ead2a3f478e149a05778">xrt::xclbin::get_mems</a></div><div class="ttdeci">std::vector&lt; mem &gt; get_mems() const</div></div>
 <div class="ttc" id="aclassxrt_1_1xclbin_1_1arg_html"><div class="ttname"><a href="classxrt_1_1xclbin_1_1arg.html">xrt::xclbin::arg</a></div><div class="ttdoc">class arg - xrt::xclbin::arg represents a compute unit argument</div><div class="ttdef"><b>Definition:</b> xrt_xclbin.h:209</div></div>
