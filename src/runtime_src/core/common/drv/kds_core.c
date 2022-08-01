@@ -1138,6 +1138,7 @@ kds_initialize_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ct
 		return -EINVAL;
 	}
 
+	// Initialize the new context
 	cu_ctx->ctx = client->ctx;
 	cu_ctx->cu_domain = cu_info->cu_domain;
 	cu_ctx->cu_idx = cu_info->cu_idx;
