@@ -1,18 +1,7 @@
 .. _xrt_native.main.rst:
 
-..
-   comment:: SPDX-License-Identifier: Apache-2.0
-   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-
 XRT Native Library C++ API
 **************************
-
-Buffer APIs
-~~~~~~~~~~~
-
-.. doxygenclass:: xrt::bo
-   :project: XRT
-   :members:
 
 Configuration APIs
 ~~~~~~~~~~~~~~~~~~
@@ -21,12 +10,6 @@ Configuration APIs
    :project: XRT
    :members:
 
-Custom IP APIs
-~~~~~~~~~~~~~~
-
-.. doxygenclass:: xrt::ip
-   :project: XRT
-   :members:
 
 Device APIs
 ~~~~~~~~~~~
@@ -35,12 +18,21 @@ Device APIs
    :project: XRT
    :members:
 
-Info APIs
-~~~~~~~~~
+XCLBIN APIs
+~~~~~~~~~~~
 
-.. doxygennamespace:: xrt::info
+.. doxygenclass:: xrt::xclbin
    :project: XRT
    :members:
+
+
+Buffer APIs
+~~~~~~~~~~~
+
+.. doxygenclass:: xrt::bo
+   :project: XRT
+   :members:
+
 
 Kernel APIs
 ~~~~~~~~~~~
@@ -53,20 +45,20 @@ Kernel APIs
    :project: XRT
    :members:
 
-Message APIs
-~~~~~~~~~~~~
+Custom IP APIs
+~~~~~~~~~~~~~~
 
-.. doxygennamespace:: xrt::message
+.. doxygenclass:: xrt::ip
    :project: XRT
    :members:
 
-System APIs
-~~~~~~~~~~~
+Info APIs
+~~~~~~~~~
 
-.. doxygennamespace:: xrt::system
+.. doxygennamespace:: xrt::info
    :project: XRT
    :members:
-
+   
 UUID APIs
 ~~~~~~~~~
 
@@ -74,21 +66,9 @@ UUID APIs
    :project: XRT
    :members:
 
-XCLBIN APIs
-~~~~~~~~~~~
-
-.. doxygenclass:: xrt::xclbin
-   :project: XRT
-   :members:
-
 
 XRT Native Library C API
 ************************
-
-Buffer APIs
-~~~~~~~~~~~
-
-.. include:: ../core/xrt_bo.rst
 
 Configuration APIs
 ~~~~~~~~~~~~~~~~~~
@@ -101,6 +81,11 @@ Device and XCLBIN APIs
 .. include:: ../core/xrt_device.rst
 
 .. include:: ../core/xrt_xclbin.rst
+
+Buffer APIs
+~~~~~~~~~~~
+
+.. include:: ../core/xrt_bo.rst
 
 Kernel APIs
 ~~~~~~~~~~~

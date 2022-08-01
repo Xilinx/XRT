@@ -1,10 +1,5 @@
 .. _security.rst:
 
-..
-   comment:: SPDX-License-Identifier: Apache-2.0
-   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
-
-
 Security of Alveo Platform
 **************************
 
@@ -33,7 +28,7 @@ Shell
 
 The Shell provides core infrastructure to the Alveo platform. It includes *hardened* PCIe
 block which provides physical connectivity to the host PCIe bus via two physical functions
-as described in :doc:`platforms`.
+as described in :ref:`platforms.rst`.
 The Shell is *trusted* partition of the Alveo platform and for all practical purposes
 should be treated like an ASIC. During system boot, the shell is loaded from the PROM.
 Once loaded, the Shell cannot be changed.
@@ -62,20 +57,20 @@ paths protect the Shell from un-trusted User partition. For example if a slave i
 bug or is malicious the appropriate firewall will step in and protect the Shell from the
 failing slave as soon as a non compliant AXI transaction is placed on AXI bus.
 
-Newer revisions of shell have a feature called :doc:`sb` which provides direct access to host
+Newer revisions of shell have a feature called :ref:`sb.rst` which provides direct access to host
 memory from kernels in the User partition. With this feature kernels can initiate PCIe burst
 transfers from PF1 without direct access to PCIe bus. AXI Firewall (SI) in reverse direction protects
 PCIe from non-compliant transfers.
 
 .. note::
-   Features :doc:`sb` and :doc:`p2p` are not available in all shells.
+   Features :ref:`sb.rst` and :ref:`p2p.rst` are not available in all shells.
 
 
 For more information on firewall protection see `Firewall`_ section below.
 
 For shell update see `Shell Update`_ section below.
 
-Compatibility enforcement between Shell and User xclbin is described in :doc:`platform_partitions`
+Compatibility enforcement between Shell and User xclbin is described in :ref:`platform_partitions.rst`
 
 PCIe Topology
 -------------
@@ -96,7 +91,7 @@ PF BAR Driver  Purpose
 1  4   xocl    CPU direct and P2P access to device attached DDR/HBM/PL-RAM
                memory.
                By default its size is limited to 256MB but can be expanded
-	       using XRT xbutil tool as described in :doc:`p2p`
+	       using XRT xbutil tool as described in :ref:`p2p.rst`
 == === ======= ===============================================================
 
 Sample output of Linux ``lspci`` command for U50 device below::
@@ -150,7 +145,7 @@ compute units typically expose a well defined register space on the PCIe BAR for
 XRT. An user compiled image does not have any physical path to directly interact with PCIe
 Bus. Compiled images do have access to device DDR.
 
-More information on xclbin can be found in :doc:`formats`.
+More information on xclbin can be found in :ref:`formats.rst`.
 
 Xclbin Generation
 =================
@@ -192,13 +187,10 @@ partition is not fully AXI-compliant or deadlocks/stalls/hangs during operation.
 partition fails, AXI Firewall *trips* -- it starts completing AXI transactions on behalf of the slave so the
 master and the specific AXI bus is not impacted -- to protect the Shell. The AXI Firewall starts completing
 all transactions on behalf of misbehaving slave while also notifying the mgmt driver about the trip. The
-xclmgmt driver then starts taking recovery action. xclmgmt posts a XCL_MAILBOX_REQ_FIREWALL message to xocl using
-MailBox to inform the peer about FireWall trip. xocl can suggest a reset by sending a XCL_MAILBOX_REQ_HOT_RESET message
-to xclmgmt via mailBox. Note that even if no reset is performed the AXI Protocol Firewall will continue to protect the host PCIe bus.
-DFX partition will be unavailable till device is reset. **A reboot of host is not required to reset the device.**
-
-Alveo boards with multiple FPGA devices on the same board like U30 support card level reset. Mailbox usage by each device on the card
-is similar to that of single device cards, however firewall trip in one device will trigger reset to all devices on the card.
+xclmgmt driver then starts taking recovery action. xclmgmt posts a message to xocl using MailBox to inform
+the peer about FireWall trip. xocl can suggest a reset by sending a reset command to xclmgmt on MailBox. Note
+that even if no reset is performed the AXI Protocol Firewall will continue to protect the host PCIe bus. DFX
+partition will be unavailable till device is reset. **A reboot of host is not required to reset the device.**
 
 AXI Firewall in Slave Interface (SI) mode also protects the host from errant transactions initiated by kernels over
 Slave Bridge. For example if an AXI master kernel in the Dynamic Region issues a non compliant AXI transaction like
@@ -225,7 +217,7 @@ Baremetal
 
 In Baremetal deployment model, both physical functions are visible to the end user who *does not*
 have root privileges. End user have access to both XRT **xclmgmt** and XRT **xocl** drivers. The system
-administrator trusts both drivers which provide well defined :doc:`mgmt-ioctl.main` and :doc:`xocl_ioctl.main`.
+administrator trusts both drivers which provide well defined :ref:`mgmt-ioctl.main.rst` and :ref:`xocl_ioctl.main.rst`.
 End user does have the privilege to load xclbins which should be signed for maximum security. This
 will ensure that only known good xclbins are loaded by end users.
 
@@ -239,12 +231,12 @@ In Pass-through Virtualization deployment model, management physical function (P
 but user physical function (PF1) is visible to the guest VM. Host considers the guest VM a *hostile* environment.
 End users in guest VM may be root and may be running modified implementation of XRT **xocl** driver -- XRT
 **xclmgmt** driver does not trust XRT xocl driver. xclmgmt as described before exposes well defined
-:doc:`mgmt-ioctl.main` to the host. In a good and clean deployment end users in guest VM interact with
-standard xocl using well defined :doc:`xocl_ioctl.main`.
+:ref:`mgmt-ioctl.main.rst` to the host. In a good and clean deployment end users in guest VM interact with
+standard xocl using well defined :ref:`xocl_ioctl.main.rst`.
 
 As explained under the Shell section above, by design xocl has limited access to violet shaded Shell peripherals.
 This ensures that users in guest VM cannot perform any privileged operation like updating flash image or device
-reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in :doc:`platforms`.
+reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in :ref:`platforms.rst`.
 
 A guest VM user can potentially crash a compute unit in User partition, deadlock data path AXI bus or corrupt
 device memory. If the user has root access he may compromise VM memory. But none of this can bring down the
@@ -252,7 +244,7 @@ host or the PCIe bus. Host memory is protected by system IOMMU. Device reset and
 
 A user cannot load a malicious xclbin on the User partition since xclbin downloads are done by xclmgmt
 drive. xclbins are passed on to the host via a plugin based MPD/MSD framework defined in
-:doc:`mailbox.main`. Host can add any extra checks necessary to validate xclbins received from guest VM.
+:ref:`mailbox.main.rst`. Host can add any extra checks necessary to validate xclbins received from guest VM.
 
 This deployment model is ideal for public cloud where host does not trust the guest VM. This is the prevalent
 deployment model for FaaS operators.
@@ -287,52 +279,8 @@ Mailbox
 
 Mailbox is used for communication between user physical function driver, xocl and management physical
 function driver, xclmgmt. The Mailbox hardware design and xclmgmt driver mailbox handling implementation
-has the ability to throttle requests coming from xocl driver. 
-
-xclmgmt driver has twofold security protections on the h/w mailbox. From packet layer, xclmgmt monitors 
-the receiving packet rates and can enforce a threshold. If the receiving packet rates exceeds the threshold,
-the mailbox is disabled which prevents the guest from sending any more commands over mailbox. Only
-a hot reset on the FPGA device from xclmgmt can recover it. From message layer,system administrator can configure
-the xclmgmt driver to ignore specific mailbox opcodes.
-
-Here is an example how System administrator managing the privileged management physical function driver xclmgmt
-can configure the mailbox to ignore specific opcodes using xbmgmt utility.
-
-.. code-block:: bash
-
-        # In host 
-        Host>$ sudo xbmgmt dump --config --output /tmp/config.ini -d bdf
-
-        # Edit the dumped ini file and change the value to key 'mailbox_channel_disable'
-        # eg. if both xclbin download and reset are to be disabled, one can set
-        # mailbox_channel_disable=0x120
-        # where 0x120 is 1 << XCL_MAILBOX_REQ_LOAD_XCLBIN |
-        #                1 << XCL_MAILBOX_REQ_HOT_RESET
-        # as defined as below
-        # XCL_MAILBOX_REQ_UNKNOWN =             0,
-        # XCL_MAILBOX_REQ_TEST_READY =          1,
-        # XCL_MAILBOX_REQ_TEST_READ =           2,
-        # XCL_MAILBOX_REQ_LOCK_BITSTREAM =      3,
-        # XCL_MAILBOX_REQ_UNLOCK_BITSTREAM =    4,
-        # XCL_MAILBOX_REQ_HOT_RESET =           5,
-        # XCL_MAILBOX_REQ_FIREWALL =            6,
-        # XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR =   7,
-        # XCL_MAILBOX_REQ_LOAD_XCLBIN =         8,
-        # XCL_MAILBOX_REQ_RECLOCK =             9,
-        # XCL_MAILBOX_REQ_PEER_DATA =           10,
-        # XCL_MAILBOX_REQ_USER_PROBE =          11,
-        # XCL_MAILBOX_REQ_MGMT_STATE =          12,
-        # XCL_MAILBOX_REQ_CHG_SHELL =           13,
-        # XCL_MAILBOX_REQ_PROGRAM_SHELL =       14,
-        # XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =   15,
-
-        Host>$ vi /tmp/config.ini
-
-        # Load config
-        Host>$ xbmgmt advanced --load-conf --input=/tmp/config.ini -d bdf
-
-
-:doc:`mailbox.main` has details on mailbox usage.
+has the ability to throttle requests coming from xocl driver which protects it from a potential DoS
+initiated by a malicious xocl driver. :ref:`mailbox.main.rst` has details on mailbox usage.
 
 Device Reset and Recovery
 =========================
@@ -340,16 +288,11 @@ Device Reset and Recovery
 Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
 driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
 can reset a device by using XRT **xbutil** utility. This utility talks to xocl driver which uses the reset
-message as defined in :doc:`mailbox.main`
+message as defined in :ref:`mailbox.main.rst`
 
 Currently Alveo boards are reset by using PCIe bus *hot reset* mechanism. This resets the board peripherals
 and also the PCIe link. As part of reset, drivers kill all the clients which have opened the device node by
 sending them a SIGBUS.
-
-On some Alveo boards like u30, there are multiple FPGA devices supported with help of pcie bifurcation. The
-reset in this case is card level reset, which means, a reset issued from one FPGA device will result in all
-FPGAs on same board being reset. Both xocl and xclmgmt drivers can identify other FPGA devices on same board
-and handle the reset accordingly.
 
 Shell Update
 ============
@@ -363,6 +306,6 @@ Compute Kernel Execution Models
 ===============================
 
 XRT and Alveo support software defined compute kernel execution models having standard AXI hardware
-interfaces. More details on :doc:`xrt_kernel_executions`. These well understood models do not require
+interfaces. More details on :ref:`xrt_kernel_executions.rst`. These well understood models do not require
 direct register access from user space. To execute a compute kernel XRT has a well defined *exec command buffer*
 API and a *wait for exec completion* API. These operations are exposed as ioctls by the xocl driver.

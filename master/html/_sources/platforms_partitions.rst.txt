@@ -1,15 +1,12 @@
 .. _platform_partitions.rst:
 
-..
-   comment:: SPDX-License-Identifier: Apache-2.0
-   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 
 =================================
  Alveo™ Platform Loading Overview
 =================================
 
 Alveo platforms are architected as two physical FPGA partitions: *Shell* and *User*. Shell provides basic infrastructure
-for the platform like PCIe connectivity, board management, DFX support, sensors, clocking, reset, etc. :doc:`security`
+for the platform like PCIe connectivity, board management, DFX support, sensors, clocking, reset, etc. :ref:`security.rst`
 enumerates the shell functionality in detail. User partition contains user compiled binary called xclbin which is loaded by XRT using
 DFX technology.
 
@@ -62,7 +59,7 @@ Shell
 
     Alveo shell partitions and loading for 2RP platform
 
-In two stage platforms, Shell partition contains additional shell components such as PCIe DMA engine, AXI Firewalls, Address Re-mapper, ERT, etc. Shell partition is explicitly loaded by system administrator using ``xbmgmt program --shell <shell-file w/ path>`` command. After Shell partition is loaded, xclmgmt driver posts ``XCL_MAILBOX_REQ_MGMT_STATE`` message to the xocl driver via mailbox to indicate shell has changed. xocl driver then requests for metadata via ``XCL_MAILBOX_REQ_PEER_DATA`` opcode. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA that should be managed by xocl driver. A system administrator can pre-load a Shell based on the workload the system is being provised for. A new Shell xsabin load clobbers previous Shell and User images.
+In two stage platforms, Shell partition contains additional shell components such as PCIe DMA engine, AXI Firewalls, Address Re-mapper, ERT, etc. Shell partition is explicitly loaded by system administrator using ``xbmgmt partition`` command. After Shell partition is loaded, xclmgmt driver posts ``XCL_MAILBOX_REQ_MGMT_STATE`` message to the xocl driver via mailbox to indicate shell has changed. xocl driver then requests for metadata via ``XCL_MAILBOX_REQ_PEER_DATA`` opcode. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA that should be managed by xocl driver. A system administrator can pre-load a Shell based on the workload the system is being provised for. A new Shell xsabin load clobbers previous Shell and User images.
 
 User
 ====
@@ -70,4 +67,4 @@ User
 User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API ``xclLoadXclBin()`` and command line utility ``xbutil program`` to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.
 
 .. note::
-   Refer to :doc:`mailbox.main` for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.
+   Refer to :ref:`mailbox.main.rst` for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.

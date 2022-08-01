@@ -1,7 +1,3 @@
-..
-   comment:: SPDX-License-Identifier: Apache-2.0
-   comment:: Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-
 Developer Build and Test Instructions
 -------------------------------------
 
@@ -11,6 +7,7 @@ downtime provided you use a few scripts we have created:
 - ``build.sh`` build script that builds XRT for both Debug and Release profiles.
 - ``run.sh`` loader script that sets up environment assuming XRT was
   built with ``build.sh``.
+- ``board.sh`` harvests sprite ``UNIT_HW`` test cases and runs board tests.
 
 Building XRT
 ~~~~~~~~~~~~
@@ -63,18 +60,20 @@ Testing XRT
 ~~~~~~~~~~~
 
 After making changes to XRT in your Git clone, rebuild with
-``build.sh`` as explained above, then run a full set of pre-harvested
-board tests using the ``board.sh`` script.
+``build.sh`` as explained above, then run a full set of board tests
+using the ``board.sh`` script.  For example:
 
-The script is not supported, and the havesting part of the script no longer
-works. Assuming tests are harvested manually, then a bit of reverse engineering
-is needed to figure out how to organize these tests such that they can be
-run with ``board.sh``.
+::
 
-Assuming all is well, the  the board script will
-run all tests that organized under current directory.
+   mkdir tests
+   cd tests
+   <path>/XRT/build/board.sh -board vcu1525 -sync
 
-While tests run, a file named ``results.all`` will list the test with
+The ``-sync`` option tells the script to rsync tests from the latest
+nightly sprite area.  Without the ``-sync`` option, the board script will
+run all tests that were previously synced into the current directory.
+
+While tests run a file named ``results.all`` will list the test with
 ``PASS``\ /\ ``FAIL`` keyword.  This file is appended (not removed
 between runs).  A complete run should take 5-10 mins for approximately
 70 tests.

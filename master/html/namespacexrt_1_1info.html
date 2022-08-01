@@ -83,21 +83,7 @@ Enumerations</h2></td></tr>
 &#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4d65d483f53fd19eea5625721976b41e">device::m2m</a>, 
 <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aab068931cc450442b63f5b3d276ea4297">device::name</a>, 
 <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa360c16c37a28c145390c2155a4640dde">device::nodma</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa27a21354321dfbc28f0cb17b995bb9ca">device::offline</a>, 
-<br />
-&#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa9d05d847ad3bf54e136d0bcdbf223aff">device::electrical</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa26a27f04d02b653b4b5b77b5d11d7bb9">device::thermal</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa7e3fdeae0d52916ea5c86c7e5291f5be">device::mechanical</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aacd69b4957f06cd818d7bf3d61980e291">device::memory</a>, 
-<br />
-&#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa34a6e5d64ade17ef4e51612c50dd72f5">device::platform</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aab44657f9077b7ce4684c449e5144e02e">device::pcie_info</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa67b3dba8bc6778101892eb77249db32e">device::host</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aaee998746ac0f9a4a542ba851c5d67041">device::aie</a>, 
-<br />
-&#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa81f8fb4ba59f55acb77c9927bb79df08">device::aie_shim</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aabf6e19331b5e8553e0cb930c1457eb3d">device::dynamic_regions</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4a64b1714b324eda3928be5f063f7b59">device::vmr</a>
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa27a21354321dfbc28f0cb17b995bb9ca">device::offline</a>
 <br />
  }</td></tr>
 <tr class="memdesc:a7a27ce3a06c2a28f53579eb4f02a829a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Device information parameters.  <a href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a">More...</a><br /></td></tr>
@@ -142,28 +128,6 @@ Enumerations</h2></td></tr>
 <tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aa360c16c37a28c145390c2155a4640dde"></a>nodma&#160;</td><td class="fielddoc"><p>True if device is a NoDMA device (bool) </p>
 </td></tr>
 <tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aa27a21354321dfbc28f0cb17b995bb9ca"></a>offline&#160;</td><td class="fielddoc"><p>True if device is offline and in process of being reset (bool) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aa9d05d847ad3bf54e136d0bcdbf223aff"></a>electrical&#160;</td><td class="fielddoc"><p>Electrical and power sensors present on the device (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aa26a27f04d02b653b4b5b77b5d11d7bb9"></a>thermal&#160;</td><td class="fielddoc"><p>Thermal sensors present on the device (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aa7e3fdeae0d52916ea5c86c7e5291f5be"></a>mechanical&#160;</td><td class="fielddoc"><p>Mechanical sensors on and surrounding the device (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aacd69b4957f06cd818d7bf3d61980e291"></a>memory&#160;</td><td class="fielddoc"><p>Memory information present on the device (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aa34a6e5d64ade17ef4e51612c50dd72f5"></a>platform&#160;</td><td class="fielddoc"><p>Platforms flashed on the device (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aab44657f9077b7ce4684c449e5144e02e"></a>pcie_info&#160;</td><td class="fielddoc"><p>Pcie information of the device (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aa67b3dba8bc6778101892eb77249db32e"></a>host&#160;</td><td class="fielddoc"><p>Host information (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aaee998746ac0f9a4a542ba851c5d67041"></a>aie&#160;</td><td class="fielddoc"><p>AIE core information of the device (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aa81f8fb4ba59f55acb77c9927bb79df08"></a>aie_shim&#160;</td><td class="fielddoc"><p>AIE shim information of the device (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aabf6e19331b5e8553e0cb930c1457eb3d"></a>dynamic_regions&#160;</td><td class="fielddoc"><p>Information about xclbin on the device (std::string) </p>
-</td></tr>
-<tr><td class="fieldname"><a id="a7a27ce3a06c2a28f53579eb4f02a829aa4a64b1714b324eda3928be5f063f7b59"></a>vmr&#160;</td><td class="fielddoc"><p>Information about vmr on the device (std::string) </p>
 </td></tr>
 </table>
 

@@ -104,8 +104,6 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:abad3b74cdde9c6ddf3dbf388b9ce837d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad088741f7d266edf27c23f1e39dddf42"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1ip_1_1interrupt.html#ad088741f7d266edf27c23f1e39dddf42">wait</a> ()</td></tr>
 <tr class="separator:ad088741f7d266edf27c23f1e39dddf42"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab68ef4f8c49363e0ee8c41391d6200d8"><td class="memItemLeft" align="right" valign="top">std::cv_status&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1ip_1_1interrupt.html#ab68ef4f8c49363e0ee8c41391d6200d8">wait</a> (const std::chrono::milliseconds &amp;timeout) const</td></tr>
-<tr class="separator:ab68ef4f8c49363e0ee8c41391d6200d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classxrt_1_1ip_1_1interrupt.html" title="xrt::ip::interrupt represents an IP interrupt event.">xrt::ip::interrupt</a> represents an IP interrupt event. </p>
@@ -151,7 +149,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <a id="ad088741f7d266edf27c23f1e39dddf42"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad088741f7d266edf27c23f1e39dddf42">&#9670;&nbsp;</a></span>wait() <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ad088741f7d266edf27c23f1e39dddf42">&#9670;&nbsp;</a></span>wait()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -169,35 +167,8 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ab68ef4f8c49363e0ee8c41391d6200d8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab68ef4f8c49363e0ee8c41391d6200d8">&#9670;&nbsp;</a></span>wait() <span class="overload">[2/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::cv_status xrt::ip::interrupt::wait </td>
-          <td>(</td>
-          <td class="paramtype">const std::chrono::milliseconds &amp;&#160;</td>
-          <td class="paramname"><em>timeout</em></td><td>)</td>
-          <td> const</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<p><a class="el" href="classxrt_1_1ip_1_1interrupt.html#ad088741f7d266edf27c23f1e39dddf42">wait()</a> - Wait for interrupt or timeout to occur</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">timeout</td><td>Timout in milliseconds. </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>std::cv_status::timeout if the timeout specified expired, std::cv_status::no_timeout otherwise.</dd></dl>
-<p>Blocks the current thread until an interrupt is received from the IP, or until after the specified timeout duration </p>
-
-</div>
-</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>/scratch/udayd/DOC/XRT/src/runtime_src/core/include/experimental/<a class="el" href="xrt__ip_8h_source.html">xrt_ip.h</a></li>
+<li>/scratch/DOC/XRT/src/runtime_src/core/include/experimental/<a class="el" href="xrt__ip_8h_source.html">xrt_ip.h</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->
