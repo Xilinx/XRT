@@ -77,6 +77,11 @@ install_recipes()
     eval "$SAVED_OPTIONS_LOCAL"
 }
 
+enable_vdu()
+{
+    echo "IMAGE_INSTALL:append = \" libvdu-xlnx kernel-module-vdu vdu-firmware\""  >> build/conf/local.conf
+}
+
 config_versal_project()
 {
     VERSAL_PROJECT_DIR=$1
@@ -167,6 +172,25 @@ config_versal_project()
     cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
     cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd
     cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
+    
+    # Generate vdu modules and add them in apu package
+    mkdir -p $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu/
+    
+    # Enable VDU kernel module 
+    VDU_MOD_BB_FILE=$APU_RECIPES_DIR/kernel-module-vdu.bb
+    cp -rf $VDU_MOD_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu/
+    $PETA_BIN/petalinux-create -t apps --template install -n kernel-module-vdu --enable
+    
+    # Enable VDU firmware 
+    VDU_FIRMWARE_BB_FILE=$APU_RECIPES_DIR/vdu-firmware.bb
+    cp -rf $VDU_FIRMWARE_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu/
+    $PETA_BIN/petalinux-create -t apps --template install -n vdu-firmware --enable
+    
+    # Enable VDU control software library 
+    # This is not required as PS Kernels links with control software statically, Enabling this to debug standalone control software 
+    VDU_LIBRARY_BB_FILE=$APU_RECIPES_DIR/libvdu-xlnx.bb
+    cp -rf $VDU_LIBRARY_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu/
+    $PETA_BIN/petalinux-create -t apps --template install -n libvdu-xlnx --enable
 
 }
 
@@ -419,6 +443,9 @@ if [[ $full == 1 ]]; then
   mkdir -p $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages
   export PATH=$PETALINUX/../../tool/petalinux-v$PETALINUX_VER-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin:$PATH
   $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/
+  
+  # use below line to generate apu package for new platform whose idcode is differrent than .
+  # $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x04cd0093"
 fi
 
 cd $ORIGINAL_DIR
