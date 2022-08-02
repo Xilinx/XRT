@@ -229,6 +229,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
 	if (ret)
 		kds_free_cu_ctx(client, cu_ctx);
+
 out1:
 	/* If client still has no opened context at this point */
 	if (!client->ctx) {
