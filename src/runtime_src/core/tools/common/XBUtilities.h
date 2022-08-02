@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __XBUtilities_h_
 #define __XBUtilities_h_
@@ -22,17 +10,38 @@
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
 
-#include <string>
-#include <memory>
-#include <map>
+#include <chrono>
 #include <iostream>
+#include <map>
+#include <memory>
+#include <string>
 #include <vector>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/program_options.hpp>
+
 #include <boost/algorithm/string.hpp>
+#include <boost/program_options.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 namespace XBUtilities {
 
+  class Timer {
+  private:
+    std::chrono::high_resolution_clock::time_point m_time_start;
+
+  public:
+    Timer() { reset(); }
+
+    std::chrono::duration<double> get_elapsed_time() 
+    {
+      std::chrono::high_resolution_clock::time_point time_end = std::chrono::high_resolution_clock::now();
+      return std::chrono::duration<double>(time_end - m_time_start);
+    }
+
+    void reset() { m_time_start = std::chrono::high_resolution_clock::now(); }
+
+    static std::string
+    format_time(std::chrono::duration<double> duration);
+  };
+ 
   void can_proceed_or_throw(const std::string& info, const std::string& error);
 
   void sudo_or_throw(const std::string& msg);
@@ -43,6 +52,9 @@ namespace XBUtilities {
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
+
+  std::shared_ptr<xrt_core::device> get_device ( const std::string &deviceBDF,
+                                                 bool in_user_domain);
 
   boost::property_tree::ptree
   get_available_devices(bool inUserDomain);

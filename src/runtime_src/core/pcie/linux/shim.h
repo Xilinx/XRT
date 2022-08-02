@@ -146,6 +146,9 @@ public:
   xrt_core::cuidx_type
   open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
 
+  void
+  close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
+
   uint32_t // ctx handle aka slot idx
   create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos);
 

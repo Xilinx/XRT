@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -74,6 +75,10 @@ namespace xdp {
     //  string is reset every time we load a new xclbin
     std::string ctxInfo ;
 
+    // The maximum bit width of an AXI connection between compute units
+    // and memory.  This maximum is the same regardless of the xclbin loaded.
+    uint32_t maxConnectionBitWidth = 512;
+
     ~DeviceInfo() ;
 
     // ****** Functions for information on the device ******
@@ -82,6 +87,7 @@ namespace xdp {
     inline std::vector<XclbinInfo*> getLoadedXclbins() { return loadedXclbins ;}
     XDP_EXPORT void cleanCurrentXclbinInfo() ;
     inline bool isNoDMA() const { return isNoDMADevice ; }
+    double getMaxClockRatePLMHz();
 
     // ****** Functions for information on the currently loaded xclbin *******
     XDP_EXPORT XclbinInfo* currentXclbin() ;

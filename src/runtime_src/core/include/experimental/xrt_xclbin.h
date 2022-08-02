@@ -311,6 +311,14 @@ public:
      */
     enum class control_type : uint8_t { hs = 0, chain = 1, none = 2, fa = 5 };
 
+    /**
+     * @enum ip_type
+     *
+     * @details
+     * See `xclbin.h`
+     */
+    enum class ip_type : uint8_t { pl = IP_KERNEL, ps = IP_PS_KERNEL };
+
   public:
     ip() = default;
 
@@ -328,6 +336,16 @@ public:
     XCL_DRIVER_DLLESPEC
     std::string
     get_name() const;
+
+    /**
+     * get_type() - Get the IP type
+     *
+     * @return
+     *  IP type
+     */
+    XCL_DRIVER_DLLESPEC
+    ip_type
+    get_type() const;
 
     /**
      * get_control_type() - Get the IP control protocol

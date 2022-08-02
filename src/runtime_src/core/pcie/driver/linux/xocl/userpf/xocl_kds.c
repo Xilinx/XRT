@@ -3,6 +3,7 @@
  * Xilinx Alveo User Function Driver
  *
  * Copyright (C) 2020-2022 Xilinx, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -168,22 +169,23 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 }
 
 static inline void
-xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
+xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_client_cu_info *cu_info)
 {
-	info->cu_domain = get_domain(args->cu_index);
-	info->cu_idx = get_domain_idx(args->cu_index);
+        cu_info->cu_domain = get_domain(args->cu_index);
+        cu_info->cu_idx = get_domain_idx(args->cu_index);
 
-	if (args->flags == XOCL_CTX_EXCLUSIVE)
-		info->flags = CU_CTX_EXCLUSIVE;
-	else
-		info->flags = CU_CTX_SHARED;
+        if (args->flags == XOCL_CTX_EXCLUSIVE)
+                cu_info->flags = CU_CTX_EXCLUSIVE;
+        else
+                cu_info->flags = CU_CTX_SHARED;
 }
 
 static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_ctx_info	 info;
 	xuid_t *uuid;
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_cu_info cu_info = { 0 };
 	int ret;
 
 	mutex_lock(&client->lock);
@@ -199,6 +201,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id);
 		if (ret)
 			goto out;
+
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
@@ -206,6 +209,8 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		}
 		uuid_copy(uuid, &args->xclbin_id);
 		client->ctx->xclbin_id = uuid;
+		/* Multiple CU context can be active. Initializing CU context list */
+		INIT_LIST_HEAD(&client->ctx->cu_ctx_list);
 
 		list_add_tail(&client->ctx->link, &client->ctx_list);
 	}
@@ -213,9 +218,17 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	/* Bitstream is locked. No one could load a new one
 	 * until this client close all of the contexts.
 	 */
-	xocl_ctx_to_info(args, &info);
-	info.curr_ctx = (void *)client->ctx;
-	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
+	xocl_ctx_to_info(args, &cu_info);
+	/* Get a free CU context for the given CU index */
+	cu_ctx = kds_alloc_cu_ctx(client, client->ctx, &cu_info);
+	if (!cu_ctx) {
+		ret = -EINVAL;
+		goto out1;
+	}
+	 
+	ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
+	if (ret)
+		kds_free_cu_ctx(client, cu_ctx);
 
 out1:
 	/* If client still has no opened context at this point */
@@ -233,7 +246,8 @@ out:
 static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_ctx_info	 info;
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_cu_info cu_info = { 0 };
 	xuid_t *uuid;
 	int ret = 0;
 
@@ -255,15 +269,24 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 		goto out;
 	}
 
-	xocl_ctx_to_info(args, &info);
-        /* Store the current context here. KDS required that later */
-        info.curr_ctx = (void *)client->ctx;
-	ret = kds_del_context(&XDEV(xdev)->kds, client, &info);
+	xocl_ctx_to_info(args, &cu_info);
+	cu_ctx = kds_get_cu_ctx(client, client->ctx, &cu_info);
+        if (!cu_ctx) {
+		userpf_err(xdev, "No CU context is open");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = kds_del_context(&XDEV(xdev)->kds, client, cu_ctx);
+	if (ret)
+		goto out;
+
+	ret = kds_free_cu_ctx(client, cu_ctx);
 	if (ret)
 		goto out;
 
 	/* unlock bitstream if there is no opening context */
-	if (!client->ctx->num_ctx) {
+	if (list_empty(&client->ctx->cu_ctx_list)) {
 		vfree(client->ctx->xclbin_id);
 		client->ctx->xclbin_id = NULL;
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
@@ -1621,7 +1644,7 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 	cfg_start->num_cus = num_cus;
 	cfg_start->i2h = 1;
 	cfg_start->i2e = 1;
-	cfg_start->cui = 0;
+	cfg_start->cui = 1;
 	cfg_start->mode = 0;
 	cfg_start->echo = 0;
 	cfg_start->verbose = 0;
@@ -1725,6 +1748,8 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info
 		cfg_cu->cu_idx = i;
 		cfg_cu->cu_domain = DOMAIN_PL;
 		cfg_cu->ip_ctrl = cu_info[i].protocol;
+		cfg_cu->intr_id = cu_info[i].intr_id;
+		cfg_cu->intr_enable = cu_info[i].intr_enable;
 		cfg_cu->map_size = cu_info[i].size;
 		cfg_cu->laddr = cu_info[i].addr;
 		cfg_cu->haddr = cu_info[i].addr >> 32;
