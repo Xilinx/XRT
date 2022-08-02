@@ -94,18 +94,32 @@ rw_test(const xrt::device& device, size_t bytes, int32_t grpidx)
 }
 
 static void
+register_read(const xrt::kernel& kernel, int argno)
+{
+  auto offset = kernel.offset(argno);
+  // Throws unless Runtime.rw_shared=true
+  // Note, that xclbin must also be loaded with rw_shared=true
+  auto val = kernel.read_register(offset);
+  std::cout << "value at 0x" << std::hex << offset << " = 0x" << val << std::dec << "\n";
+}
+
+static void
 register_test(const xrt::kernel& kernel, int argno)
 {
   try {
-    auto offset = kernel.offset(argno);
-    // Throws unless Runtime.rw_shared=true
-    // Note, that xclbin must also be loaded with rw_shared=true
-    auto val = kernel.read_register(offset);
-    std::cout << "value at 0x" << std::hex << offset << " = 0x" << val << std::dec << "\n";
+    register_read(kernel, argno);
   }
   catch (const std::exception& ex) {
     std::cout << "Expected failure reading kernel register (" << ex.what() << ")\n";
   }
+}
+
+static void
+read_range_test(const xrt::kernel& kernel, int argno)
+{
+  // Allow reading from shared CU @ (start_addr, size)
+  xrt::set_read_range(kernel, kernel.offset(argno), 0x4);
+  register_read(kernel, argno);
 }
 
 static void
@@ -185,6 +199,9 @@ int run(int argc, char** argv)
 
   // Test of kernel.read_register (expected failure)
   register_test(kernel, 0);
+
+  // Test of kernel.read_register with read_range
+  read_range_test(kernel, 0);
 
   // Make sure configuration options cannot be changed now
   ini_test(true); // expected failure caught
