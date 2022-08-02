@@ -1,4 +1,5 @@
-<map id="/scratch/home/udayd/PREPARE_DOC/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h" name="/scratch/home/udayd/PREPARE_DOC/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h">
-<area shape="rect" id="node2" href="$xrt__device_8h.html" title="/scratch/home/udayd\l/PREPARE_DOC/XRT/src\l/runtime_src/core/include\l/experimental/xrt_device.h" alt="" coords="5,124,187,195"/>
-<area shape="rect" id="node3" href="$xrt__kernel_8h.html" title="/scratch/home/udayd\l/PREPARE_DOC/XRT/src\l/runtime_src/core/include\l/experimental/xrt_kernel.h" alt="" coords="5,243,187,313"/>
+<map id="/scratch/DOC/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h" name="/scratch/DOC/XRT/src/runtime_src/core/include/experimental/xrt_xclbin.h">
+<area shape="rect" id="node1" title=" " alt="" coords="7,5,201,61"/>
+<area shape="rect" id="node2" href="$xrt__device_8h.html" title=" " alt="" coords="5,109,203,165"/>
+<area shape="rect" id="node3" href="$xrt__kernel_8h.html" title=" " alt="" coords="7,213,201,269"/>
 </map>
