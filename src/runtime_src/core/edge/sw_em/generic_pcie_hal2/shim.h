@@ -311,6 +311,9 @@ namespace xclcpuemhal2 {
       xrt_core::cuidx_type
       open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
 
+      void
+      close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
+
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;

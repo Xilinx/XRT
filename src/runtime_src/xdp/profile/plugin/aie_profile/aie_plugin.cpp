@@ -257,9 +257,9 @@ namespace xdp {
     auto col = tile.col;
     auto row = tile.row + 1;
     auto loc = XAie_TileLoc(col, row);
-    std::string moduleName = (mod == XAIE_CORE_MOD) ? "Core" 
-                           : ((mod == XAIE_MEM_MOD) ? "Memory" 
-                           : "Interface Tile");
+    std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
+                           : ((mod == XAIE_MEM_MOD) ? "aie_memory" 
+                           : "interface_tile");
     const std::string groups[3] = {
       XAIEDEV_DEFAULT_GROUP_GENERIC,
       XAIEDEV_DEFAULT_GROUP_STATIC,
@@ -290,9 +290,9 @@ namespace xdp {
   {
     uint32_t numFreeCtr = 0;
     uint32_t tileId = 0;
-    std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
-                           : ((mod == XAIE_MEM_MOD) ? "memory" 
-                           : "interface tile");
+    std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
+                           : ((mod == XAIE_MEM_MOD) ? "aie_memory" 
+                           : "interface_tile");
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
 
     // Calculate number of free counters based on minimum available across tiles
@@ -321,7 +321,7 @@ namespace xdp {
     if (numFreeCtr < numTotalEvents) {
       std::stringstream msg;
       msg << "Only " << numFreeCtr << " out of " << numTotalEvents
-          << " metrics were available for AIE "
+          << " metrics were available for "
           << moduleName << " profiling due to resource constraints. "
           << "AIE profiling uses performance counters which could be already used by AIE trace, ECC, etc."
           << std::endl;
@@ -367,9 +367,9 @@ namespace xdp {
     //     * aie_profile_core_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<heat_map|stalls|execution>
     //     * aie_profile_memory_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<dma_locks|conflicts>
     std::string metricSet  = vec.at( vec.size()-1 );
-    std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
-                           : ((mod == XAIE_MEM_MOD) ? "memory" 
-                           : "interface tile");
+    std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
+                           : ((mod == XAIE_MEM_MOD) ? "aie_memory" 
+                           : "interface_tile");
     
     // Ensure requested metric set is supported (if not, use default)
     if (((mod == XAIE_CORE_MOD) && (mCoreStartEvents.find(metricSet) == mCoreStartEvents.end()))
@@ -518,11 +518,11 @@ namespace xdp {
 
     // Report tiles (debug only)
     {
-      std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
-                             : ((mod == XAIE_MEM_MOD) ? "memory" 
-                             : "interface tile");
+      std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
+                             : ((mod == XAIE_MEM_MOD) ? "aie_memory" 
+                             : "interface_tile");
       std::stringstream msg;
-      msg << "Tiles used for AIE " << moduleName << " profile counters: ";
+      msg << "Tiles used for " << moduleName << " profile counters: ";
       for (auto& tile : tiles) {
         msg << "(" << tile.col << "," << tile.row << "), ";
       }
@@ -678,7 +678,7 @@ namespace xdp {
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
     XAie_ModuleType falModuleTypes[NUM_MODULES] = 
         {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
-    std::string moduleNames[NUM_MODULES] = {"core_module", "memory_module", "interface_tile"};
+    std::string moduleNames[NUM_MODULES] = {"aie", "aie_memory", "interface_tile"};
     std::string metricSettings[NUM_MODULES] = 
         {xrt_core::config::get_aie_profile_core_metrics(),
          xrt_core::config::get_aie_profile_memory_metrics(),
@@ -694,8 +694,8 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
       } else {
-        std::string modName = moduleNames[module].substr(0, moduleNames[module].find("_"));
-        std::string depMsg  = "The xrt.ini flag \"aie_profile_" + modName + "_metrics\" is deprecated "
+        std::string oldModName[NUM_MODULES] = {"core", "memory", "interface"};
+        std::string depMsg  = "The xrt.ini flag \"aie_profile_" + oldModName[module] + "_metrics\" is deprecated "
                               + " and will be removed in future release. Please use"
                               + " tile_based_" + moduleNames[module] + "_metrics"
                               + " under \"AIE_profile_settings\" section.";
@@ -931,7 +931,7 @@ namespace xdp {
 
         if (counters.empty()) {
           xrt_core::message::send(severity_level::warning, "XRT", 
-            "AIE Profile Counters were not found for this design. Please specify tile_based_[core_module|memory_module|interface_tile]_metrics under \"AIE_profile_settings\" section in your xrt.ini.");
+            "AIE Profile Counters were not found for this design. Please specify tile_based_[aie|aie_memory|interface_tile]_metrics under \"AIE_profile_settings\" section in your xrt.ini.");
           (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
           return;
         }
@@ -1008,7 +1008,7 @@ namespace xdp {
 
   std::vector<tile_type>
   AIEProfilingPlugin::getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
-                                                        const std::string& graph,
+                                                        const std::string &graph,
                                                         void* handle)
   {
     std::vector<tile_type> tiles;
@@ -1025,7 +1025,7 @@ namespace xdp {
   }
 
   std::vector<tile_type>
-  AIEProfilingPlugin::getAllTilesForShimProfiling(void* handle, const std::string& metricsStr)
+  AIEProfilingPlugin::getAllTilesForShimProfiling(void* handle, const std::string &metricsStr)
   {
     std::vector<tile_type> tiles;
 
@@ -1085,10 +1085,10 @@ namespace xdp {
 
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * "graphmetricsSettings" contains each metric value
-     * graph_core_metrics = <graph name|all>:<kernel name|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>
-     * graph_memory_metrics = <graph name|all>:<kernel name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths>
-     * graph_interface_tile_metrics = <graph name|all>:<port name|all>:<off|input_bandwidths|output_bandwidths|packets>
-     * graph_mem_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
+     * graph_based_aie_metrics = <graph name|all>:<kernel name|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>
+     * graph_based_aie_memory_metrics = <graph name|all>:<kernel name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths>
+     * graph_based_interface_tile_metrics = <graph name|all>:<port name|all>:<off|input_bandwidths|output_bandwidths|packets>
+     * graph_based_mem_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
      */
 
     std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
@@ -1160,13 +1160,13 @@ namespace xdp {
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
 
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
-     * core_metrics = [[{<column>,<row>}|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]]
+     * tile_based_aie_metrics = [[{<column>,<row>}|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]]
      *
-     * memory_metrics = [[<{<column>,<row>}|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths> ]; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths>]]
+     * tile_based_aie_memory_metrics = [[<{<column>,<row>}|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths> ]; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths>]]
      *
-     * mem_tile_metrics = [[<{<column>,<row>}|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]] ; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|output_channels|memory_stats>[:<channel>]]]
+     * tile_based_mem_tile_metrics = [[<{<column>,<row>}|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]] ; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|output_channels|memory_stats>[:<channel>]]]
      *
-     * interface_tile_metrics = [[<column|all>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]] ; [<mincolumn>:<maxcolumn>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]]]
+     * tile_based_interface_tile_metrics = [[<column|all>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]] ; [<mincolumn>:<maxcolumn>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]]]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
@@ -1278,8 +1278,8 @@ namespace xdp {
 
 
     // check validity, set default and remove "off" tiles
-    std::string moduleName = (mod == XAIE_CORE_MOD) ? "core_module" 
-                           : ((mod == XAIE_MEM_MOD) ? "memory_module" 
+    std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
+                           : ((mod == XAIE_MEM_MOD) ? "aie_memory" 
                            : "interface_tile");
 
     std::vector<tile_type> offTiles;
@@ -1327,7 +1327,7 @@ namespace xdp {
     // Currently supporting Core, Memory, Interface Tile metrics only. Need to add Memory Tile metrics
     constexpr int NUM_MODULES = 3;
 
-    std::string moduleNames[NUM_MODULES] = {"core_module", "memory_module", "interface_tile"};
+    std::string moduleNames[NUM_MODULES] = {"aie", "aie_memory", "interface_tile"};
 
     int numCountersMod[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
@@ -1337,16 +1337,16 @@ namespace xdp {
     // Get the metrics settings
     std::vector<std::string> metricsConfig;
 
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_core_module_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_memory_module_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
 //    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics());
 
     // Get the graph metrics settings
     std::vector<std::string> graphmetricsConfig;
 
-    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_core_module_metrics());
-    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_memory_module_metrics());
+    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_metrics());
+    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics());
     graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
 //    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
 

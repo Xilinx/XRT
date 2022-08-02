@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -26,6 +13,7 @@
 #include "tools/common/XBHelpMenus.h"
 #include "core/common/utils.h"
 #include "core/tools/common/ProgressBar.h"
+#include "core/tools/common/BusyBar.h"
 #include "core/tools/common/EscapeCodes.h"
 #include "core/tools/common/Process.h"
 #include "core/common/query_requests.h"
@@ -426,18 +414,24 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
  * helper function for P2P test
  */
 static bool
-p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
+p2ptest_set_or_cmp(char *boptr, size_t size, const std::vector<char>& valid_data, bool set)
 {
-  int stride = xrt_core::getpagesize();
+  // Validate the page size against the parameters
+  const size_t page_size = static_cast<size_t>(xrt_core::getpagesize());
+  assert((size % page_size) == 0);
+  assert(page_size >= valid_data.size());
 
-  assert((size % stride) == 0);
-  for (size_t i = 0; i < size; i += stride) {
-    if (set) {
-      boptr[i] = pattern;
-    }
-    else if (boptr[i] != pattern) {
+  // Calculate the number of pages that will be accessed
+  const size_t num_of_pages = size / page_size;
+  assert(size >= valid_data.size());
+
+  // Go through each page to be accessed and perform the desired action
+  for (size_t page_index = 0; page_index < num_of_pages; page_index++) {
+    const size_t mem_index = page_index * page_size;
+    if (set)
+      std::memcpy(&(boptr[mem_index]), valid_data.data(), valid_data.size());
+    else if(!std::equal(valid_data.begin(), valid_data.end(), &(boptr[mem_index]))) // Continue unless mismatch
       return false;
-    }
   }
   return true;
 }
@@ -453,16 +447,36 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   if (xrt_core::posix_memalign(reinterpret_cast<void **>(&buf), xrt_core::getpagesize(), size))
     return false;
 
-  p2ptest_set_or_cmp(buf, size, 'A', true);
-  if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0)
+  // Generate the valid data vector
+  // Perform a memory write larger than 512 bytes to trigger a write combine
+  // The chosen size is 1024
+  const size_t valid_data_size = 1024;
+  std::vector<char> valid_data(valid_data_size);
+  std::fill(valid_data.begin(), valid_data.end(), 'A');
+
+  // Perform one large write
+  const auto buf_size = xrt_core::getpagesize();
+  p2ptest_set_or_cmp(buf, buf_size, valid_data, true);
+  if (xclUnmgdPwrite(handle, 0, buf, buf_size, dev_addr) < 0)
     return false;
-  if (!p2ptest_set_or_cmp(boptr, size, 'A', false))
+  if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, false))
     return false;
 
-  p2ptest_set_or_cmp(boptr, size, 'B', true);
+  // Default to testing with small write to reduce test time
+  valid_data.clear();
+  valid_data.push_back('A');
+  p2ptest_set_or_cmp(buf, size, valid_data, true);
+  if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0)
+    return false;
+  if (!p2ptest_set_or_cmp(boptr, size, valid_data, false))
+    return false;
+
+  valid_data.clear();
+  valid_data.push_back('B');
+  p2ptest_set_or_cmp(boptr, size, valid_data, true);
   if (xclUnmgdPread(handle, 0, buf, size, dev_addr) < 0)
     return false;
-  if (!p2ptest_set_or_cmp(buf, size, 'B', false))
+  if (!p2ptest_set_or_cmp(buf, size, valid_data, false))
     return false;
 
   free(buf);
@@ -500,7 +514,9 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
     return false;
   }
 
-  if (!p2ptest_set_or_cmp(boptr, bo_size, 'A', false)){
+  std::vector<char> data;
+  data.push_back('A');
+  if (!p2ptest_set_or_cmp(boptr, bo_size, data, false)){
     return false;
   }
 
@@ -530,7 +546,9 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
     return false;
   }
 
-  if (!p2ptest_set_or_cmp(boptr, bo_size, 'B', false)){
+  data.clear();
+  data.push_back('B');
+  if (!p2ptest_set_or_cmp(boptr, bo_size, data, false)){
     return false;
   }
 
@@ -641,7 +659,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   XBU::Timer timer;
   if (xclCopyBO(handle, bo_tgt, bo_src, bo_size, 0, 0))
     return bandwidth;
-  double timer_duration_sec = timer.stop().count();
+  double timer_duration_sec = timer.get_elapsed_time().count();
 
   if(xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
     free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
@@ -705,36 +723,34 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
   std::string xclbin = ptTest.get<std::string>("xclbin", "");
 
   //if no xclbin is loaded, locate the default xclbin
-  if (uuid_is_null(uuid) && !xclbin.empty()) {
-    //check if a 2RP platform
-    std::vector<std::string> logic_uuid;
-    try{
-      logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(dev);
-    } catch(...) { }
+  //check if a 2RP platform
+  std::vector<std::string> logic_uuid;
+  try {
+    logic_uuid = xrt_core::device_query<xrt_core::query::logic_uuids>(dev);
+  } catch(...) { }
 
-    std::string xclbinPath;
-    auto xclbin_location = ptTest.get<std::string>("xclbin_directory", "");
-    if(!xclbin_location.empty()) {
-      xclbinPath = xclbin_location + xclbin;
-    }
-    else if(!logic_uuid.empty()) {
-      xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, ptTest);
-    } else {
-      auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
-      auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
-      xclbinPath = searchLegacyXclbin(vendor, name, xclbin, ptTest);
-    }
+  std::string xclbinPath;
+  auto xclbin_location = ptTest.get<std::string>("xclbin_directory", "");
+  if (!xclbin_location.empty()) {
+    xclbinPath = xclbin_location + xclbin;
+  }
+  else if(!logic_uuid.empty()) {
+    xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, ptTest);
+  } else {
+    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
+    auto name = xrt_core::device_query<xrt_core::query::rom_vbnv>(dev);
+    xclbinPath = searchLegacyXclbin(vendor, name, xclbin, ptTest);
+  }
 
-    if(!boost::filesystem::exists(xclbinPath)) {
-      logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin));
-      ptTest.put("status", test_token_skipped);
-      return false;
-    }
+  if(!boost::filesystem::exists(xclbinPath)) {
+    logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin));
+    ptTest.put("status", test_token_skipped);
+    return false;
+  }
 
-    if(program_xclbin(dev->get_device_handle(), xclbinPath, ptTest) != 0) {
-      ptTest.put("status", test_token_failed);
-      return false;
-    }
+  if(program_xclbin(dev->get_device_handle(), xclbinPath, ptTest) != 0) {
+    ptTest.put("status", test_token_failed);
+    return false;
   }
   return true;
 }
@@ -941,8 +957,11 @@ verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_
 void
 dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
+  XBUtilities::BusyBar busy_bar("Running Test", std::cout);
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
+
   _ptTest.put("status", test_token_skipped);
-  if(!search_and_program_xclbin(_dev, _ptTest)) {
+  if (!search_and_program_xclbin(_dev, _ptTest)) {
     return;
   }
 
@@ -1018,6 +1037,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
       logger(_ptTest, "Error", ex.what());
     }
   }
+  busy_bar.finish();
 }
 
 /*
@@ -1296,7 +1316,7 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("pcie-link", "Check if PCIE link is active", ""), pcieLinkTest },
   { create_init_test("sc-version", "Check if SC firmware is up-to-date", ""), scVersionTest },
   { create_init_test("verify", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
-  { create_init_test("dma", "Run dma test", "verify.xclbin"), dmaTest },
+  { create_init_test("dma", "Run dma test", "bandwidth.xclbin"), dmaTest },
   { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin"), iopsTest },
   { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("p2p", "Run P2P test", "bandwidth.xclbin"), p2pTest },
@@ -1502,7 +1522,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "dma", "p2p"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
@@ -1535,22 +1555,17 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 }
 
 static bool
-run_tests_on_devices( xrt_core::device_collection &deviceCollection,
+run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
                       Report::SchemaVersion schemaVersion,
                       const std::vector<TestCollection *>& testObjectsToRun,
                       std::ostream & output)
 {
-  bool has_failures = false;
   // -- Root property tree
   boost::property_tree::ptree ptDevCollectionTestSuite;
 
-  // -- Let the user know that the testing has started
-  std::cout << boost::format("Starting validation for %d devices\n\n") % deviceCollection.size();
-
   // -- Run the various tests and collect the test data
   boost::property_tree::ptree ptDeviceTested;
-  for(auto const& dev : deviceCollection)
-    has_failures |= (run_test_suite_device(dev, schemaVersion, testObjectsToRun, ptDeviceTested) == test_status::failed);
+  auto has_failures = (run_test_suite_device(device, schemaVersion, testObjectsToRun, ptDeviceTested) == test_status::failed);
 
   ptDevCollectionTestSuite.put_child("logical_devices", ptDeviceTested);
 
@@ -1658,7 +1673,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   const std::string formatRunValues = XBU::create_suboption_list_string(testNameDescription);
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::vector<std::string> device;
+  std::string device_str;
   std::vector<std::string> testsToRun = {"all"};
   std::string sFormat = "JSON";
   std::string sOutput;
@@ -1668,7 +1683,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Commmon Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The device of interest. This is specified as follows:\n"
+    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The device of interest. This is specified as follows:\n"
                                                                            "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)")
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("run,r", boost::program_options::value<decltype(testsToRun)>(&testsToRun)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
@@ -1758,29 +1773,13 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
 
 
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  xrt_core::device_collection deviceCollection;
-  for (const auto & deviceName : device)
-    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
   try {
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // enforce 1 device specification
-  if(deviceCollection.empty() || deviceCollection.size() > 1) {
-    std::cerr << "\nERROR: Please specify a single device using --device option\n\n";
-    std::cout << "List of available devices:" << std::endl;
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
-    for(auto& kd : available_devices) {
-      boost::property_tree::ptree& _dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-    }
-    std::cout << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -1833,7 +1832,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
-  bool has_failures = run_tests_on_devices(deviceCollection, schemaVersion, testObjectsToRun, oSchemaOutput);
+  bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput);
 
   // -- Write output file ----------------------------------------------
   if (!sOutput.empty()) {

@@ -1,5 +1,6 @@
 /*
  *  Copyright (C) 2021-2022, Xilinx Inc
+ *  Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -210,7 +211,10 @@ struct xgq_cmd_config_end {
  * struct xgq_cmd_config_cu: configure CU command
  *
  * @cu_idx: cu index to configure
+ * @cu_domain: cu domain to configure
  * @ip_ctrl: IP control protocol
+ * @intr_id: CU interrupt id
+ * @intr_enable: CU interrupt enable
  * @map_size: use this size to map CU if apply
  * @laddr: lower 32 bits of the CU address
  * @haddr: higher 32 bits of the CU address
@@ -227,7 +231,8 @@ struct xgq_cmd_config_cu {
 	uint32_t cu_idx:12;
 	uint32_t cu_domain:4;
 	uint32_t ip_ctrl:8;
-	uint32_t rsvd2:8;
+	uint32_t intr_id:7;
+	uint32_t intr_enable:1;
 
 	uint32_t map_size;
 	uint32_t laddr;

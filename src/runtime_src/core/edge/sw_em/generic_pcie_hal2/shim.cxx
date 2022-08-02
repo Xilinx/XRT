@@ -2181,6 +2181,15 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   return cuidx;
 }
 
+void
+CpuemShim::
+close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  // To-be-implemented
+  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+}
+
 /******************************* XRT Graph API's **************************************************/
 /**
 * xrtGraphInit() - Initialize  graph

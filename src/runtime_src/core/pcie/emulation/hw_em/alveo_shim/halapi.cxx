@@ -37,6 +37,13 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
   return shim->open_cu_context(hwctx, cuname);
 }
 
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  auto shim = get_shim_object(handle);
+  return shim->close_cu_context(hwctx, cuidx);
+}
+
 uint32_t // ctxhdl aka slotidx
 create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
 {

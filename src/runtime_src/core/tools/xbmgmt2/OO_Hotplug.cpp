@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -121,26 +108,17 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       }
     }
 
-    // Collect all the devices of interest
-    std::set<std::string> deviceNames;
-    xrt_core::device_collection deviceCollection;
-    for (const auto & deviceName : m_devices) 
-      deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
-    
-    XBUtilities::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+    // Find device of interest
+    std::shared_ptr<xrt_core::device> dev;
 
-    // enforce 1 device specification
-    if (deviceCollection.size() > 1) {
-      std::stringstream errmsg;
-      errmsg << "Multiple devices are not supported. Please specify a single device using --device option\n\n";
-      errmsg << "List of available devices:\n";
-      boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
-      for (auto& kd : available_devices) {
-        boost::property_tree::ptree& _dev = kd.second;
-        errmsg << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-      }
-      throw xrt_core::error(std::errc::operation_canceled, errmsg.str());
+    try {
+      dev = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_devices), true /*inUserDomain*/);
+    } catch (const std::runtime_error& e) {
+      // Catch only the exceptions that we have generated earlier
+      std::cerr << boost::format("ERROR: %s\n") % e.what();
+      throw xrt_core::error(std::errc::operation_canceled);
     }
+
 
     XBUtilities::sudo_or_throw("Root privileges required to perform hotplug operation");
     std::cout << "CAUTION: Performing hotplug command. " <<
@@ -152,7 +130,6 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(std::errc::operation_canceled);
 
     if (is_offline) {
-      auto &dev = deviceCollection[0];
       xrt_core::device_query<xrt_core::query::hotplug_offline>(dev);
     }
     else {
