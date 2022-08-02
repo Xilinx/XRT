@@ -1067,6 +1067,7 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	list_for_each_entry_safe(cu_ctx, next, &cctx->cu_ctx_list, link) {
 		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
 				cu_ctx->cu_idx);
+		kds_add_context(kds, client, cu_ctx);
 		kds_free_cu_ctx(client, cu_ctx);
 	}
 	
