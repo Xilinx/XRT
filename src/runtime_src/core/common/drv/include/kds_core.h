@@ -3,6 +3,7 @@
  * Xilinx Kernel Driver Scheduler
  *
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -78,13 +79,6 @@ enum kds_type {
 	KDS_SCU,
 	KDS_ERT,
 	KDS_MAX_TYPE, // always the last one
-};
-
-struct kds_ctx_info {
-	u32		  cu_domain;
-	u32		  cu_idx;
-	u32		  flags;
-	void		 *curr_ctx; // Holds the current context ptr for kds
 };
 
 /* Context properties */
@@ -205,10 +199,17 @@ int kds_get_cu_total(struct kds_sched *kds);
 u32 kds_get_cu_addr(struct kds_sched *kds, int idx);
 u32 kds_get_cu_proto(struct kds_sched *kds, int idx);
 int kds_get_max_regmap_size(struct kds_sched *kds);
+struct kds_client_cu_ctx *
+kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
+		struct kds_client_cu_info *cu_info);
+struct kds_client_cu_ctx *
+kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
+		struct kds_client_cu_info *cu_info);
+int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx);
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,
-		    struct kds_ctx_info *info);
+		    struct kds_client_cu_ctx *cu_ctx);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
-		    struct kds_ctx_info *info);
+		    struct kds_client_cu_ctx *cu_ctx);
 int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx);
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		    int idx, unsigned long size, u32 *addrp);

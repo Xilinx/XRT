@@ -25,7 +25,7 @@
 #include "../xocl_drv.h"
 #include "xclfeatures.h"
 
-#define SYSFS_COUNT_PER_SENSOR          12
+#define SYSFS_COUNT_PER_SENSOR          13
 #define SYSFS_NAME_LEN                  30
 #define HWMON_SDM_DEFAULT_EXPIRE_SECS   1
 
@@ -85,7 +85,7 @@ struct xocl_sensor_info {
 	uint32_t max;
 	uint32_t avg;
 	uint8_t status;
-	uint8_t units;
+	int8_t unitm;
 };
 
 struct xocl_hwmon_sdm {
@@ -295,7 +295,7 @@ static int parse_inst_sensors_info(struct xocl_hwmon_sdm *sdm, char *in_buf,
 	uint8_t completion_code, repo_type, buf_len, val_len, status;
 	uint32_t ins_val = 0, max_val = 0, avg_val = 0;
 	int buf_index, rcvd_rid, i, sz = 0;
-	char *cu_fmt = "%s,%u,%u,%u,%u\n";
+	char *cu_fmt = "%s,%u,%u,%u,%u,%d\n";
 
 	buf_index = SDR_COMPLETE_IDX;
 	completion_code = in_buf[buf_index];
@@ -348,7 +348,8 @@ static int parse_inst_sensors_info(struct xocl_hwmon_sdm *sdm, char *in_buf,
 
 		sz += scnprintf(buf + sz, PAGE_SIZE - sz, cu_fmt,
                         sdm->sinfo[repo_id][i].name,
-                        ins_val, avg_val, max_val, status);
+                        ins_val, avg_val, max_val, status,
+                        sdm->sinfo[repo_id][i].unitm);
 	}
 
 abort:
@@ -798,7 +799,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	uint32_t buf_size = 0, name_index = 0, ins_index = 0, max_index = 0, avg_index = 0, status_index = 0, unit_type_index = 0;
 	uint32_t upper_warning = 0, upper_critical = 0, upper_fatal = 0;
 	uint32_t lower_warning = 0, lower_critical = 0, lower_fatal = 0;
-	uint32_t ins_val = 0, max_val = 0, avg_val = 0, unit_val = 0;
+	uint32_t ins_val = 0, max_val = 0, avg_val = 0;
 
 	completion_code = in_buf[SDR_COMPLETE_IDX];
 	if(completion_code != SDR_CODE_OP_SUCCESS) {
@@ -847,7 +848,6 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 		value_type_length = in_buf[buf_index++];
 		val_len = value_type_length & SDR_LENGTH_MASK;
 		ins_index = buf_index;
-		memcpy(&ins_val, &in_buf[buf_index], val_len);
 
 		buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
 		if (buf_index < 0)
@@ -861,7 +861,6 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 			buf_index = SDM_BUF_IDX_INCR(buf_index, bu_len, buf_size);
 			if (buf_index < 0)
 				goto abort;
-			memcpy(&unit_val, &in_buf[unit_type_index], bu_len);
 		}
 
 		unit_modifier_index = buf_index++;
@@ -1061,8 +1060,10 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 											 SYSFS_SDR_INS_VAL, ins_index, val_len);
 					if (err)
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_INS_VAL], err);
-					else
+					else {
+						memcpy(&ins_val, &in_buf[ins_index], val_len);
 						sdm->sinfo[repo_id][sid - 1].value = ins_val;
+					}
 				}
 
 				//Create *_max sysfs node
@@ -1099,17 +1100,16 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], repo_id, SYSFS_SDR_UNIT_TYPE_VAL, unit_type_index, bu_len);
 					if (err)
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UNIT_TYPE_VAL], err);
-					else
-						memcpy(&sdm->sinfo[repo_id][sid - 1].units, &unit_val, bu_len);
 				}
 
 				//Create *_unitm sysfs node
 				if(strlen(sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL]) != 0) {
 					err = hwmon_sysfs_create(sdm, sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL], repo_id,
 											 SYSFS_SDR_UNIT_MODIFIER_VAL, unit_modifier_index, 1);
-					if (err) {
+					if (err)
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[SYSFS_SDR_UNIT_MODIFIER_VAL], err);
-					}
+					else
+						sdm->sinfo[repo_id][sid - 1].unitm = in_buf[unit_modifier_index];
 				}
 
 				//Create *_upper_warn sysfs node
