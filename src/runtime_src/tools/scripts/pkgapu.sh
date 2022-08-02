@@ -228,7 +228,7 @@ MKIMAGE=mkimage
 UBOOT_SCRIPT="$BUILD_DIR/boot.scr"
 UBOOT_CMD="$BUILD_DIR/boot.cmd"
 cat << EOF > $UBOOT_CMD
-setenv bootargs "console=ttyUL0 clk_ignore_unused"
+setenv bootargs "console=ttyUL0 clk_ignore_unused modprobe.blacklist=allegro,al5d"
 bootm $KERNEL_ADDR $ROOTFS_ADDR $SYSTEM_DTB_ADDR
 EOF
 $MKIMAGE -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
