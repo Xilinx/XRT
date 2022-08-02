@@ -619,6 +619,8 @@ public:
   ip_context& operator=(ip_context&) = delete;
   ip_context& operator=(ip_context&&) = delete;
 
+  std::pair<uint32_t, uint32_t> m_readrange = {0,0};  // start address, size
+
 private:
   // regular CU
   ip_context(xrt::hw_context xhwctx, xrt::xclbin::ip xip)
@@ -1343,7 +1345,10 @@ private:
       throw std::runtime_error("Cannot read or write kernel with multiple compute units");
     auto& ipctx = ipctxs.back();
     auto mode = ipctx->get_access_mode();
-    if (!force && mode != ip_context::access_mode::exclusive && !xrt_core::config::get_rw_shared())
+    if (!force
+        && mode != ip_context::access_mode::exclusive // shared cu cannot normally be read, except
+        && !xrt_core::config::get_rw_shared()         //  - driver allows rw of shared cu
+        && !std::get<1>(ipctx->m_readrange))          //  - special case no bounds check here
       throw std::runtime_error("Cannot read or write kernel with shared access");
 
     if ((offset + sizeof(uint32_t)) > ipctx->get_size())
@@ -3143,6 +3148,8 @@ set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size)
 
   auto core_device = handle->get_core_device();
   core_device->set_cu_read_range(ip->get_index(), start, size);
+
+  ip->m_readrange = {start, size};
 }
 
 
