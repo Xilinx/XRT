@@ -2,7 +2,7 @@ var searchData=
 [
   ['info_99',['info',['../namespacexrt_1_1info.html',1,'xrt']]],
   ['ini_100',['ini',['../namespacexrt_1_1ini.html',1,'xrt']]],
-  ['xclbin_101',['xclbin',['../classxrt_1_1xclbin.html',1,'xrt::xclbin'],['../classxrt_1_1xclbin.html#a53ec38c813e53ef8582f36ecbe726e63',1,'xrt::xclbin::xclbin()'],['../classxrt_1_1xclbin.html#a4c24708c27ac85e382ef026b0dfa2270',1,'xrt::xclbin::xclbin(const std::string &amp;filename)'],['../classxrt_1_1xclbin.html#afc9cd922c779cffa0f87f17fd498143d',1,'xrt::xclbin::xclbin(const std::vector&lt; char &gt; &amp;data)'],['../classxrt_1_1xclbin.html#ad8b24ec146087a16ea963d1a84aed18e',1,'xrt::xclbin::xclbin(const axlf *top)']]],
+  ['xclbin_101',['xclbin',['../classxrt_1_1xclbin.html',1,'xrt::xclbin'],['../classxrt_1_1xclbin.html#a6ee5043fccb0572a789af39b370fe55a',1,'xrt::xclbin::xclbin()=default'],['../classxrt_1_1xclbin.html#a4c24708c27ac85e382ef026b0dfa2270',1,'xrt::xclbin::xclbin(const std::string &amp;filename)'],['../classxrt_1_1xclbin.html#afc9cd922c779cffa0f87f17fd498143d',1,'xrt::xclbin::xclbin(const std::vector&lt; char &gt; &amp;data)'],['../classxrt_1_1xclbin.html#ad8b24ec146087a16ea963d1a84aed18e',1,'xrt::xclbin::xclbin(const axlf *top)']]],
   ['xrt_102',['xrt',['../namespacexrt.html',1,'']]],
   ['xrt_5fbo_2eh_103',['xrt_bo.h',['../xrt__bo_8h.html',1,'']]],
   ['xrt_5fcore_104',['xrt_core',['../namespacexrt__core.html',1,'']]],
