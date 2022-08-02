@@ -11,10 +11,10 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
-#include "experimental/xrt_hw_context.h"
 
 #ifdef __cplusplus
 # include "experimental/xrt_enqueue.h"
+# include "experimental/xrt_hw_context.h"
 # include <chrono>
 # include <cstdint>
 # include <functional>
@@ -745,6 +745,12 @@ struct callable_traits<run>
   enum { is_async = true };
 };
 /// @endcond
+
+
+/// @cond
+// Undocumented experimental API subject to be replaced
+void
+set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size);
 
 } // namespace xrt
 

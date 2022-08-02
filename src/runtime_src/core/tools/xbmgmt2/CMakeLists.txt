@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Collect files outside of this directory
 file(GLOB XBMGMT_V2_BASE_FILES
@@ -12,6 +13,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBHelpMenus.cpp"
   "../common/OptionOptions.cpp"
   "../common/ProgressBar.cpp"
+  "../common/BusyBar.cpp"
   "../common/Process.cpp"
   "../common/Report*.cpp"
   "../common/Table2D.cpp"

@@ -1,9 +1,9 @@
-import subprocess
-import os
-import argparse
 from argparse import RawDescriptionHelpFormatter
+import argparse
 import filecmp
 import json
+import os
+import subprocess
 
 # Start of our unit test
 # -- main() -------------------------------------------------------------------
@@ -36,11 +36,71 @@ def main():
   step = "1) Test Read / Writting of the Binary OVERLAY section"
 
   inputImage = os.path.join(args.resource_dir, "testimage.txt")
-  outputImage = "testimage_output.txt"
+  outputImage = "overlay_image.txt"
 
   cmd = [xclbinutil, 
          "--add-section", "OVERLAY:RAW:" + inputImage, 
          "--dump-section", "OVERLAY:RAW:" + outputImage, 
+         "--force"]
+  execCmd(step, cmd)
+
+  # Validate that the round trip files are identical
+  binaryFileCompare(inputImage, outputImage)
+  # ---------------------------------------------------------------------------
+
+  step = "2) Test Read / Writting of the BITSTREAM section"
+
+  inputImage = os.path.join(args.resource_dir, "testimage.txt")
+  outputImage = "bitstream_image.txt"
+
+  cmd = [xclbinutil, 
+         "--add-section", "BITSTREAM:RAW:" + inputImage, 
+         "--dump-section", "BITSTREAM:RAW:" + outputImage, 
+         "--force"]
+  execCmd(step, cmd)
+
+  # Validate that the round trip files are identical
+  binaryFileCompare(inputImage, outputImage)
+  # ---------------------------------------------------------------------------
+
+  step = "3) Test Read / Writting of the PDI section"
+
+  inputImage = os.path.join(args.resource_dir, "testimage.txt")
+  outputImage = "pdi_output.txt"
+
+  cmd = [xclbinutil, 
+         "--add-section", "PDI:RAW:" + inputImage, 
+         "--dump-section", "PDI:RAW:" + outputImage, 
+         "--force"]
+  execCmd(step, cmd)
+
+  # Validate that the round trip files are identical
+  binaryFileCompare(inputImage, outputImage)
+  # ---------------------------------------------------------------------------
+
+  step = "4) Test Read / Writting of the USER_METADATA section"
+
+  inputImage = os.path.join(args.resource_dir, "testimage.txt")
+  outputImage = "user_output.txt"
+
+  cmd = [xclbinutil, 
+         "--add-section", "USER_METADATA:RAW:" + inputImage,
+         "--dump-section", "USER_METADATA:RAW:" + outputImage, 
+         "--force"]
+  execCmd(step, cmd)
+
+  # Validate that the round trip files are identical
+  binaryFileCompare(inputImage, outputImage)
+  # ---------------------------------------------------------------------------
+
+  step = "5) Test Read / Writting of the AIE_RESOURCES section"
+
+  inputImage = os.path.join(args.resource_dir, "testimage.txt")
+  outputImage = "aie_resources_output.txt"
+
+  cmd = [xclbinutil, 
+         "--add-section", "AIE_RESOURCES:RAW:" + inputImage, 
+         "--dump-section", "AIE_RESOURCES:RAW:" + outputImage, 
          "--force"]
   execCmd(step, cmd)
 

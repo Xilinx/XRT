@@ -3,6 +3,7 @@
  * Xilinx Alveo User Function Driver
  *
  * Copyright (C) 2020-2022 Xilinx, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -168,22 +169,23 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 }
 
 static inline void
-xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_ctx_info *info)
+xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_client_cu_info *cu_info)
 {
-	info->cu_domain = get_domain(args->cu_index);
-	info->cu_idx = get_domain_idx(args->cu_index);
+        cu_info->cu_domain = get_domain(args->cu_index);
+        cu_info->cu_idx = get_domain_idx(args->cu_index);
 
-	if (args->flags == XOCL_CTX_EXCLUSIVE)
-		info->flags = CU_CTX_EXCLUSIVE;
-	else
-		info->flags = CU_CTX_SHARED;
+        if (args->flags == XOCL_CTX_EXCLUSIVE)
+                cu_info->flags = CU_CTX_EXCLUSIVE;
+        else
+                cu_info->flags = CU_CTX_SHARED;
 }
 
 static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_ctx_info	 info;
 	xuid_t *uuid;
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_cu_info cu_info = { 0 };
 	int ret;
 
 	mutex_lock(&client->lock);
@@ -199,6 +201,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id);
 		if (ret)
 			goto out;
+
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
@@ -206,6 +209,8 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		}
 		uuid_copy(uuid, &args->xclbin_id);
 		client->ctx->xclbin_id = uuid;
+		/* Multiple CU context can be active. Initializing CU context list */
+		INIT_LIST_HEAD(&client->ctx->cu_ctx_list);
 
 		list_add_tail(&client->ctx->link, &client->ctx_list);
 	}
@@ -213,9 +218,17 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	/* Bitstream is locked. No one could load a new one
 	 * until this client close all of the contexts.
 	 */
-	xocl_ctx_to_info(args, &info);
-	info.curr_ctx = (void *)client->ctx;
-	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
+	xocl_ctx_to_info(args, &cu_info);
+	/* Get a free CU context for the given CU index */
+	cu_ctx = kds_alloc_cu_ctx(client, client->ctx, &cu_info);
+	if (!cu_ctx) {
+		ret = -EINVAL;
+		goto out1;
+	}
+	 
+	ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
+	if (ret)
+		kds_free_cu_ctx(client, cu_ctx);
 
 out1:
 	/* If client still has no opened context at this point */
@@ -233,7 +246,8 @@ out:
 static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_ctx_info	 info;
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_cu_info cu_info = { 0 };
 	xuid_t *uuid;
 	int ret = 0;
 
@@ -255,15 +269,24 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 		goto out;
 	}
 
-	xocl_ctx_to_info(args, &info);
-        /* Store the current context here. KDS required that later */
-        info.curr_ctx = (void *)client->ctx;
-	ret = kds_del_context(&XDEV(xdev)->kds, client, &info);
+	xocl_ctx_to_info(args, &cu_info);
+	cu_ctx = kds_get_cu_ctx(client, client->ctx, &cu_info);
+        if (!cu_ctx) {
+		userpf_err(xdev, "No CU context is open");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = kds_del_context(&XDEV(xdev)->kds, client, cu_ctx);
+	if (ret)
+		goto out;
+
+	ret = kds_free_cu_ctx(client, cu_ctx);
 	if (ret)
 		goto out;
 
 	/* unlock bitstream if there is no opening context */
-	if (!client->ctx->num_ctx) {
+	if (list_empty(&client->ctx->cu_ctx_list)) {
 		vfree(client->ctx->xclbin_id);
 		client->ctx->xclbin_id = NULL;
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
@@ -401,7 +424,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		scmd = (struct ert_start_kernel_cmd *)ecmd;
 		if (scmd->state < ERT_CMD_STATE_COMPLETED)
 			/* It is old shell, return code is missing */
-			scmd->return_code = -ENODATA;
+			ert_write_return_code(scmd, -ENODATA);
 		status = scmd->state;
 	} else {
 		if (xcmd->opcode == OP_GET_STAT)
@@ -458,7 +481,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 		struct ert_start_kernel_cmd *scmd;
 
 		scmd = (struct ert_start_kernel_cmd *)ecmd;
-		scmd->return_code = xcmd->rcode;
+		ert_write_return_code(scmd, xcmd->rcode);
 
 		client_stat_inc(client, scu_c_cnt[xcmd->cu_idx]);
 	}
@@ -1621,7 +1644,7 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 	cfg_start->num_cus = num_cus;
 	cfg_start->i2h = 1;
 	cfg_start->i2e = 1;
-	cfg_start->cui = 0;
+	cfg_start->cui = 1;
 	cfg_start->mode = 0;
 	cfg_start->echo = 0;
 	cfg_start->verbose = 0;
@@ -1646,7 +1669,7 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 	}
 
 	userpf_info(xdev, "Config start completed, num_cus(%d), num_scus(%d)\n",
-		    cfg_start->num_cus, cfg_start->num_scus);
+		    num_cus, num_scus);
 	return 0;
 }
 
@@ -1708,6 +1731,9 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info
 		int max_off = 0;
 		int max_off_arg_size = 0;
 
+		if (cu_info[i].protocol == CTRL_NONE)
+			continue;
+
 		client = kds->anon_client;
 		xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
 		if (!xcmd) {
@@ -1722,6 +1748,8 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info
 		cfg_cu->cu_idx = i;
 		cfg_cu->cu_domain = DOMAIN_PL;
 		cfg_cu->ip_ctrl = cu_info[i].protocol;
+		cfg_cu->intr_id = cu_info[i].intr_id;
+		cfg_cu->intr_enable = cu_info[i].intr_enable;
 		cfg_cu->map_size = cu_info[i].size;
 		cfg_cu->laddr = cu_info[i].addr;
 		cfg_cu->haddr = cu_info[i].addr >> 32;
@@ -1898,6 +1926,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	struct xrt_cu_info *cu_info = NULL;
 	int major = 0, minor = 0;
 	int num_cus = 0;
+	int num_ooc_cus = 0;
 	struct xrt_cu_info *scu_info = NULL;
 	int num_scus = 0;
 	int ret = 0;
@@ -1935,6 +1964,13 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	}
 	num_scus = xocl_kds_fill_scu_info(xdev, slot_hdl, ip_layout, scu_info, MAX_CUS);
 
+	/* Count number of out of control CU */
+	num_ooc_cus = 0;
+	for (i = 0; i < num_cus; i++) {
+		if (cu_info[i].protocol == CTRL_NONE)
+			num_ooc_cus++;
+	}
+
 	/*
 	 * The XGQ Identify command is used to identify the version of firmware which
 	 * can help host to know the different behaviors of the firmware.
@@ -1943,7 +1979,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
 	if (major != 1 && minor != 0) {
 		userpf_err(xdev, "Only support ERT XGQ command 1.0\n");
-		ret = -EINVAL;
+		ret = -ENOTSUPP;
 		xocl_ert_ctrl_dump(xdev);	/* TODO: remove this line before 2022.2 release */
 		goto out;
 	}
@@ -2092,10 +2128,13 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
 
 	ret = xocl_kds_update_xgq(xdev, slot_hdl, uuid, XDEV(xdev)->kds_cfg, ip_layout, ps_kernel);
 out:
+	if (ret)
+		XDEV(xdev)->kds.bad_state = 1;
+
 	return ret;
 }
 
-void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
+int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 {
 	int ret = 0;
 
@@ -2104,17 +2143,28 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	if (ret) {
 		userpf_info_once(xdev, "ERT will be disabled, ret %d\n", ret);
 		XDEV(xdev)->kds.ert_disable = true;
-		return;
+		return ret;
 	}
 
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
-		return;
+		return ret;
 
 	// Work-around to unconfigure PS kernel
 	// Will be removed once unconfigure command is there
 	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, 0, 0);
 	ret = xocl_kds_xgq_cfg_end(xdev);
 	xocl_ert_ctrl_unset_xgq(xdev);
-	kds_reset(&XDEV(xdev)->kds);
+	if (ret)
+		XDEV(xdev)->kds.bad_state = 1;
+	else
+		kds_reset(&XDEV(xdev)->kds);
+
+	return ret;
+}
+
+int xocl_kds_set_cu_read_range(struct xocl_dev *xdev, u32 cu_idx,
+			       u32 start, u32 size)
+{
+	return kds_set_cu_read_range(&XDEV(xdev)->kds, cu_idx, start, size);
 }
 

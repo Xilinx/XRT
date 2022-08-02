@@ -1,7 +1,6 @@
-/*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_PCIE_WINDOWS_SOURCE
 #define XCL_DRIVER_DLL_EXPORT
 #include "device_windows.h"
@@ -9,6 +8,7 @@
 #include "shim.h"
 #include "core/common/query_requests.h"
 #include "core/common/utils.h"
+#include "core/common/system.h"
 #include "core/include/xrt.h"
 #include "core/include/xclfeatures.h"
 
@@ -641,40 +641,22 @@ struct bdf
 {
   using result_type = query::pcie_bdf::result_type;
 
-  struct bdf_type {
-    uint16_t domain = 0;
-    uint16_t bus = 0;
-    uint16_t device = 0;
-    uint16_t function = 0;
-  };
-
-  static void
-  init_bdf(const xrt_core::device* dev, bdf_type* bdf)
-  {
-    if (auto mhdl = dev->get_mgmt_handle())
-      mgmtpf::get_bdf_info(mhdl, reinterpret_cast<uint16_t*>(bdf));
-    else if (auto uhdl = dev->get_user_handle())
-      userpf::get_bdf_info(uhdl, reinterpret_cast<uint16_t*>(bdf));
-    else
-      throw xrt_core::internal_error("bdf::init_bdf - No device handle");
-  }
-
   static result_type
   get_bdf(const xrt_core::device* device)
   {
-    static std::map<const xrt_core::device*, bdf_type> bdfmap;
+    static std::map<const xrt_core::device*, result_type> bdfmap;
     static std::mutex mutex;
     std::lock_guard<std::mutex> lk(mutex);
     auto it = bdfmap.find(device);
     if (it == bdfmap.end()) {
-      bdf_type bdf;
-      init_bdf(device, &bdf);
-      auto ret = bdfmap.emplace(device,bdf);
-      it = ret.first;
+      // Get the device BDF and emplace it into the map paired with the device
+      if (device->get_mgmt_handle())
+        it = bdfmap.emplace(device, xrt_core::get_bdf_info(device->get_device_id(), false)).first;
+      else if (device->get_user_handle())
+        it = bdfmap.emplace(device, xrt_core::get_bdf_info(device->get_device_id(), true)).first;
     }
 
-    auto& bdf = (*it).second;
-    return std::make_tuple(bdf.domain, bdf.bus, bdf.device, bdf.function);
+    return (*it).second;
   }
 
   static result_type
@@ -870,6 +852,23 @@ struct devinfo
 struct recovery
 {
   using result_type = bool;
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return false;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    return false;
+  }
+};
+
+struct versal
+{
+  using result_type = bool;
+
   static result_type
   user(const xrt_core::device* device, key_type key)
   {
@@ -1553,6 +1552,7 @@ initialize_query_table()
   emplace_function0_getter<query::memstat_raw,               memstat_raw>();
   emplace_function0_getter<query::memstat,                   memstat>();
   emplace_function0_getter<query::group_topology,            group_topology>();
+  emplace_function0_getter<query::is_versal,                 versal>();
 
   emplace_func4_request<query::aim_counter,                  aim_counter>();
   emplace_func4_request<query::am_counter,                   am_counter>();

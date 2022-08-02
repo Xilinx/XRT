@@ -23,19 +23,17 @@
 // --------- C L A S S :   S e c t i o n I P L a y o u t ---------------------
 class SectionIPLayout : public Section {
  public:
-  bool doesSupportAddFormatType(FormatType _eFormatType) const override;
-  bool doesSupportDumpFormatType(FormatType _eFormatType) const override;
-  void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo) override;
+  void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo)override;
 
  protected:
   void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
 
  protected:
-  const std::string getIPTypeStr(enum IP_TYPE _ipType) const;
-  const std::string getIPControlTypeStr(enum IP_CONTROL _ipControlType) const;
-  enum IP_TYPE getIPType(std::string& _sIPType) const;
-  enum IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
+  const std::string getIPTypeStr(IP_TYPE _ipType) const;
+  const std::string getIPControlTypeStr(IP_CONTROL _ipControlType) const;
+  IP_TYPE getIPType(std::string& _sIPType) const;
+  IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
 
  private:
   // Static initializer helper class

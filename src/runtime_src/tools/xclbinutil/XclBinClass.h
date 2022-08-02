@@ -66,7 +66,7 @@ class XclBin {
     static std::string findKeyAndGetValue(const std::string & _searchDomain, const std::string & _searchKey, const std::vector<std::string> & _keyValues);
 
  public:
-  Section *findSection(enum axlf_section_kind _eKind, const std::string & _indexName = "") const;
+  Section *findSection(axlf_section_kind _eKind, const std::string & _indexName = "") const;
 
  private:
   void updateHeaderFromSection(Section *_pSection);

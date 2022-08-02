@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Author(s):
  *        Max Zhen <maxz@xilinx.com>
@@ -20,6 +21,7 @@
 
 #define ERT_CSR_INTC_DEV_NAME		"ZOCL_CSR_INTC"
 #define ERT_XGQ_INTC_DEV_NAME		"ZOCL_XGQ_INTC"
+#define ERT_CU_INTC_DEV_NAME		"ZOCL_CU_INTC"
 
 /*
  * Resources for one ERT INTC device.
@@ -34,11 +36,12 @@ struct zocl_ert_intc_status_reg {
 };
 
 struct zocl_ert_intc_handler {
-	struct platform_device *zeih_pdev;
-	u32		zeih_irq;
-	irq_handler_t	zeih_cb;
-	void		*zeih_arg;
-	bool		zeih_enabled;
+	struct platform_device	*zeih_pdev;
+	spinlock_t		 zeih_lock;
+	u32			 zeih_irq;
+	irq_handler_t		 zeih_cb;
+	void			*zeih_arg;
+	bool			 zeih_enabled;
 };
 
 struct zocl_ert_intc_drv_data {

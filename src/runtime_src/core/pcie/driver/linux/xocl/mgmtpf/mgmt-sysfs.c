@@ -521,6 +521,20 @@ static DEVICE_ATTR(config_xclbin_change, 0644,
 	config_xclbin_change_show,
 	config_xclbin_change_store);
 
+static ssize_t versal_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	int val = 0;
+
+	if ((lro->core.priv.flags & XOCL_DSAFLAG_VERSAL) ||
+	        (lro->core.priv.flags & XOCL_DSAFLAG_VERSAL_ES3))
+		val = 1;
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(versal);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -551,6 +565,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_sbr_toggle.attr,
 	&dev_attr_cache_xclbin.attr,
 	&dev_attr_config_xclbin_change.attr,
+	&dev_attr_versal.attr,
 	NULL,
 };
 
