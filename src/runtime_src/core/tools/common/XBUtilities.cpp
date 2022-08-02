@@ -351,7 +351,7 @@ XBUtilities::print_exception(const std::system_error& e)
   const std::string msg = std::regex_replace(e.what(), std::regex(std::string(": ") + e.code().message()), "");
 
   if (!msg.empty())
-    std::cerr << boost::format("ERROR: %s") % msg << std::endl;
+    std::cerr << boost::format("ERROR: %s\n") % msg;
 }
 
 std::vector<char>
