@@ -68,38 +68,23 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  if (m_count == 0) {
-    std::cerr << boost::format("ERROR: Value for --count must be greater than 0\n");
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  if (m_count == 0)
+    XBU::throw_cancel("Value for --count must be greater than 0");
 
   // check option combinations
   // mutually exclusive options
-  if (!m_inputFile.empty() && !m_fill.empty()) {
-    std::cerr << "Please specify either '--input' or '--fill'\n";
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  if (m_inputFile.empty() && m_fill.empty())
+    XBU::throw_cancel("Please specify either '--input' or '--fill'");
 
   //-- Working variables
   std::shared_ptr<xrt_core::device> device;
-
-  //-- Device
-  if (m_device.size() > 1) {
-    std::cerr << "Multiple devices not supported. Please specify a single device\n";
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
 
   try {
     // Find device of interest
     device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const xrt_core::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-  catch (const std::runtime_error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
+    throw;
   }
 
   // Validate the given address option
@@ -109,8 +94,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     addr = std::stoull(m_baseAddress, nullptr, 0);
   }
   catch (const std::invalid_argument&) {
-    std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--address'\n") % m_baseAddress;
-    throw xrt_core::error(std::errc::operation_canceled);
+    XBU::throw_cancel(boost::format("'%s' is an invalid argument for '--address'") % m_baseAddress);
   }
 
   // Validate the number of bytes to be written if defined
@@ -121,22 +105,17 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       size = XBUtilities::string_to_base_units(m_sizeBytes, XBUtilities::unit::bytes);
   }
   catch (const xrt_core::error& e) {
-    std::cerr << boost::format("Value supplied to --size is invalid: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
+    XBU::throw_cancel(boost::format("Value supplied to --size is invalid: %s") % e.what());
   }
 
-  if (size == 0) {
-    std::cerr << boost::format("ERROR: Value for --size must be greater than 0\n");
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  if (size == 0)
+    XBU::throw_cancel("Value for --size must be greater than 0");
 
   // Parse the input option path
   if (!m_inputFile.empty()) {
     // Verify that the file exists and is not a directory
-    if (!boost::filesystem::exists(m_inputFile) && boost::filesystem::is_regular_file(m_inputFile)) {
-      std::cerr << boost::format("Input file does not exist: '%s'\n") % m_inputFile;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
+    if (!boost::filesystem::exists(m_inputFile) && boost::filesystem::is_regular_file(m_inputFile))
+      XBU::throw_cancel(boost::format("Input file does not exist: '%s'") % m_inputFile);
 
     // Open the input file stream after validating the file path and name
     std::ifstream input_stream(m_inputFile, std::ios::binary);
@@ -175,21 +154,16 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     // Write to device memory
     XBU::xclbin_lock xclbin_lock(device.get());
 
-    try {
-      for (decltype(count) running_count = 0; running_count < count; running_count++) {
-        XBU::verbose(boost::format("[%d / %llu] Writing to Address: %s, Size: %llu bytes") % running_count % count % addr % size);
-        std::vector<char> buffer(size);
-        // Populate the buffer with the data to write and get the number of bytes read
-        // gcount will only return a value >= 0
-        auto input_size = static_cast<uint64_t>(input_stream.read(buffer.data(), size).gcount());
-        xrt_core::device_mem_write(device.get(), addr, buffer);
-        if (input_size != size)
-          break; // partial read and break the loop
-        addr += size;
-      }
-    } catch (const xrt_core::error& e) {
-      std::cerr << e.what() << std::endl;
-      return;
+    for (decltype(count) running_count = 0; running_count < count; running_count++) {
+      XBU::verbose(boost::format("[%d / %llu] Writing to Address: %s, Size: %llu bytes") % running_count % count % addr % size);
+      std::vector<char> buffer(size);
+      // Populate the buffer with the data to write and get the number of bytes read
+      // gcount will only return a value >= 0
+      auto input_size = static_cast<uint64_t>(input_stream.read(buffer.data(), size).gcount());
+      xrt_core::device_mem_write(device.get(), addr, buffer);
+      if (input_size != size)
+        break; // partial read and break the loop
+      addr += size;
     }
     std::cout << "Memory write succeeded" << std::endl;
 
@@ -199,10 +173,8 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   // Parse the fill option path
   if(!m_fill.empty()) {
     // Validate the number of bytes to write
-    if (m_sizeBytes.empty()) {
-      std::cerr << "Value required for --size when using --fill\n";
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
+    if (m_sizeBytes.empty())
+      XBU::throw_cancel("Value required for --size when using --fill");
 
     char fill_byte = 'J';
     try {
@@ -210,8 +182,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       fill_byte = static_cast<char>(std::stoi(m_fill, nullptr, 0));
     }
     catch (const std::invalid_argument&) {
-      std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--fill'. Please specify a value between 0 and 255\n") % m_fill;
-      throw xrt_core::error(std::errc::operation_canceled);
+      XBU::throw_cancel(boost::format("'%s' is an invalid argument for '--fill'. Please specify a value between 0 and 255") % m_fill);
     }
 
     // Logging information
@@ -224,24 +195,18 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     // Write to device memory
     XBU::xclbin_lock xclbin_lock(device.get());
 
-    try {
-      // Generate the fill vector
-      std::vector<char> buffer(size);
-      std::fill(buffer.begin(), buffer.end(), fill_byte);
-      // Write the vector to the device
-      for (decltype(m_count) running_count = 0; running_count < m_count; running_count++) {
-        XBU::verbose(boost::format("[%d / %llu] Writing to Address: %s, Size: %s bytes") % running_count % m_count % addr % size);
-        xrt_core::device_mem_write(device.get(), addr, buffer);
-        addr += size;
-      }
-    } catch (const xrt_core::error& e) {
-      std::cerr << e.what() << std::endl;
-      return;
+    // Generate the fill vector
+    std::vector<char> buffer(size);
+    std::fill(buffer.begin(), buffer.end(), fill_byte);
+    // Write the vector to the device
+    for (decltype(m_count) running_count = 0; running_count < m_count; running_count++) {
+      XBU::verbose(boost::format("[%d / %llu] Writing to Address: %s, Size: %s bytes") % running_count % m_count % addr % size);
+      xrt_core::device_mem_write(device.get(), addr, buffer);
+      addr += size;
     }
     std::cout << "Memory write succeeded" << std::endl;
   }
 
-  std::cerr << "No valid options provided\n";
   printHelp();
-  throw xrt_core::error(std::errc::operation_canceled);
+  XBU::throw_cancel("No valid options provided");
 }

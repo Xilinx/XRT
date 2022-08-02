@@ -15,6 +15,7 @@ class OO_MemWrite : public OptionOptions {
   OO_MemWrite( const std::string &_longName, bool _isHidden = false);
 
  private:
+  std::string m_inputFile;
   std::string m_device;
   std::string m_baseAddress;
   std::string m_sizeBytes;

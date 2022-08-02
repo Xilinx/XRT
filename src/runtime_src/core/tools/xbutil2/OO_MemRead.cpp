@@ -82,27 +82,19 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_outputFile).str());
 
   } catch (const xrt_core::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-  catch (const std::runtime_error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
+    throw;
   }
 
-  if (m_count <= 0) {
-    std::cerr << "ERROR: Please specify a number of blocks greater than zero\n";
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  if (m_count <= 0)
+    XBU::throw_cancel("Please specify a number of blocks greater than zero");
 
   try {
     //-- base address
     addr = std::stoll(m_baseAddress, nullptr, 0);
   }
   catch (const std::invalid_argument&) {
-    std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--address'\n") % m_baseAddress;
-    throw xrt_core::error(std::errc::operation_canceled);
+    XBU::throw_cancel(boost::format("'%s' is an invalid argument for '--address'") % m_baseAddress);
   }
 
   // Validate the number of bytes to be written if defined
@@ -113,8 +105,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
       size = XBUtilities::string_to_base_units(m_sizeBytes, XBUtilities::unit::bytes);
   }
   catch (const xrt_core::error& e) {
-    std::cerr << boost::format("Value supplied to --size is invalid: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
+    XBU::throw_cancel(boost::format("Value supplied to --size is invalid: %s") % e.what());
   }
 
   XBU::verbose(boost::str(boost::format("Device: %s") % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device))));
@@ -129,21 +120,16 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
 
   // Open the output file and write the data as we receive it
   std::ofstream out_file(m_outputFile, std::ofstream::out | std::ofstream::binary | std::ofstream::app);
-  try{
-    for(decltype(m_count) running_count = 0; running_count < m_count; running_count++) {
-      XBU::verbose(boost::str(boost::format("[%d / %d] Reading from Address: %s, Size: %s bytes") % running_count % m_count % addr % size));
-      // Get the output from the device
-      std::vector<char> data = xrt_core::device_mem_read(device.get(), addr, size);
-      // Write output to the given file
-      out_file.write(data.data(), data.size());
-      if ((out_file.rdstate() & std::ifstream::failbit) != 0)
-        throw std::runtime_error("Error writing to output file\n");
-      // increment the starting address by the number of bytes read
-      addr += data.size();
-    }
-  } catch (const xrt_core::error& e) {
-    std::cerr << e.what() << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
+  for(decltype(m_count) running_count = 0; running_count < m_count; running_count++) {
+    XBU::verbose(boost::str(boost::format("[%d / %d] Reading from Address: %s, Size: %s bytes") % running_count % m_count % addr % size));
+    // Get the output from the device
+    std::vector<char> data = xrt_core::device_mem_read(device.get(), addr, size);
+    // Write output to the given file
+    out_file.write(data.data(), data.size());
+    if ((out_file.rdstate() & std::ifstream::failbit) != 0)
+      throw std::runtime_error("Error writing to output file");
+    // increment the starting address by the number of bytes read
+    addr += data.size();
   }
   out_file.close();
 
