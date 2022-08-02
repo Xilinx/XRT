@@ -70,10 +70,6 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   long long addr = 0;
 
   try {
-    //-- Device
-    if(m_device.size() > 1)
-      throw xrt_core::error("Multiple devices not supported. Please specify a single device");
-    
     // Find device of interest
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
 
@@ -81,7 +77,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     if (!m_outputFile.empty() && boost::filesystem::exists(m_outputFile) && !XBU::getForce())
       throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_outputFile).str());
 
-  } catch (const xrt_core::error& e) {
+  } catch (const xrt_core::error&) {
     printHelp();
     throw;
   }

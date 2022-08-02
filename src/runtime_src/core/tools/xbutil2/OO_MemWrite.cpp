@@ -82,7 +82,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   try {
     // Find device of interest
     device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
-  } catch (const xrt_core::error& e) {
+  } catch (const xrt_core::error&) {
     printHelp();
     throw;
   }
@@ -171,7 +171,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   }
 
   // Parse the fill option path
-  if(!m_fill.empty()) {
+  if (!m_fill.empty()) {
     // Validate the number of bytes to write
     if (m_sizeBytes.empty())
       XBU::throw_cancel("Value required for --size when using --fill");
