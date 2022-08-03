@@ -166,6 +166,7 @@ private:
   int mUserHandle;
   int mStreamHandle;
   int mBoardNumber;
+  bool hw_context_enable;
   uint64_t mOffsets[XCL_ADDR_SPACE_MAX];
   xclDeviceInfo2 mDeviceInfo;
   uint32_t mMemoryProfilingNumberSlots;
@@ -197,6 +198,7 @@ private:
   void dev_fini();
 
   int xclLoadAxlf(const axlf *buffer);
+  int xclPrepareAxlf(const axlf *buffer, drm_xocl_axlf *axlf_obj);
   void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
   void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
   void xclSysfsGetErrorStatus(xclErrorStatus& stat);

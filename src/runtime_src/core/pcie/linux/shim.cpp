@@ -560,6 +560,7 @@ shim(unsigned index)
   , mCuMaps{128, {nullptr, 0, 0, 0}}
 {
   init(index);
+  hw_context_enable = xrt_core::config::get_hw_context_flag();
 }
 
 int shim::dev_init()
@@ -1389,24 +1390,22 @@ xclLoadXclBin(const xclBin *buffer)
 }
 
 /*
- * xclLoadAxlf()
+ * xclPrepareAxlf()
  */
-int shim::xclLoadAxlf(const axlf *buffer)
+int shim::xclPrepareAxlf(const axlf *buffer, drm_xocl_axlf *axlf_obj)
 {
-    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
-    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
     unsigned int flags = XOCL_AXLF_BASE;
     int off = 0;
 
     auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
     if(force_program) {
-        axlf_obj.flags = flags | XOCL_AXLF_FORCE_PROGRAM;
+        axlf_obj->flags = flags | XOCL_AXLF_FORCE_PROGRAM;
     }
 
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */
     for (auto& kernel : kernels) {
-        axlf_obj.ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+        axlf_obj->ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
     }
 
     /* To enhance CU subdevice and KDS/ERT, driver needs all details about kernels
@@ -1440,10 +1439,10 @@ int shim::xclLoadAxlf(const axlf *buffer)
      * |   ...                 |
      * +-----------------------+
      */
-    std::vector<char> krnl_binary(axlf_obj.ksize);
-    axlf_obj.kernels = krnl_binary.data();
+    std::vector<char> krnl_binary(axlf_obj->ksize);
+    axlf_obj->kernels = krnl_binary.data();
     for (auto& kernel : kernels) {
-        auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.kernels + off);
+        auto krnl = reinterpret_cast<kernel_info *>(axlf_obj->kernels + off);
         if (kernel.name.size() > sizeof(krnl->name))
             return -EINVAL;
         std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
@@ -1476,28 +1475,43 @@ int shim::xclLoadAxlf(const axlf *buffer)
     }
 
     /* To make download xclbin and configure KDS/ERT as an atomic operation. */
-    axlf_obj.kds_cfg.ert = xrt_core::config::get_ert();
-    axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
-    axlf_obj.kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
-    axlf_obj.kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(buffer);
-    axlf_obj.kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
-    axlf_obj.kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(buffer);
-    axlf_obj.kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
+    axlf_obj->kds_cfg.ert = xrt_core::config::get_ert();
+    axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
+    axlf_obj->kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
+    axlf_obj->kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(buffer);
+    axlf_obj->kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
+    axlf_obj->kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(buffer);
+    axlf_obj->kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
 
     /* TODO: In scheduler.cpp init() function, it use get_ert_slots(void) to get slot size.
      * But we cannot do this here, since the xclbin is not registered.
      * Currently, emulation flow use get_ert_slots() as well.
      * We will consider how to better determine slot size in new kds.
      */
-    //axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots().second;
+    //axlf_obj->kds_cfg.slot_size = mCoreDevice->get_ert_slots().second;
     auto xml_hdr = xrt_core::xclbin::get_axlf_section(buffer, EMBEDDED_METADATA);
     if (!xml_hdr)
         throw std::runtime_error("No xml metadata in xclbin");
     auto xml_size = xml_hdr->m_sectionSize;
     auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) + xml_hdr->m_sectionOffset);
-    axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
+    axlf_obj->kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
 
-    int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+    return 0;
+}
+
+/*
+ * xclLoadAxlf()
+ */
+int shim::xclLoadAxlf(const axlf *buffer)
+{
+    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
+
+    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
+    int ret = xclPrepareAxlf(buffer, &axlf_obj);
+    if (ret)
+        throw std::runtime_error("Invalid input xclbin");
+
+    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     if (ret && errno == EAGAIN) {
         //special case for aws
         //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
@@ -1533,6 +1547,7 @@ int shim::xclLoadAxlf(const axlf *buffer)
             return -EIO;
         }
     }
+
     return ret;
 }
 
@@ -2165,24 +2180,51 @@ xrt_core::cuidx_type
 shim::
 open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  // Alveo Linux PCIE does not yet support multiple xclbins.  Call
-  // regular flow.  Default access mode to shared unless explicitly
-  // exclusive.
-  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
-  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
-  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  if (!hw_context_enable) {
+    // Alveo Linux PCIE does not yet support multiple xclbins.  Call
+    // regular flow.  Default access mode to shared unless explicitly
+    // exclusive.
+    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+    auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
+    xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+  
+    return cuidx;
+  }
+  else { 
+    /* This is for multi slot case. New IOCTL should call */
+    unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
+    // Pass Input 
+    drm_xocl_open_cu_ctx cu_ctx = { 0 };
+    cu_ctx.flags = flags;
+    cu_ctx.hw_context = static_cast<xcl_hwctx_handle>(hwctx);
+    std::strcpy(cu_ctx.cu_name, cuname.c_str());
 
-  return cuidx;
+    if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_OPEN_CU_CTX, &cu_ctx))
+      throw xrt_core::system_error(errno, "failed to open cu context");
+
+    // Retrive the return value
+    return xrt_core::cuidx_type{cu_ctx.cu_index};
+  }
 }
 
 void
 shim::
 close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 {
-  // To-be-implemented
-  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
-    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+  if (!hw_context_enable) {
+    if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+      throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+  }
+  else {
+    // Pass Input 
+    drm_xocl_close_cu_ctx cu_ctx = { 0 };
+    cu_ctx.hw_context = static_cast<xcl_hwctx_handle>(hwctx);
+    cu_ctx.cu_index = cuidx.index;
+
+    if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CLOSE_CU_CTX, &cu_ctx))
+      throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+  }
 }
 
 // Assign xclbin with uuid to hardware resources and return a context id
@@ -2193,16 +2235,95 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
                   xrt::hw_context::access_mode mode)
 {
-  // Explicit hardware contexts are not supported in Alveo.
-  throw xrt_core::ishim::not_supported_error{__func__};
+  if (!hw_context_enable) {
+    // Nothing to be done here for legacy flow. Return from here
+    return 0;
+  }
+  else {
+    xdp::hal::flush_device(this);
+    xdp::aie::flush_device(this);
+    xdp::pl_deadlock::flush_device(this);
+
+    auto xclbin = mCoreDevice->get_xclbin(xclbin_uuid);
+    auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
+    auto top = reinterpret_cast<const axlf*>(buffer);
+    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
+
+    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
+    if (xclPrepareAxlf(buffer, &axlf_obj))
+      throw xrt_core::system_error(errno, "Invalid input xclbin");
+
+    drm_xocl_create_hw_ctx hw_ctx = { 0 };
+    hw_ctx.axlf_ptr = &axlf_obj;
+    hw_ctx.qos = qos;
+
+    if (auto ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_HW_CTX, &hw_ctx)) {
+      // Something wrong, determine what
+      if (ret == -EOPNOTSUPP) {
+        xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
+        auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
+        auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
+        if (xclbin_vbnv != shell_vbnv) {
+          xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
+          xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
+        }
+        xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
+      }
+      else if (ret == -EBUSY) {
+        xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
+      }
+      else if (ret == -EKEYREJECTED) {
+        xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
+      }
+      else if (ret == -E2BIG) {
+        xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
+      }
+      else if (ret == -ETIMEDOUT) {
+        xrt_logmsg(XRT_ERROR,
+                   "Can't reach out to mgmt for xclbin downloading");
+        xrt_logmsg(XRT_ERROR,
+                   "Is xclmgmt driver loaded? Or is MSD/MPD running?");
+      }
+      else if (ret == -EDEADLK) {
+        xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
+        xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
+      }
+      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
+
+      return ret;
+    }
+
+    // Success
+    mCoreDevice->register_axlf(buffer);
+
+    xdp::hal::update_device(this);
+    xdp::aie::update_device(this);
+    xdp::pl_deadlock::update_device(this);
+
+    START_DEVICE_PROFILING_CB(this);
+
+    return hw_ctx.hw_context;
+  }
+    
+  return 0;
 }
 
 void
 shim::
 destroy_hw_context(uint32_t ctxhdl)
 {
-  // Explicit hardware contexts are not supported in Alveo.
-  throw xrt_core::ishim::not_supported_error{__func__};
+  if (!hw_context_enable) {
+    // Nothing to be done here for legacy flow. Return from here
+    return;
+  }
+  else {
+    drm_xocl_destroy_hw_ctx hw_ctx = { 0 };
+    hw_ctx.hw_context = ctxhdl;
+
+    auto ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_DESTROY_HW_CTX, &hw_ctx);
+    if (ret)
+      throw xrt_core::system_error(errno, "Destroying hw context failed");
+  }
 }
 
 // Registers an xclbin, but does not load it.
@@ -2210,8 +2331,8 @@ void
 shim::
 register_xclbin(const xrt::xclbin&)
 {
-  // Explicit hardware contexts are not supported in Alveo.
-  throw xrt_core::ishim::not_supported_error{__func__};
+  /* XRT Core will register the new XCLBIN. No action required here */
+  xrt_logmsg(XRT_INFO, "%s: XCLBIN successfully registered for this device", __func__);
 }
 
 } // namespace xocl

@@ -36,3 +36,6 @@ add_subdirectory(ps_validate_test)
 add_subdirectory(ps_aie_test)
 add_subdirectory(ps_bandwidth_test)
 add_subdirectory(ps_iops_test)
+
+# HW Context tests
+add_subdirectory(verify_hw_ctx_test)
