@@ -1052,6 +1052,7 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 	return 0;
 }
 
+/* Legacy Context. Need to cleanup once hw context fully functional */
 static inline void
 _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_ctx *cctx)
@@ -1059,8 +1060,12 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_ctx *next = NULL;
 
-	kds_info(client, "Client pid(%d) has open context for %d slot",
-			pid_nr(client->pid), cctx->slot_idx);
+	/* No such valid context exists */
+	if (!cctx)
+		return;
+
+	kds_info(client, "Client pid(%d) has open context",
+			pid_nr(client->pid));
 
 	mutex_lock(&client->lock);
 	/* Traverse through all the context and free them up */
@@ -1076,13 +1081,45 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	mutex_unlock(&client->lock);
 }
 
+
+static inline void
+_kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
+		 struct kds_client_hw_ctx *hw_ctx)
+{
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_cu_ctx *next = NULL;
+
+	/* No such valid hw context exists */
+	if (!hw_ctx)
+		return;
+
+	kds_info(client, "Client pid(%d) has open context for %d slot",
+			pid_nr(client->pid), hw_ctx->slot_idx);
+
+	mutex_lock(&client->lock);
+	/* Traverse through all the context and free them up */
+	list_for_each_entry_safe(cu_ctx, next, &hw_ctx->cu_ctx_list, link) {
+		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
+				cu_ctx->cu_idx);
+		kds_del_context(kds, client, cu_ctx);
+		kds_free_cu_ctx(client, cu_ctx);
+	}
+	
+	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
+	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
+	mutex_unlock(&client->lock);
+}
+
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
-	struct kds_client_ctx *curr;
+	struct kds_client_hw_ctx *curr;
 
-	list_for_each_entry(curr, &client->ctx_list, link) {
-		/* Release client's resources */
-		_kds_fini_client(kds, client, curr);
+	/* Release legacy client's resources */
+	_kds_fini_client(kds, client, client->ctx);
+
+	list_for_each_entry(curr, &client->hw_ctx_list, link) {
+		/* Release new hw client's resources */
+		_kds_fini_hw_ctx_client(kds, client, curr);
 	}
 
 	put_pid(client->pid);
@@ -1099,6 +1136,7 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	free_percpu(client->stats);
 }
 
+/* Begning Legacy Context for backward compartability */
 struct kds_client_cu_ctx *
 kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
 		struct kds_client_cu_info *cu_info)
@@ -1180,19 +1218,165 @@ kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
 
 	return cu_ctx;
 }
+/* End Legacy Context for backward compartability */
 
-int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx)
+/* New HW Context */
+struct kds_client_cu_ctx *
+kds_get_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
+		struct kds_client_cu_info *cu_info)
+{
+        uint32_t cu_domain = cu_info->cu_domain;
+        uint32_t cu_idx = cu_info->cu_idx;
+        struct kds_client_cu_ctx *cu_ctx = NULL;
+	bool found = false;
+	
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+        if (!hw_ctx) {
+		kds_err(client, "No such Client HW Context available");
+                return ERR_PTR(-EINVAL);
+        }
+
+        /* Find out if same CU context is already exists  */
+        list_for_each_entry(cu_ctx, &hw_ctx->cu_ctx_list, link)
+                if ((cu_ctx->cu_idx == cu_idx) &&
+                                (cu_ctx->cu_domain == cu_domain)) {
+                        found = true;
+			break;
+		}
+
+        /* CU context exists. Return the context */
+	if (found)
+        	return cu_ctx;
+                
+	return NULL;
+}
+
+static int
+kds_initialize_cu_hw_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx,
+		struct kds_client_cu_info *cu_info)
+{
+	if (!cu_ctx) {
+		kds_err(client, "No such Client HW Context available");
+		return -EINVAL;
+	}
+
+	cu_ctx->hw_ctx = cu_info->ctx;
+	cu_ctx->cu_domain = cu_info->cu_domain;
+	cu_ctx->cu_idx = cu_info->cu_idx;
+	cu_ctx->ref_cnt = 0;
+	cu_ctx->flags = cu_info->flags;
+
+	return 0;
+}
+
+struct kds_client_cu_ctx *
+kds_alloc_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
+		struct kds_client_cu_info *cu_info)
+{
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+	cu_ctx = kds_get_cu_hw_ctx(client, hw_ctx, cu_info);
+	if (IS_ERR(cu_ctx))
+		return NULL;
+
+	/* Valid CU context exists. Return this context here */
+	if (cu_ctx)
+		return cu_ctx;
+
+	/* CU context doesn't exists. Create a new context */
+	cu_ctx = vzalloc(sizeof(struct kds_client_cu_ctx));
+	if (!cu_ctx) {
+		kds_err(client, "Memory is not available for new HW context");
+		return NULL;
+	}
+
+        /* Add this Cu context to Client Context list */
+	list_add_tail(&cu_ctx->link, &hw_ctx->cu_ctx_list);
+
+	/* Initialize this cu context with required iniformation */
+	kds_initialize_cu_hw_ctx(client, cu_ctx, cu_info);
+
+	return cu_ctx;
+}
+
+/*
+ * Check whether there is an active hw context for this hw ctx id in this kds client.
+ */
+static struct kds_client_ctx *
+kds_get_hw_ctx_by_id(struct kds_client *client, uint32_t hw_ctx_id)
+{
+        struct kds_client_hw_ctx *curr_ctx = NULL;
+	bool found = false;
+
+        BUG_ON(!mutex_is_locked(&client->lock));
+
+        /* Find if any hw context exists for the given hw context id
+         */
+        list_for_each_entry(curr_ctx, &client->hw_ctx_list, link) {
+                if (curr_ctx->hw_ctx_idx == hw_ctx_id) {
+                 	found = true;
+		 	break;
+		}
+	}
+
+        if (found)
+                return curr_ctx;
+
+        /* Not found any matching context */
+        return NULL;
+}
+
+struct kds_client_hw_ctx *
+kds_alloc_hw_ctx(struct kds_client *client, uuid_t *xclbin_id, uint32_t slot_id)
+{
+        struct kds_client_hw_ctx *hw_ctx = NULL;
+
+        BUG_ON(!mutex_is_locked(&client->lock));
+
+        /* Create a new hw context */
+        hw_ctx = vzalloc(sizeof(struct kds_client_hw_ctx));
+        if (!hw_ctx) {
+                kds_err(client, "Memory is not available for new context");
+                return NULL;
+        }
+
+	/* Initialize the hw context here */
+	hw_ctx->hw_ctx_idx = client->next_avail_hw_ctx;
+	hw_ctx->slot_id = slot_id;
+	hw_ctx->xclbin_id = xclbin_id;
+
+	/* Update next available hw context for this client */
+	++client->next_avail_hw_ctx;
+
+	/* Multiple CU context can be active. Initializing CU context list */
+	INIT_LIST_HEAD(&hw_ctx->cu_ctx_list);
+
+        /* Add this hw context to Client Context list */
+        list_add_tail(&hw_ctx->link, &client->hw_ctx_list);
+
+        return hw_ctx;
+}
+
+int kds_free_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx)
 {
 	BUG_ON(!mutex_is_locked(&client->lock));
 
-	if (!cu_ctx && cu_ctx->ref_cnt) {
-		/* Reference count must be reset before free the context */
-		kds_err(client, "Invalid CU Context requested to free");
+	if (!hw_ctx) {
+		kds_err(client, "Invalid HW Context requested to free");
 		return -EINVAL;
 	}
 	
-	list_del(&cu_ctx->link);
-	vfree(cu_ctx); 
+	if(!list_empty(&hw_ctx->cu_ctx_list)) {
+		/* CU ctx list must me enpty to remove a HW context */
+		kds_err(client, "CU contexts are still open under this HW Context");
+		return -EINVAL;
+	}
+	
+	list_del(&hw_ctx->link);
+	vfree(hw_ctx); 
 
 	return 0;
 }
@@ -1288,6 +1472,186 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		 pid_nr(client->pid), cu_domain, cu_idx);
 	return 0;
 }
+/* End Legacy Context for backward compartability */
+
+/* New HW Context */
+struct kds_client_cu_ctx *
+kds_get_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
+		struct kds_client_cu_info *cu_info)
+{
+        uint32_t cu_domain = cu_info->cu_domain;
+        uint32_t cu_idx = cu_info->cu_idx;
+        struct kds_client_cu_ctx *cu_ctx = NULL;
+	bool found = false;
+	
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+        if (!hw_ctx) {
+		kds_err(client, "No such Client HW Context available");
+                return ERR_PTR(-EINVAL);
+        }
+
+        /* Find out if same CU context is already exists  */
+        list_for_each_entry(cu_ctx, &hw_ctx->cu_ctx_list, link) {
+                if ((cu_ctx->cu_idx == cu_idx) &&
+                                (cu_ctx->cu_domain == cu_domain)) {
+                        found = true;
+			break;
+		}
+	}
+
+        /* CU context exists. Return the context */
+	if (found)
+        	return cu_ctx;
+                
+	return NULL;
+}
+
+static int
+kds_initialize_cu_hw_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx,
+		struct kds_client_cu_info *cu_info)
+{
+	if (!cu_ctx) {
+		kds_err(client, "No such Client HW Context available");
+		return -EINVAL;
+	}
+
+	cu_ctx->hw_ctx = cu_info->ctx;
+	cu_ctx->cu_domain = cu_info->cu_domain;
+	cu_ctx->cu_idx = cu_info->cu_idx;
+	cu_ctx->ref_cnt = 0;
+	cu_ctx->flags = cu_info->flags;
+
+	return 0;
+}
+
+struct kds_client_cu_ctx *
+kds_alloc_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
+		struct kds_client_cu_info *cu_info)
+{
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+	cu_ctx = kds_get_cu_hw_ctx(client, hw_ctx, cu_info);
+	if (IS_ERR(cu_ctx))
+		return NULL;
+
+	/* Valid CU context exists. Return this context here */
+	if (cu_ctx)
+		return cu_ctx;
+
+	/* CU context doesn't exists. Create a new context */
+	cu_ctx = vzalloc(sizeof(struct kds_client_cu_ctx));
+	if (!cu_ctx) {
+		kds_err(client, "Memory is not available for new HW context");
+		return NULL;
+	}
+
+        /* Add this Cu context to Client Context list */
+	list_add_tail(&cu_ctx->link, &hw_ctx->cu_ctx_list);
+
+	/* Initialize this cu context with required iniformation */
+	kds_initialize_cu_hw_ctx(client, cu_ctx, cu_info);
+
+	return cu_ctx;
+}
+
+int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx)
+{
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+	if (!cu_ctx && cu_ctx->ref_cnt) {
+		/* Reference count must be reset before free the context */
+		kds_err(client, "Invalid CU Context requested to free");
+		return -EINVAL;
+	}
+	
+	list_del(&cu_ctx->link);
+	vfree(cu_ctx); 
+
+	return 0;
+}
+
+/*
+ * Check whether there is an active hw context for this hw ctx id in this kds client.
+ */
+struct kds_client_hw_ctx *
+kds_get_hw_ctx_by_id(struct kds_client *client, uint32_t hw_ctx_id)
+{
+        struct kds_client_hw_ctx *curr_ctx = NULL;
+	bool found = false;
+
+        BUG_ON(!mutex_is_locked(&client->lock));
+
+        /* Find if any hw context exists for the given hw context id
+         */
+        list_for_each_entry(curr_ctx, &client->hw_ctx_list, link) {
+                if (curr_ctx->hw_ctx_idx == hw_ctx_id) {
+                 	found = true;
+		 	break;
+		}
+	}
+
+        if (found)
+                return curr_ctx;
+
+        /* Not found any matching context */
+        return NULL;
+}
+
+struct kds_client_hw_ctx *
+kds_alloc_hw_ctx(struct kds_client *client, uuid_t *xclbin_id, uint32_t slot_id)
+{
+        struct kds_client_hw_ctx *hw_ctx = NULL;
+
+        BUG_ON(!mutex_is_locked(&client->lock));
+
+        /* Create a new hw context */
+        hw_ctx = vzalloc(sizeof(struct kds_client_hw_ctx));
+        if (!hw_ctx) {
+                kds_err(client, "Memory is not available for new context");
+                return NULL;
+        }
+
+	/* Initialize the hw context here */
+	hw_ctx->hw_ctx_idx = client->next_avail_hw_ctx;
+	hw_ctx->slot_idx = slot_id;
+	hw_ctx->xclbin_id = xclbin_id;
+
+	/* Update next available hw context for this client */
+	++client->next_avail_hw_ctx;
+
+	/* Multiple CU context can be active. Initializing CU context list */
+	INIT_LIST_HEAD(&hw_ctx->cu_ctx_list);
+
+        /* Add this hw context to Client Context list */
+        list_add_tail(&hw_ctx->link, &client->hw_ctx_list);
+
+        return hw_ctx;
+}
+
+int kds_free_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx)
+{
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+	if (!hw_ctx) {
+		kds_err(client, "Invalid HW Context requested to free");
+		return -EINVAL;
+	}
+	
+	if(!list_empty(&hw_ctx->cu_ctx_list)) {
+		/* CU ctx list must me empty to remove a HW context */
+		kds_err(client, "CU contexts are still open under this HW Context");
+		return -EINVAL;
+	}
+	
+	list_del(&hw_ctx->link);
+	vfree(hw_ctx); 
+
+	return 0;
+}
+/* End New HW Context */
 
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		    int idx, unsigned long size, u32 *addrp)
@@ -1717,7 +2081,7 @@ u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 {
 	const struct list_head *ptr;
 	struct kds_client *client;
-	struct kds_client_ctx *curr;
+	struct kds_client_hw_ctx *curr;
 	pid_t *pl = NULL;
 	u32 count = 0;
 	u32 i = 0;
@@ -1725,7 +2089,13 @@ u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 	/* Find out number of active client */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
-		list_for_each_entry(curr, &client->ctx_list, link) {
+
+		/* For legacy context */
+		if(!list_empty(&client->ctx->cu_ctx_list))
+			count++;
+
+		/* For hw context */
+		list_for_each_entry(curr, &client->hw_ctx_list, link) {
 			if(!list_empty(&curr->cu_ctx_list))
 				count++;
 		}
@@ -1740,7 +2110,15 @@ u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
-		list_for_each_entry(curr, &client->ctx_list, link) {
+	
+		/* For legacy context */
+		if(!list_empty(&client->ctx->cu_ctx_list)) {
+			pl[i] = pid_nr(client->pid);
+			i++;
+		}
+
+		/* For hw context */
+		list_for_each_entry(curr, &client->hw_ctx_list, link) {
 			if(!list_empty(&curr->cu_ctx_list)) {
 				pl[i] = pid_nr(client->pid);
 				i++;

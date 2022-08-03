@@ -141,6 +141,14 @@ enum drm_xocl_ops {
 	DRM_XOCL_OCL_RESET,
 	/* Open/close a context */
 	DRM_XOCL_CTX,
+	/* Create a hw context */
+	DRM_XOCL_CREATE_HW_CTX,
+	/* Destroy a hw context */
+	DRM_XOCL_DESTROY_HW_CTX,
+	/* Open a cu context */
+	DRM_XOCL_OPEN_CU_CTX,
+	/* Close a cu context */
+	DRM_XOCL_CLOSE_CU_CTX,
 	/* Get information from device */
 	DRM_XOCL_INFO,
 	/* Unmanaged DMA from/to device */
@@ -526,6 +534,66 @@ struct drm_xocl_ctx {
 	uint32_t handle;
 };
 
+/**
+ * struct drm_xocl_create_hw_ctx - Create a hw context on a slot on device
+ * used with DRM_XOCL_CREATE_HW_CTX ioctl
+ *
+ * @axlf_ptr:      axlf pointer which need to download
+ * @qos:           QOS information
+ * @hw_context:    Returns Context handle
+ */
+struct drm_xocl_create_hw_ctx {
+	struct drm_xocl_axlf	*axlf_ptr;
+	uint32_t		qos;
+
+	// return context id
+	uint32_t		hw_context;
+};
+
+/**
+ * struct drm_xocl_destroy_hw_ctx - Close/Destroy a hw context on a slot on device
+ * used with DRM_XOCL_DESTROY_HW_CTX ioctl
+ *
+ * @hw_context:    Context handle which need to close
+ */
+struct drm_xocl_destroy_hw_ctx {
+	uint32_t	hw_context;
+};
+
+/**
+ * struct drm_xocl_open_cu_ctx - Open a cu context under a hw context on device
+ * used with DRM_XOCL_OPEN_CU_CTX ioctl
+ *
+ * @hw_context:    Open CU under this hw Context handle
+ * @cu_name:       Name of the compute unit in the device image for which
+ * 		   the open request is being made
+ * @flags:         Shared or exclusive context (XOCL_CTX_SHARED/XOCL_CTX_EXCLUSIVE)
+ * @cu_index:      Return the acquired CU index. This will require for close cu context
+ */
+struct drm_xocl_open_cu_ctx {
+	// Under this hw context id
+	uint32_t	hw_context;
+	char		cu_name[64];
+	uint32_t	flags;
+
+	// Return the acquired CU index.
+	uint32_t	cu_index;
+};
+
+/**
+ * struct drm_xocl_close_cu_ctx - Open a cu context under a hw context on device
+ * used with DRM_XOCL_CLOSE_CU_CTX ioctl
+ *
+ * @hw_context:    Open CU under this hw Context handle
+ * @cu_index:      Index of the compute unit in the device image for which
+ *                 the close request is being made
+ */
+struct drm_xocl_close_cu_ctx {
+	// Under this hw context id
+	uint32_t	hw_context;
+	uint32_t	cu_index;
+};
+
 struct drm_xocl_info {
 	unsigned short vendor;
 	unsigned short device;
@@ -697,6 +765,10 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_PWRITE_BO	XOCL_IOC_ARG(PWRITE_BO, pwrite_bo)
 #define	DRM_IOCTL_XOCL_PREAD_BO		XOCL_IOC_ARG(PREAD_BO, pread_bo)
 #define	DRM_IOCTL_XOCL_CTX		XOCL_IOC_ARG(CTX, ctx)
+#define	DRM_IOCTL_XOCL_CREATE_HW_CTX	XOCL_IOC_ARG(CREATE_HW_CTX, ctx)
+#define	DRM_IOCTL_XOCL_DESTROY_HW_CTX	XOCL_IOC_ARG(DESTROY_HW_CTX, ctx)
+#define	DRM_IOCTL_XOCL_OPEN_CU_CTX	XOCL_IOC_ARG(OPEN_CU_CTX, ctx)
+#define	DRM_IOCTL_XOCL_CLOSE_CU_CTX	XOCL_IOC_ARG(CLOSE_CU_CTX, ctx)
 #define	DRM_IOCTL_XOCL_INFO		XOCL_IOC_ARG(INFO, info)
 #define	DRM_IOCTL_XOCL_READ_AXLF	XOCL_IOC_ARG(READ_AXLF, axlf)
 #define	DRM_IOCTL_XOCL_PWRITE_UNMGD	XOCL_IOC_ARG(PWRITE_UNMGD, pwrite_unmgd)
