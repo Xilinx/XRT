@@ -3,6 +3,7 @@
  * Xilinx Kernel Driver Scheduler
  *
  * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -24,16 +25,34 @@
 
 #define EV_ABORT	0x1
 
+/* Multiple CU context can be active under a single KDS client Context.
+ */
+struct kds_client_cu_ctx {
+	struct kds_client_ctx		*ctx;
+	u32				cu_idx;
+	u32		  		cu_domain;
+	u32				flags;
+	u32				ref_cnt;
+	struct list_head		link;
+};
+
+/* KDS CU information. */
+struct kds_client_cu_info {
+	u32				cu_idx;
+	u32		  		cu_domain;
+	u32				flags;
+};
+
 /* Multiple xclbin context can be active under a single client.
  * Client should maintain all the active XCLBIN.
  */
 struct kds_client_ctx {
-	struct list_head          link;
-	void			 *xclbin_id;
-	u32			  slot_idx;
-	u32			  num_ctx;
-	u32			  num_scu_ctx;
-	u32			  virt_cu_ref;
+	/* To support multiple context for multislot case */
+	struct list_head		link;
+	void				*xclbin_id;
+	u32				slot_idx;
+	/* To support multiple CU context */
+	struct list_head		cu_ctx_list;
 };
 
 struct kds_client_cu_refcnt {

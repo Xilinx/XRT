@@ -577,10 +577,11 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 
 static int
 kds_add_cu_context(struct kds_sched *kds, struct kds_client *client,
-		   int domain, struct kds_ctx_info *info)
+		   struct kds_client_cu_ctx *cu_ctx)
 {
 	struct kds_cu_mgmt *cu_mgmt = NULL;
-	u32 cu_idx = info->cu_idx;
+	u32 cu_idx = cu_ctx->cu_idx;
+	u32 domain = cu_ctx->cu_domain;
 	u32 prop;
 	bool shared;
 	int ret = 0;
@@ -596,7 +597,7 @@ kds_add_cu_context(struct kds_sched *kds, struct kds_client *client,
 	if (cu_set < 0)
 		return cu_set;
 
-	prop = info->flags & CU_CTX_PROP_MASK;
+	prop = cu_ctx->flags & CU_CTX_PROP_MASK;
 	shared = (prop != CU_CTX_EXCLUSIVE);
 
 	/* cu_mgmt->cu_refs is the critical section of multiple clients */
@@ -633,10 +634,11 @@ err:
 
 static int
 kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
-		   int domain, struct kds_ctx_info *info)
+		   struct kds_client_cu_ctx *cu_ctx)
 {
 	struct kds_cu_mgmt *cu_mgmt = NULL;
-	u32 cu_idx = info->cu_idx;
+	u32 cu_idx = cu_ctx->cu_idx;
+	int domain = cu_ctx->cu_domain;
 	unsigned long submitted;
 	unsigned long completed;
 	bool bad_state = false;
@@ -1050,73 +1052,28 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 	return 0;
 }
 
-/* This function returns true if the given CU/SCU belongs to the current slot
- * per the kds context argument.
- */
-static bool
-is_cu_in_ctx_slot(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit, u32 cu_domain)
-{
-	struct xrt_cu *xcu = NULL;
-
-	if (cu_domain == DOMAIN_PS)
-		xcu = kds->scu_mgmt.xcus[bit];
-	else
-		xcu = kds->cu_mgmt.xcus[bit];
-
-	if (xcu && (xcu->info.slot_idx == cctx->slot_idx))
-		return true;
-
-	return false;
-}
-
 static inline void
 _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_ctx *cctx)
 {
-	struct kds_ctx_info info;
-	u32 count_idx;
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_cu_ctx *next = NULL;
 
-	kds_info(client, "Client pid(%d) has %d opening context for %d slot",
-			pid_nr(client->pid), cctx->num_ctx, cctx->slot_idx);
+	kds_info(client, "Client pid(%d) has open context for %d slot",
+			pid_nr(client->pid), cctx->slot_idx);
 
 	mutex_lock(&client->lock);
-	while (cctx->virt_cu_ref) {
-		info.cu_idx = 0xFFFF; /* Special index for virtual CU */
-		info.curr_ctx = cctx;
-		info.cu_domain = DOMAIN_VIRT;
-		kds_del_context(kds, client, &info);
+	/* Traverse through all the context and free them up */
+	list_for_each_entry_safe(cu_ctx, next, &cctx->cu_ctx_list, link) {
+		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
+				cu_ctx->cu_idx);
+		kds_del_context(kds, client, cu_ctx);
+		kds_free_cu_ctx(client, cu_ctx);
 	}
-
-	count_idx = 0;
-	while (count_idx < MAX_CUS) {
-		/* Check whether this SCU belongs to current slot */
-		if (is_cu_in_ctx_slot(kds, cctx, count_idx, DOMAIN_PS)) {
-			info.cu_idx = count_idx;
-			info.cu_domain = DOMAIN_PS;
-			info.curr_ctx = cctx;
-			kds_del_context(kds, client, &info);
-			kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
-		}
-		count_idx += 1;
-	};
+	
 	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
-
-	count_idx = 0;
-	while (count_idx < MAX_CUS) {
-		/* Check whether this CU belongs to current slot */
-		if (is_cu_in_ctx_slot(kds, cctx, count_idx, DOMAIN_PL)) {
-			info.cu_idx = count_idx;
-			info.cu_domain = DOMAIN_PL;
-			info.curr_ctx = cctx;
-			kds_del_context(kds, client, &info);
-			kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
-		}
-		count_idx += 1;
-	};
 	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
 	mutex_unlock(&client->lock);
-
-	WARN_ON(cctx->num_ctx);
 }
 
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
@@ -1125,8 +1082,7 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 
 	list_for_each_entry(curr, &client->ctx_list, link) {
 		/* Release client's resources */
-		if (curr->num_ctx)
-			_kds_fini_client(kds, client, curr);
+		_kds_fini_client(kds, client, curr);
 	}
 
 	put_pid(client->pid);
@@ -1143,19 +1099,113 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	free_percpu(client->stats);
 }
 
-int kds_add_context(struct kds_sched *kds, struct kds_client *client,
-		    struct kds_ctx_info *info)
+struct kds_client_cu_ctx *
+kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
+		struct kds_client_cu_info *cu_info)
 {
-	u32 cu_idx = info->cu_idx;
-	u32 cu_domain = info->cu_domain;
-	bool shared = (info->flags != CU_CTX_EXCLUSIVE);
-	struct kds_client_ctx *cctx = (struct kds_client_ctx *)info->curr_ctx;
-	int i;
+        uint32_t cu_domain = cu_info->cu_domain;
+        uint32_t cu_idx = cu_info->cu_idx;
+        struct kds_client_cu_ctx *cu_ctx = NULL;
+	bool found = false;
+	
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+        if (!ctx) {
+		kds_err(client, "No Client Context available");
+                return ERR_PTR(-EINVAL);
+        }
+
+        /* Find out if same CU context is already exists  */
+        list_for_each_entry(cu_ctx, &ctx->cu_ctx_list, link)
+                if ((cu_ctx->cu_idx == cu_idx) &&
+                                (cu_ctx->cu_domain == cu_domain)) {
+                        found = true;
+			break;
+		}
+
+        /* CU context exists. Return the context */
+	if (found)
+        	return cu_ctx;
+                
+	return NULL;
+}
+
+static int
+kds_initialize_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx,
+		struct kds_client_cu_info *cu_info)
+{
+	if (!cu_ctx) {
+		kds_err(client, "No Client Context available");
+		return -EINVAL;
+	}
+
+	// Initialize the new context
+	cu_ctx->ctx = client->ctx;
+	cu_ctx->cu_domain = cu_info->cu_domain;
+	cu_ctx->cu_idx = cu_info->cu_idx;
+	cu_ctx->ref_cnt = 0;
+	cu_ctx->flags = cu_info->flags;
+
+	return 0;
+}
+
+struct kds_client_cu_ctx *
+kds_alloc_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
+		struct kds_client_cu_info *cu_info)
+{
+	struct kds_client_cu_ctx *cu_ctx = NULL;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
 
-	if (!cctx)
+	cu_ctx = kds_get_cu_ctx(client, ctx, cu_info);
+	if (IS_ERR(cu_ctx))
+		return NULL;
+
+	/* Valid CU context exists. Return this context here */
+	if (cu_ctx)
+		return cu_ctx;
+
+	/* CU context doesn't exists. Create a new context */
+	cu_ctx = vzalloc(sizeof(struct kds_client_cu_ctx));
+	if (!cu_ctx) {
+		kds_err(client, "Memory is not available for new context");
+		return NULL;
+	}
+
+        /* Add this Cu context to Client Context list */
+	list_add_tail(&cu_ctx->link, &ctx->cu_ctx_list);
+
+	/* Initialize this cu context with required iniformation */
+	kds_initialize_cu_ctx(client, cu_ctx, cu_info);
+
+	return cu_ctx;
+}
+
+int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx)
+{
+	BUG_ON(!mutex_is_locked(&client->lock));
+
+	if (!cu_ctx && cu_ctx->ref_cnt) {
+		/* Reference count must be reset before free the context */
+		kds_err(client, "Invalid CU Context requested to free");
 		return -EINVAL;
+	}
+	
+	list_del(&cu_ctx->link);
+	vfree(cu_ctx); 
+
+	return 0;
+}
+
+int kds_add_context(struct kds_sched *kds, struct kds_client *client,
+		    struct kds_client_cu_ctx *cu_ctx)
+{
+	u32 cu_idx = cu_ctx->cu_idx;
+	u32 cu_domain = cu_ctx->cu_domain;
+	bool shared = (cu_ctx->flags != CU_CTX_EXCLUSIVE);
+	int i;
+
+	BUG_ON(!mutex_is_locked(&client->lock));
 
 	/* TODO: In lagcy KDS, there is a concept of implicit CUs.
 	 * It looks like that part is related to cdma. But it use the same
@@ -1169,7 +1219,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 			return -EINVAL;
 		}
 		/* a special handling for m2m cu :( */
-		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
+		if (kds->cu_mgmt.num_cdma && !cu_ctx->ref_cnt) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			if (kds_test_and_refcnt_incr(client, DOMAIN_PL, i) < 0)
 				return -EINVAL;
@@ -1177,11 +1227,10 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 			++kds->cu_mgmt.cu_refs[i];
 			mutex_unlock(&kds->cu_mgmt.lock);
 		}
-		++cctx->virt_cu_ref;
 		break;
 	case DOMAIN_PL:
 	case DOMAIN_PS:
-		if (kds_add_cu_context(kds, client, cu_domain, info))
+		if (kds_add_cu_context(kds, client, cu_ctx))
 			return -EINVAL;
 		break;
 	default:
@@ -1189,34 +1238,29 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
-	++cctx->num_ctx;
+	++cu_ctx->ref_cnt;
 	kds_info(client, "Client pid(%d) add context Domain(%d) CU(0x%x) shared(%s)",
 		 pid_nr(client->pid), cu_domain, cu_idx, shared? "true" : "false");
 	return 0;
 }
 
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
-		    struct kds_ctx_info *info)
+		    struct kds_client_cu_ctx *cu_ctx)
 {
-	u32 cu_idx = info->cu_idx;
-	u32 cu_domain = info->cu_domain;
-	struct kds_client_ctx *cctx = (struct kds_client_ctx *)info->curr_ctx;
+	u32 cu_idx = cu_ctx->cu_idx;
+	u32 cu_domain = cu_ctx->cu_domain;
 	int i;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
 
-	if (!cctx)
-		return -EINVAL;
-
 	switch (cu_domain) {
 	case DOMAIN_VIRT:
-		if (!cctx->virt_cu_ref) {
+		if (!cu_ctx->ref_cnt) {
 			kds_err(client, "No opening virtual CU");
 			return -EINVAL;
 		}
-		--cctx->virt_cu_ref;
 		/* a special handling for m2m cu :( */
-		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
+		if (kds->cu_mgmt.num_cdma && !cu_ctx->ref_cnt) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			if (kds_test_and_refcnt_decr(client, DOMAIN_PL, i) < 0)
 				return -EINVAL;
@@ -1231,7 +1275,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		break;
 	case DOMAIN_PL:
 	case DOMAIN_PS:
-		if (kds_del_cu_context(kds, client, cu_domain, info))
+		if (kds_del_cu_context(kds, client, cu_ctx))
 			return -EINVAL;
 		break;
 	default:
@@ -1239,9 +1283,9 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
-	--cctx->num_ctx;
+	--cu_ctx->ref_cnt;
 	kds_info(client, "Client pid(%d) del context Domain(%d) CU(0x%x)",
-		 pid_nr(client->pid), info->cu_domain, cu_idx);
+		 pid_nr(client->pid), cu_domain, cu_idx);
 	return 0;
 }
 
@@ -1682,8 +1726,8 @@ u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
 		list_for_each_entry(curr, &client->ctx_list, link) {
-			if (curr->num_ctx > 0)
-			count++;
+			if(!list_empty(&curr->cu_ctx_list))
+				count++;
 		}
 	}
 	if (count == 0 || plist == NULL)
@@ -1697,7 +1741,7 @@ u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
 		list_for_each_entry(curr, &client->ctx_list, link) {
-			if (curr->num_ctx > 0) {
+			if(!list_empty(&curr->cu_ctx_list)) {
 				pl[i] = pid_nr(client->pid);
 				i++;
 			}

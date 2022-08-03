@@ -414,18 +414,24 @@ free_unmap_bo(xclDeviceHandle handle, xclBufferHandle boh, void * boptr, size_t 
  * helper function for P2P test
  */
 static bool
-p2ptest_set_or_cmp(char *boptr, size_t size, char pattern, bool set)
+p2ptest_set_or_cmp(char *boptr, size_t size, const std::vector<char>& valid_data, bool set)
 {
-  int stride = xrt_core::getpagesize();
+  // Validate the page size against the parameters
+  const size_t page_size = static_cast<size_t>(xrt_core::getpagesize());
+  assert((size % page_size) == 0);
+  assert(page_size >= valid_data.size());
 
-  assert((size % stride) == 0);
-  for (size_t i = 0; i < size; i += stride) {
-    if (set) {
-      boptr[i] = pattern;
-    }
-    else if (boptr[i] != pattern) {
+  // Calculate the number of pages that will be accessed
+  const size_t num_of_pages = size / page_size;
+  assert(size >= valid_data.size());
+
+  // Go through each page to be accessed and perform the desired action
+  for (size_t page_index = 0; page_index < num_of_pages; page_index++) {
+    const size_t mem_index = page_index * page_size;
+    if (set)
+      std::memcpy(&(boptr[mem_index]), valid_data.data(), valid_data.size());
+    else if(!std::equal(valid_data.begin(), valid_data.end(), &(boptr[mem_index]))) // Continue unless mismatch
       return false;
-    }
   }
   return true;
 }
@@ -441,16 +447,36 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   if (xrt_core::posix_memalign(reinterpret_cast<void **>(&buf), xrt_core::getpagesize(), size))
     return false;
 
-  p2ptest_set_or_cmp(buf, size, 'A', true);
-  if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0)
+  // Generate the valid data vector
+  // Perform a memory write larger than 512 bytes to trigger a write combine
+  // The chosen size is 1024
+  const size_t valid_data_size = 1024;
+  std::vector<char> valid_data(valid_data_size);
+  std::fill(valid_data.begin(), valid_data.end(), 'A');
+
+  // Perform one large write
+  const auto buf_size = xrt_core::getpagesize();
+  p2ptest_set_or_cmp(buf, buf_size, valid_data, true);
+  if (xclUnmgdPwrite(handle, 0, buf, buf_size, dev_addr) < 0)
     return false;
-  if (!p2ptest_set_or_cmp(boptr, size, 'A', false))
+  if (!p2ptest_set_or_cmp(boptr, buf_size, valid_data, false))
     return false;
 
-  p2ptest_set_or_cmp(boptr, size, 'B', true);
+  // Default to testing with small write to reduce test time
+  valid_data.clear();
+  valid_data.push_back('A');
+  p2ptest_set_or_cmp(buf, size, valid_data, true);
+  if (xclUnmgdPwrite(handle, 0, buf, size, dev_addr) < 0)
+    return false;
+  if (!p2ptest_set_or_cmp(boptr, size, valid_data, false))
+    return false;
+
+  valid_data.clear();
+  valid_data.push_back('B');
+  p2ptest_set_or_cmp(boptr, size, valid_data, true);
   if (xclUnmgdPread(handle, 0, buf, size, dev_addr) < 0)
     return false;
-  if (!p2ptest_set_or_cmp(buf, size, 'B', false))
+  if (!p2ptest_set_or_cmp(buf, size, valid_data, false))
     return false;
 
   free(buf);
@@ -488,7 +514,9 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
     return false;
   }
 
-  if (!p2ptest_set_or_cmp(boptr, bo_size, 'A', false)){
+  std::vector<char> data;
+  data.push_back('A');
+  if (!p2ptest_set_or_cmp(boptr, bo_size, data, false)){
     return false;
   }
 
@@ -518,7 +546,9 @@ p2ptest_chunk_no_dma(xclDeviceHandle handle, xclBufferHandle bop2p, size_t bo_si
     return false;
   }
 
-  if (!p2ptest_set_or_cmp(boptr, bo_size, 'B', false)){
+  data.clear();
+  data.push_back('B');
+  if (!p2ptest_set_or_cmp(boptr, bo_size, data, false)){
     return false;
   }
 
@@ -906,8 +936,9 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
     logger(_ptTest, "Warning", "SC firmware mismatch");
-    logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.")
-                                          % sc_ver % exp_sc_ver % "Please use xbmgmt examine to check the installed shell"));
+    logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the platform, but SC firmware version %s is expected for the installed base platform. %s, and %s.")
+                                          % sc_ver % exp_sc_ver % "Please use xbmgmt examine to see the compatible SC version corresponding to this base platform"
+                                          % "reprogram the base partition using xbmgmt program --base ... to update the SC version"));
   }
   _ptTest.put("status", test_token_passed);
 }
@@ -1492,7 +1523,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "dma"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "dma", "p2p"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
