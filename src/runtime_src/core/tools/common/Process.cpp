@@ -35,9 +35,8 @@
 
 // Local - Include Files
 #include "BusyBar.h"
-#include "ProgressBar.h"
-#include "Process.h"
 #include "EscapeCodes.h"
+#include "Process.h"
 #include "XBUtilitiesCore.h"
 #include "XBUtilities.h"
 
@@ -159,11 +158,12 @@ XBUtilities::runScript( const std::string & env,
   cmd += script + " " + args_str.str();
 
   BusyBar busy_bar(running_description, std::cout); 
-  busy_bar.start();
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
   bool is_thread_running = true;
 
   // Start the test process
-  std::thread test_thread(run_script, cmd, std::ref(os_stdout), std::ref(os_stderr), std::ref(is_thread_running));
+  // std::thread test_thread(run_script, cmd, std::ref(os_stdout), std::ref(os_stderr), std::ref(is_thread_running));
+  std::thread test_thread([&] { run_script(cmd, os_stdout, os_stderr, is_thread_running); });
   // Wait for the test process to finish
   while (is_thread_running) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
