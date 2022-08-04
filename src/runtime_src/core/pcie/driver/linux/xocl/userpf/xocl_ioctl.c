@@ -108,17 +108,16 @@ int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
 	       	(struct drm_xocl_create_hw_ctx *)data;
         struct xocl_drm *drm_p = dev->dev_private;
         struct xocl_dev *xdev = drm_p->xdev;
-        struct drm_xocl_axlf *axlf_obj_ptr = NULL;
+        struct drm_xocl_axlf axlf_obj_ptr = { 0 };
 	uint32_t slot_id = 0;
         int ret = 0;
 
-	axlf_obj_ptr = drm_hw_ctx->axlf_ptr;
-	if (!axlf_obj_ptr)
-		return -EINVAL;
+	if (copy_from_user(&axlf_obj_ptr, drm_hw_ctx->axlf_ptr, sizeof(struct drm_xocl_axlf)))
+		return -EFAULT;
 
 	/* Download the XCLBIN to the device first */
         mutex_lock(&xdev->dev_lock);
-        ret = xocl_read_axlf_helper(drm_p, axlf_obj_ptr, drm_hw_ctx->qos, &slot_id);
+        ret = xocl_read_axlf_helper(drm_p, &axlf_obj_ptr, drm_hw_ctx->qos, &slot_id);
 	if (ret) {
 		mutex_unlock(&xdev->dev_lock);
 		return ret;

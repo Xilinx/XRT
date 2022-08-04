@@ -1330,6 +1330,129 @@ bool shim::zeroOutDDR()
     return true;
 }
 
+int shim::getAxlfObjSize(const axlf *buffer)
+{
+    int ksize = 0;
+    auto kernels = xrt_core::xclbin::get_kernels(buffer);
+    /* Calculate size of kernels */
+    for (auto& kernel : kernels) {
+        ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
+    return ksize;
+}
+
+/*
+ * xclPrepareAxlf()
+ */
+int shim::xclPrepareAxlf(const axlf *buffer, struct drm_xocl_axlf *axlf_obj)
+{
+    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
+    unsigned int flags = XOCL_AXLF_BASE;
+    int off = 0;
+
+    auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
+    if(force_program) {
+        axlf_obj->flags = flags | XOCL_AXLF_FORCE_PROGRAM;
+    }
+
+    auto kernels = xrt_core::xclbin::get_kernels(buffer);
+    /* Calculate size of kernels */
+    for (auto& kernel : kernels) {
+        axlf_obj->ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
+    /* To enhance CU subdevice and KDS/ERT, driver needs all details about kernels
+     * while load xclbin.
+     *
+     * Why we extract data from XML metadata?
+     *  1. Kernel is NOT a good place to parse xml. It prefers binary.
+     *  2. All kernel details are in the xml today.
+     *
+     * What would happen in the future?
+     *  XCLBIN would contain fdt as metadata. At that time, this
+     *  could be removed.
+     *
+     * Binary format:
+     * +-----------------------+
+     * | Kernel[0]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[1]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[...]           |
+     * |   ...                 |
+     * +-----------------------+
+     */
+    for (auto& kernel : kernels) {
+        auto krnl = reinterpret_cast<kernel_info *>(axlf_obj->kernels + off);
+        if (kernel.name.size() > sizeof(krnl->name))
+            return -EINVAL;
+        std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+        krnl->name[sizeof(krnl->name)-1] = '\0';
+        krnl->anums = kernel.args.size();
+        krnl->range = kernel.range;
+
+        krnl->features = 0;
+        if (kernel.sw_reset)
+            krnl->features |= KRNL_SW_RESET;
+
+        int ai = 0;
+        for (auto& arg : kernel.args) {
+            if (arg.name.size() > sizeof(krnl->args[ai].name)) {
+                xrt_logmsg(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
+                return -EINVAL;
+            }
+            std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+            krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+            krnl->args[ai].offset = arg.offset;
+            krnl->args[ai].size   = arg.size;
+            // XCLBIN doesn't define argument direction yet and it only support
+            // input arguments.
+            // Driver use 1 for input argument and 2 for output.
+            // Let's refine this line later.
+            krnl->args[ai].dir    = 1;
+            ai++;
+        }
+        off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
+    /* To make download xclbin and configure KDS/ERT as an atomic operation. */
+    axlf_obj->kds_cfg.ert = xrt_core::config::get_ert();
+    axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
+    axlf_obj->kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
+    axlf_obj->kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(buffer);
+    axlf_obj->kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
+    axlf_obj->kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(buffer);
+    axlf_obj->kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
+
+    /* TODO: In scheduler.cpp init() function, it use get_ert_slots(void) to get slot size.
+     * But we cannot do this here, since the xclbin is not registered.
+     * Currently, emulation flow use get_ert_slots() as well.
+     * We will consider how to better determine slot size in new kds.
+     */
+    //axlf_obj->kds_cfg.slot_size = mCoreDevice->get_ert_slots().second;
+    auto xml_hdr = xrt_core::xclbin::get_axlf_section(buffer, EMBEDDED_METADATA);
+    if (!xml_hdr)
+        throw std::runtime_error("No xml metadata in xclbin");
+    auto xml_size = xml_hdr->m_sectionSize;
+    auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) + xml_hdr->m_sectionOffset);
+    axlf_obj->kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
+
+    axlf_obj->xclbin = const_cast<axlf *>(buffer);
+
+    return 0;
+}
+
 /*
  * xclLoadXclBin()
  */
@@ -1390,146 +1513,45 @@ xclLoadXclBin(const xclBin *buffer)
 }
 
 /*
- * xclPrepareAxlf()
+ * xclLoadHwAxlf()
  */
-int shim::xclPrepareAxlf(const axlf *buffer, drm_xocl_axlf *axlf_obj)
+int shim::xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx)
 {
-    unsigned int flags = XOCL_AXLF_BASE;
-    int off = 0;
-
-    auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
-    if(force_program) {
-        axlf_obj->flags = flags | XOCL_AXLF_FORCE_PROGRAM;
-    }
-
-    auto kernels = xrt_core::xclbin::get_kernels(buffer);
-    /* Calculate size of kernels */
-    for (auto& kernel : kernels) {
-        axlf_obj->ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
-    }
-
-    /* To enhance CU subdevice and KDS/ERT, driver needs all details about kernels
-     * while load xclbin.
-     *
-     * Why we extract data from XML metadata?
-     *  1. Kernel is NOT a good place to parse xml. It prefers binary.
-     *  2. All kernel details are in the xml today.
-     *
-     * What would happen in the future?
-     *  XCLBIN would contain fdt as metadata. At that time, this
-     *  could be removed.
-     *
-     * Binary format:
-     * +-----------------------+
-     * | Kernel[0]             |
-     * |   name[64]            |
-     * |   anums               |
-     * |   argument[0]         |
-     * |   argument[1]         |
-     * |   argument[...]       |
-     * |-----------------------|
-     * | Kernel[1]             |
-     * |   name[64]            |
-     * |   anums               |
-     * |   argument[0]         |
-     * |   argument[1]         |
-     * |   argument[...]       |
-     * |-----------------------|
-     * | Kernel[...]           |
-     * |   ...                 |
-     * +-----------------------+
-     */
-    std::vector<char> krnl_binary(axlf_obj->ksize);
-    axlf_obj->kernels = krnl_binary.data();
-    for (auto& kernel : kernels) {
-        auto krnl = reinterpret_cast<kernel_info *>(axlf_obj->kernels + off);
-        if (kernel.name.size() > sizeof(krnl->name))
-            return -EINVAL;
-        std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
-        krnl->name[sizeof(krnl->name)-1] = '\0';
-        krnl->anums = kernel.args.size();
-        krnl->range = kernel.range;
-
-        krnl->features = 0;
-        if (kernel.sw_reset)
-            krnl->features |= KRNL_SW_RESET;
-
-        int ai = 0;
-        for (auto& arg : kernel.args) {
-            if (arg.name.size() > sizeof(krnl->args[ai].name)) {
-                xrt_logmsg(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
-                return -EINVAL;
-            }
-            std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
-            krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
-            krnl->args[ai].offset = arg.offset;
-            krnl->args[ai].size   = arg.size;
-            // XCLBIN doesn't define argument direction yet and it only support
-            // input arguments.
-            // Driver use 1 for input argument and 2 for output.
-            // Let's refine this line later.
-            krnl->args[ai].dir    = 1;
-            ai++;
-        }
-        off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
-    }
-
-    /* To make download xclbin and configure KDS/ERT as an atomic operation. */
-    axlf_obj->kds_cfg.ert = xrt_core::config::get_ert();
-    axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
-    axlf_obj->kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
-    axlf_obj->kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(buffer);
-    axlf_obj->kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
-    axlf_obj->kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(buffer);
-    axlf_obj->kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
-
-    /* TODO: In scheduler.cpp init() function, it use get_ert_slots(void) to get slot size.
-     * But we cannot do this here, since the xclbin is not registered.
-     * Currently, emulation flow use get_ert_slots() as well.
-     * We will consider how to better determine slot size in new kds.
-     */
-    //axlf_obj->kds_cfg.slot_size = mCoreDevice->get_ert_slots().second;
-    auto xml_hdr = xrt_core::xclbin::get_axlf_section(buffer, EMBEDDED_METADATA);
-    if (!xml_hdr)
-        throw std::runtime_error("No xml metadata in xclbin");
-    auto xml_size = xml_hdr->m_sectionSize;
-    auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(buffer) + xml_hdr->m_sectionOffset);
-    axlf_obj->kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
-
-    return 0;
-}
-
-/*
- * xclLoadAxlf()
- */
-int shim::xclLoadAxlf(const axlf *buffer)
-{
-    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
-
     xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
-    int ret = xclPrepareAxlf(buffer, &axlf_obj);
-    if (ret)
-        throw std::runtime_error("Invalid input xclbin");
+    drm_xocl_axlf axlf_obj = { 0 };
 
-    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-    if (ret && errno == EAGAIN) {
-        //special case for aws
-        //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
-        //wait and reload 2nd time -- this time the there will be no device id
-        //change, hence no pcie removal&rescan, anymore
-	//we need to close the device otherwise the removal&rescan (unload driver) will hang
-	//we also need to reopen the device once removal&rescan completes
-        int dev_hotplug_done = 0;
-        std::string err;
-        dev_fini();
-        std::this_thread::sleep_for(std::chrono::seconds(5));
-        while (!dev_hotplug_done) {
+    int ksize = getAxlfObjSize(buffer);
+    if (!ksize) {
+        xrt_logmsg(XRT_ERROR, "%s: Invalid input XCLBIN", __func__);
+        return -EINVAL;
+    }
+
+    std::vector<char> krnl_binary(ksize);
+    axlf_obj.kernels = krnl_binary.data();
+
+    auto ret = xclPrepareAxlf(buffer, &axlf_obj);
+    if (!ret) {
+        hw_ctx->axlf_ptr = &axlf_obj;
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_HW_CTX, hw_ctx);
+        if (ret && errno == EAGAIN) {
+            //special case for aws
+            //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
+            //wait and reload 2nd time -- this time the there will be no device id
+            //change, hence no pcie removal&rescan, anymore
+            //we need to close the device otherwise the removal&rescan (unload driver) will hang
+	    //we also need to reopen the device once removal&rescan completes
+            int dev_hotplug_done = 0;
+            std::string err;
+            dev_fini();
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            while (!dev_hotplug_done) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
                 "dev_hotplug_done", err, dev_hotplug_done, 0);
-        }
-        dev_init();
-        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+            }
+            dev_init();
+            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_HW_CTX, hw_ctx);
+	}
     }
 
     if (ret)
@@ -1548,6 +1570,66 @@ int shim::xclLoadAxlf(const axlf *buffer)
         }
     }
 
+    return 0;
+}
+
+
+/*
+ * xclLoadAxlf()
+ */
+int shim::xclLoadAxlf(const axlf *buffer)
+{
+    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
+    drm_xocl_axlf axlf_obj = { 0 };
+
+    int ksize = getAxlfObjSize(buffer);
+    if (!ksize) {
+        xrt_logmsg(XRT_ERROR, "%s: Invalid input XCLBIN", __func__);
+        return -EINVAL;
+    }
+
+    std::vector<char> krnl_binary(ksize);
+    axlf_obj.kernels = krnl_binary.data();
+
+    auto ret = xclPrepareAxlf(buffer, &axlf_obj);
+    if (!ret) {
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+        if (ret && errno == EAGAIN) {
+            //special case for aws
+            //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
+            //wait and reload 2nd time -- this time the there will be no device id
+            //change, hence no pcie removal&rescan, anymore
+            //we need to close the device otherwise the removal&rescan (unload driver) will hang
+	    //we also need to reopen the device once removal&rescan completes
+            int dev_hotplug_done = 0;
+            std::string err;
+            dev_fini();
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            while (!dev_hotplug_done) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+                "dev_hotplug_done", err, dev_hotplug_done, 0);
+            }
+            dev_init();
+            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+        }
+    }
+
+    if (ret)
+        return -errno;
+
+    // If it is an XPR DSA, zero out the DDR again as downloading the XCLBIN
+    // reinitializes the DDR and results in ECC error.
+    if(isXPR())
+    {
+        xrt_logmsg(XRT_INFO, "%s, XPR Device found, zeroing out DDR again..", __func__);
+
+        if (zeroOutDDR() == false)
+        {
+            xrt_logmsg(XRT_ERROR, "%s, zeroing out DDR again..", __func__);
+            return -EIO;
+        }
+    }
     return ret;
 }
 
@@ -2247,17 +2329,11 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
     auto xclbin = mCoreDevice->get_xclbin(xclbin_uuid);
     auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
     auto top = reinterpret_cast<const axlf*>(buffer);
-    drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
-
-    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
-    if (xclPrepareAxlf(buffer, &axlf_obj))
-      throw xrt_core::system_error(errno, "Invalid input xclbin");
-
     drm_xocl_create_hw_ctx hw_ctx = { 0 };
-    hw_ctx.axlf_ptr = &axlf_obj;
     hw_ctx.qos = qos;
 
-    if (auto ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_HW_CTX, &hw_ctx)) {
+    xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
+    if (auto ret = xclLoadHwAxlf(top, &hw_ctx)) {
       // Something wrong, determine what
       if (ret == -EOPNOTSUPP) {
         xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");

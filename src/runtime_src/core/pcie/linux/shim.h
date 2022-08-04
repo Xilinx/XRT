@@ -198,7 +198,9 @@ private:
   void dev_fini();
 
   int xclLoadAxlf(const axlf *buffer);
-  int xclPrepareAxlf(const axlf *buffer, drm_xocl_axlf *axlf_obj);
+  int xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx);
+  int xclPrepareAxlf(const axlf *buffer, struct drm_xocl_axlf *axlf_obj);
+  int getAxlfObjSize(const axlf *buffer);
   void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
   void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
   void xclSysfsGetErrorStatus(xclErrorStatus& stat);
