@@ -166,7 +166,7 @@ get_render_devname()
         static const std::regex filter{"platform.*zyxclmm_drm-render"};
 
         boost::filesystem::directory_iterator end_itr;
-        for( boost::filesystem::directory_iterator itr( render_dev_sym_dir ); itr != end_itr; ++itr) {
+        for (boost::filesystem::directory_iterator itr( render_dev_sym_dir ); itr != end_itr; ++itr) {
             if (!std::regex_match(itr->path().filename().string(), filter))
 	        continue;
 
