@@ -20,14 +20,16 @@
 namespace xdp {
 namespace built_in {
 
-  enum class MetricSet {
+  enum class MetricSet : uint8_t 
+  {
     FUNCTIONS = 0,
     PARTIAL_STALLS = 1,
     ALL_STALLS = 2,
     ALL = 3
   };
 
-  enum class CounterScheme {
+  enum class CounterScheme : uint8_t 
+  {
     ES1 = 0,
     ES2 = 1
   };
@@ -54,16 +56,68 @@ namespace built_in {
     uint16_t tiles[1]; //flexible array member
   };
 
-  // This struct is used as output from the PS kernel.  It should be zeroed out
-  // and passed as a buffer object to and from the PS kernel.  The PS kernel
-  // will fill in the different values.
-  //
-  // Since this is transferred from host to device, it should have
-  // a C-Style interface.
-  struct OutputValues
-  {    
-    bool success;
+  struct PCData
+  {
+    public:
+      uint32_t start_event = 0;
+      uint32_t stop_event = 0;
+      uint32_t reset_event = 0;
+      uint32_t event_value = 0;
+      uint32_t counter_value = 0;
+
   };
+
+  struct TileTraceData
+  {   
+    public:
+      uint32_t packet_type = 0;
+      uint32_t start_event = 28; 
+      uint32_t stop_event = 29; 
+      uint32_t traced_events[8] = {0};
+      uint32_t internal_events_broadcast[16] = {0};
+      uint32_t broadcast_mask_west = 65535;
+      uint32_t broadcast_mask_east = 65535;
+      PCData pc[4];
+  };  
+
+
+  struct TileData
+  {
+    public:
+      uint32_t column;
+      uint32_t row;
+      TileTraceData  core_trace_config;
+      TileTraceData  memory_trace_config;
+   
+      TileData(uint32_t c, uint32_t r) : column(c), row(r) {}
+  };
+
+  struct OutputConfiguration
+  {
+    public:
+      uint16_t numTiles;
+      uint32_t numTileCoreTraceEvents[9] = {0};
+      uint32_t numTileMemoryTraceEvents[9] = {0};
+      TileData tiles[1]; 
+  };
+
+
+  struct GMIOBuffer
+  {
+    uint32_t shimColumn;      // From TraceGMIo
+    uint32_t channelNumber;
+    uint32_t burstLength;
+	uint64_t physAddr;
+  };
+
+   
+  struct GMIOConfiguration
+  {
+    uint64_t bufAllocSz;
+    uint8_t numStreams;
+    struct GMIOBuffer gmioData[1];
+  };  
+
 
 } // end namespace built_in
 } // end namespace xdp
