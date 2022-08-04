@@ -199,14 +199,19 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		}
 
 		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id);
-		if (ret)
+		if (ret) {
+			vfree(client->ctx);
 			goto out;
+		}
 
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
-			goto out1;
+			vfree(client->ctx);
+			(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
+			goto out;
 		}
+
 		uuid_copy(uuid, &args->xclbin_id);
 		client->ctx->xclbin_id = uuid;
 		/* Multiple CU context can be active. Initializing CU context list */
@@ -225,17 +230,22 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 	 
 	ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
-	if (ret)
+	if (ret) {
 		kds_free_cu_ctx(client, cu_ctx);
+		goto out1;
+	}
 
+	mutex_unlock(&client->lock);
+	return ret;
 out1:
 	/* If client still has no opened context at this point */
-	if (!client->ctx) {
-		if (client->ctx->xclbin_id)
-			vfree(client->ctx->xclbin_id);
-		client->ctx->xclbin_id = NULL;
-		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
-	}
+	if (client->ctx->xclbin_id)
+		vfree(client->ctx->xclbin_id);
+	client->ctx->xclbin_id = NULL;
+	(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
+	vfree(client->ctx);
+	client->ctx = NULL;
+
 out:
 	mutex_unlock(&client->lock);
 	return ret;
@@ -910,7 +920,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct kds_command *xcmd;
 	int ret = 0;
 
-	if (!client->ctx->xclbin_id) {
+	if ((!client->ctx) && (list_empty(&client->hw_ctx_list))) {
 		userpf_err(xdev, "The client has no opening context\n");
 		return -EINVAL;
 	}
@@ -1136,6 +1146,7 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 	kds = &XDEV(xdev)->kds;
 	kds_fini_client(kds, client);
 
+	mutex_lock(&client->lock);
 	/* Cleanup the Legacy context here */
 	if (client->ctx && client->ctx->xclbin_id) {
 		(void) xocl_icap_unlock_bitstream(xdev, client->ctx->xclbin_id);
@@ -1148,7 +1159,9 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 		(void)xocl_icap_unlock_bitstream(xdev, hw_ctx->xclbin_id);
 		kds_free_hw_ctx(client, hw_ctx);
 	}
-	
+	mutex_unlock(&client->lock);
+
+	mutex_destroy(&client->lock);
 	kfree(client);
 	userpf_info(xdev, "client exits pid(%d)\n", pid);
 }

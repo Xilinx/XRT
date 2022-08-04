@@ -1399,7 +1399,10 @@ int kds_free_cu_ctx(struct kds_client *client, struct kds_client_cu_ctx *cu_ctx)
 {
 	BUG_ON(!mutex_is_locked(&client->lock));
 
-	if (!cu_ctx && cu_ctx->ref_cnt) {
+	if (!cu_ctx)
+	       return -EINVAL;
+	
+	if (cu_ctx->ref_cnt) {
 		/* Reference count must be reset before free the context */
 		kds_err(client, "Invalid CU Context requested to free");
 		return -EINVAL;
