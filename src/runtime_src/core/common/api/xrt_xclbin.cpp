@@ -263,6 +263,12 @@ public:
     return m_args[argidx];
   }
 
+  xrt::xclbin::ip::ip_type
+  get_type() const
+  {
+    return static_cast<xrt::xclbin::ip::ip_type>(m_ip->m_type);
+  }
+
   xrt::xclbin::ip::control_type
   get_control_type() const
   {
@@ -907,6 +913,13 @@ get_ips() const
   return handle ? handle->get_ips() : std::vector<xclbin::ip>{};
 }
 
+std::vector<xclbin::ip>
+xclbin::
+get_ips(const std::string& name) const
+{
+  return handle ? handle->get_ips(name) : std::vector<xclbin::ip>{};
+}
+
 xclbin::ip
 xclbin::
 get_ip(const std::string& name) const
@@ -1051,6 +1064,15 @@ xclbin::ip::
 get_name() const
 {
   return handle ? reinterpret_cast<const char*>(handle->m_ip->m_name) : "";
+}
+
+xclbin::ip::ip_type
+xclbin::ip::
+get_type() const
+{
+  return handle
+    ? handle->get_type()
+    : static_cast<xclbin::ip::ip_type>(std::numeric_limits<uint8_t>::max());
 }
 
 xclbin::ip::control_type

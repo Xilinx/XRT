@@ -575,6 +575,12 @@ public:
     return m_address;
   }
 
+  xrt_core::cuidx_type
+  get_index() const
+  {
+    return m_idx;
+  }
+
   unsigned int
   get_cuidx() const
   {
@@ -612,6 +618,8 @@ public:
   ip_context(ip_context&&) = delete;
   ip_context& operator=(ip_context&) = delete;
   ip_context& operator=(ip_context&&) = delete;
+
+  std::pair<uint32_t, uint32_t> m_readrange = {0,0};  // start address, size
 
 private:
   // regular CU
@@ -1337,7 +1345,10 @@ private:
       throw std::runtime_error("Cannot read or write kernel with multiple compute units");
     auto& ipctx = ipctxs.back();
     auto mode = ipctx->get_access_mode();
-    if (!force && mode != ip_context::access_mode::exclusive && !xrt_core::config::get_rw_shared())
+    if (!force
+        && mode != ip_context::access_mode::exclusive // shared cu cannot normally be read, except
+        && !xrt_core::config::get_rw_shared()         //  - driver allows rw of shared cu
+        && !std::get<1>(ipctx->m_readrange))          //  - special case no bounds check here
       throw std::runtime_error("Cannot read or write kernel with shared access");
 
     if ((offset + sizeof(uint32_t)) > ipctx->get_size())
@@ -3110,6 +3121,37 @@ get_xclbin() const
 {
   return handle->get_xclbin();
 }
+
+// Experimental API
+// This function defines the read-only register range on a compute unit
+// associated with a kernel if and only if (1) the kernel has exactly
+// one compute unit and (2) the compute unit is opened in shared mode.
+// The read range allows xrt::kernel::read_register to read directly
+// from compute unit registers even if the compute unit is shared between
+// this process and another or between multiple kernel objects.
+//
+// @start: the start offset of the read-only register range
+// @size: the size of the read-only register range.
+//
+// Throws on error.
+void
+set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size)
+{
+  auto handle = kernel.get_handle();
+  const auto& ips = handle->get_ips();
+  if (ips.size() != 1)
+    throw xrt_core::error("read range only supported for kernels with one compute unit");
+
+  auto ip = ips.front();
+  if (ip->get_access_mode() != xrt::kernel::cu_access_mode::shared)
+    throw xrt_core::error("read range only supported for kernels with shared compute unit");
+
+  auto core_device = handle->get_core_device();
+  core_device->set_cu_read_range(ip->get_index(), start, size);
+
+  ip->m_readrange = {start, size};
+}
+
 
 } // namespace xrt
 

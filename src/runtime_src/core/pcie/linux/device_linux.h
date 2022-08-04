@@ -38,6 +38,8 @@ public:
   virtual void close(int dev_handle) const override;
   virtual void reset(query::reset_type&) const override;
   virtual void xclmgmt_load_xclbin(const char* buffer) const override;
+  virtual void device_shutdown() const override;
+  virtual void device_online() const override;
 
 public:
   ////////////////////////////////////////////////////////////////
@@ -45,6 +47,9 @@ public:
   // Redefined from xrt_core::ishim for functions that are not
   // universally implemented by all shims
   ////////////////////////////////////////////////////////////////
+  void
+  set_cu_read_range(cuidx_type ip_index, uint32_t start, uint32_t size) override;
+
   xclInterruptNotifyHandle
   open_ip_interrupt_notify(unsigned int ip_index) override;
 

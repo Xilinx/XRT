@@ -211,7 +211,7 @@ namespace xclhwemhal2 {
                   this->xclClose();                                               // Let's have a proper clean if xsim is NOT running
                   exit(0);                                                        // It's a clean exit only.
               }
-                
+
             }
           }
         }
@@ -1484,7 +1484,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     uint64_t finalSize = size+(2*paddingFactor*size);
     mAddrMap[finalValidAddress] = finalSize;
     bool ack = false;
-    if (sock && (boFlags & XCL_BO_FLAGS_P2P)) // bypassed the xclAllocDeviceBuffer RPC call for Non-P2P
+    if (sock)
     {
       if (boFlags & XCL_BO_FLAGS_HOST_ONLY) { // bypassed the xclAllocDeviceBuffer RPC call for Slave Bridge (host only buffer)
       } else {
@@ -1680,9 +1680,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
     // All RPC calls fail if no socket is live. so skipping of sending RPC calls if no socket connection is present.
     if (sock->m_is_socket_live)
-      resetProgram(false);      
-    
-    
+      resetProgram(false);
+
+
     int status = 0;
     xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
     if ((lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
@@ -1811,7 +1811,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       std::lock_guard<std::mutex> guard(mPrintMessagesLock);
       simulator_started = false;
       fetchAndPrintMessages();
-      
+
     }
     catch (std::exception& ex) {
       if (mLogStream.is_open())
@@ -3211,6 +3211,14 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
   return cuidx;
+}
+
+void
+HwEmShim::
+close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
 }
 
 // aka xclCreateHWContext, internal shim API for native C++ applications only

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,18 +14,14 @@
  * under the License.
  */
 
-#ifndef xdp_profile_config_h_
-#define xdp_profile_config_h_
+#ifdef  XDP_PLUGIN_AIE_TRACE_CB_H
+#define XDP_PLUGIN_AIE_TRACE_CB_H
 
-#include "xocl/core/debug.h"
-#include "xrt/util/debug.h"
+extern "C" {
 
-#ifdef XDP_VERBOSE
-# define XDP_DEBUG(...) xrt_xocl::debug(__VA_ARGS__)
-# define XDP_LOG(format,...) ::xocl::logf(format, ##__VA_ARGS__)
-#else
-# define XDP_DEBUG(...)
-# define XDP_LOG(...)
-#endif
+void updateAIEDevice(void* handle) ;
+void flushAIEDevice(void* handle) ;
+void finishFlushAIEDevice(void* handle) ;
 
+}
 #endif

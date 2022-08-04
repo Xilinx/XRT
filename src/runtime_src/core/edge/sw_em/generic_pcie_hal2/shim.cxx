@@ -520,8 +520,8 @@ namespace xclcpuemhal2 {
             sLdLibs = std::string(sLdLib) + ":";
 
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fft_v9_1" + ":";
-          sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fir_v7_0" + ":";
-          sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
+          sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fir_v7_1" + ":";
+          sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_1" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
@@ -821,7 +821,6 @@ namespace xclcpuemhal2 {
         std::string emuDataFilePath = binaryDirectory + "/emuDataFile";
         std::ofstream os(emuDataFilePath);
         os.write(emuData.get(), emuDataSize);
-        std::cout << "emuDataFilePath : " << emuDataFilePath << std::endl;
         systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, std::to_string(__LINE__));
         systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
       }
@@ -2180,6 +2179,15 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
   return cuidx;
+}
+
+void
+CpuemShim::
+close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  // To-be-implemented
+  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
 }
 
 /******************************* XRT Graph API's **************************************************/

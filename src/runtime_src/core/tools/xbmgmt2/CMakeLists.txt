@@ -13,6 +13,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/XBHelpMenus.cpp"
   "../common/OptionOptions.cpp"
   "../common/ProgressBar.cpp"
+  "../common/BusyBar.cpp"
   "../common/Process.cpp"
   "../common/Report*.cpp"
   "../common/PsKernelUtilities.cpp"

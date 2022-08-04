@@ -35,6 +35,13 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
   return shim->open_cu_context(hwctx, cuname);
 }
 
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  auto shim = get_shim_object(handle);
+  return shim->close_cu_context(hwctx, cuidx);
+}
+
 } // xrt::shim_int
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)

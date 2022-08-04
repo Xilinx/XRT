@@ -69,10 +69,29 @@ operator << (std::ostream& ostr, const xrt::xclbin::arg& arg)
 }
 
 std::ostream&
+operator << (std::ostream& ostr, xrt::xclbin::ip::ip_type ip_type)
+{
+  switch (ip_type) {
+  case xrt::xclbin::ip::ip_type::pl :
+    ostr << "pl";
+    return ostr;
+  case xrt::xclbin::ip::ip_type::ps :
+    ostr << "ps";
+    return ostr;
+  default:
+    ostr << "not defined";
+    return ostr;
+  }
+
+  return ostr;
+}
+
+std::ostream&
 operator << (std::ostream& ostr, const xrt::xclbin::ip& cu)
 {
-  ostr << "instance name:    " << cu.get_name() << "\n";
-  ostr << "base address:     0x" << std::hex << cu.get_base_address() << std::dec << "\n";
+  ostr << "instance name:  " << cu.get_name() << "\n";
+  ostr << "base address:   0x" << std::hex << cu.get_base_address() << std::dec << "\n";
+  ostr << "cu type:        " << cu.get_type() << "\n";
 
   // ip arguments
   for (const auto& arg : cu.get_args())

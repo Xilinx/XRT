@@ -39,14 +39,14 @@ namespace xclcpuemhal2
   if (mLogStream.is_open()) \
     mLogStream << __func__ << " ended " << std::endl;
 
-  CpuemShim::CpuemShim(unsigned int deviceIndex, 
-                       xclDeviceInfo2 &info, 
-                       std::list<xclemulation::DDRBank> &DDRBankList, 
-                       bool _unified, 
+  CpuemShim::CpuemShim(unsigned int deviceIndex,
+                       xclDeviceInfo2 &info,
+                       std::list<xclemulation::DDRBank> &DDRBankList,
+                       bool _unified,
                        bool _xpr,
-                       FeatureRomHeader &fRomHeader, 
+                       FeatureRomHeader &fRomHeader,
                        const boost::property_tree::ptree &platformData)
-              : mTag(TAG), mRAMSize(info.mDDRSize), mCoalesceThreshold(4), 
+              : mTag(TAG), mRAMSize(info.mDDRSize), mCoalesceThreshold(4),
 	      mDeviceIndex(deviceIndex), mIsDeviceProcessStarted(false)
   {
     binaryCounter = 0;
@@ -152,7 +152,7 @@ namespace xclcpuemhal2
       return 0;
     if (!((CpuemShim *)handle)->isGood())
       return 0;
-    
+
     return (CpuemShim *)handle;
   }
 
@@ -384,7 +384,7 @@ namespace xclcpuemhal2
         char *vitisInstallEnvvar = getenv("XILINX_VITIS");
         if (vitisInstallEnvvar != NULL)
           xilinxInstall = std::string(vitisInstallEnvvar);
-        
+
         char *scoutInstallEnvvar = getenv("XILINX_SCOUT");
         if (scoutInstallEnvvar != NULL && xilinxInstall.empty())
           xilinxInstall = std::string(scoutInstallEnvvar);
@@ -418,8 +418,7 @@ namespace xclcpuemhal2
           if (sLdLib)
             sLdLibs = std::string(sLdLib) + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fft_v9_1" + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fir_v7_0" + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fir_v7_1" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "opencv" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
@@ -763,7 +762,6 @@ namespace xclcpuemhal2
         std::string emuDataFilePath = binaryDirectory + "/emuDataFile";
         std::ofstream os(emuDataFilePath);
         os.write(emuData.get(), emuDataSize);
-        std::cout << "emuDataFilePath : " << emuDataFilePath << std::endl;
         systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, std::to_string(__LINE__));
         systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
       }
@@ -779,7 +777,7 @@ namespace xclcpuemhal2
       if (!mMessengerThread.joinable())
         mMessengerThread = std::thread([this]
                                        { messagesThread(); });
-      
+
       setDriverVersion("2.0");
       xclLoadBitstream_RPC_CALL(xclLoadBitstream, xmlFile, tempdlopenfilename, deviceDirectory, binaryDirectory, verbose);
       if (!ack)
@@ -833,7 +831,7 @@ namespace xclcpuemhal2
     size_t requestedSize = size;
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size << std::endl;
-    
+
     if (!sock)
       launchTempProcess();
 
@@ -1722,7 +1720,7 @@ namespace xclcpuemhal2
       unsigned char *host_only_buffer = (unsigned char *)(sBO->buf) + src_offset;
       if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset) != size)
       {
-        std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;      
+        std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;
         return -1;
       }
     } // source buffer is device_only and destination buffer is host_only
@@ -1731,7 +1729,7 @@ namespace xclcpuemhal2
       unsigned char *host_only_buffer = (unsigned char *)(dBO->buf) + dst_offset;
       if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset) != size)
       {
-        std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;      
+        std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
         return -1;
       }
     }
@@ -2154,7 +2152,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2167,9 +2166,11 @@ namespace xclcpuemhal2
     xclGraphInit_RPC_CALL(xclGraphInit, graphhandle, graphname);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2180,7 +2181,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2191,9 +2193,11 @@ namespace xclcpuemhal2
     xclGraphRun_RPC_CALL(xclGraphRun, graphhandle, iterations);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2207,7 +2211,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2218,9 +2223,11 @@ namespace xclcpuemhal2
     xclGraphWait_RPC_CALL(xclGraphWait, graphhandle);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2234,7 +2241,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2244,9 +2252,11 @@ namespace xclcpuemhal2
     xclGraphTimedWait_RPC_CALL(xclGraphTimedWait, graphhandle, cycle);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2269,7 +2279,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2278,11 +2289,14 @@ namespace xclcpuemhal2
     DEBUG_MSGS("%s, %d()\n", __func__, __LINE__);
     auto graphhandle = ghPtr->getGraphHandle();
     xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
+
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2305,7 +2319,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2316,9 +2331,11 @@ namespace xclcpuemhal2
     xclGraphTimedEnd_RPC_CALL(xclGraphTimedEnd, graphhandle, cycle);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2331,7 +2348,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
@@ -2342,9 +2360,11 @@ namespace xclcpuemhal2
     xclGraphResume_RPC_CALL(xclGraphResume, graphhandle);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2362,7 +2382,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-        
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
       return -1;
@@ -2371,6 +2392,7 @@ namespace xclcpuemhal2
     auto graphhandle = ghPtr->getGraphHandle();
     xclGraphUpdateRTP_RPC_CALL(xclGraphUpdateRTP, graphhandle, hierPathPort, buffer, size);
     PRINTENDFUNC
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2391,7 +2413,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-      
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
       return -1;
@@ -2400,6 +2423,7 @@ namespace xclcpuemhal2
     auto graphhandle = ghPtr->getGraphHandle();
     xclGraphReadRTP_RPC_CALL(xclGraphReadRTP, graphhandle, hierPathPort, buffer, size);
     PRINTENDFUNC
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2423,6 +2447,7 @@ namespace xclcpuemhal2
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
 
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     if (!gmioname)
       return -1;
@@ -2437,9 +2462,11 @@ namespace xclcpuemhal2
     xclSyncBOAIENB_RPC_CALL(xclSyncBOAIENB, gmioname, dir, size, offset, boBase);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
@@ -2454,7 +2481,8 @@ namespace xclcpuemhal2
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
-  
+
+    std::lock_guard<std::mutex> lk(mApiMtx);
     bool ack = false;
     if (!gmioname)
       return -1;
@@ -2463,17 +2491,19 @@ namespace xclcpuemhal2
     xclGMIOWait_RPC_CALL(xclGMIOWait, gmioname);
     if (!ack)
     {
+      DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;
       return -1;
     }
+    DEBUG_MSGS("%s, %d(Success and got the ack)\n", __func__, __LINE__);
     return 0;
   }
 
-  // open_context() - aka xclOpenContextByName
+  // open_cu_context() - aka xclOpenContextByName
   // Throw on error, return cuidx
   xrt_core::cuidx_type
   CpuemShim::
-      open_cu_context(const xrt::hw_context &hwctx, const std::string &cuname)
+  open_cu_context(const xrt::hw_context &hwctx, const std::string &cuname)
   {
     // Emulation does not yet support multiple xclbins.  Call
     // regular flow.  Default access mode to shared unless explicitly
@@ -2484,6 +2514,16 @@ namespace xclcpuemhal2
     xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
     return cuidx;
+  }
+
+  // close_cu_context() - aka xclCloseContext
+  // Throw on error
+  void
+  CpuemShim::
+  close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+  {
+    if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+      throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
   }
 
   /**********************************************HAL2 API's END HERE **********************************************/

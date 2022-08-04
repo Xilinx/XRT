@@ -133,6 +133,14 @@ static int zxgq_fetch_request(struct zocl_xgq *zxgq, struct xgq_cmd_sq_hdr **cmd
 		zxgq_err(zxgq, "Payload size %dB is too big, truncated!", (*cmd)->count);
 	}
 	cpy_fromio(buf + header_sz, cmd_addr + header_sz, cnt);
+#if 0
+	{
+		int i;
+		printk("DEBUG: %s received a command\n", __func__);
+		for (i = 0; i < cnt/sizeof(u32); i++)
+			printk("DEBUG: %s cmd data(%d) 0x%x\n", __func__, i, ((u32 *)buf)[i]);
+	}
+#endif
 
 	xgq_notify_peer_consumed(xgq);
 

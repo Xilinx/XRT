@@ -68,6 +68,7 @@ public:
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
   // aka xclOpenContextByName()
   xrt_core::cuidx_type open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
+  void close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
   int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
   int xclSKGetCmd(xclSKCmd *cmd);

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Author(s):
  *        Lizhi Hou <lizhih@xilinx.com>
@@ -351,7 +352,8 @@ static int zrpu_channel_probe(struct platform_device *pdev)
 	xgq_arg.zxia_ring = chan->mem_base + ZRPU_CHANNEL_XGQ_BUFFER;
 	xgq_arg.zxia_ring_size = ZRPU_CHANNEL_XGQ_BUFFER_SIZE;
 	xgq_arg.zxia_ring_slot_size = ZRPU_CHANNEL_XGQ_SLOT_SIZE;
-	xgq_arg.zxia_irq = irq;
+	/* There is only 1 irq in intc subdev. The irq_id is 0 */
+	xgq_arg.zxia_irq = 0;
 	xgq_arg.zxia_intc_pdev = chan->intc_pdev;
 	xgq_arg.zxia_xgq_ip = chan->xgq_base;
 	xgq_arg.zxia_cmd_handler = zchan_cmd_handler;

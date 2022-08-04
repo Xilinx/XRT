@@ -2,7 +2,6 @@
 // Copyright (C) 2020-2022 Xilinx, Inc
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
-
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdExamine.h"
@@ -172,34 +171,25 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
 // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest
-  xrt_core::device_collection deviceCollection;  // The collection of devices to examine
 
   bool is_report_output_valid = true;
   // Collect the reports to be processed
   XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
 
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  if (!sDevice.empty())
-    deviceNames.insert(boost::algorithm::to_lower_copy(sDevice));
-
-  XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
-
-  // enforce 1 device specification
-  if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)) {
-    std::cerr << "\nERROR: Programming multiple device is not supported. Please specify a single device using --device option\n\n";
-    std::cout << "List of available devices:" << std::endl;
-    const boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
-    for(const auto& kd : available_devices) {
-      const boost::property_tree::ptree& _dev = kd.second;
-      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-    }
-    std::cout << std::endl;
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
+  
+  try {
+    if(reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)
+      device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), true /*inUserDomain*/);
+  } catch (const std::runtime_error& e) {
+    // Catch only the exceptions that we have generated earlier
+    std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // DRC check on devices and reports
-  if (deviceCollection.empty()) {
+  if (!device) {
     std::vector<std::string> missingReports;
     for (const auto & report : reportsToProcess) {
       if (report->isDeviceRequired())
@@ -232,7 +222,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // Create the report
   std::ostringstream oSchemaOutput;
   try {
-    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+    XBU::produce_reports(device, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
     is_report_output_valid = false;

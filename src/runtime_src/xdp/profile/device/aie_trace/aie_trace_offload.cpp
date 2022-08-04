@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,7 +27,11 @@
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 
-#ifdef XRT_ENABLE_AIE
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
 #include <sys/mman.h>
 #include "core/include/xrt.h"
 #include "core/edge/user/shim.h"
@@ -78,8 +83,14 @@ bool AIETraceOffload::initReadTrace()
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
   } else {
     memIndex = 0;  // for now
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
     gmioDMAInsts.clear();
     gmioDMAInsts.resize(numStream);
+#endif
   }
 
   checkCircularBufferSupport();
@@ -100,7 +111,11 @@ bool AIETraceOffload::initReadTrace()
     if (isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i, mEnCircularBuf);
     } else {
-#ifdef XRT_ENABLE_AIE
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
@@ -170,7 +185,11 @@ void AIETraceOffload::endReadTrace()
       deviceIntf->resetAIETs2mm(i);
 //      deviceIntf->freeTraceBuf(b.boHandle);
     } else {
-#ifdef XRT_ENABLE_AIE
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
@@ -346,8 +365,7 @@ void AIETraceOffload::checkCircularBufferSupport()
   if (!deviceIntf->supportsCircBufAIE())
     return;
 
-  mEnCircularBuf = xrt_core::config::get_aie_trace_reuse_buffer();
-
+  mEnCircularBuf = xrt_core::config::get_aie_trace_settings_reuse_buffer();
   if (!mEnCircularBuf)
     return;
 

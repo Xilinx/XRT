@@ -1,7 +1,6 @@
-/*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_CORE_PCIE_WINDOWS_ALVEO_SHIM_H
 #define XRT_CORE_PCIE_WINDOWS_ALVEO_SHIM_H
 
@@ -45,9 +44,6 @@ get_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
 // @size_ret: returns actual size in bytes required for buffer, ignored if nullptr
 void
 get_debug_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
-
-void
-get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);
 
 void
 get_mailbox_info(xclDeviceHandle hdl, xcl_mailbox* value);

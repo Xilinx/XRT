@@ -32,11 +32,11 @@ namespace xdp {
   class AieTraceConfigWriter : public VPWriter
   {
   private:
-    std::string traceMetricString ;
-    uint64_t deviceIndex ;
+    uint64_t deviceIndex;
+    std::string traceMetricString;
   public:
-    AieTraceConfigWriter(const char* filename, uint64_t index, std::string m) ;
-    ~AieTraceConfigWriter() ;
+    AieTraceConfigWriter(const char* filename, uint64_t index, std::string m);
+    ~AieTraceConfigWriter();
 
   private:
   inline void write_jsonEx(const std::string& path, const bpt::ptree& ptree)
