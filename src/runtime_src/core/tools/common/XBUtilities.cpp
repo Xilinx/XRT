@@ -332,23 +332,26 @@ XBUtilities::sudo_or_throw(const std::string& msg)
 #endif
 }
 
+void
+XBUtilities::throw_cancel(const std::string& msg)
+{
+  throw_cancel(boost::format("%s") % msg);
+}
 
 void
-XBUtilities::print_exception_and_throw_cancel(const xrt_core::error& e)
+XBUtilities::throw_cancel(const boost::format& format)
+{
+  throw xrt_core::error(std::errc::operation_canceled, boost::str(format));
+}
+
+void
+XBUtilities::print_exception(const std::system_error& e)
 {
   // Remove the type of error from the message.
   const std::string msg = std::regex_replace(e.what(), std::regex(std::string(": ") + e.code().message()), "");
 
-  std::cerr << boost::format("ERROR (%s): %s") % e.code().message() % msg << std::endl;
-
-  throw xrt_core::error(std::errc::operation_canceled);
-}
-
-void
-XBUtilities::print_exception_and_throw_cancel(const std::runtime_error& e)
-{
-  std::cerr << boost::format("ERROR: %s\n") % e.what();
-  throw xrt_core::error(std::errc::operation_canceled);
+  if (!msg.empty())
+    std::cerr << boost::format("ERROR: %s\n") % msg;
 }
 
 std::vector<char>
