@@ -176,7 +176,7 @@ get_render_devname()
 	    break;
 	}
     }
-    catch (exception &e) {
+    catch (std::exception &e) {
         render_devname = "renderD128";
     }
 
