@@ -36,7 +36,9 @@ class Table2D {
      */
     void addEntry(const std::vector<std::string>& entry);
 
-    std::string to_string(const std::string& prefix = "") const;
+    std::string toString(const std::string& prefix = "") const;
+
+    size_t getTableSize() const;
 
  private:
     typedef struct ColumnData {

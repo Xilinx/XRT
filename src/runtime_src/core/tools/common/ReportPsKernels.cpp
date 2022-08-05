@@ -30,9 +30,8 @@ ReportPsKernels::getPropertyTree20202( const xrt_core::device * device,
 {
   try {
     // Validate if the device can support ps kernels
-    // auto is_versal = xrt_core::device_query<xrt_core::query::is_versal>(device);
-    // if (!is_versal)
-    //   return;
+    if (!xrt_core::device_query<xrt_core::query::is_versal>(device))
+      return;
     pt::ptree p = get_ps_instance_data(device);
     pt.add_child("instance_data", p);
   }
@@ -45,23 +44,25 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
                               const std::vector<std::string>& /*_elementsFilter*/,
                               std::ostream & output) const
 {
+  output << "PS Kernels:\n";
   if (pt.empty()) {
-    output << "Report not valid for specified device\n";
+    output << "  Report not valid for specified device\n";
     return;
   }
 
-  output << "Operating System:\n";
+  output << "  APU Image:\n";
   for (const auto& os_data : pt.get_child("instance_data.apu_image"))
-      output << boost::format("  %s: %s\n") % os_data.first % os_data.second.data();
+      output << boost::format("    %s: %s\n") % os_data.first % os_data.second.data();
 
   // Loop through each kernel instance
-  output << "PS Kernel Instances:\n";
+  output << "  PS Kernel Instances:\n";
   for (const auto& kernel_list : pt.get_child("instance_data.ps_kernel_instances")) {
     const auto& kernel_instance_ptree = kernel_list.second;
     std::string kernel_name = kernel_list.first;
     const size_t hyphen_length = 40;
-    output << std::string(hyphen_length, '-') << std::endl;
-    output << boost::format("Kernel Name: %s\n") % kernel_name;
+    output << boost::format("%s\n") % std::string(hyphen_length, '-');
+    output << boost::format("  Kernel Name: %s\n") % kernel_name;
+    output << boost::format("%s\n") % std::string(hyphen_length, '-');
 
     // Iterate through the instances that implement the above kernel
     for (const auto& ps_instance : kernel_instance_ptree) {
@@ -100,9 +101,9 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
       }
 
       // Output the instance data
-      output << boost::format("  Instance name: %s\n") % ps_ptree.get<std::string>("name");
-      output << "    Process Status:\n";
-      output << boost::format("%s\n") % instance_table.to_string("    ");
+      output << boost::format("    Instance name: %s\n") % ps_ptree.get<std::string>("name");
+      output << "      Process Status:\n";
+      output << boost::format("%s\n") % instance_table.toString("      ");
     }
   }
   output << std::endl;
