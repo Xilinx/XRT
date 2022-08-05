@@ -22,8 +22,8 @@
  * automatically when a deadlock is detected.
  */
 
-#include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
+#include "core/common/module_loader.h"
 
 #include "pl_deadlock.h"
 
