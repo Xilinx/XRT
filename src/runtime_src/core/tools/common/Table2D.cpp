@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <boost/format.hpp>
 
-Table2D::Table2D(const std::vector<HeaderData>& headers)
+Table2D::Table2D(const std::vector<HeaderData>& headers) : m_inter_entry_padding(2)
 {
   for (auto& header : headers)
       addHeader(header);
@@ -34,14 +34,14 @@ Table2D::addEntry(const std::vector<std::string>& entry)
 }
 
 void
-Table2D::appendToOutput(std::string& output, const std::string& prefix, const ColumnData& column, const std::string& data) const
+Table2D::appendToOutput(std::string& output, const std::string& prefix, const std::string& suffix, const ColumnData& column, const std::string& data) const
 {
   // Format for table data
-  boost::format fmt("%s%s%s%s  ");
+  boost::format fmt("%s%s%s%s%s");
   size_t left_blanks = 0;
   size_t right_blanks = 0;
   getBlankSizes(column, data.size(), left_blanks, right_blanks);
-  output.append(boost::str(fmt % prefix % std::string(left_blanks, ' ') % data % std::string(right_blanks, ' ')));
+  output.append(boost::str(fmt % prefix % std::string(left_blanks, ' ') % data % std::string(right_blanks, ' ') % suffix));
 }
 
 std::string
@@ -50,18 +50,28 @@ Table2D::toString(const std::string& prefix) const
   // Iterate through each row and column of the table to format the output
   // Add one to account for the header row
   std::stringstream os;
-  for(size_t row = 0; row < m_table[0].data.size() + 1; row++) {
+  for (size_t row = 0; row < m_table[0].data.size() + 2; row++) {
     std::string output_line;
     for (size_t col = 0; col < m_table.size(); col++) {
       auto& column = m_table[col];
 
+      // The first column must align with the user desires
+      // All other columns should only use the previous lines space suffix
+      const std::string column_prefix = (col == 0) ? prefix : "";
+
       // For the first row add the headers
+      const auto space_suffix = std::string(m_inter_entry_padding, ' ');
       if (row == 0)
-        appendToOutput(output_line, prefix, column, column.header.name);
+        appendToOutput(output_line, column_prefix, space_suffix, column, column.header.name);
+      else if (row == 1) {
+        const auto hyphen_suffix = std::string(m_inter_entry_padding, '-');
+        const auto hyphen_line = std::string(column.max_element_size, '-');
+        appendToOutput(output_line, column_prefix, hyphen_suffix, column, hyphen_line);
+      }
       // For all other output lines add the entry associated with the current row/col index
       else
-        // Minus 1 to account for the first row being the headers
-        appendToOutput(output_line, prefix, column, column.data[row - 1]);
+        // Minus 2 to account for the first row being the headers and the second being a divider
+        appendToOutput(output_line, column_prefix, space_suffix, column, column.data[row - 2]);
     }
     output_line.append("\n");
     os << output_line;
@@ -111,10 +121,10 @@ Table2D::addHeader(const HeaderData& header)
 }
 
 size_t 
-Table2D::getTableSize() const
+Table2D::getTableCharacterLength() const
 {
   size_t table_size = 0;
   for(const auto& col : m_table)
     table_size += col.max_element_size;
-  return table_size;
+  return table_size + (m_table.size() * m_inter_entry_padding);
 }

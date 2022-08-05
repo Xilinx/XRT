@@ -59,12 +59,15 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
   for (const auto& kernel_list : pt.get_child("instance_data.ps_kernel_instances")) {
     const auto& kernel_instance_ptree = kernel_list.second;
     std::string kernel_name = kernel_list.first;
-    const size_t hyphen_length = 40;
-    output << boost::format("%s\n") % std::string(hyphen_length, '-');
-    output << boost::format("  Kernel Name: %s\n") % kernel_name;
-    output << boost::format("%s\n") % std::string(hyphen_length, '-');
+    const size_t kernel_space_offset = 2;
+    const auto kernel_space_string = std::string(kernel_space_offset, ' ');
+    const auto output_kernel_name = boost::format("%sKernel: %s\n") % kernel_space_string % kernel_name;
+    output << boost::format("%s%s\n") % kernel_space_string % std::string(output_kernel_name.size(), '-');
+    output << output_kernel_name;
+    output << boost::format("%s%s\n") % kernel_space_string % std::string(output_kernel_name.size(), '-');
 
     // Iterate through the instances that implement the above kernel
+    size_t instance_index = 0;
     for (const auto& ps_instance : kernel_instance_ptree) {
       const auto& ps_ptree = ps_instance.second;
       const auto& data_pt = ps_ptree.get_child("process_info");
@@ -101,9 +104,15 @@ ReportPsKernels::writeReport( const xrt_core::device* /*_pDevice*/,
       }
 
       // Output the instance data
-      output << boost::format("    Instance name: %s\n") % ps_ptree.get<std::string>("name");
-      output << "      Process Status:\n";
-      output << boost::format("%s\n") % instance_table.toString("      ");
+      const size_t name_pad = kernel_space_offset + 2;
+      const size_t data_pad = name_pad + 2;
+      // Use the maximum offset when generating the seperating line
+      const auto instance_divider = std::string((data_pad - name_pad) + instance_table.getTableCharacterLength(), '=');
+      output << boost::format("%s%s\n") % std::string(name_pad, ' ') % instance_divider;
+      output << boost::format("%s[%d] %s\n") % std::string(name_pad, ' ') % instance_index % ps_ptree.get<std::string>("name");
+      output << boost::format("%sProcess Properties:\n") % std::string(data_pad, ' ');
+      output << boost::format("%s\n") % instance_table.toString(std::string(data_pad, ' '));
+      instance_index++;
     }
   }
   output << std::endl;
