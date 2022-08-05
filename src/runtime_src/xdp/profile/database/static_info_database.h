@@ -152,8 +152,12 @@ namespace xdp {
     XDP_EXPORT void setAieApplication() ;
 
     // Due to changes in hardware IP, we can only support profiling on
-    //  xclbins built using 2019.2 or later tools.
-    inline double earliestSupportedToolVersion() const { return 2019.2 ; }
+    // xclbins built using 2019.2 or later tools.  Each xclbin is stamped
+    // with the corresponding XRT version as well, and for 2019.2 tools
+    // the XRT version was 2.5.459
+    constexpr double   earliestSupportedToolVersion() const { return 2019.2; }
+    constexpr uint16_t earliestSupportedXRTVersionMajor() const { return 2; }
+    constexpr uint16_t earliestSupportedXRTVersionMinor() const { return 5; }
     XDP_EXPORT bool validXclbin(void* devHandle) ;
 
     // ****************************************************
