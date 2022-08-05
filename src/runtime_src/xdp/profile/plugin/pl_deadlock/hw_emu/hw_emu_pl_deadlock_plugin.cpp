@@ -40,4 +40,9 @@ namespace xdp {
     db->getStaticInfo().addOpenedFile("pl_deadlock_diagnosis.txt", "PL_DEADLOCK_DIAGNOSIS");
   }
 
+  void HwEmuPLDeadlockPlugin::writeAll(bool /*openNewFiles*/)
+  {
+    // Explicitly override to do nothing
+  }
+
 } // end namespace xdp

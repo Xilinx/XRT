@@ -28,6 +28,7 @@ class HwEmuPLDeadlockPlugin : public XDPPlugin {
     XDP_EXPORT HwEmuPLDeadlockPlugin();
     XDP_EXPORT ~HwEmuPLDeadlockPlugin();
     XDP_EXPORT virtual void updateDevice(void* handle);
+    XDP_EXPORT virtual void writeAll(bool openNewFiles);
 
   };
 
