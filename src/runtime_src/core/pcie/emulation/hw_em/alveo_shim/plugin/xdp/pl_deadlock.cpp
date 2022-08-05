@@ -15,9 +15,18 @@
  * under the License.
  */
 
-#include "pl_deadlock.h"
+/*
+ * Plugin for loading hw emulation xdp plugin for PL Deadlock Detection
+ * The xdp plugin is used to update run summary with deadlock diagnosis
+ * information. The diagnosis file comes from simulation and is written
+ * automatically when a deadlock is detected.
+ */
+
 #include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
+
+#include "pl_deadlock.h"
+
 #include <iostream>
 
 namespace xdp {
@@ -25,23 +34,20 @@ namespace pl_deadlock {
 
   void load()
   {
-    static xrt_core::module_loader xdp_pl_deadlock_loader("xdp_pl_deadlock_plugin",
+    static xrt_core::module_loader xdp_pl_deadlock_loader("xdp_hw_emu_pl_deadlock_plugin",
                 register_callbacks,
                 warning_callbacks);
   }
   std::function<void (void*)> update_device_cb;
-  std::function<void (void*)> flush_device_cb;
 
   void register_callbacks(void* handle)
   {
-    typedef void (*ftype)(void*) ;
+    using cb_type = void (*)(void*);
 
-    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateDevicePLDeadlock"));
+    update_device_cb =
+      reinterpret_cast<cb_type>(xrt_core::dlsym(handle, "updateDevicePLDeadlock"));
     if (xrt_core::dlerror() != NULL)
       update_device_cb = nullptr;
-    flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushDevicePLDeadlock"));
-    if (xrt_core::dlerror() != NULL)
-      flush_device_cb = nullptr;
   }
 
   void warning_callbacks()
@@ -53,12 +59,6 @@ namespace pl_deadlock {
   {
     if (update_device_cb != nullptr)
       update_device_cb(handle);
-  }
-
-  void flush_device(void* handle)
-  {
-    if (flush_device_cb != nullptr)
-      flush_device_cb(handle);
   }
 
 } // end namespace pl_deadlock

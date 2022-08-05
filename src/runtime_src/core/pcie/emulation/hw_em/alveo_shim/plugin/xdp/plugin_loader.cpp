@@ -19,8 +19,8 @@
 
 #include "device_offload.h"
 #include "hal_trace.h"
-#include "sc_profile.h"
 #include "pl_deadlock.h"
+#include "sc_profile.h"
 
 #include "plugin_loader.h"
 
