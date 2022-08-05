@@ -95,9 +95,6 @@ namespace xdp {
 
   void PLDeadlockPlugin::flushDevice(void* handle)
   {
-    if (getFlowMode() == HW_EMU)
-      return;
-
     mThreadCtrlMap[handle] = false;
     auto it = mThreadMap.find(handle);
     if (it != mThreadMap.end()) {
@@ -109,11 +106,6 @@ namespace xdp {
 
   void PLDeadlockPlugin::updateDevice(void* handle)
   {
-    if (getFlowMode() == HW_EMU) {
-      db->getStaticInfo().addOpenedFile("pl_deadlock_diagnosis.txt", "PL_DEADLOCK_DIAGNOSIS");
-      return;
-    }
-
     const unsigned int PATH_LENGTH = 512;
     char pathBuf[PATH_LENGTH];
     memset(pathBuf, 0, PATH_LENGTH);
