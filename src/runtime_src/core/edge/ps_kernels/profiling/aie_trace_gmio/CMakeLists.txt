@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
-#
+# Copyright (C) 2018-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 set(SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(PS_KERNEL_INSTALL_DIR "${XRT_INSTALL_LIB_DIR}/ps_kernels_lib")
 

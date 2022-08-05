@@ -14,7 +14,6 @@
  * under the License.
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -24,9 +23,7 @@
 #include <syslog.h>
 #include <sys/mman.h>
 #include "xrt/xrt_kernel.h"
-#include <vector> 
 #include <fcntl.h>
-//#include "xrt/device/hal.h"
 #include "xaiefal/xaiefal.hpp"
 #include "core/edge/user/shim.h"
 #include "core/common/message.h"
@@ -37,7 +34,7 @@
 extern "C" {
 #endif
 
-#include "sk_types.h"
+#include "core/edge/include/sk_types.h"
 
 struct AIETraceGmioDMAInst{
     XAie_DmaDesc shimDmaInst;
@@ -59,11 +56,10 @@ class xrtHandles : public pscontext
                 delete aieDev;
             }
         }
-        std::vector<int> handles;
 };
 
 namespace {
-    int setGMIO(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice, xclDeviceHandle deviceHandle, const xdp::built_in::GMIOConfiguration* params, std::vector<int> &handles) {
+    int setGMIO(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice, xclDeviceHandle deviceHandle, const xdp::built_in::GMIOConfiguration* params) {
         std::vector<AIETraceGmioDMAInst> gmioDMAInsts;
         gmioDMAInsts.resize(params->numStreams);
     
@@ -86,7 +82,6 @@ namespace {
 
             //Allocate the Buffer Objects
             auto gmioHandle = xclGetHostBO(deviceHandle, params->gmioData[i].physAddr, params->bufAllocSz);
-            handles.push_back(gmioHandle);
     
             XAie_MemInst memInst;
             XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
@@ -160,10 +155,9 @@ int aie_trace_gmio(uint8_t* gmioInput, xrtHandles* constructs)
 
     constructs->aieDev = new xaiefal::XAieDev(constructs->aieDevInst, false);    
     xdp::built_in::GMIOConfiguration* params = reinterpret_cast<xdp::built_in::GMIOConfiguration*>(gmioInput);
-    std::cout << params->numStreams << std::endl;
 
 
-    setGMIO(constructs->aieDevInst, constructs->aieDev, constructs->handle, params, constructs->handles);
+    setGMIO(constructs->aieDevInst, constructs->aieDev, constructs->handle, params);
     
     return 0;    
 

@@ -14,7 +14,6 @@
  * under the License.
  */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,7 +34,7 @@
 extern "C" {
 #endif
 
-#include "sk_types.h"
+#include "core/edge/include/sk_types.h"
 
 #define CORE_BROADCAST_EVENT_BASE 107
 
@@ -82,7 +81,6 @@ struct EventConfiguration {
     }
     else if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES2)) {
 
-      //std::cout << "ES2 Initialized" << std::endl;
       coreCounterStartEvents.push_back(XAIE_EVENT_ACTIVE_CORE);
       coreCounterEndEvents.push_back(XAIE_EVENT_DISABLED_CORE);
       coreCounterEventValues.push_back(0x3ff00);
@@ -144,12 +142,10 @@ namespace{
     bool checkInput(const xdp::built_in::InputConfiguration* params) {
         // Check the CounterScheme and MetricSet (temp check)
         if (params->counterScheme < 0 || params->counterScheme > 1) {
-            //std::cout << "CounterScheme Invalid Value!" << std::endl;
             return false;
         }
         
         if (params->metricSet < 0 || params->metricSet > 3) {
-            std::cout << "MetricSet Invalid Value!" << std::endl;
             return false;
         }
         return true;
@@ -178,7 +174,6 @@ namespace{
       msg << "Available core module performance counters for aie trace : " << available << std::endl
           << "Required core module performance counters for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      //std::cout << msg.str() << std::endl;
       return false;
     }
 
@@ -189,7 +184,6 @@ namespace{
       msg << "Available core module trace slots for aie trace : " << available << std::endl
           << "Required core module trace slots for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      //std::cout << msg.str() << std::endl;
       return false;
     }
 
@@ -200,7 +194,6 @@ namespace{
       msg << "Available core module broadcast channels for aie trace : " << available << std::endl
           << "Required core module broadcast channels for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      //std::cout << msg.str() << std::endl;
       return false;
     }
 
@@ -211,7 +204,6 @@ namespace{
       msg << "Available memory module performance counters for aie trace : " << available << std::endl
           << "Required memory module performance counters for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      //std::cout << msg.str() << std::endl;
       return false;
     }
 
@@ -222,7 +214,6 @@ namespace{
       msg << "Available memory module trace slots for aie trace : " << available << std::endl
           << "Required memory module trace slots for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      //std::cout << msg.str() << std::endl;
       return false;
     }
 
@@ -287,7 +278,6 @@ namespace{
       // Check Resource Availability
       // For now only counters are checked
       if (!tileHasFreeRsc(aieDevice, loc, config, params)) {
-        //std::cout << "Tile doesn't have enough free resources for trace. Aborting Trace Configuration" << std::endl;
         //xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
         //printTileStats(aieDevice, tile);
         return 1;
@@ -326,7 +316,6 @@ namespace{
 
           auto test = perfCounter->start();
           if (test != XAIE_OK) { 
-             //std::cout << "perfCounter->Start was not XAIE_OK: " << test << std::endl;
              break;
           
           }
@@ -348,7 +337,6 @@ namespace{
       }
 
 
-      //std::cout << "Finished Step 1." << std::endl;
 
       //
       // 2. Reserve and start memory module counters (as needed)
@@ -406,7 +394,6 @@ namespace{
         msg << "Unable to reserve " << config.coreCounterStartEvents.size() << " core counters"
             << " and " << config.memoryCounterStartEvents.size() << " memory counters"
             << " for AIE tile (" << col << "," << row + 1 << ") required for trace.";
-        //std::cout << msg.str() << std::endl;
         // xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
         releaseCurrentTileCounters(numCoreCounters, numMemoryCounters, config);
@@ -461,7 +448,6 @@ namespace{
           std::stringstream msg;
           msg << "Unable to reserve core module trace control for AIE tile (" 
               << col << "," << row + 1 << ").";
-          //std::cout << msg.str() << std::endl;
           //xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
           releaseCurrentTileCounters(numCoreCounters, numMemoryCounters, config);
@@ -495,7 +481,6 @@ namespace{
         std::stringstream msg;
         msg << "Reserved " << numTraceEvents << " core trace events for AIE tile (" << col << "," << row << ").";
         // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-        //std::cout << msg.str() << std::endl;
 
         if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
           break;
@@ -524,7 +509,6 @@ namespace{
           msg << "Unable to reserve memory module trace control for AIE tile (" 
               << col << "," << row + 1 << ").";
           // xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-          //std::cout << msg.str() << std::endl;    
 
           releaseCurrentTileCounters(numCoreCounters, numMemoryCounters, config);
           // Print resources availability for this tile
@@ -618,7 +602,6 @@ namespace{
         std::stringstream msg;
         msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" << col << "," << row << ").";
         // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-        //std::cout << msg.str() << std::endl;
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
           break;
@@ -663,8 +646,6 @@ namespace{
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
 
-  
-        //std::cout << "I finished setMetrics() function! I'm done." << std::endl;
         return 0;
     }
 
@@ -706,7 +687,6 @@ int aie_trace_config(uint8_t* input, uint8_t* output, xrtHandles* constructs)
 
     EventConfiguration config;
     config.initialize(params);
-    //std::cout << "Initialization Successful!" << std::endl;
     
     std::size_t total_size = sizeof(xdp::built_in::OutputConfiguration) + sizeof(xdp::built_in::TileData[params->numTiles - 1]);
     xdp::built_in::OutputConfiguration* tilecfg = (xdp::built_in::OutputConfiguration*)malloc(total_size);
@@ -716,7 +696,6 @@ int aie_trace_config(uint8_t* input, uint8_t* output, xrtHandles* constructs)
     uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
     std::memcpy(output, out, total_size);   
  
-    //std::cout << "The setMetrics function finished with a return of " << success << std::endl;
 
     free(tilecfg); 
     return 0;
@@ -726,7 +705,6 @@ int aie_trace_config(uint8_t* input, uint8_t* output, xrtHandles* constructs)
 
 __attribute__((visibility("default")))
 int aie_trace_config_fini(xrtHandles* handles) {
-    //std::cout << "Released Remaining XRT objects...\n" << std::endl;
     delete handles;
     return 0;
 }
