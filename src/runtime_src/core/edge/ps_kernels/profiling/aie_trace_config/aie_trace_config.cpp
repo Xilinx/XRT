@@ -1,5 +1,4 @@
-/* Copyright (C) 2020-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+/* Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,148 +13,67 @@
  * under the License.
  */
 
-#include <unistd.h>
-#include "xrt/xrt_kernel.h"
-#include "xaiefal/xaiefal.hpp"
-#include "core/edge/user/shim.h"
-#include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xaiengine.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstring>
 
 #include "core/edge/include/sk_types.h"
-
-#define CORE_BROADCAST_EVENT_BASE 107
-
-// A local struct that encapsulates all of the internal AIE configuration
-//  information for each tile.
-struct EventConfiguration {
-  std::vector<XAie_Events> coreEventsBase;
-  std::vector<XAie_Events> memoryCrossEventsBase;
-  XAie_Events coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
-  XAie_Events coreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
-  std::vector<XAie_Events> coreCounterStartEvents;
-  std::vector<XAie_Events> coreCounterEndEvents;
-  std::vector<uint32_t> coreCounterEventValues;
-  std::vector<XAie_Events> memoryCounterStartEvents;
-  std::vector<XAie_Events> memoryCounterEndEvents;
-  std::vector<uint32_t> memoryCounterEventValues;
-
-  std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mCoreCounters;
-  std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mMemoryCounters;
-  
-  void initialize(const xdp::built_in::InputConfiguration* params) {
-    //uint8_t counterScheme(static_cast<xdp::built_in::CounterScheme>(params->counterScheme));
-
-    if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES1)) {
-      //Core
-      coreCounterStartEvents.push_back(XAIE_EVENT_ACTIVE_CORE);
-      coreCounterStartEvents.push_back(XAIE_EVENT_ACTIVE_CORE);
-
-      coreCounterEndEvents.push_back(XAIE_EVENT_DISABLED_CORE);
-      coreCounterEndEvents.push_back(XAIE_EVENT_DISABLED_CORE);
-
-      coreCounterEventValues.push_back(1020);
-      coreCounterEventValues.push_back(1020*1020);
-
-      //Memory
-      memoryCounterStartEvents.push_back(XAIE_EVENT_TRUE_MEM);
-      memoryCounterStartEvents.push_back(XAIE_EVENT_TRUE_MEM);
-
-      memoryCounterEndEvents.push_back(XAIE_EVENT_NONE_MEM);
-      memoryCounterEndEvents.push_back(XAIE_EVENT_NONE_MEM);
-
-      memoryCounterEventValues.push_back(1020);
-      memoryCounterEventValues.push_back(1020*1020);
-    }
-    else if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES2)) {
-
-      coreCounterStartEvents.push_back(XAIE_EVENT_ACTIVE_CORE);
-      coreCounterEndEvents.push_back(XAIE_EVENT_DISABLED_CORE);
-      coreCounterEventValues.push_back(0x3ff00);
-
-      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
-      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {0x3FF00};
-    }
-
-    // All configurations have these first events in common
-    coreEventsBase.push_back(XAIE_EVENT_INSTR_CALL_CORE);
-    coreEventsBase.push_back(XAIE_EVENT_INSTR_RETURN_CORE);
-    memoryCrossEventsBase.push_back(XAIE_EVENT_INSTR_CALL_CORE);
-    memoryCrossEventsBase.push_back(XAIE_EVENT_INSTR_RETURN_CORE);
-
-	
-    //switch (static_cast<xdp::built_in::MetricSet>(params->metricSet)) {
- 	switch (params->metricSet) {
-    case static_cast<uint8_t>(xdp::built_in::MetricSet::FUNCTIONS):
-      // No additional events 
-      break ;
-    case static_cast<uint8_t>(xdp::built_in::MetricSet::PARTIAL_STALLS):
-      memoryCrossEventsBase.push_back(XAIE_EVENT_STREAM_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_CASCADE_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_LOCK_STALL_CORE);
-      break;
-    case static_cast<uint8_t>(xdp::built_in::MetricSet::ALL_STALLS): 
-      [[fallthrough]];
-    case static_cast<uint8_t>(xdp::built_in::MetricSet::ALL):
-      memoryCrossEventsBase.push_back(XAIE_EVENT_MEMORY_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_STREAM_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_CASCADE_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_LOCK_STALL_CORE);
-      break;
-    default:
-      break;
-    }
-  }
-};
+#include "core/edge/user/shim.h"
+#include "event_configuration.h"
+#include "xaiefal/xaiefal.hpp"
+#include "xaiengine.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
 
 // User private data structure container (context object) definition
 class xrtHandles : public pscontext
 {
-    public:
-        XAie_DevInst* aieDevInst = nullptr;
-        xaiefal::XAieDev* aieDev = nullptr;
-        xclDeviceHandle handle = nullptr;
-    
-        xrtHandles() = default;
-        ~xrtHandles() {
-            if (aieDev != nullptr)
-                delete aieDev;
-        }
+  public:
+    XAie_DevInst* aieDevInst = nullptr;
+    xaiefal::XAieDev* aieDev = nullptr;
+    xclDeviceHandle handle = nullptr;
+
+    xrtHandles() = default;
+    ~xrtHandles()
+    {
+      // aieDevInst is not owned by xrtHandles, so don't delete here
+      if (aieDev != nullptr)
+        delete aieDev;
+      // handle is not owned by xrtHandles, so don't close or delete here
+    }
 };
 
+// Anonymous namespace for helper functions used in this file
+namespace {
 
-namespace{
+  bool checkInput(const xdp::built_in::InputConfiguration* params)
+  {
+    if (params == nullptr)
+     return false;
 
-    bool checkInput(const xdp::built_in::InputConfiguration* params) {
-        // Check the CounterScheme and MetricSet (temp check)
-        if (params->counterScheme < 0 || params->counterScheme > 1) {
-            return false;
-        }
-        
-        if (params->metricSet < 0 || params->metricSet > 3) {
-            return false;
-        }
-        return true;
-        
-    }
+    // Verify the CounterScheme and MetricSet are within expected ranges
+    if (params->counterScheme < 0 || params->counterScheme > 1)
+      return false;
+    if (params->metricSet < 0 || params->metricSet > 3)
+      return false;
 
-    //using severity_level = xrt_core::message::severity_level;
-    
-    inline uint32_t bcIdToEvent(int bcId) {
-        return bcId + CORE_BROADCAST_EVENT_BASE;
-    }
+    return true;
+  }
 
-    bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, EventConfiguration& config,
-                const xdp::built_in::InputConfiguration* params) {
+  inline uint32_t bcIdToEvent(int bcId)
+  {
+    // Core broadcast event base defined on AIE1 as 107 in architecture
+    constexpr int core_broadcast_event_base = 107;
+    return static_cast<uint32_t>(bcId + core_broadcast_event_base);
+  }
+
+  // Check if a given tile on the AIE has enough free resources for the
+  // requested trace configuration
+  bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
+                      EventConfiguration& config,
+                      const xdp::built_in::InputConfiguration* params)
+  {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
     uint32_t available = 0;
     uint32_t required = 0;
-    std::stringstream msg;
 
     // Core Module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
@@ -163,8 +81,9 @@ namespace{
     if (params->useDelay)
       required += 1;
     if (available < required) {
-      msg << "Available core module performance counters for aie trace : " << available << std::endl
-          << "Required core module performance counters for aie trace : "  << required;
+      // TODO: Send detailed error message back to host code
+      // msg << "Available core module performance counters for aie trace : " << available << std::endl
+      //<< "Required core module performance counters for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -173,8 +92,9 @@ namespace{
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = config.coreCounterStartEvents.size() + config.coreEventsBase.size();
     if (available < required) {
-      msg << "Available core module trace slots for aie trace : " << available << std::endl
-          << "Required core module trace slots for aie trace : "  << required;
+      // TODO: Send detailed message back to host code
+      // msg << "Available core module trace slots for aie trace : " << available << std::endl
+      //     << "Required core module trace slots for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -183,8 +103,9 @@ namespace{
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
     required = config.memoryCrossEventsBase.size() + 2;
     if (available < required) {
-      msg << "Available core module broadcast channels for aie trace : " << available << std::endl
-          << "Required core module broadcast channels for aie trace : "  << required;
+      // TODO: Send detailed message back to host code
+      // msg << "Available core module broadcast channels for aie trace : " << available << std::endl
+      //     << "Required core module broadcast channels for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -193,8 +114,9 @@ namespace{
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
     required = config.memoryCounterStartEvents.size();
     if (available < required) {
-      msg << "Available memory module performance counters for aie trace : " << available << std::endl
-          << "Required memory module performance counters for aie trace : "  << required;
+      // TODO: Send detailed message back to host code
+      // msg << "Available memory module performance counters for aie trace : " << available << std::endl
+      //     << "Required memory module performance counters for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -203,8 +125,9 @@ namespace{
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = config.memoryCounterStartEvents.size() + config.memoryCrossEventsBase.size();
     if (available < required) {
-      msg << "Available memory module trace slots for aie trace : " << available << std::endl
-          << "Required memory module trace slots for aie trace : "  << required;
+      // TODO: Send detailed message back to host code
+      //msg << "Available memory module trace slots for aie trace : " << available << std::endl
+      //    << "Required memory module trace slots for aie trace : "  << required;
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -214,30 +137,30 @@ namespace{
     return true;
   }
 
-    void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters, EventConfiguration& config) {
-        for (int i=0; i < numCoreCounters; i++) {
-            config.mCoreCounters.back()->stop();
-            config.mCoreCounters.back()->release();
-            config.mCoreCounters.pop_back();
-            //params->mCoreCounterTiles.pop_back();
-        }
-        for (int i=0; i < numMemoryCounters; i++) {
-            config.mMemoryCounters.back()->stop();
-            config.mMemoryCounters.back()->release();
-            config.mMemoryCounters.pop_back();
-        }
+  void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters,
+                                  EventConfiguration& config)
+  {
+    for (int i=0; i < numCoreCounters; i++) {
+      config.mCoreCounters.back()->stop();
+      config.mCoreCounters.back()->release();
+      config.mCoreCounters.pop_back();
     }
 
+    for (int i=0; i < numMemoryCounters; i++) {
+      config.mMemoryCounters.back()->stop();
+      config.mMemoryCounters.back()->release();
+      config.mMemoryCounters.pop_back();
+    }
+  }
 
-
-    int setMetrics(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice,
-                    EventConfiguration& config, const xdp::built_in::InputConfiguration* params, xdp::built_in::OutputConfiguration* tilecfg) {
-  
-        
+  int setMetrics(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice,
+                 EventConfiguration& config,
+                 const xdp::built_in::InputConfiguration* params,
+                 xdp::built_in::OutputConfiguration* tilecfg)
+  {
     xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
     int numTileCoreTraceEvents[params->NUM_CORE_TRACE_EVENTS+1] = {0};
     int numTileMemoryTraceEvents[params->NUM_MEMORY_TRACE_EVENTS+1] = {0};
- 
 
     //Parse tile data
     uint16_t tile_rows[params->numTiles];
@@ -270,6 +193,7 @@ namespace{
       // Check Resource Availability
       // For now only counters are checked
       if (!tileHasFreeRsc(aieDevice, loc, config, params)) {
+        // TODO: Send detailed message back to host
         //xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
         //printTileStats(aieDevice, tile);
         return 1;
@@ -296,22 +220,17 @@ namespace{
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
           perfCounter->changeThreshold(config.coreCounterEventValues.at(i));
 
-          
           // Set reset event based on counter number
           perfCounter->changeRstEvent(mod, counterEvent);
           coreEvents.push_back(counterEvent);
-
 
           // If no memory counters are used, then we need to broadcast the core counter
           if (config.memoryCounterStartEvents.empty())
             memoryCrossEvents.push_back(counterEvent);
 
           auto test = perfCounter->start();
-          if (test != XAIE_OK) { 
+          if (test != XAIE_OK)
              break;
-          
-          }
-          //config.mCoreCounterTiles.push_back(tile);
           config.mCoreCounters.push_back(perfCounter);
           numCoreCounters++;
 
@@ -328,8 +247,6 @@ namespace{
         }
       }
 
-
-
       //
       // 2. Reserve and start memory module counters (as needed)
       //
@@ -345,25 +262,20 @@ namespace{
           if (perfCounter->reserve() != XAIE_OK) 
             break;
 
-
           // Set reset event based on counter number
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
           perfCounter->changeThreshold(config.memoryCounterEventValues.at(i));
 
-
           perfCounter->changeRstEvent(mod, counterEvent);
           memoryEvents.push_back(counterEvent);
-
 
           if (perfCounter->start() != XAIE_OK) 
             break;
 
-
           config.mMemoryCounters.push_back(perfCounter);
           numMemoryCounters++;
-
           
           // Update config file
           uint8_t phyEvent = 0;
@@ -378,14 +290,14 @@ namespace{
         }
       }
 
-
       // Catch when counters cannot be reserved: report, release, and return
       if ((numCoreCounters < config.coreCounterStartEvents.size())
           || (numMemoryCounters < config.memoryCounterStartEvents.size())) {
-        std::stringstream msg;
-        msg << "Unable to reserve " << config.coreCounterStartEvents.size() << " core counters"
-            << " and " << config.memoryCounterStartEvents.size() << " memory counters"
-            << " for AIE tile (" << col << "," << row + 1 << ") required for trace.";
+        // TODO: Send detailed error message back to host
+        //std::stringstream msg;
+        //msg << "Unable to reserve " << config.coreCounterStartEvents.size() << " core counters"
+        //    << " and " << config.memoryCounterStartEvents.size() << " memory counters"
+        //    << " for AIE tile (" << col << "," << row + 1 << ") required for trace.";
         // xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
         releaseCurrentTileCounters(numCoreCounters, numMemoryCounters, config);
@@ -437,9 +349,10 @@ namespace{
 
         auto ret = coreTrace->reserve();
         if (ret != XAIE_OK) {
-          std::stringstream msg;
-          msg << "Unable to reserve core module trace control for AIE tile (" 
-              << col << "," << row + 1 << ").";
+          // TODO: Send detailed error message back to the host
+          //std::stringstream msg;
+          //msg << "Unable to reserve core module trace control for AIE tile (" 
+          //    << col << "," << row + 1 << ").";
           //xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
           releaseCurrentTileCounters(numCoreCounters, numMemoryCounters, config);
@@ -470,8 +383,9 @@ namespace{
         coreEvents.clear();
         numTileCoreTraceEvents[numTraceEvents]++;
 
-        std::stringstream msg;
-        msg << "Reserved " << numTraceEvents << " core trace events for AIE tile (" << col << "," << row << ").";
+        // TODO: Send success message back to the host
+        //std::stringstream msg;
+        //msg << "Reserved " << numTraceEvents << " core trace events for AIE tile (" << col << "," << row << ").";
         // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
         if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
@@ -497,9 +411,10 @@ namespace{
 
         auto ret = memoryTrace->reserve();
         if (ret != XAIE_OK) {
-          std::stringstream msg;
-          msg << "Unable to reserve memory module trace control for AIE tile (" 
-              << col << "," << row + 1 << ").";
+          // TODO: Send detailed error message to host
+          //std::stringstream msg;
+          //msg << "Unable to reserve memory module trace control for AIE tile (" 
+          //    << col << "," << row + 1 << ").";
           // xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
           releaseCurrentTileCounters(numCoreCounters, numMemoryCounters, config);
@@ -591,8 +506,9 @@ namespace{
         memoryEvents.clear();
         numTileMemoryTraceEvents[numTraceEvents]++;
 
-        std::stringstream msg;
-        msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" << col << "," << row << ").";
+        // TODO: Send success message back to host
+        //std::stringstream msg;
+        //msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" << col << "," << row << ").";
         // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
@@ -608,7 +524,8 @@ namespace{
         cfgTile.memory_trace_config.packet_type = 1;
       }
 
-      std::stringstream msg;
+      // TODO: Send success message back to host
+      //std::stringstream msg;
       //msg << "Adding tile (" << col << "," << row << ") to static database";
       // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
@@ -623,8 +540,7 @@ namespace{
       for (int n=0; n <= params->NUM_CORE_TRACE_EVENTS; ++n) {
         if (numTileCoreTraceEvents[n] == 0) continue;
         if (n != params->NUM_CORE_TRACE_EVENTS)
-           tilecfg->numTileCoreTraceEvents[n] = numTileCoreTraceEvents[n]; 
-        //(db->getStaticInfo()).addAIECoreEventResources(deviceId, n, numTileCoreTraceEvents[n]);
+           tilecfg->numTileCoreTraceEvents[n] = numTileCoreTraceEvents[n];
       }
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
@@ -632,17 +548,20 @@ namespace{
       for (int n=0; n <= params->NUM_MEMORY_TRACE_EVENTS; ++n) {
         if (numTileMemoryTraceEvents[n] == 0) continue;
         if (n != params->NUM_MEMORY_TRACE_EVENTS)
-            tilecfg->numTileMemoryTraceEvents[n] = numTileMemoryTraceEvents[n]; 
-        //(db->getStaticInfo()).addAIEMemoryEventResources(deviceId, n, numTileMemoryTraceEvents[n]);
+            tilecfg->numTileMemoryTraceEvents[n] = numTileMemoryTraceEvents[n];
       }
       //xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
+    return 0;
+  }
 
-        return 0;
-    }
+} // end anonymous namespace
 
-}
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+// The PS kernel initialization function
 __attribute__((visibility("default")))
 xrtHandles* aie_trace_config_init (xclDeviceHandle handle, const xuid_t xclbin_uuid) {
 
@@ -654,54 +573,65 @@ xrtHandles* aie_trace_config_init (xclDeviceHandle handle, const xuid_t xclbin_u
     return constructs;
 }
 
-
+// The main PS kernel functionality
 __attribute__((visibility("default")))
 int aie_trace_config(uint8_t* input, uint8_t* output, xrtHandles* constructs)
 {
-    auto drv = ZYNQ::shim::handleCheck(constructs->handle);
-    if(!drv)
-        return 0;
+  if (constructs == nullptr)
+    return 0;
 
-    auto aieArray = drv->getAieArray();
-    if (!aieArray)
-        return 0;
+  auto drv = ZYNQ::shim::handleCheck(constructs->handle);
+  if(!drv)
+    return 0;
 
-    constructs->aieDevInst = aieArray->getDevInst();
-    if(!constructs->aieDevInst)
-        return 0;
+  auto aieArray = drv->getAieArray();
+  if (!aieArray)
+    return 0;
 
+  constructs->aieDevInst = aieArray->getDevInst();
+  if (!constructs->aieDevInst)
+    return 0;
+
+  if (constructs->aieDev == nullptr)
     constructs->aieDev = new xaiefal::XAieDev(constructs->aieDevInst, false);
 
-    xdp::built_in::InputConfiguration* params = reinterpret_cast<xdp::built_in::InputConfiguration*>(input);
-    if (!checkInput(params)) {
-        return 1;
-    }
+  xdp::built_in::InputConfiguration* params =
+    reinterpret_cast<xdp::built_in::InputConfiguration*>(input);
 
-    EventConfiguration config;
-    config.initialize(params);
-    
-    std::size_t total_size = sizeof(xdp::built_in::OutputConfiguration) + sizeof(xdp::built_in::TileData[params->numTiles - 1]);
-    xdp::built_in::OutputConfiguration* tilecfg = (xdp::built_in::OutputConfiguration*)malloc(total_size);
-    tilecfg->numTiles = params->numTiles;
-    
-    int success = setMetrics(constructs->aieDevInst, constructs->aieDev, config, params, tilecfg);
-    uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
-    std::memcpy(output, out, total_size);   
- 
-
-    free(tilecfg); 
+  if (!checkInput(params))
     return 0;
-    
 
+  EventConfiguration config;
+  config.initialize(params);
+
+  // Using malloc/free instead of new/delete because the struct treats the
+  // last element as a variable sized array
+  std::size_t total_size = sizeof(xdp::built_in::OutputConfiguration) + sizeof(xdp::built_in::TileData[params->numTiles - 1]);
+  xdp::built_in::OutputConfiguration* tilecfg =
+    (xdp::built_in::OutputConfiguration*)malloc(total_size);
+
+  tilecfg->numTiles = params->numTiles;
+
+  int success = setMetrics(constructs->aieDevInst, constructs->aieDev,
+                           config, params, tilecfg);
+  uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
+  std::memcpy(output, out, total_size);   
+
+  free(tilecfg); 
+  return 0;
 }
 
+// The final function for the PS kernel
 __attribute__((visibility("default")))
-int aie_trace_config_fini(xrtHandles* handles) {
+int aie_trace_config_fini(xrtHandles* handles)
+{
+  if (handles != nullptr)
     delete handles;
-    return 0;
+  return 0;
 }
 
 #ifdef __cplusplus
 }
 #endif
+
 
