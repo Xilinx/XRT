@@ -14,19 +14,10 @@
  * under the License.
  */
 
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <syslog.h>
-#include <sys/mman.h>
 #include "xrt/xrt_kernel.h"
-#include <fcntl.h>
 #include "xaiefal/xaiefal.hpp"
 #include "core/edge/user/shim.h"
-#include "core/common/message.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
 
