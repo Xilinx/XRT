@@ -82,6 +82,7 @@ static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(600 * 1000) 
 #define XOCL_XGQ_DOWNLOAD_TIME	msecs_to_jiffies(300 * 1000) 
 #define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(30 * 1000) 
+#define XOCL_XGQ_WAIT_TIMEOUT	msecs_to_jiffies(60 * 1000)
 #define XOCL_XGQ_MSLEEP_1S	(1000)      //1 s
 
 #define MAX_WAIT 30
@@ -824,8 +825,11 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	/*
 	 * For pdi/xclbin data transfer, we block any cancellation and
 	 * wait till command completed and then release resources safely.
+	 * We yield after every timeout to avoid linux kernel warning for
+	 * thread hunging too long.
 	 */
-	wait_for_completion(&cmd->xgq_cmd_complete);
+	while (!wait_for_completion_timeout(&cmd->xgq_cmd_complete, XOCL_XGQ_WAIT_TIMEOUT))
+		yield();
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
