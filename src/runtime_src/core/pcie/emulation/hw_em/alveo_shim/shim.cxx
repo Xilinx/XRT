@@ -4,7 +4,6 @@
 #include "shim.h"
 #include "system_hwemu.h"
 #include "plugin/xdp/device_offload.h"
-#include "plugin/xdp/pl_deadlock.h"
 
 #include "core/include/xclbin.h"
 
@@ -397,8 +396,6 @@ namespace xclhwemhal2 {
         mMBSch = new MBScheduler(this);
         mMBSch->init_scheduler_thread();
     }
-
-    xdp::pl_deadlock::update_device(this);
 
     PRINTENDFUNC;
     return returnValue;
