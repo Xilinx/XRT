@@ -283,12 +283,13 @@ static int cu_probe(struct platform_device *pdev)
 
 	if (info->intr_enable) {
 		intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
-		if (!intc) {
+		if (intc)
+			err = zocl_ert_intc_add(intc, info->intr_id, cu_isr, zcu);
+		if (!intc || err) {
 			DRM_WARN("Failed to initial CU interrupt. "
 				 "Fall back to polling\n");
 			zcu->base.info.intr_enable = 0;
-		} else
-			zocl_ert_intc_add(intc, info->intr_id, cu_isr, zcu);
+		}
 	}
 
 	switch (info->model) {

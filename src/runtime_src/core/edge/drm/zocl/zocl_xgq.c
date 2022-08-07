@@ -351,7 +351,7 @@ void *zxgq_init(struct zocl_xgq_init_args *arg)
 	zxgq_start_worker(zxgq);
 
 	if (ZXGQ_IS_INTR_ENABLED(zxgq)) {
-		zocl_ert_intc_add(zxgq->zx_intc_pdev, zxgq->zx_irq, zxgq_isr, zxgq);
+		BUG_ON(zocl_ert_intc_add(zxgq->zx_intc_pdev, zxgq->zx_irq, zxgq_isr, zxgq));
 	} else {
 		timer_setup(&zxgq->zx_timer, zxgq_timer, 0);
 		mod_timer(&zxgq->zx_timer, jiffies + ZXGQ_THREAD_TIMER);
