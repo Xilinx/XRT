@@ -653,13 +653,13 @@ static void xclmgmt_clock_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 	hwicap->freq_cntr_2 = xocl_clock_get_data(lro, FREQ_COUNTER_2);
 }
 
-static void xclmgmt_icap_get_version(struct xclmgmt_dev *lro, void *buf)
+static void xclmgmt_multislot_version(struct xclmgmt_dev *lro, void *buf)
 {
-	uint32_t mslot_version = (uint32_t)buf;
+	struct xcl_multislot_info *slot_info = (struct xcl_multislot_info *)buf;
 
 	/* Fill the icap version here */
-	mslot_version = MULTISLOT_VERSION; 	
-	mgmt_info(lro, "ICAP Version : %x\n", mslot_version);
+	slot_info->multislot_version = MULTISLOT_VERSION; 	
+	mgmt_info(lro, "Multislot Version : %x\n", slot_info->multislot_version);
 }
 
 static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
@@ -757,9 +757,9 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, void *data_ptr, void
 		(void) xclmgmt_icap_get_data(lro, *resp);
 		break;
 	case XCL_MULTISLOT_VERSION:
-		current_sz = sizeof(uint32_t);
+		current_sz = sizeof(struct xcl_multislot_info);
 		*resp = vzalloc(current_sz);
-		xclmgmt_icap_get_version(lro, *resp);
+		xclmgmt_multislot_version(lro, *resp);
 		break;
 	case XCL_MIG_ECC:
 		/* when allocating response buffer, 
@@ -1024,9 +1024,14 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN: {
 		uint64_t xclbin_len = 0;
 		uint32_t slot_id = 0;
-		struct axlf *xclbin = (struct axlf *)req->data;
-		struct xcl_mailbox_bitstream_slot_xclbin *mb_xclbin = NULL;
+		struct xcl_mailbox_bitstream_slot_xclbin *mb_xclbin =
+			(struct xcl_mailbox_bitstream_slot_xclbin *)req->data;
+		struct axlf *xclbin = NULL;
 		bool fetch = (atomic_read(&lro->config_xclbin_change) == 1);
+
+		slot_id = mb_xclbin->slot_idx;
+		xclbin = (struct axlf *)((uint64_t)req->data +
+				sizeof(struct xcl_mailbox_bitstream_slot_xclbin));
 
 		if (payload_len < sizeof(*xclbin)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
@@ -1039,10 +1044,6 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 	
-		mb_xclbin = (struct xcl_mailbox_bitstream_slot_xclbin *)
-			((uint64_t)req->data + xclbin->m_header.m_length);
-		slot_id = mb_xclbin->slot_idx;
-
 		/*
 		 * User may transfer a fake xclbin which doesn't have bitstream
 		 * In this case, 'config_xclbin_change' has to be set, and we

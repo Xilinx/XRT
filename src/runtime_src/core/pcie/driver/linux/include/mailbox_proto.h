@@ -210,6 +210,15 @@ struct xcl_sensor {
 	uint32_t heartbeat_err_code;
 	uint32_t heartbeat_stall;
 };
+
+/**
+ * struct xcl_multislot_info - Data structure used to fetch
+ * multislot version
+ */
+struct xcl_multislot_info {
+	uint32_t multislot_version;
+};
+
 /**
  * struct xcl_hwicap - Data structure used to fetch ICAP group
  */
