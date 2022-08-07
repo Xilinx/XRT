@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -51,11 +52,7 @@
  * @XCL_MAILBOX_REQ_HOT_RESET: request mgmt pf driver to reset the board
  * @XCL_MAILBOX_REQ_FIREWALL: firewall trip detected on mgmt pf (post only)
  * @XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR: download xclbin (pointed to by a pointer)
- * @XCL_MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR: download xclbin (pointed to by a pointer)
- * 					to a specific slot (PS/PL)
  * @XCL_MAILBOX_REQ_LOAD_XCLBIN: download xclbin (bitstream is in payload)
- * @XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN: download xclbin (bitstream is in payload)
- * 					to a specific slot (PS/PL)
  * @XCL_MAILBOX_REQ_RECLOCK: set clock frequency
  * @XCL_MAILBOX_REQ_PEER_DATA: read specified data from peer
  * @XCL_MAILBOX_REQ_USER_PROBE: for user pf to probe the peer mgmt pf
@@ -63,6 +60,10 @@
  *                          (post only)
  * @XCL_MAILBOX_REQ_CHG_SHELL: shell change is required on mgmt pf (post only)
  * @XCL_MAILBOX_REQ_PROGRAM_SHELL: request mgmt pf driver to reprogram shell
+ * @XCL_MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR: download xclbin (pointed to by a pointer)
+ * 					to a specific slot (PS/PL)
+ * @XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN: download xclbin (bitstream is in payload)
+ * 					to a specific slot (PS/PL)
  */
 enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_UNKNOWN =		0,
@@ -73,17 +74,17 @@ enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_HOT_RESET =		5,
 	XCL_MAILBOX_REQ_FIREWALL =		6,
 	XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR =	7,
-	XCL_MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR = 8,
-	XCL_MAILBOX_REQ_LOAD_XCLBIN =		9,
-	XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN =	10,
-	XCL_MAILBOX_REQ_RECLOCK =		11,
-	XCL_MAILBOX_REQ_PEER_DATA =		12,
-	XCL_MAILBOX_REQ_USER_PROBE =		13,
-	XCL_MAILBOX_REQ_MGMT_STATE =		14,
-	XCL_MAILBOX_REQ_CHG_SHELL =		15,
-	XCL_MAILBOX_REQ_PROGRAM_SHELL =		16,
-	XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =	17,
-	XCL_MAILBOX_REQ_SDR_DATA =		18,
+	XCL_MAILBOX_REQ_LOAD_XCLBIN =		8,
+	XCL_MAILBOX_REQ_RECLOCK =		9,
+	XCL_MAILBOX_REQ_PEER_DATA =		10,
+	XCL_MAILBOX_REQ_USER_PROBE =		11,
+	XCL_MAILBOX_REQ_MGMT_STATE =		12,
+	XCL_MAILBOX_REQ_CHG_SHELL =		13,
+	XCL_MAILBOX_REQ_PROGRAM_SHELL =		14,
+	XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
+	XCL_MAILBOX_REQ_SDR_DATA =		16,
+	XCL_MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR = 17,
+	XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN =	18,
 	XCL_MAILBOX_REQ_MAX,
 	/* Version 0 OP code ends */
 };
@@ -235,7 +236,6 @@ struct xcl_pr_region {
 	uint8_t uuid[XCL_UUID_SZ];
 	uint64_t mig_calib;
 	uint64_t data_retention;
-	uint64_t icap_version;
 };
 
 /**

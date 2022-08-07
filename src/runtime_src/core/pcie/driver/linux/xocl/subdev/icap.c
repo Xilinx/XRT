@@ -143,7 +143,6 @@ struct icap {
 	struct icap_config_engine *icap_config_engine;
 	unsigned int		idcode;
 	bool			icap_axi_gate_frozen;
-	uint32_t		icap_version;
 
 	xuid_t			icap_bitstream_uuid;
 	int			icap_bitstream_ref;

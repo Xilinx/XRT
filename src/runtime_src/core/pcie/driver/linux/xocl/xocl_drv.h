@@ -1194,7 +1194,6 @@ enum data_kind {
 	XMC_HEARTBEAT_ERR_TIME,
 	XMC_HEARTBEAT_ERR_CODE,
 	XMC_VCCINT_VCU_0V9,
-	ICAP_VERSION,
 };
 
 enum mb_kind {
