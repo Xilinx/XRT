@@ -170,10 +170,13 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     auto unitm = pow(10, tmp.unitm);
     stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.input) * unitm;
     pt.put("voltage.volts", stream.str());
+    stream.str(std::string());
     stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.max) * unitm;
     pt.put("voltage.max", stream.str());
+    stream.str(std::string());
     stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.average) * unitm;
     pt.put("voltage.average", stream.str());
+    stream.str(std::string());
     // these fields are also needed to differentiate between sensor types
     pt.put("voltage.is_present", "true");
     pt.put("current.is_present", "false");
@@ -188,10 +191,13 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     auto unitm = pow(10, tmp.unitm);
     stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.input) * unitm;
     auto amps = stream.str();
+    stream.str(std::string());
     stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.max) * unitm;
     auto max = stream.str();
+    stream.str(std::string());
     stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.average) * unitm;
     auto avg = stream.str();
+    stream.str(std::string());
 
     for (auto& kv : sensor_array) {
       auto id = kv.second.get<std::string>("id");
