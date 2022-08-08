@@ -2280,17 +2280,22 @@ namespace xclcpuemhal2
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
 
-    std::lock_guard<std::mutex> lk(mApiMtx);
-    bool ack = false;
+    uint32_t ack = -1;
     auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
       return -1;
 
     DEBUG_MSGS("%s, %d()\n", __func__, __LINE__);
     auto graphhandle = ghPtr->getGraphHandle();
-    xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
 
-    if (!ack)
+    do {
+      mApiMtx.lock();
+      xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
+      mApiMtx.unlock();
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    } while (ack == 2);
+
+    if (ack == 0)
     {
       DEBUG_MSGS("%s, %d(Failed to get the ack)\n", __func__, __LINE__);
       PRINTENDFUNC;

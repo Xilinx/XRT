@@ -2195,6 +2195,8 @@ close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 * xrtGraphInit() - Initialize  graph
 */
 int CpuemShim::xrtGraphInit(void * gh) {
+
+  std::lock_guard<std::mutex> lk(mApiMtx);
   bool ack = false;
   auto ghPtr = (xclcpuemhal2::GraphType*)gh;
   if (!ghPtr)
@@ -2214,6 +2216,8 @@ int CpuemShim::xrtGraphInit(void * gh) {
 * xrtGraphRun() - Start a graph execution
 */
 int CpuemShim::xrtGraphRun(void * gh, uint32_t iterations) {
+
+  std::lock_guard<std::mutex> lk(mApiMtx);
   bool ack = false;
   auto ghPtr = (xclcpuemhal2::GraphType*)gh;
   if (!ghPtr)
@@ -2235,6 +2239,8 @@ int CpuemShim::xrtGraphRun(void * gh, uint32_t iterations) {
 *                   cycle, stop the graph immediateley.
 */
 int CpuemShim::xrtGraphWait(void * gh) {
+
+  std::lock_guard<std::mutex> lk(mApiMtx);
   bool ack = false;
   auto ghPtr = (xclcpuemhal2::GraphType*)gh;
   if (!ghPtr)
@@ -2256,6 +2262,8 @@ int CpuemShim::xrtGraphWait(void * gh) {
 *                   cycle, stop the graph immediateley.
 */
 int CpuemShim::xrtGraphTimedWait(void * gh, uint64_t cycle) {
+
+  std::lock_guard<std::mutex> lk(mApiMtx);
   bool ack = false;
   auto ghPtr = (xclcpuemhal2::GraphType*)gh;
   if (!ghPtr)
@@ -2286,13 +2294,23 @@ int CpuemShim::xrtGraphTimedWait(void * gh, uint64_t cycle) {
 * forever or graph that has multi-rate core(s).
 */
 int CpuemShim::xrtGraphEnd(void * gh) {
-  bool ack = false;
+
+  uint32_t ack = false;
+
   auto ghPtr = (xclcpuemhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
+
   auto graphhandle = ghPtr->getGraphHandle();
-  xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
-  if (!ack)
+  do
+  {
+    mApiMtx.lock();
+    xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
+    mApiMtx.unlock();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  } while (ack == 2);
+
+  if (ack == 0)
   {
     PRINTENDFUNC;
     return -1;
@@ -2316,6 +2334,7 @@ int CpuemShim::xrtGraphEnd(void * gh) {
 * forever or graph that has multi-rate core(s).
 */
 int CpuemShim::xrtGraphTimedEnd(void * gh , uint64_t cycle) {
+  std::lock_guard<std::mutex> lk(mApiMtx);
   bool ack = false;
   auto ghPtr = (xclcpuemhal2::GraphType*)gh;
   if (!ghPtr)
@@ -2336,6 +2355,7 @@ int CpuemShim::xrtGraphTimedEnd(void * gh , uint64_t cycle) {
 * Resume graph execution which was paused by suspend() or wait(cycles) APIs
 */
 int CpuemShim::xrtGraphResume(void * gh) {
+  std::lock_guard<std::mutex> lk(mApiMtx);
   bool ack = false;
   auto ghPtr = (xclcpuemhal2::GraphType*)gh;
   if (!ghPtr)
@@ -2361,6 +2381,7 @@ int CpuemShim::xrtGraphResume(void * gh) {
 * Return:          0 on success, -1 on error.
 */
 int CpuemShim::xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char *buffer, size_t size) {
+  std::lock_guard<std::mutex> lk(mApiMtx);
   auto ghPtr = (xclcpuemhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
@@ -2384,6 +2405,7 @@ int CpuemShim::xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char
 *       being copied to.
 */
 int CpuemShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size) {
+  std::lock_guard<std::mutex> lk(mApiMtx);
   auto ghPtr = (xclcpuemhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;

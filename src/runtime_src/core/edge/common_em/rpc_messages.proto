@@ -498,7 +498,7 @@ message xclGraphEnd_call {
   required uint32 gh = 2;  
 }
 message xclGraphEnd_response {
-     required bool ack = 1;
+  required uint32 ack = 1;
 }
 
 //xclGraphUpdateRTP
