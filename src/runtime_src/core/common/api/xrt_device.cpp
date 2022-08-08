@@ -21,8 +21,8 @@
 #include "core/common/system.h"
 
 #include "device_int.h"
-#include "exec.h"
 #include "handle.h"
+#include "hw_queue.h"
 #include "native_profile.h"
 #include "xclbin_int.h"
 
@@ -210,7 +210,7 @@ get_xcl_device_handle(xrtDeviceHandle dhdl)
 std::cv_status
 exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms)
 {
-  return xrt_core::exec::exec_wait(device.get_handle().get(), timeout_ms);
+  return xrt_core::hw_queue::exec_wait(device.get_handle().get(), timeout_ms);
 }
 
 }} // device_int, xrt_core

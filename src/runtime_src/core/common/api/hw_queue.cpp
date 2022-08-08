@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 
-#include "exec.h"
-#include "ert.h"
+#include "hw_queue.h"
+
 #include "command.h"
+#include "hw_context_int.h"
+
 #include "core/common/debug.h"
 #include "core/common/device.h"
 #include "core/common/thread.h"
+#include "experimental/xrt_hw_context.h"
+#include "core/include/ert.h"
 
 #include <algorithm>
-#include <cstring>
-#include <cerrno>
 #include <condition_variable>
-#include <list>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -21,7 +23,10 @@
 
 ////////////////////////////////////////////////////////////////
 // Main command execution interface for scheduling commands for
-// execution and waiting for commands to complete.
+// execution and waiting for commands to complete via KDS.
+// This code is lifted from original kds.cpp and exec.{h,cpp}.
+// There is no longer a need to support software scheduling since
+// all shims support kds (exec_buf and exec_wait).
 ////////////////////////////////////////////////////////////////
 namespace {
 
@@ -303,13 +308,16 @@ public:
   }
 }; // kds_device
 
-// Statically allocated kds_device object for each core deviced
+// Statically allocated kds_device object for each core device
 static std::map<const xrt_core::device*, std::unique_ptr<kds_device>> kds_devices;
 
 // Get or create kds_device object from core device
 static kds_device*
 get_kds_device(xrt_core::device* device)
 {
+  static std::mutex mutex;
+  std::lock_guard lk(mutex);
+
   auto itr = kds_devices.find(device);
   if (itr != kds_devices.end())
     return (*itr).second.get();
@@ -318,99 +326,145 @@ get_kds_device(xrt_core::device* device)
   return (iitr.first)->second.get();
 }
 
-// Get or existing kds_device object from core device.  Throw if
-// kds_device object does not exist (internal error).
-static kds_device*
-get_kds_device_or_error(const xrt_core::device* device)
-{
-  auto itr = kds_devices.find(device);
-  if (itr == kds_devices.end())
-    throw std::runtime_error("internal error: missing kds device");
-  return (*itr).second.get();
-}
-
-// Get kds_device from command object.  Throws if kds_device
-// doesn't exist
-static kds_device*
-get_kds_device(const xrt_core::command* cmd)
-{
-  return get_kds_device_or_error(cmd->get_device());
-}
-
 } // namespace
 
+namespace xrt_core {
 
-namespace xrt_core { namespace kds {
+// class hw_queue_impl - implementation of hardware queue
+//
+// This class provides a command submission API on top of
+// xrt_core::device::ishim APIs. It leverage the KDS execbuf
+// and execwait protocol through kds_device.
+class hw_queue_impl
+{
+  xrt::hw_context m_hwctx;
+  device* m_core_device;
+
+  // This is logically const
+  mutable kds_device* m_kds_device;
+
+public:
+  // Construct from hardware context
+  hw_queue_impl(xrt::hw_context hwctx)
+    : m_hwctx(std::move(hwctx))
+    , m_core_device(hw_context_int::get_core_device_raw(m_hwctx))
+    , m_kds_device(get_kds_device(m_core_device))
+  {}
+
+  // This constructor is for legacy command execution where there
+  // is no associated hw context.
+  hw_queue_impl(xrt_core::device* device)
+    : m_core_device(device)
+    , m_kds_device(get_kds_device(m_core_device))
+  {}
+
+  // Managed start uses execution monitor for command completion
+  void
+  managed_start(xrt_core::command* cmd)
+  {
+    m_kds_device->launch(cmd);
+  }
+
+  // Unmanaged start submits command directly for execution
+  // Command completion must be explicitly managed by application
+  void
+  unmanaged_start(xrt_core::command* cmd)
+  {
+    m_kds_device->exec_buf(cmd);
+  }
+
+  // Wait for command completion. Supports both managed and
+  // unmanaged commands
+  void
+  wait(const xrt_core::command* cmd) const
+  {
+    m_kds_device->exec_wait(cmd);
+  }
+
+  // Wait for command completion with timeout. Supports both managed
+  // and unmanaged commands
+  std::cv_status
+  wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms) const
+  {
+    return m_kds_device->exec_wait(cmd, timeout_ms.count());
+  }
+};
+
+// For time being there is only one hw_queue per hw_context
+// Ust static map with weak pointers to implementation.
+static std::shared_ptr<hw_queue_impl>
+get_hw_queue_impl(const xrt::hw_context& hwctx)
+{
+  static std::mutex mutex;
+  static std::map<xcl_hwctx_handle, std::weak_ptr<hw_queue_impl>> hwc2hwq;
+  auto xhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  std::lock_guard lk(mutex);
+  auto hwqimpl = hwc2hwq[xhdl].lock();
+  if (!hwqimpl)
+    hwc2hwq[xhdl] = hwqimpl = std::shared_ptr<hw_queue_impl>(new hw_queue_impl(hwctx));
+
+  return hwqimpl;
+}
+
+////////////////////////////////////////////////////////////////
+// Public APIs
+////////////////////////////////////////////////////////////////
+hw_queue::
+hw_queue(const xrt::hw_context& hwctx)
+  : xrt::detail::pimpl<hw_queue_impl>(get_hw_queue_impl(hwctx))
+{}
+
+hw_queue::
+hw_queue(const xrt_core::device* device)
+  : xrt::detail::pimpl<hw_queue_impl>(std::make_shared<hw_queue_impl>(const_cast<xrt_core::device*>(device)))
+{}
+
+void
+hw_queue::
+managed_start(xrt_core::command* cmd)
+{
+  get_handle()->managed_start(cmd);
+}
+
+void
+hw_queue::
+unmanaged_start(xrt_core::command* cmd)
+{
+  get_handle()->unmanaged_start(cmd);
+}
 
 // Wait for command completion for unmanaged command execution
 void
-unmanaged_wait(const xrt_core::command* cmd)
+hw_queue::
+wait(const xrt_core::command* cmd) const
 {
-  auto kdev = get_kds_device(cmd);
-  kdev->exec_wait(cmd);
+  get_handle()->wait(cmd);
 }
 
 // Wait for command completion for unmanaged command execution with timeout
 std::cv_status
-unmanaged_wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms)
+hw_queue::
+wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms) const
 {
-  auto kdev = get_kds_device(cmd);
-  return kdev->exec_wait(cmd, timeout_ms.count());
+  return get_handle()->wait(cmd, timeout_ms);
 }
 
 std::cv_status
+hw_queue::
 exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms)
 {
-  auto kdev = get_kds_device_or_error(device);
-  return kdev->exec_wait(timeout_ms.count());
-}
+  // bypass hwqueue and call exec wait directly
+  auto kds_device = get_kds_device(const_cast<xrt_core::device*>(device));
 
-// Start unmanaged command execution.  The command must be explicitly
-// tested for completion, either by actively polling command state or
-// calling unmanaged wait
-void
-unmanaged_start(xrt_core::command* cmd)
-{
-  auto kdev = get_kds_device(cmd);
-  kdev->exec_buf(cmd);
-}
-
-// Start managed command execution.   The command is monitored
-// for completion and notified when completed.  It is undefined
-// behavior to call unmanaged_wait for a managed command.  While
-// wait will work, the commmand cannot be immediately re-executed
-// until it has completed.
-void
-managed_start(xrt_core::command* cmd)
-{
-  auto kdev = get_kds_device(cmd);
-  kdev->launch(cmd);
-}
-
-// Alias for managed_start
-void
-schedule(xrt_core::command* cmd)
-{
-  auto kdev = get_kds_device(cmd);
-  kdev->launch(cmd);
+  // add dummy hwqueue null arg when changing shim
+  return kds_device->exec_wait(timeout_ms.count());
 }
 
 void
-start()
-{}
-
-void
+hw_queue::
 stop()
 {
   kds_devices.clear();
 }
 
-
-// Create and initialize a kds_device object from a core device.
-void
-init(xrt_core::device* device)
-{
-  get_kds_device(device);
-}
-
-}} // kds,xrt_core
+} // namespace xrt_core

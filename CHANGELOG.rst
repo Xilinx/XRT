@@ -6,11 +6,14 @@ XRT ChangeLog
 Added
 .....
 * Support generic AsyncBO transfer for AIE via xrt::bo C++ APIs.
+* Add first class object ``xrt::hw_context`` to support loading of multiple xclbins (PL and PS).  This API is experimental in this release.
 
 Removed
 .......
 * XRT streaming APIs used with QDMA PCIe DMA engine have been removed per deprecation announcement in 2.11.x
 * All XCL APIs are deprecated and will be removed in future release.
+* Remove internal software scheduler known as SWS.  It was no longer functional and all shims now support KDS style scheduling.
+* All xrt++ APIs are deprecated and will be removed in next release.  The xrt++ link library will be removed.  The functionality provided by xrt++ is superseeded by the native XRT C++ APIs.
 
 Changed
 .......
