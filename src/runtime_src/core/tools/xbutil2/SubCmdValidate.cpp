@@ -936,8 +936,9 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
     logger(_ptTest, "Warning", "SC firmware mismatch");
-    logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.")
-                                          % sc_ver % exp_sc_ver % "Please use xbmgmt examine to check the installed shell"));
+    logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the platform, but SC firmware version %s is expected for the installed base platform. %s, and %s.")
+                                          % sc_ver % exp_sc_ver % "Please use xbmgmt examine to see the compatible SC version corresponding to this base platform"
+                                          % "reprogram the base partition using xbmgmt program --base ... to update the SC version"));
   }
   _ptTest.put("status", test_token_passed);
 }
