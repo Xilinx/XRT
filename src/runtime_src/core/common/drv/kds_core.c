@@ -1112,14 +1112,22 @@ _kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
-	struct kds_client_hw_ctx *curr;
+	struct kds_client_hw_ctx *curr = NULL;
+	struct kds_client_ctx *c_curr = NULL;
 
 	/* Release legacy client's resources */
 	_kds_fini_client(kds, client, client->ctx);
+	if(!list_empty(&client->ctx_list)) {
+		list_for_each_entry(c_curr, &client->ctx_list, link) {
+			_kds_fini_client(kds, client, c_curr);
+		}
+	}
 
-	list_for_each_entry(curr, &client->hw_ctx_list, link) {
-		/* Release new hw client's resources */
-		_kds_fini_hw_ctx_client(kds, client, curr);
+	if(!list_empty(&client->hw_ctx_list)) {
+		list_for_each_entry(curr, &client->hw_ctx_list, link) {
+			/* release new hw client's resources */
+			_kds_fini_hw_ctx_client(kds, client, curr);
+		}
 	}
 
 	put_pid(client->pid);

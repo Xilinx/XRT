@@ -52,6 +52,10 @@ struct kds_client_ctx {
 	void				*xclbin_id;
 	/* To support multiple CU context */
 	struct list_head		cu_ctx_list;
+
+	/* To support zocl multiple PL slot case */
+	struct list_head		link;
+	u32				slot_idx;
 };
 
 /* Multiple xclbin context can be active under a single client.
@@ -100,6 +104,9 @@ struct kds_client {
 
 	/* TODO: xocl not suppot multiple xclbin context yet. */
 	struct kds_client_ctx    	*ctx;
+
+	/* To suppot ZOCL  multiple PL support */
+	struct list_head          	ctx_list;
 
 	/* To suppot multiple hw context */
 	struct list_head          	hw_ctx_list;
