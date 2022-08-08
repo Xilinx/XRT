@@ -2209,6 +2209,20 @@ static ssize_t clk_scaling_stat_raw_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(clk_scaling_stat_raw);
 
+/*
+ * clk_scaling_configure_store(): Used to configure clock scaling feature parameters through
+ * "clk_scaling_configure" sysfs node.
+ * Supporting parameters:
+ *   Enable - enable clock scaling feature.
+ *   Disable - disable clock scaling feature.
+ *   Power override limit - override power threshold value for internal testing.
+ *   Temp override limit - override temperature threshold value for internal testing.
+ * Arguments to the sysfs node "clk_scaling_configure": It is a string contains 3 values seperated
+ * by literal ",". Example: "1,200,80".
+ *   Argument 1: tells enable (1) or disable (0) of clock scaling feature
+ *   Argument 2: tells Power override limit in Watts
+ *   Argument 3: tells Temperature override limit in Celcius
+ */
 static ssize_t clk_scaling_configure_store(struct device *dev,
                                            struct device_attribute *attr,
                                            const char *buf, size_t count)
@@ -2219,7 +2233,7 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 	uint8_t enable = 0;
 	uint16_t pwr = 0;
 	uint8_t temp = 0;
-	char* pch = buf;
+	char* args = buf;
 	char* end = buf;
 	int ret = 0;
 
@@ -2229,35 +2243,35 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 		return -ENOTSUPP;
 	}
 
-	if (pch != NULL) {
-		pch = strsep(&end, ",");
-		if (kstrtou8(pch, 10, &enable) == -EINVAL || enable > 1) {
+	if (args != NULL) {
+		args = strsep(&end, ",");
+		if (kstrtou8(args, 10, &enable) == -EINVAL || enable > 1) {
 			XGQ_ERR(xgq, "value should be 0 (disable) or 1 (enable)");
 			return -EINVAL;
 		}
-		pch = end;
+		args = end;
 	}
 
-	if (pch != NULL) {
-		pch = strsep(&end, ",");
-		if ((kstrtou16(pch, 10, &pwr) == -EINVAL) ||
+	if (args != NULL) {
+		args = strsep(&end, ",");
+		if ((kstrtou16(args, 10, &pwr) == -EINVAL) ||
 			(pwr > cs_payload->pwr_scaling_limit)) {
 			XGQ_ERR(xgq, "Invalid power override limit %u provided, whereas max limit is %u",
 					pwr, cs_payload->pwr_scaling_limit);
 			return -EINVAL;
 		}
-		pch = end;
+		args = end;
 	}
 
-	if (pch != NULL) {
-		pch = strsep(&end, ",");
-		if ((kstrtou8(pch, 10, &temp) == -EINVAL) ||
+	if (args != NULL) {
+		args = strsep(&end, ",");
+		if ((kstrtou8(args, 10, &temp) == -EINVAL) ||
 			(temp > cs_payload->temp_scaling_limit)) {
 			XGQ_ERR(xgq, "Invalid temp override limit %u provided, wereas max limit is %u",
 					temp, cs_payload->temp_scaling_limit);
 			return -EINVAL;
 		}
-		pch = end;
+		args = end;
 	}
 	mutex_lock(&xgq->clk_scaling_lock);
 	ret = clk_scaling_configure_op(xgq->xgq_pdev,
