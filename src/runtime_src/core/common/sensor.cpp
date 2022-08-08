@@ -157,6 +157,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
 
   // iterate over current data, store to ptree by converting to Amps from milli Amps
   for (const auto& tmp : voltage) {
+    std::stringstream stream;
     auto desc = tmp.label;
     pt.put("id", desc);
     pt.put("description", desc);
@@ -167,9 +168,12 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
      * So, actual sensor value => 12000 * 10 ^ (-3) = 12 Volts.
      */
     auto unitm = pow(10, tmp.unitm);
-    pt.put("voltage.volts", static_cast<double>(tmp.input) * unitm);
-    pt.put("voltage.max", static_cast<double>(tmp.max) * unitm);
-    pt.put("voltage.average", static_cast<double>(tmp.average) * unitm);
+    stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.input) * unitm;
+    pt.put("voltage.volts", stream.str());
+    stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.max) * unitm;
+    pt.put("voltage.max", stream.str());
+    stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.average) * unitm;
+    pt.put("voltage.average", stream.str());
     // these fields are also needed to differentiate between sensor types
     pt.put("voltage.is_present", "true");
     pt.put("current.is_present", "false");
@@ -178,12 +182,16 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
 
   // iterate over voltage data, store to ptree by converting to Volts from milli Volts
   for (const auto& tmp : current) {
+    std::stringstream stream;
     bool found =false;
     auto desc = tmp.label;
     auto unitm = pow(10, tmp.unitm);
-    auto amps = static_cast<double>(tmp.input) * unitm;
-    auto max = static_cast<double>(tmp.max) * unitm;
-    auto avg = static_cast<double>(tmp.average) * unitm;
+    stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.input) * unitm;
+    auto amps = stream.str();
+    stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.max) * unitm;
+    auto max = stream.str();
+    stream << std::fixed << std::setprecision(3) << static_cast<double>(tmp.average) * unitm;
+    auto avg = stream.str();
 
     for (auto& kv : sensor_array) {
       auto id = kv.second.get<std::string>("id");
