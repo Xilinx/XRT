@@ -560,7 +560,7 @@ get_hw_context_flag()
 {
   /**
    */
-  static bool value = detail::get_bool_value("Runtime.hw_context",false);
+  static bool value = detail::get_bool_value("Runtime.hw_context",true);
   return value;
 }
 
