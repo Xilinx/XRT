@@ -1139,6 +1139,7 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv)
          * Keeping this as because ZOCL hw context changes are not
          * in place. This is used by the ZOCL. */
         INIT_LIST_HEAD(&client->ctx_list);
+
 	*priv = client;
 
 out:
