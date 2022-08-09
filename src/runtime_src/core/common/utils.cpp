@@ -21,6 +21,7 @@
 #include "utils.h"
 #include <atomic>
 #include <cstdint>
+#include <cmath>
 #include <limits>
 #include <mutex>
 #include <sstream>
@@ -35,19 +36,18 @@ bit(unsigned int lsh)
   return (0x1 << lsh);
 }
 
-
-
-}
-
-namespace xrt_core { namespace utils {
-
-std::string
+static std::string
 precision(double value, int p)
 {
   std::stringstream stream;
   stream << std::fixed << std::setprecision(p) << value;
   return stream.str();
 }
+
+
+}
+
+namespace xrt_core { namespace utils {
 
 std::string
 get_hostname()
@@ -246,6 +246,13 @@ format_base10_shiftdown6(uint64_t value)
   constexpr double decimal_shift = 1000000.0;
   constexpr int digit_precision = 6;
   return precision(static_cast<double>(value) / decimal_shift, digit_precision);
+}
+
+std::string
+format_base10_shiftdown(uint64_t value, int d, int digit_precision)
+{
+  double decimal_shift = std::pow(10, d);
+  return precision(static_cast<double>(value) * decimal_shift, digit_precision);
 }
 
 uint64_t

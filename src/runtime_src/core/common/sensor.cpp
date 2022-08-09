@@ -166,10 +166,9 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
      * Example: Sensor Value 12000, Units “Volts” & Unit Modifier -3 received.
      * So, actual sensor value => 12000 * 10 ^ (-3) = 12 Volts.
      */
-    auto unitm = pow(10, tmp.unitm);
-    pt.put("voltage.volts", xrt_core::utils::precision(static_cast<double>(tmp.input) * unitm, 3));
-    pt.put("voltage.max", xrt_core::utils::precision(static_cast<double>(tmp.max) * unitm, 3));
-    pt.put("voltage.average", xrt_core::utils::precision(static_cast<double>(tmp.average) * unitm, 3));
+    pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 3));
+    pt.put("voltage.max", xrt_core::utils::format_base10_shiftdown(tmp.max, tmp.unitm, 3));
+    pt.put("voltage.average", xrt_core::utils::format_base10_shiftdown(tmp.average, tmp.unitm, 3));
     // these fields are also needed to differentiate between sensor types
     pt.put("voltage.is_present", "true");
     pt.put("current.is_present", "false");
@@ -180,10 +179,9 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   for (const auto& tmp : current) {
     bool found =false;
     auto desc = tmp.label;
-    auto unitm = pow(10, tmp.unitm);
-    auto amps = xrt_core::utils::precision(static_cast<double>(tmp.input) * unitm, 3);
-    auto max = xrt_core::utils::precision(static_cast<double>(tmp.max) * unitm, 3);
-    auto avg = xrt_core::utils::precision(static_cast<double>(tmp.average) * unitm, 3);
+    auto amps = xrt_core::utils::format_base10_shiftdown(tmp.input, tmp.unitm, 3);
+    auto max = xrt_core::utils::format_base10_shiftdown(tmp.max, tmp.unitm, 3);
+    auto avg = xrt_core::utils::format_base10_shiftdown(tmp.average, tmp.unitm, 3);
 
     for (auto& kv : sensor_array) {
       auto id = kv.second.get<std::string>("id");
