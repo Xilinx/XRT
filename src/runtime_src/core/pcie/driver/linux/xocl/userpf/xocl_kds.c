@@ -208,7 +208,8 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		if (!uuid) {
 			ret = -ENOMEM;
 			vfree(client->ctx);
-			(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
+			(void) xocl_icap_unlock_bitstream(xdev,
+							  &args->xclbin_id);
 			goto out;
 		}
 
@@ -228,7 +229,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		ret = -EINVAL;
 		goto out1;
 	}
-	 
+
 	ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
 	if (ret) {
 		kds_free_cu_ctx(client, cu_ctx);
@@ -385,7 +386,7 @@ int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 		ret = -EINVAL;
 		goto error_out;
 	}
-	
+
 	hw_ctx_args->hw_context = hw_ctx->hw_ctx_idx;
 
 error_out:
@@ -407,7 +408,7 @@ int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
         hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_args->hw_context);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
-        	mutex_unlock(&client->lock);
+		mutex_unlock(&client->lock);
                 return -EINVAL;
         }
 
@@ -415,7 +416,7 @@ int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 	(void)xocl_icap_unlock_bitstream(xdev, hw_ctx->xclbin_id);
 
 	ret = kds_free_hw_ctx(client, hw_ctx);
-        	
+
 	mutex_unlock(&client->lock);
 
         return ret;
@@ -479,7 +480,8 @@ done:
 }
 
 static inline void
-xocl_hw_ctx_to_info(struct drm_xocl_close_cu_ctx *args, struct kds_client_cu_info *cu_info)
+xocl_hw_ctx_to_info(struct drm_xocl_close_cu_ctx *args,
+		   struct kds_client_cu_info *cu_info)
 {
 	/* Extract the CU information */
 	cu_info->cu_domain = get_domain(args->cu_index);
@@ -504,7 +506,7 @@ int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
         hw_ctx = kds_get_hw_ctx_by_id(client, drm_cu_args->hw_context);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
-        	mutex_unlock(&client->lock);
+		mutex_unlock(&client->lock);
                 return -EINVAL;
         }
 
@@ -527,9 +529,15 @@ int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
 	}
 
         ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
-        if (ret)
+        if (ret) {
                 kds_free_cu_ctx(client, cu_ctx);
-        
+		mutex_unlock(&client->lock);
+		return ret;
+	}
+
+	// Return the encoded cu index along with cu domain
+	drm_cu_args->cu_index = set_domain(cu_ctx->cu_domain,
+					   cu_ctx->cu_idx);
 	mutex_unlock(&client->lock);
         return ret;
 }
