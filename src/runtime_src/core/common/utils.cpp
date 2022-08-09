@@ -249,10 +249,10 @@ format_base10_shiftdown6(uint64_t value)
 }
 
 std::string
-format_base10_shiftdown(uint64_t value, int d, int digit_precision)
+format_base10_shiftdown(uint64_t value, int decimal, int precision)
 {
-  double decimal_shift = std::pow(10, d);
-  return precision(static_cast<double>(value) * decimal_shift, digit_precision);
+  double decimal_shift = std::pow(10, decimal);
+  return precision(static_cast<double>(value) * decimal_shift, precision);
 }
 
 uint64_t
