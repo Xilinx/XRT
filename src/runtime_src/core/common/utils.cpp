@@ -35,19 +35,19 @@ bit(unsigned int lsh)
   return (0x1 << lsh);
 }
 
-static std::string
+
+
+}
+
+namespace xrt_core { namespace utils {
+
+std::string
 precision(double value, int p)
 {
   std::stringstream stream;
   stream << std::fixed << std::setprecision(p) << value;
   return stream.str();
 }
-
-
-
-}
-
-namespace xrt_core { namespace utils {
 
 std::string
 get_hostname()
