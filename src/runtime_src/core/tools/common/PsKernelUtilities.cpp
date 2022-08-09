@@ -2,12 +2,16 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "PsKernelUtilities.h"
 
+#include "XBUtilities.h"
+namespace XBU = XBUtilities;
+
 #include "core/common/query_requests.h"
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 
 #include <cctype>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -117,6 +121,8 @@ parse_instance(const pt::ptree& instance_pt)
     // Remove '_' from names and convert to PascalCase
     // IE Test_world => TestWorld
     std::string name = item->get<std::string>("name");
+    if (!name.empty())
+      name[0] = toupper(name[0]);
     for (auto loc = name.find("_"); loc != std::string::npos; loc = name.find("_", loc)) {
       name.erase(loc, 1);
       // Capitalize the next letter if it exists
@@ -164,7 +170,31 @@ get_ps_instance_data(const xrt_core::device* device)
 
   // Format the data into the controlled schema
   pt::ptree parsed_kernel_data;
-  parsed_kernel_data.add_child("apu_image", all_instance_data.get_child("os"));
+
+  // Parse OS image data
+  pt::ptree apu_image_pt;
+  apu_image_pt.put("sysname", all_instance_data.get<std::string>("os.sysname"));
+  apu_image_pt.put("release", all_instance_data.get<std::string>("os.release"));
+  apu_image_pt.put("version", all_instance_data.get<std::string>("os.version"));
+  apu_image_pt.put("machine", all_instance_data.get<std::string>("os.machine"));
+  apu_image_pt.put("distribution", all_instance_data.get<std::string>("os.distribution"));
+  apu_image_pt.put("model", all_instance_data.get<std::string>("os.model"));
+  apu_image_pt.put("cores", all_instance_data.get<std::string>("os.cores"));
+  // The received data arrives with a kB identifier for memory info
+  // Replace it with a K for further processing
+  std::string mem_total_data = std::regex_replace(all_instance_data.get<std::string>("os.mem_total"), std::regex("kB"), "K");
+  apu_image_pt.put("mem_total", std::to_string(XBU::string_to_base_units(mem_total_data, XBU::unit::bytes)).append(" B"));
+  std::string mem_available_data = std::regex_replace(all_instance_data.get<std::string>("os.mem_available"), std::regex("kB"), "K");
+  apu_image_pt.put("mem_available", std::to_string(XBU::string_to_base_units(mem_available_data, XBU::unit::bytes)).append(" B"));
+  std::string mem_free_data = std::regex_replace(all_instance_data.get<std::string>("os.mem_free"), std::regex("kB"), "K");
+  apu_image_pt.put("mem_free", std::to_string(XBU::string_to_base_units(mem_free_data, XBU::unit::bytes)).append(" B"));
+  uint64_t addr_data;
+  std::stringstream ss(all_instance_data.get<std::string>("os.address_space"));
+  ss >> std::hex >> addr_data;
+  std::string addr_data_str = std::to_string(addr_data) + " B";
+  apu_image_pt.put("address_space", addr_data_str);
+  parsed_kernel_data.add_child("apu_image", apu_image_pt);
+
   parsed_kernel_data.add_child("ps_kernel_instances", sorted_instance_tree);
   return parsed_kernel_data;
 }
