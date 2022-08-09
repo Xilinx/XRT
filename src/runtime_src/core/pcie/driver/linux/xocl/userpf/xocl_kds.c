@@ -1135,6 +1135,10 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv)
 	/* Initializing hw context list */
         INIT_LIST_HEAD(&client->hw_ctx_list);
 
+        /* Initializing legacy context lis. Need to remove.
+         * Keeping this as because ZOCL hw context changes are not
+         * in place. This is used by the ZOCL. */
+        INIT_LIST_HEAD(&client->ctx_list);
 	*priv = client;
 
 out:
