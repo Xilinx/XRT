@@ -343,6 +343,8 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	GB(x)			((uint64_t)(x) * 1024 * 1024 * 1024)
 
+#define MULTISLOT_VERSION	    0x80 // 128 Slots Support
+
 #define XOCL_VSEC_UUID_ROM          0x50
 #define XOCL_VSEC_FLASH_CONTROLER   0x51
 #define XOCL_VSEC_PLATFORM_INFO     0x52
