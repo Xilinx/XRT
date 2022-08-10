@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "xrt/xrt_kernel.h"
 
 #include <chrono>
@@ -33,7 +31,7 @@ class xrtHandles : public pscontext
 public:
 };
 
-void
+static void
 parse_file(pt::ptree& pt, const std::string& file_path, const bool is_dict = true, const std::string& delimiter = ":")
 {
   std::ifstream stream;
@@ -66,7 +64,7 @@ parse_file(pt::ptree& pt, const std::string& file_path, const bool is_dict = tru
   }
 }
 
-void
+static void
 add_schema(pt::ptree &pt)
 {
     pt::ptree schema_pt;
@@ -78,7 +76,36 @@ add_schema(pt::ptree &pt)
     pt.add_child("schema_version", schema_pt);
 }
 
-void
+
+// If unknown entries are detected they will be added into the output
+// ptree as listed unless the nonmatches flag is set
+static void
+filter_ptree_contents(pt::ptree& output, const pt::ptree& input, std::map<std::string, std::string>& filter, const bool add_nonmatches = true)
+{
+  for (const auto& item : input) {
+    const auto& it = filter.find(item.first);
+    if (it != filter.end())
+      output.put(it->second, item.second.data());
+    else if(add_nonmatches)
+      output.put(item.first, item.second.data());
+  }
+}
+
+static void
+get_mem_info(pt::ptree &pt)
+{
+  pt::ptree mem_pt;
+  parse_file(mem_pt, "/proc/meminfo");
+
+  static std::map<std::string, std::string> name_map = {
+      { "MemTotal", "mem_total"},
+      { "MemFree", "mem_free"},
+      { "MemAvailable", "mem_available"}
+  };
+  filter_ptree_contents(pt, mem_pt, name_map, false);
+}
+
+static void
 get_os_release(pt::ptree &pt)
 {
     pt::ptree os_pt;
@@ -115,13 +142,12 @@ get_os_release(pt::ptree &pt)
     os_pt.put("model", model);
 
     os_pt.put("cores", std::thread::hardware_concurrency());
-    os_pt.put("address_spaces", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
-    os_pt.put("available_memory", "????"); // TODO
-
+    os_pt.put("address_space", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
+    get_mem_info(os_pt);
     pt.add_child("os", os_pt);
 }
 
-void
+static void
 get_instance_process_status( const std::string& pid,
                     pt::ptree &pt)
 {
@@ -150,21 +176,7 @@ get_instance_process_status( const std::string& pid,
   pt.add_child("process_info", data_pt);
 }
 
-// If unknown entries are detected they will be added into the output
-// ptree as listed
 static void
-filter_ptree_contents(pt::ptree& output, const pt::ptree& input, std::map<std::string, std::string>& filter)
-{
-  for (const auto& item : input) {
-    const auto& it = filter.find(item.first);
-    if (it != filter.end())
-      output.put(it->second, item.second.data());
-    else
-      output.put(item.first, item.second.data());
-  }
-}
-
-void
 get_instance_status(const std::string& file,
                     pt::ptree &pt)
 {
@@ -178,7 +190,7 @@ get_instance_status(const std::string& file,
   filter_ptree_contents(pt, status_pt, name_map);
 }
 
-void
+static void
 get_instance_info(  const std::string& file,
                     pt::ptree &pt)
 {
@@ -200,7 +212,7 @@ get_instance_info(  const std::string& file,
 }
 
 __attribute__((visibility("default")))
-int instance_query(char *output, int count, struct xrtHandles *xrtHandle)
+int get_ps_kernel_data(char *output, int count, struct xrtHandles *xrtHandle)
 {
   openlog("new_kernel_source", LOG_PID | LOG_CONS | LOG_NDELAY, LOG_NEWS);
   syslog(LOG_INFO, "%s: Started new kernel\n", __func__);
