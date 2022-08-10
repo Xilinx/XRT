@@ -122,6 +122,7 @@ namespace xdp {
           (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
       }
     }
+    
     // Check for device interface
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
     if (deviceIntf == nullptr) {

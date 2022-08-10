@@ -137,16 +137,15 @@ namespace {
     return true;
   }
 
-  void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters,
-                                  EventConfiguration& config)
+  void releaseCurrentTileCounters(EventConfiguration& config)
   {
-    for (int i=0; i < numCoreCounters; i++) {
+    while(!config.mCoreCounters.empty()){
       config.mCoreCounters.back()->stop();
       config.mCoreCounters.back()->release();
       config.mCoreCounters.pop_back();
     }
 
-    for (int i=0; i < numMemoryCounters; i++) {
+    while(!config.mMemoryCounters.empty()) {
       config.mMemoryCounters.back()->stop();
       config.mMemoryCounters.back()->release();
       config.mMemoryCounters.pop_back();
@@ -159,16 +158,19 @@ namespace {
                  xdp::built_in::OutputConfiguration* tilecfg)
   {
     xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
-    int numTileCoreTraceEvents[params->NUM_CORE_TRACE_EVENTS+1] = {0};
-    int numTileMemoryTraceEvents[params->NUM_MEMORY_TRACE_EVENTS+1] = {0};
+    int numTileCoreTraceEvents[params->NUM_CORE_TRACE_EVENTS+1] = {};
+    int numTileMemoryTraceEvents[params->NUM_MEMORY_TRACE_EVENTS+1] = {};
 
-    //Parse tile data
+    // Parse tile data (data is passed from x86 in sequential [row,column] pairs)
     uint16_t tile_rows[params->numTiles];
     uint16_t tile_cols[params->numTiles];
+
+    const int tilePair = 2;
     
-    for(int i = 0; i < params->numTiles*2; i += 2) {
-        tile_rows[i/2] = params->tiles[i];
-        tile_cols[i/2] = params->tiles[i+1];
+    //Parse array and separate row and column data
+    for(int i = 0; i < params->numTiles*tilePair; i += tilePair) {
+        tile_rows[i/tilePair] = params->tiles[i];
+        tile_cols[i/tilePair] = params->tiles[i+1];
     }
     
     // Iterate over all used/specified tiles
@@ -300,7 +302,7 @@ namespace {
         //    << " for AIE tile (" << col << "," << row + 1 << ") required for trace.";
         // xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
-        releaseCurrentTileCounters(numCoreCounters, numMemoryCounters, config);
+        releaseCurrentTileCounters(config);
         // Print resources availability for this tile
         // printTileStats(aieDevice, tile);
         return 1;
@@ -355,7 +357,7 @@ namespace {
           //    << col << "," << row + 1 << ").";
           //xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
-          releaseCurrentTileCounters(numCoreCounters, numMemoryCounters, config);
+          releaseCurrentTileCounters(config);
           // Print resources availability for this tile
           //printTileStats(aieDevice, tile);
           return 1;
@@ -417,7 +419,7 @@ namespace {
           //    << col << "," << row + 1 << ").";
           // xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
-          releaseCurrentTileCounters(numCoreCounters, numMemoryCounters, config);
+          releaseCurrentTileCounters(config);
           // Print resources availability for this tile
           // printTileStats(aieDevice, tile);
           return 1;
@@ -529,9 +531,7 @@ namespace {
       //msg << "Adding tile (" << col << "," << row << ") to static database";
       // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
-      // Add config info to static database
-      // NOTE: Do not access cfgTile after this
-  //    (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
+
       tilecfg->tiles[tile_idx] = cfgTile;
     } // For tiles
 
@@ -542,7 +542,6 @@ namespace {
         if (n != params->NUM_CORE_TRACE_EVENTS)
            tilecfg->numTileCoreTraceEvents[n] = numTileCoreTraceEvents[n];
       }
-      //xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
     {
       for (int n=0; n <= params->NUM_MEMORY_TRACE_EVENTS; ++n) {
@@ -550,7 +549,6 @@ namespace {
         if (n != params->NUM_MEMORY_TRACE_EVENTS)
             tilecfg->numTileMemoryTraceEvents[n] = numTileMemoryTraceEvents[n];
       }
-      //xrt_core::message::send(severity_level::info, "XRT", msg.str());
     }
     return 0;
   }
