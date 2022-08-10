@@ -154,7 +154,7 @@ struct xocl_xgq_vmr {
 	struct xgq_cmd_cq_default_payload xgq_cq_payload;
 	int 			xgq_vmr_debug_level;
 	u8			xgq_vmr_debug_type;
-	u8			*xgq_vmr_system_dtb;
+	char			*xgq_vmr_system_dtb;
 	size_t			xgq_vmr_system_dtb_size;
 };
 
@@ -2118,7 +2118,18 @@ static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 out:
 	return ret;
 }
-static BIN_ATTR_RO(vmr_system_dtb, 0);
+/* Some older linux kernel doesn't support
+ * static BIN_ATTR_RO(vmr_system_dtb, 0);
+ */
+static struct bin_attribute bin_attr_vmr_system_dtb = {
+	.attr = {
+		.name = "vmr_system_dtb",
+		.mode = 0444
+	},
+	.read = vmr_system_dtb_read,
+	.write = NULL,
+	.size = 0
+};
 
 static struct attribute *vmr_attrs[] = {
 	&dev_attr_polling.attr,
@@ -2137,8 +2148,8 @@ static struct attribute *vmr_attrs[] = {
 	NULL,
 };
 
-static struct bin_attrbute *vmr_bin_attrs[] = {
-	&dev_attr_vmr_system_dtb,
+static struct bin_attribute *vmr_bin_attrs[] = {
+	&bin_attr_vmr_system_dtb,
 	NULL,
 };
 static struct attribute_group xgq_attr_group = {
