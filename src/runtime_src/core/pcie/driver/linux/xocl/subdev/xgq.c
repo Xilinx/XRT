@@ -935,7 +935,6 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		ret = -ETIME;
 		XGQ_ERR(xgq, "submitted cmd killed");
 		xgq_submitted_cmd_remove(xgq, cmd);
 	}
