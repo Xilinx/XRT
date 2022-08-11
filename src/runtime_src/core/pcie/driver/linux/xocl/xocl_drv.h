@@ -1390,9 +1390,9 @@ static inline int xocl_clock_w_ops_level(xdev_handle_t xdev)
 struct xocl_icap_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*reset_axi_gate)(struct platform_device *pdev);
-	int (*reset_bitstream)(struct platform_device *pdev);
+	int (*reset_bitstream)(struct platform_device *pdev, uint32_t slot_id);
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
-		const void __user *arg, bool force_download);
+		const void __user *arg, uint32_t slot_id);
 	int (*download_boot_firmware)(struct platform_device *pdev);
 	int (*download_rp)(struct platform_device *pdev, int level, int flag);
 	int (*post_download_rp)(struct platform_device *pdev);
@@ -1400,20 +1400,21 @@ struct xocl_icap_funcs {
 		unsigned int region, unsigned short *freqs, int num_freqs);
 	int (*ocl_get_freq)(struct platform_device *pdev,
 		unsigned int region, unsigned short *freqs, int num_freqs);
-	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freqs);
+	int (*ocl_update_clock_freq_topology)(struct platform_device *pdev, struct xclmgmt_ioc_freqscaling *freqs,
+		uint32_t slot_id);
 	int (*xclbin_validate_clock_req)(struct platform_device *pdev, struct drm_xocl_reclock_info *freqs);
 	int (*ocl_lock_bitstream)(struct platform_device *pdev,
-		const xuid_t *uuid);
+		const xuid_t *uuid, uint32_t slot_id);
 	int (*ocl_unlock_bitstream)(struct platform_device *pdev,
-		const xuid_t *uuid);
-	bool (*ocl_bitstream_is_locked)(struct platform_device *pdev);
+		const xuid_t *uuid, uint32_t slot_id);
+	bool (*ocl_bitstream_is_locked)(struct platform_device *pdev, uint32_t slot_id);
 	uint64_t (*get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 	int (*get_xclbin_metadata)(struct platform_device *pdev,
-		enum data_kind kind, void **buf);
-	void (*put_xclbin_metadata)(struct platform_device *pdev);
+		enum data_kind kind, void **buf, uint32_t slot_id);
+	void (*put_xclbin_metadata)(struct platform_device *pdev, uint32_t slot_id);
 	int (*mig_calibration)(struct platform_device *pdev);
-	void (*clean_bitstream)(struct platform_device *pdev);
+	void (*clean_bitstream)(struct platform_device *pdev, uint32_t slot_id);
 };
 enum {
 	RP_DOWNLOAD_NORMAL,
@@ -1433,13 +1434,13 @@ enum {
 	(ICAP_CB(xdev, reset_axi_gate) ?				\
 	ICAP_OPS(xdev)->reset_axi_gate(ICAP_DEV(xdev)) :		\
 	NULL)
-#define	xocl_icap_reset_bitstream(xdev)					\
+#define	xocl_icap_reset_bitstream(xdev, slot_id)					\
 	(ICAP_CB(xdev, reset_bitstream) ?				\
-	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev)) :		\
+	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev), slot_id) :		\
 	-ENODEV)
-#define	xocl_icap_download_axlf(xdev, xclbin, force_download)		\
+#define	xocl_icap_download_axlf(xdev, xclbin, slot_id)		\
 	(ICAP_CB(xdev, download_bitstream_axlf) ?			\
-	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin, force_download) : \
+	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin, slot_id) : \
 	-ENODEV)
 #define	xocl_icap_download_boot_firmware(xdev)				\
 	(ICAP_CB(xdev, download_boot_firmware) ?			\
@@ -1457,25 +1458,25 @@ enum {
 	(ICAP_CB(xdev, ocl_get_freq) ?					\
 	ICAP_OPS(xdev)->ocl_get_freq(ICAP_DEV(xdev), region, freqs, num) : \
 	-ENODEV)
-#define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs)		\
+#define	xocl_icap_ocl_update_clock_freq_topology(xdev, freqs, slot_id)		\
 	(ICAP_CB(xdev, ocl_update_clock_freq_topology) ?		\
-	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs) :\
+	ICAP_OPS(xdev)->ocl_update_clock_freq_topology(ICAP_DEV(xdev), freqs, slot_id) :\
 	-ENODEV)
 #define	xocl_icap_xclbin_validate_clock_req(xdev, freqs)		\
 	(ICAP_CB(xdev, xclbin_validate_clock_req) ?			\
 	ICAP_OPS(xdev)->xclbin_validate_clock_req(ICAP_DEV(xdev), freqs) :\
 	-ENODEV)
-#define	xocl_icap_lock_bitstream(xdev, uuid)				\
+#define	xocl_icap_lock_bitstream(xdev, uuid, slot_id)				\
 	(ICAP_CB(xdev, ocl_lock_bitstream) ?				\
-	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid) :	\
+	ICAP_OPS(xdev)->ocl_lock_bitstream(ICAP_DEV(xdev), uuid, slot_id) :	\
 	-ENODEV)
-#define	xocl_icap_unlock_bitstream(xdev, uuid)				\
+#define	xocl_icap_unlock_bitstream(xdev, uuid, slot_id)				\
 	(ICAP_CB(xdev, ocl_unlock_bitstream) ?				\
-	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid) :	\
+	ICAP_OPS(xdev)->ocl_unlock_bitstream(ICAP_DEV(xdev), uuid, slot_id) :	\
 	-ENODEV)
-#define	xocl_icap_bitstream_is_locked(xdev)			\
+#define	xocl_icap_bitstream_is_locked(xdev, slot_id)			\
 	(ICAP_CB(xdev, ocl_bitstream_is_locked) ?			\
-	ICAP_OPS(xdev)->ocl_bitstream_is_locked(ICAP_DEV(xdev)) :	\
+	ICAP_OPS(xdev)->ocl_bitstream_is_locked(ICAP_DEV(xdev), slot_id) :	\
 	-ENODEV)
 #define xocl_icap_refresh_addrs(xdev)					\
 	(ICAP_CB(xdev, refresh_addrs) ?					\
@@ -1484,49 +1485,49 @@ enum {
 	(ICAP_CB(xdev, get_data) ?					\
 	ICAP_OPS(xdev)->get_data(ICAP_DEV(xdev), kind) : 		\
 	0)
-#define	xocl_icap_get_xclbin_metadata(xdev, kind, buf)			\
+#define	xocl_icap_get_xclbin_metadata(xdev, kind, buf, slot_id)			\
 	(ICAP_CB(xdev, get_xclbin_metadata) ?				\
-	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf) :	\
+	ICAP_OPS(xdev)->get_xclbin_metadata(ICAP_DEV(xdev), kind, buf, slot_id) :	\
 	-ENODEV)
-#define	xocl_icap_put_xclbin_metadata(xdev)			\
+#define	xocl_icap_put_xclbin_metadata(xdev, slot_id)			\
 	(ICAP_CB(xdev, put_xclbin_metadata) ?			\
-	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev)) : 	\
+	ICAP_OPS(xdev)->put_xclbin_metadata(ICAP_DEV(xdev), slot_id) : 	\
 	0)
 #define	xocl_icap_mig_calibration(xdev)				\
 	(ICAP_CB(xdev, mig_calibration) ?			\
 	ICAP_OPS(xdev)->mig_calibration(ICAP_DEV(xdev)) : 	\
 	-ENODEV)
-#define	xocl_icap_clean_bitstream(xdev)				\
+#define	xocl_icap_clean_bitstream(xdev, slot_id)				\
 	(ICAP_CB(xdev, clean_bitstream) ?			\
-	ICAP_OPS(xdev)->clean_bitstream(ICAP_DEV(xdev)) : 	\
+	ICAP_OPS(xdev)->clean_bitstream(ICAP_DEV(xdev), slot_id) : 	\
 	-ENODEV)
 
-#define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo)						\
-	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo))
-#define XOCL_GET_GROUP_TOPOLOGY(xdev, group_topo)					\
-	(xocl_icap_get_xclbin_metadata(xdev, GROUPTOPO_AXLF, (void **)&group_topo))
-#define XOCL_GET_IP_LAYOUT(xdev, ip_layout)						\
-	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout))
-#define XOCL_GET_CONNECTIVITY(xdev, conn)						\
-	(xocl_icap_get_xclbin_metadata(xdev, CONNECTIVITY_AXLF, (void **)&conn))
-#define XOCL_GET_XCLBIN_ID(xdev, xclbin_id)						\
-	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id))
-#define XOCL_GET_PS_KERNEL(xdev, ps_kernel)						\
-	(xocl_icap_get_xclbin_metadata(xdev, SOFT_KERNEL, (void **)&ps_kernel))
+#define XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo, slot_id)						\
+	(xocl_icap_get_xclbin_metadata(xdev, MEMTOPO_AXLF, (void **)&mem_topo, slot_id))
+#define XOCL_GET_GROUP_TOPOLOGY(xdev, group_topo, slot_id)					\
+	(xocl_icap_get_xclbin_metadata(xdev, GROUPTOPO_AXLF, (void **)&group_topo, slot_id))
+#define XOCL_GET_IP_LAYOUT(xdev, ip_layout, slot_id)						\
+	(xocl_icap_get_xclbin_metadata(xdev, IPLAYOUT_AXLF, (void **)&ip_layout, slot_id))
+#define XOCL_GET_CONNECTIVITY(xdev, conn, slot_id)						\
+	(xocl_icap_get_xclbin_metadata(xdev, CONNECTIVITY_AXLF, (void **)&conn, slot_id))
+#define XOCL_GET_XCLBIN_ID(xdev, xclbin_id, slot_id)						\
+	(xocl_icap_get_xclbin_metadata(xdev, XCLBIN_UUID, (void **)&xclbin_id, slot_id))
+#define XOCL_GET_PS_KERNEL(xdev, ps_kernel, slot_id)						\
+	(xocl_icap_get_xclbin_metadata(xdev, SOFT_KERNEL, (void **)&ps_kernel, slot_id))
 
 
-#define XOCL_PUT_MEM_TOPOLOGY(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-#define XOCL_PUT_GROUP_TOPOLOGY(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-#define XOCL_PUT_IP_LAYOUT(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-#define XOCL_PUT_CONNECTIVITY(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-#define XOCL_PUT_XCLBIN_ID(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
-#define XOCL_PUT_PS_KERNEL(xdev)						\
-	xocl_icap_put_xclbin_metadata(xdev)
+#define XOCL_PUT_MEM_TOPOLOGY(xdev, slot_id)						\
+	xocl_icap_put_xclbin_metadata(xdev, slot_id)
+#define XOCL_PUT_GROUP_TOPOLOGY(xdev, slot_id)						\
+	xocl_icap_put_xclbin_metadata(xdev, slot_id)
+#define XOCL_PUT_IP_LAYOUT(xdev, slot_id)						\
+	xocl_icap_put_xclbin_metadata(xdev, slot_id)
+#define XOCL_PUT_CONNECTIVITY(xdev, slot_id)						\
+	xocl_icap_put_xclbin_metadata(xdev, slot_id)
+#define XOCL_PUT_XCLBIN_ID(xdev, slot_id)						\
+	xocl_icap_put_xclbin_metadata(xdev, slot_id)
+#define XOCL_PUT_PS_KERNEL(xdev, slot_id)						\
+	xocl_icap_put_xclbin_metadata(xdev, slot_id)
 
 #define XOCL_IS_DDR_USED(topo, ddr) 			\
 	(topo->m_mem_data[ddr].m_used == 1)
@@ -1545,6 +1546,7 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 	return ret;
 }
 
+#define XOCL_MAX_DDR_SUPPORT 8
 #define	XOCL_DDR_COUNT(xdev)			\
 	(xocl_is_unified(xdev) ? xocl_ddr_count_unified(xdev) :	\
 	xocl_get_ddr_channel_count(xdev))
