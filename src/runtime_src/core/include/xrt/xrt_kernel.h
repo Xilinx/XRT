@@ -11,10 +11,9 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
-#include "experimental/xrt_hw_context.h"
 
 #ifdef __cplusplus
-# include "experimental/xrt_enqueue.h"
+# include "experimental/xrt_hw_context.h"
 # include <chrono>
 # include <cstdint>
 # include <functional>
@@ -74,7 +73,6 @@ struct autostart
 };
 
 class kernel;
-class event_impl;
 
 /*!
  * @class run
@@ -278,23 +276,6 @@ class run
   add_callback(ert_cmd_state state,
                std::function<void(const void*, ert_cmd_state, void*)> callback,
                void* data);
-
-  /// @cond
-  /**
-   * set_event() - Add event for enqueued operations
-   *
-   * @param event
-   *   Opaque implementation object
-   *
-   * This function is used when a run object is enqueued in an event
-   * graph.  The event must be notified upon completion of the run.
-   *
-   * This is an experimental API using a WIP feature.
-   */
-  XCL_DRIVER_DLLESPEC
-  void
-  set_event(const std::shared_ptr<event_impl>& event) const;
-  /// @endcond
 
   /**
    * operator bool() - Check if run handle is valid
@@ -737,14 +718,11 @@ private:
 };
 
 /// @cond
-// Specialization from xrt_enqueue.h for run objects, which
-// are asynchronous waitable objects.
-template <>
-struct callable_traits<run>
-{
-  enum { is_async = true };
-};
+// Undocumented experimental API subject to be replaced
+void
+set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size);
 /// @endcond
+
 
 } // namespace xrt
 

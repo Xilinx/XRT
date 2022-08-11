@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,28 +20,6 @@
 
 // Functions that can be used in the database, the plugins, and the writers
 
-/************************ Trace IDs ************************************/
-
-#define MIN_TRACE_ID_AIM       0
-#define MAX_TRACE_ID_AIM       61
-/* To differentiate between reads and writes, AIMs can produce up
- *  to 2 different trace IDs in their trace packets.
- */
-#define NUM_TRACE_ID_PER_AIM   2
-
-#define MIN_TRACE_ID_AM        64
-#define MAX_TRACE_ID_AM        544
-#define MAX_TRACE_ID_AM_HWEM   94
-/* Because of the different stalls, AMs can produce up to 16 different
- * trace IDs in their trace packets.
- */
-#define NUM_TRACE_ID_PER_AM    16
-
-#define MIN_TRACE_ID_ASM       576
-#define MAX_TRACE_ID_ASM       607
-// ASMs only generate one type of trace ID in their trace packets.
-#define NUM_TRACE_ID_PER_ASM   1
-
 #include <stdint.h>
 #include "xdp/config.h"
 
@@ -54,6 +33,31 @@ namespace xdp {
 
   XDP_EXPORT
   uint64_t getASMSlotId(uint64_t idx);
+
+  // At compile time, each monitor inserted in the PL region is given a set 
+  // of trace IDs, regardless of if trace is enabled or not.  This ID is
+  // embedded in the PL events and used by the XDP library to identify the
+  // type and source of each hw event.
+
+  // In order to differentiate between reads and writes, each AIM is assigned
+  // two trace IDs.  At compile time, we can only insert up to 31 AIMs in the
+  // PL region.
+  constexpr int num_trace_id_per_aim = 2;
+  constexpr int min_trace_id_aim     = 0;
+  constexpr int max_trace_id_aim     = 61;
+
+  // Because of the different stalls each compute unit can create, each AM
+  // is assigned sixteen trace IDs.  At compile time, we can only insert
+  // up to 31 AMs in the PL region.
+  constexpr int num_trace_id_per_am = 16;
+  constexpr int min_trace_id_am     = 64;
+  constexpr int max_trace_id_am     = 544;
+
+  // Each ASM is assigned a single trace ID.  At compile time, we can only
+  // insert up to 31 ASMs in the PL region.
+  constexpr int num_trace_id_per_asm = 1;
+  constexpr int min_trace_id_asm     = 576;
+  constexpr int max_trace_id_asm     = 607;
 
 } // end namespace xdp
 

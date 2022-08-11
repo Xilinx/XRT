@@ -160,9 +160,16 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     auto desc = tmp.label;
     pt.put("id", desc);
     pt.put("description", desc);
-    pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(tmp.input));
-    pt.put("voltage.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
-    pt.put("voltage.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    /*
+     * Use below calculation for sensor values:
+     * actual sensor value = sensor_value * (10 ^ (unit_modifier))
+     * Example: Sensor Value 12000, Units “Volts” & Unit Modifier -3 received.
+     * So, actual sensor value => 12000 * 10 ^ (-3) = 12 Volts.
+     */
+    auto unitm = pow(10, tmp.unitm);
+    pt.put("voltage.volts", static_cast<double>(tmp.input) * unitm);
+    pt.put("voltage.max", static_cast<double>(tmp.max) * unitm);
+    pt.put("voltage.average", static_cast<double>(tmp.average) * unitm);
     // these fields are also needed to differentiate between sensor types
     pt.put("voltage.is_present", "true");
     pt.put("current.is_present", "false");
@@ -173,9 +180,10 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   for (const auto& tmp : current) {
     bool found =false;
     auto desc = tmp.label;
-    auto amps = xrt_core::utils::format_base10_shiftdown3(tmp.input);
-    auto max = xrt_core::utils::format_base10_shiftdown3(tmp.max);
-    auto avg = xrt_core::utils::format_base10_shiftdown3(tmp.average);
+    auto unitm = pow(10, tmp.unitm);
+    auto amps = static_cast<double>(tmp.input) * unitm;
+    auto max = static_cast<double>(tmp.max) * unitm;
+    auto avg = static_cast<double>(tmp.average) * unitm;
 
     for (auto& kv : sensor_array) {
       auto id = kv.second.get<std::string>("id");
@@ -195,9 +203,9 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
 
     pt.put("id", tmp.label);
     pt.put("description", tmp.label);
-    pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(tmp.input));
-    pt.put("current.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
-    pt.put("current.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    pt.put("current.amps", amps);
+    pt.put("current.max", max);
+    pt.put("current.average", avg);
     // these fields are also needed to differentiate between sensor types
     pt.put("current.is_present", "true");
     pt.put("voltage.is_present", "false");

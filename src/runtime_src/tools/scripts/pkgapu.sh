@@ -30,6 +30,7 @@ usage()
 	echo "          -images                         Versal images path"
 	echo "          -clean                          Remove build files"
         echo "          -output                         output path"
+        echo "          -idcode                         id code of the part"
 	echo "This script requires tools: mkimage, xclbinutil, bootgen, rpmbuild, dpkg-deb. "
 	echo "There is mkimage in petalinux build, e.g."
 	echo "/proj/petalinux/2021.2/petalinux-v2021.2_daily_latest/tool/petalinux-v2021.2-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin/mkimage"
@@ -114,6 +115,9 @@ ROOTFS_ADDR="0x21000000"
 METADATA_ADDR="0x7FBD0000"
 METADATA_BUFFER_LEN=131072
 
+# default id code is for vck5000 part
+ID_CODE="0x14ca8093"
+
 clean=0
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -127,6 +131,10 @@ while [ $# -gt 0 ]; do
                 -output )
 			shift
                         OUTPUT_DIR=$1
+			;;
+                -idcode )
+			shift
+                        ID_CODE=$1
 			;;
 		-clean )
 			clean=1
@@ -165,11 +173,21 @@ if [[ ! (`which mkimage` && `which bootgen` && `which xclbinutil`) ]]; then
 	error "Please source Xilinx VITIS and Petalinux tools to make sure mkimage, bootgen and xclbinutil is accessible."
 fi
 
-PKG_VER=`cat $IMAGES_DIR/rootfs.manifest | grep "^xrt " | sed s/.*\ //`
-if [[ "X$PKG_VER" == "X" ]]; then
+PKG_VER_WITH_RELEASE=`cat $IMAGES_DIR/rootfs.manifest | grep "^xrt " | sed s/.*\ //`
+if [[ "X$PKG_VER_WITH_RELEASE" == "X" ]]; then
 	error "Can not get package version"
 fi
-echo VERSION "$PKG_VER"
+
+PKG_VER=${PKG_VER_WITH_RELEASE#*.}
+PKG_RELEASE=${PKG_VER_WITH_RELEASE%%.*}
+
+# Add patch number in version if 'XRT_VERSION_PATCH' env variable is defined
+if [[ ! -z $XRT_VERSION_PATCH ]]; then
+	PKG_VER=${PKG_VER%.*}.$XRT_VERSION_PATCH
+fi
+
+echo APU Package version : "$PKG_VER"
+echo APU Package release : "$PKG_RELEASE"
 
 if [ -d $BUILD_DIR ]; then
 	rm -rf $BUILD_DIR
@@ -188,7 +206,7 @@ BIF_FILE="$BUILD_DIR/apu.bif"
 cat << EOF > $BIF_FILE
 all:
 {
-    id_code = 0x14ca8093
+    id_code = $ID_CODE
     extended_id_code = 0x01
     image {
         id = 0x1c000000, name=apu_subsystem
@@ -210,7 +228,7 @@ MKIMAGE=mkimage
 UBOOT_SCRIPT="$BUILD_DIR/boot.scr"
 UBOOT_CMD="$BUILD_DIR/boot.cmd"
 cat << EOF > $UBOOT_CMD
-setenv bootargs "console=ttyUL0 clk_ignore_unused"
+setenv bootargs "console=ttyUL0 clk_ignore_unused modprobe.blacklist=allegro,al5d"
 bootm $KERNEL_ADDR $ROOTFS_ADDR $SYSTEM_DTB_ADDR
 EOF
 $MKIMAGE -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
@@ -287,6 +305,13 @@ fi
 dodeb $INSTALL_ROOT
 dorpm $INSTALL_ROOT
 
-cp $BUILD_DIR/*.rpm $OUTPUT_DIR
-cp $BUILD_DIR/*.deb $OUTPUT_DIR
+# Add _petalinux in apu package name for xrt pipeline build
+# remove this check after apu package build is removed from emb pipeline
+if [[ ! -z $XRT_VERSION_PATCH ]]; then
+    cp -v $BUILD_DIR/${PKG_NAME}*.rpm $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_petalinux.noarch.rpm
+    cp -v $BUILD_DIR/${PKG_NAME}*.deb $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_petalinux_all.deb
+else
+    cp -v $BUILD_DIR/${PKG_NAME}*.rpm $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}.noarch.rpm
+    cp -v $BUILD_DIR/${PKG_NAME}*.deb $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_all.deb
+fi
 rm -rf $BUILD_DIR

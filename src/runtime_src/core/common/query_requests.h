@@ -224,6 +224,7 @@ enum class key_type
   is_mfg,
   mfg_ver,
   is_recovery,
+  is_versal,
   is_ready,
   is_offline,
   f_flash_type,
@@ -254,6 +255,7 @@ enum class key_type
   ert_cu_write,
   ert_cu_read,
   ert_data_integrity,
+  ert_status,
 
   aim_counter,
   am_counter,
@@ -281,6 +283,9 @@ enum class key_type
   hwmon_sdm_revision,
   hwmon_sdm_fan_presence,
   hotplug_offline,
+
+  cu_size,
+  cu_read_range,
 
   noop
 };
@@ -904,6 +909,9 @@ struct sdm_sensor_info : request
    *  max      : maximum value
    *  average  : average value
    *  highest  : highest value (used for temperature sensors)
+   *  status   : sensor status
+   *  units    : sensor value units
+   *  unitm    : unit modifier value used to get actual sensor value
    */
   struct sensor_data {
     std::string label;
@@ -912,6 +920,8 @@ struct sdm_sensor_info : request
     uint32_t average {};
     uint32_t highest {};
     std::string status;
+    std::string units;
+    int8_t unitm;
   };
   using result_type = std::vector<sensor_data>;
   using req_type = sdr_req_type;
@@ -2494,6 +2504,21 @@ struct is_recovery : request
   get(const device*) const = 0;
 };
 
+/*
+ * struct is_versal - check if device is versal or not
+ * A value of true means it is a versal device.
+ * This entry is needed as some of the operations are handled
+ * differently on versal devices compared to Alveo devices
+ */
+struct is_versal : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::is_versal;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct is_ready : request
 {
   using result_type = bool;
@@ -2763,6 +2788,22 @@ struct ert_data_integrity : request
   {
     return value ? "Pass" : "Fail";
   }
+};
+
+struct ert_status : request
+{
+  struct ert_status_data {
+    bool        connected;
+    // add more in the future
+  };
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::ert_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static ert_status_data
+  to_ert_status(const result_type& strs);
 };
 
 struct noop : request
@@ -3037,6 +3078,31 @@ struct hotplug_offline : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct cu_size : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::cu_size;
+
+  virtual boost::any
+  get(const device*, modifier, const std::string&) const = 0;
+};
+
+struct cu_read_range : request
+{
+  struct range_data {
+    uint32_t start;
+    uint32_t end;
+  };
+  using result_type = std::string;
+  static const key_type key = key_type::cu_read_range;
+
+  virtual boost::any
+  get(const device*, modifier, const std::string&) const = 0;
+
+  static range_data
+  to_range(const std::string& str);
 };
 
 } // query

@@ -26,12 +26,20 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionDNACertificate::init SectionDNACertificate::initializer;
 
-SectionDNACertificate::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(DNA_CERTIFICATE, "DNA_CERTIFICATE", boost::factory<SectionDNACertificate*>()); 
+SectionDNACertificate::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(DNA_CERTIFICATE, "DNA_CERTIFICATE", boost::factory<SectionDNACertificate*>());
+
+  // Add format support empty (no support)
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
+
+// ----------------------------------------------------------------------------
 
 #define signatureSizeBytes 512
 
@@ -44,37 +52,38 @@ struct dnaEntry {
 
 #define dnaByteAlignment 64
 
-void 
-SectionDNACertificate::marshalToJSON(char* _pDataSection, 
-                                     unsigned int _sectionSize, 
+void
+SectionDNACertificate::marshalToJSON(char* _pDataSection,
+                                     unsigned int _sectionSize,
                                      boost::property_tree::ptree& _ptree) const
 {
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: DNA_CERTIFICATE");
   XUtil::TRACE_BUF("Section Buffer", reinterpret_cast<const char*>(_pDataSection), _sectionSize);
 
-  if ((_sectionSize % dnaByteAlignment ) != 0) {
+  if ((_sectionSize % dnaByteAlignment) != 0) {
     auto errMsg = boost::format("ERROR: The DNA_CERTIFICATE section size doesn't align to 64 byte boundaries.  Current size: %ld") % _sectionSize;
     throw std::runtime_error(errMsg.str());
   }
 
   static const int minimumSectionSizeBytes = signatureSizeBytes + dnaByteAlignment;
-  if (_sectionSize < minimumSectionSizeBytes ) {
+  if (_sectionSize < minimumSectionSizeBytes) {
     auto errMsg = boost::format("ERROR: The DNA_CERTIFICATE section size (%ld) is smaller then the minimum section permitted (%ld).") % _sectionSize % minimumSectionSizeBytes;
     throw std::runtime_error(errMsg.str());
   }
 
   // Get the dnsSignature
   std::string sDNSSignature;
-  XUtil::binaryBufferToHexString((unsigned char *) &_pDataSection[_sectionSize - signatureSizeBytes], signatureSizeBytes, sDNSSignature);
+  XUtil::binaryBufferToHexString((unsigned char*)&_pDataSection[_sectionSize - signatureSizeBytes], signatureSizeBytes, sDNSSignature);
 
   // Get the number of sections
-  unsigned char *pWorking = (unsigned char *) &_pDataSection[_sectionSize - signatureSizeBytes - sizeof (uint64_t)];
-  XUtil::TRACE_BUF("DNA Entries", (char *) pWorking, sizeof(uint64_t));
-  uint64_t dnaEntriesBitSize = 0;;
+  unsigned char* pWorking = (unsigned char*)&_pDataSection[_sectionSize - signatureSizeBytes - sizeof(uint64_t)];
+  XUtil::TRACE_BUF("DNA Entries", (char*)pWorking, sizeof(uint64_t));
+  uint64_t dnaEntriesBitSize = 0;
+  ;
   for (unsigned int index = 0; index < sizeof(uint64_t); ++index) {
     dnaEntriesBitSize = dnaEntriesBitSize << 8;
-    dnaEntriesBitSize += (uint64_t) pWorking[index];
+    dnaEntriesBitSize += (uint64_t)pWorking[index];
   }
 
   // Instead of dividing by 8 we multiple the other side by 8
@@ -95,20 +104,20 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
   std::string sPadding;
   uint64_t paddingOffset = dnaEntryCount * dnaEntrySizeBytes;
   uint64_t paddingSize = (_sectionSize - signatureSizeBytes) - paddingOffset;
-  XUtil::binaryBufferToHexString((unsigned char *) &_pDataSection[paddingOffset], paddingSize, sPadding);
+  XUtil::binaryBufferToHexString((unsigned char*)&_pDataSection[paddingOffset], paddingSize, sPadding);
 
 
 
   boost::property_tree::ptree dna_list;
-  struct dnaEntry *dnaEntries = reinterpret_cast<struct dnaEntry *>((void *)_pDataSection);
+  struct dnaEntry* dnaEntries = reinterpret_cast<struct dnaEntry*>((void*)_pDataSection);
 
   for (unsigned int index = 0; index < dnaEntryCount; ++index) {
     std::string dnaString;
-    XUtil::binaryBufferToHexString((unsigned char *) &dnaEntries[index], dnaEntrySizeBytes, dnaString);
+    XUtil::binaryBufferToHexString((unsigned char*)&dnaEntries[index], dnaEntrySizeBytes, dnaString);
 
     boost::property_tree::ptree ptDNA;
     ptDNA.put("", dnaString.c_str());
-    dna_list.push_back(std::make_pair("", ptDNA));
+    dna_list.push_back({ "", ptDNA });
   }
   XUtil::TRACE_PrintTree("DNA_LIST", dna_list);
 
@@ -122,16 +131,3 @@ SectionDNACertificate::marshalToJSON(char* _pDataSection,
   _ptree.add_child("dna_certificate", ptDNACertificate);
 }
 
-
-bool 
-SectionDNACertificate::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
-}

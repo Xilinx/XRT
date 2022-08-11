@@ -3,6 +3,7 @@
  * Xilinx Kernel Driver Scheduler
  *
  * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -24,16 +25,40 @@
 
 #define EV_ABORT	0x1
 
+/* Multiple CU context can be active under a single KDS client Context.
+ */
+struct kds_client_cu_ctx {
+	struct kds_client_ctx		*ctx;
+	u32				cu_idx;
+	u32		  		cu_domain;
+	u32				flags;
+	u32				ref_cnt;
+	struct list_head		link;
+};
+
+/* KDS CU information. */
+struct kds_client_cu_info {
+	u32				cu_idx;
+	u32		  		cu_domain;
+	u32				flags;
+};
+
 /* Multiple xclbin context can be active under a single client.
  * Client should maintain all the active XCLBIN.
  */
 struct kds_client_ctx {
-	struct list_head          link;
-	void			 *xclbin_id;
-	u32			  slot_idx;
-	u32			  num_ctx;
-	u32			  num_scu_ctx;
-	u32			  virt_cu_ref;
+	/* To support multiple context for multislot case */
+	struct list_head		link;
+	void				*xclbin_id;
+	u32				slot_idx;
+	/* To support multiple CU context */
+	struct list_head		cu_ctx_list;
+};
+
+struct kds_client_cu_refcnt {
+	struct mutex	          lock;
+	u32                       cu_refs[MAX_CUS];
+	u32                       scu_refs[MAX_CUS];
 };
 
 /**
@@ -68,9 +93,8 @@ struct kds_client {
 	struct list_head          graph_list;
 	spinlock_t                graph_list_lock;
 	u32                       aie_ctx;
+	struct kds_client_cu_refcnt  *refcnt;
 
-	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
-	DECLARE_BITMAP(scu_bitmap, MAX_CUS);
 	/* Per client statistics. Use percpu variable for two reasons
 	 * 1. no lock is need while modifying these counters
 	 * 2. do not need to worry about cache false share

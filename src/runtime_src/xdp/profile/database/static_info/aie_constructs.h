@@ -187,6 +187,7 @@ namespace xdp {
   public:
     uint32_t column;
     uint32_t row;
+    std::string trace_metric_set;
     aie_cfg_core core_trace_config;
     aie_cfg_memory memory_trace_config;
     aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}

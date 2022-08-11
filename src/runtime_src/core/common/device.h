@@ -404,7 +404,7 @@ public:
 
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
-  get_ert_slots() const;
+  get_ert_slots(const uuid& xclbin_id = uuid()) const;
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
@@ -425,6 +425,16 @@ public:
    * xclmgmt_load_xclbin() - loads the xclbin through the mgmt pf
    */
   virtual void xclmgmt_load_xclbin(const char*) const{}
+
+  /**
+   * shutdown_device() - hot reset the device, stop ongoing transactions
+   */
+  virtual void device_shutdown() const {}
+
+  /**
+   * online_device() - bring back the device online
+   */
+  virtual void device_online() const {}
 
   /**
    * open() - opens a device with an fd which can be used for non pcie read/write

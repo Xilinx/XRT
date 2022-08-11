@@ -350,6 +350,12 @@ struct xmc_pkt_hdr {
 	u32 op		: 8;
 };
 
+#define XMC_UNRECOVERABLE_ERR(val) \
+		((val == XMC_HOST_MSG_SAT_FW_WRITE_FAIL)  || \
+		 (val == XMC_HOST_MSG_SAT_FW_UPDATE_FAIL) || \
+		 (val == XMC_HOST_MSG_SAT_FW_LOAD_FAIL)   || \
+		 (val == XMC_HOST_MSG_SAT_FW_ERASE_FAIL))
+
 /* We have a 4k buffer for xmc mailbox */
 #define	XMC_PKT_MAX_SZ	1024 /* In u32 */
 #define	XMC_PKT_MAX_PAYLOAD_SZ	\
@@ -1957,7 +1963,7 @@ static ssize_t scaling_threshold_power_override_show(struct device *dev,
 	}
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uW\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t scaling_threshold_power_override_store(struct device *dev,
@@ -2049,7 +2055,7 @@ static ssize_t scaling_critical_temp_threshold_show(struct device *dev,
 		return sprintf(buf, "N/A\n");
 	}
 
-	return sprintf(buf, "%uC\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 static DEVICE_ATTR_RO(scaling_critical_temp_threshold);
 
@@ -2072,7 +2078,7 @@ static ssize_t scaling_threshold_temp_limit_show(struct device *dev,
 		val = xmc_get_threshold_temp(xmc);
 	}
 
-	return sprintf(buf, "%uC\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 static DEVICE_ATTR_RO(scaling_threshold_temp_limit);
 
@@ -2095,7 +2101,7 @@ static ssize_t scaling_threshold_power_limit_show(struct device *dev,
 		val = xmc_get_threshold_power(xmc);
 	}
 
-	return sprintf(buf, "%uW\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 static DEVICE_ATTR_RO(scaling_threshold_power_limit);
 
@@ -2142,7 +2148,7 @@ static ssize_t scaling_threshold_temp_override_show(struct device *dev,
 	}
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uC\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t scaling_threshold_temp_override_store(struct device *dev,
@@ -2324,7 +2330,7 @@ static ssize_t hwmon_scaling_target_power_show(struct device *dev,
 	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uW\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t hwmon_scaling_target_power_store(struct device *dev,
@@ -2380,7 +2386,7 @@ static ssize_t hwmon_scaling_target_temp_show(struct device *dev,
 	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uc\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t hwmon_scaling_target_temp_store(struct device *dev,
@@ -2443,7 +2449,7 @@ static ssize_t hwmon_scaling_threshold_temp_show(struct device *dev,
 	val = val * 1000;
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uC\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
@@ -2471,7 +2477,7 @@ static ssize_t hwmon_scaling_threshold_power_show(struct device *dev,
 	val = val * 1000000;
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uW\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t reg_base_show(struct device *dev,
@@ -4221,8 +4227,14 @@ static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 
 	if (val) {
 		xocl_err(&xmc->pdev->dev, "XMC packet error: %d\n", val);
-		xocl_err(&xmc->pdev->dev, "Card requires pci hot reset\n");
-		xmc->state = XMC_STATE_ERROR;
+		/*
+		 *  We set the xmc state as XMC_STATE_ERROR only if it's unrecoverable.
+		 *  e.g. get error while upgrading the sc firmware.
+		 */
+		if (XMC_UNRECOVERABLE_ERR(val)) {
+			xocl_err(&xmc->pdev->dev, "Card requires pci hot reset\n");
+			xmc->state = XMC_STATE_ERROR;
+		}
 		safe_read32(xmc, XMC_CONTROL_REG, &ctrl_val);
 		safe_write32(xmc, XMC_CONTROL_REG, ctrl_val | XMC_CTRL_ERR_CLR);
 		return -EIO;

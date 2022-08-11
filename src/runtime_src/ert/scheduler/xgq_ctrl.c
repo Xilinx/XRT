@@ -17,6 +17,7 @@
 #include "xgq_impl.h"
 #include "xgq_ctrl.h"
 #include "sched_cmd.h"
+#include "sched_print.h"
 
 /*
  * XGQ CU handler (MODE 1 - One XGQ per CU).

@@ -6,6 +6,7 @@
 #include <string>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace xrt_core { namespace query {
 
@@ -158,6 +159,42 @@ to_map(const result_type& value)
   for (const auto& data : value)
     s2u.emplace(data.slot, xrt::uuid{data.uuid});
   return s2u;
+}
+
+xrt_core::query::cu_read_range::range_data
+xrt_core::query::cu_read_range::
+to_range(const std::string& range_str)
+{
+  using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+  xrt_core::query::cu_read_range::range_data range = {0, 0};
+
+  tokenizer tokens(range_str);
+  const int radix = 16;
+  tokenizer::iterator tok_it = tokens.begin();
+  range.start = std::stoul(std::string(*tok_it++), nullptr, radix);
+  range.end = std::stoul(std::string(*tok_it++), nullptr, radix);
+
+  return range;
+}
+
+xrt_core::query::ert_status::ert_status_data
+xrt_core::query::ert_status::
+to_ert_status(const result_type& strs)
+{
+  using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+  xrt_core::query::ert_status::ert_status_data ert_status = {0};
+
+  for (auto& line : strs) {
+    // Format on each line: "<name>: <value>"
+    boost::char_separator<char> sep(":");
+    tokenizer tokens(line, sep);
+    auto tok_it = tokens.begin();
+    if (line.find("Connected:") != std::string::npos) {
+      ert_status.connected = std::stoi(std::string(*(++tok_it)));
+    }
+  }
+
+  return ert_status;
 }
 
 }} // query, xrt_core

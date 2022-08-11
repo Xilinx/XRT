@@ -499,7 +499,7 @@ prep_rhel()
 prep_amzn()
 {
     echo "Installing amazon EPEL..."
-    amazon-linux-extras install epel
+    amazon-linux-extras install -y epel
     echo "Installing cmake3 from EPEL repository..."
     yum install -y cmake3
     echo "Installing opencl header from EPEL repository..."

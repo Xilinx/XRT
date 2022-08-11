@@ -16,7 +16,8 @@
 obj-m	+= xocl.o
 ccflags-y := -Iinclude/drm
 
-include $(PWD)/../lib/Makefile.in
+export module_path ?= $(PWD)
+include $(module_path)/../lib/Makefile.in
 
 # Base on Linux Documentation/kbuild/modules.txt.
 # $(src) provides the absolute path by pointing to the directory
@@ -127,7 +128,7 @@ ccflags-y += -g
 endif
 
 QDMA_PATH := $(src)/../lib/libqdma/QDMA/linux-kernel/driver/libqdma/
-ccflags-y += -I$(QDMA_PATH) -I$(QDMA_PATH)/qdma_access/ -I$(QDMA_PATH)/qdma_access/qdma_soft_access/ -I$(QDMA_PATH)/qdma_access/qdma_s80_hard_access -I$(QDMA_PATH)/qdma_access/eqdma_soft_access
+ccflags-y += -I$(QDMA_PATH) -I$(QDMA_PATH)/qdma_access/ -I$(QDMA_PATH)/qdma_access/qdma_soft_access/ -I$(QDMA_PATH)/qdma_access/eqdma_soft_access -I$(QDMA_PATH)/qdma_access/qdma_cpm4_access/ -I$(QDMA_PATH)/qdma_access/eqdma_cpm5_access/
 
 all:
 	@echo $(PWD)

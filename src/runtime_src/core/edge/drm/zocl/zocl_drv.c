@@ -4,6 +4,7 @@
  * OpenCL accelerators.
  *
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -34,6 +35,7 @@
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
+#include "zocl_ert_intc.h"
 
 #define ZOCL_DRIVER_NAME        "zocl"
 #define ZOCL_DRIVER_DESC        "Zynq BO manager"
@@ -1067,6 +1069,13 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->cu_subdev.irq[index] = irq;
 	}
 	zdev->cu_subdev.cu_num = index;
+	if (zdev->cu_subdev.cu_num) {
+		ret = zocl_ert_create_intc(&pdev->dev, zdev->cu_subdev.irq,
+					   zdev->cu_subdev.cu_num, 0,
+					   ERT_CU_INTC_DEV_NAME, &zdev->cu_intc);
+		if (ret)
+			DRM_ERROR("Failed to create cu intc device, ret %d\n", ret);
+	}
 
 	/* set to 0xFFFFFFFF(32bit) or 0xFFFFFFFFFFFFFFFF(64bit) */
 	zdev->host_mem = (phys_addr_t) -1;
@@ -1248,6 +1257,7 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
 
+	zocl_ert_destroy_intc(zdev->cu_intc);
 	zocl_clear_mem(zdev);
 	mutex_destroy(&zdev->mm_lock);
 	zocl_pr_slot_fini(zdev);
@@ -1280,10 +1290,10 @@ static struct platform_driver *drivers[] = {
 	&zocl_ospi_versal_driver,
 	&cu_driver,
 	&scu_driver,
-	&zocl_drm_private_driver,
 	&zocl_csr_intc_driver,
-	&zocl_xgq_intc_driver,
+	&zocl_irq_intc_driver,
 	&zocl_cu_xgq_driver,
+	&zocl_drm_private_driver,
 	&zocl_ctrl_ert_driver,
 	&zocl_rpu_channel_driver,
 };

@@ -1,25 +1,11 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "system_linux.h"
 #include "device_linux.h"
 #include "core/common/query_requests.h"
 #include "gen/version.h"
 #include "scan.h"
-#include "core/pcie/common/memaccess.h"
 
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/format.hpp>
@@ -206,6 +192,14 @@ get_total_devices(bool is_user) const
   return std::make_pair(pcidev::get_dev_total(is_user), pcidev::get_dev_ready(is_user));
 }
 
+std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
+system_linux::
+get_bdf_info(device::id_type id, bool is_user) const
+{
+  auto pdev = pcidev::get_dev(id, is_user);
+  return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
+}
+
 void
 system_linux::
 scan_devices(bool, bool) const
@@ -264,45 +258,6 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force) cons
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
-}
-
-void
-system_linux::
-mem_read(const device* device, long long addr, long long size, const std::string& output_file) const
-{
-  auto get_ddr_mem_size = [device]() {
-    auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
-    auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
-
-    // convert ddr_size from GB to bytes
-    // return the result in KB
-    return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
-  };
-  auto bdf_str = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  auto handle = device->get_device_handle();
-  if(xcldev::memaccess(handle, get_ddr_mem_size(), getpagesize(), bdf_str)
-      .read(output_file, addr, size) < 0)
-    throw xrt_core::error(EINVAL, "Memory read failed");
-}
-
-void
-system_linux::
-mem_write(const device* device, long long addr, long long size, unsigned int pattern) const
-{
-  auto get_ddr_mem_size = [device]() {
-    auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(device);
-    auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(device);
-    
-    // convert ddr_size from GB to bytes
-    // return the result in KB
-    return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
-  };
-
-  auto bdf_str = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  auto handle = device->get_device_handle();
-  if(xcldev::memaccess(handle, get_ddr_mem_size(), getpagesize(), bdf_str)
-      .write(addr, size, pattern) < 0)
-    throw xrt_core::error(EINVAL, "Memory write failed");
 }
 
 namespace pcie_linux {

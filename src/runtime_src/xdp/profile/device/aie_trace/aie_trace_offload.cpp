@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,7 +27,11 @@
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 
-#ifdef XRT_ENABLE_AIE
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
 #include <sys/mman.h>
 #include "core/include/xrt.h"
 #include "core/edge/user/shim.h"
@@ -55,6 +60,7 @@ AIETraceOffload::AIETraceOffload
   , bufferInitialized(false)
   , offloadStatus(AIEOffloadThreadStatus::IDLE)
   , mEnCircularBuf(false)
+  , mCircularBufOverwrite(false)
 {
   bufAllocSz = deviceIntf->getAlignedTraceBufferSize(totalSz, static_cast<unsigned int>(numStream));
 }
@@ -77,9 +83,17 @@ bool AIETraceOffload::initReadTrace()
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
   } else {
     memIndex = 0;  // for now
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
     gmioDMAInsts.clear();
     gmioDMAInsts.resize(numStream);
+#endif
   }
+
+  checkCircularBufferSupport();
 
   for(uint64_t i = 0; i < numStream ; ++i) {
     buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
@@ -95,11 +109,13 @@ bool AIETraceOffload::initReadTrace()
     xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.c_str());
 
     if (isPLIO) {
-      if (continuousTrace())
-        checkCircularBufferSupport();
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i, mEnCircularBuf);
     } else {
-#ifdef XRT_ENABLE_AIE
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
@@ -169,7 +185,11 @@ void AIETraceOffload::endReadTrace()
       deviceIntf->resetAIETs2mm(i);
 //      deviceIntf->freeTraceBuf(b.boHandle);
     } else {
-#ifdef XRT_ENABLE_AIE
+/*
+ * XRT_NATIVE_BUILD is set only for x86 builds
+ * Only compile this on edge+versal build
+ */
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
@@ -197,6 +217,9 @@ void AIETraceOffload::endReadTrace()
 
 void AIETraceOffload::readTrace(bool final)
 {
+  if (mCircularBufOverwrite)
+    return;
+
   for (uint64_t index = 0; index < numStream; ++index) {
     auto& bd = buffers[index];
 
@@ -224,12 +247,16 @@ void AIETraceOffload::readTrace(bool final)
     if (bytes_written > bytes_read + bufAllocSz) {
       // Don't read any more data
       bd.offloadDone = true;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE);
+      std::stringstream msg;
+      msg << AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE << " Stream : " << index + 1 << std::endl;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       debug_stream
         << "Bytes Read : " << bytes_read
         << " Bytes Written : " << bytes_written
         << std::endl;
+
       // Fatal condition. Abort offload
+      mCircularBufOverwrite = true;
       stopOffload();
       return;
     }
@@ -306,13 +333,13 @@ bool AIETraceOffload::syncAndLog(uint64_t index)
   }
 
   // Log trace buffer
-  traceLogger->addAIETraceData(index, hostBuf, nBytes);
+  traceLogger->addAIETraceData(index, hostBuf, nBytes, mEnCircularBuf);
 
-    debug_stream
-      << "ts2mm_" << index << " : bytes : " << nBytes << " "
-      << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
-      << std::hex << "from 0x" << bd.offset << " to 0x"
-      << bd.usedSz << std::dec << std::endl;
+  debug_stream
+    << "ts2mm_" << index << " : bytes : " << nBytes << " "
+    << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
+    << std::hex << "from 0x" << bd.offset << " to 0x"
+    << bd.usedSz << std::dec << std::endl;
 
     // check for full buffer
   if ((bd.offset + nBytes >= bufAllocSz) && !mEnCircularBuf)
@@ -335,35 +362,42 @@ bool AIETraceOffload::isTraceBufferFull()
 
 void AIETraceOffload::checkCircularBufferSupport()
 {
-  if (!isPLIO || !deviceIntf->supportsCircBufAIE())
+  if (!deviceIntf->supportsCircBufAIE())
     return;
 
-  if (offloadIntervalUs != 0) {
+  mEnCircularBuf = xrt_core::config::get_aie_trace_settings_reuse_buffer();
+  if (!mEnCircularBuf)
+    return;
+
+  // gmio not supported
+  if (!isPLIO) {
+    mEnCircularBuf = false;
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_WARN_REUSE_GMIO);
+    return;
+  }
+
+  if (!continuousTrace()) {
+    mEnCircularBuf = false;
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_WARN_REUSE_PERIODIC);
+    return;
+  }
+
+  // Warn if circular buffer settings not adequate
+  if (offloadIntervalUs)
     circ_buf_cur_rate_plio = bufAllocSz * (1e6 / offloadIntervalUs);
-    if (circ_buf_cur_rate_plio >= circ_buf_min_rate_plio)
-      mEnCircularBuf = true;
-  } else {
-    mEnCircularBuf = true;
+  else
+    circ_buf_cur_rate_plio = circ_buf_min_rate_plio;
+
+  bool buffer_not_large_enough = (bufAllocSz < AIE_MIN_SIZE_CIRCULAR_BUF);
+  bool offload_not_fast_enough = (circ_buf_cur_rate_plio < circ_buf_min_rate_plio);
+
+  if (buffer_not_large_enough || offload_not_fast_enough) {
+    std::stringstream msg;
+    msg << AIE_TRACE_BUF_REUSE_WARN
+        << " Recommended offload rate (trace buffer bytes/sec) : " << circ_buf_min_rate_plio
+        << " Requested : " << circ_buf_cur_rate_plio ;
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
   }
-
-  if (!mEnCircularBuf &&
-      (xrt_core::config::get_verbosity() >= static_cast<unsigned int>(xrt_core::message::severity_level::info))) {
-
-    std::string msg = std::string(TS2MM_WARN_MSG_CIRC_BUF)
-      + " Minimum required offload rate (bytes per second) : "
-      + std::to_string(circ_buf_min_rate_plio)
-      + " Requested offload rate : "
-      + std::to_string(circ_buf_cur_rate_plio);
-    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
-  }
-
-  debug_stream
-    << "Circular buffer support : " << mEnCircularBuf
-    << " Min Rate : " << circ_buf_min_rate_plio
-    << " Cur Rate : " << circ_buf_cur_rate_plio
-    << " offloadIntervalUs : " << offloadIntervalUs
-    << " bufAllocSz : " << bufAllocSz
-    << std::endl;
 }
 
 void AIETraceOffload::startOffload()
