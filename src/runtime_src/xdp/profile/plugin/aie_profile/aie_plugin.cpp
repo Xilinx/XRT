@@ -367,6 +367,7 @@ namespace xdp {
     //     * aie_profile_core_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<heat_map|stalls|execution>
     //     * aie_profile_memory_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<dma_locks|conflicts>
     std::string metricSet  = vec.at( vec.size()-1 );
+
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
                            : ((mod == XAIE_MEM_MOD) ? "aie_memory" 
                            : "interface_tile");
@@ -1128,7 +1129,6 @@ namespace xdp {
       }
       for (auto &e : tiles) {
         mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
-        // check if same tiles are recognized
       }
     }  // Graph Pass 1
 
@@ -1152,10 +1152,8 @@ namespace xdp {
       }
       for (auto &e : tiles) {
         mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
-        // check if same tiles are recognized
       }
     }  // Graph Pass 2
-
 
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
 
@@ -1196,86 +1194,156 @@ namespace xdp {
         } // allGraphsDone
         for (auto &e : tiles) {
           mConfigMetrics[moduleIdx][e] = metrics[i][1];
-          // check if same tiles are recognized
         }
       }
     } // Pass 1 
 
     // Pass 2 : process only range of tiles metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-
-      if (XAIE_CORE_MOD == mod || XAIE_MEM_MOD == mod) {
-        if (3 != metrics[i].size()) {
-          continue;
-        }
-        for (size_t j = 0; j < metrics[i].size(); ++j) {
-          boost::replace_all(metrics[i][j], "{", "");
-          boost::replace_all(metrics[i][j], "}", "");
-        }
-        std::vector<std::string> minTile;
-        boost::split(minTile, metrics[i][0], boost::is_any_of(","));
-        uint32_t minCol = std::stoi(minTile[0]);
-        uint32_t minRow = std::stoi(minTile[1]);
-
-        std::vector<std::string> maxTile;
-        boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
-        uint32_t maxCol = std::stoi(maxTile[0]);
-        uint32_t maxRow = std::stoi(maxTile[1]);
-  
-        for (uint32_t col = minCol; col <= maxCol; ++col) {
-          for (uint32_t row = minRow; row <= maxRow; ++row) {
-            xrt_core::edge::aie::tile_type tile;
-            tile.col = col;
-            tile.row = row;
-//            tiles.push_back(tile);
-            mConfigMetrics[moduleIdx][tile] = metrics[i][2];
-            // check if same tiles are recognized
-          }
-        }
-      } else if (XAIE_PL_MOD == mod) {
-        if (3 != metrics[i].size()) {
-          continue;
-        }
-        // Implement
-      } 
       /* Note : mem_tile_metrics is not handled now. Add handling later
        */
+
+      std::vector<tile_type> tiles;
+
+      if (3 != metrics[i].size()) {
+        continue;
+      }
+
+      for (size_t j = 0; j < metrics[i].size(); ++j) {
+        boost::replace_all(metrics[i][j], "{", "");
+        boost::replace_all(metrics[i][j], "}", "");
+      }
+      std::vector<std::string> minTile;
+      boost::split(minTile, metrics[i][0], boost::is_any_of(","));
+      uint32_t minCol = std::stoi(minTile[0]);
+      uint32_t minRow = std::stoi(minTile[1]);
+
+      std::vector<std::string> maxTile;
+      boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
+      uint32_t maxCol = std::stoi(maxTile[0]);
+      uint32_t maxRow = std::stoi(maxTile[1]);
+
+      for (uint32_t col = minCol; col <= maxCol; ++col) {
+        for (uint32_t row = minRow; row <= maxRow; ++row) {
+          xrt_core::edge::aie::tile_type tile;
+          tile.col = col;
+          tile.row = row;
+          tiles.push_back(tile);
+        }
+      }
+      if (XAIE_PL_MOD == mod) {
+        // Check and set mem_row/column
+
+        int plioCount = 0;
+        auto plios = xrt_core::edge::aie::get_plios(device.get());
+        for (auto& plio : plios) {
+          auto isMaster = plio.second.slaveOrMaster;
+          auto streamId = plio.second.streamId;
+
+          // If looking for specific ID, make sure it matches
+          if ((mChannelId >= 0) && (mChannelId != streamId))
+            continue;
+
+          // Make sure it's desired polarity
+          // NOTE: input = slave (data flowing from PLIO)
+          //       output = master (data flowing to PLIO)
+          if ((isMaster && (metrics[i][2] == "input_bandwidths"))
+              || (isMaster && (metrics[i][2] == "input_stalls_idle"))
+              || (!isMaster && (metrics[i][2] == "output_bandwidths"))
+              || (!isMaster && (metrics[i][2] == "output_stalls_idle")))
+            continue;
+          plioCount++;
+
+          for(auto &t : tiles) {
+            if (t.col == plio.second.shimColumn) {
+              t.row = 0;
+              // Grab stream ID and slave/master (used in configStreamSwitchPorts())
+              t.itr_mem_col = isMaster;
+              t.itr_mem_row = streamId;
+            }
+          }
+        }
+          
+        if (plioCount == 0) {
+          std::string msg = "No tiles used channel ID " + std::to_string(mChannelId)
+                            + ". Please specify a valid channel ID.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+        }
+      } 
+
+      for (auto &e : tiles) {
+        mConfigMetrics[moduleIdx][e] = metrics[i][2];
+      }
     } // Pass 2 
 
     // Pass 3 : process only single tile metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-
-      if (XAIE_CORE_MOD == mod || XAIE_MEM_MOD == mod) {
-        if (2 != metrics[i].size()) {
-          continue;
-        }
-        if (0 == metrics[i][0].compare("all")) {
-          continue;
-        }
-        boost::replace_all(metrics[i][0], "{", "");
-        boost::replace_all(metrics[i][0], "}", "");
-
-        std::vector<std::string> tilePos;
-        boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
-
-        xrt_core::edge::aie::tile_type tile;
-        tile.col = std::stoi(tilePos[0]);
-        tile.row = std::stoi(tilePos[1]);
-//        tiles.push_back(tile);
-        mConfigMetrics[moduleIdx][tile] = metrics[i][1];
-      } else if (XAIE_PL_MOD == mod) {
-        if (2 != metrics[i].size()) {
-          continue;
-        }
-        if (0 == metrics[i][0].compare("all")) {
-          continue;
-        }
-        // Implement
-      } 
       /* Note : mem_tile_metrics is not handled now. Add handling later
        */
-    } // Pass 3 
 
+      std::vector<tile_type> tiles;
+      if (2 != metrics[i].size()) {
+        continue;
+      }
+      if (0 == metrics[i][0].compare("all")) {
+        continue;
+      }
+
+      boost::replace_all(metrics[i][0], "{", "");
+      boost::replace_all(metrics[i][0], "}", "");
+
+      std::vector<std::string> tilePos;
+      boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
+
+      xrt_core::edge::aie::tile_type tile;
+      tile.col = std::stoi(tilePos[0]);
+      tile.row = std::stoi(tilePos[1]);
+      tiles.push_back(tile);
+
+      if (XAIE_PL_MOD == mod) {
+        // Check and set mem_row/column
+
+        int plioCount = 0;
+        auto plios = xrt_core::edge::aie::get_plios(device.get());
+        for (auto& plio : plios) {
+          auto isMaster = plio.second.slaveOrMaster;
+          auto streamId = plio.second.streamId;
+
+          // If looking for specific ID, make sure it matches
+          if ((mChannelId >= 0) && (mChannelId != streamId))
+            continue;
+
+          // Make sure it's desired polarity
+          // NOTE: input = slave (data flowing from PLIO)
+          //       output = master (data flowing to PLIO)
+          if ((isMaster && (metrics[i][1] == "input_bandwidths"))
+                || (isMaster && (metrics[i][1] == "input_stalls_idle"))
+                || (!isMaster && (metrics[i][1] == "output_bandwidths"))
+                || (!isMaster && (metrics[i][1] == "output_stalls_idle")))
+            continue;
+          plioCount++;
+
+          for(auto &t : tiles) {
+            if (t.col == plio.second.shimColumn) {
+              t.row = 0;
+              // Grab stream ID and slave/master (used in configStreamSwitchPorts())
+              t.itr_mem_col = isMaster;
+              t.itr_mem_row = streamId;
+            }
+          }
+        }
+          
+        if (plioCount == 0) {
+          std::string msg = "No tiles used channel ID " + std::to_string(mChannelId)
+                             + ". Please specify a valid channel ID.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+        }
+      }
+        
+      for (auto &e : tiles) {
+        mConfigMetrics[moduleIdx][e] = metrics[i][1];
+      }
+    } // Pass 3 
 
     // check validity, set default and remove "off" tiles
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
@@ -1361,6 +1429,7 @@ namespace xdp {
     for(int module = 0; module < NUM_MODULES; ++module) {
       bool findTileMetric = false;
       if (!metricsConfig[module].empty()) {
+        boost::replace_all(metricsConfig[module], " ", "");
         boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
         findTileMetric = true;        
       } else {
@@ -1374,6 +1443,7 @@ namespace xdp {
 #endif
       }
       if (!graphmetricsConfig[module].empty()) {
+        boost::replace_all(graphmetricsConfig[module], " ", "");
         boost::split(graphmetricsSettings[module], graphmetricsConfig[module], boost::is_any_of(";"));
         findTileMetric = true;        
       } else {
