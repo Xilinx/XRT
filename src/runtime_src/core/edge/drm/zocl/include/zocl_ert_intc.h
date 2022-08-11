@@ -45,7 +45,7 @@ struct zocl_ert_intc_handler {
 };
 
 struct zocl_ert_intc_drv_data {
-	void (*add)(struct platform_device *pdev, u32 id, irq_handler_t handler, void *arg);
+	int (*add)(struct platform_device *pdev, u32 id, irq_handler_t handler, void *arg);
 	void (*remove)(struct platform_device *pdev, u32 id);
 	void (*config)(struct platform_device *pdev, u32 id, bool enabled);
 };
@@ -53,10 +53,10 @@ struct zocl_ert_intc_drv_data {
 #define	ERT_INTC_DRVDATA(pdev)	\
 	((struct zocl_ert_intc_drv_data *)platform_get_device_id(pdev)->driver_data)
 
-static inline void
+static inline int
 zocl_ert_intc_add(struct platform_device *pdev, u32 id, irq_handler_t cb, void *arg)
 {
-	ERT_INTC_DRVDATA(pdev)->add(pdev, id, cb, arg);
+	return ERT_INTC_DRVDATA(pdev)->add(pdev, id, cb, arg);
 }
 
 static inline void

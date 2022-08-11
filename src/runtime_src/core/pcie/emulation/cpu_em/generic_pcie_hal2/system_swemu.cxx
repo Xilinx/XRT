@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -86,20 +87,6 @@ system::
 program_plp(const xrt_core::device* dev, const std::vector<char> &buffer) const
 {
   throw std::runtime_error("plp program is not supported");
-}
-
-void
-system::
-mem_read(const xrt_core::device* dev, long long addr, long long size, const std::string& output_file) const
-{
-  throw std::runtime_error("memory read is not supported");
-}
-
-void
-system::
-mem_write(const xrt_core::device* device, long long addr, long long size, unsigned int pattern) const
-{
-  throw std::runtime_error("memory write is not supported");
 }
 
 std::shared_ptr<xrt_core::device>

@@ -1,6 +1,5 @@
-/*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
+/**
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,20 +14,23 @@
  * under the License.
  */
 
-#ifndef _XRT_COMMON_ENQUEUE_H_
-#define _XRT_COMMON_ENQUEUE_H_
+#ifndef __SubCmdExamineInternal_h_
+#define __SubCmdExamineInternal_h_
 
-// This file defines implementation extensions to the XRT BO APIs.
-#include "core/include/experimental/xrt_enqueue.h"
+#include "tools/common/SubCmd.h"
+#include "tools/common/Report.h"
 
-namespace xrt_core { namespace enqueue {
+class SubCmdExamineInternal : public SubCmd {
+ public:
+  virtual void execute(const SubCmdOptions& _options)  const;
 
-// Callback to notify event of completion 
-void
-done(xrt::event_impl* ev);
+ protected:
+  const bool m_is_user_space;
+  static const ReportCollection m_report_collection;
 
-} // event
-  
-}
+ public:
+  SubCmdExamineInternal(bool is_user_space);
+};
 
 #endif
+

@@ -1222,8 +1222,6 @@ namespace xdp {
   }
 
   // ************************************************************************
-  // ***** Functions for  *****
-
 
   bool VPStaticDatabase::validXclbin(void* devHandle)
   {
@@ -1231,36 +1229,22 @@ namespace xdp {
       xrt_core::get_userpf_device(devHandle);
 
     // If this xclbin was built with tools before the 2019.2 release, we
-    //  do not support profiling
-    std::pair<const char*, size_t> buildMetadata =
-      device->get_axlf_section(BUILD_METADATA);
-    const char* buildMetadataSection = buildMetadata.first;
-    size_t      buildMetadataSz      = buildMetadata.second;
-    if (buildMetadataSection != nullptr) {
-      std::stringstream ss ;
-      ss.write(buildMetadataSection, buildMetadataSz) ;
+    //  do not support device profiling.  The XRT version of 2019.2 was 2.5.459
+    auto xclbin = device->get_xclbin(device->get_xclbin_uuid());
+    const axlf* binary = xclbin.get_axlf();
 
-      boost::property_tree::ptree pt;
-      boost::property_tree::read_json(ss, pt);
+    if (binary == nullptr)
+      return false;
 
-      std::string version =
-        pt.get<std::string>("build_metadata.xclbin.generated_by.version", "") ;
+    auto major = static_cast<unsigned int>(binary->m_header.m_versionMajor);
+    auto minor = static_cast<unsigned int>(binary->m_header.m_versionMinor);
 
-      if (version == "" || version.find(".") == std::string::npos)
-        return false ;
+    if (major < earliestSupportedXRTVersionMajor())
+      return false;
+    if (minor < earliestSupportedXRTVersionMinor())
+      return false;
 
-      // The stod function handles strings that have one decimal point
-      //  or multiple decimal points and return only the major number
-      //  and minor number and strips away the revision.
-      double majorAndMinor = std::stod(version, nullptr) ;
-      if (majorAndMinor < earliestSupportedToolVersion())
-        return false ;
-
-      return true ;
-    }
-
-    // If the build section does not exist, then this is not a valid xclbin
-    return false ;
+    return true;
   }
 
   double VPStaticDatabase::findClockRate(std::shared_ptr<xrt_core::device> device)

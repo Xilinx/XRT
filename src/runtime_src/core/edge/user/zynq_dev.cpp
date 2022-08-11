@@ -162,17 +162,22 @@ get_render_devname()
 
     // On Edge platforms 'zyxclmm_drm' is the name of zocl node in device tree
     // A symlink to render device is created based on this node name
-    static const std::regex filter{"platform.*zyxclmm_drm-render"};
+    try {
+        static const std::regex filter{"platform.*zyxclmm_drm-render"};
 
-    boost::filesystem::directory_iterator end_itr;
-    for( boost::filesystem::directory_iterator itr( render_dev_sym_dir ); itr != end_itr; ++itr) {
-        if (!std::regex_match(itr->path().filename().string(), filter))
-	    continue;
+        boost::filesystem::directory_iterator end_itr;
+        for (boost::filesystem::directory_iterator itr( render_dev_sym_dir ); itr != end_itr; ++itr) {
+            if (!std::regex_match(itr->path().filename().string(), filter))
+	        continue;
 
-	if (boost::filesystem::is_symlink(itr->path()))
-	    render_devname = boost::filesystem::read_symlink(itr->path()).filename().string();
+	    if (boost::filesystem::is_symlink(itr->path()))
+	        render_devname = boost::filesystem::read_symlink(itr->path()).filename().string();
 
-	break;
+	    break;
+	}
+    }
+    catch (std::exception &e) {
+        render_devname = "renderD128";
     }
 
     if (render_devname.empty())
