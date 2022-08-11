@@ -154,10 +154,11 @@ namespace xclhwemhal2 {
     }
     if (buf_size < new_size)
     {
-      void *temp = buf;
-      buf = (void*) realloc(temp,new_size);
-      if (!buf) // prevent leak of original buf
-        free(temp);
+      void *result = realloc(buf, new_size);
+      // If realloc was unsuccessful, then return the original size of buf.
+      if (result == NULL)
+        return buf_size;
+      buf = result;
       return new_size;
     }
     return buf_size;
