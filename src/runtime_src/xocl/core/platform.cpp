@@ -19,7 +19,7 @@
 #include "debug.h"
 
 #include "xocl/xclbin/xclbin.h"
-#include "core/common/api/exec.h"
+#include "core/common/api/hw_queue.h"
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
@@ -109,7 +109,7 @@ platform::
     // static global destruction
     // synchronize with execution monitor thread which
     // may be in the process of notifying completed events
-    xrt_core::exec::stop();
+    xrt_core::hw_queue::stop();
     g_platform = nullptr;
   }
   catch (const std::exception& ex) {
