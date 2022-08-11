@@ -9,6 +9,7 @@
 #include "core/common/system.h"
 #include "plugin/xdp/device_offload.h"
 #include "plugin/xdp/hal_trace.h"
+#include "plugin/xdp/pl_deadlock.h"
 
 namespace {
 
@@ -409,6 +410,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     device->register_axlf(buffer);
     // Call update_device only when xclbin is loaded and registered successfully
     xdp::hw_emu::update_device(handle);
+    xdp::pl_deadlock::update_device(handle);
     ret = xrt_core::scheduler::init(handle, buffer);
   }
   return ret;
