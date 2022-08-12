@@ -1076,8 +1076,6 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		kds_free_cu_ctx(client, cu_ctx);
 	}
 	
-	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
-	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
 	mutex_unlock(&client->lock);
 }
 
@@ -1105,8 +1103,6 @@ _kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 		kds_free_cu_ctx(client, cu_ctx);
 	}
 	
-	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
-	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
 	mutex_unlock(&client->lock);
 }
 
@@ -1129,6 +1125,11 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 			_kds_fini_hw_ctx_client(kds, client, curr);
 		}
 	}
+
+	mutex_lock(&client->lock);
+	kds_client_set_cu_refs_zero(client, DOMAIN_PS);
+	kds_client_set_cu_refs_zero(client, DOMAIN_PL);
+	mutex_unlock(&client->lock);
 
 	put_pid(client->pid);
 	mutex_destroy(&client->lock);
@@ -1940,7 +1941,7 @@ u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 		client = list_entry(ptr, struct kds_client, link);
 
 		/* For legacy context */
-		if(!list_empty(&client->ctx->cu_ctx_list))
+		if(client->ctx && !list_empty(&client->ctx->cu_ctx_list))
 			count++;
 
 		/* For hw context */
@@ -1961,7 +1962,7 @@ u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 		client = list_entry(ptr, struct kds_client, link);
 	
 		/* For legacy context */
-		if(!list_empty(&client->ctx->cu_ctx_list)) {
+		if(client->ctx && !list_empty(&client->ctx->cu_ctx_list)) {
 			pl[i] = pid_nr(client->pid);
 			i++;
 		}
