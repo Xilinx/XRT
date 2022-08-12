@@ -54,6 +54,9 @@
 // Use some arbitrary large number here
 #define TS2MM_QUEUE_SZ_WARN_THRESHOLD 5000
 
+// In some cases, we cannot use coarse mode
+#define COARSE_MODE_UNSUPPORTED "Coarse mode cannot be enabled. Defaulting to fine mode. Please check compilation for details."
+
 #define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Device trace could be incomplete. Suggested fixes:\n\
 1. Use larger FIFO size or DDR/HBM bank as 'trace_memory' in linking options.\n\
 2. Use 'coarse' option for device_trace and/or turn off stall_trace in runtime settings."
@@ -88,6 +91,7 @@ trace settings."
 #define AIE_TRACE_WARN_REUSE_PERIODIC  "AIE Trace Buffer reuse only supported with periodic offload."
 #define AIE_TRACE_WARN_REUSE_GMIO      "AIE Trace buffer reuse is not supported on GMIO trace."
 #define AIE_TRACE_PERIODIC_OFFLOAD_UNSUPPORTED "Continuous offload of AIE Trace is not supported for GMIO mode. So, AIE Trace for GMIO mode will be offloaded only at the end of application."
+#define AIE_TRACE_CIRC_BUF_EN          "Circular buffers enabled for AIE trace."
 
 // Trace file Dump Settings and Warnings
 #define MIN_TRACE_DUMP_INTERVAL_S 1
