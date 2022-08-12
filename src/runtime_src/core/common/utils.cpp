@@ -20,8 +20,8 @@
 #include "system.h"
 #include "utils.h"
 #include <atomic>
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <mutex>
 #include <sstream>
