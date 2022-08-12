@@ -328,8 +328,8 @@ struct xgq_cmd_cq_clk_scaling_payload {
 	uint8_t clk_scaling_mode:2;
 	uint8_t clk_scaling_en:1;
 	uint8_t rsvd:4;
-	uint16_t temp_shutdown_limit:8;
-	uint16_t temp_scaling_limit:8;
+	uint8_t temp_shutdown_limit;
+	uint8_t temp_scaling_limit;
 	uint16_t pwr_shutdown_limit;
 	uint16_t pwr_scaling_limit;
 };

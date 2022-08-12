@@ -57,22 +57,27 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
     for (const auto& pt : clk_scaling_data) {
       runtime_tree.put("supported", pt.support);
       runtime_tree.put("enabled", pt.enable);
+
       boost::property_tree::ptree shutdown_data;
       shutdown_data.put("power_watts", pt.pwr_shutdown_limit);
       shutdown_data.put("temp_celsius", pt.temp_shutdown_limit);
       runtime_tree.add_child("shutdown_threshold_limits", shutdown_data);
+
       boost::property_tree::ptree threshold_data;
       threshold_data.put("power_watts", pt.pwr_scaling_limit);
       threshold_data.put("temp_celsius", pt.temp_scaling_limit);
       runtime_tree.add_child("override_threshold_limits", threshold_data);
+
       boost::property_tree::ptree temp_override_data;
       temp_override_data.put("enabled", "true");
       temp_override_data.put("temp_celsius", pt.temp_scaling_ovrd_limit);
       runtime_tree.add_child("temp_threshold_override", temp_override_data);
+
       boost::property_tree::ptree pwr_override_data;
       pwr_override_data.put("enabled", "true");
       pwr_override_data.put("power_watts", pt.pwr_scaling_ovrd_limit);
       runtime_tree.add_child("power_threshold_override", pwr_override_data);
+
       cmc_tree.add_child("scaling", runtime_tree);
     }
   }
