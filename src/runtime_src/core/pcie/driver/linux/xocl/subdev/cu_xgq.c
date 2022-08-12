@@ -3,6 +3,7 @@
  * Xilinx Alveo CU Sub-device Driver
  *
  * Copyright (C) 2021-2022 Xilinx, Inc.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -144,7 +145,7 @@ int xrt_cu_xgq_init(struct xrt_cu *xcu, int slow_path)
 		prot = XGQ_PROT_NEED_RESP;
 
 	core->xgq = xcu->info.xgq;
-	err = xocl_xgq_attach(core->xgq, (void *)core, prot, &core->xgq_client_id);
+	err = xocl_xgq_attach(core->xgq, (void *)core, &xcu->sem_cu,  prot, &core->xgq_client_id);
 	if (err)
 		return err;
 
