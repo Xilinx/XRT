@@ -398,6 +398,7 @@ void AIETraceOffload::checkCircularBufferSupport()
         << " Requested : " << circ_buf_cur_rate_plio ;
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
   }
+  xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", AIE_TRACE_CIRC_BUF_EN);
 }
 
 void AIETraceOffload::startOffload()

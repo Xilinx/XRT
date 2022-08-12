@@ -79,10 +79,19 @@ class DeviceIntf {
     XDP_EXPORT
     uint64_t getFifoSize();
 
+    // Axi Interface Monitor
     bool isHostAIM(uint32_t index) {
       return mAimList[index]->isHostMonitor();
     }
-    
+    // Turn off coarse mode if any of the kernel AIMs can't support it
+    bool supportsCoarseModeAIM() {
+      for (auto mon : mAimList) {
+        if (!mon->isHostMonitor() && !mon->hasCoarseMode()  )
+          return false;
+      }
+      return true;
+    }
+
     // Counters
     XDP_EXPORT
     size_t startCounters();

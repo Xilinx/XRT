@@ -33,29 +33,29 @@ namespace AXI_LITE {
 // the AM IP accessible over the AXI-Lite connection.  If using
 // xclRead or xclWrite, these offsets are used.  The upper 32-bits
 // of each register require a separate offset and access.
-constexpr int CONTROL                    = 0x08;
-constexpr int TRACE_CTRL                 = 0x10;
-constexpr int SAMPLE                     = 0x20;
-constexpr int EXECUTION_COUNT            = 0x80;
-constexpr int EXECUTION_CYCLES           = 0x84;
-constexpr int STALL_INT                  = 0x88;
-constexpr int STALL_STR                  = 0x8C;
-constexpr int STALL_EXT                  = 0x90;
-constexpr int MIN_EXECUTION_CYCLES       = 0x94;
-constexpr int MAX_EXECUTION_CYCLES       = 0x98;
-constexpr int TOTAL_CU_START             = 0x9C;
-constexpr int EXECUTION_COUNT_UPPER      = 0xA0;
-constexpr int EXECUTION_CYCLES_UPPER     = 0xA4;
-constexpr int STALL_INT_UPPER            = 0xA8;
-constexpr int STALL_STR_UPPER            = 0xAC;
-constexpr int STALL_EXT_UPPER            = 0xB0;
-constexpr int MIN_EXECUTION_CYCLES_UPPER = 0xB4;
-constexpr int MAX_EXECUTION_CYCLES_UPPER = 0xB8;
-constexpr int TOTAL_CU_START_UPPER       = 0xBC;
-constexpr int BUSY_CYCLES                = 0xC0;
-constexpr int BUSY_CYCLES_UPPER          = 0xC4;
-constexpr int MAX_PARALLEL_ITER          = 0xC8;
-constexpr int MAX_PARALLEL_ITER_UPPER    = 0xCC;
+constexpr unsigned int CONTROL                    = 0x08;
+constexpr unsigned int TRACE_CTRL                 = 0x10;
+constexpr unsigned int SAMPLE                     = 0x20;
+constexpr unsigned int EXECUTION_COUNT            = 0x80;
+constexpr unsigned int EXECUTION_CYCLES           = 0x84;
+constexpr unsigned int STALL_INT                  = 0x88;
+constexpr unsigned int STALL_STR                  = 0x8C;
+constexpr unsigned int STALL_EXT                  = 0x90;
+constexpr unsigned int MIN_EXECUTION_CYCLES       = 0x94;
+constexpr unsigned int MAX_EXECUTION_CYCLES       = 0x98;
+constexpr unsigned int TOTAL_CU_START             = 0x9C;
+constexpr unsigned int EXECUTION_COUNT_UPPER      = 0xA0;
+constexpr unsigned int EXECUTION_CYCLES_UPPER     = 0xA4;
+constexpr unsigned int STALL_INT_UPPER            = 0xA8;
+constexpr unsigned int STALL_STR_UPPER            = 0xAC;
+constexpr unsigned int STALL_EXT_UPPER            = 0xB0;
+constexpr unsigned int MIN_EXECUTION_CYCLES_UPPER = 0xB4;
+constexpr unsigned int MAX_EXECUTION_CYCLES_UPPER = 0xB8;
+constexpr unsigned int TOTAL_CU_START_UPPER       = 0xBC;
+constexpr unsigned int BUSY_CYCLES                = 0xC0;
+constexpr unsigned int BUSY_CYCLES_UPPER          = 0xC4;
+constexpr unsigned int MAX_PARALLEL_ITER          = 0xC8;
+constexpr unsigned int MAX_PARALLEL_ITER_UPPER    = 0xCC;
 } // end namespace AXI_LITE
 
 namespace sysfs {
@@ -94,11 +94,11 @@ constexpr int TOTAL_CU_START       = 7;
 namespace mask {
 // These are the masks to be applied to the properties field of the AM
 // to determine a particular instance's configuration.
-constexpr int PROPERTY_64BIT     = 0x8;
-constexpr int PROPERTY_STALL     = 0x4;
-constexpr int COUNTER_RESET      = 0x00000002;
-constexpr int DATAFLOW_EN        = 0x00000008;
-constexpr int TRACE_STALL_SELECT = 0x0000001c;
+constexpr unsigned int PROPERTY_64BIT     = 0x8;
+constexpr unsigned int PROPERTY_STALL     = 0x4;
+constexpr unsigned int COUNTER_RESET      = 0x00000002;
+constexpr unsigned int DATAFLOW_EN        = 0x00000008;
+constexpr unsigned int TRACE_STALL_SELECT = 0x0000001c;
 } // end namespace mask 
 
 } // end namespace xdp::IP::AM
