@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -59,6 +60,10 @@
  *                          (post only)
  * @XCL_MAILBOX_REQ_CHG_SHELL: shell change is required on mgmt pf (post only)
  * @XCL_MAILBOX_REQ_PROGRAM_SHELL: request mgmt pf driver to reprogram shell
+ * @XCL_MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR: download xclbin (pointed to by a pointer)
+ * 					to a specific slot (PS/PL)
+ * @XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN: download xclbin (bitstream is in payload)
+ * 					to a specific slot (PS/PL)
  */
 enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_UNKNOWN =		0,
@@ -78,6 +83,8 @@ enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_PROGRAM_SHELL =		14,
 	XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
 	XCL_MAILBOX_REQ_SDR_DATA =		16,
+	XCL_MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR = 17,
+	XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN =	18,
 	XCL_MAILBOX_REQ_MAX,
 	/* Version 0 OP code ends */
 };
@@ -116,6 +123,7 @@ enum xcl_group_kind {
 	XCL_SDR_VOLTAGE,
 	XCL_SDR_CURRENT,
 	XCL_SDR_POWER,
+	XCL_MULTISLOT_VERSION,
 };
 
 /**
@@ -203,6 +211,15 @@ struct xcl_sensor {
 	uint32_t heartbeat_err_code;
 	uint32_t heartbeat_stall;
 };
+
+/**
+ * struct xcl_multislot_info - Data structure used to fetch
+ * multislot version
+ */
+struct xcl_multislot_info {
+	uint32_t multislot_version;
+};
+
 /**
  * struct xcl_hwicap - Data structure used to fetch ICAP group
  */
@@ -328,11 +345,30 @@ struct xcl_mailbox_peer_state {
 };
 
 /**
+ * struct mailbox_bitstream_slot_kaddr - MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR
+ *  payload type to pass slot information
+ * @addr: pointer to xclbin body
+ * @slot_idx: Target slot index
+ */
+struct xcl_mailbox_bitstream_slot_kaddr {
+	uint64_t addr;
+	uint32_t slot_idx;
+};
+
+/**
  * struct mailbox_bitstream_kaddr - MAILBOX_REQ_LOAD_XCLBIN_KADDR payload type
  * @addr: pointer to xclbin body
  */
 struct xcl_mailbox_bitstream_kaddr {
 	uint64_t addr;
+};
+
+/**
+ * struct mailbox_bitstream_slot_xclbin - MAILBOX_REQ_LOAD_SLOT_XCLBIN payload type
+ * @slot_idx: Target slot index
+ */
+struct xcl_mailbox_bitstream_slot_xclbin {
+	uint32_t slot_idx;
 };
 
 /**

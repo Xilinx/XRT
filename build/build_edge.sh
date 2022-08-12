@@ -51,7 +51,8 @@ install_recipes()
         echo 'DEPENDS += "rapidjson"' >> $XRT_BB
         echo 'DEPENDS:append:versal += "libdfx"' >> $XRT_BB
         echo 'DEPENDS:append:zynqmp += "libdfx"' >> $XRT_BB
-        echo "FILES:\${PN} += \"\${libdir}/ps_kernels_lib\"" >> $XRT_BB
+        echo "FILES:\${PN} += \"\${libdir}/ps_kernels_lib \ " >> $XRT_BB
+        echo "                 \${datadir}\"" >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=da5408f748bce8a9851dac18e66f4bcf \' >> $XRT_BB

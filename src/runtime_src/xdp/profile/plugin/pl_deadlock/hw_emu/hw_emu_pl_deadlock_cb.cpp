@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +15,23 @@
  * under the License.
  */
 
-#ifndef __Process_h_
-#define __Process_h_
+#define XDP_SOURCE
 
-#include <vector>
+#include "hw_emu_pl_deadlock_cb.h"
+#include "hw_emu_pl_deadlock_plugin.h"
 
-namespace XBUtilities {
-  unsigned int
-  runScript(const std::string & env,
-            const std::string & script,
-            const std::vector<std::string> & args,
-            const std::string & running_description,
-            const std::chrono::seconds& max_running_duration,
-            std::ostringstream & os_stdout,
-            std::ostringstream & os_stderr);
-};
+namespace xdp {
+  static HwEmuPLDeadlockPlugin hwEmuPlDeadlockPluginInstance;
 
-#endif
+  static void updateDevicePLDeadlock(void* handle)
+  {
+    hwEmuPlDeadlockPluginInstance.updateDevice(handle);
+  }
+
+}
+
+extern "C"
+void updateDevicePLDeadlock(void* handle) 
+{
+  xdp::updateDevicePLDeadlock(handle);
+}

@@ -98,7 +98,7 @@ endif()
 # This file acts as sample json file and will be removed in future releases
 if (${XRT_NATIVE_BUILD} STREQUAL "no")
   set(XRT_SUBCOMMANDS_JSON ../common/xrt_subcommands.json)
-  install(FILES ${XRT_SUBCOMMANDS_JSON} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
+  install(FILES ${XRT_SUBCOMMANDS_JSON} DESTINATION ${XRT_INSTALL_DIR}/share)
 endif()
 
 # Install our built executable

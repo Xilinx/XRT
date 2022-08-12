@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +15,19 @@
  * under the License.
  */
 
-#ifndef __Process_h_
-#define __Process_h_
+#ifndef PL_DEADLOCK_DOT_H
+#define PL_DEADLOCK_DOT_H
 
-#include <vector>
+namespace xdp {
+namespace pl_deadlock {
 
-namespace XBUtilities {
-  unsigned int
-  runScript(const std::string & env,
-            const std::string & script,
-            const std::vector<std::string> & args,
-            const std::string & running_description,
-            const std::chrono::seconds& max_running_duration,
-            std::ostringstream & os_stdout,
-            std::ostringstream & os_stderr);
-};
+  void load();
+  void register_callbacks(void* handle);
+  void warning_callbacks();
+
+  void update_device(void* handle);
+
+} // end namespace pl_deadlock
+} // end namespace xdp
 
 #endif

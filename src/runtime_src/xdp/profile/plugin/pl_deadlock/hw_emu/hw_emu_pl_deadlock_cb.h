@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +15,14 @@
  * under the License.
  */
 
-#ifndef __Process_h_
-#define __Process_h_
+#ifndef HW_EMU_PL_DEADLOCK_CB_DOT_H
+#define HW_EMU_PL_DEADLOCK_CB_DOT_H
 
-#include <vector>
+// These are the functions that are visible when the plugin is dynamically
+//  loaded.  They should be linked to callbacks in XRT via dlsym and then
+//  called directly.
 
-namespace XBUtilities {
-  unsigned int
-  runScript(const std::string & env,
-            const std::string & script,
-            const std::vector<std::string> & args,
-            const std::string & running_description,
-            const std::chrono::seconds& max_running_duration,
-            std::ostringstream & os_stdout,
-            std::ostringstream & os_stderr);
-};
+extern "C"
+void updateDevicePLDeadlock(void* handle);
 
 #endif
