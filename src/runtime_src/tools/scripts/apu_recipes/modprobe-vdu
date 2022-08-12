@@ -1,0 +1,35 @@
+#!/bin/sh
+# This script modprobes the vdu modules once load_pdi_done sysfs node value becomes 1
+# load_pdi_done sysfs node is set to 1 by zocl after xclbin load
+log_file="/var/log/modprobe_vdu_logs"
+ 
+function write_log() {
+        now_time='['$(date +"%Y-%m-%d %H:%M:%S")']'
+        echo $now_time $1 | tee -a "$log_file"
+}
+ 
+write_log 'modprobe script started. waiting for partial pdi load'
+ 
+sysfs_dir="/sys/bus/platform/devices/rpu-channel/"
+load_done_file="${sysfs_dir}load_pdi_done"
+ 
+while true
+do
+        load_done=$(cat $load_done_file)
+ 
+        if [ "$load_done" == 1 ]
+        then
+                write_log 'modprobing vdu modules ...'
+                modprobe allegro ; modprobe al5d
+
+                if [ $? == 0 ]
+                then
+                        write_log 'modprobe successful'
+                else
+                        write_log 'modprobe failed'
+                fi
+                break;
+        fi
+ 
+        sleep 5
+done

@@ -1,0 +1,9 @@
+[Unit]
+Description=modprobe-vdu
+ 
+[Service]
+ExecStart=/usr/bin/modprobe-vdu
+StandardOutput=journal+console
+ 
+[Install]
+WantedBy=multi-user.target
