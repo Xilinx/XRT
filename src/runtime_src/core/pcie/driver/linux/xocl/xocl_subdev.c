@@ -896,7 +896,7 @@ end:
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	struct FeatureRomHeader rom;
+	struct FeatureRomHeader rom = {0};
 	int	i, ret = 0, subdev_num = 0;
 	struct xocl_subdev_info *subdev_info = NULL;
 
