@@ -71,6 +71,10 @@ namespace xdp {
                                                std::vector<std::string> graphmetricsSettings,
                                                const XAie_ModuleType mod,
                                                void* handle);
+    void getInterfaceConfigMetricsForTiles(int moduleIdx,
+                                           std::vector<std::string> metricsSettings,
+                                           std::vector<std::string> graphmetricsSettings,
+                                           void* handle);
 
 
     std::string getMetricSet(const XAie_ModuleType mod, 

@@ -1070,7 +1070,7 @@ namespace xdp {
     return tiles;
   }
 
-  // Resolve all the metrics on all tiles
+  // Resolve Processor and Memory metrics on all tiles
   void
   AIEProfilingPlugin::getConfigMetricsForTiles(int moduleIdx,
                                                std::vector<std::string> metricsSettings,
@@ -1381,6 +1381,255 @@ namespace xdp {
     }
   }
 
+  // Resolve Interface metrics 
+  void
+  AIEProfilingPlugin::getInterfaceConfigMetricsForTiles(int moduleIdx,
+                                               std::vector<std::string> metricsSettings,
+                                               std::vector<std::string> graphmetricsSettings,
+                                               void* handle)
+  {
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+
+    bool allGraphsDone = false;
+
+    // STEP 1 : Parse per-graph or per-kernel settings
+
+    /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
+     * "graphmetricsSettings" contains each metric value
+     * graph_based_interface_tile_metrics = <graph name|all>:<port name|all>:<off|input_bandwidths|output_bandwidths|packets>
+     */
+
+    std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
+
+    // Graph Pass 1 : process only "all" metric setting 
+    for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
+      // split done only in Pass 1
+      boost::split(graphmetrics[i], graphmetricsSettings[i], boost::is_any_of(":"));
+      if (3 > graphmetrics[i].size()) {
+        // Add unexpected format warning
+        continue;
+      }
+      std::vector<tile_type> tiles;
+      /*
+       * Shim profiling uses all tiles utilized by PLIOs
+       */
+      // port name ??
+      tiles = getAllTilesForShimProfiling(handle, graphmetrics[i][2]);
+      allGraphsDone = true;
+
+      for (auto &e : tiles) {
+        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+      }
+    }  // Graph Pass 1
+
+#if 0
+    // Graph Pass 2 : process per graph metric setting 
+    for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
+      std::vector<tile_type> tiles;
+      // port name
+      /*
+       * Shim profiling uses all tiles utilized by PLIOs
+       */
+    }  // Graph Pass 2
+#endif
+
+    // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
+
+    /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
+     * tile_based_interface_tile_metrics = [[<column|all>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]] ; [<mincolumn>:<maxcolumn>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]]]
+     */
+
+    std::vector<std::vector<std::string>> metrics(metricsSettings.size());
+
+    // Pass 1 : process only "all" metric setting 
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      // split done only in Pass 1
+      boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
+
+      if (0 == metrics[i][0].compare("all")) {
+        std::vector<tile_type> tiles;
+        if (!allGraphsDone) {
+          tiles = getAllTilesForShimProfiling(handle, metrics[i][1]);
+          allGraphsDone = true;
+        } // allGraphsDone
+        for (auto &e : tiles) {
+          mConfigMetrics[moduleIdx][e] = metrics[i][1];
+        }
+      }
+    } // Pass 1 
+
+    // Pass 2 : process only range of tiles metric setting 
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      std::vector<tile_type> tiles;
+
+      if (3 > metrics[i].size()) {
+        continue;
+      }
+     /* The following two styles are applicable here 
+      * tile_based_interface_tile_metrics = <column|all>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>] 
+      * OR
+      * tile_based_interface_tile_metrics = <mincolumn>:<maxcolumn>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]]
+      * Handle only the 2nd style here.
+      */
+// error if brace , ispresent : 4 < metrics.size ?
+      uint32_t maxCol = 0;
+      try {
+        maxCol = std::stoi(metrics[i][1]);
+      } catch (std::invalid_argument const &e) {
+        // maxColumn not specified, skip for now
+        continue;
+      }
+      uint32_t minCol = std::stoi(metrics[i][0]);
+      
+      for (uint32_t col = minCol; col <= maxCol; ++col) {
+        xrt_core::edge::aie::tile_type tile;
+        tile.col = col;
+        tile.row = 0;
+        tiles.push_back(tile);
+      }
+      int16_t channelId = 0;
+      if (4 == metrics[i].size()) {
+        channelId = std::stoi(metrics[i][3]);
+      }
+      // Check and set mem_row/column
+
+      int plioCount = 0;
+      auto plios = xrt_core::edge::aie::get_plios(device.get());
+      for (auto& plio : plios) {
+        auto isMaster = plio.second.slaveOrMaster;
+        auto streamId = plio.second.streamId;
+
+        // If looking for specific ID, make sure it matches
+        if ((channelId >= 0) && (channelId != streamId))
+          continue;
+
+        // Make sure it's desired polarity
+        // NOTE: input = slave (data flowing from PLIO)
+        //       output = master (data flowing to PLIO)
+        if ((isMaster && (metrics[i][2] == "input_bandwidths"))
+            || (isMaster && (metrics[i][2] == "input_stalls_idle"))
+            || (!isMaster && (metrics[i][2] == "output_bandwidths"))
+            || (!isMaster && (metrics[i][2] == "output_stalls_idle")))
+          continue;
+
+        plioCount++;
+
+        for(auto &t : tiles) {
+          if (t.col == plio.second.shimColumn) {
+            t.row = 0;
+            // Grab stream ID and slave/master (used in configStreamSwitchPorts())
+            t.itr_mem_col = isMaster;
+            t.itr_mem_row = streamId;
+
+            // not all tiles ??
+            mConfigMetrics[moduleIdx][t] = metrics[i][2];
+          }
+        }
+      }
+          
+      if (plioCount == 0) {
+        std::string msg = "No tiles used channel ID " + std::to_string(channelId)
+                          + ". Please specify a valid channel ID.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+      }
+
+//      for (auto &t : tiles) {
+//        mConfigMetrics[moduleIdx][t] = metrics[i][2];
+//      }
+    } // Pass 2 
+
+    // Pass 3 : process only single tile metric setting 
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+
+      if (4 == metrics[i].size() /* skip column range specification with channel */
+            || 2 > metrics[i].size() /* invalid format */) {
+        continue;
+      }
+      if (0 == metrics[i][0].compare("all")) {
+        continue;
+      }
+      uint32_t maxCol = 0;
+      try {
+        maxCol = std::stoi(metrics[i][1]);
+      } catch (std::invalid_argument const &e) {
+        // maxColumn not specified, so the expected single column specification. Handle this here
+
+        uint32_t col = std::stoi(metrics[i][0]);
+
+        xrt_core::edge::aie::tile_type tile;
+        tile.col = col;
+        tile.row = 0;
+
+        int16_t channelId = 0;
+        if (3 == metrics[i].size()) {
+          channelId = std::stoi(metrics[i][2]);
+        }
+
+        // Check and set mem_row/column
+        int plioCount = 0;
+        auto plios = xrt_core::edge::aie::get_plios(device.get());
+        for (auto& plio : plios) {
+          auto isMaster = plio.second.slaveOrMaster;
+          auto streamId = plio.second.streamId;
+
+          // If looking for specific ID, make sure it matches
+          if ((channelId >= 0) && (channelId != streamId))
+            continue;
+
+          // Make sure it's desired polarity
+          // NOTE: input = slave (data flowing from PLIO)
+          //       output = master (data flowing to PLIO)
+          if ((isMaster && (metrics[i][1] == "input_bandwidths"))
+              || (isMaster && (metrics[i][1] == "input_stalls_idle"))
+              || (!isMaster && (metrics[i][1] == "output_bandwidths"))
+              || (!isMaster && (metrics[i][1] == "output_stalls_idle")))
+            continue;
+
+          plioCount++;
+
+          if (tile.col == plio.second.shimColumn) {
+            // Grab stream ID and slave/master (used in configStreamSwitchPorts())
+            tile.itr_mem_col = isMaster;
+            tile.itr_mem_row = streamId;
+
+            // not all tiles ??
+            mConfigMetrics[moduleIdx][tile] = metrics[i][1];
+          }
+        }
+        if (plioCount == 0) {
+          std::string msg = "No tiles used channel ID " + std::to_string(channelId)
+                            + ". Please specify a valid channel ID.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+        }
+      }
+    } // Pass 3 
+
+    // check validity, set default and remove "off" tiles
+    std::vector<tile_type> offTiles;
+    for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+
+      // save list of "off" tiles
+      if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
+
+      // Ensure requested metric set is supported (if not, use default)
+      if (mShimStartEvents.find(tileMetric.second) == mShimStartEvents.end()) {
+        tileMetric.second = "input_bandwidths" ;
+        std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
+                          + ". Using default of input_bandwidths. "
+                          + "As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+      }
+    }
+
+    // remove all the "off" tiles
+    for (auto &t : offTiles) {
+      mConfigMetrics[moduleIdx].erase(t);
+    }
+  }
+
   // Set metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
   bool 
   AIEProfilingPlugin::setMetricsSettings(uint64_t deviceId, void* handle)
@@ -1458,11 +1707,19 @@ namespace xdp {
       }
       if(findTileMetric) {
         newConfigUsed = true;
-        getConfigMetricsForTiles(module, 
-                                 metricsSettings[module], 
-                                 graphmetricsSettings[module], 
-                                 falModuleTypes[module],
-                                 handle);
+
+        if (XAIE_PL_MOD == falModuleTypes[module]) {
+          getInterfaceConfigMetricsForTiles(module, 
+                                       metricsSettings[module], 
+                                       graphmetricsSettings[module], 
+                                       handle);
+        } else {
+          getConfigMetricsForTiles(module, 
+                                   metricsSettings[module], 
+                                   graphmetricsSettings[module], 
+                                   falModuleTypes[module],
+                                   handle);
+        }
       }
    }
 
