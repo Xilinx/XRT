@@ -45,6 +45,72 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 	return count;
 }
 
+ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, uint32_t domain)
+{
+	struct kds_cu_mgmt *cu_mgmt = (domain == DOMAIN_PL) ?
+	       	&kds->cu_mgmt : &kds->scu_mgmt;
+	struct xrt_cu *xcu = NULL;
+	const struct list_head *ptr = NULL;
+	struct kds_client *client = NULL;
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_hw_ctx *curr = NULL;
+	/* Each line is a CU, format:
+	 * "hwCtx,cu_idx,kernel_name:cu_name,address,status,usage"
+	 */
+	char *cu_fmt = "%d,%d,%s:%s,0x%llx,0x%x,%llu\n";
+	ssize_t sz = 0;
+	int i, j;
+
+	mutex_lock(&cu_mgmt->lock);
+	list_for_each(ptr, &kds->clients) {
+		client = list_entry(ptr, struct kds_client, link);
+
+		/* For legacy context */
+		if(client->ctx && !list_empty(&client->ctx->cu_ctx_list)) {
+			/* Find out if same CU context is already exists  */
+			list_for_each_entry(cu_ctx, &client->ctx->cu_ctx_list, link) {
+				xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
+				if ((xcu != NULL) &&
+						(cu_ctx->cu_domain == domain)) {
+					j = cu_ctx->ctx->slot_idx;
+					i = cu_ctx->cu_idx;
+					sz += scnprintf(buf+sz, PAGE_SIZE - sz,
+							cu_fmt, j,
+							set_domain(domain, i),
+							xcu->info.kname, xcu->info.iname,
+							xcu->info.addr, xcu->status,
+							cu_stat_read(cu_mgmt, usage[i]));
+				}
+			}
+		}
+
+		/* For hw context */
+		list_for_each_entry(curr, &client->hw_ctx_list, link) {
+			if(!list_empty(&curr->cu_ctx_list)) {
+				/* Find out if same CU context is already exists  */
+				list_for_each_entry(cu_ctx, &curr->cu_ctx_list, link) {
+					xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
+					if ((xcu != NULL) &&
+							(cu_ctx->cu_domain == domain)) {
+						j = cu_ctx->hw_ctx->hw_ctx_idx;
+						i = cu_ctx->cu_idx;
+						sz += scnprintf(buf+sz, PAGE_SIZE - sz,
+								cu_fmt, j,
+								set_domain(domain, i),
+								xcu->info.kname, xcu->info.iname,
+								xcu->info.addr, xcu->status,
+								cu_stat_read(cu_mgmt, usage[i]));
+					}
+				}
+
+			}
+		}
+	}
+	mutex_unlock(&cu_mgmt->lock);
+
+	return sz;
+}
+
 ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
