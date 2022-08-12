@@ -278,14 +278,14 @@ value_to_uint32_vector(ValueType value)
   return value_to_uint32_vector(&value, sizeof(value));
 }
 
-static xrt::hw_context::qos
-mode_to_qos(xrt::kernel::cu_access_mode mode)
+static xrt::hw_context::access_mode
+hwctx_access_mode(xrt::kernel::cu_access_mode mode)
 {
   switch (mode) {
   case xrt::kernel::cu_access_mode::exclusive:
-    return xrt::hw_context::qos::exclusive;
+    return xrt::hw_context::access_mode::exclusive;
   case xrt::kernel::cu_access_mode::shared:
-    return xrt::hw_context::qos::shared;
+    return xrt::hw_context::access_mode::shared;
   default:
     throw std::runtime_error("unexpected access mode for kernel");
   }
@@ -293,12 +293,12 @@ mode_to_qos(xrt::kernel::cu_access_mode mode)
 
 // Transition only, to be removed
 static xrt::kernel::cu_access_mode
-qos_to_mode(xrt::hw_context::qos qos)
+cu_access_mode(xrt::hw_context::access_mode mode)
 {
-  switch (qos) {
-  case xrt::hw_context::qos::exclusive:
+  switch (mode) {
+  case xrt::hw_context::access_mode::exclusive:
     return xrt::kernel::cu_access_mode::exclusive;
-  case xrt::hw_context::qos::shared:
+  case xrt::hw_context::access_mode::shared:
     return xrt::kernel::cu_access_mode::shared;
   default:
     throw std::runtime_error("unexpected access mode for kernel");
@@ -556,7 +556,7 @@ public:
   access_mode
   get_access_mode() const
   {
-    return qos_to_mode(m_hwctx.get_qos());
+    return cu_access_mode(m_hwctx.get_mode());
   }
 
   // For symmetry
@@ -2685,8 +2685,8 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     const std::string& name,
 	     xrt::kernel::cu_access_mode mode)
 {
-  auto qos = mode_to_qos(mode);  // legacy access mode to hwctx qos
-  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, qos}, name);
+  auto amode = hwctx_access_mode(mode);  // legacy access mode to hwctx qos
+  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, amode}, name);
 }
 
 static std::shared_ptr<xrt::kernel_impl>
@@ -2716,8 +2716,8 @@ xrtKernelHandle
 xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
 {
   auto device = get_device(dhdl);
-  auto qos = mode_to_qos(am);  // legacy access mode to hwctx qos
-  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid, qos}, name);
+  auto mode = hwctx_access_mode(am);  // legacy access mode to hwctx qos
+  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid, mode}, name);
   auto handle = kernel.get();
   kernels.add(handle, std::move(kernel));
   return handle;
