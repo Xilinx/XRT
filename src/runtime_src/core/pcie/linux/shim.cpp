@@ -2270,13 +2270,13 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
     auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
     auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
     xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
-  
+
     return cuidx;
   }
-  else { 
+  else {
     /* This is for multi slot case. New IOCTL should call */
     unsigned int flags = shared ? XOCL_CTX_SHARED : XOCL_CTX_EXCLUSIVE;
-    // Pass Input 
+    // Pass Input
     drm_xocl_open_cu_ctx cu_ctx = { 0 };
     cu_ctx.flags = flags;
     cu_ctx.hw_context = static_cast<xcl_hwctx_handle>(hwctx);
@@ -2299,7 +2299,7 @@ close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
       throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
   }
   else {
-    // Pass Input 
+    // Pass Input
     drm_xocl_close_cu_ctx cu_ctx = { 0 };
     cu_ctx.hw_context = static_cast<xcl_hwctx_handle>(hwctx);
     cu_ctx.cu_index = cuidx.index;
@@ -2330,7 +2330,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
     auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
     auto top = reinterpret_cast<const axlf*>(buffer);
     drm_xocl_create_hw_ctx hw_ctx = { 0 };
-    hw_ctx.qos = qos;
+    hw_ctx.qos = 0; // TBD qos;
 
     xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
     if (auto ret = xclLoadHwAxlf(top, &hw_ctx)) {
@@ -2380,7 +2380,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
 
     return hw_ctx.hw_context;
   }
-    
+
   return 0;
 }
 
