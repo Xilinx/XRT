@@ -52,7 +52,6 @@ struct zocl_rpu_channel {
 	u64 mem_start;
 	size_t mem_size;
 	u8			load_pdi_done;
-	rwlock_t		att_rwlock;
 	struct list_head	data_list;
 };
 
@@ -92,9 +91,7 @@ static ssize_t load_pdi_done_show(struct device *dev,
 	if (!chan)
 		return 0;
 
-	read_lock(&chan->att_rwlock);
 	size += sprintf(buf, "%d\n", chan->load_pdi_done);
-	read_unlock(&chan->att_rwlock);
 
 	return size;
 }
@@ -219,9 +216,7 @@ static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_
 
 		/* notify daemon once pdi load is finished */
 		if (!xrt_xclbin_section_info((struct axlf *)total_data, BITSTREAM_PARTIAL_PDI, &sec_offset, &sec_size)) {
-			write_lock(&chan->att_rwlock);
 			chan->load_pdi_done = 1;
-			write_unlock(&chan->att_rwlock);
 		}
 
 		vfree(total_data);
@@ -329,7 +324,6 @@ static int zrpu_channel_probe(struct platform_device *pdev)
 
 	/* initilize load_pdi_done variable to zero. Mark this 1 once partial_pdi is loaded*/
 	chan->load_pdi_done = 0;
-	rwlock_init(&chan->att_rwlock);
 
 	/* Discover and init shared ring buffer. */
 	chan->mem_base = zlib_map_phandle_res_by_name(ZCHAN2PDEV(chan), mem_res_name,
