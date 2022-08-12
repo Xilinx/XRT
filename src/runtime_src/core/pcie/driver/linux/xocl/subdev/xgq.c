@@ -155,8 +155,10 @@ struct xocl_xgq_vmr {
 	struct xgq_cmd_cq_default_payload xgq_cq_payload;
 	int 			xgq_vmr_debug_level;
 	u8			xgq_vmr_debug_type;
-	uint16_t pwr_scaling_ovrd_limit;
-	uint8_t temp_scaling_ovrd_limit;
+	char			*xgq_vmr_system_dtb;
+	size_t			xgq_vmr_system_dtb_size;
+	u16			pwr_scaling_ovrd_limit;
+	u8			temp_scaling_ovrd_limit;
 };
 
 static int vmr_status_query(struct platform_device *pdev);
@@ -876,8 +878,9 @@ static int xgq_program_scfw(struct platform_device *pdev)
 		XGQ_CMD_OP_PROGRAM_SCFW, XOCL_XGQ_DOWNLOAD_TIME);
 }
 
+/* Note: caller is responsibe for vfree(*fw) */
 static int xgq_log_page_fw(struct platform_device *pdev,
-	char **fw, size_t *fw_size)
+	char **fw, size_t *fw_size, enum xgq_cmd_log_page_type req_pid)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -907,7 +910,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	payload->address = address;
 	payload->size = len;
 	payload->offset = 0;
-	payload->pid = XGQ_CMD_LOG_FW;
+	payload->pid = req_pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_GET_LOG_PAGE;
@@ -915,6 +918,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	hdr->count = sizeof(*payload);
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
+		ret = -ENOMEM;
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
 		goto cid_alloc_failed;
 	}
@@ -978,6 +982,18 @@ acquire_failed:
 	kfree(cmd);
 
 	return ret;
+}
+
+static int xgq_log_page_metadata(struct platform_device *pdev,
+	char **fw, size_t *fw_size)
+{
+	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_FW);
+}
+
+static int xgq_log_page_system_dtb(struct platform_device *pdev,
+	char **fw, size_t *fw_size)
+{
+	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_SYSTEM_DTB);
 }
 
 static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
@@ -2294,7 +2310,45 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(clk_scaling_configure);
 
-static struct attribute *xgq_attrs[] = {
+static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = 
+		dev_get_drvdata(container_of(kobj, struct device, kobj));
+	unsigned char *blob;
+	size_t size;
+	ssize_t ret = 0;
+
+	mutex_lock(&xgq->xgq_lock);
+	blob = xgq->xgq_vmr_system_dtb;
+	size = xgq->xgq_vmr_system_dtb_size;
+	mutex_unlock(&xgq->xgq_lock);
+
+	if (off >= size)
+		goto out;
+
+	if (off + count > size)
+		count = size - off;
+	memcpy(buf, blob + off, count);
+
+	ret = count;
+out:
+	return ret;
+}
+/* Some older linux kernel doesn't support
+ * static BIN_ATTR_RO(vmr_system_dtb, 0);
+ */
+static struct bin_attribute bin_attr_vmr_system_dtb = {
+	.attr = {
+		.name = "vmr_system_dtb",
+		.mode = 0444
+	},
+	.read = vmr_system_dtb_read,
+	.write = NULL,
+	.size = 0
+};
+
+static struct attribute *vmr_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
 	&dev_attr_flash_default_only.attr,
@@ -2313,8 +2367,13 @@ static struct attribute *xgq_attrs[] = {
 	NULL,
 };
 
+static struct bin_attribute *vmr_bin_attrs[] = {
+	&bin_attr_vmr_system_dtb,
+	NULL,
+};
 static struct attribute_group xgq_attr_group = {
-	.attrs = xgq_attrs,
+	.attrs = vmr_attrs,
+	.bin_attrs = vmr_bin_attrs,
 };
 
 static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
@@ -2395,6 +2454,11 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_HWMON_SDM);
 
 	sysfs_remove_group(&pdev->dev.kobj, &xgq_attr_group);
+
+	/* make sure cached system_dtb blob is freed */
+	if (xgq->xgq_vmr_system_dtb)
+		vfree(xgq->xgq_vmr_system_dtb);
+
 	mutex_destroy(&xgq->clk_scaling_lock);
 	mutex_destroy(&xgq->xgq_lock);
 
@@ -2444,6 +2508,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, xgq);
 	xgq->xgq_pdev = pdev;
 	xgq->xgq_cmd_id = 0;
+	xgq->xgq_vmr_system_dtb = NULL;
+	xgq->xgq_vmr_system_dtb_size = 0;
 
 	mutex_init(&xgq->xgq_lock);
 	mutex_init(&xgq->clk_scaling_lock);
@@ -2548,6 +2614,12 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	ret = xgq_log_page_system_dtb(pdev, &xgq->xgq_vmr_system_dtb,
+			&xgq->xgq_vmr_system_dtb_size);
+	if (ret) {
+		XGQ_WARN(xgq, "cannot load system dtb from shell, ret: %d", ret);
+		ret = 0;
+	}
 	ret = xgq_download_apu_firmware(pdev);
 	if (ret) {
 		XGQ_WARN(xgq, "unable to download APU, ret: %d", ret);
@@ -2598,7 +2670,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_collect_sensors_by_repo_id = xgq_collect_sensors_by_repo_id,
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
-	.vmr_load_firmware = xgq_log_page_fw,
+	.vmr_load_firmware = xgq_log_page_metadata,
 };
 
 static const struct file_operations xgq_vmr_fops = {
