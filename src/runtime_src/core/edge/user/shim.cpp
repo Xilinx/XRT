@@ -1230,6 +1230,17 @@ xclIPName2Index(const char *name)
 
 int
 shim::
+xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    int ret = 0;
+    drm_zocl_set_cu_range range = {ipIndex, start, size};
+
+    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SET_CU_READONLY_RANGE, &range);
+    return ret ? -errno : ret;
+}
+
+int
+shim::
 xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
 {
   int ret;
@@ -2625,6 +2636,13 @@ xclIPName2Index(xclDeviceHandle handle, const char *name)
     xrt_core::send_exception_message(ex.what());
     return -ENOENT;
   }
+}
+
+int
+xclIPSetReadRange(xclDeviceHandle handle, uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+    return (drv) ? drv->xclIPSetReadRange(ipIndex, start, size) : -ENODEV;
 }
 
 int
