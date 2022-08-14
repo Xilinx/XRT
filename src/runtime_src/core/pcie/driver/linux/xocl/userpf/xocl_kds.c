@@ -379,7 +379,7 @@ int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 		goto error_out;
 	}
 
-	/* Lock the bitstream */
+	/* Lock the bitstream. Unlock the same in destroy context */
 	ret = xocl_icap_lock_bitstream(xdev, xclbin_id);
 	if (ret) {
 		kds_free_hw_ctx(client, hw_ctx);
