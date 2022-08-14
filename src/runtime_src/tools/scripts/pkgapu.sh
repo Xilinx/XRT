@@ -168,6 +168,8 @@ if [[ ! -d $IMAGES_DIR ]]; then
 	error "Please specify the valid path of APU images by -images"
 fi
 IMAGES_DIR=`realpath $IMAGES_DIR`
+#hack to fix pipeline. Need to file a CR on xclnbinutil
+source /proj/xbuilds/2022.2_0811_1/installs/lin64/Vitis/2022.2/settings64.sh
 
 if [[ ! (`which mkimage` && `which bootgen` && `which xclbinutil`) ]]; then
 	error "Please source Xilinx VITIS and Petalinux tools to make sure mkimage, bootgen and xclbinutil is accessible."
@@ -249,6 +251,7 @@ if [[ ! -e $IMAGE_UB ]]; then
 	error "failed to generate kernel image"
 fi
 
+
 # pick bootgen from vitis
 if [[ "X$XILINX_VITIS" == "X" ]]; then
   echo " **ERROR: XILINX_VITIS is empty, please source vitis and rerun"
@@ -274,6 +277,7 @@ if [[ ! -e $APU_PDI ]]; then
 fi
 
 mkdir -p `dirname $FW_FILE`
+echo "xclbinutil --add-section PDI:RAW:$APU_PDI --output $FW_FILE"
 xclbinutil --add-section PDI:RAW:$APU_PDI --output $FW_FILE
 if [[ ! -e $FW_FILE ]]; then
 	error "failed to generate XSABIN"
