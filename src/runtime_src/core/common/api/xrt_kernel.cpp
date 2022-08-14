@@ -517,13 +517,10 @@ public:
   {
     // - IP index is unique per device
     // - IP index is unique per domain
-    // - IP index is unique per slot
+    // - IP index is unique per slot (is this true for PS kernels in PL/PS xclbin?)
     // - IP index can be shared between hwctx, provided hwctx refer
     //   to same slot
-    // - A slot can contain only one domain type of CUs
-    //
-    // In 2022.2, before true support for multi-xclbin, it is assumed
-    // that hwctx referring to same xclbin also shares the same ctxhdl.
+    // - A slot can contain only one domain type of CUs (PL/PS xclbin ??)
     //
     // For cases (drivers) that support multi-xclbin and sharing it is
     // assumed that each hwctx is unique and has a unique ctx handle,
