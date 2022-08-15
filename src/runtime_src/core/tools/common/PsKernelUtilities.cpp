@@ -18,41 +18,40 @@ namespace XBU = XBUtilities;
 #include <boost/property_tree/json_parser.hpp>
 namespace pt = boost::property_tree;
 
-
 static void
 get_all_instance_data(const xrt_core::device * _pDevice, pt::ptree &pt)
 {
   // TODO put request logic in here for ps kernel data query
-  // static size_t COUNT = 4096;
+  static size_t COUNT = 4096;
   // TODO this will be removed when the PS kernel is built in
-  // std::string b_file = "/ps_validate_bandwidth.xclbin";
-  // std::string binaryfile = "/opt/xilinx/firmware/vck5000/gen4x8-qdma/base/test" + b_file;
-  // auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_pDevice));
-  // auto device = xrt::device {bdf};
-  // auto uuid = device.load_xclbin(binaryfile);
-  // // end TODO
+  std::string b_file = "/ps_validate_bandwidth.xclbin";
+  std::string binaryfile = "/opt/xilinx/firmware/vck5000/gen4x8-qdma/base/test" + b_file;
+  auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_pDevice));
+  auto device = xrt::device {bdf};
+  auto uuid = device.load_xclbin(binaryfile);
+  // end TODO
 
-  // // Always get a kernel reference to the build in kernel. Choose a better name though...
-  // auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
+  // Always get a kernel reference to the build in kernel. Choose a better name though...
+  auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
 
-  // // Format the amount of data depending on the number of programmed ps kernels
-  // auto ps_data = xrt_core::device_query<xrt_core::query::kds_scu_info>(_pDevice);
-  // const size_t DATA_SIZE = COUNT * sizeof(char) * ps_data.size();
-  // auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
-  // auto bo0_map = bo0.map<char*>();
-  // std::fill(bo0_map, bo0_map + COUNT, 0);
+  // Format the amount of data depending on the number of programmed ps kernels
+  auto ps_data = xrt_core::device_query<xrt_core::query::kds_scu_info>(_pDevice);
+  const size_t DATA_SIZE = COUNT * sizeof(char) * ps_data.size();
+  auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
+  auto bo0_map = bo0.map<char*>();
+  std::fill(bo0_map, bo0_map + COUNT, 0);
 
-  // bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
+  bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
 
-  // auto run = hello_world(bo0, DATA_SIZE);
-  // run.wait();
+  auto run = hello_world(bo0, DATA_SIZE);
+  run.wait();
 
-  // //Get the output;
-  // bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
+  //Get the output;
+  bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
 
-  // // Parse the output into a useful format
-  // std::istringstream json(bo0_map);
-  // pt::read_json(json, pt);
+  // Parse the output into a useful format
+  std::istringstream json(bo0_map);
+  pt::read_json(json, pt);
 }
 
 static std::vector<const pt::ptree*>
@@ -68,7 +67,7 @@ get_sorted_instance_list(const pt::ptree& pt)
     const auto val = a_name.compare(b_name);
     if (val < 0)
       return true;
-    else if (val > 0)
+    if (val > 0)
       return false;
 
     // If the kernel names are equal sort based on the instance name
@@ -77,8 +76,8 @@ get_sorted_instance_list(const pt::ptree& pt)
     const auto val_i = a_i_name.compare(b_i_name);
     if (val_i <= 0)
       return true;
-    else
-      return false;
+
+    return false;
   };
 
   // Add each instance to a list for sorting
@@ -106,14 +105,15 @@ parse_instance(const pt::ptree& instance_pt)
   std::vector<const pt::ptree*> instance_data;
   for (const auto& a : data_pt)
     instance_data.push_back(&a.second);
+
   auto ptree_sorting = [](const pt::ptree* a, const pt::ptree* b) {
     const auto& a_name = a->get<std::string>("name");
     const auto& b_name = b->get<std::string>("name");
     const auto val = a_name.compare(b_name);
     if (val <= 0)
       return true;
-    else
-      return false;
+
+    return false;
   };
   std::sort(instance_data.begin(), instance_data.end(), ptree_sorting);
   // Parsing the process info data
@@ -189,9 +189,7 @@ get_ps_instance_data(const xrt_core::device* device)
   apu_image_pt.put("mem_available", std::to_string(XBU::string_to_base_units(mem_available_data, XBU::unit::bytes)).append(" B"));
   std::string mem_free_data = std::regex_replace(all_instance_data.get<std::string>("os.mem_free"), std::regex("kB"), "K");
   apu_image_pt.put("mem_free", std::to_string(XBU::string_to_base_units(mem_free_data, XBU::unit::bytes)).append(" B"));
-  uint64_t addr_data;
-  std::stringstream ss(all_instance_data.get<std::string>("os.address_space"));
-  ss >> std::hex >> addr_data;
+  uint64_t addr_data = std::stoull(all_instance_data.get<std::string>("os.address_space"), nullptr, 16);
   std::string addr_data_str = std::to_string(addr_data) + " B";
   apu_image_pt.put("address_space", addr_data_str);
   parsed_kernel_data.add_child("apu_image", apu_image_pt);

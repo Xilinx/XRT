@@ -32,7 +32,10 @@ public:
 };
 
 static void
-parse_file(pt::ptree& pt, const std::string& file_path, const bool is_dict = true, const std::string& delimiter = ":")
+parse_file( pt::ptree& pt,
+            const std::string& file_path,
+            bool is_dict = true,
+            const std::string& delimiter = ":")
 {
   std::ifstream stream;
   stream.open(file_path);
@@ -80,7 +83,10 @@ add_schema(pt::ptree &pt)
 // If unknown entries are detected they will be added into the output
 // ptree as listed unless the nonmatches flag is set
 static void
-filter_ptree_contents(pt::ptree& output, const pt::ptree& input, std::map<std::string, std::string>& filter, const bool add_nonmatches = true)
+filter_ptree_contents(pt::ptree& output,
+                      const pt::ptree& input,
+                      std::map<std::string, std::string>& filter,
+                      const bool add_nonmatches = true)
 {
   for (const auto& item : input) {
     const auto& it = filter.find(item.first);
@@ -148,8 +154,8 @@ get_os_release(pt::ptree &pt)
 }
 
 static void
-get_instance_process_status( const std::string& pid,
-                    pt::ptree &pt)
+get_instance_process_status(const std::string& pid,
+                            pt::ptree &pt)
 {
   // Format the file path to point to a process status area
   std::string file_path = "/proc/" + pid + "/status";
@@ -191,8 +197,8 @@ get_instance_status(const std::string& file,
 }
 
 static void
-get_instance_info(  const std::string& file,
-                    pt::ptree &pt)
+get_instance_info(const std::string& file,
+                  pt::ptree &pt)
 {
   std::string info_path = file + "/cu_info";
   pt::ptree info_pt;
@@ -212,7 +218,9 @@ get_instance_info(  const std::string& file,
 }
 
 __attribute__((visibility("default")))
-int get_ps_kernel_data(char *output, int count, struct xrtHandles *xrtHandle)
+int get_ps_kernel_data( char *output,
+                        int count,
+                        struct xrtHandles *xrtHandle)
 {
   openlog("new_kernel_source", LOG_PID | LOG_CONS | LOG_NDELAY, LOG_NEWS);
   syslog(LOG_INFO, "%s: Started new kernel\n", __func__);

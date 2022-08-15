@@ -21,9 +21,9 @@ void
 Table2D::addEntry(const std::vector<std::string>& entry)
 {
   if (entry.size() < m_table.size())
-    throw std::runtime_error("Table2D - Entry data is smaller than table.\n");
+    throw std::runtime_error(boost::str(boost::format("Table2D - Entry data is smaller than table. Entry size: %d Table Size: %d\n") % entry.size() % m_table.size()));
   else if (entry.size() > m_table.size())
-    throw std::runtime_error("Table2D - Entry data is larger than table.\n");
+    throw std::runtime_error(boost::str(boost::format("Table2D - Entry data is larger than table.\n") % entry.size() % m_table.size()));
 
   // Iterate through the entry data and the table adding the table entry elements in order
   for (size_t i = 0; i < entry.size(); ++i) {
@@ -61,17 +61,17 @@ Table2D::toString(const std::string& prefix) const
 
       // For the first row add the headers
       const auto space_suffix = std::string(m_inter_entry_padding, ' ');
-      if (row == 0)
-        appendToOutput(output_line, column_prefix, space_suffix, column, column.header.name);
-      else if (row == 1) {
-        const auto hyphen_suffix = std::string(m_inter_entry_padding, '-');
-        const auto hyphen_line = std::string(column.max_element_size, '-');
-        appendToOutput(output_line, column_prefix, hyphen_suffix, column, hyphen_line);
+      switch (row) {
+        case 0:
+          appendToOutput(output_line, column_prefix, space_suffix, column, column.header.name);
+          break;
+        case 1:
+          appendToOutput(output_line, column_prefix, std::string(m_inter_entry_padding, '-'), column, std::string(column.max_element_size, '-'));
+          break;
+        default:
+          appendToOutput(output_line, column_prefix, space_suffix, column, column.data[row - 2]);
+          break;
       }
-      // For all other output lines add the entry associated with the current row/col index
-      else
-        // Minus 2 to account for the first row being the headers and the second being a divider
-        appendToOutput(output_line, column_prefix, space_suffix, column, column.data[row - 2]);
     }
     output_line.append("\n");
     os << output_line;
@@ -126,5 +126,7 @@ Table2D::getTableCharacterLength() const
   size_t table_size = 0;
   for(const auto& col : m_table)
     table_size += col.max_element_size;
+
+  // Account for the spaces added between the columns
   return table_size + (m_table.size() * m_inter_entry_padding);
 }

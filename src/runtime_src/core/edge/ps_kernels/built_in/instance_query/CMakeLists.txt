@@ -17,7 +17,8 @@ set(CMAKE_CXX_FLAGS "-DXAIE_DEBUG ${CMAKE_CXX_FLAGS}")
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
 add_library(instance_query SHARED ${SRC_FILES})
 
-set_target_properties(instance_query PROPERTIES VERSION ${XRT_VERSION_STRING}
+set_target_properties(instance_query PROPERTIES 
+  VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
 target_link_libraries(instance_query

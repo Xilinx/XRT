@@ -8,8 +8,6 @@
 
 #include <boost/property_tree/ptree.hpp>
 
-
-
 boost::property_tree::ptree
 get_ps_instance_data(const xrt_core::device* device);
 
