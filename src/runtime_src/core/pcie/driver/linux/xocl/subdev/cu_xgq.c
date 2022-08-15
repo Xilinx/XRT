@@ -145,10 +145,6 @@ int xrt_cu_xgq_init(struct xrt_cu *xcu, int slow_path)
 		prot = XGQ_PROT_NEED_RESP;
 
 	core->xgq = xcu->info.xgq;
-	err = xocl_xgq_attach(core->xgq, (void *)core, &xcu->sem_cu,  prot, &core->xgq_client_id);
-	if (err)
-		return err;
-
 	core->max_credits = 1;
 	core->credits = 1;
 	core->cu_idx = xcu->info.cu_idx;
@@ -164,9 +160,18 @@ int xrt_cu_xgq_init(struct xrt_cu *xcu, int slow_path)
 	xcu->status = 0x4;
 	err = xrt_cu_init(xcu);
 	if (err)
-		return err;
+		goto error_out;
+
+	err = xocl_xgq_attach(core->xgq, (void *)core, &xcu->sem_cu,  prot, &core->xgq_client_id);
+	if (err)
+		goto error_out1;
 
 	return 0;
+
+error_out1:
+	xrt_cu_fini(xcu);
+error_out:
+	return err;
 }
 
 void xrt_cu_xgq_fini(struct xrt_cu *xcu)

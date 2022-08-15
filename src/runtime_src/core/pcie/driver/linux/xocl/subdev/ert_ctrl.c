@@ -555,11 +555,11 @@ static void ert_ctrl_legacy_fini(struct ert_ctrl *ec)
 static void ert_ctrl_unset_xgq(struct platform_device *pdev)
 {
 	struct ert_ctrl *ec = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int i = 0;
 
 	for (i = 0; i < ec->ec_num_xgq_ips; i++) {
 		struct ert_ctrl_xgq_cu  *xgq_ips = &ec->ec_xgq_ips[i];
-		xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 		xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
 		xocl_user_interrupt_reg(xdev,  xgq_ips->ecxc_xgq_irq, NULL, NULL);
@@ -569,6 +569,10 @@ static void ert_ctrl_unset_xgq(struct platform_device *pdev)
 		if (ec->ec_exgq[i] == NULL)
 			continue;
 
+		if (!ec->ec_xgq_ips) {
+			xocl_intc_ert_config(xdev, i, false);
+			xocl_intc_ert_request(xdev, i, NULL, NULL);
+		}
 		xocl_xgq_fini(ec->ec_exgq[i]);
 		ec->ec_exgq[i] = NULL;
 	}
