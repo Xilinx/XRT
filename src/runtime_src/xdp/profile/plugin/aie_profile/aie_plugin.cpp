@@ -811,7 +811,9 @@ namespace xdp {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
       return;
-
+    // if not in size
+    //  should_continue = false;
+    
     auto& should_continue = it->second;
     while (should_continue) {
       // Wait until xclbin has been loaded and device has been updated in database

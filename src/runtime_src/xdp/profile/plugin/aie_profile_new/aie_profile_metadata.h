@@ -33,7 +33,8 @@ namespace xdp {
                                                   void* handle);
       std::vector<tile_type> getAllTilesForShimProfiling(void* handle, 
                                                          const std::string &metricsStr);
-
+      uint64_t getDeviceID() {return deviceID;}
+      void* getHandle() {return handle;}
   private:
     int16_t mChannelId = -1;
     uint32_t mIndex = 0;

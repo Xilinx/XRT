@@ -34,6 +34,11 @@ namespace built_in {
     ES2 = 1
   };
 
+  struct PSMessages{
+    uint32_t message_type; //calculate worst case size and double
+    uint32_t params[4];
+  };
+
   // This struct is used for input for the PS kernel.  It contains all of
   // the information gathered from the user controls in the xrt.ini file
   // and the information we can infer from the debug ip layout file.
