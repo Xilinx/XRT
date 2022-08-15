@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __XBHelpMenus_h_
 #define __XBHelpMenus_h_
@@ -45,7 +33,7 @@ namespace XBUtilities {
                                   ReportCollection & reportsToUse);
 
   void 
-     produce_reports( xrt_core::device_collection devices, 
+     produce_reports( const std::shared_ptr<xrt_core::device>& device, 
                       const ReportCollection & reportsToProcess, 
                       Report::SchemaVersion schema, 
                       std::vector<std::string> & elementFilter,

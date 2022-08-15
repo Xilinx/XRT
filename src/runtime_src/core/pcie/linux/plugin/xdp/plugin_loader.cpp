@@ -41,8 +41,7 @@ bool load()
       xrt_core::utils::load_host_trace())
     xdp::hal::load() ;
 
-  if (xrt_core::config::get_data_transfer_trace() != "off" ||
-      xrt_core::config::get_device_trace() != "off" ||
+  if (xrt_core::config::get_device_trace() != "off" ||
       xrt_core::config::get_device_counters())
     xdp::hal::device_offload::load();
 
@@ -69,15 +68,6 @@ bool load()
 
   if (xrt_core::config::get_pl_deadlock_detection())
     xdp::pl_deadlock::load();
-
-  // Deprecation messages
-  if (xrt_core::config::get_data_transfer_trace() != "off") {
-    std::string msg = xrt_core::config::get_data_transfer_trace_dep_message();
-    if (msg != "") {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                              msg) ;
-    }
-  }
 
   return true ;
 }

@@ -1,19 +1,6 @@
-/*
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef core_common_ishim_h
 #define core_common_ishim_h
 
@@ -25,7 +12,9 @@
 #include "xrt/xrt_aie.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_graph.h"
+#include "xrt/xrt_uuid.h"
 
+#include "experimental/xrt_hw_context.h"
 #include "experimental/xrt-next.h"
 
 #include <stdexcept>
@@ -46,17 +35,30 @@ namespace xrt_core {
  */
 struct ishim
 {
+  //
+  class not_supported_error : public xrt_core::error
+  {
+  public:
+    not_supported_error(const std::string& msg)
+      : xrt_core::error{std::errc::not_supported, msg}
+    {}
+  };
+
   virtual void
   close_device() = 0;
 
-  virtual void
-  open_context(const xuid_t xclbin_uuid, unsigned int ip_index, bool shared) = 0;
+  virtual cuidx_type
+  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) = 0;
 
   virtual void
-  open_context(uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared) = 0;
+  close_cu_context(const xrt::hw_context& hwctx, cuidx_type ip_index) = 0;
+
+  // Legacy, to be removed
+  virtual void
+  open_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index, bool shared) = 0;
 
   virtual void
-  close_context(const xuid_t xclbin_uuid, unsigned int ip_index) = 0;
+  close_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index) = 0;
 
   virtual xclBufferHandle
   alloc_bo(size_t size, unsigned int flags) = 0;
@@ -80,7 +82,7 @@ struct ishim
   // This function is only supported on systems with pidfd kernel support
   virtual xclBufferHandle
   import_bo(pid_t, xclBufferExportHandle)
-  { throw xrt_core::error(std::errc::not_supported,"import_bo(pid, hdl)"); }
+  { throw not_supported_error{__func__}; }
 
   virtual void
   copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset) = 0;
@@ -143,38 +145,69 @@ struct ishim
   user_reset(xclResetKind kind) = 0;
 
   ////////////////////////////////////////////////////////////////
+  // Interfaces for hw context handling
+  // Implemented explicitly by concrete shim device class
+  ////////////////////////////////////////////////////////////////
+  // If an xclbin is loaded with load_xclbin, an explicit hw_context
+  // cannot be created for that xclbin.  This function throws
+  // not_supported_error, if either not implemented or an xclbin
+  // was explicitly loaded using load_xclbin
+  virtual uint32_t // ctx handle aka slot idx
+  create_hw_context(const xrt::uuid& /*xclbin_uuid*/, uint32_t /*qos*/) const
+  { throw not_supported_error{__func__}; }
+
+  virtual void
+  destroy_hw_context(uint32_t /*ctxhdl*/) const
+  { throw not_supported_error{__func__}; }
+
+  // Registers an xclbin, but does not load it.
+  virtual void
+  register_xclbin(const xrt::xclbin&) const
+  { throw not_supported_error{__func__}; }
+  ////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////
+  // Interface for CU shared read range
+  // Implemented explicitly by concrete shim device class
+  // 2022.2: Only supported for Alveo Linux
+  virtual void
+  set_cu_read_range(cuidx_type /*ip_index*/, uint32_t /*start*/, uint32_t /*size*/)
+  { throw not_supported_error{__func__}; }
+  ////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////
   // Interfaces for custom IP interrupt handling
   // Implemented explicitly by concrete shim device class
   // 2021.1: Only supported for edge shim
   ////////////////////////////////////////////////////////////////
   virtual xclInterruptNotifyHandle
   open_ip_interrupt_notify(unsigned int)
-  { throw xrt_core::error(std::errc::not_supported,"open_ip_interrupt_notify()"); }
+  { throw not_supported_error{__func__}; }
 
   virtual void
   close_ip_interrupt_notify(xclInterruptNotifyHandle)
-  { throw xrt_core::error(std::errc::not_supported,"close_ip_interrupt_notify()"); }
+  { throw not_supported_error{__func__}; }
 
   virtual void
   enable_ip_interrupt(xclInterruptNotifyHandle)
-  { throw xrt_core::error(std::errc::not_supported,"enable_ip_interrupt()"); }
+  { throw not_supported_error{__func__}; }
 
   virtual void
   disable_ip_interrupt(xclInterruptNotifyHandle)
-  { throw xrt_core::error(std::errc::not_supported,"disable_ip_interrupt()"); }
+  { throw not_supported_error{__func__}; }
 
   virtual void
   wait_ip_interrupt(xclInterruptNotifyHandle)
-  { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
+  { throw not_supported_error{__func__}; }
 
   virtual std::cv_status
   wait_ip_interrupt(xclInterruptNotifyHandle, int32_t)
-  { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
+  { throw not_supported_error{__func__}; }
   ////////////////////////////////////////////////////////////////
 
 #ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
-  open_graph(const xuid_t, const char*, xrt::graph::access_mode am) = 0;
+  open_graph(const xrt::uuid&, const char*, xrt::graph::access_mode am) = 0;
 
   virtual void
   close_graph(xclGraphHandle handle) = 0;
@@ -252,24 +285,30 @@ struct shim : public DeviceType
     xclClose(DeviceType::get_device_handle());
   }
 
-  void
-  open_context(const xuid_t xclbin_uuid , unsigned int ip_index, bool shared) override
+  cuidx_type
+  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) override
   {
-    if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index, shared))
+    return xrt::shim_int::open_cu_context(DeviceType::get_device_handle(), hwctx, cuname);
+  }
+
+  void
+  close_cu_context(const xrt::hw_context& hwctx, cuidx_type cuidx) override
+  {
+    xrt::shim_int::close_cu_context(DeviceType::get_device_handle(), hwctx, cuidx);
+  }
+
+  // Legacy, to be removed
+  void
+  open_context(const xrt::uuid& xclbin_uuid , unsigned int ip_index, bool shared) override
+  {
+    if (auto ret = xclOpenContext(DeviceType::get_device_handle(), xclbin_uuid.get(), ip_index, shared))
       throw system_error(ret, "failed to open ip context");
   }
 
   void
-  open_context(uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared) override
+  close_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index) override
   {
-    if (auto ret = xclOpenContextByName(DeviceType::get_device_handle(), slot, xclbin_uuid, cuname, shared))
-      throw system_error(ret, "failed to open ip context");
-  }
-
-  void
-  close_context(const xuid_t xclbin_uuid, unsigned int ip_index) override
-  {
-    if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid, ip_index))
+    if (auto ret = xclCloseContext(DeviceType::get_device_handle(), xclbin_uuid.get(), ip_index))
       throw system_error(ret, "failed to close ip context");
   }
 
@@ -490,9 +529,9 @@ struct shim : public DeviceType
 
 #ifdef XRT_ENABLE_AIE
   xclGraphHandle
-  open_graph(const xuid_t uuid, const char *gname, xrt::graph::access_mode am) override
+  open_graph(const xrt::uuid& uuid, const char *gname, xrt::graph::access_mode am) override
   {
-    if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid, gname, am))
+    if (auto ghdl = xclGraphOpen(DeviceType::get_device_handle(), uuid.get(), gname, am))
       return ghdl;
 
     throw system_error(EINVAL, "failed to open graph");

@@ -19,6 +19,7 @@
 #include "config.h"
 #include "cuidx_type.h"
 #include "core/include/xclbin.h"
+#include "core/include/xrt/xrt_uuid.h"
 
 #include <array>
 #include <limits>
@@ -95,16 +96,44 @@ struct softkernel_object
   char *sk_buf;
 };
 
+// struct aie_cdo_obj - wrapper for an AIE CDO group object
+//
+// @cdo_name: CDO group name
+// @cdo_type: CDO group type
+// @pdi_id: ID of this CDO group in PDI
+// @kernel_id: Kernel ID associated with this CDO group
+struct aie_cdo_group_obj
+{
+  std::string cdo_name;
+  uint8_t cdo_type;
+  uint64_t pdi_id;
+  uint64_t kernel_id;
+};
+
+// struct aie_pdi_obj - wrapper for an AIE PDI object
+//
+// @uuid: PDI UUID
+// @cdo_groups: Array of CDO groups
+// @pdi: PDI blob
+struct aie_pdi_obj
+{
+  xrt::uuid uuid;
+  std::vector<aie_cdo_group_obj> cdo_groups;
+  std::vector<uint8_t> pdi;
+};
+
 // struct aie_partition_obj - wrapper for an AIE Partition object
 //
 // @ncol: number of columns in this partition
 // @start_col_list: Array of start column for partition relocation
 // @name: partition name
+// @pdis: PDIs (blob and metadata) associated with this partition
 struct aie_partition_obj
 {
   uint16_t ncol;
   std::vector<uint16_t> start_col_list;
   std::string name;
+  std::vector<aie_pdi_obj> pdis;
 };
 
 /**

@@ -1,19 +1,6 @@
-/*
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef XRT_CORE_DEVICE_H
 #define XRT_CORE_DEVICE_H
 
@@ -255,6 +242,19 @@ public:
     return qr.put(this, std::forward<Args>(args)...);
   }
 
+  // record_xclbin() - Registers an xclbin with the device
+  //
+  // This function records/registers an xclbin without loading it onto
+  // hardware resource.  Once registered, a hardware context can be
+  // created once or more times, which will assign the xclbin to
+  // hardware resources.
+  //
+  // Naming of "record" as in record_xclbin is to compensate for
+  // virtual register_xclbin which is defined by shim.
+  XRT_CORE_COMMON_EXPORT
+  void
+  record_xclbin(const xrt::xclbin& xclbin);
+
   /**
    * load_xclbin() - Load an xclbin object on this device
    *
@@ -404,7 +404,7 @@ public:
 
   XRT_CORE_COMMON_EXPORT
   std::pair<size_t, size_t>
-  get_ert_slots() const;
+  get_ert_slots(const uuid& xclbin_id = uuid()) const;
 
   // Move all these 'pt' functions out the class interface
   virtual void get_info(boost::property_tree::ptree&) const {}
@@ -425,6 +425,16 @@ public:
    * xclmgmt_load_xclbin() - loads the xclbin through the mgmt pf
    */
   virtual void xclmgmt_load_xclbin(const char*) const{}
+
+  /**
+   * shutdown_device() - hot reset the device, stop ongoing transactions
+   */
+  virtual void device_shutdown() const {}
+
+  /**
+   * online_device() - bring back the device online
+   */
+  virtual void device_online() const {}
 
   /**
    * open() - opens a device with an fd which can be used for non pcie read/write

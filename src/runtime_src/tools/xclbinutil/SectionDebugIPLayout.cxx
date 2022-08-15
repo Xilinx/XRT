@@ -26,16 +26,25 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionDebugIPLayout::init SectionDebugIPLayout::initializer;
 
-SectionDebugIPLayout::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", boost::factory<SectionDebugIPLayout*>()); 
+SectionDebugIPLayout::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_IP_LAYOUT, "DEBUG_IP_LAYOUT", boost::factory<SectionDebugIPLayout*>());
   sectionInfo->nodeName = "debug_ip_layout";
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::json);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::json);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::html);
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }
 
+// ----------------------------------------------------------------------------
+
 const std::string
-SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
+SectionDebugIPLayout::getDebugIPTypeStr(DEBUG_IP_TYPE _debugIpType) const
+{
   switch (_debugIpType) {
     case UNDEFINED:
       return "UNDEFINED";
@@ -67,6 +76,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "AXI_NOC";
     case ACCEL_DEADLOCK_DETECTOR:
       return "ACCEL_DEADLOCK_DETECTOR";
+    case HSDP_TRACE:
+      return "HSDP_TRACE";
     case DEBUG_IP_TYPE_MAX:
       return "DEBUG_IP_TYPE_MAX";
   }
@@ -74,8 +85,9 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
   return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(_debugIpType)).str();
 }
 
-enum DEBUG_IP_TYPE
-SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
+DEBUG_IP_TYPE
+SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const
+{
   if (_sDebugIPType == "LAPC")
     return LAPC;
 
@@ -109,14 +121,17 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
   if (_sDebugIPType == "AXI_NOC")
     return AXI_NOC;
 
-  if ( _sDebugIPType == "AXI_STREAM_MONITOR" )
+  if (_sDebugIPType == "AXI_STREAM_MONITOR")
     return AXI_STREAM_MONITOR;
 
-  if ( _sDebugIPType == "AXI_STREAM_PROTOCOL_CHECKER" ) 
+  if (_sDebugIPType == "AXI_STREAM_PROTOCOL_CHECKER")
     return AXI_STREAM_PROTOCOL_CHECKER;
 
-  if ( _sDebugIPType == "ACCEL_DEADLOCK_DETECTOR" ) 
+  if (_sDebugIPType == "ACCEL_DEADLOCK_DETECTOR")
     return ACCEL_DEADLOCK_DETECTOR;
+
+  if (_sDebugIPType == "HSDP_TRACE")
+    return HSDP_TRACE;
 
   if (_sDebugIPType == "UNDEFINED")
     return UNDEFINED;
@@ -132,7 +147,8 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
 void
 SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
                                     unsigned int _sectionSize,
-                                    boost::property_tree::ptree& _ptree) const {
+                                    boost::property_tree::ptree& _ptree) const
+{
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: DEBUG_IP_LAYOUT");
   XUtil::TRACE_BUF("Section Buffer", reinterpret_cast<const char*>(_pDataSection), _sectionSize);
@@ -140,20 +156,20 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
   // Do we have enough room to overlay the header structure
   if (_sectionSize < sizeof(debug_ip_layout)) {
     auto errMsg = boost::format("ERROR: Section size (%d) is smaller than the size of the debug_ip_layout structure (%d)")
-                                 % _sectionSize % sizeof(debug_ip_layout);
+        % _sectionSize % sizeof(debug_ip_layout);
     throw std::runtime_error(errMsg.str());
   }
 
   debug_ip_layout* pHdr = (debug_ip_layout*)_pDataSection;
   boost::property_tree::ptree debug_ip_layout;
 
-  XUtil::TRACE(boost::format("m_count: %d") % (uint32_t) pHdr->m_count);
+  XUtil::TRACE(boost::format("m_count: %d") % (uint32_t)pHdr->m_count);
 
   // Write out the entire structure except for the array structure
   XUtil::TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_debug_ip_data[0]) - (uint64_t)pHdr));
   debug_ip_layout.put("m_count", (boost::format("%d") % static_cast<unsigned int>(pHdr->m_count)).str());
 
-  debug_ip_data mydata = debug_ip_data {0};
+  debug_ip_data mydata = debug_ip_data{};
 
 
   XUtil::TRACE(boost::format("Size of debug_ip_data: %d\nSize of mydata: %d") % sizeof(debug_ip_data) % sizeof(mydata));
@@ -170,24 +186,24 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
     boost::property_tree::ptree debug_ip_data;
 
     // Reform the index value
-    uint16_t m_virtual_index = (((uint16_t) pHdr->m_debug_ip_data[index].m_index_highbyte) << 8) + (uint16_t) pHdr->m_debug_ip_data[index].m_index_lowbyte;
+    uint16_t m_virtual_index = (((uint16_t)pHdr->m_debug_ip_data[index].m_index_highbyte) << 8) + (uint16_t)pHdr->m_debug_ip_data[index].m_index_lowbyte;
 
     XUtil::TRACE(boost::format("[%d]: m_type: %d, index: %d (m_index_highbyte: 0x%x, m_index_lowbyte: 0x%x), m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'")
-                              % index
-                              % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_type)
-                              % static_cast<unsigned int>(m_virtual_index)
-                              % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_index_highbyte)
-                              % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_index_lowbyte)
-                              % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_properties)
-                              % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_major)
-                              % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_minor)
-                              % pHdr->m_debug_ip_data[index].m_base_address
-                              % pHdr->m_debug_ip_data[index].m_name);
+                 % index
+                 % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_type)
+                 % static_cast<unsigned int>(m_virtual_index)
+                 % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_index_highbyte)
+                 % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_index_lowbyte)
+                 % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_properties)
+                 % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_major)
+                 % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_minor)
+                 % pHdr->m_debug_ip_data[index].m_base_address
+                 % pHdr->m_debug_ip_data[index].m_name);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&pHdr->m_debug_ip_data[index]), sizeof(debug_ip_data));
 
-    debug_ip_data.put("m_type", getDebugIPTypeStr((enum DEBUG_IP_TYPE)pHdr->m_debug_ip_data[index].m_type).c_str());
+    debug_ip_data.put("m_type", getDebugIPTypeStr((DEBUG_IP_TYPE)pHdr->m_debug_ip_data[index].m_type).c_str());
     debug_ip_data.put("m_index", (boost::format("%d") % static_cast<unsigned int>(m_virtual_index)).str());
     debug_ip_data.put("m_properties", (boost::format("%d") % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_properties)).str());
     debug_ip_data.put("m_major", (boost::format("%d") % static_cast<unsigned int>(pHdr->m_debug_ip_data[index].m_major)).str());
@@ -195,7 +211,7 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
     debug_ip_data.put("m_base_address", (boost::format("0x%lx") %  pHdr->m_debug_ip_data[index].m_base_address).str());
     debug_ip_data.put("m_name", (boost::format("%s") % pHdr->m_debug_ip_data[index].m_name).str());
 
-    m_debug_ip_data.push_back(std::make_pair("", debug_ip_data));   // Used to make an array of objects
+    m_debug_ip_data.push_back({ "", debug_ip_data });   // Used to make an array of objects
   }
 
   debug_ip_layout.add_child("m_debug_ip_data", m_debug_ip_data);
@@ -207,11 +223,12 @@ SectionDebugIPLayout::marshalToJSON(char* _pDataSection,
 
 void
 SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
-                                      std::ostringstream& _buf) const {
+                                      std::ostringstream& _buf) const
+{
   const boost::property_tree::ptree& ptDebugIPLayout = _ptSection.get_child("debug_ip_layout");
 
   // Initialize the memory to zero's
-  debug_ip_layout debugIpLayoutHdr = debug_ip_layout {0};
+  debug_ip_layout debugIpLayoutHdr = debug_ip_layout{};
 
   // Read, store, and report mem_topology data
   debugIpLayoutHdr.m_count = ptDebugIPLayout.get<uint16_t>("m_count");
@@ -232,11 +249,11 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
   unsigned int count = 0;
   const boost::property_tree::ptree debugIpDatas = ptDebugIPLayout.get_child("m_debug_ip_data");
   for (const auto& kv : debugIpDatas) {
-    debug_ip_data debugIpDataHdr = debug_ip_data {0};
+    debug_ip_data debugIpDataHdr = debug_ip_data{};
     boost::property_tree::ptree ptDebugIPData = kv.second;
 
-    std::string sm_type = ptDebugIPData.get<std::string>("m_type");
-    debugIpDataHdr.m_type = (uint8_t) getDebugIPType(sm_type);
+    auto sm_type = ptDebugIPData.get<std::string>("m_type");
+    debugIpDataHdr.m_type = (uint8_t)getDebugIPType(sm_type);
 
     // The index value in 2019.2 was expanded to 2 bytes (a high and low byte)
     uint16_t index = ptDebugIPData.get<uint16_t>("m_index");
@@ -250,32 +267,32 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
     // Optional value, will set to 0 if not set (as it was initialized)
     debugIpDataHdr.m_minor = ptDebugIPData.get<uint8_t>("m_minor", 0);
 
-    std::string sBaseAddress = ptDebugIPData.get<std::string>("m_base_address");
+    auto sBaseAddress = ptDebugIPData.get<std::string>("m_base_address");
     debugIpDataHdr.m_base_address = XUtil::stringToUInt64(sBaseAddress);
 
-    std::string sm_name = ptDebugIPData.get<std::string>("m_name");
+    auto sm_name = ptDebugIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(debug_ip_data::m_name)) {
       auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
-                                  % static_cast<unsigned int>(sm_name.length()) 
-                                  % static_cast<unsigned int>(sizeof(debug_ip_data::m_name)) 
-                                  % sm_name;
+          % static_cast<unsigned int>(sm_name.length())
+          % static_cast<unsigned int>(sizeof(debug_ip_data::m_name))
+          % sm_name;
       throw std::runtime_error(errMsg.str());
     }
 
     // We already know that there is enough room for this string
     memcpy(debugIpDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    XUtil::TRACE(boost::format("[%d]: m_type: %d, index: %d (m_index_highbyte: 0x%x, m_index_lowbyte: 0x%x), m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'") 
-                               % count
-                               % static_cast<unsigned int>(debugIpDataHdr.m_type)
-                               % static_cast<unsigned int>(index)
-                               % static_cast<unsigned int>(debugIpDataHdr.m_index_highbyte)
-                               % static_cast<unsigned int>(debugIpDataHdr.m_index_lowbyte)
-                               % static_cast<unsigned int>(debugIpDataHdr.m_properties)
-                               % static_cast<unsigned int>(debugIpDataHdr.m_major)
-                               % static_cast<unsigned int>(debugIpDataHdr.m_minor)
-                               % debugIpDataHdr.m_base_address
-                               % debugIpDataHdr.m_name);
+    XUtil::TRACE(boost::format("[%d]: m_type: %d, index: %d (m_index_highbyte: 0x%x, m_index_lowbyte: 0x%x), m_properties: %d, m_major: %d, m_minor: %d, m_base_address: 0x%lx, m_name: '%s'")
+                 % count
+                 % static_cast<unsigned int>(debugIpDataHdr.m_type)
+                 % static_cast<unsigned int>(index)
+                 % static_cast<unsigned int>(debugIpDataHdr.m_index_highbyte)
+                 % static_cast<unsigned int>(debugIpDataHdr.m_index_lowbyte)
+                 % static_cast<unsigned int>(debugIpDataHdr.m_properties)
+                 % static_cast<unsigned int>(debugIpDataHdr.m_major)
+                 % static_cast<unsigned int>(debugIpDataHdr.m_minor)
+                 % debugIpDataHdr.m_base_address
+                 % debugIpDataHdr.m_name);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("debug_ip_data", reinterpret_cast<const char*>(&debugIpDataHdr), sizeof(debug_ip_data));
@@ -286,41 +303,21 @@ SectionDebugIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSect
   // -- The counts should match --
   if (count != debugIpLayoutHdr.m_count) {
     auto errMsg = boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d")
-                                 % static_cast<unsigned int>(count)
-                                 % static_cast<unsigned int>(debugIpLayoutHdr.m_count);
+        % static_cast<unsigned int>(count)
+        % static_cast<unsigned int>(debugIpLayoutHdr.m_count);
     throw std::runtime_error(errMsg.str());
   }
 
   // -- Buffer needs to be less than 64K--
   unsigned int bufferSize = static_cast<unsigned int>(_buf.str().size());
   const unsigned int maxBufferSize = 64 * 1024;
-  if ( bufferSize > maxBufferSize ) {
+  if (bufferSize > maxBufferSize) {
     auto errMsg = boost::format("CRITICAL WARNING: The buffer size for the DEBUG_IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.")
-                                % static_cast<unsigned int>(bufferSize)
-                                % static_cast<unsigned int>(maxBufferSize);
+        % static_cast<unsigned int>(bufferSize)
+        % static_cast<unsigned int>(maxBufferSize);
     std::cout << errMsg << std::endl;
     // throw std::runtime_error(errMsg);
   }
 }
 
-bool 
-SectionDebugIPLayout::doesSupportAddFormatType(FormatType _eFormatType) const
-{
-  if (_eFormatType == FormatType::JSON) {
-    return true;
-  }
-  return false;
-}
 
-bool 
-SectionDebugIPLayout::doesSupportDumpFormatType(FormatType _eFormatType) const
-{
-    if ((_eFormatType == FormatType::JSON) ||
-        (_eFormatType == FormatType::HTML) ||
-        (_eFormatType == FormatType::RAW))
-    {
-      return true;
-    }
-
-    return false;
-}

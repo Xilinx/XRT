@@ -143,24 +143,6 @@ get_container()
 }
 
 inline std::string
-get_data_transfer_trace()
-{
-  static std::string value = detail::get_string_value("Debug.data_transfer_trace","off");
-  return value;
-}
-
-inline std::string
-get_data_transfer_trace_dep_message()
-{
-  static bool emitted = false ;
-  if (!emitted) {
-    emitted = true ;
-    return "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;
-  }
-  return "" ;
-}
-
-inline std::string
 get_device_trace()
 {
   static std::string value = detail::get_string_value("Debug.device_trace", "off");
@@ -237,11 +219,8 @@ get_noc_profile_interval_ms()
 inline std::string
 get_stall_trace()
 {
-  static bool data_transfer_enabled =
-    (get_data_transfer_trace() != "off") || (get_device_trace() != "off") ;
-  static std::string value =
-    (!data_transfer_enabled) ? "off" :
-    detail::get_string_value("Debug.stall_trace", "off");
+  static std::string value = (get_device_trace() == "off") ? "off"
+                             : detail::get_string_value("Debug.stall_trace", "off");
   return value;
 }
 
@@ -321,20 +300,6 @@ get_opencl_trace()
 }
 
 inline bool
-get_opencl_summary()
-{
-  static bool value = detail::get_bool_value("Debug.opencl_summary", false);
-  return value;
-}
-
-inline bool
-get_opencl_device_counter()
-{
-  static bool value = detail::get_bool_value("Debug.opencl_device_counter", false);
-  return value;
-}
-
-inline bool
 get_device_counters()
 {
   static bool value = detail::get_bool_value("Debug.device_counters", false);
@@ -351,7 +316,7 @@ get_aie_trace()
 inline bool
 get_aie_trace_flush()
 {
-  static bool value = detail::get_bool_value("Debug.aie_trace_flush", true);
+  static bool value = detail::get_bool_value("Debug.aie_trace_flush", false);
   return value;
 }
 
@@ -377,23 +342,26 @@ get_aie_trace_start_time()
 }
 
 inline bool
-get_aie_trace_user_control()
-{
-  static bool value = detail::get_bool_value("Debug.aie_trace_user_control", false);
-  return value;
-}
-
-inline bool
 get_aie_trace_periodic_offload()
 {
   static bool value = detail::get_bool_value("Debug.aie_trace_periodic_offload", true);
   return value;
 }
 
+/**
+ * Deprecated in future. Ms is too long for aie trace
+ */
 inline unsigned int
 get_aie_trace_buffer_offload_interval_ms()
 {
   static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_ms", 10);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_buffer_offload_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_us", 100);
   return value;
 }
 
@@ -839,6 +807,170 @@ get_device_offline_timer()
   static unsigned int value = detail::get_uint_value("Runtime.dev_offline_timer", 120);
   return value;
 }
+
+// Configurations under AIE_profile_settings section
+inline unsigned int
+get_aie_profile_settings_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("AIE_profile_settings.interval_us", 1000) ;
+  return value ;
+}
+
+inline std::string
+get_aie_profile_settings_graph_based_aie_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_aie_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_graph_based_aie_memory_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_aie_memory_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_graph_based_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_graph_based_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_mem_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_tile_based_aie_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_aie_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_tile_based_aie_memory_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_aie_memory_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_tile_based_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_interface_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_profile_settings_tile_based_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_mem_tile_metrics", "");
+  return value;
+}
+
+// AIE_trace_settings
+
+/**
+ * off|time|graph|user
+ */
+inline std::string
+get_aie_trace_settings_start_type()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.start_type", "off");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_start_time()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.start_time", "0");
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_settings_start_iteration()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.start_iteration", 1);
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_graph_based_aie_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.graph_based_aie_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_tile_based_aie_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_aie_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_tile_based_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_mem_tile_metrics", "");
+  return value;
+}
+
+#if 0
+// Post 2022.2
+inline std::string
+get_aie_trace_settings_tile_based_interface_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_interface_tile_metrics", "");
+  return value;
+}
+#endif
+
+inline std::string
+get_aie_trace_settings_buffer_size()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.buffer_size", "8M");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_counter_scheme()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.counter_scheme", "es2");
+  return value;
+}
+
+inline bool
+get_aie_trace_settings_periodic_offload()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.periodic_offload", true);
+  return value;
+}
+
+inline bool
+get_aie_trace_settings_reuse_buffer()
+{
+  static bool value = detail::get_bool_value("AIE_trace_settings.reuse_buffer", false);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_settings_buffer_offload_interval_us()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.buffer_offload_interval_us", 100);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_settings_file_dump_interval_s()
+{
+  static unsigned int value = detail::get_uint_value("AIE_trace_settings.file_dump_interval_s", 5);
+  return value;
+}
+
 
 }} // config,xrt_core
 

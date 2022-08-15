@@ -21,9 +21,13 @@
 // Static Variables / Classes
 SectionOverlay::init SectionOverlay::initializer;
 
-SectionOverlay::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(OVERLAY, "OVERLAY", boost::factory<SectionOverlay*>()); 
+SectionOverlay::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(OVERLAY, "OVERLAY", boost::factory<SectionOverlay*>());
+
+  sectionInfo->supportedAddFormats.push_back(FormatType::raw);
+
+  sectionInfo->supportedDumpFormats.push_back(FormatType::raw);
 
   addSectionType(std::move(sectionInfo));
 }

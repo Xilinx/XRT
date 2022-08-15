@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2020-2022 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -93,7 +94,7 @@ size_t IOCtlASM::stopCounter()
   return 0;
 }
 
-size_t IOCtlASM::readCounter(xclCounterResults& counterResults)
+size_t IOCtlASM::readCounter(xdp::CounterResults& counterResults)
 {
   if(!isOpened()) {
     return 0;

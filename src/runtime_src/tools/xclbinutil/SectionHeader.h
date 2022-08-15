@@ -38,7 +38,7 @@ class SectionHeader {
   void readXclBinBinarySection(std::fstream& _istream, unsigned int _section);
 
  private:
-  enum axlf_section_kind m_eType;  /* Type of section */
+  axlf_section_kind m_eType;  /* Type of section */
   std::string m_name;              /* Name of section (not really used in the xclbin anymore */
 };
 

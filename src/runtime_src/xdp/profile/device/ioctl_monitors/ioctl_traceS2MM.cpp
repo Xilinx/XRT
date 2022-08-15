@@ -27,6 +27,7 @@
 
 #include "ioctl_traceS2MM.h"
 #include "core/pcie/driver/linux/include/profile_ioctl.h"
+#include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
 

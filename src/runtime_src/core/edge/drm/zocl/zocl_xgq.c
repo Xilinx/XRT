@@ -31,9 +31,9 @@
 #define ZXGQ_IS_INTR_ENABLED(zxgq)	((zxgq)->zx_intc_pdev != NULL)
 #define	ZXGQ_THREAD_TIMER		(HZ / 20) /* in jiffies */
 
-#define ZXGQ_IP_SQ_PROD			0x0
-#define ZXGQ_IP_CQ_PROD			0x100
-#define ZXGQ_IP_CQ_CONF			0x10C
+#define ZXGQ_IP_SQ_PROD			0x100
+#define ZXGQ_IP_CQ_PROD			0x0
+#define ZXGQ_IP_CQ_CONF			0xC
 #define ZXGQ_IP_RESET			(0x1 << 31)
 
 struct zocl_xgq {
@@ -133,6 +133,14 @@ static int zxgq_fetch_request(struct zocl_xgq *zxgq, struct xgq_cmd_sq_hdr **cmd
 		zxgq_err(zxgq, "Payload size %dB is too big, truncated!", (*cmd)->count);
 	}
 	cpy_fromio(buf + header_sz, cmd_addr + header_sz, cnt);
+#if 0
+	{
+		int i;
+		printk("DEBUG: %s received a command\n", __func__);
+		for (i = 0; i < cnt/sizeof(u32); i++)
+			printk("DEBUG: %s cmd data(%d) 0x%x\n", __func__, i, ((u32 *)buf)[i]);
+	}
+#endif
 
 	xgq_notify_peer_consumed(xgq);
 

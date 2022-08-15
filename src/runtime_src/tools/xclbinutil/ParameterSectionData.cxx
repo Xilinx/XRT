@@ -22,15 +22,15 @@
 
 namespace XUtil = XclBinUtilities;
 
-ParameterSectionData::ParameterSectionData(const std::string &_formattedString)
-  : m_formatType(Section::FormatType::UNKNOWN)
-  , m_formatTypeStr("")
-  , m_file("")
-  , m_section("")
-  , m_subSection("")
-  , m_sectionIndex("")
-  , m_eKind(BITSTREAM)
-  , m_originalString(_formattedString)
+ParameterSectionData::ParameterSectionData(const std::string& _formattedString)
+    : m_formatType(Section::FormatType::unknown)
+    , m_formatTypeStr("")
+    , m_file("")
+    , m_section("")
+    , m_subSection("")
+    , m_sectionIndex("")
+    , m_eKind(BITSTREAM)
+    , m_originalString(_formattedString)
 {
   transformFormattedString(_formattedString);
 }
@@ -41,8 +41,8 @@ ParameterSectionData::~ParameterSectionData()
 }
 
 
-void 
-ParameterSectionData::transformFormattedString(const std::string _formattedString)
+void
+ParameterSectionData::transformFormattedString(const std::string& _formattedString)
 // Items being parsed:
 // -- Section --
 //    Syntax: <section>:<formatType>:<filename>
@@ -59,7 +59,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
 // -- Section, Section Element, & Subsection --
 //    Syntax: <section>[<Element>]-<subSection>:<formatType>:<filename>
 //   Example: SOFT_KERNEL[kernel1]-METADATA:JSON:MY_FILE.JSON
-// 
+//
 // Note: A file name can contain a colen (e.g., C:\test)
 {
   const std::string delimiters = ":";      // Our delimiter
@@ -70,17 +70,16 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   std::vector<std::string> tokens;
 
   // Parse the string until the entire string has been parsed or 3 tokens have been found
-  while((lastPos < _formattedString.length() + 1) && 
-        (tokens.size() < 3))
-  {
+  while ((lastPos < _formattedString.length() + 1) &&
+         (tokens.size() < 3)) {
     pos = _formattedString.find_first_of(delimiters, lastPos);
 
-    if ( (pos == std::string::npos) ||
-         (tokens.size() == 2) ){
-       pos = _formattedString.length();
+    if ((pos == std::string::npos) ||
+        (tokens.size() == 2)) {
+      pos = _formattedString.length();
     }
 
-    std::string token = _formattedString.substr(lastPos, pos-lastPos);
+    std::string token = _formattedString.substr(lastPos, pos - lastPos);
     tokens.push_back(token);
     lastPos = pos + 1;
   }
@@ -97,15 +96,15 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
 
   // -- Retrieve the section --
   std::string sSection = tokens[0];
-  
-  if ( sSection.empty() && (m_formatType != Section::FormatType::JSON)) {
+
+  if (sSection.empty() && (m_formatType != Section::FormatType::json)) {
     std::string errMsg = "Error: Empty sections names are only permitted with JSON format files.";
     throw std::runtime_error(errMsg);
   }
 
   // -- Break down the section--
-  if ( !sSection.empty() ) {
-    const std::string subDelimiter = "-";      
+  if (!sSection.empty()) {
+    const std::string subDelimiter = "-";
 
     // Extract the sub section name (if there is one)
     std::size_t subIndex = sSection.find_last_of(subDelimiter);
@@ -115,14 +114,14 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
     }
 
     // Extract the section index (if it is there)
-    const std::string sectionIndexStartDelimiter = "[";    
-    const char sectionIndexEndDelimiter = ']';    
+    const std::string sectionIndexStartDelimiter = "[";
+    const char sectionIndexEndDelimiter = ']';
     std::size_t sectionIndex =  sSection.find_first_of(sectionIndexStartDelimiter, 0);
 
     // Was the start index found?
     if (sectionIndex != std::string::npos) {
       m_section = sSection.substr(0, sectionIndex);
-      
+
       // We need to have an end delimiter
       if (sectionIndexEndDelimiter != sSection.back()) {
         auto errMsg = boost::format("Error: Expected format <section>[<section_index>]:<format>:<file> when using a section index.  Received: %s.") % _formattedString;
@@ -145,7 +144,7 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
     }
 
     // Is the section name is valid
-    enum axlf_section_kind eKind;
+    axlf_section_kind eKind;
     Section::translateSectionKindStrToKind(m_section, eKind);
 
     // Does the section support subsections
@@ -162,50 +161,50 @@ ParameterSectionData::transformFormattedString(const std::string _formattedStrin
   }
 }
 
-const std::string &
+const std::string&
 ParameterSectionData::getFile()
 {
   return m_file;
 }
 
-enum Section::FormatType 
+Section::FormatType
 ParameterSectionData::getFormatType()
 {
   return m_formatType;
 }
 
-const std::string &
+const std::string&
 ParameterSectionData::getSectionName()
 {
   return m_section;
 }
 
-const std::string &
+const std::string&
 ParameterSectionData::getSubSectionName()
 {
   return m_subSection;
 }
 
-const std::string &
+const std::string&
 ParameterSectionData::getSectionIndexName()
 {
   return m_sectionIndex;
 }
 
-enum axlf_section_kind &
+axlf_section_kind&
 ParameterSectionData::getSectionKind()
 {
   return m_eKind;
 }
 
 
-const std::string &
+const std::string&
 ParameterSectionData::getFormatTypeAsStr()
 {
   return m_formatTypeStr;
 }
 
-const std::string &
+const std::string&
 ParameterSectionData::getOriginalFormattedString()
 {
   return m_originalString;

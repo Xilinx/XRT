@@ -103,7 +103,7 @@ main(int argc, char* argv[])
     std::string dma_lock = test_path + dma_lock_file;
     xf::plctrl::plController m_pl_ctrl(aie_control.c_str(), dma_lock.c_str());
 
-    int num_iter = 1;
+    int num_iter = 2;
     int num_sample = 16;
 
     m_pl_ctrl.enqueue_update_aie_rtp("mygraph.first.in[1]", num_sample);
@@ -111,15 +111,28 @@ main(int argc, char* argv[])
     m_pl_ctrl.enqueue_set_aie_iteration("mygraph", num_iter);
     m_pl_ctrl.enqueue_enable_aie_cores();
 
+    m_pl_ctrl.enqueue_loop_begin(num_iter/2);
     m_pl_ctrl.enqueue_set_and_enqueue_dma_bd("mygraph.first.in[0]", 0,
                                              num_sample);
     m_pl_ctrl.enqueue_set_and_enqueue_dma_bd("mygraph.first.out[0]", 0,
                                              num_sample);
     m_pl_ctrl.enqueue_sync(num_sample);
-
+    m_pl_ctrl.enqueue_set_and_enqueue_dma_bd("mygraph.first.in[0]", 1,
+                                             num_sample);
+    m_pl_ctrl.enqueue_set_and_enqueue_dma_bd("mygraph.first.out[0]", 1,
+                                             num_sample);
+    m_pl_ctrl.enqueue_sync(num_sample);
+    if (num_iter%2 != 0) {
+	m_pl_ctrl.enqueue_set_and_enqueue_dma_bd("mygraph.first.in[0]", 0,
+						 num_sample);
+	m_pl_ctrl.enqueue_set_and_enqueue_dma_bd("mygraph.first.out[0]", 0,
+						 num_sample);
+	m_pl_ctrl.enqueue_sync(num_sample);
+    }
+    m_pl_ctrl.enqueue_loop_end();
+    
     m_pl_ctrl.enqueue_sleep(128);
     m_pl_ctrl.enqueue_disable_aie_cores();
-
     m_pl_ctrl.enqueue_halt();
 
     unsigned int mem_size = 0;
@@ -159,14 +172,6 @@ main(int argc, char* argv[])
                /*OFFSET=*/0);
     std::cout << "sync pm buffer complete" << std::endl;
 
-    // start sender_receiver kernels
-    auto sender_receiver_r1 = xrt::run(sender_receiver_k1);
-    sender_receiver_r1.set_arg(0, num_iter);
-    sender_receiver_r1.set_arg(1, in_bo1);
-    sender_receiver_r1.set_arg(2, out_bo1);
-    sender_receiver_r1.start();
-    std::cout << " start sender-receiver kernel" << std::endl;
-
     // start pl controller
     int ctrl_pkt_id = 0;
     auto controller_r1 = xrt::run(controller_k1);
@@ -176,8 +181,18 @@ main(int argc, char* argv[])
     std::cout << "start pl controller kernel" << std::endl;
     // start input kernels
 
+    // start sender_receiver kernels
+    auto sender_receiver_r1 = xrt::run(sender_receiver_k1);
+    sender_receiver_r1.set_arg(0, num_iter);
+    sender_receiver_r1.set_arg(1, in_bo1);
+    sender_receiver_r1.set_arg(2, out_bo1);
+    sender_receiver_r1.start();
+    std::cout << " start sender-receiver kernel" << std::endl;
+
     controller_r1.wait();
     std::cout << " pl controller wait complete" << std::endl;
+    sender_receiver_r1.wait();
+    std::cout << " sender_receiver wait complete" << std::endl;
 
     // sync output memory
     out_bo1.sync(XCL_BO_SYNC_BO_FROM_DEVICE, mem_size, /*OFFSET=*/0);

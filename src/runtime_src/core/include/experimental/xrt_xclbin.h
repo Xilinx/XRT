@@ -311,6 +311,14 @@ public:
      */
     enum class control_type : uint8_t { hs = 0, chain = 1, none = 2, fa = 5 };
 
+    /**
+     * @enum ip_type
+     *
+     * @details
+     * See `xclbin.h`
+     */
+    enum class ip_type : uint8_t { pl = IP_KERNEL, ps = IP_PS_KERNEL };
+
   public:
     ip() = default;
 
@@ -328,6 +336,16 @@ public:
     XCL_DRIVER_DLLESPEC
     std::string
     get_name() const;
+
+    /**
+     * get_type() - Get the IP type
+     *
+     * @return
+     *  IP type
+     */
+    XCL_DRIVER_DLLESPEC
+    ip_type
+    get_type() const;
 
     /**
      * get_control_type() - Get the IP control protocol
@@ -608,6 +626,22 @@ public:
   XCL_DRIVER_DLLESPEC
   std::vector<ip>
   get_ips() const;
+
+  /**
+   * get_ips() - Get list of ips that matches name
+   *
+   * @param name
+   *  Name to match against, prefixed with kernel name
+   * @return
+   *  A list of xrt::xclbin::ip objects that are compute units
+   *  of this kernel object and matches the specified name.
+   *
+   * The kernel name can optionally specify which kernel instance(s) to
+   * match "kernel:{ip1,ip2,...} syntax.
+   */
+  XCL_DRIVER_DLLESPEC
+  std::vector<ip>
+  get_ips(const std::string& name) const;
 
   /**
    * get_ip() - Get a specific IP from the xclbin

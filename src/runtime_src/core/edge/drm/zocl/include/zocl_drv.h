@@ -4,6 +4,7 @@
  * OpenCL accelerators.
  *
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -305,7 +306,7 @@ void subdev_destroy_scu(struct drm_zocl_dev *zdev);
 /* Sub device driver */
 extern struct platform_driver zocl_cu_xgq_driver;
 extern struct platform_driver zocl_csr_intc_driver;
-extern struct platform_driver zocl_xgq_intc_driver;
+extern struct platform_driver zocl_irq_intc_driver;
 extern struct platform_driver zocl_rpu_channel_driver;
 extern struct platform_driver cu_driver;
 extern struct platform_driver scu_driver;

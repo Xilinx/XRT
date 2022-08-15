@@ -258,6 +258,7 @@ int main(int argc, char** argv) {
         std::cout << "Throughput (Type: DDR) (Bank count: " << num_kernel_ddr << ") : " << max_throughput << "MB/s\n";
     }
     if (chk_hbm_mem) {
+        max_throughput = 0;
         // Starting at 4K and going up to 16M with increments of power of 2
         for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
             unsigned int data_size = i;

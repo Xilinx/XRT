@@ -77,6 +77,11 @@ install_recipes()
     eval "$SAVED_OPTIONS_LOCAL"
 }
 
+enable_vdu()
+{
+    echo "IMAGE_INSTALL:append = \" libvdu-xlnx kernel-module-vdu vdu-firmware\""  >> build/conf/local.conf
+}
+
 config_versal_project()
 {
     VERSAL_PROJECT_DIR=$1
@@ -105,6 +110,7 @@ config_versal_project()
     sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_gdb.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_valgrind.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-core-ssh-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
 
 
@@ -153,6 +159,47 @@ config_versal_project()
     cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot
     cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot/files
 
+    # Create startup script to start skd
+    SERVICE_FILE=$APU_RECIPES_DIR/skd.service
+    BB_FILE=$APU_RECIPES_DIR/skd.bb
+    INIT_SCRIPT=$APU_RECIPES_DIR/skd.sh
+
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n skd --enable
+    fi
+
+    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
+    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd
+    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
+    
+    # Generate vdu modules and add them to apu package
+    
+    # Enable VDU kernel module 
+    VDU_MOD_BB_FILE=$APU_RECIPES_DIR/kernel-module-vdu.bb
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n kernel-module-vdu --enable
+    fi
+    cp -rf $VDU_MOD_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu/
+    
+    # Enable VDU firmware 
+    VDU_FIRMWARE_BB_FILE=$APU_RECIPES_DIR/vdu-firmware.bb
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n vdu-firmware --enable
+    fi
+    cp -rf $VDU_FIRMWARE_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware/
+    
+    # Enable VDU control software library 
+    # This is not required as PS Kernels statically linking with control software, Enabling this to debug standalone control software 
+    VDU_LIBRARY_BB_FILE=$APU_RECIPES_DIR/libvdu-xlnx.bb
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-xlnx ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n libvdu-xlnx --enable
+    fi
+    cp -rf $VDU_LIBRARY_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-xlnx/
+
 }
 
 # --- End internal functions
@@ -178,6 +225,7 @@ XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
 full=0
 archiver=0
+gen_sysroot=0
 SSTATE_CACHE=""
 SETTINGS_FILE="petalinux.build"
 while [ $# -gt 0 ]; do
@@ -201,6 +249,9 @@ while [ $# -gt 0 ]; do
 			;;
 		-archiver | archiver )
 			archiver=1
+			;;
+		-sysroot | sysroot )
+			gen_sysroot=1
 			;;
 		-cache )
                         shift
@@ -328,6 +379,7 @@ if [[ $full == 1 ]]; then
   if [[ $AARCH = $versal_dir ]]; then
     # configure the project with appropriate options
     config_versal_project .
+    enable_vdu
   fi
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
@@ -336,6 +388,10 @@ if [[ $full == 1 ]]; then
   $PETA_BIN/petalinux-config -c rootfs --silentconfig
   echo "[CMD]: petalinux-build"
   $PETA_BIN/petalinux-build
+  if [[ $gen_sysroot == 1 ]]; then
+        $PETA_BIN/petalinux-build --sdk
+        echo "Run $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/sdk.sh to generate the syroot"
+  fi
 else
 #Run just xrt build if -full option is not provided
   echo "[CMD]: petalinux-build -c zocl"
@@ -395,7 +451,8 @@ cp $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh $ORIGINAL_DIR/$PETALINUX_NAME/
 if [[ $full == 1 ]]; then
   mkdir -p $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages
   export PATH=$PETALINUX/../../tool/petalinux-v$PETALINUX_VER-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin:$PATH
-  $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/
+  $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x14ca8093"
+  
 fi
 
 cd $ORIGINAL_DIR
