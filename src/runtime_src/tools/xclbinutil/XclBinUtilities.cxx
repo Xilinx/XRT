@@ -429,7 +429,7 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
   if (signature.signedBySize != 0)
   {
     _istream.seekg(signatureOffset + signature.signedByOffset);
-    std::unique_ptr<char> data( new char[ signature.signedBySize ] );
+    auto data = std::make_unique<char[]>(signature.signedBySize);
     _istream.read( data.get(), signature.signedBySize );
     _sSignedBy = std::string(data.get(), signature.signedBySize);
   }
@@ -438,7 +438,7 @@ XclBinUtilities::getSignature(std::fstream& _istream, std::string& _sSignature,
   if (signature.signatureSize != 0)
   {
     _istream.seekg(signatureOffset + signature.signatureOffset);
-    std::unique_ptr<char> data( new char[ signature.signatureSize ] );
+    auto data = std::make_unique<char[]>(signature.signatureSize);
     _istream.read( data.get(), signature.signatureSize );
     _sSignature = std::string(data.get(), signature.signatureSize);
   }

@@ -1066,7 +1066,7 @@ get_dev(unsigned index, bool user)
 }
 
 int
-get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char>& buf)
+get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char[]>& buf)
 {
   std::ifstream in(filename);
   if (!in.is_open()) {
@@ -1102,7 +1102,7 @@ get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char>& b
   if (!section)
     return -EINVAL;
 
-  buf = std::shared_ptr<char>(new char[section->m_sectionSize]);
+  buf = std::shared_ptr<char[]>(new char[section->m_sectionSize]);
   in.seekg(section->m_sectionOffset);
   in.read(buf.get(), section->m_sectionSize);
 

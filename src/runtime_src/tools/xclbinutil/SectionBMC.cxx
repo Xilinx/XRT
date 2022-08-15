@@ -134,7 +134,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   XUtil::TRACE("SectionBMC::CopyBufferUpdateMetadata");
 
   // Copy the buffer
-  std::unique_ptr<unsigned char> copyBuffer(new unsigned char[_origSectionSize]);
+  auto copyBuffer = std::make_unique<unsigned char[]>(_origSectionSize);
   memcpy(copyBuffer.get(), _pOrigDataSection, _origSectionSize);
 
   // ----------------------
@@ -172,7 +172,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   _istream.seekg(0, _istream.end);
   std::streamsize fileSize = _istream.tellg();
 
-  std::unique_ptr<unsigned char> memBuffer(new unsigned char[fileSize]);
+  auto memBuffer = std::make_unique<unsigned char[]>(fileSize);
   _istream.clear();
   _istream.seekg(0);
   _istream.read((char*)memBuffer.get(), fileSize);
@@ -273,9 +273,7 @@ SectionBMC::createDefaultFWImage(std::istream& _istream, std::ostringstream& _bu
 
   // Write Data
   {
-
-
-    std::unique_ptr<unsigned char> memBuffer(new unsigned char[bmcHdr.m_size]);
+    auto memBuffer = std::make_unique<unsigned char[]>(bmcHdr.m_size);
     _istream.seekg(0);
     _istream.clear();
     _istream.read((char*)memBuffer.get(), bmcHdr.m_size);
