@@ -1122,12 +1122,21 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // Edge does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
   auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
   return cuidx;
+}
+
+void
+shim::
+close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  // To-be-implemented
+  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
 }
 
 int
@@ -1217,6 +1226,17 @@ xclIPName2Index(const char *name)
 
   xclLog(XRT_ERROR, "%s not found", name);
   return -ENOENT;
+}
+
+int
+shim::
+xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    int ret = 0;
+    drm_zocl_set_cu_range range = {ipIndex, start, size};
+
+    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SET_CU_READONLY_RANGE, &range);
+    return ret ? -errno : ret;
 }
 
 int
@@ -1818,6 +1838,13 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
 {
   auto shim = get_shim_object(handle);
   return shim->open_cu_context(hwctx, cuname);
+}
+
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  auto shim = get_shim_object(handle);
+  return shim->close_cu_context(hwctx, cuidx);
 }
 
 } // xrt::shim_int
@@ -2609,6 +2636,13 @@ xclIPName2Index(xclDeviceHandle handle, const char *name)
     xrt_core::send_exception_message(ex.what());
     return -ENOENT;
   }
+}
+
+int
+xclIPSetReadRange(xclDeviceHandle handle, uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+    return (drv) ? drv->xclIPSetReadRange(ipIndex, start, size) : -ENODEV;
 }
 
 int

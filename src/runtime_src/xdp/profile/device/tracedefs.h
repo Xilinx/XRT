@@ -54,6 +54,9 @@
 // Use some arbitrary large number here
 #define TS2MM_QUEUE_SZ_WARN_THRESHOLD 5000
 
+// In some cases, we cannot use coarse mode
+#define COARSE_MODE_UNSUPPORTED "Coarse mode cannot be enabled. Defaulting to fine mode. Please check compilation for details."
+
 #define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Device trace could be incomplete. Suggested fixes:\n\
 1. Use larger FIFO size or DDR/HBM bank as 'trace_memory' in linking options.\n\
 2. Use 'coarse' option for device_trace and/or turn off stall_trace in runtime settings."
@@ -77,6 +80,8 @@ Please increase trace_buffer_size and trace_buffer_offload_interval together or 
 #define AIE_MIN_SIZE_CIRCULAR_BUF 0x800000
 #define AIE_CIR_BUF_MIN_RATE_PLIO 0x200000000
 
+#define AIE_TRACE_UNAVAILABLE "Neither PLIO nor GMIO trace infrastucture is found in the given design. So, AIE event trace will not be available."
+#define AIE_TRACE_BUF_ALLOC_FAIL              "Allocation of buffer for AIE trace failed. AIE trace will not be available."
 #define AIE_TS2MM_WARN_MSG_BUF_FULL           "AIE Trace Buffer is full. Device trace could be incomplete."
 #define AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE "Circular buffer overwrite was detected in device trace. AIE trace could be incomplete."
 #define AIE_TRACE_BUF_REUSE_WARN              "AIE trace reuse setting may lead to buffer overrun. Please increase \
@@ -85,6 +90,8 @@ functions : 8M functions_partial_stalls : 16M functions_all_stalls 32M. For larg
 trace settings."
 #define AIE_TRACE_WARN_REUSE_PERIODIC  "AIE Trace Buffer reuse only supported with periodic offload."
 #define AIE_TRACE_WARN_REUSE_GMIO      "AIE Trace buffer reuse is not supported on GMIO trace."
+#define AIE_TRACE_PERIODIC_OFFLOAD_UNSUPPORTED "Continuous offload of AIE Trace is not supported for GMIO mode. So, AIE Trace for GMIO mode will be offloaded only at the end of application."
+#define AIE_TRACE_CIRC_BUF_EN          "Circular buffers enabled for AIE trace."
 
 // Trace file Dump Settings and Warnings
 #define MIN_TRACE_DUMP_INTERVAL_S 1
@@ -101,6 +108,17 @@ constexpr unsigned int BITS_PER_WORD = 32;
 constexpr unsigned int BYTES_PER_WORD = 4;
 constexpr unsigned int BYTES_64BIT = 8;
 constexpr unsigned int BYTES_128BIT = 16;
+
+constexpr uint32_t NUM_TRACE_EVENTS = 8;
+constexpr uint32_t NUM_OUTPUT_TRACE_EVENTS = 9;
+constexpr uint32_t NUM_BROADCAST_EVENTS = 16;
+constexpr uint32_t EVENT_CORE_ACTIVE = 28;
+constexpr uint32_t EVENT_CORE_DISABLED = 29;
+constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
+constexpr uint32_t NUM_TRACE_PCS = 4;
+
+constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
+constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
 
 }
 

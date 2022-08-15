@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -58,9 +59,19 @@ namespace xdp {
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
     bool setMetricsSettings(uint64_t deviceId, void* handle);
-    bool setGraphMetricsSettings(uint64_t deviceId, void* handle);
 
     bool checkAieDevice(uint64_t deviceId, void* handle);
+
+    std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
+                                                        const std::string &graph,
+                                                        void* handle);
+    std::vector<tile_type> getAllTilesForShimProfiling(void* handle, const std::string &metricStr);
+
+    void getConfigMetricsForTiles(int moduleIdx, std::vector<std::string> metricsSettings,
+                                               std::vector<std::string> graphmetricsSettings,
+                                               const XAie_ModuleType mod,
+                                               void* handle);
+
 
     std::string getMetricSet(const XAie_ModuleType mod, 
                              const std::string& metricsStr,
@@ -131,6 +142,8 @@ namespace xdp {
     std::map<std::string, std::vector<std::string>> mCoreEventStrings;
     std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
     std::map<std::string, std::vector<std::string>> mShimEventStrings;
+
+    std::vector<std::map<tile_type, std::string>> mConfigMetrics; 
   };
 
 } // end namespace xdp

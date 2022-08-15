@@ -5,13 +5,13 @@
 #define SHIM_INT_H_
 
 #include "core/include/xrt.h"
+#include "core/include/experimental/xrt_hw_context.h"
 #include "core/common/cuidx_type.h"
 
 #include <string>
 
 namespace xrt {
 
-class hw_context;
 class xclbin;
 class uuid;
 
@@ -30,21 +30,33 @@ XCL_DRIVER_DLLESPEC
 xclDeviceHandle
 open_by_bdf(const std::string& bdf);
 
-// open_context() - Open a shared/exclusive context on a named compute unit
+// open_cu_context() - Open a shared/exclusive context on a named compute unit
 //
 // @handle:        Device handle
-// @slot:          Slot index of xclbin to service this context requiest
-// @xclbin_uuid:   UUID of the xclbin image with the CU to open a context on
+// @hwctx:         Hardware context in which to open the CU
 // @cuname:        Name of compute unit to open
-// @shared:        Shared access or exclusive access
+// Returns:        The cuidx assigned by the driver
 //
 // Throws on error
 xrt_core::cuidx_type
 open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname);
 
+// close_cu_context() - Close a previously opened CU context
+//
+// @handle:        Device handle
+// @hwctx:         The hardware context in which this CU was opened
+// @cuidx:         UUID of the xclbin image with the CU to open a context on
+//
+// Throws on error, e.g. the CU context was not opened previously
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
+
 // create_hw_context() -
 uint32_t // ctxhdl aka slotidx
-create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos);
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  xrt::hw_context::access_mode mode);
 
 // dsstroy_hw_context() -
 void

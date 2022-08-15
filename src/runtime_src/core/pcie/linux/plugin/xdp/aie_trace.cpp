@@ -15,7 +15,7 @@
  */
 
 #include <functional>
-#include "plugin/xdp/aie_trace.h"
+#include "aie_trace.h"
 #include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
@@ -34,15 +34,19 @@ namespace trace {
 
   std::function<void (void*)> update_device_cb;
   std::function<void (void*)> flush_device_cb;
+  std::function<void (void*)> finish_flush_device_cb;
 
   void register_callbacks(void* handle)
   {
     typedef void (*ftype)(void*) ;
-    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice"));
-    if(xrt_core::dlerror() != NULL) update_device_cb = nullptr;
+    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDevice")) ;
+    if (xrt_core::dlerror() != NULL) update_device_cb = nullptr ;
 
-    flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushAIEDevice"));
-    if(xrt_core::dlerror() != NULL) flush_device_cb = nullptr;
+    flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushAIEDevice")) ;
+    if (xrt_core::dlerror() != NULL) flush_device_cb = nullptr ;
+
+    finish_flush_device_cb = (ftype)(xrt_core::dlsym(handle, "finishFlushAIEDevice")) ;
+    if (xrt_core::dlerror() != NULL) finish_flush_device_cb = nullptr ;
   }
 
   void warning_function()
@@ -58,15 +62,22 @@ namespace trace {
 
   void update_device(void* handle)
   {
-    if(trace::update_device_cb != nullptr) {
+    if (trace::update_device_cb != nullptr) {
       trace::update_device_cb(handle) ;
     }
   }
 
   void flush_device(void* handle)
   {
-    if(trace::flush_device_cb != nullptr) {
+    if (trace::flush_device_cb != nullptr) {
       trace::flush_device_cb(handle) ;
+    }
+  }
+
+  void finish_flush_device(void* handle)
+  {
+    if (trace::finish_flush_device_cb != nullptr) {
+      trace::finish_flush_device_cb(handle) ;
     }
   }
 

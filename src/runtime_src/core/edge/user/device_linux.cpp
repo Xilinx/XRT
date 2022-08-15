@@ -973,6 +973,19 @@ reset(query::reset_type key) const
 
 
 ////////////////////////////////////////////////////////////////
+// Custom ishim implementation
+// Redefined from xrt_core::ishim for functions that are not
+// universally implemented by all shims
+////////////////////////////////////////////////////////////////
+void
+device_linux::
+set_cu_read_range(cuidx_type cuidx, uint32_t start, uint32_t size)
+{
+  if (auto ret = xclIPSetReadRange(get_device_handle(), cuidx.index, start, size))
+    throw xrt_core::error(ret, "failed to set cu read range");
+}
+
+////////////////////////////////////////////////////////////////
 // Custom IP interrupt handling
 ////////////////////////////////////////////////////////////////
 void

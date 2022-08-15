@@ -51,10 +51,7 @@ struct ishim
   open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) = 0;
 
   virtual void
-  close_cu_context(const xrt::hw_context& hwctx, cuidx_type ip_index)
-  {
-    close_context(hwctx.get_xclbin_uuid(), ip_index.index);
-  }
+  close_cu_context(const xrt::hw_context& hwctx, cuidx_type ip_index) = 0;
 
   // Legacy, to be removed
   virtual void
@@ -156,7 +153,7 @@ struct ishim
   // not_supported_error, if either not implemented or an xclbin
   // was explicitly loaded using load_xclbin
   virtual uint32_t // ctx handle aka slot idx
-  create_hw_context(const xrt::uuid& /*xclbin_uuid*/, uint32_t /*qos*/) const
+  create_hw_context(const xrt::uuid& /*xclbin_uuid*/, const xrt::hw_context::qos_type& /*qos*/, xrt::hw_context::access_mode /*mode*/) const
   { throw not_supported_error{__func__}; }
 
   virtual void
@@ -166,6 +163,15 @@ struct ishim
   // Registers an xclbin, but does not load it.
   virtual void
   register_xclbin(const xrt::xclbin&) const
+  { throw not_supported_error{__func__}; }
+  ////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////
+  // Interface for CU shared read range
+  // Implemented explicitly by concrete shim device class
+  // 2022.2: Only supported for Alveo Linux
+  virtual void
+  set_cu_read_range(cuidx_type /*ip_index*/, uint32_t /*start*/, uint32_t /*size*/)
   { throw not_supported_error{__func__}; }
   ////////////////////////////////////////////////////////////////
 
@@ -283,6 +289,12 @@ struct shim : public DeviceType
   open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) override
   {
     return xrt::shim_int::open_cu_context(DeviceType::get_device_handle(), hwctx, cuname);
+  }
+
+  void
+  close_cu_context(const xrt::hw_context& hwctx, cuidx_type cuidx) override
+  {
+    xrt::shim_int::close_cu_context(DeviceType::get_device_handle(), hwctx, cuidx);
   }
 
   // Legacy, to be removed

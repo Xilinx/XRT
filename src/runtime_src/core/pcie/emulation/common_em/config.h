@@ -318,6 +318,7 @@ struct sParseLog
       inline void setIsPlatformEnabled(bool isPlatformDataAvailable) {mIsPlatformDataAvailable = isPlatformDataAvailable; }
       inline bool getIsPlatformEnabled() { return mIsPlatformDataAvailable;}
       inline bool isDisabledHostBUffer() { return mIsDisabledHostBuffer;}
+      inline bool isFastNocDDRAccessEnabled() { return mIsFasterNocDDRAccessEnabled;}
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
     private:
@@ -354,6 +355,7 @@ struct sParseLog
       bool mIsM2MEnabled;
       bool mIsPlatformDataAvailable;
       bool mIsDisabledHostBuffer;
+      bool mIsFasterNocDDRAccessEnabled;
       TIMEOUT_SCALE mTimeOutScale;
       config();
       ~config() { };//empty destructor

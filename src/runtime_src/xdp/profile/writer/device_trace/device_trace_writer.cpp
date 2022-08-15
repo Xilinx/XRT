@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -170,8 +171,16 @@ namespace xdp {
 
       size_t pos = aim->name.find('/');
       std::string portAndArgs = (std::string::npos != pos) ? aim->name.substr(pos+1) : aim->name;
-      if(!aim->args.empty()) {
-        portAndArgs += " (" + aim->args + ")";
+      if (aim->cuPort && !aim->cuPort->args.empty()) {
+        portAndArgs += "(";
+        bool first = true;
+        for (auto& arg : aim->cuPort->args) {
+          if (!first)
+            portAndArgs += "|";
+          portAndArgs += arg;
+          first = false;
+        }
+        portAndArgs += ")";
       }
 
       // Data Transfers
@@ -229,9 +238,18 @@ namespace xdp {
       aimBucketIdMap[index] = ++rowCount;
 
       std::string portAndArgs = aim->name;
-      if(!aim->args.empty()) {
-        portAndArgs += " (" + aim->args + ")";
+      if (aim->cuPort && !aim->cuPort->args.empty()) {
+        portAndArgs += "(";
+        bool first = true;
+        for (auto& arg : aim->cuPort->args) {
+          if (!first)
+            portAndArgs += "|";
+          portAndArgs += arg;
+          first = false;
+        }
+        portAndArgs += ")";
       }
+
       fout << "Group_Start," << portAndArgs << ",Data Transfers over read and write channels of AXI Memory Mapped " << aim->name << std::endl;
       fout << "Static_Row,"  << rowCount   << ",Read Channel,Read Data Transfers " << std::endl;
       fout << "Static_Row,"  << ++rowCount << ",Write Channel,Write Data Transfers " << std::endl;

@@ -3,4 +3,5 @@
 #
 if (DEFINED XRT_AIE_BUILD)
   add_subdirectory(sample)
+  add_subdirectory(profiling)
 endif()

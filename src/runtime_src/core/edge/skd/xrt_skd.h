@@ -38,7 +38,6 @@
 
 
 #include "core/common/xclbin_parser.h"
-#include "experimental/xrt_enqueue.h"
 #include "ffi.h"
 #include "ps_kernel.h"
 #include "sk_types.h"
@@ -59,7 +58,7 @@ class skd
 
   /**
    * skd() - Constructor from uuid and soft kernel section
-   * 
+   *
    * @param soft kernel metadata buffer handle
    *
    * @param soft kernel image buffer handle
@@ -71,7 +70,7 @@ class skd
    */
   skd(xclDeviceHandle handle, int sk_meta_bohdl, int sk_bohdl, char *kname, uint32_t cu_index, unsigned char *uuid);
   ~skd();
-  
+
   XCL_DRIVER_DLLESPEC
   int
   init();
@@ -79,7 +78,7 @@ class skd
   XCL_DRIVER_DLLESPEC
   void
   run();
-  
+
   XCL_DRIVER_DLLESPEC
   void
   fini();
@@ -99,7 +98,7 @@ class skd
     int sk_bo;
     int sk_meta_bo;
     unsigned char xclbin_uuid[16];
-    
+
     void* sk_handle;
     void* kernel;
     std::vector<xrt_core::xclbin::kernel_argument> args;
@@ -121,4 +120,3 @@ class skd
 }
 
 #endif
-    
