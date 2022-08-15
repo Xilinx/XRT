@@ -1424,7 +1424,7 @@ static void icap_clean_axlf_section(struct icap *icap,
 static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	uint32_t slot_id = DEFAULT_SLOT_ID;
+	uint32_t slot_id = DEFAULT_SLOT_ID; // Default Slot
 	struct islot_info *islot = icap->slot_info[slot_id];
 
 	if (!islot)
