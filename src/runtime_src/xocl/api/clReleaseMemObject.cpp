@@ -38,8 +38,7 @@ static cl_int
 clReleaseMemObject(cl_mem memobj)
 {
   validOrError(memobj);
-
-  if (!xocl(memobj)->release())
+  if (xocl(memobj) != nullptr && !xocl(memobj)->release())
     return CL_SUCCESS;
 
   delete xocl(memobj);
