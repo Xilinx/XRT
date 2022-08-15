@@ -109,6 +109,17 @@ constexpr unsigned int BYTES_PER_WORD = 4;
 constexpr unsigned int BYTES_64BIT = 8;
 constexpr unsigned int BYTES_128BIT = 16;
 
+constexpr uint32_t NUM_TRACE_EVENTS = 8;
+constexpr uint32_t NUM_OUTPUT_TRACE_EVENTS = 9;
+constexpr uint32_t NUM_BROADCAST_EVENTS = 16;
+constexpr uint32_t EVENT_CORE_ACTIVE = 28;
+constexpr uint32_t EVENT_CORE_DISABLED = 29;
+constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
+constexpr uint32_t NUM_TRACE_PCS = 4;
+
+constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
+constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
+
 }
 
 #endif
