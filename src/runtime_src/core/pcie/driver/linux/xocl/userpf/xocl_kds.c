@@ -515,7 +515,7 @@ int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
 	 */
 	ret = xocl_cu_ctx_to_info(xdev, drm_cu_args, hw_ctx, &cu_info);
 	if (ret) {
-		userpf_err(xdev, "No valid CU found for this HW context");
+		userpf_err(xdev, "No valid CU ctx found for this HW context");
 		mutex_unlock(&client->lock);
 		return -EINVAL;
 	}
