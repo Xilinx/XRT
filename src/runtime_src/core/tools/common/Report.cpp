@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -29,7 +17,8 @@ const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
   { SchemaVersion::unknown,       false, "",              "Unknown entry"},
   { SchemaVersion::json_20202,    true,  "JSON",          "Latest JSON schema"}, // Note: to be updated to the latest schema version every release
   { SchemaVersion::json_internal, false, "JSON-internal", "Internal JSON property tree"},
-  { SchemaVersion::json_20202,    true,  "JSON-2020.2",   "JSON 2020.2 schema"}
+  { SchemaVersion::json_20202,    true,  "JSON-2020.2",   "JSON 2020.2 schema"},
+  { SchemaVersion::json_plain,    false,  "JSON-plain",   "Latest JSON schema in non-pretty print"}
 };
 
 
@@ -93,6 +82,7 @@ Report::populatePropertyTree( const xrt_core::device *pDevice,
       break;
 
     case SchemaVersion::json_20202:
+    case SchemaVersion::json_plain:
       getPropertyTree20202(pDevice, pt);
       break;
 
@@ -113,28 +103,6 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
   try {
     populatePropertyTree(pDevice, schemaVersion, pt);
     writeReport(pDevice, pt, elementFilter, consoleStream);
-  } catch (const std::exception& e) {
-    std::string reportName = getReportName();
-    if (!reportName.empty()) {
-      reportName[0] = static_cast<char>(std::toupper(reportName[0]));
-      std::cerr << reportName << std::endl;
-    }
-
-    std::cerr << "  ERROR: " << e.what() << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-}
-
-Report::NagiosStatus 
-Report::getNagiosReport( const xrt_core::device *pDevice, 
-                            SchemaVersion schemaVersion,
-                            std::ostream & consoleStream,
-                            boost::property_tree::ptree & pt) const
-{
-  // If an exception occurs while generating a report throw an error in the catch
-  try {
-    populatePropertyTree(pDevice, schemaVersion, pt);
-    return writeNagiosReport(pDevice, pt, consoleStream);
   } catch (const std::exception& e) {
     std::string reportName = getReportName();
     if (!reportName.empty()) {

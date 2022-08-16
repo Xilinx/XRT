@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef __Report_h_
 #define __Report_h_
@@ -57,6 +45,7 @@ class Report {
     unknown,
     json_internal,
     json_20202,
+    json_plain
   };
  
   // Helper mapping between string and enum
@@ -82,7 +71,6 @@ class Report {
   bool isHidden() const { return m_isHidden; };
 
   void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
-  NagiosStatus getNagiosReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
  // Needs a virtual destructor
   virtual ~Report() {};
@@ -90,7 +78,6 @@ class Report {
  // Child methods that need to be implemented
  protected:
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const = 0;
-  virtual NagiosStatus writeNagiosReport(const xrt_core::device* /*_pDevice*/, const boost::property_tree::ptree& /*pt*/, std::ostream & /*_output*/) const { return NagiosStatus::okay; };
   virtual void getPropertyTreeInternal(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
   virtual void getPropertyTree20202(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
 
