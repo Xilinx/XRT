@@ -143,13 +143,14 @@ static int zintc_remove(struct platform_device *pdev)
  * Interfaces exposed to other subdev drivers.
  */
 
-static void zocl_csr_intc_add(struct platform_device *pdev, u32 id, irq_handler_t cb, void *arg)
+static int zocl_csr_intc_add(struct platform_device *pdev, u32 id, irq_handler_t cb, void *arg)
 {
 	unsigned long irqflags;
 	struct zocl_csr_intc *zintc = platform_get_drvdata(pdev);
 	struct zocl_ert_intc_handler *h;
 
-	BUG_ON(id >= ZINTC_MAX_VECTORS);
+	if (id >= ZINTC_MAX_VECTORS)
+		return -EINVAL;
 
 	spin_lock_irqsave(&zintc->zei_lock, irqflags);
 
@@ -157,12 +158,15 @@ static void zocl_csr_intc_add(struct platform_device *pdev, u32 id, irq_handler_
 	if (h->zeih_irq == 0)
 		zintc_err(zintc, "vector %d has no matching irq", id);
 
-	BUG_ON(h->zeih_cb);
+	if (h->zeih_cb)
+		return -EINVAL;
 	h->zeih_cb = cb;
 	h->zeih_arg = arg;
 	h->zeih_enabled = true;
 
 	spin_unlock_irqrestore(&zintc->zei_lock, irqflags);
+
+	return 0;
 }
 
 static void zocl_csr_intc_remove(struct platform_device *pdev, u32 id)

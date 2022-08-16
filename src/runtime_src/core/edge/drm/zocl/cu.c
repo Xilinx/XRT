@@ -53,6 +53,55 @@ static ssize_t debug_store(struct device *dev,
 static DEVICE_ATTR_RW(debug);
 
 static ssize_t
+name_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "CU[%d]\n", info->cu_idx);
+}
+static DEVICE_ATTR_RO(name);
+
+static ssize_t
+base_paddr_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "0x%llx\n", info->addr);
+}
+static DEVICE_ATTR_RO(base_paddr);
+
+static ssize_t
+size_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "%ld\n", info->size);
+}
+static DEVICE_ATTR_RO(size);
+
+static ssize_t
+read_range_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	u32 start = 0;
+	u32 end = 0;
+
+	mutex_lock(&cu->base.read_regs.xcr_lock);
+	start = cu->base.read_regs.xcr_start;
+	end = cu->base.read_regs.xcr_end;
+	mutex_unlock(&cu->base.read_regs.xcr_lock);
+	return sprintf(buf, "0x%x 0x%x\n", start, end);
+}
+static DEVICE_ATTR_RO(read_range);
+
+static ssize_t
 cu_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -131,6 +180,10 @@ static struct attribute *cu_attrs[] = {
 	&dev_attr_cu_info.attr,
 	&dev_attr_stat.attr,
 	&dev_attr_poll_threshold.attr,
+	&dev_attr_name.attr,
+	&dev_attr_base_paddr.attr,
+	&dev_attr_size.attr,
+	&dev_attr_read_range.attr,
 	NULL,
 };
 
@@ -283,12 +336,13 @@ static int cu_probe(struct platform_device *pdev)
 
 	if (info->intr_enable) {
 		intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
-		if (!intc) {
+		if (intc)
+			err = zocl_ert_intc_add(intc, info->intr_id, cu_isr, zcu);
+		if (!intc || err) {
 			DRM_WARN("Failed to initial CU interrupt. "
 				 "Fall back to polling\n");
 			zcu->base.info.intr_enable = 0;
-		} else
-			zocl_ert_intc_add(intc, info->intr_id, cu_isr, zcu);
+		}
 	}
 
 	switch (info->model) {

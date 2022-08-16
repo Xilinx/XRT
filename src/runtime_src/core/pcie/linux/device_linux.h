@@ -72,9 +72,11 @@ public:
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
 
   uint32_t // ctx handle aka slotidx
-  create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const override
+  create_hw_context(const xrt::uuid& xclbin_uuid,
+                    const xrt::hw_context::qos_type& qos,
+                    xrt::hw_context::access_mode mode) const override
   {
-    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos);
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos, mode);
   }
 
   void

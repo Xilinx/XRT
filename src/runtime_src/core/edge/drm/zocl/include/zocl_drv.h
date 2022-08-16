@@ -211,6 +211,13 @@ zocl_kds_del_scu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 	return kds_del_scu(&zdev->kds, xcu);
 }
 
+
+static inline int
+zocl_kds_set_cu_read_range(struct drm_zocl_dev *zdev, u32 cu_idx, u32 start, u32 size)
+{
+	return kds_set_cu_read_range(&zdev->kds, cu_idx, start, size);
+}
+
 int zocl_copy_bo_async(struct drm_device *dev, struct drm_file *fipl,
 		zocl_dma_handle_t *handle, struct drm_zocl_copy_bo *bo);
 

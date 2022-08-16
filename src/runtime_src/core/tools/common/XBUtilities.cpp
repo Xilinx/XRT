@@ -248,6 +248,31 @@ str2index(const std::string& str, bool _inUserDomain)
 }
 
 void
+XBUtilities::xrt_xbutil_version_cmp(bool force)
+{
+  boost::property_tree::ptree pt_xrt;
+  xrt_core::get_xrt_info(pt_xrt);
+  const boost::property_tree::ptree empty_ptree;
+
+  std::string xrt_version = pt_xrt.get<std::string>("version", "<unknown>");
+  const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
+  for(const auto& drv : available_drivers) {
+    const boost::property_tree::ptree& driver = drv.second;
+    std::string drv_name = driver.get<std::string>("name", "<unknown>");
+    std::string drv_version = driver.get<std::string>("version", "<unknown>");
+    if (drv_name.compare("xocl") == 0 && drv_version.compare("unknown") != 0 && xrt_version.compare(drv_version) != 0) {
+      const auto & errMsg = boost::str(boost::format("Unexpected XRT Driver version (%s) was found. Expected %s, to match XRT tools.") % drv_version % xrt_version);
+      if (force) {
+        std::cout << errMsg << std::endl;
+        std::cout << "Bypassing mismatch with --force." << std::endl;
+      } else {
+        throw std::runtime_error(errMsg);
+      }
+    }
+  }
+}
+
+void
 XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
                               bool _inUserDomain,
                               xrt_core::device_collection &_deviceCollection)
@@ -332,23 +357,26 @@ XBUtilities::sudo_or_throw(const std::string& msg)
 #endif
 }
 
+void
+XBUtilities::throw_cancel(const std::string& msg)
+{
+  throw_cancel(boost::format("%s") % msg);
+}
 
 void
-XBUtilities::print_exception_and_throw_cancel(const xrt_core::error& e)
+XBUtilities::throw_cancel(const boost::format& format)
+{
+  throw xrt_core::error(std::errc::operation_canceled, boost::str(format));
+}
+
+void
+XBUtilities::print_exception(const std::system_error& e)
 {
   // Remove the type of error from the message.
   const std::string msg = std::regex_replace(e.what(), std::regex(std::string(": ") + e.code().message()), "");
 
-  std::cerr << boost::format("ERROR (%s): %s") % e.code().message() % msg << std::endl;
-
-  throw xrt_core::error(std::errc::operation_canceled);
-}
-
-void
-XBUtilities::print_exception_and_throw_cancel(const std::runtime_error& e)
-{
-  std::cerr << boost::format("ERROR: %s\n") % e.what();
-  throw xrt_core::error(std::errc::operation_canceled);
+  if (!msg.empty())
+    std::cerr << boost::format("ERROR: %s\n") % msg;
 }
 
 std::vector<char>

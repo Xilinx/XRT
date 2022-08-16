@@ -153,7 +153,7 @@ struct ishim
   // not_supported_error, if either not implemented or an xclbin
   // was explicitly loaded using load_xclbin
   virtual uint32_t // ctx handle aka slot idx
-  create_hw_context(const xrt::uuid& /*xclbin_uuid*/, uint32_t /*qos*/) const
+  create_hw_context(const xrt::uuid& /*xclbin_uuid*/, const xrt::hw_context::qos_type& /*qos*/, xrt::hw_context::access_mode /*mode*/) const
   { throw not_supported_error{__func__}; }
 
   virtual void

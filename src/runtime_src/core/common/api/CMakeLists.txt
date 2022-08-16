@@ -2,20 +2,16 @@
 # Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 add_library(core_common_api_library_objects OBJECT
   context_mgr.cpp
-  exec.cpp
-  kds.cpp
+  hw_queue.cpp
   native_profile.cpp
-  sws.cpp
   xrt_bo.cpp
   xrt_device.cpp
-  xrt_enqueue.cpp
   xrt_error.cpp
   xrt_hw_context.cpp
   xrt_ini.cpp
   xrt_ip.cpp
   xrt_kernel.cpp
   xrt_message.cpp
-  xrt_pipeline.cpp
   xrt_profile.cpp
   xrt_queue.cpp
   xrt_system.cpp
