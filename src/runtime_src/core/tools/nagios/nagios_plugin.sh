@@ -1,4 +1,14 @@
 #!/bin/bash
 
 source $XILINX_XRT/setup.sh > /dev/null
-$XILINX_XRT/etc/nagios-plugins/xrt_nagios_plugin $@
+xbutil examine -d $1 -r $2 -f JSON-internal -o /tmp/nagios_output.json &> /dev/null
+case $? in
+  0)
+    echo "STATUS: OK |"
+    ;;
+  *)
+    echo "STATUS: FAILURE |"
+    ;;
+esac
+cat /tmp/nagios_output.json
+rm /tmp/nagios_output.json
