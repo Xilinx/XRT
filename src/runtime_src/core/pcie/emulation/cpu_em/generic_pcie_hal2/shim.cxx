@@ -418,7 +418,8 @@ namespace xclcpuemhal2
           if (sLdLib)
             sLdLibs = std::string(sLdLib) + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fft_v9_1" + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fir_v7_1" + ":";
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fir_v7_0" + ":";
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fpo_v7_1" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "opencv" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
