@@ -185,7 +185,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 {
 	xuid_t *uuid;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-	struct kds_client_cu_info cu_info = { 0 };
+	struct kds_client_cu_info cu_info = { };
 	int ret;
 
 	mutex_lock(&client->lock);
@@ -220,7 +220,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 
 	/* Bitstream is locked. No one could load a new one
-	 * until this client close all of the contexts.
+	 * until this HW context is closed.
 	 */
 	xocl_ctx_to_info(args, &cu_info);
 	/* Get a free CU context for the given CU index */
@@ -256,7 +256,7 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-	struct kds_client_cu_info cu_info = { 0 };
+	struct kds_client_cu_info cu_info = { };
 	xuid_t *uuid;
 	int ret = 0;
 
@@ -404,7 +404,6 @@ int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 
         mutex_lock(&client->lock);
 
-	/* Try to find the existing HW context */
         hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_args->hw_context);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
@@ -426,7 +425,7 @@ static int
 xocl_cu_ctx_to_info(struct xocl_dev *xdev, struct drm_xocl_open_cu_ctx *cu_args,
 	struct kds_client_hw_ctx *hw_ctx, struct kds_client_cu_info *cu_info)
 {
-        uint32_t slot_hndl = hw_ctx->slot_idx; // Get the slot handler
+        uint32_t slot_hndl = hw_ctx->slot_idx;
         struct kds_sched *kds = &XDEV(xdev)->kds;
         char *kname_p = cu_args->cu_name;
         struct xrt_cu *xcu = NULL;
@@ -452,7 +451,7 @@ xocl_cu_ctx_to_info(struct xocl_dev *xdev, struct drm_xocl_open_cu_ctx *cu_args,
                 }
         }
 
-        /* Retrive the CU index from the given slot */
+        /* Retrive the SCU index from the given slot */
         for (i = 0; i < MAX_CUS; i++) {
                 xcu = kds->scu_mgmt.xcus[i];
                 if (!xcu)
@@ -480,7 +479,7 @@ done:
 }
 
 static inline void
-xocl_hw_ctx_to_info(struct drm_xocl_close_cu_ctx *args,
+xocl_close_cu_ctx_to_info(struct drm_xocl_close_cu_ctx *args,
 		   struct kds_client_cu_info *cu_info)
 {
 	/* Extract the CU information */
@@ -494,15 +493,11 @@ int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
 	struct kds_client *client = filp->driver_priv;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-	struct kds_client_cu_info cu_info = { 0 }; // Local Variable
+	struct kds_client_cu_info cu_info = { };
 	int ret = 0;
 
-        /* Bitstream is locked. No one could load a new one
-         * until this client close all of the contexts.
-         */
         mutex_lock(&client->lock);
 
-	/* Try to find the corresponding HW context */
         hw_ctx = kds_get_hw_ctx_by_id(client, drm_cu_args->hw_context);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
@@ -511,7 +506,7 @@ int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
         }
 
 	/* Bitstream is locked. No one could load a new one
-	 * until this client close all of the contexts.
+	 * until this HW context is closed.
 	 */
 	ret = xocl_cu_ctx_to_info(xdev, drm_cu_args, hw_ctx, &cu_info);
 	if (ret) {
@@ -548,12 +543,11 @@ int xocl_close_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
 	struct kds_client *client = filp->driver_priv;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-        struct kds_client_cu_info cu_info = { 0 }; // Local Variable  
+        struct kds_client_cu_info cu_info = { }; 
         int ret = 0;
 
         mutex_lock(&client->lock);
 
-	/* Try to find the corresponding HW context */
         hw_ctx = kds_get_hw_ctx_by_id(client, drm_cu_args->hw_context);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
@@ -561,7 +555,7 @@ int xocl_close_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
                 goto out;
         }
 
-	xocl_hw_ctx_to_info(drm_cu_args, &cu_info);
+	xocl_close_cu_ctx_to_info(drm_cu_args, &cu_info);
 	
 	/* Get the corresponding CU Context */ 
         cu_ctx = kds_get_cu_hw_ctx(client, hw_ctx, &cu_info);

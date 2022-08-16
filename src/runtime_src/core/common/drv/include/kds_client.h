@@ -110,7 +110,7 @@ struct kds_client {
 
 	/* To suppot multiple hw context */
 	struct list_head          	hw_ctx_list;
-	uint32_t 		 	next_avail_hw_ctx;
+	uint32_t 		 	next_hw_ctx_id;
 
 	struct list_head          graph_list;
 	spinlock_t                graph_list_lock;

@@ -1119,7 +1119,7 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 }
 
 /* Legacy Context. Need to cleanup once hw context fully functional */
-static inline void
+static void
 _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_ctx *cctx)
 {
@@ -1138,18 +1138,26 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	list_for_each_entry_safe(cu_ctx, next, &cctx->cu_ctx_list, link) {
 		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
 				cu_ctx->cu_idx);
-		kds_del_context(kds, client, cu_ctx);
-		kds_free_cu_ctx(client, cu_ctx);
+		if (kds_del_context(kds, client, cu_ctx)) {
+			kds_err(client, "Deleting KDS Context failed");
+			return;
+		}
+
+		if (kds_free_cu_ctx(client, cu_ctx)) {
+			kds_err(client, "Freeing CU Context failed");
+			return;
+		}
 	}
 	
 	mutex_unlock(&client->lock);
 }
 
 
-static inline void
+static void
 _kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_hw_ctx *hw_ctx)
 {
+	int ret = 0;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_ctx *next = NULL;
 
@@ -1165,8 +1173,15 @@ _kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 	list_for_each_entry_safe(cu_ctx, next, &hw_ctx->cu_ctx_list, link) {
 		kds_info(client, "Removing CU Domain[%d] CU Index [%d]", cu_ctx->cu_domain,
 				cu_ctx->cu_idx);
-		kds_del_context(kds, client, cu_ctx);
-		kds_free_cu_ctx(client, cu_ctx);
+		if (kds_del_context(kds, client, cu_ctx)) {
+			kds_err(client, "Deleting KDS Context failed");
+			return;
+		}
+
+		if (kds_free_cu_ctx(client, cu_ctx)) {
+			kds_err(client, "Freeing CU Context failed");
+			return;
+		}
 	}
 	
 	mutex_unlock(&client->lock);
@@ -1531,18 +1546,13 @@ kds_alloc_hw_ctx(struct kds_client *client, uuid_t *xclbin_id, uint32_t slot_id)
         }
 
 	/* Initialize the hw context here */
-	hw_ctx->hw_ctx_idx = client->next_avail_hw_ctx;
+	hw_ctx->hw_ctx_idx = client->next_hw_ctx_id;
 	hw_ctx->slot_idx = slot_id;
 	hw_ctx->xclbin_id = xclbin_id;
-
-	/* Update next available hw context for this client */
-	++client->next_avail_hw_ctx;
-
-	/* Multiple CU context can be active. Initializing CU context list */
 	INIT_LIST_HEAD(&hw_ctx->cu_ctx_list);
-
-        /* Add this hw context to Client Context list */
         list_add_tail(&hw_ctx->link, &client->hw_ctx_list);
+
+	++client->next_hw_ctx_id;
 
         return hw_ctx;
 }

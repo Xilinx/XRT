@@ -380,7 +380,7 @@ struct xclbin_slots
     for (auto& line : xclbin_info) {
       boost::char_separator<char> sep(" ");
       tokenizer tokens(line, sep);
-      slot_info data = { 0 };
+      slot_info data = { };
 
       if (std::distance(tokens.begin(), tokens.end()) == 1) {
         tokenizer::iterator tok_it = tokens.begin();

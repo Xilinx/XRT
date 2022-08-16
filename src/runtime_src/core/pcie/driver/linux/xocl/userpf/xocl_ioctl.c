@@ -108,7 +108,7 @@ int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
 	       	(struct drm_xocl_create_hw_ctx *)data;
         struct xocl_drm *drm_p = dev->dev_private;
         struct xocl_dev *xdev = drm_p->xdev;
-        struct drm_xocl_axlf axlf_obj_ptr = { 0 };
+        struct drm_xocl_axlf axlf_obj_ptr = { };
 	uint32_t slot_id = 0;
         int ret = 0;
 
