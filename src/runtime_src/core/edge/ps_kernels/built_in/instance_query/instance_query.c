@@ -19,10 +19,6 @@
 #include <boost/property_tree/ptree.hpp>
 namespace pt = boost::property_tree;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "sk_types.h"
 
 // User private data structure container (context object) definition
@@ -216,6 +212,10 @@ get_instance_info(const std::string& file,
   };
   filter_ptree_contents(pt, info_pt, name_map);
 }
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 __attribute__((visibility("default")))
 int get_ps_kernel_data( char *output,
