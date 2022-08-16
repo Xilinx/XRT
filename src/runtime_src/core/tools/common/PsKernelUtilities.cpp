@@ -123,18 +123,19 @@ parse_instance(const pt::ptree& instance_pt)
     // IE Test_world => TestWorld
     std::string name = item->get<std::string>("name");
     if (!name.empty())
-      name[0] = toupper(name[0]);
+      name[0] = static_cast<char>(toupper(name[0]));
     for (auto loc = name.find("_"); loc != std::string::npos; loc = name.find("_", loc)) {
       name.erase(loc, 1);
       // Capitalize the next letter if it exists
       if (loc < name.size())
-        name[loc] = toupper(name[loc]);
+        name[loc] = static_cast<char>(toupper(name[loc]));
     }
+
     // Create the new data tree
-    pt::ptree data_pt;
-    data_pt.put("name", name);
-    data_pt.put("value", item->get<std::string>("value"));
-    status_pt.push_back(std::make_pair("", data_pt));
+    pt::ptree data_node_pt;
+    data_node_pt.put("name", name);
+    data_node_pt.put("value", item->get<std::string>("value"));
+    status_pt.push_back(std::make_pair("", data_node_pt));
   }
   parsed_pt.add_child("process_info", status_pt);
 
