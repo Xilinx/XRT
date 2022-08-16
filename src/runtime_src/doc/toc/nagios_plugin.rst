@@ -12,28 +12,23 @@ The ``xrt nagios plugin`` tool is a Nagios plugin developed to work with a Nagio
 
 For more information on Nagios click `here <https://www.nagios.org/>`_.
 
-The plugin places text into the standard output that can be parsed by a Nagios XL database or displayed by a Nagios Core instance.
-
-When invoking the plugin through nagios please use the xrt nagios script in the same directory to properly setup all environmental variables.
-
-The current information returned by the tool is a device's :
-    - Mechanical data
-    - Thermal data
-    - Memory data
-    - Electrical data 
+The plugin places the requested device report text in a JSON format into the standard output.
 
 
 **Options**: These are the options can be used. 
 
- - ``--help`` : Get help message
-
  - The ``--device`` (or ``-d``) specifies the target device to query for data
-    
+
     - <user bdf> :  The Bus:Device.Function of the device of interest
+
+- The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
+
+    - See :ref:`xbutil examine report options <xbutil_report_label>` for a list of valid reports
 
 **Example commands** 
 
 
 .. code-block:: shell
 
-     xrt_nagios_plugin --device 0000:b3:00.1
+     ./nagios_plugin.sh --device 0000:b3:00.1 --report platform
+     ./nagios_plugin.sh -d b3:00 -r platform

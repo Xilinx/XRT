@@ -20,7 +20,6 @@
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/algorithm/string.hpp>
 
 void
 ReportElectrical::getPropertyTreeInternal( const xrt_core::device * _pDevice,

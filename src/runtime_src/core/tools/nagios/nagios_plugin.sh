@@ -6,7 +6,7 @@
 # Source setup and ignore output
 source $XILINX_XRT/setup.sh > /dev/null
 # Generate the output JSON file. Ignore both error and standard output
-xbutil examine -d $1 -r $2 -f JSON-plain -o /tmp/nagios_output.json &> /dev/null
+xbutil examine $@ -f JSON-plain -o /tmp/nagios_output.json &> /dev/null
 # Depending on command status return OK or FAILURE
 case $? in
   0)

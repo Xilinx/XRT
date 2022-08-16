@@ -10,8 +10,6 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <sstream>
 
-boost::format Report::m_nagiosFormat(" '%s'=%s%s::::");
-
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
   { SchemaVersion::unknown,       false, "",              "Unknown entry"},
@@ -71,27 +69,6 @@ Report::Report(const std::string & _reportName,
   // Empty
 }
 
-void
-Report::populatePropertyTree( const xrt_core::device *pDevice, 
-                              SchemaVersion schemaVersion,
-                              boost::property_tree::ptree & pt) const
-{
-  switch (schemaVersion) {
-    case SchemaVersion::json_internal:
-      getPropertyTreeInternal(pDevice, pt);
-      break;
-
-    case SchemaVersion::json_20202:
-    case SchemaVersion::json_plain:
-      getPropertyTree20202(pDevice, pt);
-      break;
-
-    default:
-      throw std::runtime_error("ERROR: Unknown schema version.");
-      break;
-  }
-}
-
 void 
 Report::getFormattedReport( const xrt_core::device *pDevice, 
                             SchemaVersion schemaVersion,
@@ -101,7 +78,21 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
 {
   // If an exception occurs while generating a report throw an error in the catch
   try {
-    populatePropertyTree(pDevice, schemaVersion, pt);
+    switch (schemaVersion) {
+      case SchemaVersion::json_internal:
+        getPropertyTreeInternal(pDevice, pt);
+        break;
+
+      case SchemaVersion::json_20202:
+      case SchemaVersion::json_plain:
+        getPropertyTree20202(pDevice, pt);
+        break;
+
+      default:
+        throw std::runtime_error("ERROR: Unknown schema version.");
+        break;
+    }
+
     writeReport(pDevice, pt, elementFilter, consoleStream);
   } catch (const std::exception& e) {
     std::string reportName = getReportName();

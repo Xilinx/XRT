@@ -14,29 +14,6 @@
 
 class Report {
  public:
-  // Nagios data area
-  enum class NagiosStatus {
-    okay = 0,
-    warning,
-    critical,
-    unknown
-  };
-
-  // Define these operators to allow fo easy comparison of device states
-  friend bool operator<(NagiosStatus rhs, NagiosStatus lhs)
-  {
-    int val_rhs = static_cast<int>(rhs);
-    int val_lhs = static_cast<int>(lhs);
-    return val_rhs < val_lhs;
-  }
-
-  friend bool operator>(NagiosStatus rhs, NagiosStatus lhs)
-  {
-    int val_rhs = static_cast<int>(rhs);
-    int val_lhs = static_cast<int>(lhs);
-    return val_rhs > val_lhs;
-  }
-
   // Supported JSON schemas.
   // 
   // Remember to update the initialization of Report::m_schemaVersionMapping 
@@ -81,17 +58,12 @@ class Report {
   virtual void getPropertyTreeInternal(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
   virtual void getPropertyTree20202(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
 
-// Formatting constant for Nagios plugin
-protected:
-  static boost::format m_nagiosFormat;
-
  // Child class Helper methods
  protected:
   Report(const std::string & _reportName, const std::string & _shortDescription, bool _deviceRequired);
   Report(const std::string & _reportName, const std::string & _shortDescription, bool _deviceRequired, bool _isHidden);
 
  private:
-  void populatePropertyTree( const xrt_core::device *pDevice, SchemaVersion schemaVersion, boost::property_tree::ptree & pt) const;
   Report() = delete;
 
  // Variables
