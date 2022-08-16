@@ -216,7 +216,7 @@ namespace xclcpuemhal2 {
     {
       void *result = realloc(buf, new_size);
       // If realloc was unsuccessful, then return the original size of buf.
-      if (result == NULL)
+      if (result == nullptr)
         return buf_size;
       buf = result;
       return new_size;
