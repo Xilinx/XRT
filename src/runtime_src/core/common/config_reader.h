@@ -874,13 +874,10 @@ get_aie_profile_settings_tile_based_mem_tile_metrics()
 
 // AIE_trace_settings
 
-/**
- * off|time|graph|user
- */
 inline std::string
 get_aie_trace_settings_start_type()
 {
-  static std::string value = detail::get_string_value("AIE_trace_settings.start_type", "off");
+  static std::string value = detail::get_string_value("AIE_trace_settings.start_type", "time");
   return value;
 }
 
