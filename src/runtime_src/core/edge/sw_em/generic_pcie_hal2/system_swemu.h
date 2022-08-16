@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,8 +42,6 @@ public:
   void
   program_plp(const device* dev, const std::vector<char>& buffer) const;
 
-  void
-  mem_read(const device* dev, long long addr, long long size, std::string output_file);
 };
 
 /**

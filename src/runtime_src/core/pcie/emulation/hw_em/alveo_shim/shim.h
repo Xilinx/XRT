@@ -29,6 +29,7 @@
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "unix_socket.h"
+#include "nocddr_fastaccess_hwemu.h"
 
 #endif
 
@@ -144,7 +145,7 @@ using addr_type = uint64_t;
 
       // aka xclCreateHWContext, internal shim API for native C++ applications only
       uint32_t // ctx handle aka slot idx
-      create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos);
+      create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode);
 
       // aka xclDestroyHWContext, internal shim API for native C++ applications only
       void
@@ -220,6 +221,7 @@ using addr_type = uint64_t;
       void fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src);
       void saveWaveDataBase();
       void extractEmuData(const std::string& simPath, int binaryCounter, bitStreamArg args);
+      void nocMmapInitialization(const std::string &simPath);
 
       // Sanity checks
       static HwEmShim *handleCheck(void *handle);
@@ -419,6 +421,7 @@ using addr_type = uint64_t;
       std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
       unsigned int host_sptag_idx;
       bool mSimDontRun;
+      nocddr_fastaccess_hwemu mNocFastAccess;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

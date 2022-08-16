@@ -110,6 +110,7 @@ public:
   bool isGood() const;
   static shim *handleCheck(void *handle, bool checkDrmFd = true);
   int xclIPName2Index(const char *name);
+  int xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size);
 
   // Application debug path functionality for xbutil
   size_t xclDebugReadCheckers(xdp::LAPCCounterResults* aCheckerResults);

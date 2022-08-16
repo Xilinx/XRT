@@ -169,7 +169,7 @@ public:
   }
 
   xcl_hwctx_handle
-  create_hw_context(const xrt::uuid& xid, uint32_t qos)
+  create_hw_context(const xrt::uuid& xid)
   {
     std::lock_guard lk(m_mutex);
     auto itr = m_xclbins.find(xid);
@@ -489,7 +489,7 @@ struct shim
     auto xclbin = m_core_device->get_xclbin(top->m_header.uuid);
     m_pldev->register_xclbin(xclbin);
     auto uuid = xclbin.get_uuid();
-    m_load_xclbin_slots[uuid] = create_hw_context(uuid, 0);
+    m_load_xclbin_slots[uuid] = create_hw_context(uuid);
     return 0;
   }
 
@@ -536,12 +536,12 @@ struct shim
   }
 
   uint32_t // ctxhdl aka slotidx
-  create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
+  create_hw_context(const xrt::uuid& xclbin_uuid)
   {
     if (m_load_xclbin_slots.find(xclbin_uuid) != m_load_xclbin_slots.end())
       throw xrt_core::ishim::not_supported_error(__func__);
 
-    return m_pldev->create_hw_context(xclbin_uuid, qos);
+    return m_pldev->create_hw_context(xclbin_uuid);
   }
 
   void
@@ -621,10 +621,13 @@ close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core:
 }
 
 uint32_t // ctxhdl aka slotidx
-create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type&,
+                  xrt::hw_context::access_mode)
 {
   auto shim = get_shim_object(handle);
-  return shim->create_hw_context(xclbin_uuid, qos);
+  return shim->create_hw_context(xclbin_uuid);
 }
 
 void

@@ -30,6 +30,7 @@ usage()
 	echo "          -images                         Versal images path"
 	echo "          -clean                          Remove build files"
         echo "          -output                         output path"
+        echo "          -idcode                         id code of the part"
 	echo "This script requires tools: mkimage, xclbinutil, bootgen, rpmbuild, dpkg-deb. "
 	echo "There is mkimage in petalinux build, e.g."
 	echo "/proj/petalinux/2021.2/petalinux-v2021.2_daily_latest/tool/petalinux-v2021.2-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin/mkimage"
@@ -114,6 +115,9 @@ ROOTFS_ADDR="0x21000000"
 METADATA_ADDR="0x7FBD0000"
 METADATA_BUFFER_LEN=131072
 
+# default id code is for vck5000 part
+ID_CODE="0x14ca8093"
+
 clean=0
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -127,6 +131,10 @@ while [ $# -gt 0 ]; do
                 -output )
 			shift
                         OUTPUT_DIR=$1
+			;;
+                -idcode )
+			shift
+                        ID_CODE=$1
 			;;
 		-clean )
 			clean=1
@@ -160,6 +168,8 @@ if [[ ! -d $IMAGES_DIR ]]; then
 	error "Please specify the valid path of APU images by -images"
 fi
 IMAGES_DIR=`realpath $IMAGES_DIR`
+#hack to fix pipeline. Need to file a CR on xclnbinutil
+source /proj/xbuilds/2022.2_0811_1/installs/lin64/Vitis/2022.2/settings64.sh
 
 if [[ ! (`which mkimage` && `which bootgen` && `which xclbinutil`) ]]; then
 	error "Please source Xilinx VITIS and Petalinux tools to make sure mkimage, bootgen and xclbinutil is accessible."
@@ -198,7 +208,7 @@ BIF_FILE="$BUILD_DIR/apu.bif"
 cat << EOF > $BIF_FILE
 all:
 {
-    id_code = 0x14ca8093
+    id_code = $ID_CODE
     extended_id_code = 0x01
     image {
         id = 0x1c000000, name=apu_subsystem
@@ -220,7 +230,7 @@ MKIMAGE=mkimage
 UBOOT_SCRIPT="$BUILD_DIR/boot.scr"
 UBOOT_CMD="$BUILD_DIR/boot.cmd"
 cat << EOF > $UBOOT_CMD
-setenv bootargs "console=ttyUL0 clk_ignore_unused"
+setenv bootargs "console=ttyUL0 clk_ignore_unused modprobe.blacklist=allegro,al5d"
 bootm $KERNEL_ADDR $ROOTFS_ADDR $SYSTEM_DTB_ADDR
 EOF
 $MKIMAGE -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
@@ -240,6 +250,7 @@ $MKIMAGE -n 'Kernel Image' -A arm64 -O linux -C none -T kernel -C gzip -a $IMAGE
 if [[ ! -e $IMAGE_UB ]]; then
 	error "failed to generate kernel image"
 fi
+
 
 # pick bootgen from vitis
 if [[ "X$XILINX_VITIS" == "X" ]]; then
@@ -266,6 +277,7 @@ if [[ ! -e $APU_PDI ]]; then
 fi
 
 mkdir -p `dirname $FW_FILE`
+echo "xclbinutil --add-section PDI:RAW:$APU_PDI --output $FW_FILE"
 xclbinutil --add-section PDI:RAW:$APU_PDI --output $FW_FILE
 if [[ ! -e $FW_FILE ]]; then
 	error "failed to generate XSABIN"

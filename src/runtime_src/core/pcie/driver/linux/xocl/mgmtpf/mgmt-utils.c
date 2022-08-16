@@ -703,6 +703,12 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	char *blob = NULL;
 	int len;
 
+	if (!lro->ready) {
+		mgmt_warn(lro, "not ready yet");
+		ret = -EINVAL;
+		goto failed;
+	}
+
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
 		xclmgmt_load_fdt(lro);
 

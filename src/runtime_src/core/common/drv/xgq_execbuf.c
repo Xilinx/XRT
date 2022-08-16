@@ -23,6 +23,12 @@ int xgq_exec_convert_start_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 	int num_mask = 0;
 	int payload_size = 0;
 
+	/*
+	 * Based on ert.h, ecmd->count is the number of words following header.
+	 * In ert_start_kernel_cmd, the CU register map size is
+	 * (count - (1 + extra_cu_masks)) and I would like to Skip
+	 * first 4 control registers
+	 */
 	num_mask = 1 + ecmd->extra_cu_masks;
 	payload_size = (ecmd->count - num_mask - 4) * sizeof(u32);
 	memcpy(xgq_cmd->data, &ecmd->data[4 + ecmd->extra_cu_masks], payload_size);
@@ -44,7 +50,7 @@ int xgq_exec_convert_start_scu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 
 	num_mask = 1 + ecmd->extra_cu_masks;
 	payload_size = (ecmd->count - num_mask) * sizeof(u32);
-	memcpy(xgq_cmd->data, &ecmd->data[0], payload_size);
+	memcpy(xgq_cmd->data, &ecmd->data[ecmd->extra_cu_masks], payload_size);
 
 	xgq_cmd->hdr.opcode = XGQ_CMD_OP_START_CUIDX;
 	xgq_cmd->hdr.state = 1;
