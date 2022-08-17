@@ -1026,7 +1026,9 @@ namespace xdp {
   }
 
   std::vector<tile_type>
-  AIEProfilingPlugin::getAllTilesForShimProfiling(void* handle, const std::string &metricsStr)
+  AIEProfilingPlugin::getAllTilesForShimProfiling(void* handle, 
+                                    const std::string &metricsStr, 
+                                    bool useChannelId)
   {
     std::vector<tile_type> tiles;
 
@@ -1039,7 +1041,7 @@ namespace xdp {
       auto streamId = plio.second.streamId;
 
       // If looking for specific ID, make sure it matches
-      if ((mChannelId >= 0) && (mChannelId != streamId))
+      if (useChannelId && ((mChannelId >= 0) && (mChannelId != streamId)))
         continue;
 
       // Make sure it's desired polarity
@@ -1057,7 +1059,6 @@ namespace xdp {
       t.row = 0;
 
       // Grab stream ID and slave/master (used in configStreamSwitchPorts() below)
-      // TODO: find better way to store these values
       t.itr_mem_col = isMaster;
       t.itr_mem_row = streamId;
     }
@@ -1106,7 +1107,7 @@ namespace xdp {
         continue;
       }
       std::vector<tile_type> tiles;
-      // kernel name, port name ??
+      // kernel name
       /*
        * Core profiling uses all unique core tiles in aie control
        * Memory profiling uses all unique core + dma tiles in aie control
@@ -1409,11 +1410,19 @@ namespace xdp {
         // Add unexpected format warning
         continue;
       }
-      std::vector<tile_type> tiles;
+      if (0 != graphmetrics[i][0].compare("all")) {
+        continue;
+      }
+#if 0
+      if (0 != graphmetrics[i][1].compare("all")) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+           "Specific port name is not yet supported in \"graph_based_interface_tile_metrics\" configuration. This will be ignored. Please use \"all\" in port name field.");
+      }
+#endif
       /*
        * Shim profiling uses all tiles utilized by PLIOs
        */
-      // port name ??
+      std::vector<tile_type> tiles;
       tiles = getAllTilesForShimProfiling(handle, graphmetrics[i][2]);
       allGraphsDone = true;
 
@@ -1447,11 +1456,24 @@ namespace xdp {
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
 
       if (0 == metrics[i][0].compare("all")) {
+
+        int16_t channelId = 0;
+        bool useChannelId = false;
+        if (3 == metrics[i].size()) {
+          channelId = mChannelId;
+          mChannelId = std::stoi(metrics[i][2]);
+          useChannelId = true;
+        }
+
         std::vector<tile_type> tiles;
-        if (!allGraphsDone) {
-          tiles = getAllTilesForShimProfiling(handle, metrics[i][1]);
+        if (!allGraphsDone || useChannelId) {
+          tiles = getAllTilesForShimProfiling(handle, metrics[i][1], useChannelId);
           allGraphsDone = true;
         } // allGraphsDone
+
+        if (useChannelId) {
+          mChannelId = channelId;
+        }
         for (auto &e : tiles) {
           mConfigMetrics[moduleIdx][e] = metrics[i][1];
         }
@@ -1471,15 +1493,23 @@ namespace xdp {
       * tile_based_interface_tile_metrics = <mincolumn>:<maxcolumn>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]]
       * Handle only the 2nd style here.
       */
-// error if brace , ispresent : 4 < metrics.size ?
+
       uint32_t maxCol = 0;
       try {
         maxCol = std::stoi(metrics[i][1]);
       } catch (std::invalid_argument const &e) {
-        // maxColumn not specified, skip for now
+        // maxColumn is not an integer i.e either 1st style or wrong format, skip for now
         continue;
       }
-      uint32_t minCol = std::stoi(metrics[i][0]);
+      uint32_t minCol = 0;
+      try {
+        minCol = std::stoi(metrics[i][0]);
+      } catch (std::invalid_argument const &e) {
+        // 2nd style but expected min column is not an integer, give warning and skip 
+        xrt_core::message::send(severity_level::warning, "XRT", 
+           "Minimum column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
+        continue;
+      }
       
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         xrt_core::edge::aie::tile_type tile;
@@ -1489,7 +1519,14 @@ namespace xdp {
       }
       int16_t channelId = 0;
       if (4 == metrics[i].size()) {
-        channelId = std::stoi(metrics[i][3]);
+        try {
+          channelId = std::stoi(metrics[i][3]);
+        } catch (std::invalid_argument const &e) {
+          // Expected channel Id is not an integer, give warning and ignore channelId
+          xrt_core::message::send(severity_level::warning, "XRT", 
+             "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+          channelId = -1;
+        }
       }
       // Check and set mem_row/column
 
@@ -1548,13 +1585,20 @@ namespace xdp {
       if (0 == metrics[i][0].compare("all")) {
         continue;
       }
-      uint32_t maxCol = 0;
+      uint32_t col = 0;
       try {
-        maxCol = std::stoi(metrics[i][1]);
+        col = std::stoi(metrics[i][1]);
       } catch (std::invalid_argument const &e) {
-        // maxColumn not specified, so the expected single column specification. Handle this here
+        // max column is not a number, so the expected single column specification. Handle this here
 
-        uint32_t col = std::stoi(metrics[i][0]);
+        try {
+          col = std::stoi(metrics[i][0]);
+        } catch (std::invalid_argument const &e) {
+          // Expected column specification is not a number. Give warning and skip
+          xrt_core::message::send(severity_level::warning, "XRT", 
+             "Column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
+          continue;
+        }
 
         xrt_core::edge::aie::tile_type tile;
         tile.col = col;
@@ -1562,7 +1606,13 @@ namespace xdp {
 
         int16_t channelId = 0;
         if (3 == metrics[i].size()) {
-          channelId = std::stoi(metrics[i][2]);
+          try {
+            channelId = std::stoi(metrics[i][2]);
+          } catch (std::invalid_argument const &e) {
+            // Expected channel Id is not an integer, give warning and ignore channelId
+            xrt_core::message::send(severity_level::warning, "XRT", 
+               "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+          }
         }
 
         // Check and set mem_row/column

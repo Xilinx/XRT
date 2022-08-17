@@ -65,7 +65,9 @@ namespace xdp {
     std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
                                                         const std::string &graph,
                                                         void* handle);
-    std::vector<tile_type> getAllTilesForShimProfiling(void* handle, const std::string &metricStr);
+    std::vector<tile_type> getAllTilesForShimProfiling(void* handle,
+                                          const std::string &metricStr,
+                                          bool useChannelId = false);
 
     void getConfigMetricsForTiles(int moduleIdx, std::vector<std::string> metricsSettings,
                                                std::vector<std::string> graphmetricsSettings,
