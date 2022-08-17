@@ -71,7 +71,7 @@ AIETraceOffload::~AIETraceOffload()
 {
   stopOffload();
   if (offloadThread.joinable()) {
-  offloadThread.join();
+    offloadThread.join();
   }
 }
 

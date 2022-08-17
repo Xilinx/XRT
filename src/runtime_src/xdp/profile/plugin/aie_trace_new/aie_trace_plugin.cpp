@@ -260,13 +260,13 @@ namespace xdp {
     try {
       if (!offloader->initReadTrace()) {
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
-        platformSupported = false;
+        AIEData.supported = false;
         return;
       }
     } catch (...) {
         std::string msg = "AIE trace is currently not supported on this platform.";
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-        AIEData.supported=false;
+        platformSupported = false;
     }
 
     //Sets up and calls the PS kernel on x86 implementation

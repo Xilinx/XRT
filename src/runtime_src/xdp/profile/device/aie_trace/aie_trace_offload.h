@@ -171,7 +171,6 @@ private:
     uint64_t circ_buf_cur_rate_plio;
 
 private:
-
     bool setupPSKernel();
     void continuousOffload();
     bool keepOffloading();

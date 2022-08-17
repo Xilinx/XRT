@@ -105,7 +105,7 @@ namespace xdp {
       metricSetInt = static_cast<uint8_t>(xdp::built_in::MetricSet::PARTIAL_STALLS);
     } else if (metricSet.compare("functions_all_stalls") == 0) {  
       metricSetInt = static_cast<uint8_t>(xdp::built_in::MetricSet::ALL_STALLS);
-	} else {
+    } else {
       metricSetInt = static_cast<uint8_t>(xdp::built_in::MetricSet::ALL);
     }
 
@@ -151,7 +151,7 @@ namespace xdp {
       memset(outTileConfigbomapped, 0 , OUTPUT_SIZE);
 
       std::memcpy(bo0_map, input, total_size);
-      bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, 4096, 0);
+      bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, INPUT_SIZE, 0);
 
       auto run = aie_trace_kernel(bo0, outTileConfigbo);
       run.wait();
@@ -164,7 +164,7 @@ namespace xdp {
         auto cfgTile = std::make_unique<aie_cfg_tile>(cfg->tiles[i].column, cfg->tiles[i].row);
         cfgTile->trace_metric_set = metricSet;
           
-        for (int corePC = 0; corePC < 4; ++corePC) {
+        for (uint32_t corePC = 0; corePC < NUM_TRACE_PCS; ++corePC) {
           auto& cfgData = cfgTile->core_trace_config.pc[corePC];
           cfgData.start_event = cfg->tiles[i].core_trace_config.pc[corePC].start_event;
           cfgData.stop_event  = cfg->tiles[i].core_trace_config.pc[corePC].stop_event;
@@ -172,7 +172,7 @@ namespace xdp {
           cfgData.event_value = cfg->tiles[i].core_trace_config.pc[corePC].event_value;
         } 
         //update mem pcs  
-        for (int memPC = 0; memPC < 2; ++memPC) {
+        for (uint32_t memPC = 0; memPC < NUM_MEM_TRACE_PCS; ++memPC) {
           auto& cfgData = cfgTile->memory_trace_config.pc[memPC];
           cfgData.start_event = cfg->tiles[i].memory_trace_config.pc[memPC].start_event;
           cfgData.stop_event  = cfg->tiles[i].memory_trace_config.pc[memPC].stop_event;
@@ -180,7 +180,7 @@ namespace xdp {
           cfgData.event_value = cfg->tiles[i].memory_trace_config.pc[memPC].event_value;
         } 
         
-        for (int tracedEvent = 0; tracedEvent < 8; tracedEvent++) {
+        for (uint32_t tracedEvent = 0; tracedEvent < NUM_TRACE_EVENTS; tracedEvent++) {
           cfgTile->core_trace_config.traced_events[tracedEvent] = cfg->tiles[i].core_trace_config.traced_events[tracedEvent];
         }
 
@@ -188,11 +188,11 @@ namespace xdp {
         cfgTile->core_trace_config.stop_event = cfg->tiles[i].core_trace_config.stop_event;
       
       
-        for (int tracedEvent = 0; tracedEvent < 8; tracedEvent++) {
+        for (uint32_t tracedEvent = 0; tracedEvent < NUM_TRACE_EVENTS; tracedEvent++) {
           cfgTile->memory_trace_config.traced_events[tracedEvent] = cfg->tiles[i].memory_trace_config.traced_events[tracedEvent];
         }
 
-        for (int bcEvent = 0; bcEvent < 16; bcEvent++) {
+        for (uint32_t bcEvent = 0; bcEvent < NUM_BROADCAST_EVENTS; bcEvent++) {
           cfgTile->core_trace_config.internal_events_broadcast[bcEvent] = cfg->tiles[i].core_trace_config.internal_events_broadcast[bcEvent];
         }
         
@@ -205,7 +205,7 @@ namespace xdp {
         (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile); 
       }
     
-      for (int event = 0; event < 9; event ++) {
+      for (uint32_t event = 0; event < NUM_OUTPUT_TRACE_EVENTS; event ++) {
         if (cfg->numTileCoreTraceEvents[event] != 0)
           (db->getStaticInfo()).addAIECoreEventResources(deviceId, event, cfg->numTileCoreTraceEvents[event]);
 
