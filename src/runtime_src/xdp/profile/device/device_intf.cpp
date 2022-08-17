@@ -21,8 +21,6 @@
 #include "device_intf.h"
 #include "tracedefs.h"
 
-#include "xdp/profile/plugin/vp_base/utility.h"
-
 #ifndef _WIN32
 // open+ioctl based Profile IP 
 #include "ioctl_monitors/ioctl_aim.h"

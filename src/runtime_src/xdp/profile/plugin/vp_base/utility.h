@@ -45,6 +45,11 @@ namespace xdp {
     constexpr uint64_t one_gb = 1024 * 1024 * 1024;
   }
 
+  namespace hw_constants {
+    constexpr double pcie_gen3x16_bandwidth = 15753.85;
+    constexpr double ddr4_2400_bandwidth = 19250.00;
+  }
+
   XDP_EXPORT Flow getFlowMode() ;
 
 } // end namespace xdp

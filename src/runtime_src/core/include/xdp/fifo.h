@@ -20,8 +20,6 @@
 #ifndef FIFO_DOT_H
 #define FIFO_DOT_H
 
-#include<array>
-
 namespace xdp::IP::FIFO {
 
 constexpr int alignment = 0x1000;
@@ -35,16 +33,23 @@ constexpr unsigned int RDFD = 0x1000;
 
 // IP and V++ specific
 namespace properties {
-    constexpr unsigned int MIN_SIZE = 1024;
+    constexpr unsigned int SZ_1K   = 1024;
+    constexpr unsigned int SZ_2K   = 2048;
+    constexpr unsigned int SZ_4K   = 4096;
+    constexpr unsigned int SZ_8K   = 8192;
+    constexpr unsigned int SZ_16K  = 16384;
+    constexpr unsigned int SZ_32K  = 32768;
+    constexpr unsigned int SZ_64K  = 65536;
+    constexpr unsigned int SZ_128K = 131072;
     const std::array<unsigned int, 8> size = {
-        8 *   MIN_SIZE,
-        1 *   MIN_SIZE,
-        2 *   MIN_SIZE,
-        4 *   MIN_SIZE,
-        16 *  MIN_SIZE,
-        32 *  MIN_SIZE,
-        64 *  MIN_SIZE,
-        128 * MIN_SIZE
+        SZ_8K,
+        SZ_1K,
+        SZ_2K,
+        SZ_4K,
+        SZ_16K,
+        SZ_32K,
+        SZ_64K,
+        SZ_128K
     };
 }
 

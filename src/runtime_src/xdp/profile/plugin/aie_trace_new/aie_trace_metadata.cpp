@@ -96,7 +96,7 @@ namespace xdp {
     }
 
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto device = xrt_core::get_userpf_device(handle);
     auto compilerOptions = get_aiecompiler_options(device.get());
     runtimeMetrics = (compilerOptions.event_trace == "runtime");
   }
@@ -105,7 +105,7 @@ namespace xdp {
   {
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     if (!getRuntimeMetrics()) {
-      std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+      auto device = xrt_core::get_userpf_device(handle);
       auto compilerOptions = get_aiecompiler_options(device.get());
       std::stringstream msg;
       msg << "Found compiler trace option of " << compilerOptions.event_trace
@@ -184,7 +184,7 @@ namespace xdp {
       freqMhz = get_clock_freq_mhz(device.get());
     }
 
-    uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * uint_constants::one_million);
+    auto cycles_per_sec = static_cast<uint64_t>(freqMhz * uint_constants::one_million);
     const uint64_t max_cycles = 0xffffffff;
     std::string size_str = xrt_core::config::get_aie_trace_start_time();
 
@@ -335,13 +335,12 @@ namespace xdp {
   {
     auto data = device->get_axlf_section(AIE_METADATA);
     if (!data.first || !data.second)
-      return 1000.0;  // magic
+      return AIE_DEFAULT_FREQ_MHZ;
 
     pt::ptree aie_meta;
     read_aie_metadata(data.first, data.second, aie_meta);
     auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-    double clockFreqMhz = dev_node.get<double>("AIEFrequency");
-    return clockFreqMhz;
+    return dev_node.get<double>("AIEFrequency");
   }
 
   std::vector<gmio_type> AieTraceMetadata::get_trace_gmios(const xrt_core::device* device)
