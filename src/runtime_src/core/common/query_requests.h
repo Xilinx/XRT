@@ -287,6 +287,8 @@ enum class key_type
   cu_size,
   cu_read_range,
 
+  clk_scaling_info,
+
   noop
 };
 
@@ -3103,6 +3105,28 @@ struct cu_read_range : request
 
   static range_data
   to_range(const std::string& str);
+};
+
+struct clk_scaling_info : request
+{
+  struct data {
+    bool support;
+    bool enable;
+    bool pwr_scaling_ovrd_enable;
+    bool temp_scaling_ovrd_enable;
+    uint8_t temp_shutdown_limit;
+    uint8_t temp_scaling_limit;
+    uint8_t temp_scaling_ovrd_limit;
+    uint16_t pwr_shutdown_limit;
+    uint16_t pwr_scaling_limit;
+    uint16_t pwr_scaling_ovrd_limit;
+  };
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::clk_scaling_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 } // query

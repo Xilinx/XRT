@@ -86,6 +86,10 @@ XRT_CORE_COMMON_EXPORT
 std::string
 format_base10_shiftdown6(uint64_t value);
 
+XRT_CORE_COMMON_EXPORT
+std::string
+format_base10_shiftdown(uint64_t value, int decimal, int digit_precision);
+
 /**
  * bdf2index() - convert bdf to device index
  *

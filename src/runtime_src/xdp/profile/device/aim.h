@@ -70,6 +70,8 @@ public:
     bool isHostMonitor() const ;
     bool isShellMonitor();
     bool has64bit() const ;
+    XDP_EXPORT
+    bool hasCoarseMode() const ;
 
     virtual size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
 

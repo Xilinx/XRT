@@ -28,7 +28,7 @@ namespace AXI_LITE {
 // On some devices (like edge) we cannot transfer values via
 // the AXI-full connection.  Instead, we need to read the
 // contents of the FIFO one-by-one over the AXI-Lite connection
-constexpr int RDFD = 0x1000;
+constexpr unsigned int RDFD = 0x1000;
 } // end namespace AXI_LITE
 
 } // end namespace xdp::IP::FIFO
