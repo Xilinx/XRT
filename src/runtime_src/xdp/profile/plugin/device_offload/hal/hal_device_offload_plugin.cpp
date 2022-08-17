@@ -27,6 +27,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/device_offload/hal/hal_device_offload_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
@@ -49,11 +50,9 @@ namespace xdp {
       deviceHandles.push_back(handle) ;
 
       // Second, add all the information and a writer for this device
-      char pathBuf[maxPathLength] ;
-      memset(pathBuf, 0, maxPathLength) ;
-      xclGetDebugIPlayoutPath(handle, pathBuf, maxPathLength-1) ;
-
-      std::string path(pathBuf) ;
+      std::array<char, sysfs_max_path_length> pathBuf = {0};
+      xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
+      std::string path(pathBuf.data());
       if (path != "") {
         addDevice(path) ;
 

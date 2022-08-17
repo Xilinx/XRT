@@ -29,6 +29,7 @@
 
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/utility.h"
 
 #include "core/common/system.h"
 #include "core/common/message.h"
@@ -106,11 +107,9 @@ namespace xdp {
 
   void PLDeadlockPlugin::updateDevice(void* handle)
   {
-    const unsigned int PATH_LENGTH = 512;
-    char pathBuf[PATH_LENGTH];
-    memset(pathBuf, 0, PATH_LENGTH);
-    xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
-    std::string path(pathBuf);
+    std::array<char, sysfs_max_path_length> pathBuf = {0};
+    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
+    std::string path(pathBuf.data());
     uint64_t deviceId = db->addDevice(path);
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {

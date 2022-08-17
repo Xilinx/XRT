@@ -35,6 +35,7 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
@@ -1035,8 +1036,8 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     if (handle == nullptr)
       return;
 
-    std::array<char, MAX_PATH_LENGTH> pathBuf = {0};
-    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (MAX_PATH_LENGTH-1) );
+    std::array<char, sysfs_max_path_length> pathBuf = {0};
+    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) );
     std::string sysfspath(pathBuf.data());
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
