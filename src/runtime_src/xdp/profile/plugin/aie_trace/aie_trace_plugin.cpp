@@ -443,7 +443,7 @@ namespace xdp {
     auto startType = xrt_core::config::get_aie_trace_settings_start_type();
 
     if (startType == "time") {
-    // Use number of cycles to start trace
+      // Use number of cycles to start trace
       double freqMhz = AIE_DEFAULT_FREQ_MHZ;
       if (handle != nullptr) {
         auto device = xrt_core::get_userpf_device(handle);
@@ -498,12 +498,12 @@ namespace xdp {
 
       mUseDelay = (cycles != 0);
       mDelayCycles = cycles;
-    } else if (startType == "graph") {
-    // Start trace when graph iterator reaches a threshold
+    } else if (startType == "iteration") {
+      // Start trace when graph iterator reaches a threshold
       mIterationCount = xrt_core::config::get_aie_trace_settings_start_iteration();
       mUseGraphIterator = (mIterationCount != 0);
-    } else if (startType == "user") {
-    // Start trace using user events
+    } else if (startType == "kernel_event0") {
+      // Start trace using user events
       mUseUserControl = true;
     }
 

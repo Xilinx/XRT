@@ -75,7 +75,7 @@ namespace xdp {
 
     auto tiles = metadata->getTilesForTracing();
     uint32_t delayCycles = static_cast<uint32_t>(metadata->getTraceStartDelayCycles());
-    bool userControl = xrt_core::config::get_aie_trace_settings_start_type() == "user";
+    bool userControl = xrt_core::config::get_aie_trace_settings_start_type() == "kernel_event0";
     bool useDelay = (metadata->getDelay() != 0);
 
     uint16_t rows[MAX_TILES];
