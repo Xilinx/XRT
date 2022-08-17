@@ -1,8 +1,8 @@
 [Unit]
-Description=modprobe-vdu
+Description=vdu-init
  
 [Service]
-ExecStart=/usr/bin/modprobe-vdu
+ExecStart=/usr/bin/vdu-init
 StandardOutput=journal+console
  
 [Install]
