@@ -56,7 +56,9 @@ class device : public ishim
     void
     reset(std::map<slot_id, xrt::uuid>&& slot2uuid)
     {
+      std::cout << __func__ << " : " << __LINE__ << std::endl; 
       m_slot2uuid = std::move(slot2uuid);
+      std::cout << __func__ << " : " << __LINE__ << std::endl; 
     }
 
     // Cache an xclbin
