@@ -302,6 +302,7 @@ using addr_type = uint64_t;
       //CR-1120700
       int parseLog();
       void parseSimulateLog();
+      void dumpDeadlockMessages();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }
       bool isHostOnlyBuffer(const struct xclemulation::drm_xocl_bo *bo) {
