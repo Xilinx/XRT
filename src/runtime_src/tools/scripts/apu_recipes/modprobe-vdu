@@ -1,34 +1,57 @@
 #!/bin/sh
-# This script modprobes the vdu modules once load_pdi_done sysfs node value becomes 1
-# load_pdi_done sysfs node is set to 1 by zocl after xclbin load
-log_file="/var/log/modprobe_vdu_logs"
+# This script is used for probing and removing vdu modules
+
+log_file="/var/log/vdu_daemon_logs"
+vdu_init_dir="/etc/"
+vdu_init_file=$vdu_init_dir/vdu_init
  
 function write_log() {
         now_time='['$(date +"%Y-%m-%d %H:%M:%S")']'
         echo $now_time $1 | tee -a "$log_file"
 }
  
-write_log 'modprobe script started. waiting for partial pdi load'
+function vdu_probe() {
+
+        modprobe allegro ; modprobe al5d ;
+        if [ $? == 0 ]
+        then
+                write_log 'modprobe successful'
+        else
+                write_log 'modprobe failed'
+        fi
+        echo 2 > $vdu_init_file
+}
+
+function vdu_remove() {
+
+        rmmod allegro ; rmmod al5d ;
+        if [ $? == 0 ]
+        then
+                write_log 'rmmod successful'
+        else
+                write_log 'rmmod failed'
+        fi
+        echo 2 > $vdu_init_file
+}
+
+write_log 'Daemon script started. this script is used for probing/removing vdu modules'
  
-sysfs_dir="/sys/bus/platform/devices/rpu-channel/"
-load_done_file="${sysfs_dir}load_pdi_done"
- 
+mkdir -p $vdu_init_dir
+touch $vdu_init_file
+chmod 666 $vdu_init_file
 while true
 do
-        load_done=$(cat $load_done_file)
+        action=$(cat $vdu_init_file)
  
-        if [ "$load_done" == 1 ]
+        if [ "$action" == 1 ]
         then
                 write_log 'modprobing vdu modules ...'
-                modprobe allegro ; modprobe al5d
+                vdu_probe
 
-                if [ $? == 0 ]
-                then
-                        write_log 'modprobe successful'
-                else
-                        write_log 'modprobe failed'
-                fi
-                break;
+        elif [ "$action" == 0 ] 
+        then
+                write_log 'removing vdu modules ...'
+                vdu_remove
         fi
  
         sleep 5
