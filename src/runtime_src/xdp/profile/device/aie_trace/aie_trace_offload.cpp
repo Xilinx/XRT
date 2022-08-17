@@ -184,8 +184,8 @@ bool AIETraceOffload::initReadTrace()
 
       ZYNQ::shim *drv = ZYNQ::shim::handleCheck(deviceHandle);
       if(!drv) {
-      bufferInitialized = false;
-      return bufferInitialized;
+        bufferInitialized = false;
+        return bufferInitialized;
       }
       zynqaie::Aie* aieObj = drv->getAieArray();
 
@@ -196,7 +196,7 @@ bool AIETraceOffload::initReadTrace()
       int driverStatus = XAIE_OK;
       driverStatus = XAie_DmaDescInit(devInst, &(gmioDMAInsts[i].shimDmaInst), gmioDMAInsts[i].gmioTileLoc);
       if(XAIE_OK != driverStatus) {
-      throw std::runtime_error("Initialization of DMA Descriptor failed while setting up SHIM DMA channel for GMIO Trace offload");
+        throw std::runtime_error("Initialization of DMA Descriptor failed while setting up SHIM DMA channel for GMIO Trace offload");
       }
 
       // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
@@ -213,7 +213,7 @@ bool AIETraceOffload::initReadTrace()
       XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
       xclBufferExportHandle boExportHandle = xclExportBO(deviceHandle, buffers[i].boHandle);
       if(XRT_NULL_BO_EXPORT == boExportHandle) {
-      throw std::runtime_error("Unable to export BO while attaching to AIE Driver");
+        throw std::runtime_error("Unable to export BO while attaching to AIE Driver");
       }
       XAie_MemAttach(devInst,  &memInst, 0, 0, 0, prop, boExportHandle);
 
