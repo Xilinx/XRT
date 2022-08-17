@@ -130,8 +130,6 @@ static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_
 	struct zocl_rpu_data_entry *entry = NULL;
 	void __iomem *src = chan->mem_base + address_offset;
 	int ret = 0;
-	uint64_t sec_offset;
-	uint64_t sec_size;
 
 	zchan_info(chan, "addr_off 0x%x, size %d, remain %d",
 		address_offset, size, remain_size);
