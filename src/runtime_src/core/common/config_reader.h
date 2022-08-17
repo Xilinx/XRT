@@ -359,13 +359,6 @@ get_aie_trace_buffer_offload_interval_ms()
 }
 
 inline unsigned int
-get_aie_trace_buffer_offload_interval_us()
-{
-  static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_us", 100);
-  return value;
-}
-
-inline unsigned int
 get_aie_trace_file_dump_interval_s()
 {
   static unsigned int value = detail::get_uint_value("Debug.aie_trace_file_dump_interval_s", 5);

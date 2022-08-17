@@ -45,6 +45,9 @@ constexpr unsigned int NUM_CORE_TRACE_EVENTS = 8;
 constexpr unsigned int NUM_MEMORY_TRACE_EVENTS = 8;
 constexpr unsigned int CORE_BROADCAST_EVENT_BASE = 107;
 
+constexpr uint32_t ES1_TRACE_COUNTER = 1020;
+constexpr uint32_t ES2_TRACE_COUNTER = 0x3FF00;
+
 namespace {
   static void* fetchAieDevInst(void* devHandle)
   {
@@ -109,13 +112,6 @@ namespace xdp {
         offloadIntervalUs = offloadIntervalms * uint_constants::one_thousand;;
       } else {
         offloadIntervalUs = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us();
-        if (100 == offloadIntervalUs) {
-          // if set to default value, then check for old style config
-          offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
-          if (100 != offloadIntervalUs)
-            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-              "The xrt.ini flag \"aie_trace_buffer_offload_interval_us\" is deprecated and will be removed in future release. Please use \"buffer_offload_interval_us\" under \"AIE_trace_settings\" section.");
-        }
       }
     }
 
@@ -173,12 +169,12 @@ namespace xdp {
     if (counterScheme == "es1") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
       coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
-      coreCounterEventValues   = {1020, 1020*1020};
+      coreCounterEventValues   = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
     }
     else if (counterScheme == "es2") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE};
       coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE};
-      coreCounterEventValues   = {0x3FF00};
+      coreCounterEventValues   = {ES2_TRACE_COUNTER};
     }
     
     // **** Memory Module Counters ****
@@ -189,20 +185,20 @@ namespace xdp {
     if (counterScheme == "es1") {
       memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                XAIE_EVENT_TRUE_MEM};
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {1020, 1020*1020};
+      memoryCounterEventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
     }
     else if (counterScheme == "es2") {
       memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {0x3FF00};
+      memoryCounterEventValues = {ES2_TRACE_COUNTER};
     }
 
     //Process the file dump interval
     aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_settings_file_dump_interval_s();
-    if (5 == aie_trace_file_dump_int_s) {
+    if (aie_trace_file_dump_int_s == DEFAULT_AIE_TRACE_DUMP_INTERVAL_S) {
       // if set to default value, then check for old style config
       aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
-      if (5 != aie_trace_file_dump_int_s)
+      if (aie_trace_file_dump_int_s != DEFAULT_AIE_TRACE_DUMP_INTERVAL_S)
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
           "The xrt.ini flag \"aie_trace_file_dump_interval_s\" is deprecated and will be removed in future release. Please use \"file_dump_interval_s\" under \"AIE_trace_settings\" section.");
     }

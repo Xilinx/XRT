@@ -40,6 +40,9 @@ namespace xdp {
     constexpr uint64_t one_thousand = 1e3;
     constexpr uint64_t one_million  = 1e6;
     constexpr uint64_t one_billion  = 1e9;
+    constexpr uint64_t one_kb = 1024;
+    constexpr uint64_t one_mb = 1024 * 1024;
+    constexpr uint64_t one_gb = 1024 * 1024 * 1024;
   }
 
   XDP_EXPORT Flow getFlowMode() ;

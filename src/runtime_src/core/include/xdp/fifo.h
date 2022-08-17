@@ -20,6 +20,8 @@
 #ifndef FIFO_DOT_H
 #define FIFO_DOT_H
 
+#include<array>
+
 namespace xdp::IP::FIFO {
 
 constexpr int alignment = 0x1000;
@@ -30,6 +32,21 @@ namespace AXI_LITE {
 // contents of the FIFO one-by-one over the AXI-Lite connection
 constexpr unsigned int RDFD = 0x1000;
 } // end namespace AXI_LITE
+
+// IP and V++ specific
+namespace properties {
+    constexpr unsigned int MIN_SIZE = 1024;
+    const std::array<unsigned int, 8> size = {
+        8 *   MIN_SIZE,
+        1 *   MIN_SIZE,
+        2 *   MIN_SIZE,
+        4 *   MIN_SIZE,
+        16 *  MIN_SIZE,
+        32 *  MIN_SIZE,
+        64 *  MIN_SIZE,
+        128 * MIN_SIZE
+    };
+}
 
 } // end namespace xdp::IP::FIFO
 

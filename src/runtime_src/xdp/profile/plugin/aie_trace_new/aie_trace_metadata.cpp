@@ -65,11 +65,11 @@ namespace xdp {
       if (offloadIntervalms != 10) {
         std::stringstream msg;
         msg << "aie_trace_buffer_offload_interval_ms will be deprecated in future. "
-            << "Please use aie_trace_buffer_offload_interval_us instead.";
+            << "Please use \"buffer_offload_interval_us\" under \"AIE_trace_settings\" section.";
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
         offloadIntervalUs = offloadIntervalms * uint_constants::one_thousand;
       } else {
-        offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
+        offloadIntervalUs = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us();
       }
     }
 
