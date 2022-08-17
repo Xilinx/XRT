@@ -237,7 +237,7 @@ DeviceIntf::~DeviceIntf()
     if((type == xdp::MonitorType::accel)  && (index < mAmList.size()))  { return mAmList[index]->getName(); }
     if((type == xdp::MonitorType::str)    && (index < mAsmList.size())) { return mAsmList[index]->getName(); }
     if((type == xdp::MonitorType::noc)    && (index < nocList.size()))  { return nocList[index]->getName(); }
-    return std::string("");
+    return {};
   }
 
   // Same as defined in vpl tcl

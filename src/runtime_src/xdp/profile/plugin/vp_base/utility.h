@@ -34,7 +34,13 @@ namespace xdp {
     HW_EMU  = 1,
     HW      = 2,
     UNKNOWN = 3
-  } ;
+  };
+
+  namespace uint_constants {
+    constexpr uint64_t one_thousand = 1e3;
+    constexpr uint64_t one_million  = 1e6;
+    constexpr uint64_t one_billion  = 1e9;
+  }
 
   XDP_EXPORT Flow getFlowMode() ;
 

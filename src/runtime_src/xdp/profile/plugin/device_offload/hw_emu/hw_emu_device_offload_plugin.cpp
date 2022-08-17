@@ -33,14 +33,13 @@ namespace {
   {
     constexpr int MAX_PATH_LENGTH = 512 ;
 
-    char pathBuf[MAX_PATH_LENGTH] ;
-    memset(pathBuf, 0, MAX_PATH_LENGTH);
-    xclGetDebugIPlayoutPath(handle, pathBuf, (MAX_PATH_LENGTH-1) ) ;
+    std::array<char, MAX_PATH_LENGTH> pathBuf = {0};
+    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (MAX_PATH_LENGTH-1) ) ;
 
-    std::string path(pathBuf) ;
+    std::string path(pathBuf.data());
 
     if (path == "")
-      return path ;
+      return path;
 
     // Full paths to the hardware emulation debug_ip_layout for different
     //  xclbins on the same device are different.  On disk, they are laid
