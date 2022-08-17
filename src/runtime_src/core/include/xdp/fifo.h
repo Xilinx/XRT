@@ -33,23 +33,24 @@ constexpr unsigned int RDFD = 0x1000;
 
 // IP and V++ specific
 namespace properties {
-    constexpr unsigned int SZ_1K   = 1024;
-    constexpr unsigned int SZ_2K   = 2048;
-    constexpr unsigned int SZ_4K   = 4096;
-    constexpr unsigned int SZ_8K   = 8192;
-    constexpr unsigned int SZ_16K  = 16384;
-    constexpr unsigned int SZ_32K  = 32768;
-    constexpr unsigned int SZ_64K  = 65536;
-    constexpr unsigned int SZ_128K = 131072;
+    constexpr unsigned int SIZE_1K   = 1024;
+    constexpr unsigned int SIZE_2K   = 2048;
+    constexpr unsigned int SIZE_4K   = 4096;
+    constexpr unsigned int SIZE_8K   = 8192;
+    constexpr unsigned int SIZE_16K  = 16384;
+    constexpr unsigned int SIZE_32K  = 32768;
+    constexpr unsigned int SIZE_64K  = 65536;
+    constexpr unsigned int SIZE_128K = 131072;
+    // Property to size map
     const std::array<unsigned int, 8> size = {
-        SZ_8K,
-        SZ_1K,
-        SZ_2K,
-        SZ_4K,
-        SZ_16K,
-        SZ_32K,
-        SZ_64K,
-        SZ_128K
+        SIZE_8K,
+        SIZE_1K,
+        SIZE_2K,
+        SIZE_4K,
+        SIZE_16K,
+        SIZE_32K,
+        SIZE_64K,
+        SIZE_128K
     };
 }
 
