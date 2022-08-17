@@ -336,7 +336,7 @@ namespace xdp {
     }
     handleToAIEData.clear();
 	
-	if (platformSupported)
+    if (platformSupported)
       XDPPlugin::endWrite();
   }
 
