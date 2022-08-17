@@ -1,7 +1,7 @@
 SUMMARY = "Control Software for VDU"
 DESCRIPTION = "Control software libraries, test applications and headers provider for VDU"
 LICENSE = "Proprietary"
-LIC_FILES_CHKSUM = "file://LICENSE.md;md5=4c17252c6e9cea63b97af29362d9886a"
+LIC_FILES_CHKSUM = "file://LICENSE.md;md5=c15ae83ba15c4ab3fa4eb2c22975258f"
 
 XILINX_VDU_VERSION = "1.0.0"
 PV = "${XILINX_VDU_VERSION}-xilinx-${XILINX_RELEASE_VERSION}+git${SRCPV}"

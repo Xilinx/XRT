@@ -69,6 +69,7 @@ namespace xclhwemhal2
                                               "HLS_PRINT",
                                               "Exiting xsim",
                                               "FATAL_ERROR"};
+
   constexpr auto kMaxTimeToConnectSimulator = 300;  // in seconds
 
   void HwEmShim::readDebugIpLayout(const std::string debugFileName)
@@ -311,14 +312,16 @@ namespace xclhwemhal2
         std::lock_guard<std::mutex> guard(mPrintMessagesLock);
         if (get_simulator_started() == false) 
           return;
+
+        dumpDeadlockMessages();
         // Any status message found in parse log file?
-        lParseLog.parseLog();         
+        lParseLog.parseLog();
+
         parseCount++;
         if (parseCount%5 == 0) {
           std::this_thread::sleep_for(5s);
         }
       }
-      
     } //while end.
   }
 } // namespace xclhwemhal2
