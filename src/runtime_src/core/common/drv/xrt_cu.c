@@ -95,10 +95,10 @@ static void cu_stats_timer(unsigned long data)
 #else
 static void cu_stats_timer(struct timer_list *t)
 {
-	unsigned long   flags;
-
 	struct xrt_cu *xcu = from_timer(xcu, t, stats.stats_timer);
 #endif
+	unsigned long   flags;
+
 	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
 	if (xcu->stats.stats_enabled) {
 		atomic_inc(&xcu->stats.stats_tick);
