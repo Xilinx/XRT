@@ -46,10 +46,13 @@ close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core:
 }
 
 uint32_t // ctxhdl aka slotidx
-create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  xrt::hw_context::access_mode mode)
 {
   auto shim = get_shim_object(handle);
-  return shim->create_hw_context(xclbin_uuid, qos);
+  return shim->create_hw_context(xclbin_uuid, qos, mode);
 }
 
 void

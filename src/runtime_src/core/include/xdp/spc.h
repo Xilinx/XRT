@@ -30,9 +30,9 @@ namespace AXI_LITE {
 // These are the actual physical offsets of the 32-bit registers in
 // the SPC IP accessible over the AXI-Lite connection.  If using
 // xclRead or xclWrite, these offsets are used.
-constexpr int PC_ASSERTED = 0x0;
-constexpr int CURRENT_PC  = 0x100;
-constexpr int SNAPSHOT_PC = 0x200;
+constexpr unsigned int PC_ASSERTED = 0x0;
+constexpr unsigned int CURRENT_PC  = 0x100;
+constexpr unsigned int SNAPSHOT_PC = 0x200;
 } // end namespace AXI_LITE
 
 namespace sysfs {

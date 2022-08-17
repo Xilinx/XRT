@@ -520,7 +520,7 @@ namespace xclcpuemhal2 {
             sLdLibs = std::string(sLdLib) + ":";
 
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fft_v9_1" + ":";
-          sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fir_v7_1" + ":";
+          sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fir_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_1" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
@@ -2173,7 +2173,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // Edge does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
   auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
