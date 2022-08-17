@@ -18,7 +18,6 @@
 #include "zocl_ert_intc.h"
 #include "zocl_xgq.h"
 #include "zocl_xclbin.h"
-#include "xrt_xclbin.h"
 
 #define ZRPU_CHANNEL_NAME "zocl_rpu_channel"
 
@@ -51,7 +50,6 @@ struct zocl_rpu_channel {
 	void *xgq_hdl;
 	u64 mem_start;
 	size_t mem_size;
-	u8			load_pdi_done;
 	struct list_head	data_list;
 };
 
@@ -82,24 +80,8 @@ static ssize_t ready_store(struct device *dev, struct device_attribute *da,
 }
 static DEVICE_ATTR_WO(ready);
 
-static ssize_t load_pdi_done_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct zocl_rpu_channel *chan = (struct zocl_rpu_channel *)dev_get_drvdata(dev);
-	ssize_t size = 0;
-
-	if (!chan)
-		return 0;
-
-	size += sprintf(buf, "%d\n", chan->load_pdi_done);
-
-	return size;
-}
-static DEVICE_ATTR_RO(load_pdi_done);
-
 static struct attribute *zrpu_channel_attrs[] = {
 	&dev_attr_ready.attr,
-	&dev_attr_load_pdi_done.attr,
 	NULL,
 };
 
@@ -214,11 +196,6 @@ static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_
 		if (ret)
 			zchan_err(chan, "failed to cache xclbin: %d", ret);
 
-		/* notify daemon once pdi load is finished */
-		if (!xrt_xclbin_section_info((struct axlf *)total_data, BITSTREAM_PARTIAL_PDI, &sec_offset, &sec_size)) {
-			chan->load_pdi_done = 1;
-		}
-
 		vfree(total_data);
 	}
 
@@ -321,9 +298,6 @@ static int zrpu_channel_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, chan);
 
 	INIT_LIST_HEAD(&chan->data_list);
-
-	/* initilize load_pdi_done variable to zero. Mark this 1 once partial_pdi is loaded*/
-	chan->load_pdi_done = 0;
 
 	/* Discover and init shared ring buffer. */
 	chan->mem_base = zlib_map_phandle_res_by_name(ZCHAN2PDEV(chan), mem_res_name,
