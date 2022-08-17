@@ -18,8 +18,15 @@
 #include <chrono>
 #include <thread>
 
-#define TRACE_FUNNEL_SW_TRACE    0x0
-#define TRACE_FUNNEL_SW_RESET    0xc
+constexpr uint32_t SW_TRACE_OFFSET = 0x0;
+constexpr uint32_t SW_RESET_OFFSET = 0xc;
+constexpr uint32_t HOST_TIMESTAMP_MASK = 0xFFFF;
+
+constexpr uint32_t SHIFT_TIMESTAMP_2 = 16;
+constexpr uint32_t SHIFT_TIMESTAMP_3 = 32;
+constexpr uint32_t SHIFT_TIMESTAMP_4 = 48;
+
+constexpr unsigned int US_BETWEEN_WRITES = 10;
 
 namespace xdp {
 
@@ -44,15 +51,15 @@ size_t TraceFunnel::initiateClockTraining()
 
     for(int i = 0; i < 2 ; i++) {
       uint64_t hostTimeStamp = getDevice()->getTraceTime();
-      regValue = static_cast <uint32_t> (hostTimeStamp & 0xFFFF);
-      size += write(TRACE_FUNNEL_SW_TRACE, 4, &regValue);
-      regValue = static_cast <uint32_t> (hostTimeStamp >> 16 & 0xFFFF);
-      size += write(TRACE_FUNNEL_SW_TRACE, 4, &regValue);
-      regValue = static_cast <uint32_t> (hostTimeStamp >> 32 & 0xFFFF);
-      size += write(TRACE_FUNNEL_SW_TRACE, 4, &regValue);
-      regValue = static_cast <uint32_t> (hostTimeStamp >> 48 & 0xFFFF);
-      size += write(TRACE_FUNNEL_SW_TRACE, 4, &regValue);
-      std::this_thread::sleep_for(std::chrono::microseconds(10));
+      regValue = static_cast <uint32_t> (hostTimeStamp & HOST_TIMESTAMP_MASK);
+      size += write(SW_TRACE_OFFSET, 4, &regValue);
+      regValue = static_cast <uint32_t> (hostTimeStamp >> SHIFT_TIMESTAMP_2 & HOST_TIMESTAMP_MASK);
+      size += write(SW_TRACE_OFFSET, 4, &regValue);
+      regValue = static_cast <uint32_t> (hostTimeStamp >> SHIFT_TIMESTAMP_3 & HOST_TIMESTAMP_MASK);
+      size += write(SW_TRACE_OFFSET, 4, &regValue);
+      regValue = static_cast <uint32_t> (hostTimeStamp >> SHIFT_TIMESTAMP_4 & HOST_TIMESTAMP_MASK);
+      size += write(SW_TRACE_OFFSET, 4, &regValue);
+      std::this_thread::sleep_for(std::chrono::microseconds(US_BETWEEN_WRITES));
    }
     return size;
 }
@@ -60,7 +67,7 @@ size_t TraceFunnel::initiateClockTraining()
 void TraceFunnel::reset()
 {
     uint32_t regValue = 0x1;
-    write(TRACE_FUNNEL_SW_RESET, 4, &regValue);
+    write(SW_RESET_OFFSET, 4, &regValue);
 }
 
 void TraceFunnel::showProperties()
