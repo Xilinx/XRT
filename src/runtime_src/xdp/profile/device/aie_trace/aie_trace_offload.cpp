@@ -313,9 +313,9 @@ void AIETraceOffload::readTrace(bool final)
       msg << AIE_TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE << " Stream : " << index + 1 << std::endl;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
       debug_stream
-      << "Bytes Read : " << bytes_read
-      << " Bytes Written : " << bytes_written
-      << std::endl;
+        << "Bytes Read : " << bytes_read
+        << " Bytes Written : " << bytes_written
+        << std::endl;
 
       // Fatal condition. Abort offload
       mCircularBufOverwrite = true;
@@ -327,8 +327,8 @@ void AIETraceOffload::readTrace(bool final)
     bd.offset = bd.usedSz;
     if (bd.offset == bufAllocSz) {
       if (!mEnCircularBuf) {
-      bd.offloadDone = true;
-      continue;
+        bd.offloadDone = true;
+        continue;
       }
       bd.rollover_count++;
       bd.offset = 0;
@@ -345,13 +345,13 @@ void AIETraceOffload::readTrace(bool final)
 
     if (bd.offset != bd.usedSz) {
       debug_stream
-      << "AIETraceOffload::config_s2mm_" << index << " "
-      << "Reading from 0x"
-      << std::hex << bd.offset << " to 0x" << bd.usedSz << std::dec
-      << " Bytes Read : " << bytes_read
-      << " Bytes Written : " << bytes_written
-      << " Rollovers : " << bd.rollover_count
-      << std::endl;
+        << "AIETraceOffload::config_s2mm_" << index << " "
+        << "Reading from 0x"
+        << std::hex << bd.offset << " to 0x" << bd.usedSz << std::dec
+        << " Bytes Read : " << bytes_read
+        << " Bytes Written : " << bytes_written
+        << " Rollovers : " << bd.rollover_count
+        << std::endl;
     }
 
     if (!syncAndLog(index))
@@ -366,8 +366,8 @@ void AIETraceOffload::readTrace(bool final)
       bd.usedSz = circBufRolloverBytes;
 
       debug_stream
-      << "Circular buffer boundary read from 0x0 to 0x: "
-      << std::hex << circBufRolloverBytes << std::dec << std::endl;
+        << "Circular buffer boundary read from 0x0 to 0x: "
+        << std::hex << circBufRolloverBytes << std::dec << std::endl;
 
       syncAndLog(index);
     }
@@ -398,10 +398,10 @@ bool AIETraceOffload::syncAndLog(uint64_t index)
   traceLogger->addAIETraceData(index, hostBuf, nBytes, mEnCircularBuf);
 
   debug_stream
-  << "ts2mm_" << index << " : bytes : " << nBytes << " "
-  << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
-  << std::hex << "from 0x" << bd.offset << " to 0x"
-  << bd.usedSz << std::dec << std::endl;
+    << "ts2mm_" << index << " : bytes : " << nBytes << " "
+    << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
+    << std::hex << "from 0x" << bd.offset << " to 0x"
+    << bd.usedSz << std::dec << std::endl;
 
   // check for full buffer
   if ((bd.offset + nBytes >= bufAllocSz) && !mEnCircularBuf)
@@ -456,8 +456,8 @@ void AIETraceOffload::checkCircularBufferSupport()
   if (buffer_not_large_enough || offload_not_fast_enough) {
     std::stringstream msg;
     msg << AIE_TRACE_BUF_REUSE_WARN
-      << " Recommended offload rate (trace buffer bytes/sec) : " << circ_buf_min_rate_plio
-      << " Requested : " << circ_buf_cur_rate_plio ;
+        << " Recommended offload rate (trace buffer bytes/sec) : " << circ_buf_min_rate_plio
+        << " Requested : " << circ_buf_cur_rate_plio ;
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
   }
 }
