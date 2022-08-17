@@ -11,6 +11,8 @@ function write_log() {
 }
  
 function vdu_probe() {
+                
+        write_log 'modprobing vdu modules ...'
 
         modprobe allegro ; modprobe al5d ;
         if [ $? == 0 ]
@@ -19,19 +21,7 @@ function vdu_probe() {
         else
                 write_log 'modprobe failed'
         fi
-        echo 2 > $vdu_init_file
-}
-
-function vdu_remove() {
-
-        rmmod allegro ; rmmod al5d ;
-        if [ $? == 0 ]
-        then
-                write_log 'rmmod successful'
-        else
-                write_log 'rmmod failed'
-        fi
-        echo 2 > $vdu_init_file
+        echo 0 > $vdu_init_file
 }
 
 write_log 'Daemon script started. this script is used for probing/removing vdu modules'
@@ -42,16 +32,12 @@ chmod 666 $vdu_init_file
 while true
 do
         action=$(cat $vdu_init_file)
+        #action :0 -> dont do anything
+        #action :1 -> modprobe the modules
  
         if [ "$action" == 1 ]
         then
-                write_log 'modprobing vdu modules ...'
                 vdu_probe
-
-        elif [ "$action" == 0 ] 
-        then
-                write_log 'removing vdu modules ...'
-                vdu_remove
         fi
  
         sleep 5
