@@ -42,6 +42,7 @@ namespace properties {
     constexpr unsigned int SIZE_64K  = 65536;
     constexpr unsigned int SIZE_128K = 131072;
     // Property to size map
+    // Property 0 represents 8k FIFO
     const std::array<unsigned int, 8> size = {
         SIZE_8K,
         SIZE_1K,
