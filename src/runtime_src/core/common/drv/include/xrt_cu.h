@@ -34,7 +34,11 @@
 #define MAX_CU_LOOP 100
 
 /* If poll count reach this threashold, switch to interrupt mode */
+#if defined(CONFIG_ARM64)
 #define CU_DEFAULT_POLL_THRESHOLD 30 /* About 60 us on APU */
+#else
+#define CU_DEFAULT_POLL_THRESHOLD 200 /* About 50 us on host */
+#endif
 
 /* The normal CU in ip_layout would assign a interrupt
  * ID in range 0 to 127. Use 128 for m2m cu could ensure
@@ -514,6 +518,9 @@ void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 void xrt_cu_hpq_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 void xrt_cu_abort(struct xrt_cu *xcu, struct kds_client *client);
 bool xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client);
+bool xrt_cu_intr_supported(struct xrt_cu *xcu);
+int xrt_cu_start_thread(struct xrt_cu *xcu);
+void xrt_cu_stop_thread(struct xrt_cu *xcu);
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);
 int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr, u32 num_slots);
 int xrt_is_fa(struct xrt_cu *xcu, u32 *size);

@@ -611,29 +611,43 @@ done:
 
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 {
-	int err = 0;
-
-	/* Check if CU support interrupt in hardware */
-	if (!xcu->info.intr_enable)
+	if (!xrt_cu_intr_supported(xcu))
 		return -ENOSYS;
 
-	if (xrt_cu_get_protocol(xcu) == CTRL_NONE) {
-		xcu_warn(xcu, "Interrupt enabled value should be false for ap_ctrl_none cu\n");
-		return -ENOSYS;
-	}
-
-	if (xcu->thread) {
-		/* Stop old thread */
-		xcu->stop = 1;
-		up(&xcu->sem_cu);
-		up(&xcu->sem);
-		if (!IS_ERR(xcu->thread))
-			(void) kthread_stop(xcu->thread);
-		xcu->thread = NULL;
-	}
+	xrt_cu_stop_thread(xcu);
 
 	if (!intr)
 		return 0;
+
+	return xrt_cu_start_thread(xcu);
+}
+
+bool xrt_cu_intr_supported(struct xrt_cu *xcu)
+{
+	/* Let's say CU on XGQ always support interrupt */
+	if (xcu->info.model == XCU_XGQ)
+		return true;
+
+	/* Check if CU support interrupt in hardware */
+	if (!xcu->info.intr_enable)
+		return false;
+
+	if (xrt_cu_get_protocol(xcu) == CTRL_NONE) {
+		xcu_warn(xcu, "Interrupt enabled value should be false for ap_ctrl_none cu\n");
+		return false;
+	}
+
+    return true;
+}
+
+int xrt_cu_start_thread(struct xrt_cu *xcu)
+{
+	int err = 0;
+
+	if (xcu->thread) {
+		xcu_warn(xcu, "CU thread started. Start again?\n");
+		return 0;
+	}
 
 	/* launch new thread */
 	xcu->stop = 0;
@@ -648,6 +662,22 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 	}
 
 	return err;
+}
+
+void xrt_cu_stop_thread(struct xrt_cu *xcu)
+{
+	if (!xcu->thread)
+        return;
+
+    xcu->stop = 1;
+    up(&xcu->sem_cu);
+    up(&xcu->sem);
+    if (!IS_ERR(xcu->thread))
+        (void) kthread_stop(xcu->thread);
+
+    xcu->thread = NULL;
+    sema_init(&xcu->sem, 0);
+    sema_init(&xcu->sem_cu, 0);
 }
 
 /*
