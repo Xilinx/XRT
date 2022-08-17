@@ -39,7 +39,7 @@ namespace xdp {
 
   private:
     static bool live;
-	bool platformSupported = true;
+    bool platformSupported = true;
     struct AIEData {
       uint64_t deviceID;
       bool supported;

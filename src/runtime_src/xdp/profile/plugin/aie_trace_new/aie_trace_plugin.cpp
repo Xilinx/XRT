@@ -337,7 +337,7 @@ namespace xdp {
     handleToAIEData.clear();
 	
 	if (platformSupported)
-    	XDPPlugin::endWrite();
+      XDPPlugin::endWrite();
   }
 
   bool AieTracePluginUnified::alive()
