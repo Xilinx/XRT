@@ -752,7 +752,7 @@ namespace xclhwemhal2 {
         {
           if (mLogStream.is_open())
           {
-            mLogStream << __func__ << " DISPLAY environment is not available so expect exit from the application " << std::endl;
+            mLogStream << __func__ << " DISPLAY environment is not available so expect an exit from the application " << std::endl;
             DEBUG_MSG_COUT(" DISPLAY environment is not available so expect exit from the application ");
           }
           exit(0);
