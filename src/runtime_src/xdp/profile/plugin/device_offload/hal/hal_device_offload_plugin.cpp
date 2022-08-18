@@ -16,6 +16,7 @@
 
 #define XDP_SOURCE
 
+#include <array>
 #include <string>
 #include <vector>
 

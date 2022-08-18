@@ -20,6 +20,8 @@
 #ifndef FIFO_DOT_H
 #define FIFO_DOT_H
 
+#include <array>
+
 namespace xdp::IP::FIFO {
 
 constexpr int alignment = 0x1000;

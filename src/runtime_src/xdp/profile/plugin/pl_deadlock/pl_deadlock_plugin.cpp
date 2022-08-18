@@ -16,9 +16,10 @@
 
 #define XDP_SOURCE
 
+#include <array>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <iostream>
 
 #include "core/common/xrt_profiling.h"
 #include "core/common/message.h"
