@@ -28,6 +28,7 @@
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
@@ -73,16 +74,13 @@ namespace xdp {
 
   uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void* handle)
   {
-    constexpr uint32_t PATH_LENGTH = 512;
-
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
 
-    char pathBuf[PATH_LENGTH];
-    memset(pathBuf, 0, PATH_LENGTH);
-    xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
-    std::string sysfspath(pathBuf);
+    std::array<char, sysfs_max_path_length> pathBuf = {0};
+    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
+    std::string sysfspath(pathBuf.data());
     uint64_t deviceID =  db->addDevice(sysfspath); // Get the unique device Id
     return deviceID;
   }
@@ -122,11 +120,12 @@ namespace xdp {
           (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
       }
     }
+    
     // Check for device interface
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
     if (deviceIntf == nullptr) {
     // If DeviceIntf is not already created, create a new one to communicate with physical device
-    DeviceIntf* deviceIntf = new DeviceIntf();
+    deviceIntf = new DeviceIntf();
     AIEData.devIntf = deviceIntf;
     try {
       deviceIntf->setDevice(new HalDevice(handle));
@@ -256,10 +255,16 @@ namespace xdp {
       offloader->setOffloadIntervalUs(metadata->getOffloadIntervalUs());
     }
 
-    if (!offloader->initReadTrace()) {
-      xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
-      AIEData.supported = false;
-      return;
+    try {
+      if (!offloader->initReadTrace()) {
+        xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
+        AIEData.supported = false;
+        return;
+      }
+    } catch (...) {
+        std::string msg = "AIE trace is currently not supported on this platform.";
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+        platformSupported = false;
     }
 
     //Sets up and calls the PS kernel on x86 implementation
@@ -328,7 +333,9 @@ namespace xdp {
       flushOffloader(AIEData.offloader, true);
     }
     handleToAIEData.clear();
-    XDPPlugin::endWrite();
+	
+    if (platformSupported)
+      XDPPlugin::endWrite();
   }
 
   bool AieTracePluginUnified::alive()

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2018-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Authors:
  *
@@ -2068,6 +2069,14 @@ void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
 
 	res = __xocl_get_res_byname(pdev, IORESOURCE_MEM, name, 0);
 	return devm_ioremap_resource(&pdev->dev, res);
+}
+
+int xocl_get_irq_with_idx_byname(struct platform_device *pdev, char *name, int index)
+{
+	struct resource *r;
+
+	r = __xocl_get_res_byname(pdev, IORESOURCE_IRQ, name, index);
+	return r? r->start : -ENXIO;
 }
 
 int xocl_get_irq_byname(struct platform_device *pdev, char *name)
