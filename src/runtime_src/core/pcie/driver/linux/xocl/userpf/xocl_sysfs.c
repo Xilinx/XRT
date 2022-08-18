@@ -35,7 +35,7 @@ static ssize_t xclbinuuid_show(struct device *dev,
 	if (err)
 		return cnt;
 
-	cnt = sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
+	cnt = sprintf(buf, "0 %pUb\n", xclbin_id ? xclbin_id : 0);
 	XOCL_PUT_XCLBIN_ID(xdev);
 	return cnt;
 }
