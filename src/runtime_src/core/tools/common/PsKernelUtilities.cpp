@@ -21,37 +21,37 @@ namespace pt = boost::property_tree;
 static void
 get_all_instance_data(const xrt_core::device * _pDevice, pt::ptree &pt)
 {
-  // TODO put request logic in here for ps kernel data query
-  static size_t COUNT = 4096;
-  // TODO this will be removed when the PS kernel is built in
-  std::string b_file = "/ps_validate_bandwidth.xclbin";
-  std::string binaryfile = "/opt/xilinx/firmware/vck5000/gen4x8-qdma/base/test" + b_file;
-  auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_pDevice));
-  auto device = xrt::device {bdf};
-  auto uuid = device.load_xclbin(binaryfile);
-  // end TODO
+  // // TODO put request logic in here for ps kernel data query
+  // static size_t COUNT = 4096;
+  // // TODO this will be removed when the PS kernel is built in
+  // std::string b_file = "/ps_validate_bandwidth.xclbin";
+  // std::string binaryfile = "/opt/xilinx/firmware/vck5000/gen4x8-qdma/base/test" + b_file;
+  // auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_pDevice));
+  // auto device = xrt::device {bdf};
+  // auto uuid = device.load_xclbin(binaryfile);
+  // // end TODO
 
-  // Always get a kernel reference to the build in kernel. Choose a better name though...
-  auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
+  // // Always get a kernel reference to the build in kernel. Choose a better name though...
+  // auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
 
-  // Format the amount of data depending on the number of programmed ps kernels
-  auto ps_data = xrt_core::device_query<xrt_core::query::kds_scu_info>(_pDevice);
-  const size_t DATA_SIZE = COUNT * sizeof(char) * ps_data.size();
-  auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
-  auto bo0_map = bo0.map<char*>();
-  std::fill(bo0_map, bo0_map + COUNT, 0);
+  // // Format the amount of data depending on the number of programmed ps kernels
+  // auto ps_data = xrt_core::device_query<xrt_core::query::kds_scu_info>(_pDevice);
+  // const size_t DATA_SIZE = COUNT * sizeof(char) * ps_data.size();
+  // auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
+  // auto bo0_map = bo0.map<char*>();
+  // std::fill(bo0_map, bo0_map + COUNT, 0);
 
-  bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
+  // bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
 
-  auto run = hello_world(bo0, DATA_SIZE);
-  run.wait();
+  // auto run = hello_world(bo0, DATA_SIZE);
+  // run.wait();
 
-  //Get the output;
-  bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
+  // //Get the output;
+  // bo0.sync(XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0);
 
-  // Parse the output into a useful format
-  std::istringstream json(bo0_map);
-  pt::read_json(json, pt);
+  // // Parse the output into a useful format
+  // std::istringstream json(bo0_map);
+  // pt::read_json(json, pt);
 }
 
 static std::vector<const pt::ptree*>
