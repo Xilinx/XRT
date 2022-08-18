@@ -230,6 +230,36 @@ namespace xclhwemhal2 {
     }
   }
 
+  void HwEmShim::dumpDeadlockMessages()
+  {
+
+    if (!xrt_core::config::get_pl_deadlock_detection())
+      return;
+    
+    std::string simPath = getSimPath();
+    std::string content = loadFileContentsToString(simPath + "/kernel_deadlock_diagnosis.rpt");
+
+    if (content.find("start to dump deadlock path") != std::string::npos)
+    {
+      if (std::find(parsedMsgs.begin(), parsedMsgs.end(), content) == parsedMsgs.end())
+      {
+        logMessage(content);
+        parsedMsgs.push_back(content);
+      }
+
+      char path[FILENAME_MAX];
+      size_t size = MAXPATHLEN;
+      char *pPath = GetCurrentDir(path, size);
+
+      if (pPath)
+      {
+        std::string deadlockReportFile = simPath + "/kernel_deadlock_diagnosis.rpt";
+        std::string destPath = std::string(path) + "/pl_deadlock_diagnosis.txt";
+        systemUtil::makeSystemCall(deadlockReportFile, systemUtil::systemOperation::COPY, destPath, std::to_string(__LINE__));
+      }
+    }
+  }
+
   void HwEmShim::parseSimulateLog ()
   {
     std::string simPath = getSimPath();

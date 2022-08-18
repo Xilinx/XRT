@@ -2,6 +2,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -16,6 +17,7 @@
 
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/semaphore.h>
 #include "xocl_xgq.h"
 
 #define CLIENT_ID_BITS 7
@@ -32,6 +34,7 @@ struct xocl_xgq_client {
 	struct list_head	 xxc_completed;
 	int			 xxc_num_complete;
 	u32			 xxc_prot;
+	struct semaphore	*xxc_notify_sem;
 };
 
 struct xocl_xgq {
@@ -223,7 +226,8 @@ int xocl_xgq_abort(void *xgq_handle, int id, void *cond,
 	return ret;
 }
 
-int xocl_xgq_attach(void *xgq_handle, void *client, u32 prot, int *client_id)
+int xocl_xgq_attach(void *xgq_handle, void *client, struct semaphore *sem,
+		    u32 prot, int *client_id)
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
 	unsigned long flags = 0;
@@ -235,9 +239,10 @@ int xocl_xgq_attach(void *xgq_handle, void *client, u32 prot, int *client_id)
 
 	*client_id = xgq->xx_num_client++;
 	xgq->xx_clients[*client_id].xxc_client = client;
-	spin_lock_init(&xgq->xx_clients[*client_id].xxc_lock);
-
+	xgq->xx_clients[*client_id].xxc_notify_sem = sem;
 	xgq->xx_clients[*client_id].xxc_prot = prot;
+
+	spin_lock_init(&xgq->xx_clients[*client_id].xxc_lock);
 	INIT_LIST_HEAD(&xgq->xx_clients[*client_id].xxc_submitted);
 	INIT_LIST_HEAD(&xgq->xx_clients[*client_id].xxc_completed);
 	xgq->xx_clients[*client_id].xxc_num_submit = 0;
@@ -245,6 +250,21 @@ int xocl_xgq_attach(void *xgq_handle, void *client, u32 prot, int *client_id)
 
 	spin_unlock_irqrestore(&xgq->xx_lock, flags);
 	return 0;
+}
+
+irqreturn_t xgq_isr(int irq, void *arg)
+{
+	struct xocl_xgq *xgq = arg;
+	unsigned long flags = 0;
+	int i;
+
+	spin_lock_irqsave(&xgq->xx_lock, flags);
+
+	for (i = 0; i < xgq->xx_num_client; i++)
+		up(xgq->xx_clients[i].xxc_notify_sem);
+
+	spin_unlock_irqrestore(&xgq->xx_lock, flags);
+	return IRQ_HANDLED;
 }
 
 void *xocl_xgq_init(struct xocl_xgq_info *info)
