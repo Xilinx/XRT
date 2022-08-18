@@ -50,16 +50,13 @@ class device : public ishim
   private:
     std::map<slot_id, xrt::uuid> m_slot2uuid;
     std::map<xrt::uuid, xrt::xclbin> m_xclbins;
-    std::mutex device_lock;
 
   public:
     // Reset the slot -> uuid mapping based on quieried slot info data
     void
     reset(std::map<slot_id, xrt::uuid>&& slot2uuid)
     {
-      std::cout << __func__ << " : " << __LINE__ << std::endl; 
       m_slot2uuid = std::move(slot2uuid);
-      std::cout << __func__ << " : " << __LINE__ << std::endl; 
     }
 
     // Cache an xclbin
@@ -112,6 +109,7 @@ public:
   using slot_id = xclbin_map::slot_id;
   using handle_type = xclDeviceHandle;
   using memory_type = xrt::xclbin::mem::memory_type;
+  std::mutex device_lock;
 
 public:
   XRT_CORE_COMMON_EXPORT
