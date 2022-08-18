@@ -50,6 +50,7 @@ class device : public ishim
   private:
     std::map<slot_id, xrt::uuid> m_slot2uuid;
     std::map<xrt::uuid, xrt::xclbin> m_xclbins;
+    std::mutex device_lock;
 
   public:
     // Reset the slot -> uuid mapping based on quieried slot info data
