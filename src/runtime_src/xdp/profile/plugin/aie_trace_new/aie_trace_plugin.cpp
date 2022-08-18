@@ -28,6 +28,7 @@
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
@@ -73,16 +74,13 @@ namespace xdp {
 
   uint64_t AieTracePluginUnified::getDeviceIDFromHandle(void* handle)
   {
-    constexpr uint32_t PATH_LENGTH = 512;
-
     auto itr = handleToAIEData.find(handle);
     if (itr != handleToAIEData.end())
       return itr->second.deviceID;
 
-    char pathBuf[PATH_LENGTH];
-    memset(pathBuf, 0, PATH_LENGTH);
-    xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
-    std::string sysfspath(pathBuf);
+    std::array<char, sysfs_max_path_length> pathBuf = {0};
+    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
+    std::string sysfspath(pathBuf.data());
     uint64_t deviceID =  db->addDevice(sysfspath); // Get the unique device Id
     return deviceID;
   }

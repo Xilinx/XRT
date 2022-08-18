@@ -28,26 +28,27 @@
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/aie_profile/aie_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
-#define NUM_CORE_COUNTERS     4
-#define NUM_MEMORY_COUNTERS   2
-#define NUM_SHIM_COUNTERS     2
-#define BASE_MEMORY_COUNTER 128
-#define BASE_SHIM_COUNTER   256
+constexpr unsigned int NUM_CORE_COUNTERS   = 4;
+constexpr unsigned int NUM_MEMORY_COUNTERS = 2;
+constexpr unsigned int NUM_SHIM_COUNTERS  =  2;
+constexpr unsigned int BASE_MEMORY_COUNTER = 128;
+constexpr unsigned int BASE_SHIM_COUNTER =   256;
 
-#define GROUP_DMA_MASK                   0x0000f000
-#define GROUP_LOCK_MASK                  0x55555555
-#define GROUP_CONFLICT_MASK              0x000000ff
-#define GROUP_ERROR_MASK                 0x00003fff
-#define GROUP_STREAM_SWITCH_IDLE_MASK    0x11111111
-#define GROUP_STREAM_SWITCH_RUNNING_MASK 0x22222222
-#define GROUP_STREAM_SWITCH_STALLED_MASK 0x44444444
-#define GROUP_STREAM_SWITCH_TLAST_MASK   0x88888888
-#define GROUP_CORE_PROGRAM_FLOW_MASK     0x00001FE0
-#define GROUP_CORE_STALL_MASK            0x0000000F
+constexpr uint32_t GROUP_DMA_MASK                   = 0x0000f000;
+constexpr uint32_t GROUP_LOCK_MASK                  = 0x55555555;
+constexpr uint32_t GROUP_CONFLICT_MASK              = 0x000000ff;
+constexpr uint32_t GROUP_ERROR_MASK                 = 0x00003fff;
+constexpr uint32_t GROUP_STREAM_SWITCH_IDLE_MASK    = 0x11111111;
+constexpr uint32_t GROUP_STREAM_SWITCH_RUNNING_MASK = 0x22222222;
+constexpr uint32_t GROUP_STREAM_SWITCH_STALLED_MASK = 0x44444444;
+constexpr uint32_t GROUP_STREAM_SWITCH_TLAST_MASK   = 0x88888888;
+constexpr uint32_t GROUP_CORE_PROGRAM_FLOW_MASK     = 0x00001FE0;
+constexpr uint32_t GROUP_CORE_STALL_MASK            = 0x0000000F;
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -891,11 +892,9 @@ namespace xdp {
     if (!xrt_core::config::get_aie_profile())
       return;
 
-    char pathBuf[512];
-    memset(pathBuf, 0, 512);
-    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
-
-    std::string sysfspath(pathBuf);
+    std::array<char, sysfs_max_path_length> pathBuf = {0};
+    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
+    std::string sysfspath(pathBuf.data());
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {

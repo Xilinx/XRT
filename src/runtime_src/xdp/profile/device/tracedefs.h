@@ -100,6 +100,7 @@ trace settings."
 #define TRACE_DUMP_FILE_COUNT_WARN 10
 #define TRACE_DUMP_FILE_COUNT_WARN_MSG "Continuous Trace might create a large number of trace files. Please use trace_file_dump_interval \
 to control how often trace data is written."
+#define DEFAULT_AIE_TRACE_DUMP_INTERVAL_S 5
 
 namespace xdp {
 

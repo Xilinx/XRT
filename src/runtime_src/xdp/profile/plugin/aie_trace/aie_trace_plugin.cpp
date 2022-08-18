@@ -35,14 +35,19 @@
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/device/tracedefs.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 
-#define NUM_CORE_TRACE_EVENTS   8
-#define NUM_MEMORY_TRACE_EVENTS 8
-#define CORE_BROADCAST_EVENT_BASE 107
+constexpr unsigned int NUM_CORE_TRACE_EVENTS = 8;
+constexpr unsigned int NUM_MEMORY_TRACE_EVENTS = 8;
+constexpr unsigned int CORE_BROADCAST_EVENT_BASE = 107;
+
+constexpr uint32_t ES1_TRACE_COUNTER = 1020;
+constexpr uint32_t ES2_TRACE_COUNTER = 0x3FF00;
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -58,16 +63,15 @@ namespace {
 
   static void* allocateAieDevice(void* devHandle)
   {
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
+    auto aieDevInst = static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
     if (!aieDevInst)
-      return nullptr ;
+      return nullptr;
     return new xaiefal::XAieDev(aieDevInst, false) ;
   }
 
   static void deallocateAieDevice(void* aieDevice)
   {
-    xaiefal::XAieDev* object = static_cast<xaiefal::XAieDev*>(aieDevice) ;
+    auto object = static_cast<xaiefal::XAieDev*>(aieDevice) ;
     if (object != nullptr)
       delete object ;
   }
@@ -106,16 +110,9 @@ namespace xdp {
       if (offloadIntervalms != 10) {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
           "The xrt.ini flag \"aie_trace_buffer_offload_interval_ms\" is deprecated and will be removed in future release. Please use \"buffer_offload_interval_us\" under \"AIE_trace_settings\" section.");
-        offloadIntervalUs = offloadIntervalms * 1e3;
+        offloadIntervalUs = offloadIntervalms * uint_constants::one_thousand;;
       } else {
         offloadIntervalUs = xrt_core::config::get_aie_trace_settings_buffer_offload_interval_us();
-        if (100 == offloadIntervalUs) {
-          // if set to default value, then check for old style config
-          offloadIntervalUs = xrt_core::config::get_aie_trace_buffer_offload_interval_us();
-          if (100 != offloadIntervalUs)
-            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-              "The xrt.ini flag \"aie_trace_buffer_offload_interval_us\" is deprecated and will be removed in future release. Please use \"buffer_offload_interval_us\" under \"AIE_trace_settings\" section.");
-        }
       }
     }
 
@@ -173,12 +170,12 @@ namespace xdp {
     if (counterScheme == "es1") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
       coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
-      coreCounterEventValues   = {1020, 1020*1020};
+      coreCounterEventValues   = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
     }
     else if (counterScheme == "es2") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE};
       coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE};
-      coreCounterEventValues   = {0x3FF00};
+      coreCounterEventValues   = {ES2_TRACE_COUNTER};
     }
     
     // **** Memory Module Counters ****
@@ -189,20 +186,20 @@ namespace xdp {
     if (counterScheme == "es1") {
       memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                XAIE_EVENT_TRUE_MEM};
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {1020, 1020*1020};
+      memoryCounterEventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
     }
     else if (counterScheme == "es2") {
       memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {0x3FF00};
+      memoryCounterEventValues = {ES2_TRACE_COUNTER};
     }
 
     //Process the file dump interval
     aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_settings_file_dump_interval_s();
-    if (5 == aie_trace_file_dump_int_s) {
+    if (aie_trace_file_dump_int_s == DEFAULT_AIE_TRACE_DUMP_INTERVAL_S) {
       // if set to default value, then check for old style config
       aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
-      if (5 != aie_trace_file_dump_int_s)
+      if (aie_trace_file_dump_int_s != DEFAULT_AIE_TRACE_DUMP_INTERVAL_S)
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
           "The xrt.ini flag \"aie_trace_file_dump_interval_s\" is deprecated and will be removed in future release. Please use \"file_dump_interval_s\" under \"AIE_trace_settings\" section.");
     }
@@ -451,7 +448,7 @@ namespace xdp {
       }
 
       std::smatch pieces_match;
-      uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * 1e6);
+      uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * uint_constants::one_million);
 
       // AIE_trace_settings configs have higher priority than older Debug configs
       std::string size_str = xrt_core::config::get_aie_trace_settings_start_time();
@@ -471,11 +468,11 @@ namespace xdp {
           if (pieces_match[2] == "s") {
             cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec);
           } else if (pieces_match[2] == "ms") {
-            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e3);
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  uint_constants::one_thousand);
           } else if (pieces_match[2] == "us") {
-            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e6);
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  uint_constants::one_million);
           } else if (pieces_match[2] == "ns") {
-            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e9);
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  uint_constants::one_billion);
           } else {
             cycles = static_cast<uint64_t>(std::stof(pieces_match[1]));
           }
@@ -1039,12 +1036,9 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     if (handle == nullptr)
       return;
 
-    char pathBuf[512];
-    memset(pathBuf, 0, 512);
-    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
-
-    std::string sysfspath(pathBuf);
-
+    std::array<char, sysfs_max_path_length> pathBuf = {0};
+    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) );
+    std::string sysfspath(pathBuf.data());
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
     deviceIdToHandle[deviceId] = handle;
