@@ -292,7 +292,7 @@ struct xrt_cu_range {
 struct xrt_cu_stats {
 	spinlock_t		   xcs_lock;
 	struct timer_list          stats_timer;
-	atomic_t                   stats_tick;
+	u32                        stats_tick;
 
 	u32                        stats_enabled;
 	u32                        last_ts_status;

@@ -99,13 +99,14 @@ static void cu_stats_timer(struct timer_list *t)
 #endif
 	unsigned long   flags;
 
+	if (xcu->stats.stats_enabled)
+		return;
+
 	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
-	if (xcu->stats.stats_enabled) {
-		atomic_inc(&xcu->stats.stats_tick);
-		xrt_cu_incr_sq_count(xcu);
-		mod_timer(&xcu->stats.stats_timer, jiffies + CU_STATS_TIMER);
-	}
+	xcu->stats.stats_tick++;
+	xrt_cu_incr_sq_count(xcu);
 	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+	mod_timer(&xcu->stats.stats_timer, jiffies + CU_STATS_TIMER);
 }
 
 static void xrt_cu_switch_to_interrupt(struct xrt_cu *xcu)
@@ -1107,11 +1108,11 @@ ssize_t show_stats_begin(struct xrt_cu *xcu, char *buf)
 	char 		*fmt = "stats_begin \n";
 	unsigned long   flags;
 
-	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
 	xcu->stats.stats_enabled = 1;
-	atomic_set(&xcu->stats.stats_tick, 0);
-	mod_timer(&xcu->stats.stats_timer, jiffies + CU_STATS_TIMER);
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	xcu->stats.stats_tick = 0;
 	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+	mod_timer(&xcu->stats.stats_timer, jiffies + CU_STATS_TIMER);
 
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt);
 
