@@ -88,6 +88,11 @@ get_sorted_instance_list(const pt::ptree& pt)
   return instance_list;
 }
 
+static char to_uppercase(const char letter)
+{
+  int letter_val = static_cast<int>(letter);
+  return static_cast<char>(std::toupper(letter_val));
+}
 
 static pt::ptree
 parse_instance(const pt::ptree& instance_pt)
@@ -123,12 +128,12 @@ parse_instance(const pt::ptree& instance_pt)
     // IE Test_world => TestWorld
     std::string name = item->get<std::string>("name");
     if (!name.empty())
-      name[0] = static_cast<char>(toupper(name[0]));
+      name[0] = to_uppercase(name[0]);
     for (auto loc = name.find("_"); loc != std::string::npos; loc = name.find("_", loc)) {
       name.erase(loc, 1);
       // Capitalize the next letter if it exists
       if (loc < name.size())
-        name[loc] = static_cast<char>(toupper(name[loc]));
+        name[loc] = to_uppercase(name[loc]);
     }
 
     // Create the new data tree
