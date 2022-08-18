@@ -178,18 +178,13 @@ update_xclbin_info()
   // Update cached slot xclbin uuid mapping
   try {
     // [slot, xclbin_uuid]+
-    std::cout << __func__ << " : " << __LINE__ << std::endl; 
     auto xclbin_slot_info = xrt_core::device_query<xrt_core::query::xclbin_slots>(this);
-    std::cout << __func__ << " : " << __LINE__ << std::endl; 
     m_xclbins.reset(xrt_core::query::xclbin_slots::to_map(xclbin_slot_info));
-    std::cout << __func__ << " : " << __LINE__ << std::endl; 
   }
   catch (const query::no_such_key&) {
     // device does not support multiple xclbins, assume slot 0
     // for current xclbin
-    std::cout << __func__ << " : " << __LINE__ << std::endl; 
     m_xclbins.reset(std::map<slot_id, xrt::uuid>{{0, get_xclbin_uuid()}});
-    std::cout << __func__ << " : " << __LINE__ << std::endl; 
   }
 }
 
@@ -247,6 +242,7 @@ void
 device::
 register_axlf(const axlf* top)
 {
+  std::lock_guard<std::mutex> lk(device_lock);
   xrt::uuid xid{top->m_header.uuid};
 
   // Update xclbin caching from [slot, xclbin_uuid]+ data
