@@ -280,7 +280,7 @@ void device_info(struct xclmgmt_dev *lro, struct xclmgmt_ioc_info *obj)
 
 /*
  * Maps the PCIe BAR into user space for memory-like access using mmap().
- * Callable even when lro->ready == false.
+ * Callable even when lro->status.ready == false.
  */
 static int bridge_mmap(struct file *file, struct vm_area_struct *vma)
 {
@@ -620,7 +620,7 @@ static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 	hwicap->freq_cntr_0 = xocl_icap_get_data(lro, FREQ_COUNTER_0);
 	hwicap->freq_cntr_1 = xocl_icap_get_data(lro, FREQ_COUNTER_1);
 	hwicap->freq_cntr_2 = xocl_icap_get_data(lro, FREQ_COUNTER_2);
-	hwicap->mig_calib = lro->ready ? xocl_icap_get_data(lro, MIG_CALIB) : 0;
+	hwicap->mig_calib = lro->status.ready ? xocl_icap_get_data(lro, MIG_CALIB) : 0;
 	hwicap->data_retention = xocl_icap_get_data(lro, DATA_RETAIN);
 
 	XOCL_PUT_XCLBIN_ID(lro);
@@ -1273,8 +1273,11 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		}
 
 		ret = xocl_subdev_create(lro, &subdev_info);
-		if (ret)
+		if (ret) {
+			snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to create sub devices\n");
+			xocl_err(&pdev->dev, lro->status.msg);
 			goto fail;
+		}
 	}
 
 	/*
@@ -1283,7 +1286,8 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 */
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
 	if (ret && ret != -ENODEV) {
-		xocl_err(&pdev->dev, "failed to register firewall\n");
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to register firewall\n");
+		xocl_err(&pdev->dev, lro->status.msg);
 		goto fail_all_subdev;
 	}
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
@@ -1291,11 +1295,13 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		xocl_err(&pdev->dev, "failed to register subdevs %d", ret);
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to register subdevs %d\n", ret);
+		xocl_err(&pdev->dev, lro->status.msg);
 		goto fail_all_subdev;
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
 
+	/* Attempt to load firmware and get the appropriate device */
 	if (!(dev_info->flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)))
 		ret = xocl_icap_download_boot_firmware(lro);
 
@@ -1314,20 +1320,27 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	    (xocl_subdev_is_vsec(lro) || dev_info->flags & XOCL_DSAFLAG_CUSTOM_DTB))
 		ret = -ENODEV;
 
-	if (!ret) {
-		xocl_thread_start(lro);
-
-		/* Launch the mailbox server. */
-		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
-			(void *)lro);
-
-		lro->ready = true;
-	} else if (ret == -ENODEV) {
+	/* Validate the above two statements */
+	if (ret == -ENODEV) { /* If no device was found attempt to load the device tree*/
 		ret = xclmgmt_load_fdt(lro);
-		if (ret)
+		if (ret) {
+			snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to load FDT %d\n", ret);
+			xocl_err(&pdev->dev, lro->status.msg);
 			goto fail_all_subdev;
-	} else
+		}
+	} else if (ret) { /* For general failures reset to minimum initalization */
+		snprintf(lro->status.msg, "Firmware download failed %d\n", ret);
+		xocl_err(&pdev->dev, lro->status.msg);
 		goto fail_all_subdev;
+	}
+
+	/* Finish initialization. Getting here means nothing failed */
+	xocl_thread_start(lro);
+
+	/* Launch the mailbox server. */
+	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+
+	lro->status.ready = true;
 
 	/* Reset PCI link monitor */
 	check_pcie_link_toggle(lro, 1);
@@ -1455,7 +1468,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	dev_set_drvdata(&pdev->dev, lro);
 	/* create a driver to device reference */
 	lro->pci_dev = pdev;
-	lro->ready = false;
+	lro->status.ready = false;
 
 	rc = xclmgmt_config_pci(lro);
 	if (rc)

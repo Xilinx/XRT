@@ -703,7 +703,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	char *blob = NULL;
 	int len;
 
-	if (!lro->ready) {
+	if (!lro->status.ready) {
 		mgmt_warn(lro, "not ready yet");
 		ret = -EINVAL;
 		goto failed;
@@ -859,7 +859,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 
-	lro->ready = true;
+	lro->status.ready = true;
 
 failed:
 	vfree(fw_buf);

@@ -117,6 +117,11 @@ enum {
 	XOCL_RP_PROGRAM = 2
 };
 
+struct xclmgmt_ready_status {
+	bool ready;
+	char msg[256];
+}
+
 struct xclmgmt_dev {
 	struct xocl_dev_core	core;
 	/* MAGIC_DEVICE == 0xAAAAAAAA */
@@ -137,7 +142,8 @@ struct xclmgmt_dev {
 	struct msix_entry msix_irq_entries[XCLMGMT_MAX_INTR_NUM];
 #endif
 	int msix_user_start_vector;
-	bool ready;
+	/* bool ready; */
+	struct xclmgmt_ready_status status;
 	bool reset_requested;
 
 	void *userpf_blob;

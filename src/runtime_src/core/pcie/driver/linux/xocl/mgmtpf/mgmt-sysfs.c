@@ -180,7 +180,7 @@ static ssize_t mig_calibration_show(struct device *dev,
 	memcalib = xocl_iores_get_base(lro, IORES_MEMCALIB);
 
 	return sprintf(buf, "%d\n",
-		(memcalib && lro->ready) ? XOCL_READ_REG32(memcalib) : 0);
+		(memcalib && lro->status.ready) ? XOCL_READ_REG32(memcalib) : 0);
 }
 static DEVICE_ATTR_RO(mig_calibration);
 
@@ -198,7 +198,7 @@ static ssize_t ready_show(struct device *dev,
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%d\n", lro->ready);
+	return sprintf(buf, "%d\n", lro->status.ready);
 }
 static DEVICE_ATTR_RO(ready);
 
@@ -347,7 +347,7 @@ static ssize_t interface_uuids_show(struct device *dev,
 	const void *uuid;
 	int node = -1, off = 0;
 
-	if (!lro->ready)
+	if (!lro->status.ready)
 		return -EINVAL;
 
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
@@ -382,7 +382,7 @@ static ssize_t logic_uuids_show(struct device *dev,
 	const void *uuid = NULL, *blp_uuid = NULL;
 	int node = -1, off = 0;
 
-	if (!lro->ready)
+	if (!lro->status.ready)
 		return -EINVAL;
 
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)

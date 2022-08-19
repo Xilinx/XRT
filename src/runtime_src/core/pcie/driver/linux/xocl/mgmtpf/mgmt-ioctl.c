@@ -130,7 +130,7 @@ long mgmt_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	BUG_ON(!lro);
 
-	if (!lro->ready || _IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
+	if (!lro->status.ready || _IOC_TYPE(cmd) != XCLMGMT_IOC_MAGIC)
 		return -ENOTTY;
 
 	if (_IOC_DIR(cmd) & _IOC_READ)
