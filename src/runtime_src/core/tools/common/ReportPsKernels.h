@@ -8,7 +8,7 @@
 
 class ReportPsKernels : public Report {
  public:
-  ReportPsKernels() : Report("ps-kernels", "On card PS kernel instance information", true /*deviceRequired*/) { /*empty*/ };
+  ReportPsKernels() : Report("ps-kernels", "On card PS kernel instance information", true /*deviceRequired*/, true /*isHidden*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:
