@@ -175,7 +175,7 @@ namespace xrt {
   XCL_DRIVER_DLLESPEC
   void
   skd::run() {
-    int32_t kernel_return = 0;
+    ffi_sarg kernel_return = 0;
     int ret = 0;
     void* ffi_arg_values[num_args];
     // Buffer Objects
