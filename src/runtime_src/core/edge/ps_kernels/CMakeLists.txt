@@ -6,4 +6,4 @@ if (DEFINED XRT_AIE_BUILD)
   add_subdirectory(profiling)
 endif()
 
-add_subdirectory(built_in)
+add_subdirectory(xrt)
