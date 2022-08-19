@@ -902,6 +902,8 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
         int ret = 0;
         int count = 0;
 	void *aie_res = 0;
+	struct device_node *aienode;
+	uint8_t hw_gen = 1;
 
         if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
                 DRM_INFO("Invalid xclbin magic string");
@@ -946,9 +948,21 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 	 */
 	zocl_read_sect_kernel(AIE_RESOURCES, &aie_res, axlf, xclbin);
 
+	aienode = of_find_node_by_name(NULL, "ai_engine");
+	if (aienode == NULL)
+		DRM_WARN("AI Engine Device Node not found!");
+	else {
+		ret = of_property_read_u8(aienode, "xlnx,aie-gen", &hw_gen);
+		if (ret < 0) {
+			DRM_WARN("no aie dev generation information in device tree\n");
+		}
+		of_node_put(aienode);
+	}
+
 	// Cache full xclbin
 	//last argument represents aie generation. 1. aie, 2. aie-ml ...
-	zocl_create_aie(zdev, axlf, aie_res, 1);
+	DRM_INFO("%s AIE set to gen %d", __func__, hw_gen);
+	zocl_create_aie(zdev, axlf, aie_res, hw_gen);
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
