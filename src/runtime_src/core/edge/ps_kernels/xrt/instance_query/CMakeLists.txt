@@ -4,7 +4,7 @@
 set(PS_KERNEL_INSTALL_DIR "${XRT_INSTALL_LIB_DIR}/ps_kernels_lib")
 
 include_directories(
-  ${SRC_DIR}/../../../edge/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../../edge/include
   )
 
 add_library(instance_query OBJECT
@@ -19,8 +19,8 @@ set_target_properties(instance_query PROPERTIES
 target_link_libraries(instance_query
     PRIVATE
     xrt_coreutil
-    xrt_core
     stdc++
+    pthread
 )
 
 install (TARGETS instance_query 

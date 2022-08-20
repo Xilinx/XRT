@@ -10,6 +10,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
+#include <thread>
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
@@ -19,7 +20,7 @@
 #include <boost/property_tree/ptree.hpp>
 namespace pt = boost::property_tree;
 
-#include "sk_types.h"
+#include "core/edge/include/sk_types.h"
 
 // User private data structure container (context object) definition
 class xrtHandles : public pscontext
