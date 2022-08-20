@@ -2225,6 +2225,20 @@ static ssize_t clk_scaling_stat_raw_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(clk_scaling_stat_raw);
 
+static ssize_t clk_scaling_configure_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	struct xgq_cmd_cq_clk_scaling_payload *cs_payload=
+		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
+	ssize_t cnt = 0;
+
+	cnt += sprintf(buf + cnt, "%d,%u,%u\n", cs_payload->clk_scaling_en,
+				   xgq->pwr_scaling_ovrd_limit, xgq->temp_scaling_ovrd_limit);
+
+	return cnt;
+}
+
 /*
  * clk_scaling_configure_store(): Used to configure clock scaling feature parameters through
  * "clk_scaling_configure" sysfs node.
@@ -2308,7 +2322,7 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 
 	return count;
 }
-static DEVICE_ATTR_WO(clk_scaling_configure);
+static DEVICE_ATTR_RW(clk_scaling_configure);
 
 static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buf, loff_t off, size_t count)

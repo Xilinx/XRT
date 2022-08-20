@@ -84,6 +84,9 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
 
   if (is_supported(_dev)) {
     try {
+      child.put("scaling_overrides", xrt_core::device_query<xrt_core::query::xgq_scaling_configure>(_dev));
+    } catch(const xrt_core::query::exception&) {}
+    try {
       child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_dev));
       child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_dev));
       child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_dev));

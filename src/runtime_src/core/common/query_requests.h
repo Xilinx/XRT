@@ -289,6 +289,7 @@ enum class key_type
 
   clk_scaling_info,
 
+  xgq_scaling_configure,
   noop
 };
 
@@ -3127,6 +3128,19 @@ struct clk_scaling_info : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct xgq_scaling_configure : request
+{
+  using result_type = std::string; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_configure;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 } // query
