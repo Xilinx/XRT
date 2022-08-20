@@ -3,10 +3,6 @@
 #
 set(PS_KERNEL_INSTALL_DIR "${XRT_INSTALL_LIB_DIR}/ps_kernels_lib")
 
-include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/../../../edge/include
-  )
-
 add_library(instance_query OBJECT
   instance_query.cpp
   )
