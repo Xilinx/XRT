@@ -3,21 +3,24 @@
 #
 set(PS_KERNEL_INSTALL_DIR "${XRT_INSTALL_LIB_DIR}/ps_kernels_lib")
 
-set(CMAKE_CXX_FLAGS "-DXAIE_DEBUG ${CMAKE_CXX_FLAGS}")
+include_directories(
+  ${SRC_DIR}/../../../edge/include
+  )
+
 add_library(instance_query OBJECT
-  instance_query.c
+  instance_query.cpp
   )
 
 set_target_properties(instance_query PROPERTIES 
   VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION}
-  XCLHAL_MAJOR_VER 1
-  XCLHAL_MINOR_VER 0)
+  )
 
 target_link_libraries(instance_query
     PRIVATE
     xrt_coreutil
     xrt_core
+    stdc++
 )
 
 install (TARGETS instance_query 
