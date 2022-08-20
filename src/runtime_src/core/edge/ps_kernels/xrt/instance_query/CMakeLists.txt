@@ -16,13 +16,6 @@ set_target_properties(instance_query PROPERTIES
   SOVERSION ${XRT_SOVERSION}
   )
 
-target_link_libraries(instance_query
-    PRIVATE
-    xrt_coreutil
-    stdc++
-    pthread
-)
-
 install (TARGETS instance_query 
   EXPORT xrt-targets
   LIBRARY DESTINATION ${PS_KERNEL_INSTALL_DIR}
