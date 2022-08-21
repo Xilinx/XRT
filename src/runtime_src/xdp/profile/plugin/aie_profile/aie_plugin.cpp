@@ -447,9 +447,7 @@ namespace xdp {
           // NOTE: input = slave (data flowing from PLIO)
           //       output = master (data flowing to PLIO)
           if ((isMaster && (metricsStr == "input_bandwidths"))
-              || (isMaster && (metricsStr == "input_stalls_idle"))
-              || (!isMaster && (metricsStr == "output_bandwidths"))
-              || (!isMaster && (metricsStr == "output_stalls_idle")))
+              || (!isMaster && (metricsStr == "output_bandwidths")))
             continue;
 
           tempTiles.push_back(tile_type());
@@ -1048,9 +1046,7 @@ namespace xdp {
       // NOTE: input = slave (data flowing from PLIO)
       //       output = master (data flowing to PLIO)
       if ((isMaster && (metricsStr == "input_bandwidths"))
-          || (isMaster && (metricsStr == "input_stalls_idle"))
-          || (!isMaster && (metricsStr == "output_bandwidths"))
-          || (!isMaster && (metricsStr == "output_stalls_idle")))
+          || (!isMaster && (metricsStr == "output_bandwidths")))
         continue;
 
       tiles.push_back(tile_type());
@@ -1360,13 +1356,10 @@ namespace xdp {
 
 #if 0
     // Graph Pass 2 : process per graph metric setting 
-    for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
-      std::vector<tile_type> tiles;
-      // port name
-      /*
-       * Shim profiling uses all tiles utilized by PLIOs
-       */
-    }  // Graph Pass 2
+    /* Currently interfaces cannot be tied to graphs.
+     * graph_based_interface_tile_metrics = <graph name>:<port name|all>:<off|input_bandwidths|output_bandwidths|packets>
+     * is not supported yet.
+     */
 #endif
 
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
@@ -1471,9 +1464,7 @@ namespace xdp {
         // NOTE: input = slave (data flowing from PLIO)
         //       output = master (data flowing to PLIO)
         if ((isMaster && (metrics[i][2] == "input_bandwidths"))
-            || (isMaster && (metrics[i][2] == "input_stalls_idle"))
-            || (!isMaster && (metrics[i][2] == "output_bandwidths"))
-            || (!isMaster && (metrics[i][2] == "output_stalls_idle")))
+            || (!isMaster && (metrics[i][2] == "output_bandwidths")))
           continue;
 
         plioCount++;
@@ -1557,9 +1548,7 @@ namespace xdp {
           // NOTE: input = slave (data flowing from PLIO)
           //       output = master (data flowing to PLIO)
           if ((isMaster && (metrics[i][1] == "input_bandwidths"))
-              || (isMaster && (metrics[i][1] == "input_stalls_idle"))
-              || (!isMaster && (metrics[i][1] == "output_bandwidths"))
-              || (!isMaster && (metrics[i][1] == "output_stalls_idle")))
+              || (!isMaster && (metrics[i][1] == "output_bandwidths")))
             continue;
 
           plioCount++;
