@@ -19,7 +19,7 @@ namespace XBU = XBUtilities;
 namespace pt = boost::property_tree;
 
 static void
-get_all_instance_data(const xrt_core::device * /*_pDevice*/, pt::ptree &/*pt*/)
+get_all_instance_data(const xrt_core::device * _pDevice, pt::ptree &pt)
 {
   // // TODO put request logic in here for ps kernel data query
   // static size_t COUNT = 4096;
@@ -32,18 +32,18 @@ get_all_instance_data(const xrt_core::device * /*_pDevice*/, pt::ptree &/*pt*/)
   // // end TODO
 
   // // Always get a kernel reference to the build in kernel. Choose a better name though...
-  // auto hello_world = xrt::kernel(device, uuid.get(), "hello_world");
+  // auto data_kernel = xrt::kernel(device, uuid.get(), "get_ps_kernel_data");
 
   // // Format the amount of data depending on the number of programmed ps kernels
   // auto ps_data = xrt_core::device_query<xrt_core::query::kds_scu_info>(_pDevice);
   // const size_t DATA_SIZE = COUNT * sizeof(char) * ps_data.size();
-  // auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
+  // auto bo0 = xrt::bo(device, DATA_SIZE, data_kernel.group_id(0));
   // auto bo0_map = bo0.map<char*>();
   // std::fill(bo0_map, bo0_map + COUNT, 0);
 
   // bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
 
-  // auto run = hello_world(bo0, DATA_SIZE);
+  // auto run = data_kernel(bo0, DATA_SIZE, true);
   // run.wait();
 
   // //Get the output;

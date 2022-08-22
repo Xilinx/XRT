@@ -215,17 +215,32 @@ get_instance_info(const std::string& file,
   filter_ptree_contents(pt, info_pt, name_map);
 }
 
+void
+log_info(const std::string& msg, bool enable_debug)
+{
+  if (enable_debug)
+    syslog(LOG_INFO, "%s: %s", __func__, msg.c_str());
+}
+
+void
+log_info(const boost::format& fmt, bool enable_debug)
+{
+  log_info(boost::str(fmt), enable_debug);
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 __attribute__((visibility("default")))
-int get_ps_kernel_data( char *output,
+int
+get_ps_kernel_data( char *output,
                         int count,
+                        bool enable_debug,
                         struct xrtHandles *xrtHandle)
 {
   openlog("new_kernel_source", LOG_PID | LOG_CONS | LOG_NDELAY, LOG_NEWS);
-  syslog(LOG_INFO, "%s: Started new kernel\n", __func__);
+  log_info("Stared new kernel\n", enable_debug);
 
   boost::filesystem::path p("/sys/devices/platform/ert_hw/");
   boost::filesystem::directory_iterator dir(p);
@@ -242,13 +257,13 @@ int get_ps_kernel_data( char *output,
     const auto filename = (*dir).path().filename().string();
     // After storing the path and filename increment the directory
     dir++;
-    syslog(LOG_INFO, "%s: Testing %s\n", __func__, path.c_str());
+    log_info(boost::format("Testing %s\n") % path.c_str(), enable_debug);
 
     // Skip over non matching directories
     if (filename.find("SCU") == std::string::npos)
         continue;
 
-    syslog(LOG_INFO, "%s: Discovered %s\n", __func__, path.c_str());
+    log_info(boost::format("Discovered %s\n") % path.c_str(), enable_debug);
 
     // Get the PID and full name of the PS kernel instance
     pt::ptree process_pt;
@@ -270,7 +285,7 @@ int get_ps_kernel_data( char *output,
   // Write into output buffer
   snprintf(output, count, "%s", ss.str().c_str());
 
-  syslog(LOG_INFO, "%s: Stopped new kernel\n", __func__);
+  log_info("Stopped new kernel\n", enable_debug);
   closelog();
 
   return 0;
