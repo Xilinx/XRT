@@ -641,26 +641,42 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	struct drm_xocl_mm_stat *pstat)
 {
 	struct xocl_mm *xocl_mm = drm_p->xocl_mm;
+	struct drm_xocl_mm_stat *mm_stat = NULL;
 
-	if (!xocl_mm && !xocl_mm->mm_usage_stat)
+	if (!xocl_mm) {
+        xocl_err(drm_p->ddev->dev, "Invalid memory manager");
 		return;
+	}
 
-	pstat->memory_usage = xocl_mm->mm_usage_stat[ddr] ?
-		xocl_mm->mm_usage_stat[ddr]->memory_usage : 0;
-	pstat->bo_count = xocl_mm->mm_usage_stat[ddr] ?
-		xocl_mm->mm_usage_stat[ddr]->bo_count : 0;
+	if (!pstat) {
+        xocl_err(drm_p->ddev->dev, "Invalid memory stats");
+		return;
+	}
+
+	mm_stat = xocl_mm->mm_usage_stat[ddr];
+	pstat->memory_usage = mm_stat ? mm_stat->memory_usage : 0;
+	pstat->bo_count = mm_stat ? mm_stat->bo_count : 0;
 }
 
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	u64 size, int count)
 {
 	struct xocl_mm *xocl_mm = drm_p->xocl_mm;
+	struct drm_xocl_mm_stat *mm_stat = NULL;
 
-	BUG_ON(!xocl_mm && !xocl_mm->mm_usage_stat[ddr]);
+	if (!xocl_mm) {
+        xocl_err(drm_p->ddev->dev, "Invalid memory manager");
+		return;
+	}
 
-	xocl_mm->mm_usage_stat[ddr]->memory_usage +=
-		(count > 0) ? size : -size;
-	xocl_mm->mm_usage_stat[ddr]->bo_count += count;
+	mm_stat = xocl_mm->mm_usage_stat[ddr];
+	if (!mm_stat) {
+        xocl_err(drm_p->ddev->dev, "Invalid memory stats");
+		return;
+	}
+
+	mm_stat->memory_usage += (count > 0) ? size : -size;
+	mm_stat->bo_count += count;
 }
 
 static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_id,
