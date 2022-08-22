@@ -284,7 +284,8 @@ static void icap_xclbin_wr_unlock(struct icap *icap)
 	pid_t pid = pid_nr(task_tgid(current));
 	struct slot_info *slot = icap->slot_info[DEFAULT_SLOT_ID];
 
-	BUG_ON(slot == NULL);
+	if (!slot)
+	       return;
 
 	BUG_ON(slot->busy != (u64)pid);
 
@@ -323,7 +324,8 @@ static  void icap_xclbin_rd_unlock(struct icap *icap)
 	bool wake = false;
 	struct slot_info *slot = icap->slot_info[DEFAULT_SLOT_ID];
 
-	BUG_ON(slot == NULL);
+	if (!slot)
+	       return;
 
 	mutex_lock(&icap->icap_lock);
 
@@ -337,7 +339,6 @@ static  void icap_xclbin_rd_unlock(struct icap *icap)
 	if (wake)
 		wake_up_interruptible(&slot->reader_wq);
 }
-
 
 static void icap_free_bins(struct icap *icap)
 {
@@ -460,8 +461,10 @@ static unsigned short icap_cached_ocl_frequency(const struct icap *icap, int idx
 static bool icap_bitstream_in_use(struct icap *icap)
 {
 	struct slot_info *slot = icap->slot_info[DEFAULT_SLOT_ID];
+	if (!slot)
+		return false;
 
-	BUG_ON(!slot && slot->icap_bitstream_ref < 0);
+	BUG_ON(slot->icap_bitstream_ref < 0);
 	return slot->icap_bitstream_ref != 0;
 }
 
@@ -778,7 +781,9 @@ static int calibrate_mig(struct icap *icap)
 static inline void xclbin_free_clock_freq_topology(struct icap *icap)
 {
 	struct slot_info *slot = icap->slot_info[DEFAULT_SLOT_ID];
-	BUG_ON(slot == NULL);
+	if (!slot)
+	       return;
+	
 	vfree(slot->xclbin_clock_freq_topology);
 	slot->xclbin_clock_freq_topology = NULL;
 	slot->xclbin_clock_freq_topology_length = 0;
@@ -1377,7 +1382,8 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	struct slot_info *slot = icap->slot_info[DEFAULT_SLOT_ID];
-	BUG_ON(slot == NULL);
+	if (!slot)
+	       return;
 
 	uuid_copy(&slot->icap_bitstream_uuid, &uuid_null);
 	icap_clean_axlf_section(icap, IP_LAYOUT);
@@ -3069,7 +3075,8 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 	uint64_t target = 0;
 	struct slot_info *slot = icap->slot_info[DEFAULT_SLOT_ID];
 
-	BUG_ON(slot == NULL);
+	if (!slot)
+	       return 0;
 
 	if (!ICAP_PRIVILEGED(icap)) {
 
@@ -3179,7 +3186,8 @@ static int icap_get_xclbin_metadata(struct platform_device *pdev,
 	int err = 0;
 	struct slot_info *slot = icap->slot_info[DEFAULT_SLOT_ID];
 
-	BUG_ON(slot == NULL);
+	if (!slot)
+	       return 0;
 
 	err = icap_xclbin_rd_lock(icap);
 	if (err)
@@ -3290,7 +3298,9 @@ static ssize_t clock_freqs_show(struct device *dev,
 	int i, err;
 	u32 freq_counter, freq, request_in_khz, tolerance;
 
-	BUG_ON(slot == NULL);
+	if (!slot)
+	       return cnt;
+	
 	err = icap_xclbin_rd_lock(icap);
 	if (err)
 		return cnt;
