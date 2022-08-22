@@ -97,9 +97,6 @@ namespace {
       required += 1;
     if (available < required) {
       addMessage(packet, Messages::NO_CORE_MODULE_PCS, src);
-      //packet->messageCode = static_cast<uint8_t>(Messages::NO_CORE_MODULE_PCS);
-      //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-      //messageCounter++; packet++;
       return false;
     }
 
@@ -108,9 +105,6 @@ namespace {
     required = config.coreCounterStartEvents.size() + config.coreEventsBase.size();
     if (available < required) {
       addMessage(packet, Messages::NO_CORE_MODULE_TRACE_SLOTS, src);
-      //packet->messageCode = static_cast<uint8_t>(Messages::NO_CORE_MODULE_TRACE_SLOTS);
-      //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-      //messageCounter++; packet++;
       return false;
     }
 
@@ -119,9 +113,6 @@ namespace {
     required = config.memoryCounterStartEvents.size();
     if (available < required) {
       addMessage(packet, Messages::NO_MEM_MODULE_PCS, src);
-      //packet->messageCode = static_cast<uint8_t>(Messages::NO_MEM_MODULE_PCS);
-      //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-      //messageCounter++; packet++;
       return false;
     }
 
@@ -130,9 +121,6 @@ namespace {
     required = config.memoryCounterStartEvents.size() + config.memoryCrossEventsBase.size();
     if (available < required) {
       addMessage(packet, Messages::NO_MEM_MODULE_TRACE_SLOTS, src);
-      //packet->messageCode = static_cast<uint8_t>(Messages::NO_MEM_MODULE_TRACE_SLOTS);
-      //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-      //MessageCounter++; packet++;
       return false;
     }
 
@@ -205,9 +193,6 @@ namespace {
         std::vector<uint32_t> src = {0, 0, 0, 0};
         addMessage(packet, Messages::NO_RESOURCES, src);
         packet++;
-        //packet->messageCode = static_cast<uint8_t>(Messages::NO_RESOURCES);
-        //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-        //messageCounter++; packet++;
         return 1;
       }
 
@@ -309,9 +294,6 @@ namespace {
         std::vector<uint32_t> src = {config.coreCounterStartEvents.size(), config.memoryCounterStartEvents.size(), col    , row + 1}; 
         addMessage(packet, Messages::COUNTERS_NOT_RESERVED, src);
         packet++;
-        //packet->messageCode = static_cast<uint8_t>(Messages::COUNTERS_NOT_RESERVED);
-        //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-        //messageCounter++; packet++;
         releaseCurrentTileCounters(config);
         return 1;
       }
@@ -362,9 +344,6 @@ namespace {
           std::vector<uint32_t> src = {col, row + 1, 0, 0};
           addMessage(packet, Messages::CORE_MODULE_TRACE_NOT_RESERVED, src);
           packet++;
-          //packet->messageCode = static_cast<uint8_t>(Messages::CORE_MODULE_TRACE_NOT_RESERVED);
-          //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-          //messageCounter++; packet++;
           releaseCurrentTileCounters(config);
           return 1;
         }
@@ -394,9 +373,6 @@ namespace {
         std::vector<uint32_t> src = {numTraceEvents, col, row, 0};
         addMessage(packet, Messages::CORE_TRACE_EVENTS_RESERVED, src);
         packet++;
-        //packet->messageCode = static_cast<uint8_t>(Messages::CORE_TRACE_EVENTS_RESERVED);
-        //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-        //messageCounter++; packet++;
 
         if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
           break;
@@ -424,9 +400,6 @@ namespace {
           std::vector<uint32_t> src = {col, row + 1, 0, 0};
           addMessage(packet, Messages::MEMORY_MODULE_TRACE_NOT_RESERVED, src);
           packet++;
-          //packet->messageCode = static_cast<uint8_t>(Messages::MEMORY_MODULE_TRACE_NOT_RESERVED);
-          //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-          //messageCounter++; packet++;
           releaseCurrentTileCounters(config);
           return 1;
         }
@@ -517,9 +490,6 @@ namespace {
         std::vector<uint32_t> src = {numTraceEvents, col, row, 0};
         addMessage(packet, Messages::MEMORY_TRACE_EVENTS_RESERVED, src);
         packet++;
-        //packet->messageCode = static_cast<uint8_t>(Messages::MEMORY_TRACE_EVENTS_RESERVED);
-        //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
-        //messageCounter++; packet++;
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
           break;

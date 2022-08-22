@@ -39,7 +39,7 @@
 #include "aie_trace.h"
 
 constexpr uint32_t MAX_TILES = 400;
-constexpr uint32_t MAX_LENGTH = 4096;
+constexpr uint32_t ALIGNMENT_SIZE = 4096;
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -68,9 +68,9 @@ namespace xdp {
 
   bool AieTrace_x86Impl::setMetrics(uint64_t deviceId, void* handle) {
       
-    constexpr uint64_t OUTPUT_SIZE = 4096 * 38; //Calculated maximum output size for all 400 tiles
-    constexpr uint64_t INPUT_SIZE = 4096; // input/output must be aligned to 4096
-    constexpr uint64_t MSG_OUTPUT_SIZE = 4096 * 5; //Calculated maximum output size for all 400 tiles
+    constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
+    constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE; // input/output must be aligned to 4096
+    constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(xdp::built_in::MessageConfiguration)%ALIGNMENT_SIZE) > 0 ? (sizeof(xdp::built_in::MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(xdp::built_in::MessageConfiguration)%ALIGNMENT_SIZE));
 
     //Gather data to send to PS Kernel
     std::string counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
@@ -302,10 +302,8 @@ namespace xdp {
         case xdp::built_in::Messages::MEMORY_TRACE_EVENTS_RESERVED: 
           msg << "Reserved " << packet.params[0] << " memory trace events for AIE tile (" << packet.params[1] << "," << packet.params[2] << ").";
           xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-          break;
- 
+          break; 
       }
     }
   }
-
 }
