@@ -532,7 +532,7 @@ install()
     fi
 
     if [ $FLAVOR == "ubuntu" ] && [ $MAJOR == 20 ]; then
-	apt-get install clang-tidy
+	apt-get install -y clang-tidy
     fi
 
     # Enable EPEL on CentOS/RHEL
