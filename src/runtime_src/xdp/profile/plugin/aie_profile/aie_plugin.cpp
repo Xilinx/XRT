@@ -1704,7 +1704,7 @@ namespace xdp {
                                    handle);
         }
       }
-   }
+    }
 
     if (!newConfigUsed) {
       // None of the new style AIE profile metrics have been used. So check for old style.
@@ -1757,88 +1757,72 @@ namespace xdp {
         }
         for (int i=0; i < numFreeCtr; ++i) {
 
-            // Get vector of pre-defined metrics for this set
-            uint8_t resetEvent = 0;
+          // Get vector of pre-defined metrics for this set
+          uint8_t resetEvent = 0;
 
-            auto startEvent = startEvents.at(i);
-            auto endEvent   = endEvents.at(i);
+          auto startEvent = startEvents.at(i);
+          auto endEvent   = endEvents.at(i);
 
-            // Request counter from resource manager
-            auto perfCounter = xaieModule.perfCounter();
-            auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
-            if (ret != XAIE_OK) break;
-            ret = perfCounter->reserve();
-            if (ret != XAIE_OK) break;
-          
-            configGroupEvents(aieDevInst, loc, mod, startEvent, tileMetric.second);
-            configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, startEvent, tileMetric.second);
-          
-            // Start the counters after group events have been configured
-            ret = perfCounter->start();
-            if (ret != XAIE_OK) break;
-            mPerfCounters.push_back(perfCounter);
+          // Request counter from resource manager
+          auto perfCounter = xaieModule.perfCounter();
+          auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
+          if (ret != XAIE_OK) break;
+          ret = perfCounter->reserve();
+          if (ret != XAIE_OK) break;
+        
+          configGroupEvents(aieDevInst, loc, mod, startEvent, tileMetric.second);
+          configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, startEvent, tileMetric.second);
+        
+          // Start the counters after group events have been configured
+          ret = perfCounter->start();
+          if (ret != XAIE_OK) break;
+          mPerfCounters.push_back(perfCounter);
 
-            // Convert enums to physical event IDs for reporting purposes
-            uint8_t tmpStart;
-            uint8_t tmpEnd;
-            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
-            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
-            uint16_t phyStartEvent = (mod == XAIE_CORE_MOD) ? tmpStart
-                                   : ((mod == XAIE_MEM_MOD) ? (tmpStart + BASE_MEMORY_COUNTER)
-                                   : (tmpStart + BASE_SHIM_COUNTER));
-            uint16_t phyEndEvent   = (mod == XAIE_CORE_MOD) ? tmpEnd
-                                   : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
-                                   : (tmpEnd + BASE_SHIM_COUNTER));
+          // Convert enums to physical event IDs for reporting purposes
+          uint8_t tmpStart;
+          uint8_t tmpEnd;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
+          uint16_t phyStartEvent = (mod == XAIE_CORE_MOD) ? tmpStart
+                                 : ((mod == XAIE_MEM_MOD) ? (tmpStart + BASE_MEMORY_COUNTER)
+                                 : (tmpStart + BASE_SHIM_COUNTER));
+          uint16_t phyEndEvent   = (mod == XAIE_CORE_MOD) ? tmpEnd
+                                 : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
+                                 : (tmpEnd + BASE_SHIM_COUNTER));
 
-            auto payload = getCounterPayload(aieDevInst, tileMetric.first, col, row, startEvent);
-  
-            // Store counter info in database
-            std::string counterName = "AIE Counter " + std::to_string(counterId);
-            (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
+          auto payload = getCounterPayload(aieDevInst, tileMetric.first, col, row, startEvent);
+
+          // Store counter info in database
+          std::string counterName = "AIE Counter " + std::to_string(counterId);
+          (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
                 phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz, 
                 moduleNames[module], counterName);
-            counterId++;
-            numCounters++;
-          }
-
-          std::stringstream msg;
-          msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
-          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-          numTileCounters[numCounters]++;
+          counterId++;
+          numCounters++;
         }
 
-        // Report counters reserved per tile
-        {
-          std::stringstream msg;
-          msg << "AIE profile counters reserved in " << moduleNames[module] << " - ";
-          for (int n=0; n <= numCountersMod[module]; ++n) {
-            if (numTileCounters[n] == 0) continue;
-            msg << n << ": " << numTileCounters[n] << " tiles";
-            if (n != numCountersMod[module]) msg << ", ";
-
-            (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], module);
-          }
-          xrt_core::message::send(severity_level::info, "XRT", msg.str());
-        }
-
-        runtimeCounters = true;
-      } // modules
-#if 0
-    // Get Channel Id in interface metric ; check all the entries
-    for(auto &interfaceMetric : metricsSettings) {
-      if(3 == interfaceMetric.size()) {
-        // current entry has channel ID
-        try {
-          mChannelId = std::stoi(interfaceMetric.at(2));
-          // Found one channel id, now break the loop
-          break;
-        }
-        catch (...) {
-          mChannelId = -1;
-        }
+        std::stringstream msg;
+        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+        numTileCounters[numCounters]++;
       }
-    }
-#endif
+
+      // Report counters reserved per tile
+      {
+        std::stringstream msg;
+        msg << "AIE profile counters reserved in " << moduleNames[module] << " - ";
+        for (int n=0; n <= numCountersMod[module]; ++n) {
+          if (numTileCounters[n] == 0) continue;
+          msg << n << ": " << numTileCounters[n] << " tiles";
+          if (n != numCountersMod[module]) msg << ", ";
+
+          (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], module);
+        }
+        xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      }
+
+      runtimeCounters = true;
+    } // modules
 
     return runtimeCounters;
   }
