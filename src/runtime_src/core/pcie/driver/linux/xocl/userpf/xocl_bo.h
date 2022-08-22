@@ -199,8 +199,8 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
 #else
-int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct dma_buf_map *map);
-void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct dma_buf_map *map);
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct iosys_map *map);
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct iosys_map *map);
 #endif
 
 int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);

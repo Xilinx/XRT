@@ -19,7 +19,7 @@
 #include <linux/iommu.h>
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
-#include <linux/dma-buf-map.h>
+#include <linux/iosys-map.h>
 #endif
 #include <asm/io.h>
 #include "xrt_drv.h"
@@ -877,7 +877,7 @@ static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
 	char __user *user_data = to_user_ptr(args->data_ptr);
 	struct drm_zocl_bo *bo;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
-	struct dma_buf_map map;
+	struct iosys_map map;
 #endif
 	int ret = 0;
 	char *kaddr;
@@ -906,7 +906,7 @@ static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
 	if (bo->flags & ZOCL_BO_FLAGS_CMA) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 		ret = drm_gem_cma_vmap(gem_obj, &map);
-		if(ret || dma_buf_map_is_null(&map))
+		if(ret || iosys_map_is_null(&map))
 			kaddr = NULL;
 		else
 			kaddr = map.is_iomem ? map.vaddr_iomem : map.vaddr;
