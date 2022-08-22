@@ -1317,14 +1317,17 @@ namespace xdp {
   void
   AIEProfilingPlugin::getInterfaceConfigMetricsForTiles(int moduleIdx,
                                                std::vector<std::string> metricsSettings,
-                                               std::vector<std::string> graphmetricsSettings,
+                                               /* std::vector<std::string> graphmetricsSettings, */
                                                void* handle)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
+#if 0
+    // graph_based_interface_tile_metrics is not supported in XRT in 2022.2
+
     bool allGraphsDone = false;
 
-    // STEP 1 : Parse per-graph or per-kernel settings
+    // STEP 1 : Parse per-graph settings
 
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * "graphmetricsSettings" contains each metric value
@@ -1344,12 +1347,11 @@ namespace xdp {
       if (0 != graphmetrics[i][0].compare("all")) {
         continue;
       }
-#if 0
+
       if (0 != graphmetrics[i][1].compare("all")) {
         xrt_core::message::send(severity_level::warning, "XRT",
            "Specific port name is not yet supported in \"graph_based_interface_tile_metrics\" configuration. This will be ignored. Please use \"all\" in port name field.");
       }
-#endif
       /*
        * Shim profiling uses all tiles utilized by PLIOs
        */
@@ -1362,7 +1364,6 @@ namespace xdp {
       }
     }  // Graph Pass 1
 
-#if 0
     // Graph Pass 2 : process per graph metric setting 
     /* Currently interfaces cannot be tied to graphs.
      * graph_based_interface_tile_metrics = <graph name>:<port name|all>:<off|input_bandwidths|output_bandwidths|packets>
@@ -1391,10 +1392,7 @@ namespace xdp {
         }
 
         std::vector<tile_type> tiles;
-        if (!allGraphsDone || (channelId >= 0)) {
-          tiles = getAllTilesForShimProfiling(handle, metrics[i][1], channelId);
-          allGraphsDone = true;
-        } // allGraphsDone
+        tiles = getAllTilesForShimProfiling(handle, metrics[i][1], channelId);
 
         for (auto &e : tiles) {
           mConfigMetrics[moduleIdx][e] = metrics[i][1];
@@ -1558,7 +1556,7 @@ namespace xdp {
 
     graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_metrics());
     graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics());
-    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
+//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
 //    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
 
     // Process AIE_profile_settings metrics
@@ -1578,18 +1576,21 @@ namespace xdp {
       } else {
 #if 0
 // Add warning later
-// No need to add the warning message here, as all the tests are using configs under Debug
+/ No need to add the warning message here, as all the tests are using configs under Debug
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
         std::string metricMsg = "No metric set specified for " + modName + " module. " +
                                 "Please specify the AIE_profile_settings." + modName + "_metrics setting in your xrt.ini.";
         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
 #endif
       }
-      if (!graphmetricsConfig[module].empty()) {
+      if ((module < graphmetricsConfig.size()) && !graphmetricsConfig[module].empty()) {
+        /* interface_tile metrics is not supported for Graph based metrics.
+         * Only aie and aie_memory are supported.
+         */
         boost::replace_all(graphmetricsConfig[module], " ", "");
         boost::split(graphmetricsSettings[module], graphmetricsConfig[module], boost::is_any_of(";"));
         findTileMetric = true;        
-      } else {
+     } else {
 #if 0
 // Add warning later
 // No need to add the warning message here, as all the tests are using configs under Debug
@@ -1605,7 +1606,7 @@ namespace xdp {
         if (XAIE_PL_MOD == falModuleTypes[module]) {
           getInterfaceConfigMetricsForTiles(module, 
                                        metricsSettings[module], 
-                                       graphmetricsSettings[module], 
+                                       /* graphmetricsSettings[module], */
                                        handle);
         } else {
           getConfigMetricsForTiles(module, 
