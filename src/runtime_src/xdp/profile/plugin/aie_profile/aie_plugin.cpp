@@ -1433,14 +1433,7 @@ namespace xdp {
            "Minimum column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
         continue;
       }
-#if 0      
-      for (uint32_t col = minCol; col <= maxCol; ++col) {
-        xrt_core::edge::aie::tile_type tile;
-        tile.col = col;
-        tile.row = 0;
-        tiles.push_back(tile);
-      }
-#endif
+
       int16_t channelId = 0;
       if (4 == metrics[i].size()) {
         try {
@@ -1454,48 +1447,6 @@ namespace xdp {
       }
       tiles = getAllTilesForShimProfiling(handle, metrics[i][2], channelId,
                                           true, minCol, maxCol);
-
-#if 0
-      // Check and set mem_row/column
-
-      int plioCount = 0;
-      auto plios = xrt_core::edge::aie::get_plios(device.get());
-      for (auto& plio : plios) {
-        auto isMaster = plio.second.slaveOrMaster;
-        auto streamId = plio.second.streamId;
-
-        // If looking for specific ID, make sure it matches
-        if ((channelId >= 0) && (channelId != streamId))
-          continue;
-
-        // Make sure it's desired polarity
-        // NOTE: input = slave (data flowing from PLIO)
-        //       output = master (data flowing to PLIO)
-        if ((isMaster && (metrics[i][2] == "input_bandwidths"))
-            || (!isMaster && (metrics[i][2] == "output_bandwidths")))
-          continue;
-
-        plioCount++;
-
-        for(auto &t : tiles) {
-          if (t.col == plio.second.shimColumn) {
-            t.row = 0;
-            // Grab stream ID and slave/master (used in configStreamSwitchPorts())
-            t.itr_mem_col = isMaster;
-            t.itr_mem_row = streamId;
-
-            // not all tiles ??
-            mConfigMetrics[moduleIdx][t] = metrics[i][2];
-          }
-        }
-      }
-          
-      if (plioCount == 0) {
-        std::string msg = "No tiles used channel ID " + std::to_string(channelId)
-                          + ". Please specify a valid channel ID.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg);
-      }
-#endif
 
       for (auto &t : tiles) {
         mConfigMetrics[moduleIdx][t] = metrics[i][2];
@@ -1527,11 +1478,7 @@ namespace xdp {
              "Column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
           continue;
         }
-#if 0
-        xrt_core::edge::aie::tile_type tile;
-        tile.col = col;
-        tile.row = 0;
-#endif
+
         int16_t channelId = -1;
         if (3 == metrics[i].size()) {
           try {
@@ -1545,42 +1492,7 @@ namespace xdp {
         }
         tiles = getAllTilesForShimProfiling(handle, metrics[i][1], channelId,
                                             true, col, col);
-#if 0
-        // Check and set mem_row/column
-        int plioCount = 0;
-        auto plios = xrt_core::edge::aie::get_plios(device.get());
-        for (auto& plio : plios) {
-          auto isMaster = plio.second.slaveOrMaster;
-          auto streamId = plio.second.streamId;
 
-          // If looking for specific ID, make sure it matches
-          if ((channelId >= 0) && (channelId != streamId))
-            continue;
-
-          // Make sure it's desired polarity
-          // NOTE: input = slave (data flowing from PLIO)
-          //       output = master (data flowing to PLIO)
-          if ((isMaster && (metrics[i][1] == "input_bandwidths"))
-              || (!isMaster && (metrics[i][1] == "output_bandwidths")))
-            continue;
-
-          plioCount++;
-
-          if (tile.col == plio.second.shimColumn) {
-            // Grab stream ID and slave/master (used in configStreamSwitchPorts())
-            tile.itr_mem_col = isMaster;
-            tile.itr_mem_row = streamId;
-
-            // not all tiles ??
-            mConfigMetrics[moduleIdx][tile] = metrics[i][1];
-          }
-        }
-        if (plioCount == 0) {
-          std::string msg = "No tiles used channel ID " + std::to_string(channelId)
-                            + ". Please specify a valid channel ID.";
-          xrt_core::message::send(severity_level::warning, "XRT", msg);
-        }
-#endif
         for (auto &t : tiles) {
           mConfigMetrics[moduleIdx][t] = metrics[i][1];
         }
