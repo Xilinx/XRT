@@ -140,7 +140,6 @@ struct icap_bitstream_user {
 
 struct islot_info {
 	uint32_t		slot_idx;
-	uint32_t		pr_idx;
 
 	struct clock_freq_topology *xclbin_clock_freq_topology;
 	unsigned long		xclbin_clock_freq_topology_length;
@@ -283,7 +282,7 @@ done:
 
 static void icap_xclbin_wr_unlock(struct icap *icap, uint32_t slot_id)
 {
-	struct islot_info	*islot = icap->slot_info[slot_id];
+	struct islot_info *islot = icap->slot_info[slot_id];
 	pid_t pid = pid_nr(task_tgid(current));
 
 	if (!islot)
@@ -1473,12 +1472,15 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0, i = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct debug_ip_layout *debug_ip_layout =
-		icap->slot_info[slot_id]->debug_layout;
+	struct debug_ip_layout *debug_ip_layout = NULL;
+	struct islot_info *islot = icap->slot_info[slot_id];
 
+	if (!islot)
+	       return -EINVAL;
+
+	debug_ip_layout = islot->debug_layout;
 	if (!debug_ip_layout)
 		return err;
-
 
 	for (i = 0; i < debug_ip_layout->m_count; ++i) {
 		struct debug_ip_data *ip = &debug_ip_layout->m_debug_ip_data[i];
@@ -1625,15 +1627,16 @@ static int icap_create_subdev_ip_layout(struct platform_device *pdev,
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0, i = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct ip_layout *ip_layout = icap->slot_info[slot_id]->ip_layout;
-	struct mem_topology *mem_topo = icap->slot_info[slot_id]->mem_topo;
+	struct ip_layout *ip_layout = NULL;
+	struct mem_topology *mem_topo = NULL;
+	struct islot_info *islot = icap->slot_info[slot_id];
 
-	if (!ip_layout) {
-		err = -ENODEV;
-		goto done;
-	}
+	if (!islot)
+	       return -EINVAL;
 
-	if (!mem_topo) {
+	ip_layout = islot->ip_layout;
+	mem_topo = islot->mem_topo;
+	if (!ip_layout || !mem_topo) {
 		err = -ENODEV;
 		goto done;
 	}
@@ -1755,18 +1758,18 @@ static int icap_create_post_download_subdevs(struct platform_device *pdev,
 	struct icap *icap = platform_get_drvdata(pdev);
 	int err = 0, i = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct ip_layout *ip_layout = icap->slot_info[slot_id]->ip_layout;
-	struct mem_topology *mem_topo = icap->slot_info[slot_id]->mem_topo;
+	struct ip_layout *ip_layout = NULL;
+	struct mem_topology *mem_topo = NULL;
+	struct islot_info *islot = icap->slot_info[slot_id];
 	uint32_t memidx = 0;
 
 	BUG_ON(!ICAP_PRIVILEGED(icap));
+	if (!islot)
+	       return -EINVAL;
 
-	if (!ip_layout) {
-		err = -ENODEV;
-		goto done;
-	}
-
-	if (!mem_topo) {
+	ip_layout = islot->ip_layout;
+	mem_topo = islot->mem_topo;
+	if (!ip_layout || !mem_topo) {
 		err = -ENODEV;
 		goto done;
 	}
@@ -2500,10 +2503,13 @@ static void icap_cache_max_host_mem_aperture(struct icap *icap,
 {
 	int i = 0;
 	struct islot_info *islot = icap->slot_info[slot_id];
-	struct mem_topology *mem_topo = islot->mem_topo;
+	struct mem_topology *mem_topo = NULL;
+
+	if (!islot)
+		return;
 
 	islot->max_host_mem_aperture = 0;
-
+	mem_topo = islot->mem_topo;
 	if (!mem_topo)
 		return;
 
