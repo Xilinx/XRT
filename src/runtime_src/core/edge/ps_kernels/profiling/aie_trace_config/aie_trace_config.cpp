@@ -14,6 +14,7 @@
  */
 
 #include <cstring>
+#include <vector>
 
 #include "core/edge/include/sk_types.h"
 #include "core/edge/user/shim.h"
@@ -43,6 +44,9 @@ class xrtHandles : public pscontext
 
 // Anonymous namespace for helper functions used in this file
 namespace {
+  using Messages = xdp::built_in::Messages;
+  int messageCounter = 0;
+  int MAX_OUTPUT_MESSAGES;
 
   bool checkInput(const xdp::built_in::InputConfiguration* params)
   {
@@ -58,6 +62,14 @@ namespace {
     return true;
   }
 
+  void addMessage(xdp::built_in::MessagePacket *packet, xdp::built_in::Messages ERROR_MSG, std::vector<uint32_t>& paramsArray){
+    if (messageCounter < MAX_OUTPUT_MESSAGES){
+      packet->messageCode = static_cast<uint8_t>(ERROR_MSG);
+      std::copy(std::begin(paramsArray), std::end(paramsArray), std::begin(packet->params));
+      messageCounter++;
+     }
+  }
+
   inline uint32_t bcIdToEvent(int bcId)
   {
     // Core broadcast event base defined on AIE1 as 107 in architecture
@@ -69,22 +81,25 @@ namespace {
   // requested trace configuration
   bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
                       EventConfiguration& config,
-                      const xdp::built_in::InputConfiguration* params)
+                      const xdp::built_in::InputConfiguration* params,
+                      xdp::built_in::MessagePacket *packet)
   {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
     uint32_t available = 0;
     uint32_t required = 0;
 
+    std::vector<uint32_t> src = {available, required, 0, 0};
+    
     // Core Module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
     required = config.coreCounterStartEvents.size();
     if (params->useDelay)
       required += 1;
     if (available < required) {
-      // TODO: Send detailed error message back to host code
-      // msg << "Available core module performance counters for aie trace : " << available << std::endl
-      //<< "Required core module performance counters for aie trace : "  << required;
-      //xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      addMessage(packet, Messages::NO_CORE_MODULE_PCS, src);
+      //packet->messageCode = static_cast<uint8_t>(Messages::NO_CORE_MODULE_PCS);
+      //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+      //messageCounter++; packet++;
       return false;
     }
 
@@ -92,21 +107,10 @@ namespace {
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = config.coreCounterStartEvents.size() + config.coreEventsBase.size();
     if (available < required) {
-      // TODO: Send detailed message back to host code
-      // msg << "Available core module trace slots for aie trace : " << available << std::endl
-      //     << "Required core module trace slots for aie trace : "  << required;
-      //xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      return false;
-    }
-
-    // Core Module broadcasts. 2 events for starting/ending trace
-    available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
-    required = config.memoryCrossEventsBase.size() + 2;
-    if (available < required) {
-      // TODO: Send detailed message back to host code
-      // msg << "Available core module broadcast channels for aie trace : " << available << std::endl
-      //     << "Required core module broadcast channels for aie trace : "  << required;
-      //xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      addMessage(packet, Messages::NO_CORE_MODULE_TRACE_SLOTS, src);
+      //packet->messageCode = static_cast<uint8_t>(Messages::NO_CORE_MODULE_TRACE_SLOTS);
+      //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+      //messageCounter++; packet++;
       return false;
     }
 
@@ -114,10 +118,10 @@ namespace {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
     required = config.memoryCounterStartEvents.size();
     if (available < required) {
-      // TODO: Send detailed message back to host code
-      // msg << "Available memory module performance counters for aie trace : " << available << std::endl
-      //     << "Required memory module performance counters for aie trace : "  << required;
-      //xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      addMessage(packet, Messages::NO_MEM_MODULE_PCS, src);
+      //packet->messageCode = static_cast<uint8_t>(Messages::NO_MEM_MODULE_PCS);
+      //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+      //messageCounter++; packet++;
       return false;
     }
 
@@ -125,10 +129,10 @@ namespace {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = config.memoryCounterStartEvents.size() + config.memoryCrossEventsBase.size();
     if (available < required) {
-      // TODO: Send detailed message back to host code
-      //msg << "Available memory module trace slots for aie trace : " << available << std::endl
-      //    << "Required memory module trace slots for aie trace : "  << required;
-      //xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      addMessage(packet, Messages::NO_MEM_MODULE_TRACE_SLOTS, src);
+      //packet->messageCode = static_cast<uint8_t>(Messages::NO_MEM_MODULE_TRACE_SLOTS);
+      //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+      //MessageCounter++; packet++;
       return false;
     }
 
@@ -155,7 +159,8 @@ namespace {
   int setMetrics(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice,
                  EventConfiguration& config,
                  const xdp::built_in::InputConfiguration* params,
-                 xdp::built_in::OutputConfiguration* tilecfg)
+                 xdp::built_in::OutputConfiguration* tilecfg,
+                 xdp::built_in::MessagePacket* packet)
   {
     xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
     int numTileCoreTraceEvents[params->NUM_CORE_TRACE_EVENTS+1] = {};
@@ -192,12 +197,17 @@ namespace {
       std::vector<XAie_Events> memoryCrossEvents = config.memoryCrossEventsBase;
       std::vector<XAie_Events> memoryEvents;
 
+      
       // Check Resource Availability
       // For now only counters are checked
-      if (!tileHasFreeRsc(aieDevice, loc, config, params)) {
-        // TODO: Send detailed message back to host
-        //xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
-        //printTileStats(aieDevice, tile);
+      if (!tileHasFreeRsc(aieDevice, loc, config, params, packet)) {
+        packet++;
+        std::vector<uint32_t> src = {0, 0, 0, 0};
+        addMessage(packet, Messages::NO_RESOURCES, src);
+        packet++;
+        //packet->messageCode = static_cast<uint8_t>(Messages::NO_RESOURCES);
+        //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+        //messageCounter++; packet++;
         return 1;
       }
 
@@ -295,16 +305,14 @@ namespace {
       // Catch when counters cannot be reserved: report, release, and return
       if ((numCoreCounters < config.coreCounterStartEvents.size())
           || (numMemoryCounters < config.memoryCounterStartEvents.size())) {
-        // TODO: Send detailed error message back to host
-        //std::stringstream msg;
-        //msg << "Unable to reserve " << config.coreCounterStartEvents.size() << " core counters"
-        //    << " and " << config.memoryCounterStartEvents.size() << " memory counters"
-        //    << " for AIE tile (" << col << "," << row + 1 << ") required for trace.";
-        // xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-
+        
+        std::vector<uint32_t> src = {config.coreCounterStartEvents.size(), config.memoryCounterStartEvents.size(), col    , row + 1}; 
+        addMessage(packet, Messages::COUNTERS_NOT_RESERVED, src);
+        packet++;
+        //packet->messageCode = static_cast<uint8_t>(Messages::COUNTERS_NOT_RESERVED);
+        //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+        //messageCounter++; packet++;
         releaseCurrentTileCounters(config);
-        // Print resources availability for this tile
-        // printTileStats(aieDevice, tile);
         return 1;
       }
 
@@ -351,15 +359,13 @@ namespace {
 
         auto ret = coreTrace->reserve();
         if (ret != XAIE_OK) {
-          // TODO: Send detailed error message back to the host
-          //std::stringstream msg;
-          //msg << "Unable to reserve core module trace control for AIE tile (" 
-          //    << col << "," << row + 1 << ").";
-          //xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-
+          std::vector<uint32_t> src = {col, row + 1, 0, 0};
+          addMessage(packet, Messages::CORE_MODULE_TRACE_NOT_RESERVED, src);
+          packet++;
+          //packet->messageCode = static_cast<uint8_t>(Messages::CORE_MODULE_TRACE_NOT_RESERVED);
+          //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+          //messageCounter++; packet++;
           releaseCurrentTileCounters(config);
-          // Print resources availability for this tile
-          //printTileStats(aieDevice, tile);
           return 1;
         }
 
@@ -385,10 +391,12 @@ namespace {
         coreEvents.clear();
         numTileCoreTraceEvents[numTraceEvents]++;
 
-        // TODO: Send success message back to the host
-        //std::stringstream msg;
-        //msg << "Reserved " << numTraceEvents << " core trace events for AIE tile (" << col << "," << row << ").";
-        // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+        std::vector<uint32_t> src = {numTraceEvents, col, row, 0};
+        addMessage(packet, Messages::CORE_TRACE_EVENTS_RESERVED, src);
+        packet++;
+        //packet->messageCode = static_cast<uint8_t>(Messages::CORE_TRACE_EVENTS_RESERVED);
+        //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+        //messageCounter++; packet++;
 
         if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
           break;
@@ -413,15 +421,13 @@ namespace {
 
         auto ret = memoryTrace->reserve();
         if (ret != XAIE_OK) {
-          // TODO: Send detailed error message to host
-          //std::stringstream msg;
-          //msg << "Unable to reserve memory module trace control for AIE tile (" 
-          //    << col << "," << row + 1 << ").";
-          // xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-
+          std::vector<uint32_t> src = {col, row + 1, 0, 0};
+          addMessage(packet, Messages::MEMORY_MODULE_TRACE_NOT_RESERVED, src);
+          packet++;
+          //packet->messageCode = static_cast<uint8_t>(Messages::MEMORY_MODULE_TRACE_NOT_RESERVED);
+          //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+          //messageCounter++; packet++;
           releaseCurrentTileCounters(config);
-          // Print resources availability for this tile
-          // printTileStats(aieDevice, tile);
           return 1;
         }
 
@@ -508,10 +514,12 @@ namespace {
         memoryEvents.clear();
         numTileMemoryTraceEvents[numTraceEvents]++;
 
-        // TODO: Send success message back to host
-        //std::stringstream msg;
-        //msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" << col << "," << row << ").";
-        // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+        std::vector<uint32_t> src = {numTraceEvents, col, row, 0};
+        addMessage(packet, Messages::MEMORY_TRACE_EVENTS_RESERVED, src);
+        packet++;
+        //packet->messageCode = static_cast<uint8_t>(Messages::MEMORY_TRACE_EVENTS_RESERVED);
+        //std::copy(std::begin(src), std::end(src), std::begin(packet->params));
+        //messageCounter++; packet++;
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
           break;
@@ -525,12 +533,6 @@ namespace {
         // NOTE: Use time packets for memory module (type 1)
         cfgTile.memory_trace_config.packet_type = 1;
       }
-
-      // TODO: Send success message back to host
-      //std::stringstream msg;
-      //msg << "Adding tile (" << col << "," << row << ") to static database";
-      // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-
 
       tilecfg->tiles[tile_idx] = cfgTile;
     } // For tiles
@@ -573,7 +575,7 @@ xrtHandles* aie_trace_config_init (xclDeviceHandle handle, const xuid_t xclbin_u
 
 // The main PS kernel functionality
 __attribute__((visibility("default")))
-int aie_trace_config(uint8_t* input, uint8_t* output, xrtHandles* constructs)
+int aie_trace_config(uint8_t* input, uint8_t* output, uint8_t* messageOutput, xrtHandles* constructs)
 {
   if (constructs == nullptr)
     return 0;
@@ -602,6 +604,9 @@ int aie_trace_config(uint8_t* input, uint8_t* output, xrtHandles* constructs)
   EventConfiguration config;
   config.initialize(params);
 
+  xdp::built_in::MessageConfiguration messageStruct; 
+  MAX_OUTPUT_MESSAGES = messageStruct.MAX_NUM_MESSAGES;
+
   // Using malloc/free instead of new/delete because the struct treats the
   // last element as a variable sized array
   std::size_t total_size = sizeof(xdp::built_in::OutputConfiguration) + sizeof(xdp::built_in::TileData[params->numTiles - 1]);
@@ -610,11 +615,16 @@ int aie_trace_config(uint8_t* input, uint8_t* output, xrtHandles* constructs)
 
   tilecfg->numTiles = params->numTiles;
 
-  int success = setMetrics(constructs->aieDevInst, constructs->aieDev,
-                           config, params, tilecfg);
+  setMetrics(constructs->aieDevInst, constructs->aieDev,
+                           config, params, tilecfg, &messageStruct.packets[0]);
   uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
   std::memcpy(output, out, total_size);   
 
+  messageStruct.numMessages = messageCounter;
+  uint8_t* messageStructOutput = reinterpret_cast<uint8_t*>(&messageStruct);
+  std::memcpy(messageOutput, messageStructOutput, sizeof(xdp::built_in::MessageConfiguration));
+
+  //Clean up
   free(tilecfg); 
   return 0;
 }

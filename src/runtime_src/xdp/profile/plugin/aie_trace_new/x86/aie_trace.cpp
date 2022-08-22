@@ -70,6 +70,7 @@ namespace xdp {
       
     constexpr uint64_t OUTPUT_SIZE = 4096 * 38; //Calculated maximum output size for all 400 tiles
     constexpr uint64_t INPUT_SIZE = 4096; // input/output must be aligned to 4096
+    constexpr uint64_t MSG_OUTPUT_SIZE = 4096 * 5; //Calculated maximum output size for all 400 tiles
 
     //Gather data to send to PS Kernel
     std::string counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
@@ -148,22 +149,31 @@ namespace xdp {
       //output bo
       auto outTileConfigbo = xrt::bo(device, OUTPUT_SIZE, 2);
       auto outTileConfigbomapped = outTileConfigbo.map<uint8_t*>();
-      memset(outTileConfigbomapped, 0 , OUTPUT_SIZE);
+      memset(outTileConfigbomapped, 0, OUTPUT_SIZE);
+
+      //message_output_bo
+      auto messagebo = xrt::bo(device, MSG_OUTPUT_SIZE, 2);
+      auto messagebomapped = messagebo.map<uint8_t*>();
+      memset(messagebomapped, 0, MSG_OUTPUT_SIZE);
 
       std::memcpy(bo0_map, input, total_size);
       bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, INPUT_SIZE, 0);
 
-      auto run = aie_trace_kernel(bo0, outTileConfigbo);
+      auto run = aie_trace_kernel(bo0, outTileConfigbo, messagebo);
       run.wait();
 
       outTileConfigbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
       xdp::built_in::OutputConfiguration* cfg = reinterpret_cast<xdp::built_in::OutputConfiguration*>(outTileConfigbomapped);
 
+      messagebo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, MSG_OUTPUT_SIZE, 0);
+      uint8_t* msgStruct = reinterpret_cast<uint8_t*>(messagebomapped);
+      parseMessages(msgStruct);
+
       // Update the config tiles
       for (uint32_t i = 0; i < cfg->numTiles; ++i) {
         auto cfgTile = std::make_unique<aie_cfg_tile>(cfg->tiles[i].column, cfg->tiles[i].row);
         cfgTile->trace_metric_set = metricSet;
-          
+    
         for (uint32_t corePC = 0; corePC < NUM_TRACE_PCS; ++corePC) {
           auto& cfgData = cfgTile->core_trace_config.pc[corePC];
           cfgData.start_event = cfg->tiles[i].core_trace_config.pc[corePC].start_event;
@@ -203,6 +213,11 @@ namespace xdp {
         cfgTile->memory_trace_config.packet_type = cfg->tiles[i].memory_trace_config.packet_type;
 
         (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile); 
+        //Send Success Message
+        std::stringstream msg;
+        msg << "Adding tile (" << cfg->tiles[i].column << "," << cfg->tiles[i].row << ") to static database";
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());      
+    
       }
     
       for (uint32_t event = 0; event < NUM_OUTPUT_TRACE_EVENTS; event ++) {
@@ -225,4 +240,72 @@ namespace xdp {
     free(input_params);
     return true; //placeholder
   }
+
+
+  void AieTrace_x86Impl::parseMessages(uint8_t* messageStruct) {
+      xdp::built_in::MessageConfiguration* messages = reinterpret_cast<xdp::built_in::MessageConfiguration*>(messageStruct);
+    for (uint32_t i = 0; i < messages->numMessages; i++) {
+      auto packet = messages->packets[i];
+      auto messageCode = static_cast<xdp::built_in::Messages>(packet.messageCode);
+      
+      std::stringstream msg;
+      switch (messageCode) {
+     
+        case xdp::built_in::Messages::NO_CORE_MODULE_PCS:
+          msg << "Available core module performance counters for aie trace : " << packet.params[0] << std::endl
+              << "Required core module performance counters for aie trace : "  << packet.params[1];
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          break;
+        case xdp::built_in::Messages::NO_CORE_MODULE_TRACE_SLOTS:
+          msg << "Available core module trace slots for aie trace : " << packet.params[0] << std::endl
+              << "Required core module trace slots for aie trace : "  << packet.params[1];
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          break;
+        case xdp::built_in::Messages::NO_CORE_MODULE_BROADCAST_CHANNELS:
+          msg << "Available core module broadcast channels for aie trace : " << packet.params[0] << std::endl
+              << "Required core module broadcast channels for aie trace : "  << packet.params[1];
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          break;
+        case xdp::built_in::Messages::NO_MEM_MODULE_PCS:
+          msg << "Available memory module performance counters for aie trace : " << packet.params[0] << std::endl
+              << "Required memory module performance counters for aie trace : "  << packet.params[1];
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          break;
+        case xdp::built_in::Messages::NO_MEM_MODULE_TRACE_SLOTS:
+          msg << "Available memory module trace slots for aie trace : " << packet.params[0] << std::endl
+              << "Required memory module trace slots for aie trace : "  << packet.params[1];
+          xrt_core::message::send(severity_level::info, "XRT", msg.str());
+          break;
+        case xdp::built_in::Messages::NO_RESOURCES:
+          xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
+          break;
+        case xdp::built_in::Messages::COUNTERS_NOT_RESERVED:
+          msg << "Unable to reserve " << packet.params[0] << " core counters"
+              << " and " << packet.params[1] << " memory counters"
+              << " for AIE tile (" << packet.params[3] << "," << packet.params[4] << ") required for trace.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+          break;
+        case xdp::built_in::Messages::CORE_MODULE_TRACE_NOT_RESERVED:
+          msg << "Unable to reserve core module trace control for AIE tile (" 
+              << packet.params[0] << "," << packet.params[1] << ").";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+          break;
+        case xdp::built_in::Messages::CORE_TRACE_EVENTS_RESERVED:
+          msg << "Reserved " << packet.params[0] << " core trace events for AIE tile (" << packet.params[1] << "," << packet.params[2] << ").";
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+          break;
+        case xdp::built_in::Messages::MEMORY_MODULE_TRACE_NOT_RESERVED:
+          msg << "Unable to reserve memory module trace control for AIE tile (" 
+              << packet.params[0] << "," << packet.params[1] << ").";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+          break;
+        case xdp::built_in::Messages::MEMORY_TRACE_EVENTS_RESERVED: 
+          msg << "Reserved " << packet.params[0] << " memory trace events for AIE tile (" << packet.params[1] << "," << packet.params[2] << ").";
+          xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+          break;
+ 
+      }
+    }
+  }
+
 }
