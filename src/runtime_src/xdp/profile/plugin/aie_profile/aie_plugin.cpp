@@ -1576,7 +1576,7 @@ namespace xdp {
       } else {
 #if 0
 // Add warning later
-/ No need to add the warning message here, as all the tests are using configs under Debug
+// No need to add the warning message here, as all the tests are using configs under Debug
         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
         std::string metricMsg = "No metric set specified for " + modName + " module. " +
                                 "Please specify the AIE_profile_settings." + modName + "_metrics setting in your xrt.ini.";
@@ -1590,7 +1590,7 @@ namespace xdp {
         boost::replace_all(graphmetricsConfig[module], " ", "");
         boost::split(graphmetricsSettings[module], graphmetricsConfig[module], boost::is_any_of(";"));
         findTileMetric = true;        
-     } else {
+      } else {
 #if 0
 // Add warning later
 // No need to add the warning message here, as all the tests are using configs under Debug
