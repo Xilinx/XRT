@@ -1517,6 +1517,8 @@ namespace xdp {
     fout << transferRate << ",";
     fout << achievedBW << ",";
     fout << idealBW << ",";
+    fout << maxAchievableBW << ",";
+    fout << maxTheoreticalBW << ",";
     fout << aveSize << ",";
     fout << aveLatency << ",\n";
   }
@@ -1539,8 +1541,10 @@ namespace xdp {
          << "Transfer Type,"
          << "Number Of Transfers,"
          << "Transfer Rate (MB/s),"
-         << "Bandwidth Utilization On Current Port (%),"
-         << "Bandwidth Utilization On Ideal Port (%),"
+         << "Bandwidth Utilization With Respect To Current Port Configuration (%),"
+         << "Bandwidth Utilization With Respect To Ideal Port Configuration (%),"
+         << "Maximum Achievable BW on Current Port Configuration (MB/s),"
+         << "Maximum Theoretical BW on Ideal Port Configuration (MB/s),"
          << "Average Size (KB),"
          << "Average Latency (ns),\n";
 
