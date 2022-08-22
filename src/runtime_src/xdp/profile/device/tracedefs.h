@@ -100,6 +100,7 @@ trace settings."
 #define TRACE_DUMP_FILE_COUNT_WARN 10
 #define TRACE_DUMP_FILE_COUNT_WARN_MSG "Continuous Trace might create a large number of trace files. Please use trace_file_dump_interval \
 to control how often trace data is written."
+#define DEFAULT_AIE_TRACE_DUMP_INTERVAL_S 5
 
 namespace xdp {
 
@@ -116,6 +117,7 @@ constexpr uint32_t EVENT_CORE_ACTIVE = 28;
 constexpr uint32_t EVENT_CORE_DISABLED = 29;
 constexpr uint32_t BROADCAST_MASK_DEFAULT = 65535;
 constexpr uint32_t NUM_TRACE_PCS = 4;
+constexpr uint32_t NUM_MEM_TRACE_PCS = 2;
 
 constexpr uint32_t NUM_COMBO_EVENT_CONTROL = 3;
 constexpr uint32_t NUM_COMBO_EVENT_INPUT = 4;
