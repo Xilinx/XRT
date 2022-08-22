@@ -1025,8 +1025,9 @@ namespace xdp {
 
   std::vector<tile_type>
   AIEProfilingPlugin::getAllTilesForShimProfiling(void* handle, 
-                                    const std::string &metricsStr, 
-                                    bool useChannelId)
+                        const std::string &metricsStr, 
+                        int16_t channelId,
+                        bool useColumn, uint32_t minCol, uint32_t maxCol)
   {
     std::vector<tile_type> tiles;
 
@@ -1037,9 +1038,10 @@ namespace xdp {
     for (auto& plio : plios) {
       auto isMaster = plio.second.slaveOrMaster;
       auto streamId = plio.second.streamId;
+      auto shimCol  = plio.second.shimColumn;
 
       // If looking for specific ID, make sure it matches
-      if (useChannelId && ((mChannelId >= 0) && (mChannelId != streamId)))
+      if ((channelId >= 0) && (channelId != streamId))
         continue;
 
       // Make sure it's desired polarity
@@ -1049,18 +1051,25 @@ namespace xdp {
           || (!isMaster && (metricsStr == "output_bandwidths")))
         continue;
 
-      tiles.push_back(tile_type());
-      auto& t = tiles.at(plioCount++);
-      t.col = plio.second.shimColumn;
-      t.row = 0;
+      plioCount++;
 
-      // Grab stream ID and slave/master (used in configStreamSwitchPorts() below)
-      t.itr_mem_col = isMaster;
-      t.itr_mem_row = streamId;
+      if (useColumn 
+          && !( (minCol <= shimCol) && (shimCol <= maxCol) )) {
+        // shimCol is not within minCol:maxCol range. So skip.
+        continue;
+      }
+
+      xrt_core::edge::aie::tile_type tile;
+      tile.col = shimCol;
+      tile.row = 0;
+      // Grab stream ID and slave/master (used in configStreamSwitchPorts())
+      tile.itr_mem_col = isMaster;
+      tile.itr_mem_row = streamId;
+      tiles.push_back(tile);
     }
           
-    if (plioCount == 0) {
-      std::string msg = "No tiles used channel ID " + std::to_string(mChannelId)
+    if ((0 == plioCount) && (0 <= channelId)) {
+      std::string msg = "No tiles used channel ID " + std::to_string(channelId)
                         + ". Please specify a valid channel ID.";
       xrt_core::message::send(severity_level::warning, "XRT", msg);
     }
@@ -1377,23 +1386,17 @@ namespace xdp {
 
       if (0 == metrics[i][0].compare("all")) {
 
-        int16_t channelId = 0;
-        bool useChannelId = false;
+        int16_t channelId = -1;
         if (3 == metrics[i].size()) {
-          channelId = mChannelId;
-          mChannelId = std::stoi(metrics[i][2]);
-          useChannelId = true;
+          channelId = std::stoi(metrics[i][2]);
         }
 
         std::vector<tile_type> tiles;
-        if (!allGraphsDone || useChannelId) {
-          tiles = getAllTilesForShimProfiling(handle, metrics[i][1], useChannelId);
+        if (!allGraphsDone || (channelId >= 0)) {
+          tiles = getAllTilesForShimProfiling(handle, metrics[i][1], channelId);
           allGraphsDone = true;
         } // allGraphsDone
 
-        if (useChannelId) {
-          mChannelId = channelId;
-        }
         for (auto &e : tiles) {
           mConfigMetrics[moduleIdx][e] = metrics[i][1];
         }
@@ -1430,13 +1433,14 @@ namespace xdp {
            "Minimum column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
         continue;
       }
-      
+#if 0      
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         xrt_core::edge::aie::tile_type tile;
         tile.col = col;
         tile.row = 0;
         tiles.push_back(tile);
       }
+#endif
       int16_t channelId = 0;
       if (4 == metrics[i].size()) {
         try {
@@ -1448,6 +1452,10 @@ namespace xdp {
           channelId = -1;
         }
       }
+      tiles = getAllTilesForShimProfiling(handle, metrics[i][2], channelId,
+                                          true, minCol, maxCol);
+
+#if 0
       // Check and set mem_row/column
 
       int plioCount = 0;
@@ -1487,14 +1495,16 @@ namespace xdp {
                           + ". Please specify a valid channel ID.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
       }
+#endif
 
-//      for (auto &t : tiles) {
-//        mConfigMetrics[moduleIdx][t] = metrics[i][2];
-//      }
+      for (auto &t : tiles) {
+        mConfigMetrics[moduleIdx][t] = metrics[i][2];
+      }
     } // Pass 2 
 
     // Pass 3 : process only single tile metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      std::vector<tile_type> tiles;
 
       if (4 == metrics[i].size() /* skip column range specification with channel */
             || 2 > metrics[i].size() /* invalid format */) {
@@ -1517,12 +1527,12 @@ namespace xdp {
              "Column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
           continue;
         }
-
+#if 0
         xrt_core::edge::aie::tile_type tile;
         tile.col = col;
         tile.row = 0;
-
-        int16_t channelId = 0;
+#endif
+        int16_t channelId = -1;
         if (3 == metrics[i].size()) {
           try {
             channelId = std::stoi(metrics[i][2]);
@@ -1530,9 +1540,12 @@ namespace xdp {
             // Expected channel Id is not an integer, give warning and ignore channelId
             xrt_core::message::send(severity_level::warning, "XRT", 
                "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+            channelId = -1;
           }
         }
-
+        tiles = getAllTilesForShimProfiling(handle, metrics[i][1], channelId,
+                                            true, col, col);
+#if 0
         // Check and set mem_row/column
         int plioCount = 0;
         auto plios = xrt_core::edge::aie::get_plios(device.get());
@@ -1567,6 +1580,10 @@ namespace xdp {
                             + ". Please specify a valid channel ID.";
           xrt_core::message::send(severity_level::warning, "XRT", msg);
         }
+#endif
+        for (auto &t : tiles) {
+          mConfigMetrics[moduleIdx][t] = metrics[i][1];
+        }
       }
     } // Pass 3 
 
@@ -1582,11 +1599,11 @@ namespace xdp {
 
       // Ensure requested metric set is supported (if not, use default)
       if (mShimStartEvents.find(tileMetric.second) == mShimStartEvents.end()) {
-        tileMetric.second = "input_bandwidths" ;
         std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
                           + ". Using default of input_bandwidths. "
                           + "As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
+        tileMetric.second = "input_bandwidths" ;
       }
     }
 

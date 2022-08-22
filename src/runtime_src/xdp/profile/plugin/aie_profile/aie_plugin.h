@@ -66,8 +66,9 @@ namespace xdp {
                                                         const std::string &graph,
                                                         void* handle);
     std::vector<tile_type> getAllTilesForShimProfiling(void* handle,
-                                          const std::string &metricStr,
-                                          bool useChannelId = false);
+                              const std::string &metricStr,
+                              int16_t channelId = -1,
+                              bool useColumn = false, uint32_t minCol = 0, uint32_t maxCol = 0);
 
     void getConfigMetricsForTiles(int moduleIdx, std::vector<std::string> metricsSettings,
                                                std::vector<std::string> graphmetricsSettings,
