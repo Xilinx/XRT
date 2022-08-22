@@ -45,8 +45,6 @@ class xrtHandles : public pscontext
 // Anonymous namespace for helper functions used in this file
 namespace {
   using Messages = xdp::built_in::Messages;
-  int messageCounter = 0;
-  int MAX_OUTPUT_MESSAGES;
 
   bool checkInput(const xdp::built_in::InputConfiguration* params)
   {
@@ -62,12 +60,16 @@ namespace {
     return true;
   }
 
-  void addMessage(xdp::built_in::MessagePacket *packet, xdp::built_in::Messages ERROR_MSG, std::vector<uint32_t>& paramsArray){
-    if (messageCounter < MAX_OUTPUT_MESSAGES){
-      packet->messageCode = static_cast<uint8_t>(ERROR_MSG);
-      std::copy(std::begin(paramsArray), std::end(paramsArray), std::begin(packet->params));
+  void addMessage(xdp::built_in::MessageConfiguration* msgcfg, xdp::built_in::Messages ERROR_MSG, std::vector<uint32_t>& paramsArray){
+  
+    static int messageCounter = 0;
+    
+    if (messageCounter < xdp::built_in::MessageConfiguration::MAX_NUM_MESSAGES){
+      msgcfg->packets[messageCounter].messageCode = static_cast<uint8_t>(ERROR_MSG);
+      std::copy(std::begin(paramsArray), std::end(paramsArray), std::begin(msgcfg->packets[messageCounter].params));
       messageCounter++;
-     }
+      msgcfg->numMessages = messageCounter;
+    }
   }
 
   inline uint32_t bcIdToEvent(int bcId)
@@ -82,7 +84,7 @@ namespace {
   bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
                       EventConfiguration& config,
                       const xdp::built_in::InputConfiguration* params,
-                      xdp::built_in::MessagePacket *packet)
+                      xdp::built_in::MessageConfiguration* msgcfg)
   {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
     uint32_t available = 0;
@@ -96,7 +98,7 @@ namespace {
     if (params->useDelay)
       required += 1;
     if (available < required) {
-      addMessage(packet, Messages::NO_CORE_MODULE_PCS, src);
+      addMessage(msgcfg, Messages::NO_CORE_MODULE_PCS, src);
       return false;
     }
 
@@ -104,7 +106,7 @@ namespace {
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = config.coreCounterStartEvents.size() + config.coreEventsBase.size();
     if (available < required) {
-      addMessage(packet, Messages::NO_CORE_MODULE_TRACE_SLOTS, src);
+      addMessage(msgcfg, Messages::NO_CORE_MODULE_TRACE_SLOTS, src);
       return false;
     }
 
@@ -112,7 +114,7 @@ namespace {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
     required = config.memoryCounterStartEvents.size();
     if (available < required) {
-      addMessage(packet, Messages::NO_MEM_MODULE_PCS, src);
+      addMessage(msgcfg, Messages::NO_MEM_MODULE_PCS, src);
       return false;
     }
 
@@ -120,7 +122,7 @@ namespace {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = config.memoryCounterStartEvents.size() + config.memoryCrossEventsBase.size();
     if (available < required) {
-      addMessage(packet, Messages::NO_MEM_MODULE_TRACE_SLOTS, src);
+      addMessage(msgcfg, Messages::NO_MEM_MODULE_TRACE_SLOTS, src);
       return false;
     }
 
@@ -148,7 +150,7 @@ namespace {
                  EventConfiguration& config,
                  const xdp::built_in::InputConfiguration* params,
                  xdp::built_in::OutputConfiguration* tilecfg,
-                 xdp::built_in::MessagePacket* packet)
+                 xdp::built_in::MessageConfiguration* msgcfg)
   {
     xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
     int numTileCoreTraceEvents[params->NUM_CORE_TRACE_EVENTS+1] = {};
@@ -188,11 +190,9 @@ namespace {
       
       // Check Resource Availability
       // For now only counters are checked
-      if (!tileHasFreeRsc(aieDevice, loc, config, params, packet)) {
-        packet++;
+      if (!tileHasFreeRsc(aieDevice, loc, config, params, msgcfg)) {
         std::vector<uint32_t> src = {0, 0, 0, 0};
-        addMessage(packet, Messages::NO_RESOURCES, src);
-        packet++;
+        addMessage(msgcfg, Messages::NO_RESOURCES, src);
         return 1;
       }
 
@@ -292,8 +292,7 @@ namespace {
           || (numMemoryCounters < config.memoryCounterStartEvents.size())) {
         
         std::vector<uint32_t> src = {config.coreCounterStartEvents.size(), config.memoryCounterStartEvents.size(), col    , row + 1}; 
-        addMessage(packet, Messages::COUNTERS_NOT_RESERVED, src);
-        packet++;
+        addMessage(msgcfg, Messages::COUNTERS_NOT_RESERVED, src);
         releaseCurrentTileCounters(config);
         return 1;
       }
@@ -342,8 +341,7 @@ namespace {
         auto ret = coreTrace->reserve();
         if (ret != XAIE_OK) {
           std::vector<uint32_t> src = {col, row + 1, 0, 0};
-          addMessage(packet, Messages::CORE_MODULE_TRACE_NOT_RESERVED, src);
-          packet++;
+          addMessage(msgcfg, Messages::CORE_MODULE_TRACE_NOT_RESERVED, src);
           releaseCurrentTileCounters(config);
           return 1;
         }
@@ -371,8 +369,7 @@ namespace {
         numTileCoreTraceEvents[numTraceEvents]++;
 
         std::vector<uint32_t> src = {numTraceEvents, col, row, 0};
-        addMessage(packet, Messages::CORE_TRACE_EVENTS_RESERVED, src);
-        packet++;
+        addMessage(msgcfg, Messages::CORE_TRACE_EVENTS_RESERVED, src);
 
         if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
           break;
@@ -398,8 +395,7 @@ namespace {
         auto ret = memoryTrace->reserve();
         if (ret != XAIE_OK) {
           std::vector<uint32_t> src = {col, row + 1, 0, 0};
-          addMessage(packet, Messages::MEMORY_MODULE_TRACE_NOT_RESERVED, src);
-          packet++;
+          addMessage(msgcfg, Messages::MEMORY_MODULE_TRACE_NOT_RESERVED, src);
           releaseCurrentTileCounters(config);
           return 1;
         }
@@ -488,8 +484,7 @@ namespace {
         numTileMemoryTraceEvents[numTraceEvents]++;
 
         std::vector<uint32_t> src = {numTraceEvents, col, row, 0};
-        addMessage(packet, Messages::MEMORY_TRACE_EVENTS_RESERVED, src);
-        packet++;
+        addMessage(msgcfg, Messages::MEMORY_TRACE_EVENTS_RESERVED, src);
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
           break;
@@ -574,8 +569,7 @@ int aie_trace_config(uint8_t* input, uint8_t* output, uint8_t* messageOutput, xr
   EventConfiguration config;
   config.initialize(params);
 
-  xdp::built_in::MessageConfiguration messageStruct; 
-  MAX_OUTPUT_MESSAGES = messageStruct.MAX_NUM_MESSAGES;
+  xdp::built_in::MessageConfiguration* messageStruct = reinterpret_cast<xdp::built_in::MessageConfiguration*> (messageOutput);  
 
   // Using malloc/free instead of new/delete because the struct treats the
   // last element as a variable sized array
@@ -586,13 +580,9 @@ int aie_trace_config(uint8_t* input, uint8_t* output, uint8_t* messageOutput, xr
   tilecfg->numTiles = params->numTiles;
 
   setMetrics(constructs->aieDevInst, constructs->aieDev,
-                           config, params, tilecfg, &messageStruct.packets[0]);
+                           config, params, tilecfg, messageStruct);
   uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
   std::memcpy(output, out, total_size);   
-
-  messageStruct.numMessages = messageCounter;
-  uint8_t* messageStructOutput = reinterpret_cast<uint8_t*>(&messageStruct);
-  std::memcpy(messageOutput, messageStructOutput, sizeof(xdp::built_in::MessageConfiguration));
 
   //Clean up
   free(tilecfg); 

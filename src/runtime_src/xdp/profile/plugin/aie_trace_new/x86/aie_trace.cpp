@@ -282,7 +282,7 @@ namespace xdp {
         case xdp::built_in::Messages::COUNTERS_NOT_RESERVED:
           msg << "Unable to reserve " << packet.params[0] << " core counters"
               << " and " << packet.params[1] << " memory counters"
-              << " for AIE tile (" << packet.params[3] << "," << packet.params[4] << ") required for trace.";
+              << " for AIE tile (" << packet.params[2] << "," << packet.params[3] << ") required for trace.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
           break;
         case xdp::built_in::Messages::CORE_MODULE_TRACE_NOT_RESERVED:
