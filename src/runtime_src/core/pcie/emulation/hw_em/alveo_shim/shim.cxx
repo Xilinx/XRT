@@ -664,7 +664,19 @@ namespace xclhwemhal2 {
     }
 
     std::string userSpecifiedSimPath = xclemulation::config::getInstance()->getSimDir();
-
+    char *login_user = getenv("USER");
+    if (!login_user)
+    {
+      std::string dMsg = "ERROR: [HW-EMU 26] $USER variable is not SET. Please make sure the USER env variable is set properly.";
+      logMessage(dMsg, 0);
+      exit(EXIT_FAILURE);
+    }
+    char *vitisInstallEnvvar = getenv("XILINX_VITIS");
+    if (!vitisInstallEnvvar) {
+      std::string dMsg = "ERROR: [HW-EMU 27] $XILINX_VITIS variable is not SET. Please make sure the XILINX_VITIS env variable is SOURCED properly.";
+      logMessage(dMsg, 0);
+      exit(EXIT_FAILURE);
+    }
     if (!mSimDontRun)
     {
       wdbFileName = std::string(mDeviceInfo.mName) + "-" + std::to_string(mDeviceIndex) + "-" + xclBinName;
