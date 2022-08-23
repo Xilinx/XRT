@@ -76,7 +76,7 @@ namespace xdp {
                                                void* handle);
     void getInterfaceConfigMetricsForTiles(int moduleIdx,
                                            std::vector<std::string> metricsSettings,
-                                           std::vector<std::string> graphmetricsSettings,
+                                           /* std::vector<std::string> graphmetricsSettings, */
                                            void* handle);
 
 
