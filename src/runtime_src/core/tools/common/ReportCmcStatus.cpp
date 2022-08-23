@@ -34,6 +34,7 @@ void
 ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
+  boost::property_tree::ptree runtime_tree;
   boost::property_tree::ptree cmc_tree;
   cmc_tree.put("Description", "CMC");
 
@@ -50,31 +51,38 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
   catch(const xrt_core::query::no_such_key&) {}
   catch(const xrt_core::query::sysfs_error&) {}
 
-  boost::property_tree::ptree runtime_tree;
-  runtime_tree.put("Description", "Runtime Clock Scaling");
   try {
-    runtime_tree.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_pDevice));
-    runtime_tree.put("supported", xrt_core::device_query<xrt_core::query::xmc_scaling_support>(_pDevice));
-    boost::property_tree::ptree shutdown_data;
-    shutdown_data.put("power_watts", xrt_core::device_query<xrt_core::query::xmc_scaling_critical_pow_threshold>(_pDevice));
-    shutdown_data.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_critical_temp_threshold>(_pDevice));
-    runtime_tree.add_child("shutdown_threshold_limits", shutdown_data);
-    boost::property_tree::ptree override_data;
-    override_data.put("power_watts", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_power_limit>(_pDevice));
-    override_data.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_temp_limit>(_pDevice));
-    runtime_tree.add_child("override_threshold_limits", override_data);
-    boost::property_tree::ptree power_threshold_data;
-    power_threshold_data.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override_enable>(_pDevice));
-    power_threshold_data.put("power_watts", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_pDevice));
-    runtime_tree.add_child("power_threshold_override", power_threshold_data);
-    boost::property_tree::ptree temp_threshold_data;
-    temp_threshold_data.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override_enable>(_pDevice));
-    temp_threshold_data.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_pDevice));
-    runtime_tree.add_child("temp_threshold_override", temp_threshold_data);
+    runtime_tree.put("Description", "Runtime Clock Scaling");
+	auto clk_scaling_data = xrt_core::device_query<xrt_core::query::clk_scaling_info>(_pDevice);
+    for (const auto& pt : clk_scaling_data) {
+      runtime_tree.put("supported", pt.support);
+      runtime_tree.put("enabled", pt.enable);
+
+      boost::property_tree::ptree shutdown_data;
+      shutdown_data.put("power_watts", pt.pwr_shutdown_limit);
+      shutdown_data.put("temp_celsius", pt.temp_shutdown_limit);
+      runtime_tree.add_child("shutdown_threshold_limits", shutdown_data);
+
+      boost::property_tree::ptree threshold_data;
+      threshold_data.put("power_watts", pt.pwr_scaling_limit);
+      threshold_data.put("temp_celsius", pt.temp_scaling_limit);
+      runtime_tree.add_child("override_threshold_limits", threshold_data);
+
+      boost::property_tree::ptree temp_override_data;
+      temp_override_data.put("enabled", "true");
+      temp_override_data.put("temp_celsius", pt.temp_scaling_ovrd_limit);
+      runtime_tree.add_child("temp_threshold_override", temp_override_data);
+
+      boost::property_tree::ptree pwr_override_data;
+      pwr_override_data.put("enabled", "true");
+      pwr_override_data.put("power_watts", pt.pwr_scaling_ovrd_limit);
+      runtime_tree.add_child("power_threshold_override", pwr_override_data);
+
+      cmc_tree.add_child("scaling", runtime_tree);
+    }
   }
   catch(const xrt_core::query::no_such_key&) {}
   catch(const xrt_core::query::sysfs_error&) {}
-  cmc_tree.add_child("scaling", runtime_tree);
 
   // There can only be 1 root node
   _pt.add_child("cmc", cmc_tree);
@@ -86,9 +94,12 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
                             const std::vector<std::string>& /*_elementsFilter*/,
                             std::ostream & _output) const
 {
+  static boost::format fmt_basic("  %-20s : %s\n");
   _output << "CMC\n";
-  auto& cmc = _pt.get_child("cmc");
-  if(cmc.empty()) {
+  boost::property_tree::ptree pt_empty;
+  boost::property_tree::ptree cmc = _pt.get_child("cmc", pt_empty);
+
+  if (cmc.empty()) {
     _output << "  Information unavailable" << std::endl;
     return;
   }
@@ -112,7 +123,6 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     }
     if (!cmc_scale.get<bool>("enabled")) {
       _output << "    Not enabled\n";
-      return;
     }
 
     cmc_scale = cmc.get_child("scaling").get_child("shutdown_threshold_limits");

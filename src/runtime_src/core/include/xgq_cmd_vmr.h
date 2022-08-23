@@ -47,6 +47,14 @@
 #define XGQ_CLOCK_WIZ_MAX_RES           4
 
 /**
+ * clock scaling request types
+ */
+enum xgq_cmd_clk_scaling_app_id {
+	XGQ_CMD_CLK_THROTTLING_AID_READ		= 0x1,
+	XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE	= 0x2,
+};
+
+/**
  * sensor data request types
  */
 enum xgq_cmd_sensor_application_id {
@@ -102,6 +110,7 @@ enum xgq_cmd_log_page_type {
 	XGQ_CMD_LOG_ENDPOINT	= 0x4,
 	XGQ_CMD_LOG_TASK_STATS  = 0x5,
 	XGQ_CMD_LOG_MEM_STATS	= 0x6,
+	XGQ_CMD_LOG_SYSTEM_DTB	= 0x7,
 };
 
 /**
@@ -214,6 +223,26 @@ struct xgq_cmd_vmr_control_payload {
 };
 
 /**
+ * struct xgq_cmd_clk_scaling_payload: clock_scaling configuration request command
+ *
+ * @aid: Clock scaling API ID which decides API in VMC.
+ *          0x1 - READ_CLOCK_THROTTLING_CONFIGURATION
+ *          0x2 - SET_CLOCK_THROTTLING_CONFIGURATION
+ * @scaling_enable: enable or disable flag
+ * @pwr_ovrd: power override value
+ * @temp_ovrd: temperature override value
+ *
+ * This payload is used for clock scaling configuration report.
+ */
+struct xgq_cmd_clk_scaling_payload {
+	uint32_t aid:3;
+	uint32_t scaling_en:1;
+	uint32_t pwr_scaling_ovrd_limit:16;
+	uint32_t temp_scaling_ovrd_limit:8;
+	uint32_t rsvd1:4;
+};
+
+/**
  * struct xgq_cmd_sq: vmr xgq command
  *
  * @hdr:		vmr xgq command header
@@ -223,6 +252,8 @@ struct xgq_cmd_vmr_control_payload {
  * @pdi_payload:
  * @xclbin_payload:
  * @sensor_payload:
+ * @vmr_control_payload:
+ * @clk_scaling_payload:
  */
 struct xgq_cmd_sq {
 	struct xgq_cmd_sq_hdr hdr;
@@ -233,6 +264,7 @@ struct xgq_cmd_sq {
 		struct xgq_cmd_data_payload		xclbin_payload;
 		struct xgq_cmd_sensor_payload		sensor_payload;
 		struct xgq_cmd_vmr_control_payload	vmr_control_payload;
+		struct xgq_cmd_clk_scaling_payload	clk_scaling_payload;
 	};
 };
 
@@ -287,6 +319,22 @@ struct xgq_cmd_cq_data_payload {
 };
 
 /**
+ * struct xgq_cmd_cq_clk_scaling_payload: clock scaling status payload
+ *
+ * clock scaling status
+ */
+struct xgq_cmd_cq_clk_scaling_payload {
+	uint8_t has_clk_scaling:1;
+	uint8_t clk_scaling_mode:2;
+	uint8_t clk_scaling_en:1;
+	uint8_t rsvd:4;
+	uint8_t temp_shutdown_limit;
+	uint8_t temp_scaling_limit;
+	uint16_t pwr_shutdown_limit;
+	uint16_t pwr_scaling_limit;
+};
+
+/**
  * struct xgq_cmd_cq_vmr_payload: vmr device status payload
  *
  * bitfields for indicting flash partition statistics.
@@ -331,6 +379,7 @@ struct xgq_cmd_cq {
 		struct xgq_cmd_cq_vmr_payload		cq_vmr_payload;
 		struct xgq_cmd_cq_log_page_payload	cq_log_payload;
 		struct xgq_cmd_cq_data_payload		cq_xclbin_payload;
+		struct xgq_cmd_cq_clk_scaling_payload cq_clk_scaling_payload;
 	};
 	uint32_t rcode;
 };

@@ -23,6 +23,11 @@ struct zocl_cu {
 	char			*irq_name;
 	DECLARE_BITMAP(flag, 1);
 	spinlock_t		 lock;
+	/*
+	 * This RW lock is to protect the cu sysfs nodes exported
+	 * by zocl driver.
+	 */
+	rwlock_t		 attr_rwlock;
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -53,6 +58,55 @@ static ssize_t debug_store(struct device *dev,
 static DEVICE_ATTR_RW(debug);
 
 static ssize_t
+name_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "CU[%d]\n", info->cu_idx);
+}
+static DEVICE_ATTR_RO(name);
+
+static ssize_t
+base_paddr_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "0x%llx\n", info->addr);
+}
+static DEVICE_ATTR_RO(base_paddr);
+
+static ssize_t
+size_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "%ld\n", info->size);
+}
+static DEVICE_ATTR_RO(size);
+
+static ssize_t
+read_range_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	u32 start = 0;
+	u32 end = 0;
+
+	mutex_lock(&cu->base.read_regs.xcr_lock);
+	start = cu->base.read_regs.xcr_start;
+	end = cu->base.read_regs.xcr_end;
+	mutex_unlock(&cu->base.read_regs.xcr_lock);
+	return sprintf(buf, "0x%x 0x%x\n", start, end);
+}
+static DEVICE_ATTR_RO(read_range);
+
+static ssize_t
 cu_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -73,12 +127,50 @@ cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(cu_info);
 
 static ssize_t
-stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+stats_begin_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
+	ssize_t sz = 0;
+
 	struct platform_device *pdev = to_platform_device(dev);
 	struct zocl_cu *cu = platform_get_drvdata(pdev);
 
-	return show_formatted_cu_stat(&cu->base, buf);
+	read_lock(&cu->attr_rwlock);
+	sz = show_stats_begin(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_begin);
+
+static ssize_t
+stats_end_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+
+	read_lock(&cu->attr_rwlock);
+	sz = show_stats_end(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_end);
+
+static ssize_t
+stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+
+	read_lock(&cu->attr_rwlock);
+	sz = show_formatted_cu_stat(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
 }
 static DEVICE_ATTR_RO(stat);
 
@@ -129,8 +221,14 @@ static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
 	&dev_attr_cu_info.attr,
+	&dev_attr_stats_begin.attr,
+	&dev_attr_stats_end.attr,
 	&dev_attr_stat.attr,
 	&dev_attr_poll_threshold.attr,
+	&dev_attr_name.attr,
+	&dev_attr_base_paddr.attr,
+	&dev_attr_size.attr,
+	&dev_attr_read_range.attr,
 	NULL,
 };
 
@@ -309,6 +407,7 @@ static int cu_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, zcu);
 
+	rwlock_init(&zcu->attr_rwlock);
 	err = sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup);
 	if (err)
 		zocl_err(&pdev->dev, "create CU attrs failed: %d", err);
@@ -362,7 +461,9 @@ static int cu_remove(struct platform_device *pdev)
 	if (zcu->base.res)
 		vfree(zcu->base.res);
 
+	write_lock(&zcu->attr_rwlock);
 	sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
+	write_unlock(&zcu->attr_rwlock);
 
 	zocl_info(&pdev->dev, "CU[%d] removed", info->inst_idx);
 	kfree(zcu->irq_name);

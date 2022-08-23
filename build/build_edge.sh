@@ -174,6 +174,21 @@ config_versal_project()
     cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd
     cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
     
+    # Create daemon to modprobe/rmmod vdu modules after xclbin load
+    # This daemon probes vdu drivers on first xclbin load and exit
+    SERVICE_FILE=$APU_RECIPES_DIR/vdu-init.service
+    BB_FILE=$APU_RECIPES_DIR/vdu-init.bb
+    INIT_SCRIPT=$APU_RECIPES_DIR/vdu-init
+
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n vdu-init --enable
+    fi
+
+    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
+    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init
+    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
+    
     # Generate vdu modules and add them to apu package
     
     # Enable VDU kernel module 

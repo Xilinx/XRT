@@ -249,6 +249,7 @@ if [[ ! -e $IMAGE_UB ]]; then
 	error "failed to generate kernel image"
 fi
 
+
 # pick bootgen from vitis
 if [[ "X$XILINX_VITIS" == "X" ]]; then
   echo " **ERROR: XILINX_VITIS is empty, please source vitis and rerun"
@@ -274,6 +275,7 @@ if [[ ! -e $APU_PDI ]]; then
 fi
 
 mkdir -p `dirname $FW_FILE`
+echo "xclbinutil --add-section PDI:RAW:$APU_PDI --output $FW_FILE"
 xclbinutil --add-section PDI:RAW:$APU_PDI --output $FW_FILE
 if [[ ! -e $FW_FILE ]]; then
 	error "failed to generate XSABIN"

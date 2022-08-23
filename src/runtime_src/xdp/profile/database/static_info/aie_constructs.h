@@ -21,6 +21,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
 
@@ -125,17 +126,17 @@ namespace xdp {
     public:
       uint32_t packet_type = 0;
       uint32_t packet_id = 0;
-      uint32_t start_event = 28;
-      uint32_t stop_event = 29;
-      uint32_t traced_events[8] = {0};
+      uint32_t start_event = EVENT_CORE_ACTIVE;
+      uint32_t stop_event = EVENT_CORE_DISABLED;
+      uint32_t traced_events[NUM_TRACE_EVENTS] = {};
       std::map<uint32_t, uint32_t> group_event_config = {};
-      uint32_t combo_event_input[4] = {0};
-      uint32_t combo_event_control[3] = {0};
-      uint32_t broadcast_mask_south = 65535;
-      uint32_t broadcast_mask_north = 65535;
-      uint32_t broadcast_mask_west = 65535;
-      uint32_t broadcast_mask_east = 65535;
-      uint32_t internal_events_broadcast[16] = {0};
+      uint32_t combo_event_input[NUM_COMBO_EVENT_INPUT] = {};
+      uint32_t combo_event_control[NUM_COMBO_EVENT_CONTROL] = {};
+      uint32_t broadcast_mask_south = BROADCAST_MASK_DEFAULT;
+      uint32_t broadcast_mask_north = BROADCAST_MASK_DEFAULT;
+      uint32_t broadcast_mask_west = BROADCAST_MASK_DEFAULT;
+      uint32_t broadcast_mask_east = BROADCAST_MASK_DEFAULT;
+      uint32_t internal_events_broadcast[NUM_BROADCAST_EVENTS] = {};
       std::vector<aie_cfg_counter> pc;
 
       aie_cfg_base(uint32_t count) : pc(count) {};
