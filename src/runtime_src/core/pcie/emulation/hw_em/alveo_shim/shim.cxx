@@ -672,7 +672,7 @@ namespace xclhwemhal2 {
       exit(EXIT_FAILURE);
     }
     char *vitisInstallEnvvar = getenv("XILINX_VITIS");
-    if (vitisInstallEnvvar != NULL) {
+    if (!vitisInstallEnvvar) {
       std::string dMsg = "ERROR: [HW-EMU 27] $XILINX_VITIS variable is not SET. Please make sure the XILINX_VITIS env variable is SOURCED properly.";
       logMessage(dMsg, 0);
       exit(EXIT_FAILURE);
