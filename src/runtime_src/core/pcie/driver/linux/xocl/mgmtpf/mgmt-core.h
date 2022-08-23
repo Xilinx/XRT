@@ -120,7 +120,7 @@ enum {
 struct xclmgmt_ready_status {
 	bool ready;
 	char msg[256];
-}
+};
 
 struct xclmgmt_dev {
 	struct xocl_dev_core	core;

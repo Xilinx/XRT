@@ -198,7 +198,10 @@ static ssize_t ready_show(struct device *dev,
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%d\n", lro->status.ready);
+	/* Only write out an error message if the device is not ready */
+	if (!lro->status.ready)
+		return sprintf(buf, "%s\n", lro->status.msg);
+	return sprintf(buf, "\n");
 }
 static DEVICE_ATTR_RO(ready);
 

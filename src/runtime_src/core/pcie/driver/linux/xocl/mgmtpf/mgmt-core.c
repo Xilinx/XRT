@@ -1275,7 +1275,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		ret = xocl_subdev_create(lro, &subdev_info);
 		if (ret) {
 			snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to create sub devices\n");
-			xocl_err(&pdev->dev, lro->status.msg);
+			xocl_err(&pdev->dev, "%s", lro->status.msg);
 			goto fail;
 		}
 	}
@@ -1287,7 +1287,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
 	if (ret && ret != -ENODEV) {
 		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to register firewall\n");
-		xocl_err(&pdev->dev, lro->status.msg);
+		xocl_err(&pdev->dev, "%s", lro->status.msg);
 		goto fail_all_subdev;
 	}
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
@@ -1296,7 +1296,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
 		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to register subdevs %d\n", ret);
-		xocl_err(&pdev->dev, lro->status.msg);
+		xocl_err(&pdev->dev, "%s", lro->status.msg);
 		goto fail_all_subdev;
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
@@ -1325,12 +1325,12 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		ret = xclmgmt_load_fdt(lro);
 		if (ret) {
 			snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to load FDT %d\n", ret);
-			xocl_err(&pdev->dev, lro->status.msg);
+			xocl_err(&pdev->dev, "%s", lro->status.msg);
 			goto fail_all_subdev;
 		}
 	} else if (ret) { /* For general failures reset to minimum initalization */
-		snprintf(lro->status.msg, "Firmware download failed %d\n", ret);
-		xocl_err(&pdev->dev, lro->status.msg);
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Firmware ICAP download failed %d\n", ret);
+		xocl_err(&pdev->dev, "%s", lro->status.msg);
 		goto fail_all_subdev;
 	}
 

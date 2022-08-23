@@ -797,21 +797,24 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 
 	if (xocl_subdev_is_vsec_recovery(lro)) {
-		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Skip load_fdt for vsec Golden image\n");
+		mgmt_info(lro, "%s", lro->status.msg);
 		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 		return 0;
 	}
 
 	mutex_lock(&lro->busy_mutex);
 	ret = xocl_rom_load_firmware(lro, &fw_buf, &fw_size);
-	if (ret)
+	if (ret) {
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to load ROM firmware %d\n", ret);
 		goto failed;
+	}
 	bin_axlf = (struct axlf *)fw_buf;
 
 	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
 	if (!dtc_header) {
 		ret = -ENOENT;
-		mgmt_err(lro, "firmware does not contain PARTITION_METADATA");
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Firmware does not contain PARTITION_METADATA %d\n", ret);
 		goto failed;
 	}
 
@@ -820,12 +823,13 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD,
 			bin_axlf->m_header.m_platformVBNV);
 	if (ret) {
-		mgmt_err(lro, "Invalid PARTITION_METADATA");
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Invalid PARTITION_METADATA %d\n", ret);
 		goto failed;
 	}
 
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
 		/* Minimum set up for golden image. */
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Factory image detected. Performing minimum setup\n");
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_MB);
 		goto failed;
@@ -834,6 +838,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
 	if (!lro->core.blp_blob) {
 		ret = -ENOMEM;
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to allocate blp data region %d\n", ret);
 		goto failed;
 	}
 	memcpy(lro->core.blp_blob, lro->core.fdt_blob,
@@ -842,15 +847,19 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	xclmgmt_connect_notify(lro, false);
 	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
-	if (ret)
+	if (ret) {
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to create sub devices %d\n", ret);
 		goto failed;
+	}
 
 	/* VERSAL doesn't have icap to download, will need to refactor the code */
 	if (!(dev_info->flags & XOCL_DSAFLAG_VERSAL))
 		ret = xocl_icap_download_boot_firmware(lro);
 
-	if (ret)
+	if (ret) {
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "Firmware ICAP download failed %d\n", ret);
 		goto failed;
+	}
 
 	xclmgmt_update_userpf_blob(lro);
 
@@ -862,6 +871,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	lro->status.ready = true;
 
 failed:
+	mgmt_info(lro, "%s", lro->status.msg);
 	vfree(fw_buf);
 	mutex_unlock(&lro->busy_mutex);
 
