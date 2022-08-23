@@ -362,6 +362,13 @@ namespace xclcpuemhal2
     std::stringstream pidStream;
     pidStream << parentPid;
 
+    char *login_user = getenv("USER");
+    if (!login_user)
+    {
+      std::string dMsg = "ERROR: [SW-EMU 22] $USER variable is not SET. Please make sure the USER env variable is set properly.";
+      logMessage(dMsg, 0);
+      exit(EXIT_FAILURE);
+    }
     // Spawn off the process to run the stub
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if (!simDontRun)
