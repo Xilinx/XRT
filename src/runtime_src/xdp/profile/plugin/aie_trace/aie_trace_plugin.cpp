@@ -1487,6 +1487,8 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     XDPPlugin::endWrite();
   }
 
+  // Resolve all Graph based and Tile based metrics
+  // Mem Tile metrics is not supported yet.
   void
   AieTracePlugin::getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
                                            std::vector<std::string> graphmetricsSettings,
@@ -1499,7 +1501,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
      * "graphmetricsSettings" contains each metric value
-     * graph_metrics = <graph name|all>:<kernel name|all>:<off|functions|functions_partial_stalls|functions_all_stalls>[:<memory_stalls|stream_stalls|cascasde_stalls|lock_stalls>]
+     * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>:<off|functions|functions_partial_stalls|functions_all_stalls>[:<memory_stalls|stream_stalls|cascasde_stalls|lock_stalls>]
      */
 
     std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
@@ -1508,10 +1510,6 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
       // split done only in Pass 1
       boost::split(graphmetrics[i], graphmetricsSettings[i], boost::is_any_of(":"));
-      // check format
-
-      // kernel name not avaiable in XRT
-
 
       if (0 != graphmetrics[i][0].compare("all")) {
         continue;
@@ -1549,14 +1547,11 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       allGraphsDone = true;
       for (auto &e : tiles) {
         mConfigMetrics[e] = graphmetrics[i][2];
-//        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
-        // check if same tiles are recognized
       }
     } // Graph Pass 1
 
     // Graph Pass 2 : process per graph per kernel metric setting
     for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
-      // kernel name not avaiable in XRT
 
       if (0 == graphmetrics[i][0].compare("all")) {
         // already processed
@@ -1580,8 +1575,6 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
 #endif
       for (auto &e : tiles) {
         mConfigMetrics[e] = graphmetrics[i][2];
-//        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
-        // check if same tiles are recognized
       }
     } // Graph Pass 2
 
@@ -1590,22 +1583,21 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     /*
      * AI Engine Tiles
      * Single or all tiles
-     * aie_tile_metrics = <{<column>,<row>}|all>:<off|functions|functions_partial_stalls|functions_all_stalls>[:<memory_stalls|stream_stalls|cascasde_stalls|lock_stalls>]
+     * tile_based_aie_tile_metrics = <{<column>,<row>}|all>:<off|functions|functions_partial_stalls|functions_all_stalls>[:<memory_stalls|stream_stalls|cascasde_stalls|lock_stalls>]
      * Range of tiles
-     * aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|functions|functions_partial_stalls|functions_all_stalls>[:<memory_stalls|stream_stalls|cascasde_stalls|lock_stalls>]
+     * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|functions|functions_partial_stalls|functions_all_stalls>[:<memory_stalls|stream_stalls|cascasde_stalls|lock_stalls>]
      *  
      * MEM Tiles (AIE2 only)
      * Single or all columns
-     * mem_tile_metrics = <{<column>,<row>}|all>:<off|channels|input_channels_stalls|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * tile_based_mem_tile_metrics = <{<column>,<row>}|all>:<off|channels|input_channels_stalls|output_channels_stalls>[:<channel 1>][:<channel 2>]
      * Range of columns
-     * mem_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|channels|input_channels_stalls|output_channels_stalls>[:<channel 1>][:<channel 2>]
+     * tile_based_mem_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|channels|input_channels_stalls|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
 
     // Pass 1 : process only "all" metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-      // mem_tile_metrics not handled now. Add later
       // split done only in Pass 1
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
 
@@ -1623,8 +1615,6 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       }
       for (auto &e : tiles) {
         mConfigMetrics[e] = metrics[i][1];
-//        mConfigMetrics[moduleIdx][e] = metrics[i][1];
-        // check if same tiles are recognized
       }
     } // Pass 1 
 
@@ -1655,8 +1645,6 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
           tile.row = row;
 //            tiles.push_back(tile);
           mConfigMetrics[tile] = metrics[i][2];
-//           mConfigMetrics[moduleIdx][tile] = metrics[i][2];
-          // check if same tiles are recognized
         }
       }
     } // Pass 2
@@ -1681,7 +1669,6 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       tile.row = std::stoi(tilePos[1]);
 //        tiles.push_back(tile);
       mConfigMetrics[tile] = metrics[i][1];
-//       mConfigMetrics[moduleIdx][tile] = metrics[i][1];
     } // Pass 3 
 
 
@@ -1741,7 +1728,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       return false;
     }
 
-    // Process AIE_profile_settings metrics
+    // Process AIE_trace_settings metrics
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::string> metricsSettings;
     boost::split(metricsSettings, metricsConfig, boost::is_any_of(";"));
