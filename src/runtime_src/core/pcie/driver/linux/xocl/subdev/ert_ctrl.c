@@ -53,6 +53,7 @@
 #define XGQ_SQ_REG		0x0
 #define XGQ_CQ_REG		0x100
 
+#define MAX_CU_XGQ		256
 #define SHELL_NOT_SUPP_LEGACY(ec) (ec->ec_xgq_ips != NULL)
 
 static uint16_t	g_ctrl_xgq_cid;
@@ -501,6 +502,9 @@ static inline int ert_ctrl_alloc_ert_xgq(struct ert_ctrl *ec, int num)
 
 	if (num <= ec->ec_exgq_capacity)
 		return 0;
+
+	if (num > MAX_CU_XGQ)
+		return -EINVAL;
 
 	tmp = kzalloc(sizeof(ec->ec_exgq[0]) * num, GFP_KERNEL);
 	if (!tmp)
