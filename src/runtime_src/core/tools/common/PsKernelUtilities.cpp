@@ -19,7 +19,7 @@ namespace XBU = XBUtilities;
 namespace pt = boost::property_tree;
 
 static void
-get_all_instance_data(const xrt_core::device * _pDevice, pt::ptree &pt)
+get_all_instance_data(const xrt_core::device * /*_pDevice*/, pt::ptree &/*pt*/)
 {
   // // TODO put request logic in here for ps kernel data query
   // static size_t COUNT = 4096;
