@@ -692,6 +692,67 @@ static ssize_t ready_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ready);
 
+static ssize_t ready_msg_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	char msg[256];
+	bool device_ready = false;
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	uint64_t ch_state = 0, daemon_state = 0;
+	uint64_t ch_disable = 0, ch_switch = 0;
+
+	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
+
+	if (!(ch_state & XCL_MB_PEER_READY))
+		return sprintf(buf, "%s\n", "Peer is not ready");
+
+	if (ch_state & XCL_MB_PEER_SAME_DOMAIN)
+		return sprintf(buf, "%s\n", ""); /* Device is ready */
+	else {
+		/*
+		 * If xocl and xclmgmt are not in the same daemon,
+		 * mark the card as ready when
+		 *  1. both MB channel and daemon are ready
+		 *  This is for case cloud vendor controls the xclbin download,
+		 *  like azure, aws F1
+		 *  2. MB channel is ready
+		 *     and
+		 *     all sw channels are off
+		 *     and
+		 *     some channels are disabled	
+		 *  This is for case where msd/mpd(and plugin) are not required,
+		 *  like aws V1, download xclbin is not allowed so no need to
+		 *  setup mpd & plugin. In this case, admin must disable some
+		 *  channels, typically 0x8, otherwise, if user run validate, 
+		 *  the xclbins would be loaded through h/w mailbox, and would
+		 *  end up whole mailbox being disabled.
+		 */
+		xocl_mailbox_get(xdev, DAEMON_STATE, &daemon_state);
+		xocl_mailbox_get(xdev, CHAN_SWITCH, &ch_switch);
+		xocl_mailbox_get(xdev, CHAN_DISABLE, &ch_disable);
+
+		device_ready = (daemon_state || (!ch_switch && ch_disable));
+
+		if (device_ready)
+			return sprintf(buf, "%s\n", ""); /* Device is ready */
+
+		if (!daemon_state)
+			return snprintf(msg, sizeof(msg), "%s, ", "Daemon not ready");
+
+		if (ch_switch)
+			return snprintf(msg + strlen(msg), sizeof(msg), "%s, ", "Channel is not switched");
+		
+		if (!ch_disable)
+			return snprintf(msg + strlen(msg), sizeof(msg), "%s, ", "Channel is not disabled");
+		
+		return sprintf(buf, "%s\n", msg);
+	}
+
+	return sprintf(buf, "%s\n", "");
+}
+
+static DEVICE_ATTR_RO(ready_msg);
+
 static ssize_t interface_uuids_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -837,6 +898,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_ready.attr,
+	&dev_attr_ready_msg.attr,
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,

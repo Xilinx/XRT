@@ -197,13 +197,21 @@ static ssize_t ready_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", lro->status.ready);
+}
+static DEVICE_ATTR_RO(ready);
+
+static ssize_t ready_msg_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 
 	/* Only write out an error message if the device is not ready */
 	if (!lro->status.ready)
 		return sprintf(buf, "%s\n", lro->status.msg);
 	return sprintf(buf, "\n");
 }
-static DEVICE_ATTR_RO(ready);
+static DEVICE_ATTR_RO(ready_msg);
 
 static ssize_t dev_offline_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -557,6 +565,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_mig_calibration.attr,
 	&dev_attr_xpr.attr,
 	&dev_attr_ready.attr,
+	&dev_attr_ready_msg.attr,
 	&dev_attr_mfg.attr,
 	&dev_attr_mfg_ver.attr,
 	&dev_attr_recovery.attr,
