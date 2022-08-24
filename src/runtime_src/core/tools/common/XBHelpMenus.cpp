@@ -243,7 +243,8 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     consoleStream << dev_desc;
     consoleStream << std::string(dev_desc.length(), '-') << std::endl;
 
-    const auto is_ready = xrt_core::device_query<xrt_core::query::is_ready>(device);
+    const auto ready_msgs = xrt_core::device_query<xrt_core::query::is_ready_msg>(device);
+    const auto is_ready = xrt_core::query::is_ready_msg::is_ready(ready_msgs);
     bool is_recovery = false;
     try {
       is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
@@ -256,8 +257,12 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     // If the device is either of the following, most tests cannot be completed fully:
     // 1. Is in factory mode and is not in recovery mode
     // 2. Is not ready and is not in recovery mode
-    if ((is_mfg || !is_ready) && !is_recovery)
-      std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n\n";
+    if ((is_mfg || !is_ready) && !is_recovery) {
+      std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n";
+      std::cout << "Reason: \n";
+      for (const auto& msg : ready_msgs)
+        std::cout << "  " << msg << "\n";
+    }
 
     for (auto &report : reportsToProcess) {
       if (!report->isDeviceRequired())

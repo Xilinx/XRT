@@ -209,7 +209,7 @@ static ssize_t ready_msg_show(struct device *dev,
 	/* Only write out an error message if the device is not ready */
 	if (!lro->status.ready)
 		return sprintf(buf, "%s\n", lro->status.msg);
-	return sprintf(buf, "\n");
+	return 0;
 }
 static DEVICE_ATTR_RO(ready_msg);
 

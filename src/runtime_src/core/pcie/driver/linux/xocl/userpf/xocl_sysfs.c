@@ -707,7 +707,7 @@ static ssize_t ready_msg_show(struct device *dev,
 		return sprintf(buf, "%s\n", "Peer is not ready");
 
 	if (ch_state & XCL_MB_PEER_SAME_DOMAIN)
-		return sprintf(buf, "%s\n", ""); /* Device is ready */
+		return 0; /* Device is ready */
 	else {
 		/*
 		 * If xocl and xclmgmt are not in the same daemon,
@@ -734,21 +734,22 @@ static ssize_t ready_msg_show(struct device *dev,
 		device_ready = (daemon_state || (!ch_switch && ch_disable));
 
 		if (device_ready)
-			return sprintf(buf, "%s\n", ""); /* Device is ready */
+			return 0;
 
+		/* Append all reasons that the card is not ready */
 		if (!daemon_state)
-			return snprintf(msg, sizeof(msg), "%s, ", "Daemon not ready");
+			snprintf(msg, sizeof(msg), "%s\n", "Daemon not ready");
 
 		if (ch_switch)
-			return snprintf(msg + strlen(msg), sizeof(msg), "%s, ", "Channel is not switched");
+			snprintf(msg + strlen(msg), sizeof(msg), "%s\n", "Channel is switched");
 		
 		if (!ch_disable)
-			return snprintf(msg + strlen(msg), sizeof(msg), "%s, ", "Channel is not disabled");
+			snprintf(msg + strlen(msg), sizeof(msg), "%s\n", "Channel is not disabled");
 		
 		return sprintf(buf, "%s\n", msg);
 	}
 
-	return sprintf(buf, "%s\n", "");
+	return 0; /* Device is ready */
 }
 
 static DEVICE_ATTR_RO(ready_msg);

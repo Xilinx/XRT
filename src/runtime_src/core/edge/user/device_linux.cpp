@@ -119,6 +119,17 @@ struct is_ready
   }
 };
 
+struct is_ready_msg
+{
+  using result_type = query::is_ready::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    return std::vector();
+  }
+};
+
 static xclDeviceInfo2
 init_device_info(const xrt_core::device* device)
 {
@@ -891,6 +902,7 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();
+  emplace_func0_request<query::is_ready_msg,            is_ready_msg>();
   emplace_func0_request<query::xclbin_uuid ,            xclbin_uuid>();
 
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();

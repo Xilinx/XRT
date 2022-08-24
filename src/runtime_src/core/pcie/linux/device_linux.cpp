@@ -1185,6 +1185,7 @@ initialize_query_table()
   emplace_sysfs_get<query::is_recovery>                        ("", "recovery");
   emplace_sysfs_get<query::is_versal>                          ("", "versal");
   emplace_sysfs_get<query::is_ready>                           ("", "ready");
+  emplace_sysfs_get<query::is_ready_msg>                       ("", "ready_msg");
   emplace_sysfs_get<query::is_offline>                         ("", "dev_offline");
   emplace_sysfs_get<query::f_flash_type>                       ("flash", "flash_type");
   emplace_sysfs_get<query::flash_type>                         ("", "flash_type");
