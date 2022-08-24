@@ -954,7 +954,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 	else {
 		ret = of_property_read_u8(aienode, "xlnx,aie-gen", &hw_gen);
 		if (ret < 0) {
-			DRM_WARN("no aie dev generation information in device tree\n");
+			DRM_WARN("No AIE array generation information in the device tree, assuming generation %d\n", hw_gen);
 		}
 		of_node_put(aienode);
 		aienode = NULL;
