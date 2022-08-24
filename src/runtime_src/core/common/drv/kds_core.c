@@ -183,6 +183,9 @@ static int kds_polling_thread(void *data)
 		busy_cnt = 0;
 
 		list_for_each_entry(xcu, &kds->alive_cus, cu) {
+			if (xcu->thread)
+				continue;
+
 			if (xrt_cu_process_queues(xcu) == XCU_BUSY)
 				busy_cnt += 1;
 		}
@@ -1606,7 +1609,7 @@ static int kds_fa_assign_cmdmem(struct kds_sched *kds)
 	return 0;
 }
 
-int kds_cfg_update(struct kds_sched *kds)
+static int kds_cfg_legacy_update(struct kds_sched *kds)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	struct xrt_cu *xcu;
@@ -1661,7 +1664,7 @@ int kds_cfg_update(struct kds_sched *kds)
 	}
 
 run_polling:
-	if (!KDS_SETTING(kds->cu_intr) && !kds->polling_thread) {
+	if ((!KDS_SETTING(kds->cu_intr) && !kds->polling_thread) || kds->scu_mgmt.num_cus) {
 		kds->polling_stop = 0;
 		kds->polling_thread = kthread_run(kds_polling_thread, kds, "kds_poll");
 		if (IS_ERR(kds->polling_thread)) {
@@ -1671,6 +1674,115 @@ run_polling:
 	}
 
 	return ret;
+}
+
+static void kds_stop_all_cu_threads(struct kds_sched *kds, int domain)
+{
+	struct kds_cu_mgmt *cu_mgmt = NULL;
+	struct xrt_cu *xcu = NULL;
+	int i = 0;
+
+	cu_mgmt = (domain == DOMAIN_PL) ? &kds->cu_mgmt : &kds->scu_mgmt;
+	for (i = 0; i < MAX_CUS; i++) {
+		xcu = cu_mgmt->xcus[i];
+		if (!xcu)
+			continue;
+
+		xrt_cu_stop_thread(xcu);
+
+		/* Record CU interrupt status */
+		cu_mgmt->cu_intr[i] = 0;
+	}
+}
+
+static int kds_start_all_cu_threads(struct kds_sched *kds, int domain)
+{
+	struct kds_cu_mgmt *cu_mgmt = NULL;
+	struct xrt_cu *xcu = NULL;
+	int err = 0;
+	int i = 0;
+
+	cu_mgmt = (domain == DOMAIN_PL) ? &kds->cu_mgmt : &kds->scu_mgmt;
+	for (i = 0; i < MAX_CUS; i++) {
+		xcu = cu_mgmt->xcus[i];
+		if (!xcu)
+			continue;
+
+		if (cu_mgmt->cu_intr[i] == 1)
+			continue;
+
+		err = xrt_cu_start_thread(xcu);
+		if (err)
+			goto stop_cu_threads;
+
+		/* Record CU interrupt status */
+		cu_mgmt->cu_intr[i] = 1;
+	}
+
+	return 0;
+
+stop_cu_threads:
+	kds_stop_all_cu_threads(kds, domain);
+	return -EINVAL;
+}
+
+static int kds_cfg_xgq_update(struct kds_sched *kds)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	//int intr_setting = KDS_SETTING(kds->cu_intr);
+	struct xrt_cu *xcu = NULL;
+	int ret = 0;
+	int i = 0;
+
+	for (i = 0; i < MAX_CUS; i++) {
+		xcu = cu_mgmt->xcus[i];
+		if (!xcu)
+			continue;
+
+		if (xrt_cu_intr_supported(xcu))
+			continue;
+
+		/* This CU doesn't support interrupt */
+		xcu_info(xcu, "CU(%d) doesnt support interrupt", xcu->info.cu_idx);
+		return -ENOSYS;
+	}
+
+	ret = kds_start_all_cu_threads(kds, DOMAIN_PL);
+	if (ret)
+		goto run_polling;
+
+	ret = kds_start_all_cu_threads(kds, DOMAIN_PS);
+	if (ret) {
+		kds_stop_all_cu_threads(kds, DOMAIN_PL);
+		goto run_polling;
+	}
+
+	return 0;
+
+run_polling:
+	if (kds->polling_thread)
+		return ret;
+
+	kds->polling_stop = 0;
+	kds->polling_thread = kthread_run(kds_polling_thread, kds, "kds_poll");
+	if (IS_ERR(kds->polling_thread)) {
+		ret = IS_ERR(kds->polling_thread);
+		kds->polling_thread = NULL;
+	}
+	return ret;
+}
+
+int kds_cfg_update(struct kds_sched *kds)
+{
+	int ret = 0;
+
+	if (kds->xgq_enable)
+		ret = kds_cfg_xgq_update(kds);
+	else
+		ret = kds_cfg_legacy_update(kds);
+
+	return ret;
+
 }
 
 void kds_cus_irq_enable(struct kds_sched *kds, bool enable)

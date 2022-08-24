@@ -30,8 +30,6 @@
 #include "core/common/xrt_profiling.h"
 #include "core/common/message.h"
 
-#define MAX_PATH_SZ 512
-
 namespace xdp {
 
   bool HALPlugin::live = false;

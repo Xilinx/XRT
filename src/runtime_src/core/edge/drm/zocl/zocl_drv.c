@@ -946,6 +946,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_AIE_FREQSCALE, zocl_aie_freqscale_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_SET_CU_READONLY_RANGE, zocl_set_cu_read_only_range_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations zocl_driver_fops = {
@@ -1069,10 +1071,13 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->cu_subdev.irq[index] = irq;
 	}
 	zdev->cu_subdev.cu_num = index;
-	ret = zocl_ert_create_intc(&pdev->dev, zdev->cu_subdev.irq, index, 0,
-				   ERT_CU_INTC_DEV_NAME, &zdev->cu_intc);
-	if (ret)
-		DRM_ERROR("Failed to create cu intc device, ret %d\n", ret);
+	if (zdev->cu_subdev.cu_num) {
+		ret = zocl_ert_create_intc(&pdev->dev, zdev->cu_subdev.irq,
+					   zdev->cu_subdev.cu_num, 0,
+					   ERT_CU_INTC_DEV_NAME, &zdev->cu_intc);
+		if (ret)
+			DRM_ERROR("Failed to create cu intc device, ret %d\n", ret);
+	}
 
 	/* set to 0xFFFFFFFF(32bit) or 0xFFFFFFFFFFFFFFFF(64bit) */
 	zdev->host_mem = (phys_addr_t) -1;

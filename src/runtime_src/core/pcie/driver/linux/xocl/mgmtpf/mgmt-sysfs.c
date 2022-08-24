@@ -347,6 +347,9 @@ static ssize_t interface_uuids_show(struct device *dev,
 	const void *uuid;
 	int node = -1, off = 0;
 
+	if (!lro->ready)
+		return -EINVAL;
+
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
 		xclmgmt_load_fdt(lro);
 
@@ -378,6 +381,9 @@ static ssize_t logic_uuids_show(struct device *dev,
         struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 	const void *uuid = NULL, *blp_uuid = NULL;
 	int node = -1, off = 0;
+
+	if (!lro->ready)
+		return -EINVAL;
 
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
 		xclmgmt_load_fdt(lro);

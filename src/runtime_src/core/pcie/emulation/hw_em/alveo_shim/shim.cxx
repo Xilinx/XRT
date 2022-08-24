@@ -230,6 +230,36 @@ namespace xclhwemhal2 {
     }
   }
 
+  void HwEmShim::dumpDeadlockMessages()
+  {
+
+    if (!xrt_core::config::get_pl_deadlock_detection())
+      return;
+    
+    std::string simPath = getSimPath();
+    std::string content = loadFileContentsToString(simPath + "/kernel_deadlock_diagnosis.rpt");
+
+    if (content.find("start to dump deadlock path") != std::string::npos)
+    {
+      if (std::find(parsedMsgs.begin(), parsedMsgs.end(), content) == parsedMsgs.end())
+      {
+        logMessage(content);
+        parsedMsgs.push_back(content);
+      }
+
+      char path[FILENAME_MAX];
+      size_t size = MAXPATHLEN;
+      char *pPath = GetCurrentDir(path, size);
+
+      if (pPath)
+      {
+        std::string deadlockReportFile = simPath + "/kernel_deadlock_diagnosis.rpt";
+        std::string destPath = std::string(path) + "/pl_deadlock_diagnosis.txt";
+        systemUtil::makeSystemCall(deadlockReportFile, systemUtil::systemOperation::COPY, destPath, std::to_string(__LINE__));
+      }
+    }
+  }
+
   void HwEmShim::parseSimulateLog ()
   {
     std::string simPath = getSimPath();
@@ -633,6 +663,20 @@ namespace xclhwemhal2 {
       mSimDontRun = simDontRun;
     }
 
+    std::string userSpecifiedSimPath = xclemulation::config::getInstance()->getSimDir();
+    char *login_user = getenv("USER");
+    if (!login_user)
+    {
+      std::string dMsg = "ERROR: [HW-EMU 26] $USER variable is not SET. Please make sure the USER env variable is set properly.";
+      logMessage(dMsg, 0);
+      exit(EXIT_FAILURE);
+    }
+    char *vitisInstallEnvvar = getenv("XILINX_VITIS");
+    if (!vitisInstallEnvvar) {
+      std::string dMsg = "ERROR: [HW-EMU 27] $XILINX_VITIS variable is not SET. Please make sure the XILINX_VITIS env variable is SOURCED properly.";
+      logMessage(dMsg, 0);
+      exit(EXIT_FAILURE);
+    }
     if (!mSimDontRun)
     {
       wdbFileName = std::string(mDeviceInfo.mName) + "-" + std::to_string(mDeviceIndex) + "-" + xclBinName;
@@ -644,7 +688,6 @@ namespace xclhwemhal2 {
         return -1;
       }
 
-      std::string userSpecifiedSimPath = xclemulation::config::getInstance()->getSimDir();
       if (userSpecifiedSimPath.empty())
       {
         if (mLogStream.is_open())
@@ -841,7 +884,15 @@ namespace xclhwemhal2 {
       // TODO: Windows build support
       //   pid_t, fork, chdir, execl is defined in unistd.h
       //   this environment variable is added to disable the systemc copyright message
+
+      if (args.m_emuData)
+      {
+        extractEmuData(sim_path, binaryCounter, args);
+        nocMmapInitialization(sim_path);
+      }
+
       setenv("SYSTEMC_DISABLE_COPYRIGHT_MESSAGE", "1", true);
+      std::cout << std::flush;
       pid_t pid = fork();
       assert(pid >= 0);
 
@@ -886,12 +937,11 @@ namespace xclhwemhal2 {
 
         if (args.m_emuData) {
 
-          extractEmuData(sim_path, binaryCounter, args);
-
           //Assuming that we will have only one AIE Kernel, need to
           //update this logic when we have suport for multiple AIE Kernels
 
-          if (fs::exists(sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt")) {
+          if (fs::exists(sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt"))
+          {
             launcherArgs += " -emuData " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
             launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
           }
@@ -917,6 +967,12 @@ namespace xclhwemhal2 {
 
           if (fs::exists(sim_path + "/emulation_data/qemu_qspi_high.bin")) {
             launcherArgs += " -qspi-high-image " + sim_path + "/emulation_data/qemu_qspi_high.bin";
+          }
+
+          // V70 support: Setting this option, launch_emulator does not set the NOCSIM_DRAM_FILE file, it auto sets the
+          // NOCSIM_MULTI_DRAM_FILE
+          if (fs::exists(sim_path + "/emulation_data/noc_memory_config.txt")) {
+            launcherArgs += " -noc-memory-config " + sim_path + "/emulation_data/noc_memory_config.txt";
           }
 
           if (fs::exists(sim_path + "/emulation_data/qemu_args.txt")) {
@@ -1080,7 +1136,18 @@ namespace xclhwemhal2 {
     pssStrem.close();
   }
 
-  void HwEmShim::extractEmuData(const std::string& simPath, int binaryCounter, bitStreamArg args) {
+  void HwEmShim::nocMmapInitialization(const std::string &simPath)
+  {
+    if (xclemulation::config::getInstance()->isFastNocDDRAccessEnabled())
+    {
+      std::string nocMemSpecFilePath = simPath + "/emulation_data/noc_memory_config.txt";
+      if (fs::exists(nocMemSpecFilePath))
+        this->mNocFastAccess.init(nocMemSpecFilePath, simPath);
+    }
+  }
+
+  void HwEmShim::extractEmuData(const std::string &simPath, int binaryCounter, bitStreamArg args)
+  {
 
     std::unique_ptr<char[]> emuDataFileName(new char[1024]);
 #ifndef _WINDOWS
@@ -1298,66 +1365,90 @@ namespace xclhwemhal2 {
           return -1;
         }
     }
-
   }
 
-uint32_t HwEmShim::getAddressSpace (uint32_t topology)
-{
-  if(mMembanks.size() <= topology)
-    return 0;
-  if(mMembanks[topology].tag.find("bank") != std::string::npos)
+  uint32_t HwEmShim::getAddressSpace(uint32_t topology)
   {
-    return 0;
+    if (mMembanks.size() <= topology)
+      return 0;
+    if (mMembanks[topology].tag.find("bank") != std::string::npos)
+    {
+      return 0;
+    }
+    if (mMembanks[topology].tag.find("HBM") != std::string::npos)
+    {
+      return 2;
+    }
+    return 1;
   }
-  if(mMembanks[topology].tag.find("HBM") != std::string::npos)
-  {
-	  return 2;
-  }
-  return 1;
-}
+
   size_t HwEmShim::xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek, uint32_t topology)
   {
-    if(!sock)
+    if (!sock)
     {
-      if(!mMemModel)
+      if (!mMemModel)
         mMemModel = new mem_model(deviceName);
-      mMemModel->writeDevMem(dest,src,size);
+      mMemModel->writeDevMem(dest, src, size);
       return size;
     }
-    src = (unsigned char*)src + seek;
-    if (mLogStream.is_open()) {
-      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
-        << src << ", " << size << ", " << seek << std::endl;
+    std::string dMsg;
+    //TODO : workaround to access NOC DDR in a faster way
+    //Need to be removed when NOC allows transaport_dbg access
+
+    if (xclemulation::config::getInstance()->isFastNocDDRAccessEnabled())
+    {
+      std::cout << "Checking Write Fastmem " << dest << std::endl;
+      if (mNocFastAccess.isAddressMapped(dest, size))
+      {
+        std::cout << "Writing Fastmem " << dest << std::endl;
+        mNocFastAccess.write(dest, (unsigned char *)src, size);
+        dMsg = "INFO: [HW-EMU 02-1] Copying buffer from host to device ended";
+        logMessage(dMsg, 1);
+        PRINTENDFUNC;
+        printMem(mGlobalInMemStream, 16, dest, (void *)src, size);
+        return size;
+      }
     }
-    std::string dMsg ="INFO: [HW-EMU 02-0] Copying buffer from host to device started : size = " + std::to_string(size);
-    logMessage(dMsg,1);
+
+    src = (unsigned char *)src + seek;
+    if (mLogStream.is_open())
+    {
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
+                 << src << ", " << size << ", " << seek << std::endl;
+    }
+    dMsg = "INFO: [HW-EMU 02-0] Copying buffer from host to device started : size = " + std::to_string(size);
+    logMessage(dMsg, 1);
     void *handle = this;
 
     uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
     uint64_t c_size = messageSize;
     uint64_t processed_bytes = 0;
-    while(processed_bytes < size){
-      if((size - processed_bytes) < messageSize){
+    while (processed_bytes < size)
+    {
+      if ((size - processed_bytes) < messageSize)
+      {
         c_size = size - processed_bytes;
-      }else{
+      }
+      else
+      {
         c_size = messageSize;
       }
 
-      void* c_src = (((unsigned char*)(src)) + processed_bytes);
+      void *c_src = (((unsigned char *)(src)) + processed_bytes);
       uint64_t c_dest = dest + processed_bytes;
 #ifndef _WINDOWS
       // TODO: Windows build support
       // *_RPC_CALL uses unix_socket
       uint32_t space = getAddressSpace(topology);
-      xclCopyBufferHost2Device_RPC_CALL(xclCopyBufferHost2Device,handle,c_dest,c_src,c_size,seek,space);
+      xclCopyBufferHost2Device_RPC_CALL(xclCopyBufferHost2Device, handle, c_dest, c_src, c_size, seek, space);
 #endif
       processed_bytes += c_size;
     }
-    dMsg ="INFO: [HW-EMU 02-1] Copying buffer from host to device ended";
-    logMessage(dMsg,1);
+    dMsg = "INFO: [HW-EMU 02-1] Copying buffer from host to device ended";
+    logMessage(dMsg, 1);
 
     PRINTENDFUNC;
-    printMem(mGlobalInMemStream, 16 , dest , (void*)src, size );
+    printMem(mGlobalInMemStream, 16, dest, (void *)src, size);
 
     return size;
   }
@@ -1378,9 +1469,25 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         << src << ", " << size << ", " << skip << std::endl;
     }
 
-    std::string dMsg ="INFO: [HW-EMU 05-0] Copying buffer from device to host started. size := " + std::to_string(size);
-    logMessage(dMsg,1);
+    std::string dMsg = "INFO: [HW-EMU 05-0] Copying buffer from device to host started. size := " + std::to_string(size);
+    logMessage(dMsg, 1);
     void *handle = this;
+
+    //TODO : workaround to access NOC DDR in a faster way
+    //Need to be removed when NOC allows transaport_dbg access
+    if (xclemulation::config::getInstance()->isFastNocDDRAccessEnabled())
+    {
+      std::cout << "Checking Read Fastmem " << src << std::endl;
+      if (mNocFastAccess.isAddressMapped(src, size))
+      {
+        mNocFastAccess.read(src, (unsigned char *)dest, size);
+        std::cout << "Reading Fastmem " << src << std::endl;
+        dMsg = "INFO: [HW-EMU 05-1] Copying buffer from device to host ended";
+        logMessage(dMsg, 1);
+        PRINTENDFUNC;
+        return size;
+      }
+    }
 
     uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
     uint64_t c_size = messageSize;
@@ -2082,8 +2189,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         || lWaveform == xclemulation::debug_mode::off) {
       char path[FILENAME_MAX];
       size_t size = MAXPATHLEN;
-      char* pPath = GetCurrentDir(path,size);
-      if(pPath)
+      char *pPath = GetCurrentDir(path, size);
+      if (pPath)
       {
         std::string sdxProfileKernelFile = std::string(path) + "/profile_kernels.csv";
         systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
@@ -3205,7 +3312,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // Emulation does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
   auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
@@ -3225,7 +3332,7 @@ close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 // Once properly implemented, this API should throw on error
 uint32_t // ctx handle aka slot idx
 HwEmShim::
-create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
+create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode)
 {
   // Explicit hardware contexts are not yet supported
   throw xrt_core::ishim::not_supported_error{__func__};

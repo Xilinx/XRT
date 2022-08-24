@@ -298,6 +298,11 @@ file(GLOB XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_FILES
   "${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_HW_EMU_PROFILE_PL_DEADLOCK_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR}/hw_emu/*.h"
+  "${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR}/hw_emu/*.cpp"
+  )
+
 set(XRT_XDP_ALL_SRC
   ${XRT_XDP_PROFILE_FILES}
   ${XRT_XDP_FILES}
@@ -390,6 +395,7 @@ add_library(xdp_system_compiler_plugin MODULE ${XRT_XDP_SYSTEM_COMPILER_PLUGIN_F
 add_library(xdp_noc_plugin MODULE ${XRT_XDP_PROFILE_NOC_PLUGIN_FILES})
 add_library(xdp_vart_plugin MODULE ${XRT_XDP_PROFILE_VART_PLUGIN_FILES})
 add_library(xdp_hw_emu_device_offload_plugin MODULE ${XRT_XDP_HW_EMU_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
+add_library(xdp_hw_emu_pl_deadlock_plugin MODULE ${XRT_XDP_HW_EMU_PROFILE_PL_DEADLOCK_PLUGIN_FILES})
 
 add_dependencies(xdp_debug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
@@ -398,6 +404,7 @@ add_dependencies(xdp_system_compiler_plugin xdp_core)
 add_dependencies(xdp_noc_plugin xdp_core xrt_core)
 add_dependencies(xdp_vart_plugin xdp_core xrt_core)
 add_dependencies(xdp_hw_emu_device_offload_plugin xdp_core xrt_coreutil xrt_hwemu)
+add_dependencies(xdp_hw_emu_pl_deadlock_plugin xdp_core xrt_coreutil xrt_hwemu)
 
 target_link_libraries(xdp_debug_plugin PRIVATE xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin PRIVATE xrt_coreutil xilinxopencl)
@@ -406,6 +413,7 @@ target_link_libraries(xdp_system_compiler_plugin xdp_core)
 target_link_libraries(xdp_noc_plugin PRIVATE xdp_core xrt_core)
 target_link_libraries(xdp_vart_plugin PRIVATE xdp_core xrt_core)
 target_link_libraries(xdp_hw_emu_device_offload_plugin PRIVATE xdp_core xrt_coreutil xrt_hwemu)
+target_link_libraries(xdp_hw_emu_pl_deadlock_plugin PRIVATE xdp_core xrt_coreutil xrt_hwemu)
 
 set_target_properties(xdp_noc_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_vart_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -414,6 +422,7 @@ set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRIN
 set_target_properties(xdp_power_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_system_compiler_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hw_emu_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_hw_emu_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 # x86 AI Engine Plugin
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
@@ -469,6 +478,7 @@ install (TARGETS xdp_debug_plugin
                  xdp_noc_plugin
                  xdp_vart_plugin
                  xdp_hw_emu_device_offload_plugin
+                 xdp_hw_emu_pl_deadlock_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
 

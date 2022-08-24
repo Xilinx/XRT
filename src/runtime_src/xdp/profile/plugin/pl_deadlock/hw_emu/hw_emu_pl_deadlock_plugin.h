@@ -1,6 +1,6 @@
-/*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
+/**
+ * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,20 +15,23 @@
  * under the License.
  */
 
-#ifndef _XRT_COMMON_ENQUEUE_H_
-#define _XRT_COMMON_ENQUEUE_H_
+#ifndef HW_EMU_PL_DEADLOCK_PLUGIN_DOT_H
+#define HW_EMU_PL_DEADLOCK_PLUGIN_DOT_H
 
-// This file defines implementation extensions to the XRT BO APIs.
-#include "core/include/experimental/xrt_enqueue.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
-namespace xrt_core { namespace enqueue {
+namespace xdp {
 
-// Callback to notify event of completion 
-void
-done(xrt::event_impl* ev);
+class HwEmuPLDeadlockPlugin : public XDPPlugin {
 
-} // event
-  
+  public:
+    XDP_EXPORT HwEmuPLDeadlockPlugin();
+    XDP_EXPORT ~HwEmuPLDeadlockPlugin();
+    XDP_EXPORT virtual void updateDevice(void* handle);
+    XDP_EXPORT virtual void writeAll(bool openNewFiles);
+
+  };
+
 }
 
 #endif

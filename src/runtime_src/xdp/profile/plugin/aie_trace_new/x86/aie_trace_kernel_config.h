@@ -17,6 +17,8 @@
 #ifndef AIE_TRACE_CONFIG_DOT_H
 #define AIE_TRACE_CONFIG_DOT_H
 
+#include "xdp/profile/device/tracedefs.h"
+
 namespace xdp {
 namespace built_in {
 
@@ -34,9 +36,32 @@ namespace built_in {
     ES2 = 1
   };
 
-  struct PSMessages{
-    uint32_t message_type; //calculate worst case size and double
-    uint32_t params[4];
+  enum class Messages : uint8_t
+  {
+    NO_CORE_MODULE_PCS = 0,
+    NO_CORE_MODULE_TRACE_SLOTS = 1,
+    NO_CORE_MODULE_BROADCAST_CHANNELS = 2,
+    NO_MEM_MODULE_PCS = 3,
+    NO_MEM_MODULE_TRACE_SLOTS = 4,
+    NO_RESOURCES = 5,
+    COUNTERS_NOT_RESERVED = 6,
+    CORE_MODULE_TRACE_NOT_RESERVED = 7,
+    CORE_TRACE_EVENTS_RESERVED = 8,
+    MEMORY_MODULE_TRACE_NOT_RESERVED = 9,
+    MEMORY_TRACE_EVENTS_RESERVED = 10
+  };
+
+  struct MessagePacket
+  {
+    uint8_t messageCode;
+    uint32_t params[4] = {}; 
+  };
+
+  struct MessageConfiguration
+  {
+    static constexpr auto MAX_NUM_MESSAGES = 800;
+    uint32_t numMessages;
+    MessagePacket packets[MAX_NUM_MESSAGES];
   };
 
   // This struct is used for input for the PS kernel.  It contains all of
@@ -58,7 +83,7 @@ namespace built_in {
    
     bool useDelay;
     bool userControl;
-    uint16_t tiles[1]; //flexible array member
+    uint16_t tiles[1]; //Flexible array member
   };
 
   struct PCData
@@ -76,13 +101,13 @@ namespace built_in {
   {   
     public:
       uint32_t packet_type = 0;
-      uint32_t start_event = 28; 
-      uint32_t stop_event = 29; 
-      uint32_t traced_events[8] = {0};
-      uint32_t internal_events_broadcast[16] = {0};
-      uint32_t broadcast_mask_west = 65535;
-      uint32_t broadcast_mask_east = 65535;
-      PCData pc[4];
+      uint32_t start_event = EVENT_CORE_ACTIVE; 
+      uint32_t stop_event = EVENT_CORE_DISABLED; 
+      uint32_t traced_events[NUM_TRACE_EVENTS] = {};
+      uint32_t internal_events_broadcast[NUM_BROADCAST_EVENTS] = {};
+      uint32_t broadcast_mask_west = BROADCAST_MASK_DEFAULT;
+      uint32_t broadcast_mask_east = BROADCAST_MASK_DEFAULT;
+      PCData pc[NUM_TRACE_PCS];
   };  
 
 
@@ -101,8 +126,8 @@ namespace built_in {
   {
     public:
       uint16_t numTiles;
-      uint32_t numTileCoreTraceEvents[9] = {0};
-      uint32_t numTileMemoryTraceEvents[9] = {0};
+      uint32_t numTileCoreTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
+      uint32_t numTileMemoryTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
       TileData tiles[1]; 
   };
 
@@ -120,7 +145,7 @@ namespace built_in {
   {
     uint64_t bufAllocSz;
     uint8_t numStreams;
-    struct GMIOBuffer gmioData[1];
+    struct GMIOBuffer gmioData[1]; //Flexible Array Member
   };  
 
 
