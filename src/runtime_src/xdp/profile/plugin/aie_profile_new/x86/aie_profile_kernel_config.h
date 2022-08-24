@@ -65,12 +65,11 @@ namespace built_in {
     static constexpr auto NUM_CORE_COUNTERS = 4;
     static constexpr auto NUM_MEMORY_COUNTERS = 2;
     static constexpr auto NUM_SHIM_COUNTERS = 2;
-    constexpr int NUM_MODULES = 3;
+    static constexpr int NUM_MODULES = 3;
 
     uint8_t metricSettings[NUM_MODULES];
-   
-
-    uint16_t tiles[1]; //flexible array member
+    uint16_t numTiles;
+    xrt_core::edge::aie::tile_type tiles[1]; //flexible array member
   };
 
 } // end namespace built_in
