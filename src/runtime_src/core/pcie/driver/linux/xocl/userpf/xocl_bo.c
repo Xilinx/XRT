@@ -60,7 +60,6 @@ static inline void xocl_release_pages(struct page **pages, int nr, bool cold)
 #endif
 }
 
-
 static inline void __user *to_user_ptr(u64 address)
 {
 	return (void __user *)(uintptr_t)address;
@@ -1275,17 +1274,17 @@ void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 
 }
 #else
-int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct iosys_map *map)
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct MAP_TYPE *map)
 {
         struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 
         BO_ENTER("xobj %p", xobj);
-        iosys_map_set_vaddr(map, xobj->vmapping);
+        MAP_SET_VADDR(map, xobj->vmapping);
 
         return 0;
 }
 
-void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct iosys_map *map)
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct MAP_TYPE *map)
 {
 
 }

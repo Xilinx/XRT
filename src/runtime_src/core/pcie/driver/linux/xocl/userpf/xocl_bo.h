@@ -69,6 +69,17 @@
  */
 #define XOCL_BO_ARE  (1 << 26)
 
+// Linux 5.18 uses iosys-map instead of dma-buf-map
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+	#define MAP_TYPE iosys_map
+	#define MAP_SET_VADDR iosys_map_set_vaddr
+	#define MAP_IS_NULL iosys_map_is_null
+#else
+	#define MAP_TYPE dma_buf_map
+	#define MAP_SET_VADDR dma_buf_map_set_vaddr
+	#define MAP_IS_NULL dma_buf_map_is_null
+#endif
+
 static inline bool xocl_bo_userptr(const struct drm_xocl_bo *bo)
 {
 	return (bo->flags == XOCL_BO_USERPTR);
@@ -199,8 +210,8 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
 #else
-int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct iosys_map *map);
-void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct iosys_map *map);
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct MAP_TYPE *map);
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct MAP_TYPE *map);
 #endif
 
 int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);
