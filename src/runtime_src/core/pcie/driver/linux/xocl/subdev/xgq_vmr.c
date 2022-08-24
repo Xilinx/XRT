@@ -1147,6 +1147,15 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB);
 }
 
+static bool vmr_default_boot_enabled(struct platform_device *pdev)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xgq_cmd_cq_vmr_payload *vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
+	pr_info("VMR Image using default: %d\n", vmr_status->boot_on_default);
+	return vmr_status->boot_on_default;
+}
+
 static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
@@ -3149,6 +3158,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
 	.vmr_load_firmware = xgq_log_page_metadata,
+	.vmr_default_boot_enabled = vmr_default_boot_enabled,
 };
 
 static const struct file_operations xgq_vmr_fops = {

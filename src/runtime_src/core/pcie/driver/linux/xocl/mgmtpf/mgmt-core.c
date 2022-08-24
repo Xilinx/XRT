@@ -1334,6 +1334,14 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		goto fail_all_subdev;
 	}
 
+	/* Verify the VMR has booted into the default image */
+	// pr_info("MGMT Core vmr default boot: %d\n", xocl_vmr_default_boot_enabled(lro));
+	// if (!xocl_vmr_default_boot_enabled(lro)) {
+	// 	snprintf(lro->status.msg, sizeof(lro->status.msg), "VMR not using default image\n");
+		// xocl_err(&pdev->dev, "%s", lro->status.msg);
+		// goto fail_all_subdev;
+	// }
+
 	/* Finish initialization. Getting here means nothing failed */
 	xocl_thread_start(lro);
 
