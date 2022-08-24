@@ -175,6 +175,9 @@ if [[ ! -d $IMAGES_DIR ]]; then
 	error "Please specify the valid path of APU images by -images"
 fi
 IMAGES_DIR=`realpath $IMAGES_DIR`
+#hack to fix pipeline. Need to file a CR on xclnbinutil
+source /proj/xbuilds/2022.2_0823_1/installs/lin64/Vitis/2022.2/settings64.sh
+
 
 if [[ ! (`which mkimage` && `which bootgen` && `which xclbinutil`) ]]; then
 	error "Please source Xilinx VITIS and Petalinux tools to make sure mkimage, bootgen and xclbinutil is accessible."
@@ -323,4 +326,4 @@ else
     cp -v $BUILD_DIR/${PKG_NAME}*.rpm $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}.noarch.rpm
     cp -v $BUILD_DIR/${PKG_NAME}*.deb $OUTPUT_DIR/${PKG_NAME}_${PKG_RELEASE}.${PKG_VER}_all.deb
 fi
-rm -rf $BUILD_DIR
+#rm -rf $BUILD_DIR
