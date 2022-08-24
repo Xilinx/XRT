@@ -163,8 +163,6 @@ struct islot_info {
 	u64			busy;
 	int			reader_ref;
 	wait_queue_head_t	reader_wq;
-
-	uint32_t		data_retention;
 };
 
 struct icap {
@@ -195,6 +193,7 @@ struct icap {
 	ktime_t			cache_expires;
 
 	enum icap_sec_level	sec_level;
+	uint32_t		data_retention;
 
 	/* xclbin specific informations */
 	struct islot_info	*slot_info[MAX_SLOT_SUPPORT];
@@ -2131,10 +2130,14 @@ static void icap_calib(struct icap *icap, uint32_t slot_id, bool retain)
 {
 	int err = 0, i = 0, ddr_idx = -1;
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
-	struct mem_topology *mem_topo = icap->slot_info[slot_id]->mem_topo;
+	struct islot_info *islot = icap->slot_info[slot_id];
+	struct mem_topology *mem_topo = NULL;
 	s64 time_total = 0, delta = 0;
 	ktime_t time_start, time_end;
-	
+
+	BUG_ON(!islot);
+
+	mem_topo = islot->mem_topo;
 	BUG_ON(!mem_topo);
 
 	(void) xocl_calib_storage_restore(xdev);
@@ -2163,7 +2166,6 @@ static void icap_calib(struct icap *icap, uint32_t slot_id, bool retain)
 
 	if (time_total)
 		ICAP_INFO(icap, "SRSR Calibration: %lld ms.", time_total);
-
 }
 
 static int icap_iores_write32(struct icap *icap, uint32_t id, uint32_t offset, uint32_t val)
@@ -2231,14 +2233,10 @@ static int icap_calibrate_mig(struct platform_device *pdev)
 static int icap_calib_and_check(struct platform_device *pdev, uint32_t slot_id)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
-	struct islot_info *islot = icap->slot_info[slot_id];
-
-	if (!islot)
-		return -EINVAL;
 	
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
-	if (islot->data_retention)
+	if (icap->data_retention)
 		ICAP_WARN(icap, "xbutil reclock may not retain data");
 
 	icap_calib(icap, slot_id, false);
@@ -2332,7 +2330,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	struct islot_info *islot = icap->slot_info[slot_id];
 	int err = 0;
-	bool retention = ((islot->data_retention & 0x1) == 0x1) && sref;
+	bool retention = ((icap->data_retention & 0x1) == 0x1) && sref;
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -2476,7 +2474,7 @@ static bool check_mem_topo_and_data_retention(struct icap *icap,
 		return false;
 
 	mem_topo = islot->mem_topo;
-	if (!hdr || !mem_topo || !islot->data_retention)
+	if (!hdr || !mem_topo || !icap->data_retention)
 		return false;
 
 	size = hdr->m_sectionSize;
@@ -3202,7 +3200,7 @@ static uint64_t icap_get_data_nolock(struct platform_device *pdev,
 			target = (uint64_t)icap->bmc_header.m_version;
 			break;
 		case DATA_RETAIN:
-			target = (uint64_t)islot->data_retention;
+			target = (uint64_t)icap->data_retention;
 			break;
 		default:
 			break;
@@ -3631,7 +3629,6 @@ static ssize_t data_retention_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
-	struct islot_info *islot = icap->slot_info[DEFAULT_SLOT_ID];
 	u32 val = 0, ack;
 	int err;
 
@@ -3645,11 +3642,8 @@ static ssize_t data_retention_show(struct device *dev,
 	if (err)
 		return err;
 
-	if (!islot)
-		return -EINVAL;
-
 	mutex_lock(&icap->icap_lock);
-	val = islot->data_retention;
+	val = icap->data_retention;
 	mutex_unlock(&icap->icap_lock);
 done:
 	return sprintf(buf, "%u\n", val);
@@ -3659,7 +3653,6 @@ static ssize_t data_retention_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
-	struct islot_info *islot = icap->slot_info[DEFAULT_SLOT_ID];
 	u32 val, ack;
 	int err = 0;
 
@@ -3679,11 +3672,9 @@ static ssize_t data_retention_store(struct device *dev,
 			"usage: echo [0 ~ 1] > data_retention");
 		return -EINVAL;
 	}
-	if (!islot)
-		return -EINVAL;
 
 	mutex_lock(&icap->icap_lock);
-	islot->data_retention = val;
+	icap->data_retention = val;
 	mutex_unlock(&icap->icap_lock);
 done:
 	return count;
