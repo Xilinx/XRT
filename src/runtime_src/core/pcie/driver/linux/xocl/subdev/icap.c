@@ -3638,7 +3638,6 @@ static ssize_t data_retention_show(struct device *dev,
 	}
 
 	err = icap_iores_read32(icap, IORES_DDR4_RESET_GATE, 0, &ack);
-
 	if (err)
 		return err;
 
