@@ -31,6 +31,7 @@ usage()
 	echo "          -clean                          Remove build files"
         echo "          -output                         output path"
         echo "          -idcode                         id code of the part"
+        echo "          -package-name                   package name"
 	echo "This script requires tools: mkimage, xclbinutil, bootgen, rpmbuild, dpkg-deb. "
 	echo "There is mkimage in petalinux build, e.g."
 	echo "/proj/petalinux/2021.2/petalinux-v2021.2_daily_latest/tool/petalinux-v2021.2-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin/mkimage"
@@ -118,6 +119,9 @@ METADATA_BUFFER_LEN=131072
 # default id code is for vck5000 part
 ID_CODE="0x14ca8093"
 
+# default package name is xrt-apu
+PKG_NAME="xrt-apu"
+
 clean=0
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -135,6 +139,10 @@ while [ $# -gt 0 ]; do
                 -idcode )
 			shift
                         ID_CODE=$1
+			;;
+                -package-name )
+			shift
+                        PKG_NAME=$1
 			;;
 		-clean )
 			clean=1
@@ -155,7 +163,6 @@ BUILD_DIR="$OUTPUT_DIR/apu_build"
 PACKAGE_DIR="$BUILD_DIR"
 FW_FILE="$BUILD_DIR/lib/firmware/xilinx/xrt-versal-apu.xsabin"
 INSTALL_ROOT="$BUILD_DIR/lib"
-PKG_NAME="xrt-apu"
 
 if [[ $clean == 1 ]]; then
 	echo $PWD
