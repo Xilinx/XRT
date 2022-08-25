@@ -1501,7 +1501,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
      * "graphmetricsSettings" contains each metric value
-     * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>:<off|functions|functions_partial_stalls|functions_all_stalls>[:<memory_stalls|stream_stalls|cascasde_stalls|lock_stalls>]
+     * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>:<off|functions|functions_partial_stalls|functions_all_stalls>
      */
 
     std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
@@ -1514,6 +1514,12 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       if (0 != graphmetrics[i][0].compare("all")) {
         continue;
       }
+      // Check kernel-name field
+      if (0 != graphmetrics[i][1].compare("all")) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+          "Only \"all\" is supported in kernel-name field for graph_based_aie_tile_metrics. Any other specification is replaced with \"all\".");
+      }
+
       std::vector<tile_type> tiles;
       // Create superset of all tiles across all graphs
       auto graphs = xrt_core::edge::aie::get_graphs(device.get());
@@ -1550,15 +1556,32 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       }
     } // Graph Pass 1
 
-    // Graph Pass 2 : process per graph per kernel metric setting
+    // Graph Pass 2 : process per graph metric setting
     for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
 
       if (0 == graphmetrics[i][0].compare("all")) {
         // already processed
         continue;
       }
+      // Check kernel-name field
+      if (0 != graphmetrics[i][1].compare("all")) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+          "Only \"all\" is supported in kernel-name field for graph_based_aie_tile_metrics. Any other specification is replaced with \"all\".");
+      }
+
       std::vector<tile_type> tiles;
       // Create superset of all tiles across all graphs
+      auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+      if (!graphs.empty() && graphs.end() == std::find(graphs.begin(), graphs.end(), graphmetrics[i][0])) {
+        std::string msg = "Could not find graph named " + graphmetrics[i][0] + ", as specified in graph_based_aie_tile_metrics configuration."
+                          + " Following graphs are present in the design : " + graphs[0] ;
+        for (size_t j = 1; j < graphs.size(); j++) {
+          msg += ", " + graphs[i];
+        }
+        msg += ".";
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+        continue;
+      }
       auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graphmetrics[i][0]);
       std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
 #if 0
@@ -1583,9 +1606,9 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     /*
      * AI Engine Tiles
      * Single or all tiles
-     * tile_based_aie_tile_metrics = <{<column>,<row>}|all>:<off|functions|functions_partial_stalls|functions_all_stalls>[:<memory_stalls|stream_stalls|cascasde_stalls|lock_stalls>]
+     * tile_based_aie_tile_metrics = <{<column>,<row>}|all>:<off|functions|functions_partial_stalls|functions_all_stalls>
      * Range of tiles
-     * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|functions|functions_partial_stalls|functions_all_stalls>[:<memory_stalls|stream_stalls|cascasde_stalls|lock_stalls>]
+     * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|functions|functions_partial_stalls|functions_all_stalls>
      *  
      * MEM Tiles (AIE2 only)
      * Single or all columns
@@ -1624,19 +1647,27 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       if (3 != metrics[i].size()) {
         continue;
       }
-      for (size_t j = 0; j < metrics[i].size(); ++j) {
-        boost::replace_all(metrics[i][j], "{", "");
-        boost::replace_all(metrics[i][j], "}", "");
-      }
-      std::vector<std::string> minTile;
-      boost::split(minTile, metrics[i][0], boost::is_any_of(","));
-      uint32_t minCol = std::stoi(minTile[0]);
-      uint32_t minRow = std::stoi(minTile[1]);
+      std::vector<std::string> minTile, maxTile;
+      uint32_t minCol = 0, minRow = 0;
+      uint32_t maxCol = 0, maxRow = 0;
 
-      std::vector<std::string> maxTile;
-      boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
-      uint32_t maxCol = std::stoi(maxTile[0]);
-      uint32_t maxRow = std::stoi(maxTile[1]);
+      try {
+        for (size_t j = 0; j < metrics[i].size(); ++j) {
+          boost::replace_all(metrics[i][j], "{", "");
+          boost::replace_all(metrics[i][j], "}", "");
+        }
+        boost::split(minTile, metrics[i][0], boost::is_any_of(","));
+        minCol = std::stoi(minTile[0]);
+        minRow = std::stoi(minTile[1]);
+
+        std::vector<std::string> maxTile;
+        boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
+        maxCol = std::stoi(maxTile[0]);
+        maxRow = std::stoi(maxTile[1]);
+      } catch (...) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+           "Tile range specification in tile_based_aie_tile_metrics is not of valid format and hence skipped.");
+      }
 
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         for (uint32_t row = minRow; row <= maxRow; ++row) {
@@ -1658,15 +1689,25 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       if (0 == metrics[i][0].compare("all")) {
         continue;
       }
-      boost::replace_all(metrics[i][0], "{", "");
-      boost::replace_all(metrics[i][0], "}", "");
 
       std::vector<std::string> tilePos;
-      boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
+      uint32_t col = 0, row = 0;
+
+      try {
+        boost::replace_all(metrics[i][0], "{", "");
+        boost::replace_all(metrics[i][0], "}", "");
+
+        boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
+        col = std::stoi(tilePos[0]);
+        row = std::stoi(tilePos[1]);
+      } catch (...) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+           "Tile specification in tile_based_aie_tile_metrics is not of valid format and hence skipped.");
+      }
 
       xrt_core::edge::aie::tile_type tile;
-      tile.col = std::stoi(tilePos[0]);
-      tile.row = std::stoi(tilePos[1]);
+      tile.col = col;
+      tile.row = row;
 //        tiles.push_back(tile);
       mConfigMetrics[tile] = metrics[i][1];
     } // Pass 3 
@@ -1706,10 +1747,10 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
   }
 
   // Configure all resources necessary for trace control and events
+  // Mem tile metrics are not yet supported
   bool
   AieTracePlugin::setMetricsSettings(uint64_t deviceId, void* handle)
   {
-    // TO DO : mem_tile
     std::string metricsConfig = xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics();
 
     std::string graphmetricsConfig = xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics();
@@ -1731,9 +1772,11 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     // Process AIE_trace_settings metrics
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::string> metricsSettings;
+    boost::replace_all(metricsConfig, " ", "");
     boost::split(metricsSettings, metricsConfig, boost::is_any_of(";"));
 
     std::vector<std::string> graphmetricsSettings;
+    boost::replace_all(graphmetricsConfig, " ", "");
     boost::split(graphmetricsSettings, graphmetricsConfig, boost::is_any_of(";"));
 
     getConfigMetricsForTiles(metricsSettings, graphmetricsSettings, handle);
