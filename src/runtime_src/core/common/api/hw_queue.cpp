@@ -2,6 +2,7 @@
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#define XRT_API_SOURCE         // in same dll as API sources
 
 #include "hw_queue.h"
 
