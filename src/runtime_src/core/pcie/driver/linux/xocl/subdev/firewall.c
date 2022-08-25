@@ -434,9 +434,10 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 				(void) xocl_ioaddr_to_baroff(xdev, res->start,
 					&bar_idx, &bar_off);
 			}
+			XOCL_GETTIME(&time);
 			xocl_info(&pdev->dev,
-				"AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx, resource %s",
-				i, val, bar_off, (res && res->name) ? res->name : "N/A");
+				"AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx, resource %s, time %lld",
+				i, val, bar_off, (res && res->name) ? res->name : "N/A", time.tv_sec);
 			if (fw->af[i].version >= IP_VER_11) {
 				xocl_info(&pdev->dev, "ARADDR 0x%lx, AWADDR 0x%lx, ARUSER 0x%x, AWUSER 0x%x",
 				    READ_ARADDR(fw, i), READ_AWADDR(fw, i),
@@ -446,7 +447,6 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;
 				strcpy(fw->err_detected_level_name, fw->level_name[i]);
-				XOCL_GETTIME(&time);
 				fw->err_detected_time = (u64)time.tv_sec;
 				fw->err_detected_araddr = READ_ARADDR(fw, i);
 				fw->err_detected_awaddr = READ_AWADDR(fw, i);
