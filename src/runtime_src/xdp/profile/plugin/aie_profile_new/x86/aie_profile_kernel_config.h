@@ -72,6 +72,25 @@ namespace built_in {
     xrt_core::edge::aie::tile_type tiles[1]; //flexible array member
   };
 
+  struct PSCounterInfo
+  {
+    uint16_t col;
+    uint16_t row;
+    uint16_t startEvent;
+    uint16_t endEvent;
+    uint32_t counterValue;
+    uint64_t resetEvent;
+    uint64_t timerValue;
+    uint32_t payload;
+    double timestamp;
+  }
+
+  struct OutputConfiguration
+  {
+    uint32_t numCounters;
+    PSCounterInfo counters[1];
+  }
+
 } // end namespace built_in
 } // end namespace xdp
 

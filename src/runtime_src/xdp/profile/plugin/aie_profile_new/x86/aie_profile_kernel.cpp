@@ -23,6 +23,7 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
 
+
 // User private data structure container (context object) definition
 class xrtHandles : public pscontext
 {
@@ -30,6 +31,8 @@ class xrtHandles : public pscontext
     XAie_DevInst* aieDevInst = nullptr;
     xaiefal::XAieDev* aieDev = nullptr;
     xclDeviceHandle handle = nullptr;
+    std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
+    std::vector<AIECounter*> counterData;
 
     xrtHandles() = default;
     ~xrtHandles()
@@ -120,7 +123,7 @@ namespace {
   int setMetrics(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice,
                  EventConfiguration& config,
                  const xdp::built_in::InputConfiguration* params,
-                 xdp::built_in::OutputConfiguration* tilecfg)
+                 std::vector<AIECounter> counterData)
   {
     int counterId = 0;
     bool runtimeCounters = false;
@@ -151,9 +154,9 @@ namespace {
         //@TODO Pass Message Back to Host
         //std::string oldModName[NUM_MODULES] = {"core", "memory", "interface"};
         //std::string depMsg  = "The xrt.ini flag \"aie_profile_" + oldModName[module] + "_metrics\" is deprecated "
-                              + " and will be removed in future release. Please use"
-                              + " tile_based_" + moduleNames[module] + "_metrics"
-                              + " under \"AIE_profile_settings\" section.";
+        //                      + " and will be removed in future release. Please use"
+        //                      + " tile_based_" + moduleNames[module] + "_metrics"
+        //                      + " under \"AIE_profile_settings\" section.";
         //xrt_core::message::send(severity_level::warning, "XRT", depMsg);
       }
       int NUM_COUNTERS       = numCounters[module];
@@ -226,18 +229,22 @@ namespace {
 
           auto payload = getCounterPayload(aieDevInst, tile, col, row, startEvent);
 
+
+
+          // @TODO SEND MESSAG/DATA BACK TO HOST
           // Store counter info in database
-          std::string counterName = "AIE Counter " + std::to_string(counterId);
-          (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
-              phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz, 
-              moduleName, counterName);
+          // std::string counterName = "AIE Counter " + std::to_string(counterId);
+          // (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
+          //     phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz, 
+          //     moduleName, counterName);
           counterId++;
           numCounters++;
         }
 
-        std::stringstream msg;
-        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+        //@TODO SEND MESSAGE BACK TO HOST
+        // std::stringstream msg;
+        // msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
+        // xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }
 
@@ -263,6 +270,81 @@ namespace {
     return runtimeCounters;
   }
 
+  void AIEProfilingPlugin::pollAIECounters(XAie_DevInst* aieDevInst, uint32_t index,
+                                           xdp::built_in::OutputConfiguration* countercfg,
+                                           std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>>& mPerfCounters,
+                                           std::vector<AIECounter>& counterData)
+  {
+    
+    // Wait until xclbin has been loaded and device has been updated in database
+    // if (!(db->getStaticInfo().isDeviceReady(index)))
+    //   continue;
+
+    if (!aieDevInst)
+      return;
+
+    uint32_t prevColumn = 0;
+    uint32_t prevRow = 0;
+    uint64_t timerValue = 0;
+
+    // Iterate over all AIE Counters & Timers
+    auto numCounters = db->getStaticInfo().getNumAIECounter(index);
+    for (uint64_t c=0; c < numCounters; c++) {
+      // auto aie = db->getStaticInfo().getAIECounter(index, c);
+      if (!aie)
+        continue;
+
+      PSCounterInfo pscfg = xdp::built_in::PSCounterInfo;
+      pscfg.col = counterData[c]->column;
+      pscfg.row = counterData[c]->row;
+      pscfg.startEvent = counterData[c]->startEvent;
+      pscfg.endEvent = counterData[c]->endEvent;
+      pscfg.resetEvent = counterData[c]->resetEvent;
+      
+      // std::vector<uint64_t> values;
+      // values.push_back(aie->column);
+      // values.push_back(aie->row);
+      // values.push_back(aie->startEvent);
+      // values.push_back(aie->endEvent);
+      // values.push_back(aie->resetEvent);
+
+      // Read counter value from device
+      uint32_t counterValue;
+      if (mPerfCounters.empty()) {
+        // Compiler-defined counters
+        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
+        XAie_PerfCounterGet(aieDevInst, tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
+      }
+      else {
+        // Runtime-defined counters
+        auto perfCounter = mPerfCounters.at(c);
+        perfCounter->readResult(counterValue);
+      }
+      pscfg.counterValue = counterValue;
+      // values.push_back(counterValue);
+
+      // Read tile timer (once per tile to minimize overhead)
+      if ((aie->column != prevColumn) || (aie->row != prevRow)) {
+        prevColumn = aie->column;
+        prevRow = aie->row;
+        XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
+        XAie_ReadTimer(aieDevInst, tileLocation, XAIE_CORE_MOD, &timerValue);
+      }
+      pscfg.timerValue = timerValue;
+      pscfg.payload = counterData[c].payload;
+
+      // values.push_back(timerValue);
+      // values.push_back(aie->payload);
+
+      // Get timestamp in milliseconds
+      double timestamp = xrt_core::time_ns() / 1.0e6;
+      // db->getDynamicInfo().addAIESample(index, timestamp, values);
+      pscfg.timestamp = timestamp;
+      countercfg->counters[c] = pscfg;
+    }
+
+  }
+
 
 } // end anonymous namespace
 
@@ -284,7 +366,7 @@ xrtHandles* aie_profile_config_init (xclDeviceHandle handle, const xuid_t xclbin
 
 // The main PS kernel functionality
 __attribute__((visibility("default")))
-int aie_profile_config(uint8_t* input, uint8_t* output, xrtHandles* constructs)
+int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHandles* constructs)
 {
   if (constructs == nullptr)
     return 0;
@@ -307,26 +389,29 @@ int aie_profile_config(uint8_t* input, uint8_t* output, xrtHandles* constructs)
   xdp::built_in::InputConfiguration* params =
     reinterpret_cast<xdp::built_in::InputConfiguration*>(input);
 
-  if (!checkInput(params))
-    return 0;
-
   EventConfiguration config;
   config.initialize(params);
 
-  // Using malloc/free instead of new/delete because the struct treats the
-  // last element as a variable sized array
-  std::size_t total_size = sizeof(xdp::built_in::OutputConfiguration) + sizeof(xdp::built_in::TileData[params->numTiles - 1]);
-  xdp::built_in::OutputConfiguration* tilecfg =
-    (xdp::built_in::OutputConfiguration*)malloc(total_size);
+  if (iteration == 0) {
+    // Using malloc/free instead of new/delete because the struct treats the
+    // last element as a variable sized array
+    // std::size_t total_size = sizeof(xdp::built_in::OutputConfiguration) + sizeof(xdp::built_in::TileData[params->numTiles - 1]);
+    // xdp::built_in::OutputConfiguration* tilecfg =
+    //   (xdp::built_in::OutputConfiguration*)malloc(total_size);
 
-  tilecfg->numTiles = params->numTiles;
+    // tilecfg->numTiles = params->numTiles;
+    std::cout << "Setting the Metrics!" << std::endl;
+    int success = setMetrics(constructs->aieDevInst, constructs->aieDev,
+                            config, params, constructs->counterData);
+    // uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
+    // std::memcpy(output, out, total_size);   
+    std::cout << "setMetrics Function finished with a value of : " << success << std::endl;
+    // free(tilecfg); 
+  } else if (iteration == 1) {
+    std::cout << "Polling!" << std::endl;
 
-  int success = setMetrics(constructs->aieDevInst, constructs->aieDev,
-                           config, params, tilecfg);
-  uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
-  std::memcpy(output, out, total_size);   
 
-  free(tilecfg); 
+  }
   return 0;
 }
 
