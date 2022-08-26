@@ -221,7 +221,10 @@ namespace xrt {
       }
 
       ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
-      args_from_host[return_offset] = (uint32_t)kernel_return;
+      if (kernel_return >= 0)
+	args_from_host[return_offset] = static_cast<uint32_t>(kernel_return);
+      else
+	args_from_host[return_offset] = 255; // Exit status out of range if returning negative value
 
       // Unmap Buffers
       for(auto i:bo_list) {
