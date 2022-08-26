@@ -753,12 +753,10 @@ namespace xclhwemhal2 {
           if (mLogStream.is_open())
           {
             mLogStream << __func__ << " DISPLAY environment is not available so expect an exit from the application " << std::endl;
-
-            std::string dMsg = "ERROR: [HW-EMU 26] DISPLAY environment is not available so expect an exit from the application";
-            logMessage(dMsg, 0);
             //DEBUG_MSG_COUT(" DISPLAY environment is not available so expect an exit from the application ");
-            
           }
+          std::string dMsg = "ERROR: [HW-EMU 26] DISPLAY environment is not available so expect an exit from the application";
+          logMessage(dMsg, 0);
           exit(EXIT_FAILURE);
         }
         
