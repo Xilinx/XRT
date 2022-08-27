@@ -99,7 +99,7 @@ static void cu_stats_timer(struct timer_list *t)
 #endif
 	unsigned long   flags;
 
-	if (xcu->stats.stats_enabled)
+	if (!xcu->stats.stats_enabled)
 		return;
 
 	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
