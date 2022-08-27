@@ -1560,7 +1560,7 @@ static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
 		XOCL_XGQ_DOWNLOAD_TIME);
 	if (ret != len) {
 		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
-		ret = -EIO;
+		return -EIO;
 	}
 
 	XGQ_INFO(xgq, "successfully download len %ld", len);
