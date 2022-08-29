@@ -351,7 +351,7 @@ public:
   hw_queue_impl(xrt::hw_context hwctx)
     : m_hwctx(std::move(hwctx))
     , m_core_device(hw_context_int::get_core_device_raw(m_hwctx))
-    , m_hdl(m_core_device->create_hw_queue(hwctx))
+    , m_hdl(m_core_device->create_hw_queue(m_hwctx))
     , m_kds_device(get_kds_device(m_core_device))
   {}
 
