@@ -3130,8 +3130,13 @@ struct clk_scaling_info : request
   get(const device*) const = 0;
 };
 
-// xgq_scaling_configure request is used to load clock scaling overrides.
+// xgq_scaling_configure request is used to retrieve & load clock scaling feature overrides.
 // Applicable on versal platforms now, but can be extended to support Alveo platforms also.
+// get() returns clock scaling feature override values in the "x,y,z" format, where
+//   x - shows if clock scaling is enabled. Value 1 means enabled, 0 means disabled.
+//   y - shows power override value in Watts.
+//   z - shows temperature override value in Celsius.
+// put() loads the user specified clock scaling override settings.
 struct xgq_scaling_configure : request
 {
   using result_type = std::string; // get value type
