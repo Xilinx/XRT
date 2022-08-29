@@ -718,6 +718,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_FIREWALL:
+		pr_info("%s\n", req->data);
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
 		err_last.pid = 0;

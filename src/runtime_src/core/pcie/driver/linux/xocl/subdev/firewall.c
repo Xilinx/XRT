@@ -426,6 +426,7 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 	if (!FW_PRIVILEGED(fw))
 		return 0;
 
+	/* Check for any tripped firewall events */
 	for (i = 0; i < fw->max_level; i++) {
 		val = IS_FIRED(fw, i);
 		if (val) {
@@ -464,6 +465,7 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 	fw->curr_status = val;
 	fw->curr_level = i >= fw->max_level ? -1 : i;
 
+	/* Print out all firewall status information if the firewall is tripped */
 	if (val) {
 		for (i = 0; i < fw->max_level; i++) {
 			res = platform_get_resource(pdev, IORESOURCE_MEM, i);
