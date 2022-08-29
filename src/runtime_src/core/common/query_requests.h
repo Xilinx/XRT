@@ -3130,6 +3130,8 @@ struct clk_scaling_info : request
   get(const device*) const = 0;
 };
 
+// xgq_scaling_configure request is used to load clock scaling overrides.
+// Applicable on versal platforms now, but can be extended to support Alveo platforms also.
 struct xgq_scaling_configure : request
 {
   using result_type = std::string; // get value type
