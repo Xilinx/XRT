@@ -17,6 +17,7 @@
  */
 
 #ifndef _WIN32
+#ifndef SKIP_IOCTL
 
 #include <chrono>
 #include <cstring>
@@ -114,4 +115,5 @@ int IOCtlTraceFifoLite::write(uint64_t /*offset*/, size_t size, void* /*data*/)
 }
 
 }
+#endif
 #endif

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2020 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -16,6 +17,7 @@
  */
 
 #ifndef _WIN32
+#ifndef SKIP_IOCTL
 
 #include <sys/fcntl.h>
 #include <sys/mman.h>
@@ -132,4 +134,5 @@ int IOCtlTraceS2MM::write(uint64_t /*offset*/, size_t size, void* /*data*/)
 }
 
 }
+#endif
 #endif

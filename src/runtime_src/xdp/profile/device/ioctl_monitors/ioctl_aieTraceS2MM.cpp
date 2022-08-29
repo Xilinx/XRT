@@ -17,6 +17,7 @@
  */
 
 #ifndef _WIN32
+#ifndef SKIP_IOCTL
 
 #include <sys/fcntl.h>
 #include <sys/mman.h>
@@ -136,4 +137,5 @@ int IOCtlAIETraceS2MM::write(uint64_t /*offset*/, size_t size, void* /*data*/)
 }
 
 }
+#endif
 #endif
