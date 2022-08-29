@@ -438,24 +438,26 @@ static void free_channels(struct platform_device *pdev)
 	struct mm_channel *chan;
 	u32	write, qidx;
 	int i, ret = 0;
+	char	ebuf[MM_EBUF_LEN + 1];
 
 	qdma = platform_get_drvdata(pdev);
 	if (!qdma || !qdma->channel)
 		return;
 
 	for (i = 0; i < qdma->channel * 2; i++) {
+		memset(&ebuf, 0, sizeof (ebuf));
 		write = i / qdma->channel;
 		qidx = i % qdma->channel;
 		chan = &qdma->chans[write][qidx];
 
 		channel_sysfs_destroy(chan);
 
-		ret = qdma_queue_stop(qdma->dma_hndl, chan->queue, NULL, 0);
+		ret = qdma_queue_stop(qdma->dma_hndl, chan->queue, ebuf, MM_EBUF_LEN);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Stopping queue for "
 				"channel %d failed, ret %x", qidx, ret);
 		}
-		ret = qdma_queue_remove(qdma->dma_hndl, chan->queue, NULL, 0);
+		ret = qdma_queue_remove(qdma->dma_hndl, chan->queue, ebuf, MM_EBUF_LEN);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
 				"channel %d failed, ret %x", qidx, ret);
