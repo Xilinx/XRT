@@ -88,6 +88,27 @@ static void cu_timer(struct timer_list *t)
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+static void cu_stats_timer(unsigned long data)
+{
+	struct xrt_cu *xcu = (struct xrt_cu *)data;
+#else
+static void cu_stats_timer(struct timer_list *t)
+{
+	struct xrt_cu *xcu = from_timer(xcu, t, stats.stats_timer);
+#endif
+	unsigned long   flags;
+
+	if (!xcu->stats.stats_enabled)
+		return;
+
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	xcu->stats.stats_tick++;
+	xrt_cu_incr_sq_count(xcu);
+	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+	mod_timer(&xcu->stats.stats_timer, jiffies + CU_STATS_TIMER);
+}
+
 static void xrt_cu_switch_to_interrupt(struct xrt_cu *xcu)
 {
 	xrt_cu_enable_intr(xcu, CU_INTR_DONE | CU_INTR_READY);
@@ -141,6 +162,88 @@ static bool abort_handle(struct kds_command *xcmd, void *cond)
 	return (xcmd->exec_bo_handle == handle)? true : false;
 }
 
+static inline void xrt_cu_init_ecmd_and_sq_count(struct xrt_cu *xcu)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	xcu->stats.sq_total = 0;
+	xcu->stats.sq_count = 0;
+	xcu->stats.usage_curr = 0;
+	xcu->stats.usage_prev = 0;
+	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+}
+
+static inline void xrt_cu_incr_ecmd_count(struct xrt_cu *xcu)
+{
+	unsigned long flags;
+
+	if (!xcu->stats.stats_enabled)
+		return;
+
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	xcu->stats.usage_curr += 1;
+	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+}
+
+static inline void xrt_cu_reset_sq_count(struct xrt_cu *xcu)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	xcu->stats.sq_total = 0;
+	xcu->stats.sq_count = 0;
+	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+}
+
+void xrt_cu_incr_sq_count(struct xrt_cu *xcu)
+{
+	if (!xcu->stats.stats_enabled)
+		return;
+
+	xcu->stats.sq_total += xcu->num_sq;
+	xcu->stats.sq_count += 1;
+}
+
+static inline void xrt_cu_get_time(u64 *time)
+{
+	*time = ktime_to_ns(ktime_get());
+}
+
+static inline void xrt_cu_idle_start(struct xrt_cu *xcu)
+{
+	unsigned long flags;
+
+	if (!xcu->stats.stats_enabled)
+		return;
+
+	if (xcu->num_sq > 0 || xcu->num_rq > 0 || xcu->num_pq > 0)
+		return;
+	
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	xrt_cu_get_time(&xcu->stats.idle_start);
+	xcu->stats.idle = 1;
+	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+}
+
+static inline void xrt_cu_idle_end(struct xrt_cu *xcu)
+{
+	unsigned long flags;
+
+	if (!xcu->stats.stats_enabled)
+		return;
+
+	if (xcu->num_pq == 0 && xcu->num_sq == 0 && xcu->num_rq == 0)
+		return;
+
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	if (xcu->stats.idle) {
+		xrt_cu_get_time(&xcu->stats.idle_end);
+		xcu->stats.idle_total += xcu->stats.idle_end - xcu->stats.idle_start;
+		xcu->stats.idle = 0;
+	}
+	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+}
 /**
  * process_cq() - Process completed queue
  * @xcu: Target XRT CU
@@ -163,10 +266,10 @@ static inline void process_cq(struct xrt_cu *xcu)
 		set_xcmd_timestamp(xcmd, xcmd->status);
 		xrt_cu_circ_produce(xcu, CU_LOG_STAGE_CQ, (uintptr_t)xcmd);
 		xcmd->cb.notify_host(xcmd, xcmd->status);
+		xrt_cu_incr_ecmd_count(xcu);
 		list_del(&xcmd->list);
 		xcmd->cb.free(xcmd);
 		--xcu->num_cq;
-		xcu->cu_stat.usage++;
 	}
 }
 
@@ -219,6 +322,7 @@ get_complete_and_out:
 		--xcu->num_sq;
 		xcmd = xrt_cu_get_complete(xcu);
 	}
+	xrt_cu_idle_start(xcu);
 }
 
 /**
@@ -298,7 +402,8 @@ static inline int process_rq(struct xrt_cu *xcu)
 move_cmd:
 	move_to_queue(xcmd, dst_q, dst_len);
 	--xcu->num_rq;
-
+	if (xcu->stats.max_sq_length < xcu->num_sq)
+		xcu->stats.max_sq_length = xcu->num_sq;
 	return 1;
 }
 
@@ -319,6 +424,8 @@ static inline void process_pq(struct xrt_cu *xcu)
 	 */
 	if (!xcu->num_pq)
 		return;
+
+	xrt_cu_idle_end(xcu);
 	spin_lock_irqsave(&xcu->pq_lock, flags);
 	if (xcu->num_pq) {
 		list_splice_tail_init(&xcu->pq, &xcu->rq);
@@ -801,6 +908,7 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	sema_init(&xcu->sem, 0);
 	sema_init(&xcu->sem_cu, 0);
 	mutex_init(&xcu->read_regs.xcr_lock);
+	spin_lock_init(&xcu->stats.xcs_lock);
 	xcu->read_regs.xcr_start = -1;
 	xcu->read_regs.xcr_end = -1;
 
@@ -811,12 +919,14 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	xcu->crc_buf.head = 0;
 	xcu->crc_buf.tail = 0;
 	xcu->crc_buf.buf = xcu->log_buf;
+	xrt_cu_init_ecmd_and_sq_count(xcu);
 
-	memset(&xcu->cu_stat, 0, sizeof(struct per_custat));
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	setup_timer(&xcu->timer, cu_timer, (unsigned long)xcu);
+	setup_timer(&xcu->stats.stats_timer, cu_stats_timer, (unsigned long)xcu);
 #else
 	timer_setup(&xcu->timer, cu_timer, 0);
+	timer_setup(&xcu->stats.stats_timer, cu_stats_timer, 0);
 #endif
 	atomic_set(&xcu->tick, 0);
 	xcu->start_tick = 0;
@@ -841,6 +951,7 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 		(void) kthread_stop(xcu->thread);
 
 	del_timer_sync(&xcu->timer);
+	del_timer_sync(&xcu->stats.stats_timer);
 	return;
 }
 
@@ -939,12 +1050,147 @@ ssize_t show_cu_info(struct xrt_cu *xcu, char *buf)
 
 ssize_t show_formatted_cu_stat(struct xrt_cu *xcu, char *buf)
 {
-	ssize_t sz = 0;
-	char *fmt = "%lld %d\n";
-	int in_flight = xcu->num_sq;
+	ssize_t 	   sz = 0;
+	u32 		   in_flight;
+	u32 		   max_running;
+	u32 		   average_sq_len;
+	u32                idle;
+	u64 		   usage_curr;
+	u64 		   cu_idle;
+	u64 		   iops;
+	u64 		   last_timestamp;
+	u64                new_ts;
+	u64                incre_ecmds;
+	/* parameters for average sq length */
+	u32 		   sq_total;
+	u32 		   sq_count;
+	u32                max_sq_length;
+	/* parameters for idle percentage*/
+	u64                idle_start;
+	u64                last_read_idle_start;
+	u64		   delta_idle_time;
 
-	sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt,
-			xcu->cu_stat.usage, in_flight);
+	unsigned long      flags;
+	char 		   *fmt = "%llu %llu %u %u %u %u %llu %llu\n";
+
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	in_flight = xcu->num_sq;
+	max_running = xcu->max_running;
+	usage_curr = xcu->stats.usage_curr;
+	sq_total = xcu->stats.sq_total;
+	sq_count = xcu->stats.sq_count;
+	max_sq_length = xcu->stats.max_sq_length;
+	incre_ecmds = xcu->stats.usage_curr - xcu->stats.usage_prev;
+	xcu->stats.usage_prev = xcu->stats.usage_curr;
+	/* for idle percentage compute */
+	idle_start = xcu->stats.idle_start;
+	last_read_idle_start = xcu->stats.last_read_idle_start;
+	delta_idle_time = xcu->stats.idle_total - xcu->stats.last_idle_total;
+	idle = xcu->stats.idle;
+	xrt_cu_get_time(&new_ts);
+	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+
+	last_timestamp = xcu->stats.last_timestamp;
+	average_sq_len = xrt_cu_get_average_sq(xcu, sq_total, sq_count);
+	iops = xrt_cu_get_iops(xcu, last_timestamp, incre_ecmds, new_ts);
+	cu_idle = xrt_cu_get_idle(xcu, last_timestamp, idle_start, last_read_idle_start, delta_idle_time, idle, new_ts);
+	xcu->stats.last_timestamp = new_ts;
+
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt, usage_curr, incre_ecmds, 
+			in_flight, average_sq_len, max_sq_length, max_running, iops, cu_idle);
+	
+	return sz;
+}
+
+ssize_t show_stats_begin(struct xrt_cu *xcu, char *buf)
+{
+	ssize_t		sz = 0;
+	char 		*fmt = "stats_begin \n";
+	unsigned long   flags;
+
+	xcu->stats.stats_enabled = 1;
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	xcu->stats.stats_tick = 0;
+	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+	mod_timer(&xcu->stats.stats_timer, jiffies + CU_STATS_TIMER);
+
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt);
 
 	return sz;
+}
+
+ssize_t show_stats_end(struct xrt_cu *xcu, char *buf)
+{
+	ssize_t sz = 0;
+	char *fmt = "stats_end \n";
+
+	xcu->stats.stats_enabled = 0;
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt);
+
+	return sz;
+}
+
+u64 xrt_cu_get_idle(struct xrt_cu *xcu, u64 last_timestamp, u64 idle_start, u64 last_read_idle_start, u64 delta_idle_time, u32 idle, u64 new_ts)
+{
+	u64       	delta_xcu_time;	
+	u64             cu_idle;
+	u32             ts_status;
+	unsigned long   flags;
+
+	delta_xcu_time = new_ts - last_timestamp;
+
+	if(idle == 1) {
+		if (xcu->stats.last_ts_status) {
+			cu_idle = delta_idle_time + new_ts - idle_start;
+		} else {
+			if (delta_idle_time == 0) {
+				cu_idle = delta_xcu_time;
+			} else {
+				cu_idle = delta_idle_time - (last_timestamp - last_read_idle_start) + (new_ts - idle_start); 
+			}
+		}
+		ts_status = 0;
+	} else {
+		if (xcu->stats.last_ts_status) {
+			cu_idle = delta_idle_time;
+		} else {
+			cu_idle = delta_idle_time - (last_timestamp - last_read_idle_start);
+		}
+		ts_status = 1;
+	}
+
+	cu_idle = cu_idle * 100 / delta_xcu_time;
+
+	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
+	xcu->stats.last_read_idle_start = idle_start;
+	xcu->stats.last_idle_total = xcu->stats.idle_total;
+	xcu->stats.last_ts_status = ts_status;
+	spin_unlock_irqrestore(&xcu->stats.xcs_lock, flags);
+
+	return cu_idle;
+}
+
+u64 xrt_cu_get_iops(struct xrt_cu *xcu, u64 last_timestamp, u64 incre_ecmds, u64 new_ts)
+{
+	u64 		iops = 0;
+
+	if (new_ts - last_timestamp > 0 && incre_ecmds != 0)
+		iops = incre_ecmds * 1000000000 / (new_ts - last_timestamp);
+	else
+		iops = 0;
+
+	return iops;
+}
+
+u64 xrt_cu_get_average_sq(struct xrt_cu *xcu, u32 sq_total, u32 sq_count)
+{
+	u32 		average_sq_len = 0;
+	
+	if (sq_total == 0 || sq_count == 0)
+		return average_sq_len;
+
+	average_sq_len = sq_total / sq_count;
+	xrt_cu_reset_sq_count(xcu);
+	
+	return average_sq_len;
 }

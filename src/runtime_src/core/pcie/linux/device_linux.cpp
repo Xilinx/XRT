@@ -526,19 +526,21 @@ struct clk_scaling_info
   {
     auto pdev = get_pcidev(device);
     std::vector<std::string> stats;
+    result_type ctStats;
     std::string errmsg;
     bool is_versal = false;
 
     pdev->sysfs_get<bool>("", "versal", errmsg, is_versal, false);
 	if (is_versal) {
       pdev->sysfs_get("xgq_vmr", "clk_scaling_stat_raw", errmsg, stats);
+      if (!errmsg.empty())
+        return ctStats;
 	} else {
       // Backward compatibilty check.
       // Read XMC sysfs nodes
       return get_legacy_clk_scaling_stat(device);
     }
 
-    result_type ctStats;
     data_type data = {};
     //parse one line at a time
     // The clk_scaling_stat_raw is printing in formatted string of each line

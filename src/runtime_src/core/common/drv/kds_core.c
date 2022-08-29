@@ -183,6 +183,9 @@ static int kds_polling_thread(void *data)
 		busy_cnt = 0;
 
 		list_for_each_entry(xcu, &kds->alive_cus, cu) {
+			if (xcu->thread)
+				continue;
+
 			if (xrt_cu_process_queues(xcu) == XCU_BUSY)
 				busy_cnt += 1;
 		}
@@ -1661,7 +1664,7 @@ static int kds_cfg_legacy_update(struct kds_sched *kds)
 	}
 
 run_polling:
-	if (!KDS_SETTING(kds->cu_intr) && !kds->polling_thread) {
+	if ((!KDS_SETTING(kds->cu_intr) && !kds->polling_thread) || kds->scu_mgmt.num_cus) {
 		kds->polling_stop = 0;
 		kds->polling_thread = kthread_run(kds_polling_thread, kds, "kds_poll");
 		if (IS_ERR(kds->polling_thread)) {

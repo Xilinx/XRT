@@ -372,6 +372,10 @@ set_target_properties(xdp_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION
 set_target_properties(xdp_hal_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
+# Install directories are different for Windows and Linux
+
+if (NOT WIN32)
+
 install (TARGETS xdp_hal_plugin
                  xdp_hal_api_interface_plugin
                  xdp_lop_plugin
@@ -384,6 +388,23 @@ install (TARGETS xdp_hal_plugin
                  xdp_pl_deadlock_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
+
+else()
+
+install (TARGETS xdp_hal_plugin
+                 xdp_hal_api_interface_plugin
+                 xdp_lop_plugin
+                 xdp_native_plugin
+                 xdp_opencl_trace_plugin
+                 xdp_opencl_counters_plugin
+                 xdp_user_plugin
+                 xdp_device_offload_plugin
+                 xdp_hal_device_offload_plugin
+                 xdp_pl_deadlock_plugin
+  LIBRARY DESTINATION ${XRT_INSTALL_BIN_DIR}
+)
+
+endif()
 
 # ============ Linux Specific Plugin modules =============
 if (NOT WIN32)
