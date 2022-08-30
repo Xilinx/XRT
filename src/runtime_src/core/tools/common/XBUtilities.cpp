@@ -262,12 +262,10 @@ XBUtilities::xrt_xbutil_version_cmp(bool force)
     std::string drv_version = driver.get<std::string>("version", "<unknown>");
     if (drv_name.compare("xocl") == 0 && drv_version.compare("unknown") != 0 && xrt_version.compare(drv_version) != 0) {
       const auto & errMsg = boost::str(boost::format("Unexpected XRT Driver version (%s) was found. Expected %s, to match XRT tools.") % drv_version % xrt_version);
-      if (force) {
-        std::cout << errMsg << std::endl;
-        std::cout << "Bypassing mismatch with --force." << std::endl;
-      } else {
-        throw std::runtime_error(errMsg);
-      }
+      if (force)
+        std::cout << boost::format("%s\nBypassing mismatch with --force.") % errMsg << std::endl;
+      else
+        throw std::runtime_error(boost::str(boost::format("%s Bypass with --force if necessary.") % errMsg));
     }
   }
 }
