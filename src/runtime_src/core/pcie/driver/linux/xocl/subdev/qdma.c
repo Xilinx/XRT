@@ -461,12 +461,12 @@ static void free_channels(struct platform_device *pdev)
 		ret = qdma_queue_stop(qdma->dma_hndl, chan->queue, ebuf, MM_EBUF_LEN);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Stopping queue for "
-				"channel %d failed, ret %x", qidx, ret);
+				"channel %d failed, ret: %x, ebuf: %s", qidx, ret, ebuf);
 		}
 		ret = qdma_queue_remove(qdma->dma_hndl, chan->queue, ebuf, MM_EBUF_LEN);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
-				"channel %d failed, ret %x", qidx, ret);
+				"channel %d failed, ret: %x, ebuf: %s", qidx, ret, ebuf);
 		}
 	}
 	if (ebuf)
