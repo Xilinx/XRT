@@ -438,14 +438,20 @@ static void free_channels(struct platform_device *pdev)
 	struct mm_channel *chan;
 	u32	write, qidx;
 	int i, ret = 0;
-	char	ebuf[MM_EBUF_LEN + 1];
+	char *ebuf;
 
 	qdma = platform_get_drvdata(pdev);
 	if (!qdma || !qdma->channel)
 		return;
 
+	ebuf = devm_kzalloc(&pdev->dev, MM_EBUF_LEN, GFP_KERNEL);
+	if (ebuf == NULL) {
+		xocl_err(&pdev->dev, "Alloc ebuf mem failed");
+		return;
+	}
+
 	for (i = 0; i < qdma->channel * 2; i++) {
-		memset(&ebuf, 0, sizeof (ebuf));
+		memset(ebuf, 0, MM_EBUF_LEN);
 		write = i / qdma->channel;
 		qidx = i % qdma->channel;
 		chan = &qdma->chans[write][qidx];
@@ -463,6 +469,8 @@ static void free_channels(struct platform_device *pdev)
 				"channel %d failed, ret %x", qidx, ret);
 		}
 	}
+	if (ebuf)
+		devm_kfree(&pdev->dev, ebuf);
 	if (qdma->chans[0])
 		devm_kfree(&pdev->dev, qdma->chans[0]);
 	if (qdma->chans[1])
