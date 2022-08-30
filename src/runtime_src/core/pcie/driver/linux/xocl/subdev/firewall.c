@@ -152,9 +152,6 @@ struct firewall_ip {
 struct firewall {
 	struct firewall_ip	af[MAX_LEVEL];
 	struct xcl_firewall	status;
-	struct xcl_firewall	cache;
-	ktime_t			cache_expires;
-	u64			cache_expire_secs;
 	char		level_name[MAX_LEVEL][50];
 
 	bool		inject_firewall;
@@ -167,14 +164,7 @@ struct firewall {
 static int clear_firewall(struct platform_device *pdev);
 static u32 check_firewall(struct platform_device *pdev, int *level);
 
-static void set_fw_data(struct firewall *fw, struct xcl_firewall *fw_status)
-{
-	memcpy(&fw->cache, fw_status, sizeof(struct xcl_firewall));
-	fw->cache_expires = ktime_add(ktime_get_boottime(),
-		ktime_set(fw->cache_expire_secs, 0));
-}
-
-static void fw_read_from_peer(struct platform_device *pdev)
+static void get_fw_status(struct platform_device *pdev)
 {
 	struct firewall *fw = platform_get_drvdata(pdev);
 	struct xcl_mailbox_subdev_peer subdev_peer = {0};
@@ -197,39 +187,19 @@ static void fw_read_from_peer(struct platform_device *pdev)
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
+	/* Request the firewall status information from the mgmt driver */
 	(void) xocl_peer_request(xdev,
 		mb_req, reqlen, &fw_status, &resp_len, NULL, NULL, 0, 0);
-	set_fw_data(fw, &fw_status);
+	/* Copy over the firewall status information */
+	memcpy(&fw->status, &fw_status, sizeof(struct xcl_firewall));
 
 	vfree(mb_req);
 }
 
-static void get_fw_status(struct platform_device *pdev)
+static int 
+get_prop_internal(const struct xcl_firewall *fw_status, u32 prop, void *val)
 {
-	struct firewall *fw = platform_get_drvdata(pdev);
-	ktime_t now = ktime_get_boottime();
-
-	if (ktime_compare(now, fw->cache_expires) > 0)
-		fw_read_from_peer(pdev);
-}
-
-static int get_prop(struct platform_device *pdev, u32 prop, void *val)
-{
-	struct firewall *fw;
-	struct xcl_firewall *fw_status;
 	int ret = 0;
-
-	fw = platform_get_drvdata(pdev);
-	BUG_ON(!fw);
-
-	if (FW_PRIVILEGED(fw)) {
-		(void) check_firewall(pdev, NULL);
-		fw_status = &fw->status;
-	} else {
-		get_fw_status(pdev);
-		fw_status = &fw->cache;
-	}
-
 	switch (prop) {
 		case XOCL_AF_PROP_TOTAL_LEVEL:
 			*(u64 *)val = fw_status->max_level;
@@ -257,6 +227,25 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 			ret = -EINVAL;
 	}
 	return ret;
+}
+
+static int get_prop(struct platform_device *pdev, u32 prop, void *val)
+{
+	struct firewall *fw;
+	int ret = 0;
+
+	fw = platform_get_drvdata(pdev);
+	BUG_ON(!fw);
+
+	/* If in mgmt driver get the firewall status */
+	if (FW_PRIVILEGED(fw)) {
+		(void) check_firewall(pdev, NULL);
+		return get_prop_internal(&fw->status, prop, val);
+	}
+
+	/* Non-privilege requests need to pull the data from the mgmt driver */
+	get_fw_status(pdev);
+	return get_prop_internal(&fw->cache, prop, val);
 }
 
 /* sysfs support */
