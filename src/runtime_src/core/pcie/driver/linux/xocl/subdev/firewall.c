@@ -152,13 +152,13 @@ struct firewall_ip {
 struct firewall {
 	struct firewall_ip	af[MAX_LEVEL];
 	struct xcl_firewall	status;
-	char		level_name[MAX_LEVEL][50];
+	char				level_name[MAX_LEVEL][50];
 
-	bool		inject_firewall;
-	u64			err_detected_araddr;
-	u64			err_detected_awaddr;
-	u32			err_detected_aruser;
-	u32			err_detected_awuser;
+	bool				inject_firewall;
+	u64					err_detected_araddr;
+	u64					err_detected_awaddr;
+	u32					err_detected_aruser;
+	u32					err_detected_awuser;
 };
 
 static int clear_firewall(struct platform_device *pdev);
