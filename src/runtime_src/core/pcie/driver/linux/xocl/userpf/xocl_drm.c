@@ -1013,6 +1013,7 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	/* Initialize with max and min possible value */
         mm_start_addr = 0xffffFFFFffffFFFF;
         mm_end_addr = 0;
+	drm_p->cma_bank_idx = -1;
 
         /* Initialize all the banks and their sizes */
         /* Currently only fixed sizes are supported */
@@ -1135,7 +1136,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		return err;
 	}
 
-	drm_p->cma_bank_idx = -1;
 	for (i = 0; i < group_topo->m_count; i++) {
 		mem_data = &group_topo->m_mem_data[i];
 		ddr_bank_size = mem_data->m_size * 1024;
