@@ -6,7 +6,7 @@
 # <path>/* matches files under <path> but *not* further nested files.
 
 
-src/runtime_src/core/tools/ @rozumx @chvamshi-xilinx @ashivangi
+src/runtime_src/core/tools/ @rozumx @chvamshi-xilinx
 src/runtime_src/core/include/ @stsoe
 src/runtime_src/core/include/xclbin.h @rozumx
 src/runtime_src/core/include/xrt/ @stsoe @uday610 @vboggara-xilinx
@@ -21,8 +21,8 @@ src/runtime_src/core/edge/drm/ @chvamshi-xilinx @mamin506
 src/runtime_src/core/edge/common_em/ @venkatp-xilinx
 src/runtime_src/core/edge/hw_em/ @venkatp-xilinx
 src/runtime_src/core/edge/sw_em/ @venkatp-xilinx
-src/runtime_src/core/edge/ps_kernels/ @jeffli-xilinx @rozumx
-src/runtime_src/core/edge/skd/ @jeffli-xilinx
+src/runtime_src/core/edge/ps_kernels/ @jeffli-xilinx @rozumx @sonals @stsoe
+src/runtime_src/core/edge/skd/ @jeffli-xilinx @sonals @stsoe
 src/runtime_src/core/edge/user/ @chvamshi-xilinx @stsoe
 src/runtime_src/core/edge/user/plugin/ @jvillarre
 src/runtime_src/core/edge/user/aie/ @larry9523

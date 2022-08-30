@@ -196,5 +196,10 @@ void AIM::showProperties()
     ProfileIP::showProperties();
 }
 
+bool AIM::hasCoarseMode() const
+{
+    return ((properties & IP::AIM::mask::PROPERTY_COARSE_MODE_OFF) ? false : true);
+}
+
 }   // namespace xdp
 

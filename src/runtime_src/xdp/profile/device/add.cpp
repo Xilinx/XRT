@@ -16,7 +16,7 @@
 
 #include "add.h"
 
-#define SYSTEM_DEADLOCK_OFFSET  0x0
+constexpr uint32_t SYSTEM_DEADLOCK_OFFSET = 0x0;
 
 namespace xdp {
 

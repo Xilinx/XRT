@@ -2404,6 +2404,7 @@ struct resource *xocl_get_iores_with_idx_byname(struct platform_device *pdev,
 				       char *name, int idx);
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 				       char *name);
+int xocl_get_irq_with_idx_byname(struct platform_device *pdev, char *name, int index);
 int xocl_get_irq_byname(struct platform_device *pdev, char *name);
 void __iomem *xocl_devm_ioremap_res(struct platform_device *pdev, int index);
 void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,

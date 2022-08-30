@@ -13,6 +13,8 @@
 
 #ifdef __cplusplus
 
+#include <map>
+
 namespace xrt {
 
 /**
@@ -27,8 +29,26 @@ class hw_context_impl;
 class hw_context : public detail::pimpl<hw_context_impl>
 {
 public:
+
   /**
-   * @enum priority - tbd
+   * Experimental specification of QoS requirements
+   *
+   * Free formed key-value entry.
+   *
+   * Supported keys are:
+   *  - tops                   // tera operations per second
+   *  - fps                    // frames per second
+   *  - dma_bandwidth          // gigabytes per second
+   *  - latency                // ??
+   *  - frame_execution_time   // ??
+   *  - priority               // ??
+   *
+   * Currently ignore for legacy platforms
+   */
+  using qos_type = std::map<std::string, uint32_t>;
+
+  /**
+   * @enum access_mode - legacy access mode
    *
    * @var exclusive
    *  Create a context for exclusive access to shareable resources.
@@ -36,11 +56,12 @@ public:
    * @var shared
    *  Create a context for shared access to shareable resources
    *  Legacy compute unit access control.
+   *
+   * Access mode is mutually exclusive with qos
    */
-  enum class qos : xcl_qos_type {
-    exclusive = XCL_QOS_EXCLUSIVE,  // legacy
-    shared = XCL_QOS_SHARED,        // legacy
-    reserved = 0
+  enum class access_mode : uint8_t {
+    exclusive = 0,
+    shared = 1
   };
 
 public:
@@ -50,7 +71,7 @@ public:
   hw_context() = default;
 
   /**
-   * hw_context() - Constructor
+   * hw_context() - Constructor with QoS control
    *
    * @param device
    *  Device where context is created
@@ -60,13 +81,26 @@ public:
    *  Quality of service request that should be fulfilled by the context
    */
   XRT_API_EXPORT
-  hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, qos qos);
+  hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const qos_type& qos);
+
+  /**
+   * hw_context() - Construct with specific access control
+   *
+   * @param device
+   *  Device where context is created
+   * @param xclbin_id
+   *  UUID of xclbin that should be assigned to HW resources
+   * @param mode
+   *  Access control for the context
+   */
+  XRT_API_EXPORT
+  hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode);
 
   ///@cond
   // Undocumented construction w/o specifying qos
   // Subject to change in default qos value
   hw_context(const xrt::device& device, const xrt::uuid& xclbin_id)
-    : hw_context{device, xclbin_id, static_cast<qos>(0)}
+    : hw_context{device, xclbin_id, access_mode::shared}
   {}
   /// @endcond
 
@@ -92,11 +126,27 @@ public:
   get_xclbin() const;
 
   /**
-   * get_qos() - Get the QOS value of the context
+   * get_mode() - Get the context access mode
    */
   XRT_API_EXPORT
-  qos
-  get_qos() const;
+  access_mode
+  get_mode() const;
+
+  /**
+   * get_memory_group_id() - Get the memory group id for this context
+   *
+   * @return 
+   *  The memory group id to be used when allocating buffers
+   *  (see xrt::bo) that are not used as kernel arguments.
+   *
+   * The group_id can be used when allocating a buffer specific to
+   * this hw context.  If buffers are allocated as kernel arguments,
+   * then the group id should be obtained specific to the kernel
+   * argument for which the buffer is used (see xrt::kernel::group_id())
+   */
+  XRT_API_EXPORT
+  uint32_t
+  get_memory_group_id() const;
 
 public:
   /// @cond

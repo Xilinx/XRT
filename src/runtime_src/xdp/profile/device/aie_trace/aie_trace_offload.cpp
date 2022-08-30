@@ -26,6 +26,8 @@
 #include "xdp/profile/device/aie_trace/aie_trace_logger.h"
 #include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
+#include "core/include/xrt/xrt_kernel.h"
+#include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
 
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
@@ -73,6 +75,61 @@ AIETraceOffload::~AIETraceOffload()
   }
 }
 
+bool AIETraceOffload::setupPSKernel() {
+
+  auto spdevice = xrt_core::get_userpf_device(deviceHandle);
+  auto device = xrt::device(spdevice);
+  auto uuid = device.get_xclbin_uuid();
+  auto gmio_kernel = xrt::kernel(device, uuid.get(), "aie_trace_gmio");
+
+  std::size_t total_size = sizeof(xdp::built_in::GMIOConfiguration) + sizeof(xdp::built_in::GMIOBuffer[numStream-1]);
+  xdp::built_in::GMIOConfiguration* input_params = (xdp::built_in::GMIOConfiguration*)malloc(total_size);
+  input_params->bufAllocSz = bufAllocSz;
+  input_params->numStreams = numStream;
+
+  xdp::built_in::GMIOBuffer hostBuffer[numStream];
+  for(uint64_t i = 0; i < numStream; i ++) {
+    buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, 0);
+    
+    if(!buffers[i].boHandle) {
+      bufferInitialized = false;
+      return bufferInitialized;
+    }
+
+    uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);
+
+    VPDatabase* db = VPDatabase::Instance();
+    TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
+
+    hostBuffer[i].shimColumn = traceGMIO->shimColumn;
+    hostBuffer[i].burstLength = traceGMIO->burstLength;
+    hostBuffer[i].channelNumber = traceGMIO->channelNumber;
+    hostBuffer[i].physAddr = bufAddr;
+    input_params->gmioData[i] = hostBuffer[i];
+  }
+
+  const size_t DATA_SIZE = 4096; // Data size aligned to 4096, and won't be passed for 400 tiles
+  //Cast struct to uint8_t pointer and pass this data
+  uint8_t* temp = reinterpret_cast<uint8_t*>(input_params);
+
+  auto in_bo = xrt::bo(device, DATA_SIZE, 2);
+  auto in_bo_map = in_bo.map<uint8_t*>();
+  std::fill(in_bo_map, in_bo_map + 1024, 0);
+
+  //copy the input configuration buffer to the buffer object.
+  std::memcpy(in_bo_map, temp, total_size);
+
+  in_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
+  auto run = gmio_kernel(in_bo);
+  run.wait();
+
+  std::string msg = "The aie_trace_gmio PS kernel was successfully scheduled.";
+  xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+
+  bufferInitialized = true;
+  return bufferInitialized;
+}
+
 bool AIETraceOffload::initReadTrace()
 {
   buffers.clear();
@@ -83,13 +140,19 @@ bool AIETraceOffload::initReadTrace()
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
   } else {
     memIndex = 0;  // for now
+
+#if defined (XRT_ENABLE_AIE) && defined (XRT_NATIVE_BUILD)
+  bool success = setupPSKernel();
+  return success;
+#endif
+
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
-    gmioDMAInsts.clear();
-    gmioDMAInsts.resize(numStream);
+  gmioDMAInsts.clear();
+  gmioDMAInsts.resize(numStream);
 #endif
   }
 
@@ -111,10 +174,10 @@ bool AIETraceOffload::initReadTrace()
     if (isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i, mEnCircularBuf);
     } else {
-/*
- * XRT_NATIVE_BUILD is set only for x86 builds
- * Only compile this on edge+versal build
- */
+  /*
+   * XRT_NATIVE_BUILD is set only for x86 builds
+   * Only compile this on edge+versal build
+   */
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
@@ -178,39 +241,38 @@ void AIETraceOffload::endReadTrace()
 {
   // reset
   for (uint64_t i = 0; i < numStream ; ++i) {
-    if (!buffers[i].boHandle) {
-      continue;
-    }
-    if(isPLIO) {
-      deviceIntf->resetAIETs2mm(i);
-//      deviceIntf->freeTraceBuf(b.boHandle);
-    } else {
+  if (!buffers[i].boHandle) {
+    continue;
+  }
+  if (isPLIO) {
+    deviceIntf->resetAIETs2mm(i);
+//    deviceIntf->freeTraceBuf(b.boHandle);
+  } else {
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
 #if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
-      VPDatabase* db = VPDatabase::Instance();
-      TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
+    VPDatabase* db = VPDatabase::Instance();
+    TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
-      ZYNQ::shim *drv = ZYNQ::shim::handleCheck(deviceHandle);
-      if(!drv) {
-        return ;
-      }
-      zynqaie::Aie* aieObj = drv->getAieArray();
-      XAie_DevInst* devInst = aieObj->getDevInst();
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(deviceHandle);
+    if (!drv)
+      return;
+    zynqaie::Aie* aieObj = drv->getAieArray();
+    XAie_DevInst* devInst = aieObj->getDevInst();
 
-      // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
-      // Enable shim DMA channel, need to start first so the status is correct
-      uint16_t channelNumber = (traceGMIO->channelNumber > 1) ? (traceGMIO->channelNumber - 2) : traceGMIO->channelNumber;
-      XAie_DmaDirection dir = (traceGMIO->channelNumber > 1) ? DMA_MM2S : DMA_S2MM;
+    // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
+    // Enable shim DMA channel, need to start first so the status is correct
+    uint16_t channelNumber = (traceGMIO->channelNumber > 1) ? (traceGMIO->channelNumber - 2) : traceGMIO->channelNumber;
+    XAie_DmaDirection dir = (traceGMIO->channelNumber > 1) ? DMA_MM2S : DMA_S2MM;
 
-      XAie_DmaChannelDisable(devInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir);
+    XAie_DmaChannelDisable(devInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir);
 #endif
-      
-    }
-    deviceIntf->freeTraceBuf(buffers[i].boHandle);
-    buffers[i].boHandle = 0;
+    
+  }
+  deviceIntf->freeTraceBuf(buffers[i].boHandle);
+  buffers[i].boHandle = 0;
   }
   bufferInitialized = false;
 }
@@ -341,7 +403,7 @@ bool AIETraceOffload::syncAndLog(uint64_t index)
     << std::hex << "from 0x" << bd.offset << " to 0x"
     << bd.usedSz << std::dec << std::endl;
 
-    // check for full buffer
+  // check for full buffer
   if ((bd.offset + nBytes >= bufAllocSz) && !mEnCircularBuf)
     bd.isFull = true;
 

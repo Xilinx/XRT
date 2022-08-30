@@ -20,6 +20,8 @@
 #ifndef FIFO_DOT_H
 #define FIFO_DOT_H
 
+#include <array>
+
 namespace xdp::IP::FIFO {
 
 constexpr int alignment = 0x1000;
@@ -28,8 +30,32 @@ namespace AXI_LITE {
 // On some devices (like edge) we cannot transfer values via
 // the AXI-full connection.  Instead, we need to read the
 // contents of the FIFO one-by-one over the AXI-Lite connection
-constexpr int RDFD = 0x1000;
+constexpr unsigned int RDFD = 0x1000;
 } // end namespace AXI_LITE
+
+// IP and V++ specific
+namespace properties {
+    constexpr unsigned int SIZE_1K   = 1024;
+    constexpr unsigned int SIZE_2K   = 2048;
+    constexpr unsigned int SIZE_4K   = 4096;
+    constexpr unsigned int SIZE_8K   = 8192;
+    constexpr unsigned int SIZE_16K  = 16384;
+    constexpr unsigned int SIZE_32K  = 32768;
+    constexpr unsigned int SIZE_64K  = 65536;
+    constexpr unsigned int SIZE_128K = 131072;
+    // Property to size map
+    // Property 0 represents 8k FIFO
+    const std::array<unsigned int, 8> size = {
+        SIZE_8K,
+        SIZE_1K,
+        SIZE_2K,
+        SIZE_4K,
+        SIZE_16K,
+        SIZE_32K,
+        SIZE_64K,
+        SIZE_128K
+    };
+}
 
 } // end namespace xdp::IP::FIFO
 

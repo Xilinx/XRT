@@ -26,6 +26,11 @@ struct xocl_cu {
 	struct platform_device	*pdev;
 	DECLARE_BITMAP(flag, 1);
 	spinlock_t		 lock;
+	/*
+	 * This RW lock is to protect the cu sysfs nodes exported
+	 * by xocl driver.
+	 */
+	rwlock_t		 attr_rwlock;
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -161,13 +166,51 @@ size_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(size);
 
-static ssize_t
-stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t 
+stats_begin_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
+	ssize_t sz = 0;
+
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
 
-	return show_formatted_cu_stat(&cu->base, buf);
+	read_lock(&cu->attr_rwlock);
+	sz = show_stats_begin(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_begin);
+
+static ssize_t 
+stats_end_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	read_lock(&cu->attr_rwlock);
+	sz = show_stats_end(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_end);
+
+static ssize_t
+stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	read_lock(&cu->attr_rwlock);
+	sz = show_formatted_cu_stat(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
 }
 static DEVICE_ATTR_RO(stat);
 
@@ -224,6 +267,8 @@ static struct attribute *cu_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_base_paddr.attr,
 	&dev_attr_size.attr,
+	&dev_attr_stats_begin.attr,
+	&dev_attr_stats_end.attr,
 	&dev_attr_stat.attr,
 	&dev_attr_is_ucu.attr,
 	&dev_attr_read_range.attr,
@@ -440,6 +485,7 @@ static int cu_probe(struct platform_device *pdev)
 			XCU_ERR(xcu, "xocl_intc_cu_config failed, err: %d", err);
 	}
 
+	rwlock_init(&xcu->attr_rwlock);
 	if (sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup))
 		XCU_ERR(xcu, "Not able to create CU sysfs group");
 
@@ -470,8 +516,10 @@ static int cu_remove(struct platform_device *pdev)
 	if (!xcu)
 		return -EINVAL;
 
+	write_lock(&xcu->attr_rwlock);
 	(void) sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
 	info = &xcu->base.info;
+	write_unlock(&xcu->attr_rwlock);
 
 	if (info->intr_enable) {
 		err = xocl_intc_cu_config(xdev, info->intr_id, false);
