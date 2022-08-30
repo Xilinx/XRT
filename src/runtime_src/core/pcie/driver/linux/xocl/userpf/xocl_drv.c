@@ -722,7 +722,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		xocl_af_get_data(xdev, &fw_stat);
 		XOCL_GETTIME(&time);
 		userpf_info(xdev, 
-			"AXI Firewall %d tripped, Mgmt timestamp: %llu, Xocl timestamp: %llu",
+			"AXI Firewall %llu tripped, Mgmt timestamp: %llu, Xocl timestamp: %llu",
 			fw_stat.err_detected_level, fw_stat.err_detected_time, time.tv_sec);
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
