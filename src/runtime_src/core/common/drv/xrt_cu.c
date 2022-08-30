@@ -12,6 +12,7 @@
  */
 
 #include <linux/delay.h>
+#include <linux/math64.h>
 #include "kds_client.h"
 #include "xrt_cu.h"
 
@@ -1159,7 +1160,7 @@ u64 xrt_cu_get_idle(struct xrt_cu *xcu, u64 last_timestamp, u64 idle_start, u64 
 		ts_status = 1;
 	}
 
-	cu_idle = cu_idle * 100 / delta_xcu_time;
+	cu_idle = div64_u64(cu_idle * 100, delta_xcu_time);
 
 	spin_lock_irqsave(&xcu->stats.xcs_lock, flags);
 	xcu->stats.last_read_idle_start = idle_start;
@@ -1175,7 +1176,7 @@ u64 xrt_cu_get_iops(struct xrt_cu *xcu, u64 last_timestamp, u64 incre_ecmds, u64
 	u64 		iops = 0;
 
 	if (new_ts - last_timestamp > 0 && incre_ecmds != 0)
-		iops = incre_ecmds * 1000000000 / (new_ts - last_timestamp);
+		iops = div64_u64(incre_ecmds * 1000000000, (new_ts - last_timestamp));
 	else
 		iops = 0;
 
