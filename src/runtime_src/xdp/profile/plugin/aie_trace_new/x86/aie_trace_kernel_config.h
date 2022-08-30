@@ -17,19 +17,51 @@
 #ifndef AIE_TRACE_CONFIG_DOT_H
 #define AIE_TRACE_CONFIG_DOT_H
 
+#include "xdp/profile/device/tracedefs.h"
+
 namespace xdp {
 namespace built_in {
 
-  enum class MetricSet {
+  enum class MetricSet : uint8_t 
+  {
     FUNCTIONS = 0,
     PARTIAL_STALLS = 1,
     ALL_STALLS = 2,
     ALL = 3
   };
 
-  enum class CounterScheme {
+  enum class CounterScheme : uint8_t 
+  {
     ES1 = 0,
     ES2 = 1
+  };
+
+  enum class Messages : uint8_t
+  {
+    NO_CORE_MODULE_PCS = 0,
+    NO_CORE_MODULE_TRACE_SLOTS = 1,
+    NO_CORE_MODULE_BROADCAST_CHANNELS = 2,
+    NO_MEM_MODULE_PCS = 3,
+    NO_MEM_MODULE_TRACE_SLOTS = 4,
+    NO_RESOURCES = 5,
+    COUNTERS_NOT_RESERVED = 6,
+    CORE_MODULE_TRACE_NOT_RESERVED = 7,
+    CORE_TRACE_EVENTS_RESERVED = 8,
+    MEMORY_MODULE_TRACE_NOT_RESERVED = 9,
+    MEMORY_TRACE_EVENTS_RESERVED = 10
+  };
+
+  struct MessagePacket
+  {
+    uint8_t messageCode;
+    uint32_t params[4] = {}; 
+  };
+
+  struct MessageConfiguration
+  {
+    static constexpr auto MAX_NUM_MESSAGES = 800;
+    uint32_t numMessages;
+    MessagePacket packets[MAX_NUM_MESSAGES];
   };
 
   // This struct is used for input for the PS kernel.  It contains all of
@@ -51,19 +83,71 @@ namespace built_in {
    
     bool useDelay;
     bool userControl;
-    uint16_t tiles[1]; //flexible array member
+    uint16_t tiles[1]; //Flexible array member
   };
 
-  // This struct is used as output from the PS kernel.  It should be zeroed out
-  // and passed as a buffer object to and from the PS kernel.  The PS kernel
-  // will fill in the different values.
-  //
-  // Since this is transferred from host to device, it should have
-  // a C-Style interface.
-  struct OutputValues
-  {    
-    bool success;
+  struct PCData
+  {
+    public:
+      uint32_t start_event = 0;
+      uint32_t stop_event = 0;
+      uint32_t reset_event = 0;
+      uint32_t event_value = 0;
+      uint32_t counter_value = 0;
+
   };
+
+  struct TileTraceData
+  {   
+    public:
+      uint32_t packet_type = 0;
+      uint32_t start_event = EVENT_CORE_ACTIVE; 
+      uint32_t stop_event = EVENT_CORE_DISABLED; 
+      uint32_t traced_events[NUM_TRACE_EVENTS] = {};
+      uint32_t internal_events_broadcast[NUM_BROADCAST_EVENTS] = {};
+      uint32_t broadcast_mask_west = BROADCAST_MASK_DEFAULT;
+      uint32_t broadcast_mask_east = BROADCAST_MASK_DEFAULT;
+      PCData pc[NUM_TRACE_PCS];
+  };  
+
+
+  struct TileData
+  {
+    public:
+      uint32_t column;
+      uint32_t row;
+      TileTraceData  core_trace_config;
+      TileTraceData  memory_trace_config;
+   
+      TileData(uint32_t c, uint32_t r) : column(c), row(r) {}
+  };
+
+  struct OutputConfiguration
+  {
+    public:
+      uint16_t numTiles;
+      uint32_t numTileCoreTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
+      uint32_t numTileMemoryTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
+      TileData tiles[1]; 
+  };
+
+
+  struct GMIOBuffer
+  {
+    uint32_t shimColumn;      // From TraceGMIo
+    uint32_t channelNumber;
+    uint32_t burstLength;
+	uint64_t physAddr;
+  };
+
+   
+  struct GMIOConfiguration
+  {
+    uint64_t bufAllocSz;
+    uint8_t numStreams;
+    struct GMIOBuffer gmioData[1]; //Flexible Array Member
+  };  
+
 
 } // end namespace built_in
 } // end namespace xdp

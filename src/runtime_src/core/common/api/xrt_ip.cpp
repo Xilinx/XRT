@@ -67,12 +67,12 @@ has_reg_read_write()
 // Determine the QoS value to use when constructing xrt::hw_context in
 // legacy constructor.  The default is exclusive context, but if
 // xrt.ini:get_rw_shared() is set then access should be shared.
-static xrt::hw_context::qos
-hwctx_qos()
+static xrt::hw_context::access_mode
+hwctx_access_mode()
 {
   return (xrt_core::config::get_rw_shared())
-    ? xrt::hw_context::qos::shared
-    : xrt::hw_context::qos::exclusive;
+    ? xrt::hw_context::access_mode::shared
+    : xrt::hw_context::access_mode::exclusive;
 }
 
 } // namespace
@@ -245,7 +245,7 @@ public:
   // @nm:      name identifying an ip in IP_LAYOUT of xclbin
   ip_impl(std::shared_ptr<xrt_core::device> dev, const xrt::uuid& xid, const std::string& nm)
     : m_device(std::move(dev))                                   // share ownership
-    , m_ipctx(xrt::hw_context{xrt::device{m_device}, xid, hwctx_qos()}, nm)
+    , m_ipctx(xrt::hw_context{xrt::device{m_device}, xid, hwctx_access_mode()}, nm)
     , m_uid(create_uid())
   {
     XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , uid);

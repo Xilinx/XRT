@@ -32,15 +32,15 @@ namespace AXI_LITE {
 // These are the actual physical offsets of the 32-bit registers in
 // the LAPC IP accessible over the AXI-Lite connection.  If using
 // xclRead or xclWrite, these offsets are used.
-constexpr int STATUS              = 0x0;
-constexpr int CUMULATIVE_STATUS_0 = 0x100;
-constexpr int CUMULATIVE_STATUS_1 = 0x104;
-constexpr int CUMULATIVE_STATUS_2 = 0x108;
-constexpr int CUMULATIVE_STATUS_3 = 0x10c;
-constexpr int SNAPSHOT_STATUS_0   = 0x200;
-constexpr int SNAPSHOT_STATUS_1   = 0x204;
-constexpr int SNAPSHOT_STATUS_2   = 0x208;
-constexpr int SNAPSHOT_STATUS_3   = 0x20c;
+constexpr unsigned int STATUS              = 0x0;
+constexpr unsigned int CUMULATIVE_STATUS_0 = 0x100;
+constexpr unsigned int CUMULATIVE_STATUS_1 = 0x104;
+constexpr unsigned int CUMULATIVE_STATUS_2 = 0x108;
+constexpr unsigned int CUMULATIVE_STATUS_3 = 0x10c;
+constexpr unsigned int SNAPSHOT_STATUS_0   = 0x200;
+constexpr unsigned int SNAPSHOT_STATUS_1   = 0x204;
+constexpr unsigned int SNAPSHOT_STATUS_2   = 0x208;
+constexpr unsigned int SNAPSHOT_STATUS_3   = 0x20c;
 } // end namespace AXI_LITE
 
 namespace sysfs {

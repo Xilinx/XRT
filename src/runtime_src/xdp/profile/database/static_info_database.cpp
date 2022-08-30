@@ -50,8 +50,8 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
-#define XAM_STALL_PROPERTY_MASK        0x4
-#define XMON_TRACE_PROPERTY_MASK       0x1
+constexpr unsigned int XAM_STALL_PROPERTY_MASK  = 0x4;
+constexpr unsigned int XMON_TRACE_PROPERTY_MASK = 0x1;
 
 namespace xdp {
 

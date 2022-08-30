@@ -30,13 +30,13 @@ namespace AXI_LITE {
 // These are the actual physical offsets of the 64-bit registers in
 // the ASM IP accessible over the AXI-Lite connection.  If using
 // xclRead or xclWrite, these offsets are used.
-constexpr int CONTROL       = 0x00;
-constexpr int SAMPLE        = 0x20;
-constexpr int NUM_TRANX     = 0x80;
-constexpr int DATA_BYTES    = 0x88;
-constexpr int BUSY_CYCLES   = 0x90;
-constexpr int STALL_CYCLES  = 0x98;
-constexpr int STARVE_CYCLES = 0xA0;
+constexpr unsigned int CONTROL       = 0x00;
+constexpr unsigned int SAMPLE        = 0x20;
+constexpr unsigned int NUM_TRANX     = 0x80;
+constexpr unsigned int DATA_BYTES    = 0x88;
+constexpr unsigned int BUSY_CYCLES   = 0x90;
+constexpr unsigned int STALL_CYCLES  = 0x98;
+constexpr unsigned int STARVE_CYCLES = 0xA0;
 } // end namespace AXI_LITE
 
 namespace sysfs {
@@ -51,9 +51,9 @@ constexpr int STARVE_CYCLES = 4;
 } // end namespace sysfs
 
 namespace mask {
-constexpr int COUNTER_RESET = 0x00000001;
-constexpr int TRACE_ENABLE  = 0x00000002;
-constexpr int TRACE_CTRL    = 0x2;
+constexpr unsigned int COUNTER_RESET = 0x00000001;
+constexpr unsigned int TRACE_ENABLE  = 0x00000002;
+constexpr unsigned int TRACE_CTRL    = 0x2;
 } // end namespace mask
 
 } // end namespace xdp::IP::ASM
