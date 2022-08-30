@@ -2935,6 +2935,23 @@ struct xocl_subdev_map {
 		.vbnv       = "xilinx_v70"				\
 	}
 
+#define	XOCL_BOARD_AVALON_USER_RAPTOR2				\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
+		.subdev_info	= RES_USER_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
+		.board_name = "avalon",					\
+	}
+
+#define	XOCL_BOARD_AVALON_MGMT_RAPTOR2				\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
+		.subdev_info	= RES_MGMT_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
+		.flash_type = FLASH_TYPE_SPI,				\
+		.board_name = "avalon"					\
+	}
+
 /*********************************VCK190 MGMTPF START*******************/
 
 #define XOCL_BOARD_VCK190_MGMT_RAPTOR2                                  \
@@ -3444,6 +3461,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0xD03C, PCI_ANY_ID, XBB_MFG_U30) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xD04C, PCI_ANY_ID, XBB_MFG_U25) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0xEB10, PCI_ANY_ID, XBB_MFG("twitch")) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0x5098, PCI_ANY_ID, XBB_MFG("avalon")) },\
 	{ XOCL_PCI_DEVID(0x13FE, 0x806C, PCI_ANY_ID, XBB_MFG("advantech")) }
 
 #define	XOCL_USER_XDMA_PCI_IDS						\
@@ -3619,6 +3637,14 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x513D, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u30",					\
 		.priv_data = &XOCL_BOARD_U30_USER_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5099, PCI_ANY_ID,					\
+		.vbnv = "xilinx_avalon",				\
+		.priv_data = &XOCL_BOARD_AVALON_USER_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x5098, PCI_ANY_ID,					\
+		.vbnv = "xilinx_avalon",				\
+		.priv_data = &XOCL_BOARD_AVALON_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
 
 #endif
