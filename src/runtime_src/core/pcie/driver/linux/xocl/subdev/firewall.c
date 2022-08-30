@@ -441,8 +441,8 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 				i, val, bar_off, (res && res->name) ? res->name : "N/A", time.tv_sec);
 			if (fw->af[i].version >= IP_VER_11) {
 				xocl_info(&pdev->dev, "ARADDR 0x%lx, AWADDR 0x%lx, ARUSER 0x%x, AWUSER 0x%x",
-				    READ_ARADDR(fw, i), READ_AWADDR(fw, i),
-				    READ_ARUSER(fw, i), READ_AWUSER(fw, i));
+					READ_ARADDR(fw, i), READ_AWADDR(fw, i),
+					READ_ARUSER(fw, i), READ_AWUSER(fw, i));
 			}
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
@@ -555,16 +555,13 @@ static void af_get_data(struct platform_device *pdev, void *buf)
 {
 	struct firewall	*fw = platform_get_drvdata(pdev);
 	struct xcl_firewall *af_status = (struct xcl_firewall *)buf;
-
-	if (FW_PRIVILEGED(fw)) {
-		get_prop(pdev, XOCL_AF_PROP_TOTAL_LEVEL, &af_status->max_level);
-		get_prop(pdev, XOCL_AF_PROP_STATUS, &af_status->curr_status);
-		get_prop(pdev, XOCL_AF_PROP_LEVEL, &af_status->curr_level);
-		get_prop(pdev, XOCL_AF_PROP_DETECTED_STATUS, &af_status->err_detected_status);
-		get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL, &af_status->err_detected_level);
-		get_prop(pdev, XOCL_AF_PROP_DETECTED_TIME, &af_status->err_detected_time);
-		get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL_NAME, &af_status->err_detected_level_name);
-	}
+	get_prop(pdev, XOCL_AF_PROP_TOTAL_LEVEL, &af_status->max_level);
+	get_prop(pdev, XOCL_AF_PROP_STATUS, &af_status->curr_status);
+	get_prop(pdev, XOCL_AF_PROP_LEVEL, &af_status->curr_level);
+	get_prop(pdev, XOCL_AF_PROP_DETECTED_STATUS, &af_status->err_detected_status);
+	get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL, &af_status->err_detected_level);
+	get_prop(pdev, XOCL_AF_PROP_DETECTED_TIME, &af_status->err_detected_time);
+	get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL_NAME, &af_status->err_detected_level_name);
 }
 
 static void inline reset_max_wait(struct firewall *fw, int idx)
