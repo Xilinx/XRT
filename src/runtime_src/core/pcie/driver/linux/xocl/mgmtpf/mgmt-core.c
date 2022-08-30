@@ -554,11 +554,7 @@ reset:
 		if (!lro->reset_requested) {
 			mgmt_err(lro, "Card is in a Bad state, notify userpf");
 			mbreq.req = XCL_MAILBOX_REQ_FIREWALL;
-			/*err = xocl_peer_notify(lro, &mbreq, sizeof(mbreq));*/
-			char test[20] = "Hello!";
-			size_t resp_len = sizeof(test);
-			err = xocl_peer_request(lro, &mbreq, sizeof(mbreq), 
-				&test, &resp_len, NULL, NULL, 0, 0);
+			err = xocl_peer_notify(lro, &mbreq, sizeof(mbreq));
 			if (!err)
 				lro->reset_requested = true;
 		} else
