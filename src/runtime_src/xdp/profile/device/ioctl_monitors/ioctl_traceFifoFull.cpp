@@ -16,8 +16,7 @@
  * under the License.
  */
 
-#ifndef _WIN32
-#ifndef SKIP_IOCTL
+#if !defined(_WIN32) && !defined(SKIP_IOCTL)
 
 #include <sys/fcntl.h>
 #include <sys/mman.h>
@@ -88,5 +87,4 @@ int IOCtlTraceFifoFull::write(uint64_t /*offset*/, size_t size, void* /*data*/)
 }
 
 }
-#endif
 #endif
