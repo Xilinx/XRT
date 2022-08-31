@@ -152,8 +152,8 @@ struct firewall_ip {
 struct firewall {
 	struct firewall_ip	af[MAX_LEVEL];
 	struct xcl_firewall	status;
-	ktime_t 			last_update;
-	ktime_t 			expire_secs;
+	ktime_t				last_update;
+	ktime_t				expire_secs;
 	char				level_name[MAX_LEVEL][50];
 
 	bool				inject_firewall;
