@@ -292,14 +292,15 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
   switch (schemaVersion) {
     case Report::SchemaVersion::json_20202:
       boost::property_tree::json_parser::write_json(schemaStream, ptRoot, true /*Pretty Print*/);
-      schemaStream << std::endl;
+      schemaStream << std::endl;  
       break;
+
     default:
       // Do nothing
       break;
   }
 
   // If any the data reports failed to generate with an exception throw an operation cancelled but output everything
-  if (!is_report_output_valid)
+  if(!is_report_output_valid)
     throw xrt_core::error(std::errc::operation_canceled);
 }
