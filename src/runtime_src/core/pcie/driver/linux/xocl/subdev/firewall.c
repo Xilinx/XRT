@@ -166,12 +166,15 @@ struct firewall {
 static int clear_firewall(struct platform_device *pdev);
 static u32 check_firewall(struct platform_device *pdev, int *level);
 
-/* Request the firewall status from the mgmt driver via mailbox */
+/* 
+ * Request the firewall status from the mgmt driver via mailbox.
+ * Populates the device firewall status struct with the response
+ * from the mgmt driver
+ */
 static void request_firewall_status(struct platform_device *pdev)
 {
 	struct firewall *fw = platform_get_drvdata(pdev);
 	struct xcl_mailbox_subdev_peer subdev_peer = {0};
-	struct xcl_firewall fw_status = {0};
 	size_t resp_len = sizeof(struct xcl_firewall);
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req *mb_req = NULL;
@@ -185,6 +188,7 @@ static void request_firewall_status(struct platform_device *pdev)
 	const ktime_t now = ktime_get_boottime();
 	if (ktime_compare(now, fw->last_update) < 0)
 		return;
+
 	fw->last_update = ktime_add(now, fw->expire_secs);
 
 	xocl_info(&pdev->dev, "reading from peer");
@@ -199,11 +203,12 @@ static void request_firewall_status(struct platform_device *pdev)
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
-	/* Request the firewall status information from the mgmt driver */
+	/* 
+	 * Request the firewall status information from the mgmt driver
+	 * Place the response into the firewall status struct
+	 */
 	(void) xocl_peer_request(xdev,
-		mb_req, reqlen, &fw_status, &resp_len, NULL, NULL, 0, 0);
-	/* Copy over the firewall status information */
-	memcpy(&fw->status, &fw_status, sizeof(struct xcl_firewall));
+		mb_req, reqlen, &fw->status, &resp_len, NULL, NULL, 0, 0);
 
 	vfree(mb_req);
 }
