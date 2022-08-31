@@ -278,10 +278,23 @@ process_PDI_cdo_groups(const boost::property_tree::ptree& ptAIEPartitionPDI,
 
     aieCDOGroup.pdi_id = std::strtoul(sPDIValue.c_str(), NULL, 0);
 
-    // DPU Function ID (optional)
-    auto sDPUValue = element.get<std::string>("dpu_kernel_id", "");
-    if (!sDPUValue.empty())
-      aieCDOGroup.dpu_kernel_id = std::strtoul(sDPUValue.c_str(), NULL, 0);
+    // DPU Function IDs (optional)
+    std::vector<std::string> dpuKernelIDs = XUtil::as_vector_simple<std::string>(element, "dpu_kernel_ids");
+    aieCDOGroup.dpu_kernel_ids.size = static_cast<decltype(aieCDOGroup.dpu_kernel_ids.size)>(dpuKernelIDs.size());
+
+    if (aieCDOGroup.dpu_kernel_ids.size != 0) {
+      // Record where the dpu kernel IDs array starts
+      aieCDOGroup.dpu_kernel_ids.offset = static_cast<decltype(aieCDOGroup.dpu_kernel_ids.offset)>(heap.getNextBufferOffset());
+
+      // Write out the DPU values to the heap.
+      for (const auto& element : dpuKernelIDs) {
+        uint64_t dpuKernelID = std::strtoul(element.c_str(), NULL, 0);
+        heap.write(reinterpret_cast<const char*>(&dpuKernelID), sizeof(decltype(dpuKernelID)), false /*align*/);
+      }
+
+      // Align the heap to the next 64-bit word.
+      heap.write(nullptr, 0);
+    }
 
     // PRE CDO Groups (optional)
     process_pre_cdo_groups(element, aieCDOGroup, heap);
@@ -392,8 +405,12 @@ createAIEPartitionImage(const std::string& sectionIndexName,
   // Initialized the start of the section heap
   SectionHeap heap(sizeof(aie_partition));
 
+  // Name
   aie_partitionHdr.mpo_name = static_cast<decltype(aie_partitionHdr.mpo_name)>(heap.getNextBufferOffset());
   heap.write(sectionIndexName.c_str(), sectionIndexName.size() + 1 /*Null char*/);
+
+  // TOPs
+  aie_partitionHdr.tile_operation_per_cycle = ptAIEPartition.get<uint32_t>("tile_operation_per_cycle", 0);
 
   //  Process the nodes
   process_partition_info(ptAIEPartition, aie_partitionHdr.info, heap);
@@ -517,9 +534,17 @@ populate_cdo_groups(const char* pBase,
     // PDI ID
     ptElement.put("pdi_id", (boost::format("0x%x") % element.pdi_id).str());
 
-    // Function ID
-    if (element.dpu_kernel_id)
-      ptElement.put("dpu_kernel_id", (boost::format("0x%x") % element.dpu_kernel_id).str());
+    // DPU Kernel IDs
+    if (element.dpu_kernel_ids.size) {
+      boost::property_tree::ptree ptDPUKernelIDs;
+      const uint64_t* kernelIDsArray = reinterpret_cast<const uint64_t*>(pBase + element.dpu_kernel_ids.offset);
+      for (uint32_t index = 0; index < element.dpu_kernel_ids.size; index++) {
+        boost::property_tree::ptree ptID;
+        ptID.put("", (boost::format("0x%x") % kernelIDsArray[index]).str());
+        ptDPUKernelIDs.push_back({ "", ptID });
+      }
+      ptElement.add_child("dpu_kernel_ids", ptDPUKernelIDs);
+    }
 
     // Pre cdo groups
     populate_pre_cdo_groups(pBase, element, ptElement);
@@ -608,6 +633,9 @@ writeAIEPartitionImage(const char* pBuffer,
   // Name
   boost::property_tree::ptree ptAiePartition;
   ptAiePartition.put("name", pBuffer + pHdr->mpo_name);
+
+  // TOPs
+  ptAiePartition.put("tile_operation_per_cycle", (boost::format("%d") % pHdr->tile_operation_per_cycle).str());
 
   // Partition info
   populate_partition_info(pBuffer, pHdr->info, ptAiePartition);
