@@ -27,8 +27,6 @@ exit $EXIT_CODE
 """ # Hide bash from python
 # Python script starts here
 import json
-import os
-import re
 import sys
 
 temp_json_file = sys.argv[1]

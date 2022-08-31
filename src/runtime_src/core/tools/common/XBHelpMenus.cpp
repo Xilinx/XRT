@@ -304,3 +304,4 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
   if(!is_report_output_valid)
     throw xrt_core::error(std::errc::operation_canceled);
 }
+
