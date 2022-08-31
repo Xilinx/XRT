@@ -152,6 +152,8 @@ struct firewall_ip {
 struct firewall {
 	struct firewall_ip	af[MAX_LEVEL];
 	struct xcl_firewall	status;
+	ktime_t 			last_update;
+	ktime_t 			expire_secs;
 	char				level_name[MAX_LEVEL][50];
 
 	bool				inject_firewall;
@@ -164,7 +166,8 @@ struct firewall {
 static int clear_firewall(struct platform_device *pdev);
 static u32 check_firewall(struct platform_device *pdev, int *level);
 
-static void get_fw_status(struct platform_device *pdev)
+/* Request the firewall status from the mgmt driver via mailbox */
+static void request_firewall_status(struct platform_device *pdev)
 {
 	struct firewall *fw = platform_get_drvdata(pdev);
 	struct xcl_mailbox_subdev_peer subdev_peer = {0};
@@ -174,6 +177,15 @@ static void get_fw_status(struct platform_device *pdev)
 	struct xcl_mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+
+	/* 
+	 * If the last status request has not expired
+	 * use the previous status update
+	 */
+	const ktime_t now = ktime_get_boottime();
+	if (ktime_compare(now, fw->last_update) < 0)
+		return;
+	fw->last_update = ktime_add(now, fw->expire_secs);
 
 	xocl_info(&pdev->dev, "reading from peer");
 	mb_req = vmalloc(reqlen);
@@ -196,39 +208,6 @@ static void get_fw_status(struct platform_device *pdev)
 	vfree(mb_req);
 }
 
-static int 
-get_prop_internal(const struct xcl_firewall *fw_status, u32 prop, void *val)
-{
-	int ret = 0;
-	switch (prop) {
-		case XOCL_AF_PROP_TOTAL_LEVEL:
-			*(u64 *)val = fw_status->max_level;
-			break;
-		case XOCL_AF_PROP_STATUS:
-			*(u64 *)val = fw_status->curr_status;
-			break;
-		case XOCL_AF_PROP_LEVEL:
-			*(int64_t *)val = fw_status->curr_level;
-			break;
-		case XOCL_AF_PROP_DETECTED_STATUS:
-			*(u64 *)val = fw_status->err_detected_status;
-			break;
-		case XOCL_AF_PROP_DETECTED_LEVEL:
-			*(u64 *)val = fw_status->err_detected_level;
-			break;
-		case XOCL_AF_PROP_DETECTED_TIME:
-			*(u64 *)val = fw_status->err_detected_time;
-			break;
-		case XOCL_AF_PROP_DETECTED_LEVEL_NAME:
-			strcpy((char *)val, fw_status->err_detected_level_name);
-			break;
-		default:
-			xocl_err(&pdev->dev, "Invalid prop %d", prop);
-			ret = -EINVAL;
-	}
-	return ret;
-}
-
 static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 {
 	struct firewall *fw;
@@ -237,15 +216,38 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 	fw = platform_get_drvdata(pdev);
 	BUG_ON(!fw);
 
-	/* If in mgmt driver get the firewall status */
-	if (FW_PRIVILEGED(fw)) {
-		(void) check_firewall(pdev, NULL);
-		return get_prop_internal(&fw->status, prop, val);
-	}
+	/* If not privileged request the firewall status from the mgmt driver */
+	if (!FW_PRIVILEGED(fw))
+		request_firewall_status(pdev);
 
-	/* Non-privilege requests need to pull the data from the mgmt driver */
-	get_fw_status(pdev);
-	return get_prop_internal(&fw->cache, prop, val);
+	/* Get the requested property */
+	switch (prop) {
+		case XOCL_AF_PROP_TOTAL_LEVEL:
+			*(u64 *)val = fw->status.max_level;
+			break;
+		case XOCL_AF_PROP_STATUS:
+			*(u64 *)val = fw->status.curr_status;
+			break;
+		case XOCL_AF_PROP_LEVEL:
+			*(int64_t *)val = fw->status.curr_level;
+			break;
+		case XOCL_AF_PROP_DETECTED_STATUS:
+			*(u64 *)val = fw->status.err_detected_status;
+			break;
+		case XOCL_AF_PROP_DETECTED_LEVEL:
+			*(u64 *)val = fw->status.err_detected_level;
+			break;
+		case XOCL_AF_PROP_DETECTED_TIME:
+			*(u64 *)val = fw->status.err_detected_time;
+			break;
+		case XOCL_AF_PROP_DETECTED_LEVEL_NAME:
+			strcpy((char *)val, fw->status.err_detected_level_name);
+			break;
+		default:
+			xocl_err(&pdev->dev, "Invalid prop %d", prop);
+			ret = -EINVAL;
+	}
+	return ret;
 }
 
 /* sysfs support */
@@ -400,6 +402,11 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 					READ_ARADDR(fw, i), READ_AWADDR(fw, i),
 					READ_ARUSER(fw, i), READ_AWUSER(fw, i));
 			}
+
+			/* 
+			 * Only update the firewall status if a there is a firewall event
+			 * Otherwise latch the previous firewall event
+			 */
 			if (!fw->status.curr_status) {
 				fw->status.err_detected_status = val;
 				fw->status.err_detected_level = i;
@@ -676,7 +683,7 @@ static int firewall_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
-	fw->cache_expire_secs = FW_DEFAULT_EXPIRE_SECS;
+	fw->expire_secs = ktime_set(FW_DEFAULT_EXPIRE_SECS, 0);
 
 	return 0;
 
