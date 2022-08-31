@@ -294,11 +294,6 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
       boost::property_tree::json_parser::write_json(schemaStream, ptRoot, true /*Pretty Print*/);
       schemaStream << std::endl;
       break;
-    case Report::SchemaVersion::json_plain:
-      boost::property_tree::json_parser::write_json(schemaStream, ptRoot, false /*Pretty Print*/);
-      schemaStream << std::endl;
-      break;
-
     default:
       // Do nothing
       break;

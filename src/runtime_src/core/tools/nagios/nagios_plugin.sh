@@ -3,8 +3,10 @@
 # Copyright (C) 2022 Xilinx, Inc
 # Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
+""":" # Hide bash from python
 # Generate the output JSON file. Ignore both error and standard output
-/opt/xilinx/xrt/bin/xbutil examine $@ -f JSON-plain -o /tmp/nagios_output.json &> /dev/null
+temp_json_file=$(mktemp -u --suffix=.nagios.json)
+/opt/xilinx/xrt/bin/xbutil examine $@ -o $temp_json_file &> /dev/null
 # Depending on command status return OK or FAILURE
 EXIT_CODE=0
 case $? in
@@ -18,7 +20,21 @@ case $? in
     ;;
 esac
 # Output the generated JSON
-cat /tmp/nagios_output.json
+python $0 "${temp_json_file}"
 # Cleanup all extra files
-rm /tmp/nagios_output.json
+rm $temp_json_file
 exit $EXIT_CODE
+""" # Hide bash from python
+# Python script starts here
+import json
+import os
+import re
+import sys
+
+temp_json_file = sys.argv[1]
+
+# Read in the JSON file produced earlier
+with open(temp_json_file) as f:
+  data = json.load(f)
+
+print(json.dumps(data))

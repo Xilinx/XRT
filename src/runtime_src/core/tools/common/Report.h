@@ -21,8 +21,7 @@ class Report {
   enum class SchemaVersion  {
     unknown,
     json_internal,
-    json_20202,
-    json_plain
+    json_20202
   };
  
   // Helper mapping between string and enum
