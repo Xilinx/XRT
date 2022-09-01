@@ -1216,6 +1216,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
         uint64_t allocated_size = 0;
         uint32_t page_num = size >> 30;
         drm_xocl_alloc_cma_info cma_info = {0};
+        uint64_t user_addr[page_num] = {0};
 
         /* We check the sysfs node host_mem_size first before going forward
          * If the same size of host memory chunk is allocated
@@ -1228,8 +1229,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
         cma_info.total_size = size;
         cma_info.entry_num = page_num;
-
-        cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
+        cma_info.user_addr = user_addr;
 
         for (uint32_t i = 0; i < page_num; ++i) {
             void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
@@ -1252,7 +1252,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
             if (!cma_info.user_addr[i])
                 continue;
 
-             munmap((void*)cma_info.user_addr[i], page_sz);
+            munmap((void*)cma_info.user_addr[i], page_sz);
         }
 
         if (ret) {
