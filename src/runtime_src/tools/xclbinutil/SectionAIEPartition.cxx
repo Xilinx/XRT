@@ -287,8 +287,8 @@ process_PDI_cdo_groups(const boost::property_tree::ptree& ptAIEPartitionPDI,
       aieCDOGroup.dpu_kernel_ids.offset = static_cast<decltype(aieCDOGroup.dpu_kernel_ids.offset)>(heap.getNextBufferOffset());
 
       // Write out the DPU values to the heap.
-      for (const auto& element : dpuKernelIDs) {
-        uint64_t dpuKernelID = std::strtoul(element.c_str(), NULL, 0);
+      for (const auto& kernelID : dpuKernelIDs) {
+        uint64_t dpuKernelID = std::strtoul(kernelID.c_str(), NULL, 0);
         heap.write(reinterpret_cast<const char*>(&dpuKernelID), sizeof(decltype(dpuKernelID)), false /*align*/);
       }
 
@@ -410,7 +410,7 @@ createAIEPartitionImage(const std::string& sectionIndexName,
   heap.write(sectionIndexName.c_str(), sectionIndexName.size() + 1 /*Null char*/);
 
   // TOPs
-  aie_partitionHdr.tile_operation_per_cycle = ptAIEPartition.get<uint32_t>("tile_operation_per_cycle", 0);
+  aie_partitionHdr.operation_per_cycle = ptAIEPartition.get<uint32_t>("operation_per_cycle", 0);
 
   //  Process the nodes
   process_partition_info(ptAIEPartition, aie_partitionHdr.info, heap);
@@ -538,9 +538,9 @@ populate_cdo_groups(const char* pBase,
     if (element.dpu_kernel_ids.size) {
       boost::property_tree::ptree ptDPUKernelIDs;
       const uint64_t* kernelIDsArray = reinterpret_cast<const uint64_t*>(pBase + element.dpu_kernel_ids.offset);
-      for (uint32_t index = 0; index < element.dpu_kernel_ids.size; index++) {
+      for (uint32_t kernelIDindex = 0; index < element.dpu_kernel_ids.size; index++) {
         boost::property_tree::ptree ptID;
-        ptID.put("", (boost::format("0x%x") % kernelIDsArray[index]).str());
+        ptID.put("", (boost::format("0x%x") % kernelIDsArray[kernelIDindex]).str());
         ptDPUKernelIDs.push_back({ "", ptID });
       }
       ptElement.add_child("dpu_kernel_ids", ptDPUKernelIDs);
@@ -635,7 +635,7 @@ writeAIEPartitionImage(const char* pBuffer,
   ptAiePartition.put("name", pBuffer + pHdr->mpo_name);
 
   // TOPs
-  ptAiePartition.put("tile_operation_per_cycle", (boost::format("%d") % pHdr->tile_operation_per_cycle).str());
+  ptAiePartition.put("operation_per_cycle", (boost::format("%d") % pHdr->operation_per_cycle).str());
 
   // Partition info
   populate_partition_info(pBuffer, pHdr->info, ptAiePartition);
