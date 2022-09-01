@@ -36,8 +36,7 @@ static cl_int
 clReleaseProgram(cl_program program)
 {
   validOrError(program);
-
-  if (xocl::xocl(program)->release())
+  if (xocl::xocl(program) != nullptr && xocl::xocl(program)->release())
     delete xocl::xocl(program);
 
   return CL_SUCCESS;
