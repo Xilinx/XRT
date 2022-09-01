@@ -438,29 +438,39 @@ static void free_channels(struct platform_device *pdev)
 	struct mm_channel *chan;
 	u32	write, qidx;
 	int i, ret = 0;
+	char *ebuf;
 
 	qdma = platform_get_drvdata(pdev);
 	if (!qdma || !qdma->channel)
 		return;
 
+	ebuf = devm_kzalloc(&pdev->dev, MM_EBUF_LEN, GFP_KERNEL);
+	if (ebuf == NULL) {
+		xocl_err(&pdev->dev, "Alloc ebuf mem failed");
+		return;
+	}
+
 	for (i = 0; i < qdma->channel * 2; i++) {
+		memset(ebuf, 0, MM_EBUF_LEN);
 		write = i / qdma->channel;
 		qidx = i % qdma->channel;
 		chan = &qdma->chans[write][qidx];
 
 		channel_sysfs_destroy(chan);
 
-		ret = qdma_queue_stop(qdma->dma_hndl, chan->queue, NULL, 0);
+		ret = qdma_queue_stop(qdma->dma_hndl, chan->queue, ebuf, MM_EBUF_LEN);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Stopping queue for "
-				"channel %d failed, ret %x", qidx, ret);
+				"channel %d failed, ret: %x, ebuf: %s", qidx, ret, ebuf);
 		}
-		ret = qdma_queue_remove(qdma->dma_hndl, chan->queue, NULL, 0);
+		ret = qdma_queue_remove(qdma->dma_hndl, chan->queue, ebuf, MM_EBUF_LEN);
 		if (ret < 0) {
 			xocl_err(&pdev->dev, "Destroy queue for "
-				"channel %d failed, ret %x", qidx, ret);
+				"channel %d failed, ret: %x, ebuf: %s", qidx, ret, ebuf);
 		}
 	}
+	if (ebuf)
+		devm_kfree(&pdev->dev, ebuf);
 	if (qdma->chans[0])
 		devm_kfree(&pdev->dev, qdma->chans[0]);
 	if (qdma->chans[1])
