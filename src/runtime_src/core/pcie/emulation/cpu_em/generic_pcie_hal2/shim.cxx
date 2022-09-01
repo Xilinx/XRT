@@ -431,7 +431,7 @@ namespace xclcpuemhal2
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
-          sLdLibs += sVivadoBinDir + DS + "data" + DS + "emulation" + DS + "ip_utils" + DS + "xtlm_ipc" + DS + "xtlm_ipc_v1_0" + DS + "cpp" + DS + "lib" + DS + ":";
+          sLdLibs += sVivadoBinDir + DS + "data" + DS + "emulation" + DS + "cpp" + DS + "lib" + DS + ":";
           sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
           sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
           sLdLibs += sVitisBinDir + DS + "tps" + DS + "lnx64" + DS + "python-3.8.3" + DS + "lib" + DS + ":";
