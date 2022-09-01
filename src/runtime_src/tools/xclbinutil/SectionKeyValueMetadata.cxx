@@ -53,7 +53,7 @@ SectionKeyValueMetadata::marshalToJSON(char* _pDataSection,
     boost::property_tree::ptree ptEmptyKeyvalues;
     ptKeyValuesMetadata.add_child("key_values", ptEmptyKeyvalues);
   } else {
-    std::unique_ptr<unsigned char> memBuffer(new unsigned char[_sectionSize + 1]);
+    auto memBuffer = std::make_unique<unsigned char[]>(_sectionSize + 1);
     memcpy((char*)memBuffer.get(), _pDataSection, _sectionSize);
     memBuffer.get()[_sectionSize] = '\0';
 
