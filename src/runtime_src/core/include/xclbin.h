@@ -568,7 +568,7 @@ extern "C" {
         uint8_t schema_version;             // Group schema version (default 0)
         uint8_t padding0[3];                // Byte alignment          
         uint32_t mpo_name;                  // Name of the aie_partition 
-        uint32_t operation_per_cycle;       // TOPs
+        uint32_t operations_per_cycle;      // Operations per cycle. Used later to create TOPS (operations_per_cycle * <AIE Clock Frequency>)
         uint8_t padding[4];
         struct aie_partition_info info;     // Partition information
         struct array_offset aie_pdi;        // PDI Array (aie_partition_info)

@@ -410,7 +410,7 @@ createAIEPartitionImage(const std::string& sectionIndexName,
   heap.write(sectionIndexName.c_str(), sectionIndexName.size() + 1 /*Null char*/);
 
   // TOPs
-  aie_partitionHdr.operation_per_cycle = ptAIEPartition.get<uint32_t>("operation_per_cycle", 0);
+  aie_partitionHdr.operations_per_cycle = ptAIEPartition.get<uint32_t>("operations_per_cycle", 0);
 
   //  Process the nodes
   process_partition_info(ptAIEPartition, aie_partitionHdr.info, heap);
@@ -635,7 +635,7 @@ writeAIEPartitionImage(const char* pBuffer,
   ptAiePartition.put("name", pBuffer + pHdr->mpo_name);
 
   // TOPs
-  ptAiePartition.put("operation_per_cycle", (boost::format("%d") % pHdr->operation_per_cycle).str());
+  ptAiePartition.put("operations_per_cycle", (boost::format("%d") % pHdr->operations_per_cycle).str());
 
   // Partition info
   populate_partition_info(pBuffer, pHdr->info, ptAiePartition);

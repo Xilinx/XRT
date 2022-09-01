@@ -1,7 +1,7 @@
 {
     "aie_partition": {
         "name": "Flavor",
-        "operation_per_cycle": "135",
+        "operations_per_cycle": "135",
         "partition": {
             "column_width": "1",
             "start_columns": [

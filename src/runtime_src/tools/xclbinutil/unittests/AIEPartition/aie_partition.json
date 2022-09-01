@@ -1,6 +1,6 @@
 {
 	"aie_partition": {
-        "operation_per_cycle": "135",
+        "operations_per_cycle": "135",
 		"partition": {
 			"column_width": 1,
 			"start_columns": [1, 2, 3, 4]
