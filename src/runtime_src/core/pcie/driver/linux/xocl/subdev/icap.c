@@ -3268,13 +3268,12 @@ static int icap_offline(struct platform_device *pdev)
 	struct icap *icap = platform_get_drvdata(pdev);
 	uint32_t slot_id = DEFAULT_SLOT_ID;
 	struct islot_info *islot = icap->slot_info[slot_id];
-	if (!islot)
-		return 0;
 
 	xocl_drvinst_kill_proc(platform_get_drvdata(pdev));
 
 	sysfs_remove_group(&pdev->dev.kobj, &icap_attr_group);
-	xclbin_free_clock_freq_topology(icap, slot_id);
+	if (islot)
+		xclbin_free_clock_freq_topology(icap, slot_id);
 	
 	icap_clean_bitstream_axlf(pdev);
 
