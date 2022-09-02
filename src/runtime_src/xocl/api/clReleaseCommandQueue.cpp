@@ -37,6 +37,13 @@ static cl_int
 clReleaseCommandQueue(cl_command_queue command_queue)
 {
   validOrError(command_queue);
+  // validOrError checks for nullptr only in the debug build. Suppress
+  // collateral GCC warnings (e.g. stringop-overflow in smart pointer methods)
+  // in case of a non-debug build.
+  #ifdef NDEBUG
+  if (!command_queue) __builtin_unreachable();
+  #endif
+
   if (xocl(command_queue)->release())
     delete xocl(command_queue);
   return CL_SUCCESS;

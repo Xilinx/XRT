@@ -36,6 +36,13 @@ static cl_int
 clReleaseSampler(cl_sampler sampler)
 {
   validOrError(sampler);
+  // validOrError checks for nullptr only in the debug build. Suppress
+  // collateral GCC warnings (e.g. stringop-overflow in smart pointer methods)
+  // in case of a non-debug build.
+  #ifdef NDEBUG
+  if (!sampler) __builtin_unreachable();
+  #endif
+
   if (xocl(sampler)->release())
     delete xocl(sampler);
   return CL_SUCCESS;

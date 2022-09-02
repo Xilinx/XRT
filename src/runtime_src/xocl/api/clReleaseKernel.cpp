@@ -37,6 +37,13 @@ static cl_int
 clReleaseKernel(cl_kernel kernel)
 {
   validOrError(kernel);
+  // validOrError checks for nullptr only in the debug build. Suppress
+  // collateral GCC warnings (e.g. stringop-overflow in smart pointer methods)
+  // in case of a non-debug build.
+  #ifdef NDEBUG
+  if (!kernel) __builtin_unreachable();
+  #endif
+
   if (xocl(kernel)->release())
     delete xocl(kernel);
   return CL_SUCCESS;

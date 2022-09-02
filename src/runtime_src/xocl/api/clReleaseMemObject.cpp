@@ -38,6 +38,12 @@ static cl_int
 clReleaseMemObject(cl_mem memobj)
 {
   validOrError(memobj);
+  // validOrError checks for nullptr only in the debug build. Suppress
+  // collateral GCC warnings (e.g. stringop-overflow in smart pointer methods)
+  // in case of a non-debug build.
+  #ifdef NDEBUG
+  if (!memobj) __builtin_unreachable();
+  #endif
 
   if (!xocl(memobj)->release())
     return CL_SUCCESS;

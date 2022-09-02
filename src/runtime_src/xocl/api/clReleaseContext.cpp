@@ -36,6 +36,13 @@ static cl_int
 clReleaseContext(cl_context  context )
 {
   validOrError(context);
+  // validOrError checks for nullptr only in the debug build. Suppress
+  // collateral GCC warnings (e.g. stringop-overflow in smart pointer methods)
+  // in case of a non-debug build.
+  #ifdef NDEBUG
+  if (!context) __builtin_unreachable();
+  #endif
+
   if (xocl(context)->release())
     delete xocl(context);
   return CL_SUCCESS;

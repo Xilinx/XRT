@@ -36,6 +36,12 @@ static cl_int
 clReleaseProgram(cl_program program)
 {
   validOrError(program);
+  // validOrError checks for nullptr only in the debug build. Suppress
+  // collateral GCC warnings (e.g. stringop-overflow in smart pointer methods)
+  // in case of a non-debug build.
+  #ifdef NDEBUG
+  if (!program) __builtin_unreachable();
+  #endif
 
   if (xocl::xocl(program)->release())
     delete xocl::xocl(program);
