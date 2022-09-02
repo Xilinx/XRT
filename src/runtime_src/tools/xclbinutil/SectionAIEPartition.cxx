@@ -538,7 +538,7 @@ populate_cdo_groups(const char* pBase,
     if (element.dpu_kernel_ids.size) {
       boost::property_tree::ptree ptDPUKernelIDs;
       const uint64_t* kernelIDsArray = reinterpret_cast<const uint64_t*>(pBase + element.dpu_kernel_ids.offset);
-      for (uint32_t kernelIDindex = 0; index < element.dpu_kernel_ids.size; index++) {
+      for (uint32_t kernelIDindex = 0; kernelIDindex < element.dpu_kernel_ids.size; kernelIDindex++) {
         boost::property_tree::ptree ptID;
         ptID.put("", (boost::format("0x%x") % kernelIDsArray[kernelIDindex]).str());
         ptDPUKernelIDs.push_back({ "", ptID });
