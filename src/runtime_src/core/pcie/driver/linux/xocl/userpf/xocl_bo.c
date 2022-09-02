@@ -379,6 +379,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	struct xocl_dev *xdev = drm_p->xdev;
 	struct drm_gem_object *obj;
 	unsigned memidx = xocl_bo_ddr_idx(user_flags);
+	unsigned slotidx = xocl_bo_slot_idx(user_flags);
 	bool xobj_inited = false;
 	int err = 0;
 
@@ -455,7 +456,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	xocl_xdev_dbg(xdev, "alloc bo from bank%u, flag %x, host bank %d",
 		memidx, xobj->flags, drm_p->cma_bank_idx);
 
-	err = xocl_mm_insert_node(drm_p, xobj->user_flags, xobj->mm_node,
+	err = xocl_mm_insert_node(drm_p, memidx, slotidx, xobj->mm_node,
 		xobj->base.size);
 	if (err)
 		goto failed;
