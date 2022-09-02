@@ -710,7 +710,8 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data;
 	struct xcl_mailbox_peer_state *st = NULL;
 	struct xclErrorLast err_last;
-	struct xcl_firewall fw_stat = { 0 };
+	/* Variables for firewall request processing */
+	struct xcl_firewall fw_status = { 0 };
 	XOCL_TIMESPEC time;
 
 	if (err != 0)
@@ -719,11 +720,14 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	userpf_info(xdev, "received request (%d) from peer\n", req->req);
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_FIREWALL:
-		xocl_af_get_data(xdev, &fw_stat);
+		/* Update the xocl firewall status */
+		xocl_af_check(xdev, NULL);
+		/* Get the updated xocl firewall status */
+		xocl_af_get_data(xdev, &fw_status);
 		XOCL_GETTIME(&time);
 		userpf_info(xdev, 
 			"AXI Firewall %llu tripped, Mgmt timestamp: %llu, Xocl timestamp: %llu",
-			fw_stat.err_detected_level, fw_stat.err_detected_time, time.tv_sec);
+			fw_status.err_detected_level, fw_status.err_detected_time, time.tv_sec);
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
 		err_last.pid = 0;

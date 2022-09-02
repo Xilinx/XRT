@@ -118,7 +118,6 @@ static char *af_si_status[32] = {
 #define	BUSY_RETRY_INTERVAL		100		/* ms */
 #define	CLEAR_RETRY_COUNT		4
 #define	CLEAR_RETRY_INTERVAL		2		/* ms */
-#define	FW_DEFAULT_EXPIRE_SECS		1
 #define	MAX_LEVEL			16
 
 #define	FW_MAX_WAIT_DEFAULT 		0xffff
@@ -152,21 +151,19 @@ struct firewall_ip {
 struct firewall {
 	struct firewall_ip	af[MAX_LEVEL];
 	struct xcl_firewall	status;
-	ktime_t				last_update;
-	ktime_t				expire_secs;
-	char				level_name[MAX_LEVEL][50];
+	char			level_name[MAX_LEVEL][50];
 
-	bool				inject_firewall;
-	u64					err_detected_araddr;
-	u64					err_detected_awaddr;
-	u32					err_detected_aruser;
-	u32					err_detected_awuser;
+	bool			inject_firewall;
+	u64			err_detected_araddr;
+	u64			err_detected_awaddr;
+	u32			err_detected_aruser;
+	u32			err_detected_awuser;
 };
 
 static int clear_firewall(struct platform_device *pdev);
-static u32 check_firewall(struct platform_device *pdev, int *level);
+static u32 check_firewall(struct platform_device *pdev, int *fw_status);
 
-/* 
+/*
  * Request the firewall status from the mgmt driver via mailbox.
  * Populates the device firewall status struct with the response
  * from the mgmt driver
@@ -180,16 +177,6 @@ static void request_firewall_status(struct platform_device *pdev)
 	struct xcl_mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-
-	/* 
-	 * If the last status request has not expired
-	 * use the previous status update
-	 */
-	const ktime_t now = ktime_get_boottime();
-	if (ktime_compare(now, fw->last_update) < 0)
-		return;
-
-	fw->last_update = ktime_add(now, fw->expire_secs);
 
 	xocl_info(&pdev->dev, "reading from peer");
 	mb_req = vmalloc(reqlen);
@@ -209,7 +196,6 @@ static void request_firewall_status(struct platform_device *pdev)
 	 */
 	(void) xocl_peer_request(xdev,
 		mb_req, reqlen, &fw->status, &resp_len, NULL, NULL, 0, 0);
-
 	vfree(mb_req);
 }
 
@@ -220,11 +206,6 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 
 	fw = platform_get_drvdata(pdev);
 	BUG_ON(!fw);
-
-	/* If not privileged request the firewall status from the mgmt driver */
-	if (!FW_PRIVILEGED(fw))
-		request_firewall_status(pdev);
-
 	/* Get the requested property */
 	switch (prop) {
 		case XOCL_AF_PROP_TOTAL_LEVEL:
@@ -386,8 +367,11 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 	fw = platform_get_drvdata(pdev);
 	BUG_ON(!fw);
 
-	if (!FW_PRIVILEGED(fw))
+	/* Force xocl driver to request data from xclmgmt */
+	if (!FW_PRIVILEGED(fw)) {
+		request_firewall_status(pdev);
 		return 0;
+	}
 
 	/* Check for any tripped firewall events */
 	for (i = 0; i < fw->status.max_level; i++) {
@@ -400,8 +384,8 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 			}
 			XOCL_GETTIME(&time);
 			xocl_info(&pdev->dev,
-				"AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx, resource %s, time %lld",
-				i, val, bar_off, (res && res->name) ? res->name : "N/A", time.tv_sec);
+				"AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx, resource %s",
+				i, val, bar_off, (res && res->name) ? res->name : "N/A");
 			if (fw->af[i].version >= IP_VER_11) {
 				xocl_info(&pdev->dev, "ARADDR 0x%lx, AWADDR 0x%lx, ARUSER 0x%x, AWUSER 0x%x",
 					READ_ARADDR(fw, i), READ_AWADDR(fw, i),
@@ -687,8 +671,6 @@ static int firewall_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "create attr group failed: %d", ret);
 		goto failed;
 	}
-
-	fw->expire_secs = ktime_set(FW_DEFAULT_EXPIRE_SECS, 0);
 
 	return 0;
 
