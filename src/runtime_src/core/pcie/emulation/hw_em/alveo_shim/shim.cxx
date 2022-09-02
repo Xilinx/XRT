@@ -156,7 +156,7 @@ namespace xclhwemhal2 {
     {
       void *result = realloc(buf, new_size);
       // If realloc was unsuccessful, then give up and deallocate.
-      if (result == nullptr)
+      if (!result)
       {
         free(buf);
         buf = nullptr;
