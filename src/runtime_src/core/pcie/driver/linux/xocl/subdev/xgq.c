@@ -2249,8 +2249,8 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 	uint8_t enable = 0;
 	uint16_t pwr = 0;
 	uint8_t temp = 0;
-	char* args = buf;
-	char* end = buf;
+	char* args = (char*) buf;
+	char* end = (char*) buf;
 	int ret = 0;
 
 	if (!cs_payload->has_clk_scaling)
