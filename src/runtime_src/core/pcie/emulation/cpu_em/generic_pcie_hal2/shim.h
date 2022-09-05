@@ -46,8 +46,8 @@
 namespace xclcpuemhal2
 {
   using key_type = xrt_core::query::key_type;
-  //8GB MEMSIZE to access the MMAP FILE
-  const uint64_t MEMSIZE = 0x0000000200000000;
+  //16GB MEMSIZE to access the MMAP FILE
+  const uint64_t MEMSIZE = 0x0000000400000000;
   const auto endOfSimulationString = "received request to end simulation from connected initiator";
 
   // XDMA Shim
