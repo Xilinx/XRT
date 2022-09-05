@@ -119,7 +119,7 @@ namespace xclcpuemhal2
         free(buf);
         buf = nullptr;
         return 0;
-	  }
+      }
       buf = result;
       return new_size;
     }
