@@ -51,14 +51,6 @@ add_compile_definitions("BOOST_BIND_GLOBAL_PLACEHOLDERS")
 add_compile_definitions("_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING")
 
 if (MSVC)
-  add_compile_options(/Zc:__cplusplus)
-  # generate pdb files even in release mode
-  add_compile_options(/Zi)
-  # instruct linker to create debugging info
-  add_link_options(/DEBUG)
-endif()
-
-if (MSVC)
     add_compile_options(
         /Zc:__cplusplus
         /Zi           # generate pdb files even in release mode
