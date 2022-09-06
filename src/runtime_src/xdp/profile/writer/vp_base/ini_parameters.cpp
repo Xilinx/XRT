@@ -63,6 +63,7 @@ namespace xdp {
                  "Generation of lower overhead OpenCL trace. Should not be used with other OpenCL options.");
     addParameter("debug_mode", xrt_core::config::get_launch_waveform(),
                  "Debug mode (emulation only)");
+#ifndef SKIP_AIE_INI
     addParameter("aie_trace", xrt_core::config::get_aie_trace(),
                  "Generation of AI Engine trace");
     addParameter("aie_trace_buffer_size",
@@ -149,7 +150,8 @@ namespace xdp {
                  "Interval for reading of device AI Engine trace data to host (in us)");
     addParameter("AIE_trace_settings.file_dump_interval_s",
                  xrt_core::config::get_aie_trace_settings_file_dump_interval_s(),
-                 "Interval for dumping AI Engine trace files to host (in s)");  
+                 "Interval for dumping AI Engine trace files to host (in s)");
+#endif
   }
 
   IniParameters::~IniParameters()
