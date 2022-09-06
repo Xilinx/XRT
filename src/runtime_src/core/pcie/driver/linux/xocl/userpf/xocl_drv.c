@@ -1252,7 +1252,7 @@ static void xocl_cma_mem_free(struct xocl_dev *xdev, uint32_t idx)
 
 	if (cma_mem->regular_page) {
 		dma_unmap_page(&xdev->core.pdev->dev, cma_mem->paddr,
-			cma_mem->size, PCI_DMA_BIDIRECTIONAL);
+			cma_mem->size, DMA_BIDIRECTIONAL);
 		__free_pages(cma_mem->regular_page, get_order(cma_mem->size));
 		cma_mem->regular_page = NULL;
 	} else if (cma_mem->pages) {
@@ -1502,7 +1502,7 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_dev *xdev, uint64_t size, uint3
 	}
 
 	dma_addr = dma_map_page(dev, page, 0, size,
-		PCI_DMA_BIDIRECTIONAL);
+		DMA_BIDIRECTIONAL);
 	if (unlikely(dma_mapping_error(dev, dma_addr))) {
 		DRM_ERROR("Unable to dma map pages");
 		__free_pages(page, order);
@@ -1513,7 +1513,7 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_dev *xdev, uint64_t size, uint3
 		roundup(PAGE_SIZE, size) >> PAGE_SHIFT);
 
 	if (!cma_mem->pages) {
-		dma_unmap_page(dev, dma_addr, size, PCI_DMA_BIDIRECTIONAL);
+		dma_unmap_page(dev, dma_addr, size, DMA_BIDIRECTIONAL);
 		__free_pages(page, order);
 		return -ENOMEM;
 	}
@@ -1783,18 +1783,18 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	xocl_drvinst_set_offline(xdev, false);
 
-	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
+	if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(64))) {
 		/* query for DMA transfer */
 		/* @see Documentation/DMA-mapping.txt */
 		xocl_info(&pdev->dev, "pci_set_dma_mask()\n");
 		/* use 64-bit DMA */
 		xocl_info(&pdev->dev, "Using a 64-bit DMA mask.\n");
 		/* use 32-bit DMA for descriptors */
-		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
+		dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
 		/* use 64-bit DMA, 32-bit for consistent */
-	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
+	} else if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(32))) {
 		xocl_info(&pdev->dev, "Could not set 64-bit DMA mask.\n");
-		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
+		dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
 		/* use 32-bit DMA */
 		xocl_info(&pdev->dev, "Using a 32-bit DMA mask.\n");
 	} else {

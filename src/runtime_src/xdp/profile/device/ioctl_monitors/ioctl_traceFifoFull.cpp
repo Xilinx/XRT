@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2020 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -15,7 +16,7 @@
  * under the License.
  */
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(SKIP_IOCTL)
 
 #include <sys/fcntl.h>
 #include <sys/mman.h>
