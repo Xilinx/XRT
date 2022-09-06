@@ -58,6 +58,22 @@ if (MSVC)
   add_link_options(/DEBUG)
 endif()
 
+if (MSVC)
+    add_compile_options(
+        /Zc:__cplusplus
+        /Zi           # generate pdb files even in release mode
+        /Qspectre     # compile with the Spectre mitigations switch
+        /ZH:SHA_256   # enable secure source code hashing
+        /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+    )
+    add_link_options(
+        /DEBUG      # instruct linker to create debugging info
+        /guard:cf   # enable linker control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+        /CETCOMPAT  # enable Control-flow Enforcement Technology (CET) Shadow Stack mitigation
+    )
+endif()
+
+
 INCLUDE (FindGTest)
 
 # --- XRT Variables ---
