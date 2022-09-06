@@ -176,6 +176,7 @@ static void request_firewall_status(struct platform_device *pdev)
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	XOCL_TIMESPEC time;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "reading from peer");
@@ -196,6 +197,10 @@ static void request_firewall_status(struct platform_device *pdev)
 	 */
 	(void) xocl_peer_request(xdev,
 		mb_req, reqlen, &fw->status, &resp_len, NULL, NULL, 0, 0);
+	/* Overwrite mgmt timestamp. Some firmware does not provide a valid time */
+	XOCL_GETTIME(&time);
+	fw->status.err_detected_time = (u64)time.tv_sec;
+
 	vfree(mb_req);
 }
 

@@ -712,7 +712,6 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	struct xclErrorLast err_last;
 	/* Variables for firewall request processing */
 	struct xcl_firewall fw_status = { 0 };
-	XOCL_TIMESPEC time;
 
 	if (err != 0)
 		return;
@@ -724,14 +723,12 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		xocl_af_check(xdev, NULL);
 		/* Get the updated xocl firewall status */
 		xocl_af_get_data(xdev, &fw_status);
-		XOCL_GETTIME(&time);
 		userpf_info(xdev, 
-			"AXI Firewall %llu tripped, Mgmt timestamp: %llu, Xocl timestamp: %llu",
-			fw_status.err_detected_level, fw_status.err_detected_time, time.tv_sec);
+			"AXI Firewall %llu tripped", fw_status.err_detected_level);
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
 		err_last.pid = 0;
-		err_last.ts = 0; //TODO timestamp
+		err_last.ts = fw_status.err_detected_time;
 		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_FIRWWALL_TRIP, 
 			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
 			XRT_ERROR_MODULE_FIREWALL, XRT_ERROR_CLASS_HARDWARE);
