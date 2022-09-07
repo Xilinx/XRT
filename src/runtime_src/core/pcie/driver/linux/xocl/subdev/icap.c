@@ -231,7 +231,10 @@ static int icap_slot_init(struct icap *icap, uint32_t slot_id)
 	
 	mutex_lock(&icap->icap_lock);
 	if (islot)
+	if (islot) {
 		vfree(islot);
+		icap->slot_info[slot_id] = NULL;
+	}
 
 	islot = vzalloc(sizeof(struct islot_info));
 	if (!islot) {
