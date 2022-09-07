@@ -30,7 +30,7 @@ SAVED_OPTIONS=$(set +o)
 set +x
 # Get the canonical file name of the current script
 THIS_SCRIPT=`readlink -f ${BASH_SOURCE[0]}`
- 
+
 PROGRAM=`basename $0`
 
 # XRT Version variables
@@ -101,11 +101,6 @@ if [[ $clean == 1 ]]; then
     exit 0
 fi
 
-# Sanity Check
-if [ -z $SYSROOT ] ; then
-    error "Please provide the required option 'sysroot_name'"
-fi
-
 if [ ! -d $DEBIAN ]; then
     error "$DEBIAN is not accessible"
 fi
@@ -113,7 +108,7 @@ fi
 DEBIAN_ARTIFACTS=$THIS_SCRIPT_DIR/$BUILD_FOLDER/debian_artifacts
 mkdir -p $DEBIAN_ARTIFACTS
 cd $DEBIAN_ARTIFACTS
-# TODO: 
+# TODO:
 # Debian expects XRT source tarball to be in parent directory of folder having debian folder, that way we should place
 # tar ball outside XRT directory which makes clean process difficult, find a flag to point to XRT source tar ball.
 # Current implementation copies source code to build folder
@@ -128,13 +123,13 @@ cp -rf $DEBIAN $DEBIAN_ARTIFACTS
 sed -i "1d" $DEBIAN_ARTIFACTS/debian/changelog
 sed -i "1s/^/xrt (${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}) experimental;urgency=medium\n/" $DEBIAN_ARTIFACTS/debian/changelog
 
-time sbuild --no-run-lintian -d focal --arch=arm64 -c $SYSROOT -s -n
+time sbuild --no-run-lintian -d jammy --arch=arm64 -s -n
 
 cd $THIS_SCRIPT_DIR/$BUILD_FOLDER
 # rename the packages created for consistency
-mv xrt-embedded_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_embedded_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_20.04-arm64.deb
-mv xrt-zocl-dkms_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_zocl_dkms_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_20.04-arm64.deb
-mv xrt-embedded-dbgsym_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.ddeb xrt_embedded_dbgsym_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_20.04-arm64.ddeb
+mv xrt-embedded_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_embedded_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_22.04-arm64.deb
+mv xrt-zocl-dkms_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_zocl_dkms_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_22.04-arm64.deb
+mv xrt-embedded-dbgsym_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.ddeb xrt_embedded_dbgsym_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_22.04-arm64.ddeb
 
 eval "$SAVED_OPTIONS"; # Restore shell options
 echo "** COMPLETE [${BASH_SOURCE[0]}] **"
