@@ -573,8 +573,7 @@ namespace xclcpuemhal2
         if (line.find(matchString) != std::string::npos)
         {
           std::cout << "Received request to end the application. Exiting the application." << std::endl;
-          //mCpuShimPtr->xclClose();
-          exit(0);
+          mCpuShimPtr->xclClose();
         }
       }
     }

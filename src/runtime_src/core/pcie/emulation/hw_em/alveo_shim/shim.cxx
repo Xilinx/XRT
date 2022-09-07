@@ -194,6 +194,7 @@ namespace xclhwemhal2 {
 
   int HwEmShim::parseLog()
   {
+    auto lstatus = 0;
     std::vector<std::string> myvector = {"SIM-IPC's external process can be connected to instance",
                                          "SystemC TLM functional mode",
                                          "HLS_PRINT",
@@ -213,8 +214,9 @@ namespace xclhwemhal2 {
               parsedMsgs.push_back(line);
               if (!matchString.compare("Exiting xsim") || !matchString.compare("ERROR")) {
                   std::cout << "SIMULATION EXITED" << std::endl;
-                  this->xclClose();                                               // Let's have a proper clean if xsim is NOT running
-                  exit(0);                                                        // It's a clean exit only.
+                  lstatus = -1;
+                  this->xclClose(true);                                               // Let's have a proper clean if xsim is NOT running
+                 // exit(0);                                                        // It's a clean exit only.
               }
 
             }
@@ -222,7 +224,7 @@ namespace xclhwemhal2 {
         }
       }
     }
-    return 0;
+    return lstatus;
   }
 
   void HwEmShim::parseString(const std::string& simPath , const std::string& searchString)
@@ -753,7 +755,7 @@ namespace xclhwemhal2 {
           if (mLogStream.is_open())
           {
             mLogStream << __func__ << " DISPLAY environment is not available so expect an exit from the application " << std::endl;
-            //DEBUG_MSG_COUT(" DISPLAY environment is not available so expect an exit from the application ");
+            //DEBUG_MSGS_COUT(" DISPLAY environment is not available so expect an exit from the application ");
           }
           std::string dMsg = "ERROR: [HW-EMU 26] DISPLAY environment is not available so expect an exit from the application";
           logMessage(dMsg, 0);
@@ -1076,11 +1078,20 @@ namespace xclhwemhal2 {
     {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
-    // check for any errors if present in simulate.log, if yes then log them onto screen.
-    parseLog();
+    //Ensuring the simulate is ready to connect
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10s);
+    if (parseLog() != 0) {
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " Simulator is NOT started so exiting the application! " << std::endl;
+
+      exit(EXIT_FAILURE);
+    }
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
     sock->monitor_socket();
+    // check for any errors if present in simulate.log, if yes then log them onto screen.
+    
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
       mMessengerThread = std::thread([this]() { messagesThread(); } );
@@ -1764,12 +1775,13 @@ namespace xclhwemhal2 {
     }
   }
 
-  void HwEmShim::xclClose() {
+  void HwEmShim::xclClose(bool DonotRunParseLog ) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    parseLog();
+    if (!DonotRunParseLog)
+        parseLog();
 
     for (auto& it: mFdToFileNameMap) {
       int fd=it.first;

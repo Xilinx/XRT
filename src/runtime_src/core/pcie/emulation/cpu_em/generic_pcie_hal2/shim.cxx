@@ -1318,10 +1318,8 @@ namespace xclcpuemhal2
 
   void CpuemShim::messagesThread()
   {
-    DEBUG_MSG_COUT("start");
     auto start_time = std::chrono::high_resolution_clock::now();
     auto lpath = getDeviceProcessLogPath();
-    DEBUG_MSG_COUT("The file path is::"<<lpath);
     sParseLog deviceProcessLog(this, lpath);
     int count = 0;
     while (mIsDeviceProcessStarted)
@@ -1339,8 +1337,8 @@ namespace xclcpuemhal2
         ++count;
         // giving some time for the simulator to run
         if (count % 5 == 0)
-          std::this_thread::sleep_for(std::chrono::seconds(5));
-          //std::this_thread::sleep_for(std::chrono::seconds(std::min(10 * (count / 5), 300)));
+          std::this_thread::sleep_for(std::chrono::seconds(std::min(10 * (count / 5), 300)));
+          //std::this_thread::sleep_for(std::chrono::seconds(5));
 
       }
     }
