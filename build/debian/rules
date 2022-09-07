@@ -16,4 +16,21 @@ override_dh_auto_test:
 	dh_auto_test || true
 
 override_dh_shlibdeps:
-	dh_shlibdeps -l/opt/xilinx/xrt/lib
+	dh_shlibdeps -l/usr/lib -l/usr/lib/xrt/module
+
+override_dh_install:
+# TODO Some files are missing in tmp, this will need a deeper investigation
+	set -ex; \
+	dkms_folder=$$(find debian/tmp/usr/src/ -maxdepth 1 -type d -name 'xrt-[0-9]*'); \
+	mkdir -p $$dkms_folder/driver/common/; \
+	cp -rf src/runtime_src/core/common/drv/* $$dkms_folder/driver/common/; \
+	if [ -d $$dkms_folder/driver/zocl/ ]; then \
+	    cp -rf src/runtime_src/core/edge/drm/zocl/* $$dkms_folder/driver/zocl/; \
+	    cp src/runtime_src/core/include/xgq*.h $$dkms_folder/driver/zocl/include/; \
+	    cp src/runtime_src/core/include/ps_kernel.h $$dkms_folder/driver/zocl/include/; \
+	fi
+# script end
+# Create configuration file for OpenCL
+	mkdir -p debian/tmp/etc/OpenCL/vendors/
+	echo "libxilinxopencl.so" > debian/tmp/etc/OpenCL/vendors/xilinx.icd
+	dh_install
