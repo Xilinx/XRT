@@ -118,7 +118,6 @@ static char *af_si_status[32] = {
 #define	BUSY_RETRY_INTERVAL		100		/* ms */
 #define	CLEAR_RETRY_COUNT		4
 #define	CLEAR_RETRY_INTERVAL		2		/* ms */
-#define	FW_DEFAULT_EXPIRE_SECS		1
 #define	MAX_LEVEL			16
 
 #define	FW_MAX_WAIT_DEFAULT 		0xffff
@@ -151,46 +150,33 @@ struct firewall_ip {
 
 struct firewall {
 	struct firewall_ip	af[MAX_LEVEL];
-	u32			max_level;
+	struct xcl_firewall	status;
+	char			level_name[MAX_LEVEL][50];
 
-	u32			curr_status;
-	int			curr_level;
-
-	u32			err_detected_status;
-	u32			err_detected_level;
-	u64			err_detected_time;
+	bool			inject_firewall;
 	u64			err_detected_araddr;
 	u64			err_detected_awaddr;
 	u32			err_detected_aruser;
 	u32			err_detected_awuser;
-
-	bool			inject_firewall;
-	u64			cache_expire_secs;
-	struct xcl_firewall	cache;
-	ktime_t			cache_expires;
-	char		err_detected_level_name[50];
-	char		level_name[MAX_LEVEL][50];
 };
 
 static int clear_firewall(struct platform_device *pdev);
-static u32 check_firewall(struct platform_device *pdev, int *level);
+static u32 check_firewall(struct platform_device *pdev, int *fw_status);
 
-static void set_fw_data(struct firewall *fw, struct xcl_firewall *fw_status)
-{
-	memcpy(&fw->cache, fw_status, sizeof(struct xcl_firewall));
-	fw->cache_expires = ktime_add(ktime_get_boottime(),
-		ktime_set(fw->cache_expire_secs, 0));
-}
-
-static void fw_read_from_peer(struct platform_device *pdev)
+/*
+ * Request the firewall status from the mgmt driver via mailbox.
+ * Populates the device firewall status struct with the response
+ * from the mgmt driver
+ */
+static void request_firewall_status(struct platform_device *pdev)
 {
 	struct firewall *fw = platform_get_drvdata(pdev);
 	struct xcl_mailbox_subdev_peer subdev_peer = {0};
-	struct xcl_firewall fw_status = {0};
 	size_t resp_len = sizeof(struct xcl_firewall);
 	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
 	struct xcl_mailbox_req *mb_req = NULL;
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	XOCL_TIMESPEC time;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
 	xocl_info(&pdev->dev, "reading from peer");
@@ -205,20 +191,17 @@ static void fw_read_from_peer(struct platform_device *pdev)
 
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
+	/* 
+	 * Request the firewall status information from the mgmt driver
+	 * Place the response into the firewall status struct
+	 */
 	(void) xocl_peer_request(xdev,
-		mb_req, reqlen, &fw_status, &resp_len, NULL, NULL, 0, 0);
-	set_fw_data(fw, &fw_status);
+		mb_req, reqlen, &fw->status, &resp_len, NULL, NULL, 0, 0);
+	/* Overwrite mgmt timestamp. Some firmware does not provide a valid time */
+	XOCL_GETTIME(&time);
+	fw->status.err_detected_time = (u64)time.tv_sec;
 
 	vfree(mb_req);
-}
-
-static void get_fw_status(struct platform_device *pdev)
-{
-	struct firewall *fw = platform_get_drvdata(pdev);
-	ktime_t now = ktime_get_boottime();
-
-	if (ktime_compare(now, fw->cache_expires) > 0)
-		fw_read_from_peer(pdev);
 }
 
 static int get_prop(struct platform_device *pdev, u32 prop, void *val)
@@ -228,66 +211,32 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 
 	fw = platform_get_drvdata(pdev);
 	BUG_ON(!fw);
-
-	if (FW_PRIVILEGED(fw)) {
-
-		(void) check_firewall(pdev, NULL);
-
-		switch (prop) {
+	/* Get the requested property */
+	switch (prop) {
 		case XOCL_AF_PROP_TOTAL_LEVEL:
-			*(u64 *)val = fw->max_level;
+			*(u64 *)val = fw->status.max_level;
 			break;
 		case XOCL_AF_PROP_STATUS:
-			*(u64 *)val = fw->curr_status;
+			*(u64 *)val = fw->status.curr_status;
 			break;
 		case XOCL_AF_PROP_LEVEL:
-			*(int64_t *)val = fw->curr_level;
+			*(int64_t *)val = fw->status.curr_level;
 			break;
 		case XOCL_AF_PROP_DETECTED_STATUS:
-			*(u64 *)val = fw->err_detected_status;
+			*(u64 *)val = fw->status.err_detected_status;
 			break;
 		case XOCL_AF_PROP_DETECTED_LEVEL:
-			*(u64 *)val = fw->err_detected_level;
+			*(u64 *)val = fw->status.err_detected_level;
 			break;
 		case XOCL_AF_PROP_DETECTED_TIME:
-			*(u64 *)val = fw->err_detected_time;
+			*(u64 *)val = fw->status.err_detected_time;
 			break;
 		case XOCL_AF_PROP_DETECTED_LEVEL_NAME:
-			strcpy((char *)val, fw->err_detected_level_name);
+			strcpy((char *)val, fw->status.err_detected_level_name);
 			break;
 		default:
 			xocl_err(&pdev->dev, "Invalid prop %d", prop);
 			ret = -EINVAL;
-		}
-	} else {
-		get_fw_status(pdev);
-
-		switch (prop) {
-		case XOCL_AF_PROP_TOTAL_LEVEL:
-			*(u64 *)val = fw->cache.max_level;
-			break;
-		case XOCL_AF_PROP_STATUS:
-			*(u64 *)val = fw->cache.curr_status;
-			break;
-		case XOCL_AF_PROP_LEVEL:
-			*(int *)val = fw->cache.curr_level;
-			break;
-		case XOCL_AF_PROP_DETECTED_STATUS:
-			*(u64 *)val = fw->cache.err_detected_status;
-			break;
-		case XOCL_AF_PROP_DETECTED_LEVEL:
-			*(u64 *)val = fw->cache.err_detected_level;
-			break;
-		case XOCL_AF_PROP_DETECTED_TIME:
-			*(u64 *)val = fw->cache.err_detected_time;
-			break;
-		case XOCL_AF_PROP_DETECTED_LEVEL_NAME:
-			strcpy((char *)val, fw->cache.err_detected_level_name);
-			break;
-		default:
-			xocl_err(&pdev->dev, "Invalid prop %d", prop);
-			ret = -EINVAL;
-		}
 	}
 	return ret;
 }
@@ -374,16 +323,16 @@ static ssize_t detected_trip_show(struct device *dev,
 	char **status;
 	ssize_t count = 0;
 
-	status = (fw->af[fw->err_detected_level].mode == SI_MODE) ?
+	status = (fw->af[fw->status.err_detected_level].mode == SI_MODE) ?
 		af_si_status: af_mi_status;
 	for (i = 0; i < 32; i++) {
-		if (fw->err_detected_status & BIT(i)) {
+		if (fw->status.err_detected_status & BIT(i)) {
 			count += sprintf(buf + count, "status_bit%d:%s\n",
 				i, status[i]);
 		}
 	}
 
-	count += sprintf(buf + count, "level_name:%s\n", fw->err_detected_level_name);
+	count += sprintf(buf + count, "level_name:%s\n", fw->status.err_detected_level_name);
 	count += sprintf(buf + count, "araddr:0x%llx\n", fw->err_detected_araddr);
 	count += sprintf(buf + count, "awaddr:0x%llx\n", fw->err_detected_awaddr);
 	count += sprintf(buf + count, "aruser:0x%x\n", fw->err_detected_aruser);
@@ -423,10 +372,14 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 	fw = platform_get_drvdata(pdev);
 	BUG_ON(!fw);
 
-	if (!FW_PRIVILEGED(fw))
+	/* Force xocl driver to request data from xclmgmt */
+	if (!FW_PRIVILEGED(fw)) {
+		request_firewall_status(pdev);
 		return 0;
+	}
 
-	for (i = 0; i < fw->max_level; i++) {
+	/* Check for any tripped firewall events */
+	for (i = 0; i < fw->status.max_level; i++) {
 		val = IS_FIRED(fw, i);
 		if (val) {
 			res = platform_get_resource(pdev, IORESOURCE_MEM, i);
@@ -434,26 +387,31 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 				(void) xocl_ioaddr_to_baroff(xdev, res->start,
 					&bar_idx, &bar_off);
 			}
+			XOCL_GETTIME(&time);
 			xocl_info(&pdev->dev,
 				"AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx, resource %s",
 				i, val, bar_off, (res && res->name) ? res->name : "N/A");
 			if (fw->af[i].version >= IP_VER_11) {
 				xocl_info(&pdev->dev, "ARADDR 0x%lx, AWADDR 0x%lx, ARUSER 0x%x, AWUSER 0x%x",
-				    READ_ARADDR(fw, i), READ_AWADDR(fw, i),
-				    READ_ARUSER(fw, i), READ_AWUSER(fw, i));
+					READ_ARADDR(fw, i), READ_AWADDR(fw, i),
+					READ_ARUSER(fw, i), READ_AWUSER(fw, i));
 			}
-			if (!fw->curr_status) {
-				fw->err_detected_status = val;
-				fw->err_detected_level = i;
-				strcpy(fw->err_detected_level_name, fw->level_name[i]);
-				XOCL_GETTIME(&time);
-				fw->err_detected_time = (u64)time.tv_sec;
+
+			/* 
+			 * Only update the firewall status if a there is a firewall event
+			 * Otherwise latch the previous firewall event
+			 */
+			if (!fw->status.curr_status) {
+				fw->status.err_detected_status = val;
+				fw->status.err_detected_level = i;
+				strcpy(fw->status.err_detected_level_name, fw->level_name[i]);
+				fw->status.err_detected_time = (u64)time.tv_sec;
 				fw->err_detected_araddr = READ_ARADDR(fw, i);
 				fw->err_detected_awaddr = READ_AWADDR(fw, i);
 				fw->err_detected_aruser = READ_ARUSER(fw, i);
 				fw->err_detected_awuser = READ_AWUSER(fw, i);
 			}
-			fw->curr_level = i;
+			fw->status.curr_level = i;
 
 			if (level)
 				*level = i;
@@ -461,11 +419,12 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 		}
 	}
 
-	fw->curr_status = val;
-	fw->curr_level = i >= fw->max_level ? -1 : i;
+	fw->status.curr_status = val;
+	fw->status.curr_level = i >= fw->status.max_level ? -1 : i;
 
+	/* Print out all firewall status information if the firewall is tripped */
 	if (val) {
-		for (i = 0; i < fw->max_level; i++) {
+		for (i = 0; i < fw->status.max_level; i++) {
 			res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 			if (res) {
 				(void) xocl_ioaddr_to_baroff(xdev, res->start,
@@ -484,13 +443,13 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 	}
 
 	/* Inject firewall for testing. */
-	if (fw->curr_level == -1 && fw->inject_firewall) {
+	if (fw->status.curr_level == -1 && fw->inject_firewall) {
 		fw->inject_firewall = false;
-		fw->curr_level = 0;
-		fw->curr_status = 0x1;
+		fw->status.curr_level = 0;
+		fw->status.curr_status = 0x1;
 	}
 
-	return fw->curr_status;
+	return fw->status.curr_status;
 }
 
 static int clear_firewall(struct platform_device *pdev)
@@ -508,7 +467,7 @@ static int clear_firewall(struct platform_device *pdev)
 	}
 
 retry_level1:
-	for (i = 0; i < fw->max_level; i++) {
+	for (i = 0; i < fw->status.max_level; i++) {
 		for (val = READ_STATUS(fw, i);
 			(val & FIREWALL_STATUS_BUSY) &&
 			retry++ < BUSY_RETRY_COUNT;
@@ -540,8 +499,8 @@ retry_level1:
 		return 0;
 	}
 
-	xocl_info(&pdev->dev, "failed clear firewall, level %d, status 0x%x",
-		fw->curr_level, fw->curr_status);
+	xocl_info(&pdev->dev, "failed clear firewall, level %llu, status 0x%llx",
+		fw->status.curr_level, fw->status.curr_status);
 
 	ret = -EIO;
 
@@ -551,18 +510,14 @@ failed:
 
 static void af_get_data(struct platform_device *pdev, void *buf)
 {
-	struct firewall	*fw = platform_get_drvdata(pdev);
 	struct xcl_firewall *af_status = (struct xcl_firewall *)buf;
-
-	if (FW_PRIVILEGED(fw)) {
-		get_prop(pdev, XOCL_AF_PROP_TOTAL_LEVEL, &af_status->max_level);
-		get_prop(pdev, XOCL_AF_PROP_STATUS, &af_status->curr_status);
-		get_prop(pdev, XOCL_AF_PROP_LEVEL, &af_status->curr_level);
-		get_prop(pdev, XOCL_AF_PROP_DETECTED_STATUS, &af_status->err_detected_status);
-		get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL, &af_status->err_detected_level);
-		get_prop(pdev, XOCL_AF_PROP_DETECTED_TIME, &af_status->err_detected_time);
-		get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL_NAME, &af_status->err_detected_level_name);
-	}
+	get_prop(pdev, XOCL_AF_PROP_TOTAL_LEVEL, &af_status->max_level);
+	get_prop(pdev, XOCL_AF_PROP_STATUS, &af_status->curr_status);
+	get_prop(pdev, XOCL_AF_PROP_LEVEL, &af_status->curr_level);
+	get_prop(pdev, XOCL_AF_PROP_DETECTED_STATUS, &af_status->err_detected_status);
+	get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL, &af_status->err_detected_level);
+	get_prop(pdev, XOCL_AF_PROP_DETECTED_TIME, &af_status->err_detected_time);
+	get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL_NAME, &af_status->err_detected_level_name);
 }
 
 static void inline reset_max_wait(struct firewall *fw, int idx)
@@ -647,7 +602,7 @@ static int firewall_remove(struct platform_device *pdev)
 
 	sysfs_remove_group(&pdev->dev.kobj, &firewall_attrgroup);
 
-	for (i = 0; i <= fw->max_level; i++) {
+	for (i = 0; i <= fw->status.max_level; i++) {
 		if (fw->af[i].base_addr)
 			iounmap(fw->af[i].base_addr);
 	}
@@ -691,11 +646,11 @@ static int firewall_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, fw);
 
 
-	fw->curr_level = -1;
+	fw->status.curr_level = -1;
 	for (i = 0; i < MAX_LEVEL; i++) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (!res) {
-			fw->max_level = i;
+			fw->status.max_level = i;
 			break;
 		}
 		get_fw_ep_name(res->name, fw->level_name[i]);
@@ -721,8 +676,6 @@ static int firewall_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "create attr group failed: %d", ret);
 		goto failed;
 	}
-
-	fw->cache_expire_secs = FW_DEFAULT_EXPIRE_SECS;
 
 	return 0;
 
