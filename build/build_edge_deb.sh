@@ -14,7 +14,7 @@ usage()
     echo "  options:"
     echo "          -help                           Print this usage"
     echo "          -aarch                          Architecture <aarch32/aarch64>"
-    echo "          -sysroot_name                   Name of sysroot folder created for compilation"
+    echo "          -dist                           Distribution for the package build <focal/jammy>"
     echo "          -clean, clean                   Remove build directories, pass 'aarch' option to it"
     echo ""
 }
@@ -57,13 +57,13 @@ while [ $# -gt 0 ]; do
                 -help | --help )
                         usage_and_exit 0
                         ;;
+                -dist | --dist )
+                        shift
+                        DIST=$1
+                        ;;
                 -aarch | --aarch )
                         shift
                         AARCH=$1
-                        ;;
-                -sysroot_name | --sysroot_name )
-                        shift
-                        SYSROOT=$1
                         ;;
                 -clean | clean | --clean )
                         clean=1
@@ -81,6 +81,10 @@ done
 THIS_SCRIPT_DIR=$(dirname "$THIS_SCRIPT")
 XRT_DIR=`readlink -f $THIS_SCRIPT_DIR/../`
 DEBIAN=`readlink -f $THIS_SCRIPT_DIR/debian`
+
+if [ -z $DIST ]; then
+    error "-dist is required option"
+fi
 
 if [ -z $AARCH ]; then
     error "-aarch is required option"
@@ -123,13 +127,13 @@ cp -rf $DEBIAN $DEBIAN_ARTIFACTS
 sed -i "1d" $DEBIAN_ARTIFACTS/debian/changelog
 sed -i "1s/^/xrt (${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}) experimental;urgency=medium\n/" $DEBIAN_ARTIFACTS/debian/changelog
 
-time sbuild --no-run-lintian -d jammy --arch=arm64 -s -n
+time sbuild --no-run-lintian -d $DIST --arch=arm64 -s -n
 
 cd $THIS_SCRIPT_DIR/$BUILD_FOLDER
 # rename the packages created for consistency
-mv xrt-embedded_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_embedded_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_22.04-arm64.deb
-mv xrt-zocl-dkms_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_zocl_dkms_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_22.04-arm64.deb
-mv xrt-embedded-dbgsym_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.ddeb xrt_embedded_dbgsym_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_22.04-arm64.ddeb
+mv xrt-embedded_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_embedded_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_${DIST}-arm64.deb
+mv xrt-zocl-dkms_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_zocl_dkms_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_${DIST}-arm64.deb
+mv xrt-embedded-dbgsym_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.ddeb xrt_embedded_dbgsym_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_${DIST}-arm64.ddeb
 
 eval "$SAVED_OPTIONS"; # Restore shell options
 echo "** COMPLETE [${BASH_SOURCE[0]}] **"
