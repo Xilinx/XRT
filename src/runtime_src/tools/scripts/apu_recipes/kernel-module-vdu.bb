@@ -9,9 +9,9 @@ PV = "${XILINX_VDU_VERSION}-xilinx-${XILINX_RELEASE_VERSION}+git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-BRANCH ?= "master-vnc"
+BRANCH ?= "master"
 REPO ?= "git://gitenterprise.xilinx.com/xilinx-vcu/vdu-modules.git;protocol=https"
-SRCREV ?= "${AUTOREV}"
+SRCREV ?= "92d568978cbb98276e59fd14534d38242fb65e7b"
 
 BRANCHARG = "${@['nobranch=1', 'branch=${BRANCH}'][d.getVar('BRANCH', True) != '']}"
 SRC_URI = "${REPO};${BRANCHARG}"

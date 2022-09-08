@@ -1479,7 +1479,7 @@ struct p2p_config : request
   static const key_type key = key_type::p2p_config;
   static const char* name() { return "p2p_config"; }
 
-  enum class value_type { disabled, enabled, error, reboot, not_supported };
+  enum class value_type { disabled, enabled, error, no_iomem, not_supported };
 
   // parse a config result and return value and msg
   XRT_CORE_COMMON_EXPORT

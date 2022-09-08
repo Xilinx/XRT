@@ -1,5 +1,6 @@
 {
 	"aie_partition": {
+        "operations_per_cycle": "135",
 		"partition": {
 			"column_width": 1,
 			"start_columns": [1, 2, 3, 4]
@@ -11,14 +12,14 @@
 						"name": "DPU",
 						"type": "PRIMARY",
 						"pdi_id": "0xF0",
-						"dpu_kernel_id": "0x100",
+						"dpu_kernel_ids": ["0x100"],
 						"pre_cdo_groups": ["0xC0"]
 					},
 					{
 						"name": "PP0",
 						"type": "LITE",
 						"pdi_id": "0xF1",
-						"dpu_kernel_id": "0x101",
+						"dpu_kernel_ids": ["0x101"],
 						"pre_cdo_groups": ["0xC0"]
 
 					},
@@ -26,7 +27,7 @@
 						"name": "PP1",
 						"type": "LITE",
 						"pdi_id": "0xF2",
-						"dpu_kernel_id": "0x102",
+						"dpu_kernel_ids": ["0x102"],
 						"pre_cdo_groups": ["0xC0"]
 					},
 					{
@@ -47,7 +48,7 @@
 					"name": "PP3",
 					"type": "LITE",
 					"pdi_id": "0xF1",
-					"dpu_kernel_id": "0x104"
+					"dpu_kernel_ids": ["0x104", "0x105"]
 				}]
 			}
 		]

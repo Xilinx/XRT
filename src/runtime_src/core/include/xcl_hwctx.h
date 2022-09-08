@@ -25,16 +25,6 @@ extern "C" {
 // buffer object flags.
 typedef uint32_t xcl_hwctx_handle;
 
-// Underlying representation of a hardware context QoS value.
-typedef uint32_t xcl_qos_type;
-
-// Special sentinels that represent legacy compute unit context
-// access.  All compute units associated with a hardware context
-// are opened with same QoS value.  Legacy PL supports shared
-// or exclusive mode for compute unit access.
-#define XCL_QOS_SHARED 0xFFFFFFFF
-#define XCL_QOS_EXCLUSIVE 0xFFFFFFFE
-
 #ifdef __cplusplus
 }
 #endif

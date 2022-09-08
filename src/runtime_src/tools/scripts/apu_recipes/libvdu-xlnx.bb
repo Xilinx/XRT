@@ -6,7 +6,7 @@ LIC_FILES_CHKSUM = "file://LICENSE.md;md5=c15ae83ba15c4ab3fa4eb2c22975258f"
 XILINX_VDU_VERSION = "1.0.0"
 PV = "${XILINX_VDU_VERSION}-xilinx-${XILINX_RELEASE_VERSION}+git${SRCPV}"
 
-BRANCH ?= "master-vnc"
+BRANCH ?= "master"
 REPO   ?= "git://gitenterprise.xilinx.com/xilinx-vcu/vdu-ctrl-sw.git;protocol=https"
 SRCREV ?= "${AUTOREV}"
 
