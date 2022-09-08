@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #
 # This cmake file is for native build. Host and target processor are the same.
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
@@ -10,6 +11,9 @@
 
 # install under c:/xrt
 set (CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/xilinx")
+
+# pdb install dir
+set (CMAKE_PDB_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/symbols")
 
 # --- Git ---
 find_package(Git)
@@ -47,8 +51,20 @@ add_compile_definitions("BOOST_BIND_GLOBAL_PLACEHOLDERS")
 add_compile_definitions("_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING")
 
 if (MSVC)
-  add_compile_options(/Zc:__cplusplus)
+    add_compile_options(
+        /Zc:__cplusplus
+        /Zi           # generate pdb files even in release mode
+        /Qspectre     # compile with the Spectre mitigations switch
+        /ZH:SHA_256   # enable secure source code hashing
+        /guard:cf     # enable compiler control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+    )
+    add_link_options(
+        /DEBUG      # instruct linker to create debugging info
+        /guard:cf   # enable linker control guard feature (CFG) to prevent attackers from redirecting execution to unsafe locations
+        /CETCOMPAT  # enable Control-flow Enforcement Technology (CET) Shadow Stack mitigation
+    )
 endif()
+
 
 INCLUDE (FindGTest)
 

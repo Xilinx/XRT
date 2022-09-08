@@ -113,7 +113,6 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 
 void *xocl_drm_init(xdev_handle_t xdev);
 void xocl_drm_fini(struct xocl_drm *drm_p);
-uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data);
 int xocl_init_mem(struct xocl_drm *drm_p);
 int xocl_cleanup_mem(struct xocl_drm *drm_p);
 

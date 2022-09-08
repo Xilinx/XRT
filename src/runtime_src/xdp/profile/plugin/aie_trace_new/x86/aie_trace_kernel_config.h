@@ -36,6 +36,34 @@ namespace built_in {
     ES2 = 1
   };
 
+  enum class Messages : uint8_t
+  {
+    NO_CORE_MODULE_PCS = 0,
+    NO_CORE_MODULE_TRACE_SLOTS = 1,
+    NO_CORE_MODULE_BROADCAST_CHANNELS = 2,
+    NO_MEM_MODULE_PCS = 3,
+    NO_MEM_MODULE_TRACE_SLOTS = 4,
+    NO_RESOURCES = 5,
+    COUNTERS_NOT_RESERVED = 6,
+    CORE_MODULE_TRACE_NOT_RESERVED = 7,
+    CORE_TRACE_EVENTS_RESERVED = 8,
+    MEMORY_MODULE_TRACE_NOT_RESERVED = 9,
+    MEMORY_TRACE_EVENTS_RESERVED = 10
+  };
+
+  struct MessagePacket
+  {
+    uint8_t messageCode;
+    uint32_t params[4] = {}; 
+  };
+
+  struct MessageConfiguration
+  {
+    static constexpr auto MAX_NUM_MESSAGES = 800;
+    uint32_t numMessages;
+    MessagePacket packets[MAX_NUM_MESSAGES];
+  };
+
   // This struct is used for input for the PS kernel.  It contains all of
   // the information gathered from the user controls in the xrt.ini file
   // and the information we can infer from the debug ip layout file.

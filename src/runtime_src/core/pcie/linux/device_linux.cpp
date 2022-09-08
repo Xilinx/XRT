@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
 
@@ -29,21 +15,22 @@
 #include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
-#include "xrt.h"
 #include "scan.h"
+#include "xrt.h"
 
 #include <array>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
-#include <string>
 #include <poll.h>
+#include <string>
 #include <sys/syscall.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace {
 
@@ -526,19 +513,21 @@ struct clk_scaling_info
   {
     auto pdev = get_pcidev(device);
     std::vector<std::string> stats;
+    result_type ctStats;
     std::string errmsg;
     bool is_versal = false;
 
     pdev->sysfs_get<bool>("", "versal", errmsg, is_versal, false);
 	if (is_versal) {
       pdev->sysfs_get("xgq_vmr", "clk_scaling_stat_raw", errmsg, stats);
+      if (!errmsg.empty())
+        return ctStats;
 	} else {
       // Backward compatibilty check.
       // Read XMC sysfs nodes
       return get_legacy_clk_scaling_stat(device);
     }
 
-    result_type ctStats;
     data_type data = {};
     //parse one line at a time
     // The clk_scaling_stat_raw is printing in formatted string of each line

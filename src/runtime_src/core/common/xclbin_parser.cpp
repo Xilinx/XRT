@@ -847,7 +847,7 @@ get_aie_partition(const axlf* top)
   auto aiep = reinterpret_cast<const aie_partition*>(topbase);
   auto scp = reinterpret_cast<const uint16_t*>(topbase + aiep->info.start_columns.offset);
 
-  aie_partition_obj obj{aiep->info.column_width, {scp, scp + aiep->info.start_columns.size}, topbase + aiep->mpo_name};
+  aie_partition_obj obj{aiep->info.column_width, {scp, scp + aiep->info.start_columns.size}, topbase + aiep->mpo_name, aiep->operations_per_cycle};
 
   for (uint32_t i = 0; i < aiep->aie_pdi.size; i++) {
     aie_pdi_obj pdiobj;
@@ -859,7 +859,8 @@ get_aie_partition(const axlf* top)
     for (uint32_t j = 0; j < aiepdip->cdo_groups.size; j++) {
       auto cdop = reinterpret_cast<const cdo_group*>(topbase + aiepdip->cdo_groups.offset + j * sizeof(cdo_group));
 
-      pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name, cdop->cdo_type, cdop->pdi_id, cdop->dpu_kernel_id});
+      // TODO: Update this code to use a collection of kernel IDs instead of just one
+      pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name, cdop->cdo_type, cdop->pdi_id});
     }
 
     obj.pdis.emplace_back(std::move(pdiobj));

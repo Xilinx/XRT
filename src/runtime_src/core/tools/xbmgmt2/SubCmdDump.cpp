@@ -154,7 +154,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   std::shared_ptr<xrt_core::device> device;
 
   try {
-    device = XBU::get_device(device_str, true /*inUserDomain*/);
+    device = XBU::get_device(device_str, false /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();

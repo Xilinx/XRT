@@ -26,6 +26,7 @@ struct xocl_cu {
 	struct platform_device	*pdev;
 	DECLARE_BITMAP(flag, 1);
 	spinlock_t		 lock;
+	rwlock_t		 attr_rwlock;
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -162,13 +163,51 @@ size_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(size);
 
-static ssize_t
-stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t 
+stats_begin_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
+	ssize_t sz = 0;
+
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
 
-	return show_formatted_cu_stat(&cu->base, buf);
+	read_lock(&cu->attr_rwlock);
+	sz = show_stats_begin(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_begin);
+
+static ssize_t 
+stats_end_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	read_lock(&cu->attr_rwlock);
+	sz = show_stats_end(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_end);
+
+static ssize_t
+stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	read_lock(&cu->attr_rwlock);
+	sz = show_formatted_cu_stat(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
 }
 static DEVICE_ATTR_RO(stat);
 
@@ -197,6 +236,8 @@ static struct attribute *scu_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_base_paddr.attr,
 	&dev_attr_size.attr,
+	&dev_attr_stats_begin.attr,
+	&dev_attr_stats_end.attr,
 	&dev_attr_stat.attr,
 	NULL,
 };
@@ -256,6 +297,7 @@ static int scu_probe(struct platform_device *pdev)
 		goto err2;
 	}
 
+	rwlock_init(&xcu->attr_rwlock);
 	if (sysfs_create_group(&pdev->dev.kobj, &scu_attrgroup))
 		XSCU_ERR(xcu, "Not able to create SCU sysfs group");
 
@@ -280,8 +322,10 @@ static int scu_remove(struct platform_device *pdev)
 	if (!xcu)
 		return -EINVAL;
 
+	write_lock(&xcu->attr_rwlock);
 	(void) sysfs_remove_group(&pdev->dev.kobj, &scu_attrgroup);
 	info = &xcu->base.info;
+	write_unlock(&xcu->attr_rwlock);
 
 	xrt_cu_xgq_fini(&xcu->base);
 	(void) xocl_kds_del_scu(xdev, &xcu->base);
