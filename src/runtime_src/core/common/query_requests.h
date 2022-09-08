@@ -289,7 +289,9 @@ enum class key_type
 
   clk_scaling_info,
 
-  xgq_scaling_configure,
+  xgq_scaling_enabled,
+  xgq_scaling_power_override,
+  xgq_scaling_temp_override,
   noop
 };
 
@@ -3130,18 +3132,37 @@ struct clk_scaling_info : request
   get(const device*) const = 0;
 };
 
-// xgq_scaling_configure request is used to retrieve & load clock scaling feature overrides.
-// Applicable on versal platforms now, but can be extended to support Alveo platforms also.
-// get() returns clock scaling feature override values in the "x,y,z" format, where
-//   x - shows if clock scaling is enabled. Value 1 means enabled, 0 means disabled.
-//   y - shows power override value in Watts.
-//   z - shows temperature override value in Celsius.
-// put() loads the user specified clock scaling override settings.
-struct xgq_scaling_configure : request
+struct xgq_scaling_enabled : request
+{
+  using result_type = bool; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_enabled;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xgq_scaling_power_override : request
 {
   using result_type = std::string; // get value type
   using value_type = std::string; // put value type
-  static const key_type key = key_type::xgq_scaling_configure;
+  static const key_type key = key_type::xgq_scaling_power_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xgq_scaling_temp_override : request
+{
+  using result_type = std::string; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_temp_override;
 
   virtual boost::any
   get(const device*) const = 0;

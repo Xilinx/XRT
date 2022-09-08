@@ -2263,8 +2263,8 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 	uint8_t enable = 0;
 	uint16_t pwr = 0;
 	uint8_t temp = 0;
-	char* args = buf;
-	char* end = buf;
+	char* args = (char*)buf;
+	char* end = (char*)buf;
 	int ret = 0;
 
 	if (!cs_payload->has_clk_scaling)
@@ -2324,10 +2324,154 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(clk_scaling_configure);
 
+static ssize_t xgq_scaling_temp_override_show(struct device *dev,
+                                              struct device_attribute *attr,
+                                              char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	cnt += sprintf(buf + cnt, "%u\n", xgq->temp_scaling_ovrd_limit);
+
+	return cnt;
+}
+
+static ssize_t xgq_scaling_temp_override_store(struct device *dev,
+                                               struct device_attribute *attr,
+                                               const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	struct xgq_cmd_cq_clk_scaling_payload *cs_payload =
+		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
+	u16 temp = 0;
+	int ret = 0;
+
+	if (!cs_payload->has_clk_scaling)
+	{
+		XGQ_ERR(xgq, "clock scaling feature is not supported");
+		return -ENOTSUPP;
+	}
+
+	if ((kstrtou16(buf, 10, &temp) == -EINVAL) || (temp > cs_payload->temp_scaling_limit)) {
+		XGQ_ERR(xgq, "Invalid temp override limit %u provided, whereas max limit is %u",
+				temp, cs_payload->temp_scaling_limit);
+		return -EINVAL;
+	}
+
+	mutex_lock(&xgq->clk_scaling_lock);
+	ret = clk_scaling_configure_op(xgq->xgq_pdev, XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
+								   cs_payload->clk_scaling_en, 0, temp);
+	if (!ret)
+		xgq->temp_scaling_ovrd_limit = temp;
+
+	mutex_unlock(&xgq->clk_scaling_lock);
+
+	return count;
+}
+static DEVICE_ATTR_RW(xgq_scaling_temp_override);
+
+static ssize_t xgq_scaling_power_override_show(struct device *dev,
+                                               struct device_attribute *attr,
+                                               char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	cnt += sprintf(buf + cnt, "%u\n", xgq->pwr_scaling_ovrd_limit);
+
+	return cnt;
+}
+
+static ssize_t xgq_scaling_power_override_store(struct device *dev,
+                                                struct device_attribute *attr,
+                                                const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	struct xgq_cmd_cq_clk_scaling_payload *cs_payload =
+		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
+	u16 pwr = 0;
+	int ret = 0;
+
+	if (!cs_payload->has_clk_scaling)
+	{
+		XGQ_ERR(xgq, "clock scaling feature is not supported");
+		return -ENOTSUPP;
+	}
+
+	if ((kstrtou16(buf, 10, &pwr) == -EINVAL) || (pwr > cs_payload->pwr_scaling_limit)) {
+		XGQ_ERR(xgq, "Invalid power override limit %u provided, whereas max limit is %u",
+				pwr, cs_payload->pwr_scaling_limit);
+		return -EINVAL;
+	}
+
+	mutex_lock(&xgq->clk_scaling_lock);
+	ret = clk_scaling_configure_op(xgq->xgq_pdev, XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
+				   cs_payload->clk_scaling_en, pwr, 0);
+	if (!ret)
+		xgq->pwr_scaling_ovrd_limit = pwr;
+
+	mutex_unlock(&xgq->clk_scaling_lock);
+
+	return count;
+}
+static DEVICE_ATTR_RW(xgq_scaling_power_override);
+
+static ssize_t xgq_scaling_enable_show(struct device *dev,
+                                       struct device_attribute *attr,
+                                       char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	struct xgq_cmd_cq_clk_scaling_payload *cs_payload =
+		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
+	ssize_t cnt = 0;
+
+	cnt += sprintf(buf + cnt, "%d\n", cs_payload->clk_scaling_en);
+
+	return cnt;
+}
+
+static ssize_t xgq_scaling_enable_store(struct device *dev,
+                                        struct device_attribute *attr,
+                                        const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	struct xgq_cmd_cq_clk_scaling_payload *cs_payload=
+		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
+	bool enable = false;
+	u32 val = 0;
+	int ret = 0;
+
+	if (!cs_payload->has_clk_scaling)
+	{
+		XGQ_ERR(xgq, "clock scaling feature is not supported");
+		return -ENOTSUPP;
+	}
+
+	if (strncmp(buf, "true", strlen("true")) == 0)
+		val = 1;
+
+	enable = val ? true : false;
+	mutex_lock(&xgq->clk_scaling_lock);
+	ret = clk_scaling_configure_op(xgq->xgq_pdev,
+                                   XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
+                                   enable, 0, 0);
+	if (!ret) {
+		cs_payload->clk_scaling_en = enable;
+		if (enable)
+			XGQ_INFO(xgq, "clock scaling feature is enabled");
+		else
+			XGQ_INFO(xgq, "clock scaling feature is disabled");
+	}
+	mutex_unlock(&xgq->clk_scaling_lock);
+
+	return count;
+}
+static DEVICE_ATTR_RW(xgq_scaling_enable);
+
 static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
-	struct xocl_xgq_vmr *xgq = 
+	struct xocl_xgq_vmr *xgq =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
 	unsigned char *blob;
 	size_t size;
@@ -2378,6 +2522,9 @@ static struct attribute *vmr_attrs[] = {
 	&dev_attr_vmr_debug_type.attr,
 	&dev_attr_clk_scaling_stat_raw.attr,
 	&dev_attr_clk_scaling_configure.attr,
+	&dev_attr_xgq_scaling_enable.attr,
+	&dev_attr_xgq_scaling_power_override.attr,
+	&dev_attr_xgq_scaling_temp_override.attr,
 	NULL,
 };
 
