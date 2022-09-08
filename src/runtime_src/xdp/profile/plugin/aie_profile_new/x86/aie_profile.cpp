@@ -79,6 +79,11 @@ namespace xdp {
          xrt_core::config::get_aie_profile_memory_metrics(),
          interfaceMetric};
 
+
+    // Create input struct for the PS kernel.
+    
+
+
     return true; //placeholder
   }
 

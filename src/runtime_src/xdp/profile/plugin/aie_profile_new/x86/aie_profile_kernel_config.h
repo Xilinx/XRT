@@ -20,6 +20,7 @@
 namespace xdp {
 namespace built_in {
 
+
   enum class CoreMetrics : uint8_t 
   {
     EMPTY = 0,
@@ -27,10 +28,11 @@ namespace built_in {
     STALLS = 2,
     EXECUTION = 3,
     FLOATING_POINT = 4,
-    WRITE_BANDWIDTHS = 5,
-    READ_BANDWIDTHS = 6,
-    AIE_TRACE = 7
-    
+    STREAM_PUT_GET = 5,
+    WRITE_BANDWIDTHS = 6,
+    READ_BANDWIDTHS = 7,
+    AIE_TRACE = 8,
+    EVENTS = 9
   };
 
   enum class MemoryMetrics : uint8_t 
@@ -39,7 +41,7 @@ namespace built_in {
     CONFLICTS = 1,
     DMA_LOCKS = 2,
     DMA_STALLS_S2MM = 3,
-    DMA_STALS_MM2S = 4,
+    DMA_STALLS_MM2S = 4,
     WRITE_BANDWIDTHS = 5,
     READ_BANDWIDTHS = 6
   };
@@ -51,6 +53,7 @@ namespace built_in {
     OUTPUT_BANDWIDTHS = 2,
     INPUT_STALLS_IDLE = 3,
     OUTPUT_STALLS_IDLE = 4,
+    PACKETS = 5
   };
 
   // This struct is used for input for the PS kernel.  It contains all of
@@ -60,7 +63,17 @@ namespace built_in {
   //
   // Since this is transferred from host to device, it should have
   // a C-Style interface.
-  struct InputConfiguration
+
+  struct ProfileTileType {
+    uint16_t row;
+    uint16_t col;
+    uint16_t itr_mem_row;
+    uint16_t itr_mem_col;
+    uint64_t itr_mem_addr;
+    bool     is_trigger;
+  };
+
+  struct ProfileInputConfiguration
   {
     static constexpr auto NUM_CORE_COUNTERS = 4;
     static constexpr auto NUM_MEMORY_COUNTERS = 2;
@@ -69,27 +82,30 @@ namespace built_in {
 
     uint8_t metricSettings[NUM_MODULES];
     uint16_t numTiles;
-    xrt_core::edge::aie::tile_type tiles[1]; //flexible array member
+    ProfileTileType tiles[1]; //flexible array member
   };
 
   struct PSCounterInfo
   {
+    uint8_t moduleName;
     uint16_t col;
     uint16_t row;
     uint16_t startEvent;
     uint16_t endEvent;
     uint32_t counterValue;
+    uint32_t payload;
+    uint32_t counterNum;
+    uint32_t counterId;
     uint64_t resetEvent;
     uint64_t timerValue;
-    uint32_t payload;
     double timestamp;
-  }
+  };
 
-  struct OutputConfiguration
+  struct ProfileOutputConfiguration
   {
     uint32_t numCounters;
     PSCounterInfo counters[1];
-  }
+  };
 
 } // end namespace built_in
 } // end namespace xdp
