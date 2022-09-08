@@ -735,6 +735,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_kernels = NULL,
       .za_slot_id = 0, // TODO Cleanup: Once uuid interface id available we need to remove this
       .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
+      .za_dtbo_path_len = dtbo_path.length(),
       .hw_gen = hw_gen,
     };
 

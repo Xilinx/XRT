@@ -34,6 +34,7 @@ namespace xdp {
       void finishFlushDevice();
       bool setMetrics(uint64_t deviceId, void* handle);
       uint64_t checkTraceBufSize(uint64_t size);
+      void parseMessages(uint8_t* messages);
   };
 
 }   

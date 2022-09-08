@@ -2,6 +2,7 @@
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#define XRT_API_SOURCE         // in same dll as API sources
 
 #include "hw_queue.h"
 
@@ -13,6 +14,7 @@
 #include "core/common/thread.h"
 #include "experimental/xrt_hw_context.h"
 #include "core/include/ert.h"
+#include "core/include/xcl_hwqueue.h"
 
 #include <algorithm>
 #include <condition_variable>
@@ -339,6 +341,7 @@ class hw_queue_impl
 {
   xrt::hw_context m_hwctx;
   device* m_core_device;
+  xcl_hwqueue_handle m_hdl;
 
   // This is logically const
   mutable kds_device* m_kds_device;
@@ -348,6 +351,7 @@ public:
   hw_queue_impl(xrt::hw_context hwctx)
     : m_hwctx(std::move(hwctx))
     , m_core_device(hw_context_int::get_core_device_raw(m_hwctx))
+    , m_hdl(m_core_device->create_hw_queue(m_hwctx))
     , m_kds_device(get_kds_device(m_core_device))
   {}
 
@@ -355,8 +359,14 @@ public:
   // is no associated hw context.
   hw_queue_impl(xrt_core::device* device)
     : m_core_device(device)
+    , m_hdl(XRT_NULL_HWQUEUE)
     , m_kds_device(get_kds_device(m_core_device))
   {}
+
+  ~hw_queue_impl()
+  {
+    m_core_device->destroy_hw_queue(m_hdl);
+  }
 
   // Managed start uses execution monitor for command completion
   void
@@ -391,17 +401,22 @@ public:
 };
 
 // For time being there is only one hw_queue per hw_context
-// Ust static map with weak pointers to implementation.
+// Use static map with weak pointers to implementation.
+// Ensure unique queue per device since driver doesn't currently
+// guarantee unique hwctx handle cross devices
 static std::shared_ptr<hw_queue_impl>
 get_hw_queue_impl(const xrt::hw_context& hwctx)
 {
+  using hwc2hwq_type = std::map<xcl_hwctx_handle, std::weak_ptr<hw_queue_impl>>;
   static std::mutex mutex;
-  static std::map<xcl_hwctx_handle, std::weak_ptr<hw_queue_impl>> hwc2hwq;
+  static std::map<device*, hwc2hwq_type> dev2hwc;  // per device
+  auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
   auto xhdl = static_cast<xcl_hwctx_handle>(hwctx);
   std::lock_guard lk(mutex);
-  auto hwqimpl = hwc2hwq[xhdl].lock();
+  auto& queues = dev2hwc[device];
+  auto hwqimpl = queues[xhdl].lock();
   if (!hwqimpl)
-    hwc2hwq[xhdl] = hwqimpl = std::shared_ptr<hw_queue_impl>(new hw_queue_impl(hwctx));
+    queues[xhdl] = hwqimpl = std::shared_ptr<hw_queue_impl>(new hw_queue_impl(hwctx));
 
   return hwqimpl;
 }
