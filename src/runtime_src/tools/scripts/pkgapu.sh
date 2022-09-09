@@ -163,7 +163,7 @@ BUILD_DIR="$OUTPUT_DIR/apu_build"
 PACKAGE_DIR="$BUILD_DIR"
 FW_FILE="$BUILD_DIR/lib/firmware/xilinx/xrt-versal-apu.xsabin"
 INSTALL_ROOT="$BUILD_DIR/lib"
-SDK="$BUILD_DIR/lib/sysroot/sdk.sh"
+SDK="$BUILD_DIR/lib/firmware/xilinx/sysroot/sdk.sh"
 
 if [[ $clean == 1 ]]; then
 	echo $PWD
