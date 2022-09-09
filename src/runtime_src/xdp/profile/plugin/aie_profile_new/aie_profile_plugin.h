@@ -36,14 +36,18 @@ namespace xdp {
     checkAieDevice(uint64_t deviceId, void* handle);
     void endPoll();
 
+
   private:
     static bool live;
     struct AIEData {
       uint64_t deviceID;
       bool supported;
-      DeviceIntf* devIntf;
+      DeviceIntf* devIntf; // don't think we need
       std::unique_ptr<AieProfileImpl> implementation;
       std::shared_ptr<AieProfileMetadata> metadata;
+      //std::atomic<bool> mThreadCtrlBool;
+      //std::thread mThread;
+
     };
     std::map<void*, AIEData>  handleToAIEData;
 

@@ -426,6 +426,7 @@ set_target_properties(xdp_hw_emu_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VER
 
 # x86 AI Engine Plugin
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+# Trace Plugin
   add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_NEW_PLUGIN_FILES})
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core)
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -433,6 +434,14 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   install (TARGETS xdp_aie_trace_plugin
     LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
   )
+#Profile Plugin
+  # add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_NEW_PLUGIN_FILES})
+  # target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core)
+  # set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+  # target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_NATIVE_BUILD=1)
+  # install (TARGETS xdp_aie_trace_plugin
+  #   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
+  # )
 endif()
 
 # AI Engine plugins are Edge only.
