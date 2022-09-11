@@ -24,6 +24,7 @@ extern "C" {
 // The context handle is among other things used with / encoded in
 // buffer object flags.
 typedef uint32_t xcl_hwctx_handle;
+#define XRT_NULL_HWCTX 0xffffffff
 
 #ifdef __cplusplus
 }
