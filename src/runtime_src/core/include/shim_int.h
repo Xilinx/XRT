@@ -78,11 +78,11 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin);
 
 // submit_command() -
 void
-submit_command(xcl_hwqueue_handle handle, xclBufferHandle cmdbo);
+submit_command(xclDeviceHandle handle, xcl_hwqueue_handle handle, xclBufferHandle cmdbo);
 
 // wait_command() -
 void
-wait_command(xcl_hwqueue_handle handle, xclBufferHandle cmdbo, int timeout_ms);
+wait_command(xclDeviceHandle handle, xcl_hwqueue_handle handle, xclBufferHandle cmdbo, int timeout_ms);
 
 }} // shim_int, xrt
 
