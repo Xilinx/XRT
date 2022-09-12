@@ -1078,19 +1078,18 @@ namespace xclhwemhal2 {
     {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
-    //Ensuring the simulate is ready to connect
+    //Providing enough time to simulate script to set up it's environment and start xsim.
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(10s);
     if (parseLog() != 0) {
       if (mLogStream.is_open())
         mLogStream << __func__ << " Simulator is NOT started so exiting the application! " << std::endl;
-
+      // If no simulator running then no need to try a connection, hence exit with a failure now.
       exit(EXIT_FAILURE);
     }
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
     sock->monitor_socket();
-    // check for any errors if present in simulate.log, if yes then log them onto screen.
     
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
@@ -1780,6 +1779,7 @@ namespace xclhwemhal2 {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
+    // Ensuring parseLog call to xclClose not to call parseLog again. - no recursive call should happen.
     if (!DonotRunParseLog)
         parseLog();
 
