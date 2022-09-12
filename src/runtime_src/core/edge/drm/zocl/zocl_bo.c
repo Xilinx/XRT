@@ -20,12 +20,12 @@
 #include <linux/version.h>
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0))
 	#include <linux/iosys-map.h>
-	#define MAP_TYPE iosys_map
-	#define MAP_IS_NULL iosys_map_is_null
+	#define ZOCL_MAP_TYPE iosys_map
+	#define ZOCL_MAP_IS_NULL iosys_map_is_null
 #elif (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
 	#include <linux/dma-buf-map.h>
-	#define MAP_TYPE dma_buf_map
-	#define MAP_IS_NULL dma_buf_map_is_null
+	#define ZOCL_MAP_TYPE dma_buf_map
+	#define ZOCL_MAP_IS_NULL dma_buf_map_is_null
 #endif
 #include <asm/io.h>
 #include "xrt_drv.h"
@@ -883,7 +883,7 @@ static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
 	char __user *user_data = to_user_ptr(args->data_ptr);
 	struct drm_zocl_bo *bo;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
-	struct MAP_TYPE map;
+	struct ZOCL_MAP_TYPE map;
 #endif
 	int ret = 0;
 	char *kaddr;
@@ -912,7 +912,7 @@ static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
 	if (bo->flags & ZOCL_BO_FLAGS_CMA) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
 		ret = drm_gem_cma_vmap(gem_obj, &map);
-		if(ret || MAP_IS_NULL(&map))
+		if(ret || ZOCL_MAP_IS_NULL(&map))
 			kaddr = NULL;
 		else
 			kaddr = map.is_iomem ? map.vaddr_iomem : map.vaddr;

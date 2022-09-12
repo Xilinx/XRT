@@ -1274,17 +1274,17 @@ void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 
 }
 #else
-int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct MAP_TYPE *map)
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct XOCL_MAP_TYPE *map)
 {
         struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 
         BO_ENTER("xobj %p", xobj);
-        MAP_SET_VADDR(map, xobj->vmapping);
+        XOCL_MAP_SET_VADDR(map, xobj->vmapping);
 
         return 0;
 }
 
-void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct MAP_TYPE *map)
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct XOCL_MAP_TYPE *map)
 {
 
 }
