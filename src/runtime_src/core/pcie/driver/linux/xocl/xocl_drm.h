@@ -59,6 +59,7 @@ struct xocl_mm {
 	struct drm_mm           *mm;
 	uint64_t		start_addr;
 	uint64_t		end_addr;
+	uint32_t 		m_count; 
 	
 	/* Array of bo and memory usage stats 
 	 * for whole device memory manager */
