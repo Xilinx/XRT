@@ -123,27 +123,29 @@ namespace xdp {
   void DeviceOffloadPlugin::addDevice(const std::string& sysfsPath)
   {
     uint64_t deviceId = db->addDevice(sysfsPath) ;
+    
+    if (device_trace) {
+      // When adding a device, also add a writer to dump the information
+      std::string version = "1.1" ;
+      std::string creationTime = xdp::getCurrentDateTime() ;
+      std::string xrtVersion   = xdp::getXRTVersion() ;
+      std::string toolVersion  = xdp::getToolVersion() ;
 
-    // When adding a device, also add a writer to dump the information
-    std::string version = "1.1" ;
-    std::string creationTime = xdp::getCurrentDateTime() ;
-    std::string xrtVersion   = xdp::getXRTVersion() ;
-    std::string toolVersion  = xdp::getToolVersion() ;
+      std::string filename = 
+        "device_trace_" + std::to_string(deviceId) + ".csv" ;
 
-    std::string filename = 
-      "device_trace_" + std::to_string(deviceId) + ".csv" ;
+      VPWriter* writer = new DeviceTraceWriter(filename.c_str(),
+                                               deviceId,
+                                               version,
+                                               creationTime,
+                                               xrtVersion,
+                                               toolVersion);
+      writers.push_back(writer);
+      (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
 
-    VPWriter* writer = new DeviceTraceWriter(filename.c_str(),
-                                             deviceId,
-                                             version,
-                                             creationTime,
-                                             xrtVersion,
-                                             toolVersion);
-    writers.push_back(writer) ;
-    (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
-
-    if (continuous_trace)
-      XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "VP_TRACE");
+      if (continuous_trace)
+        XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "VP_TRACE");
+    }
   }
 
   void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
