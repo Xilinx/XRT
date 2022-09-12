@@ -1054,9 +1054,6 @@ namespace xclhwemhal2 {
           sim_file = "simulate.sh";
           
         if (mLogStream.is_open() )
-            mLogStream << __TIME__ <<"\t"<< __func__ << " before launching xsim process sim_file::"<<sim_file  << std::endl;
-
-        if (mLogStream.is_open() )
             mLogStream << __TIME__ <<"\t"<< __func__ << " The simulate script is "  <<sim_file  << std::endl;
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
@@ -1083,7 +1080,7 @@ namespace xclhwemhal2 {
     std::this_thread::sleep_for(10s);
     if (parseLog() != 0) {
       if (mLogStream.is_open())
-        mLogStream << __func__ << " Simulator is NOT started so exiting the application! " << std::endl;
+        mLogStream << __func__ << " ERROR: [HW-EMU 26] Simulator is NOT started so exiting the application! " << std::endl;
       // If no simulator running then no need to try a connection, hence exit with a failure now.
       exit(EXIT_FAILURE);
     }
