@@ -165,10 +165,6 @@ private:
     //Circular Buffer Tracking
     bool mEnCircularBuf;
     bool mCircularBufOverwrite;
-    // 1000 mb of trace per second
-    // Very high bandwidth requirement
-    uint64_t circ_buf_min_rate_plio = AIE_CIR_BUF_MIN_RATE_PLIO;
-    uint64_t circ_buf_cur_rate_plio;
 
 private:
     bool setupPSKernel();
