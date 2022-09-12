@@ -445,19 +445,17 @@ void AIETraceOffload::checkCircularBufferSupport()
   }
 
   // Warn if circular buffer settings not adequate
-  if (offloadIntervalUs)
-    circ_buf_cur_rate_plio = bufAllocSz * (1e6 / offloadIntervalUs);
-  else
-    circ_buf_cur_rate_plio = circ_buf_min_rate_plio;
-
   bool buffer_not_large_enough = (bufAllocSz < AIE_MIN_SIZE_CIRCULAR_BUF);
-  bool offload_not_fast_enough = (circ_buf_cur_rate_plio < circ_buf_min_rate_plio);
+  bool offload_not_fast_enough = (offloadIntervalUs > AIE_TRACE_REUSE_MAX_OFFLOAD_INT_US);
+  bool too_many_streams = (numStream > AIE_TRACE_REUSE_MAX_STREAMS);
 
-  if (buffer_not_large_enough || offload_not_fast_enough) {
+  if (buffer_not_large_enough || offload_not_fast_enough || too_many_streams) {
     std::stringstream msg;
     msg << AIE_TRACE_BUF_REUSE_WARN
-        << " Recommended offload rate (trace buffer bytes/sec) : " << circ_buf_min_rate_plio
-        << " Requested : " << circ_buf_cur_rate_plio ;
+        << "Requested Settings: "
+        << "buffer_size/stream : " << bufAllocSz << ", "
+        << "buffer_offload_interval_us : " << offloadIntervalUs << ", "
+        << "trace streams : " << numStream;
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
   }
 
