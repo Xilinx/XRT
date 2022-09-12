@@ -55,6 +55,7 @@
 static char driver_date[9];
 
 static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p);
+static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p);
 
 static void xocl_free_object(struct drm_gem_object *obj)
 {
@@ -610,6 +611,10 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 
 	xocl_drvinst_set_filedev(drm_p, ddev);
 	xocl_drvinst_set_offline(drm_p, false);
+
+	xocl_init_drm_memory_manager(drm_p);
+	drm_p->cma_bank_idx = -1;
+
 	return drm_p;
 
 failed:
@@ -885,7 +890,6 @@ static int xocl_cleanup_drm_mm(struct xocl_drm *drm_p)
 {
 	struct xocl_mm *xocl_mm = drm_p->xocl_mm;
 	uint32_t m_count = 0;
-	int err = 0;
 	int i = 0;
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
@@ -938,6 +942,34 @@ static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
 		mutex_unlock(&drm_p->mm_lock);
 		return err;
 	}
+
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
+        if (err) {
+                mutex_unlock(&drm_p->mm_lock);
+                return err;
+        }
+
+        if (topo) {
+                for (i = 0; i < topo->m_count; i++) {
+                        mem_data = &topo->m_mem_data[i];
+                        if (XOCL_IS_STREAM(topo, i))
+                                continue;
+
+                        if (XOCL_IS_PS_KERNEL_MEM(topo, i))
+                                continue;
+
+                        if (!is_mem_region_valid(drm_p, mem_data))
+                                continue;
+
+                        if (convert_mem_tag(topo->m_mem_data[i].m_tag) == MEM_TAG_HOST)
+                                xocl_addr_translator_clean(drm_p->xdev);
+                }
+        }
+        XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
+
+        /* Now cleanup the P2P memory */
+        xocl_p2p_mem_cleanup(drm_p->xdev);
+	xocl_cleanup_drm_mm(drm_p);
 
 	mutex_unlock(&drm_p->mm_lock);
 
@@ -1007,6 +1039,65 @@ error:
 	return err;
 }
 
+static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p)
+{
+	struct xocl_dev *xdev = drm_p->xdev;
+	void *blob = NULL;
+	int offset = 0;
+	const u64 *prop;
+	uint64_t mem_start, mem_end;
+	const char *ipname;
+        uint64_t mm_start_addr = 0;
+        uint64_t mm_end_addr = 0;
+        uint32_t m_count = 0;
+	int ret = 0;
+
+	blob = XDEV(xdev)->fdt_blob;
+	if (!blob)
+		return 0;
+
+	/* Initialize with max and min possible value */
+	mm_start_addr = 0xffffFFFFffffFFFF;
+	mm_end_addr = 0;
+
+	for (offset = fdt_next_node(blob, -1, NULL);
+			offset >= 0;
+			offset = fdt_next_node(blob, offset, NULL)) {
+		ipname = fdt_get_name(blob, offset, NULL);
+		if (ipname && strncmp(ipname, NODE_RESERVED_PSMEM,
+					strlen(NODE_RESERVED_PSMEM)))
+			continue;
+
+		prop = fdt_getprop(blob, offset, PROP_IO_OFFSET, NULL);
+		if (!prop)
+			continue;
+
+		mem_start = be64_to_cpu(prop[0]);
+		mem_end = mem_start + be64_to_cpu(prop[1]);
+		/* Update the start and end address for the memory manager */
+		if (mem_start < mm_start_addr)
+			mm_start_addr = mem_start;
+		if (mem_end > mm_end_addr)
+			mm_end_addr = mem_end;
+
+		++m_count;
+	}
+
+        if (!m_count)
+                return 0;
+
+        mutex_lock(&drm_p->mm_lock);
+        ret = xocl_init_drm_mm(drm_p, mm_start_addr, mm_end_addr, m_count);
+        if (ret) {
+                xocl_err(drm_p->ddev->dev,
+                        "DRM memory manager initialization failed");
+                mutex_unlock(&drm_p->mm_lock);
+                return ret;
+        }
+        mutex_unlock(&drm_p->mm_lock);
+        return 0;
+}
+
 static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 {
 	struct mem_topology *topo = NULL;
@@ -1041,7 +1132,6 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	/* Initialize with max and min possible value */
         mm_start_addr = 0xffffFFFFffffFFFF;
         mm_end_addr = 0;
-	drm_p->cma_bank_idx = -1;
 
         /* Initialize all the banks and their sizes */
         /* Currently only fixed sizes are supported */
