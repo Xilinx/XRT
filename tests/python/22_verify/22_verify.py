@@ -71,7 +71,8 @@ def runKernel(opt):
 
 def main(args):
     opt = Options()
-    Options.getOptions(opt, args)
+    b_file = "verify.xclbin"
+    Options.getOptions(opt, args, b_file)
 
     try:
         runKernel(opt)
