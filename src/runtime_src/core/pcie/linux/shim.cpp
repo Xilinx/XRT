@@ -2044,7 +2044,7 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     return -EINVAL;
   }
 
-  if (cumap.start != 0xFFFFFFFF) {
+  if (cumap.start) {
     if (!rd) {
         xrt_logmsg(XRT_ERROR, "%s: read range is set, not allow write", __func__);
         return -EINVAL;
