@@ -391,6 +391,32 @@ static ssize_t errors_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(errors);
 
+static ssize_t host_mem_addr_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	uint64_t val = 0;
+
+	if (zdev->host_mem)
+		val = zdev->host_mem;
+
+	return sprintf(buf, "%lld\n", val);
+}
+static DEVICE_ATTR_RO(host_mem_addr);
+
+static ssize_t host_mem_size_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	uint64_t val = 0;
+
+	if (zdev->host_mem_len)
+		val = zdev->host_mem_len;
+
+	return sprintf(buf, "%lld\n", val);
+}
+static DEVICE_ATTR_RO(host_mem_size);
+
 static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_kds_numcus.attr,
@@ -405,6 +431,8 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_errors.attr,
 	&dev_attr_graph_status.attr,
 	&dev_attr_dtbo_path.attr,
+	&dev_attr_host_mem_addr.attr,
+	&dev_attr_host_mem_size.attr,
 	NULL,
 };
 
