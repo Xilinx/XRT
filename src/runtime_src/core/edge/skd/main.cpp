@@ -112,7 +112,9 @@ int main(int argc, char *argv[])
     }
   }
 
+#ifdef SKD_MAP_BIG_BO
   xclFreeBO(handle,parent_mem_bo);
+#endif
   xclClose(handle);
 
   return 0;
