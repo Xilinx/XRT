@@ -1826,8 +1826,9 @@ namespace xclhwemhal2 {
       }
       return;
     }
-    // All RPC calls fail if no socket is live. so skipping of sending RPC calls if no socket connection is present.
-    if (sock->m_is_socket_live)
+    // RPC calls will not be made in resetprogram
+    // resetProgram has to be called in xclclose because all running threads will be exited gracefully 
+    // which results clean exit of driver code.  
       resetProgram(false);
 
 
