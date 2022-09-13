@@ -414,7 +414,7 @@ void zocl_scu_sk_shutdown(struct platform_device *pdev)
 	}
 	put_pid(p);
 
-	if (down_timeout(&zcu->sc_sem,msecs_to_jiffies(1000)))
+	if (down_timeout(&zcu->sc_sem,50))
 		DRM_WARN("Wait for PS kernel timeout\n");
  skip_kill:
 	return;

@@ -13,13 +13,9 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifdef __GNUC__
-# pragma GCC diagnostic ignored "-Wformat-truncation"
-#endif
-
 #include <dlfcn.h>
 #include <execinfo.h>
-#include <string.h>
+#include <cstring>
 #include <cstdarg>
 #include <sys/wait.h>
 #include <sys/mman.h>
@@ -30,103 +26,102 @@
 #include "core/common/message.h"
 #include "core/edge/user/shim.h"
 
+using severity_level = xrt_core::message::severity_level;
+
 xclDeviceHandle initXRTHandle(unsigned deviceIndex)
 {
-  return xclOpen(deviceIndex, NULL, XCL_QUIET);
+  return xclOpen(deviceIndex, nullptr, XCL_QUIET);
 }
 
-#define STACKTRACE_DEPTH	(25)
-static void stacktrace_logger(const int sig)
-{
-  const int stack_depth = STACKTRACE_DEPTH;
-
-  syslog(LOG_ERR, "%s - got %d\n", __func__, sig);
-  if (sig == SIGCHLD)
-    return;
-  void *array[stack_depth];
-  int nSize = backtrace(array, stack_depth);
-  char **symbols = backtrace_symbols(array, nSize);
-  if (symbols) {
-    for (int i = 0; i < nSize; i++)
-      syslog(LOG_ERR, "%s\n", symbols[i]);
-    free(symbols);
-  }
-}
-
-xrt::skd* skd_inst = nullptr;
+std::unique_ptr<xrt::skd> skd_inst;
 
 /* Define a signal handler for the child to handle signals */
 static void sigLog(const int sig)
 {
-  if(sig != SIGTERM) {
-    stacktrace_logger(sig);
+  const std::string termMsg = "Terminating PS kernel";
+  const std::string intMsg = "Process interrupted";
+
+  switch(sig) {
+    case SIGTERM:
+	xrt_core::message::send(severity_level::info, "SKD", termMsg);
+	if(skd_inst)
+	    skd_inst->set_signal(sig);
+	break;
+    case SIGINT:
+	xrt_core::message::send(severity_level::info, "SKD", intMsg);
+	if(skd_inst)
+	    skd_inst->set_signal(sig);
+	break;
+    default:
+      std::stringstream st;
+      st << boost::stacktrace::stacktrace();
+      xrt_core::message::send(severity_level::error, "SKD", st.str() );
+	signal (sig, SIG_DFL);
+	kill(getpid(),sig);
+	exit(sig);
   }
-  syslog(LOG_INFO,"Terminating PS kernel\n");
 }
 
 #define PNAME_LEN	(16)
-void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd)
+void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd, int parent_mem_bo, uint64_t mem_start_paddr, uint64_t mem_size)
 {
-  pid_t pid;
-  uint32_t i;
-
-  for (i = cmd->start_cuidx; i < cmd->start_cuidx + cmd->cu_nums; i++) {
+  for (int i = cmd->start_cuidx; i < cmd->start_cuidx + cmd->cu_nums; i++) {
     /*
      * We create a process for each Compute Unit with same soft
      * kernel image.
      */
-    pid = fork();
+    pid_t pid = fork();
     if (pid > 0)
       signal(SIGCHLD,SIG_IGN);
 
     if (pid == 0) {
-      char path[XRT_MAX_PATH_LENGTH];
-      char proc_name[PNAME_LEN] = {};
-      int ret;
-      skd_inst = new xrt::skd(handle,cmd->meta_bohdl,cmd->bohdl,cmd->krnl_name,i,cmd->uuid);
+      skd_inst = std::make_unique<xrt::skd>(handle, cmd->meta_bohdl, cmd->bohdl, std::string(cmd->krnl_name), i, cmd->uuid, parent_mem_bo, mem_start_paddr, mem_size);
 
       /* Install Signal Handler for the Child Processes/Soft-Kernels */
-      struct sigaction act;
+      struct sigaction act = {};
       act.sa_handler = sigLog;
       sigemptyset(&act.sa_mask);
       act.sa_flags = 0;
-      sigaction(SIGHUP, &act, 0);
-      sigaction(SIGINT, &act, 0);
-      sigaction(SIGQUIT , &act, 0);
-      sigaction(SIGILL, &act, 0);
-      sigaction(SIGTRAP, &act, 0);
-      sigaction(SIGABRT, &act, 0);
-      sigaction(SIGBUS, &act, 0);
-      sigaction(SIGFPE, &act, 0);
-      sigaction(SIGKILL, &act, 0);
-      sigaction(SIGUSR1, &act, 0);
-      sigaction(SIGSEGV, &act, 0);
-      sigaction(SIGUSR2, &act, 0);
-      sigaction(SIGPIPE, &act, 0);
-      sigaction(SIGALRM, &act, 0);
-      sigaction(SIGTERM, &act, 0);
+      sigaction(SIGHUP, &act, nullptr);
+      sigaction(SIGINT, &act, nullptr);
+      sigaction(SIGQUIT , &act, nullptr);
+      sigaction(SIGILL, &act, nullptr);
+      sigaction(SIGTRAP, &act, nullptr);
+      sigaction(SIGABRT, &act, nullptr);
+      sigaction(SIGBUS, &act, nullptr);
+      sigaction(SIGFPE, &act, nullptr);
+      sigaction(SIGKILL, &act, nullptr);
+      sigaction(SIGUSR1, &act, nullptr);
+      sigaction(SIGSEGV, &act, nullptr);
+      sigaction(SIGUSR2, &act, nullptr);
+      sigaction(SIGPIPE, &act, nullptr);
+      sigaction(SIGALRM, &act, nullptr);
+      sigaction(SIGTERM, &act, nullptr);
 
-      (void)snprintf(proc_name, PNAME_LEN, "%s%d", cmd->krnl_name, i);
-      if (prctl(PR_SET_NAME, (char *)proc_name) != 0) {
-          syslog(LOG_ERR, "Unable to set process name to %s due to %s\n", proc_name, strerror(errno));
+      std::string proc_name(std::string(cmd->krnl_name) + std::to_string(i));
+      if (prctl(PR_SET_NAME, proc_name.c_str()) != 0) {
+	  const std::string errMsg = std::string("Unable to set process name to ") + proc_name + " due to " + strerror(errno);
+	  xrt_core::message::send(severity_level::error, "SKD", errMsg);
       }
 
       /* Start the soft kernel loop for each CU. */
-      ret = skd_inst->init();
+      int ret = skd_inst->init();
       if(ret) {
-	syslog(LOG_ERR, "Soft kernel initialization failed!\n");
+	const std::string errMsg = "Soft kernel initialization failed!";
+	xrt_core::message::send(severity_level::error, "SKD", errMsg);
 	goto err;
       }
       skd_inst->report_ready();
       skd_inst->run();
 err:
-      syslog(LOG_INFO, "Kernel %s was terminated\n", cmd->krnl_name);
-      if(skd_inst)
-	delete skd_inst;
+      std::string msg = std::string("Kernel %s was terminated\n") + cmd->krnl_name;
+      xrt_core::message::send(severity_level::info, "SKD", msg);
       exit(EXIT_SUCCESS);
     }
 
-    if (pid < 0)
-      syslog(LOG_ERR, "Unable to create soft kernel process( %d)\n", i);
+    if (pid < 0) {
+      std::string procMsg = std::string("Unable to create soft kernel process ") + std::to_string(i);
+      xrt_core::message::send(severity_level::error, "SKD", procMsg);
+    }
   }
 }

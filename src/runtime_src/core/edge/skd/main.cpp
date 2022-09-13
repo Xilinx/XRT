@@ -2,6 +2,7 @@
  * Copyright (C) 2019-2022 Xilinx, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
+ *          : Jeff Lin	<jeffli@xilinx.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,10 +17,13 @@
  * under the License.
  */
 
-#include <stdio.h>
-#include <errno.h>
+#include <cstdio>
+#include <cerrno>
 #include <unistd.h>
 
+#include "core/common/api/device_int.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
 #include "sk_daemon.h"
 #include "xclhal2_mpsoc.h"
 #include "ert.h"
@@ -34,13 +38,11 @@
  * and exit.
  */
 
+using severity_level = xrt_core::message::severity_level;
+
 int main(int argc, char *argv[])
 {
-  pid_t pid, sid;
-  xclDeviceHandle handle;
-  xclSKCmd cmd;
-
-  pid = fork();
+  pid_t pid = fork();
   if (pid < 0) {
     exit(EXIT_FAILURE);
   }
@@ -49,50 +51,69 @@ int main(int argc, char *argv[])
 
   umask(0);
 
-  /* Open syslog and send the first message */
-  openlog("skd", LOG_PID | LOG_CONS, LOG_LOCAL0);
-  syslog(LOG_INFO, "Daemon Start...\n");
+  /* Send the first message to XRT log*/
+  const std::string msg = "Daemon Start...";
+  xrt_core::message::send(severity_level::info, "SKD", msg);
 
   /* Create a new SID for the child process */
-  sid = setsid();
+  pid_t sid = setsid();
   if (sid < 0) {
-    syslog(LOG_INFO, "Set SID failed. Daemon exiting\n");
-    closelog();
+    const std::string errMsg = "Set SID failed. Daemon exiting";
+    xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
-  syslog(LOG_INFO, "SID set %d\n", sid);
+  std::string sid_msg = std::string("SID set ") + std::to_string(sid);
+  xrt_core::message::send(severity_level::info, "SKD", sid_msg);
 
   if (chdir("/") < 0) {
-    syslog(LOG_INFO, "Could NOT change to \"/\" directory\n");
-    closelog();
+    const std::string errMsg = "Could NOT change to \"/\" directory";
+    xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
 
-  handle = initXRTHandle(0);
+  xclDeviceHandle handle = initXRTHandle(0);
   if (!handle) {
-    syslog(LOG_INFO, "Fail to init XRT\n");
-    closelog();
+    const std::string errMsg = "Fail to init XRT";
+    xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
 
-  while (1) {
+  uint64_t mem_start_paddr = 0;
+  uint64_t mem_size = 0;
+  int parent_mem_bo = 0;
+#ifdef SKD_MAP_BIG_BO
+  // Map entire PS reserve memory space
+  xrtDeviceHandle xrtdHdl = xrtDeviceOpenFromXcl(handle);
+  try {
+    mem_size = xrt_core::device_query<xrt_core::query::host_mem_size>(xrt_core::device_int::get_core_device(xrtdHdl));
+    mem_start_paddr = xrt_core::device_query<xrt_core::query::host_mem_addr>(xrt_core::device_int::get_core_device(xrtdHdl));
+    parent_mem_bo = xclGetHostBO(handle,mem_start_paddr,mem_size);
+    syslog(LOG_INFO, "host_mem_size=%ld, host_mem_address=%lx\n",mem_size, mem_start_paddr);
+  }
+  catch (const xrt_core::query::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+#endif
+
+  xclSKCmd cmd = {};
+  while (true) {
     /* Calling XRT interface to wait for commands */
     if (xclSKGetCmd(handle, &cmd) != 0)
       continue;
 
     switch (cmd.opcode) {
     case ERT_SK_CONFIG:
-      configSoftKernel(handle, &cmd);
+      configSoftKernel(handle, &cmd, parent_mem_bo, mem_start_paddr, mem_size);
       break;
     default:
-      syslog(LOG_WARNING, "Unknow management command, ignore it");
+      const std::string warnmsg = "Unknow management command, ignore it";
+      xrt_core::message::send(severity_level::warning, "SKD", warnmsg);
       break;
     }
   }
 
+  xclFreeBO(handle,parent_mem_bo);
   xclClose(handle);
-  syslog(LOG_INFO, "Daemon stop\n");
-  closelog();
 
   return 0;
 }
