@@ -188,7 +188,6 @@ namespace xrt {
       return -EINVAL;
     }
 
-
     const auto msg5 = boost::format("Finish soft kernel %s init") % m_sk_name;
     xrt_core::message::send(severity_level::debug, "SKD", msg5.str());
     return 0;
