@@ -116,6 +116,8 @@ struct bdf
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
+    if (!pdev)
+      throw xrt_core::error("Invalid device handle");
     return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
   }
 };
