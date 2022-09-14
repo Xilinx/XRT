@@ -118,7 +118,7 @@ struct bdf
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    auto pdev = get_pcidev(device);    
+    auto pdev = get_pcidev(device);
     return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
   }
 };
