@@ -103,11 +103,16 @@ runTestThread(const xrt::device& device, const xrt::kernel& hello_world,
               arg_t& arg)
 {
     std::vector<xrt::run> cmds;
+    std::vector<xrt::bo> bos;
 
     for (int i = 0; i < arg.queueLength; i++) {
         auto run = xrt::run(hello_world);
-        run.set_arg(0, xrt::bo(device, DATA_SIZE, hello_world.group_id(0)));
-        run.set_arg(1, xrt::bo(device, DATA_SIZE, hello_world.group_id(1)));
+	auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
+        run.set_arg(0, bo0);
+	bos.push_back(std::move(bo0));
+	auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));
+        run.set_arg(1, bo1);
+	bos.push_back(std::move(bo1));
         run.set_arg(2, COUNT);
         cmds.push_back(std::move(run));
     }
