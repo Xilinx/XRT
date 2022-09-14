@@ -141,15 +141,6 @@ struct client_ctx {
 };
 #define	CLIENT_NUM_CU_CTX(client) ((client)->num_cus + (client)->virt_cu_ref)
 
-struct xocl_mm_wrapper {
-  struct drm_mm *mm;
-  struct drm_xocl_mm_stat *mm_usage_stat;
-  uint64_t start_addr;
-  uint64_t size;
-  uint32_t ddr;
-  struct hlist_node node;
-};
-
 /* ioctl functions */
 int xocl_info_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
