@@ -63,7 +63,10 @@ get_render_value(const std::string& dir)
 inline pdev
 get_pcidev(const xrt_core::device* device)
 {
-  return pcidev::get_dev(device->get_device_id(), device->is_userpf());
+  auto pdev = pcidev::get_dev(device->get_device_id(), device->is_userpf());
+  if (!pdev)
+    throw xrt_core::error("Invalid device handle");
+  return pdev;
 }
 
 static std::vector<uint64_t>
@@ -115,9 +118,7 @@ struct bdf
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    auto pdev = get_pcidev(device);
-    if (!pdev)
-      throw xrt_core::error("Invalid device handle");
+    auto pdev = get_pcidev(device);    
     return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
   }
 };
