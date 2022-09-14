@@ -653,6 +653,15 @@ static void xclmgmt_clock_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 	hwicap->freq_cntr_2 = xocl_clock_get_data(lro, FREQ_COUNTER_2);
 }
 
+static void xclmgmt_multislot_version(struct xclmgmt_dev *lro, void *buf)
+{
+	struct xcl_multislot_info *slot_info = (struct xcl_multislot_info *)buf;
+
+	/* Fill the icap version here */
+	slot_info->multislot_version = MULTISLOT_VERSION; 	
+	mgmt_info(lro, "Multislot Version : %x\n", slot_info->multislot_version);
+}
+
 static void xclmgmt_icap_get_data(struct xclmgmt_dev *lro, void *buf)
 {
 	if (xclmgmt_icap_get_data_impl(lro, buf) == -ENODEV)
@@ -725,10 +734,12 @@ static void xclmgmt_subdev_get_data(struct xclmgmt_dev *lro, size_t offset,
 	lro->userpf_blob_updated = false;
 }
 
-static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void **resp, size_t *sz)
+static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, void *data_ptr, void **resp, size_t *sz)
 {
 	size_t resp_sz = 0, current_sz = 0, entry_sz = 0, entries = 0;
-	struct xcl_mailbox_subdev_peer *subdev_req = (struct xcl_mailbox_subdev_peer *)data_ptr;
+	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data_ptr;
+	struct xcl_mailbox_subdev_peer *subdev_req =
+			(struct xcl_mailbox_subdev_peer *)req->data;
 	int ret = 0;
 
 	BUG_ON(!lro);
@@ -744,6 +755,11 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		current_sz = sizeof(struct xcl_pr_region);
 		*resp = vzalloc(current_sz);
 		(void) xclmgmt_icap_get_data(lro, *resp);
+		break;
+	case XCL_MULTISLOT_VERSION:
+		current_sz = sizeof(struct xcl_multislot_info);
+		*resp = vzalloc(current_sz);
+		xclmgmt_multislot_version(lro, *resp);
 		break;
 	case XCL_MIG_ECC:
 		/* when allocating response buffer, 
@@ -782,27 +798,27 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	case XCL_SDR_BDINFO:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO, req->flags);
 		break;
 	case XCL_SDR_TEMP:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_TEMP);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_TEMP, req->flags);
 		break;
 	case XCL_SDR_VOLTAGE:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_VOLTAGE);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_VOLTAGE, req->flags);
 		break;
 	case XCL_SDR_CURRENT:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_CURRENT);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_CURRENT, req->flags);
 		break;
 	case XCL_SDR_POWER:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_POWER);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_POWER, req->flags);
 		break;
 	default:
 		break;
@@ -933,6 +949,46 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			sizeof(ret));
 		break;
 	}
+	case XCL_MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR: {
+		void *buf = NULL;
+		struct axlf *xclbin = NULL;
+		uint64_t xclbin_len = 0;
+		uint32_t slot_id = 0;
+		struct xcl_mailbox_bitstream_slot_kaddr *mb_kaddr =
+			(struct xcl_mailbox_bitstream_slot_kaddr *)req->data;
+		u64 ch_state = 0;
+
+		(void) xocl_mailbox_get(lro, CHAN_STATE, &ch_state);
+		if ((ch_state & XCL_MB_PEER_SAME_DOMAIN) == 0) {
+			mgmt_err(lro, "can't load xclbin via kva, dropped\n");
+			break;
+		}
+
+		if (payload_len < sizeof(*mb_kaddr)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+		xclbin = (struct axlf *)mb_kaddr->addr;
+		xclbin_len = xclbin->m_header.m_length;
+		slot_id = mb_kaddr->slot_idx;
+		/*
+		 * The xclbin download may take a while. Make a local copy of
+		 * xclbin in case peer frees it too early due to a timeout
+		 */
+		buf = vmalloc(xclbin_len);
+		if (buf == NULL) {
+			ret = -ENOMEM;
+		} else {
+			memcpy(buf, xclbin, xclbin_len);
+
+			ret = xocl_xclbin_download(lro, buf);
+
+			vfree(buf);
+		}
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
+		break;
+	}
 	case XCL_MAILBOX_REQ_LOAD_XCLBIN: {
 		uint64_t xclbin_len = 0;
 		struct axlf *xclbin = (struct axlf *)req->data;
@@ -948,6 +1004,46 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
+		/*
+		 * User may transfer a fake xclbin which doesn't have bitstream
+		 * In this case, 'config_xclbin_change' has to be set, and we
+		 * will go to fetch the real xclbin.
+		 * Note:
+		 * 1. it is up to the admin to put authentificated xclbins at
+		 *    predefined location
+		 */
+		if (fetch)
+			ret = xclmgmt_xclbin_fetch_and_download(lro, xclbin);
+		else
+			ret = xocl_xclbin_download(lro, xclbin);
+
+		(void) xocl_peer_response(lro, req->req, msgid, &ret,
+			sizeof(ret));
+		break;
+	}
+	case XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN: {
+		uint64_t xclbin_len = 0;
+		uint32_t slot_id = 0;
+		struct xcl_mailbox_bitstream_slot_xclbin *mb_xclbin =
+			(struct xcl_mailbox_bitstream_slot_xclbin *)req->data;
+		struct axlf *xclbin = NULL;
+		bool fetch = (atomic_read(&lro->config_xclbin_change) == 1);
+
+		slot_id = mb_xclbin->slot_idx;
+		xclbin = (struct axlf *)((uint64_t)req->data +
+				sizeof(struct xcl_mailbox_bitstream_slot_xclbin));
+
+		if (payload_len < sizeof(*xclbin)) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+
+		xclbin_len = xclbin->m_header.m_length;
+		if (payload_len < xclbin_len) {
+			mgmt_err(lro, "peer request dropped, wrong size\n");
+			break;
+		}
+	
 		/*
 		 * User may transfer a fake xclbin which doesn't have bitstream
 		 * In this case, 'config_xclbin_change' has to be set, and we
@@ -999,7 +1095,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
-		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		ret = xclmgmt_read_subdev_req(lro, data, &resp, &sz);
 		if (ret) {
 			/* if can't get data, return 0 as response */
 			ret = 0;
@@ -1102,7 +1198,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
-		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		ret = xclmgmt_read_subdev_req(lro, data, &resp, &sz);
 		if (ret) {
 			/* if can't get data, return 0 as response */
 			ret = 0;

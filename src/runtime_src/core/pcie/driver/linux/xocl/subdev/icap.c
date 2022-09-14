@@ -1,5 +1,6 @@
 /**
  *  Copyright (C) 2017-2022 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2022 Advanced Micro Devices, Inc.
  *  Author: Sonal Santan
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *
@@ -48,6 +49,12 @@ static struct key *icap_keys = NULL;
 	xocl_dbg(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
 
 #define	ICAP_PRIVILEGED(icap)	((icap)->icap_regs != NULL)
+
+/*
+ * Only DDR, PLRAM, and HBM memory banks require MIG calibration
+ */
+#define MEM_NEEDS_CALIBRATION(m_tag) \
+	((convert_mem_tag(m_tag) == MEM_TAG_DDR) || (convert_mem_tag(m_tag) == MEM_TAG_PLRAM) || (convert_mem_tag(m_tag) == MEM_TAG_HBM))
 
 /*
  * Block comment for spliting old icap into subdevs (icap, clock, xclbin, etc.)
@@ -308,6 +315,39 @@ static void icap_free_bins(struct icap *icap)
 		icap->rp_sche_bin = NULL;
 		icap->rp_sche_bin_len = 0;
 	}
+}
+
+static uint32_t icap_multislot_version_from_peer(struct platform_device *pdev)
+{
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
+	struct icap *icap = platform_get_drvdata(pdev);
+	struct xcl_multislot_info xcl_multislot = {0};
+	size_t resp_len = sizeof(struct xcl_multislot_info);
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+
+	ICAP_INFO(icap, "reading from peer");
+	BUG_ON(ICAP_PRIVILEGED(icap));
+
+	mb_req = vmalloc(reqlen);
+	if (!mb_req)
+		return -ENOMEM;
+
+	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
+	subdev_peer.size = resp_len;
+	subdev_peer.kind = XCL_MULTISLOT_VERSION;
+	subdev_peer.entries = 1;
+
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	(void) xocl_peer_request(xdev,
+		mb_req, reqlen, &xcl_multislot, &resp_len, NULL, NULL, 0, 0);
+
+	vfree(mb_req);
+
+	return xcl_multislot.multislot_version;
 }
 
 static void icap_read_from_peer(struct platform_device *pdev)
@@ -649,6 +689,22 @@ static inline bool mig_calibration_done(struct icap *icap)
 static int calibrate_mig(struct icap *icap)
 {
 	int i;
+
+	/* Check for any DDR or PLRAM banks that are in use */
+	bool is_memory_bank_connected = false;
+
+	/* If a DDR or PLRAM bank is found no need to keep searching */
+	for (i = 0; (i < icap->mem_topo->m_count) && (!is_memory_bank_connected); i++) {
+		struct mem_data* mem_bank = &icap->mem_topo->m_mem_data[i];
+		if (MEM_NEEDS_CALIBRATION(mem_bank->m_tag) && (mem_bank->m_used != 0))
+			is_memory_bank_connected = true;
+	}
+
+	// If no DDR or PLRAM banks are in use there is nothing to calibrate
+	if (!is_memory_bank_connected) {
+		ICAP_INFO(icap, "No DDR, HBM, or PLRAM memory used. Skipping MIG Calibration\n");
+		return 0;
+	}
 
 	for (i = 0; i < 20 && !mig_calibration_done(icap); ++i)
 		msleep(500);
@@ -1267,57 +1323,37 @@ static void icap_clean_bitstream_axlf(struct platform_device *pdev)
 	icap_clean_axlf_section(icap, PARTITION_METADATA);
 }
 
-static uint32_t convert_mem_type(const char *name)
-{
-	/* Don't trust m_type in xclbin, convert name to m_type instead.
-	 * m_tag[i] = "HBM[0]" -> m_type = MEM_HBM
-	 * m_tag[i] = "DDR[1]" -> m_type = MEM_DRAM
-	 *
-	 * Use MEM_DDR3 as a invalid memory type. */
-	enum MEM_TYPE mem_type = MEM_DDR3;
-
-	if (!strncasecmp(name, "DDR", 3))
-		mem_type = MEM_DRAM;
-	else if (!strncasecmp(name, "HBM", 3))
-		mem_type = MEM_HBM;
-	else if (!strncasecmp(name, "bank", 4))
-		mem_type = MEM_DRAM;
-
-	return mem_type;
-}
-
 static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum IP_TYPE ecc_type,
 	int idx)
 {
 	uint16_t memidx = INVALID_MEM_IDX, mem_idx = 0;
 	uint32_t i;
-	enum MEM_TYPE m_type, target_m_type;
+	enum MEM_TAG m_tag, target_m_tag;
+
+	if (!mem_topo)
+		return INVALID_MEM_IDX;
 
 	/*
 	 * Get global memory index by feeding desired memory type and index
 	 */
 	if (ecc_type == IP_MEM_DDR4)
-		target_m_type = MEM_DRAM;
+		target_m_tag = MEM_TAG_DDR;
 	else if (ecc_type == IP_DDR4_CONTROLLER)
-		target_m_type = MEM_DRAM;
+		target_m_tag = MEM_TAG_DDR;
 	else if (ecc_type == IP_MEM_HBM_ECC)
-		target_m_type = MEM_HBM;
+		target_m_tag = MEM_TAG_HBM;
 	else
-		goto done;
-
-	if (!mem_topo)
-		goto done;
+		return INVALID_MEM_IDX;
 
 	for (i = 0; i < mem_topo->m_count; ++i) {
-		m_type = convert_mem_type(mem_topo->m_mem_data[i].m_tag);
-		if (m_type == target_m_type) {
+		m_tag = convert_mem_tag(mem_topo->m_mem_data[i].m_tag);
+		if (m_tag == target_m_tag) {
 			if (idx == mem_idx)
 				return i;
 			mem_idx++;
 		}
 	}
 
-done:
 	return memidx;
 }
 
@@ -1721,6 +1757,85 @@ done:
 	return err;
 }
 
+static int icap_peer_xclbin_prepare(struct icap *icap, struct axlf *xclbin,
+	uint32_t icap_ver, uint64_t ch_state, uint32_t slot_id, struct xcl_mailbox_req **mb_req)
+{
+	uint32_t datalen = 0;
+	struct xcl_mailbox_req *mb_ptr = NULL;
+
+	if ((ch_state & XCL_MB_PEER_SAME_DOMAIN) != 0) {
+		if (icap_ver == MULTISLOT_VERSION) {
+			struct xcl_mailbox_bitstream_slot_kaddr slot_mb_addr = {0};
+			datalen = sizeof(struct xcl_mailbox_req) +
+				sizeof(struct xcl_mailbox_bitstream_slot_kaddr);
+			mb_ptr = vmalloc(datalen);
+			if (!mb_ptr) {
+				ICAP_ERR(icap, "can't create mb_req for slot %d\n", slot_id);
+				return -ENOMEM;
+			}
+			mb_ptr->req = XCL_MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR;
+			slot_mb_addr.addr = (uint64_t)xclbin;
+			slot_mb_addr.slot_idx = slot_id;
+			memcpy(mb_ptr->data, &slot_mb_addr,
+					sizeof(struct xcl_mailbox_bitstream_slot_kaddr));
+		}
+		else {
+			struct xcl_mailbox_bitstream_kaddr mb_addr = {0};
+			datalen = sizeof(struct xcl_mailbox_req) +
+				sizeof(struct xcl_mailbox_bitstream_kaddr);
+			mb_ptr = vmalloc(datalen);
+			if (!mb_ptr) {
+				ICAP_ERR(icap, "can't create mb_req\n");
+				return -ENOMEM;
+			}
+			mb_ptr->req = XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR;
+			mb_addr.addr = (uint64_t)xclbin;
+			memcpy(mb_ptr->data, &mb_addr,
+					sizeof(struct xcl_mailbox_bitstream_kaddr));
+		}
+	} else {
+		if (icap_ver == MULTISLOT_VERSION) {
+			struct xcl_mailbox_bitstream_slot_xclbin slot_xclbin = {0};
+			void *data_ptr = NULL;
+			datalen = sizeof(struct xcl_mailbox_req) +
+				sizeof(struct xcl_mailbox_bitstream_slot_xclbin) +
+				xclbin->m_header.m_length;
+			mb_ptr = vmalloc(datalen);
+			if (!mb_ptr) {
+				ICAP_ERR(icap, "can't create mb_req for slot %d\n", slot_id);
+				return -ENOMEM;
+			}
+			mb_ptr->req = XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN;
+			slot_xclbin.slot_idx = slot_id;
+
+			data_ptr = mb_ptr->data;
+
+			/* First copy the slot information */
+			memcpy(data_ptr, &slot_xclbin,
+					sizeof(struct xcl_mailbox_bitstream_slot_xclbin));
+
+			data_ptr = (void *)((uint64_t)data_ptr +
+			       sizeof(struct xcl_mailbox_bitstream_slot_xclbin));
+			/* Now copy the actual xclbin data */
+			memcpy(data_ptr, xclbin, xclbin->m_header.m_length);
+		}
+		else {
+			datalen = sizeof(struct xcl_mailbox_req) +
+				xclbin->m_header.m_length;
+			mb_ptr = vmalloc(datalen);
+			if (!mb_ptr) {
+				ICAP_ERR(icap, "can't create mb_req\n");
+				return -ENOMEM;
+			}
+			mb_ptr->req = XCL_MAILBOX_REQ_LOAD_XCLBIN;
+			memcpy(mb_ptr->data, xclbin, xclbin->m_header.m_length);
+		}
+	}
+
+	*mb_req = mb_ptr;
+	return datalen;
+}
+
 static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, bool force_download)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
@@ -1730,10 +1845,11 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, b
 	int msgerr = -ETIMEDOUT;
 	size_t resplen = sizeof(msgerr);
 	xuid_t *peer_uuid = NULL;
-	struct xcl_mailbox_bitstream_kaddr mb_addr = {0};
 	struct mem_topology *mem_topo = icap->mem_topo;
 	int i, mig_count = 0;
 	uint32_t timeout;
+	uint32_t icap_ver = 0;
+	uint32_t slot_id = 0; // Default Slot
 
 	BUG_ON(!mutex_is_locked(&icap->icap_lock));
 
@@ -1748,30 +1864,14 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, b
 		}
 	}
 
+	/* Check icap version before transfer xclbin thru mailbox. */
+	icap_ver = icap_multislot_version_from_peer(icap->icap_pdev);
+
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
-	if ((ch_state & XCL_MB_PEER_SAME_DOMAIN) != 0) {
-		data_len = sizeof(struct xcl_mailbox_req) +
-			sizeof(struct xcl_mailbox_bitstream_kaddr);
-		mb_req = vmalloc(data_len);
-		if (!mb_req) {
-			ICAP_ERR(icap, "can't create mb_req\n");
-			return -ENOMEM;
-		}
-		mb_req->req = XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR;
-		mb_addr.addr = (uint64_t)xclbin;
-		memcpy(mb_req->data, &mb_addr,
-			sizeof(struct xcl_mailbox_bitstream_kaddr));
-	} else {
-		data_len = sizeof(struct xcl_mailbox_req) +
-			xclbin->m_header.m_length;
-		mb_req = vmalloc(data_len);
-		if (!mb_req) {
-			ICAP_ERR(icap, "can't create mb_req\n");
-			return -ENOMEM;
-		}
-		mb_req->req = XCL_MAILBOX_REQ_LOAD_XCLBIN;
-		memcpy(mb_req->data, xclbin, xclbin->m_header.m_length);
-	}
+	data_len = icap_peer_xclbin_prepare(icap, xclbin, icap_ver, ch_state,
+		       slot_id, &mb_req);
+	if (data_len < 0)
+		return data_len;
 
 	if (mem_topo) {
 		for (i = 0; i < mem_topo->m_count; i++) {
@@ -1884,7 +1984,7 @@ static void icap_save_calib(struct icap *icap)
 		return;
 
 	for (; i < mem_topo->m_count; ++i) {
-		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) != MEM_TAG_DDR)
 			continue;
 		else
 			ddr_idx++;
@@ -1913,7 +2013,7 @@ static void icap_calib(struct icap *icap, bool retain)
 	(void) xocl_calib_storage_restore(xdev);
 
 	for (; i < mem_topo->m_count; ++i) {
-		if (convert_mem_type(mem_topo->m_mem_data[i].m_tag) != MEM_DRAM)
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) != MEM_TAG_DDR)
 			continue;
 		else
 			ddr_idx++;
@@ -2268,7 +2368,7 @@ static void icap_cache_max_host_mem_aperture(struct icap *icap)
 	for ( i=0; i< mem_topo->m_count; ++i) {
 		if (!mem_topo->m_mem_data[i].m_used)
 			continue;
-		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag))
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) == MEM_TAG_HOST)
 			icap->max_host_mem_aperture = mem_topo->m_mem_data[i].m_size << 10;
 	}
 
@@ -2292,9 +2392,10 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	int err = 0;
 
 	/* TODO: Use slot handle to unregister CUs. CU subdev will be destroyed */
-	xocl_unregister_cus(xdev, 0);
-
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+	err = xocl_unregister_cus(xdev, 0);
+	if (err && (err != -ENODEV))
+		goto done;
 
 	err = __icap_peer_xclbin_download(icap, xclbin, force_download);
 
@@ -2308,8 +2409,6 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_cache_bitstream_axlf_section(pdev, xclbin,
 		DEBUG_IP_LAYOUT);
 	icap_cache_clock_freq_topology(icap, xclbin);
-
-	icap_create_subdev_ip_layout(pdev);
 
 	/* Create cu/scu subdev by slot */
 	err = xocl_register_cus(xdev, 0, &xclbin->m_header.uuid,
@@ -2338,6 +2437,7 @@ done:
 	if (err) {
 		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	} else {
+		icap_create_subdev_ip_layout(pdev);
 		/* Remember "this" bitstream, so avoid re-download next time. */
 		uuid_copy(&icap->icap_bitstream_uuid, &xclbin->m_header.uuid);
 	}
@@ -2800,7 +2900,7 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 		int i;
 
 		for (i = 0; i< mem_topo->m_count; ++i) {
-			if (!IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag) ||
+			if (!(convert_mem_tag(mem_topo->m_mem_data[i].m_tag) == MEM_TAG_HOST) ||
 			    mem_topo->m_mem_data[i].m_used)
 				continue;
 
@@ -3634,7 +3734,7 @@ static ssize_t icap_read_mem_topology(struct file *filp, struct kobject *kobj,
 	memcpy(mem_topo, icap->mem_topo, size);
 	range = xocl_addr_translator_get_range(xdev);
 	for ( i=0; i< mem_topo->m_count; ++i) {
-		if (IS_HOST_MEM(mem_topo->m_mem_data[i].m_tag)){
+		if (convert_mem_tag(mem_topo->m_mem_data[i].m_tag) == MEM_TAG_HOST){
 			/* m_size in KB, convert Byte to KB */
 			mem_topo->m_mem_data[i].m_size = (range>>10);
 		}
@@ -3695,7 +3795,7 @@ static ssize_t icap_read_group_topology(struct file *filp, struct kobject *kobj,
 	memcpy(group_topo, icap->group_topo, size);
 	range = xocl_addr_translator_get_range(xdev);
 	for ( i=0; i< group_topo->m_count; ++i) {
-		if (IS_HOST_MEM(group_topo->m_mem_data[i].m_tag)){
+		if (convert_mem_tag(group_topo->m_mem_data[i].m_tag) == MEM_TAG_HOST){
 			/* m_size in KB, convert Byte to KB */
 			group_topo->m_mem_data[i].m_size = (range>>10);
 		} else

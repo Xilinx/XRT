@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,6 +23,10 @@
 
 namespace xdp {
 
+constexpr uint64_t TIMESTAMP_MASK = 0x1FFFFFFFFFFF;
+constexpr unsigned int NUM_CLOCK_TRAIN_PKTS = 8;
+constexpr unsigned int CLOCK_TRAIN_SHIFT = 63;
+
 TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
                      uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data)
     : ProfileIP(handle, index, data),
@@ -38,7 +43,7 @@ TraceS2MM::TraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
     mIsVersion2 = (major_version >= 2);
 }
 
-inline void TraceS2MM::write32(uint64_t offset, uint32_t val)
+void TraceS2MM::write32(uint64_t offset, uint32_t val)
 {
     write(offset, 4, &val);
 }
@@ -55,11 +60,11 @@ void TraceS2MM::init(uint64_t bo_size, int64_t bufaddr, bool circular)
 
     // Configure DDR Offset
     write32(TS2MM_WRITE_OFFSET_LOW, static_cast<uint32_t>(bufaddr));
-    write32(TS2MM_WRITE_OFFSET_HIGH, static_cast<uint32_t>(bufaddr >> 32));
+    write32(TS2MM_WRITE_OFFSET_HIGH, static_cast<uint32_t>(bufaddr >> BITS_PER_WORD));
     // Configure Number of trace words
     uint64_t word_count = bo_size / TRACE_PACKET_SIZE;
     write32(TS2MM_COUNT_LOW, static_cast<uint32_t>(word_count));
-    write32(TS2MM_COUNT_HIGH, static_cast<uint32_t>(word_count >> 32));
+    write32(TS2MM_COUNT_HIGH, static_cast<uint32_t>(word_count >> BITS_PER_WORD));
 
     // Enable use of circular buffer
     if (supportsCircBuf()) {
@@ -108,9 +113,9 @@ uint64_t TraceS2MM::getWordCount(bool final)
 
     uint32_t regValue = 0;
     read(TS2MM_WRITTEN_LOW, 4, &regValue);
-    uint64_t wordCount = static_cast<uint64_t>(regValue);
+    auto wordCount = static_cast<uint64_t>(regValue);
     read(TS2MM_WRITTEN_HIGH, 4, &regValue);
-    wordCount |= static_cast<uint64_t>(regValue) << 32;
+    wordCount |= static_cast<uint64_t>(regValue) << BITS_PER_WORD;
 
     // V2 datamover only writes data in bursts
     // Only the final write can be a non multiple of burst length
@@ -162,13 +167,12 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet)
     if (out_stream)
         (*out_stream) << " TraceS2MM::parsePacketClockTrain " << std::endl;
 
-    static const uint64_t tsmask = 0x1FFFFFFFFFFF;
     if (mModulus == 0) {
-      uint64_t timestamp = packet & tsmask;
+      uint64_t timestamp = packet & TIMESTAMP_MASK;
       if (timestamp >= mPacketFirstTs)
         partialResult.Timestamp = timestamp - mPacketFirstTs;
       else
-        partialResult.Timestamp = timestamp + (tsmask - mPacketFirstTs);
+        partialResult.Timestamp = timestamp + (TIMESTAMP_MASK - mPacketFirstTs);
       partialResult.isClockTrain = 1 ;
     }
 
@@ -181,18 +185,17 @@ inline void TraceS2MM::parsePacketClockTrain(uint64_t packet)
     }
 }
 
-void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceResults &result)
+void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xdp::TraceEvent &result)
 {
     if (out_stream)
         (*out_stream) << " TraceS2MM::parsePacket " << std::endl;
 
-    result.Timestamp = (packet & 0x1FFFFFFFFFFF) - firstTimestamp;
-    result.EventType = ((packet >> 45) & 0xF) ? XCL_PERF_MON_END_EVENT :
-        XCL_PERF_MON_START_EVENT;
+    result.Timestamp = (packet & TIMESTAMP_MASK) - firstTimestamp;
+    result.EventType = ((packet >> 45) & 0xF) ? xdp::TraceEventType::end :
+      xdp::TraceEventType::start;
     result.TraceID = (packet >> 49) & 0xFFF;
     result.Reserved = (packet >> 61) & 0x1;
     result.Overflow = (packet >> 62) & 0x1;
-    result.EventID = XCL_PERF_MON_HW_EVENT;
     result.EventFlags = ((packet >> 45) & 0xF) | ((packet >> 57) & 0x10);
     //result.isClockTrain = false;
     result.isClockTrain = 0 ;
@@ -219,7 +222,7 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
   if (out_stream)
       (*out_stream) << " TraceS2MM::seekClockTraining " << std::endl;
 
-  uint64_t n = 8;
+  uint64_t n = NUM_CLOCK_TRAIN_PKTS;
   if (mTraceFormat < 1  || mclockTrainingdone)
     return 0;
   if (count < n)
@@ -228,7 +231,7 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
   count -= n;
   for (uint64_t i=0; i <= count; i++) {
     for (uint64_t j=i; j < i + n; j++) {
-      if (!((arr[j] >> 63) & 0x1))
+      if (!((arr[j] >> CLOCK_TRAIN_SHIFT) & 0x1))
         break;
       if (j == i+n-1)
         return i;
@@ -237,12 +240,12 @@ uint64_t TraceS2MM::seekClockTraining(uint64_t* arr, uint64_t count)
   return count;
 }
 
-void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResults>& traceVector)
+void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xdp::TraceEvent>& traceVector)
 {
     if (out_stream)
         (*out_stream) << " TraceS2MM::parseTraceBuf " << std::endl;
 
-    uint32_t packetSizeBytes = 8;
+    uint32_t packetSizeBytes = TRACE_PACKET_SIZE;
     traceVector.clear();
 
     uint64_t count = size / packetSizeBytes;
@@ -265,13 +268,13 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResu
         break;
       // Poor man's reset
       if (i == 0 && !mPacketFirstTs)
-        mPacketFirstTs = currentPacket & 0x1FFFFFFFFFFF;
+        mPacketFirstTs = currentPacket & TIMESTAMP_MASK;
 
       bool isClockTrain = false;
       if (mTraceFormat == 1) {
-        isClockTrain = ((currentPacket >> 63) & 0x1);
+        isClockTrain = ((currentPacket >> CLOCK_TRAIN_SHIFT) & 0x1);
       } else {
-        isClockTrain = (i < 8 && !mclockTrainingdone);
+        isClockTrain = (i < NUM_CLOCK_TRAIN_PKTS && !mclockTrainingdone);
       }
 
       if (isClockTrain) {
@@ -286,7 +289,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResu
         }
       }
       else {
-        xclTraceResults result = {};
+        xdp::TraceEvent result = {};
         parsePacket(currentPacket, mPacketFirstTs, result);
         traceVector.push_back(result);
       }

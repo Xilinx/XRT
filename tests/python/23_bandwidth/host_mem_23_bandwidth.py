@@ -41,7 +41,7 @@ libc.memcpy.restype = (ctypes.c_void_p)
 
 current_micro_time = lambda: int(round(time.time() * 1000000))
 
-globalbuffersize = 1024*1024*16    #16 MB
+globalbuffersize = 1024*1024*2    #2 MB
 
 def getThreshold(devHandle):
     threshold = 30000
@@ -158,7 +158,8 @@ def runKernel(opt):
 
 def main(args):
     opt = Options()
-    Options.getOptions(opt, args)
+    b_file = "hostmemory.xclbin"
+    Options.getOptions(opt, args, b_file)
 
     try:
         initXRT(opt)

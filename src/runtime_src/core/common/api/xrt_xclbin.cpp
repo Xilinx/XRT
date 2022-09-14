@@ -56,7 +56,7 @@ namespace {
 // NOLINTNEXTLINE
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
 
-constexpr size_t max_sections = 12;
+constexpr size_t max_sections = 13;
 static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
   AIE_METADATA,
@@ -69,7 +69,8 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
   SYSTEM_METADATA,
   CLOCK_FREQ_TOPOLOGY,
   BUILD_METADATA,
-  SOFT_KERNEL
+  SOFT_KERNEL,
+  AIE_PARTITION
 };
 
 XRT_CORE_UNUSED
@@ -260,6 +261,12 @@ public:
     if (!m_args[argidx])
       m_args[argidx] = xclbin::arg{std::make_shared<arg_impl>()};
     return m_args[argidx];
+  }
+
+  xrt::xclbin::ip::ip_type
+  get_type() const
+  {
+    return static_cast<xrt::xclbin::ip::ip_type>(m_ip->m_type);
   }
 
   xrt::xclbin::ip::control_type
@@ -906,6 +913,13 @@ get_ips() const
   return handle ? handle->get_ips() : std::vector<xclbin::ip>{};
 }
 
+std::vector<xclbin::ip>
+xclbin::
+get_ips(const std::string& name) const
+{
+  return handle ? handle->get_ips(name) : std::vector<xclbin::ip>{};
+}
+
 xclbin::ip
 xclbin::
 get_ip(const std::string& name) const
@@ -1050,6 +1064,15 @@ xclbin::ip::
 get_name() const
 {
   return handle ? reinterpret_cast<const char*>(handle->m_ip->m_name) : "";
+}
+
+xclbin::ip::ip_type
+xclbin::ip::
+get_type() const
+{
+  return handle
+    ? handle->get_type()
+    : static_cast<xclbin::ip::ip_type>(std::numeric_limits<uint8_t>::max());
 }
 
 xclbin::ip::control_type

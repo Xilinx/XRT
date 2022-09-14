@@ -836,6 +836,39 @@ get_softkernels(const axlf* top)
   return sks;
 }
 
+aie_partition_obj
+get_aie_partition(const axlf* top)
+{
+  auto pSection = ::xclbin::get_axlf_section(top, AIE_PARTITION);
+  if (!pSection)
+    return {};
+
+  auto topbase = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
+  auto aiep = reinterpret_cast<const aie_partition*>(topbase);
+  auto scp = reinterpret_cast<const uint16_t*>(topbase + aiep->info.start_columns.offset);
+
+  aie_partition_obj obj{aiep->info.column_width, {scp, scp + aiep->info.start_columns.size}, topbase + aiep->mpo_name, aiep->operations_per_cycle};
+
+  for (uint32_t i = 0; i < aiep->aie_pdi.size; i++) {
+    aie_pdi_obj pdiobj;
+    auto aiepdip = reinterpret_cast<const aie_pdi*>(topbase + aiep->aie_pdi.offset + i * sizeof(aie_pdi));
+
+    pdiobj.uuid = aiepdip->uuid;
+    pdiobj.pdi.resize(aiepdip->pdi_image.size);
+    memcpy(pdiobj.pdi.data(), topbase + aiepdip->pdi_image.offset, pdiobj.pdi.size());
+    for (uint32_t j = 0; j < aiepdip->cdo_groups.size; j++) {
+      auto cdop = reinterpret_cast<const cdo_group*>(topbase + aiepdip->cdo_groups.offset + j * sizeof(cdo_group));
+
+      // TODO: Update this code to use a collection of kernel IDs instead of just one
+      pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name, cdop->cdo_type, cdop->pdi_id});
+    }
+
+    obj.pdis.emplace_back(std::move(pdiobj));
+  }
+
+  return obj;
+}
+
 size_t
 get_kernel_freq(const axlf* top)
 {

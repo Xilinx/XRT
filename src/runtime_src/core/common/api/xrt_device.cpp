@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_device.h
@@ -20,8 +21,8 @@
 #include "core/common/system.h"
 
 #include "device_int.h"
-#include "exec.h"
 #include "handle.h"
+#include "hw_queue.h"
 #include "native_profile.h"
 #include "xclbin_int.h"
 
@@ -209,7 +210,7 @@ get_xcl_device_handle(xrtDeviceHandle dhdl)
 std::cv_status
 exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms)
 {
-  return xrt_core::exec::exec_wait(device.get_handle().get(), timeout_ms);
+  return xrt_core::hw_queue::exec_wait(device.get_handle().get(), timeout_ms);
 }
 
 }} // device_int, xrt_core
@@ -266,6 +267,17 @@ load_xclbin(const xclbin& xclbin)
   return xdp::native::profiling_wrapper("xrt::device::load_xclbin",
   [this, &xclbin]{
     handle->load_xclbin(xclbin);
+    return xclbin.get_uuid();
+  });
+}
+
+uuid
+device::
+register_xclbin(const xclbin& xclbin)
+{
+  return xdp::native::profiling_wrapper("xrt::device::register_xclbin",
+  [this, &xclbin]{
+    handle->record_xclbin(xclbin);
     return xclbin.get_uuid();
   });
 }
@@ -337,6 +349,15 @@ get_info_std(info::device param, const xrt::detail::abi& abi) const
   return query::get_info<std::any>(handle.get(), param, abi);
 }
 #endif
+
+// Equality means that both device objects refer to the same
+// underlying device.  The underlying device is opened based
+// on device id
+bool
+operator== (const device& d1, const device& d2)
+{
+  return d1.get_handle()->get_device_id() == d2.get_handle()->get_device_id();
+}
 
 } // xrt
 

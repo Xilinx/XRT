@@ -22,27 +22,30 @@
  * under the License.
  */
 
-#include "xclhal2.h"
-
-#include "xdp/config.h"
-
-#include "profile_ip_access.h"
-#include "aim.h"
-#include "am.h"
-#include "asm.h"
-#include "noc.h"
-#include "traceFifoLite.h"
-#include "traceFifoFull.h"
-#include "traceFunnel.h"
-#include "traceS2MM.h"
-#include "add.h"
-
+#include <cassert>
 #include <fstream>
 #include <list>
 #include <map>
-#include <cassert>
-#include <vector>
 #include <mutex>
+#include <vector>
+
+#include "core/include/xclhal2.h"
+#include "core/include/xdp/common.h"
+#include "core/include/xdp/trace.h"
+
+#include "xdp/config.h"
+
+#include "xdp/profile/device/add.h"
+#include "xdp/profile/device/aim.h"
+#include "xdp/profile/device/am.h"
+#include "xdp/profile/device/asm.h"
+#include "xdp/profile/device/noc.h"
+#include "xdp/profile/device/profile_ip_access.h"
+#include "xdp/profile/device/traceFifoFull.h"
+#include "xdp/profile/device/traceFifoLite.h"
+#include "xdp/profile/device/traceFunnel.h"
+#include "xdp/profile/device/traceS2MM.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
@@ -71,23 +74,32 @@ class DeviceIntf {
     void readDebugIPlayout();
 
     XDP_EXPORT
-    uint32_t getNumMonitors(xclPerfMonType type);
+    uint32_t getNumMonitors(xdp::MonitorType type);
     XDP_EXPORT
-    std::string getMonitorName(xclPerfMonType type, uint32_t index);
+    std::string getMonitorName(xdp::MonitorType type, uint32_t index);
     XDP_EXPORT
     uint64_t getFifoSize();
 
+    // Axi Interface Monitor
     bool isHostAIM(uint32_t index) {
       return mAimList[index]->isHostMonitor();
     }
-    
+    // Turn off coarse mode if any of the kernel AIMs can't support it
+    bool supportsCoarseModeAIM() {
+      for (auto mon : mAimList) {
+        if (!mon->isHostMonitor() && !mon->hasCoarseMode()  )
+          return false;
+      }
+      return true;
+    }
+
     // Counters
     XDP_EXPORT
     size_t startCounters();
     XDP_EXPORT
     size_t stopCounters();
     XDP_EXPORT
-    size_t readCounters(xclCounterResults& counterResults);
+    size_t readCounters(xdp::CounterResults& counterResults);
 
     // Accelerator Monitor
     XDP_EXPORT
@@ -130,8 +142,24 @@ class DeviceIntf {
     size_t getNumberTS2MM() {
       return mPlTraceDmaList.size();
     };
-    bool supportsCircBuf() {
-      return ((1 == getNumberTS2MM()) ? (mPlTraceDmaList[0]->supportsCircBuf()) : false);
+
+    // All datamovers support circular buffer for PL Trace
+    bool supportsCircBufPL() {
+      if (mPlTraceDmaList.size() > 0)
+        return mPlTraceDmaList[0]->supportsCircBuf();
+      return false;
+    }
+
+    // Only version 2 Datamover supports circular buffer/flush for AIE Trace
+    bool supportsCircBufAIE() {
+      if (mAieTraceDmaList.size() > 0)
+        return mAieTraceDmaList[0]->isVersion2();
+      return false;
+    }
+    bool supportsflushAIE() {
+      if (mAieTraceDmaList.size() > 0)
+        return mAieTraceDmaList[0]->isVersion2();
+      return false;
     }
 
     XDP_EXPORT
@@ -144,12 +172,12 @@ class DeviceIntf {
     XDP_EXPORT
     uint8_t  getTS2MmMemIndex(uint64_t index);
     XDP_EXPORT
-    void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector);
+      void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xdp::TraceEvent>& traceVector);
 
     XDP_EXPORT
     void resetAIETs2mm(uint64_t index);
     XDP_EXPORT
-    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index);
+    void initAIETs2mm(uint64_t bufferSz, uint64_t bufferAddr, uint64_t index, bool circular);
 
     XDP_EXPORT
     uint64_t getWordCountAIETs2mm(uint64_t index, bool final);
@@ -211,10 +239,10 @@ class DeviceIntf {
      * For Edge Device:
      *  total BW: DDR4 memory bandwidth
      */
-    double mHostMaxReadBW    = 15753.85;
-    double mHostMaxWriteBW   = 15753.85;
-    double mKernelMaxReadBW  = 19250.00;
-    double mKernelMaxWriteBW = 19250.00;
+    double mHostMaxReadBW    = hw_constants::pcie_gen3x16_bandwidth;
+    double mHostMaxWriteBW   = hw_constants::pcie_gen3x16_bandwidth;
+    double mKernelMaxReadBW  = hw_constants::ddr4_2400_bandwidth;
+    double mKernelMaxWriteBW = hw_constants::ddr4_2400_bandwidth;
 
 }; /* DeviceIntf */
 

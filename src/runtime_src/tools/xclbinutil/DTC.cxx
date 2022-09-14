@@ -28,30 +28,31 @@ namespace XUtil = XclBinUtilities;
   #include <arpa/inet.h>
 #endif
 
-DTC::DTC() 
-  : m_pTopFDTNode(NULL)
+DTC::DTC()
+    : m_pTopFDTNode(NULL)
 {
   // Empty
 }
 
-DTC::DTC(const char* _pBuffer, 
+DTC::DTC(const char* _pBuffer,
          const unsigned int _size,
-         const FDTProperty::PropertyNameFormat & _propertyNameFormat) 
-  : DTC()
+         const FDTProperty::PropertyNameFormat& _propertyNameFormat)
+    : DTC()
 {
   marshalFromDTCImage(_pBuffer, _size, _propertyNameFormat);
 }
 
-DTC::DTC(const boost::property_tree::ptree &_ptDTC,
-         const FDTProperty::PropertyNameFormat & _propertyNameFormat)
-  : DTC()
+DTC::DTC(const boost::property_tree::ptree& _ptDTC,
+         const FDTProperty::PropertyNameFormat& _propertyNameFormat)
+    : DTC()
 {
   marshalFromJSON(_ptDTC, _propertyNameFormat);
 }
 
 
-DTC::~DTC() {
-  if ( m_pTopFDTNode != NULL ) {
+DTC::~DTC()
+{
+  if (m_pTopFDTNode != NULL) {
     delete m_pTopFDTNode;
     m_pTopFDTNode = NULL;
   }
@@ -72,50 +73,50 @@ struct fdt_header {
 };
 
 void
-DTC::marshalFromDTCImage( const char* _pBuffer, 
-                          const unsigned int _size, 
-                          const FDTProperty::PropertyNameFormat & _propertyNameFormat) 
+DTC::marshalFromDTCImage(const char* _pBuffer,
+                         const unsigned int _size,
+                         const FDTProperty::PropertyNameFormat& _propertyNameFormat)
 {
   XUtil::TRACE("Marshalling from DTC Image");
 
   // -- Validate the buffer --
-  if ( _pBuffer == NULL ) {
-      throw std::runtime_error("ERROR: The given buffer pointer is NULL.");
+  if (_pBuffer == NULL) {
+    throw std::runtime_error("ERROR: The given buffer pointer is NULL.");
   }
 
   static const uint32_t FDT_HEADER_SIZE = sizeof(fdt_header);
 
   // Check the header size
-  if ( _size < FDT_HEADER_SIZE) {
+  if (_size < FDT_HEADER_SIZE) {
     auto errMsg = boost::format("ERROR: The given DTC buffer's header size (%d bytes) is smaller then the expected size (%d bytes).") %  _size % FDT_HEADER_SIZE;
     throw std::runtime_error(errMsg.str());
   }
 
-  const fdt_header * pHdr = (const fdt_header *) _pBuffer;
+  const fdt_header* pHdr = (const fdt_header*)_pBuffer;
 
   // Look for the magic number
   static const uint32_t MAGIC = 0xd00dfeed;
 
-  if ( ntohl(pHdr->magic) != MAGIC ) {
-      auto errMsg = boost::format("ERROR: Missing DTC magic number.  Expected: 0x%x, Found: 0x%x.") % MAGIC % ntohl(pHdr->magic);
-      throw std::runtime_error(errMsg.str());
+  if (ntohl(pHdr->magic) != MAGIC) {
+    auto errMsg = boost::format("ERROR: Missing DTC magic number.  Expected: 0x%x, Found: 0x%x.") % MAGIC % ntohl(pHdr->magic);
+    throw std::runtime_error(errMsg.str());
   }
 
   // Validate Size
-  if ( ntohl(pHdr->totalsize) != _size ) {
-      auto errMsg = boost::format("ERROR: The expected size (%d bytes) does not match actual (%d bytes)") %  ntohl(pHdr->totalsize) % _size;
-      throw std::runtime_error(errMsg.str());
+  if (ntohl(pHdr->totalsize) != _size) {
+    auto errMsg = boost::format("ERROR: The expected size (%d bytes) does not match actual (%d bytes)") %  ntohl(pHdr->totalsize) % _size;
+    throw std::runtime_error(errMsg.str());
   }
 
   // -- Get and validate the strings offset --
-  if ( ntohl(pHdr->off_dt_strings) > _size ) {
-      auto errMsg = boost::format("ERROR: The string block offset (0x%x) exceeds then image size (0x%x)") % ntohl(pHdr->off_dt_strings) % _size;
-      throw std::runtime_error(errMsg.str());
+  if (ntohl(pHdr->off_dt_strings) > _size) {
+    auto errMsg = boost::format("ERROR: The string block offset (0x%x) exceeds then image size (0x%x)") % ntohl(pHdr->off_dt_strings) % _size;
+    throw std::runtime_error(errMsg.str());
   }
 
-  if ( (ntohl(pHdr->off_dt_strings) + ntohl(pHdr->size_dt_strings)) > _size ) {
-      auto errMsg = boost::format("ERROR: The string block offset and size (0x%x) exceeds then image size (0x%x)") % (ntohl(pHdr->off_dt_strings) + ntohl(pHdr->size_dt_strings)) % _size;
-      throw std::runtime_error(errMsg.str());
+  if ((ntohl(pHdr->off_dt_strings) + ntohl(pHdr->size_dt_strings)) > _size) {
+    auto errMsg = boost::format("ERROR: The string block offset and size (0x%x) exceeds then image size (0x%x)") % (ntohl(pHdr->off_dt_strings) + ntohl(pHdr->size_dt_strings)) % _size;
+    throw std::runtime_error(errMsg.str());
   }
 
   // -- Get the strings block --
@@ -124,14 +125,14 @@ DTC::marshalFromDTCImage( const char* _pBuffer,
   m_DTCStringsBlock.parseDTCStringsBlock(pStringBuffer, stringBufferSize);
 
   // -- Get the validate the structure nodes offset --
-  if ( ntohl(pHdr->off_dt_struct) > _size ) {
-      auto errMsg = boost::format("ERROR: The structure block offset (0x%x) exceeds then image size (0x%x)") % ntohl(pHdr->off_dt_struct) % _size;
-      throw std::runtime_error(errMsg.str());
+  if (ntohl(pHdr->off_dt_struct) > _size) {
+    auto errMsg = boost::format("ERROR: The structure block offset (0x%x) exceeds then image size (0x%x)") % ntohl(pHdr->off_dt_struct) % _size;
+    throw std::runtime_error(errMsg.str());
   }
 
-  if ( (ntohl(pHdr->off_dt_struct) + ntohl(pHdr->size_dt_struct)) > _size ) {
-      auto errMsg = boost::format("ERROR: The structure block offset and size (0x%x) exceeds then image size (0x%x)") % (ntohl(pHdr->off_dt_struct) + ntohl(pHdr->size_dt_struct)) % _size;
-      throw std::runtime_error(errMsg.str());
+  if ((ntohl(pHdr->off_dt_struct) + ntohl(pHdr->size_dt_struct)) > _size) {
+    auto errMsg = boost::format("ERROR: The structure block offset and size (0x%x) exceeds then image size (0x%x)") % (ntohl(pHdr->off_dt_struct) + ntohl(pHdr->size_dt_struct)) % _size;
+    throw std::runtime_error(errMsg.str());
   }
 
   // -- Get the top FDT Note (which will include the node tree) --
@@ -143,61 +144,61 @@ DTC::marshalFromDTCImage( const char* _pBuffer,
 }
 
 
-void 
-DTC::marshalToJSON(boost::property_tree::ptree &_dtcTree,
-                   const FDTProperty::PropertyNameFormat & _propertyNameFormat) const
+void
+DTC::marshalToJSON(boost::property_tree::ptree& _dtcTree,
+                   const FDTProperty::PropertyNameFormat& _propertyNameFormat) const
 {
   XUtil::TRACE("");
 
-  if ( m_pTopFDTNode == nullptr ) {
-     throw std::runtime_error("ERROR: There are no structure nodes in this design.");
+  if (m_pTopFDTNode == nullptr) {
+    throw std::runtime_error("ERROR: There are no structure nodes in this design.");
   }
 
   m_pTopFDTNode->marshalToJSON(_dtcTree, _propertyNameFormat);
 }
 
 
-void 
-DTC::marshalFromJSON( const boost::property_tree::ptree &_ptDTC,
-                      const FDTProperty::PropertyNameFormat & _propertyNameFormat)
+void
+DTC::marshalFromJSON(const boost::property_tree::ptree& _ptDTC,
+                     const FDTProperty::PropertyNameFormat& _propertyNameFormat)
 {
-    XUtil::TRACE("Marshalling from JSON Image");
+  XUtil::TRACE("Marshalling from JSON Image");
 
-    m_pTopFDTNode = FDTNode::marshalFromJSON(_ptDTC, _propertyNameFormat);
+  m_pTopFDTNode = FDTNode::marshalFromJSON(_ptDTC, _propertyNameFormat);
 }
 
 
 #define FDT_END         0x00000009
 #define FDT_MAGIC       0xd00dfeed
 
-void 
+void
 DTC::marshalToDTC(std::ostringstream& _buf) const
 {
   XUtil::TRACE("");
 
-  if ( m_pTopFDTNode == NULL ) {
-     throw std::runtime_error("ERROR: There are no structure nodes in this design.");
+  if (m_pTopFDTNode == NULL) {
+    throw std::runtime_error("ERROR: There are no structure nodes in this design.");
   }
 
   // Note roll over is checked at the end of this method
   uint64_t runningOffset = 0;
 
   // -- Create header --
-  fdt_header header = {0};
+  fdt_header header = { 0 };
   header.magic = htonl(FDT_MAGIC);
   header.version = htonl(0x11);
   header.boot_cpuid_phys = htonl(0);
   runningOffset += sizeof(fdt_header);
- 
+
   // -- Create dummy "memory block" --
   std::ostringstream memoryBlock;
-  static unsigned int FDTReservedEntrySize = 16;
+  static const unsigned int FDTReservedEntrySize = 16;
   for (unsigned index = 0; index < FDTReservedEntrySize; ++index) {
     char emptyByte = '\0';
     memoryBlock.write(&emptyByte, sizeof(char));
   }
   std::string sMemoryBlock = memoryBlock.str();
-  header.off_mem_rsvmap = htonl((uint32_t) runningOffset);
+  header.off_mem_rsvmap = htonl((uint32_t)runningOffset);
   runningOffset += sMemoryBlock.size();
 
   // -- Create structure node image --
@@ -206,23 +207,23 @@ DTC::marshalToDTC(std::ostringstream& _buf) const
   m_pTopFDTNode->marshalToDTC(stringsBlock, structureNodesBuf);
   XUtil::write_htonl(structureNodesBuf, FDT_END);
   std::string sStructureNodes = structureNodesBuf.str();
-  header.off_dt_struct = htonl((uint32_t) runningOffset);
-  header.size_dt_struct = htonl((uint32_t) sStructureNodes.size());
+  header.off_dt_struct = htonl((uint32_t)runningOffset);
+  header.size_dt_struct = htonl((uint32_t)sStructureNodes.size());
   runningOffset += sStructureNodes.size();
 
   // -- Create strings block --
   std::ostringstream stringBlock;
   stringsBlock.marshalToDTC(stringBlock);
   std::string sStringBlock = stringBlock.str();
-  header.off_dt_strings = htonl((uint32_t) runningOffset);
-  header.size_dt_strings = htonl((uint32_t) sStringBlock.size());
+  header.off_dt_strings = htonl((uint32_t)runningOffset);
+  header.size_dt_strings = htonl((uint32_t)sStringBlock.size());
   runningOffset += sStringBlock.size();
 
-  // Complete the header 
-  header.totalsize = htonl((uint32_t) runningOffset);
+  // Complete the header
+  header.totalsize = htonl((uint32_t)runningOffset);
 
   // -- Put it all together --
-  _buf.write((char *) &header, sizeof(fdt_header));
+  _buf.write((char*)&header, sizeof(fdt_header));
   _buf.write(sMemoryBlock.c_str(), sMemoryBlock.size());
   _buf.write(sStructureNodes.c_str(), sStructureNodes.size());
   _buf.write(sStringBlock.c_str(), sStringBlock.size());

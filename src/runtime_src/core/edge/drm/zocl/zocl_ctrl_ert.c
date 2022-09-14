@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Author(s):
  *        Max Zhen <maxz@xilinx.com>
@@ -138,6 +139,7 @@ struct zocl_ctrl_ert {
 	struct zocl_ctrl_ert_cu *zce_scus;
 
 	struct platform_device	*zce_xgq_intc;
+	struct platform_device	*zce_cu_intc;
 
 	bool			zce_config_completed;
 	bool			zce_echo_mode;
@@ -165,8 +167,8 @@ static void cu_conf2info(struct xgq_cmd_config_cu *conf, struct xrt_cu_info *inf
 	info->addr <<= 32;
 	info->addr |= conf->laddr;
 	info->size = conf->map_size;
-	info->intr_enable = 0;
-	info->intr_id = 0;
+	info->intr_enable = conf->intr_enable;
+	info->intr_id = conf->intr_id;
 	info->slot_idx = 0;
 	info->protocol = conf->ip_ctrl;
 	if (info->protocol == CTRL_FA)
@@ -309,7 +311,7 @@ static void zert_unassign_cu_xgqs(struct zocl_ctrl_ert *zert)
 	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
 		idx = cu->zcec_xgq_idx;
 		if (idx != ZERT_INVALID_XGQ_ID) {
-			ret = zcu_xgq_unassign_cu(zert->zce_cu_xgqs[idx].zcecx_pdev, i, SCU_DOMAIN>>16);
+			ret = zcu_xgq_unassign_cu(zert->zce_cu_xgqs[idx].zcecx_pdev, i, DOMAIN_PS);
 			if (ret)
 				zert_err(zert, "Failed to unassign SCU %d to XGQ %d", i, idx);
 		}
@@ -411,7 +413,7 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 			}
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
-			ret = zcu_xgq_assign_cu(xgqpdev, i, 0);
+			ret = zcu_xgq_assign_cu(xgqpdev, i, DOMAIN_PL);
 			if (ret)
 				zert_err(zert, "Failed to assign CU %d to XGQ %d", i, idx);
 			else
@@ -431,7 +433,7 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 			}
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
-			ret = zcu_xgq_assign_cu(xgqpdev, i, SCU_DOMAIN>>16);
+			ret = zcu_xgq_assign_cu(xgqpdev, i, DOMAIN_PS);
 			if (ret)
 				zert_err(zert, "Failed to assign CU %d to XGQ %d", i, idx);
 			else
@@ -518,6 +520,54 @@ static void zert_destroy_cu_xgqs(struct zocl_ctrl_ert *zert)
 	}
 }
 
+static int zert_cu_intc_init(struct zocl_ctrl_ert *zert)
+{
+	const char *cu_interrupt = "cu_interrupt";
+	struct device_node *np = NULL;
+	struct device_node *parent = NULL;
+	u32 *irqs = NULL;
+	int num_irq = 0;
+	int ret = 0;
+	int i;
+
+	/* TODO: We only have one AXI intc for 32 CU interrupts at the moment */
+	np = of_get_child_by_name(ZERT2DEV(zert)->of_node, cu_interrupt);
+	if (!np) {
+		zert_err(zert, "failed to find CU interrupt node");
+		return -ENODEV;
+	}
+
+	/* Try get number of CU irqs */
+	parent = of_irq_find_parent(np);
+	if (!parent) {
+		zert_err(zert, "failed to find CU intc");
+		return -EINVAL;
+	}
+
+	ret = of_property_read_u32(parent, "xlnx,num-intr-inputs", &num_irq);
+	if (ret < 0) {
+		zert_err(zert, "unable to read xlnx,num-intr-inputs");
+		return -EINVAL;
+	}
+
+	irqs = kzalloc(sizeof(u32) * num_irq, GFP_KERNEL);
+	if (!irqs) {
+		zert_err(zert, "Failed to alloc irq array for CU intc device");
+		goto out;
+	}
+
+	for (i = 0; i < num_irq; i++)
+		irqs[i] = of_irq_get(np, i);
+	ret = zocl_ert_create_intc(ZERT2DEV(zert), irqs, num_irq, 0, ERT_CU_INTC_DEV_NAME,
+				   &zert->zce_cu_intc);
+	if (ret)
+		zert_err(zert, "Failed to create CU intc device: %d", ret);
+	kfree(irqs);
+
+out:
+	return 0;
+}
+
 static int zert_versal_init(struct zocl_ctrl_ert *zert)
 {
 	int i = 0;
@@ -548,6 +598,10 @@ static int zert_versal_init(struct zocl_ctrl_ert *zert)
 	if (!zert->zce_cu_xgqs)
 		return -ENOMEM;
 
+	irqs = kzalloc(sizeof(u32) * zert->zce_num_cu_xgqs, GFP_KERNEL);
+	if (!irqs)
+		zert_err(zert, "Failed to alloc irq array for intc device");
+
 	for (i = 0; i < zert->zce_num_cu_xgqs; i++) {
 		np = of_parse_phandle(ZERT2DEV(zert)->of_node, xgq_res_name, i);
 		if (!np) {
@@ -561,32 +615,34 @@ static int zert_versal_init(struct zocl_ctrl_ert *zert)
 		}
 
 		cuxgq = &zert->zce_cu_xgqs[i];
-		cuxgq->zcecx_irq = of_irq_get(np, 0);
+		cuxgq->zcecx_irq = i;
+		if (irqs)
+			irqs[i] = of_irq_get(np, 0);
 		cuxgq->zcecx_xgq_reg = res.start;
 		/* Write to tail pointer will trigger interrupt. */
 		cuxgq->zcecx_cq_int_reg = 0;
 
-		zert_info(zert, "Found CU XGQ @ %pR on irq %d", &res, cuxgq->zcecx_irq);
+		zert_info(zert, "Found CU XGQ @ %pR on irq %d", &res, irqs[i]);
 	}
 
 	/* Bring up XGQ INTC. */
-	irqs = kzalloc(sizeof(u32) * zert->zce_num_cu_xgqs, GFP_KERNEL);
-	if (!irqs) {
-		zert_err(zert, "Failed to alloc irq array for intc device");
-	} else {
-		for (i = 0; i < zert->zce_num_cu_xgqs; i++)
-			irqs[i] = zert->zce_cu_xgqs[i].zcecx_irq;
+	if (irqs) {
 		ret = zocl_ert_create_intc(ZERT2DEV(zert), irqs, i, 0, ERT_XGQ_INTC_DEV_NAME,
 					   &zert->zce_xgq_intc);
 		if (ret)
 			zert_err(zert, "Failed to create xgq intc device: %d", ret);
 	}
 
-	/* TODO: Bringup INTC sub-dev to handle interrupts for all CUs. */
+	/* Bringup INTC sub-dev to handle interrupts for all CUs. */
+	ret = zert_cu_intc_init(zert);
+	if (ret) {
+		zert_err(zert, "Failed to initial CU intc");
+	}
 
 	/* Initialize soft kernel data structure */
 	zocl_init_soft_kernel(zocl_get_zdev());
 
+	kfree(irqs);
 	return 0;
 }
 
@@ -643,7 +699,7 @@ static int zert_mpsoc_init(struct zocl_ctrl_ert *zert)
 
 	/* Initialize soft kernel data structure */
 	zocl_init_soft_kernel(zocl_get_zdev());
-	
+
 	return 0;
 }
 
@@ -716,6 +772,7 @@ static int zert_remove(struct platform_device *pdev)
 	zert->zce_cu_xgqs = NULL;
 	zert->zce_num_cu_xgqs = 0;
 	zocl_ert_destroy_intc(zert->zce_xgq_intc);
+	zocl_ert_destroy_intc(zert->zce_cu_intc);
 
 	return 0;
 }
@@ -806,7 +863,7 @@ static void zert_cmd_cfg_start(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr
 	init_resp(resp, cmd->cid, 0);
 	r->i2h = true;
 	r->i2e = true;
-	r->cui = false;
+	r->cui = (zert->zce_cu_intc) ? true : false;
 	r->ob = false;
 }
 
@@ -823,7 +880,7 @@ static void zert_cmd_cfg_end(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *
 	zert->zce_config_completed = true;
 
 	zocl_get_zdev()->kds.cu_intr_cap = 1;
-	zocl_get_zdev()->kds.cu_intr = 0;
+	zocl_get_zdev()->kds.cu_intr = 1;
 	kds_cfg_update(&zocl_get_zdev()->kds);
 
 	rc = zert_validate_cus(zert);
@@ -846,7 +903,7 @@ static void zert_cmd_cfg_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *c
 	int rc;
 	struct xgq_cmd_config_cu *c = (struct xgq_cmd_config_cu *)cmd;
 
-	if(c->cu_domain==(SCU_DOMAIN>>16)) {
+	if(c->cu_domain == DOMAIN_PS) {
 		rc = zert_create_scu(zert, c);
 		init_resp(resp, cmd->cid, rc);
 	} else {
@@ -862,7 +919,7 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 	struct xgq_cmd_query_cu *c = (struct xgq_cmd_query_cu *)cmd;
 	struct xgq_cmd_resp_query_cu *r = (struct xgq_cmd_resp_query_cu *)resp;
 
-	if(c->cu_domain == (SCU_DOMAIN>>16)) {
+	if(c->cu_domain == DOMAIN_PS) {
 		if (zert->zce_num_scus <= c->cu_idx) {
 			zert_err(zert, "SCU index (%d) out of range", c->cu_idx);
 			init_resp(resp, cmd->cid, -EINVAL);
@@ -899,7 +956,7 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 		r->offset = zert->zce_cu_xgqs[r->xgq_id].zcecx_ring - zert->zce_cq_start;
 		break;
 	case XGQ_CMD_QUERY_CU_STATUS:
-		if(c->cu_domain == (SCU_DOMAIN>>16)) {
+		if(c->cu_domain == DOMAIN_PS) {
 			r->status = zocl_scu_get_status(cu->zcec_pdev);
 		} else {
 			r->status = zocl_cu_get_status(cu->zcec_pdev);

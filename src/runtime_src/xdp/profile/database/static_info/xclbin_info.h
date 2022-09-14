@@ -85,6 +85,16 @@ namespace xdp {
     std::vector<Monitor*> asms ;
 
     ~PLInfo() ;
+    void addComputeUnitPorts(const std::string& kernelName,
+                             const std::string& portName,
+                             int32_t portWidth);
+    void addArgToPort(const std::string& kernelName,
+                      const std::string& argName,
+                      const std::string& portName);
+    void connectArgToMemory(const std::string& kernelName,
+                            const std::string& portName,
+                            const std::string& argName,
+                            int32_t memId);
   } ;
 
   // The AIEInfo struct keeps track of all of the information associated

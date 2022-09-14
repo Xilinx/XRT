@@ -164,7 +164,7 @@ void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info
         cmd.ecmd->data[rsz] = boh_addr >> 32;
 
         cmds.push_back(std::make_shared<task_info>(cmd));
-        /* 
+        /*
          * If it is a small memory bank, allocate buffer might failed in some threads.
          * Thus we use barrier to wait other threads to allocate output
          * and command buffers to make sure each thread can have similar number of commands.
@@ -189,7 +189,7 @@ void runTestThread(arg_t &arg)
     if (arg.dev_str.find(":") == std::string::npos)
         handle = xclOpen(std::stoi(arg.dev_str), "", XCL_QUIET);
     else
-        handle = xclOpenByBDF(arg.dev_str.c_str());
+        handle = xrt::shim_int::open_by_bdf(arg.dev_str);
 
     if (!handle)
         throw std::runtime_error("Could not open device");

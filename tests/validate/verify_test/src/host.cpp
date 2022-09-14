@@ -13,10 +13,15 @@
 * License for the specific language governing permissions and limitations
 * under the License.
 */
-#include "xcl2.hpp"
-#include <boost/filesystem.hpp>
-#include <algorithm>
-#include <vector>
+
+#include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
+
+#include <cstring>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 #define LENGTH 64
 
 static void printHelp() {
@@ -49,96 +54,37 @@ int main(int argc, char** argv) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
-    auto binaryFile = boost::filesystem::path(test_path) / b_file;
-    std::ifstream infile(binaryFile.string());
-    if (flag_s) {
-        if (!infile.good()) {
-            std::cout << "\nNOT SUPPORTED" << std::endl;
-            return EOPNOTSUPP;
-        } else {
-            std::cout << "\nSUPPORTED" << std::endl;
-            return EXIT_SUCCESS;
-        }
+
+    // Get the device reference using the device argument
+    auto device = xrt::device(dev_id);
+
+    std::cout << "Trying to program device...\n";
+    auto xclbin_uuid = device.load_xclbin(test_path.append(b_file));
+    std::cout << "Device program successful!\n";
+
+    auto krnl = xrt::kernel(device, xclbin_uuid, "verify");
+
+    // Allocate the output buffer to hold the kernel ooutput
+    auto output_buffer = xrt::bo(device, sizeof(char) * LENGTH, krnl.group_id(0));
+
+    // Run the kernel and store its contents within the allocated output buffer
+    auto run = krnl(output_buffer);
+    run.wait();
+
+    // Prepare local buffer
+    char received_data[LENGTH] = {};
+
+    // Acquire and read the buffer data
+    output_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    output_buffer.read(received_data);
+
+    // Compare received data against expected data
+    std::string expected_data = "Hello World\n";
+    if (std::memcmp(received_data, expected_data.data(), expected_data.size())) {
+        std::cout << "TEST FAILED\n";
+        throw std::runtime_error("Value read back does not match reference");
     }
 
-    if (!infile.good()) {
-        std::cout << "\nNOT SUPPORTED" << std::endl;
-        return EOPNOTSUPP;
-    }
-    cl_int err;
-    cl::Context context;
-    cl::Kernel krnl_verify;
-    cl::CommandQueue q;
-
-    std::vector<char, aligned_allocator<char> > h_buf(LENGTH);
-
-    // Create the test data
-    for (int i = 0; i < LENGTH; i++) {
-        h_buf[i] = 0;
-    }
-
-    // OPENCL HOST CODE AREA START
-    // get_xil_devices() is a utility API which will find the xilinx
-    // platforms and will return list of devices connected to Xilinx platform
-    auto devices = xcl::get_xil_devices();
-    std::vector<cl::Platform> platforms;
-    OCL_CHECK(err, err = cl::Platform::get(&platforms));
-    std::string platform_vers(1024, '\0'), platform_prof(1024, '\0'), platform_exts(1024, '\0');
-    OCL_CHECK(err, err = platforms[0].getInfo(CL_PLATFORM_VERSION, &platform_vers));
-    OCL_CHECK(err, err = platforms[0].getInfo(CL_PLATFORM_PROFILE, &platform_prof));
-    OCL_CHECK(err, err = platforms[0].getInfo(CL_PLATFORM_EXTENSIONS, &platform_exts));
-    std::cout << "Platform Version: " << platform_vers << std::endl;
-    std::cout << "Platform Profile: " << platform_prof << std::endl;
-    std::cout << "Platform Extensions: " << platform_exts << std::endl;
-
-    // read_binary_file() is a utility API which will load the binaryFile
-    // and will return the pointer to file buffer.
-    auto fileBuf = xcl::read_binary_file(binaryFile.string());
-    cl::Program::Binaries bins{{fileBuf.data(), fileBuf.size()}};
-
-    auto pos = dev_id.find(":");
-    cl::Device device;
-    if (pos == std::string::npos) {
-        uint32_t device_index = stoi(dev_id);
-        if (device_index >= devices.size()) {
-            std::cout << "The device_index provided using -d flag is outside the range of "
-                         "available devices\n";
-            return EXIT_FAILURE;
-        }
-        device = devices[device_index];
-    } else {
-        if (xcl::is_emulation()) {
-            std::cout << "Device bdf is not supported for the emulation flow\n";
-            return EXIT_FAILURE;
-        }
-        device = xcl::find_device_bdf(devices, dev_id);
-    }
-
-    // Creating Context and Command Queue for selected Device
-    OCL_CHECK(err, context = cl::Context(device, nullptr, nullptr, nullptr, &err));
-    OCL_CHECK(err, q = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &err));
-    std::cout << "Trying to program device " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
-    cl::Program program(context, {device}, bins, nullptr, &err);
-    if (err != CL_SUCCESS) {
-        std::cout << "Failed to program device with xclbin file!\n";
-    } else {
-        std::cout << "Device program successful!\n";
-        OCL_CHECK(err, krnl_verify = cl::Kernel(program, "verify", &err));
-    }
-
-    OCL_CHECK(err, cl::Buffer d_buf(context, CL_MEM_WRITE_ONLY, sizeof(char) * LENGTH, nullptr, &err));
-
-    OCL_CHECK(err, err = krnl_verify.setArg(0, d_buf));
-
-    // Launch the Kernel
-    OCL_CHECK(err, err = q.enqueueTask(krnl_verify));
-    q.finish();
-
-    OCL_CHECK(err, err = q.enqueueReadBuffer(d_buf, CL_TRUE, 0, sizeof(char) * LENGTH, h_buf.data(), nullptr, nullptr));
-    q.finish();
-    for (int i = 0; i < 12; i++) {
-        std::cout << h_buf[i];
-    }
     std::cout << "TEST PASSED\n";
     return 0;
 }

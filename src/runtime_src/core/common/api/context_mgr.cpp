@@ -1,24 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
-#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#define XRT_API_SOURCE         // in smae dll as coreutil
 #include "context_mgr.h"
+#include "hw_context_int.h"
 #include "core/common/cuidx_type.h"
-#include "core/common/debug.h"
 #include "core/common/device.h"
 
-#include <bitset>
 #include <chrono>
 #include <condition_variable>
-#include <limits>
 #include <map>
 #include <mutex>
 
 using namespace std::chrono_literals;
 
 namespace xrt_core { namespace context_mgr {
-
-constexpr size_t max_cus = 129;  // +1 for virtual CU
-constexpr auto virtual_cu_idx = std::numeric_limits<unsigned int>::max();
 
 // class device_context_mgr - synchroize open and close context for IPs
 //
@@ -31,112 +28,93 @@ constexpr auto virtual_cu_idx = std::numeric_limits<unsigned int>::max();
 // the former has closed its context.
 class device_context_mgr
 {
+  // CU indeces are managed per hwctx
+  // This struct manages CUs are that are opened by the
+  // context mananger.  It supports mapping
+  // - {ctx, nm} -> ip_info   // for opening
+  // - {ctx, idx} -> ip_info  // for closing
+  // where the ip_info data is shared by both maps
+  struct ctx
+  {
+    struct ip {
+      std::string ipname;
+      cuidx_type ipidx;
+
+      ip(const std::string& nm, cuidx_type idx)
+        : ipname(nm), ipidx(idx)
+      {}
+    };
+
+    std::map<std::string, std::shared_ptr<ip>> m_nm2ip;
+    std::map<decltype(cuidx_type::index), std::shared_ptr<ip>> m_idx2ip;
+
+    const ip*
+    get(const std::string& ipname)
+    {
+      return m_nm2ip[ipname].get();
+    }
+
+    const ip*
+    get(cuidx_type ipidx)
+    {
+      return m_idx2ip[ipidx.index].get();
+    }
+
+    void
+    add(const std::string& ipname, cuidx_type ipidx)
+    {
+      m_idx2ip[ipidx.index] = m_nm2ip[ipname] = std::make_shared<ip>(ipname, ipidx);
+    }
+
+    void
+    erase(cuidx_type ipidx)
+    {
+      const auto& cu = m_idx2ip.at(ipidx.index);
+      m_nm2ip.erase(cu->ipname);
+      m_idx2ip.erase(cu->ipidx.index);  // cu local variable dies
+    }
+  };
+
   std::mutex m_mutex;
+  std::map<xcl_hwctx_handle, ctx> m_ctx;
   std::condition_variable m_cv;
   xrt_core::device* m_device;
-
-  // CU contexts are managed per domain where indicies are
-  // in the range [0..max_cus[.  This allows for a compact
-  // bitset representation.
-  using domain_type = cuidx_type::domain_type;
-  std::map<domain_type, std::bitset<max_cus>> m_d2ctx; // domain -> cxt
-
-  // Get the domain context bitset that contains this ipidx
-  // Return by address since used conditionally in get_idx_ctx
-  std::bitset<max_cus>*
-  get_ctx(cuidx_type ipidx)
-  {
-    return &(m_d2ctx[ipidx.domain]);
-  }
-
-  // Get the CU index within a domain and the domain context bitset
-  // for the CU identified by argument slot and cuname.
-  // The returned index is only valid if the context bitset is not null.
-  std::pair<size_t, std::bitset<max_cus>*>
-  get_idx_ctx(slot_id slot, const std::string& cuname)
-  {
-    try {
-      auto idx = m_device->get_cuidx(slot, cuname);
-      return {ctxidx(idx), get_ctx(idx)};
-    }
-    catch (const std::exception&) {
-      return {0, nullptr};
-    }
-  }
-
-  // Convert CU index into a domain index with special attention to
-  // the virtual context index which is represented as the last entry
-  // in the bitset.
-  size_t
-  ctxidx(cuidx_type ipidx)
-  {
-    // translate ipidx to idx used in bitset.
-    // virtual cu is last entry in bitset.
-    // virtual cu is always in default domain 0.
-    return ipidx.index == virtual_cu_idx ? max_cus - 1 : ipidx.domain_index;
-  }
 
 public:
   device_context_mgr(xrt_core::device* device)
     : m_device(device)
   {}
 
-  // Open context on cu identified by slot, uuid, and name.
-  // Open the cu context when it is safe to do so.  Note, that usage
+  // Open context on IP in specified hardware context.
+  // Open the IP context when it is safe to do so.  Note, that usage
   // of the context manager does not support multiple threads calling
   // this open() function on the same ip. The intended use-case
   // (xrt::kernel) prevents this situation.
-  void
-  open(slot_id slot, const xrt::uuid& uuid, const std::string& ipname, bool shared)
+  cuidx_type
+  open(const xrt::hw_context& hwctx, const std::string& ipname)
   {
     std::unique_lock<std::mutex> ul(m_mutex);
-    auto [idx, ctx] = get_idx_ctx(slot, ipname);
-    while (ctx && ctx->test(idx)) {
+    auto& ctx = m_ctx[static_cast<xcl_hwctx_handle>(hwctx)];
+    while (ctx.get(ipname)) {
       if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
         throw std::runtime_error("aquiring cu context timed out");
     }
-    m_device->open_context(slot, uuid.get(), ipname.c_str(), shared);
-
-    // Successful context creation means CU idx is now known
-    if (!ctx)
-      std::tie(idx, ctx) = get_idx_ctx(slot, ipname);
-
-    if (!ctx)
-      throw std::runtime_error("Unexpected ctx error");
-
-    ctx->set(idx);
-  }
-
-  // Open the cu context when it is safe to do so.  Note, that usage
-  // of the context manager does not support multiple threads calling
-  // this open() function on the same ip. The intended use-case
-  // (xrt::kernel) prevents this situation.
-  void
-  open(const xrt::uuid& uuid, cuidx_type ipidx, bool shared)
-  {
-    auto idx = ctxidx(ipidx);
-    std::unique_lock<std::mutex> ul(m_mutex);
-    auto ctx = get_ctx(ipidx);
-    while (ctx->test(idx)) {
-      if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
-        throw std::runtime_error("aquiring cu context timed out");
-    }
-    m_device->open_context(uuid.get(), ipidx.index, shared);
-    ctx->set(idx);
+    auto ipidx = m_device->open_cu_context(hwctx, ipname);
+    ctx.add(ipname, ipidx);
+    return ipidx;
   }
 
   // Close the cu context and notify threads that might be waiting
   // to open this cu
   void
-  close(const xrt::uuid& uuid, cuidx_type ipidx)
+  close(const xrt::hw_context& hwctx, cuidx_type ipidx)
   {
-    auto idx = ctxidx(ipidx);
     std::lock_guard<std::mutex> lk(m_mutex);
-    auto ctx = get_ctx(ipidx);
-    if (!ctx->test(idx))
+    auto& ctx = m_ctx[static_cast<xcl_hwctx_handle>(hwctx)];
+    if (!ctx.get(ipidx))
       throw std::runtime_error("ctx " + std::to_string(ipidx.index) + " not open");
-    m_device->close_context(uuid.get(), ipidx.index);
-    ctx->reset(idx);
+    m_device->close_cu_context(hwctx, ipidx);
+    ctx.erase(ipidx);
     m_cv.notify_all();
   }
 };
@@ -168,34 +146,22 @@ create(const xrt_core::device* device)
 }
 
 // Regular CU
-void
-open_context(xrt_core::device* device, slot_id slot, const xrt::uuid& uuid, const std::string& cuname, bool shared)
+cuidx_type
+open_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
-  if (auto ctxmgr = get_device_context_mgr(device)) {
-    ctxmgr->open(slot, uuid, cuname, shared);
-    return;
-  }
-
-  throw std::runtime_error("No context manager for device");
-}
-
-// Virtual CU
-void
-open_context(xrt_core::device* device, const xrt::uuid& uuid, cuidx_type cuidx, bool shared)
-{
-  if (auto ctxmgr = get_device_context_mgr(device)) {
-    ctxmgr->open(uuid, cuidx, shared);
-    return;
-  }
+  auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
+  if (auto ctxmgr = get_device_context_mgr(device))
+    return ctxmgr->open(hwctx, cuname);
 
   throw std::runtime_error("No context manager for device");
 }
 
 void
-close_context(xrt_core::device* device, const xrt::uuid& uuid, cuidx_type cuidx)
+close_context(const xrt::hw_context& hwctx, cuidx_type cuidx)
 {
+  auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
   if (auto ctxmgr = get_device_context_mgr(device)) {
-    ctxmgr->close(uuid, cuidx);
+    ctxmgr->close(hwctx, cuidx);
     return;
   }
 

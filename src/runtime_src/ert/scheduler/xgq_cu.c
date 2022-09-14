@@ -1,3 +1,18 @@
+/**
+ * Copyright (C) 2022 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
 #include "xgq_mb_plat.h"
 #include "xgq_impl.h"
 #include "xgq_cu.h"
@@ -21,6 +36,7 @@ inline void xgq_cu_init(struct xgq_cu *xc, struct xgq *q, struct sched_cu *cu)
 	xc->xc_cmd_running = 0;
 	cmd_set_addr(cmd, 0);
 	cmd_clear_header(cmd, 0);
+    cu_verify_ctrl(cu, 0xC, "CU initial status is not idle/ready");
 	cu_set_status(cu, SCHED_AP_IDLE);
 }
 

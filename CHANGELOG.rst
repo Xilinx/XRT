@@ -1,6 +1,25 @@
 XRT ChangeLog
 -------------
 
+2.14.0 (202210.2.14.x)
+~~~~~~~~~~~~~~~~~~~~~~
+Added
+.....
+* Support generic AsyncBO transfer for AIE via xrt::bo C++ APIs.
+* Add first class object ``xrt::hw_context`` to support loading of multiple xclbins (PL and PS).  This API is experimental in this release.
+
+Removed
+.......
+* XRT streaming APIs used with QDMA PCIe DMA engine have been removed per deprecation announcement in 2.11.x
+* All XCL APIs are deprecated and will be removed in future release.
+* Remove internal software scheduler known as SWS.  It was no longer functional and all shims now support KDS style scheduling.
+* All xrt++ APIs are deprecated and will be removed in next release.  The xrt++ link library will be removed.  The functionality provided by xrt++ is superseeded by the native XRT C++ APIs.
+
+Changed
+.......
+* Experimental native C++ APIs ``xrt::xclbin`` and ``xrt::ip`` have ABI breaking changes in 2.14.x per PR #6723. Code that uses these APIs must be recompiled.
+
+
 2.13.0 (202210.2.13.x)
 ~~~~~~~~~~~~~~~~~~~~~~
 Added
@@ -48,11 +67,11 @@ Added
 
 **XRT native APIs**
 
-* ``xrt::aie`` and ``xrt::graph`` moved from experimental to mature and are now available from ``include/xrt/`` folder. 
+* ``xrt::aie`` and ``xrt::graph`` moved from experimental to mature and are now available from ``include/xrt/`` folder.
 * Added C++ support for xrt::aie APIs.
 * Throw an exception if xrt::kernel is constructed with an ``AP_CTRL_NONE`` kernel.  Use ``xrt::ip`` to control custom IPs.
 * HLS mailbox support via experimental API ``include/experimental/xrt_mailbox.h``.  See ``tests/xrt/mailbox`` for an example.
-* HLS kernel reset support using ``xrt::run::abort()``.  If a run is aborted without kernel support for sw reset, the board itself will require a reset. 
+* HLS kernel reset support using ``xrt::run::abort()``.  If a run is aborted without kernel support for sw reset, the board itself will require a reset.
 * Fixed bug in ``xrt::run::wait`` where specified timeout was ignored.
 * Added new ``xrt::device::get_info`` parameters and guaranteed format of return type with new versions of XRT.
 

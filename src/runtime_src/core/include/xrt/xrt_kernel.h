@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2020-2022 Xilinx, Inc
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  */
 #ifndef XRT_KERNEL_H_
 #define XRT_KERNEL_H_
@@ -11,8 +12,9 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
+
 #ifdef __cplusplus
-# include "experimental/xrt_enqueue.h"
+# include "experimental/xrt_hw_context.h"
 # include <chrono>
 # include <cstdint>
 # include <functional>
@@ -72,7 +74,6 @@ struct autostart
 };
 
 class kernel;
-class event_impl;
 
 /*!
  * @class run
@@ -276,23 +277,6 @@ class run
   add_callback(ert_cmd_state state,
                std::function<void(const void*, ert_cmd_state, void*)> callback,
                void* data);
-
-  /// @cond
-  /**
-   * set_event() - Add event for enqueued operations
-   *
-   * @param event
-   *   Opaque implementation object
-   *
-   * This function is used when a run object is enqueued in an event
-   * graph.  The event must be notified upon completion of the run.
-   *
-   * This is an experimental API using a WIP feature.
-   */
-  XCL_DRIVER_DLLESPEC
-  void
-  set_event(const std::shared_ptr<event_impl>& event) const;
-  /// @endcond
 
   /**
    * operator bool() - Check if run handle is valid
@@ -604,6 +588,13 @@ public:
   kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
          cu_access_mode mode = cu_access_mode::shared);
 
+
+  /// @cond
+  /// Experimental in 2022.2
+  XCL_DRIVER_DLLESPEC
+  kernel(const xrt::hw_context& ctx, const std::string& name);
+  /// @endcond
+
   /// @cond
   /// Deprecated construtor for exclusive access
   kernel(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, bool ex)
@@ -704,14 +695,14 @@ public:
    * get_name() - Return the name of the kernel
    */
   XCL_DRIVER_DLLESPEC
-  std::string 
+  std::string
   get_name() const;
-  
+
   /**
    * get_xclbin() - Return the xclbin containing the kernel
    */
   XCL_DRIVER_DLLESPEC
-  xrt::xclbin 
+  xrt::xclbin
   get_xclbin() const;
 
 public:
@@ -728,14 +719,12 @@ private:
 };
 
 /// @cond
-// Specialization from xrt_enqueue.h for run objects, which
-// are asynchronous waitable objects.
-template <>
-struct callable_traits<run>
-{
-  enum { is_async = true };
-};
+// Undocumented experimental API subject to be replaced
+XCL_DRIVER_DLLESPEC
+void
+set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size);
 /// @endcond
+
 
 } // namespace xrt
 

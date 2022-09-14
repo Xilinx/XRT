@@ -45,7 +45,8 @@ static const std::string configFile("/etc/msd.conf");
 // We'd like to only handle below request through daemons.
 static uint64_t chanSwitch = (1UL<<XCL_MAILBOX_REQ_TEST_READY) |
                       (1UL<<XCL_MAILBOX_REQ_TEST_READ)  |
-                      (1UL<<XCL_MAILBOX_REQ_LOAD_XCLBIN);
+                      (1UL<<XCL_MAILBOX_REQ_LOAD_XCLBIN) |
+                      (1UL<<XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN);
 static struct msd_plugin_callbacks plugin_cbs;
 static const std::string plugin_path("/opt/xilinx/xrt/lib/libmsd_plugin.so");
 
@@ -71,7 +72,7 @@ public:
     static void msd_thread(size_t index, std::string host);
     static int remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
         std::unique_ptr<sw_msg>& processed);
-    static int download_xclbin(const pcieFunc& dev, char *xclbin);
+    static int download_xclbin(const pcieFunc& dev, char *xclbin, uint32_t slot_id = 0);
 
     init_fn plugin_init;
     fini_fn plugin_fini;
@@ -229,7 +230,7 @@ int Msd::connectMpd(const pcieFunc& dev, int sockfd, int id, int& mpdfd)
     return 0;
 }
 
-int Msd::download_xclbin(const pcieFunc& dev, char *xclbin)
+int Msd::download_xclbin(const pcieFunc& dev, char *xclbin, uint32_t slot_id)
 {
     retrieve_xclbin_fini_fn done = nullptr;
     void *done_arg = nullptr;
@@ -289,7 +290,27 @@ int Msd::remoteMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
             break;
         }
 
-        int ret = download_xclbin(dev, req->data);
+        int ret = download_xclbin(dev, reinterpret_cast<char *>(req->data));
+        dev.log(LOG_INFO, "xclbin download, ret=%d", ret);
+        processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
+            XCL_MB_REQ_FLAG_RESPONSE);
+        pass = FOR_REMOTE;
+        break;
+    }
+    case XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN: {
+        struct xcl_mailbox_bitstream_slot_xclbin *mb_xclbin =
+                     (struct xcl_mailbox_bitstream_slot_xclbin *)req->data;
+        uint32_t slot_id = mb_xclbin->slot_idx;
+        axlf *xclbin = reinterpret_cast<axlf *>((uint64_t)req->data +
+				     sizeof(struct xcl_mailbox_bitstream_slot_xclbin));
+        uint64_t xclbinSize = xclbin->m_header.m_length;
+        if (reqSize < xclbinSize) {
+            dev.log(LOG_ERR, "peer request dropped, wrong size");
+            pass = -EINVAL;
+            break;
+        }
+
+        int ret = download_xclbin(dev, reinterpret_cast<char *>(xclbin), slot_id);
         dev.log(LOG_INFO, "xclbin download, ret=%d", ret);
         processed = std::make_unique<sw_msg>(&ret, sizeof(ret), orig->id(),
             XCL_MB_REQ_FLAG_RESPONSE);

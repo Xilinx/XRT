@@ -38,6 +38,8 @@ public:
   virtual void close(int dev_handle) const override;
   virtual void reset(query::reset_type&) const override;
   virtual void xclmgmt_load_xclbin(const char* buffer) const override;
+  virtual void device_shutdown() const override;
+  virtual void device_online() const override;
 
 public:
   ////////////////////////////////////////////////////////////////
@@ -45,9 +47,12 @@ public:
   // Redefined from xrt_core::ishim for functions that are not
   // universally implemented by all shims
   ////////////////////////////////////////////////////////////////
+  void
+  set_cu_read_range(cuidx_type ip_index, uint32_t start, uint32_t size) override;
+
   xclInterruptNotifyHandle
   open_ip_interrupt_notify(unsigned int ip_index) override;
-  
+
   void
   close_ip_interrupt_notify(xclInterruptNotifyHandle handle) override;
 
@@ -65,6 +70,26 @@ public:
 
   xclBufferHandle
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
+
+  uint32_t // ctx handle aka slotidx
+  create_hw_context(const xrt::uuid& xclbin_uuid,
+                    const xrt::hw_context::qos_type& qos,
+                    xrt::hw_context::access_mode mode) const override
+  {
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos, mode);
+  }
+
+  void
+  destroy_hw_context(uint32_t ctxhdl) const override
+  {
+    xrt::shim_int::destroy_hw_context(get_device_handle(), ctxhdl);
+  }
+
+  void
+  register_xclbin(const xrt::xclbin& xclbin) const override
+  {
+    xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
+  }
   ////////////////////////////////////////////////////////////////
 
 private:

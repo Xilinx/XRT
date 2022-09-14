@@ -19,16 +19,16 @@
 
 namespace xdp {
 namespace aie {
-
   void update_device(void* handle);
   void flush_device(void* handle);
+  void finish_flush_device(void* handle);
 
 namespace trace {
-
   void load();
   void register_callbacks(void* handle);
   void warning_function();
   int  error_function();
+
 } // end namespace trace
 } // end namespace aie
 } // end namespace xdp

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -49,22 +50,8 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
-#define XAM_STALL_PROPERTY_MASK        0x4
-#define XMON_TRACE_PROPERTY_MASK       0x1
-
-static std::string convertMemoryName(const std::string &mem)
-{
-  if (0 == mem.compare("DDR[0]"))
-    return "bank0";
-  if (0 == mem.compare("DDR[1]"))
-    return "bank1";
-  if (0 == mem.compare("DDR[2]"))
-    return "bank2";
-  if (0 == mem.compare("DDR[3]"))
-    return "bank3";
-
-  return mem;
-}
+constexpr unsigned int XAM_STALL_PROPERTY_MASK  = 0x4;
+constexpr unsigned int XMON_TRACE_PROPERTY_MASK = 0x1;
 
 namespace xdp {
 
@@ -116,6 +103,17 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(summaryLock) ;
     applicationStartTime = t ;
+  }
+
+  bool VPStaticDatabase::getAieApplication() const
+  {
+    return aieApplication;
+  }
+
+  void VPStaticDatabase::setAieApplication()
+  {
+    std::lock_guard<std::mutex> lock(summaryLock);
+    aieApplication = true;
   }
 
   // ***************************************************
@@ -756,6 +754,9 @@ namespace xdp {
     if (!xclbin)
       return nullptr ;
 
+    if (0 == xclbin->aie.aieList.size()) 
+      return nullptr;
+
     return xclbin->aie.aieList[idx] ;
   }
 
@@ -1221,8 +1222,6 @@ namespace xdp {
   }
 
   // ************************************************************************
-  // ***** Functions for  *****
-
 
   bool VPStaticDatabase::validXclbin(void* devHandle)
   {
@@ -1230,43 +1229,23 @@ namespace xdp {
       xrt_core::get_userpf_device(devHandle);
 
     // If this xclbin was built with tools before the 2019.2 release, we
-    //  do not support profiling
-    std::pair<const char*, size_t> buildMetadata =
-      device->get_axlf_section(BUILD_METADATA);
-    const char* buildMetadataSection = buildMetadata.first;
-    size_t      buildMetadataSz      = buildMetadata.second;
-    if (buildMetadataSection != nullptr) {
-      std::stringstream ss ;
-      ss.write(buildMetadataSection, buildMetadataSz) ;
+    //  do not support device profiling.  The XRT version of 2019.2 was 2.5.459
+    auto xclbin = device->get_xclbin(device->get_xclbin_uuid());
+    const axlf* binary = xclbin.get_axlf();
 
-      boost::property_tree::ptree pt;
-      boost::property_tree::read_json(ss, pt);
+    if (binary == nullptr)
+      return false;
 
-      std::string version =
-        pt.get<std::string>("build_metadata.xclbin.generated_by.version", "") ;
+    auto major = static_cast<unsigned int>(binary->m_header.m_versionMajor);
+    auto minor = static_cast<unsigned int>(binary->m_header.m_versionMinor);
 
-      if (version == "" || version.find(".") == std::string::npos)
-        return false ;
+    if (major < earliestSupportedXRTVersionMajor())
+      return false;
+    if (minor < earliestSupportedXRTVersionMinor())
+      return false;
 
-      // The stod function handles strings that have one decimal point
-      //  or multiple decimal points and return only the major number
-      //  and minor number and strips away the revision.
-      double majorAndMinor = std::stod(version, nullptr) ;
-      if (majorAndMinor < earliestSupportedToolVersion())
-        return false ;
-
-      return true ;
-    }
-
-    // If the build section does not exist, then this is not a valid xclbin
-    return false ;
+    return true;
   }
-
-
-
-
-
-
 
   double VPStaticDatabase::findClockRate(std::shared_ptr<xrt_core::device> device)
   {
@@ -1375,17 +1354,12 @@ namespace xdp {
     currentXclbin->uuid = device->get_xclbin_uuid() ;
     currentXclbin->pl.clockRatePLMHz = findClockRate(device) ;
 
-
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
      */
     devInfo->ctxInfo = xrt_core::config::get_kernel_channel_info();
 
-    if (!setXclbinName(currentXclbin, device)) {
-      // If there is no SYSTEM_METADATA section, use a default name
-      currentXclbin->name = "default.xclbin";
-    }
-    if (!initializeComputeUnits(currentXclbin, device)) {
+    if (!initializeStructure(currentXclbin, device)) {
       delete currentXclbin;
       return;
     }
@@ -1413,32 +1387,26 @@ namespace xdp {
     return true;
   }
 
-  bool VPStaticDatabase::setXclbinName(XclbinInfo* currentXclbin, const std::shared_ptr<xrt_core::device>& device)
+  void VPStaticDatabase::setXclbinName(XclbinInfo* currentXclbin,
+                                       const char* systemMetadataSection,
+                                       size_t systemMetadataSz)
   {
-    // Get SYSTEM_METADATA section
-    std::pair<const char*, size_t> systemMetadata = device->get_axlf_section(SYSTEM_METADATA);
-    const char* systemMetadataSection = systemMetadata.first;
-    size_t      systemMetadataSz      = systemMetadata.second;
-    if(systemMetadataSection == nullptr) return false;
+    if (currentXclbin == nullptr)
+      return;
 
-    // For now, also update the System metadata for the run summary.
-    //  TODO: Expand this so that multiple devices and multiple xclbins
-    //  don't overwrite the single system diagram information
-    std::ostringstream buf ;
-    for (size_t index = 0 ; index < systemMetadataSz ; ++index)
-    {
-      buf << std::hex << std::setw(2) << std::setfill('0') << (unsigned int)(systemMetadataSection[index]);
-    }
-    {
-      std::lock_guard<std::mutex> lock(summaryLock) ;
-      systemDiagram = buf.str() ;
+    const char* defaultName = "default.xclbin";
+
+    if (systemMetadataSection == nullptr || systemMetadataSz <= 0) {
+      // If there is no SYSTEM_METADATA section, use a default name
+      currentXclbin->name = defaultName;
+      return;
     }
 
     try {
       std::stringstream ss;
       ss.write(systemMetadataSection, systemMetadataSz);
 
-      // Create a property tree and determine if the variables are all default values
+      // Create a property tree based off of the JSON
       boost::property_tree::ptree pt;
       boost::property_tree::read_json(ss, pt);
 
@@ -1447,23 +1415,185 @@ namespace xdp {
         currentXclbin->name += ".xclbin";
       }
     } catch(...) {
-      // keep default value in "currentXclbin.name" i.e. empty string
+      currentXclbin->name = defaultName;
     }
+  }
+
+  void VPStaticDatabase::updateSystemDiagram(const char* systemMetadataSection,
+                                             size_t systemMetadataSz)
+  {
+    if (systemMetadataSection == nullptr || systemMetadataSz <= 0)
+      return;
+
+    // For now, also update the System metadata for the run summary.
+    //  TODO: Expand this so that multiple devices and multiple xclbins
+    //  don't overwrite the single system diagram information
+    std::ostringstream buf ;
+    for (size_t index = 0 ; index < systemMetadataSz ; ++index) {
+      buf << std::hex << std::setw(2) << std::setfill('0')
+          << static_cast<unsigned int>(systemMetadataSection[index]);
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(summaryLock) ;
+      systemDiagram = buf.str() ;
+    }
+  }
+
+  void VPStaticDatabase::addPortInfo(XclbinInfo* currentXclbin,
+                                     const char* systemMetadataSection,
+                                     size_t systemMetadataSz)
+  {
+    if (currentXclbin == nullptr || systemMetadataSection == nullptr ||
+        systemMetadataSz <= 0)
+      return;
+
+    // Parse the SYSTEM_METADATA section using boost property trees, which
+    // could throw exceptions in multiple ways.
+    try {
+      std::stringstream ss;
+      ss.write(systemMetadataSection, systemMetadataSz);
+
+      // Create a property tree based off of the JSON
+      boost::property_tree::ptree pt;
+      boost::property_tree::read_json(ss, pt);
+
+      auto top = pt.get_child("system_diagram_metadata");
+
+      // Parse the xsa section for memory topology information
+      auto xsa = top.get_child("xsa");
+      auto device_topology = xsa.get_child("device_topology");
+
+      // Parse the xclbin section for compute unit port information
+      auto xclbin = top.get_child("xclbin");
+      auto user_regions = xclbin.get_child("user_regions");
+
+      // Temp data structure to hold mappings
+      std::map<std::string, int32_t> argumentToMemoryIndex;
+
+      // We also need to know which argument goes to which memory
+      for (auto& region : user_regions) {
+        for (auto& connection : region.second.get_child("connectivity")) {
+          auto node1 = connection.second.get_child("node1");
+          auto node2 = connection.second.get_child("node2");
+
+          auto arg = node1.get<std::string>("arg_name");
+          auto id = node2.get<std::string>("id");
+
+          if (id != "" && arg != "")
+            argumentToMemoryIndex[arg] = std::stoi(id);
+        }
+      }
+
+      auto tolower = [](char c) { return static_cast<char>(std::tolower(c));};
+
+      // Now go through each of the kernels to determine the port information
+      for (auto& region : user_regions) {
+        for (auto& kernel : region.second.get_child("kernels")) {
+          auto kernelName = kernel.second.get<std::string>("name", "");
+          for (auto& port : kernel.second.get_child("ports")) {
+            auto portName = port.second.get<std::string>("name");
+            auto portType = port.second.get<std::string>("port_type");
+            if (portName == "S_AXI_CONTROL" || portType == "stream")
+              continue;
+
+            auto portWidth = port.second.get<std::string>("data_width");
+            std::transform(portName.begin(), portName.end(), portName.begin(),
+                           tolower);
+
+            currentXclbin->pl.addComputeUnitPorts(kernelName,
+                                                  portName,
+                                                  std::stoi(portWidth));
+          }
+          for (auto& arg : kernel.second.get_child("arguments")) {
+            auto portName = arg.second.get<std::string>("port");
+            auto portType = arg.second.get<std::string>("type");
+            if (portName == "S_AXI_CONTROL" ||
+                portType.find("stream") != std::string::npos)
+              continue;
+            std::transform(portName.begin(), portName.end(), portName.begin(),
+                           tolower);
+            auto argName = arg.second.get<std::string>("name");
+            if (argumentToMemoryIndex.find(argName) == argumentToMemoryIndex.end())
+              continue; // Skip streams not connected to memory
+            auto memId = argumentToMemoryIndex[argName];
+
+            currentXclbin->pl.addArgToPort(kernelName, argName, portName);
+            currentXclbin->pl.connectArgToMemory(kernelName, portName,
+                                                 argName, memId);
+          }
+        }
+      }
+
+    } catch(...) {
+      // If we catch an exception, leave the rest of the port info as is.
+    }
+  }
+
+  bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin,
+                                             const std::shared_ptr<xrt_core::device>& device)
+  {
+    // Step 1 -> Create the compute units based on the IP_LAYOUT section
+    const ip_layout* ipLayoutSection =
+      device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
+
+    if(ipLayoutSection == nullptr)
+      return true;
+
+    createComputeUnits(currentXclbin, ipLayoutSection);
+
+    // Step 2 -> Create the memory layout based on the MEM_TOPOLOGY section
+    const mem_topology* memTopologySection =
+      device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
+
+    if(memTopologySection == nullptr)
+      return false;
+
+    createMemories(currentXclbin, memTopologySection);
+
+    // Step 3 -> Connect the CUs with the memory resources using the
+    //           CONNECTIVITY section
+    const connectivity* connectivitySection =
+      device->get_axlf_section<const connectivity*>(CONNECTIVITY);
+
+    if(connectivitySection == nullptr)
+      return true;
+
+    createConnections(currentXclbin, ipLayoutSection, memTopologySection,
+                      connectivitySection);
+
+    // Step 4 -> Annotate all the compute units with workgroup size using
+    //           the EMBEDDED_METADATA section
+    std::pair<const char*, size_t> embeddedMetadata =
+      device->get_axlf_section(EMBEDDED_METADATA);
+
+    annotateWorkgroupSize(currentXclbin, embeddedMetadata.first,
+                          embeddedMetadata.second);
+
+    // Step 5 -> Fill in the details like the name of the xclbin using
+    //           the SYSTEM_METADATA section
+    std::pair<const char*, size_t> systemMetadata =
+      device->get_axlf_section(SYSTEM_METADATA);
+
+    setXclbinName(currentXclbin, systemMetadata.first, systemMetadata.second);
+    updateSystemDiagram(systemMetadata.first, systemMetadata.second);
+    addPortInfo(currentXclbin, systemMetadata.first, systemMetadata.second);
+
     return true;
   }
 
-  bool VPStaticDatabase::initializeComputeUnits(XclbinInfo* currentXclbin, const std::shared_ptr<xrt_core::device>& device)
+  void VPStaticDatabase::createComputeUnits(XclbinInfo* currentXclbin,
+                                            const ip_layout* ipLayoutSection)
   {
-    // Get IP_LAYOUT section 
-    const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
-    if(ipLayoutSection == nullptr) return true;
+    if (currentXclbin == nullptr || ipLayoutSection == nullptr)
+      return;
 
     ComputeUnitInstance* cu = nullptr;
-    for(int32_t i = 0; i < ipLayoutSection->m_count; i++) {
+    for(int32_t i = 0; i < ipLayoutSection->m_count; ++i) {
       const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[i]);
-      if(ipData->m_type != IP_KERNEL) {
+      if(ipData->m_type != IP_KERNEL)
         continue;
-      }
+
       std::string cuName(reinterpret_cast<const char*>(ipData->m_name));
       if(std::string::npos != cuName.find(":dm_")) {
         /* Assumption : If the IP_KERNEL CU name is of the format "<kernel_name>:dm_*", then it is a 
@@ -1480,25 +1610,37 @@ namespace xdp {
         cu->setFaEnabled(true);
       }
     }
+  }
 
-    // Get MEM_TOPOLOGY section 
-    const mem_topology* memTopologySection = device->get_axlf_section<const mem_topology*>(MEM_TOPOLOGY);
-    if(memTopologySection == nullptr) return false;
+  void VPStaticDatabase::createMemories(XclbinInfo* currentXclbin,
+                                        const mem_topology* memTopologySection)
+  {
+    if (currentXclbin == nullptr || memTopologySection == nullptr)
+      return;
 
-    for(int32_t i = 0; i < memTopologySection->m_count; i++) {
+    for(int32_t i = 0; i < memTopologySection->m_count; ++i) {
       const struct mem_data* memData = &(memTopologySection->m_mem_data[i]);
-      currentXclbin->pl.memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
-                                          reinterpret_cast<const char*>(memData->m_tag), memData->m_used);
+      currentXclbin->pl.memoryInfo[i] =
+        new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
+                   reinterpret_cast<const char*>(memData->m_tag),
+                   memData->m_used);
     }
+  }
 
-    // Look into the connectivity section and load information about Compute Units and their Memory connections
-    // Get CONNECTIVITY section
-    const connectivity* connectivitySection = device->get_axlf_section<const connectivity*>(CONNECTIVITY);    
-    if(connectivitySection == nullptr) return true;
+  void VPStaticDatabase::createConnections(XclbinInfo* currentXclbin,
+                                           const ip_layout* ipLayoutSection,
+                                           const mem_topology* memTopologySection,
+                                           const connectivity* connectivitySection)
+  {
+    if (currentXclbin == nullptr
+        || ipLayoutSection == nullptr
+        || memTopologySection == nullptr
+        || connectivitySection == nullptr)
+      return;
 
     // Now make the connections
-    cu = nullptr;
-    for(int32_t i = 0; i < connectivitySection->m_count; i++) {
+    ComputeUnitInstance* cu = nullptr;
+    for(int32_t i = 0; i < connectivitySection->m_count; ++i) {
       const struct connection* connctn = &(connectivitySection->m_connection[i]);
 
       if(currentXclbin->pl.cus.find(connctn->m_ip_layout_index) == currentXclbin->pl.cus.end()) {
@@ -1534,11 +1676,16 @@ namespace xdp {
       }
       cu->addConnection(connctn->arg_index, connctn->mem_data_index);
     }
+  }
 
-    // Set Static WorkGroup Size of CUs using the EMBEDDED_METADATA section
-    std::pair<const char*, size_t> embeddedMetadata = device->get_axlf_section(EMBEDDED_METADATA);
-    const char* embeddedMetadataSection = embeddedMetadata.first;
-    size_t      embeddedMetadataSz      = embeddedMetadata.second;
+  void VPStaticDatabase::annotateWorkgroupSize(XclbinInfo* currentXclbin,
+                                               const char* embeddedMetadataSection,
+                                               size_t embeddedMetadataSz)
+  {
+    if (currentXclbin == nullptr
+        || embeddedMetadataSection == nullptr
+        || embeddedMetadataSz <= 0)
+      return;
 
     boost::property_tree::ptree xmlProject;
     std::stringstream xmlStream;
@@ -1579,8 +1726,6 @@ namespace xdp {
         cuItr.second->setDim(std::stoi(x), std::stoi(y), std::stoi(z));
       }
     }
-
-    return true;
   }
 
   void VPStaticDatabase::initializeAM(DeviceInfo* devInfo,
@@ -1637,12 +1782,12 @@ namespace xdp {
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < MIN_TRACE_ID_AIM) {
+    if (index < min_trace_id_aim) {
       std::stringstream msg;
       msg << "AIM with incorrect index: " << index ;
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
                               msg.str());
-      index = MIN_TRACE_ID_AIM ;
+      index = min_trace_id_aim ;
     }
 
     // Parse name to find CU Name and Memory.  We expect the name in
@@ -1656,13 +1801,11 @@ namespace xdp {
     }
 
     std::string memName = "" ;
-    std::string memName1 = "" ;
     std::string portName = "" ;
     size_t pos1 = name.find('-');
     if(pos1 != std::string::npos) {
       memName = name.substr(pos1+1);
       portName = name.substr(pos+1, pos1-pos-1);
-      memName1 = convertMemoryName(memName);
     }
 
     ComputeUnitInstance* cuObj = nullptr ;
@@ -1679,14 +1822,18 @@ namespace xdp {
       }
     }
     for(auto mem : xclbin->pl.memoryInfo) {
-      if (0 == memName1.compare(mem.second->name) || 0 == memName.compare(mem.second->name)) {
+      if (0 == memName.compare(mem.second->spTag)) {
         memId = mem.second->index;
         break;
       }
     }
+
     Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
                                index, debugIpData->m_name, cuId, memId);
-    mon->port = portName;
+
+    if (cuObj) {
+      mon->cuPort = cuObj->getPort(portName);
+    }
     if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) {
       mon->traceEnabled = true ;
     }
@@ -1718,12 +1865,12 @@ namespace xdp {
 
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < MIN_TRACE_ID_ASM) {
+    if (index < min_trace_id_asm) {
       std::stringstream msg;
       msg << "ASM with incorrect index: " << index ;
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
                               msg.str());
-      index = MIN_TRACE_ID_ASM ;
+      index = min_trace_id_asm ;
     }
 
     // Parse out the name of the compute unit this monitor is attached to if
@@ -1776,7 +1923,9 @@ namespace xdp {
     Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
                                index, debugIpData->m_name,
                                cuId);
-    mon->port = portName;
+    //mon->port = portName;
+    if (cuObj)
+      mon->cuPort = cuObj->getPort(portName);
     if (debugIpData->m_properties & 0x2) {
       mon->isStreamRead = true;
     }
@@ -1876,15 +2025,11 @@ namespace xdp {
     return true; 
   }
 
-
-
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {
     std::lock_guard<std::mutex> lock(openCLLock) ;
 
     commandQueueAddresses.emplace(a) ;
   }
-
-
 
 } // end namespace xdp

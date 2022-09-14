@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2019 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -20,6 +21,7 @@
 
 #include <stdexcept>
 #include "traceS2MM.h"
+#include "tracedefs.h"
 
 namespace xdp {
 
@@ -48,10 +50,28 @@ public:
      * During the construction, the exclusive access to this
      * IP will be requested, otherwise exception will be thrown.
      */
-    AIETraceS2MM(Device* handle /** < [in] the xrt or hal device handle */,
-              uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr)
+    AIETraceS2MM
+        ( Device* handle /** < [in] the xrt or hal device handle */
+        , uint64_t index /** < [in] the index of the IP in debug_ip_layout */
+        , debug_ip_data* data = nullptr
+        )
         : TraceS2MM(handle, index, data)
-    {}
+    {
+        /**
+         * Settings defined by v++ linker
+        * Bits 0:0 : AIE Datamover
+        * Bits 2:1 : 0x1: 64 Bit (Default)
+        *            0x2: 128 Bit
+        * Bits 7:3 : Memory Index
+        */
+        auto dwidth_setting = ((properties >> 1) & 0x3);
+        mDatawidthBytes = BYTES_64BIT;
+        // 128 bit
+        if (dwidth_setting == 0x2)
+            mDatawidthBytes  = BYTES_128BIT;
+
+        memIndex = (properties >> 3);
+    }
 
     /**
      * The exclusive access should be release in the destructor
@@ -61,9 +81,24 @@ public:
     {}
 
     /** 
-     * One word is 64 bit with current implementation
-     * IP should support word packing if we want to support 512 bit words
+     * Always returns wordcount in 64 bit multiple
      */
+    uint64_t getWordCount(bool final = false);
+    void init(uint64_t bo_size, int64_t bufaddr, bool circular);
+
+    // PL and AIE Datamovers use different bits for memory index
+    uint8_t getMemIndex() { return memIndex; }
+
+protected:
+    /**
+     * Adjust wordcount based on debug IP layout settings
+     * and datamover versions
+     */
+    uint64_t adjustWordCount(uint64_t wordCount, bool final);
+
+protected:
+    uint64_t mDatawidthBytes;
+    uint8_t memIndex;
 };
 
 } //  xdp

@@ -1,25 +1,54 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"
 #include "core/include/shim_int.h"
+#include "core/include/xcl_graph.h"
+#include "core/include/xdp/app_debug.h"
 #include "core/common/device.h"
 #include "core/common/system.h"
-#include "xcl_graph.h"
+#include "core/include/experimental/xrt_hw_context.h"
 
+namespace {
+
+// Wrap handle check to throw on error
+static xclcpuemhal2::CpuemShim*
+get_shim_object(xclDeviceHandle handle)
+{
+  if (auto shim = xclcpuemhal2::CpuemShim::handleCheck(handle))
+    return shim;
+
+  throw xrt_core::error("Invalid shim handle");
+}
+
+} // namespace
+
+////////////////////////////////////////////////////////////////
+// Implementation of internal SHIM APIs
+////////////////////////////////////////////////////////////////
+namespace xrt::shim_int {
+
+// open_context - aka xclOpenContextByName
+xrt_core::cuidx_type
+open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
+{
+  auto shim = get_shim_object(handle);
+  return shim->open_cu_context(hwctx, cuname);
+}
+
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  auto shim = get_shim_object(handle);
+  return shim->close_cu_context(hwctx, cuidx);
+}
+
+} // xrt::shim_int
+
+////////////////////////////////////////////////////////////////
+// Implementation of user exposed SHIM APIs
+// This are C level functions
+////////////////////////////////////////////////////////////////
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
   xclDeviceInfo2 info;
@@ -209,7 +238,7 @@ int xclUnlockDevice(xclDeviceHandle handle)
   return 0;
 }
 
-size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
+size_t xclPerfMonStartCounters(xclDeviceHandle handle, xdp::MonitorType type)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -218,7 +247,7 @@ size_t xclPerfMonStartCounters(xclDeviceHandle handle, xclPerfMonType type)
 }
 
 
-size_t xclPerfMonStopCounters(xclDeviceHandle handle, xclPerfMonType type)
+size_t xclPerfMonStopCounters(xclDeviceHandle handle, xdp::MonitorType type)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -227,7 +256,7 @@ size_t xclPerfMonStopCounters(xclDeviceHandle handle, xclPerfMonType type)
 }
 
 
-size_t xclPerfMonReadCounters(xclDeviceHandle handle, xclPerfMonType type, xclCounterResults& counterResults)
+size_t xclPerfMonReadCounters(xclDeviceHandle handle, xdp::MonitorType type, xdp::CounterResults& counterResults)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -240,7 +269,7 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
   return 0;
 }
 
-size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
+size_t xclPerfMonClockTraining(xclDeviceHandle handle, xdp::MonitorType type)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -249,7 +278,7 @@ size_t xclPerfMonClockTraining(xclDeviceHandle handle, xclPerfMonType type)
 }
 
 
-size_t xclPerfMonStartTrace(xclDeviceHandle handle, xclPerfMonType type, uint32_t startTrigger)
+size_t xclPerfMonStartTrace(xclDeviceHandle handle, xdp::MonitorType type, uint32_t startTrigger)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -258,7 +287,7 @@ size_t xclPerfMonStartTrace(xclDeviceHandle handle, xclPerfMonType type, uint32_
 }
 
 
-size_t xclPerfMonStopTrace(xclDeviceHandle handle, xclPerfMonType type)
+size_t xclPerfMonStopTrace(xclDeviceHandle handle, xdp::MonitorType type)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -267,7 +296,7 @@ size_t xclPerfMonStopTrace(xclDeviceHandle handle, xclPerfMonType type)
 }
 
 
-uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xclPerfMonType type)
+uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xdp::MonitorType type)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -276,7 +305,7 @@ uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xclPerfMonType type)
 }
 
 
-size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTraceResultsVector& traceVector)
+size_t xclPerfMonReadTrace(xclDeviceHandle handle, xdp::MonitorType type, xdp::TraceEventsVector& traceVector)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
@@ -315,17 +344,17 @@ size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
 }
 
 
-void xclSetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type, uint32_t numSlots)
+void xclSetProfilingNumberSlots(xclDeviceHandle handle, xdp::MonitorType type, uint32_t numSlots)
 {
   return;
 }
 
-uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xclPerfMonType type)
+uint32_t xclGetProfilingNumberSlots(xclDeviceHandle handle, xdp::MonitorType type)
 {
   return 0;
 }
 
-void xclGetProfilingSlotName(xclDeviceHandle handle, xclPerfMonType type, uint32_t slotnum,
+void xclGetProfilingSlotName(xclDeviceHandle handle, xdp::MonitorType type, uint32_t slotnum,
 		                     char* slotName, uint32_t length)
 {
   return;
@@ -482,56 +511,6 @@ int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOPrope
   return drv->xclGetBOProperties(boHandle, properties);
 }
 
-//QDMA Support
-
-int xclCreateWriteQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclCreateWriteQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclCreateReadQueue(xclDeviceHandle handle, xclQueueContext *q_ctx, uint64_t *q_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclCreateReadQueue(q_ctx, q_hdl) : -ENODEV;
-}
-
-int xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclDestroyQueue(q_hdl) : -ENODEV;
-}
-
-void *xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclAllocQDMABuf(size, buf_hdl) : NULL;
-}
-
-int xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclFreeQDMABuf(buf_hdl) : -ENODEV;
-}
-
-ssize_t xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-	return drv ? drv->xclWriteQueue(q_hdl, wr) : -ENODEV;
-}
-
-ssize_t xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, xclQueueRequest *wr)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-	return drv ? drv->xclReadQueue(q_hdl, wr) : -ENODEV;
-}
-
-int xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
-{
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  return drv ? drv->xclPollCompletion(min_compl, max_compl, comps, actual, timeout) : -ENODEV;
-}
-
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
   return -ENOSYS;
@@ -581,22 +560,6 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
-}
-
-int xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared)
-{
-  try {
-    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-    return drv ? drv->xclOpenContextByName(slot, xclbinId, cuname, shared) : -ENODEV;
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get_code();
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENOENT;
-  }
 }
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)

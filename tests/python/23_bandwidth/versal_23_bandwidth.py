@@ -168,7 +168,8 @@ def runKernel(opt):
 
 def main(args):
     opt = Options()
-    Options.getOptions(opt, args)
+    b_file = "bandwidth.xclbin"
+    Options.getOptions(opt, args, b_file)
 
     try:
         initXRT(opt)

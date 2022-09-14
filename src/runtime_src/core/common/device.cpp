@@ -1,20 +1,9 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc.  All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
-#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#define XRT_CORE_COMMON_SOURCE // in same dll as coreutil
+#define XRT_API_SOURCE         // in same dll as coreutil
 #include "device.h"
 #include "config_reader.h"
 #include "debug.h"
@@ -95,7 +84,26 @@ get_xclbin_uuid() const
   return m_xclbin ? m_xclbin.get_uuid() : uuid{};
 }
 
-// Unforunately there are two independent entry points into loading an
+// Registering an xclbin has one entry point (this one) only.
+// Shim level registering is not exposed to end-user application.
+// Naming of "record" as in record_xclbin is to compensate for
+// virtual register_xclbin which is defined by shim.
+void
+device::
+record_xclbin(const xrt::xclbin& xclbin)
+{
+  register_xclbin(xclbin); // shim level registration
+  m_xclbins.insert(xclbin);
+
+  // For single xclbin case, where shim doesn't implement
+  // kds_cu_info, we need the current xclbin stored here
+  // as a temporary 'global'.  This variable is used when
+  // update_cu_info() is called and query:kds_cu_info is not
+  // implemented
+  m_xclbin = xclbin;
+}
+
+// Unfortunately there are two independent entry points to load an
 // xclbin.  One is this function via xrt::device::load_xclbin(), the
 // other is xclLoadXclBin(). The two entrypoints converge in
 // register_axlf() upon successful xclbin loading. It is possible for
@@ -153,6 +161,7 @@ get_xclbin(const uuid& xclbin_id) const
   if (xclbin_id)
     return m_xclbins.get(xclbin_id);
 
+  // Single xclbin case
   return m_xclbin;
 }
 
@@ -174,7 +183,7 @@ update_xclbin_info()
   }
   catch (const query::no_such_key&) {
     // device does not support multiple xclbins, assume slot 0
-    // for current loaded xclbin
+    // for current xclbin
     m_xclbins.reset(std::map<slot_id, xrt::uuid>{{0, get_xclbin_uuid()}});
   }
 }
@@ -213,6 +222,9 @@ update_cu_info()
     }
   }
   catch (const query::no_such_key&) {
+    // This code path only works for single xclbin case.
+    // It assumes that m_xclbin is the single xclbin and that
+    // there is only one default slot with number 0.
     auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
     auto& cu2idx = m_cu2idx[0]; // default slot 0
     if (ip_layout != nullptr) {
@@ -393,9 +405,9 @@ get_ert_slots(const char* xml_data, size_t xml_size) const
 
 std::pair<size_t, size_t>
 device::
-get_ert_slots() const
+get_ert_slots(const uuid& xclbin_id) const
 {
-  auto xml =  get_axlf_section(EMBEDDED_METADATA);
+  auto xml =  get_axlf_section(EMBEDDED_METADATA, xclbin_id);
   if (!xml.first)
     throw error(EINVAL, "No xml metadata in xclbin");
   return get_ert_slots(xml.first, xml.second);

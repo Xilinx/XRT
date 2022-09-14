@@ -37,10 +37,10 @@
 // Anonymous namespace for helper functions
 namespace {
 
-  static bool nonZero(xclCounterResults& values)
+  static bool nonZero(xdp::CounterResults& values)
   {
     // Check AIM stats
-    for (uint64_t i = 0 ; i < XAIM_MAX_NUMBER_SLOTS ; ++i)
+    for (uint64_t i = 0 ; i < xdp::MAX_NUM_AIMS ; ++i)
     {
       if (values.WriteBytes[i]      != 0) return true ;
       if (values.WriteTranx[i]      != 0) return true ;
@@ -57,7 +57,7 @@ namespace {
     }
 
     // Check AM stats
-    for (uint64_t i = 0 ; i < XAM_MAX_NUMBER_SLOTS ; ++i)
+    for (uint64_t i = 0 ; i < xdp::MAX_NUM_AMS ; ++i)
     {
       if (values.CuExecCount[i]       != 0) return true ;
       if (values.CuExecCycles[i]      != 0) return true ;
@@ -70,7 +70,7 @@ namespace {
     }
 
     // Check ASM stats
-    for (uint64_t i = 0 ; i < XASM_MAX_NUMBER_SLOTS ; ++i)
+    for (uint64_t i = 0 ; i < xdp::MAX_NUM_ASMS ; ++i)
     {
       if (values.StrNumTranx[i]     != 0) return true ;
       if (values.StrDataBytes[i]    != 0) return true ;
@@ -96,8 +96,7 @@ namespace xdp {
     //  setting the available information has to be pushed down to both
     //  the HAL or HWEmu plugin
 
-    if (xrt_core::config::get_data_transfer_trace() != "off" ||
-          xrt_core::config::get_device_trace() != "off") {
+    if (xrt_core::config::get_device_trace() != "off") {
       device_trace = true;
     }
 
@@ -150,7 +149,7 @@ namespace xdp {
   void DeviceOffloadPlugin::configureDataflow(uint64_t deviceId,
                                               DeviceIntf* devInterface)
   {
-    uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
+    uint32_t numAM = devInterface->getNumMonitors(xdp::MonitorType::accel) ;
     bool* dataflowConfig = new bool[numAM] ;
     (db->getStaticInfo()).getDataflowConfiguration(deviceId, dataflowConfig, numAM) ;
     devInterface->configureDataflow(dataflowConfig) ;
@@ -161,7 +160,7 @@ namespace xdp {
   void DeviceOffloadPlugin::configureFa(uint64_t deviceId,
                                         DeviceIntf* devInterface)
   {
-    uint32_t numAM = devInterface->getNumMonitors(XCL_PERF_MON_ACCEL) ;
+    uint32_t numAM = devInterface->getNumMonitors(xdp::MonitorType::accel) ;
     bool* FaConfig = new bool[numAM] ;
     (db->getStaticInfo()).getFaConfiguration(deviceId, FaConfig, numAM) ;
     devInterface->configureFa(FaConfig) ;
@@ -274,7 +273,7 @@ namespace xdp {
       offloader->start_offload(OffloadThreadType::TRACE);
       offloader->set_continuous();
       if (m_enable_circular_buffer) {
-        if (devInterface->supportsCircBuf()) {
+        if (devInterface->supportsCircBufPL()) {
           uint64_t min_offload_rate = 0 ;
           uint64_t requested_offload_rate = 0 ;
           bool use_circ_buf =
@@ -300,30 +299,35 @@ namespace xdp {
   void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)
   {
     // Collect all the profiling options from xrt.ini
-    std::string data_transfer_trace = 
-      xrt_core::config::get_data_transfer_trace() ;
-    if (data_transfer_trace == "off") {
-      data_transfer_trace = xrt_core::config::get_device_trace() ;
-    }
+    std::string data_transfer_trace = xrt_core::config::get_device_trace() ;
     std::string stall_trace = xrt_core::config::get_stall_trace() ;
 
     // Set up the hardware trace option
     uint32_t traceOption = 0 ;
     
-    // Bit 1: 1 = Coarse mode, 0 = Fine mode 
-    if (data_transfer_trace == "coarse") traceOption |= 0x1 ;
+    // Bit 1: 1 = Coarse mode, 0 = Fine mode
+    if (data_transfer_trace == "coarse") {
+      if (!devInterface->supportsCoarseModeAIM())
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", COARSE_MODE_UNSUPPORTED);
+      else
+        traceOption |= 0x1 ;
+    }
     
     // Bit 2: 1 = Device trace enabled, 0 = Device trace disabled
-    if (data_transfer_trace != "off" && data_transfer_trace != "accel")    traceOption |= 0x2 ;
+    if (data_transfer_trace != "off" && data_transfer_trace != "accel")
+      traceOption |= 0x2 ;
     
     // Bit 3: 1 = Pipe stalls enabled, 0 = Pipe stalls disabled
-    if (stall_trace == "pipe" || stall_trace == "all") traceOption |= 0x4 ;
+    if (stall_trace == "pipe" || stall_trace == "all")
+      traceOption |= 0x4 ;
     
     // Bit 4: 1 = Dataflow stalls enabled, 0 = Dataflow stalls disabled
-    if (stall_trace == "dataflow" || stall_trace == "all") traceOption |= 0x8;
+    if (stall_trace == "dataflow" || stall_trace == "all")
+      traceOption |= 0x8;
     
     // Bit 5: 1 = Memory stalls enabled, 0 = Memory stalls disabled
-    if (stall_trace == "memory" || stall_trace == "all") traceOption |= 0x10 ;
+    if (stall_trace == "memory" || stall_trace == "all")
+      traceOption |= 0x10 ;
 
     devInterface->startTrace(traceOption) ;
   }
@@ -333,7 +337,7 @@ namespace xdp {
     for (auto o : offloaders)
     {
       uint64_t deviceId = o.first ;
-      xclCounterResults results ;
+      xdp::CounterResults results ;
       std::get<2>(o.second)->readCounters(results) ;
 
       // Only store this in the dynamic database if there is valid data.
