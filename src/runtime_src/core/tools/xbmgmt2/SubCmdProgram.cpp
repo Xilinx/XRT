@@ -195,6 +195,20 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::variables_map vm;
   auto topOptions = process_arguments(vm, _options, commonOptions, hiddenOptions, positionals, subOptionOptions, false);
 
+    // Find the subOption;
+  std::shared_ptr<OptionOptions> optionOption;
+  for (auto& subOO : subOptionOptions) {
+    if (vm.count(subOO->longName().c_str()) != 0) {
+      optionOption = subOO;
+      break;
+    }
+  }
+
+  if (optionOption) {
+    optionOption->execute(_options);
+    return;
+  }
+
   // Check to see if help was requested or no command was found
   if (help) {
     printHelp(commonOptions, hiddenOptions);
