@@ -2,29 +2,58 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
+// Local - Include Files
 #include "OO_UpdateBase.h"
+#include "tools/common/XBUtilitiesCore.h"
+#include "tools/common/XBUtilities.h"
 
 // XRT - Include Files
-#include "core/common/info_vmr.h"
-#include "core/common/message.h"
+#include "core/common/query_requests.h"
+#include "core/common/system.h"
 #include "flash/flasher.h"
-#include "ReportPlatform.h"
+#include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
+#include "tools/common/XBUtilities.h"
+#include "tools/common/XBHelpMenus.h"
 #include "tools/common/ProgressBar.h"
+#include "tools/common/Process.h"
 namespace XBU = XBUtilities;
+
+#include "xrt.h"
+#include "core/common/system.h"
+#include "core/common/device.h"
+#include "core/common/error.h"
+#include "core/common/query_requests.h"
+#include "core/common/message.h"
+#include "core/common/utils.h"
+#include "flash/flasher.h"
+#include "core/common/info_vmr.h"
+// Remove linux specific code
+#ifdef __linux__
+#include "core/pcie/linux/scan.h"
+#endif
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
+
+// ---- Reports ------
+#include "ReportPlatform.h"
+#include "tools/common/Report.h"
+#include "tools/common/ReportHost.h"
 
 // System - Include Files
 #include <atomic>
 #include <chrono>
+#include <ctime>
+#include <fcntl.h>
 #include <fstream>
 #include <iostream>
+#include <locale>
 #include <map>
 #include <thread>
 // =============================================================================
@@ -34,20 +63,16 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_UpdateBase::OO_UpdateBase(const std::string &_longName, const std::string &_shortName, bool _isHidden )
-    : OptionOptions(_longName,
-                    _shortName,
-                    "Update base partition",
-                    boost::program_options::value<decltype(update)>(&update)->implicit_value("all")->required(),
-                    "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
-                      "  ALL   - All images will be updated\n"
-                      "  SHELL - Platform image\n"
-                      "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
-                      "  NO-BACKUP   - Backup boot remains unchanged",
-                    _isHidden)
+OO_UpdateBase::OO_UpdateBase(const std::string &_longName, bool _isHidden )
+    : OptionOptions(_longName, _isHidden, "Update base partition")
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
+                                                                        "  ALL   - All images will be updated\n"
+                                                                        "  SHELL - Platform image\n"
+                                                                        "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
+                                                                        "  NO-BACKUP   - Backup boot remains unchanged")
     ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Valid values:\n"
                                                                     "  Name (and path) to the mcs image on disk\n"
                                                                     "  Name (and path) to the xsabin image on disk")

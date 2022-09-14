@@ -32,8 +32,6 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "OO_FactoryReset.cpp"
   "OO_Hotplug.cpp"
   "OO_UpdateBase.cpp"
-  "OO_UpdateShell.cpp"
-  "OO_UpdateXclbin.cpp"
   "Report*.cpp"
   "flash/*.cpp"
 )

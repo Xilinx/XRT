@@ -11,10 +11,11 @@ class OO_UpdateBase : public OptionOptions {
   virtual void execute( const SubCmdOptions &_options ) const;
 
  public:
-  OO_UpdateBase( const std::string &_longName, const std::string &_shortName, bool _isHidden = false);
+  OO_UpdateBase( const std::string &_longName, bool _isHidden = false);
 
  private:
   std::string m_device;
+  std::string m_action;
   std::string update;
   std::vector<std::string> image;
   std::string flashType;
