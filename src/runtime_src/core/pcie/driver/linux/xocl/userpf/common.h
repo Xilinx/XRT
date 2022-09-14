@@ -103,8 +103,6 @@ struct xocl_dev	{
 	struct xocl_subdev	*dyn_subdev_store;
 	int			dyn_subdev_num;
 
-	void			*ulp_blob;
-
 	unsigned int		mbx_offset;
 
 	uint64_t		mig_cache_expire_secs;
@@ -235,7 +233,7 @@ int xocl_close_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
 
 int xocl_poll_client(struct file *filp, poll_table *wait, void *priv);
 int xocl_kds_stop(struct xocl_dev *xdev);
-int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id);
+int xocl_kds_reset(struct xocl_dev *xdev);
 int xocl_kds_reconfig(struct xocl_dev *xdev);
 int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
 		     struct drm_file *filp, unsigned long size, u32 *addrp);

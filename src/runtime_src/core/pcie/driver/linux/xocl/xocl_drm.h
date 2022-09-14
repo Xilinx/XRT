@@ -59,8 +59,8 @@ struct xocl_mm {
 	struct drm_mm           *mm;
 	uint64_t		start_addr;
 	uint64_t		end_addr;
-	uint32_t                m_count;
-
+	uint32_t 		m_count;
+	
 	/* Array of bo and memory usage stats 
 	 * for whole device memory manager */
 	struct drm_xocl_mm_stat *bo_usage_stat;
@@ -83,6 +83,8 @@ struct xocl_drm {
 
 	/* Memory manager */
 	struct xocl_mm		*xocl_mm;
+	struct mem_topology 	*xocl_mem_topo;
+	bool			xocl_mm_done;
 
 	/* Xocl driver memory list head */
 	struct list_head        mem_list_head;
@@ -131,8 +133,9 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
 
 void *xocl_drm_init(xdev_handle_t xdev);
 void xocl_drm_fini(struct xocl_drm *drm_p);
-int xocl_init_mem(struct xocl_drm *drm_p);
-int xocl_cleanup_mem(struct xocl_drm *drm_p);
+int xocl_init_mem(struct xocl_drm *drm_p, uint32_t slot_id);
+int xocl_cleanup_mem_all(struct xocl_drm *drm_p);
+int xocl_cleanup_mem(struct xocl_drm *drm_p, uint32_t slot_id);
 
 int xocl_check_topology(struct xocl_drm *drm_p);
 
