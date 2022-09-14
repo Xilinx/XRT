@@ -199,6 +199,7 @@ int kds_get_cu_total(struct kds_sched *kds);
 u32 kds_get_cu_addr(struct kds_sched *kds, int idx);
 u32 kds_get_cu_proto(struct kds_sched *kds, int idx);
 int kds_get_max_regmap_size(struct kds_sched *kds);
+/* Start of legacy context functions */
 struct kds_client_cu_ctx *
 kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
 		struct kds_client_cu_info *cu_info);
@@ -210,6 +211,22 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_client_cu_ctx *cu_ctx);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_client_cu_ctx *cu_ctx);
+/* End of legacy context functions */
+
+/* Start of hw context functions */
+struct kds_client_cu_ctx *
+kds_get_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
+                struct kds_client_cu_info *cu_info);
+struct kds_client_cu_ctx *
+kds_alloc_cu_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx,
+                struct kds_client_cu_info *cu_info);
+struct kds_client_hw_ctx *
+kds_get_hw_ctx_by_id(struct kds_client *client, uint32_t hw_ctx_id);
+struct kds_client_hw_ctx *
+kds_alloc_hw_ctx(struct kds_client *client, uuid_t *xclbin_id, uint32_t slot_id);
+int kds_free_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx);
+/* End of hw context functions */
+
 int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx);
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		    int idx, unsigned long size, u32 *addrp);
@@ -229,5 +246,6 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 		   int *echo);
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
 ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf);
+ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, uint32_t domain);
 ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf);
 #endif
