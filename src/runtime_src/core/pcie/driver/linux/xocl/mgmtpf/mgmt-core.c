@@ -1238,12 +1238,22 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 	vfree(mb_req);
 }
 
+static bool xclmgmt_eval_device_status(struct xclmgmt_dev *lro, int ret, const char* msg)
+{
+	if (ret && ret != -ENODEV) {
+		snprintf(lro->status.msg, sizeof(lro->status.msg), "%s %d\n", msg, ret);
+		xocl_err(&lro->pci_dev->dev, "%s", lro->status.msg);
+		return false;
+	}
+	return true;
+}
+
 /*
  * Called after minimum initialization is done. Should not return failure.
  * If something goes wrong, it should clean up and return back to minimum
  * initialization stage.
  */
-static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
+static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 {
 	int ret;
 	struct xocl_board_private *dev_info = &lro->core.priv;
@@ -1273,11 +1283,8 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		}
 
 		ret = xocl_subdev_create(lro, &subdev_info);
-		if (ret) {
-			snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to create sub devices\n");
-			xocl_err(&pdev->dev, "%s", lro->status.msg);
+		if (!xclmgmt_eval_device_status(lro, ret, "Failed to create sub devices"))
 			goto fail;
-		}
 	}
 
 	/*
@@ -1285,11 +1292,9 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * data after the platform has been reset
 	 */
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
-	if (ret && ret != -ENODEV) {
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to register firewall\n");
-		xocl_err(&pdev->dev, "%s", lro->status.msg);
+	if (!xclmgmt_eval_device_status(lro, ret, "Failed to register firewall"))
 		goto fail_all_subdev;
-	}
+
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
 
@@ -1334,21 +1339,11 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		goto fail_all_subdev;
 	}
 
-	/* Verify the VMR has booted into the default image */
-	// pr_info("MGMT Core vmr default boot: %d\n", xocl_vmr_default_boot_enabled(lro));
-	// if (!xocl_vmr_default_boot_enabled(lro)) {
-	// 	snprintf(lro->status.msg, sizeof(lro->status.msg), "VMR not using default image\n");
-		// xocl_err(&pdev->dev, "%s", lro->status.msg);
-		// goto fail_all_subdev;
-	// }
-
 	/* Finish initialization. Getting here means nothing failed */
 	xocl_thread_start(lro);
 
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
-
-	lro->status.ready = true;
 
 	/* Reset PCI link monitor */
 	check_pcie_link_toggle(lro, 1);
@@ -1359,12 +1354,13 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, true);
 	xocl_info(&pdev->dev, "device fully initialized\n");
-	return;
+	return 0;
 
 fail_all_subdev:
 	xocl_subdev_destroy_all(lro);
 fail:
 	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
+	return ret;
 }
 
 int xclmgmt_config_pci(struct xclmgmt_dev *lro)
@@ -1531,22 +1527,34 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		return 0;
 	}
 
-	xclmgmt_extended_probe(lro);
+	bool is_device_ready = true;
+	if (xclmgmt_extended_probe(lro))
+		is_device_ready = false;
 
 	/*
 	 * Even if extended probe fails, make sure feature ROM subdev
 	 * is loaded to provide basic info about the board. Also, need
 	 * FLASH to be able to flash new shell.
 	 */
-	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
-	(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
+	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
+	if (!xclmgmt_eval_device_status(lro, rc, "Failed to create ROM subdevice"))
+		is_device_ready = false;
+
+	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
+	if (!xclmgmt_eval_device_status(lro, rc, "Failed to create Flash subdevice"))
+		is_device_ready = false;
 
 	/*
 	 * if can not find BLP metadata, it has to bring up flash and xmc to
 	 * allow user switch BLP
 	 */
-	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
-	(void) xocl_subdev_create_vsec_devs(lro);
+	rc = xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
+	if (!xclmgmt_eval_device_status(lro, rc, "Failed to create BLD level"))
+		is_device_ready = false;
+
+	rc = xocl_subdev_create_vsec_devs(lro);
+	if (!xclmgmt_eval_device_status(lro, rc, "Failed to create VSEC devices"))
+		is_device_ready = false;
 
 	/*
 	 * For u30 whose reset relies on SC, and the cmc is running on ps, we
@@ -1562,9 +1570,15 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!xocl_ps_wait(lro))
 		xocl_xmc_get_serial_num(lro);
 
-	(void) xocl_hwmon_sdm_get_sensors_list(lro, true);
+	/* Verify the VMR has booted into the default image */
+	// pr_info("MGMT Core vmr default boot: %d\n", xocl_vmr_default_boot_enabled(lro));
+	// rc = xocl_vmr_default_boot_enabled(lro);
+	// if (!xclmgmt_eval_device_status(lro, rc, "VMR not using default image"))
+	// 	is_device_ready = false;
 
+	xocl_hwmon_sdm_get_sensors_list(lro, true);
 	xocl_drvinst_set_offline(lro, false);
+	lro->status.ready = is_device_ready;
 	return 0;
 
 err_init_sysfs:
