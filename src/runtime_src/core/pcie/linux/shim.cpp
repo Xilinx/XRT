@@ -1216,6 +1216,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
         uint64_t allocated_size = 0;
         uint32_t page_num = size >> 30;
         drm_xocl_alloc_cma_info cma_info = {0};
+        std::vector<uint64_t> user_addr(page_num, 0);
 
         /* We check the sysfs node host_mem_size first before going forward
          * If the same size of host memory chunk is allocated
@@ -1228,8 +1229,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
         cma_info.total_size = size;
         cma_info.entry_num = page_num;
-
-        cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
+        cma_info.user_addr = user_addr.data();
 
         for (uint32_t i = 0; i < page_num; ++i) {
             void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
@@ -1252,7 +1252,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
             if (!cma_info.user_addr[i])
                 continue;
 
-             munmap((void*)cma_info.user_addr[i], page_sz);
+            munmap((void*)cma_info.user_addr[i], page_sz);
         }
 
         if (ret) {
@@ -2044,7 +2044,7 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     return -EINVAL;
   }
 
-  if (cumap.start != 0xFFFFFFFF) {
+  if (cumap.start) {
     if (!rd) {
         xrt_logmsg(XRT_ERROR, "%s: read range is set, not allow write", __func__);
         return -EINVAL;
@@ -2168,7 +2168,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // Alveo Linux PCIE does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
   auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
@@ -2189,7 +2189,9 @@ close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 // The context handle is 1:1 with a slot idx
 uint32_t
 shim::
-create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
+create_hw_context(const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  xrt::hw_context::access_mode mode)
 {
   // Explicit hardware contexts are not supported in Alveo.
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -2240,10 +2242,13 @@ close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core:
 }
 
 uint32_t // ctxhdl aka slotidx
-create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  const xrt::hw_context::access_mode mode)
 {
   auto shim = get_shim_object(handle);
-  return shim->create_hw_context(xclbin_uuid, qos);
+  return shim->create_hw_context(xclbin_uuid, qos, mode);
 }
 
 void

@@ -95,6 +95,9 @@ void  main_(int argc, char** argv,
     std::cout << XBU::get_xrt_pretty_version();
     return;
   }
+
+  // Check that the versions of XRT for build and tool match
+  XBU::xrt_version_cmp(isUserDomain);
  
   // -- Enable/Disable helper "global" options
   XBU::disable_escape_codes( bBatchMode );

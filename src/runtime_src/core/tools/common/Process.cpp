@@ -34,9 +34,9 @@
 #endif
 
 // Local - Include Files
-#include "ProgressBar.h"
-#include "Process.h"
+#include "BusyBar.h"
 #include "EscapeCodes.h"
+#include "Process.h"
 #include "XBUtilitiesCore.h"
 #include "XBUtilities.h"
 
@@ -81,59 +81,25 @@ setShellPathEnv(const std::string& var_name, const std::string& trailing_path)
 }
 
 static void 
-testCaseProgressReporter(std::shared_ptr<XBUtilities::ProgressBar> run_test, bool& is_done)
+run_script( const std::string& cmd,
+            std::ostringstream & os_stdout,
+            std::ostringstream & os_stderr,
+            bool& is_running)
 {
-  unsigned int counter = 0;
-  while((counter < run_test.get()->getMaxIterations()) && !is_done) {
-    run_test.get()->update(counter++);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
-}
-
-unsigned int
-XBUtilities::runScript( const std::string & env, 
-                        const std::string & script, 
-                        const std::vector<std::string> & args,
-                        const std::string & running_description,
-                        const std::string & final_description,
-                        int max_running_duration,
-                        std::ostringstream & os_stdout,
-                        std::ostringstream & os_stderr,
-                        bool /*erasePassFailMessage*/)
-{
-  // Fix environment variables before running test case
-  setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
-  setShellPathEnv("PYTHONPATH", "/python");
-  setShellPathEnv("LD_LIBRARY_PATH", "/lib");
-  setShellPathEnv("PATH", "/bin");
-  unsetenv("XCL_EMULATION_MODE");
-
-  std::ostringstream args_str;
-  std::copy(args.begin(), args.end(), std::ostream_iterator<std::string>(args_str, " "));
-  std::string cmd;
-  if(env.compare("python") == 0) {
-    cmd = "/usr/bin/python3 ";
-  }
-  cmd += script + " " + args_str.str();
-
   int stderr_fds[2];
   if (pipe(stderr_fds)== -1) {
     os_stderr << "Unable to create pipe";
-    return errno;
+    is_running = false;
+    return;
   }
 
   // Save stderr
   int stderr_save = dup(STDERR_FILENO);
   if (stderr_save == -1) {
     os_stderr << "Unable to duplicate stderr";
-    return errno;
+    is_running = false;
+    return;
   }
-
-  // Kick off progress reporter
-  bool is_done = false;
-  // Fix: create busy bar
-  auto run_test = std::make_shared<XBUtilities::ProgressBar>(running_description, max_running_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
-  std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
 
   // Close existing stderr and set it to be the write end of the pipe.
   // After fork below, our child process's stderr will point to the same fd.
@@ -147,7 +113,8 @@ XBUtilities::runScript( const std::string & env,
 
   if (stdout_child == nullptr) {
     os_stderr << boost::str(boost::format("Failed to run %s") % cmd);
-    return errno;
+    is_running = false;
+    return;
   }
 
   // Read child's stdout and stderr without parsing the content
@@ -162,15 +129,55 @@ XBUtilities::runScript( const std::string & env,
       os_stderr << buf;
     }
   }
+  is_running = false;
+}
 
-  is_done = true;
+unsigned int
+XBUtilities::runScript( const std::string & env,
+                        const std::string & script,
+                        const std::vector<std::string> & args,
+                        const std::string & running_description,
+                        const std::chrono::seconds & max_duration_s,
+                        std::ostringstream & os_stdout,
+                        std::ostringstream & os_stderr)
+{
+  // Fix environment variables before running test case
+  setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);
+  setShellPathEnv("PYTHONPATH", "/python");
+  setShellPathEnv("LD_LIBRARY_PATH", "/lib");
+  setShellPathEnv("PATH", "/bin");
+  unsetenv("XCL_EMULATION_MODE");
+
+  std::ostringstream args_str;
+  std::copy(args.begin(), args.end(), std::ostream_iterator<std::string>(args_str, " "));
+  std::string cmd;
+  if (env.compare("python") == 0) {
+    cmd = "/usr/bin/python3 ";
+  }
+  cmd += script + " " + args_str.str();
+
+  BusyBar busy_bar(running_description, std::cout); 
+  busy_bar.start(XBUtilities::is_escape_codes_disabled());
+  bool is_thread_running = true;
+
+  // Start the test process
+  // std::thread test_thread(run_script, cmd, std::ref(os_stdout), std::ref(os_stderr), std::ref(is_thread_running));
+  std::thread test_thread([&] { run_script(cmd, os_stdout, os_stderr, is_thread_running); });
+  // Wait for the test process to finish
+  while (is_thread_running) {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    try {
+      busy_bar.check_timeout(max_duration_s);
+    } catch (const std::exception& ex) {
+      test_thread.detach();
+      throw;
+    }
+  }
+  test_thread.join();
+  busy_bar.finish();
+
   bool passed = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
   bool skipped = (os_stdout.str().find("NOT SUPPORTED") != std::string::npos) ? true : false;
-  run_test.get()->finish(passed, final_description);
-  // Workaround: Clear the default progress bar output so as to print the Error: before printing [FAILED]
-  // Remove this once busybar is implemented
-  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
-  t.join();
 
   if (skipped)
     return EOPNOTSUPP;
@@ -187,7 +194,7 @@ boost::filesystem::path
 findEnvPath(const std::string & env)
 {
   boost::filesystem::path absPath;
-  if(env.compare("python") == 0) {
+  if (env.compare("python") == 0) {
     // Find the python executable
     absPath = boost::process::search_path("py");
     // Find python3 path on linux
@@ -202,14 +209,12 @@ findEnvPath(const std::string & env)
 
 unsigned int
 XBUtilities::runScript( const std::string & env,
-                        const std::string & script, 
+                        const std::string & script,
                         const std::vector<std::string> & args,
                         const std::string & running_description,
-                        const std::string & final_description,
-                        int max_running_duration,
+                        const std::chrono::seconds& max_running_duration,
                         std::ostringstream & os_stdout,
-                        std::ostringstream & os_stderr,
-                        bool erasePassFailMessage)
+                        std::ostringstream & os_stderr)
 {
   auto envPath = findEnvPath(env);
   
@@ -231,8 +236,8 @@ XBUtilities::runScript( const std::string & env,
   boost::process::environment _env = boost::this_process::environment();
   _env.erase("XCL_EMULATION_MODE");
 
-  // Please fix: Should be a busy bar and NOT a progress bar
-  ProgressBar run_test(running_description, max_running_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
+  BusyBar run_test(running_description, std::cout);
+  run_test.start(XBUtilities::is_escape_codes_disabled());
 
   // Execute the python script and capture the outputs
   boost::process::ipstream ip_stdout;
@@ -243,21 +248,15 @@ XBUtilities::runScript( const std::string & env,
                                         boost::process::std_err > ip_stderr,
                                         _env);
 
-  // Wait for the process to finish and update the busy bar
-  unsigned int counter = 0;
+  // Wait for the process to finish
   while (runningProcess.running()) {
-    run_test.update(counter++);
     std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    if (counter >= run_test.getMaxIterations()) {
-        if (erasePassFailMessage && (XBUtilities::is_escape_codes_disabled() == 0)) 
-          std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
-      throw std::runtime_error("Time Out");
-    }
+    run_test.check_timeout(max_running_duration);
   }
 
   // Not really needed, but should be added for completeness 
   runningProcess.wait();
+  run_test.finish();
 
   // boost::process::ipstream::rdbuf() gives conversion error in
   // 1.65.1 Base class is constructed with underlying buffer so just
@@ -271,11 +270,6 @@ XBUtilities::runScript( const std::string & env,
 
   // Obtain the exit code from the running process
   int exitCode = runningProcess.exit_code();
-  run_test.finish(exitCode == 0 /*Success or failure*/, final_description);
-
-  // Erase the "Pass Fail" message
-  if (erasePassFailMessage && (XBUtilities::is_escape_codes_disabled() == 0)) 
-    std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
 
   return exitCode;
 }

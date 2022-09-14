@@ -17,8 +17,9 @@
 
 #define XDP_SOURCE
 
-#include "device_intf.h"
 #include "aieTraceS2MM.h"
+#include "device_intf.h"
+#include "tracedefs.h"
 
 #ifndef _WIN32
 // open+ioctl based Profile IP 
@@ -45,9 +46,9 @@
 
 #endif
 
-#include "tracedefs.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
+#include "core/include/xdp/fifo.h"
 
 #include <iostream>
 #include <cstdio>
@@ -85,6 +86,7 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
 {
   std::string size_str;
   if (isAIETrace) {
+#ifndef SKIP_AIE_INI
     size_str = xrt_core::config::get_aie_trace_settings_buffer_size();
     if (0 == size_str.compare("8M")) {
       // if set to default value, then check for old style config
@@ -94,6 +96,9 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
           "The xrt.ini flag \"aie_trace_buffer_size\" is deprecated and will be removed in future release. Please use \"buffer_size\" under \"AIE_trace_settings\" section.");
     }
+#else
+    size_str = "8M";
+#endif
   } else {
     size_str = xrt_core::config::get_trace_buffer_size();
   }
@@ -106,11 +111,11 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
   if (std::regex_match(size_str, pieces_match, size_regex)) {
     try {
       if (pieces_match[2] == "K" || pieces_match[2] == "k") {
-        bytes = std::stoull(pieces_match[1]) * 1024;
+        bytes = std::stoull(pieces_match[1]) * uint_constants::one_kb;
       } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
-        bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
+        bytes = std::stoull(pieces_match[1]) * uint_constants::one_mb;
       } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
-        bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
+        bytes = std::stoull(pieces_match[1]) * uint_constants::one_gb;
       } else {
         bytes = std::stoull(pieces_match[1]);
       }
@@ -237,28 +242,16 @@ DeviceIntf::~DeviceIntf()
     if((type == xdp::MonitorType::accel)  && (index < mAmList.size()))  { return mAmList[index]->getName(); }
     if((type == xdp::MonitorType::str)    && (index < mAsmList.size())) { return mAsmList[index]->getName(); }
     if((type == xdp::MonitorType::noc)    && (index < nocList.size()))  { return nocList[index]->getName(); }
-    return std::string("");
+    return {};
   }
 
   // Same as defined in vpl tcl
   // NOTE: This converts the property on the FIFO IP in debug_ip_layout to the corresponding FIFO depth.
   uint64_t DeviceIntf::getFifoSize()
   {
-    if (nullptr == mFifoRead) {
-      return 0;
-    }
-    switch(mFifoRead->getProperties()) {
-      case 0 : return 8192;
-      case 1 : return 1024;
-      case 2 : return 2048;
-      case 3 : return 4096;
-      case 4 : return 16384;
-      case 5 : return 32768;
-      case 6 : return 65536;
-      case 7 : return 131072;
-      default : break;
-    }
-    return 8192;
+    if (mFifoRead)
+      return xdp::IP::FIFO::properties::size.at(mFifoRead->getProperties());
+    return 0;
   }
 
   

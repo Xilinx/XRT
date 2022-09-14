@@ -613,7 +613,7 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->type = KDS_SCU;
 		xcmd->opcode = OP_START_SK;
 		xcmd->cu_mask[0] = kecmd->cu_mask;
-		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks);
+		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks * sizeof(u32));
 		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
 		xcmd->isize = xgq_exec_convert_start_scu_cmd(xcmd->info, kecmd);
 		ret = 1; /* hack */
@@ -623,7 +623,7 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->type = KDS_CU;
 		xcmd->opcode = OP_START;
 		xcmd->cu_mask[0] = kecmd->cu_mask;
-		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks);
+		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks * sizeof(u32));
 		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
 		xcmd->isize = xgq_exec_convert_start_cu_cmd(xcmd->info, kecmd);
 		ret = 1; /* hack */
@@ -661,7 +661,7 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->type = KDS_CU;
 		xcmd->opcode = OP_START;
 		xcmd->cu_mask[0] = kecmd->cu_mask;
-		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks);
+		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks * sizeof(u32));
 		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
 		xcmd->isize = xgq_exec_convert_start_kv_cu_cmd(xcmd->info, kecmd);
 		ret = 1;
@@ -1364,8 +1364,11 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg,
 	}
 
 	ret = xocl_scu_cfg_cmd(xdev, client, ecmd, ps_kernel);
-	if (ret)
-		userpf_err(xdev, "PS kernel config failed");
+	if (ret) {
+		userpf_err(xdev, "PS kernel config failed, ret %d", ret);
+		ret = 0;
+		userpf_info(xdev, "Application use PS kernel will fail");
+	}
 
 out:
 	vfree(ecmd);

@@ -19,6 +19,7 @@ class OO_MemRead : public OptionOptions {
    std::string m_device;
    std::string m_baseAddress;
    std::string m_sizeBytes;
+   int m_count;
    std::string m_outputFile;
    bool m_help;
 };

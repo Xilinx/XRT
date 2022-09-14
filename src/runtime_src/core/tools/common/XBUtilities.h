@@ -45,8 +45,12 @@ namespace XBUtilities {
   void can_proceed_or_throw(const std::string& info, const std::string& error);
 
   void sudo_or_throw(const std::string& msg);
-  void print_exception_and_throw_cancel(const xrt_core::error& e);
-  void print_exception_and_throw_cancel(const std::runtime_error& e);
+
+  void throw_cancel(const std::string& msg);
+  void throw_cancel(const boost::format& format);
+  void print_exception(const std::system_error& e);
+
+  void xrt_version_cmp(bool isUserDomain);
 
 
   void collect_devices( const std::set<std::string>  &_deviceBDFs,

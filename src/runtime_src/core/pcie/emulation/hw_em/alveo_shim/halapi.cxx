@@ -9,6 +9,7 @@
 #include "core/common/system.h"
 #include "plugin/xdp/device_offload.h"
 #include "plugin/xdp/hal_trace.h"
+#include "plugin/xdp/pl_deadlock.h"
 
 namespace {
 
@@ -45,10 +46,13 @@ close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core:
 }
 
 uint32_t // ctxhdl aka slotidx
-create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  xrt::hw_context::access_mode mode)
 {
   auto shim = get_shim_object(handle);
-  return shim->create_hw_context(xclbin_uuid, qos);
+  return shim->create_hw_context(xclbin_uuid, qos, mode);
 }
 
 void
@@ -409,6 +413,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     device->register_axlf(buffer);
     // Call update_device only when xclbin is loaded and registered successfully
     xdp::hw_emu::update_device(handle);
+    xdp::pl_deadlock::update_device(handle);
     ret = xrt_core::scheduler::init(handle, buffer);
   }
   return ret;

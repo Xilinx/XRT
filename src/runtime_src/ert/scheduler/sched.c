@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -391,6 +392,8 @@ configure_mb_end(struct sched_cmd *cmd)
   struct xgq_com_queue_entry resp_cmd = {0};
   int ret = setup_cu_queue();
 
+  CTRL_DEBUGF(" interrupt to host config as %d \r\n", i2h);
+  write_reg(ERT_HOST_INTERRUPT_ENABLE_ADDR, i2h);
 #ifdef XGQ_CMD_DEBUG
   resp_cmd.hdr.cid = cmd->cc_header.hdr.cid;
 #endif

@@ -20,6 +20,7 @@
 #include "system.h"
 #include "utils.h"
 #include <atomic>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <mutex>
@@ -42,7 +43,6 @@ precision(double value, int p)
   stream << std::fixed << std::setprecision(p) << value;
   return stream.str();
 }
-
 
 
 }
@@ -246,6 +246,13 @@ format_base10_shiftdown6(uint64_t value)
   constexpr double decimal_shift = 1000000.0;
   constexpr int digit_precision = 6;
   return precision(static_cast<double>(value) / decimal_shift, digit_precision);
+}
+
+std::string
+format_base10_shiftdown(uint64_t value, int decimal, int digit_precision)
+{
+  double decimal_shift = std::pow(10, decimal);
+  return precision(static_cast<double>(value) * decimal_shift, digit_precision);
 }
 
 uint64_t

@@ -1,0 +1,9 @@
+[Unit]
+Description=vdu-init
+ 
+[Service]
+ExecStart=/usr/bin/vdu-init
+StandardOutput=journal+console
+ 
+[Install]
+WantedBy=multi-user.target

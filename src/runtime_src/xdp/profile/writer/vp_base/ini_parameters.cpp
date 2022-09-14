@@ -63,6 +63,7 @@ namespace xdp {
                  "Generation of lower overhead OpenCL trace. Should not be used with other OpenCL options.");
     addParameter("debug_mode", xrt_core::config::get_launch_waveform(),
                  "Debug mode (emulation only)");
+#ifndef SKIP_AIE_INI
     addParameter("aie_trace", xrt_core::config::get_aie_trace(),
                  "Generation of AI Engine trace");
     addParameter("aie_trace_buffer_size",
@@ -110,12 +111,6 @@ namespace xdp {
     addParameter("AIE_profile_settings.graph_based_aie_memory_metrics",
                  xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics(),
                  "Metric set for profiling AI Engine memory modules per graph");
-    addParameter("AIE_profile_settings.graph_based_interface_tile_metrics",
-                 xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics(),
-                 "Metric set for profiling AI Engine interface tiles per graph");
-    addParameter("AIE_profile_settings.graph_based_mem_tile_metrics",
-                 xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics(),
-                 "Metric set for profiling AI Engine mem tiles per graph");
     addParameter("AIE_profile_settings.tile_based_aie_metrics",
                  xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics(),
                  "Metric set for profiling AI Engine processor modules per tile");
@@ -125,9 +120,6 @@ namespace xdp {
     addParameter("AIE_profile_settings.tile_based_interface_tile_metrics",
                  xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics(),
                  "Metric set for profiling AI Engine interface tiles per tile");
-    addParameter("AIE_profile_settings.tile_based_mem_tile_metrics",
-                 xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics(),
-                 "Metric set for profiling AI Engine mem tiles per tile");
 
     addParameter("AIE_trace_settings.start_type",
                  xrt_core::config::get_aie_trace_settings_start_type(),
@@ -144,9 +136,6 @@ namespace xdp {
     addParameter("AIE_trace_settings.tile_based_aie_tile_metrics",
                  xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics(),
                  "Configuration level used for AI Engine trace per tile");
-    addParameter("AIE_trace_settings.tile_based_mem_tile_metrics",
-                 xrt_core::config::get_aie_trace_settings_tile_based_mem_tile_metrics(),
-                 "Configuration level used for AI Engine trace per tile");
     addParameter("AIE_trace_settings.buffer_size",
                  xrt_core::config::get_aie_trace_settings_buffer_size(),
                  "Size of buffer to allocate for AI Engine trace");
@@ -161,7 +150,8 @@ namespace xdp {
                  "Interval for reading of device AI Engine trace data to host (in us)");
     addParameter("AIE_trace_settings.file_dump_interval_s",
                  xrt_core::config::get_aie_trace_settings_file_dump_interval_s(),
-                 "Interval for dumping AI Engine trace files to host (in s)");  
+                 "Interval for dumping AI Engine trace files to host (in s)");
+#endif
   }
 
   IniParameters::~IniParameters()

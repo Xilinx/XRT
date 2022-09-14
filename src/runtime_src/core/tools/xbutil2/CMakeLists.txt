@@ -17,6 +17,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/BusyBar.cpp"
   "../common/Process.cpp"
   "../common/Table2D.cpp"
+  "../common/PsKernelUtilities.cpp"
   "../common/SubCmdJSON.cpp"
 )
 
@@ -98,7 +99,7 @@ endif()
 # This file acts as sample json file and will be removed in future releases
 if (${XRT_NATIVE_BUILD} STREQUAL "no")
   set(XRT_SUBCOMMANDS_JSON ../common/xrt_subcommands.json)
-  install(FILES ${XRT_SUBCOMMANDS_JSON} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
+  install(FILES ${XRT_SUBCOMMANDS_JSON} DESTINATION ${XRT_INSTALL_DIR}/share)
 endif()
 
 # Install our built executable
