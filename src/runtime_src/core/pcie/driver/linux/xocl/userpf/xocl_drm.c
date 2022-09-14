@@ -938,6 +938,13 @@ static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p)
         if (!blob)
                 return 0;
 
+	mutex_lock(&drm_p->mm_lock);
+	xocl_mm = vzalloc(sizeof(struct xocl_mm));
+        if (!xocl_mm) {
+		mutex_unlock(&drm_p->mm_lock);
+                return -ENOMEM;
+	}
+
         /* Initialize with max and min possible value */
         mm_start_addr = 0xffffFFFFffffFFFF;
         mm_end_addr = 0;
@@ -965,14 +972,9 @@ static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p)
 		++xocl_mm->m_count;
         }
 
-	if (!xocl_mm->m_count)
-                return 0;
-
-	mutex_lock(&drm_p->mm_lock);
-	xocl_mm = vzalloc(sizeof(struct xocl_mm));
-        if (!xocl_mm) {
+	if (!xocl_mm->m_count) {
 		mutex_unlock(&drm_p->mm_lock);
-                return -ENOMEM;
+                return 0;
 	}
 
 	size = xocl_mm->m_count * sizeof(void *);
