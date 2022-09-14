@@ -282,6 +282,7 @@ enum class key_type
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
   hwmon_sdm_fan_presence,
+  hwmon_sdm_mfg_date,
   hotplug_offline,
 
   cu_size,
@@ -3068,6 +3069,15 @@ struct hwmon_sdm_fan_presence : request
 {
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_fan_presence;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_mfg_date : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_mfg_date;
 
   virtual boost::any
   get(const device*) const = 0;

@@ -67,6 +67,11 @@ ReportPlatforms::writeReport( const xrt_core::device* /*_pDevice*/,
     const boost::property_tree::ptree& pt_board_info = pt_platform.get_child("off_chip_board_info");
     _output << boost::format("  %-23s: %s Bytes\n") % "DDR Size" % pt_board_info.get<std::string>("ddr_size_bytes");
     _output << boost::format("  %-23s: %s \n") % "DDR Count" % pt_board_info.get<std::string>("ddr_count");
+    try {
+      _output << boost::format("  %-23s: %s \n") % "Revision" % pt_board_info.get<std::string>("revision");
+      _output << boost::format("  %-23s: %s \n") % "MFG Date" % pt_board_info.get<std::string>("mfg_date");
+    } catch(...) {
+    }
     
     const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
     _output << boost::format("  %-23s: %s \n") % "Mig Calibrated" % pt_status.get<std::string>("mig_calibrated");
