@@ -1098,6 +1098,21 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	mutex_init(&zdev->mm_lock);
 	INIT_LIST_HEAD(&zdev->zm_list_head);
 
+#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
+	/* Platform did not initialize dma_mask, try to set 64-bit DMA
+	 * first */
+	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	if (ret) {
+		/* If setting 64-bit DMA mask
+		 * fails, fall back to 32-bit
+		 * DMA mask */
+		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+		if (ret) {
+			DRM_ERROR("DMA configuration failed: 0x%x\n", ret);
+			return ret;
+		}
+	}
+#endif
 	subdev = zocl_find_pdev("ert_hw");
 	if (subdev) {
 		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
