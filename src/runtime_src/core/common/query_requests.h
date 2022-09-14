@@ -3074,6 +3074,7 @@ struct hwmon_sdm_fan_presence : request
   get(const device*) const = 0;
 };
 
+// Retrieve board MFG date from xocl hwmon_sdm driver
 struct hwmon_sdm_mfg_date : request
 {
   using result_type = std::string;
