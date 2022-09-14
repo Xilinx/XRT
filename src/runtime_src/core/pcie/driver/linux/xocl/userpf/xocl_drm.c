@@ -750,13 +750,11 @@ static int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 	return ret;
 }
 
-int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned user_flags,
-			struct drm_mm_node *node, u64 size)
+int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
+			uint32_t slotidx, struct drm_mm_node *node, u64 size)
 {
 	int ret = 0;
 	struct xocl_mem_stat *curr_mem = NULL;
-	unsigned memidx = xocl_bo_ddr_idx(user_flags);
-	unsigned slotidx = xocl_bo_slot_idx(user_flags);
 	struct mem_topology *grp_topology = NULL;
 	
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
