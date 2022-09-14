@@ -1312,7 +1312,7 @@ int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	mutex_lock(&cu_mgmt->lock);
-	if (cu_mgmt->xcus[idx]->read_regs.xcr_start != -1) {
+	if (cu_mgmt->xcus[idx]->read_regs.xcr_start) {
 		goto get_cu_addr;
 	}
 

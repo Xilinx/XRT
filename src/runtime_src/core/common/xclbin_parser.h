@@ -101,13 +101,11 @@ struct softkernel_object
 // @cdo_name: CDO group name
 // @cdo_type: CDO group type
 // @pdi_id: ID of this CDO group in PDI
-// @kernel_id: Kernel ID associated with this CDO group
 struct aie_cdo_group_obj
 {
   std::string cdo_name;
   uint8_t cdo_type;
   uint64_t pdi_id;
-  uint64_t kernel_id;
 };
 
 // struct aie_pdi_obj - wrapper for an AIE PDI object
@@ -127,12 +125,14 @@ struct aie_pdi_obj
 // @ncol: number of columns in this partition
 // @start_col_list: Array of start column for partition relocation
 // @name: partition name
+// @ops_per_cycle: Operations per AIE cycle
 // @pdis: PDIs (blob and metadata) associated with this partition
 struct aie_partition_obj
 {
   uint16_t ncol;
   std::vector<uint16_t> start_col_list;
   std::string name;
+  uint32_t ops_per_cycle;
   std::vector<aie_pdi_obj> pdis;
 };
 

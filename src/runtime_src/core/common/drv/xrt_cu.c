@@ -908,10 +908,7 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	INIT_LIST_HEAD(&xcu->events);
 	sema_init(&xcu->sem, 0);
 	sema_init(&xcu->sem_cu, 0);
-	mutex_init(&xcu->read_regs.xcr_lock);
 	spin_lock_init(&xcu->stats.xcs_lock);
-	xcu->read_regs.xcr_start = -1;
-	xcu->read_regs.xcr_end = -1;
 
 	INIT_LIST_HEAD(&xcu->hpq);
 	spin_lock_init(&xcu->hpq_lock);

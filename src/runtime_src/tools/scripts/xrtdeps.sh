@@ -373,7 +373,7 @@ update_package_list()
 validate()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
-        #apt -qq list "${UB_LIST[@]}"
+        #apt-get -qq list "${UB_LIST[@]}"
         dpkg -l "${UB_LIST[@]}" > /dev/null
         if [ $? == 0 ] ; then
 	    # Validate we have OpenCL 2.X headers installed
@@ -528,11 +528,11 @@ install()
         prep_ubuntu
 
         echo "Installing packages..."
-        apt install -y "${UB_LIST[@]}"
+        apt-get install -y "${UB_LIST[@]}"
     fi
 
     if [ $FLAVOR == "ubuntu" ] && [ $MAJOR == 20 ]; then
-	apt install clang-tidy
+	apt-get install -y clang-tidy
     fi
 
     # Enable EPEL on CentOS/RHEL
