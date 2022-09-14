@@ -338,10 +338,6 @@ if [ ! -f $PETA_BSP ]; then
     error "$PETA_BSP not accessible"
 fi
 
-if [ ! -d $SSTATE_CACHE ]; then
-    error "SSTATE_CACHE= not accessible"
-fi
-
 # Sanity check done
 
 PETA_CONFIG_OPT="--silentconfig"
@@ -380,13 +376,6 @@ echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/co
 #Uncomment the following 2 lines to change TMP_DIR location
 #echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\""
 #echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\"" >> project-spec/configs/config 
-
-if [ ! -z $SSTATE_CACHE ] && [ -d $SSTATE_CACHE ]; then
-    echo "SSTATE-CACHE:${SSTATE_CACHE} added"
-    echo "CONFIG_YOCTO_LOCAL_SSTATE_FEEDS_URL=\"${SSTATE_CACHE}\"" >> project-spec/configs/config
-else
-    echo "SSTATE-CACHE:${SSTATE_CACHE} not present"
-fi
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
