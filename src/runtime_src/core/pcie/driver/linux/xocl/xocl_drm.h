@@ -83,6 +83,7 @@ struct xocl_drm {
 
 	/* Memory manager */
 	struct xocl_mm		*xocl_mm;
+	bool			xocl_mm_done;
 
 	/* Xocl driver memory list head */
 	struct list_head        mem_list_head;
