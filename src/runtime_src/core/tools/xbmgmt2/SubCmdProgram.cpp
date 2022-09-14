@@ -224,7 +224,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   auto flash_type = working_flasher.getFlashType(flashType);
 
   if (vm.count("base") != 0) {
-    subOptionOptions[0]->execute(topOptions);
+    subOptionOptions[0]->execute(_options);
     return;
   }
 
