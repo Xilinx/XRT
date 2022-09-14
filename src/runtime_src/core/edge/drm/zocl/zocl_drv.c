@@ -1113,6 +1113,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		}
 	}
 #endif
+
 	subdev = zocl_find_pdev("ert_hw");
 	if (subdev) {
 		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
