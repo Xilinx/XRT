@@ -55,6 +55,7 @@
 static char driver_date[9];
 
 static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p);
+static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p);
 
 static void xocl_free_object(struct drm_gem_object *obj)
 {
@@ -610,6 +611,15 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 
 	xocl_drvinst_set_filedev(drm_p, ddev);
 	xocl_drvinst_set_offline(drm_p, false);
+
+        ret = xocl_init_drm_memory_manager(drm_p);
+	if (ret) {
+		xocl_xdev_err(xdev_hdl, "Init DRM Memory manager failed 0x%x", ret);
+                goto failed;
+	}
+
+        drm_p->cma_bank_idx = -1;
+
 	return drm_p;
 
 failed:
@@ -740,11 +750,13 @@ static int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 	return ret;
 }
 
-int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
-			uint32_t slotidx, struct drm_mm_node *node, u64 size)
+int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned user_flags,
+			struct drm_mm_node *node, u64 size)
 {
 	int ret = 0;
 	struct xocl_mem_stat *curr_mem = NULL;
+	unsigned memidx = xocl_bo_ddr_idx(user_flags);
+	unsigned slotidx = xocl_bo_slot_idx(user_flags);
 	struct mem_topology *grp_topology = NULL;
 	
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
@@ -879,6 +891,138 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	ret = xocl_cleanup_mem_nolock(drm_p);
 	mutex_unlock(&drm_p->mm_lock);
 	return ret;
+}
+
+static int xocl_cleanup_drm_memory_manager(struct xocl_mm *xocl_mm)
+{
+	int i = 0;
+
+	for (i = 0; i < xocl_mm->m_count; i++) {
+		if (xocl_mm->mm_usage_stat && xocl_mm->mm_usage_stat[i])
+			vfree(xocl_mm->mm_usage_stat[i]);
+	}
+
+	vfree(xocl_mm->mm_usage_stat);
+
+	if (xocl_mm->bo_usage_stat)
+		vfree(xocl_mm->bo_usage_stat);
+
+	vfree(xocl_mm->mm);
+	vfree(xocl_mm);
+
+	return 0;
+}
+
+static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p)
+{
+        struct xocl_dev *xdev = drm_p->xdev;
+	struct xocl_mm *xocl_mm = NULL;
+        void *blob = NULL;
+        int offset = 0;
+        const u64 *prop;
+        uint64_t mem_start, mem_end;
+        const char *ipname;
+        uint64_t mm_start_addr = 0;
+        uint64_t mm_end_addr = 0;
+	size_t size = 0;
+	int i = 0;
+        int err = 0;
+
+        blob = XDEV(xdev)->fdt_blob;
+        if (!blob)
+                return 0;
+
+        /* Initialize with max and min possible value */
+        mm_start_addr = 0xffffFFFFffffFFFF;
+        mm_end_addr = 0;
+
+        for (offset = fdt_next_node(blob, -1, NULL);
+                        offset >= 0;
+                        offset = fdt_next_node(blob, offset, NULL)) {
+                ipname = fdt_get_name(blob, offset, NULL);
+                if (ipname && strncmp(ipname, NODE_RESERVED_PSMEM,
+                                        strlen(NODE_RESERVED_PSMEM)))
+                        continue;
+
+                prop = fdt_getprop(blob, offset, PROP_IO_OFFSET, NULL);
+                if (!prop)
+                        continue;
+
+                mem_start = be64_to_cpu(prop[0]);
+                mem_end = mem_start + be64_to_cpu(prop[1]);
+                /* Update the start and end address for the memory manager */
+                if (mem_start < mm_start_addr)
+                        mm_start_addr = mem_start;
+                if (mem_end > mm_end_addr)
+                        mm_end_addr = mem_end;
+
+		++xocl_mm->m_count;
+        }
+
+	if (!xocl_mm->m_count)
+                return 0;
+
+	mutex_lock(&drm_p->mm_lock);
+	xocl_mm = vzalloc(sizeof(struct xocl_mm));
+        if (!xocl_mm) {
+		mutex_unlock(&drm_p->mm_lock);
+                return -ENOMEM;
+	}
+
+	size = xocl_mm->m_count * sizeof(void *);
+	xocl_mm->mm_usage_stat = vzalloc(size);
+        if (!xocl_mm->mm_usage_stat) {
+                err = -ENOMEM;
+                goto error;
+        }
+
+	/* Initialize memory status for the memory manager */
+	xocl_mm->bo_usage_stat = vzalloc(XOCL_BO_USAGE_TOTAL *
+			sizeof(struct drm_xocl_mm_stat));
+	if (!xocl_mm->bo_usage_stat) {
+		err = -ENOMEM;
+		goto error;
+	}
+
+        /* Initialize all the banks and their sizes */
+        /* Currently only fixed sizes are supported */
+        for (i = 0; i < xocl_mm->m_count; i++) {
+		xocl_mm->mm_usage_stat[i] = vzalloc(sizeof(struct drm_xocl_mm_stat));
+                if (!xocl_mm->mm_usage_stat[i]) {
+                        err = -ENOMEM;
+                        goto error;
+                }
+	}
+
+        /* Initialize the memory manager */
+        xocl_mm->mm = vzalloc(sizeof(struct drm_mm));
+        if (!xocl_mm->mm) {
+                err = -ENOMEM;
+                goto error;
+        }
+
+        drm_mm_init(xocl_mm->mm, mm_start_addr, (mm_end_addr - mm_start_addr));
+	if (!xocl_mm->mm) {
+                xocl_err(drm_p->ddev->dev,
+                        "init memory manager failed");
+                err = -EINVAL;
+                goto error;
+	}
+
+        xocl_mm->start_addr = mm_start_addr;
+        xocl_mm->end_addr = mm_end_addr;
+
+        xocl_info(drm_p->ddev->dev, "drm_mm_init called for the available memory range"
+			" <%llx - %llx>", mm_start_addr, mm_end_addr);
+
+        drm_p->xocl_mm = xocl_mm;
+
+error:
+	if (err)
+		xocl_cleanup_drm_memory_manager(xocl_mm);
+        
+	mutex_unlock(&drm_p->mm_lock);
+	return err;
 }
 
 static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
@@ -1080,12 +1224,13 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 
         xocl_mm->start_addr = mm_start_addr;
         xocl_mm->end_addr = mm_end_addr;
+	xocl_mm->m_count = topo->m_count;
 
         xocl_info(drm_p->ddev->dev, "drm_mm_init called for the available memory range"
 			" <%llx - %llx>", mm_start_addr, mm_end_addr);
 
         drm_p->xocl_mm = xocl_mm;
-	
+
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
         mutex_unlock(&drm_p->mm_lock);
 
