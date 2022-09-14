@@ -1238,14 +1238,10 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 	vfree(mb_req);
 }
 
-static bool xclmgmt_eval_device_status(struct xclmgmt_dev *lro, int ret, const char* msg)
+static void set_device_status(struct xclmgmt_dev *lro, int ret, const char* msg)
 {
-	if (ret && ret != -ENODEV) {
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "%s %d\n", msg, ret);
-		xocl_err(&lro->pci_dev->dev, "%s", lro->status.msg);
-		return false;
-	}
-	return true;
+	snprintf(lro->status.msg, sizeof(lro->status.msg), "%s %d\n", msg, ret);
+	xocl_err(&lro->pci_dev->dev, "%s", lro->status.msg);
 }
 
 /*
@@ -1283,8 +1279,10 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		}
 
 		ret = xocl_subdev_create(lro, &subdev_info);
-		if (!xclmgmt_eval_device_status(lro, ret, "Failed to create sub devices"))
+		if (ret && ret != -ENODEV) {
+			set_device_status(lro, ret, "Failed to create sub devices");
 			goto fail;
+		}
 	}
 
 	/*
@@ -1292,16 +1290,17 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * data after the platform has been reset
 	 */
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
-	if (!xclmgmt_eval_device_status(lro, ret, "Failed to register firewall"))
+	if (ret && ret != -ENODEV) {
+		set_device_status(lro, ret, "Failed to register firewall");
 		goto fail_all_subdev;
+	}
 
 	if (dev_info->flags & XOCL_DSAFLAG_AXILITE_FLUSH)
 		platform_axilite_flush(lro);
 
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to register subdevs %d\n", ret);
-		xocl_err(&pdev->dev, "%s", lro->status.msg);
+		set_device_status(lro, ret, "Failed to register subdevs");
 		goto fail_all_subdev;
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
@@ -1329,13 +1328,11 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	if (ret == -ENODEV) { /* If no device was found attempt to load the device tree*/
 		ret = xclmgmt_load_fdt(lro);
 		if (ret) {
-			snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to load FDT %d\n", ret);
-			xocl_err(&pdev->dev, "%s", lro->status.msg);
+			set_device_status(lro, ret, "Failed to load FDT");
 			goto fail_all_subdev;
 		}
 	} else if (ret) { /* For general failures reset to minimum initalization */
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Firmware ICAP download failed %d\n", ret);
-		xocl_err(&pdev->dev, "%s", lro->status.msg);
+		set_device_status(lro, ret, "Firmware ICAP download failed");
 		goto fail_all_subdev;
 	}
 
@@ -1439,6 +1436,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	struct xclmgmt_dev *lro = NULL;
 	struct xocl_board_private *dev_info;
 	char wq_name[15];
+	bool is_device_ready = true;
 
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
@@ -1527,7 +1525,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		return 0;
 	}
 
-	bool is_device_ready = true;
 	if (xclmgmt_extended_probe(lro))
 		is_device_ready = false;
 
@@ -1537,24 +1534,32 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 * FLASH to be able to flash new shell.
 	 */
 	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
-	if (!xclmgmt_eval_device_status(lro, rc, "Failed to create ROM subdevice"))
+	if (rc && rc != -ENODEV) {
+		set_device_status(lro, rc, "Failed to create ROM subdevice");
 		is_device_ready = false;
+	}
 
 	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
-	if (!xclmgmt_eval_device_status(lro, rc, "Failed to create Flash subdevice"))
+	if (rc && rc != -ENODEV) {
+		set_device_status(lro, rc, "Failed to create Flash subdevice");
 		is_device_ready = false;
+	}
 
 	/*
 	 * if can not find BLP metadata, it has to bring up flash and xmc to
 	 * allow user switch BLP
 	 */
 	rc = xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
-	if (!xclmgmt_eval_device_status(lro, rc, "Failed to create BLD level"))
+	if (rc && rc != -ENODEV) {
+		set_device_status(lro, (rc && rc != -ENODEV), "Failed to create BLD level");
 		is_device_ready = false;
+	}
 
 	rc = xocl_subdev_create_vsec_devs(lro);
-	if (!xclmgmt_eval_device_status(lro, rc, "Failed to create VSEC devices"))
+	if (rc && rc != -EEXIST) {
+		set_device_status(lro, rc, "Failed to create VSEC devices");
 		is_device_ready = false;
+	}
 
 	/*
 	 * For u30 whose reset relies on SC, and the cmc is running on ps, we
@@ -1573,7 +1578,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	/* Verify the VMR has booted into the default image */
 	// pr_info("MGMT Core vmr default boot: %d\n", xocl_vmr_default_boot_enabled(lro));
 	// rc = xocl_vmr_default_boot_enabled(lro);
-	// if (!xclmgmt_eval_device_status(lro, rc, "VMR not using default image"))
+	// if (!set_device_status(lro, rc, "VMR not using default image"))
 	// 	is_device_ready = false;
 
 	xocl_hwmon_sdm_get_sensors_list(lro, true);
