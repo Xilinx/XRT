@@ -105,8 +105,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mMapBO    = &xclMapBO;
   mUnmapBO  = &xclUnmapBO;
 
-  mWrite      = &xclWrite;
-  mRead       = &xclRead;
   mUnmgdPread = &xclUnmgdPread;
 
   mReClock2 = &xclReClock2;

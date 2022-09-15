@@ -25,6 +25,8 @@ int xclUpdateSchedulerStat(xclDeviceHandle handle);
 int xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind);
 int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
 int xclCloseExportHandle(xclBufferExportHandle);
+size_t xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
+size_t xclRead(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset, void *hostbuf, size_t size);
 
 namespace xrt_core {
 
