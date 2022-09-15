@@ -1773,11 +1773,13 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::string> metricsSettings;
     boost::replace_all(metricsConfig, " ", "");
+
     if (!metricsConfig.empty())
       boost::split(metricsSettings, metricsConfig, boost::is_any_of(";"));
 
     std::vector<std::string> graphmetricsSettings;
     boost::replace_all(graphmetricsConfig, " ", "");
+
     if (!graphmetricsConfig.empty())
       boost::split(graphmetricsSettings, graphmetricsConfig, boost::is_any_of(";"));
 
