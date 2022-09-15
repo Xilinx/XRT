@@ -892,10 +892,14 @@ namespace xclhwemhal2 {
       //   pid_t, fork, chdir, execl is defined in unistd.h
       //   this environment variable is added to disable the systemc copyright message
 
+      std::string qemu_dtb, pmc_dtb;
       if (args.m_emuData)
       {
         extractEmuData(sim_path, binaryCounter, args);
         nocMmapInitialization(sim_path);
+
+        std::string emu_data_path = sim_path + "/emulation_data";
+        getDtbs(emu_data_path, qemu_dtb, pmc_dtb);
       }
 
       setenv("SYSTEMC_DISABLE_COPYRIGHT_MESSAGE", "1", true);
@@ -996,12 +1000,11 @@ namespace xclhwemhal2 {
             std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;
           }
 
-          // This is temporary solution to enable the support for V70 platform. Will remove this once we have the device based DTB solution.
-          // We have separate DTB for the V70 platform (sv60 device).
-          if (fpgaDeviceName.find("xcvc2802:") != std::string::npos
-            && fs::exists(sim_path + "/emulation_data/board-versal-xcvc2802-ps-cosim-vitis-virt.dtb") ){
-            launcherArgs += " -qemu-dtb " + sim_path + "/emulation_data/board-versal-xcvc2802-ps-cosim-vitis-virt.dtb";
-          }
+          if (!qemu_dtb.empty())
+            launcherArgs += " -qemu-dtb " + qemu_dtb;
+        
+          if (!pmc_dtb.empty())
+            launcherArgs += " -pmc-dtb  " + pmc_dtb;
 
           if (is_enable_debug) {
             launcherArgs += " -enable-debug ";
@@ -1172,6 +1175,36 @@ namespace xclhwemhal2 {
       std::string emuDataFilePath(emuDataFileName.get());
       systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, simPath, std::to_string(__LINE__));
       systemUtil::makeSystemCall(mRunDeviceBinDir, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
+    }
+  }
+
+  void HwEmShim::getDtbs(const std::string& emu_data_path, std::string& qemu_dtb, std::string& pmc_dtb) 
+  {
+    boost::filesystem::path dts_dir = emu_data_path;
+    boost::filesystem::directory_iterator end_itr;
+
+    for (boost::filesystem::directory_iterator itr(dts_dir); itr != end_itr; ++itr)
+    {
+      std::string current_file = itr->path().string();
+      std::string file_str = itr->path().filename().string();
+
+      if (boost::algorithm::ends_with(file_str, ".dtb") == true)
+      {
+        if (mVersalPlatform)
+        {
+          if (file_str.find("pmc-virt") != std::string::npos)
+            pmc_dtb = emu_data_path + "/" + file_str;
+          else
+            qemu_dtb = emu_data_path + "/" + file_str;
+        }
+        else
+        {
+          if (file_str.find("pmu.dtb") != std::string::npos)
+            pmc_dtb = emu_data_path + "/" + file_str;
+          else
+            qemu_dtb = emu_data_path + "/" + file_str;
+        }
+      }
     }
   }
 

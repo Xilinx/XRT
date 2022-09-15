@@ -222,6 +222,7 @@ using addr_type = uint64_t;
       void saveWaveDataBase();
       void extractEmuData(const std::string& simPath, int binaryCounter, bitStreamArg args);
       void nocMmapInitialization(const std::string &simPath);
+      void getDtbs(const std::string& emu_data_path, std::string& qemu_dtb, std::string& pmc_dtb);
 
       // Sanity checks
       static HwEmShim *handleCheck(void *handle);
