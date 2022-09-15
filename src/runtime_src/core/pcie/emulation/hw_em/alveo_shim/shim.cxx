@@ -197,28 +197,28 @@ namespace xclhwemhal2 {
     auto lstatus = 0;
     std::vector<std::string> myvector = {"SIM-IPC's external process can be connected to instance",
                                          "SystemC TLM functional mode",
-                                         "HLS_PRINT",
-                                         "Exiting xsim",
-                                         "ERROR"};
+                                         "HLS_PRINT"};
 
     std::ifstream ifs(getSimPath() + "/simulate.log");
 
     if (ifs.is_open()) {
       std::string line;
       while (std::getline(ifs, line)) {
+        // If xsim is terminated by logging in simulate.log then call xclClose to properly clean all instances, threads.
+        if ( (std::string::npos != line.find("Exiting xsim")) || 
+             (std::string::npos != line.find("ERROR")) 
+           ) {
+                  std::cout << "SIMULATION EXITED" << std::endl;
+                  lstatus = -1;
+                  parsedMsgs.push_back(line);
+                  this->xclClose(true);                                               // Let's have a proper clean if xsim is NOT running
+        }
         for (auto matchString : myvector) {
           std::string::size_type index = line.find(matchString);
           if (index != std::string::npos) {
             if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
               logMessage(line);
               parsedMsgs.push_back(line);
-              if (!matchString.compare("Exiting xsim") || !matchString.compare("ERROR")) {
-                  std::cout << "SIMULATION EXITED" << std::endl;
-                  lstatus = -1;
-                  this->xclClose(true);                                               // Let's have a proper clean if xsim is NOT running
-                 // exit(0);                                                        // It's a clean exit only.
-              }
-
             }
           }
         }
@@ -750,7 +750,7 @@ namespace xclhwemhal2 {
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
 
         const char* ldisplay = std::getenv("DISPLAY");
-        if(!ldisplay)
+        if (!ldisplay)
         {
           if (mLogStream.is_open())
           {
@@ -759,7 +759,7 @@ namespace xclhwemhal2 {
           }
           std::string dMsg = "ERROR: [HW-EMU 26] DISPLAY environment is not available so expect an exit from the application";
           logMessage(dMsg, 0);
-          exit(EXIT_FAILURE);
+          throw std::runtime_error(" Simulator did not start/exited, please simulate.log in .run directory!");
         }
         
       }
@@ -1057,12 +1057,10 @@ namespace xclhwemhal2 {
             mLogStream << __TIME__ <<"\t"<< __func__ << " The simulate script is "  <<sim_file  << std::endl;
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
-        if (r == -1){ std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1); }
-
-        if (mLogStream.is_open() )
-            mLogStream << __TIME__ <<"\t"<< __func__ << " After launching xsim process"  << std::endl;
-
-        fclose(stdout);
+        if (r == -1) {
+          std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; 
+          exit(1);
+        } 
         exit(0);
       }
 #endif
@@ -1081,6 +1079,7 @@ namespace xclhwemhal2 {
     if (parseLog() != 0) {
       if (mLogStream.is_open())
         mLogStream << __func__ << " ERROR: [HW-EMU 26] Simulator is NOT started so exiting the application! " << std::endl;
+        
       // If no simulator running then no need to try a connection, hence exit with a failure now.
       exit(EXIT_FAILURE);
     }
