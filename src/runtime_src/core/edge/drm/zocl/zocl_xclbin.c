@@ -1475,7 +1475,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 */
 	slot->slot_xclbin->zx_refcnt = 0;
 	if(ZOCL_PLATFORM_ARM64)
-		zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path);
+		zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path,
+				axlf_obj->za_dtbo_path_len);
 	zocl_xclbin_set_uuid(slot, &axlf_head.m_header.uuid);
 
 	/*
@@ -1725,7 +1726,8 @@ zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
  * @return      0 on success Error code on failure.
  */
 int
-zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path)
+zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path,
+		uint32_t len)
 {
         char *path = slot->slot_xclbin->zx_dtbo_path;
 
@@ -1735,7 +1737,6 @@ zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path)
         }
 
 	if(dtbo_path) {
-		uint32_t len = strlen(dtbo_path);
 		path = vmalloc(len + 1);
 		if (!path)
 			return -ENOMEM;
