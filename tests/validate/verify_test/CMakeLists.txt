@@ -3,24 +3,20 @@
 #
 set(TESTNAME "validate.exe")
 
-set(xrt_core_LIBRARY xrt_core)
 set(xrt_coreutil_LIBRARY xrt_coreutil)
 
 include_directories(
   ../../../src/runtime_src/core/include src/
-  ../common/includes/cmdparser
-  ../common/includes/logger
   )
 
 add_executable(${TESTNAME}
+  ../common/includes/xcl2/xcl2.cpp
   ../common/includes/cmdparser/cmdlineparser.cpp
   ../common/includes/logger/logger.cpp src/host.cpp
   )
 
-target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
-
 if (NOT WIN32)
-  target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY}  pthread ${xrt_coreutil_LIBRARY} ${xrt_core_LIBRARY})
+  target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY}  pthread ${xrt_coreutil_LIBRARY})
 endif(NOT WIN32)
 
 if (NOT DEFINED XRT_VALIDATE_DIR)
@@ -34,14 +30,13 @@ install(TARGETS ${TESTNAME}
 if (XRT_STATIC_BUILD)
   set(TESTNAME_STATIC "validate_static.exe")
   add_executable(${TESTNAME_STATIC}
-    ../common/includes/cmdparser/cmdlineparser.cpp
-    ../common/includes/logger/logger.cpp src/host.cpp
+    src/host.cpp
     )
   # Specify path directory with boost static libraries. The boost link dir
   # should be same as the one used to build XRT. In most case this is the
   # default /usr/lib, but if XRT was built with -with-static-boost, then
   # the libraries cannot be located without specified the link path.
-  target_link_options(${TESTNAME_STATIC} PRIVATE "-static" "-L${Boost_LIBRARY_DIRS}")
+  target_link_options(${TESTNAME_STATIC} PRIVATE "-static")
   target_link_libraries(${TESTNAME_STATIC}
     PRIVATE
     # force linking of whole archive to enable static globals

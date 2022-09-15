@@ -67,6 +67,7 @@ set(XRT_XDP_POWER_PROFILE_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin
 set(XRT_XDP_POWER_PROFILE_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/power")
 set(XRT_XDP_SYSTEM_COMPILER_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/system_compiler")
 set(XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/pl_deadlock")
+set(XRT_XDP_AIE_TRACE_NEW_PLUGIN_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/aie_trace_new")
 
 # Files for the new xdp core
 set(XRT_XDP_PROFILE_BASE_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/vp_base")
@@ -265,6 +266,19 @@ file(GLOB XRT_XDP_AIE_TRACE_PLUGIN_FILES
   "${XRT_XDP_AIE_TRACE_WRITER_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_AIE_TRACE_NEW_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_DEVICE_AIE_TRACE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_DEVICE_AIE_TRACE_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.cpp"
+  "${XRT_XDP_AIE_TRACE_NEW_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_AIE_TRACE_NEW_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_AIE_TRACE_NEW_PLUGIN_DIR}/x86/*.h"
+  "${XRT_XDP_AIE_TRACE_NEW_PLUGIN_DIR}/x86/*.cpp"
+  "${XRT_XDP_AIE_TRACE_WRITER_DIR}/*.h"
+  "${XRT_XDP_AIE_TRACE_WRITER_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_AIE_DEBUG_PLUGIN_FILES
   "${XRT_XDP_AIE_DEBUG_PLUGIN_DIR}/*.h"
   "${XRT_XDP_AIE_DEBUG_PLUGIN_DIR}/*.cpp"
@@ -282,6 +296,11 @@ file(GLOB XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_FILES
   "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR}/*.cpp"
+  )
+
+file(GLOB XRT_XDP_HW_EMU_PROFILE_PL_DEADLOCK_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR}/hw_emu/*.h"
+  "${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR}/hw_emu/*.cpp"
   )
 
 set(XRT_XDP_ALL_SRC
@@ -353,6 +372,10 @@ set_target_properties(xdp_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION
 set_target_properties(xdp_hal_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
+# Install directories are different for Windows and Linux
+
+if (NOT WIN32)
+
 install (TARGETS xdp_hal_plugin
                  xdp_hal_api_interface_plugin
                  xdp_lop_plugin
@@ -366,6 +389,23 @@ install (TARGETS xdp_hal_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
 
+else()
+
+install (TARGETS xdp_hal_plugin
+                 xdp_hal_api_interface_plugin
+                 xdp_lop_plugin
+                 xdp_native_plugin
+                 xdp_opencl_trace_plugin
+                 xdp_opencl_counters_plugin
+                 xdp_user_plugin
+                 xdp_device_offload_plugin
+                 xdp_hal_device_offload_plugin
+                 xdp_pl_deadlock_plugin
+  LIBRARY DESTINATION ${XRT_INSTALL_BIN_DIR}
+)
+
+endif()
+
 # ============ Linux Specific Plugin modules =============
 if (NOT WIN32)
 
@@ -376,6 +416,7 @@ add_library(xdp_system_compiler_plugin MODULE ${XRT_XDP_SYSTEM_COMPILER_PLUGIN_F
 add_library(xdp_noc_plugin MODULE ${XRT_XDP_PROFILE_NOC_PLUGIN_FILES})
 add_library(xdp_vart_plugin MODULE ${XRT_XDP_PROFILE_VART_PLUGIN_FILES})
 add_library(xdp_hw_emu_device_offload_plugin MODULE ${XRT_XDP_HW_EMU_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
+add_library(xdp_hw_emu_pl_deadlock_plugin MODULE ${XRT_XDP_HW_EMU_PROFILE_PL_DEADLOCK_PLUGIN_FILES})
 
 add_dependencies(xdp_debug_plugin xrt_coreutil xilinxopencl)
 add_dependencies(xdp_appdebug_plugin xrt_coreutil xilinxopencl)
@@ -384,6 +425,7 @@ add_dependencies(xdp_system_compiler_plugin xdp_core)
 add_dependencies(xdp_noc_plugin xdp_core xrt_core)
 add_dependencies(xdp_vart_plugin xdp_core xrt_core)
 add_dependencies(xdp_hw_emu_device_offload_plugin xdp_core xrt_coreutil xrt_hwemu)
+add_dependencies(xdp_hw_emu_pl_deadlock_plugin xdp_core xrt_coreutil xrt_hwemu)
 
 target_link_libraries(xdp_debug_plugin PRIVATE xrt_coreutil xilinxopencl)
 target_link_libraries(xdp_appdebug_plugin PRIVATE xrt_coreutil xilinxopencl)
@@ -392,6 +434,7 @@ target_link_libraries(xdp_system_compiler_plugin xdp_core)
 target_link_libraries(xdp_noc_plugin PRIVATE xdp_core xrt_core)
 target_link_libraries(xdp_vart_plugin PRIVATE xdp_core xrt_core)
 target_link_libraries(xdp_hw_emu_device_offload_plugin PRIVATE xdp_core xrt_coreutil xrt_hwemu)
+target_link_libraries(xdp_hw_emu_pl_deadlock_plugin PRIVATE xdp_core xrt_coreutil xrt_hwemu)
 
 set_target_properties(xdp_noc_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_vart_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -400,6 +443,18 @@ set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRIN
 set_target_properties(xdp_power_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_system_compiler_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hw_emu_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_hw_emu_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+
+# x86 AI Engine Plugin
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_NEW_PLUGIN_FILES})
+  target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core)
+  set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+  target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_NATIVE_BUILD=1)
+  install (TARGETS xdp_aie_trace_plugin
+    LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
+  )
+endif()
 
 # AI Engine plugins are Edge only.
 # With x86 sw_emu support of AIE, XRT_AIE_BUILD is defined even on x86
@@ -444,6 +499,7 @@ install (TARGETS xdp_debug_plugin
                  xdp_noc_plugin
                  xdp_vart_plugin
                  xdp_hw_emu_device_offload_plugin
+                 xdp_hw_emu_pl_deadlock_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
 

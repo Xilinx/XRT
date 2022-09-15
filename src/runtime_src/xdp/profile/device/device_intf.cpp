@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,8 +17,9 @@
 
 #define XDP_SOURCE
 
-#include "device_intf.h"
 #include "aieTraceS2MM.h"
+#include "device_intf.h"
+#include "tracedefs.h"
 
 #ifndef _WIN32
 // open+ioctl based Profile IP 
@@ -44,11 +46,9 @@
 
 #endif
 
-#include "xclperf.h"
-#include "xcl_perfmon_parameters.h"
-#include "tracedefs.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
+#include "core/include/xdp/fifo.h"
 
 #include <iostream>
 #include <cstdio>
@@ -84,9 +84,24 @@ namespace xdp {
 // settings from xrt.ini
 uint64_t GetTS2MMBufSize(bool isAIETrace)
 {
-  std::string size_str = isAIETrace ?
-                         xrt_core::config::get_aie_trace_buffer_size() :
-                         xrt_core::config::get_trace_buffer_size();
+  std::string size_str;
+  if (isAIETrace) {
+#ifndef SKIP_AIE_INI
+    size_str = xrt_core::config::get_aie_trace_settings_buffer_size();
+    if (0 == size_str.compare("8M")) {
+      // if set to default value, then check for old style config
+      size_str = xrt_core::config::get_aie_trace_buffer_size();
+
+      if (0 != size_str.compare("8M"))
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+          "The xrt.ini flag \"aie_trace_buffer_size\" is deprecated and will be removed in future release. Please use \"buffer_size\" under \"AIE_trace_settings\" section.");
+    }
+#else
+    size_str = "8M";
+#endif
+  } else {
+    size_str = xrt_core::config::get_trace_buffer_size();
+  }
   std::smatch pieces_match;
   
   // Default is 1M
@@ -96,11 +111,11 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
   if (std::regex_match(size_str, pieces_match, size_regex)) {
     try {
       if (pieces_match[2] == "K" || pieces_match[2] == "k") {
-        bytes = std::stoull(pieces_match[1]) * 1024;
+        bytes = std::stoull(pieces_match[1]) * uint_constants::one_kb;
       } else if (pieces_match[2] == "M" || pieces_match[2] == "m") {
-        bytes = std::stoull(pieces_match[1]) * 1024 * 1024;
+        bytes = std::stoull(pieces_match[1]) * uint_constants::one_mb;
       } else if (pieces_match[2] == "G" || pieces_match[2] == "g") {
-        bytes = std::stoull(pieces_match[1]) * 1024 * 1024 * 1024;
+        bytes = std::stoull(pieces_match[1]) * uint_constants::one_gb;
       } else {
         bytes = std::stoull(pieces_match[1]);
       }
@@ -168,24 +183,30 @@ DeviceIntf::~DeviceIntf()
       return;
     }
     mDevice = devHandle; 
+
+    // Once the device is connected, update the bandwidth numbers
+    setHostMaxBwRead();
+    setHostMaxBwWrite();
+    setKernelMaxBwRead();
+    setKernelMaxBwWrite();
   }
 
   // ***************************************************************************
   // Debug IP Layout
   // ***************************************************************************
   
-  uint32_t DeviceIntf::getNumMonitors(xclPerfMonType type)
+  uint32_t DeviceIntf::getNumMonitors(xdp::MonitorType type)
   {
-    if (type == XCL_PERF_MON_MEMORY)
+    if (type == xdp::MonitorType::memory)
       return mAimList.size();
-    if (type == XCL_PERF_MON_ACCEL)
+    if (type == xdp::MonitorType::accel)
       return mAmList.size();
-    if (type == XCL_PERF_MON_STR)
+    if (type == xdp::MonitorType::str)
       return mAsmList.size();
-    if (type == XCL_PERF_MON_NOC)
+    if (type == xdp::MonitorType::noc)
       return nocList.size();
 
-    if (type == XCL_PERF_MON_STALL) {
+    if (type == xdp::MonitorType::stall) {
       uint32_t count = 0;
       for (auto mon : mAmList) {
         if (mon->hasStall()) count++;
@@ -193,7 +214,7 @@ DeviceIntf::~DeviceIntf()
       return count;
     }
 
-    if (type == XCL_PERF_MON_HOST) {
+    if (type == xdp::MonitorType::host) {
       uint32_t count = 0;
       for (auto mon : mAimList) {
         if (mon->isHostMonitor()) count++;
@@ -203,7 +224,7 @@ DeviceIntf::~DeviceIntf()
 
     // FIFO ?
 
-    if (type == XCL_PERF_MON_SHELL) {
+    if (type == xdp::MonitorType::shell) {
       uint32_t count = 0;
       for (auto mon : mAimList) {
         if (mon->isShellMonitor()) count++;
@@ -215,34 +236,22 @@ DeviceIntf::~DeviceIntf()
     return 0;
   }
 
-  std::string DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index)
+  std::string DeviceIntf::getMonitorName(xdp::MonitorType type, uint32_t index)
   {
-    if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { return mAimList[index]->getName(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { return mAmList[index]->getName(); }
-    if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { return mAsmList[index]->getName(); }
-    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { return nocList[index]->getName(); }
-    return std::string("");
+    if((type == xdp::MonitorType::memory) && (index < mAimList.size())) { return mAimList[index]->getName(); }
+    if((type == xdp::MonitorType::accel)  && (index < mAmList.size()))  { return mAmList[index]->getName(); }
+    if((type == xdp::MonitorType::str)    && (index < mAsmList.size())) { return mAsmList[index]->getName(); }
+    if((type == xdp::MonitorType::noc)    && (index < nocList.size()))  { return nocList[index]->getName(); }
+    return {};
   }
 
   // Same as defined in vpl tcl
   // NOTE: This converts the property on the FIFO IP in debug_ip_layout to the corresponding FIFO depth.
   uint64_t DeviceIntf::getFifoSize()
   {
-    if (nullptr == mFifoRead) {
-      return 0;
-    }
-    switch(mFifoRead->getProperties()) {
-      case 0 : return 8192;
-      case 1 : return 1024;
-      case 2 : return 2048;
-      case 3 : return 4096;
-      case 4 : return 16384;
-      case 5 : return 32768;
-      case 6 : return 65536;
-      case 7 : return 131072;
-      default : break;
-    }
-    return 8192;
+    if (mFifoRead)
+      return xdp::IP::FIFO::properties::size.at(mFifoRead->getProperties());
+    return 0;
   }
 
   
@@ -317,7 +326,7 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Read AIM performance counters
-  size_t DeviceIntf::readCounters(xclCounterResults& counterResults) {
+  size_t DeviceIntf::readCounters(xdp::CounterResults& counterResults) {
     if (mVerbose) {
       std::cout << __func__ << ", " << std::this_thread::get_id()
       << ", " << &counterResults
@@ -325,7 +334,7 @@ DeviceIntf::~DeviceIntf()
     }
 
     // Initialize all values in struct to 0
-    memset(&counterResults, 0, sizeof(xclCounterResults));
+    memset(&counterResults, 0, sizeof(xdp::CounterResults));
 
     if (!mIsDeviceProfiling)
       return 0;
@@ -550,6 +559,7 @@ DeviceIntf::~DeviceIntf()
               mDeadlockDetector = new DeadlockDetector(mDevice, i, &(map->m_debug_ip_data[i]));
               break;
             case AXI_STREAM_PROTOCOL_CHECKER :
+            case HSDP_TRACE :
             default : 
               break;
           }
@@ -943,7 +953,7 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Parse trace buffer data after reading from FIFO or DDR
-  void DeviceIntf::parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector)
+  void DeviceIntf::parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xdp::TraceEvent>& traceVector)
   {
     if(index >= mPlTraceDmaList.size())
       return;

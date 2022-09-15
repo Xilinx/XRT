@@ -14,13 +14,14 @@
 * under the License.
 */
 
-#include "xrt/xrt_device.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 
-#include <boost/filesystem.hpp>
-#include <algorithm>
-#include <vector>
+#include <cstring>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 #define LENGTH 64
 
 static void printHelp() {
@@ -64,24 +65,22 @@ int main(int argc, char** argv) {
     auto krnl = xrt::kernel(device, xclbin_uuid, "verify");
 
     // Allocate the output buffer to hold the kernel ooutput
-    auto bank_grp_arg0 = krnl.group_id(0);
-    auto output_buffer = xrt::bo(device, sizeof(char) * LENGTH, bank_grp_arg0);
+    auto output_buffer = xrt::bo(device, sizeof(char) * LENGTH, krnl.group_id(0));
 
     // Run the kernel and store its contents within the allocated output buffer
     auto run = krnl(output_buffer);
     run.wait();
 
     // Prepare local buffer
-    char received_data[LENGTH];
-    std::memset(received_data, 0, LENGTH);
+    char received_data[LENGTH] = {};
 
     // Acquire and read the buffer data
     output_buffer.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
     output_buffer.read(received_data);
 
     // Compare received data against expected data
-    char expected_data[LENGTH] = "Hello World\n";
-    if (std::memcmp(expected_data, received_data, LENGTH) != 0) {
+    std::string expected_data = "Hello World\n";
+    if (std::memcmp(received_data, expected_data.data(), expected_data.size())) {
         std::cout << "TEST FAILED\n";
         throw std::runtime_error("Value read back does not match reference");
     }

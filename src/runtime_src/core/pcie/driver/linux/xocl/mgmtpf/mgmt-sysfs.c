@@ -347,6 +347,9 @@ static ssize_t interface_uuids_show(struct device *dev,
 	const void *uuid;
 	int node = -1, off = 0;
 
+	if (!lro->ready)
+		return -EINVAL;
+
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
 		xclmgmt_load_fdt(lro);
 
@@ -378,6 +381,9 @@ static ssize_t logic_uuids_show(struct device *dev,
         struct xclmgmt_dev *lro = dev_get_drvdata(dev);
 	const void *uuid = NULL, *blp_uuid = NULL;
 	int node = -1, off = 0;
+
+	if (!lro->ready)
+		return -EINVAL;
 
 	if (!lro->core.fdt_blob && xocl_get_timestamp(lro) == 0)
 		xclmgmt_load_fdt(lro);
@@ -521,6 +527,20 @@ static DEVICE_ATTR(config_xclbin_change, 0644,
 	config_xclbin_change_show,
 	config_xclbin_change_store);
 
+static ssize_t versal_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	int val = 0;
+
+	if ((lro->core.priv.flags & XOCL_DSAFLAG_VERSAL) ||
+	        (lro->core.priv.flags & XOCL_DSAFLAG_VERSAL_ES3))
+		val = 1;
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(versal);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -551,6 +571,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_sbr_toggle.attr,
 	&dev_attr_cache_xclbin.attr,
 	&dev_attr_config_xclbin_change.attr,
+	&dev_attr_versal.attr,
 	NULL,
 };
 

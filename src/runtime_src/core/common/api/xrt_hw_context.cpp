@@ -10,6 +10,7 @@
 #include "hw_context_int.h"
 
 #include "core/common/device.h"
+#include "core/include/xrt_mem.h"
 
 #include <limits>
 
@@ -23,7 +24,8 @@ namespace xrt {
 //
 class hw_context_impl
 {
-  using qos_type = xrt::hw_context::qos;
+  using qos_type = xrt::hw_context::qos_type;
+  using access_mode = xrt::hw_context::access_mode;
 
   // Managed context handle with exceptional handling for flows
   // or applications that use load_xclbin (legacy Alveo)
@@ -33,7 +35,7 @@ class hw_context_impl
     xcl_hwctx_handle m_hdl;
     bool m_destroy_context = true;
 
-    ctx_handle(const xrt_core::device* device, const xrt::uuid& uuid, qos_type qos)
+    ctx_handle(const xrt_core::device* device, const xrt::uuid& uuid, const qos_type& qos, access_mode mode)
       : m_device(device)
     {
       try {
@@ -41,7 +43,7 @@ class hw_context_impl
         // or (2) create_hw_context is not supported. (2) => (1) so
         // in both cases simply lookup the slot into which the xclbin
         // has been loaded.
-        m_hdl = m_device->create_hw_context(uuid.get(), static_cast<xcl_qos_type>(qos));
+        m_hdl = m_device->create_hw_context(uuid, qos, mode);
       }
       catch (const xrt_core::ishim::not_supported_error&) {
         // xclbin must have been loaded, get the slot id for the xclbin
@@ -68,21 +70,30 @@ class hw_context_impl
   std::shared_ptr<xrt_core::device> m_core_device;
   xrt::xclbin m_xclbin;
   qos_type m_qos;
+  access_mode m_mode;
   ctx_handle m_ctx_handle;
 
 public:
-  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, xrt::hw_context::qos qos)
+  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, const qos_type& qos)
     : m_core_device(std::move(device))
     , m_xclbin(m_core_device->get_xclbin(xclbin_id))
     , m_qos(qos)
-    , m_ctx_handle{m_core_device.get(), xclbin_id, m_qos}
+    , m_mode(xrt::hw_context::access_mode::shared)
+    , m_ctx_handle{m_core_device.get(), xclbin_id, m_qos, m_mode}
   {
   }
 
-  void
+  hw_context_impl(std::shared_ptr<xrt_core::device> device, const xrt::uuid& xclbin_id, access_mode mode)
+    : m_core_device(std::move(device))
+    , m_xclbin(m_core_device->get_xclbin(xclbin_id))
+    , m_mode(mode)
+    , m_ctx_handle{m_core_device.get(), xclbin_id, m_qos, m_mode}
+  {}
+
+void
   set_exclusive()
   {
-    m_qos = xrt::hw_context::qos::exclusive;
+    m_mode = xrt::hw_context::access_mode::exclusive;
   }
 
   const std::shared_ptr<xrt_core::device>&
@@ -103,10 +114,10 @@ public:
     return m_xclbin;
   }
 
-  qos_type
-  get_qos() const
+  access_mode
+  get_mode() const
   {
-    return m_qos;
+    return m_mode;
   }
 
   xcl_hwctx_handle
@@ -149,8 +160,14 @@ set_exclusive(xrt::hw_context& hwctx)
 namespace xrt {
 
 hw_context::
-hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, xrt::hw_context::qos qos)
+hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, const xrt::hw_context::qos_type& qos)
   : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, qos))
+{}
+
+
+hw_context::
+hw_context(const xrt::device& device, const xrt::uuid& xclbin_id, access_mode mode)
+  : detail::pimpl<hw_context_impl>(std::make_shared<hw_context_impl>(device.get_handle(), xclbin_id, mode))
 {}
 
 xrt::device
@@ -174,11 +191,21 @@ get_xclbin() const
   return get_handle()->get_xclbin();
 }
 
-hw_context::qos
+hw_context::access_mode
 hw_context::
-get_qos() const
+get_mode() const
 {
-  return get_handle()->get_qos();
+  return get_handle()->get_mode();
+}
+
+uint32_t
+hw_context::
+get_memory_group_id() const
+{
+  xcl_bo_flags grp = {0}; // xrt_mem.h
+  grp.bank = 0;
+  grp.slot = static_cast<uint8_t>(get_handle()->get_xcl_handle());
+  return grp.flags;
 }
 
 hw_context::

@@ -24,10 +24,14 @@
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 #include "experimental/xrt_ini.h"
-/**
- * Trivial loopback example which runs OpenCL loopback kernel. Does not use OpenCL
- * runtime but directly exercises the XRT driver API.
- */
+
+// Trivial loopback example which runs OpenCL loopback kernel. Does
+// not use OpenCL runtime but directly exercises the XRT driver API.
+//
+// Misc. other tests
+//
+// % g++ -g -std=c++17 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o host.exe main.cpp -lxrt_coreutil -luuid -pthread
+// % host.exe -k verify.xclbin -c hello
 
 
 static void usage()
@@ -64,7 +68,7 @@ copy_test(const xrt::device& device, size_t bytes, int32_t grpidx)
   auto bo1 = xrt::bo(device, bytes, 0, grpidx);
   auto bo1_data = bo1.map<char*>();
   std::generate_n(bo1_data, bytes, []() { return std::rand() % 256; });
-  
+
   bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE , bytes , 0);
 
   auto bo2 = xrt::bo(device, bytes, 0, grpidx);
@@ -76,18 +80,46 @@ copy_test(const xrt::device& device, size_t bytes, int32_t grpidx)
 }
 
 static void
+rw_test(const xrt::device& device, size_t bytes, int32_t grpidx)
+{
+  xrt::bo bo1(device, bytes, xrt::bo::flags::device_only, grpidx);
+  std::vector<char> buf1(bytes, 'a');
+  bo1.write(buf1.data(), bytes, 0);
+
+  std::vector<char> buf2(bytes, 'b');
+  bo1.read(buf2.data(), bytes, 0);
+
+  if (!std::equal(buf1.begin(), buf1.end(), buf2.begin()))
+    throw std::runtime_error("Value read back from device only bo does not match value written");
+}
+
+static void
+register_read(const xrt::kernel& kernel, int argno)
+{
+  auto offset = kernel.offset(argno);
+  // Throws unless Runtime.rw_shared=true
+  // Note, that xclbin must also be loaded with rw_shared=true
+  auto val = kernel.read_register(offset);
+  std::cout << "value at 0x" << std::hex << offset << " = 0x" << val << std::dec << "\n";
+}
+
+static void
 register_test(const xrt::kernel& kernel, int argno)
 {
   try {
-    auto offset = kernel.offset(argno);
-    // Throws unless Runtime.rw_shared=true
-    // Note, that xclbin must also be loaded with rw_shared=true
-    auto val = kernel.read_register(offset);
-    std::cout << "value at 0x" << std::hex << offset << " = 0x" << val << std::dec << "\n";
+    register_read(kernel, argno);
   }
   catch (const std::exception& ex) {
     std::cout << "Expected failure reading kernel register (" << ex.what() << ")\n";
-  }      
+  }
+}
+
+static void
+read_range_test(const xrt::kernel& kernel, int argno)
+{
+  // Allow reading from shared CU @ (start_addr, size)
+  xrt::set_read_range(kernel, kernel.offset(argno), 0x4);
+  register_read(kernel, argno);
 }
 
 static void
@@ -150,7 +182,7 @@ int run(int argc, char** argv)
 
   // Configuration options can be change before accessed
   ini_test();
-  
+
   auto device = xrt::device(device_index);
   auto uuid = device.load_xclbin(xclbin_fnm);
   auto kernel = xrt::kernel(device, uuid, cu_name);
@@ -162,8 +194,14 @@ int run(int argc, char** argv)
   // Copy through host not 64 byte aligned
   copy_test(device, 40, grpidx);
 
+  // Read write test of device only BO
+  rw_test(device, 1024, grpidx);
+
   // Test of kernel.read_register (expected failure)
   register_test(kernel, 0);
+
+  // Test of kernel.read_register with read_range
+  read_range_test(kernel, 0);
 
   // Make sure configuration options cannot be changed now
   ini_test(true); // expected failure caught

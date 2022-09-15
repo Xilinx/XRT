@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2020 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -15,18 +16,19 @@
  * under the License.
  */
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(SKIP_IOCTL)
 
-#include <sys/fcntl.h>
-#include <sys/mman.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-#include <string.h>
-#include <thread>
 #include <chrono>
+#include <cstring>
+#include <sys/fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <thread>
+#include <unistd.h>
 
-#include "ioctl_traceFifoLite.h"
+#include "core/include/xdp/trace.h"
 #include "core/pcie/driver/linux/include/profile_ioctl.h"
+#include "xdp/profile/device/ioctl_monitors/ioctl_traceFifoLite.h"
 
 namespace xdp {
 
@@ -91,7 +93,7 @@ uint32_t IOCtlTraceFifoLite::getNumTraceSamples()
   ioctl(driver_FD, TR_FIFO_IOC_GET_NUMBYTES, &numBytes);
 
   uint32_t numSamples = 0;
-  numSamples = numBytes / (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH/8);
+  numSamples = numBytes / (xdp::TRACE_FIFO_WORD_WIDTH/8);
 
   if(out_stream)
     (*out_stream) << "  No. of trace samples = " << numSamples << std::endl;

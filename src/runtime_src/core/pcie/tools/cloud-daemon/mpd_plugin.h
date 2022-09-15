@@ -26,6 +26,7 @@ typedef int (*get_remote_msd_fd_fn)(size_t index, int *fd);
 typedef int (*mb_notify_fn)(size_t index, int fd, bool online);
 typedef int (*hot_reset_fn)(size_t index, int *resp);
 typedef int (*load_xclbin_fn)(size_t index, const axlf *buf, int *resp);
+typedef int (*load_slot_xclbin_fn)(size_t index, const char *buf, int *resp);
 typedef int (*reclock2_fn)(size_t index, const struct xclmgmt_ioc_freqscaling *obj, int *resp);
 typedef int (*get_icap_data_fn)(size_t index, struct xcl_pr_region *resp);
 typedef int (*get_sensor_data_fn)(size_t index, struct xcl_sensor *resp);
@@ -89,6 +90,7 @@ struct mpd_plugin_callbacks {
         user_probe_fn user_probe; //11 mandatory for customized HW
         program_shell_fn program_shell; //14 optional
         read_p2p_bar_addr_fn read_p2p_bar_addr; //15 optional
+        load_slot_xclbin_fn load_slot_xclbin; //18 mandatory
     } mb_req;
 };
 

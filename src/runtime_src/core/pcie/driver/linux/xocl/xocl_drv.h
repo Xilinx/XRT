@@ -343,6 +343,8 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 
 #define	GB(x)			((uint64_t)(x) * 1024 * 1024 * 1024)
 
+#define MULTISLOT_VERSION	    0x80 // 128 Slots Support
+
 #define XOCL_VSEC_UUID_ROM          0x50
 #define XOCL_VSEC_FLASH_CONTROLER   0x51
 #define XOCL_VSEC_PLATFORM_INFO     0x52
@@ -2140,7 +2142,11 @@ struct xocl_xgq_vmr_funcs {
 		enum data_kind kind);
 	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 	int (*vmr_enable_multiboot)(struct platform_device *pdev);
-	int (*xgq_collect_sensors_by_id)(struct platform_device *pdev, char *buf,
+	int (*xgq_collect_sensors_by_repo_id)(struct platform_device *pdev, char *buf,
+                                     uint8_t id, uint32_t len);
+	int (*xgq_collect_sensors_by_sensor_id)(struct platform_device *pdev, char *buf,
+                                     uint8_t id, uint32_t len, uint8_t sid);
+	int (*xgq_collect_all_inst_sensors)(struct platform_device *pdev, char *buf,
                                      uint8_t id, uint32_t len);
 	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
 };
@@ -2176,9 +2182,15 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_vmr_enable_multiboot(xdev) 			\
 	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
 	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_sensors_by_id(xdev, buf, id, len)		\
-	(XGQ_CB(xdev, xgq_collect_sensors_by_id) ?		\
-	XGQ_OPS(xdev)->xgq_collect_sensors_by_id(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
+#define	xocl_xgq_collect_sensors_by_repo_id(xdev, buf, id, len)	\
+	(XGQ_CB(xdev, xgq_collect_sensors_by_repo_id) ?		\
+	XGQ_OPS(xdev)->xgq_collect_sensors_by_repo_id(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
+#define	xocl_xgq_collect_sensors_by_sensor_id(xdev, buf, id, len, sid)	\
+	(XGQ_CB(xdev, xgq_collect_sensors_by_sensor_id) ?	\
+	XGQ_OPS(xdev)->xgq_collect_sensors_by_sensor_id(XGQ_DEV(xdev), buf, id, len, sid) : -ENODEV)
+#define	xocl_xgq_collect_all_inst_sensors(xdev, buf, id, len)	\
+	(XGQ_CB(xdev, xgq_collect_all_inst_sensors) ?	\
+	XGQ_OPS(xdev)->xgq_collect_all_inst_sensors(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
 #define	xocl_vmr_load_firmware(xdev, fw, fw_size)		\
 	(XGQ_CB(xdev, vmr_load_firmware) ?			\
 	XGQ_OPS(xdev)->vmr_load_firmware(XGQ_DEV(xdev), fw, fw_size) : -ENODEV)
@@ -2187,7 +2199,7 @@ struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev, bool create_sysfs);
 	int (*hwmon_sdm_get_sensors)(struct platform_device *pdev, char *resp,
-                                 enum xcl_group_kind repo_type);
+                                 enum xcl_group_kind repo_type, uint64_t data_args);
 	int (*hwmon_sdm_create_sensors_sysfs)(struct platform_device *pdev, char *in_buf,
                                           size_t len, enum xcl_group_kind kind);
 };
@@ -2202,9 +2214,9 @@ struct xocl_sdm_funcs {
 #define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
 	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)
-#define	xocl_hwmon_sdm_get_sensors(xdev, resp, repo_type)		\
+#define	xocl_hwmon_sdm_get_sensors(xdev, resp, repo_type, data_args)	\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors) ?			\
-	SDM_OPS(xdev)->hwmon_sdm_get_sensors(SDM_DEV(xdev), resp, repo_type) : -ENODEV)
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors(SDM_DEV(xdev), resp, repo_type, data_args) : -ENODEV)
 #define	xocl_hwmon_sdm_create_sensors_sysfs(xdev, buf, size, kind)		\
 	(SDM_CB(xdev, hwmon_sdm_create_sensors_sysfs) ?			\
 	SDM_OPS(xdev)->hwmon_sdm_create_sensors_sysfs(SDM_DEV(xdev), buf, size, kind) : -ENODEV)
@@ -2392,6 +2404,7 @@ struct resource *xocl_get_iores_with_idx_byname(struct platform_device *pdev,
 				       char *name, int idx);
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 				       char *name);
+int xocl_get_irq_with_idx_byname(struct platform_device *pdev, char *name, int index);
 int xocl_get_irq_byname(struct platform_device *pdev, char *name);
 void __iomem *xocl_devm_ioremap_res(struct platform_device *pdev, int index);
 void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
@@ -2468,15 +2481,15 @@ static inline int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uu
 {
 	return 0;
 }
-static inline void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
+static inline int xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
 {
-	return;
+	return 0;
 }
 #else
 int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
 		      struct ip_layout *ip_layout,
 		      struct ps_kernel_node *ps_kernel);
-void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
+int xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
 #endif
 
 /* context helpers */

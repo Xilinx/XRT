@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc - All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -382,6 +383,13 @@ namespace xdp {
       delete i ;
     }
     xclbin->aie.gmioList.clear() ;
+  }
+
+  double DeviceInfo::getMaxClockRatePLMHz()
+  {
+    if (deviceName.find("aws") != std::string::npos)
+      return 250.0;
+    return 300.0;
   }
 
   bool DeviceInfo::hasAIMNamed(const std::string& name)

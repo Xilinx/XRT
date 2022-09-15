@@ -21,9 +21,9 @@
 // Static Variables / Classes
 SectionSchedulerFW::init SectionSchedulerFW::initializer;
 
-SectionSchedulerFW::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(SCHED_FIRMWARE, "SCHED_FIRMWARE", boost::factory<SectionSchedulerFW*>()); 
+SectionSchedulerFW::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(SCHED_FIRMWARE, "SCHED_FIRMWARE", boost::factory<SectionSchedulerFW*>());
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

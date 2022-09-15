@@ -27,7 +27,7 @@ class SectionOverlay : public Section {
   static class init {
    public:
     init();
-  } initializer; 
+  } initializer;
 };
 
 #endif

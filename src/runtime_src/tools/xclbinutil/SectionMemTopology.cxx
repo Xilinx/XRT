@@ -26,9 +26,9 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionMemTopology::init SectionMemTopology::initializer;
 
-SectionMemTopology::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(MEM_TOPOLOGY, "MEM_TOPOLOGY", boost::factory<SectionMemTopology*>()); 
+SectionMemTopology::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(MEM_TOPOLOGY, "MEM_TOPOLOGY", boost::factory<SectionMemTopology*>());
   sectionInfo->nodeName = "mem_topology";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);
@@ -43,7 +43,8 @@ SectionMemTopology::init::init()
 // ----------------------------------------------------------------------------
 
 const std::string
-SectionMemTopology::getMemTypeStr(MEM_TYPE _memType) const {
+SectionMemTopology::getMemTypeStr(MEM_TYPE _memType) const
+{
   switch (_memType) {
     case MEM_DDR3:
       return "MEM_DDR3";
@@ -71,11 +72,12 @@ SectionMemTopology::getMemTypeStr(MEM_TYPE _memType) const {
       return "MEM_PS_KERNEL";
   }
 
-  return (boost::format("UNKNOWN (%d)") % (unsigned int) _memType).str();
+  return (boost::format("UNKNOWN (%d)") % (unsigned int)_memType).str();
 }
 
 MEM_TYPE
-SectionMemTopology::getMemType(std::string& _sMemType) const {
+SectionMemTopology::getMemType(std::string& _sMemType) const
+{
   if (_sMemType == "MEM_DDR3")
     return MEM_DDR3;
 
@@ -120,14 +122,15 @@ SectionMemTopology::getMemType(std::string& _sMemType) const {
 void
 SectionMemTopology::marshalToJSON(char* _pDataSection,
                                   unsigned int _sectionSize,
-                                  boost::property_tree::ptree& _ptree) const {
+                                  boost::property_tree::ptree& _ptree) const
+{
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: MEM_TOPOLOGY");
   XUtil::TRACE_BUF("Section Buffer", reinterpret_cast<const char*>(_pDataSection), _sectionSize);
 
   // Do we have enough room to overlay the header structure
   if (_sectionSize < sizeof(mem_topology)) {
-    auto errMsg = boost::format("ERROR: Section size (%d) is smaller than the size of the mem_topology structure (%d)") %_sectionSize % sizeof(mem_topology);
+    auto errMsg = boost::format("ERROR: Section size (%d) is smaller than the size of the mem_topology structure (%d)") % _sectionSize % sizeof(mem_topology);
     throw std::runtime_error(errMsg.str());
   }
 
@@ -138,7 +141,7 @@ SectionMemTopology::marshalToJSON(char* _pDataSection,
 
   // Write out the entire structure except for the array structure
   XUtil::TRACE_BUF("mem_topology", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_mem_data[0]) - (uint64_t)pHdr));
-  mem_topology.put("m_count", (boost::format("%d") % (unsigned int) pHdr->m_count).str());
+  mem_topology.put("m_count", (boost::format("%d") % (unsigned int)pHdr->m_count).str());
 
   uint64_t expectedSize = ((uint64_t)&(pHdr->m_mem_data[0]) - (uint64_t)pHdr) + (sizeof(mem_data) * pHdr->m_count);
 
@@ -152,12 +155,12 @@ SectionMemTopology::marshalToJSON(char* _pDataSection,
     boost::property_tree::ptree mem_data;
 
     XUtil::TRACE(boost::format("[%d]: m_type: %s, m_used: %d, m_sizeKB: 0x%lx, m_tag: '%s', m_base_address: 0x%lx")
-                               % index
-                               % getMemTypeStr((MEM_TYPE)pHdr->m_mem_data[index].m_type)
-                               % (unsigned int)pHdr->m_mem_data[index].m_used
-                               % pHdr->m_mem_data[index].m_size
-                               % pHdr->m_mem_data[index].m_tag
-                               % pHdr->m_mem_data[index].m_base_address);
+                 % index
+                 % getMemTypeStr((MEM_TYPE)pHdr->m_mem_data[index].m_type)
+                 % (unsigned int)pHdr->m_mem_data[index].m_used
+                 % pHdr->m_mem_data[index].m_size
+                 % pHdr->m_mem_data[index].m_tag
+                 % pHdr->m_mem_data[index].m_base_address);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("mem_data", reinterpret_cast<const char*>(&(pHdr->m_mem_data[index])), sizeof(mem_data));
@@ -168,7 +171,7 @@ SectionMemTopology::marshalToJSON(char* _pDataSection,
     mem_data.put("m_tag", (boost::format("%s") % pHdr->m_mem_data[index].m_tag).str());
     mem_data.put("m_base_address", (boost::format("0x%lx") % pHdr->m_mem_data[index].m_base_address).str());
 
-    m_mem_data.push_back({"", mem_data});   // Used to make an array of objects
+    m_mem_data.push_back({ "", mem_data });   // Used to make an array of objects
   }
 
   mem_topology.add_child("m_mem_data", m_mem_data);
@@ -180,10 +183,11 @@ SectionMemTopology::marshalToJSON(char* _pDataSection,
 
 void
 SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
-                                    std::ostringstream& _buf) const {
+                                    std::ostringstream& _buf) const
+{
   const boost::property_tree::ptree& ptMemtopPayload = _ptSection.get_child("mem_topology");
 
-  mem_topology memTopologyHdr = mem_topology {0};
+  mem_topology memTopologyHdr = mem_topology{};
 
   // Read, store, and report mem_topology data
   memTopologyHdr.m_count = ptMemtopPayload.get<uint32_t>("m_count");
@@ -205,7 +209,7 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
   unsigned int count = 0;
   boost::property_tree::ptree memDatas = ptMemtopPayload.get_child("m_mem_data");
   for (const auto& kv : memDatas) {
-    mem_data memData = mem_data {0};
+    mem_data memData = mem_data{};
     boost::property_tree::ptree ptMemData = kv.second;
 
     auto sm_type = ptMemData.get<std::string>("m_type");
@@ -217,7 +221,7 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
     size_t maxTagLength = sizeof(mem_data::m_tag) - 1;
     if (sm_tag.length() > maxTagLength) {
       auto errMsg = boost::format("ERROR: The m_tag entry length (%d), exceeds the allocated space (%d) available.  Name: '%s'")
-                                  % (unsigned int) sm_tag.length() % ((unsigned int) maxTagLength) % sm_tag;
+          % (unsigned int)sm_tag.length() % ((unsigned int)maxTagLength) % sm_tag;
       throw std::runtime_error(errMsg.str());
     }
 
@@ -237,14 +241,14 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
           throw std::runtime_error(errMsg.str());
         }
 
-        memData.m_size = memData.m_size / (uint64_t) 1024;
+        memData.m_size = memData.m_size / (uint64_t)1024;
       }
 
       boost::optional<std::string> sizeKB = ptMemData.get_optional<std::string>("m_sizeKB");
       if (sizeBytes.is_initialized() && sizeKB.is_initialized()) {
         auto errMsg = boost::format("ERROR: 'm_size' (%s) and 'm_sizeKB' (%s) are mutually exclusive.")
-                                    % static_cast<std::string>(sizeBytes.get())
-                                    % static_cast<std::string>(sizeKB.get());
+            % static_cast<std::string>(sizeBytes.get())
+            % static_cast<std::string>(sizeKB.get());
         throw std::runtime_error(errMsg.str());
       }
 
@@ -257,12 +261,12 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
     }
 
     XUtil::TRACE(boost::format("[%d]: m_type: %d, m_used: %d, m_size: 0x%lx, m_tag: '%s', m_base_address: 0x%lx")
-                               % count
-                               % (unsigned int) memData.m_type
-                               % (unsigned int) memData.m_used
-                               % memData.m_size
-                               % memData.m_tag
-                               % memData.m_base_address);
+                 % count
+                 % (unsigned int)memData.m_type
+                 % (unsigned int)memData.m_used
+                 % memData.m_size
+                 % memData.m_tag
+                 % memData.m_base_address);
 
     // Write out the entire structure
     XUtil::TRACE_BUF("mem_data", reinterpret_cast<const char*>(&memData), sizeof(mem_data));
@@ -273,16 +277,16 @@ SectionMemTopology::marshalFromJSON(const boost::property_tree::ptree& _ptSectio
   // -- The counts should match --
   if (count != (unsigned int)memTopologyHdr.m_count) {
     auto errMsg = boost::format("ERROR: Number of mem_data sections (%d) does not match expected encoded value: %d")
-                                % (unsigned int) count % (unsigned int) memTopologyHdr.m_count;
+        % (unsigned int)count % (unsigned int)memTopologyHdr.m_count;
     throw std::runtime_error(errMsg.str());
   }
 
   // -- Buffer needs to be less than 64K--
-  unsigned int bufferSize = (unsigned int) _buf.str().size();
+  unsigned int bufferSize = (unsigned int)_buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
-  if ( bufferSize > maxBufferSize ) {
+  if (bufferSize > maxBufferSize) {
     auto errMsg = boost::format("CRITICAL WARNING: The buffer size for the MEM_TOPOLOGY (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.")
-                                % (unsigned int) bufferSize % (unsigned int) maxBufferSize;
+        % (unsigned int)bufferSize % (unsigned int)maxBufferSize;
     std::cout << errMsg << std::endl;
     // throw std::runtime_error(errMsg);
   }

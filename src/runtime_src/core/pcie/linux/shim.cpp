@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * XRT PCIe library layered on top of xocl kernel driver
  *
@@ -24,6 +25,8 @@
 #include "xclbin.h"
 
 #include "core/include/shim_int.h"
+#include "core/include/xdp/fifo.h"
+#include "core/include/xdp/trace.h"
 #include "core/include/experimental/xrt_hw_context.h"
 
 #include "core/common/bo_cache.h"
@@ -76,11 +79,6 @@
 #define ARRAY_SIZE(x)   (sizeof (x) / sizeof (x[0]))
 
 #define SHIM_QDMA_AIO_EVT_MAX   1024 * 64
-
-// Profiling
-#define AXI_FIFO_RDFD_AXI_FULL          0x1000
-#define MAX_TRACE_NUMBER_SAMPLES                        16384
-#define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
 
 namespace xq = xrt_core::query;
 namespace {
@@ -649,6 +647,8 @@ init(unsigned int index)
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
+    // flush aie trace and write outputs
+    xdp::aie::finish_flush_device(this) ;
 
     // The BO cache unmaps and releases all execbo, but this must
     // be done before the device is closed.
@@ -1216,6 +1216,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
         uint64_t allocated_size = 0;
         uint32_t page_num = size >> 30;
         drm_xocl_alloc_cma_info cma_info = {0};
+        std::vector<uint64_t> user_addr(page_num, 0);
 
         /* We check the sysfs node host_mem_size first before going forward
          * If the same size of host memory chunk is allocated
@@ -1228,8 +1229,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
         cma_info.total_size = size;
         cma_info.entry_num = page_num;
-
-        cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
+        cma_info.user_addr = user_addr.data();
 
         for (uint32_t i = 0; i < page_num; ++i) {
             void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
@@ -1252,7 +1252,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
             if (!cma_info.user_addr[i])
                 continue;
 
-             munmap((void*)cma_info.user_addr[i], page_sz);
+            munmap((void*)cma_info.user_addr[i], page_sz);
         }
 
         if (ret) {
@@ -1383,16 +1383,9 @@ xclLoadXclBin(const xclBin *buffer)
   xdp::aie::update_device(this);
   xdp::pl_deadlock::update_device(this);
 
-  // scheduler::init can not be skipped even for same_xclbin as in
-  // multiple process stress tests it fails as below init step is
-  // without a lock with above driver load xclbin step.  New KDS fixes
-  // this by ensuring that scheduler init is done by driver itself
-  // along with icap download in single command call and then below
-  // init step in user space is ignored
-  auto ret = xrt_core::scheduler::init(this, buffer);
   START_DEVICE_PROFILING_CB(this);
 
-  return ret;
+  return 0;
 }
 
 /*
@@ -1874,9 +1867,9 @@ int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t 
 
 int shim::xclGetTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
 {
-  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
+  uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
 
-  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
 
   return 0;
@@ -1889,7 +1882,7 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 
     uint32_t size = 0;
 
-    wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+    wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
     uint32_t numWords = numSamples * wordsPerSample;
 
 //    alignas is defined in c++11
@@ -1897,9 +1890,9 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
     /* Alignment is limited to 16 by PPC64LE : so , should it be
     alignas(16) uint32_t hostbuf[traceBufSzInWords];
     */
-    alignas(AXI_FIFO_RDFD_AXI_FULL) uint32_t hostbuf[traceBufWordSz];
+    alignas(xdp::IP::FIFO::alignment) uint32_t hostbuf[traceBufWordSz];
 #else
-    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+    xrt_core::AlignedAllocator<uint32_t> alignedBuffer(xdp::IP::FIFO::alignment, traceBufWordSz);
     uint32_t* hostbuf = alignedBuffer.getBuffer();
 #endif
 
@@ -1918,10 +1911,10 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
       for (; words < (numWords-chunkSizeWords); words += chunkSizeWords) {
           if(mLogStream.is_open())
             mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+		       << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
                           << (void *)(hostbuf + words) << std::dec << std::endl;
 
-        xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+	  xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
 
         size += chunkSizeBytes;
       }
@@ -1933,11 +1926,11 @@ int shim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamp
 
       if(mLogStream.is_open()) {
         mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+		   << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0]*/ << " and writing it to 0x"
                       << (void *)(hostbuf + words) << std::dec << std::endl;
       }
 
-      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      xclUnmgdPread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
 
       size += chunkSizeBytes;
     }
@@ -2005,24 +1998,6 @@ int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath
   return 0;
 }
 
-int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
-{
-  auto dev = pcidev::get_dev(mBoardNumber);
-  uint16_t user_instance = dev->instance;
-  uint16_t nifd_instance = 0;
-  std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
-  std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
-  info->device_type = DeviceType::XBB;
-  info->device_index = mBoardNumber;
-  info->user_instance = user_instance;
-  info->nifd_instance = nifd_instance;
-  strncpy(info->device_name, device_name.c_str(), MAX_NAME_LEN - 1);
-  strncpy(info->nifd_name, nifd_name.c_str(), MAX_NAME_LEN - 1);
-  info->device_name[MAX_NAME_LEN-1] = '\0';
-  info->nifd_name[MAX_NAME_LEN-1] = '\0';
-  return 0;
-}
-
 int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
   std::lock_guard<std::mutex> lk(mCuMapLock);
@@ -2069,7 +2044,7 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     return -EINVAL;
   }
 
-  if (cumap.start != 0xFFFFFFFF) {
+  if (cumap.start) {
     if (!rd) {
         xrt_logmsg(XRT_ERROR, "%s: read range is set, not allow write", __func__);
         return -EINVAL;
@@ -2193,7 +2168,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // Alveo Linux PCIE does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
   auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
@@ -2201,11 +2176,22 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   return cuidx;
 }
 
+void
+shim::
+close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  // To-be-implemented
+  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+}
+
 // Assign xclbin with uuid to hardware resources and return a context id
 // The context handle is 1:1 with a slot idx
 uint32_t
 shim::
-create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
+create_hw_context(const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  xrt::hw_context::access_mode mode)
 {
   // Explicit hardware contexts are not supported in Alveo.
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -2248,11 +2234,21 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
   return shim->open_cu_context(hwctx, cuname);
 }
 
-uint32_t // ctxhdl aka slotidx
-create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 {
   auto shim = get_shim_object(handle);
-  return shim->create_hw_context(xclbin_uuid, qos);
+  return shim->close_cu_context(hwctx, cuidx);
+}
+
+uint32_t // ctxhdl aka slotidx
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  const xrt::hw_context::access_mode mode)
+{
+  auto shim = get_shim_object(handle);
+  return shim->create_hw_context(xclbin_uuid, qos, mode);
 }
 
 void
@@ -2800,12 +2796,6 @@ int xclGetSysfsPath(xclDeviceHandle handle, const char* subdev,
   if (!drv)
     return -1;
   return drv->xclGetSysfsPath(subdev, entry, sysfsPath, size);
-}
-
-int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceInfo* info)
-{
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclGetDebugProfileDeviceInfo(info) : -ENODEV;
 }
 
 int xclIPName2Index(xclDeviceHandle handle, const char *name)

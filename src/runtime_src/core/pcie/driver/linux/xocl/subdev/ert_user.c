@@ -26,6 +26,7 @@
 #define ERT_TICKS_PER_SEC	2
 #define ERT_TIMER		(HZ / ERT_TICKS_PER_SEC) /* in jiffies */
 #define ERT_EXEC_DEFAULT_TTL	(5UL * ERT_TICKS_PER_SEC)
+#define ERT_NO_SLEEP_THRESHOLD  16
 
 #ifdef SCHED_VERBOSE
 #define	ERTUSER_ERR(ert_user, fmt, arg...)	\
@@ -138,6 +139,8 @@ struct xocl_ert_user {
 	/* ert validate result cache*/
 	struct ert_validate_cmd ert_valid;
 	struct ert_access_valid_cmd ert_access_valid;
+
+	uint32_t                no_sleep_cnt;
 };
 
 static void ert_submit_exit_cmd(struct xocl_ert_user *ert_user);
@@ -1301,8 +1304,16 @@ int ert_user_thread(void *data)
 		 * It only goes to sleep if there is no event
 		 */
 		if (ert_user_thread_sleep_condition(ert_user)) {
+			ert_user->no_sleep_cnt = 0;
 			if (down_interruptible(&ert_user->sem))
 				ret = -ERESTARTSYS;
+		} else {
+			ert_user->no_sleep_cnt++;
+		}
+
+		if (ert_user->no_sleep_cnt == ERT_NO_SLEEP_THRESHOLD) {
+			ert_user->no_sleep_cnt = 0;
+			schedule();
 		}
 
 		process_ert_pq(ert_user, &ert_user->pq, &ert_user->rq);
@@ -1546,6 +1557,7 @@ static int ert_user_probe(struct platform_device *pdev)
 	}
 
 	ert_user->polling_mode = false;
+	ert_user->no_sleep_cnt = 0;
 
 	ert_user->ert.submit = ert_user_submit;
 	ert_user->ert.abort = xocl_ert_user_abort;

@@ -13,8 +13,7 @@
 #include "core/common/device.h"
 #include "core/common/bo_cache.h"
 #include "core/common/xrt_profiling.h"
-
-#include "core/include/xcl_app_debug.h"
+#include "core/include/xdp/app_debug.h"
 #include "core/include/experimental/xrt_hw_context.h"
 
 #include <cstdint>
@@ -69,6 +68,7 @@ public:
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
   // aka xclOpenContextByName()
   xrt_core::cuidx_type open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
+  void close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
   int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
   int xclSKGetCmd(xclSKCmd *cmd);
@@ -110,13 +110,14 @@ public:
   bool isGood() const;
   static shim *handleCheck(void *handle, bool checkDrmFd = true);
   int xclIPName2Index(const char *name);
+  int xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size);
 
   // Application debug path functionality for xbutil
-  size_t xclDebugReadCheckers(xclDebugCheckersResults* aCheckerResults);
-  size_t xclDebugReadCounters(xclDebugCountersResults* aCounterResults);
-  size_t xclDebugReadAccelMonitorCounters(xclAccelMonitorCounterResults* samResult);
-  size_t xclDebugReadStreamingCounters(xclStreamingDebugCountersResults* aCounterResults);
-  size_t xclDebugReadStreamingCheckers(xclDebugStreamingCheckersResults* aStreamingCheckerResults);
+  size_t xclDebugReadCheckers(xdp::LAPCCounterResults* aCheckerResults);
+  size_t xclDebugReadCounters(xdp::AIMCounterResults* aCounterResults);
+  size_t xclDebugReadAccelMonitorCounters(xdp::AMCounterResults* samResult);
+  size_t xclDebugReadStreamingCounters(xdp::ASMCounterResults* aCounterResults);
+  size_t xclDebugReadStreamingCheckers(xdp::SPCCounterResults* aStreamingCheckerResults);
   uint32_t getIPCountAddrNames(int type, uint64_t* baseAddress,
                               std::string* portNames,
                               uint8_t* properties, uint8_t* majorVersions,

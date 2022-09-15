@@ -170,7 +170,7 @@ int xocl_register_cus(xdev_handle_t xdev_hdl, int slot_hdl, xuid_t *uuid,
 	return xocl_kds_register_cus(xdev, slot_hdl, uuid, ip_layout, ps_kernel);
 }
 
-void xocl_unregister_cus(xdev_handle_t xdev_hdl, int slot_hdl)
+int xocl_unregister_cus(xdev_handle_t xdev_hdl, int slot_hdl)
 {
 	struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
 
@@ -710,18 +710,25 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data;
 	struct xcl_mailbox_peer_state *st = NULL;
 	struct xclErrorLast err_last;
+	/* Variables for firewall request processing */
+	struct xcl_firewall fw_status = { 0 };
 
 	if (err != 0)
 		return;
 
 	userpf_info(xdev, "received request (%d) from peer\n", req->req);
-
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_FIREWALL:
+		/* Update the xocl firewall status */
+		xocl_af_check(xdev, NULL);
+		/* Get the updated xocl firewall status */
+		xocl_af_get_data(xdev, &fw_status);
+		userpf_info(xdev, 
+			"AXI Firewall %llu tripped", fw_status.err_detected_level);
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
 		err_last.pid = 0;
-		err_last.ts = 0; //TODO timestamp
+		err_last.ts = fw_status.err_detected_time;
 		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_FIRWWALL_TRIP, 
 			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
 			XRT_ERROR_MODULE_FIREWALL, XRT_ERROR_CLASS_HARDWARE);
@@ -1042,6 +1049,7 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 		goto done;
 
 	mb_req->req = XCL_MAILBOX_REQ_SDR_DATA;
+	mb_req->flags = 0x0;
 	subdev_peer.size = resp_len;
 	subdev_peer.kind = kind;
 	subdev_peer.entries = 1;
@@ -1251,7 +1259,7 @@ static void xocl_cma_mem_free(struct xocl_dev *xdev, uint32_t idx)
 
 	if (cma_mem->regular_page) {
 		dma_unmap_page(&xdev->core.pdev->dev, cma_mem->paddr,
-			cma_mem->size, PCI_DMA_BIDIRECTIONAL);
+			cma_mem->size, DMA_BIDIRECTIONAL);
 		__free_pages(cma_mem->regular_page, get_order(cma_mem->size));
 		cma_mem->regular_page = NULL;
 	} else if (cma_mem->pages) {
@@ -1501,7 +1509,7 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_dev *xdev, uint64_t size, uint3
 	}
 
 	dma_addr = dma_map_page(dev, page, 0, size,
-		PCI_DMA_BIDIRECTIONAL);
+		DMA_BIDIRECTIONAL);
 	if (unlikely(dma_mapping_error(dev, dma_addr))) {
 		DRM_ERROR("Unable to dma map pages");
 		__free_pages(page, order);
@@ -1512,7 +1520,7 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_dev *xdev, uint64_t size, uint3
 		roundup(PAGE_SIZE, size) >> PAGE_SHIFT);
 
 	if (!cma_mem->pages) {
-		dma_unmap_page(dev, dma_addr, size, PCI_DMA_BIDIRECTIONAL);
+		dma_unmap_page(dev, dma_addr, size, DMA_BIDIRECTIONAL);
 		__free_pages(page, order);
 		return -ENOMEM;
 	}
@@ -1782,18 +1790,18 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	xocl_drvinst_set_offline(xdev, false);
 
-	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
+	if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(64))) {
 		/* query for DMA transfer */
 		/* @see Documentation/DMA-mapping.txt */
 		xocl_info(&pdev->dev, "pci_set_dma_mask()\n");
 		/* use 64-bit DMA */
 		xocl_info(&pdev->dev, "Using a 64-bit DMA mask.\n");
 		/* use 32-bit DMA for descriptors */
-		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
+		dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
 		/* use 64-bit DMA, 32-bit for consistent */
-	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
+	} else if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(32))) {
 		xocl_info(&pdev->dev, "Could not set 64-bit DMA mask.\n");
-		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
+		dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
 		/* use 32-bit DMA */
 		xocl_info(&pdev->dev, "Using a 32-bit DMA mask.\n");
 	} else {

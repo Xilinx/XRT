@@ -524,6 +524,19 @@ int Mpd::localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
              *((int *)(processed->payloadData())));
         break;
     }
+    case XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN: {//mandatory for every plugin for multislot support
+        Sw_mb_container c(sizeof(int), orig->id());
+        if (plugin_cbs.mb_req.load_slot_xclbin) {
+            int *resp = reinterpret_cast<int *>(c.get_payload_buf());
+	    /* Req data has both slot id and xclbin data encoded */
+            const char *req_data = reinterpret_cast<char *>(req->data);
+            c.set_hook(std::bind(plugin_cbs.mb_req.load_slot_xclbin, dev.getIndex(), req_data, resp));
+        }
+        processed = c.get_response();
+        dev.log(LOG_INFO, "mpd daemon: response %d sent ret = %d", req->req,
+             *((int *)(processed->payloadData())));
+        break;
+    }
     case XCL_MAILBOX_REQ_PEER_DATA: {//optional. aws plugin need to implement this.
         xcl_mailbox_subdev_peer *subdev_req =
             reinterpret_cast<xcl_mailbox_subdev_peer *>(req->data);

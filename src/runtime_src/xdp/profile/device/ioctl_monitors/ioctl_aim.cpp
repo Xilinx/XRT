@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2020-2022 Xilinx Inc - All rights reserved
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -15,7 +16,7 @@
  * under the License.
  */
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(SKIP_IOCTL)
 
 #include <sys/fcntl.h>
 #include <sys/mman.h>
@@ -93,7 +94,7 @@ size_t IOCtlAIM::stopCounter()
   return 0;
 }
 
-size_t IOCtlAIM::readCounter(xclCounterResults& counterResults)
+size_t IOCtlAIM::readCounter(xdp::CounterResults& counterResults)
 {
   if(!isOpened()) {
     return 0;
@@ -148,3 +149,4 @@ int IOCtlAIM::write(uint64_t /*offset*/, size_t size, void* /*data*/)
 
 }
 #endif
+

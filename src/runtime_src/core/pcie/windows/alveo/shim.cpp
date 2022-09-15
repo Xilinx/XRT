@@ -19,8 +19,8 @@
 #include "core/common/xrt_profiling.h"
 #include "core/common/AlignedAllocator.h"
 #include "core/common/api/hw_context_int.h"
-
-#include "core/include/xcl_perfmon_parameters.h"
+#include "core/include/xdp/fifo.h"
+#include "core/include/xdp/trace.h"
 #include "core/include/experimental/xrt_hw_context.h"
 
 #include <windows.h>
@@ -1340,30 +1340,6 @@ done:
     if (!status || bytes != sizeof(xcl_firewall))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_FIREWALL_INFO (get_firewall_info) failed");
   }
-  void
-  get_bdf_info(uint16_t bdf[3])
-  {
-    // TODO: code share with mgmt
-    GUID guid = GUID_DEVINTERFACE_XOCL_USER;
-    auto hdevinfo = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
-    SP_DEVINFO_DATA dev_info_data;
-    dev_info_data.cbSize = sizeof(dev_info_data);
-    DWORD size;
-    SetupDiEnumDeviceInfo(hdevinfo, m_devidx, &dev_info_data);
-    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
-                                     nullptr, nullptr, 0, &size);
-    std::string buf(static_cast<size_t>(size), 0);
-    SetupDiGetDeviceRegistryProperty(hdevinfo, &dev_info_data, SPDRP_LOCATION_INFORMATION,
-                                     nullptr, (PBYTE)buf.data(), size, nullptr);
-
-    std::regex regex("\\D+(\\d+)\\D+(\\d+)\\D+(\\d+)");
-    std::smatch match;
-    if (std::regex_search(buf, match, regex))
-      std::transform(match.begin() + 1, match.end(), bdf,
-                     [](const auto& m) {
-                       return static_cast<uint16_t>(std::stoi(m.str()));
-                     });
-  }
 
   void
   get_kds_custat(char* buffer, DWORD output_sz, int* size_ret)
@@ -1411,7 +1387,7 @@ done:
     // Alveo PCIE does not yet support multiple xclbins.  Call
     // regular flow.  Default access mode to shared unless explicitly
     // exclusive.
-    auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+    auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
     auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
     auto cuidx = m_core_device->get_cuidx(ctxhdl, cuname);
     open_cu_context(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
@@ -1419,6 +1395,14 @@ done:
     return cuidx;
   }
 
+  void
+  shim::
+  close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+  {
+    // To-be-implemented
+    if (close_context(hwctx.get_xclbin_uuid().get(), cuidx.index))
+      throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+  }
 }; // struct shim
 
 shim*
@@ -1505,15 +1489,6 @@ get_debug_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
 }
 
 void
-get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
-{
-  xrt_core::message::
-    send(xrt_core::message::severity_level::debug, "XRT", "get_bdf_info()");
-  auto shim = get_shim_object(hdl);
-  shim->get_bdf_info(bdf);
-}
-
-void
 get_mailbox_info(xclDeviceHandle hdl, xcl_mailbox* value)
 {
   xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "mailbox_info()");
@@ -1586,6 +1561,13 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
 {
   auto shim = get_shim_object(handle);
   return shim->open_cu_context(hwctx, cuname);
+}
+
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  auto shim = get_shim_object(handle);
+  return shim->close_cu_context(hwctx, cuidx);
 }
 
 } // namespace xrt::shim_int
@@ -1979,8 +1961,8 @@ xclGetTraceBufferInfo(xclDeviceHandle handle, uint32_t nSamples,
                       uint32_t& traceSamples, uint32_t& traceBufSz)
 {
   xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "xclGetTraceBufferInfo()");
-  uint32_t bytesPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 8);
-  traceBufSz = MAX_TRACE_NUMBER_SAMPLES * bytesPerSample;   /* Buffer size in bytes */
+  uint32_t bytesPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 8);
+  traceBufSz = xdp::MAX_TRACE_NUMBER_SAMPLES_FIFO * bytesPerSample;   /* Buffer size in bytes */
   traceSamples = nSamples;
   return 0;
 }
@@ -1997,10 +1979,10 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
   const int traceBufWordSz = traceBufSz / 4;  // traceBufSz is in number of bytes
   uint32_t size = 0;
 
-  wordsPerSample = (XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH / 32);
+  wordsPerSample = (xdp::TRACE_FIFO_WORD_WIDTH / 32);
   uint32_t numWords = numSamples * wordsPerSample;
 
-  xrt_core::AlignedAllocator<uint32_t> alignedBuffer(AXI_FIFO_RDFD_AXI_FULL, traceBufWordSz);
+  xrt_core::AlignedAllocator<uint32_t> alignedBuffer(xdp::IP::FIFO::alignment, traceBufWordSz);
   uint32_t* hostbuf = alignedBuffer.getBuffer();
 
   // Now read trace data
@@ -2018,10 +2000,10 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
       #if 0
           if(mLogStream.is_open())
             mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                          << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
-                          << (void *)(hostbuf + words) << std::dec << std::endl;
+                       << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0] or AXI_FIFO_RDFD*/ << " and writing it to 0x"
+                       << (void *)(hostbuf + words) << std::dec << std::endl;
       #endif
-      shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+      shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
       size += chunkSizeBytes;
     }
   }
@@ -2032,11 +2014,11 @@ xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz,
 #if 0
       if(mLogStream.is_open()) {
         mLogStream << __func__ << ": reading " << chunkSizeBytes << " bytes from 0x"
-                      << std::hex << (ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL) /*fifoReadAddress[0]*/ << " and writing it to 0x"
-                      << (void *)(hostbuf + words) << std::dec << std::endl;
+                   << std::hex << (ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD) /*fifoReadAddress[0]*/ << " and writing it to 0x"
+                   << (void *)(hostbuf + words) << std::dec << std::endl;
       }
 #endif
-    shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + AXI_FIFO_RDFD_AXI_FULL /*offset : or AXI_FIFO_RDFD*/);
+    shim->unmgd_pread(0 /*flags*/, (void *)(hostbuf + words) /*buf*/, chunkSizeBytes /*count*/, ipBaseAddress + xdp::IP::FIFO::AXI_LITE::RDFD /*offset : or AXI_FIFO_RDFD*/);
     size += chunkSizeBytes;
   }
 #if 0

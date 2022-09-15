@@ -10,7 +10,6 @@
 #include "memorymanager.h"
 #include "rpc_messages.pb.h"
 
-#include "xclperf.h"
 #include "xcl_api_macros.h"
 #include "xcl_macros.h"
 #include "xclbin.h"
@@ -21,6 +20,9 @@
 #include "core/common/api/xclbin_int.h"
 #include "core/include/experimental/xrt_hw_context.h"
 #include "core/include/experimental/xrt_xclbin.h"
+#include "core/include/xdp/common.h"
+#include "core/include/xdp/counters.h"
+#include "core/include/xdp/trace.h"
 #include "swscheduler.h"
 
 #include <stdarg.h>
@@ -83,6 +85,7 @@ namespace xclcpuemhal2 {
 
       //Configuration
       void socketConnection(bool isTCPSocket);
+      void setDriverVersion(const std::string& version);
       void xclOpen(const char* logfileName);
       int xclLoadXclBin(const xclBin *buffer);
       int xclLoadXclBinNewFlow(const xclBin *buffer);
@@ -111,17 +114,17 @@ namespace xclcpuemhal2 {
       double xclGetHostWriteMaxBandwidthMBps();
       double xclGetKernelReadMaxBandwidthMBps();
       double xclGetKemrnelWriteMaxBandwidthMBps();
-      void xclSetProfilingNumberSlots(xclPerfMonType type, uint32_t numSlots);
-      size_t xclPerfMonClockTraining(xclPerfMonType type);
+      void xclSetProfilingNumberSlots(xdp::MonitorType type, uint32_t numSlots);
+      size_t xclPerfMonClockTraining(xdp::MonitorType type);
       // Counters
-      size_t xclPerfMonStartCounters(xclPerfMonType type);
-      size_t xclPerfMonStopCounters(xclPerfMonType type);
-      size_t xclPerfMonReadCounters(xclPerfMonType type, xclCounterResults& counterResults);
+      size_t xclPerfMonStartCounters(xdp::MonitorType type);
+      size_t xclPerfMonStopCounters(xdp::MonitorType type);
+      size_t xclPerfMonReadCounters(xdp::MonitorType type, xdp::CounterResults& counterResults);
       // Trace
-      size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
-      size_t xclPerfMonStopTrace(xclPerfMonType type);
-      uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
-      size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
+      size_t xclPerfMonStartTrace(xdp::MonitorType type, uint32_t startTrigger);
+      size_t xclPerfMonStopTrace(xdp::MonitorType type);
+      uint32_t xclPerfMonGetTraceCount(xdp::MonitorType type);
+      size_t xclPerfMonReadTrace(xdp::MonitorType type, xdp::TraceEventsVector& traceVector);
 
       // Sanity checks
       int xclGetDeviceInfo2(xclDeviceInfo2 *info);
@@ -308,6 +311,9 @@ namespace xclcpuemhal2 {
       xrt_core::cuidx_type
       open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
 
+      void
+      close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
+
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;
@@ -315,16 +321,16 @@ namespace xclcpuemhal2 {
       // Performance monitoring helper functions
       bool isDSAVersion(double checkVersion, bool onlyThisVersion);
       uint64_t getHostTraceTimeNsec();
-      uint64_t getPerfMonBaseAddress(xclPerfMonType type);
-      uint64_t getPerfMonFifoBaseAddress(xclPerfMonType type, uint32_t fifonum);
-      uint64_t getPerfMonFifoReadBaseAddress(xclPerfMonType type, uint32_t fifonum);
-      uint32_t getPerfMonNumberSlots(xclPerfMonType type);
-      uint32_t getPerfMonNumberSamples(xclPerfMonType type);
-      uint32_t getPerfMonNumberFifos(xclPerfMonType type);
-      uint32_t getPerfMonByteScaleFactor(xclPerfMonType type);
-      uint8_t  getPerfMonShowIDS(xclPerfMonType type);
-      uint8_t  getPerfMonShowLEN(xclPerfMonType type);
-      size_t resetFifos(xclPerfMonType type);
+      uint64_t getPerfMonBaseAddress(xdp::MonitorType type);
+      uint64_t getPerfMonFifoBaseAddress(xdp::MonitorType type, uint32_t fifonum);
+      uint64_t getPerfMonFifoReadBaseAddress(xdp::MonitorType type, uint32_t fifonum);
+      uint32_t getPerfMonNumberSlots(xdp::MonitorType type);
+      uint32_t getPerfMonNumberSamples(xdp::MonitorType type);
+      uint32_t getPerfMonNumberFifos(xdp::MonitorType type);
+      uint32_t getPerfMonByteScaleFactor(xdp::MonitorType type);
+      uint8_t  getPerfMonShowIDS(xdp::MonitorType type);
+      uint8_t  getPerfMonShowLEN(xdp::MonitorType type);
+      size_t resetFifos(xdp::MonitorType type);
       uint32_t bin2dec(std::string str, int start, int number);
       uint32_t bin2dec(const char * str, int start, int number);
       std::string dec2bin(uint32_t n);
@@ -364,8 +370,6 @@ namespace xclcpuemhal2 {
 
       uint64_t mRAMSize;
       size_t mCoalesceThreshold;
-      int mDSAMajorVersion;
-      int mDSAMinorVersion;
       unsigned int mDeviceIndex;
       bool mCloseAll;
 

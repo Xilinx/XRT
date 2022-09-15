@@ -19,7 +19,7 @@ to_string(xrt_core::query::p2p_config::value_type value)
    { xrt_core::query::p2p_config::value_type::disabled,      "disabled" },
    { xrt_core::query::p2p_config::value_type::enabled,       "enabled" },
    { xrt_core::query::p2p_config::value_type::error,         "error" },
-   { xrt_core::query::p2p_config::value_type::reboot,        "reboot" },
+   { xrt_core::query::p2p_config::value_type::no_iomem,        "no iomem" },
    { xrt_core::query::p2p_config::value_type::not_supported, "not supported" },
   };
 
@@ -62,10 +62,10 @@ parse(const xrt_core::query::p2p_config::result_type& config)
     return {xrt_core::query::p2p_config::value_type::not_supported, "P2P config failed. P2P is not supported. Can't find P2P BAR."};
 
   if (config_map.find("rbar") != config_map.end() && config_map.at("rbar") > config_map.at("bar"))
-    return {xrt_core::query::p2p_config::value_type::reboot, "Warning:Please WARM reboot to enable p2p now."};
+    return {xrt_core::query::p2p_config::value_type::no_iomem, "Warning: Please WARM reboot to enable p2p now."};
 
   if (config_map.find("remap") != config_map.end() && config_map.at("remap") > 0 && config_map.at("remap") != config_map.at("bar"))
-    return {xrt_core::query::p2p_config::value_type::error, "Error:P2P config failed. P2P remapper is not set correctly"};
+    return {xrt_core::query::p2p_config::value_type::error, "Error: P2P config failed. P2P remapper is not set correctly"};
 
   if (config_map.find("exp_bar") != config_map.end() && config_map.at("exp_bar") == config_map.at("bar"))
     return {xrt_core::query::p2p_config::value_type::enabled, ""};
@@ -175,6 +175,26 @@ to_range(const std::string& range_str)
   range.end = std::stoul(std::string(*tok_it++), nullptr, radix);
 
   return range;
+}
+
+xrt_core::query::ert_status::ert_status_data
+xrt_core::query::ert_status::
+to_ert_status(const result_type& strs)
+{
+  using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+  xrt_core::query::ert_status::ert_status_data ert_status = {0};
+
+  for (auto& line : strs) {
+    // Format on each line: "<name>: <value>"
+    boost::char_separator<char> sep(":");
+    tokenizer tokens(line, sep);
+    auto tok_it = tokens.begin();
+    if (line.find("Connected:") != std::string::npos) {
+      ert_status.connected = std::stoi(std::string(*(++tok_it)));
+    }
+  }
+
+  return ert_status;
 }
 
 }} // query, xrt_core

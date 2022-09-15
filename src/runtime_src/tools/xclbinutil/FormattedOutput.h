@@ -33,22 +33,22 @@ class Section;
 // ------------------- C L A S S :   S e c t i o n ---------------------------
 
 namespace FormattedOutput {
-  void reportInfo(std::ostream &_ostream, const std::string& _sInputFile, const axlf &_xclBinHeader, const std::vector<Section*> _sections, bool _bVerbose);
-  void getKernelDDRMemory(const std::string & _sKernelInstanceName, const std::vector<Section*> _sections, boost::property_tree::ptree &_ptKernelInstance, boost::property_tree::ptree &_ptMemoryConnections);
-  void reportVersion(bool _bShort = false);
+void reportInfo(std::ostream& _ostream, const std::string& _sInputFile, const axlf& _xclBinHeader, const std::vector<Section*> _sections, bool _bVerbose);
+void getKernelDDRMemory(const std::string& _sKernelInstanceName, const std::vector<Section*> _sections, boost::property_tree::ptree& _ptKernelInstance, boost::property_tree::ptree& _ptMemoryConnections);
+void reportVersion(bool _bShort = false);
 
-  std::string getTimeStampAsString(const axlf &_xclBinHeader);
-  std::string getFeatureRomTimeStampAsString(const axlf &_xclBinHeader);
-  std::string getVersionAsString(const axlf &_xclBinHeader);
-  std::string getMagicAsString(const axlf &_xclBinHeader);
-  std::string getSignatureLengthAsString(const axlf &_xclBinHeader);
-  std::string getKeyBlockAsString(const axlf &_xclBinHeader);
-  std::string getUniqueIdAsString(const axlf &_xclBinHeader);
-  std::string getModeAsString(const axlf &_xclBinHeader);
-  std::string getFeatureRomUuidAsString(const axlf &_xclBinHeader);
-  std::string getPlatformVbnvAsString(const axlf &_xclBinHeader);
-  std::string getXclBinUuidAsString(const axlf &_xclBinHeader);
-  std::string getDebugBinAsString(const axlf &_xclBinHeader);
+std::string getTimeStampAsString(const axlf& _xclBinHeader);
+std::string getFeatureRomTimeStampAsString(const axlf& _xclBinHeader);
+std::string getVersionAsString(const axlf& _xclBinHeader);
+std::string getMagicAsString(const axlf& _xclBinHeader);
+std::string getSignatureLengthAsString(const axlf& _xclBinHeader);
+std::string getKeyBlockAsString(const axlf& _xclBinHeader);
+std::string getUniqueIdAsString(const axlf& _xclBinHeader);
+std::string getModeAsString(const axlf& _xclBinHeader);
+std::string getFeatureRomUuidAsString(const axlf& _xclBinHeader);
+std::string getPlatformVbnvAsString(const axlf& _xclBinHeader);
+std::string getXclBinUuidAsString(const axlf& _xclBinHeader);
+std::string getDebugBinAsString(const axlf& _xclBinHeader);
 }
 
 #endif
