@@ -169,7 +169,7 @@ xclbin signing process is similar to signing of Linux kernel modules. xclbins ca
 XRT **xclbinutil** utility. The signing adds a PKCS7 signature at the end of xclbin. The signing
 certificate is then registered with appropriate key-ring. When Linux is running in UEFI secure 
 mode, signature verification is enforced using signing certification in *system* key-ring (when 
-Linux is not running in secure mode there is no verification). 
+Linux is not running in secure mode there is no such verification). 
 
 
 Firewall
