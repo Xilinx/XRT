@@ -10,9 +10,7 @@ include_directories(
   )
 
 add_executable(${TESTNAME}
-  ../common/includes/xcl2/xcl2.cpp
-  ../common/includes/cmdparser/cmdlineparser.cpp
-  ../common/includes/logger/logger.cpp src/host.cpp
+  src/host.cpp
   )
 
 if (NOT WIN32)
