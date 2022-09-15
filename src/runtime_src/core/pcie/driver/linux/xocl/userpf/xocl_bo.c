@@ -939,8 +939,11 @@ static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t
 	/* Now perform DMA */
 	migrated = xocl_migrate_bo(xdev, unmgd.sgt, dir, paddr, channel,
 		size);
+	/* Validate the amount of migrated data */
 	if (migrated >= 0)
 		ret = (migrated == size) ? 0 : -EIO;
+	else /* In the event of an error set ret to the return code */
+		ret = (int) migrated;
 
 	xocl_release_channel(xdev, dir, channel);
 clear:
