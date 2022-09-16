@@ -66,28 +66,20 @@ static ssize_t xdma_migrate_bo(struct platform_device *pdev,
 	int nents = sgt->orig_nents;
 	pid_t pid = current->pid;
 	int i = 0;
-	ssize_t ret = 0;
-	ssize_t migrated = 0;
+	ssize_t ret;
 	unsigned long long pgaddr;
 
 	xdma = platform_get_drvdata(pdev);
 	xocl_dbg(&pdev->dev, "TID %d, Channel:%d, Offset: 0x%llx, Dir: %d",
 		pid, channel, paddr, dir);
-	migrated = xdma_xfer_fastpath(xdma->dma_handle, channel, dir,
+	ret = xdma_xfer_fastpath(xdma->dma_handle, channel, dir,
 		paddr, sgt, false, 10000);
-	if (migrated >= 0) {
+	ret = -EINVAL;
+	if (ret >= 0) {
 		xdma->channel_usage[dir][channel] += ret;
-		 /* Verify the correct amount of data was migrated */
-		if (migrated != len) {
-			ret = -EIO;
-			xocl_err(&pdev->dev, "Invalid data transfer count. Expected: %lld Transfered: %ld",
-				len, migrated);
-		}
 		return ret;
 	}
 
-	/* Data transfer failed processing */
-	ret = (int) migrated;
 	xocl_err(&pdev->dev, "DMA failed, Dumping SG Page Table, ep addr %llx",
 		paddr);
 	for (i = 0; i < nents; i++, sg = sg_next(sg)) {

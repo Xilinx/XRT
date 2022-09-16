@@ -337,7 +337,6 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	u32 nents;
 	pid_t pid = current->pid;
 	ssize_t ret = 0;
-	ssize_t migrated = 0;
 
 	qdma = platform_get_drvdata(pdev);
 	xocl_dbg(&pdev->dev, "TID %d, Channel:%d, Offset: 0x%llx, write: %d",
@@ -371,17 +370,11 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	req->sgl = (struct qdma_sw_sg *)(req + 1);
 	fill_qdma_request_sgl(req, sgt);
 
-	migrated = qdma_request_submit(qdma->dma_hndl, chan->queue, req);
+	ret = qdma_request_submit(qdma->dma_hndl, chan->queue, req);
 
-	if (migrated >= 0) {
-		chan->total_trans_bytes += migrated;
-		if (migrated != len) {
-			ret = -EIO;
-			xocl_err(&pdev->dev, "Invalid data transfer count. Expected: %lld Transfered: %ld",
-				len, migrated);
-		}
+	if (ret >= 0) {
+		chan->total_trans_bytes += ret;
 	} else  {
-		ret = (int) migrated;
 		xocl_err(&pdev->dev, "DMA failed %ld, Dumping SG Page Table",
 			ret);
 		dump_sgtable(&pdev->dev, sgt);
