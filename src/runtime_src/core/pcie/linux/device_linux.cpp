@@ -63,7 +63,10 @@ get_render_value(const std::string& dir)
 inline pdev
 get_pcidev(const xrt_core::device* device)
 {
-  return pcidev::get_dev(device->get_device_id(), device->is_userpf());
+  auto pdev = pcidev::get_dev(device->get_device_id(), device->is_userpf());
+  if (!pdev)
+    throw xrt_core::error("Invalid device handle");
+  return pdev;
 }
 
 static std::vector<uint64_t>
