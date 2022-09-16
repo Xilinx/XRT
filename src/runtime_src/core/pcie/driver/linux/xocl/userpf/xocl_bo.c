@@ -876,8 +876,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	}
 	/* Now perform DMA */
 	ret = xocl_migrate_bo(xdev, sgt, dir, paddr, channel, args->size);
-	if (ret >= 0)
-		ret = (ret == args->size) ? 0 : -EIO;
+
 	xocl_release_channel(xdev, dir, channel);
 clear:
 	if (args->offset || (args->size != xobj->base.size)) {
@@ -920,7 +919,6 @@ static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t
 	int channel;
 	struct drm_xocl_unmgd unmgd;
 	int ret;
-	ssize_t migrated;
 
 	ret = xocl_init_unmgd(&unmgd, data_ptr, size, dir);
 	if (ret) {
@@ -936,13 +934,7 @@ static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t
 		goto clear;
 	}
 	/* Now perform DMA */
-	migrated = xocl_migrate_bo(xdev, unmgd.sgt, dir, paddr, channel,
-		size);
-	/* Validate the amount of migrated data */
-	if (migrated >= 0)
-		ret = (migrated == size) ? 0 : -EIO;
-	else /* In the event of an error set ret to the return code */
-		ret = (int) migrated;
+	ret = xocl_migrate_bo(xdev, unmgd.sgt, dir, paddr, channel, size);
 
 	xocl_release_channel(xdev, dir, channel);
 clear:
@@ -1084,7 +1076,7 @@ int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 	struct sg_table *sgt = NULL;
 	struct sg_table *tmp_sgt = NULL;
 	int channel = 0;
-	ssize_t ret = 0;
+	int ret = 0;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	u32 dir = 0;
@@ -1180,8 +1172,7 @@ int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 
 	/* Now perform the copy via DMA engine */
 	ret = xocl_migrate_bo(xdev, sgt, dir, local_pa, channel, cp_size);
-	if (ret >= 0)
-		ret = (ret == cp_size) ? 0 : -EIO;
+
 	xocl_release_channel(xdev, dir, channel);
 
 out:
@@ -1464,7 +1455,6 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 	 */
 
 	ret = xocl_migrate_unmgd(xdev, args->data_ptr, args->paddr, args->size, 0);
-
 	return ret;
 }
 
