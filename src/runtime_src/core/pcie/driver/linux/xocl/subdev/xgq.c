@@ -1117,6 +1117,108 @@ static int xgq_clear_firewall(struct platform_device *pdev)
 	return xgq_firewall_op(pdev, XGQ_CMD_LOG_AF_CLEAR);
 }
 
+static int xgq_vmr_identify_op(struct platform_device *pdev)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xocl_xgq_vmr_cmd *cmd = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	struct xgq_cmd_resp_identify *version = NULL;
+	int ret = 0;
+	int id = 0;
+	u32 address = 0;
+	u32 len = 0;
+	u32 major = 0, minor = 0;
+
+	/* skip periodic firewall check when xgq service is halted */
+	if (xgq->xgq_halted)
+		return 0;
+
+	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry please");
+		return 0;
+	}
+
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq_vmr = xgq;
+
+	if (shm_acquire_log_page(xgq, &address, &len)) {
+		ret = 0;
+		XGQ_ERR(xgq, "shared memory is busy, retry please");
+		goto acquire_failed;
+	}
+
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_IDENTIFY;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = 0;
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto cid_alloc_failed;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		/* return 0, because it is not a firewall trip */
+		ret = 0;
+		goto done;
+	}
+
+	/* wait for command completion */
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
+		/* this is not a firewall trip */
+		ret = 0;
+		goto done;
+	}
+
+	ret = (cmd->xgq_cmd_rcode == -ETIME || cmd->xgq_cmd_rcode == -EINVAL) ?
+		0 : cmd->xgq_cmd_rcode;
+
+	if (ret) {
+		/*
+			TO DO
+		Return Case Needs more Handling after VMR Response
+		Return Status needs to be updated in the structures ? David to review
+		*/
+		version = (struct xgq_cmd_resp_identify *)&cmd->xgq_cmd_cq_payload;
+		major = version->major;
+		minor = version->minor;
+		if(major == 1 && minor == 0)
+			ret = 0;
+		else
+			XGQ_ERR(xgq, "VMR Identify Command Failed major.minor = %d.%d",major,minor);
+	}
+//Error handling needs more work 
+
+done:
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
+	shm_release_log_page(xgq);
+
+acquire_failed:
+	kfree(cmd);
+
+	return ret;
+}
+
+static int xgq_vmr_identify_cmd(struct platform_device *pdev)
+{
+	return xgq_vmr_identify_op(pdev);
+}
+
 static int vmr_info_query_op(struct platform_device *pdev,
 	char *buf, size_t *cnt, enum xgq_cmd_log_page_type type_pid)
 {
@@ -2614,6 +2716,14 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	//VMR Identify Command
+        ret = xgq_vmr_identify_cmd(pdev);
+        if(ret)
+	{
+		;
+		//TO Do
+        }
+
 	ret = xgq_log_page_system_dtb(pdev, &xgq->xgq_vmr_system_dtb,
 			&xgq->xgq_vmr_system_dtb_size);
 	if (ret) {
@@ -2671,6 +2781,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
 	.vmr_load_firmware = xgq_log_page_metadata,
+	.xgq_vmr_identify_cmd = xgq_vmr_identify_cmd,
 };
 
 static const struct file_operations xgq_vmr_fops = {
