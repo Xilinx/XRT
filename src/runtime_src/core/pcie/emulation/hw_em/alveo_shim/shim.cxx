@@ -215,18 +215,14 @@ namespace xclhwemhal2 {
         }
         for (auto& matchString : myvector) {
           std::string::size_type index = line.find(matchString);
-          if (index == std::string::npos) {
+          if (index == std::string::npos) 
             continue;
-          }
-          else {
-            if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) != parsedMsgs.end()) {
-              continue;
-            }
-            else {
-              logMessage(line);
-              parsedMsgs.push_back(line);
-            }
-          }
+          
+          if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) != parsedMsgs.end())
+            continue;
+          
+          logMessage(line);
+          parsedMsgs.push_back(line);
         }
       }
     }
@@ -1087,7 +1083,8 @@ namespace xclhwemhal2 {
         mLogStream << __func__ << " ERROR: [HW-EMU 26] Simulator is NOT started so exiting the application! " << std::endl;
         
       // If no simulator running then no need to try a connection, hence exit with a failure now.
-      throw std::runtime_error(" Simulator did not start/exited, please refer simulate.log in .run directory!");
+      //throw std::runtime_error(" Simulator did not start/exited, please refer simulate.log in .run directory!");
+      exit(EXIT_FAILURE);
     }
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
