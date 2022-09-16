@@ -19,7 +19,7 @@ to_string(xrt_core::query::p2p_config::value_type value)
    { xrt_core::query::p2p_config::value_type::disabled,      "disabled" },
    { xrt_core::query::p2p_config::value_type::enabled,       "enabled" },
    { xrt_core::query::p2p_config::value_type::error,         "error" },
-   { xrt_core::query::p2p_config::value_type::no_iomem,        "no iomem" },
+   { xrt_core::query::p2p_config::value_type::reboot,        "reboot" },
    { xrt_core::query::p2p_config::value_type::not_supported, "not supported" },
   };
 
@@ -62,10 +62,10 @@ parse(const xrt_core::query::p2p_config::result_type& config)
     return {xrt_core::query::p2p_config::value_type::not_supported, "P2P config failed. P2P is not supported. Can't find P2P BAR."};
 
   if (config_map.find("rbar") != config_map.end() && config_map.at("rbar") > config_map.at("bar"))
-    return {xrt_core::query::p2p_config::value_type::no_iomem, "Warning: Please WARM reboot to enable p2p now."};
+    return {xrt_core::query::p2p_config::value_type::reboot, "Warning:Please WARM reboot to enable p2p now."};
 
   if (config_map.find("remap") != config_map.end() && config_map.at("remap") > 0 && config_map.at("remap") != config_map.at("bar"))
-    return {xrt_core::query::p2p_config::value_type::error, "Error: P2P config failed. P2P remapper is not set correctly"};
+    return {xrt_core::query::p2p_config::value_type::error, "Error:P2P config failed. P2P remapper is not set correctly"};
 
   if (config_map.find("exp_bar") != config_map.end() && config_map.at("exp_bar") == config_map.at("bar"))
     return {xrt_core::query::p2p_config::value_type::enabled, ""};

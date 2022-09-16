@@ -4,10 +4,7 @@ build/Release*
 build/WRelease*
 docs/.buildinfo
 docs/.doctrees
-tests/xrt/build/Debug*
-tests/xrt/build/WDebug*
-tests/xrt/build/Release*
-tests/xrt/build/WRelease*
+tests/xrt/build
 tests/unit_test/build
 *.o
 *.swp

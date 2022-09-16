@@ -30,8 +30,6 @@ namespace xdp {
   private:
     AIETraceWriter() = delete ;
 
-    static bool largeDataWarning;
-
 #if 0
     // Header information 
     std::string xrtVersion;

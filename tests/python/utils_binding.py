@@ -35,7 +35,6 @@ class Options(object):
         self.option_index = 0
         self.index = None
         self.cu_index = 0
-        self.s_flag = False
         self.verbose = False
         self.handle = None
         self.xcl_handle = None
@@ -44,10 +43,10 @@ class Options(object):
         self.xuuid = uuid.uuid4()
         self.kernels = []
 
-    def getOptions(self, argv, b_file):
+    def getOptions(self, argv):
         try:
-            opts, args = getopt.getopt(argv[1:], "k:l:a:c:d:svhe", ["bitstream=", "hal_logfile=", "alignment=",
-                                                                   "cu_index=", "device=", "supported", "verbose", "help", "ert"])
+            opts, args = getopt.getopt(argv[1:], "k:l:a:c:d:vhe", ["bitstream=", "hal_logfile=", "alignment=",
+                                                                   "cu_index=", "device=", "verbose", "help", "ert"])
         except getopt.GetoptError:
             print(self.printHelp())
             sys.exit(2)
@@ -61,8 +60,6 @@ class Options(object):
                 print("-a/--alignment switch is not supported")
             elif o in ("--cu_index", "-c"):
                 self.cu_index = int(arg)
-            elif o in ("--supported", "-s"):
-                self.s_flag = True
             elif o in ("--device", "-d"):
                 self.index = arg
             elif o in ("--help", "-h"):
@@ -82,24 +79,11 @@ class Options(object):
         print("Host buffer alignment " + str(self.alignment) + " bytes")
         print("Compiled kernel = " + self.bitstreamFile)
 
-        if(os.path.isfile(self.bitstreamFile)):
-            tempfile = self.bitstreamFile
-        else:
-            tempfile = os.path.join(self.bitstreamFile, b_file)
-        if self.s_flag:
-            if os.path.isfile(tempfile):
-                print("TEST SUPPORTED")
-                sys.exit()
-            else :
-                print("TEST NOT SUPPORTED")
-                sys.exit(1)
-
     def printHelp(self):
         print("usage: %s [options] -k <bitstream>")
         print("  -k <bitstream>")
         print("  -d <device_index>")
         print("  -c <cu_index>")
-        print("  -s <test_support>")
         print("  -v")
         print("  -h")
         print("")

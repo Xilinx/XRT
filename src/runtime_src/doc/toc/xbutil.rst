@@ -155,9 +155,6 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 - The ``--device`` (or ``-d``) specifies the target device to examine 
     
     - <user bdf> :  The Bus:Device.Function of the device of interest
-
-.. _xbutil_report_label:
-
 - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
           
     - ``aie``: Reports AIE kernels metadata from the .xclbin

@@ -346,8 +346,7 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	chan = &qdma->chans[write][channel];
 
 	dir = write ? DMA_TO_DEVICE : DMA_FROM_DEVICE;
-	nents = dma_map_sg(&XDEV(xdev)->pdev->dev, sgt->sgl, sgt->orig_nents,
-			   dir);
+	nents = pci_map_sg(XDEV(xdev)->pdev, sgt->sgl, sgt->orig_nents, dir);
         if (!nents) {
 		xocl_err(&pdev->dev, "map sgl failed, sgt 0x%p.\n", sgt);
 		return -EIO;
@@ -380,7 +379,7 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 		dump_sgtable(&pdev->dev, sgt);
 	}
 
-	dma_unmap_sg(&XDEV(xdev)->pdev->dev, sgt->sgl, nents, dir);
+	pci_unmap_sg(XDEV(xdev)->pdev, sgt->sgl, nents, dir);
 	kfree(req);
 
 	return ret;

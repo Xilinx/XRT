@@ -836,7 +836,7 @@ static void xdma_request_release(struct xdma_dev *xdev,
 {
 	struct sg_table *sgt = req->sgt;
 	if (!req->dma_mapped) {
-		dma_unmap_sg(&xdev->pdev->dev, sgt->sgl, sgt->orig_nents,
+		pci_unmap_sg(xdev->pdev, sgt->sgl, sgt->orig_nents,
 			     req->dir);
 	}
 
@@ -3296,8 +3296,7 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		engine = &xdev->engine_c2h[channel];
 
 	if (!dma_mapped) {
-		nents = dma_map_sg(&xdev->pdev->dev, sg, sgt->orig_nents,
-				   engine->dir);
+		nents = pci_map_sg(xdev->pdev, sg, sgt->orig_nents, engine->dir);
 		if (!nents) {
 			xocl_pr_info("map sgl failed, sgt 0x%p.\n", sgt);
 			return -EIO;
@@ -3355,8 +3354,8 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			       (unsigned long)(&engine->regs));
 	}
 	if (!dma_mapped) {
-                dma_unmap_sg(&xdev->pdev->dev, sgt->sgl, sgt->orig_nents,
-			     engine->dir);
+                pci_unmap_sg(xdev->pdev, sgt->sgl, sgt->orig_nents,
+                             engine->dir);
         }
 
 	if (ret < 0)
@@ -3425,7 +3424,7 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 	}
 
 	if (!dma_mapped) {
-		nents = dma_map_sg(&xdev->pdev->dev, sg, sgt->orig_nents, dir);
+		nents = pci_map_sg(xdev->pdev, sg, sgt->orig_nents, dir);
 		if (!nents) {
 			xocl_pr_info("map sgl failed, sgt 0x%p.\n", sgt);
 			return -EIO;
@@ -3710,18 +3709,18 @@ static int set_dma_mask(struct pci_dev *pdev)
 
 	dbg_init("sizeof(dma_addr_t) == %ld\n", sizeof(dma_addr_t));
 	/* 64-bit addressing capability for XDMA? */
-	if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(64))) {
+	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
 		/* query for DMA transfer */
 		/* @see Documentation/DMA-mapping.txt */
 		dbg_init("pci_set_dma_mask()\n");
 		/* use 64-bit DMA */
 		dbg_init("Using a 64-bit DMA mask.\n");
 		/* use 32-bit DMA for descriptors */
-		dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
 		/* use 64-bit DMA, 32-bit for consistent */
-	} else if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(32))) {
+	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
 		dbg_init("Could not set 64-bit DMA mask.\n");
-		dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
 		/* use 32-bit DMA */
 		dbg_init("Using a 32-bit DMA mask.\n");
 	} else {

@@ -112,15 +112,10 @@ namespace xclcpuemhal2
     }
     if (buf_size < new_size)
     {
-      void *result = realloc(buf, new_size);
-      // If realloc was unsuccessful, then give up and deallocate.
-      if (!result)
-      {
-        free(buf);
-        buf = nullptr;
-        return 0;
-      }
-      buf = result;
+      void *temp = buf;
+      buf = (void*)realloc(temp, new_size);
+      if (!buf) // prevent leak of original buf
+        free(temp);
       return new_size;
     }
     return buf_size;
@@ -436,7 +431,7 @@ namespace xclcpuemhal2
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
-          sLdLibs += sVivadoBinDir + DS + "data" + DS + "emulation" + DS + "cpp" + DS + "lib" + DS + ":";
+          sLdLibs += sVivadoBinDir + DS + "data" + DS + "emulation" + DS + "ip_utils" + DS + "xtlm_ipc" + DS + "xtlm_ipc_v1_0" + DS + "cpp" + DS + "lib" + DS + ":";
           sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
           sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
           sLdLibs += sVitisBinDir + DS + "tps" + DS + "lnx64" + DS + "python-3.8.3" + DS + "lib" + DS + ":";

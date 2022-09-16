@@ -163,7 +163,6 @@ BUILD_DIR="$OUTPUT_DIR/apu_build"
 PACKAGE_DIR="$BUILD_DIR"
 FW_FILE="$BUILD_DIR/lib/firmware/xilinx/xrt-versal-apu.xsabin"
 INSTALL_ROOT="$BUILD_DIR/lib"
-SDK="$BUILD_DIR/lib/firmware/xilinx/sysroot/sdk.sh"
 
 if [[ $clean == 1 ]]; then
 	echo $PWD
@@ -292,12 +291,6 @@ if [[ ! -e $FW_FILE ]]; then
 	error "failed to generate XSABIN"
 fi
 
-#copy the sysroot sdk.sh
-mkdir -p `dirname $SDK`
-if [ -e $IMAGES_DIR/sdk.sh ]; then
-        echo "sdk.sh exists copy it to apu package"
-        cp $IMAGES_DIR/sdk.sh $SDK
-fi
 # Generate PS Kernel xclbin
 # Hardcoding the ps kernel xclbin name to ps_kernels.xclbin
 # We can create one xclbin per PS Kernel also based on future requirements

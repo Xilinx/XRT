@@ -615,7 +615,6 @@ static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 {
 	struct xocl_xgq_vmr_cmd *xgq_cmd = (struct xocl_xgq_vmr_cmd *)arg;
 	struct xgq_cmd_cq *cmd_cq = (struct xgq_cmd_cq *)ccmd;
-	struct xocl_xgq_vmr *xgq_vmr = xgq_cmd->xgq_vmr;
 
 	xgq_cmd->xgq_cmd_rcode = (int)ccmd->rcode;
 	/* preserve payload prior to free xgq_cmd_cq */
@@ -623,9 +622,6 @@ static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 		sizeof(cmd_cq->cq_default_payload));
 
 	complete(&xgq_cmd->xgq_cmd_complete);
-
-	if (xgq_cmd->xgq_cmd_rcode)
-		xgq_vmr_log_dump_debug(xgq_vmr, xgq_cmd);
 }
 
 static size_t inline vmr_shared_mem_size(struct xocl_xgq_vmr *xgq)
@@ -842,6 +838,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
+		xgq_vmr_log_dump_debug(xgq, cmd);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
 		ret = len;
@@ -2252,8 +2249,8 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 	uint8_t enable = 0;
 	uint16_t pwr = 0;
 	uint8_t temp = 0;
-	char* args = (char*) buf;
-	char* end = (char*) buf;
+	char* args = buf;
+	char* end = buf;
 	int ret = 0;
 
 	if (!cs_payload->has_clk_scaling)

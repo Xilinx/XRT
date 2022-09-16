@@ -11,7 +11,6 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   if(NOT WIN32)
     add_subdirectory(xbtop)
     add_subdirectory(xbflash2)
-    add_subdirectory(nagios)
   endif()
 endif()
 

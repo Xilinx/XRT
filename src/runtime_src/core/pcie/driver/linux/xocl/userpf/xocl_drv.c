@@ -213,6 +213,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 {
 	struct xocl_dev *xdev = pci_get_drvdata(pdev);
 	int ret;
+	xuid_t *xclbin_id = NULL;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
 	mutex_lock(&xdev->core.errors_lock);
@@ -220,7 +221,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	mutex_unlock(&xdev->core.errors_lock);
 
 	if (prepare) {
-		xocl_kds_reset(xdev);
+		xocl_kds_reset(xdev, xclbin_id);
 
 		/* clean up mem topology */
 		if (xdev->core.drm) {
@@ -244,6 +245,12 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			xocl_warn(&pdev->dev, "Online subdevs failed %d", ret);
 		(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
+		ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+		if (ret) {
+			xocl_warn(&pdev->dev, "Unable to get on device uuid %d", ret);
+			return;
+		}
+
 		ret = xocl_init_sysfs(xdev);
 		if (ret) {
 			xocl_warn(&pdev->dev, "Unable to create sysfs %d", ret);
@@ -258,7 +265,8 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			}
 		}
 
-		xocl_kds_reset(xdev);
+		xocl_kds_reset(xdev, xclbin_id);
+		XOCL_PUT_XCLBIN_ID(xdev);
 		if (!xdev->core.drm) {
 			xdev->core.drm = xocl_drm_init(xdev);
 			if (!xdev->core.drm) {
@@ -702,25 +710,18 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data;
 	struct xcl_mailbox_peer_state *st = NULL;
 	struct xclErrorLast err_last;
-	/* Variables for firewall request processing */
-	struct xcl_firewall fw_status = { 0 };
 
 	if (err != 0)
 		return;
 
 	userpf_info(xdev, "received request (%d) from peer\n", req->req);
+
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_FIREWALL:
-		/* Update the xocl firewall status */
-		xocl_af_check(xdev, NULL);
-		/* Get the updated xocl firewall status */
-		xocl_af_get_data(xdev, &fw_status);
-		userpf_info(xdev, 
-			"AXI Firewall %llu tripped", fw_status.err_detected_level);
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
 		err_last.pid = 0;
-		err_last.ts = fw_status.err_detected_time;
+		err_last.ts = 0; //TODO timestamp
 		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_FIRWWALL_TRIP, 
 			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
 			XRT_ERROR_MODULE_FIREWALL, XRT_ERROR_CLASS_HARDWARE);
@@ -1162,32 +1163,6 @@ static int identify_bar(struct xocl_dev *xdev)
 		identify_bar_legacy(xdev);
 }
 
-static void xocl_cleanup_axlf_obj(struct xocl_dev *xdev)
-{
-	struct xocl_axlf_obj_cache *axlf_obj = NULL;
-	uint32_t slot_id = 0;
-
-	mutex_lock(&xdev->dev_lock);
-	for (slot_id = 0; slot_id < MAX_SLOT_SUPPORT; slot_id++) {
-		axlf_obj = XDEV(xdev)->axlf_obj[slot_id];
-		if (axlf_obj != NULL) {
-			if (axlf_obj->ulp_blob)
-				vfree(axlf_obj->ulp_blob);
-
-			if (axlf_obj->kernels)
-				vfree(axlf_obj->kernels);
-
-			axlf_obj->kernels = NULL;
-			axlf_obj->ksize = 0;
-
-			vfree(axlf_obj);
-			XDEV(xdev)->axlf_obj[slot_id] = NULL;
-		}
-	}
-
-	mutex_unlock(&xdev->dev_lock);
-}
-
 void xocl_userpf_remove(struct pci_dev *pdev)
 {
 	struct xocl_dev		*xdev;
@@ -1233,8 +1208,8 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 	unmap_bar(xdev);
 
 	xocl_subdev_fini(xdev);
-	xocl_cleanup_axlf_obj(xdev);
-	
+	if (xdev->ulp_blob)
+		vfree(xdev->ulp_blob);
 	mutex_destroy(&xdev->dev_lock);
 
 	if (xdev->core.bars)
@@ -1277,7 +1252,7 @@ static void xocl_cma_mem_free(struct xocl_dev *xdev, uint32_t idx)
 
 	if (cma_mem->regular_page) {
 		dma_unmap_page(&xdev->core.pdev->dev, cma_mem->paddr,
-			cma_mem->size, DMA_BIDIRECTIONAL);
+			cma_mem->size, PCI_DMA_BIDIRECTIONAL);
 		__free_pages(cma_mem->regular_page, get_order(cma_mem->size));
 		cma_mem->regular_page = NULL;
 	} else if (cma_mem->pages) {
@@ -1527,7 +1502,7 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_dev *xdev, uint64_t size, uint3
 	}
 
 	dma_addr = dma_map_page(dev, page, 0, size,
-		DMA_BIDIRECTIONAL);
+		PCI_DMA_BIDIRECTIONAL);
 	if (unlikely(dma_mapping_error(dev, dma_addr))) {
 		DRM_ERROR("Unable to dma map pages");
 		__free_pages(page, order);
@@ -1538,7 +1513,7 @@ static int xocl_cma_mem_alloc_by_idx(struct xocl_dev *xdev, uint64_t size, uint3
 		roundup(PAGE_SIZE, size) >> PAGE_SHIFT);
 
 	if (!cma_mem->pages) {
-		dma_unmap_page(dev, dma_addr, size, DMA_BIDIRECTIONAL);
+		dma_unmap_page(dev, dma_addr, size, PCI_DMA_BIDIRECTIONAL);
 		__free_pages(page, order);
 		return -ENOMEM;
 	}
@@ -1635,9 +1610,8 @@ void xocl_cma_bank_free(struct xocl_dev	*xdev)
 {
 	__xocl_cma_bank_free(xdev);
 	if (xdev->core.drm)
-		xocl_cleanup_mem_all(xdev->core.drm);
-
-	xocl_icap_clean_bitstream_all(xdev);
+		xocl_cleanup_mem(xdev->core.drm);
+	xocl_icap_clean_bitstream(xdev);
 }
 
 int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *cma_info)
@@ -1645,8 +1619,8 @@ int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *c
 	int err = 0;
 	int num = MAX_SB_APERTURES;
 
-	xocl_cleanup_mem_all(xdev->core.drm);
-	xocl_icap_clean_bitstream_all(xdev);
+	xocl_cleanup_mem(xdev->core.drm);
+	xocl_icap_clean_bitstream(xdev);
 
 	if (xdev->cma_bank) {
 		uint64_t allocated_size = xdev->cma_bank->entry_num * xdev->cma_bank->entry_sz;
@@ -1809,18 +1783,18 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 
 	xocl_drvinst_set_offline(xdev, false);
 
-	if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(64))) {
+	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
 		/* query for DMA transfer */
 		/* @see Documentation/DMA-mapping.txt */
 		xocl_info(&pdev->dev, "pci_set_dma_mask()\n");
 		/* use 64-bit DMA */
 		xocl_info(&pdev->dev, "Using a 64-bit DMA mask.\n");
 		/* use 32-bit DMA for descriptors */
-		dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
 		/* use 64-bit DMA, 32-bit for consistent */
-	} else if (!dma_set_mask(&pdev->dev, DMA_BIT_MASK(32))) {
+	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
 		xocl_info(&pdev->dev, "Could not set 64-bit DMA mask.\n");
-		dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
 		/* use 32-bit DMA */
 		xocl_info(&pdev->dev, "Using a 32-bit DMA mask.\n");
 	} else {

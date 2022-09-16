@@ -1,7 +1,6 @@
 /*
+ * Copyright (C) 2020-2022 Xilinx, Inc
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  */
 #ifndef XRT_KERNEL_H_
 #define XRT_KERNEL_H_
@@ -720,7 +719,6 @@ private:
 
 /// @cond
 // Undocumented experimental API subject to be replaced
-XCL_DRIVER_DLLESPEC
 void
 set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size);
 /// @endcond

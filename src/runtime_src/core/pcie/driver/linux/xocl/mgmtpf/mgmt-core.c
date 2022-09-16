@@ -604,14 +604,9 @@ static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_pr_region *hwicap = NULL;
 	int err = 0;
-	uint32_t slot_id = 0;
 	xuid_t *xclbin_id = NULL;
 
-	err = xocl_get_pl_slot(lro, &slot_id);
-	if (err)
-		return err;
-
-	err = XOCL_GET_XCLBIN_ID(lro, xclbin_id, slot_id);
+	err = XOCL_GET_XCLBIN_ID(lro, xclbin_id);
 	if (err)
 		return err;
 
@@ -628,7 +623,7 @@ static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 	hwicap->mig_calib = lro->ready ? xocl_icap_get_data(lro, MIG_CALIB) : 0;
 	hwicap->data_retention = xocl_icap_get_data(lro, DATA_RETAIN);
 
-	XOCL_PUT_XCLBIN_ID(lro, slot_id);
+	XOCL_PUT_XCLBIN_ID(lro);
 
 	return 0;
 }
@@ -946,8 +941,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
 
-			/* For legacy case always download to slot 0 */
-			ret = xocl_xclbin_download(lro, buf, DEFAULT_PL_SLOT);
+			ret = xocl_xclbin_download(lro, buf);
 
 			vfree(buf);
 		}
@@ -987,7 +981,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		} else {
 			memcpy(buf, xclbin, xclbin_len);
 
-			ret = xocl_xclbin_download(lro, buf, slot_id);
+			ret = xocl_xclbin_download(lro, buf);
 
 			vfree(buf);
 		}
@@ -1021,8 +1015,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		if (fetch)
 			ret = xclmgmt_xclbin_fetch_and_download(lro, xclbin);
 		else
-			/* For legacy case always download to slot 0 */
-			ret = xocl_xclbin_download(lro, xclbin, DEFAULT_PL_SLOT);
+			ret = xocl_xclbin_download(lro, xclbin);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
@@ -1062,7 +1055,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		if (fetch)
 			ret = xclmgmt_xclbin_fetch_and_download(lro, xclbin);
 		else
-			ret = xocl_xclbin_download(lro, xclbin, slot_id);
+			ret = xocl_xclbin_download(lro, xclbin);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));

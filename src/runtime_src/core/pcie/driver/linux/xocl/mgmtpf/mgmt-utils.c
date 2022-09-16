@@ -949,8 +949,7 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 	if (err)
 		goto done;
 
-	/* For legacy case always download to slot 0 */
-	err = xocl_xclbin_download(lro, fw_buf, DEFAULT_PL_SLOT);
+	err = xocl_xclbin_download(lro, fw_buf);
 done:
 	vfree(fw_buf);
 	return err;

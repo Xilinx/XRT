@@ -214,15 +214,10 @@ namespace xclcpuemhal2 {
     }
     if (buf_size < new_size)
     {
-      void *result = realloc(buf, new_size);
-      // If realloc was unsuccessful, then give up and deallocate.
-      if (!result)
-      {
-        free(buf);
-        buf = nullptr;
-        return 0;
-      }
-      buf = result;
+      void *temp = buf;
+      buf = (void*) realloc(buf,new_size);
+      if (!buf) // prevent leak of original buf
+        free(temp);
       return new_size;
     }
     return buf_size;

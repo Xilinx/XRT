@@ -130,8 +130,7 @@ def runKernel(opt):
 
 def main(args):
     opt = Options()
-    b_file = "bandwidth.xclbin"
-    Options.getOptions(opt, args, b_file)
+    Options.getOptions(opt, args)
 
     try:
         runKernel(opt)

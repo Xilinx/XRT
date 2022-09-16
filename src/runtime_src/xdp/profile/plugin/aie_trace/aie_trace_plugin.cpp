@@ -1576,7 +1576,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
         std::string msg = "Could not find graph named " + graphmetrics[i][0] + ", as specified in graph_based_aie_tile_metrics configuration."
                           + " Following graphs are present in the design : " + graphs[0] ;
         for (size_t j = 1; j < graphs.size(); j++) {
-          msg += ", " + graphs[j];
+          msg += ", " + graphs[i];
         }
         msg += ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg);

@@ -538,7 +538,7 @@ extern "C" {
         uint8_t cdo_type;                   // CDO group type (CDO_Type)
         uint8_t padding[3];             
         uint64_t pdi_id;                    // PDI ID
-        struct array_offset dpu_kernel_ids; // Array of dpu_kernel_ids (uint64_t)
+        uint64_t dpu_kernel_id;             // DPU kernel ID
         struct array_offset pre_cdo_groups; // Array of Pre CDO Group IDs (uint32_t)
         uint8_t reserved[64];               // Reserved
     };
@@ -552,7 +552,6 @@ extern "C" {
         struct array_offset cdo_groups;     // Array of cdo_groups (cdo_group)
         uint8_t reserved[64];               // Reserved
     };
-
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_pdi) == 96, "aie_pdi structure no longer is 96 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_pdi) % sizeof(uint64_t) == 0, "aie_pdi structure needs to be 64-bit word aligned");
 
@@ -568,13 +567,11 @@ extern "C" {
         uint8_t schema_version;             // Group schema version (default 0)
         uint8_t padding0[3];                // Byte alignment          
         uint32_t mpo_name;                  // Name of the aie_partition 
-        uint32_t operations_per_cycle;      // Operations per cycle. Used later to create TOPS (operations_per_cycle * <AIE Clock Frequency>)
-        uint8_t padding[4];
         struct aie_partition_info info;     // Partition information
         struct array_offset aie_pdi;        // PDI Array (aie_partition_info)
         uint8_t reserved[54];               // Reserved
     };
-    XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 168, "aie_partition structure no longer is 168 bytes in size");
+    XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 160, "aie_partition structure no longer is 160 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) % sizeof(uint64_t) == 0, "aie_partition structure needs to be 64-bit word aligned");
 
     /**** END : Xilinx internal section *****/
