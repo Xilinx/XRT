@@ -145,6 +145,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	int i;
 	ssize_t count = 0;
 	ssize_t size = 0;
+	int err = 0;
 	size_t memory_usage = 0;
 	unsigned int bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
@@ -155,42 +156,48 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	const char *bo_txt_fmt = "[%s] %lluKB %dBOs\n";
 	const char *bo_types[XOCL_BO_USAGE_TOTAL];
 
-	mutex_lock(&xdev->dev_lock);
-
 	if (!drm_p)
 		return -EINVAL;
 
-	topo = drm_p->xocl_mem_topo;
-	if (!topo) {
-		size = -EINVAL;
-		goto done;
-	}
-
-	for (i = 0; i < topo->m_count; i++) {
-		xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
-
-		if (raw) {
+	mutex_lock(&drm_p->mm_lock);
+	if (raw) {
+		for (i = 0; i < drm_p->xocl_mm->m_count; i++) {
+			xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
 			memory_usage = 0;
 			bo_count = 0;
 			memory_usage = stat.memory_usage;
 			bo_count = stat.bo_count;
 
 			count = sprintf(buf, raw_fmt,
-				memory_usage,
-				bo_count, 0);
-		} else {
-			count = sprintf(buf, txt_fmt,
-				topo->m_mem_data[i].m_used ?
-				"IN-USE" : "UNUSED",
-				topo->m_mem_data[i].m_tag,
-				topo->m_mem_data[i].m_base_address,
-				topo->m_mem_data[i].m_size / 1024,
-				stat.memory_usage / 1024,
-				stat.bo_count);
+					memory_usage,
+					bo_count, 0);
+			buf += count;
+			size += count;
 		}
-		buf += count;
-		size += count;
 	}
+	else {
+		err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo, DEFAULT_PL_SLOT);
+		if (err)
+			goto done;
+
+		if (topo) {
+			for (i = 0; i < topo->m_count; i++) {
+				xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
+				count = sprintf(buf, txt_fmt,
+						topo->m_mem_data[i].m_used ?
+						"IN-USE" : "UNUSED",
+						topo->m_mem_data[i].m_tag,
+						topo->m_mem_data[i].m_base_address,
+						topo->m_mem_data[i].m_size / 1024,
+						stat.memory_usage / 1024,
+						stat.bo_count);
+				buf += count;
+				size += count;
+			}
+		}
+		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, DEFAULT_PL_SLOT);
+	}
+
 	/* -- Separator for bo stats -- */
 	if (raw)
 		count = sprintf(buf, raw_fmt, -EINVAL, -EINVAL, -EINVAL);
@@ -226,7 +233,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 done:
-	mutex_unlock(&xdev->dev_lock);
+	mutex_unlock(&drm_p->mm_lock);
 	return size;
 }
 

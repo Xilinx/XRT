@@ -552,17 +552,18 @@ __xocl_create_bo_ioctl(struct drm_device *dev, struct drm_file *filp,
 	unsigned bo_type = xocl_bo_type(args->flags);
 	struct mem_topology *topo = NULL;
 	unsigned ddr = 0;
-	
+	uint32_t hw_ctx_id = 0;
 	uint32_t slot_id = 0;
 	int ret;
 
 	/* Currently userspace will provide the corresponding hw context id.
 	 * Driver has to map that hw context to the corresponding slot id.
 	 */
-	ret = xocl_get_slot_id_by_hw_ctx_id(xdev, filp, args->flags);
+	hw_ctx_id = xocl_bo_slot_idx(args->flags);
+	ret = xocl_get_slot_id_by_hw_ctx_id(xdev, filp, hw_ctx_id);
 	if (ret < 0)
-		return NULL;
-	
+		return ERR_PTR(ret);
+
 	slot_id = ret;
 	args->flags = xocl_bo_set_slot_idx(args->flags, slot_id);
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
@@ -702,19 +703,21 @@ int xocl_userptr_bo_ioctl(
 	struct drm_xocl_userptr_bo *args = data;
 	unsigned user_flags = args->flags;
 	int write = 1;
+	uint32_t hw_ctx_id = 0;
 	uint32_t slot_id = 0;
 
 	if (offset_in_page(args->addr))
 		return -EINVAL;
 
-        /* Currently userspace will provide the corresponding hw context id.
-         * Driver has to map that hw context to the corresponding slot id.
-         */
-        ret = xocl_get_slot_id_by_hw_ctx_id(drm_p->xdev, filp, user_flags);
-        if (ret < 0)
-                return NULL;
+	/* Currently userspace will provide the corresponding hw context id.
+	 * Driver has to map that hw context to the corresponding slot id.
+	 */
+	hw_ctx_id = xocl_bo_slot_idx(user_flags);
+	ret = xocl_get_slot_id_by_hw_ctx_id(drm_p->xdev, filp, user_flags);
+	if (ret < 0)
+		return ret;
 
-        slot_id = ret;
+	slot_id = ret;
         user_flags = xocl_bo_set_slot_idx(user_flags, slot_id);
 
 	xobj = xocl_create_bo(dev, args->size, user_flags, XOCL_BO_USERPTR);
@@ -1261,7 +1264,7 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
         ret = xocl_get_pl_slot(xdev, &slot_id);
         if (ret) {
                 DRM_ERROR("Xclbin is not present");
-                return ret;
+                return ERR_PTR(ret);
         }
 
 	flags = xocl_bo_set_slot_idx(flags, slot_id);

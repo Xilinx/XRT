@@ -912,6 +912,9 @@ static int xocl_cleanup_drm_memory_manager(struct xocl_mm *xocl_mm)
 {
 	int i = 0;
 
+	if (!xocl_mm)
+		return 0;
+
 	for (i = 0; i < xocl_mm->m_count; i++) {
 		if (xocl_mm->mm_usage_stat && xocl_mm->mm_usage_stat[i])
 			vfree(xocl_mm->mm_usage_stat[i]);
@@ -922,7 +925,9 @@ static int xocl_cleanup_drm_memory_manager(struct xocl_mm *xocl_mm)
 	if (xocl_mm->bo_usage_stat)
 		vfree(xocl_mm->bo_usage_stat);
 
-	vfree(xocl_mm->mm);
+	if (xocl_mm->mm)
+		vfree(xocl_mm->mm);
+
 	vfree(xocl_mm);
 
 	return 0;
@@ -1053,12 +1058,10 @@ static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p)
                 return 0;
 	}
 
-	if (drm_p->xocl_mm == NULL) {
-		err = xocl_init_drm_mm(drm_p, mm_start_addr, mm_end_addr,
-				xocl_mm->m_count);
-		if (err)
-			goto error;
-	}
+	err = xocl_init_drm_mm(drm_p, mm_start_addr, mm_end_addr,
+			xocl_mm->m_count);
+	if (err)
+		goto error;
 error:
 	if (err)
 		xocl_cleanup_drm_memory_manager(xocl_mm);
@@ -1070,15 +1073,17 @@ error:
 static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
 {
 	struct mem_topology *topo = NULL;
-	struct xocl_mm *xocl_mm = drm_p->xocl_mm;
+	struct xocl_mm *xocl_mm = NULL;
 	struct mem_data *mem_data = NULL;
 	int err = 0;
 	int i = 0;
 
-	if (!xocl_mm)
-		return 0;
-
 	mutex_lock(&drm_p->mm_lock);
+	xocl_mm = drm_p->xocl_mm;
+	if (!xocl_mm) {
+		mutex_unlock(&drm_p->mm_lock);
+		return 0;
+	}
 
 	err = xocl_check_topology(drm_p);
 	if (err) {
@@ -1086,7 +1091,11 @@ static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
 		return err;
 	}
 
-	topo = drm_p->xocl_mem_topo;
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo, DEFAULT_PL_SLOT);
+	if (err) {
+		mutex_unlock(&drm_p->mm_lock);
+		return err;
+	}
 	if (topo) {
 		for (i = 0; i < topo->m_count; i++) {
 			mem_data = &topo->m_mem_data[i];
@@ -1102,34 +1111,18 @@ static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
 			if (convert_mem_tag(topo->m_mem_data[i].m_tag) == MEM_TAG_HOST)
                                 xocl_addr_translator_clean(drm_p->xdev);
 
-			if (xocl_mm->mm_usage_stat && xocl_mm->mm_usage_stat[i]) {
-				vfree(xocl_mm->mm_usage_stat[i]);
-				xocl_mm->mm_usage_stat[i] = NULL;
-			}
-
                         xocl_info(drm_p->ddev->dev, "Taking down DDR : %d", i);
                 }
-
-		vfree(xocl_mm->mm_usage_stat);
-		xocl_mm->mm_usage_stat = NULL;
-		
-		if (xocl_mm->bo_usage_stat) {
-			vfree(xocl_mm->bo_usage_stat);
-			xocl_mm->bo_usage_stat = NULL;
-		}
         }
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, DEFAULT_PL_SLOT);
 
 	/* Now cleanup the P2P memory */
         xocl_p2p_mem_cleanup(drm_p->xdev);
 
         /* cleanup the memory manager */
-        if (xocl_mm && xocl_mm->mm) {
-                drm_mm_takedown(xocl_mm->mm);
-		vfree(xocl_mm->mm);
-		vfree(xocl_mm);
-		drm_p->xocl_mm = NULL;		
-	}
-		
+	xocl_cleanup_drm_memory_manager(xocl_mm);
+	drm_p->xocl_mm = NULL;		
+
 	mutex_unlock(&drm_p->mm_lock);
 
         return 0;
@@ -1145,11 +1138,13 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	int err = 0;
 	int i = 0;
 
-	/* Memory manager initialize should be done only once */
-        if (drm_p->xocl_mm_done)
-                return 0; // Memory manager is already initialized
-
 	mutex_lock(&drm_p->mm_lock);
+	/* Memory manager initialize should be done only once */
+        if (drm_p->xocl_mm_done) {
+		mutex_unlock(&drm_p->mm_lock);
+                return 0; // Memory manager is already initialized
+	}
+
         err = xocl_p2p_mem_init(drm_p->xdev);
         if (err && err != -ENODEV) {
 		mutex_unlock(&drm_p->mm_lock);
@@ -1209,10 +1204,9 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 			goto error;
 	}
 
-        drm_p->xocl_mem_topo = topo;
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, DEFAULT_PL_SLOT);
-        mutex_unlock(&drm_p->mm_lock);
         drm_p->xocl_mm_done = true;
+        mutex_unlock(&drm_p->mm_lock);
 
 	return 0;
 

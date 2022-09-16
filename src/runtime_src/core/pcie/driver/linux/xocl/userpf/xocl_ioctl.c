@@ -398,20 +398,26 @@ static int xocl_preserve_memcmp(struct mem_topology *new_topo, struct mem_topolo
 static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_topology, size_t size)
 {
 	int ret = 0;
-	struct mem_topology *topology = drm_p->xocl_mem_topo;
+	struct mem_topology *topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;
 
-	if (!topology)
+	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology, DEFAULT_PL_SLOT);
+	if (ret)
+		return ret;
+
+	if (!topology) {
+		XOCL_PUT_MEM_TOPOLOGY(xdev, DEFAULT_PL_SLOT);
 		return 0;
+	}
 
 	/*
 	 * Compare MEM_TOPOLOGY previous vs new.
 	 * Ignore this and keep disable preserve_mem if not for aws.
 	 */
 	if (xocl_icap_get_data(xdev, DATA_RETAIN) && (topology != NULL) &&
-		drm_p->xocl_mm->mm) {
+			drm_p->xocl_mm->mm) {
 		if ((size == sizeof_sect(topology, m_mem_data)) &&
-		    !xocl_preserve_memcmp(new_topology, topology, size)) {
+				!xocl_preserve_memcmp(new_topology, topology, size)) {
 			userpf_info(xdev, "preserving mem_topology.");
 			ret = 1;
 		} else {
@@ -419,6 +425,7 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 		}
 	}
 
+	XOCL_PUT_MEM_TOPOLOGY(xdev, DEFAULT_PL_SLOT);
 	return ret;
 }
 
