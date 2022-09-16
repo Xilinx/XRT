@@ -25,8 +25,8 @@ namespace xdp {
 
   class AieTraceEdgeImpl : public AieTraceImpl{
     public:
-      AieTraceEdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
-        : AieTraceImpl(database, metadata){}
+      AieTraceEdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
+        // : AieTraceImpl(database, metadata);
       ~AieTraceEdgeImpl();
 
       void updateDevice();
@@ -34,10 +34,41 @@ namespace xdp {
       void finishFlushDevice();
 
       bool setMetrics(uint64_t deviceId, void* handle);
+      bool setMetricsSettings(uint64_t deviceId, void* handle);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
       bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
       inline uint32_t bcIdToEvent(int bcId);
+
+    private:
+      std::set<std::string> metricSets;
+      std::map<std::string, EventVector> coreEventSets;
+      std::map<std::string, EventVector> memoryEventSets;
+
+      // AIE profile counters
+      std::vector<xrt_core::edge::aie::tile_type> mCoreCounterTiles;
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mCoreCounters;
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mMemoryCounters;
+
+      // Counter metrics (same for all sets)
+      EventType   coreTraceStartEvent;
+      EventType   coreTraceEndEvent;
+      EventVector coreCounterStartEvents;
+      EventVector coreCounterEndEvents;
+      ValueVector coreCounterEventValues;
+
+      EventVector memoryCounterStartEvents;
+      EventVector memoryCounterEndEvents;
+      EventVector memoryCounterResetEvents;
+      ValueVector memoryCounterEventValues;
+
+      /* Currently only "aie" tile metrics is supported for graph/tile based trace.
+      * So, a single map for tile and resolved metric is sufficient.
+      * In future, when mem_tile and interface_tile metrics will be supported, we will
+      * need separate map for each type or a vector of maps for all types together.
+      */
+      std::map<tile_type, std::string> mConfigMetrics;
+      // std::vector<std::map<tile_type, std::string>> mConfigMetrics;
   };
 
 }   
