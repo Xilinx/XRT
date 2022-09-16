@@ -910,6 +910,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
                 return -EINVAL;
         }
 
+	BUG_ON(!zdev);
 	// Currently only 1 slot - TODO: Support multi-slot in the future
 	slot = zdev->pr_slot[0];
 

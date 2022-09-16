@@ -196,6 +196,7 @@ zocl_kds_add_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 static inline int
 zocl_kds_add_scu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 {
+	BUG_ON(!zdev);
 	return kds_add_scu(&zdev->kds, xcu);
 }
 
