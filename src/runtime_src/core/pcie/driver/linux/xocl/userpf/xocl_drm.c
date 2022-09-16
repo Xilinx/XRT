@@ -644,8 +644,11 @@ void xocl_drm_fini(struct xocl_drm *drm_p)
 
 	xocl_drvinst_release(drm_p, &hdl);
 
-	xocl_cleanup_mem(drm_p);
+	mutex_lock(&drm_p->mm_lock);
+	xocl_cleanup_mem_nolock(drm_p);
 	xocl_cleanup_memory_manager(drm_p);
+	mutex_unlock(&drm_p->mm_lock);
+	
 	drm_put_dev(drm_p->ddev);
 	mutex_destroy(&drm_p->mm_lock);
 
@@ -1064,24 +1067,19 @@ static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
 	int err = 0;
 	int i = 0;
 
-	mutex_lock(&drm_p->mm_lock);
+	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
+
 	xocl_mm = drm_p->xocl_mm;
-	if (!xocl_mm) {
-		mutex_unlock(&drm_p->mm_lock);
+	if (!xocl_mm)
 		return 0;
-	}
 
 	err = xocl_check_topology(drm_p);
-	if (err) {
-		mutex_unlock(&drm_p->mm_lock);
+	if (err)
 		return err;
-	}
 
         err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
-        if (err) {
-		mutex_unlock(&drm_p->mm_lock);
+        if (err)
 		return err;
-	}
 
 	if (topo) {
 		for (i = 0; i < topo->m_count; i++) {
@@ -1109,8 +1107,6 @@ static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
         /* cleanup the memory manager */
 	xocl_cleanup_drm_memory_manager(xocl_mm);
 	drm_p->xocl_mm = NULL;		
-
-	mutex_unlock(&drm_p->mm_lock);
 
         return 0;
 }
@@ -1199,10 +1195,10 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 
 error:
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
-	mutex_unlock(&drm_p->mm_lock);
-
 	if (err)
 	       xocl_cleanup_memory_manager(drm_p);	
+	
+	mutex_unlock(&drm_p->mm_lock);
 
 	return err;
 }
