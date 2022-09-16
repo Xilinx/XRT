@@ -68,9 +68,10 @@ struct xcl_bo_flags
  * XCL BO Flags bits layout
  *
  * bits  0 ~ 15: DDR BANK index
+ * bits 16 ~ 23: SLOT index
  * bits 24 ~ 31: BO flags
  */
-#define XRT_BO_FLAGS_MEMIDX_MASK	(0xFFFFUL)
+#define XRT_BO_FLAGS_MEMIDX_MASK	(0xFFFFFFUL)
 #define	XCL_BO_FLAGS_NONE		(0)
 #define	XCL_BO_FLAGS_CACHEABLE		(1U << 24)
 #define	XCL_BO_FLAGS_KERNBUF		(1U << 25)

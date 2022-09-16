@@ -543,7 +543,7 @@ cleanup:
 }
 
 struct drm_xocl_bo *
-__xocl_create_bo_ioctl(struct drm_device *dev,
+__xocl_create_bo_ioctl(struct drm_device *dev, struct drm_file *filp,
 		       struct drm_xocl_create_bo *args)
 {
 	struct drm_xocl_bo *xobj;
@@ -552,9 +552,19 @@ __xocl_create_bo_ioctl(struct drm_device *dev,
 	unsigned bo_type = xocl_bo_type(args->flags);
 	struct mem_topology *topo = NULL;
 	unsigned ddr = 0;
-	uint32_t slot_id = xocl_bo_slot_idx(args->flags);
+	
+	uint32_t slot_id = 0;
 	int ret;
 
+	/* Currently userspace will provide the corresponding hw context id.
+	 * Driver has to map that hw context to the corresponding slot id.
+	 */
+	ret = xocl_get_slot_id_by_hw_ctx_id(xdev, filp, args->flags);
+	if (ret < 0)
+		return NULL;
+	
+	slot_id = ret;
+	args->flags = xocl_bo_set_slot_idx(args->flags, slot_id);
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 	if (IS_ERR(xobj)) {
 		DRM_ERROR("object creation failed idx %d, size 0x%llx\n",
@@ -661,7 +671,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct drm_xocl_bo *xobj;
 	struct drm_xocl_create_bo *args = data;
 
-	xobj = __xocl_create_bo_ioctl(dev, data);
+	xobj = __xocl_create_bo_ioctl(dev, filp, data);
 	if (IS_ERR(xobj))
 		return PTR_ERR(xobj);
 
@@ -685,15 +695,27 @@ int xocl_userptr_bo_ioctl(
 	struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	int ret;
+	struct xocl_drm *drm_p = dev->dev_private;
 	struct drm_xocl_bo *xobj;
 	uint64_t page_count = 0;
 	uint64_t page_pinned = 0;
 	struct drm_xocl_userptr_bo *args = data;
 	unsigned user_flags = args->flags;
 	int write = 1;
+	uint32_t slot_id = 0;
 
 	if (offset_in_page(args->addr))
 		return -EINVAL;
+
+        /* Currently userspace will provide the corresponding hw context id.
+         * Driver has to map that hw context to the corresponding slot id.
+         */
+        ret = xocl_get_slot_id_by_hw_ctx_id(drm_p->xdev, filp, user_flags);
+        if (ret < 0)
+                return NULL;
+
+        slot_id = ret;
+        user_flags = xocl_bo_set_slot_idx(user_flags, slot_id);
 
 	xobj = xocl_create_bo(dev, args->size, user_flags, XOCL_BO_USERPTR);
 	BO_ENTER("xobj %p", xobj);
@@ -1231,8 +1253,19 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 {
 	int ret = 0;
 	struct drm_xocl_bo *importing_xobj;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+	uint32_t slot_id = 0;
+	unsigned flags = 0;
 
-	importing_xobj = xocl_create_bo(dev, attach->dmabuf->size, 0, XOCL_BO_IMPORT);
+        ret = xocl_get_pl_slot(xdev, &slot_id);
+        if (ret) {
+                DRM_ERROR("Xclbin is not present");
+                return ret;
+        }
+
+	flags = xocl_bo_set_slot_idx(flags, slot_id);
+	importing_xobj = xocl_create_bo(dev, attach->dmabuf->size, flags, XOCL_BO_IMPORT);
 
 	BO_ENTER("xobj %p", importing_xobj);
 

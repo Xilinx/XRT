@@ -398,6 +398,28 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 	return ret;
 }
 
+
+/*
+ * Get the slot id for this hw context.
+ */
+int xocl_get_slot_id_by_hw_ctx_id(struct xocl_dev *xdev,
+		struct drm_file *filp, uint32_t hw_ctx_id)
+{
+        struct kds_client_hw_ctx *hw_ctx = NULL;
+        struct kds_client *client = filp->driver_priv;
+
+        mutex_lock(&client->lock);
+        hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_id);
+        if (!hw_ctx) {
+                userpf_err(xdev, "No valid HW context is open");
+                mutex_unlock(&client->lock);
+                return -EINVAL;
+        }
+	mutex_unlock(&client->lock);
+
+	return hw_ctx->slot_idx;
+}
+
 int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 		struct drm_xocl_create_hw_ctx *hw_ctx_args, uint32_t slot_id)
 {
@@ -1423,6 +1445,7 @@ static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 	 */
 	args.size = size;
 	args.flags = XCL_BO_FLAGS_P2P | mem_idx;
+	args.flags = xocl_bo_set_slot_idx(args.flags, slot_id); 
 	bo = xocl_drm_create_bo(XOCL_DRM(xdev), size, args.flags);
 	if (IS_ERR(bo)) {
 		userpf_err(xdev, "Cannot create bo for fast adapter");

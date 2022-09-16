@@ -221,6 +221,8 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv);
 int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 		      struct drm_file *filp);
 /* New hw context support functions */
+int xocl_get_slot_id_by_hw_ctx_id(struct xocl_dev *xdev,
+		struct drm_file *filp, uint32_t hw_ctx_id);
 int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
                 struct drm_xocl_create_hw_ctx *hw_ctx_args, uint32_t slot_id);
 int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
