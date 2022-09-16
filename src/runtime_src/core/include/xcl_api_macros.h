@@ -33,6 +33,7 @@ std::lock_guard<std::mutex> socketlk{mtx};
 #define SERIALIZE_AND_SEND_MSG(func_name)                               \
     auto c_len = c_msg.ByteSize();                                      \
     buf_size = alloc_void(c_len);                                       \
+    auto socket_call_status = -1;                                       \
     bool rv = c_msg.SerializeToArray(buf,c_len);                        \
     if (rv == false) { std::cerr << "FATAL ERROR:protobuf SerializeToArray failed for alloc_void call." << std::endl; exit(1);} \
                                                                         \
@@ -45,12 +46,12 @@ std::lock_guard<std::mutex> socketlk{mtx};
     _s_inst->sk_write(ci_buf,ci_len);                                   \
     _s_inst->sk_write(buf,c_len);                                       \
                                                                         \
-    _s_inst->sk_read(ri_buf,ri_msg.ByteSize());                         \
-    rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize());               \
+    socket_call_status = _s_inst->sk_read(ri_buf,ri_msg.ByteSize());    \
+    if (socket_call_status != -1) { rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize()); }              \
     if (true != rv) { if (mLogStream.is_open()) mLogStream << __func__ << "\n ParseFromArray failed, sk_read/sk_write failed, so exit the application now!"; exit(0);  } \
     buf_size = alloc_void(ri_msg.size());                               \
-    _s_inst->sk_read(buf,ri_msg.size());                                \
-    rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
+    socket_call_status = _s_inst->sk_read(buf,ri_msg.size());           \
+    if (socket_call_status != -1) { rv = r_msg.ParseFromArray(buf,ri_msg.size()); } \
     if (true != rv) { if (mLogStream.is_open()) mLogStream << __func__ << "\n ParseFromArray failed, sk_read failed for alloc_void, so exit- the application now!!!"; exit(0); }
 #else
 // More recent protoc handles 64 bit size objects and the 32 bit version is deprecated

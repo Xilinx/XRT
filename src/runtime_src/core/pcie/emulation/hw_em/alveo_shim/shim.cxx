@@ -194,35 +194,39 @@ namespace xclhwemhal2 {
 
   int HwEmShim::parseLog()
   {
+    auto lstatus = 0;
     std::vector<std::string> myvector = {"SIM-IPC's external process can be connected to instance",
                                          "SystemC TLM functional mode",
-                                         "HLS_PRINT",
-                                         "Exiting xsim",
-                                         "FATAL_ERROR"};
+                                         "HLS_PRINT"};
 
     std::ifstream ifs(getSimPath() + "/simulate.log");
 
     if (ifs.is_open()) {
       std::string line;
       while (std::getline(ifs, line)) {
-        for (auto matchString : myvector) {
-          std::string::size_type index = line.find(matchString);
-          if (index != std::string::npos) {
-            if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
-              logMessage(line);
-              parsedMsgs.push_back(line);
-              if (!matchString.compare("Exiting xsim") || !matchString.compare("FATAL_ERROR")) {
+        // If xsim is terminated by logging in simulate.log then call xclClose to properly clean all instances, threads.
+        if ( (std::string::npos != line.find("Exiting xsim")) || 
+             (std::string::npos != line.find("ERROR")) 
+           ) {
                   std::cout << "SIMULATION EXITED" << std::endl;
-                  this->xclClose();                                               // Let's have a proper clean if xsim is NOT running
-                  exit(0);                                                        // It's a clean exit only.
-              }
-
-            }
-          }
+                  lstatus = -1;
+                  parsedMsgs.push_back(line);
+                  this->xclClose(true);                                               // Let's have a proper clean if xsim is NOT running
+        }
+        for (auto& matchString : myvector) {
+          std::string::size_type index = line.find(matchString);
+          if (index == std::string::npos) 
+            continue;
+          
+          if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) != parsedMsgs.end())
+            continue;
+          
+          logMessage(line);
+          parsedMsgs.push_back(line);
         }
       }
     }
-    return 0;
+    return lstatus;
   }
 
   void HwEmShim::parseString(const std::string& simPath , const std::string& searchString)
@@ -444,7 +448,7 @@ namespace xclhwemhal2 {
     std::string aie_sim_options = xrt_core::config::get_aie_sim_options();
 
     if (mLogStream.is_open()) {
-      //    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << args.m_zipFile << std::endl;
+         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " <<  std::endl;
     }
     mCuIndx = 0;
     //TBD the file read may slowdown things...whenever xclLoadBitStream hal API implementation changes, we also need to make changes.
@@ -746,6 +750,20 @@ namespace xclhwemhal2 {
         }
         setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
+
+        const char* ldisplay = std::getenv("DISPLAY");
+        if (!ldisplay)
+        {
+          if (mLogStream.is_open())
+          {
+            mLogStream << __func__ << " DISPLAY environment is not available so expect an exit from the application " << std::endl;
+            //DEBUG_MSGS_COUT(" DISPLAY environment is not available so expect an exit from the application ");
+          }
+          std::string dMsg = "ERROR: [HW-EMU 26] DISPLAY environment is not available so expect an exit from the application";
+          logMessage(dMsg, 0);
+          throw std::runtime_error(" Simulator did not start/exited, please simulate.log in .run directory!");
+        }
+        
       }
 
       if (lWaveform == xclemulation::debug_mode::batch)
@@ -1039,10 +1057,15 @@ namespace xclhwemhal2 {
         //if (!xclemulation::file_exists(sim_file))
         if (!boost::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
+          
+        if (mLogStream.is_open() )
+            mLogStream << __TIME__ <<"\t"<< __func__ << " The simulate script is "  <<sim_file  << std::endl;
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
-        fclose(stdout);
-        if (r == -1){ std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; exit(1); }
+        if (r == -1) {
+          std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; 
+          exit(1);
+        } 
         exit(0);
       }
 #endif
@@ -1055,10 +1078,21 @@ namespace xclhwemhal2 {
     {
       mEnvironmentNameValueMap["enable_pr"] = "false";
     }
-
+    //Providing enough time to simulate script to set up it's environment and start xsim.
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10s);
+    if (parseLog() != 0) {
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " ERROR: [HW-EMU 26] Simulator is NOT started so exiting the application! " << std::endl;
+        
+      // If no simulator running then no need to try a connection, hence exit with a failure now.
+      //throw std::runtime_error(" Simulator did not start/exited, please refer simulate.log in .run directory!");
+      exit(EXIT_FAILURE);
+    }
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
     sock->monitor_socket();
+    
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
       mMessengerThread = std::thread([this]() { messagesThread(); } );
@@ -1772,12 +1806,14 @@ namespace xclhwemhal2 {
     }
   }
 
-  void HwEmShim::xclClose() {
+  void HwEmShim::xclClose(bool DonotRunParseLog ) {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    parseLog();
+    // Ensuring parseLog call to xclClose not to call parseLog again. - no recursive call should happen.
+    if (!DonotRunParseLog)
+        parseLog();
 
     for (auto& it: mFdToFileNameMap) {
       int fd=it.first;
@@ -1825,8 +1861,9 @@ namespace xclhwemhal2 {
       }
       return;
     }
-    // All RPC calls fail if no socket is live. so skipping of sending RPC calls if no socket connection is present.
-    if (sock->m_is_socket_live)
+    // RPC calls will not be made in resetprogram
+    // resetProgram has to be called in xclclose because all running threads will be exited gracefully 
+    // which results clean exit of driver code.  
       resetProgram(false);
 
 
