@@ -58,7 +58,7 @@ spiCommand(po::variables_map& vm) {
     if (vm.count("revert-to-golden")) { //spi - reset/revert-to-golden
         std::cout << "About to revert to golden image for device " << bdf << std::endl;
         if (!force && !XBU::can_proceed())
-            return;
+            throw std::errc::operation_canceled;
 
         pcidev::pci_device dev(bdf, bar, baroff);
         XSPI_Flasher xspi(&dev, dualflash);
@@ -75,7 +75,7 @@ spiCommand(po::variables_map& vm) {
 
         std::cout << "Preparing to program flash on device: " << bdf << std::endl;
         if (!force && !XBU::can_proceed())
-            return;
+            throw std::errc::operation_canceled;
 
         pcidev::pci_device dev(bdf, bar, baroff);
         XSPI_Flasher xspi(&dev, dualflash);

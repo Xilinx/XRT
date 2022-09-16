@@ -30,6 +30,10 @@
 xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
+static int
+xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
+	       uint32_t qos, uint32_t *slot_id);
+
 int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_xocl_info *obj = data;
@@ -89,6 +93,92 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	ret = xocl_client_ioctl(drm_p->xdev, DRM_XOCL_CTX, data, filp);
 
 	return ret;
+}
+
+/*
+ * Create a hw context on a Slot. First Load the given xclbin to a slot and take
+ * a lock on xclbin if it has not been acquired before. Also return the hw_context
+ * once loaded succfully. Shared the same context for all context requests
+ * for that process if loded into same slot.
+ */
+int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
+        struct drm_file *filp)
+{
+	struct drm_xocl_create_hw_ctx *drm_hw_ctx =
+	       	(struct drm_xocl_create_hw_ctx *)data;
+        struct xocl_drm *drm_p = dev->dev_private;
+        struct xocl_dev *xdev = drm_p->xdev;
+        struct drm_xocl_axlf axlf_obj_ptr = { };
+	uint32_t slot_id = 0;
+        int ret = 0;
+
+	if (copy_from_user(&axlf_obj_ptr, drm_hw_ctx->axlf_ptr, sizeof(struct drm_xocl_axlf)))
+		return -EFAULT;
+
+	/* Download the XCLBIN to the device first */
+        mutex_lock(&xdev->dev_lock);
+        ret = xocl_read_axlf_helper(drm_p, &axlf_obj_ptr, drm_hw_ctx->qos, &slot_id);
+	if (ret) {
+		mutex_unlock(&xdev->dev_lock);
+		return ret;
+	}
+	mutex_unlock(&xdev->dev_lock);
+	
+	/* Create the HW Context and lock the bitstream */
+	/* Slot id is 0 for now */
+	return xocl_create_hw_context(xdev, filp, drm_hw_ctx, slot_id);
+}
+
+/*
+ * Destroy the given hw context. unlock the slot.
+ */
+int xocl_destroy_hw_ctx_ioctl(struct drm_device *dev, void *data,
+        struct drm_file *filp)
+{
+	struct drm_xocl_destroy_hw_ctx *drm_hw_ctx =
+		(struct drm_xocl_destroy_hw_ctx *)data;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+
+	if (!drm_hw_ctx)
+		return -EINVAL;
+
+	return xocl_destroy_hw_context(xdev, filp, drm_hw_ctx);
+}
+
+/*
+ * Open a context (only shared supported today) on a CU under the given hw_context.
+ * Return the acquired cu index for further reference.
+ */
+int xocl_open_cu_ctx_ioctl(struct drm_device *dev, void *data,
+        struct drm_file *filp)
+{
+	struct drm_xocl_open_cu_ctx *drm_cu_ctx =
+		(struct drm_xocl_open_cu_ctx *)data;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+
+	if (!drm_cu_ctx)
+		return -EINVAL;
+
+	return xocl_open_cu_context(xdev, filp, drm_cu_ctx);
+}
+
+/*
+ * Close the context (only shared supported today) on a CU under the given hw_context.
+ */
+int xocl_close_cu_ctx_ioctl(struct drm_device *dev, void *data,
+        struct drm_file *filp)
+{
+	struct drm_xocl_close_cu_ctx *drm_cu_ctx =
+		(struct drm_xocl_close_cu_ctx *)data;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+
+	if (!drm_cu_ctx)
+		return -EINVAL;
+
+	return xocl_close_cu_context(xdev, filp, drm_cu_ctx);
 }
 
 int xocl_user_intr_ioctl(struct drm_device *dev, void *data,
@@ -245,7 +335,8 @@ u32 get_live_clients(struct xocl_dev *xdev, pid_t **plist)
 	return c;
 }
 
-static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
+static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id,
+		uint32_t slot_id)
 {
 	bool ret = false;
 	int err = 0;
@@ -258,7 +349,7 @@ static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 		return false;
 	}
 
-	err = XOCL_GET_XCLBIN_ID(xdev, downloaded_xclbin);
+	err = XOCL_GET_XCLBIN_ID(xdev, downloaded_xclbin, slot_id);
 	if (err)
 		return ret;
 
@@ -266,7 +357,8 @@ static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 		ret = true;
 		userpf_info(xdev, "xclbin is already downloaded\n");
 	}
-	XOCL_PUT_XCLBIN_ID(xdev);
+
+	XOCL_PUT_XCLBIN_ID(xdev, slot_id);
 
 	return ret;
 }
@@ -309,26 +401,31 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 	struct mem_topology *topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;
 
-	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology);
+	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology, DEFAULT_PL_SLOT);
 	if (ret)
+		return ret;
+
+	if (!topology) {
+		XOCL_PUT_MEM_TOPOLOGY(xdev, DEFAULT_PL_SLOT);
 		return 0;
+	}
 
 	/*
 	 * Compare MEM_TOPOLOGY previous vs new.
 	 * Ignore this and keep disable preserve_mem if not for aws.
 	 */
 	if (xocl_icap_get_data(xdev, DATA_RETAIN) && (topology != NULL) &&
-		drm_p->xocl_mm->mm) {
+			drm_p->xocl_mm->mm) {
 		if ((size == sizeof_sect(topology, m_mem_data)) &&
-		    !xocl_preserve_memcmp(new_topology, topology, size)) {
+				!xocl_preserve_memcmp(new_topology, topology, size)) {
 			userpf_info(xdev, "preserving mem_topology.");
 			ret = 1;
 		} else {
 			userpf_info(xdev, "not preserving mem_topology.");
 		}
 	}
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
 
+	XOCL_PUT_MEM_TOPOLOGY(xdev, DEFAULT_PL_SLOT);
 	return ret;
 }
 
@@ -343,21 +440,50 @@ static bool xocl_xclbin_in_use(struct xocl_dev *xdev)
 	return false;
 }
 
+/* SAIF TODO : Move this to a new file and implement this resolver */
 static int
-xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
+xocl_resolver(struct xocl_dev *xdev, xuid_t *xclbin_id, uint32_t qos,
+		uint32_t *slot_id)
+{
+	bool force_download = false;
+	uint32_t s_id = DEFAULT_PL_SLOT;
+	int ret = 0;
+	//
+	if (xclbin_downloaded(xdev, xclbin_id, s_id)) {
+		if (qos & XOCL_AXLF_FORCE_PROGRAM) {
+			// We come here if user sets force_xclbin_program
+			// option "true" in xrt.ini under [Runtime] section
+			DRM_WARN("%s Force xclbin download", __func__);
+			force_download = true;
+		} else {
+			*slot_id = s_id;
+			ret = -EEXIST;
+			goto done;
+		}
+	}
+
+	*slot_id = s_id;
+done:
+	return ret;
+}
+
+static int
+xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
+	       uint32_t qos, uint32_t *slot)
 {
 	long err = 0;
 	struct axlf *axlf = NULL;
 	struct axlf bin_obj;
 	size_t size = 0;
+	uint32_t slot_id;
 	int preserve_mem = 0;
 	struct mem_topology *new_topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
 	const struct axlf_section_header * dtbHeader = NULL;
 	void *ulp_blob;
 	void *kernels;
-	int rc;
-	bool force_download = false;
+	int rc = 0;
 
 	if (!xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
@@ -380,16 +506,15 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
-	//
-	if (xclbin_downloaded(xdev, &bin_obj.m_header.uuid)) {
-		if ((axlf_ptr->flags & XOCL_AXLF_FORCE_PROGRAM)) {
-			// We come here if user sets force_xclbin_program
-			// option "true" in xrt.ini under [Runtime] section
-			DRM_WARN("%s Force xclbin download", __func__);
-			force_download = true;
-		} else {
-			goto done;
-		}
+	/* TODO : qos need to define */
+	qos |= axlf_ptr->flags;
+ 	rc = xocl_resolver(xdev, &bin_obj.m_header.uuid, qos, &slot_id);
+	if (rc) {
+		if (rc == -EEXIST)
+			goto done; 
+
+		userpf_err(xdev, "Download xclbin failed\n");
+		return -EINVAL;
 	}
 
 	/*
@@ -398,7 +523,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	 * 2. A opened context would lock bitstream and hold it. Directly
 	 *    ask icap if bitstream is locked
 	 */
-	if (xocl_icap_bitstream_is_locked(xdev)) {
+	if (xocl_icap_bitstream_is_locked(xdev, slot_id)) {
 		err = -EBUSY;
 		goto done;
 	}
@@ -431,6 +556,31 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		goto done;
 	}
 
+	axlf_obj = XDEV(xdev)->axlf_obj[slot_id];
+	if (axlf_obj != NULL) {
+		if (axlf_obj->ulp_blob)
+			vfree(axlf_obj->ulp_blob);
+
+		if (axlf_obj->kernels) 
+			vfree(axlf_obj->kernels);
+
+		axlf_obj->kernels = NULL;
+		axlf_obj->ksize = 0;
+
+		vfree(axlf_obj);
+		XDEV(xdev)->axlf_obj[slot_id] = NULL;
+	}
+
+	/* Cache some axlf data which shared in ioctl */
+	axlf_obj = vmalloc(sizeof(struct xocl_axlf_obj_cache));
+	if (!axlf_obj) {
+		err = -ENOMEM;
+		goto done;
+	}
+
+	XDEV(xdev)->axlf_obj[slot_id] = axlf_obj;
+	axlf_obj->idx = slot_id;
+	axlf_obj->flags = axlf_ptr->flags;
 	dtbHeader = xocl_axlf_section_header(xdev, axlf,
 		PARTITION_METADATA);
 	if (dtbHeader) {
@@ -442,15 +592,12 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 			goto done;
 		}
 
-		if (xdev->ulp_blob)
-			vfree(xdev->ulp_blob);
-
-		xdev->ulp_blob = vmalloc(fdt_totalsize(ulp_blob));
-		if (!xdev->ulp_blob) {
+		axlf_obj->ulp_blob = vmalloc(fdt_totalsize(ulp_blob));
+		if (!axlf_obj->ulp_blob) {
 			err = -ENOMEM;
 			goto done;
 		}
-		memcpy(xdev->ulp_blob, ulp_blob, fdt_totalsize(ulp_blob));
+		memcpy(axlf_obj->ulp_blob, ulp_blob, fdt_totalsize(ulp_blob));
 
 		/*
 		 * don't check uuid if the xclbin is a lite one
@@ -460,7 +607,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 			xocl_xdev_info(xdev, "check interface uuid");
 			err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
-				(const void *)((char*)xdev->ulp_blob));
+				(const void *)((char*)axlf_obj->ulp_blob));
 			if (err) {
 				userpf_err(xdev, "interface uuids do not match");
 				err = -EINVAL;
@@ -481,22 +628,17 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	preserve_mem = xocl_preserve_mem(drm_p, new_topology, size);
 
+#if 0
 	/* To support fast adapter kind of CU, KDS would create a bo to
 	 * reserve plram. Needs to release it before cleanup mem.
 	 */
 	xocl_kds_reset(xdev, &uuid_null);
-
+#endif
 	/* Switching the xclbin, make sure none of the buffers are used. */
 	if (!preserve_mem) {
-		err = xocl_cleanup_mem(drm_p);
+		err = xocl_cleanup_mem(drm_p, slot_id);
 		if (err)
 			goto done;
-	}
-
-	if (XDEV(xdev)->kernels != NULL) {
-		vfree(XDEV(xdev)->kernels);
-		XDEV(xdev)->kernels = NULL;
-		XDEV(xdev)->ksize = 0;
 	}
 
 	/* There is a corner case.
@@ -517,20 +659,20 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 			err = -EFAULT;
 			goto done;
 		}
-		XDEV(xdev)->ksize = axlf_ptr->ksize;
-		XDEV(xdev)->kernels = kernels;
+		axlf_obj->ksize = axlf_ptr->ksize;
+		axlf_obj->kernels = kernels;
 	}
 
-	memcpy(&XDEV(xdev)->kds_cfg, &axlf_ptr->kds_cfg, sizeof(axlf_ptr->kds_cfg));
+	memcpy(&axlf_obj->kds_cfg, &axlf_ptr->kds_cfg, sizeof(axlf_ptr->kds_cfg));
 
-	err = xocl_icap_download_axlf(xdev, axlf, force_download);
+	err = xocl_icap_download_axlf(xdev, axlf, slot_id);
 	/*
 	 * Don't just bail out here, always recreate drm mem
 	 * since we have cleaned it up before download.
 	 */
 
 	if (!preserve_mem) {
-		rc = xocl_init_mem(drm_p);
+		rc = xocl_init_mem(drm_p, slot_id);
 		if (err == 0)
 			err = rc;
 	}
@@ -543,16 +685,29 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	/* The finial step is to update KDS configuration */
 	if (!err) {
-		err = xocl_kds_update(xdev, axlf_ptr->kds_cfg);
+		err = xocl_kds_update(xdev, axlf_obj->kds_cfg);
 		if (err) {
-			xocl_icap_clean_bitstream(xdev);
+			xocl_icap_clean_bitstream(xdev, slot_id);
 		}
 	}
 
 done:
+	/* Update the slot */
+	*slot = slot_id;
 	if (size < 0)
 		err = size;
 	if (err) {
+		if (axlf_obj) {
+			if (axlf_obj->kernels)
+				vfree(axlf_obj->kernels);
+
+			if (axlf_obj->ulp_blob)
+				vfree(axlf_obj->ulp_blob);
+
+			vfree(axlf_obj);
+			XDEV(xdev)->axlf_obj[slot_id] = NULL;
+		}
+
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
 	}
 	else
@@ -569,10 +724,11 @@ int xocl_read_axlf_ioctl(struct drm_device *dev,
 	struct drm_xocl_axlf *axlf_obj_ptr = data;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
+	uint32_t slot_id = 0;
 	int err = 0;
 
 	mutex_lock(&xdev->dev_lock);
-	err = xocl_read_axlf_helper(drm_p, axlf_obj_ptr);
+	err = xocl_read_axlf_helper(drm_p, axlf_obj_ptr, 0, &slot_id); // QOS legacy
 	mutex_unlock(&xdev->dev_lock);
 	return err;
 }

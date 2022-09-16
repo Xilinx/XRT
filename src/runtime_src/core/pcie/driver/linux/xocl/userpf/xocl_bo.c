@@ -60,7 +60,6 @@ static inline void xocl_release_pages(struct page **pages, int nr, bool cold)
 #endif
 }
 
-
 static inline void __user *to_user_ptr(u64 address)
 {
 	return (void __user *)(uintptr_t)address;
@@ -205,8 +204,8 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	}
 
 	if (xobj->dma_nsg) {
-		pci_unmap_sg(xdev->core.pdev, xobj->sgt->sgl, xobj->dma_nsg,
-			PCI_DMA_BIDIRECTIONAL);
+		dma_unmap_sg(&xdev->core.pdev->dev, xobj->sgt->sgl,
+			     xobj->dma_nsg, DMA_BIDIRECTIONAL);
 	}
 
 	if (xobj->pages) {
@@ -282,6 +281,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	unsigned ddr;
 	struct mem_topology *topo = NULL;
 	int err = 0;
+	uint32_t slot_id = xocl_bo_slot_idx(flags);
 
 	if (type == XOCL_BO_EXECBUF || type == XOCL_BO_IMPORT ||
 	    type == XOCL_BO_CMA)
@@ -296,7 +296,8 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 	ddr = xocl_bo_ddr_idx(flags);
 	if (ddr >= ddr_count)
 		return -EINVAL;
-	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
+	
+	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo, slot_id);
 	if (err)
 		return err;
 
@@ -314,7 +315,7 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		}
 	}
 done:
-	XOCL_PUT_GROUP_TOPOLOGY(xdev);
+	XOCL_PUT_GROUP_TOPOLOGY(xdev, slot_id);
 	return err;
 }
 
@@ -542,7 +543,7 @@ cleanup:
 }
 
 struct drm_xocl_bo *
-__xocl_create_bo_ioctl(struct drm_device *dev,
+__xocl_create_bo_ioctl(struct drm_device *dev, struct drm_file *filp,
 		       struct drm_xocl_create_bo *args)
 {
 	struct drm_xocl_bo *xobj;
@@ -551,8 +552,20 @@ __xocl_create_bo_ioctl(struct drm_device *dev,
 	unsigned bo_type = xocl_bo_type(args->flags);
 	struct mem_topology *topo = NULL;
 	unsigned ddr = 0;
+	uint32_t hw_ctx_id = 0;
+	uint32_t slot_id = 0;
 	int ret;
 
+	/* Currently userspace will provide the corresponding hw context id.
+	 * Driver has to map that hw context to the corresponding slot id.
+	 */
+	hw_ctx_id = xocl_bo_slot_idx(args->flags);
+	ret = xocl_get_slot_id_by_hw_ctx_id(xdev, filp, hw_ctx_id);
+	if (ret < 0)
+		return ERR_PTR(ret);
+
+	slot_id = ret;
+	args->flags = xocl_bo_set_slot_idx(args->flags, slot_id);
 	xobj = xocl_create_bo(dev, args->size, args->flags, bo_type);
 	if (IS_ERR(xobj)) {
 		DRM_ERROR("object creation failed idx %d, size 0x%llx\n",
@@ -569,7 +582,7 @@ __xocl_create_bo_ioctl(struct drm_device *dev,
 		 * DRM allocate contiguous pages, shift the vmapping with
 		 * bar address offset
 		 */
-		ret = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
+		ret = XOCL_GET_GROUP_TOPOLOGY(xdev, topo, slot_id);
 		if (ret)
 			goto out_free;
 
@@ -591,7 +604,7 @@ __xocl_create_bo_ioctl(struct drm_device *dev,
 				xobj->p2p_bar_offset = bar_off;
 		}
 
-		XOCL_PUT_GROUP_TOPOLOGY(xdev);
+		XOCL_PUT_GROUP_TOPOLOGY(xdev, slot_id);
 	}
 
 	if (xobj->flags & XOCL_PAGE_ALLOC) {
@@ -603,12 +616,12 @@ __xocl_create_bo_ioctl(struct drm_device *dev,
 		else if (xobj->flags & XOCL_CMA_MEM) {
 			uint64_t start_addr;
 
-			ret = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
+			ret = XOCL_GET_GROUP_TOPOLOGY(xdev, topo, slot_id);
 			if (ret)
 				goto out_free;
 			start_addr = topo->m_mem_data[ddr].m_base_address;
 			xobj->pages = xocl_cma_collect_pages(drm_p, start_addr, xobj->mm_node->start, xobj->base.size);
-			XOCL_PUT_GROUP_TOPOLOGY(xdev);
+			XOCL_PUT_GROUP_TOPOLOGY(xdev, slot_id);
 		}
 
 		if (IS_ERR(xobj->pages)) {
@@ -659,7 +672,7 @@ int xocl_create_bo_ioctl(struct drm_device *dev,
 	struct drm_xocl_bo *xobj;
 	struct drm_xocl_create_bo *args = data;
 
-	xobj = __xocl_create_bo_ioctl(dev, data);
+	xobj = __xocl_create_bo_ioctl(dev, filp, data);
 	if (IS_ERR(xobj))
 		return PTR_ERR(xobj);
 
@@ -683,15 +696,29 @@ int xocl_userptr_bo_ioctl(
 	struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	int ret;
+	struct xocl_drm *drm_p = dev->dev_private;
 	struct drm_xocl_bo *xobj;
 	uint64_t page_count = 0;
 	uint64_t page_pinned = 0;
 	struct drm_xocl_userptr_bo *args = data;
 	unsigned user_flags = args->flags;
 	int write = 1;
+	uint32_t hw_ctx_id = 0;
+	uint32_t slot_id = 0;
 
 	if (offset_in_page(args->addr))
 		return -EINVAL;
+
+	/* Currently userspace will provide the corresponding hw context id.
+	 * Driver has to map that hw context to the corresponding slot id.
+	 */
+	hw_ctx_id = xocl_bo_slot_idx(user_flags);
+	ret = xocl_get_slot_id_by_hw_ctx_id(drm_p->xdev, filp, user_flags);
+	if (ret < 0)
+		return ret;
+
+	slot_id = ret;
+        user_flags = xocl_bo_set_slot_idx(user_flags, slot_id);
 
 	xobj = xocl_create_bo(dev, args->size, user_flags, XOCL_BO_USERPTR);
 	BO_ENTER("xobj %p", xobj);
@@ -1229,8 +1256,19 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 {
 	int ret = 0;
 	struct drm_xocl_bo *importing_xobj;
+	struct xocl_drm *drm_p = dev->dev_private;
+	struct xocl_dev *xdev = drm_p->xdev;
+	uint32_t slot_id = 0;
+	unsigned flags = 0;
 
-	importing_xobj = xocl_create_bo(dev, attach->dmabuf->size, 0, XOCL_BO_IMPORT);
+        ret = xocl_get_pl_slot(xdev, &slot_id);
+        if (ret) {
+                DRM_ERROR("Xclbin is not present");
+                return ERR_PTR(ret);
+        }
+
+	flags = xocl_bo_set_slot_idx(flags, slot_id);
+	importing_xobj = xocl_create_bo(dev, attach->dmabuf->size, flags, XOCL_BO_IMPORT);
 
 	BO_ENTER("xobj %p", importing_xobj);
 
@@ -1291,17 +1329,17 @@ void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 
 }
 #else
-int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct dma_buf_map *map)
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct XOCL_MAP_TYPE *map)
 {
         struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 
         BO_ENTER("xobj %p", xobj);
-        dma_buf_map_set_vaddr(map, xobj->vmapping);
+        XOCL_MAP_SET_VADDR(map, xobj->vmapping);
 
         return 0;
 }
 
-void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct dma_buf_map *map)
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct XOCL_MAP_TYPE *map)
 {
 
 }

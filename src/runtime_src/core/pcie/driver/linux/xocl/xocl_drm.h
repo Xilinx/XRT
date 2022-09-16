@@ -59,8 +59,8 @@ struct xocl_mm {
 	struct drm_mm           *mm;
 	uint64_t		start_addr;
 	uint64_t		end_addr;
-	uint32_t                m_count;
-
+	uint32_t 		m_count;
+	
 	/* Array of bo and memory usage stats 
 	 * for whole device memory manager */
 	struct drm_xocl_mm_stat *bo_usage_stat;
@@ -116,7 +116,7 @@ struct drm_xocl_unmgd {
 };
 
 struct drm_xocl_bo *__xocl_create_bo_ioctl(struct drm_device *dev,
-	struct drm_xocl_create_bo *args);
+	struct drm_file *filp, struct drm_xocl_create_bo *args);
 struct drm_xocl_bo *xocl_drm_create_bo(struct xocl_drm *drm_p,
 	uint64_t unaligned_size, unsigned user_flags);
 void xocl_drm_free_bo(struct drm_gem_object *obj);
@@ -132,8 +132,9 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
 
 void *xocl_drm_init(xdev_handle_t xdev);
 void xocl_drm_fini(struct xocl_drm *drm_p);
-int xocl_init_mem(struct xocl_drm *drm_p);
-int xocl_cleanup_mem(struct xocl_drm *drm_p);
+int xocl_init_mem(struct xocl_drm *drm_p, uint32_t slot_id);
+int xocl_cleanup_mem_all(struct xocl_drm *drm_p);
+int xocl_cleanup_mem(struct xocl_drm *drm_p, uint32_t slot_id);
 
 int xocl_check_topology(struct xocl_drm *drm_p);
 

@@ -156,6 +156,7 @@ int xrt_cu_xgq_init(struct xrt_cu *xcu, int slow_path)
 	xcu->busy_threshold = 2;
 	xcu->interval_min = 2;
 	xcu->interval_max = 5;
+	mutex_init(&xcu->read_regs.xcr_lock);
 
 	xcu->status = 0x4;
 	err = xrt_cu_init(xcu);

@@ -30,13 +30,22 @@ static ssize_t xclbinuuid_show(struct device *dev,
 	xuid_t *xclbin_id = NULL;
 	ssize_t cnt = 0;
 	int err = 0;
+        int i = 0;
 
-	err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
-	if (err)
-		return cnt;
+	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+		err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id, i);
+		if (err)
+			return cnt;
 
-	cnt = sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
-	XOCL_PUT_XCLBIN_ID(xdev);
+		if (!xclbin_id)
+			continue;
+
+		cnt += sprintf(buf, "%pUb\n", xclbin_id ? xclbin_id : 0);
+		
+		XOCL_PUT_XCLBIN_ID(xdev, i);
+		xclbin_id = NULL;
+	}
+
 	return cnt;
 }
 
@@ -96,16 +105,25 @@ static ssize_t kdsstat_show(struct device *dev,
 	int size = 0, err;
 	xuid_t *xclbin_id = NULL;
 	pid_t *plist = NULL;
-	u32 clients, i;
+	u32 clients, i = 0;
 
-	err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
-	if (err) {
-		size += sprintf(buf + size, "unable to give xclbin id");
-		return size;
+	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+		err = XOCL_GET_XCLBIN_ID(xdev, xclbin_id, i);
+		if (err) {
+			size += sprintf(buf + size, "unable to give xclbin id");
+			return size;
+		}
+
+		if (!xclbin_id)
+			continue;
+
+		size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
+				xclbin_id ? xclbin_id : 0);
+		
+		XOCL_PUT_XCLBIN_ID(xdev, i);
+		xclbin_id = NULL;
 	}
 
-	size += sprintf(buf + size, "xclbin:\t\t\t%pUb\n",
-		xclbin_id ? xclbin_id : 0);
 	size += sprintf(buf + size, "outstanding execs:\t%d\n",
 		atomic_read(&xdev->outstanding_execs));
 	size += sprintf(buf + size, "total execs:\t\t%lld\n",
@@ -117,7 +135,6 @@ static ssize_t kdsstat_show(struct device *dev,
 	for (i = 0; i < clients; i++)
 		size += sprintf(buf + size, "\t\t\t%d\n", plist[i]);
 	vfree(plist);
-	XOCL_PUT_XCLBIN_ID(xdev);
 	return size;
 }
 static DEVICE_ATTR_RO(kdsstat);
@@ -125,56 +142,62 @@ static DEVICE_ATTR_RO(kdsstat);
 /* -live memory usage-- */
 static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 {
-	int i, err;
+	int i;
 	ssize_t count = 0;
 	ssize_t size = 0;
+	int err = 0;
 	size_t memory_usage = 0;
 	unsigned int bo_count = 0;
 	const char *txt_fmt = "[%s] %s@0x%012llx (%lluMB): %lluKB %dBOs\n";
 	const char *raw_fmt = "%llu %d %llu\n";
 	struct mem_topology *topo = NULL;
+	struct xocl_drm *drm_p = XDEV(xdev)->drm;
 	struct drm_xocl_mm_stat stat;
 	const char *bo_txt_fmt = "[%s] %lluKB %dBOs\n";
 	const char *bo_types[XOCL_BO_USAGE_TOTAL];
 
-	mutex_lock(&xdev->dev_lock);
+	if (!drm_p)
+		return -EINVAL;
 
-	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo);
-	if (err) {
-		mutex_unlock(&xdev->dev_lock);
-		return err;
-	}
-
-	if (!topo) {
-		size = -EINVAL;
-		goto done;
-	}
-
-	for (i = 0; i < topo->m_count; i++) {
-		xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
-
-		if (raw) {
+	mutex_lock(&drm_p->mm_lock);
+	if (raw) {
+		for (i = 0; i < drm_p->xocl_mm->m_count; i++) {
+			xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
 			memory_usage = 0;
 			bo_count = 0;
 			memory_usage = stat.memory_usage;
 			bo_count = stat.bo_count;
 
 			count = sprintf(buf, raw_fmt,
-				memory_usage,
-				bo_count, 0);
-		} else {
-			count = sprintf(buf, txt_fmt,
-				topo->m_mem_data[i].m_used ?
-				"IN-USE" : "UNUSED",
-				topo->m_mem_data[i].m_tag,
-				topo->m_mem_data[i].m_base_address,
-				topo->m_mem_data[i].m_size / 1024,
-				stat.memory_usage / 1024,
-				stat.bo_count);
+					memory_usage,
+					bo_count, 0);
+			buf += count;
+			size += count;
 		}
-		buf += count;
-		size += count;
 	}
+	else {
+		err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo, DEFAULT_PL_SLOT);
+		if (err)
+			goto done;
+
+		if (topo) {
+			for (i = 0; i < topo->m_count; i++) {
+				xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
+				count = sprintf(buf, txt_fmt,
+						topo->m_mem_data[i].m_used ?
+						"IN-USE" : "UNUSED",
+						topo->m_mem_data[i].m_tag,
+						topo->m_mem_data[i].m_base_address,
+						topo->m_mem_data[i].m_size / 1024,
+						stat.memory_usage / 1024,
+						stat.bo_count);
+				buf += count;
+				size += count;
+			}
+		}
+		XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, DEFAULT_PL_SLOT);
+	}
+
 	/* -- Separator for bo stats -- */
 	if (raw)
 		count = sprintf(buf, raw_fmt, -EINVAL, -EINVAL, -EINVAL);
@@ -210,8 +233,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 done:
-	XOCL_PUT_GROUP_TOPOLOGY(xdev);
-	mutex_unlock(&xdev->dev_lock);
+	mutex_unlock(&drm_p->mm_lock);
 	return size;
 }
 
@@ -271,6 +293,32 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 	return ret;
 }
 static DEVICE_ATTR_RO(kds_stat);
+
+static ssize_t
+kds_cuctx_stat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	ssize_t ret;
+
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_cuctx_stat_raw(&XDEV(xdev)->kds, buf, DOMAIN_PL);
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
+}
+static DEVICE_ATTR_RO(kds_cuctx_stat_raw);
+
+static ssize_t
+kds_scuctx_stat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	ssize_t ret;
+
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_cuctx_stat_raw(&XDEV(xdev)->kds, buf, DOMAIN_PS);
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
+}
+static DEVICE_ATTR_RO(kds_scuctx_stat_raw);
 
 static ssize_t
 kds_custat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -707,14 +755,24 @@ static ssize_t ulp_uuids_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	const void *uuid;
 	int node = -1, off = 0;
+	int ret = 0;
+	uint32_t slot_id = 0;
+	struct xocl_axlf_obj_cache *axlf_obj = NULL;
 
-	if (!xdev->ulp_blob || fdt_check_header(xdev->ulp_blob))
+	ret = xocl_get_pl_slot(xdev, &slot_id);
+        if (ret) {
+                userpf_err(xdev, "Xclbin is not present");
+                return ret;
+        }
+
+	axlf_obj = XDEV(xdev)->axlf_obj[slot_id];
+	if (!axlf_obj->ulp_blob || fdt_check_header(axlf_obj->ulp_blob))
 		return -EINVAL;
 
-	for (node = xocl_fdt_get_next_prop_by_name(xdev, xdev->ulp_blob,
-		-1, PROP_INTERFACE_UUID, &uuid, NULL);
+	for (node = xocl_fdt_get_next_prop_by_name(xdev, axlf_obj->ulp_blob,
+			-1, PROP_INTERFACE_UUID, &uuid, NULL);
 	    uuid && node > 0;
-	    node = xocl_fdt_get_next_prop_by_name(xdev, xdev->ulp_blob,
+	    node = xocl_fdt_get_next_prop_by_name(xdev, axlf_obj->ulp_blob,
 		node, PROP_INTERFACE_UUID, &uuid, NULL))
 		off += sprintf(buf + off, "%s\n", (char *)uuid);
 
@@ -791,6 +849,8 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kds_numcdmas.attr,
 	&dev_attr_kds_stat.attr,
 	&dev_attr_kds_custat_raw.attr,
+	&dev_attr_kds_cuctx_stat_raw.attr,
+	&dev_attr_kds_scuctx_stat_raw.attr,
 	&dev_attr_kds_scustat_raw.attr,
 	&dev_attr_kds_interrupt.attr,
 	&dev_attr_kds_interval.attr,

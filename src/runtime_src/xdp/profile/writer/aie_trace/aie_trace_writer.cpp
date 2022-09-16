@@ -21,6 +21,10 @@
 
 namespace xdp {
 
+  // 10 Megabytes or 2.5M words
+  constexpr uint64_t LARGE_DATA_WARN_THRESHOLD = 0xA00000;
+  bool AIETraceWriter::largeDataWarning = false;
+
   AIETraceWriter::AIETraceWriter(const char* filename, uint64_t devId, uint64_t trStrmId,
                                  const std::string& version, 
                                  const std::string& creationTime, 
@@ -82,6 +86,18 @@ namespace xdp {
     }
 
     size_t num = traceData->buffer.size();
+
+    if (!largeDataWarning) {
+      uint64_t traceBytes = 0;
+      for (size_t j = 0; j < num; j++)
+        traceBytes += traceData->bufferSz[j];
+      if (traceBytes > LARGE_DATA_WARN_THRESHOLD) {
+        std::string msg = "Writing large amount of AIE trace. This could take a while.";
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+        largeDataWarning = true;
+      }
+    }
+
     for (size_t j = 0; j < num; j++) {
       void*    buf = traceData->buffer[j];
       // We write 4 bytes at a time
