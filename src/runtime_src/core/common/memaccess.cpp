@@ -167,14 +167,14 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
 
     // Update the buffer index based on how far we have read
     void* current_buffer_location = static_cast<char *>(buf.get()) + bytes_seen;
-    boost::format err_fmt("%s: %s - %s %u bytes from %s(0x%x)");
+    boost::format err_fmt("%s: Code : %d - %s %u bytes from %s(0x%x)");
     err_fmt % __func__;
     switch (action) {
       case operation_type::read:
         try {
           device->unmgd_pread(current_buffer_location, bytes_to_edit, validated_start_addr);
         } catch (const std::exception& e) {
-          auto err_msg = err_fmt % strerror(errno) % "reading" % bytes_to_edit % it->m_tag % current_addr;
+          auto err_msg = err_fmt % errno % "reading" % bytes_to_edit % it->m_tag % current_addr;
           throw xrt_core::error(std::errc::operation_canceled, err_msg.str());
         }
         break;
@@ -182,7 +182,7 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
         try {
           device->unmgd_pwrite(current_buffer_location, bytes_to_edit, validated_start_addr);
         } catch (const std::exception& e) {
-          auto err_msg = err_fmt % strerror(errno) % "writing" % bytes_to_edit % it->m_tag % current_addr;
+          auto err_msg = err_fmt % errno % "writing" % bytes_to_edit % it->m_tag % current_addr;
           throw xrt_core::error(std::errc::operation_canceled, err_msg.str());
         }
         break;
