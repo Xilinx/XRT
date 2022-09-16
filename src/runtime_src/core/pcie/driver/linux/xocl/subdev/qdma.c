@@ -336,7 +336,7 @@ static ssize_t qdma_migrate_bo(struct platform_device *pdev,
 	enum dma_data_direction dir;
 	u32 nents;
 	pid_t pid = current->pid;
-	ssize_t ret = 0;
+	ssize_t ret;
 
 	qdma = platform_get_drvdata(pdev);
 	xocl_dbg(&pdev->dev, "TID %d, Channel:%d, Offset: 0x%llx, write: %d",
