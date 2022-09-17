@@ -1233,6 +1233,9 @@ initialize_query_table()
   emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
   emplace_sysfs_get<query::extended_vmr_status>                ("xgq_vmr", "vmr_verbose_info");
+  emplace_sysfs_getput<query::xgq_scaling_enabled>             ("xgq_vmr", "xgq_scaling_enable");
+  emplace_sysfs_getput<query::xgq_scaling_power_override>      ("xgq_vmr", "xgq_scaling_power_override");
+  emplace_sysfs_getput<query::xgq_scaling_temp_override>       ("xgq_vmr", "xgq_scaling_temp_override");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
   emplace_sysfs_get<query::hwmon_sdm_serial_num>               ("hwmon_sdm", "serial_num");
