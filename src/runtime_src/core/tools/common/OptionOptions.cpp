@@ -29,14 +29,15 @@ namespace po = boost::program_options;
 
 OptionOptions::OptionOptions( const std::string & longName,
                               bool isHidden,
-                              const std::string & description)
+                              const std::string & description,
+                              bool includeLongName)
   : m_executable("<unknown>")
   , m_command("<unknown>")
   , m_longName(longName)
   , m_isHidden(isHidden)
   , m_description(description)
   , m_extendedHelp("")
-  , m_defaultOptionValue(false)
+  , m_includeLongName(includeLongName)
 {
   m_selfOption.add_options()(m_longName.c_str(), boost::program_options::bool_switch(&m_defaultOptionValue)->required(), m_description.c_str());
   m_optionsDescription.add(m_selfOption);
@@ -64,8 +65,11 @@ OptionOptions::OptionOptions( const std::string & longName,
 void 
 OptionOptions::printHelp() const
 {
-  XBU::report_subcommand_help( m_executable,
-                               m_command,
+  std::string command = m_command;
+  if (m_includeLongName)
+    command.append(" --" + m_longName);
+  XBU::report_subcommand_help( m_executable, 
+                               command, 
                                m_description, m_extendedHelp, 
                                m_optionsDescription, m_optionsHidden, 
                                m_positionalOptions, m_globalOptions);
