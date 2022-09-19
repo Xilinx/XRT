@@ -193,7 +193,7 @@ namespace xrt {
 	break;
       }
 
-      syslog(LOG_INFO, "Got new kernel command!\n");
+      syslog(LOG_DEBUG, "Got new kernel command!\n");
 
       /* Reg file indicates the kernel should not be running. */
       if (!(args_from_host[0] & 0x1))
