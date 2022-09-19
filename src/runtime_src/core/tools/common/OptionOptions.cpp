@@ -29,47 +29,44 @@ namespace po = boost::program_options;
 
 OptionOptions::OptionOptions( const std::string & longName,
                               bool isHidden,
-                              const std::string & description,
-                              bool includeLongName)
+                              const std::string & description)
   : m_executable("<unknown>")
   , m_command("<unknown>")
   , m_longName(longName)
   , m_isHidden(isHidden)
   , m_description(description)
   , m_extendedHelp("")
-  , m_includeLongName(includeLongName)
+  , m_defaultOptionValue(false)
 {
-  m_selfOption.add_options()(m_longName.c_str(), boost::program_options::bool_switch(&m_defaultOptionValue)->required(), m_description.c_str());
-  m_optionsDescription.add(m_selfOption);
+  m_optionsDescription.add_options()
+    (m_longName.c_str(), boost::program_options::bool_switch(&m_defaultOptionValue), m_description.c_str())
+  ;
 }
 
-OptionOptions::OptionOptions( const std::string & longName,
-                              const std::string & shortName,
-                              const std::string & optionDescription,
-                              const boost::program_options::value_semantic* optionValue,
-                              const std::string & valueDescription,
-                              bool isHidden
-                              )
+OptionOptions::OptionOptions(const std::string & longName,
+                            const std::string & shortName,
+                            const std::string & optionDescription,
+                            const boost::program_options::value_semantic* optionValue,
+                            const std::string & valueDescription,
+                            bool isHidden
+                            )
   : m_executable("<unknown>")
   , m_command("<unknown>")
   , m_longName(longName)
-  , m_shortName(shortName)
   , m_isHidden(isHidden)
   , m_description(optionDescription)
   , m_extendedHelp("")
 {
-  m_selfOption.add_options()(optionNameString().c_str(), optionValue, valueDescription.c_str());
-  m_optionsDescription.add(m_selfOption);
+  m_optionsDescription.add_options()
+    (m_longName.c_str(), optionValue, valueDescription.c_str())
+  ;
 }
 
 void 
 OptionOptions::printHelp() const
 {
-  std::string command = m_command;
-  if (m_includeLongName)
-    command.append(" --" + m_longName);
   XBU::report_subcommand_help( m_executable, 
-                               command, 
+                               m_command + " --" + m_longName, 
                                m_description, m_extendedHelp, 
                                m_optionsDescription, m_optionsHidden, 
                                m_positionalOptions, m_globalOptions);

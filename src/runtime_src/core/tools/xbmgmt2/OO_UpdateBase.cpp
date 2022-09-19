@@ -64,15 +64,19 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 OO_UpdateBase::OO_UpdateBase(const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Update base partition", false)
+    : OptionOptions( _longName, 
+                    std::string("b"),
+                    "Update base partition",
+                    boost::program_options::value<decltype(update)>(&update)->implicit_value("all"),
+                    "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
+                      "  ALL   - All images will be updated\n"
+                      "  SHELL - Platform image\n"
+                      "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
+                      "  NO-BACKUP   - Backup boot remains unchanged",
+                    _isHidden)
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
-                                                                        "  ALL   - All images will be updated\n"
-                                                                        "  SHELL - Platform image\n"
-                                                                        "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
-                                                                        "  NO-BACKUP   - Backup boot remains unchanged")
     ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Valid values:\n"
                                                                     "  Name (and path) to the mcs image on disk\n"
                                                                     "  Name (and path) to the xsabin image on disk")
