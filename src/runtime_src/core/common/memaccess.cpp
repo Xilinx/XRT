@@ -173,16 +173,16 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
       case operation_type::read:
         try {
           device->unmgd_pread(current_buffer_location, bytes_to_edit, validated_start_addr);
-        } catch (const std::exception& e) {
-          auto err_msg = err_fmt % errno % "reading" % bytes_to_edit % it->m_tag % current_addr;
+        } catch (const std::exception&) {
+          const auto err_msg = err_fmt % errno % "reading" % bytes_to_edit % it->m_tag % current_addr;
           throw xrt_core::error(std::errc::operation_canceled, err_msg.str());
         }
         break;
       case operation_type::write:
         try {
           device->unmgd_pwrite(current_buffer_location, bytes_to_edit, validated_start_addr);
-        } catch (const std::exception& e) {
-          auto err_msg = err_fmt % errno % "writing" % bytes_to_edit % it->m_tag % current_addr;
+        } catch (const std::exception&) {
+          const auto err_msg = err_fmt % errno % "writing" % bytes_to_edit % it->m_tag % current_addr;
           throw xrt_core::error(std::errc::operation_canceled, err_msg.str());
         }
         break;

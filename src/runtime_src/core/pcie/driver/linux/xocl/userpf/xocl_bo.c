@@ -918,9 +918,9 @@ int xocl_info_bo_ioctl(struct drm_device *dev,
 
 static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t paddr, size_t size, bool dir)
 {
-	int channel;
-	struct drm_xocl_unmgd unmgd;
-	ssize_t ret;
+	int channel = 0;
+	struct drm_xocl_unmgd unmgd = {0};
+	ssize_t ret = 0;
 
 	ret = xocl_init_unmgd(&unmgd, data_ptr, size, dir);
 	if (ret) {
