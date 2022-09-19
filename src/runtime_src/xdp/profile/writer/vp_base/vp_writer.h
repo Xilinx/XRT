@@ -36,9 +36,6 @@ namespace xdp {
     // The base name of all files created by this writer
     std::string basename ;
 
-    // The current name of the open file
-    std::string currentFileName ;
-
     // The directory where all the files will be dumped
     std::string directory ;
   protected:
@@ -51,6 +48,9 @@ namespace xdp {
   protected:
     // Connection to the database where all the information is stored
     VPDatabase* db ;
+
+    // The current name of the open file
+    std::string currentFileName ;
 
     // The output stream (which could go to many different files)
     std::ofstream fout ;
