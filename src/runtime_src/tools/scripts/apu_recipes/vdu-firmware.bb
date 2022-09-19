@@ -8,7 +8,7 @@ PV = "${XILINX_VDU_VERSION}-xilinx-${XILINX_RELEASE_VERSION}+git${SRCPV}"
 
 S  = "${WORKDIR}/git"
 
-BRANCH ?= "master"
+BRANCH ?= "master-vnc"
 REPO ?= "git://gitenterprise.xilinx.com/xilinx-vcu/vdu-firmware.git;protocol=https"
 SRCREV ?= "${AUTOREV}"
 

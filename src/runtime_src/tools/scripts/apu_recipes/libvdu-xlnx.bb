@@ -1,6 +1,6 @@
 SUMMARY = "Control Software for VDU"
 DESCRIPTION = "Control software libraries, test applications and headers provider for VDU"
-LICENSE = "Proprietary"
+LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://LICENSE.md;md5=c15ae83ba15c4ab3fa4eb2c22975258f"
 
 XILINX_VDU_VERSION = "1.0.0"
@@ -26,11 +26,11 @@ EXTRA_OEMAKE = "CC='${CC}' CXX='${CXX} ${CXXFLAGS}'"
 
 do_install() {
     install -d ${D}${libdir}
-    install -d ${D}${includedir}/allegro-vdu-ctrl-sw/include
+    install -d ${D}${includedir}/vdu-ctrl-sw/include
 
-    install -Dm 0755 ${S}/bin/AL_Decoder.exe ${D}/${bindir}/AL_Decoder.exe
+    install -Dm 0755 ${S}/bin/AL_Decoder.exe ${D}/${bindir}/ctrlsw_decoder
 
-    oe_runmake install_headers INSTALL_HDR_PATH=${D}${includedir}/allegro-vdu-ctrl-sw/include
+    oe_runmake install_headers INSTALL_HDR_PATH=${D}${includedir}/vdu-ctrl-sw/include
     oe_libinstall -C ${S}/bin/ -so liballegro_decode ${D}/${libdir}/
 }
 

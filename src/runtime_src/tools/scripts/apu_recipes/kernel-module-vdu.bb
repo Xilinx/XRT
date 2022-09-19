@@ -11,7 +11,7 @@ S = "${WORKDIR}/git"
 
 BRANCH ?= "master"
 REPO ?= "git://gitenterprise.xilinx.com/xilinx-vcu/vdu-modules.git;protocol=https"
-SRCREV ?= "92d568978cbb98276e59fd14534d38242fb65e7b"
+SRCREV ?= "${AUTOREV}"
 
 BRANCHARG = "${@['nobranch=1', 'branch=${BRANCH}'][d.getVar('BRANCH', True) != '']}"
 SRC_URI = "${REPO};${BRANCHARG}"
@@ -26,5 +26,3 @@ COMPATIBLE_MACHINE = "^$"
 COMPATIBLE_MACHINE:versal = "versal"
 
 PACKAGE_ARCH = "${SOC_FAMILY_ARCH}"
-
-KERNEL_MODULE_AUTOLOAD += "dmaproxy"
