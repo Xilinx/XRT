@@ -1089,6 +1089,10 @@ namespace xclhwemhal2 {
       //throw std::runtime_error(" Simulator did not start/exited, please refer simulate.log in .run directory!");
       exit(EXIT_FAILURE);
     }
+
+    std::string simulationDirectoryMsg = "INFO: [HW-EMU 05] Path of the simulation directory : " + getSimPath();
+    logMessage(simulationDirectoryMsg);
+
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
     sock->monitor_socket();
