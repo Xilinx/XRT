@@ -50,7 +50,7 @@ class OptionOptions {
 
  // Child class Helper methods
  protected:
-  OptionOptions(const std::string & longName, bool isHidden, const std::string & description);
+  OptionOptions(const std::string & longName, bool isHidden, const std::string & description, bool includeLongName = true);
   void setExtendedHelp(const std::string &extendedHelp) { m_extendedHelp = extendedHelp; };
   void printHelp() const;
   std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
@@ -70,9 +70,11 @@ class OptionOptions {
   std::string m_executable;
   std::string m_command;
   std::string m_longName;
+  std::string m_shortName;
   bool m_isHidden;
   std::string m_description;
   std::string m_extendedHelp;
+  bool m_includeLongName;
   boost::program_options::options_description m_globalOptions;
 };
   
