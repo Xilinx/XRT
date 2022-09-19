@@ -1054,7 +1054,6 @@ namespace xclhwemhal2 {
         if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
-        std::cout << "Path of the simulation directory : " << getSimPath() << std::endl;
         //if (!xclemulation::file_exists(sim_file))
         if (!boost::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
@@ -1090,6 +1089,10 @@ namespace xclhwemhal2 {
       //throw std::runtime_error(" Simulator did not start/exited, please refer simulate.log in .run directory!");
       exit(EXIT_FAILURE);
     }
+
+    std::string simulationDirectoryMsg = "INFO: [HW-EMU 05] Path of the simulation directory : " + getSimPath();
+    logMessage(simulationDirectoryMsg);
+
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
     sock->monitor_socket();
