@@ -1054,6 +1054,7 @@ namespace xclhwemhal2 {
         if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
+        std::cout << "Path of the simulation directory : " << getSimPath() << std::endl;
         //if (!xclemulation::file_exists(sim_file))
         if (!boost::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
