@@ -1,23 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
-#ifndef __OO_UpdateBase_h_
-#define __OO_UpdateBase_h_
+#ifndef __OO_UpdateShell_h_
+#define __OO_UpdateShell_h_
 
 #include "tools/common/OptionOptions.h"
 
-class OO_UpdateBase : public OptionOptions {
+class OO_UpdateShell : public OptionOptions {
  public:
   virtual void execute( const SubCmdOptions &_options ) const;
 
  public:
-  OO_UpdateBase( const std::string &_longName, const std::string &_shortName, bool _isHidden = false);
+  OO_UpdateShell( const std::string &_longName, const std::string &_shortName, bool _isHidden = false);
 
  private:
   std::string m_device;
-  std::string update;
-  std::vector<std::string> image;
-  std::string flashType;
+  std::string plp;
   bool m_help;
 };
 

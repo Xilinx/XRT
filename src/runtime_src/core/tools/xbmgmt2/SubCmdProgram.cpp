@@ -6,6 +6,7 @@
 // Local - Include Files
 #include "SubCmdProgram.h"
 #include "OO_UpdateBase.h"
+#include "OO_UpdateShell.h"
 
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
@@ -63,32 +64,6 @@ namespace po = boost::program_options;
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 namespace {
-
-static void
-program_plp(const xrt_core::device* dev, const std::string& partition)
-{
-  std::ifstream stream(partition.c_str(), std::ios_base::binary);
-  if (!stream.is_open())
-    throw xrt_core::error(boost::str(boost::format("Cannot open %s") % partition));
-
-  //size of the stream
-  stream.seekg(0, stream.end);
-  int total_size = static_cast<int>(stream.tellg());
-  stream.seekg(0, stream.beg);
-
-  //copy stream into a vector
-  std::vector<char> buffer(total_size);
-  stream.read(buffer.data(), total_size);
-
-  try {
-    xrt_core::program_plp(dev, buffer, XBU::getForce());
-  }
-  catch (xrt_core::error& e) {
-    std::cout << "ERROR: " << e.what() << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-  std::cout << "Programmed shell successfully" << std::endl;
-}
 
 static void
 switch_partition(xrt_core::device* device, int boot)
@@ -157,8 +132,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
-                                                                      "  Name (and path) of the partition.")
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
@@ -181,6 +154,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   SubOptionOptions subOptionOptions;
   subOptionOptions.emplace_back(std::make_shared<OO_UpdateBase>("base", "b"));
+  subOptionOptions.emplace_back(std::make_shared<OO_UpdateShell>("shell", "s"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 
@@ -211,7 +185,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (help) {
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(commonOptions, hiddenOptions, subOptionOptions);
     return;
   }
 
@@ -281,41 +255,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // -- process "plp" option ---------------------------------------
-  if (!plp.empty()) {
-    XBU::verbose(boost::str(boost::format("  shell: %s") % plp));
-
-    Flasher flasher(device->get_device_id());
-    if (!flasher.isValid())
-      throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
-
-    if (xrt_core::device_query<xrt_core::query::interface_uuids>(device).empty())
-      throw xrt_core::error("Can not get BLP interface uuid. Please make sure corresponding BLP package"
-                            " is installed.");
-
-    // Check if file exists
-    if (!boost::filesystem::exists(plp))
-      throw xrt_core::error("File not found. Please specify the correct path");
-
-    DSAInfo dsa(plp);
-    //TO_DO: add a report for plp before asking permission to proceed. Replace following 2 lines
-    std::cout << "Programming shell on device [" << flasher.sGetDBDF() << "]..." << std::endl;
-    std::cout << "Partition file: " << dsa.file << std::endl;
-
-    for (const auto& uuid : dsa.uuids) {
-
-      //check if plp is compatible with the installed blp
-      if (xrt_core::device_query<xrt_core::query::interface_uuids>(device).front().compare(uuid) == 0) {
-        XBUtilities::sudo_or_throw("Root privileges are required to load the PLP image");
-        program_plp(device.get(), dsa.file);
-        return;
-      }
-    }
-
-    // Fall through error
-    throw xrt_core::error("uuid does not match BLP");
-  }
-
   // -- process "user" option ---------------------------------------
   if (!xclbin.empty()) {
     XBU::verbose(boost::str(boost::format("  xclbin: %s") % xclbin));
@@ -360,6 +299,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";
-  printHelp(commonOptions, hiddenOptions);
+  printHelp(commonOptions, hiddenOptions, subOptionOptions);
   throw xrt_core::error(std::errc::operation_canceled);
 }

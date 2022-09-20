@@ -472,7 +472,9 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
                                      const boost::program_options::options_description &_optionDescription,
                                      const boost::program_options::options_description &_optionHidden,
                                      const SubCmd::SubOptionOptions & _subOptionOptions,
-                                     const boost::program_options::options_description &_globalOptions)
+                                     const boost::program_options::options_description &_globalOptions,
+                                     const boost::program_options::positional_options_description & _positionalDescription,
+                                     bool removeLongOptDashes)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -513,7 +515,8 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
     usageSubCmds.append(subCmd->longName());
   }
 
-  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [-h] --[ %s ] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
+  const std::string usage = XBU::create_usage_string(_optionDescription, _positionalDescription, removeLongOptDashes);
+  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s --[ %s ]%s\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds % usage;
 
   // -- Options
   boost::program_options::positional_options_description emptyPOD;

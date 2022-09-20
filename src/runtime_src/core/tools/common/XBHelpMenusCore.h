@@ -57,7 +57,9 @@ namespace XBUtilities {
                             const boost::program_options::options_description &_optionDescription,
                             const boost::program_options::options_description &_optionHidden,
                             const SubCmd::SubOptionOptions & _subOptionOptions,
-                            const boost::program_options::options_description &_globalOptions);
+                            const boost::program_options::options_description &_globalOptions,
+                            const boost::program_options::positional_options_description & _positionalDescription = boost::program_options::positional_options_description(),
+                            bool removeLongOptDashes=false);
 
   void 
     report_option_help( const std::string & _groupName, 
