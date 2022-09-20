@@ -54,6 +54,7 @@
 
 static char driver_date[9];
 
+int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p);
 static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p);
 static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p);
 
