@@ -58,8 +58,7 @@ class OptionOptions {
                 const std::string & optionDescription,
                 const boost::program_options::value_semantic* optionValue,
                 const std::string & valueDescription,
-                bool isHidden
-                );
+                bool isHidden);
   void setExtendedHelp(const std::string &extendedHelp) { m_extendedHelp = extendedHelp; };
   void printHelp() const;
   std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,

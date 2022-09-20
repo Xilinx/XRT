@@ -180,7 +180,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::positional_options_description positionals;
 
   SubOptionOptions subOptionOptions;
-  subOptionOptions.emplace_back(std::make_shared<OO_UpdateBase>("base"));
+  subOptionOptions.emplace_back(std::make_shared<OO_UpdateBase>("base", "b"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 

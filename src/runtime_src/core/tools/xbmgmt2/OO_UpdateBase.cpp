@@ -63,11 +63,11 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-OO_UpdateBase::OO_UpdateBase(const std::string &_longName, bool _isHidden )
-    : OptionOptions( _longName, 
-                    std::string("b"),
+OO_UpdateBase::OO_UpdateBase(const std::string &_longName, const std::string &_shortName, bool _isHidden )
+    : OptionOptions(_longName,
+                    "",
                     "Update base partition",
-                    boost::program_options::value<decltype(update)>(&update)->implicit_value("all"),
+                    boost::program_options::value<decltype(update)>(&update)->implicit_value("all")->required(),
                     "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
                       "  ALL   - All images will be updated\n"
                       "  SHELL - Platform image\n"
