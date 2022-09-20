@@ -379,6 +379,11 @@ static int cu_probe(struct platform_device *pdev)
 	zcu->base.res = res;
 
 	zdev = zocl_get_zdev();
+	if (!zdev) {
+		err = -EINVAL;
+		goto err1;
+	}
+
 	err = zocl_kds_add_cu(zdev, &zcu->base);
 	if (err) {
 		DRM_ERROR("Not able to add CU %p to KDS", zcu);

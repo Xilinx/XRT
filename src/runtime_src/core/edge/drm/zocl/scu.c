@@ -174,9 +174,11 @@ static const struct attribute_group scu_attrgroup = {
 static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[16])
 {
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
-	struct soft_krnl *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = NULL;
 	struct soft_krnl_cmd *scmd = NULL;
 	struct config_sk_image_uuid *cp = NULL;
+
+	BUG_ON(!zdev);
 
 	cp = kmalloc(sizeof(struct config_sk_image_uuid), GFP_KERNEL);
 	cp->start_cuidx = cuidx;
@@ -184,6 +186,7 @@ static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[1
 	strncpy((char *)cp->sk_name,kname,PS_KERNEL_NAME_LENGTH);
 	memcpy(cp->sk_uuid,uuid,sizeof(cp->sk_uuid));
 
+	sk = zdev->soft_kernel;
 	// Locking soft kernel data structure
 	mutex_lock(&sk->sk_lock);
 
@@ -230,6 +233,7 @@ static int scu_probe(struct platform_device *pdev)
 	memcpy(&zcu->base.info, info, sizeof(struct xrt_cu_info));
 
 	zdev = zocl_get_zdev();
+	BUG_ON(!zdev);
 	zcu->sc_bo = zocl_drm_create_bo(zdev->ddev, SOFT_KERNEL_REG_SIZE, ZOCL_BO_FLAGS_CMA);
 	if (IS_ERR(zcu->sc_bo)) {
 		return -ENOMEM;
@@ -368,6 +372,7 @@ void zocl_scu_sk_ready(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 
+	BUG_ON(!zcu);
 	up(&zcu->sc_sem);
 }
 
