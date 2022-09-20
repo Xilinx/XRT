@@ -657,6 +657,7 @@ namespace xclemulation{
       info.mVendorId = 0x10ee;
       info.mSubsystemVendorId = 0x0000;
       info.mDeviceVersion = 0x0000;
+      info.mDeviceId = 0x0000;
       info.mDDRSize = MEMSIZE_4G;
       info.mDataAlignment = DDR_BUFFER_ALIGNMENT;
       info.mDDRBankCount = 1;

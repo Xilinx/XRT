@@ -108,6 +108,7 @@ bool nocddr_fastaccess_hwemu::init(std::string filename, std::string simdir)
     int rf = ftruncate(fd, fsize);
     if (rf == -1)
     {
+      close(fd);
       return false;
     }
     unsigned char *memP = (unsigned char *)mmap(NULL, fsize, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
