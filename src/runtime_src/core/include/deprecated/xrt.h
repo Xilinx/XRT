@@ -766,6 +766,20 @@ xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
     return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : (uint64_t)-1;
 }
 
+/* Use xclRegWrite */
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+size_t
+xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
+         const void *hostBuf, size_t size);
+
+/* Use xclRegRead */
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+size_t
+xclRead(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
+        void *hostbuf, size_t size);
+
 /* Not supported */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC

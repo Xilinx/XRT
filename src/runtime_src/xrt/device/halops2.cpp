@@ -102,6 +102,8 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mMapBO    = (mapBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclMapBO");
   mUnmapBO  = (unmapBOFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclUnmapBO");
 
+  mWrite      = (writeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWrite");
+  mRead       = (readFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclRead");
   mUnmgdPread = (unmgdPreadFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclUnmgdPread");
 
   mReClock2 = (reClock2FuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclReClock2");
