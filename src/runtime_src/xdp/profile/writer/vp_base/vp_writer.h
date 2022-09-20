@@ -36,16 +36,16 @@ namespace xdp {
     // The base name of all files created by this writer
     std::string basename ;
 
+    // The directory where all the files will be dumped
+    std::string directory ;
+
   protected:
     // The current name of the open file
     std::string currentFileName ;
 
     char separator ;
-    
-  private:
-    // The directory where all the files will be dumped
-    std::string directory ;
 
+  private:
     // The number of files created by this writer (in continuous offload)
     uint32_t fileNum ;
     static bool warnFileNum;
