@@ -39,17 +39,17 @@ OptionOptions::OptionOptions( const std::string & longName,
   , m_defaultOptionValue(false)
 {
   m_optionsDescription.add_options()
-    (m_longName.c_str(), boost::program_options::bool_switch(&m_defaultOptionValue), m_description.c_str())
+    (m_longName.c_str(), boost::program_options::bool_switch(&m_defaultOptionValue)->required(), m_description.c_str())
   ;
 }
 
-OptionOptions::OptionOptions(const std::string & longName,
-                            const std::string & shortName,
-                            const std::string & optionDescription,
-                            const boost::program_options::value_semantic* optionValue,
-                            const std::string & valueDescription,
-                            bool isHidden
-                            )
+OptionOptions::OptionOptions( const std::string & longName,
+                              const std::string & shortName,
+                              const std::string & optionDescription,
+                              const boost::program_options::value_semantic* optionValue,
+                              const std::string & valueDescription,
+                              bool isHidden
+                              )
   : m_executable("<unknown>")
   , m_command("<unknown>")
   , m_longName(longName)
@@ -58,9 +58,14 @@ OptionOptions::OptionOptions(const std::string & longName,
   , m_description(optionDescription)
   , m_extendedHelp("")
 {
-  m_optionsDescription.add_options()
-    ((m_longName + "," + m_shortName).c_str(), optionValue, valueDescription.c_str())
-  ;
+  if (shortName.empty())
+    m_optionsDescription.add_options()
+      (m_longName.c_str(), optionValue, valueDescription.c_str())
+    ;
+  else
+    m_optionsDescription.add_options()
+      ((m_longName + "," + shortName).c_str(), optionValue, valueDescription.c_str())
+    ;
 }
 
 void 

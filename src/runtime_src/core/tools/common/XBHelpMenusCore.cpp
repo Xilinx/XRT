@@ -101,11 +101,14 @@ isPositional(const std::string &_name,
 }
 
 enum FlagType {
-  short_simple = 0,
+  short_required = 0,
+  long_required,
+  short_required_arg,
+  long_required_arg,
+  short_simple,
   long_simple,
   short_arg,
   long_arg,
-  required_arg,
   positional,
   flag_type_size
 };
@@ -119,8 +122,19 @@ get_option_type(const boost::shared_ptr<boost::program_options::option_descripti
   if ( ::isPositional(optionDisplayName, _pod) )
     return positional;
 
-  if (option->semantic()->is_required())
-    return required_arg;
+  if (option->semantic()->is_required()) {
+    if (option->semantic()->max_tokens() == 0) {
+      if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
+        return short_required;
+
+      return long_required;
+    } else {
+      if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
+        return short_required_arg;
+
+      return long_required_arg;
+    }
+  }
 
   if (option->semantic()->max_tokens() == 0) { // Parse for simple flags
     if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
@@ -149,33 +163,40 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
   auto &options = _od.options();
 
   for (auto & option : options) {
-    auto optionType = get_option_type(option, _pod);
-    std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+    const auto optionType = get_option_type(option, _pod);
+    const std::string& shortName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+    const std::string& longName = removeLongOptDashes ? option->long_name() : 
+                                  option->canonical_display_name(po::command_line_style::allow_long);
     switch (optionType) {
       case short_simple:
         // The short options have a bracket surrounding all options
-        if (buffers[short_simple].str().empty())
-          buffers[short_simple] << "[-";
-        buffers[short_simple] << optionDisplayName[1];
+        if (buffers[optionType].str().empty())
+          buffers[optionType] << " [-";
+        buffers[optionType] << shortName[1];
         break;
       case long_simple:
-        buffers[long_simple] << boost::format(" [%s]") 
-          % (removeLongOptDashes ? option->long_name() :
-            option->canonical_display_name(po::command_line_style::allow_long));
+        buffers[optionType] << boost::format(" [%s]") % longName;
         break;
       case short_arg:
-        buffers[short_arg] << boost::format(" [%s arg]") % optionDisplayName;
+        buffers[optionType] << boost::format(" [%s arg]") % shortName;
         break;
       case long_arg:
-        buffers[long_arg] << boost::format(" [%s]") 
-          % (removeLongOptDashes ? option->long_name() :
-            option->canonical_display_name(po::command_line_style::allow_long));
+        buffers[optionType] << boost::format(" [%s arg]") % longName;
         break;
-      case required_arg:
-        buffers[required_arg] << boost::format(" %s arg") % optionDisplayName;
+      case short_required:
+        buffers[optionType] << boost::format(" %s") % shortName;
+        break;
+      case long_required:
+        buffers[optionType] << boost::format(" %s") % longName;
+        break;
+      case short_required_arg:
+        buffers[optionType] << boost::format(" %s arg") % shortName;
+        break;
+      case long_required_arg:
+        buffers[optionType] << boost::format(" %s arg") % longName;
         break;
       case positional:
-        buffers[positional] << boost::format(" %s") % optionDisplayName;
+        buffers[optionType] << boost::format(" %s") % shortName;
         break;
       case flag_type_size:
         throw std::runtime_error("Invalid argument setup detected");
@@ -188,7 +209,6 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
     buffers[short_simple] << "]";
 
   std::stringstream outputBuffer;
-  outputBuffer << " ";
   for (const auto& buffer : buffers) {
     if (!buffer.str().empty())
       outputBuffer << buffer.str();
