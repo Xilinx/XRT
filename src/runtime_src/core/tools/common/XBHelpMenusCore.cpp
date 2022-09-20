@@ -100,152 +100,101 @@ isPositional(const std::string &_name,
   return false;
 }
 
+enum FlagType {
+  short_simple = 0,
+  long_simple,
+  short_arg,
+  long_arg,
+  required_arg,
+  positional,
+  flag_type_size
+};
 
-std::string 
+static enum FlagType
+get_option_type(const boost::shared_ptr<boost::program_options::option_description>& option, const boost::program_options::positional_options_description & _pod)
+{
+  const static int SHORT_OPTION_STRING_SIZE = 2;
+  std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+
+  if ( ::isPositional(optionDisplayName, _pod) )
+    return positional;
+
+  if (option->semantic()->is_required())
+    return required_arg;
+
+  if (option->semantic()->max_tokens() == 0) { // Parse for simple flags
+    if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
+      return short_simple;
+
+    return long_simple;
+  } else { // Parse for flags with arguments
+    if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
+      return short_arg;
+    
+    return long_arg;
+  }
+  throw std::runtime_error("Invalid argument setup detected");
+}
+
+std::string
 XBUtilities::create_usage_string( const boost::program_options::options_description &_od,
                                   const boost::program_options::positional_options_description & _pod,
                                   bool removeLongOptDashes)
 {
-  const static int SHORT_OPTION_STRING_SIZE = 2;
-  std::stringstream buffer;
+  // Create list of buffers to store each argument type
+  std::vector<std::stringstream> buffers;
+  for (auto i = 0; i < flag_type_size; i++)
+    buffers.push_back(std::stringstream());
 
   auto &options = _od.options();
 
-  // Gather up the short simple flags
-  {
-    bool firstShortFlagFound = false;
-    for (auto & option : options) {
-      // Get the option name
-      std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-
-      // See if we have a long flag
-      if (optionDisplayName.size() != SHORT_OPTION_STRING_SIZE)
-        continue;
-
-      // We are not interested in any arguments
-      if (option->semantic()->max_tokens() > 0)
-        continue;
-
-      // This option shouldn't be required
-      if (option->semantic()->is_required())
-        continue;
-
-      if (!firstShortFlagFound) {
-        buffer << " [-";
-        firstShortFlagFound = true;
-      }
-
-      buffer << optionDisplayName[1];
-    }
-
-    if (firstShortFlagFound == true) 
-      buffer << "]";
-  }
-
-   
-  // Gather up the long simple flags (flags with no short versions)
-  {
-    for (auto & option : options) {
-      // Get the option name
-      std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-
-      // See if we have a short flag
-      if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
-        continue;
-
-      // We are not interested in any arguments
-      if (option->semantic()->max_tokens() > 0)
-        continue;
-
-      // This option shouldn't be required
-      if (option->semantic()->is_required())
-        continue;
-
-      const std::string completeOptionName = removeLongOptDashes ? option->long_name() : 
-				option->canonical_display_name(po::command_line_style::allow_long);
-      buffer << boost::format(" [%s]") % completeOptionName;
+  for (auto & option : options) {
+    auto optionType = get_option_type(option, _pod);
+    std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+    switch (optionType) {
+      case short_simple:
+        // The short options have a bracket surrounding all options
+        if (buffers[short_simple].str().empty())
+          buffers[short_simple] << "[-";
+        buffers[short_simple] << optionDisplayName[1];
+        break;
+      case long_simple:
+        buffers[long_simple] << boost::format(" [%s]") 
+          % (removeLongOptDashes ? option->long_name() :
+            option->canonical_display_name(po::command_line_style::allow_long));
+        break;
+      case short_arg:
+        buffers[short_arg] << boost::format(" [%s arg]") % optionDisplayName;
+        break;
+      case long_arg:
+        buffers[long_arg] << boost::format(" [%s]") 
+          % (removeLongOptDashes ? option->long_name() :
+            option->canonical_display_name(po::command_line_style::allow_long));
+        break;
+      case required_arg:
+        buffers[required_arg] << boost::format(" %s arg") % optionDisplayName;
+        break;
+      case positional:
+        buffers[positional] << boost::format(" %s") % optionDisplayName;
+        break;
+      case flag_type_size:
+        throw std::runtime_error("Invalid argument setup detected");
+        break;
     }
   }
 
-  // Gather up the options with arguments
-  for (auto & option : options) {
-    // Skip if there are no arguments
-    if (option->semantic()->max_tokens() == 0)
-      continue;
+  // The short simple options have a bracket surrounding all options
+  if (!buffers[short_simple].str().empty())
+    buffers[short_simple] << "]";
 
-    // Required arguments are taken care of later
-    if (option->semantic()->is_required())
-      continue;
-
-    std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-
-    // Positional arguments are taken care of later
-    if (::isPositional(completeOptionName, _pod))
-      continue;
-
-    // See if we have a long flag
-    if (completeOptionName.size() != SHORT_OPTION_STRING_SIZE)
-      continue;
-
-    buffer << boost::format(" [%s arg]") % completeOptionName;
+  std::stringstream outputBuffer;
+  outputBuffer << " ";
+  for (const auto& buffer : buffers) {
+    if (!buffer.str().empty())
+      outputBuffer << buffer.str();
   }
 
-  // Gather up the options with arguments (options with no short versions)
-  for (auto & option : options) {
-    // Skip if there are no arguments
-    if (option->semantic()->max_tokens() == 0)
-      continue;
-
-    // Required arguments are taken care of later
-    if (option->semantic()->is_required())
-      continue;
-
-    const std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-
-    // Positional arguments are taken care of later
-    if (::isPositional(optionDisplayName, _pod))
-      continue;
-
-    // See if we have a short flag
-    if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
-      continue;
-
-    const std::string completeOptionName = removeLongOptDashes ? option->long_name() : 
-      option->canonical_display_name(po::command_line_style::allow_long);
-      buffer << boost::format(" [%s arg]") % completeOptionName;
-  }
-
-  // Gather up the required options with arguments
-  for (auto & option : options) {
-    // Skip if there are no arguments
-    if (option->semantic()->max_tokens() == 0)
-      continue;
-
-    // This option is required
-    if (!option->semantic()->is_required())
-      continue;
-
-    std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-
-    // Positional arguments are taken care of later
-    if (::isPositional(completeOptionName, _pod))
-      continue;
-
-    buffer << boost::format(" %s arg") % completeOptionName;
-  }
-
-  // Report the positional arguments
-  for (auto & option : options) {
-    std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-    if ( ! ::isPositional(completeOptionName, _pod) ) {
-      continue;
-    }
-
-    buffer << " " << completeOptionName;
-  }
-  
-
-  return buffer.str();
+  return outputBuffer.str();
 }
 
 void 
@@ -254,7 +203,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
                                    const boost::program_options::options_description& _optionDescription,
                                    const boost::program_options::options_description& _optionHidden,
                                    const SubCmdsCollection &_subCmds)
-{ 
+{
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
   const std::string fgc_header     = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();

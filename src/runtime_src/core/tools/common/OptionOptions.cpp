@@ -53,20 +53,21 @@ OptionOptions::OptionOptions(const std::string & longName,
   : m_executable("<unknown>")
   , m_command("<unknown>")
   , m_longName(longName)
+  , m_shortName(shortName)
   , m_isHidden(isHidden)
   , m_description(optionDescription)
   , m_extendedHelp("")
 {
   m_optionsDescription.add_options()
-    (m_longName.c_str(), optionValue, valueDescription.c_str())
+    ((m_longName + "," + m_shortName).c_str(), optionValue, valueDescription.c_str())
   ;
 }
 
 void 
 OptionOptions::printHelp() const
 {
-  XBU::report_subcommand_help( m_executable, 
-                               m_command + " --" + m_longName, 
+  XBU::report_subcommand_help( m_executable,
+                               m_command,
                                m_description, m_extendedHelp, 
                                m_optionsDescription, m_optionsHidden, 
                                m_positionalOptions, m_globalOptions);
