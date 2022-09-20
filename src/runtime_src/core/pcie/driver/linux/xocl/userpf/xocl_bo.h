@@ -72,7 +72,7 @@
 // Linux 5.18 uses iosys-map instead of dma-buf-map
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	#define XOCL_MAP_TYPE iosys_map
-	#define XOCL_MAP_SET_VADDRVADDR iosys_map_set_vaddr
+	#define XOCL_MAP_SET_VADDR iosys_map_set_vaddr
 	#define XOCL_MAP_IS_NULL iosys_map_is_null
 #else
 	#define XOCL_MAP_TYPE dma_buf_map

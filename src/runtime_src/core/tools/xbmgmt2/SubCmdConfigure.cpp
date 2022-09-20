@@ -117,17 +117,37 @@ static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
       xrt_core::device_update<xrt_core::query::cache_xclbin>(_dev.get(), key.second.get_value<std::string>());
       continue;
     }
-    if (!key.first.compare("scaling_enabled")) {
-      xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(_dev.get(), key.second.get_value<std::string>());
-      continue;
-    }
-    if (!key.first.compare("scaling_power_override")) {
-      xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(_dev.get(), key.second.get_value<std::string>());
-      continue;
-    }
-    if (!key.first.compare("scaling_temp_override")) {
-      xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(_dev.get(), key.second.get_value<std::string>());
-      continue;
+    bool is_versal = xrt_core::device_query<xrt_core::query::is_versal>(_dev);
+    if (is_versal) {
+      try {
+        if (!key.first.compare("scaling_enabled")) {
+          xrt_core::device_update<xrt_core::query::xgq_scaling_enabled>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+        if (!key.first.compare("scaling_power_override")) {
+          xrt_core::device_update<xrt_core::query::xgq_scaling_power_override>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+        if (!key.first.compare("scaling_temp_override")) {
+          xrt_core::device_update<xrt_core::query::xgq_scaling_temp_override>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+      } catch(const xrt_core::query::exception&) {}
+    } else {
+      try {
+        if (!key.first.compare("scaling_enabled")) {
+          xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+        if (!key.first.compare("scaling_power_override")) {
+          xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+        if (!key.first.compare("scaling_temp_override")) {
+          xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+      } catch(const xrt_core::query::exception&) {}
     }
     throw std::runtime_error(boost::str(boost::format("'%s' is not a supported config entry") % key.first));
   }

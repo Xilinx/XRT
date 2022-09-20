@@ -36,7 +36,7 @@ public:
    * Free formed key-value entry.
    *
    * Supported keys are:
-   *  - tops                   // tera operations per second
+   *  - gops                   // giga operations per second
    *  - fps                    // frames per second
    *  - dma_bandwidth          // gigabytes per second
    *  - latency                // ??

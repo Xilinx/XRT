@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,8 +23,7 @@
 #include "core/common/dlfcn.h"
 #include "core/common/time.h"
 
-namespace xdp {
-namespace native {
+namespace xdp::native {
 
 bool load()
 {
@@ -54,24 +54,16 @@ void register_functions(void* handle)
   // Generic callbacks
   function_start_cb =
     reinterpret_cast<start_type>(xrt_core::dlsym(handle, "native_function_start")) ;
-  if (xrt_core::dlerror() != nullptr)
-    function_start_cb = nullptr ;
 
   function_end_cb =
     reinterpret_cast<end_type>(xrt_core::dlsym(handle, "native_function_end")) ;
-  if (xrt_core::dlerror() != nullptr)
-    function_end_cb = nullptr ;
 
   // Sync callbacks
   sync_start_cb =
     reinterpret_cast<sync_start_type>(xrt_core::dlsym(handle, "native_sync_start")) ;
-  if (xrt_core::dlerror() != nullptr)
-    sync_start_cb = nullptr ;
 
   sync_end_cb =
     reinterpret_cast<end_sync_type>(xrt_core::dlsym(handle, "native_sync_end")) ;
-  if (xrt_core::dlerror() != nullptr)
-    sync_end_cb = nullptr ;
 }
 
 void warning_function()
@@ -132,6 +124,5 @@ sync_logger::
   }
 }
 
-} // end namespace native
-} // end namespace xdp
+} // end namespace xdp::native
 

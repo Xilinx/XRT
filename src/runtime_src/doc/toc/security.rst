@@ -167,18 +167,10 @@ Signing of Xclbins
 
 xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by
 XRT **xclbinutil** utility. The signing adds a PKCS7 signature at the end of xclbin. The signing
-certificate is then registered with appropriate key-ring. XRT supports one of three levels of
-security which can be configured with XRT **xbmgmt** utility running with root privileges.
+certificate is then registered with appropriate key-ring. When Linux is running in UEFI secure 
+mode, signature verification is enforced using signing certification in *system* key-ring (when 
+Linux is not running in secure mode there is no such verification). 
 
-=============== =================================================================
-Security level  Xclbin signature verification behavior of xclmgmt driver
-=============== =================================================================
-0               No verification
-1               Signature verification enforced using signing certificate in
-                *.xilinx_fpga_xclbin_keys* key-ring
-2               Linux is running in UEFI secure mode and signature verification
-                is enforced using signing certificate in *system* key-ring
-=============== =================================================================
 
 Firewall
 ========

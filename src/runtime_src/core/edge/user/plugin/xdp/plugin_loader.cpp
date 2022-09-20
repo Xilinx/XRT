@@ -21,9 +21,10 @@
 #include "hal_profile.h"
 #include "plugin_loader.h"
 
-#ifndef __HWEM__
 #include "aie_debug.h"
 #include "aie_profile.h"
+
+#ifndef __HWEM__
 #include "aie_trace.h"
 #include "hal_device_offload.h"
 #include "noc_profile.h"
@@ -99,6 +100,12 @@ bool load()
   if (xrt_core::config::get_device_trace() != "off" ||
       xrt_core::config::get_device_counters())
     xdp::hal::hw_emu::device_offload::load() ;
+
+  if (xrt_core::config::get_aie_status())
+    xdp::aie::debug::load();
+
+  if (xrt_core::config::get_aie_profile())
+    xdp::aie::profile::load();
 #endif
   return true ;
 }
