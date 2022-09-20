@@ -6,6 +6,7 @@
 // Local - Include Files
 #include "SubCmdProgram.h"
 #include "OO_UpdateBase.h"
+#include "OO_UpdateShell.h"
 
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
@@ -45,32 +46,6 @@ namespace po = boost::program_options;
 // ------ L O C A L   F U N C T I O N S ---------------------------------------
 
 namespace {
-
-static void
-program_plp(const xrt_core::device* dev, const std::string& partition)
-{
-  std::ifstream stream(partition.c_str(), std::ios_base::binary);
-  if (!stream.is_open())
-    throw xrt_core::error(boost::str(boost::format("Cannot open %s") % partition));
-
-  //size of the stream
-  stream.seekg(0, stream.end);
-  int total_size = static_cast<int>(stream.tellg());
-  stream.seekg(0, stream.beg);
-
-  //copy stream into a vector
-  std::vector<char> buffer(total_size);
-  stream.read(buffer.data(), total_size);
-
-  try {
-    xrt_core::program_plp(dev, buffer, XBU::getForce());
-  }
-  catch (xrt_core::error& e) {
-    std::cout << "ERROR: " << e.what() << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-  std::cout << "Programmed shell successfully" << std::endl;
-}
 
 static void
 switch_partition(xrt_core::device* device, int boot)
@@ -150,8 +125,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
-                                                                      "  Name (and path) of the partition.")
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
@@ -174,6 +147,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   SubOptionOptions subOptionOptions;
   subOptionOptions.emplace_back(std::make_shared<OO_UpdateBase>("base", "b"));
+  subOptionOptions.emplace_back(std::make_shared<OO_UpdateShell>("shell", "s"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 
@@ -204,7 +178,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (help) {
-    printHelp(commonOptions, hiddenOptions);
+    printHelp(commonOptions, hiddenOptions, subOptionOptions);
     return;
   }
 
@@ -235,13 +209,89 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // Check to see if help was requested or no command was found
-  if (m_help) {
-    printHelp();
+  // -- process "revert-to-golden" option ---------------------------------------
+  if (revertToGolden) {
+    XBU::verbose("Sub command: --revert-to-golden");
+    bool has_reset = false;
+
+    std::vector<Flasher> flasher_list;
+    //collect information of all the devices that will be reset
+    Flasher flasher(device->get_device_id());
+    if (!flasher.isValid())
+      xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
+
+    std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device ["
+      % flasher.sGetDBDF() % "] back to factory mode.";
+    flasher_list.push_back(flasher);
+
+    XBUtilities::sudo_or_throw("Root privileges are required to revert the device to its golden flash image");
+
+    //ask user's permission
+    if (!XBU::can_proceed(XBU::getForce()))
+      throw xrt_core::error(std::errc::operation_canceled);
+
+    for (auto& f : flasher_list) {
+      if (!f.upgradeFirmware(flash_type, nullptr, nullptr, nullptr)) {
+        std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "]"
+                                   " is reset successfully.";
+        has_reset = true;
+      }
+    }
+
+    if (!has_reset)
+      return;
+
+    std::cout << "****************************************************\n";
+    std::cout << "Cold reboot machine to load the new image on device.\n";
+    std::cout << "****************************************************\n";
+
     return;
   }
 
-  std::cout << "\nERROR: Missing operation. No action taken.\n\n";
-  printHelp();
+  // -- process "user" option ---------------------------------------
+  if (!xclbin.empty()) {
+    XBU::verbose(boost::str(boost::format("  xclbin: %s") % xclbin));
+    XBU::sudo_or_throw("Root privileges are required to download xclbin");
+
+    std::ifstream stream(xclbin, std::ios::binary);
+    if (!stream)
+      throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % xclbin));
+
+    stream.seekg(0,stream.end);
+    ssize_t size = stream.tellg();
+    stream.seekg(0,stream.beg);
+
+    std::vector<char> xclbin_buffer(size);
+    stream.read(xclbin_buffer.data(), size);
+
+    auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+    std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
+    try {
+      device->xclmgmt_load_xclbin(xclbin_buffer.data());
+    } catch (xrt_core::error& e) {
+      std::cout << "ERROR: " << e.what() << std::endl;
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+    std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
+    return;
+  }
+
+  // -- process "boot" option ------------------------------------------
+  if (!boot.empty()) {
+    if (boost::iequals(boot, "DEFAULT"))
+      switch_partition(device.get(), 0);
+    else if (boost::iequals(boot, "BACKUP"))
+      switch_partition(device.get(), 1);
+    else {
+      std::cout << "ERROR: Invalid value.\n"
+                << "Usage: xbmgmt program --device='0000:00:00.0' --boot [default|backup]"
+                << std::endl;
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+    return;
+  }
+
+  std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";
+  printHelp(commonOptions, hiddenOptions, subOptionOptions);
   throw xrt_core::error(std::errc::operation_canceled);
 }
