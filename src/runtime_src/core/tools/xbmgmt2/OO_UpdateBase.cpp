@@ -80,8 +80,7 @@ OO_UpdateBase::OO_UpdateBase(const std::string &_longName, bool _isHidden )
     ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Valid values:\n"
                                                                     "  Name (and path) to the mcs image on disk\n"
                                                                     "  Name (and path) to the xsabin image on disk")
-    ("help,h", po::bool_switch(&m_help), "Help to use this sub-command")
-    ("no,n", po::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", po::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_optionsHidden.add_options()
