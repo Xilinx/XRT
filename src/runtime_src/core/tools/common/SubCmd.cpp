@@ -29,7 +29,9 @@ namespace po = boost::program_options;
 
 SubCmd::SubCmd(const std::string & _name, 
                const std::string & _shortDescription)
-  : m_executableName("")
+  : m_commonOptions("Common Options")
+  , m_hiddenOptions("Hidden Options")
+  , m_executableName("")
   , m_subCmdName(_name)
   , m_shortDescription(_shortDescription)
   , m_longDescription("")
@@ -96,3 +98,32 @@ SubCmd::conflictingOptions( const boost::program_options::variables_map& _vm,
   }
 }
 
+void
+SubCmd::addSubOption(std::shared_ptr<OptionOptions> option)
+{
+  if (option->isHidden()) 
+    m_hiddenOptions.add_options()(option->optionNameString().c_str(), option->description().c_str());
+  else
+    m_commonOptions.add_options()(option->optionNameString().c_str(), option->description().c_str());
+  option->setExecutable(getExecutableName());
+  option->setCommand(getName());
+  m_subOptionOptions.emplace_back(option);
+}
+
+std::shared_ptr<OptionOptions>
+SubCmd::checkForSubOption(const boost::program_options::variables_map& vm) const
+{
+  std::shared_ptr<OptionOptions> option;
+  for (auto& subOO : m_subOptionOptions) {
+    if (vm.count(subOO->longName().c_str()) != 0) {
+      if (!option)
+        option = subOO;
+      else {
+        auto err_fmt = boost::format("Mutually exclusive option selected: %s %s") 
+                        % subOO->longName() % option->longName();
+        throw xrt_core::error(std::errc::operation_canceled, boost::str(err_fmt)); 
+      }
+    }
+  }
+  return option;
+}

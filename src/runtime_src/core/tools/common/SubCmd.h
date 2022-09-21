@@ -81,6 +81,12 @@ public:
                            bool validate_arguments = true) const;
   void conflictingOptions( const boost::program_options::variables_map& _vm, 
                            const std::string &_opt1, const std::string &_opt2) const;
+  void addSubOption(std::shared_ptr<OptionOptions> option);
+  std::shared_ptr<OptionOptions> checkForSubOption(const boost::program_options::variables_map& vm) const;
+  SubOptionOptions m_subOptionOptions;
+  boost::program_options::options_description m_commonOptions;
+  boost::program_options::options_description m_hiddenOptions;
+  boost::program_options::positional_options_description m_positionals;
 
  private:
   SubCmd() = delete;
