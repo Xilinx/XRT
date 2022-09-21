@@ -418,9 +418,6 @@ memidx_to_name(const mem_topology* mem_topology,  int32_t midx)
 int32_t
 address_to_memidx(const mem_topology* mem_topology, uint64_t address)
 {
-  if (is_sw_emulation())
-    return 0;  // default bank in software emulation
-
   // Reserve look for preferred group id
   for (int idx = mem_topology->m_count-1; idx >= 0; --idx) {
     auto& mem = mem_topology->m_mem_data[idx];

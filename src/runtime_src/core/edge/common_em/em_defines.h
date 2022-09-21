@@ -136,13 +136,7 @@ namespace xclemulation {
   //we should not create a memory in default bank for hw_emu. As sw_emu doesnt have rtd information, we are not doing any error check
   static inline unsigned xocl_bo_ddr_idx(unsigned flags, bool is_sw_emu = true)
   {
-    unsigned flag = flags & 0xFFFFFFLL;
-    //unsigned type = flags & 0xFF000000LL ;
-
-    if(flag == 0 || ((flag == 0xFFFFFFLL) && is_sw_emu))
-      return 0;
-
-    return flag;
+    return (flags & 0xFFFFFFLL);
   }
 
   static inline bool xocl_bo_p2p(const struct drm_xocl_bo *bo)
