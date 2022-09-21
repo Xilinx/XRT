@@ -28,10 +28,11 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "SubCmdAdvanced.cpp"
   "SubCmdDump.cpp"
   "SubCmdConfigure.cpp"
+  "OO_FactoryReset.cpp"
   "OO_Hotplug.cpp"
   "OO_UpdateBase.cpp"
   "OO_UpdateShell.cpp"
-  "OO_FactoryReset.cpp"
+  "OO_UpdateXclbin.cpp"
   "Report*.cpp"
   "flash/*.cpp"
 )

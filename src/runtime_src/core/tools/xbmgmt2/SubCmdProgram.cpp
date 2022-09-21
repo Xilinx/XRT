@@ -5,9 +5,11 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdProgram.h"
+
+#include "OO_FactoryReset.h"
 #include "OO_UpdateBase.h"
 #include "OO_UpdateShell.h"
-#include "OO_FactoryReset.h"
+#include "OO_UpdateXclbin.h"
 
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
@@ -38,11 +40,6 @@ namespace XBU = XBUtilities;
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
-
-// ---- Reports ------
-#include "ReportPlatform.h"
-#include "tools/common/Report.h"
-#include "tools/common/ReportHost.h"
 
 // System - Include Files
 #include <atomic>
@@ -131,8 +128,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
-                                                                      "  Name (and path) of the xclbin.")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
@@ -150,6 +145,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   subOptionOptions.emplace_back(std::make_shared<OO_UpdateBase>("base", "b"));
   subOptionOptions.emplace_back(std::make_shared<OO_UpdateShell>("shell", "s"));
   subOptionOptions.emplace_back(std::make_shared<OO_FactoryReset>("revert-to-golden"));
+  subOptionOptions.emplace_back(std::make_shared<OO_UpdateXclbin>("user", "u"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 
@@ -193,34 +189,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // -- process "user" option ---------------------------------------
-  if (!xclbin.empty()) {
-    XBU::verbose(boost::str(boost::format("  xclbin: %s") % xclbin));
-    XBU::sudo_or_throw("Root privileges are required to download xclbin");
-
-    std::ifstream stream(xclbin, std::ios::binary);
-    if (!stream)
-      throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % xclbin));
-
-    stream.seekg(0,stream.end);
-    ssize_t size = stream.tellg();
-    stream.seekg(0,stream.beg);
-
-    std::vector<char> xclbin_buffer(size);
-    stream.read(xclbin_buffer.data(), size);
-
-    auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-    std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
-    try {
-      device->xclmgmt_load_xclbin(xclbin_buffer.data());
-    } catch (xrt_core::error& e) {
-      std::cout << "ERROR: " << e.what() << std::endl;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-    std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
-    return;
   }
 
   // -- process "boot" option ------------------------------------------
