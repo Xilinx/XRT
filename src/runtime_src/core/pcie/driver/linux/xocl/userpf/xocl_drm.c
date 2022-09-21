@@ -925,10 +925,9 @@ static int xocl_cleanup_drm_memory_manager(struct xocl_mm *xocl_mm)
 	return 0;
 }
 
-static int xocl_init_drm_mm(struct xocl_drm *drm_p, uint64_t mm_start_addr,
-		uint64_t mm_end_addr, uint32_t m_count)
+static int xocl_init_drm_mm(struct xocl_drm *drm_p, struct xocl_mm *xocl_mm,
+		uint64_t mm_start_addr, uint64_t mm_end_addr, uint32_t m_count)
 {
-	struct xocl_mm *xocl_mm = drm_p->xocl_mm;
 	size_t size = 0;
 	int err = 0;
 	int i = 0;
@@ -987,7 +986,6 @@ static int xocl_init_drm_mm(struct xocl_drm *drm_p, uint64_t mm_start_addr,
 
 error:
 	xocl_cleanup_drm_memory_manager(xocl_mm);
-	drm_p->xocl_mm = NULL;
 	return err;
 }
 
@@ -1015,7 +1013,6 @@ static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p)
                 return -ENOMEM;
 	}
 
-	drm_p->xocl_mm = xocl_mm;
         /* Initialize with max and min possible value */
         mm_start_addr = 0xffffFFFFffffFFFF;
         mm_end_addr = 0;
@@ -1045,13 +1042,16 @@ static int xocl_init_drm_memory_manager(struct xocl_drm *drm_p)
 
 	if (!xocl_mm->m_count) {
 		mutex_unlock(&drm_p->mm_lock);
+		vfree(xocl_mm);
                 return 0;
 	}
 
-	err = xocl_init_drm_mm(drm_p, mm_start_addr, mm_end_addr,
+	err = xocl_init_drm_mm(drm_p, xocl_mm, mm_start_addr, mm_end_addr,
 			xocl_mm->m_count);
 	if (err)
 		goto error;
+	
+	drm_p->xocl_mm = xocl_mm;
 error:
 	if (err)
 		xocl_cleanup_drm_memory_manager(xocl_mm);
@@ -1183,7 +1183,14 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	}
 
 	if (drm_p->xocl_mm == NULL) {
-		err = xocl_init_drm_mm(drm_p, mm_start_addr, mm_end_addr, topo->m_count);
+		drm_p->xocl_mm = vzalloc(sizeof(struct xocl_mm));
+		if (!drm_p->xocl_mm) {
+			err = -ENOMEM;
+			goto error;
+		}
+
+		err = xocl_init_drm_mm(drm_p, drm_p->xocl_mm, mm_start_addr, mm_end_addr,
+				topo->m_count);
 		if (err)
 			goto error;
 	}
