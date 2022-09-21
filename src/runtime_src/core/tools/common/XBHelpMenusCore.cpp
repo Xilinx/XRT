@@ -522,12 +522,6 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
 
   std::string usageSubCmds;
   for (const auto & subCmd : _subOptionOptions) {
-    // As we go through the sub options add them into the options description for the list display
-    if (subCmd->isHidden())
-      allHiddenOptions.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
-    else
-      allOptions.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
-
     if (subCmd->isHidden() && !XBU::getShowHidden()) 
       continue;
 
