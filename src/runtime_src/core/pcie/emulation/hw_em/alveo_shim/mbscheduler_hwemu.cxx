@@ -181,7 +181,7 @@ namespace hwemu {
             }
 
             //! Set cu_bitmap from cumasks
-            for (int i =  num_cumasks(); i >= 0;  --i) {
+            for (int i =  num_cumasks()-1; i >= 0;  --i) {
                 cu_bitmap <<= 32;
                 cu_bitmap |= cumasks[i];
             }
