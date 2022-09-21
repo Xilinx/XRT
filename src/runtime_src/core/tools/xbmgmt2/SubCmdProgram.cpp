@@ -7,6 +7,7 @@
 #include "SubCmdProgram.h"
 #include "OO_UpdateBase.h"
 #include "OO_UpdateShell.h"
+#include "OO_FactoryReset.h"
 
 #include "tools/common/XBHelpMenusCore.h"
 #include "tools/common/XBUtilitiesCore.h"
@@ -125,8 +126,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   std::string plp;
   std::string xclbin;
   std::string boot;
-  std::string flashType;
-  bool revertToGolden = false;
   bool help = false;
 
   po::options_description commonOptions("Common Options");
@@ -134,16 +133,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
-    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
-    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType),
-      "Overrides the flash mode. Use with caution.  Valid values:\n"
-      "  ospi\n"
-      "  ospi_versal")
     ("boot", boost::program_options::value<decltype(boot)>(&boot)->implicit_value("default"),
     "RPU and/or APU will be booted to either partition A or partition B.  Valid values:\n"
     "  DEFAULT - Reboot RPU to partition A\n"
@@ -155,6 +149,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   SubOptionOptions subOptionOptions;
   subOptionOptions.emplace_back(std::make_shared<OO_UpdateBase>("base", "b"));
   subOptionOptions.emplace_back(std::make_shared<OO_UpdateShell>("shell", "s"));
+  subOptionOptions.emplace_back(std::make_shared<OO_FactoryReset>("revert-to-golden"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 
@@ -189,9 +184,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // -- Now process the subcommand --------------------------------------------
-  // XBU::verbose(boost::str(boost::format("  Base: %s") % update));
-
   // -- process "device" option -----------------------------------------------
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
@@ -201,58 +193,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // Populate flash type. Uses board's default when passing an empty input string.
-  if (!flashType.empty()) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-        "Overriding flash mode is not recommended.\nYou may damage your device with this option.");
-  }
-  Flasher working_flasher(device->get_device_id());
-  auto flash_type = working_flasher.getFlashType(flashType);
-
-  if (vm.count("base") != 0) {
-    subOptionOptions[0]->execute(_options);
-    return;
-  }
-
-  // -- process "revert-to-golden" option ---------------------------------------
-  if (revertToGolden) {
-    XBU::verbose("Sub command: --revert-to-golden");
-    bool has_reset = false;
-
-    std::vector<Flasher> flasher_list;
-    //collect information of all the devices that will be reset
-    Flasher flasher(device->get_device_id());
-    if (!flasher.isValid())
-      xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
-
-    std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device ["
-      % flasher.sGetDBDF() % "] back to factory mode.";
-    flasher_list.push_back(flasher);
-
-    XBUtilities::sudo_or_throw("Root privileges are required to revert the device to its golden flash image");
-
-    //ask user's permission
-    if (!XBU::can_proceed(XBU::getForce()))
-      throw xrt_core::error(std::errc::operation_canceled);
-
-    for (auto& f : flasher_list) {
-      if (!f.upgradeFirmware(flash_type, nullptr, nullptr, nullptr)) {
-        std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "]"
-                                   " is reset successfully.";
-        has_reset = true;
-      }
-    }
-
-    if (!has_reset)
-      return;
-
-    std::cout << "****************************************************\n";
-    std::cout << "Cold reboot machine to load the new image on device.\n";
-    std::cout << "****************************************************\n";
-
-    return;
   }
 
   // -- process "user" option ---------------------------------------

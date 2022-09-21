@@ -75,7 +75,7 @@ program_plp(const xrt_core::device* dev, const std::string& partition)
 void
 OO_UpdateShell::execute(const SubCmdOptions& _options) const
 {
-  XBUtilities::verbose("SubCommand option: Update Base");
+  XBUtilities::verbose("SubCommand option: Update Shell");
 
   XBUtilities::verbose("Option(s):");
   for (const auto & aString : _options)

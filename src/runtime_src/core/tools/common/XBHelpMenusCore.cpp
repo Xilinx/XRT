@@ -515,8 +515,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
     usageSubCmds.append(subCmd->longName());
   }
 
-  const std::string usage = XBU::create_usage_string(_optionDescription, _positionalDescription, removeLongOptDashes);
-  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s --[ %s ]%s\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds % usage;
+  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s --[ %s ] [--help] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
 
   // -- Options
   boost::program_options::positional_options_description emptyPOD;
