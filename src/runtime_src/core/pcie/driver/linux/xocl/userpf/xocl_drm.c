@@ -968,13 +968,6 @@ static int xocl_init_drm_mm(struct xocl_drm *drm_p, struct xocl_mm *xocl_mm,
 	}
 
 	drm_mm_init(xocl_mm->mm, mm_start_addr, (mm_end_addr - mm_start_addr));
-	if (!xocl_mm->mm) {
-		xocl_err(drm_p->ddev->dev,
-				"init memory manager failed");
-		err = -EINVAL;
-		goto error;
-	}
-
 	xocl_mm->start_addr = mm_start_addr;
 	xocl_mm->end_addr = mm_end_addr;
 	xocl_mm->m_count = m_count;
