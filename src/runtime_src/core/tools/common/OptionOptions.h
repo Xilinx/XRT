@@ -30,7 +30,9 @@ class OptionOptions {
   virtual void execute(const SubCmdOptions &_options) const = 0;
 
  public:
+  const boost::program_options::options_description &option() const { return m_selfOption; };
   const std::string &longName() const { return m_longName; };
+  const std::string optionNameString() const { return m_shortName.empty() ? m_longName : m_longName + "," + m_shortName; };
   const std::string &description() const {return m_description; };
   const std::string &extendedHelp() const { return m_extendedHelp; };
   bool isHidden() const { return m_isHidden; };
@@ -70,6 +72,7 @@ class OptionOptions {
 
  // Variables
  protected:
+  boost::program_options::options_description m_selfOption;
   boost::program_options::options_description m_optionsDescription;
   boost::program_options::options_description m_optionsHidden;
   boost::program_options::positional_options_description m_positionalOptions;

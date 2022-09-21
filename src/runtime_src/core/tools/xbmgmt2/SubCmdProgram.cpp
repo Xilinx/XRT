@@ -153,9 +153,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 
-      hiddenOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
+      hiddenOptions.add_options()(subOO->optionNameString().c_str(), subOO->description().c_str());
     else
-      commonOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
+      commonOptions.add_options()(subOO->optionNameString().c_str(), subOO->description().c_str());
     subOO->setExecutable(getExecutableName());
     subOO->setCommand(getName());
   }

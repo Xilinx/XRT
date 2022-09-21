@@ -150,6 +150,47 @@ get_option_type(const boost::shared_ptr<boost::program_options::option_descripti
   throw std::runtime_error("Invalid argument setup detected");
 }
 
+static std::string
+create_option_string(enum FlagType optionType, const boost::shared_ptr<boost::program_options::option_description>& option, bool removeLongOptDashes)
+{
+  const std::string& shortName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+  const std::string& longName = removeLongOptDashes ? option->long_name() : 
+                                option->canonical_display_name(po::command_line_style::allow_long);
+  switch (optionType) {
+    case short_simple:
+      return boost::str(boost::format("%s") % shortName[1]);
+      break;
+    case long_simple:
+      return boost::str(boost::format("[%s]") % longName);
+      break;
+    case short_arg:
+      return boost::str(boost::format("[%s arg]") % shortName);
+      break;
+    case long_arg:
+      return boost::str(boost::format("[%s arg]") % longName);
+      break;
+    case short_required:
+      return boost::str(boost::format("%s") % shortName);
+      break;
+    case long_required:
+      return boost::str(boost::format("%s") % longName);
+      break;
+    case short_required_arg:
+      return boost::str(boost::format("%s arg") % shortName);
+      break;
+    case long_required_arg:
+      return boost::str(boost::format("%s arg") % longName);
+      break;
+    case positional:
+      return boost::str(boost::format("%s") % shortName);
+      break;
+    case flag_type_size:
+      throw std::runtime_error("Invalid argument setup detected");
+      break;
+  }
+  throw std::runtime_error("Invalid argument setup detected");
+}
+
 std::string
 XBUtilities::create_usage_string( const boost::program_options::options_description &_od,
                                   const boost::program_options::positional_options_description & _pod,
@@ -162,46 +203,14 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
 
   auto &options = _od.options();
 
-  for (auto & option : options) {
+  for (const auto & option : options) {
     const auto optionType = get_option_type(option, _pod);
-    const std::string& shortName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-    const std::string& longName = removeLongOptDashes ? option->long_name() : 
-                                  option->canonical_display_name(po::command_line_style::allow_long);
-    switch (optionType) {
-      case short_simple:
-        // The short options have a bracket surrounding all options
-        if (buffers[optionType].str().empty())
-          buffers[optionType] << " [-";
-        buffers[optionType] << shortName[1];
-        break;
-      case long_simple:
-        buffers[optionType] << boost::format(" [%s]") % longName;
-        break;
-      case short_arg:
-        buffers[optionType] << boost::format(" [%s arg]") % shortName;
-        break;
-      case long_arg:
-        buffers[optionType] << boost::format(" [%s arg]") % longName;
-        break;
-      case short_required:
-        buffers[optionType] << boost::format(" %s") % shortName;
-        break;
-      case long_required:
-        buffers[optionType] << boost::format(" %s") % longName;
-        break;
-      case short_required_arg:
-        buffers[optionType] << boost::format(" %s arg") % shortName;
-        break;
-      case long_required_arg:
-        buffers[optionType] << boost::format(" %s arg") % longName;
-        break;
-      case positional:
-        buffers[optionType] << boost::format(" %s") % shortName;
-        break;
-      case flag_type_size:
-        throw std::runtime_error("Invalid argument setup detected");
-        break;
-    }
+    const auto optionString = create_option_string(optionType, option, removeLongOptDashes);
+    // The short options have a bracket surrounding all options
+    if ((optionType == short_simple) && buffers[short_simple].str().empty())
+      buffers[short_simple] << " [-";
+
+    buffers[optionType] << boost::format(" %s") % optionString;
   }
 
   // The short simple options have a bracket surrounding all options
@@ -512,10 +521,13 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
     if (!usageSubCmds.empty()) 
       usageSubCmds.append(" | ");
 
-    usageSubCmds.append(subCmd->longName());
+    const auto& option = subCmd->option().options()[0];
+    const auto optionType = get_option_type(option, boost::program_options::positional_options_description());
+    const auto optionString = create_option_string(optionType, option, false);
+    usageSubCmds.append(optionString);
   }
 
-  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s --[ %s ] [--help] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
+  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [ %s ] [--help] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
 
   // -- Options
   boost::program_options::positional_options_description emptyPOD;

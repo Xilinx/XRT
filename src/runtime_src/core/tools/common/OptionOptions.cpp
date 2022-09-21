@@ -58,14 +58,10 @@ OptionOptions::OptionOptions( const std::string & longName,
   , m_description(optionDescription)
   , m_extendedHelp("")
 {
-  if (shortName.empty())
-    m_optionsDescription.add_options()
-      (m_longName.c_str(), optionValue, valueDescription.c_str())
-    ;
-  else
-    m_optionsDescription.add_options()
-      ((m_longName + "," + shortName).c_str(), optionValue, valueDescription.c_str())
-    ;
+  m_selfOption.add_options()
+    (optionNameString().c_str(), optionValue, valueDescription.c_str())
+  ;
+  m_optionsDescription.add(m_selfOption);
 }
 
 void 
