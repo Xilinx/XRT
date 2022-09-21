@@ -515,7 +515,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   // -- Usage
   std::string usageSubCmds;
   for (const auto & subCmd : _subOptionOptions) {
-    if (subCmd->isHidden()) 
+    if (subCmd->isHidden() && !XBU::getShowHidden()) 
       continue;
 
     if (!usageSubCmds.empty()) 

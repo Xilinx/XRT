@@ -6,6 +6,7 @@
 // Local - Include Files
 #include "SubCmdProgram.h"
 
+#include "OO_ChangeBoot.h"
 #include "OO_FactoryReset.h"
 #include "OO_UpdateBase.h"
 #include "OO_UpdateShell.h"
@@ -59,36 +60,6 @@ namespace po = boost::program_options;
 
 // =============================================================================
 
-// ------ L O C A L   F U N C T I O N S ---------------------------------------
-
-namespace {
-
-static void
-switch_partition(xrt_core::device* device, int boot)
-{
-  auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  std::cout << boost::format("Rebooting device: [%s] with '%s' partition")
-                % bdf % (boot ? "backup" : "default") << std::endl;
-  try {
-    // sets sysfs node boot_from_back [1:backup, 0:default], then hot reset
-    auto value = xrt_core::query::flush_default_only::value_type(boot);
-    xrt_core::device_update<xrt_core::query::boot_partition>(device, value);
-
-    std::cout << "Performing hot reset..." << std::endl;
-    device->device_shutdown();
-    device->device_online();
-    std::cout << "Rebooted successfully" << std::endl;
-  }
-  catch (const xrt_core::query::exception& ex) {
-    std::cout << "ERROR: " << ex.what() << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-    // only available for versal devices
-  }
-}
-
-}
-//end anonymous namespace
-
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
@@ -120,9 +91,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // -- Retrieve and parse the subcommand options -----------------------------
   std::string device_str;
-  std::string plp;
-  std::string xclbin;
-  std::string boot;
   bool help = false;
 
   po::options_description commonOptions("Common Options");
@@ -132,12 +100,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   ;
 
   po::options_description hiddenOptions("Hidden Options");
-  hiddenOptions.add_options()
-    ("boot", boost::program_options::value<decltype(boot)>(&boot)->implicit_value("default"),
-    "RPU and/or APU will be booted to either partition A or partition B.  Valid values:\n"
-    "  DEFAULT - Reboot RPU to partition A\n"
-    "  BACKUP  - Reboot RPU to partition B\n")
-  ;
 
   po::positional_options_description positionals;
 
@@ -146,6 +108,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   subOptionOptions.emplace_back(std::make_shared<OO_UpdateShell>("shell", "s"));
   subOptionOptions.emplace_back(std::make_shared<OO_FactoryReset>("revert-to-golden"));
   subOptionOptions.emplace_back(std::make_shared<OO_UpdateXclbin>("user", "u"));
+  subOptionOptions.emplace_back(std::make_shared<OO_ChangeBoot>("boot", "", true));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 
@@ -180,33 +143,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // -- process "device" option -----------------------------------------------
-  // Find device of interest
-  std::shared_ptr<xrt_core::device> device;
-  try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), false /*inUserDomain*/);
-  } catch (const std::runtime_error& e) {
-    // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // -- process "boot" option ------------------------------------------
-  if (!boot.empty()) {
-    if (boost::iequals(boot, "DEFAULT"))
-      switch_partition(device.get(), 0);
-    else if (boost::iequals(boot, "BACKUP"))
-      switch_partition(device.get(), 1);
-    else {
-      std::cout << "ERROR: Invalid value.\n"
-                << "Usage: xbmgmt program --device='0000:00:00.0' --boot [default|backup]"
-                << std::endl;
-      throw xrt_core::error(std::errc::operation_canceled);
-    }
-    return;
-  }
-
-  std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";
+  std::cout << "\nERROR: Missing operation.  No action taken.\n\n";
   printHelp(commonOptions, hiddenOptions, subOptionOptions);
   throw xrt_core::error(std::errc::operation_canceled);
 }
