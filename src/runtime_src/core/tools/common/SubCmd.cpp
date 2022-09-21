@@ -61,6 +61,12 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions, m_globalOptions);
 }
 
+void
+SubCmd::printHelp() const
+{
+ XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, m_commonOptions, m_hiddenOptions, m_subOptionOptions, m_globalOptions);
+}
+
 std::vector<std::string> 
 SubCmd::process_arguments( po::variables_map& vm,
                            const SubCmdOptions& _options,
@@ -84,6 +90,13 @@ SubCmd::process_arguments( po::variables_map& vm,
   }
 }
 
+std::vector<std::string>
+SubCmd::process_arguments( boost::program_options::variables_map& vm,
+                          const SubCmdOptions& _options,
+                          bool validate_arguments) const
+{
+  return process_arguments(vm, _options, m_commonOptions, m_hiddenOptions, m_positionals, m_subOptionOptions, validate_arguments);
+}
 
 void 
 SubCmd::conflictingOptions( const boost::program_options::variables_map& _vm, 

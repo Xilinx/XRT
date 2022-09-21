@@ -105,7 +105,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Parse sub-command ...
   po::variables_map vm;
-  auto topOptions = process_arguments(vm, _options, m_commonOptions, m_hiddenOptions, m_positionals, m_subOptionOptions, false);
+  auto topOptions = process_arguments(vm, _options, false);
 
   // Check for a suboption
   auto optionOption = checkForSubOption(vm);
@@ -117,11 +117,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (help) {
-    printHelp(m_commonOptions, m_hiddenOptions, m_subOptionOptions);
+    printHelp();
     return;
   }
 
   std::cout << "\nERROR: Missing operation.  No action taken.\n\n";
-  printHelp(m_commonOptions, m_hiddenOptions, m_subOptionOptions);
+  printHelp();
   throw xrt_core::error(std::errc::operation_canceled);
 }
