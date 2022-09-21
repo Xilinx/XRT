@@ -49,10 +49,12 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-SubCmdProgram::SubCmdProgram(const std::string& executable, bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("program", "Update image(s) for a given device")
-    , m_device("")
-    , m_help(false)
+std::string device_str;
+bool help = false;
+
+SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("program",
+             "Update image(s) for a given device")
 {
   const std::string longDescription = "Updates the image(s) for a given device.";
   setLongDescription(longDescription);
@@ -60,11 +62,10 @@ SubCmdProgram::SubCmdProgram(const std::string& executable, bool _isHidden, bool
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
-  setExecutableName(executable);
 
   m_commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   addSubOption(std::make_shared<OO_UpdateBase>("base", "b"));
@@ -89,48 +90,12 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     XBU::verbose(msg);
   }
 
-  // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device_str;
-  bool help = false;
-
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
-
-  po::positional_options_description positionals;
-
-  SubOptionOptions subOptionOptions;
-  subOptionOptions.emplace_back(std::make_shared<OO_UpdateBase>("base", "b"));
-  subOptionOptions.emplace_back(std::make_shared<OO_UpdateShell>("shell", "s"));
-  subOptionOptions.emplace_back(std::make_shared<OO_FactoryReset>("revert-to-golden"));
-  subOptionOptions.emplace_back(std::make_shared<OO_UpdateXclbin>("user", "u"));
-  subOptionOptions.emplace_back(std::make_shared<OO_ChangeBoot>("boot", "", true));
-
-  for (auto & subOO : subOptionOptions) {
-    if (subOO->isHidden()) 
-      hiddenOptions.add_options()(subOO->optionNameString().c_str(), subOO->description().c_str());
-    else
-      commonOptions.add_options()(subOO->optionNameString().c_str(), subOO->description().c_str());
-    subOO->setExecutable(getExecutableName());
-    subOO->setCommand(getName());
-  }
-
   // Parse sub-command ...
   po::variables_map vm;
-  auto topOptions = process_arguments(vm, _options, commonOptions, hiddenOptions, positionals, subOptionOptions, false);
+  auto topOptions = process_arguments(vm, _options, m_commonOptions, m_hiddenOptions, m_positionals, m_subOptionOptions, false);
 
-    // Find the subOption;
-  std::shared_ptr<OptionOptions> optionOption;
-  for (auto& subOO : subOptionOptions) {
-    if (vm.count(subOO->longName().c_str()) != 0) {
-      optionOption = subOO;
-      break;
-    }
-  }
+  // Check for a suboption
+  auto optionOption = checkForSubOption(vm);
 
   if (optionOption) {
     optionOption->execute(_options);
@@ -139,11 +104,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (help) {
-    printHelp(commonOptions, hiddenOptions, subOptionOptions);
+    printHelp(m_commonOptions, m_hiddenOptions, m_subOptionOptions);
     return;
   }
 
   std::cout << "\nERROR: Missing operation.  No action taken.\n\n";
-  printHelp(commonOptions, hiddenOptions, subOptionOptions);
+  printHelp(m_commonOptions, m_hiddenOptions, m_subOptionOptions);
   throw xrt_core::error(std::errc::operation_canceled);
 }
