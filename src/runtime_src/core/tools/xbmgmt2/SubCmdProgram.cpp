@@ -6,31 +6,15 @@
 // Local - Include Files
 #include "SubCmdProgram.h"
 
+// XRT - Include Files
 #include "OO_ChangeBoot.h"
 #include "OO_FactoryReset.h"
 #include "OO_UpdateBase.h"
 #include "OO_UpdateShell.h"
 #include "OO_UpdateXclbin.h"
-
-#include "tools/common/XBHelpMenusCore.h"
-#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBUtilitiesCore.h"
 namespace XBU = XBUtilities;
-
-#include "xrt.h"
-#include "core/common/system.h"
-#include "core/common/device.h"
-#include "core/common/error.h"
-#include "core/common/query_requests.h"
-#include "core/common/message.h"
-#include "core/common/utils.h"
-#include "flash/flasher.h"
-#include "core/common/info_vmr.h"
-// Remove linux specific code
-#ifdef __linux__
-#include "core/pcie/linux/scan.h"
-#endif
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -108,7 +92,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  std::cout << "\nERROR: Missing operation.  No action taken.\n\n";
+  std::cout << "\nERROR: Missing operation. No action taken.\n\n";
   printHelp();
   throw xrt_core::error(std::errc::operation_canceled);
 }
