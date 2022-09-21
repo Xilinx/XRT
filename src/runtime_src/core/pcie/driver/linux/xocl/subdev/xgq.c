@@ -1125,8 +1125,6 @@ static int xgq_vmr_identify_op(struct platform_device *pdev)
 	struct xgq_cmd_resp_identify *version = NULL;
 	int ret = 0;
 	int id = 0;
-	u32 address = 0;
-	u32 len = 0;
 	u32 major = 0, minor = 0;
 
 	/* skip periodic firewall check when xgq service is halted */
@@ -1143,12 +1141,6 @@ static int xgq_vmr_identify_op(struct platform_device *pdev)
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq_vmr = xgq;
 
-	if (shm_acquire_log_page(xgq, &address, &len)) {
-		ret = 0;
-		XGQ_ERR(xgq, "shared memory is busy, retry please");
-		goto acquire_failed;
-	}
-
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_IDENTIFY;
 	hdr->state = XGQ_SQ_CMD_NEW;
@@ -1156,7 +1148,7 @@ static int xgq_vmr_identify_op(struct platform_device *pdev)
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
-		goto cid_alloc_failed;
+		goto free_mem;
 	}
 	hdr->cid = id;
 
@@ -1183,32 +1175,23 @@ static int xgq_vmr_identify_op(struct platform_device *pdev)
 		goto done;
 	}
 
-	ret = (cmd->xgq_cmd_rcode == -ETIME || cmd->xgq_cmd_rcode == -EINVAL) ?
-		0 : cmd->xgq_cmd_rcode;
-
-	if (ret) {
-		/*
-			TO DO
-		Return Case Needs more Handling after VMR Response
-		Return Status needs to be updated in the structures ? David to review
-		*/
+	if (ret == 0) {
 		version = (struct xgq_cmd_resp_identify *)&cmd->xgq_cmd_cq_payload;
 		major = version->major;
 		minor = version->minor;
-		if(major == 1 && minor == 0)
+		if(major == 1 && minor == 0){
+			XGQ_INFO(xgq, "VMR Identify major.minor = %d.%d\n", major,minor);
 			ret = 0;
-		else
-			XGQ_ERR(xgq, "VMR Identify Command Failed major.minor = %d.%d",major,minor);
+		}
+		else{
+			XGQ_INFO(xgq, "VMR Identify Command Failed major.minor = %d.%d",major,minor);
+			ret = -EINVAL;
+		}
 	}
-//Error handling needs more work 
-
 done:
 	remove_xgq_cid(xgq, id);
 
-cid_alloc_failed:
-	shm_release_log_page(xgq);
-
-acquire_failed:
+free_mem:
 	kfree(cmd);
 
 	return ret;
