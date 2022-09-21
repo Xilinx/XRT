@@ -1095,8 +1095,14 @@ namespace xclhwemhal2 {
 
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
-    sock->monitor_socket();
-    
+    if(sock)
+    {
+      sock->monitor_socket();
+    }
+    else
+    {
+      return 0;
+    }
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
       mMessengerThread = std::thread([this]() { messagesThread(); } );
@@ -1109,7 +1115,7 @@ namespace xclhwemhal2 {
     if (mLogStream.is_open())
       mLogStream << __func__ << " Created the Unix socket." << std::endl;
 
-    if (sock && mEnvironmentNameValueMap.empty() == false)
+    if (mEnvironmentNameValueMap.empty() == false)
     {
       //send environment information to device
       bool ack = true;
