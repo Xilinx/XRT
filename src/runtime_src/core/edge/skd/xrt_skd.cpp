@@ -220,10 +220,10 @@ namespace xrt {
       }
 
       if (ret && (signal==SIGTERM)) {
-	      // We are told to exit the soft kernel loop
-	      const auto msg = boost::format("Exit soft kernel %s") % m_sk_name;
-	      xrt_core::message::send(severity_level::info, "SKD", msg.str());
-	      break;
+	// We are told to exit the soft kernel loop
+	const auto msg = boost::format("Exit soft kernel %s") % m_sk_name;
+	xrt_core::message::send(severity_level::info, "SKD", msg.str());
+	break;
       }
 
       // Reg file indicates the kernel should not be running.
