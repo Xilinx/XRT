@@ -86,7 +86,7 @@ namespace {
     try {
       memRangeStart = std::stoi(rangeStart);
       memRangeEnd = std::stoi(rangeEnd);
-    } catch(std::exception& e) {
+    } catch(std::exception&) {
       // The start and/or end of the range aren't well formed integers.  Just
       // return false then as we cannot compare the range.
       return false;
