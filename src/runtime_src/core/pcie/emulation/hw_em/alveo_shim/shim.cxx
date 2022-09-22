@@ -32,8 +32,8 @@
         auto raw_response_header    = std::make_unique<char[]>(ri_len); \
         auto raw_response_payload   = std::make_unique<char[]>(r_len);\
         response_header->set_size(r_len);\
-        response_header->SerializeToArray((void*)raw_response_header.get(),ri_len);\
-        response_payload.SerializeToArray((void*)raw_response_payload.get(),r_len);\
+        if(!response_header->SerializeToArray((void*)raw_response_header.get(),ri_len)){return 1;}\
+        if(!response_payload.SerializeToArray((void*)raw_response_payload.get(),r_len)){return 1;}\
         Q2h_sock->sk_write((void*)raw_response_header.get(),ri_len);\
         Q2h_sock->sk_write((void*)raw_response_payload.get(),r_len);\
     }
@@ -3326,7 +3326,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigne
 
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
 
-  xcl_LogMsg(XRT_INFO, "", "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
+  xcl_LogMsg(XRT_INFO, "", "%s, cmdBO: %d, num_bo_in_wait_list: %lu, bo_wait_list: %u",
             __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
 
   if (num_bo_in_wait_list > MAX_DEPS) {
@@ -3354,6 +3354,11 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigne
       ret = m_scheduler->add_exec_buffer(bo);
       PRINTENDFUNC;
   } else {
+    if(!mMBSch || !bo)
+    {
+      PRINTENDFUNC;
+      return ret;
+    }
     ret = mMBSch->add_exec_buffer(mCore, bo);
     PRINTENDFUNC;
   }
