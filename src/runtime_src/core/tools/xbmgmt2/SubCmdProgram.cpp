@@ -36,7 +36,7 @@ namespace po = boost::program_options;
 std::string device_str;
 bool help = false;
 
-SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+SubCmdProgram::SubCmdProgram(const std::string& executable, bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("program",
              "Update image(s) for a given device")
 {
@@ -46,6 +46,7 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+  setExecutableName(executable);
 
   m_commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")

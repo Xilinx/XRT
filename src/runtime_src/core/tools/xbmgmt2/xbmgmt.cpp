@@ -37,18 +37,16 @@ int main( int argc, char** argv )
 
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
-
+  const std::string executable = "xbmgmt";
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
-    subCommands.emplace_back(std::make_shared<   SubCmdProgram  >(false, false, false));
+    subCommands.emplace_back(std::make_shared<   SubCmdProgram  >(executable, false, false, false));
     subCommands.emplace_back(std::make_shared<     SubCmdReset  >(false, false, false));
     subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true));
     subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false));
     subCommands.emplace_back(std::make_shared<      SubCmdDump  >(false, false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure  >(false, false, false));
   }
-
-  const std::string executable = "xbmgmt";
 
   for (auto & subCommand : subCommands) 
     subCommand->setExecutableName(executable);

@@ -24,7 +24,7 @@ class SubCmdProgram : public SubCmd {
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+  SubCmdProgram(const std::string& executable, bool _isHidden, bool _isDepricated, bool _isPreliminary);
 };
 
 #endif
