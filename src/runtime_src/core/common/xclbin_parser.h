@@ -64,6 +64,7 @@ struct kernel_properties
   size_t address_range = 0x10000;  // NOLINT, default address range
   bool sw_reset = false;
   size_t functional = 0;
+  size_t kernel_id = 0;
 
   // opencl specifics
   size_t workgroupsize = 0;
@@ -106,6 +107,7 @@ struct aie_cdo_group_obj
   std::string cdo_name;
   uint8_t cdo_type;
   uint64_t pdi_id;
+  std::vector<uint64_t> kernel_ids;
 };
 
 // struct aie_pdi_obj - wrapper for an AIE PDI object
