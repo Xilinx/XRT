@@ -2996,7 +2996,12 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   else if((sBO->fd >=0) && (dBO->fd >= 0)) {  //Both source & destination P2P buffer
     // CR-1113695 Copy data from source P2P to Dest P2P
     std::vector<char> temp_buffer(size);
-    lseek(sBO->fd, src_offset, SEEK_SET);
+    if(lseek(sBO->fd, src_offset, SEEK_SET) != -1){
+      lseek(sBO->fd, src_offset, SEEK_SET);
+    }
+    else{
+      return -1;
+    }
     int bytes_read = read(sBO->fd, temp_buffer.data(), size);
     if (bytes_read) {
       if (mLogStream.is_open())
@@ -3005,7 +3010,12 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       }
     }
 
-    lseek(dBO->fd, dst_offset, SEEK_SET);
+    if(lseek(dBO->fd, dst_offset, SEEK_SET) != -1){
+      lseek(dBO->fd, dst_offset, SEEK_SET);
+    }
+    else{
+      return -1;
+    }
     int bytes_write = write(dBO->fd, temp_buffer.data(), size);
     if (bytes_write) {
       if (mLogStream.is_open())
@@ -3021,7 +3031,12 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
       return -1;
     }
-    lseek(dBO->fd, dst_offset, SEEK_SET);
+    if(lseek(dBO->fd, dst_offset, SEEK_SET) != -1){
+      lseek(dBO->fd, dst_offset, SEEK_SET);
+    }
+    else{
+      return -1;
+    }
     int bytes_write = write(dBO->fd, temp_buffer.data(), size);
 
     if (bytes_write) {
@@ -3034,7 +3049,12 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   else if (sBO->fd >= 0) {  //source p2p buffer
     // CR-1112934 Copy data from exported fd to temp buffer using read API
     std::vector<char> temp_buffer(size);
-    lseek(sBO->fd, src_offset, SEEK_SET);
+    if(lseek(sBO->fd, src_offset, SEEK_SET) != -1){
+      lseek(sBO->fd, src_offset, SEEK_SET);
+    }
+    else{
+      return -1;
+    }
     int bytes_read = read(sBO->fd, temp_buffer.data(), size);
 
     if (bytes_read) {
