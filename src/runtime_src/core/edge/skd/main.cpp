@@ -24,9 +24,9 @@
 #include "core/common/api/device_int.h"
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
+#include "ert.h"
 #include "sk_daemon.h"
 #include "xclhal2_mpsoc.h"
-#include "ert.h"
 
 /*
  * This is a daemon code running on PS. It receives commands from
@@ -43,37 +43,38 @@ using severity_level = xrt_core::message::severity_level;
 int main(int argc, char *argv[])
 {
   pid_t pid = fork();
-  if (pid < 0) {
+  if (pid < 0)
     exit(EXIT_FAILURE);
-  }
+
   if (pid > 0)
     exit(EXIT_SUCCESS);
 
+  // Starting the child process
   umask(0);
 
-  /* Send the first message to XRT log*/
+  // Send the first message to XRT log
   const std::string msg = "Daemon Start...";
   xrt_core::message::send(severity_level::info, "SKD", msg);
 
-  /* Create a new SID for the child process */
+  // Create a new SID for the child process
   pid_t sid = setsid();
   if (sid < 0) {
-    const std::string errMsg = "Set SID failed. Daemon exiting";
+    const auto errMsg = "Set SID failed. Daemon exiting";
     xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
-  std::string sid_msg = std::string("SID set ") + std::to_string(sid);
-  xrt_core::message::send(severity_level::info, "SKD", sid_msg);
+  const auto sid_msg = boost::format("SID set %d") % sid;
+  xrt_core::message::send(severity_level::info, "SKD", sid_msg.str());
 
   if (chdir("/") < 0) {
-    const std::string errMsg = "Could NOT change to \"/\" directory";
+    const auto errMsg = "Could NOT change to \"/\" directory";
     xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
 
   xclDeviceHandle handle = initXRTHandle(0);
   if (!handle) {
-    const std::string errMsg = "Fail to init XRT";
+    const auto errMsg = "Fail to init XRT";
     xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
@@ -97,7 +98,7 @@ int main(int argc, char *argv[])
 
   xclSKCmd cmd = {};
   while (true) {
-    /* Calling XRT interface to wait for commands */
+    // Calling XRT interface to wait for commands - xclSKGetCmd will block and wait
     if (xclSKGetCmd(handle, &cmd) != 0)
       continue;
 

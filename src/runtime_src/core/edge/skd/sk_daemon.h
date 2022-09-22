@@ -21,15 +21,14 @@
 #define __SK_RUNNER_H_
 
 #include <boost/stacktrace.hpp>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <errno.h>
 #include <signal.h>
-#include <sys/types.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
-#include <syslog.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "xclhal2_mpsoc.h"
 #include "xrt_skd.h"

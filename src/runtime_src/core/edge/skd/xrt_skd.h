@@ -18,6 +18,7 @@
 #ifndef _XRT_SKD_H_
 #define _XRT_SKD_H_
 
+#include <boost/format.hpp>
 #include <chrono>
 #include <cstdarg>
 #include <cstdint>
@@ -100,14 +101,14 @@ class skd
     xrtDeviceHandle m_xrtdhdl = 0;
     uuid m_xclbin_uuid;
     const std::filesystem::path m_sk_path;
-    uint32_t m_cu_idx;
-    std::string m_sk_name;
+    uint32_t m_cu_idx = 0;
+    std::string m_sk_name = "";
     pscontext* m_xrtHandle = nullptr;
-    int m_sk_bo;
-    int m_sk_meta_bo;
-    int m_parent_bo_handle;
-    uint64_t m_mem_start_paddr;
-    uint64_t m_mem_size;
+    int m_sk_bo = 0;
+    int m_sk_meta_bo = 0;
+    int m_parent_bo_handle = 0;
+    uint64_t m_mem_start_paddr = 0;
+    uint64_t m_mem_size = 0;
     void* m_mem_start_vaddr = nullptr;
     int signal = 0;
     

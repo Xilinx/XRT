@@ -5,4 +5,8 @@ if [ -e /sys/bus/platform/devices/rpu-channel/ready ]; then
 	useradd softkernel
 	# Work-around for AIE as it defaults root access only
 	chmod 666 /dev/aie0
+	# Create default xrt.ini
+	echo "[Runtime]" > /usr/bin/xrt.ini
+	echo "verbosity=5" >> /usr/bin/xrt.ini
+	echo "runtime_log=syslog" >> /usr/bin/xrt.ini
 fi

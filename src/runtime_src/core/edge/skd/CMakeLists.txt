@@ -33,6 +33,7 @@ target_link_libraries(skd
   xrt_core
   xrt_coreutil
   dl
+  stdc++fs
   ${LIBFFI_LDFLAGS}
   )
 
