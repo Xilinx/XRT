@@ -1484,7 +1484,7 @@ namespace xdp {
                                               const std::string& args,
                                               const std::string& memoryName,
                                               bool isRead,
-                                              double numTransactions,
+                                              uint64_t numTransactions,
                                               double totalTransferTime,
                                               double bytes,
                                               double maxAchievableBW,
@@ -1505,8 +1505,8 @@ namespace xdp {
     if (idealBW > one_hundred)
       idealBW = one_hundred;
 
-    auto aveSize = (bytes / numTransactions) / one_thousand;
-    auto aveLatency = latency / numTransactions;
+    auto aveSize = (bytes / static_cast<double>(numTransactions)) / one_thousand;
+    auto aveLatency = latency / static_cast<double>(numTransactions);
 
     fout << deviceName << ",";
     fout << cuName << "/" << portName << ",";
@@ -1599,7 +1599,7 @@ namespace xdp {
                                     arguments,
                                     memoryName,
                                     false, // isRead
-                                    static_cast<double>(writeTranx),
+                                    writeTranx,
                                     transferTime,
                                     static_cast<double>(values.WriteBytes[monitorSlot]),
                                     maxAchievableBW,
@@ -1617,7 +1617,7 @@ namespace xdp {
                                     arguments,
                                     memoryName,
                                     true, // isRead
-                                    static_cast<double>(readTranx),
+                                    readTranx,
                                     transferTime,
                                     static_cast<double>(values.ReadBytes[monitorSlot]),
                                     maxAchievableBW,
