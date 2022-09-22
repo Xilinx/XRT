@@ -44,13 +44,14 @@
 #include <sys/mman.h>
 
 #include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/aie_profile.h"
+#include "plugin/xdp/aie_debug.h"
+
 #ifndef __HWEM__
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
 
 #include "plugin/xdp/aie_trace.h"
-#include "plugin/xdp/aie_profile.h"
-#include "plugin/xdp/aie_debug.h"
 #include "plugin/xdp/pl_deadlock.h"
 #else
 #include "plugin/xdp/hw_emu_device_offload.h"
@@ -141,9 +142,9 @@ shim::
 #ifndef __HWEM__
 //  xdphal::finish_flush_device(handle) ;
   xdp::aie::finish_flush_device(this) ;
+#endif
   xdp::aie::ctr::end_poll(this);
   xdp::aie::dbg::end_poll(this);
-#endif
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -2166,8 +2167,10 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 #ifndef __HWEM__
     xdp::hal::update_device(handle);
     xdp::aie::update_device(handle);
+#endif
     xdp::aie::ctr::update_device(handle);
     xdp::aie::dbg::update_device(handle);
+#ifndef __HWEM__
     xdp::pl_deadlock::update_device(handle);
 
     START_DEVICE_PROFILING_CB(handle);

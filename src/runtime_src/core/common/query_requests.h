@@ -282,6 +282,7 @@ enum class key_type
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
   hwmon_sdm_fan_presence,
+  hwmon_sdm_mfg_date,
   hotplug_offline,
 
   cu_size,
@@ -289,6 +290,9 @@ enum class key_type
 
   clk_scaling_info,
 
+  xgq_scaling_enabled,
+  xgq_scaling_power_override,
+  xgq_scaling_temp_override,
   noop
 };
 
@@ -3073,6 +3077,16 @@ struct hwmon_sdm_fan_presence : request
   get(const device*) const = 0;
 };
 
+// Retrieve board MFG date from xocl hwmon_sdm driver
+struct hwmon_sdm_mfg_date : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_mfg_date;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct hotplug_offline : request
 {
   using result_type = bool;
@@ -3127,6 +3141,45 @@ struct clk_scaling_info : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct xgq_scaling_enabled : request
+{
+  using result_type = bool; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_enabled;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xgq_scaling_power_override : request
+{
+  using result_type = std::string; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_power_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xgq_scaling_temp_override : request
+{
+  using result_type = std::string; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_temp_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 } // query

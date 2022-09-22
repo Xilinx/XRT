@@ -18,6 +18,10 @@ function vdu_probe() {
         if [ $? == 0 ]
         then
                 write_log 'modprobe successful'
+                write_log 'chmod 777 /dev/allegroDecodeIP'
+                chmod 777 /dev/allegroDecodeIP
+                chmod 444 /sys/kernel/debug/cma/cma-vdu_dma_mem/used
+                chown softkernel:softkernel /sys/kernel/debug/cma/cma-vdu_dma_mem/used
         else
                 write_log 'modprobe failed'
         fi

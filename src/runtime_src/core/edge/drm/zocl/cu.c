@@ -288,16 +288,23 @@ irqreturn_t ucu_isr(int irq, void *arg)
 static int user_manage_irq(struct xrt_cu *xcu, bool user_manage)
 {
 	struct zocl_cu *zcu = (struct zocl_cu *)xcu;
-	int ret;
+	struct platform_device *intc;
+	int ret = 0;
+
+	intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
+	if (!intc) {
+		DRM_INFO("%s: finding platform device - %s failed\n", __func__, ERT_CU_INTC_DEV_NAME);
+		return -ENODEV;
+	}
 
 	if (xcu->info.intr_enable)
-		free_irq(zcu->irq, zcu);
+		zocl_ert_intc_remove(intc, xcu->info.intr_id);
 
 	/* Do not use IRQF_SHARED! */
 	if (user_manage)
-		ret = request_irq(zcu->irq, ucu_isr, 0, zcu->irq_name, zcu);
+		ret = zocl_ert_intc_add(intc, xcu->info.intr_id, ucu_isr, zcu);
 	else
-		ret = request_irq(zcu->irq, cu_isr, 0, zcu->irq_name, zcu);
+		ret = zocl_ert_intc_add(intc, xcu->info.intr_id, cu_isr, zcu);
 	if (ret) {
 		DRM_INFO("%s: request_irq() failed\n", __func__);
 		return ret;
@@ -306,7 +313,7 @@ static int user_manage_irq(struct xrt_cu *xcu, bool user_manage)
 	if (user_manage) {
 		__set_bit(IRQ_DISABLED, zcu->flag);
 		spin_lock_init(&zcu->lock);
-		disable_irq(zcu->irq);
+		zocl_ert_intc_config(intc, xcu->info.intr_id, false); // disable irq
 	}
 
 	return 0;
@@ -315,17 +322,22 @@ static int user_manage_irq(struct xrt_cu *xcu, bool user_manage)
 static int configure_irq(struct xrt_cu *xcu, bool enable)
 {
 	struct zocl_cu *zcu = (struct zocl_cu *)xcu;
+	struct platform_device *intc;
 	unsigned long flags;
 
-	spin_lock_irqsave(&zcu->lock, flags);
+	intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
+	if (!intc) {
+		DRM_INFO("%s: finding platform device - %s failed\n", __func__, ERT_CU_INTC_DEV_NAME);
+		return -ENODEV;
+	}
+
 	if (enable) {
 		if (__test_and_clear_bit(IRQ_DISABLED, zcu->flag))
-			enable_irq(zcu->irq);
+			zocl_ert_intc_config(intc, xcu->info.intr_id, true); // enable irq
 	} else {
 		if (!__test_and_set_bit(IRQ_DISABLED, zcu->flag))
-			disable_irq(zcu->irq);
+			zocl_ert_intc_config(intc, xcu->info.intr_id, false); // disable irq
 	}
-	spin_unlock_irqrestore(&zcu->lock, flags);
 
 	return 0;
 }
@@ -367,6 +379,11 @@ static int cu_probe(struct platform_device *pdev)
 	zcu->base.res = res;
 
 	zdev = zocl_get_zdev();
+	if (!zdev) {
+		err = -EINVAL;
+		goto err1;
+	}
+
 	err = zocl_kds_add_cu(zdev, &zcu->base);
 	if (err) {
 		DRM_ERROR("Not able to add CU %p to KDS", zcu);

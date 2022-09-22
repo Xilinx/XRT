@@ -31,13 +31,13 @@
 /* Avoid the CU soft lockup warning when CU thread keep busy.
  * Small value leads to lower performance on APU.
  */
-#define MAX_CU_LOOP 100
+#define MAX_CU_LOOP 300
 
 /* If poll count reach this threashold, switch to interrupt mode */
 #if defined(CONFIG_ARM64)
 #define CU_DEFAULT_POLL_THRESHOLD 30 /* About 60 us on APU */
 #else
-#define CU_DEFAULT_POLL_THRESHOLD 200 /* About 50 us on host */
+#define CU_DEFAULT_POLL_THRESHOLD 300 /* About 75 us on host */
 #endif
 
 /* The normal CU in ip_layout would assign a interrupt

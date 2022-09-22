@@ -190,7 +190,7 @@ using addr_type = uint64_t;
       void xclFreeDeviceBuffer(uint64_t buf,bool sendtosim);
       size_t xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek, uint32_t topology);
       size_t xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip, uint32_t topology);
-      void xclClose();
+      void xclClose(bool DonotRunParseLog = false);
       unsigned int xclProbe();
 
       //Performance Monitor APIs
@@ -222,6 +222,7 @@ using addr_type = uint64_t;
       void saveWaveDataBase();
       void extractEmuData(const std::string& simPath, int binaryCounter, bitStreamArg args);
       void nocMmapInitialization(const std::string &simPath);
+      void getDtbs(const std::string& emu_data_path, std::string& qemu_dtb, std::string& pmc_dtb);
 
       // Sanity checks
       static HwEmShim *handleCheck(void *handle);

@@ -38,6 +38,10 @@ file(GLOB XDP_PLUGIN_HW_EM_FILES
   "${XDP_PLUGIN_DIR}/plugin_loader.cpp"
   "${XDP_PLUGIN_DIR}/hal_profile.h"
   "${XDP_PLUGIN_DIR}/hal_profile.cpp"
+  "${XDP_PLUGIN_DIR}/aie_debug.h"
+  "${XDP_PLUGIN_DIR}/aie_debug.cpp"
+  "${XDP_PLUGIN_DIR}/aie_profile.h"
+  "${XDP_PLUGIN_DIR}/aie_profile.cpp"
   )
 
 if (DEFINED XRT_AIE_BUILD)

@@ -318,7 +318,7 @@ put(const std::string& name,
   if (!err.empty())
     return;
   fs << input;
-  fs.flush();
+  fs.close(); // flush and close, if either fails then stream failbit is set.
   if (!fs.good()) {
     std::stringstream ss;
     ss << "Failed to write " << get_path(name, subdev, entry) << ": "
@@ -337,7 +337,7 @@ put(const std::string& name,
     return;
 
   fs.write(buf.data(), buf.size());
-  fs.flush();
+  fs.close(); // flush and close, if either fails then stream failbit is set.
   if (!fs.good()) {
     std::stringstream ss;
     ss << "Failed to write " << get_path(name, subdev, entry) << ": "
@@ -355,7 +355,7 @@ put(const std::string& name,
   if (!err.empty())
     return;
   fs << input;
-  fs.flush();
+  fs.close(); // flush and close, if either fails then stream failbit is set.
   if (!fs.good()) {
     std::stringstream ss;
     ss << "Failed to write " << get_path(name, subdev, entry) << ": "
