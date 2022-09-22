@@ -4,6 +4,7 @@ build/Release*
 build/WRelease*
 docs/.buildinfo
 docs/.doctrees
+src/.vscode/
 tests/xrt/build/Debug*
 tests/xrt/build/WDebug*
 tests/xrt/build/Release*
