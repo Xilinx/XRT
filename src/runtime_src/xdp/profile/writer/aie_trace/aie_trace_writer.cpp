@@ -45,14 +45,14 @@ namespace xdp {
     try {
       if (fout.is_open()) {
         if (fout.tellp() <= 0) {
-          std::string msg = "File: " + currentFileName + " (device #" + std::to_string(deviceId) 
+          std::string msg = "File: " + getcurrentFileName() + " (device #" + std::to_string(deviceId) 
               + ", stream #" + std::to_string(traceStreamId) + ") trace data was not captured.";
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
         fout << std::endl;
       }
     } catch (...){
-      std::string msg = "Trace File: " + currentFileName + " not found.";
+      std::string msg = "Trace File: " + getcurrentFileName() + " not found.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
     }
   }

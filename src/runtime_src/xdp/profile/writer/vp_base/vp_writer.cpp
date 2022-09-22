@@ -37,7 +37,7 @@ namespace xdp {
   }
 
   VPWriter::VPWriter(const char* filename, VPDatabase* inst, bool useDir) :
-    basename(filename), directory(""), currentFileName(filename),
+    basename(filename), currentFileName(filename), directory(""),
 #ifdef _WIN32
     separator('\\'),
 #else
