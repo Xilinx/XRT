@@ -270,7 +270,10 @@ void unix_socket::monitor_socket_thread() {
       break;
     }
 
-    mpoll_on_filedescriptor = {fd, POLLERR, 0};           // monitor client socket file descriptor for a state change.
+    // mpoll_on_filedescriptor = {fd, POLLERR, 0};           // monitor client socket file descriptor for a state change.
+    mpoll_on_filedescriptor.fd = fd;
+    mpoll_on_filedescriptor.events = POLLERR;
+    mpoll_on_filedescriptor.revents = 0;
     auto retval = poll(&mpoll_on_filedescriptor, 1, 500); // Let's do polling on it for utmost 500 ms
     if (retval < 0)
     {
