@@ -1152,7 +1152,6 @@ static bool vmr_default_boot_enabled(struct platform_device *pdev)
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xgq_cmd_cq_vmr_payload *vmr_status =
 		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
-	pr_info("VMR Image using default: %d\n", vmr_status->boot_on_default);
 	return vmr_status->boot_on_default;
 }
 

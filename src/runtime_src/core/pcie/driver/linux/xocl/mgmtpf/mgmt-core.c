@@ -1240,7 +1240,7 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 
 static void set_device_status(struct xclmgmt_dev *lro, int ret, const char* msg)
 {
-	snprintf(lro->status.msg, sizeof(lro->status.msg), "%s %d\n", msg, ret);
+	snprintf(lro->status.msg, sizeof(lro->status.msg), "%s - %d", msg, ret);
 	xocl_err(&lro->pci_dev->dev, "%s", lro->status.msg);
 }
 
@@ -1251,10 +1251,10 @@ static void set_device_status(struct xclmgmt_dev *lro, int ret, const char* msg)
  */
 static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 {
-	int ret;
+	int ret = 0;
 	struct xocl_board_private *dev_info = &lro->core.priv;
 	struct pci_dev *pdev = lro->pci_dev;
-	int i;
+	int i = 0;
 
 	lro->core.thread_arg.thread_cb = health_check_cb;
 	lro->core.thread_arg.arg = lro;
@@ -1347,10 +1347,6 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	/* Store/cache PCI link width & speed info */
 	store_pcie_link_info(lro);
-
-	/* Notify our peer that we're listening. */
-	xclmgmt_connect_notify(lro, true);
-	xocl_info(&pdev->dev, "device fully initialized\n");
 	return 0;
 
 fail_all_subdev:
@@ -1551,7 +1547,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	rc = xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	if (rc && rc != -ENODEV) {
-		set_device_status(lro, (rc && rc != -ENODEV), "Failed to create BLD level");
+		set_device_status(lro, rc, "Failed to create BLD level");
 		is_device_ready = false;
 	}
 
@@ -1575,15 +1571,21 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!xocl_ps_wait(lro))
 		xocl_xmc_get_serial_num(lro);
 
-	/* Verify the VMR has booted into the default image */
-	// pr_info("MGMT Core vmr default boot: %d\n", xocl_vmr_default_boot_enabled(lro));
-	// rc = xocl_vmr_default_boot_enabled(lro);
-	// if (!set_device_status(lro, rc, "VMR not using default image"))
-	// 	is_device_ready = false;
+	rc = xocl_vmr_default_boot_enabled(lro);
+	if (rc && rc != -ENODEV) {
+		set_device_status(lro, rc, "VMR not using default image");
+		is_device_ready = false;
+	}
 
 	xocl_hwmon_sdm_get_sensors_list(lro, true);
 	xocl_drvinst_set_offline(lro, false);
 	lro->status.ready = is_device_ready;
+		/* Notify our peer that we're listening. */
+	xclmgmt_connect_notify(lro, lro->status.ready);
+	if (lro->status.ready)
+		xocl_info(&pdev->dev, "Device fully initialized\n");
+	else
+		xocl_err(&pdev->dev, "Device not ready\n");
 	return 0;
 
 err_init_sysfs:
