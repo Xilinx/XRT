@@ -88,7 +88,7 @@ public:
   void addSubOption(std::shared_ptr<OptionOptions> option);
   std::shared_ptr<OptionOptions> checkForSubOption(const boost::program_options::variables_map& vm) const;
 
-
+protected:
   SubOptionOptions m_subOptionOptions;
   boost::program_options::options_description m_commonOptions;
   boost::program_options::options_description m_hiddenOptions;
