@@ -309,7 +309,7 @@ namespace xclhwemhal2
       auto end_time = std::chrono::high_resolution_clock::now();
       if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= kMaxTimeToConnectSimulator) {
         
-        std::lock_guard<std::mutex> guard(mPrintMessagesLock);
+        std::unique_lock<std::mutex> guard(mPrintMessagesLock);
         if (get_simulator_started() == false) 
           return;
 
@@ -318,6 +318,7 @@ namespace xclhwemhal2
         lParseLog.parseLog();
 
         parseCount++;
+        guard.unlock();
         if (parseCount%5 == 0) {
           std::this_thread::sleep_for(5s);
         }
