@@ -100,6 +100,7 @@ isPositional(const std::string &_name,
   return false;
 }
 
+/* This determines the order of options in the usage string */
 enum FlagType {
   short_required = 0,
   long_required,
@@ -527,7 +528,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
     usageSubCmds.append(optionString);
   }
 
-  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [ %s ] [--help] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
+  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [ %s ] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
 
   // -- Options
   boost::program_options::positional_options_description emptyPOD;
