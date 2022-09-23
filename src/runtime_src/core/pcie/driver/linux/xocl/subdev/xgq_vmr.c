@@ -1147,11 +1147,20 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB);
 }
 
-static bool vmr_default_boot_enabled(struct platform_device *pdev)
+static int xgq_default_boot_enabled(struct platform_device *pdev)
 {
+	int rc = 0;
+	struct xgq_cmd_cq_vmr_payload *vmr_status = NULL;
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
-	struct xgq_cmd_cq_vmr_payload *vmr_status =
+
+	rc = vmr_status_query(xgq->xgq_pdev);
+	pr_info("VMR QUERY %d\n", rc);
+	if (rc)
+		return rc;
+
+	vmr_status =
 		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
+
 	return vmr_status->boot_on_default;
 }
 
@@ -3157,7 +3166,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
 	.vmr_load_firmware = xgq_log_page_metadata,
-	.vmr_default_boot_enabled = vmr_default_boot_enabled,
+	.vmr_default_boot_enabled = xgq_default_boot_enabled,
 };
 
 static const struct file_operations xgq_vmr_fops = {

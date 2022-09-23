@@ -1572,8 +1572,13 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		xocl_xmc_get_serial_num(lro);
 
 	rc = xocl_vmr_default_boot_enabled(lro);
-	if (rc && rc != -ENODEV) {
-		set_device_status(lro, rc, "VMR not using default image");
+	pr_info("checking default boot %d\n", rc);
+	/* Check for an negative error code. A positive code indicates a default boot */
+	if ((rc == 0) && (rc != -ENODEV)) {
+		set_device_status(lro, -1, "VMR not using default image");
+		is_device_ready = false;
+	} else {
+		set_device_status(lro, rc, "Failed to get VMR status");
 		is_device_ready = false;
 	}
 
