@@ -1092,17 +1092,18 @@ namespace xclhwemhal2 {
 
     std::string simulationDirectoryMsg = "INFO: [HW-EMU 05] Path of the simulation directory : " + getSimPath();
     logMessage(simulationDirectoryMsg);
-
-    sock = std::make_shared<unix_socket>();
+     
+    try{
+       sock = std::make_shared<unix_socket>();
+    }
+    catch(std::exception &e){
+       std::cout<<"\n ERROR unable to allocate memory\n";
+       return -1;
+    }
+    
     set_simulator_started(true);
-    if(sock)
-    {
-      sock->monitor_socket();
-    }
-    else
-    {
-      return 0;
-    }
+    sock->monitor_socket();
+   
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
       mMessengerThread = std::thread([this]() { messagesThread(); } );
