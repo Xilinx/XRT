@@ -343,8 +343,7 @@ namespace xrt {
   {
       if(std::filesystem::exists(sk_path))
 	return(remove(sk_path));
-      else
-	return 0;
+      return 0;
   }
 
   /* Convert argument to ffi_type */
