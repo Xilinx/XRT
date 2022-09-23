@@ -309,7 +309,7 @@ namespace xrt {
     snprintf(path, XRT_MAX_PATH_LENGTH, "%s", SOFT_KERNEL_FILE_PATH);
 
     /* If not exist, create the path one by one. */
-    if(!std::filesystem::exists(path))
+    if (!std::filesystem::exists(path))
       std::filesystem::create_directories(path);
 
     if(!std::filesystem::exists(sk_path)) {
