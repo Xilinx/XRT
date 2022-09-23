@@ -312,7 +312,7 @@ namespace xrt {
     if (!std::filesystem::exists(path))
       std::filesystem::create_directories(path);
 
-    if(!std::filesystem::exists(sk_path)) {
+    if (!std::filesystem::exists(sk_path)) {
       fptr = fopen(sk_path, "w+b");
       if (fptr == NULL) {
 	syslog(LOG_ERR, "Cannot create file: %s\n", sk_path);
@@ -341,8 +341,8 @@ namespace xrt {
    */
   int skd::deleteSoftKernelFile()
   {
-      if(std::filesystem::exists(sk_path))
-	return(remove(sk_path));
+      if (std::filesystem::exists(sk_path))
+	return std::filesystem::remove(sk_path);
       return 0;
   }
 
