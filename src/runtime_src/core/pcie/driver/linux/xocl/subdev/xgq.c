@@ -577,6 +577,25 @@ static irqreturn_t xgq_irq_handler(int irq, void *arg)
 }
 #endif
 
+static enum xgq_cmd_opcode opcode[] = {
+	XGQ_CMD_OP_DOWNLOAD_PDI,
+	XGQ_CMD_OP_PROGRAM_SCFW,
+	XGQ_CMD_OP_VMR_CONTROL,
+	XGQ_CMD_OP_IDENTIFY,
+};
+
+bool vmr_xgq_basic_op(struct xocl_xgq_vmr_cmd *cmd)
+{
+	int i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(opcode); i++) {
+		if (cmd->xgq_cmd_entry.hdr.opcode == opcode[i])
+			return true;
+	}
+
+	return false;
+}
+
 /*
  * submit new cmd into XGQ SQ(submition queue)
  */
@@ -586,7 +605,13 @@ static int submit_cmd(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
 	int rval = 0;
 
 	mutex_lock(&xgq->xgq_lock);
-	if (xgq->xgq_halted) {
+	/*
+	 * We might not support newer xgq commands after checking VMR
+	 * supported XGQ version, but those basic ops should always
+	 * be supported and unchanged. They will provide basic operations
+	 * across older and newer VMR versions.
+	 */
+	if (xgq->xgq_halted && !vmr_xgq_basic_op(cmd)) {
 		XGQ_ERR(xgq, "xgq service is halted");
 		rval = -EIO;
 		goto done;
@@ -1010,7 +1035,10 @@ static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_t
 	u32 address = 0;
 	u32 len = 0;
 
-	/* skip periodic firewall check when xgq service is halted */
+	/*
+	 * avoid warning messages, skip periodic firewall check
+	 * when xgq service is halted
+	 */
 	if (xgq->xgq_halted)
 		return 0;
 
@@ -1612,10 +1640,6 @@ static int vmr_control_op(struct platform_device *pdev,
 	int ret = 0;
 	int id = 0;
 
-	if (xgq->xgq_halted) {
-		XGQ_WARN(xgq, "VMR XGQ service is haulted. skip.");
-		return -EIO;
-	}
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
@@ -1683,6 +1707,100 @@ static int vmr_status_query(struct platform_device *pdev)
 	return vmr_control_op(pdev, XGQ_CMD_VMR_QUERY);
 }
 
+struct xgq_vmr_supported_ver {
+	uint16_t major;
+	uint16_t minor;
+} supported_vers[] = {
+	{1, 0},
+};
+
+static bool xgq_vmr_supported_version(u16 major, u16 minor)
+{
+	int i = 0;
+
+	for (i = 0; i < ARRAY_SIZE(supported_vers); i++) {
+		if (supported_vers[i].major == major &&
+		    supported_vers[i].minor == minor)
+			return true;
+	}
+
+	return false;
+}
+
+static int vmr_identify_op(struct platform_device *pdev)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xocl_xgq_vmr_cmd *cmd = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int ret = 0;
+	int id = 0;
+
+	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return -ENOMEM;
+	}
+
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq_vmr = xgq;
+
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_IDENTIFY;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = 0; //no payload
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto cid_alloc_failed;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		goto done;
+	}
+
+	/* wait for command completion */
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
+	}
+
+	ret = cmd->xgq_cmd_rcode;
+
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", ret);
+	} else {
+		struct xgq_cmd_cq_id_payload *version = NULL;
+		uint16_t major = 0;
+		uint16_t minor = 0;
+
+		version = (struct xgq_cmd_cq_id_payload *)&cmd->xgq_cmd_cq_payload;
+		major = version->major;
+		minor = version->minor;
+
+		ret = xgq_vmr_supported_version(major, minor) ? 0 : -ENOTSUPP;
+		XGQ_INFO(xgq, "version: %d.%d ret:%d", major, minor, ret);
+	}
+
+done:
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
+	kfree(cmd);
+
+	return ret;
+}
+
 static void clk_scaling_cq_result_copy(struct xocl_xgq_vmr *xgq,
                                        struct xocl_xgq_vmr_cmd *cmd)
 {
@@ -1709,11 +1827,6 @@ static int clk_scaling_configure_op(struct platform_device *pdev,
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
 	int id = 0;
-
-	if (xgq->xgq_halted) {
-		XGQ_WARN(xgq, "VMR XGQ service is haulted. skip.");
-		return -EIO;
-	}
 
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
@@ -2778,6 +2891,18 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	/*
+	 * First check vmr firmware version.
+	 * We don't want to send unsupported cmds to vmr.
+	 */
+	ret = vmr_identify_op(pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Unsupported vmr firmware version, only basic operations allowed. ret:%d", ret);
+		xgq_stop_services(xgq);
+		ret = 0;
+		goto done;
+	}
+
 	ret = xgq_log_page_system_dtb(pdev, &xgq->xgq_vmr_system_dtb,
 			&xgq->xgq_vmr_system_dtb_size);
 	if (ret) {
@@ -2810,6 +2935,7 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		ret = 0;
 	}
 
+done:
 	XGQ_INFO(xgq, "Initialized xgq subdev, polling (%d)", xgq->xgq_polling);
 
 	return ret;
