@@ -1274,10 +1274,10 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
 
-	zocl_ert_destroy_intc(zdev->cu_intc);
 	zocl_clear_mem(zdev);
 	mutex_destroy(&zdev->mm_lock);
 	zocl_pr_slot_fini(zdev);
+	zocl_ert_destroy_intc(zdev->cu_intc);
 	zocl_destroy_aie(zdev);
 	mutex_destroy(&zdev->aie_lock);
 	zocl_fini_sysfs(drm->dev);
