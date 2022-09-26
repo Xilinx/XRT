@@ -570,11 +570,13 @@ extern "C" {
         uint32_t mpo_name;                  // Name of the aie_partition 
         uint32_t operations_per_cycle;      // Operations per cycle. Used later to create TOPS (operations_per_cycle * <AIE Clock Frequency>)
         uint8_t padding[4];
+        uint64_t inference_fingerprint;
+        uint64_t pre_post_fingerprint;
         struct aie_partition_info info;     // Partition information
         struct array_offset aie_pdi;        // PDI Array (aie_partition_info)
         uint8_t reserved[54];               // Reserved
     };
-    XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 168, "aie_partition structure no longer is 168 bytes in size");
+    XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 184, "aie_partition structure no longer is 168 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) % sizeof(uint64_t) == 0, "aie_partition structure needs to be 64-bit word aligned");
 
     /**** END : Xilinx internal section *****/
