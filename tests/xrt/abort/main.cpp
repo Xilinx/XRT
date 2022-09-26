@@ -42,7 +42,7 @@ will be observed.
 To validate that the kernel runs without hang, simply call as
 % reset -k <xclbin>
 
-XRT supports two execution modes, one is unmanged execution, which by
+XRT supports two execution modes, one is unmanaged execution, which by
 far is the fastest and one is managed execution where XRT under the
 hood is managing all running kernels and asynchronously completes the
 kernels.  This mode is what OpenCL is using.  The test in this file
@@ -180,7 +180,7 @@ timeout2(xrt::run run, int hang, int timeout_ms)
   auto status = run.wait2(timeout_ms * 1ms);
   std::cout << "timeout: wait2 completed with status (" << cv_status_to_string(status) << ")\n";
 
-  // a timed out wait may have left the command running, it is the
+  // A timed-out wait may have left the command running, it is the
   // responsibility of the caller to either continue to wait or abort
   // the run.  In this test, abort if kernel is hanging, or continue
   // waiting until kernel completes

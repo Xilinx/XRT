@@ -2231,14 +2231,31 @@ public:
     return cmd->wait();
   }
 
+  // Deprecated wait() semantics.
+  // Return ERT_CMD_STATE_TIMEOUT on API timeout (bad!)
+  // Return ert cmd state otherwise
+  ert_cmd_state
+  wait(const std::chrono::milliseconds& timeout_ms) const
+  {
+    if (timeout_ms.count()) {
+      auto [ert_state, cv_status] = cmd->wait(timeout_ms);
+      return (cv_status == std::cv_status::timeout)
+        ? ERT_CMD_STATE_TIMEOUT
+        : ert_state;
+    }
+
+    return cmd->wait();
+  }
+
+
   // wait() - wait for execution to complete
   // Return std::cv_status::timeout on timeout
   // Return std::cv_status::no_timeout on successful completion
   // Throw on abnormal command termination
   std::cv_status
-  wait(const std::chrono::milliseconds& timeout_ms) const
+  wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
   {
-    ert_cmd_state state = static_cast<ert_cmd_state>(0);
+    ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
     if (timeout_ms.count()) {
       auto [ert_state, cv_status] = cmd->wait(timeout_ms);
       if (cv_status == std::cv_status::timeout)
@@ -2808,16 +2825,7 @@ ert_cmd_state
 xrtRunWait(xrtRunHandle rhdl, unsigned int timeout_ms)
 {
   auto run = runs.get_or_error(rhdl);
-  try {
-    if (run->wait(timeout_ms * 1ms) == std::cv_status::timeout)
-      return ERT_CMD_STATE_TIMEOUT;
-
-    // no exception means success
-    return ERT_CMD_STATE_COMPLETED;
-  }
-  catch (const xrt::run::command_error& ex) {
-    return ex.get_command_state();
-  }
+  return run->wait(timeout_ms * 1ms);
 }
 
 void
@@ -3013,18 +3021,7 @@ wait(const std::chrono::milliseconds& timeout_ms) const
 {
   return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
-      // Preserve wait() behavior using ERT_CMD_STATE_TIMEOUT
-      // to indicate API timeout otherwise the command state.
-      try {
-        if (handle->wait(timeout_ms) == std::cv_status::timeout)
-          return ERT_CMD_STATE_TIMEOUT;
-
-        // no exception means success
-        return ERT_CMD_STATE_COMPLETED;
-      }
-      catch (const xrt::run::command_error& ex) {
-        return ex.get_command_state();
-      }
+      return handle->wait(timeout_ms);
     });
 }
 
@@ -3034,7 +3031,7 @@ wait2(const std::chrono::milliseconds& timeout_ms) const
 {
   return xdp::native::profiling_wrapper("xrt::run::wait",
     [this, &timeout_ms] {
-      return handle->wait(timeout_ms);
+      return handle->wait_throw_on_error(timeout_ms);
     });
 }
 
