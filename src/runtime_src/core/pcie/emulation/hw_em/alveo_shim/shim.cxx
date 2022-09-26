@@ -560,7 +560,7 @@ namespace xclhwemhal2 {
         }
       }
 
-      for (auto it : mDDRMemoryManager)
+      for (auto &it : mDDRMemoryManager)
       {
         std::string tag = it->tag();
 
@@ -1682,7 +1682,7 @@ namespace xclhwemhal2 {
       } else {
 	      if(chunks.size())
 	      {
-		      for (auto it:chunks)
+		      for (auto &it:chunks)
 		      {
 			      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, it.first, it.second, noHostMemory);
 		      }
@@ -2100,7 +2100,7 @@ namespace xclhwemhal2 {
       mGlobalInMemStream.close();
       mGlobalOutMemStream.close();
     }
-    for(auto controlStreamItr : mOffsetInstanceStreamMap)
+    for(auto &controlStreamItr : mOffsetInstanceStreamMap)
     {
       std::ofstream* os = controlStreamItr.second;
       if(os)
@@ -3212,7 +3212,7 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
 
     if(bo->chunks.size())
     {
-	    for(auto it: bo->chunks)
+	    for(auto &it: bo->chunks)
 		    xclFreeDeviceBuffer(it.first,bSendToSim);
 
     }

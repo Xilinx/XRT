@@ -105,7 +105,7 @@ namespace xclemulation{
   void config::populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap)
   {
     setenv("HW_EM_DISABLE_LATENCY", "true", true);
-    for (auto i : mEnvironmentNameValueMap)
+    for (auto &i : mEnvironmentNameValueMap)
     {
       std::string name  = i.first;
       std::string value = i.second;
