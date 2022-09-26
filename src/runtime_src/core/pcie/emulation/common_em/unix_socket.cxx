@@ -51,7 +51,7 @@ unix_socket::unix_socket(const std::string& env, const std::string& sock_id, dou
   //by default, all calls should be blocking only.
   mNonBlocking = false;               
   start_server(timeout_insec,fatal_error);
-  
+  mpoll_on_filedescriptor = {fd, POLLERR, 0};   // CID-271874 This will be affective for monitor_socket_status callers only.
 }
 
 void unix_socket::start_server(double timeout_insec, bool fatal_error)
@@ -270,10 +270,8 @@ void unix_socket::monitor_socket_thread() {
       break;
     }
 
-    // mpoll_on_filedescriptor = {fd, POLLERR, 0};           // monitor client socket file descriptor for a state change.
-    mpoll_on_filedescriptor.fd = fd;
-    mpoll_on_filedescriptor.events = POLLERR;
-    mpoll_on_filedescriptor.revents = 0;
+    mpoll_on_filedescriptor = {fd, POLLERR, 0};           // monitor client socket file descriptor for a state change.
+
     auto retval = poll(&mpoll_on_filedescriptor, 1, 500); // Let's do polling on it for utmost 500 ms
     if (retval < 0)
     {
