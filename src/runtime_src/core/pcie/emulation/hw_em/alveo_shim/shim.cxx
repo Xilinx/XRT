@@ -2258,12 +2258,13 @@ namespace xclhwemhal2 {
     mPlatformData = platformData;
     constructQueryTable();
 
+    std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
+    std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
+    
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
 
-    std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
-    std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
 
     last_clk_time = clock();
     mCloseAll = false;
