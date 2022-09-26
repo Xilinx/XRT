@@ -576,7 +576,7 @@ extern "C" {
         struct array_offset aie_pdi;        // PDI Array (aie_partition_info)
         uint8_t reserved[54];               // Reserved
     };
-    XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 184, "aie_partition structure no longer is 168 bytes in size");
+    XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) == 184, "aie_partition structure no longer is 184 bytes in size");
     XCLBIN_STATIC_ASSERT(sizeof(struct aie_partition) % sizeof(uint64_t) == 0, "aie_partition structure needs to be 64-bit word aligned");
 
     /**** END : Xilinx internal section *****/
