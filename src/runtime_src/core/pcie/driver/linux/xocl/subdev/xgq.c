@@ -1780,13 +1780,13 @@ static int vmr_identify_op(struct platform_device *pdev)
 	if (ret) {
 		XGQ_ERR(xgq, "ret %d", ret);
 	} else {
-		struct xgq_cmd_cq_id_payload *version = NULL;
+		struct xgq_cmd_cq_vmr_identify_payload *version = NULL;
 		uint16_t major = 0;
 		uint16_t minor = 0;
 
-		version = (struct xgq_cmd_cq_id_payload *)&cmd->xgq_cmd_cq_payload;
-		major = version->major;
-		minor = version->minor;
+		version = (struct xgq_cmd_cq_vmr_identify_payload *)&cmd->xgq_cmd_cq_payload;
+		major = version->ver_major;
+		minor = version->ver_minor;
 
 		ret = xgq_vmr_supported_version(major, minor) ? 0 : -ENOTSUPP;
 		XGQ_INFO(xgq, "version: %d.%d ret:%d", major, minor, ret);
