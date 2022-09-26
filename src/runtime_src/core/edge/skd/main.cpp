@@ -68,6 +68,13 @@ int main(int argc, char *argv[])
   // Opening first device since this is the only device available on APU
   xclDeviceHandle handle = initXRTHandle(0);
   if (!handle) {
+    const auto errMsg = "Fail to init XRT first time";
+    xrt_core::message::send(severity_level::error, "SKD", errMsg);
+  }
+  // Retry XRT init after delay
+  sleep(1);
+  handle = initXRTHandle(0);
+  if (!handle) {
     const auto errMsg = "Fail to init XRT";
     xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
