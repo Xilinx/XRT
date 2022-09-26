@@ -1,5 +1,7 @@
 /**
- *  Copyright (C) 2017-2022 Xilinx, Inc. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2017-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  *  Utility Functions for sysmon, axi firewall and other peripherals.
  *  Author: Umang Parekh
@@ -14,12 +16,13 @@
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  */
-
-#include <linux/firmware.h>
 #include "mgmt-core.h"
-#include <linux/module.h>
+
 #include "../xocl_drv.h"
 #include "../xocl_xclbin.h"
+
+#include <linux/firmware.h>
+#include <linux/module.h>
 
 #define XCLMGMT_RESET_MAX_RETRY		10
 
@@ -387,6 +390,14 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		xocl_set_master_on(lro);
 	else if (!force)
 		xclmgmt_connect_notify(lro, true);
+
+	
+	memset(&lro->status, 0, sizeof(struct xclmgmt_ready_status));
+	lro->status.ready = true;
+	if(xclmgmt_check_device_ready(lro))
+		lro->status.ready = false;
+	else
+		pr_info("Device is ready after reset");
 
 	return 0;
 
@@ -868,8 +879,6 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 
-	lro->status.ready = true;
-
 failed:
 	mgmt_info(lro, "%s", lro->status.msg);
 	vfree(fw_buf);
@@ -963,4 +972,35 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 done:
 	vfree(fw_buf);
 	return err;
+}
+
+void xclmgmt_set_device_status(struct xclmgmt_dev *lro, int ret, const char* msg)
+{
+	snprintf(lro->status.msg, sizeof(lro->status.msg), "%s - %d", msg, ret);
+	xocl_err(&lro->pci_dev->dev, "%s", lro->status.msg);
+}
+
+int xclmgmt_check_device_ready(struct xclmgmt_dev *lro)
+{
+	int rc = 0;
+
+	rc = xocl_vmr_default_boot_enabled(lro);
+	pr_info("checking default boot %d\n", rc);
+	/* 
+	 * Check for a negative error code. A positive value indicates a default boot
+	 * Zero indicates a non-default boot with no other errors
+	 */
+	if (rc != -ENODEV) {
+		if (rc == 0) {
+			rc = -1;
+			xclmgmt_set_device_status(lro, rc, "VMR not using default image");
+			return rc;
+		} else if(rc < 0) {
+			xclmgmt_set_device_status(lro, rc, "Failed to get VMR status");
+			return rc;
+		} else /* Change the default boot result to a zero to indicate no issues */
+			rc = 0;
+	}
+
+	return rc;
 }

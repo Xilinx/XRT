@@ -1,5 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0
-/*
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2021-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ * 
  * Xilinx CU driver for memory to memory BO copy
  *
  * Copyright (C) 2021-2022 Xilinx, Inc.
@@ -7,10 +10,11 @@
  * Authors: David Zhang <davidzha@xilinx.com>
  */
 
-#include "xrt_xclbin.h"
-#include "../xocl_drv.h"
 #include "xgq_cmd_vmr.h"
+#include "xrt_xclbin.h"
 #include "../xgq_xocl_plat.h"
+#include "../xocl_drv.h"
+
 #include <linux/time.h>
 
 /*
@@ -1150,11 +1154,11 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 static int xgq_default_boot_enabled(struct platform_device *pdev)
 {
 	int rc = 0;
-	struct xgq_cmd_cq_vmr_payload *vmr_status = NULL;
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xgq_cmd_cq_vmr_payload *vmr_status vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
 
 	rc = vmr_status_query(xgq->xgq_pdev);
-	pr_info("VMR QUERY %d\n", rc);
 	if (rc)
 		return rc;
 

@@ -1,7 +1,9 @@
-/*
- * Simple Driver for Management PF
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2017-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved *
  *
- * Copyright (C) 2017-2022 Xilinx, Inc.
+ * Simple Driver for Management PF
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
@@ -19,18 +21,20 @@
  *
  */
 #include "mgmt-core.h"
-#include <linux/ioctl.h>
-#include <linux/module.h>
-#include <linux/vmalloc.h>
-#include <linux/version.h>
-#include <linux/fs.h>
-#include <linux/platform_device.h>
-#include <linux/i2c.h>
-#include <linux/crc32c.h>
-#include "../xocl_drv.h"
+
 #include "version.h"
 #include "xclbin.h"
+#include "../xocl_drv.h"
 #include "../xocl_xclbin.h"
+
+#include <linux/crc32c.h>
+#include <linux/fs.h>
+#include <linux/ioctl.h>
+#include <linux/i2c.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/version.h>
+#include <linux/vmalloc.h>
 
 #define SIZE_4KB  4096
 
@@ -1238,12 +1242,6 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
 	vfree(mb_req);
 }
 
-static void set_device_status(struct xclmgmt_dev *lro, int ret, const char* msg)
-{
-	snprintf(lro->status.msg, sizeof(lro->status.msg), "%s - %d", msg, ret);
-	xocl_err(&lro->pci_dev->dev, "%s", lro->status.msg);
-}
-
 /*
  * Called after minimum initialization is done. Should not return failure.
  * If something goes wrong, it should clean up and return back to minimum
@@ -1280,7 +1278,7 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 		ret = xocl_subdev_create(lro, &subdev_info);
 		if (ret && ret != -ENODEV) {
-			set_device_status(lro, ret, "Failed to create sub devices");
+			xclmgmt_set_device_status(lro, ret, "Failed to create sub devices");
 			goto fail;
 		}
 	}
@@ -1291,7 +1289,7 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 */
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
 	if (ret && ret != -ENODEV) {
-		set_device_status(lro, ret, "Failed to register firewall");
+		xclmgmt_set_device_status(lro, ret, "Failed to register firewall");
 		goto fail_all_subdev;
 	}
 
@@ -1300,7 +1298,7 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		set_device_status(lro, ret, "Failed to register subdevs");
+		xclmgmt_set_device_status(lro, ret, "Failed to register subdevs");
 		goto fail_all_subdev;
 	}
 	xocl_info(&pdev->dev, "created all sub devices");
@@ -1328,11 +1326,11 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	if (ret == -ENODEV) { /* If no device was found attempt to load the device tree*/
 		ret = xclmgmt_load_fdt(lro);
 		if (ret) {
-			set_device_status(lro, ret, "Failed to load FDT");
+			xclmgmt_set_device_status(lro, ret, "Failed to load FDT");
 			goto fail_all_subdev;
 		}
 	} else if (ret) { /* For general failures reset to minimum initalization */
-		set_device_status(lro, ret, "Firmware ICAP download failed");
+		xclmgmt_set_device_status(lro, ret, "Firmware ICAP download failed");
 		goto fail_all_subdev;
 	}
 
@@ -1531,13 +1529,13 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
 	if (rc && rc != -ENODEV) {
-		set_device_status(lro, rc, "Failed to create ROM subdevice");
+		xclmgmt_set_device_status(lro, rc, "Failed to create ROM subdevice");
 		is_device_ready = false;
 	}
 
 	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 	if (rc && rc != -ENODEV) {
-		set_device_status(lro, rc, "Failed to create Flash subdevice");
+		xclmgmt_set_device_status(lro, rc, "Failed to create Flash subdevice");
 		is_device_ready = false;
 	}
 
@@ -1547,13 +1545,13 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	rc = xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	if (rc && rc != -ENODEV) {
-		set_device_status(lro, rc, "Failed to create BLD level");
+		xclmgmt_set_device_status(lro, rc, "Failed to create BLD level");
 		is_device_ready = false;
 	}
 
 	rc = xocl_subdev_create_vsec_devs(lro);
 	if (rc && rc != -EEXIST) {
-		set_device_status(lro, rc, "Failed to create VSEC devices");
+		xclmgmt_set_device_status(lro, rc, "Failed to create VSEC devices");
 		is_device_ready = false;
 	}
 
@@ -1571,21 +1569,14 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!xocl_ps_wait(lro))
 		xocl_xmc_get_serial_num(lro);
 
-	rc = xocl_vmr_default_boot_enabled(lro);
-	pr_info("checking default boot %d\n", rc);
-	/* Check for an negative error code. A positive code indicates a default boot */
-	if ((rc == 0) && (rc != -ENODEV)) {
-		set_device_status(lro, -1, "VMR not using default image");
+	rc = xclmgmt_check_device_ready(lro);
+	if (rc)
 		is_device_ready = false;
-	} else {
-		set_device_status(lro, rc, "Failed to get VMR status");
-		is_device_ready = false;
-	}
 
 	xocl_hwmon_sdm_get_sensors_list(lro, true);
 	xocl_drvinst_set_offline(lro, false);
 	lro->status.ready = is_device_ready;
-		/* Notify our peer that we're listening. */
+	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, lro->status.ready);
 	if (lro->status.ready)
 		xocl_info(&pdev->dev, "Device fully initialized\n");
