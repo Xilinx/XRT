@@ -209,6 +209,7 @@ enum class key_type
   firewall_status,
   firewall_time_sec,
   power_microwatts,
+  host_mem_addr,
   host_mem_size,
   kds_numcdmas,
 
@@ -2381,6 +2382,22 @@ struct power_warning : request
   to_string(result_type value)
   {
     return value ? "true" : "false";
+  }
+};
+
+struct host_mem_addr : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::host_mem_addr;
+  static const char* name() { return "host_mem_addr"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
   }
 };
 
