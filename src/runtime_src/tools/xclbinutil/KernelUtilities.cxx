@@ -129,15 +129,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
   const boost::property_tree::ptree& ptExtendedData = ptKernel.get_child("extended-data", ptEmpty);
   if (!ptExtendedData.empty()) {
     boost::property_tree::ptree ptEntry;
-    boost::property_tree::ptree ptNewExtendedData;
-    const std::string& kernel_id = ptExtendedData.get<std::string>("dpu_kernel_id", "");
-    const std::string& functional = ptExtendedData.get<std::string>("functional", "");
-    if (!functional.empty())
-      ptNewExtendedData.put("functional", functional);
-    if (!kernel_id.empty())
-      ptNewExtendedData.put("kernel_id", kernel_id);
-
-    ptEntry.add_child("<xmlattr>", ptNewExtendedData);
+    ptEntry.add_child("<xmlattr>", ptExtendedData);
     ptKernelXML.add_child("extended-data", ptEntry);
   }
 

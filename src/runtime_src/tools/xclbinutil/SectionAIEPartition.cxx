@@ -104,8 +104,7 @@ static const std::vector<std::pair<std::string, CDO_Type>> CTTypes = {
   { "UNKNOWN", CT_UNKNOWN },
   { "PRIMARY", CT_PRIMARY },
   { "LITE", CT_LITE },
-  { "PRE", CT_PREPOST },
-  { "POST", CT_PREPOST }
+  { "PRE_POST", CT_PREPOST }
 };
 
 static const std::string&

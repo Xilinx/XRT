@@ -251,7 +251,7 @@ get_kernel_id(const pt::ptree& xml_kernel, const std::string& element)
     if (elem.first != element)
       continue;
 
-    return convert(elem.second.get<std::string>("<xmlattr>.kernel_id"));
+    return convert(elem.second.get<std::string>("<xmlattr>.dpu_kernel_id"));
   }
 
   return 0;
@@ -875,7 +875,7 @@ get_aie_partition(const axlf* top)
       auto cdop = reinterpret_cast<const cdo_group*>(topbase + aiepdip->cdo_groups.offset + j * sizeof(cdo_group));
       auto kernel_idp = reinterpret_cast<const uint64_t*>(topbase + cdop->dpu_kernel_ids.offset);
       for (uint32_t k = 0; k < cdop->dpu_kernel_ids.size; ++k)
-        dpu_kernel_ids.push_back(*(kernel_idp++));
+        dpu_kernel_ids.push_back(kernel_idp[k]);
 
       pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name, cdop->cdo_type, cdop->pdi_id, std::move(dpu_kernel_ids)});
     }
