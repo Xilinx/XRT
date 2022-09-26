@@ -1496,8 +1496,6 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
-    bool allGraphsDone = false;
-
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
      * "graphmetricsSettings" contains each metric value
@@ -1505,6 +1503,15 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
      */
 
     std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
+
+    std::set<tile_type> allValidTiles;
+    auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+    for (auto& graph : graphs) {
+      auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
+      for (auto& e : currTiles) {
+        allValidTiles.insert(e);
+      }
+    }
 
     // Graph Pass 1 : process only "all" metric setting
     for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
@@ -1520,7 +1527,10 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
           "Only \"all\" is supported in kernel-name field for graph_based_aie_tile_metrics. Any other specification is replaced with \"all\".");
       }
 
-      std::vector<tile_type> tiles;
+      for (auto &e : allValidTiles) {
+        mConfigMetrics[e] = graphmetrics[i][2];
+      }
+#if 0
       // Create superset of all tiles across all graphs
       auto graphs = xrt_core::edge::aie::get_graphs(device.get());
       for (auto& graph : graphs) {
@@ -1550,10 +1560,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     }
 #endif
       }
-      allGraphsDone = true;
-      for (auto &e : tiles) {
-        mConfigMetrics[e] = graphmetrics[i][2];
-      }
+#endif
     } // Graph Pass 1
 
     // Graph Pass 2 : process per graph metric setting
@@ -1627,16 +1634,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       if (0 != metrics[i][0].compare("all")) {
         continue;
       }
-      std::vector<tile_type> tiles;
-      if (!allGraphsDone) {
-        // Create superset of all tiles across all graphs
-        auto graphs = xrt_core::edge::aie::get_graphs(device.get());
-        for (auto& graph : graphs) {
-          auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
-          std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
-        }
-      }
-      for (auto &e : tiles) {
+      for (auto &e : allValidTiles) {
         mConfigMetrics[e] = metrics[i][1];
       }
     } // Pass 1 
@@ -1674,8 +1672,23 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
           xrt_core::edge::aie::tile_type tile;
           tile.col = col;
           tile.row = row;
-//            tiles.push_back(tile);
-          mConfigMetrics[tile] = metrics[i][2];
+
+          auto itr = mConfigMetrics.find(tile);
+          if (itr == mConfigMetrics.end()) {
+            // If current tile not encountered yet, check whether valid and then insert
+            auto itr1 = allValidTiles.find(tile);
+            if (itr1 != allValidTiles.end()) {
+              // Current tile is used in current design
+              mConfigMetrics[tile] = metrics[i][2];
+            } else {
+              std::string m = "Specified Tile {" + std::to_string(tile.col) 
+                                                 + "," + std::to_string(tile.row)
+                              + "} is not active. Hence skipped.";
+              xrt_core::message::send(severity_level::warning, "XRT", m);
+            }
+          } else {
+            itr->second = metrics[i][2];
+          }
         }
       }
     } // Pass 2
@@ -1708,10 +1721,24 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       xrt_core::edge::aie::tile_type tile;
       tile.col = col;
       tile.row = row;
-//        tiles.push_back(tile);
-      mConfigMetrics[tile] = metrics[i][1];
-    } // Pass 3 
 
+      auto itr = mConfigMetrics.find(tile);
+      if (itr == mConfigMetrics.end()) {
+        // If current tile not encountered yet, check whether valid and then insert
+        auto itr1 = allValidTiles.find(tile);
+        if (itr1 != allValidTiles.end()) {
+          // Current tile is used in current design
+          mConfigMetrics[tile] = metrics[i][2];
+        } else {
+          std::string m = "Specified Tile {" + std::to_string(tile.col) 
+                                             + "," + std::to_string(tile.row)
+                          + "} is not active. Hence skipped.";
+          xrt_core::message::send(severity_level::warning, "XRT", m);
+        }
+      } else {
+        itr->second = metrics[i][2];
+      }
+    } // Pass 3 
 
     // check validity and remove "off" tiles
     std::vector<tile_type> offTiles;
