@@ -44,8 +44,8 @@ namespace xrt {
     memcpy(xclbin_uuid,uuid,sizeof(xclbin_uuid));
 
     // Set sk_path according to sk_name
-    snprintf(sk_path, XRT_MAX_PATH_LENGTH, "%s%s%d", SOFT_KERNEL_FILE_PATH,
-	     sk_name,cu_idx);
+    snprintf(sk_path, XRT_MAX_PATH_LENGTH, "%s%s", SOFT_KERNEL_FILE_PATH,
+	     sk_name);
   }
 
   XCL_DRIVER_DLLESPEC
@@ -309,26 +309,29 @@ namespace xrt {
     snprintf(path, XRT_MAX_PATH_LENGTH, "%s", SOFT_KERNEL_FILE_PATH);
 
     /* If not exist, create the path one by one. */
-    std::filesystem::create_directories(path);
+    if (!std::filesystem::exists(path))
+      std::filesystem::create_directories(path);
 
-    fptr = fopen(sk_path, "w+b");
-    if (fptr == NULL) {
-      syslog(LOG_ERR, "Cannot create file: %s\n", sk_path);
-      munmap(buf, prop.size);
-      return -1;
-    }
+    if (!std::filesystem::exists(sk_path)) {
+      fptr = fopen(sk_path, "w+b");
+      if (fptr == NULL) {
+	syslog(LOG_ERR, "Cannot create file: %s\n", sk_path);
+	munmap(buf, prop.size);
+	return -1;
+      }
 
-    /* copy the soft kernel to file */
-    if (fwrite(buf, prop.size, 1, fptr) != 1) {
-      syslog(LOG_ERR, "Fail to write to file %s.\n", sk_path);
+      /* copy the soft kernel to file */
+      if (fwrite(buf, prop.size, 1, fptr) != 1) {
+	syslog(LOG_ERR, "Fail to write to file %s.\n", sk_path);
+	fclose(fptr);
+	munmap(buf, prop.size);
+	return -1;
+      }
+      syslog(LOG_INFO,"File created at %s\n", sk_path);
+
       fclose(fptr);
       munmap(buf, prop.size);
-      return -1;
     }
-    syslog(LOG_INFO,"File created at %s\n", sk_path);
-
-    fclose(fptr);
-    munmap(buf, prop.size);
 
     return 0;
   }
@@ -338,7 +341,9 @@ namespace xrt {
    */
   int skd::deleteSoftKernelFile()
   {
-    return(remove(sk_path));
+      if (std::filesystem::exists(sk_path))
+	return std::filesystem::remove(sk_path);
+      return 0;
   }
 
   /* Convert argument to ffi_type */

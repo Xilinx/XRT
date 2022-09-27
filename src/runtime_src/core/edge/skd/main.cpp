@@ -70,6 +70,12 @@ int main(int argc, char *argv[])
 
   handle = initXRTHandle(0);
   if (!handle) {
+    syslog(LOG_INFO, "Fail to init XRT first time\n");
+  }
+  // Retry XRT init after delay
+  sleep(1);
+  handle = initXRTHandle(0);
+  if (!handle) {
     syslog(LOG_INFO, "Fail to init XRT\n");
     closelog();
     exit(EXIT_FAILURE);
