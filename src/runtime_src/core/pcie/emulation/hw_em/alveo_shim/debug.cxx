@@ -309,16 +309,15 @@ namespace xclhwemhal2
       auto end_time = std::chrono::high_resolution_clock::now();
       if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= kMaxTimeToConnectSimulator) {
         
-        std::unique_lock<std::mutex> guard(mPrintMessagesLock);
         if (get_simulator_started() == false) 
           return;
-
-        dumpDeadlockMessages();
-        // Any status message found in parse log file?
-        lParseLog.parseLog();
-
+        if(true) {  // This is for limiting the scope of lock
+          std::unique_lock<std::mutex> guard(mPrintMessagesLock);
+          dumpDeadlockMessages();
+          // Any status message found in parse log file?
+          lParseLog.parseLog();
+        }
         parseCount++;
-        guard.unlock();
         if (parseCount%5 == 0) {
           std::this_thread::sleep_for(5s);
         }
