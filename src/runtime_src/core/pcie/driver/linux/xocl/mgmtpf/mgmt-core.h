@@ -19,10 +19,6 @@
 #ifndef _XCL_MGT_PF_H_
 #define _XCL_MGT_PF_H_
 
-#include "mgmt-ioctl.h"
-#include "xclfeatures.h"
-#include "../xocl_drv.h"
-
 #include <asm/io.h>
 #include <linux/cdev.h>
 #include <linux/delay.h>
@@ -34,6 +30,10 @@
 #include <linux/signal.h>
 #include <linux/time.h>
 #include <linux/types.h>
+
+#include "mgmt-ioctl.h"
+#include "xclfeatures.h"
+#include "../xocl_drv.h"
 
 /* defines for old DSAs in platform_axilite_flush() */
 #define _FEATURE_ROM_BASE		0xB0000

@@ -18,11 +18,11 @@
  */
 #include "mgmt-core.h"
 
-#include "../xocl_drv.h"
-#include "../xocl_xclbin.h"
-
 #include <linux/firmware.h>
 #include <linux/module.h>
+
+#include "../xocl_drv.h"
+#include "../xocl_xclbin.h"
 
 #define XCLMGMT_RESET_MAX_RETRY		10
 

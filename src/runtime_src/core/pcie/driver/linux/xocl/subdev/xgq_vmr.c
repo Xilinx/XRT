@@ -10,12 +10,12 @@
  * Authors: David Zhang <davidzha@xilinx.com>
  */
 
+#include <linux/time.h>
+
 #include "xgq_cmd_vmr.h"
 #include "xrt_xclbin.h"
 #include "../xgq_xocl_plat.h"
 #include "../xocl_drv.h"
-
-#include <linux/time.h>
 
 /*
  * XGQ Host management driver design.

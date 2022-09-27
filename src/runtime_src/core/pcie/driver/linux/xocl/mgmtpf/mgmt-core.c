@@ -22,11 +22,6 @@
  */
 #include "mgmt-core.h"
 
-#include "version.h"
-#include "xclbin.h"
-#include "../xocl_drv.h"
-#include "../xocl_xclbin.h"
-
 #include <linux/crc32c.h>
 #include <linux/fs.h>
 #include <linux/ioctl.h>
@@ -35,6 +30,11 @@
 #include <linux/platform_device.h>
 #include <linux/version.h>
 #include <linux/vmalloc.h>
+
+#include "version.h"
+#include "xclbin.h"
+#include "../xocl_drv.h"
+#include "../xocl_xclbin.h"
 
 #define SIZE_4KB  4096
 
