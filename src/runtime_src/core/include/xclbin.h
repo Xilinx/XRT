@@ -570,8 +570,8 @@ extern "C" {
         uint32_t mpo_name;                  // Name of the aie_partition 
         uint32_t operations_per_cycle;      // Operations per cycle. Used later to create TOPS (operations_per_cycle * <AIE Clock Frequency>)
         uint8_t padding[4];
-        uint64_t inference_fingerprint;  // The unique hash value of the inference function
-        uint64_t pre_post_fingerprint;
+        uint64_t inference_fingerprint;     // The unique hash value of the inference function
+        uint64_t pre_post_fingerprint;      // The unique hash value of pre post 
         struct aie_partition_info info;     // Partition information
         struct array_offset aie_pdi;        // PDI Array (aie_partition_info)
         uint8_t reserved[54];               // Reserved
