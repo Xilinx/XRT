@@ -33,7 +33,7 @@ xclDeviceHandle initXRTHandle(unsigned deviceIndex)
   return xclOpen(deviceIndex, nullptr, XCL_QUIET);
 }
 
-std::unique_ptr<xrt::skd> skd_inst;
+static std::unique_ptr<xrt::skd> skd_inst;
 
 /* Define a signal handler for the child to handle signals */
 static void sigLog(const int sig)
@@ -58,10 +58,12 @@ static void sigLog(const int sig)
       break;
     default:
       {
-      std::stringstream st;
-      st << boost::stacktrace::stacktrace();
-      xrt_core::message::send(severity_level::error, "SKD", st.str() );
-	signal (sig, SIG_DFL);
+	// TO-DO: Remove after XRT Pipeline for edge build is updated to Centos8
+#ifdef defined(__aarch64__)
+	std::stringstream st;
+	st << boost::stacktrace::stacktrace();
+	xrt_core::message::send(severity_level::error, "SKD", st.str() );
+#endif
 	kill(getpid(),sig);
 	exit(sig);
       }

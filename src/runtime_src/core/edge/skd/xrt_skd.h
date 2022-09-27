@@ -75,7 +75,9 @@ class skd
    * @param soft kernel CU index
    *
    */
-  skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl, const std::string kname, const uint32_t cu_index, unsigned char *uuid_in, const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in);
+  skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl,
+      const std::string kname, const uint32_t cu_index, unsigned char *uuid_in,
+      const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in);
   ~skd();
 
   XCL_DRIVER_DLLESPEC
@@ -91,29 +93,42 @@ class skd
   fini();
 
   void set_signal(int sig);
-  void report_ready();
-  void report_crash();
-  void report_fini();
+  void report_ready() const;
+  void report_crash() const;
+  void report_fini() const;
 
  private:
     xclDeviceHandle m_parent_devhdl = 0;
+    // XRT Device Handle for the child process
     xclDeviceHandle m_devhdl = 0;
     xrtDeviceHandle m_xrtdhdl = 0;
     uuid m_xclbin_uuid;
+    // Path of PS kernel object file constructed from PS kernel path and PS kernel name
     const std::filesystem::path m_sk_path;
+    // PS Kernel CU Index assigned from host
     uint32_t m_cu_idx = 0;
+    // PS Kernel instance name
     std::string m_sk_name = "";
     pscontext* m_xrtHandle = nullptr;
+
+    // BO handle for PS Kernel Object and PS kernel metadata - only used in kernel initialization
     int m_sk_bo = 0;
     int m_sk_meta_bo = 0;
+
+    // Member variables used when mapping the entire DDR space
     int m_parent_bo_handle = 0;
     uint64_t m_mem_start_paddr = 0;
     uint64_t m_mem_size = 0;
     void* m_mem_start_vaddr = nullptr;
+
+    // Signal value from signal handler
     int signal = 0;
-    
+
+    // Handle to PS kernel file and kernel symbol
     void* m_sk_handle = nullptr;
     void* m_kernel = nullptr;
+
+    // Arguments from host and return value offset
     std::vector<xrt_core::xclbin::kernel_argument> m_kernel_args;
     int m_cmd_boh = -1;
     uint32_t *m_args_from_host = nullptr;
@@ -122,12 +137,12 @@ class skd
     bool m_pass_xrtHandles = false;
     int m_return_offset = 1;
     
-    int wait_next_cmd();
-    int create_softkernelfile(xclDeviceHandle handle, int bohdl);
-    int delete_softkernelfile();
+    int wait_next_cmd() const;
+    int create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const;
+    int delete_softkernelfile() const;
     int create_softkernel(int *boh);
-    int get_return_offset(std::vector<xrt_core::xclbin::kernel_argument> args);
-    ffi_type* convert_to_ffitype(xrt_core::xclbin::kernel_argument arg);
+    int get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> args) const;
+    ffi_type* convert_to_ffitype(const xrt_core::xclbin::kernel_argument arg) const;
 };
 
 }

@@ -19,7 +19,6 @@
 
 #include <cstdio>
 #include <cerrno>
-#include <unistd.h>
 
 #include "core/common/api/device_int.h"
 #include "core/common/device.h"
@@ -42,7 +41,7 @@ using severity_level = xrt_core::message::severity_level;
 
 int main(int argc, char *argv[])
 {
-  pid_t pid = fork();
+  const pid_t pid = fork();
   if (pid < 0)
     exit(EXIT_FAILURE);
 
@@ -53,25 +52,20 @@ int main(int argc, char *argv[])
   umask(0);
 
   // Send the first message to XRT log
-  const std::string msg = "Daemon Start...";
+  const auto msg = "Daemon Start...";
   xrt_core::message::send(severity_level::info, "SKD", msg);
 
   // Create a new SID for the child process
-  pid_t sid = setsid();
+  const pid_t sid = setsid();
   if (sid < 0) {
-    const auto errMsg = "Set SID failed. Daemon exiting";
+    const auto errMsg = "Set SID failed. Daemon exiting - errno: " + std::to_string(errno);
     xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
   const auto sid_msg = boost::format("SID set %d") % sid;
   xrt_core::message::send(severity_level::info, "SKD", sid_msg.str());
 
-  if (chdir("/") < 0) {
-    const auto errMsg = "Could NOT change to \"/\" directory";
-    xrt_core::message::send(severity_level::error, "SKD", errMsg);
-    exit(EXIT_FAILURE);
-  }
-
+  // Opening first device since this is the only device available on APU
   xclDeviceHandle handle = initXRTHandle(0);
   if (!handle) {
     const auto errMsg = "Fail to init XRT";
@@ -107,7 +101,7 @@ int main(int argc, char *argv[])
       configSoftKernel(handle, &cmd, parent_mem_bo, mem_start_paddr, mem_size);
       break;
     default:
-      const std::string warnmsg = "Unknow management command, ignore it";
+      const auto warnmsg = "Unknow management command, ignore it";
       xrt_core::message::send(severity_level::warning, "SKD", warnmsg);
       break;
     }

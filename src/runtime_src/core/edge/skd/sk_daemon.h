@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include "xclhal2_mpsoc.h"
 #include "xrt_skd.h"

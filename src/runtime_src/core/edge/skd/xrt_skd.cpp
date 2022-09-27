@@ -18,7 +18,7 @@
 #include "xrt_skd.h"
 
 using ms_t = std::chrono::microseconds;
-using Clock = std::chrono::high_resolution_clock;
+using clockc = std::chrono::high_resolution_clock;
 
 // For use-case where map and unmap of buffers for each PS kernel call comes into critical path,
 // uncomment below line to enable mapping entire DDR reserved space for faster buffer access
@@ -46,7 +46,7 @@ namespace xrt {
       m_xclbin_uuid(uuid_in),
       m_sk_name(kname),
       m_cu_idx(cu_index),
-      m_sk_path(std::string(SOFT_KERNEL_FILE_PATH)+m_xclbin_uuid.to_string()+"/"+kname),
+      m_sk_path(std::string(SOFT_KERNEL_FILE_PATH)+kname),
       m_sk_bo(sk_bohdl),
       m_sk_meta_bo(sk_meta_bohdl),
       m_parent_bo_handle(parent_mem_bo_in),
@@ -173,7 +173,7 @@ namespace xrt {
       const auto errMsg = boost::format("Failed to map soft kernel args for %s%s") % m_sk_name % std::to_string(m_cu_idx);
       xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
       dlclose(m_sk_handle);
-      return -EINVAL;
+      return -errno;
     }
 
     // Prep FFI type for all kernel arguments
@@ -203,17 +203,16 @@ namespace xrt {
     // Buffer Objects
     std::vector<size_t> bo_offsets(m_kernel_args.size());
     std::vector<void*> bos(m_kernel_args.size());
-    std::vector<size_t> bo_size(m_kernel_args.size());
     std::vector<int> bo_handles(m_kernel_args.size());
     std::vector<int> bo_list;
-    Clock::time_point start;
-    Clock::time_point end;
-    Clock::time_point cmd_start;
-    Clock::time_point cmd_end;
+    clockc::time_point start;
+    clockc::time_point end;
+    clockc::time_point cmd_start;
+    clockc::time_point cmd_end;
 
     while (true) {
       ret = wait_next_cmd();
-      cmd_start = Clock::now();
+      cmd_start = clockc::now();
       if(cmd_end < cmd_start) {
 	  const auto msg = boost::format("PS Kernel Command interval = %s") % std::to_string((std::chrono::duration_cast<ms_t>(cmd_start - cmd_end)).count());
 	  xrt_core::message::send(severity_level::info, "SKD", msg.str());
@@ -233,9 +232,13 @@ namespace xrt {
       // FFI PS Kernel implementation
       // Map buffers used by kernel
       for(int i=0;i<m_kernel_args.size();i++) {
+	// If argument does not have index and is of hosttype xrtHandles, m_xrtHandle is passed as part of the kernel argument
 	if((m_kernel_args[i].index == xrt_core::xclbin::kernel_argument::no_index) && (m_kernel_args[i].hosttype.compare("xrtHandles*")==0)) {
 	  ffi_arg_values[i] = &m_xrtHandle;
-	} else if(m_kernel_args[i].type == xrt_core::xclbin::kernel_argument::argtype::global) {
+	  continue;
+	}
+	// If its a global argument, that means it is a buffer with physical address and size
+	if(m_kernel_args[i].type == xrt_core::xclbin::kernel_argument::argtype::global) {
 	  auto buf_addr_ptr = reinterpret_cast<uint64_t *>(&m_args_from_host[(m_kernel_args[i].offset + PS_KERNEL_REG_OFFSET) / 4]);
 	  auto buf_addr = reinterpret_cast<uint64_t>(*buf_addr_ptr);
 	  auto buf_size_ptr = reinterpret_cast<uint64_t *>(&m_args_from_host[(m_kernel_args[i].offset + PS_KERNEL_REG_OFFSET) / 4 + 2]);
@@ -245,7 +248,6 @@ namespace xrt {
 	  bo_offsets[i] = buf_addr - mem_start_paddr;
 	  bos[i] = mem_start_vaddr + bo_offsets[i];
 #else
-	  bo_size[i] = buf_size;
 	  bo_handles[i] = xclGetHostBO(m_devhdl, buf_addr, buf_size);
 	  bos[i] = xclMapBO(m_devhdl, bo_handles[i], true);
 	  bo_list.emplace_back(i);
@@ -258,9 +260,9 @@ namespace xrt {
 	}
       }
 
-      start = Clock::now();
+      start = clockc::now();
       ffi_call(&m_cif,FFI_FN(m_kernel), &kernel_return, ffi_arg_values.data());
-      end = Clock::now();
+      end = clockc::now();
       m_args_from_host[m_return_offset] = static_cast<uint32_t>(kernel_return);  // FFI return type is define as ffi_type_uint32
 
       const auto msg = boost::format("PS Kernel duration = %s") % std::to_string((std::chrono::duration_cast<ms_t>(end - start)).count());
@@ -270,13 +272,13 @@ namespace xrt {
 #else
       // Unmap Buffers
       for(auto i:bo_list) {
-	munmap(bos[i],bo_size[i]);
+	xclUnmapBO(m_devhdl, bo_handles[i], bos[i]);
 	xclFreeBO(m_devhdl,bo_handles[i]);
       }
       bo_list.clear();
 #endif
 
-      cmd_end = Clock::now();
+      cmd_end = clockc::now();
       const auto msg2 = boost::format("PS Kernel Command duration = %s, Preproc = %s, Postproc = %s")
 	% std::to_string((std::chrono::duration_cast<ms_t>(cmd_end - cmd_start)).count())
 	% std::to_string((std::chrono::duration_cast<ms_t>(start - cmd_start)).count())
@@ -322,9 +324,8 @@ namespace xrt {
     kernel_fini_t kernel_fini;
     auto sk_fini = m_sk_name + "_fini";
     kernel_fini = reinterpret_cast<kernel_fini_t>(dlsym(m_sk_handle, sk_fini.c_str()));
-    if (kernel_fini) {
+    if (kernel_fini)
       ret = kernel_fini(m_xrtHandle);
-    }
 
     dlclose(m_sk_handle);
     ret = delete_softkernelfile();
@@ -339,7 +340,8 @@ namespace xrt {
   int skd::create_softkernel(int *boh) {
     return xclSKCreate(m_devhdl, boh, m_cu_idx);
   }
-  int skd::wait_next_cmd() {
+  int skd::wait_next_cmd() const
+  {
     return xclSKReport(m_devhdl, m_cu_idx, XRT_SCU_STATE_DONE);
   }
   void skd::set_signal(int sig) {
@@ -349,15 +351,27 @@ namespace xrt {
   /*
    * This function create a soft kernel file.
    */
-  int skd::create_softkernelfile(xclDeviceHandle handle, int bohdl)
+  int skd::create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const
   {
       xclBOProperties prop = {};
       int ret = xclGetBOProperties(handle, bohdl, &prop);
       if (ret) {
 	  const auto errMsg = "Unable to get BO properties!";
 	  xrt_core::message::send(severity_level::error, "SKD", errMsg);
+	  return -EINVAL;
       }
 
+      const std::filesystem::path path(SOFT_KERNEL_FILE_PATH);
+      xrt_core::message::send(severity_level::debug, "SKD", path.string());
+
+      std::filesystem::create_directories(path);
+
+      // Check if file already exists and is the same size
+      if(std::filesystem::exists(m_sk_path) && (std::filesystem::file_size(m_sk_path) == prop.size)) {
+	return 0;
+      }
+
+      // Create / overwrite file if either file do not exist or is not the same size
       auto buf = reinterpret_cast<char *>(xclMapBO(handle, bohdl, false));
       if(buf == MAP_FAILED) {
 	  const auto errMsg = "Cannot map soft kernel BO!";
@@ -365,37 +379,28 @@ namespace xrt {
 	  return -errno;
       }
 
-      const std::filesystem::path path(SOFT_KERNEL_FILE_PATH+m_xclbin_uuid.to_string()+"/");
-      xrt_core::message::send(severity_level::info, "SKD", path.string());
-
-      if(!std::filesystem::exists(path))
-	  std::filesystem::create_directories(path);
-
-      // Check if file is the same
-      if(!std::filesystem::exists(m_sk_path)) {
-	  std::ofstream fptr(m_sk_path, std::ios::out | std::ios::binary);
-	  if (!fptr.is_open()) {
-	      const auto errMsg = boost::format("Cannot create file: %s") % m_sk_path.string();
-	      xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-	      xclUnmapBO(handle, bohdl, buf);
-	      return -EPERM;
-	  }
-	  
-	  // copy the soft kernel to file
-	  fptr.write(buf, prop.size);
-	  if (fptr.fail()) {
-	      const auto errMsg = boost::format("Fail to write to file ") % m_sk_path.string();
-	      xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-	      fptr.close();
-	      xclUnmapBO(handle, bohdl, buf);
-	      return -EIO;
-	  }
-	  const auto msg = boost::format("File created at %s") % m_sk_path.string();
-	  xrt_core::message::send(severity_level::info, "SKD", msg.str());
-	  
-	  fptr.close();
-	  xclUnmapBO(handle, bohdl, buf);
+      std::ofstream fptr(m_sk_path, std::ios::out | std::ios::binary);
+      if (!fptr.is_open()) {
+	const auto errMsg = boost::format("Cannot create file: %s") % m_sk_path.string();
+	xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+	xclUnmapBO(handle, bohdl, buf);
+	return -EPERM;
       }
+	  
+      // copy the soft kernel to file
+      fptr.write(buf, prop.size);
+      if (fptr.fail()) {
+	const auto errMsg = boost::format("Fail to write to file ") % m_sk_path.string();
+	xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+	fptr.close();
+	xclUnmapBO(handle, bohdl, buf);
+	return -EIO;
+      }
+      const auto msg = boost::format("File created at %s") % m_sk_path.string();
+      xrt_core::message::send(severity_level::info, "SKD", msg.str());
+      
+      fptr.close();
+      xclUnmapBO(handle, bohdl, buf);
 
       return 0;
   }
@@ -403,16 +408,16 @@ namespace xrt {
   /*
    * This function delete the soft kernel file.
    */
-  int skd::delete_softkernelfile()
+  int skd::delete_softkernelfile() const
   {
-      if(std::filesystem::exists(m_sk_path))
-	  return(remove(m_sk_path.c_str()));
-      else
-	  return 0;
+    if (std::filesystem::exists(m_sk_path))
+      return std::filesystem::remove(m_sk_path);
+    return 0;
   }
 
   // Convert argument to ffi_type 
-  ffi_type* skd::convert_to_ffitype(xrt_core::xclbin::kernel_argument arg) {
+  ffi_type* skd::convert_to_ffitype(const xrt_core::xclbin::kernel_argument arg) const
+  {
     ffi_type* return_type;
     // Mapping for FFI types
     static const std::map<std::pair<std::string, int>, ffi_type*> typeTable = {
@@ -451,30 +456,25 @@ namespace xrt {
   }
 
   // Respond to SCU subdevice PS kernel initialization is done
-  void skd::report_ready() {
+  void skd::report_ready() const {
     xclSKReport(m_devhdl,m_cu_idx,XRT_SCU_STATE_READY);
   }
 
-  void skd::report_fini() {
+  void skd::report_fini() const {
     xclSKReport(m_devhdl,m_cu_idx,XRT_SCU_STATE_FINI);
   }
 
-  void skd::report_crash() {
+  void skd::report_crash() const {
     xclSKReport(m_devhdl,m_cu_idx,XRT_SCU_STATE_CRASH);
   }
 
-  int skd::get_return_offset(std::vector<xrt_core::xclbin::kernel_argument> args) {
-    int return_offset = 1;
-
+  int skd::get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> args) const
+  {
     // Calculate offset to write return code into
     // If the last argument is a global which means there will be 64-bit address and 64-bit size for total of 16 bytes
     // Else the last argument size will be either 4-bytes or 8 bytes since arguments are 32-bit aligned
-    if(args.back().type == xrt_core::xclbin::kernel_argument::argtype::global)
-      return_offset = (args.back().offset+PS_KERNEL_REG_OFFSET+16)/4;
-    else
-      return_offset = (args.back().offset+PS_KERNEL_REG_OFFSET+((args.back().size>4)?8:4))/4;
-
-    return return_offset;
+    auto last_arg_size = (args.back().type == xrt_core::xclbin::kernel_argument::argtype::global) ? 16 : args.back().size>4 ? 8 : 4;
+    return (args.back().offset+PS_KERNEL_REG_OFFSET+last_arg_size)/4;
   }
 
 }
