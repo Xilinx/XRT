@@ -32,8 +32,10 @@
         auto raw_response_header    = std::make_unique<char[]>(ri_len); \
         auto raw_response_payload   = std::make_unique<char[]>(r_len);\
         response_header->set_size(r_len);\
-        if(!response_header->SerializeToArray((void*)raw_response_header.get(),ri_len)){return 1;}\
-        if(!response_payload.SerializeToArray((void*)raw_response_payload.get(),r_len)){return 1;}\
+        if(!response_header->SerializeToArray((void*)raw_response_header.get(),ri_len))\
+        { std::cerr << "ERROR: SerializeToArray() failed." << std::endl; return -1; }\
+        if(!response_payload.SerializeToArray((void*)raw_response_payload.get(),r_len))\
+        { std::cerr << "ERROR: SerializeToArray() failed." << std::endl; return -1; }\
         Q2h_sock->sk_write((void*)raw_response_header.get(),ri_len);\
         Q2h_sock->sk_write((void*)raw_response_payload.get(),r_len);\
     }
@@ -2260,7 +2262,7 @@ namespace xclhwemhal2 {
 
     std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
     std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
-    
+
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
@@ -2998,10 +3000,8 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   else if((sBO->fd >=0) && (dBO->fd >= 0)) {  //Both source & destination P2P buffer
     // CR-1113695 Copy data from source P2P to Dest P2P
     std::vector<char> temp_buffer(size);
-    if(lseek(sBO->fd, src_offset, SEEK_SET) != -1){
-      lseek(sBO->fd, src_offset, SEEK_SET);
-    }
-    else{
+    if(lseek(sBO->fd, src_offset, SEEK_SET) == -1){
+      std::cerr << "ERROR: lseek() failed. " << std::endl;
       return -1;
     }
     int bytes_read = read(sBO->fd, temp_buffer.data(), size);
@@ -3012,10 +3012,8 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       }
     }
 
-    if(lseek(dBO->fd, dst_offset, SEEK_SET) != -1){
-      lseek(dBO->fd, dst_offset, SEEK_SET);
-    }
-    else{
+    if(lseek(dBO->fd, dst_offset, SEEK_SET) == -1){
+      std::cerr << "ERROR: lseek() failed. " << std::endl;
       return -1;
     }
     int bytes_write = write(dBO->fd, temp_buffer.data(), size);
@@ -3033,10 +3031,8 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
       return -1;
     }
-    if(lseek(dBO->fd, dst_offset, SEEK_SET) != -1){
-      lseek(dBO->fd, dst_offset, SEEK_SET);
-    }
-    else{
+    if(lseek(dBO->fd, dst_offset, SEEK_SET) == -1){
+      std::cerr << "ERROR: lseek() failed. " << std::endl;
       return -1;
     }
     int bytes_write = write(dBO->fd, temp_buffer.data(), size);
@@ -3051,10 +3047,8 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   else if (sBO->fd >= 0) {  //source p2p buffer
     // CR-1112934 Copy data from exported fd to temp buffer using read API
     std::vector<char> temp_buffer(size);
-    if(lseek(sBO->fd, src_offset, SEEK_SET) != -1){
-      lseek(sBO->fd, src_offset, SEEK_SET);
-    }
-    else{
+    if(lseek(sBO->fd, src_offset, SEEK_SET) == -1){
+      std::cerr << "ERROR: lseek() failed. " << std::endl;
       return -1;
     }
     int bytes_read = read(sBO->fd, temp_buffer.data(), size);
