@@ -40,8 +40,8 @@ namespace xrt {
    * @param soft kernel CU index
    *
    */
-  skd::skd(const xclDeviceHandle &handle, const int &sk_meta_bohdl, const int &sk_bohdl, const std::string &kname, const uint32_t &cu_index,
-	   unsigned char *uuid_in, const int &parent_mem_bo_in, const uint64_t &mem_start_paddr_in, const uint64_t &mem_size_in)
+  skd::skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl, const std::string kname, const uint32_t cu_index,
+	   unsigned char *uuid_in, const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in)
     : m_parent_devhdl(handle),
       m_xclbin_uuid(uuid_in),
       m_sk_name(kname),
@@ -350,7 +350,7 @@ namespace xrt {
   /*
    * This function create a soft kernel file.
    */
-  int skd::create_softkernelfile(const xclDeviceHandle &handle, const int &bohdl) const
+  int skd::create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const
   {
       xclBOProperties prop = {};
       int ret = xclGetBOProperties(handle, bohdl, &prop);

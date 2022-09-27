@@ -71,7 +71,7 @@ static void sigLog(const int sig)
 }
 
 #define PNAME_LEN	(16)
-void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd, int parent_mem_bo, uint64_t mem_start_paddr, uint64_t mem_size)
+void configSoftKernel(const xclDeviceHandle handle, xclSKCmd *cmd, const int parent_mem_bo, const uint64_t mem_start_paddr, const uint64_t mem_size)
 {
   for (int i = cmd->start_cuidx; i < (cmd->start_cuidx + cmd->cu_nums); i++) {
     /*

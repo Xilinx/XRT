@@ -20,7 +20,10 @@
 #ifndef __SK_RUNNER_H_
 #define __SK_RUNNER_H_
 
+// TO-DO: Remove after XRT Pipeline for edge build is updated to Centos8
+#ifndef __x86_64__
 #include <boost/stacktrace.hpp>
+#endif
 #include <errno.h>
 #include <signal.h>
 #include <stdint.h>
@@ -33,6 +36,6 @@
 #include "xrt_skd.h"
 
 xclDeviceHandle initXRTHandle(unsigned deviceIndex);
-void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd, int parent_mem_bo, uint64_t mem_start_paddr, uint64_t mem_size);
+void configSoftKernel(const xclDeviceHandle handle, xclSKCmd *cmd, const int parent_mem_bo, const uint64_t mem_start_paddr, const uint64_t mem_size);
 
 #endif
