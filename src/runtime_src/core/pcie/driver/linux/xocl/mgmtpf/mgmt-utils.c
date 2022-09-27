@@ -386,18 +386,17 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_clear_pci_errors(lro);
 	store_pcie_link_info(lro);
 
-	if (xrt_reset_syncup)
-		xocl_set_master_on(lro);
-	else if (!force)
-		xclmgmt_connect_notify(lro, true);
-
-	
 	memset(&lro->status, 0, sizeof(struct xclmgmt_ready_status));
 	lro->status.ready = true;
 	if(xclmgmt_check_device_ready(lro))
 		lro->status.ready = false;
 	else
 		pr_info("Device is ready after reset");
+
+	if (xrt_reset_syncup)
+		xocl_set_master_on(lro);
+	else if (!force)
+		xclmgmt_connect_notify(lro, lro->status.ready);
 
 	return 0;
 

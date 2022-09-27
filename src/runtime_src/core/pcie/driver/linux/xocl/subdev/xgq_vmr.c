@@ -1155,7 +1155,7 @@ static int xgq_default_boot_enabled(struct platform_device *pdev)
 {
 	int rc = 0;
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
-	struct xgq_cmd_cq_vmr_payload *vmr_status vmr_status =
+	struct xgq_cmd_cq_vmr_payload *vmr_status =
 		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
 
 	rc = vmr_status_query(xgq->xgq_pdev);
