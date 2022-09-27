@@ -40,8 +40,8 @@ namespace xrt {
    * @param soft kernel CU index
    *
    */
-  skd::skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl, const std::string kname, const uint32_t cu_index,
-	   unsigned char *uuid_in, const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in)
+  skd::skd(const xclDeviceHandle &handle, const int &sk_meta_bohdl, const int &sk_bohdl, const std::string &kname, const uint32_t &cu_index,
+	   unsigned char *uuid_in, const int &parent_mem_bo_in, const uint64_t &mem_start_paddr_in, const uint64_t &mem_size_in)
     : m_parent_devhdl(handle),
       m_xclbin_uuid(uuid_in),
       m_sk_name(kname),
@@ -331,7 +331,7 @@ namespace xrt {
     ret = delete_softkernelfile();
     if (ret) {
         const auto errMsg = boost::format("Cannot remove soft kernel file %s") % m_sk_path.string();
-	xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+	xrt_core::message::send(severity_level::info, "SKD", errMsg.str());
     }
     xclClose(m_devhdl);
     report_fini();
@@ -351,7 +351,7 @@ namespace xrt {
   /*
    * This function create a soft kernel file.
    */
-  int skd::create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const
+  int skd::create_softkernelfile(const xclDeviceHandle &handle, const int &bohdl) const
   {
       xclBOProperties prop = {};
       int ret = xclGetBOProperties(handle, bohdl, &prop);
@@ -410,13 +410,11 @@ namespace xrt {
    */
   int skd::delete_softkernelfile() const
   {
-    if (std::filesystem::exists(m_sk_path))
-      return std::filesystem::remove(m_sk_path);
-    return 0;
+    return std::filesystem::remove(m_sk_path);
   }
 
   // Convert argument to ffi_type 
-  ffi_type* skd::convert_to_ffitype(const xrt_core::xclbin::kernel_argument arg) const
+  ffi_type* skd::convert_to_ffitype(const xrt_core::xclbin::kernel_argument &arg) const
   {
     ffi_type* return_type;
     // Mapping for FFI types
@@ -444,14 +442,14 @@ namespace xrt {
       { {"double", 8 }, &ffi_type_double }
     };
 
-    if((arg.index == xrt_core::xclbin::kernel_argument::no_index) ||  // Argument is xrtHandles
+    if ((arg.index == xrt_core::xclbin::kernel_argument::no_index) ||  // Argument is xrtHandles
        (arg.type == xrt_core::xclbin::kernel_argument::argtype::global)) {  // Argument is a buffer pointer
       return_type = &ffi_type_pointer;
-      return(return_type);
+      return return_type;
     } else {
       auto result = typeTable.find({ arg.hosttype, arg.size});
       return_type = result->second;
-      return(return_type);
+      return return_type;
     }
   }
 
@@ -468,13 +466,13 @@ namespace xrt {
     xclSKReport(m_devhdl,m_cu_idx,XRT_SCU_STATE_CRASH);
   }
 
-  int skd::get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> args) const
+  int skd::get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const
   {
     // Calculate offset to write return code into
     // If the last argument is a global which means there will be 64-bit address and 64-bit size for total of 16 bytes
     // Else the last argument size will be either 4-bytes or 8 bytes since arguments are 32-bit aligned
-    auto last_arg_size = (args.back().type == xrt_core::xclbin::kernel_argument::argtype::global) ? 16 : args.back().size>4 ? 8 : 4;
-    return (args.back().offset+PS_KERNEL_REG_OFFSET+last_arg_size)/4;
+    auto last_arg_size = (args.back().type == xrt_core::xclbin::kernel_argument::argtype::global) ? 16 : (args.back().size > 4) ? 8 : 4;
+    return (args.back().offset + PS_KERNEL_REG_OFFSET + last_arg_size) / 4;
   }
 
 }

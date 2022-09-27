@@ -75,9 +75,9 @@ class skd
    * @param soft kernel CU index
    *
    */
-  skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl,
-      const std::string kname, const uint32_t cu_index, unsigned char *uuid_in,
-      const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in);
+  skd(const xclDeviceHandle &handle, const int &sk_meta_bohdl, const int &sk_bohdl,
+      const std::string &kname, const uint32_t &cu_index, unsigned char *uuid_in,
+      const int &parent_mem_bo_in, const uint64_t &mem_start_paddr_in, const uint64_t &mem_size_in);
   ~skd();
 
   XCL_DRIVER_DLLESPEC
@@ -138,11 +138,11 @@ class skd
     int m_return_offset = 1;
     
     int wait_next_cmd() const;
-    int create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const;
+    int create_softkernelfile(const xclDeviceHandle &handle, const int &bohdl) const;
     int delete_softkernelfile() const;
     int create_softkernel(int *boh);
-    int get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> args) const;
-    ffi_type* convert_to_ffitype(const xrt_core::xclbin::kernel_argument arg) const;
+    int get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const;
+    ffi_type* convert_to_ffitype(const xrt_core::xclbin::kernel_argument &arg) const;
 };
 
 }

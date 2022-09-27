@@ -39,31 +39,31 @@ static std::unique_ptr<xrt::skd> skd_inst;
 static void sigLog(const int sig)
 {
 
+  assert(skd_inst != nullptr);
   switch(sig) {
     case SIGTERM:
       {
 	const auto termMsg = "Terminating PS kernel";
 	xrt_core::message::send(severity_level::info, "SKD", termMsg);
-	if(skd_inst)
-	    skd_inst->set_signal(sig);
+	skd_inst->set_signal(sig);
       }
       break;
     case SIGINT:
       {
 	const auto intMsg = "Process interrupted";
 	xrt_core::message::send(severity_level::info, "SKD", intMsg);
-	if(skd_inst)
-	    skd_inst->set_signal(sig);
+	skd_inst->set_signal(sig);
       }
       break;
     default:
       {
-	// TO-DO: Remove after XRT Pipeline for edge build is updated to Centos8
-#ifdef defined(__aarch64__)
+// TO-DO: Remove after XRT Pipeline for edge build is updated to Centos8
+#ifndef __x86_64__
 	std::stringstream st;
 	st << boost::stacktrace::stacktrace();
 	xrt_core::message::send(severity_level::error, "SKD", st.str() );
 #endif
+	signal(sig, SIG_DFL);
 	kill(getpid(),sig);
 	exit(sig);
       }
