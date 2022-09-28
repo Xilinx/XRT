@@ -40,18 +40,18 @@ namespace xrt {
    * @param soft kernel CU index
    *
    */
-  skd::skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl, const std::string kname, const uint32_t cu_index,
+  skd::skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl, const std::string &kname, const uint32_t cu_index,
 	   unsigned char *uuid_in, const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in)
     : m_parent_devhdl(handle),
       m_xclbin_uuid(uuid_in),
+      m_sk_path(std::string(SOFT_KERNEL_FILE_PATH)+kname),
       m_sk_name(kname),
       m_cu_idx(cu_index),
-      m_sk_path(std::string(SOFT_KERNEL_FILE_PATH)+kname),
       m_sk_bo(sk_bohdl),
       m_sk_meta_bo(sk_meta_bohdl),
       m_parent_bo_handle(parent_mem_bo_in),
-      m_mem_size(mem_size_in),
-      m_mem_start_paddr(mem_start_paddr_in)
+      m_mem_start_paddr(mem_start_paddr_in),
+      m_mem_size(mem_size_in)
   {
   }
 
@@ -197,7 +197,6 @@ namespace xrt {
   void
   skd::run() {
     ffi_arg kernel_return = 0;
-    int ret = 0;
     std::vector<void*> ffi_arg_values(m_kernel_args.size());
     // Buffer Objects
     std::vector<size_t> bo_offsets(m_kernel_args.size());
@@ -210,7 +209,7 @@ namespace xrt {
     clockc::time_point cmd_end;
 
     while (true) {
-      ret = wait_next_cmd();
+      int ret = wait_next_cmd();
       cmd_start = clockc::now();
       if(cmd_end < cmd_start) {
 	  const auto msg = boost::format("PS Kernel Command interval = %s") % std::to_string((std::chrono::duration_cast<ms_t>(cmd_start - cmd_end)).count());
@@ -465,7 +464,7 @@ namespace xrt {
     xclSKReport(m_devhdl,m_cu_idx,XRT_SCU_STATE_CRASH);
   }
 
-  int skd::get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const
+  static int skd::get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const
   {
     // Calculate offset to write return code into
     // If the last argument is a global which means there will be 64-bit address and 64-bit size for total of 16 bytes

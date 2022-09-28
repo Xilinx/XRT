@@ -76,7 +76,7 @@ class skd
    *
    */
   skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl,
-      const std::string kname, const uint32_t cu_index, unsigned char *uuid_in,
+      const std::string &kname, const uint32_t cu_index, unsigned char *uuid_in,
       const int parent_mem_bo_in, const uint64_t mem_start_paddr_in, const uint64_t mem_size_in);
   ~skd();
 
@@ -105,10 +105,10 @@ class skd
     uuid m_xclbin_uuid;
     // Path of PS kernel object file constructed from PS kernel path and PS kernel name
     const std::filesystem::path m_sk_path;
-    // PS Kernel CU Index assigned from host
-    uint32_t m_cu_idx = 0;
     // PS Kernel instance name
     std::string m_sk_name = "";
+    // PS Kernel CU Index assigned from host
+    uint32_t m_cu_idx = 0;
     pscontext* m_xrtHandle = nullptr;
 
     // BO handle for PS Kernel Object and PS kernel metadata - only used in kernel initialization
@@ -141,7 +141,7 @@ class skd
     int create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const;
     int delete_softkernelfile() const;
     int create_softkernel(int *boh);
-    int get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const;
+    static int get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const;
     ffi_type* convert_to_ffitype(const xrt_core::xclbin::kernel_argument &arg) const;
 };
 
