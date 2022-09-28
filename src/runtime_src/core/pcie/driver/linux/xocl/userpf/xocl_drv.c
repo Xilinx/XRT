@@ -579,6 +579,7 @@ static void xocl_work_cb(struct work_struct *work)
 		xocl_reset_notify(xdev->core.pdev, false);
 		xocl_drvinst_set_offline(xdev->core.drm, false);
 		XDEV(xdev)->shutdown = false;
+		(void) xocl_refresh_subdevs(xdev);
 		break;
 	case XOCL_WORK_PROGRAM_SHELL:
 		/* program shell */

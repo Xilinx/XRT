@@ -386,12 +386,13 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_clear_pci_errors(lro);
 	store_pcie_link_info(lro);
 
+	/* Clear previous status of device status */
 	memset(&lro->status, 0, sizeof(struct xclmgmt_ready_status));
 	lro->status.ready = true;
-	if(xclmgmt_check_device_ready(lro))
+
+	err = xclmgmt_check_device_ready(lro);
+	if(err)
 		lro->status.ready = false;
-	else
-		pr_info("Device is ready after reset");
 
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
@@ -984,7 +985,6 @@ int xclmgmt_check_device_ready(struct xclmgmt_dev *lro)
 	int rc = 0;
 
 	rc = xocl_vmr_default_boot_enabled(lro);
-	pr_info("checking default boot %d\n", rc);
 	/* 
 	 * Check for a negative error code. A positive value indicates a default boot
 	 * Zero indicates a non-default boot with no other errors

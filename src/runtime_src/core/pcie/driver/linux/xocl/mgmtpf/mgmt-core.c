@@ -1132,7 +1132,8 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 		xocl_mailbox_get(lro, CHAN_DISABLE, &ch_disable);
 		resp->version = min(XCL_MB_PROTOCOL_VER, conn->version);
-		resp->conn_flags |= XCL_MB_PEER_READY;
+		if (lro->status.ready)
+			resp->conn_flags |= XCL_MB_PEER_READY;
 		/* Same domain check only applies when everything is thru HW. */
 		if (!ch_switch && xclmgmt_is_same_domain(lro, conn))
 			resp->conn_flags |= XCL_MB_PEER_SAME_DOMAIN;
