@@ -24,9 +24,13 @@ public:
   bool
   is_user(void) const = 0;
 
+  void
+  scan_devices(std::vector<std::shared_ptr<pcidev::pci_device>>& ready_list,
+               std::vector<std::shared_ptr<pcidev::pci_device>>& nonready_list) const;
+private:
   virtual
   std::shared_ptr<pcidev::pci_device>
-  create_pcidev(const std::string& sysfs) const = 0;
+  create_pcidev(const std::string& sysfs) const;
 };
 
 } // pcidrv

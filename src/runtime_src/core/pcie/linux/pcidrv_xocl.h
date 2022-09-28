@@ -5,7 +5,6 @@
 #define _XCL_PCIDRV_XOCL_H_
 
 #include "pcidrv.h"
-#include "device_linux.h"
 
 namespace pcidrv {
 
@@ -19,10 +18,6 @@ public:
   bool
   is_user(void) const override
   { return true; }
-
-  std::shared_ptr<pcidev::pci_device>
-  create_pcidev(const std::string& sysfs) const override
-  { return std::make_shared<pcidev::pci_device>(this, sysfs); }
 };
 
 } // pcidrv

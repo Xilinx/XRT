@@ -6,6 +6,7 @@ add_library(core_pcielinux_objects OBJECT
   debug.cpp
   device_linux.cpp
   pcidev.cpp
+  pcidrv.cpp
   shim.cpp
   system_linux.cpp
   )

@@ -4,11 +4,11 @@
 #ifndef _XCL_PCIDRV_XCLMGMT_H_
 #define _XCL_PCIDRV_XCLMGMT_H_
 
-#include "pcidrv_xocl.h"
+#include "pcidrv.h"
 
 namespace pcidrv {
 
-class pci_driver_xclmgmt : public pci_driver_xocl
+class pci_driver_xclmgmt : public pci_driver
 {
 public:
   const std::string
@@ -18,7 +18,6 @@ public:
   bool
   is_user(void) const override
   { return false; }
-
 };
 
 } // pcidrv
