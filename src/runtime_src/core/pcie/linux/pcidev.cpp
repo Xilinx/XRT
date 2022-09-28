@@ -34,20 +34,15 @@
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include "xclbin.h"
-#include "scan.h"
+#include "pcidev.h"
 #include "core/common/utils.h"
 
 #define RENDER_NM       "renderD"
 #define DEV_TIMEOUT	90 // seconds
-#define MGMT_DRV_V1	"xclmgmt"
-#define USER_DRV_V1	"xocl"
-#define MGMT_DRV_V2	"xrt-mgmt"
-#define USER_DRV_V2	"xrt-user"
 
 namespace {
 
 namespace bfs = boost::filesystem;
-
 
 static std::string
 get_name(const std::string& dir, const std::string& subdir)
@@ -174,7 +169,6 @@ namespace pcidev {
 namespace sysfs {
 
 static const std::string dev_root = "/sys/bus/pci/devices/";
-static const std::string drv_root = "/sys/bus/pci/drivers/";
 
 static std::string
 get_path(const std::string& name, const std::string& subdev, const std::string& entry)
@@ -366,24 +360,6 @@ put(const std::string& name,
 
 } // sysfs
 
-static bool is_in_use(std::vector<std::shared_ptr<pci_device>>& vec)
-{
-  for (auto& d : vec)
-    if (d.use_count() > 1)
-      return true;
-  return false;
-}
-
-static bool is_drv_v2(const std::string& driver)
-{
-  return ((driver.compare(MGMT_DRV_V2) == 0) || (driver.compare(USER_DRV_V2) == 0));
-}
-
-static bool is_drv_mgmt(const std::string& driver)
-{
-  return ((driver.compare(MGMT_DRV_V1) == 0) || (driver.compare(MGMT_DRV_V2) == 0));
-}
-
 void
 pci_device::
 sysfs_get(const std::string& subdev, const std::string& entry,
@@ -415,7 +391,6 @@ sysfs_get(const std::string& subdev, const std::string& entry,
 {
   sysfs::get(sysfs_name, subdev, entry, err, s);
 }
-
 
 void
 pci_device::
@@ -455,7 +430,7 @@ get_subdev_path(const std::string& subdev, uint idx)
   // Main devfs path
   if (subdev.empty()) {
     std::string instStr = std::to_string(instance);
-    if (is_mgmt()) {
+    if (is_mgmt) {
       std::string prefixStr = "/dev/xclmgmt";
       return prefixStr + instStr;
     }
@@ -467,7 +442,7 @@ get_subdev_path(const std::string& subdev, uint idx)
   std::string path("/dev/xfpga/");
 
   path += subdev;
-  path += is_mgmt() ? ".m" : ".u";
+  path += is_mgmt ? ".m" : ".u";
   //if the domain number is big, the shift overflows, hence need to cast
   uint32_t dom = static_cast<uint32_t>(domain);
   path += std::to_string( (dom<<16)+ (bus<<8) + (dev<<3) + func);
@@ -479,7 +454,7 @@ int
 pci_device::
 open(const std::string& subdev, uint32_t idx, int flag)
 {
-  if (is_mgmt() && !::is_admin())
+  if (is_mgmt && !::is_admin())
     throw std::runtime_error("Root privileges required");
 
   std::string devfs = get_subdev_path(subdev, idx);
@@ -494,30 +469,16 @@ open(const std::string& subdev, int flag)
 }
 
 pci_device::
-pci_device(const std::string& drv_name, const std::string& sysfs) : sysfs_name(sysfs)
+pci_device(const pcidrv::pci_driver* driver, const std::string& sysfs) : sysfs_name(sysfs)
 {
-  uint16_t dom, b, d, f;
-  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &dom, &b, &d, &f) < 4)
-    return;
-  domain = dom;
-  bus = b;
-  dev = d;
-  func = f;
-
-  // Determine if device is of supported vendor
   std::string err;
-  sysfs_get<uint16_t>("", "vendor", err, vendor_id, INVALID_ID);
-  if (!err.empty()) {
-    std::cout << err << std::endl;
-    return;
-  }
-  if ((vendor_id != XILINX_ID) && (vendor_id != ADVANTECH_ID) &&
-    (vendor_id != AWS_ID) && (vendor_id != ARISTA_ID))
-    return;
-  sysfs_get<uint16_t>("", "device", err, device_id, INVALID_ID);
-  mgmt = is_drv_mgmt(drv_name);
 
-  if (is_mgmt())
+  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &domain, &bus, &dev, &func) < 4)
+    throw std::invalid_argument(sysfs + " is not valid BDF");
+
+  is_mgmt = !driver->is_user();
+
+  if (is_mgmt)
     sysfs_get("", "instance", err, instance, static_cast<uint32_t>(INVALID_ID));
   else
     instance = get_render_value(sysfs::dev_root + sysfs + "/drm");
@@ -711,7 +672,7 @@ std::shared_ptr<pci_device>
 pci_device::
 lookup_peer_dev()
 {
-  if (!is_mgmt())
+  if (!is_mgmt)
     return nullptr;
 
   int i = 0;
@@ -720,349 +681,6 @@ lookup_peer_dev()
       return udev;
 
   return nullptr;
-}
-
-class pci_device_v2 : public pci_device
-{
-public:
-  pci_device_v2(const std::string& drv_name, const std::string& sysfs_name) :
-    pci_device(drv_name, sysfs_name)
-  {
-    std::string err;
-    sysfs_get<bool>("", "ready", err, is_ready, false);
-  }
-  template <typename T>
-  void
-  sysfs_get(const std::string& subdev, const std::string& entry,
-            std::string& err, T& i, const T& default_val)
-  {
-    std::vector<uint64_t> iv;
-    sysfs_get(subdev, entry, err, iv);
-    if (!iv.empty())
-      i = static_cast<T>(iv[0]);
-    else
-      i = static_cast<T>(default_val); // default value
-  }
-  void sysfs_get(const std::string& subdev, const std::string& entry,
-    std::string& err, std::vector<std::string>& sv)
-  {
-    try {
-      auto map = find_sysfs_map(subdev, entry);
-      sysfs::get(sysfs_name, map.subdev_v2, map2entry(map, entry), err, sv);
-    } catch (...) {
-      throw std::runtime_error("sysfs_get_sv(" + subdev + "/" + entry + ") is not supported");
-    }
-  }
-  void sysfs_get(const std::string& subdev, const std::string& entry,
-    std::string& err, std::vector<uint64_t>& iv)
-  {
-    try {
-      if (subdev.compare("") == 0 && entry.compare("mfg") == 0) {
-          bool golden = !sysfs::get_path(sysfs_name, "xrt_vsec_golden", "").empty();
-          iv.push_back(golden);
-      } else {
-        auto map = find_sysfs_map(subdev, entry);
-        sysfs::get(sysfs_name, map.subdev_v2, map2entry(map, entry), err, iv);
-      }
-    } catch (...) {
-      throw std::runtime_error("sysfs_get_iv(" + subdev + "/" + entry + ") is not supported");
-    }
-  }
-  void sysfs_get(const std::string& subdev, const std::string& entry,
-    std::string& err, std::string& s)
-  {
-    try {
-      if (subdev.compare("rom") == 0 && entry.compare("VBNV") == 0) {
-        sysfs::get(sysfs_name, "xmgmt_main", "VBNV", err, s);
-        if (!err.empty())
-          sysfs::get(sysfs_name, "xrt_vsec_golden", "VBNV", err, s);
-      } else {
-        auto map = find_sysfs_map(subdev, entry);
-        sysfs::get(sysfs_name, map.subdev_v2, map2entry(map, entry), err, s);
-      }
-    } catch (...) {
-      throw std::runtime_error("sysfs_get_s(" + subdev + "/" + entry + ") is not supported");
-    }
-  }
-  void sysfs_get(const std::string& subdev, const std::string& entry,
-    std::string& err, std::vector<char>& buf)
-  {
-    try {
-      auto map = find_sysfs_map(subdev, entry);
-      sysfs::get(sysfs_name, map.subdev_v2, map2entry(map, entry), err, buf);
-    } catch (...) {
-      throw std::runtime_error("sysfs_get_cv(" + subdev + "/" + entry + ") is not supported");
-    }
-  }
-  void sysfs_put(const std::string& subdev, const std::string& entry,
-    std::string& err, const std::string& input)
-  {
-    throw std::runtime_error("sysfs_put_s(" + subdev + "/" + entry + ") is not supported");
-  }
-  void sysfs_put(const std::string& subdev, const std::string& entry,
-    std::string& err, const std::vector<char>& buf)
-  {
-    throw std::runtime_error("sysfs_put_cv(" + subdev + "/" + entry + ") is not supported");
-  }
-  void sysfs_put(const std::string& subdev, const std::string& entry,
-    std::string& err, const unsigned int& buf)
-  {
-    throw std::runtime_error("sysfs_put_i(" + subdev + "/" + entry + ") is not supported");
-  }
-  std::string get_sysfs_path(const std::string& subdev, const std::string& entry)
-  {
-    try {
-      auto map = find_sysfs_map(subdev, entry);
-      return sysfs::get_path(sysfs_name, map.subdev_v2, map2entry(map, entry));
-    } catch (...) {
-      throw std::runtime_error("sysfs_get_cv(" + subdev + "/" + entry + ") is not supported");
-    }
-  }
-  std::string get_subdev_path(const std::string& subdev, uint32_t idx)
-  {
-    std::string path("/dev/xrt/");
-    path += sysfs_name;
-    path += "/";
-    try {
-      auto map = find_devfs_map(subdev);
-      path += map.subdev_v2;
-    } catch (...) {
-      path += subdev;
-    }
-    if (idx != (uint32_t)-1)
-      path += "." + std::to_string(idx);
-    return path;
-  }
-  int open(const std::string& subdev, int flag)
-  {
-    return open(subdev, -1, flag);
-  }
-  int open(const std::string& subdev, uint32_t idx, int flag)
-  {
-    if (is_mgmt() && !::is_admin())
-      throw std::runtime_error("Root privileges required");
-
-    std::string devfs = get_subdev_path(subdev, idx);
-    return ::open(devfs.c_str(), flag);
-  }
-  void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset)
-  {
-    throw std::runtime_error("mmap is not supported");
-  }
-  int munmap(int devhdl, void* addr, size_t len)
-  {
-    throw std::runtime_error("munmap is not supported");
-  }
-  int pcieBarRead(uint64_t offset, void *buf, uint64_t len)
-  {
-    throw std::runtime_error("pcieBarRead is not supported");
-  }
-  int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len)
-  {
-    throw std::runtime_error("pcieBarWrite is not supported");
-  }
-
-private:
-  // For sysfs node mapping
-  struct sysfs_node_map {
-    const std::string subdev;
-    const std::string entry;
-    const std::string subdev_v2;
-    const std::string entry_v2;
-  };
-  const std::vector<sysfs_node_map> sysfs_map {
-    // Map as-is
-    { "",       "ready",        "",             "ready" },
-    { "",       "vendor",       "",             "vendor" },
-    { "",       "device",       "",             "device" },
-    // rom/xxx
-    { "rom",    "uuid",         "xmgmt_main",   "logic_uuids" },
-    { "rom",    "*",            "xmgmt_main",   "*" },
-    // root/xxx
-    { "",       "*",            "xmgmt_main",   "*" },
-    // xmc/xxx
-    { "xmc",    "*",            "xrt_cmc",     "*" },
-    // flash/xxx
-    { "flash",  "*",            "xrt_qspi",    "*" },
-  };
-  const sysfs_node_map& find_sysfs_map(const std::string& subdev, const std::string& entry)
-  {
-    for (auto& m : sysfs_map) {
-      if (subdev == m.subdev && (entry == m.entry || m.entry.compare("*") == 0)) {
-#ifdef MAP_DEBUG
-        std::cout << "map <" << subdev << "/" << entry << "> to <" <<
-          m.subdev_v2 << "/" << map2entry(m, entry) << ">" << std::endl;
-#endif
-        return m;
-      }
-    }
-    throw std::runtime_error("can't map <" + subdev + "/" + entry + ">");
-  }
-  const std::string& map2entry(const sysfs_node_map& map, const std::string& entry)
-  {
-    return map.entry_v2.compare("*") ? map.entry_v2 : entry;
-  }
-
-  // For devfs node mapping
-  struct devfs_node_map {
-    const std::string subdev;
-    const std::string subdev_v2;
-  };
-  const std::vector<devfs_node_map> devfs_map {
-    { "",        "xmgmt" },
-    { "xmc",     "cmc" },
-  };
-  const devfs_node_map& find_devfs_map(const std::string& subdev)
-  {
-    for (auto& m : devfs_map) {
-      if (subdev == m.subdev) {
-#ifdef MAP_DEBUG
-        std::cout << "map " << subdev " to " << m.subdev_v2 << std::endl;
-#endif
-        return m;
-      }
-    }
-    throw std::runtime_error("can't map " + subdev);
-  }
-};
-
-class pci_device_scanner
-{
-public:
-  static pci_device_scanner*
-  get_scanner()
-  {
-    static pci_device_scanner scanner;
-    return &scanner;
-  }
-
-  void
-  rescan()
-  {
-    std::lock_guard<std::mutex> l(lock);
-
-    if (is_in_use(user_list) || is_in_use(mgmt_list)) {
-      std::cout << "Device list is in use, can't rescan" << std::endl;
-      return;
-    }
-
-    user_list.clear();
-    mgmt_list.clear();
-
-    rescan_nolock(MGMT_DRV_V1);
-    rescan_nolock(USER_DRV_V1);
-    rescan_nolock(MGMT_DRV_V2);
-    rescan_nolock(USER_DRV_V2);
-  }
-
-  size_t
-  get_num_ready(bool is_user)
-  {
-    std::lock_guard<std::mutex> l(lock);
-    return is_user ? num_user_ready : num_mgmt_ready;
-  }
-
-  size_t
-  get_num_total(bool is_user)
-  {
-    std::lock_guard<std::mutex> l(lock);
-    return is_user ? user_list.size() : mgmt_list.size();
-  }
-
-  const std::shared_ptr<pci_device>
-  get_dev(unsigned index,bool user)
-  {
-    std::lock_guard<std::mutex> l(lock);
-    auto list = user ? &user_list : &mgmt_list;
-    if (index >= list->size())
-      return nullptr;
-    return (*list)[index];
-  }
-
-private:
-  void rescan_nolock(const std::string driver)
-  {
-    const std::string drvpath = sysfs::drv_root + driver;
-    if(!bfs::exists(drvpath))
-      return;
-
-    // Gather all sysfs directory and sort
-    std::vector<bfs::path> vec{bfs::directory_iterator(drvpath), bfs::directory_iterator()};
-    std::sort(vec.begin(), vec.end());
-
-    for (auto& path : vec) {
-      std::shared_ptr<pci_device> pf;
-      if (!is_drv_v2(driver))
-        pf = std::make_shared<pci_device>(driver, path.filename().string());
-      else
-        pf = std::make_shared<pci_device_v2>(driver, path.filename().string());
-      if(!pf || pf->domain == INVALID_ID)
-        continue;
-
-      // In docker, all host sysfs nodes are available. So, we need to check
-      // devnode to make sure the device is really assigned to docker. For
-      // xoclv2 driver, we only have flash devnode when running golden image.
-      if (!bfs::exists(pf->get_subdev_path("", -1)) &&
-        !bfs::exists(pf->get_subdev_path("flash", -1)))
-        continue;
-
-      auto& list = pf->is_mgmt() ? mgmt_list : user_list;
-      auto& num_ready = pf->is_mgmt() ? num_mgmt_ready : num_user_ready;
-      if (pf->is_ready) {
-        list.insert(list.begin(), pf);
-        ++num_ready;
-      } else {
-        list.push_back(pf);
-      }
-    }
-  }
-
-  pci_device_scanner()
-  {
-    rescan();
-  }
-
-  std::mutex lock;
-
-  // Full list of discovered user devices. Index 0 ~ (num_user_ready - 1) are
-  // boards ready for use. The rest, if any, are not ready, according to what
-  // is indicated by driver's "ready" sysfs entry. The applications only see
-  // ready-for-use boards since xclProbe returns num_user_ready, not the size
-  // of the full list.
-  std::vector<std::shared_ptr<pci_device>> user_list;
-  size_t num_user_ready;
-
-  // Full list of discovered mgmt devices. Index 0 ~ (num_mgmt_ready - 1) are
-  // boards ready for use. The rest, if any, are not ready, according to what
-  // is indicated by driver's "ready" sysfs entry. Application does not see
-  // mgmt devices.
-  std::vector<std::shared_ptr<pci_device>> mgmt_list;
-  size_t num_mgmt_ready;
-
-};
-
-void
-rescan(void)
-{
-  pci_device_scanner::get_scanner()->rescan();
-}
-
-size_t
-get_dev_ready(bool user)
-{
-  return pci_device_scanner::get_scanner()->get_num_ready(user);
-}
-
-size_t
-get_dev_total(bool user)
-{
-  return pci_device_scanner::get_scanner()->get_num_total(user);
-}
-
-std::shared_ptr<pci_device>
-get_dev(unsigned index, bool user)
-{
-  return pci_device_scanner::get_scanner()->get_dev(index, user);
 }
 
 int
@@ -1184,7 +802,7 @@ get_runtime_active_kids(std::string &pci_bridge_path)
 int
 shutdown(std::shared_ptr<pci_device> mgmt_dev, bool remove_user, bool remove_mgmt)
 {
-  if (!mgmt_dev->is_mgmt())
+  if (!mgmt_dev->is_mgmt)
     return -EINVAL;
 
   auto udev = mgmt_dev->lookup_peer_dev();
@@ -1304,7 +922,7 @@ check_p2p_config(const std::shared_ptr<pci_device>& dev, std::string &err)
   std::string errmsg;
   int ret = P2P_CONFIG_DISABLED;
 
-  if (dev->is_mgmt()) {
+  if (dev->is_mgmt) {
     return -EINVAL;
   }
   err.clear();
@@ -1384,7 +1002,7 @@ operator<<(std::ostream& stream, const std::shared_ptr<pcidev::pci_device>& dev)
   if (ts != 0)
     stream << "(ID=0x" << std::hex << ts << ")";
 
-  if (dev->is_mgmt())
+  if (dev->is_mgmt)
     stream << " mgmt";
   else
     stream << " user";

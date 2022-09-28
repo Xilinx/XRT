@@ -22,7 +22,7 @@
 #include "xclhal2.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
-#include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/pcidev.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "../common.h"
 #include "../mpd_plugin.h"

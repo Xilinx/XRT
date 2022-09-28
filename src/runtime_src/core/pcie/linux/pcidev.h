@@ -14,8 +14,8 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XCL_SCAN_H_
-#define _XCL_SCAN_H_
+#ifndef _XCL_PCIDEV_H_
+#define _XCL_PCIDEV_H_
 
 #include <string>
 #include <vector>
@@ -26,6 +26,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <mutex>
+#include "pcidrv.h"
+#include "device_linux.h"
 
 // Supported vendors
 #define XILINX_ID       0x10ee
@@ -64,9 +66,14 @@ struct fdt_header {
     uint32_t size_dt_struct;
 };
 
+// Forward declaration
+namespace pcidrv {
+class pci_driver;
+};
+
 namespace pcidev {
 
-// One PCIE function on FPGA board
+// One PCIE function on FPGA or AIE device
 class pci_device
 {
 public:
@@ -80,19 +87,14 @@ public:
   uint16_t bus =              INVALID_ID;
   uint16_t dev =              INVALID_ID;
   uint16_t func =             INVALID_ID;
-  uint16_t vendor_id =        INVALID_ID;
-  uint16_t device_id =        INVALID_ID;
   uint32_t instance =         INVALID_ID;
   std::string sysfs_name =    ""; // dir name under /sys/bus/pci/devices
   int user_bar =              0;  // BAR mapped in by tools, default is BAR0
   size_t user_bar_size =      0;
-  bool is_mgmt() const
-  {
-      return mgmt;
-  }
+  bool is_mgmt =              false;
   bool is_ready =             false;
 
-  pci_device(const std::string& drv_name, const std::string& sysfs_name);
+  pci_device(const pcidrv::pci_driver* driver, const std::string& sysfs_name);
   virtual ~pci_device();
 
   virtual void
@@ -120,7 +122,7 @@ public:
       i = static_cast<T>(default_val); // default value
   }
 
-  void
+  virtual void
   sysfs_get_sensor(const std::string& subdev, const std::string& entry, uint32_t& i)
   {
     std::string err;
@@ -148,23 +150,28 @@ public:
 
   virtual int open(const std::string& subdev, int flag);
   virtual int open(const std::string& subdev, uint32_t idx, int flag);
-  void close(int devhdl);
-  int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr);
-  int poll(int devhdl, short events, int timeoutMilliSec);
+  virtual void close(int devhdl);
+  virtual int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr);
+  virtual int poll(int devhdl, short events, int timeoutMilliSec);
   virtual void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
   virtual int munmap(int devhdl, void* addr, size_t len);
-  int flock(int devhdl, int op);
-  int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
-  std::shared_ptr<pcidev::pci_device> lookup_peer_dev();
+  virtual int flock(int devhdl, int op);
+  virtual int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
+  virtual std::shared_ptr<pcidev::pci_device> lookup_peer_dev();
+  
+  virtual
+  std::shared_ptr<xrt_core::device>
+  create_device(xrt_core::device::handle_type handle, xrt_core::device::id_type id) const
+  {
+    return std::shared_ptr<xrt_core::device_linux>(new xrt_core::device_linux(handle, id, !is_mgmt));
+  }
 
 private:
   int map_usr_bar(void);
   std::mutex lock;
   char *user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
-  bool mgmt = false;
 };
 
-void rescan(void);
 size_t get_dev_total(bool user = true);
 size_t get_dev_ready(bool user = true);
 std::shared_ptr<pci_device> get_dev(unsigned index, bool user = true);

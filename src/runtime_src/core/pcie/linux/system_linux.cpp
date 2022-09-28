@@ -5,10 +5,13 @@
 #include "device_linux.h"
 #include "core/common/query_requests.h"
 #include "gen/version.h"
-#include "scan.h"
+#include "pcidev.h"
+#include "pcidrv_xocl.h"
+#include "pcidrv_xclmgmt.h"
 
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/format.hpp>
+#include <boost/filesystem.hpp>
 
 #include <fstream>
 #include <memory>
@@ -36,24 +39,54 @@
 
 namespace {
 
+xrt_core::system_linux* singleton = nullptr;
+
 // Singleton registers with base class xrt_core::system
 // during static global initialization.  If statically
 // linking with libxrt_core, then explicit initialiation
 // is required
-static xrt_core::system_linux*
+inline xrt_core::system_linux&
 singleton_instance()
 {
-  static xrt_core::system_linux singleton;
-  return &singleton;
+  if (!singleton)
+    static xrt_core::system_linux s;
+
+  if (singleton)
+    return *singleton;
+
+  throw std::runtime_error("system_linux singleton is not initialized");
 }
 
 // Dynamic linking automatically constructs the singleton
+// Do not instantiate singleton, if SHIM is extended outside.
+#ifndef EXTERNAL_SHIM
 struct X
 {
   X() { singleton_instance(); }
 } x;
+#endif
 
 static boost::property_tree::ptree
+glibc_info()
+{
+  boost::property_tree::ptree _pt;
+  _pt.put("name", "glibc");
+  _pt.put("version", gnu_get_libc_version());
+  return _pt;
+}
+
+static std::string machine_info()
+{
+  std::string model("unknown");
+  std::ifstream stream(MACHINE_NODE_PATH);
+  if (stream.good()) {
+    std::getline(stream, model);
+    stream.close();
+  }
+  return model;
+}
+
+boost::property_tree::ptree
 driver_version(const std::string& driver)
 {
   boost::property_tree::ptree _pt;
@@ -78,45 +111,108 @@ driver_version(const std::string& driver)
   return _pt;
 }
 
-static boost::property_tree::ptree
-glibc_info()
-{
-  boost::property_tree::ptree _pt;
-  _pt.put("name", "glibc");
-  _pt.put("version", gnu_get_libc_version());
-  return _pt;
-}
-
-static std::string machine_info()
-{
-  std::string model("unknown");
-  std::ifstream stream(MACHINE_NODE_PATH);
-  if (stream.good()) {
-    std::getline(stream, model);
-    stream.close();
-  }
-  return model;
-}
-
-static std::vector<std::weak_ptr<xrt_core::device_linux>> mgmtpf_devices(16); // fix size
-static std::vector<std::weak_ptr<xrt_core::device_linux>> userpf_devices(16); // fix size
-static std::map<xrt_core::device::handle_type, std::weak_ptr<xrt_core::device_linux>> userpf_device_map;
-
 }
 
 namespace xrt_core {
 
+void
+system_linux::
+register_driver(std::shared_ptr<pcidrv::pci_driver> driver)
+{
+  driver_list.push_back(driver);
+
+  namespace bfs = boost::filesystem;
+  const std::string drv_root = "/sys/bus/pci/drivers/";
+  const std::string drvpath = drv_root + driver->name();
+
+  if(!bfs::exists(drvpath))
+    return;
+
+  // Gather all sysfs directory and sort
+  std::vector<bfs::path> vec{bfs::directory_iterator(drvpath), bfs::directory_iterator()};
+  std::sort(vec.begin(), vec.end());
+
+  for (auto& path : vec) {
+    try {
+      auto pf = driver->create_pcidev(path.filename().string());
+
+      // In docker, all host sysfs nodes are available. So, we need to check
+      // devnode to make sure the device is really assigned to docker.
+      if (!bfs::exists(pf->get_subdev_path("", -1)))
+        continue;
+
+      // Insert detected device into proper list.
+      if (pf->is_mgmt) {
+        if (pf->is_ready)
+          mgmt_ready_list.push_back(pf);
+        else
+          mgmt_nonready_list.push_back(pf);
+      } else {
+        if (pf->is_ready)
+          user_ready_list.push_back(pf);
+        else
+          user_nonready_list.push_back(pf);
+      }
+    } catch (std::invalid_argument const& ex) {
+      continue;
+    }
+  }
+}
+
+std::shared_ptr<pcidev::pci_device>
+system_linux::
+get_pcidev(unsigned index, bool is_user) const
+{
+  if (is_user) {
+    if (index < user_ready_list.size())
+      return user_ready_list[index];
+    return user_nonready_list[index - user_ready_list.size()];
+  }
+
+  if (index < mgmt_ready_list.size())
+    return mgmt_ready_list[index];
+  return mgmt_nonready_list[index - mgmt_ready_list.size()];
+}
+
+size_t
+system_linux::
+get_num_dev_ready(bool is_user) const
+{
+  if (is_user)
+    return user_ready_list.size();
+  return mgmt_ready_list.size();
+}
+
+size_t
+system_linux::
+get_num_dev_total(bool is_user) const
+{
+  if (is_user)
+    return user_ready_list.size() + user_nonready_list.size();
+  return mgmt_ready_list.size() + mgmt_nonready_list.size();
+}
+
+system_linux::
+system_linux()
+{
+  if (singleton)
+    throw std::runtime_error("More than one SHIM registered!");
+  singleton = this;
+
+  register_driver(std::make_shared<pcidrv::pci_driver_xocl>());
+  register_driver(std::make_shared<pcidrv::pci_driver_xclmgmt>());
+}
 
 void
 system_linux::
 get_xrt_info(boost::property_tree::ptree &pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
-  _ptDriverInfo.push_back( std::make_pair("", driver_version("xocl") ));
-  _ptDriverInfo.push_back( std::make_pair("", driver_version("xclmgmt") ));
+
+  for (auto drv : driver_list)
+    _ptDriverInfo.push_back(std::make_pair("", driver_version(drv->name())));
   pt.put_child("drivers", _ptDriverInfo);
 }
-
 
 void
 system_linux::
@@ -169,7 +265,7 @@ get_device_id(const std::string& bdf) const
     return system::get_device_id(bdf);
     
   unsigned int i = 0;
-  for (auto dev = pcidev::get_dev(i); dev; i++, dev = pcidev::get_dev(i)) {
+  for (auto dev = get_pcidev(i); dev; i++, dev = get_pcidev(i)) {
       // [dddd:bb:dd.f]
       auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->domain % dev->bus % dev->dev % dev->func);
       if (dev_bdf == bdf)
@@ -196,15 +292,8 @@ std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
 system_linux::
 get_bdf_info(device::id_type id, bool is_user) const
 {
-  auto pdev = pcidev::get_dev(id, is_user);
+  auto pdev = get_pcidev(id, is_user);
   return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
-}
-
-void
-system_linux::
-scan_devices(bool, bool) const
-{
-  std::cout << "TO-DO: scan_devices\n";
 }
 
 std::shared_ptr<device>
@@ -218,16 +307,16 @@ std::shared_ptr<device>
 system_linux::
 get_userpf_device(device::handle_type handle, device::id_type id) const
 {
-  // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<device_linux>(new device_linux(handle, id, true));
+  auto pdev = get_pcidev(id, true);
+  return pdev->create_device(handle, id);
 }
 
 std::shared_ptr<device>
 system_linux::
 get_mgmtpf_device(device::id_type id) const
 {
-  // deliberately not using std::make_shared (used with weak_ptr)
-  return std::shared_ptr<device_linux>(new device_linux(nullptr, id, false));
+  auto pdev = get_pcidev(id, false);
+  return pdev->create_device(nullptr, id);
 }
 
 void
@@ -279,3 +368,25 @@ get_device_id_from_bdf(const std::string& bdf)
 } // pcie_linux
 
 } // xrt_core
+
+namespace pcidev {
+
+size_t
+get_dev_ready(bool user)
+{
+  return singleton_instance().get_num_dev_ready(user);
+}
+
+size_t
+get_dev_total(bool user)
+{
+  return singleton_instance().get_num_dev_total(user);
+}
+
+std::shared_ptr<pci_device>
+get_dev(unsigned index, bool user)
+{
+  return singleton_instance().get_pcidev(index, user);
+}
+
+} // pcidev

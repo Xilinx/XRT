@@ -23,7 +23,7 @@
 #include "lib/xmalimits_lib.h"
 #include "ert.h"
 #include "core/common/config_reader.h"
-#include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/pcidev.h"
 #include "core/common/utils.h"
 #include "core/common/api/bo.h"
 #include "core/common/device.h"

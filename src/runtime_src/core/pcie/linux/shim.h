@@ -4,7 +4,7 @@
 #ifndef PCIE_LINUX_SHIM_H_
 #define PCIE_LINUX_SHIM_H_
 
-#include "scan.h"
+#include "pcidev.h"
 #include "xclhal2.h"
 
 #include "core/common/device.h"

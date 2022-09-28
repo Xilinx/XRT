@@ -4,6 +4,7 @@
 #ifndef PCIE_SYSTEM_LINUX_H
 #define PCIE_SYSTEM_LINUX_H
 
+#include "pcidev.h"
 #include "pcie/common/system_pcie.h"
 
 namespace xrt_core {
@@ -11,6 +12,8 @@ namespace xrt_core {
 class system_linux : public system_pcie
 {
 public:
+  system_linux();
+
   void
   get_xrt_info(boost::property_tree::ptree &pt);
 
@@ -25,9 +28,6 @@ public:
 
   std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
   get_bdf_info(device::id_type id, bool is_user) const;
-
-  void
-  scan_devices(bool verbose, bool json) const;
 
   std::shared_ptr<device>
   get_userpf_device(device::id_type id) const;
@@ -46,6 +46,32 @@ public:
   {
     return monitor_access_type::ioctl;
   }
+
+public:
+  virtual
+  std::shared_ptr<pcidev::pci_device>
+  get_pcidev(unsigned index, bool is_user = true) const;
+
+  virtual
+  size_t
+  get_num_dev_ready(bool is_user) const;
+
+  virtual
+  size_t
+  get_num_dev_total(bool is_user) const;
+
+protected:
+  void
+  register_driver(std::shared_ptr<pcidrv::pci_driver> driver);
+
+private:
+  std::vector<std::shared_ptr<pcidrv::pci_driver>> driver_list;
+
+  std::vector<std::shared_ptr<pcidev::pci_device>> user_ready_list;
+  std::vector<std::shared_ptr<pcidev::pci_device>> user_nonready_list;
+
+  std::vector<std::shared_ptr<pcidev::pci_device>> mgmt_ready_list;
+  std::vector<std::shared_ptr<pcidev::pci_device>> mgmt_nonready_list;
 };
 
 namespace pcie_linux {

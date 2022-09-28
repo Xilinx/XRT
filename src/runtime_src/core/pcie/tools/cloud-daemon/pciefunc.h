@@ -21,7 +21,7 @@
 
 #include <string>
 #include <mutex>
-#include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/pcidev.h"
 
 class pcieFunc {
 public:

@@ -5,7 +5,7 @@ add_subdirectory(plugin/xdp)
 add_library(core_pcielinux_objects OBJECT
   debug.cpp
   device_linux.cpp
-  scan.cpp
+  pcidev.cpp
   shim.cpp
   system_linux.cpp
   )

@@ -42,7 +42,7 @@
 #include "core/include/xdp/spc.h"
 
 #include "shim.h"
-#include "scan.h"
+#include "pcidev.h"
 #include "xclbin.h"
 #include "core/common/message.h"
 
