@@ -1,20 +1,13 @@
-/*
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2017-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ *
  * sysfs for the device attributes.
- *
- * Copyright (C) 2016-2017 Xilinx, Inc. All rights reserved.
- *
+ * 
  * Authors:
  *    Lizhi Hou <lizhih@xilinx.com>
  *    Umang Parekh <umang.parekh@xilinx.com>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
 #include <linux/hwmon.h>
