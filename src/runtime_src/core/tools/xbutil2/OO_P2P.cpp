@@ -301,7 +301,6 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   
@@ -312,6 +311,8 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
+
+  XBU::throw_if_not_ready(device);
 
   try {
     p2p(device.get(), action, XBU::getForce());

@@ -1792,6 +1792,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  XBU::throw_if_not_ready(device);
+
   // Collect all of the tests of interests
   std::vector<TestCollection *> testObjectsToRun;
 

@@ -1,5 +1,7 @@
-/*
+/**
+ * SPDX-License-Identifier: Apache-2.0
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -13,20 +15,21 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/pci.h>
-#include <linux/kernel.h>
 #include <linux/aer.h>
-#include <linux/version.h>
-#include <linux/module.h>
-#include <linux/pci.h>
 #include <linux/crc32c.h>
-#include <linux/random.h>
 #include <linux/iommu.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/pagemap.h>
-#include "../xocl_drv.h"
-#include "xocl_errors.h"
+#include <linux/pci.h>
+#include <linux/random.h>
+#include <linux/version.h>
+
 #include "common.h"
 #include "version.h"
+#include "xocl_errors.h"
+#include "../xocl_drv.h"
+
 
 #ifndef PCI_EXT_CAP_ID_REBAR
 #define PCI_EXT_CAP_ID_REBAR 0x15

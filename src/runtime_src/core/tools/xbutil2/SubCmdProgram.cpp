@@ -82,6 +82,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  XBU::throw_if_not_ready(device);
+
   // -- process "program" option -----------------------------------------------
   if (!xclbin.empty()) {
     std::ifstream stream(xclbin, std::ios::binary);

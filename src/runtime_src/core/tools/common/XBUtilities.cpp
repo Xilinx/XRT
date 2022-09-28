@@ -326,6 +326,15 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 }
 
+  void 
+  XBUtilities::throw_if_not_ready(const std::shared_ptr<xrt_core::device>& device)
+  {
+    const auto ready_msgs = xrt_core::device_query<xrt_core::query::is_ready_msg>(device);
+    const auto is_ready = xrt_core::query::is_ready_msg::is_ready(ready_msgs);
+    if (!is_ready)
+      throw_cancel("Device is not ready");
+  }
+
   std::shared_ptr<xrt_core::device>
   XBUtilities::get_device ( const std::string &deviceBDF, bool in_user_domain)
   {
