@@ -141,7 +141,7 @@ class skd
     int create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const;
     int delete_softkernelfile() const;
     int create_softkernel(int *boh);
-    static int get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const;
+    int get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const;
     ffi_type* convert_to_ffitype(const xrt_core::xclbin::kernel_argument &arg) const;
 };
 

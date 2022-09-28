@@ -464,7 +464,7 @@ namespace xrt {
     xclSKReport(m_devhdl,m_cu_idx,XRT_SCU_STATE_CRASH);
   }
 
-  static int skd::get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const
+  int skd::get_return_offset(const std::vector<xrt_core::xclbin::kernel_argument> &args) const
   {
     // Calculate offset to write return code into
     // If the last argument is a global which means there will be 64-bit address and 64-bit size for total of 16 bytes
