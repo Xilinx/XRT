@@ -977,6 +977,7 @@ int xclmgmt_check_device_ready(struct xclmgmt_dev *lro)
 	/* 
 	 * Check for a negative error code. A positive value indicates a default boot
 	 * Zero indicates a non-default boot with no other errors
+	 * A missing device does not indicate failure as many cards do not have a VMR
 	 */
 	if (rc != -ENODEV) {
 		if (rc == 0) {
@@ -988,7 +989,8 @@ int xclmgmt_check_device_ready(struct xclmgmt_dev *lro)
 			return rc;
 		} else /* Change the default boot result to a zero to indicate no issues */
 			rc = 0;
-	}
+	} else /* A missing device does not indicate failure */
+		rc = 0;
 
 	return rc;
 }
