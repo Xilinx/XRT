@@ -376,8 +376,8 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_clear_pci_errors(lro);
 	store_pcie_link_info(lro);
 
-	/* Clear previous status of device status */
-	memset(&lro->status, 0, sizeof(struct xclmgmt_ready_status));
+	/* Clear previous state of device status */
+	memset(&lro->status, 0, sizeof(struct xclmgmt_device_status));
 	lro->status.ready = true;
 
 	err = xclmgmt_check_device_ready(lro);
@@ -815,7 +815,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
 	if (!dtc_header) {
 		ret = -ENOENT;
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Firmware does not contain PARTITION_METADATA %d\n", ret);
+		xclmgmt_set_device_status(lro, ret, "Firmware does not contain PARTITION_METADATA");
 		goto failed;
 	}
 
@@ -824,13 +824,13 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD,
 			bin_axlf->m_header.m_platformVBNV);
 	if (ret) {
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Invalid PARTITION_METADATA %d\n", ret);
+		xclmgmt_set_device_status(lro, ret, "Invalid PARTITION_METADATA");
 		goto failed;
 	}
 
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
 		/* Minimum set up for golden image. */
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Factory image detected. Performing minimum setup\n");
+		xclmgmt_set_device_status(lro, -EPERM, "Factory image detected. Performing minimum setup");
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_MB);
 		goto failed;
@@ -839,7 +839,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
 	if (!lro->core.blp_blob) {
 		ret = -ENOMEM;
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to allocate blp data region %d\n", ret);
+		xclmgmt_set_device_status(lro, ret, "Failed to allocate blp data region");
 		goto failed;
 	}
 	memcpy(lro->core.blp_blob, lro->core.fdt_blob,
@@ -849,7 +849,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to create sub devices %d\n", ret);
+		xclmgmt_set_device_status(lro, ret, "Failed to create sub devices");
 		goto failed;
 	}
 
@@ -858,7 +858,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		ret = xocl_icap_download_boot_firmware(lro);
 
 	if (ret) {
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Firmware ICAP download failed %d\n", ret);
+		xclmgmt_set_device_status(lro, ret, "Firmware ICAP download failed");
 		goto failed;
 	}
 
@@ -870,7 +870,6 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 
 failed:
-	mgmt_info(lro, "%s", lro->status.msg);
 	vfree(fw_buf);
 	mutex_unlock(&lro->busy_mutex);
 
@@ -967,7 +966,7 @@ done:
 void xclmgmt_set_device_status(struct xclmgmt_dev *lro, int ret, const char* msg)
 {
 	snprintf(lro->status.msg, sizeof(lro->status.msg), "%s - %d", msg, ret);
-	xocl_err(&lro->pci_dev->dev, "%s", lro->status.msg);
+	mgmt_err(lro, "%s", lro->status.msg);
 }
 
 int xclmgmt_check_device_ready(struct xclmgmt_dev *lro)

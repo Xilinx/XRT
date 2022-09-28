@@ -1417,10 +1417,11 @@ static void xclmgmt_work_cb(struct work_struct *work)
  */
 static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
-	int rc = 0, i;
+	int rc = 0;
+	int i = 0;
 	struct xclmgmt_dev *lro = NULL;
-	struct xocl_board_private *dev_info;
-	char wq_name[15];
+	struct xocl_board_private *dev_info = NULL;
+	char wq_name[15] = {0};
 	bool is_device_ready = true;
 
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
@@ -1566,6 +1567,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	xocl_hwmon_sdm_get_sensors_list(lro, true);
 	xocl_drvinst_set_offline(lro, false);
+
 	lro->status.ready = is_device_ready;
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, lro->status.ready);

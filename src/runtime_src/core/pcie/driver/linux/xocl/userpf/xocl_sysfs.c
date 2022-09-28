@@ -694,7 +694,7 @@ static DEVICE_ATTR_RO(ready);
 static ssize_t ready_msg_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-	char msg[256];
+	char msg[256] = {0};
 	bool device_ready = false;
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	uint64_t ch_state = 0, daemon_state = 0;
