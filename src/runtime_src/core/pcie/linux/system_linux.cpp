@@ -66,26 +66,6 @@ struct X
 } x;
 #endif
 
-static boost::property_tree::ptree
-glibc_info()
-{
-  boost::property_tree::ptree _pt;
-  _pt.put("name", "glibc");
-  _pt.put("version", gnu_get_libc_version());
-  return _pt;
-}
-
-static std::string machine_info()
-{
-  std::string model("unknown");
-  std::ifstream stream(MACHINE_NODE_PATH);
-  if (stream.good()) {
-    std::getline(stream, model);
-    stream.close();
-  }
-  return model;
-}
-
 boost::property_tree::ptree
 driver_version(const std::string& driver)
 {
@@ -109,6 +89,26 @@ driver_version(const std::string& driver)
   _pt.put("version", ver);
   _pt.put("hash", hash);
   return _pt;
+}
+
+static boost::property_tree::ptree
+glibc_info()
+{
+  boost::property_tree::ptree _pt;
+  _pt.put("name", "glibc");
+  _pt.put("version", gnu_get_libc_version());
+  return _pt;
+}
+
+static std::string machine_info()
+{
+  std::string model("unknown");
+  std::ifstream stream(MACHINE_NODE_PATH);
+  if (stream.good()) {
+    std::getline(stream, model);
+    stream.close();
+  }
+  return model;
 }
 
 }
