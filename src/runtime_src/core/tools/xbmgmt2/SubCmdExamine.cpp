@@ -76,7 +76,7 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
   m_commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
-    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format)->implicit_value("json"), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
@@ -116,10 +116,12 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   if (!m_format.empty() && m_output.empty())
     throw xrt_core::error("Please specify an output file to redirect the json to");
 
+  const auto validated_format = m_format.empty() ? "json" : m_format;
+
   // Output Format
-  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(m_format).schemaVersion;
+  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(validated_format).schemaVersion;
   if (schemaVersion == Report::SchemaVersion::unknown) 
-    throw xrt_core::error((boost::format("Unknown output format: '%s'") % m_format).str());
+    throw xrt_core::error((boost::format("Unknown output format: '%s'") % validated_format).str());
 
   // Output file
   if (!m_output.empty() && boost::filesystem::exists(m_output) && !XBU::getForce()) 
