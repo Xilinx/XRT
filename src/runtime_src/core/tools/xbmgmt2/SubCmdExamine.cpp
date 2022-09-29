@@ -99,7 +99,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // Determine report leveld
   std::vector<std::string> reportsToRun(m_reportNames);
-  if (reportsToRun.empty()) {
+  if (m_reportNames.empty()) {
     if (m_device.empty())
       reportsToRun.push_back("host");
     else

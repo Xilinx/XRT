@@ -75,10 +75,18 @@ namespace po = boost::program_options;
   };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
+static const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'all' option*/);
+static const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 
 SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("examine",
              "Status of the system and device")
+    , m_device("")
+    , m_reportNames()
+    , m_elementsFilter()
+    , m_format("")
+    , m_output("")
+    , m_help(false)
 {
   const std::string longDescription = "This command will 'examine' the state of the system/device and will"
                                       " generate a report of interest in a text or JSON format.";
@@ -88,6 +96,18 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
   setIsDefaultDevValid(false);
+
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.\n")
+    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
+    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+
+  m_hiddenOptions.add_options()
+    ("element,e", boost::program_options::value<decltype(m_elementsFilter)>(&m_elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
+  ;
 }
 
 void
@@ -95,77 +115,50 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: examine");
 
-  // -- Build up the report & format options
-  const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'all' option*/);
-  const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
-
-  // Option Variables
-  std::string sDevice;                 
-  std::vector<std::string> reportNames;    // Default set of report names are determined if there is a device or not
-  std::vector<std::string> elementsFilter;
-  std::string sFormat;                     // Don't define default output format.  Will be defined later.
-  std::string sOutput;
-  bool bHelp = false;
-
-  // -- Retrieve and parse the subcommand options -----------------------------
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(sDevice)>(&sDevice), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.\n")
-    ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
-    ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
-    ("help", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
-  hiddenOptions.add_options()
-    ("element,e", boost::program_options::value<decltype(elementsFilter)>(&elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
-  ;
-
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options);
 
   // Check to see if help was requested
-  if (bHelp) {
-    printHelp(commonOptions, hiddenOptions);
+  if (m_help) {
+    printHelp();
     return;
   }
 
   // -- Determine default values --
   
   // Report default value
-  if (reportNames.empty()) {
-    if (sDevice.empty())
-      reportNames.push_back("host");
+  std::vector<std::string> reportsToRun(m_reportNames);
+  if (m_reportNames.empty()) {
+    if (m_device.empty())
+      reportsToRun.push_back("host");
     else {
-      reportNames.push_back("platform");
-      reportNames.push_back("dynamic-regions");
+      reportsToRun.push_back("platform");
+      reportsToRun.push_back("dynamic-regions");
     }
   }
 
   // DRC check
   // When  is specified, make sure an accompanying output file is also specified
-  if (!sFormat.empty() && sOutput.empty()) {
+  if (!m_format.empty() && m_output.empty()) {
     std::cerr << "ERROR: Please specify an output file to redirect the json to" << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  if (sFormat.empty())
-    sFormat = "json";
+  const auto validated_format = m_format.empty() ? "json" : m_format;
 
   // DRC: Examine the output format
-  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
+  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(validated_format).schemaVersion;
   if (schemaVersion == Report::SchemaVersion::unknown) {
-    std::cerr << boost::format("ERROR: Unsupported --format option value '%s'") % sFormat << std::endl
+    std::cerr << boost::format("ERROR: Unsupported --format option value '%s'") % validated_format << std::endl
               << boost::format("       Supported values can be found in --format's help section below.") << std::endl;
-    printHelp(commonOptions, hiddenOptions);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // DRC: Output file
-  if (!sOutput.empty() && boost::filesystem::exists(sOutput) && !XBU::getForce()) {
-    std::cerr << boost::format("ERROR: The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it.") % sOutput << std::endl;
+  if (!m_output.empty() && boost::filesystem::exists(m_output) && !XBU::getForce()) {
+    std::cerr << boost::format("ERROR: The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it.") % m_output << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -174,14 +167,14 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   bool is_report_output_valid = true;
   // Collect the reports to be processed
-  XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
+  XBU::collect_and_validate_reports(fullReportCollection, reportsToRun, reportsToProcess);
 
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   
   try {
-    if(reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)
-      device = XBU::get_device(boost::algorithm::to_lower_copy(sDevice), true /*inUserDomain*/);
+    if(reportsToProcess.size() > 1 || reportsToRun.front().compare("host") != 0)
+      device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -222,24 +215,24 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // Create the report
   std::ostringstream oSchemaOutput;
   try {
-    XBU::produce_reports(device, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+    XBU::produce_reports(device, reportsToProcess, schemaVersion, m_elementsFilter, std::cout, oSchemaOutput);
   } catch (const std::exception&) {
     // Exception is thrown at the end of this function to allow for report writing
     is_report_output_valid = false;
   }
 
   // -- Write output file ----------------------------------------------
-  if (!sOutput.empty()) {
+  if (!m_output.empty()) {
     std::ofstream fOutput;
-    fOutput.open(sOutput, std::ios::out | std::ios::binary);
+    fOutput.open(m_output, std::ios::out | std::ios::binary);
     if (!fOutput.is_open()) {
-      std::cerr << boost::format("Unable to open the file '%s' for writing.") % sOutput << std::endl;
+      std::cerr << boost::format("Unable to open the file '%s' for writing.") % m_output << std::endl;
       throw xrt_core::error(std::errc::operation_canceled);
     }
 
     fOutput << oSchemaOutput.str();
 
-    std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
+    std::cout << boost::format("Successfully wrote the %s file: %s") % m_format % m_output << std::endl;
   }
 
   if (!is_report_output_valid)

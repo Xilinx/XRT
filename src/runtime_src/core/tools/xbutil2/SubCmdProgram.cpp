@@ -31,6 +31,9 @@ namespace po = boost::program_options;
 SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("program", 
              "Download the acceleration program to a given device")
+    , m_device("")
+    , m_xclbin("")
+    , m_help(false)
 {
   const std::string longDescription = "Programs the given acceleration image into the device's shell.";
   setLongDescription(longDescription);
@@ -38,44 +41,36 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("user,u", boost::program_options::value<std::string>(&m_xclbin), "The name (and path) of the xclbin to be loaded")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
 }
 
 void
 SubCmdProgram::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: program");
-  // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device_str;
-  std::string xclbin;
-  bool help = false;
-
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("user,u", boost::program_options::value<std::string>(&xclbin), "The name (and path) of the xclbin to be loaded")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
-
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options);
 
   // Check to see if help was requested or no command was found
-  if (help) {
-    printHelp(commonOptions, hiddenOptions);
+  if (m_help) {
+    printHelp();
     return;
   }
 
   // -- Now process the subcommand --------------------------------------------
-  XBU::verbose(boost::str(boost::format("  XclBin: %s") % xclbin));
+  XBU::verbose(boost::str(boost::format("  XclBin: %s") % m_xclbin));
 
   // -- process "device" option -----------------------------------------------
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), true /*inUserDomain*/);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -83,10 +78,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // -- process "program" option -----------------------------------------------
-  if (!xclbin.empty()) {
-    std::ifstream stream(xclbin, std::ios::binary);
+  if (!m_xclbin.empty()) {
+    std::ifstream stream(m_xclbin, std::ios::binary);
     if (!stream)
-      throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % xclbin));
+      throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % m_xclbin));
 
     stream.seekg(0,stream.end);
     size_t size = stream.tellg();
@@ -109,6 +104,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   std::cout << "\nERROR: Missing program operation. No action taken.\n\n";
-  printHelp(commonOptions, hiddenOptions);
+  printHelp();
   throw xrt_core::error(std::errc::operation_canceled);
 }

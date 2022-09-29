@@ -72,7 +72,8 @@ public:
   void printHelp( const boost::program_options::options_description & _optionDescription,
                   const boost::program_options::options_description & _optionHidden,
                   const SubOptionOptions & _subOptionOptions) const;
-  void printHelp() const;
+  void printHelp( bool removeLongOptDashes = false,
+                  const std::string& customHelpSection = "") const;
   std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
                            const SubCmdOptions& _options,
                            const boost::program_options::options_description& common_options,

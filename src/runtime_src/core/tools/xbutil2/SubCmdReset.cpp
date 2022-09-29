@@ -52,19 +52,7 @@ reset_device(xrt_core::device* dev, xrt_core::query::reset_type reset)
     % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
 }
 
-SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("reset", 
-             "Resets the given device")
-{
-  const std::string longDescription = "Resets the given device.";
-  setLongDescription(longDescription);
-  setExampleSyntax("");
-  setIsHidden(_isHidden);
-  setIsDeprecated(_isDepricated);
-  setIsPreliminary(_isPreliminary);
-}
-
-void
+static void
 supported(std::string resetType) {
   std::vector<std::string> vec { "user" };
   std::vector<std::string>::iterator it;
@@ -74,19 +62,23 @@ supported(std::string resetType) {
   }
 }
 
-void
-SubCmdReset::execute(const SubCmdOptions& _options) const
+SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("reset", 
+             "Resets the given device")
+    , m_device("")
+    , m_resetType("")
+    , m_help(false)
 {
-  XBU::verbose("SubCommand: reset");
-  // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device_str;
-  std::string resetType = "user";
-  bool help = false;
+  const std::string longDescription = "Resets the given device.";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
 
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("type,t", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("type,t", boost::program_options::value<decltype(m_resetType)>(&m_resetType)->notifier(supported)->implicit_value("user"), "The type of reset to perform. Types resets available:\n"
                                                                        "  user         - Hot reset (default)\n"
                                                                        /*"  aie          - Reset Aie array\n"*/
                                                                        /*"  kernel       - Kernel communication links\n"*/
@@ -94,18 +86,22 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
                                                                        /*"  clear-fabric - Clears the accleration fabric with the\n"*/
                                                                        /*"                 shells verify.xclbin image.\n"*/
                                                                        /*"  memory       - Clears the memory block."*/)
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
+}
 
-  po::options_description hiddenOptions("Hidden Options");
+void
+SubCmdReset::execute(const SubCmdOptions& _options) const
+{
+  XBU::verbose("SubCommand: reset");
 
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options);
 
   // Check to see if help was requested or no command was found
-  if (help) {
-    printHelp(commonOptions, hiddenOptions);
+  if (m_help) {
+    printHelp();
     return;
   }
 
@@ -113,14 +109,14 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), true /*inUserDomain*/);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  xrt_core::query::reset_type type = XBU::str_to_reset_obj(resetType);
+  xrt_core::query::reset_type type = XBU::str_to_reset_obj(m_resetType);
   pretty_print_action_list(device.get(), type);
 
   // Ask user for permission
