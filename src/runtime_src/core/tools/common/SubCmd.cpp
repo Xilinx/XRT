@@ -114,10 +114,6 @@ SubCmd::conflictingOptions( const boost::program_options::variables_map& _vm,
 void
 SubCmd::addSubOption(std::shared_ptr<OptionOptions> option)
 {
-  if (option->isHidden()) 
-    m_hiddenOptions.add_options()(option->optionNameString().c_str(), option->description().c_str());
-  else
-    m_commonOptions.add_options()(option->optionNameString().c_str(), option->description().c_str());
   option->setExecutable(getExecutableName());
   option->setCommand(getName());
   m_subOptionOptions.emplace_back(option);

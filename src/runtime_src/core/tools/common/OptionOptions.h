@@ -30,7 +30,7 @@ class OptionOptions {
   virtual void execute(const SubCmdOptions &_options) const = 0;
 
  public:
-  const boost::program_options::options_description &option() const { return m_selfOption; };
+  const boost::shared_ptr<boost::program_options::option_description> &option() const { return m_selfOption.options()[0]; };
   const std::string &longName() const { return m_longName; };
   const std::string optionNameString() const { return m_shortName.empty() ? m_longName : m_longName + "," + m_shortName; };
   const std::string &description() const {return m_description; };

@@ -207,11 +207,15 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
   for (const auto & option : options) {
     const auto optionType = get_option_type(option, _pod);
     const auto optionString = create_option_string(optionType, option, removeLongOptDashes);
+    const auto is_buffer_empty = buffers[optionType].str().empty();
     // The short options have a bracket surrounding all options
-    if ((optionType == short_simple) && buffers[short_simple].str().empty())
-      buffers[short_simple] << " [-";
+    if ((optionType == short_simple) && is_buffer_empty)
+      buffers[optionType] << "[-";
+    // Add spaces only after the first character to simplify upper level formatting
+    else if((optionType != short_simple) && !is_buffer_empty)
+      buffers[optionType] << " ";
 
-    buffers[optionType] << boost::format(" %s") % optionString;
+    buffers[optionType] << boost::format("%s") % optionString;
   }
 
   // The short simple options have a bracket surrounding all options
@@ -220,8 +224,12 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
 
   std::stringstream outputBuffer;
   for (const auto& buffer : buffers) {
-    if (!buffer.str().empty())
+    if (!buffer.str().empty()) {
+      // Add spaces only after the first buffer to simplify upper level formatting
+      if (!outputBuffer.str().empty())
+        outputBuffer << " ";
       outputBuffer << buffer.str();
+    }
   }
 
   return outputBuffer.str();
@@ -514,31 +522,44 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   }
 
   // -- Usage
+  // Create option usage string before adding suboptions
+  // The suboptions are displayed seperately in the usage string from the normal options
+  const std::string usage = XBU::create_usage_string(_optionDescription, _positionalDescription, removeLongOptDashes);
+
+  boost::program_options::options_description allOptions(_optionDescription);
+  boost::program_options::options_description allHiddenOptions(_optionHidden);
+
   std::string usageSubCmds;
   for (const auto & subCmd : _subOptionOptions) {
+    // As we go through the sub options add them into the options description for the list display
+    if (subCmd->isHidden())
+      allHiddenOptions.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
+    else
+      allOptions.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
+
     if (subCmd->isHidden() && !XBU::getShowHidden()) 
       continue;
 
     if (!usageSubCmds.empty()) 
       usageSubCmds.append(" | ");
 
-    const auto& option = subCmd->option().options()[0];
+    const auto& option = subCmd->option();
     const auto optionType = get_option_type(option, boost::program_options::positional_options_description());
     const auto optionString = create_option_string(optionType, option, false);
     usageSubCmds.append(optionString);
   }
 
-  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [ %s ] [commandArgs]\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds;
+  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [ %s ] %s\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds % usage;
 
   // -- Options
   boost::program_options::positional_options_description emptyPOD;
-  report_option_help("OPTIONS", _optionDescription, emptyPOD, false);
+  report_option_help("OPTIONS", allOptions, emptyPOD, false);
 
   // -- Global Options
   report_option_help("GLOBAL OPTIONS", _globalOptions, emptyPOD, false);
 
   if (XBU::getShowHidden()) 
-    report_option_help("OPTIONS (Hidden)", _optionHidden, emptyPOD, false);
+    report_option_help("OPTIONS (Hidden)", allHiddenOptions, emptyPOD, false);
 
   // Extended help
   {

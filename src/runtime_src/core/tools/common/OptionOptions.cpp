@@ -38,7 +38,8 @@ OptionOptions::OptionOptions( const std::string & longName,
   , m_extendedHelp("")
   , m_defaultOptionValue(false)
 {
-  m_optionsDescription.add_options()(m_longName.c_str(), boost::program_options::bool_switch(&m_defaultOptionValue)->required(), m_description.c_str());
+  m_selfOption.add_options()(m_longName.c_str(), boost::program_options::bool_switch(&m_defaultOptionValue)->required(), m_description.c_str());
+  m_optionsDescription.add(m_selfOption);
 }
 
 OptionOptions::OptionOptions( const std::string & longName,
