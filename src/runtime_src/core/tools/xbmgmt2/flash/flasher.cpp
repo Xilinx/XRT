@@ -222,7 +222,7 @@ int Flasher::upgradeBMCFirmware(firmwareImage* bmc)
  * readback from flash and save in the file specified
  * only qspi_ps is supported currently
  */
-int Flasher::readBack(const std::string& output)
+void Flasher::readBack(const std::string& output)
 {
     E_FlasherType type = getFlashType("");
 
@@ -231,15 +231,13 @@ int Flasher::readBack(const std::string& output)
     case QSPIPS:
     {
         XQSPIPS_Flasher xqspi_ps(m_device);
-        return xqspi_ps.readBack(output);
+        xqspi_ps.readBack(output);
     }
     case SPI:
     case OSPIVERSAL:
-        std::cout << "ERROR: flash read back is not supported" << std::endl;
-	return false;
+        throw xrt_core::error(-ECANCELED,"Flash read back is not supported");
     default:
-        std::cout << "ERROR: flash type is not supported" << std::endl;
-	return false;
+	throw xrt_core::error(-EOPNOTSUPP,"Flash type is not supported");
     }
 }
 
