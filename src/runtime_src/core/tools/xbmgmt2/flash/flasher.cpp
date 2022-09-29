@@ -235,8 +235,8 @@ int Flasher::readBack(const std::string& output)
     }
     case SPI:
     case OSPIVERSAL:
-        std::cout << "ERROR: flash read back is not supported////" << std::endl;
-	return (-EOPNOTSUPP);
+        std::cout << "ERROR: flash read back is not supported" << std::endl;
+	return false;
     default:
         std::cout << "ERROR: flash type is not supported" << std::endl;
 	return false;

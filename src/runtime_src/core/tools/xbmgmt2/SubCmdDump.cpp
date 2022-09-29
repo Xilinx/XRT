@@ -39,7 +39,7 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
     return;
   }
   if(flasher.readBack(output)!=0)
-    throw xrt_core::error(std::errc::operation_canceled);
+    throw xrt_core::error(ret, "Operation Failed" );
 }
 
 static bool
