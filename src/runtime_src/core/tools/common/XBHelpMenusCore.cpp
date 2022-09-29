@@ -549,7 +549,10 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
     usageSubCmds.append(optionString);
   }
 
-  std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [ %s ] %s\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds % usage;
+  if (usageSubCmds.empty())
+    std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s %s\n" + fgc_reset) % _executableName % _subCommand % usage;
+  else
+    std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [ %s ] %s\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds % usage;
 
   // -- Options
   boost::program_options::positional_options_description emptyPOD;

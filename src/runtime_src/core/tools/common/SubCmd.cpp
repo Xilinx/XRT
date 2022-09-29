@@ -92,7 +92,7 @@ SubCmd::process_arguments( po::variables_map& vm,
         conflictingOptions(vm, suboptions[index1]->longName(), suboptions[index2]->longName());
     return options;
   } catch(boost::program_options::error& e) {
-    printHelp(common_options, hidden_options, suboptions);
+    printHelp();
     XBU::throw_cancel(boost::format("ERROR: %s\n") % e.what());
   }
   return std::vector<std::string>();
