@@ -359,13 +359,13 @@ namespace xrt {
 	  return -EINVAL;
       }
 
-      const std::filesystem::path path(SOFT_KERNEL_FILE_PATH);
+      const boost::filesystem::path path(SOFT_KERNEL_FILE_PATH);
       xrt_core::message::send(severity_level::debug, "SKD", path.string());
 
-      std::filesystem::create_directories(path);
+      boost::filesystem::create_directories(path);
 
       // Check if file already exists and is the same size
-      if(std::filesystem::exists(m_sk_path) && (std::filesystem::file_size(m_sk_path) == prop.size)) {
+      if(boost::filesystem::exists(m_sk_path) && (boost::filesystem::file_size(m_sk_path) == prop.size)) {
 	return 0;
       }
 
@@ -377,7 +377,7 @@ namespace xrt {
 	  return -errno;
       }
 
-      std::ofstream fptr(m_sk_path, std::ios::out | std::ios::binary);
+      std::ofstream fptr(m_sk_path.string(), std::ios::out | std::ios::binary);
       if (!fptr.is_open()) {
 	const auto errMsg = boost::format("Cannot create file: %s") % m_sk_path.string();
 	xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
@@ -408,7 +408,7 @@ namespace xrt {
    */
   int skd::delete_softkernelfile() const
   {
-    return std::filesystem::remove(m_sk_path);
+    return boost::filesystem::remove(m_sk_path);
   }
 
   // Convert argument to ffi_type 
