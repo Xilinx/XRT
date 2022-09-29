@@ -77,9 +77,26 @@ struct config
   }
 };
 
+static po::options_description loadConfigOptions("Load Config Options");
+static po::options_description configOptions("Config Options");
+static po::options_description configHiddenOptions("Hidden Config Options");
+
 SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("configure",
              "Advanced options for configuring a device")
+    , m_device("")
+    , m_path("")
+    , m_retention("")
+    , m_help(false)
+    , m_daemon(false)
+    , m_purge(false)
+    , m_host("")
+    , m_security("")
+    , m_clk_scale("")
+    , m_power_override("")
+    , m_temp_override("")
+    , m_cs_reset("")
+    , m_showx(false)
 {
   const std::string long_description = "Advanced options for configuring a device";
   setLongDescription(long_description);
@@ -87,6 +104,38 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+
+  // Options previously under the load config command
+  loadConfigOptions.add_options()
+    ("input", boost::program_options::value<decltype(m_path)>(&m_path),"INI file with the memory configuration")
+  ;
+
+  // Options previously under the config command
+  configOptions.add_options()
+    ("retention", boost::program_options::value<decltype(m_retention)>(&m_retention),"Enables / Disables memory retention.  Valid values are: [ENABLE | DISABLE]")
+  ;
+
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+  m_commonOptions.add(loadConfigOptions);
+  m_commonOptions.add(configOptions);
+
+  // Options previously hidden under the config command
+  configHiddenOptions.add_options()
+    ("daemon", boost::program_options::bool_switch(&m_daemon), "Update the device daemon configuration")
+    ("purge", boost::program_options::bool_switch(&m_purge), "Remove the daemon configuration file")
+    ("host", boost::program_options::value<decltype(m_host)>(&m_host), "IP or hostname for device peer")
+    ("security", boost::program_options::value<decltype(m_security)>(&m_security), "Update the security level for the device")
+    ("runtime_clk_scale", boost::program_options::value<decltype(m_clk_scale)>(&m_clk_scale), "Enable/disable the device runtime clock scaling")
+    ("cs_threshold_power_override", boost::program_options::value<decltype(m_power_override)>(&m_power_override), "Update the power threshold in watts")
+    ("cs_threshold_temp_override", boost::program_options::value<decltype(m_temp_override)>(&m_temp_override), "Update the temperature threshold in celsius")
+    ("cs_reset", boost::program_options::value<decltype(m_cs_reset)>(&m_cs_reset), "Reset all scaling options")
+    ("showx", boost::program_options::bool_switch(&m_showx), "Display the device configuration settings")
+  ;
+
+  m_hiddenOptions.add(configHiddenOptions);
 }
 
 static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path)
@@ -367,62 +416,11 @@ void
 SubCmdConfigure::execute(const SubCmdOptions& _options) const
 {
     XBU::verbose("SubCommand: configure");
-    // -- Retrieve and parse the subcommand options -----------------------------
-    // Common options
-    std::string device_str;
-    std::string path;
-    std::string retention;
-    bool help = false;
-    // Hidden options
-    bool daemon = false;
-    bool purge  = false;
-    std::string host;
-    std::string security;
-    std::string clk_scale;
-    std::string power_override;
-    std::string temp_override;
-    std::string cs_reset;
-    bool showx = false;
-
-    // Options previously under the load config command
-    po::options_description loadConfigOptions("Load Config Options");
-    loadConfigOptions.add_options()
-      ("input", boost::program_options::value<decltype(path)>(&path),"INI file with the memory configuration")
-    ;
-
-    // Options previously under the config command
-    po::options_description configOptions("Config Options");
-    configOptions.add_options()
-      ("retention", boost::program_options::value<decltype(retention)>(&retention),"Enables / Disables memory retention.  Valid values are: [ENABLE | DISABLE]")
-    ;
-
-    po::options_description commonOptions("Common Options");
-    commonOptions.add_options()
-        ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-        ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-    ;
-
-    commonOptions.add(loadConfigOptions);
-    commonOptions.add(configOptions);
-
-    // Hidden options previously under the config command
-    po::options_description configHiddenOptions("Hidden Options");
-    configHiddenOptions.add_options()
-        ("daemon", boost::program_options::bool_switch(&daemon), "Update the device daemon configuration")
-        ("purge", boost::program_options::bool_switch(&purge), "Remove the daemon configuration file")
-        ("host", boost::program_options::value<decltype(host)>(&host), "IP or hostname for device peer")
-        ("security", boost::program_options::value<decltype(security)>(&security), "Update the security level for the device")
-        ("runtime_clk_scale", boost::program_options::value<decltype(clk_scale)>(&clk_scale), "Enable/disable the device runtime clock scaling")
-        ("cs_threshold_power_override", boost::program_options::value<decltype(power_override)>(&power_override), "Update the power threshold in watts")
-        ("cs_threshold_temp_override", boost::program_options::value<decltype(temp_override)>(&temp_override), "Update the temperature threshold in celsius")
-        ("cs_reset", boost::program_options::value<decltype(cs_reset)>(&cs_reset), "Reset all scaling options")
-        ("showx", boost::program_options::bool_switch(&showx), "Display the device configuration settings")
-    ;
 
     // Parse sub-command ...
     po::variables_map vm;
 
-    process_arguments(vm, _options, commonOptions, configHiddenOptions);
+    process_arguments(vm, _options);
 
     // Ensure mutual exclusion amongst the load config and config options
     // TODO Once all of the config options are incorporated into the load config file
@@ -439,23 +437,23 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     // Check the options
     // -- process "help" option -----------------------------------------------
-    if (help) {
-        printHelp(commonOptions, configHiddenOptions);
+    if (m_help) {
+        printHelp();
         return;
     }
 
     // Non-device options
     // Remove the daemon config file
-    if (purge) {
+    if (m_purge) {
         XBU::verbose("Sub command: --purge");
         remove_daemon_config();
         return;
     }
 
     // Update daemon
-    if (daemon) {
+    if (m_daemon) {
         XBU::verbose("Sub command: --daemon");
-        update_daemon_config(host);
+        update_daemon_config(m_host);
         return;
     }
 
@@ -463,7 +461,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     std::shared_ptr<xrt_core::device> device;
 
     try {
-        device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), false /*inUserDomain*/);
+        device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
     } catch (const std::runtime_error& e) {
         // Catch only the exceptions that we have generated earlier
         std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -478,19 +476,19 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     // Load Config commands
     // -- process "input" option -----------------------------------------------
-    if (!path.empty()) {
-        if (!boost::filesystem::exists(path)) {
-            std::cerr << boost::format("ERROR: Input file does not exist: '%s'") % path << "\n\n";
+    if (!m_path.empty()) {
+        if (!boost::filesystem::exists(m_path)) {
+            std::cerr << boost::format("ERROR: Input file does not exist: '%s'") % m_path << "\n\n";
             throw xrt_core::error(std::errc::operation_canceled);
         }
 
-        if(boost::filesystem::extension(path).compare(".ini") != 0) {
-            std::cerr << boost::format("ERROR: Input file should be an INI file: '%s'") % path << "\n\n";
+        if(boost::filesystem::extension(m_path).compare(".ini") != 0) {
+            std::cerr << boost::format("ERROR: Input file should be an INI file: '%s'") % m_path << "\n\n";
             throw xrt_core::error(std::errc::operation_canceled);
         }
 
         try {
-            load_config(device, path);
+            load_config(device, m_path);
             std::cout << "Config has been successfully loaded" << std::endl;
             return;
         } catch (const std::runtime_error& e) {
@@ -502,9 +500,9 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     // Config commands
     // Option:showx
-    if (showx) {
+    if (m_showx) {
         XBU::verbose("Sub command: --showx");
-        if(daemon)
+        if(m_daemon)
             show_daemon_conf();
 
         show_device_conf(device.get());
@@ -515,34 +513,34 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     bool is_something_updated = false;
 
     // Update security
-    if (!security.empty())
-        is_something_updated = update_device_conf(device.get(), security, config_type::security);
+    if (!m_security.empty())
+        is_something_updated = update_device_conf(device.get(), m_security, config_type::security);
 
     // Clock scaling
-    if (!clk_scale.empty())
-        is_something_updated = update_device_conf(device.get(), clk_scale, config_type::clk_scaling);
+    if (!m_clk_scale.empty())
+        is_something_updated = update_device_conf(device.get(), m_clk_scale, config_type::clk_scaling);
     
     // Update threshold power override
-    if (!power_override.empty())
-        is_something_updated = update_device_conf(device.get(), power_override, config_type::threshold_power_override);
+    if (!m_power_override.empty())
+        is_something_updated = update_device_conf(device.get(), m_power_override, config_type::threshold_power_override);
 
     // Update threshold temp override
-    if (!temp_override.empty())
-        is_something_updated = update_device_conf(device.get(), temp_override, config_type::threshold_temp_override);
+    if (!m_temp_override.empty())
+        is_something_updated = update_device_conf(device.get(), m_temp_override, config_type::threshold_temp_override);
 
-    // cs_reset?? TODO needs better comment
-    if (!cs_reset.empty())
-        is_something_updated = update_device_conf(device.get(), cs_reset, config_type::reset);
+    // m_cs_reset?? TODO needs better comment
+    if (!m_cs_reset.empty())
+        is_something_updated = update_device_conf(device.get(), m_cs_reset, config_type::reset);
 
     // Enable/Disable Retention
-    if (!retention.empty()) {
+    if (!m_retention.empty()) {
         // Validate the given retention string
-        boost::algorithm::to_upper(retention);
-        bool enableRetention = boost::iequals(retention, "ENABLE");
-        bool disableRetention = boost::iequals(retention, "DISABLE");
+        const auto upper_retention = boost::algorithm::to_upper_copy(m_retention);
+        bool enableRetention = boost::iequals(upper_retention, "ENABLE");
+        bool disableRetention = boost::iequals(upper_retention, "DISABLE");
         if (!enableRetention && !disableRetention) {
-            std::cerr << "ERROR: Invalidate '--retention' option: " << retention << std::endl;
-            printHelp(commonOptions, configHiddenOptions);
+            std::cerr << "ERROR: Invalidate '--retention' option: " << m_retention << std::endl;
+            printHelp();
             throw xrt_core::error(std::errc::operation_canceled);
         }
 
@@ -553,7 +551,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     if (!is_something_updated) {
         std::cerr << "ERROR: Please specify a valid option to configure the device" << "\n\n";
-        printHelp(commonOptions, configHiddenOptions);
+        printHelp();
         throw xrt_core::error(std::errc::operation_canceled);
     }
 }
