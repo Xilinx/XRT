@@ -411,6 +411,8 @@ createAIEPartitionImage(const std::string& sectionIndexName,
 
   // TOPs
   aie_partitionHdr.operations_per_cycle = ptAIEPartition.get<uint32_t>("operations_per_cycle", 0);
+  aie_partitionHdr.inference_fingerprint = ptAIEPartition.get<uint64_t>("inference_fingerprint", 0);
+  aie_partitionHdr.pre_post_fingerprint = ptAIEPartition.get<uint64_t>("pre_post_fingerprint", 0);
 
   //  Process the nodes
   process_partition_info(ptAIEPartition, aie_partitionHdr.info, heap);
@@ -636,6 +638,8 @@ writeAIEPartitionImage(const char* pBuffer,
 
   // TOPs
   ptAiePartition.put("operations_per_cycle", (boost::format("%d") % pHdr->operations_per_cycle).str());
+  ptAiePartition.put("inference_fingerprint", (boost::format("%d") % pHdr->inference_fingerprint).str());
+  ptAiePartition.put("pre_post_fingerprint", (boost::format("%d") % pHdr->pre_post_fingerprint).str());
 
   // Partition info
   populate_partition_info(pBuffer, pHdr->info, ptAiePartition);
