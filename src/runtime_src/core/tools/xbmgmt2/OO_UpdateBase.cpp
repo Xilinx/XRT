@@ -197,6 +197,7 @@ update_versal_SC(std::shared_ptr<xrt_core::device> dev)
   catch (const xrt_core::query::sysfs_error& e) {
     done = true;
     progress_reporter.get()->finish(false, "Failed to update SC flash image.");
+    t.join();
     throw xrt_core::error(std::string("Error accessing sysfs entry : ") + e.what());
   }
 }
