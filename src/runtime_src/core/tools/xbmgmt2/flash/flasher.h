@@ -82,7 +82,7 @@ public:
     E_FlasherType getFlashType(std::string typeStr = "");
     int upgradeFirmware(E_FlasherType flash_type, firmwareImage* primary, firmwareImage* secondary, firmwareImage* stripped);
     int upgradeBMCFirmware(firmwareImage* bmc);
-    void readBack(const std::string& output);
+    int readBack(const std::string& output);
     bool isValid(void) { return m_device != nullptr; }
 
     std::string getQspiGolden();

@@ -38,7 +38,8 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
     xrt_core::error(boost::str(boost::format("%d is an invalid index") % _dev->get_device_id()));
     return;
   }
-  flasher.readBack(output);
+  if(flasher.readBack(output)!=0)
+    throw xrt_core::error(std::errc::operation_canceled);
 }
 
 static bool

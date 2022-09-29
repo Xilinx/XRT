@@ -45,7 +45,7 @@ public:
     unsigned int getFlashSize();
     void program(std::istream& binStream, unsigned base = 0);
     int verify(std::istream& binStream, unsigned base = 0);
-    void readBack(const std::string& output, unsigned base = 0);
+    int readBack(const std::string& output, unsigned base = 0);
     int revertToMFG(std::istream& binStream);
     int xclUpgradeFirmware(std::istream& binStream);
 
