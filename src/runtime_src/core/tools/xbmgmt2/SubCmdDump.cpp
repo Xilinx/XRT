@@ -113,6 +113,11 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
 SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("dump",
              "Dump out the contents of the specified option")
+    , m_device("")
+    , m_output("")
+    , m_flash(false)
+    , m_config(false)
+    , m_help(false)
 {
   const std::string longDescription = "Dump out the contents of the specified option.";
   setLongDescription(longDescription);
@@ -120,6 +125,14 @@ SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("config,c", boost::program_options::bool_switch(&m_config), "Dumps the output of system configuration, requires a .ini output file by -o option")
+    ("flash,f", boost::program_options::bool_switch(&m_flash), "Dumps the output of programmed system image, requires a .bin output file by -o option")
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
 }
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -129,30 +142,14 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: dump");
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device_str;
-  std::string output = "";
-  bool flash = false;
-  bool config = false;
-  bool help = false;
-
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration, requires a .ini output file by -o option")
-    ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image, requires a .bin output file by -o option")
-    ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
 
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options);
 
-  // Check to see if help was requested or no command was found
-  if (help)  {
-    printHelp(commonOptions, hiddenOptions);
+  // Check to see if m_help was requested or no command was found
+  if (m_help)  {
+    printHelp();
     return;
   }
 
@@ -161,14 +158,14 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   // -- process "device" option -----------------------------------------------
   XBU::verbose("Option: device");
-  for (auto & str : device_str)
+  for (auto & str : m_device)
     XBU::verbose(std::string(" ") + str);
 
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
 
   try {
-    device = XBU::get_device(device_str, false /*inUserDomain*/);
+    device = XBU::get_device(m_device, false /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -177,29 +174,29 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   // -- process "output" option -----------------------------------------------
   // Output file
-  XBU::verbose("Option: output: " + output);
+  XBU::verbose("Option: output: " + m_output);
 
-  if (output.empty()) {
+  if (m_output.empty()) {
     std::cerr << "ERROR: Please specify an output file using --output option" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-  if (!output.empty() && boost::filesystem::exists(output) && !XBU::getForce()) {
-    std::cerr << boost::format("Output file already exists: '%s'") % output << "\n\n";
+  if (!m_output.empty() && boost::filesystem::exists(m_output) && !XBU::getForce()) {
+    std::cerr << boost::format("Output file already exists: '%s'") % m_output << "\n\n";
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   //decide the contents of the dump file
-  if(flash) {
-    flash_dump(device, output);
+  if(m_flash) {
+    flash_dump(device, m_output);
     return;
   }
-  if (config) {
-    config_dump(device, output);
+  if (m_config) {
+    config_dump(device, m_output);
     return;
   }
 
   std::cerr << "ERROR: Please specify a valid option to determine the type of dump" << "\n\n";
-  printHelp(commonOptions, hiddenOptions);
+  printHelp();
   throw xrt_core::error(std::errc::operation_canceled);
 }
