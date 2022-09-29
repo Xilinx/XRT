@@ -103,7 +103,8 @@ SectionAIEPartition::subSectionExists(const std::string& /*sSubSectionName*/) co
 static const std::vector<std::pair<std::string, CDO_Type>> CTTypes = {
   { "UNKNOWN", CT_UNKNOWN },
   { "PRIMARY", CT_PRIMARY },
-  { "LITE", CT_LITE }
+  { "LITE", CT_LITE },
+  { "PRE_POST", CT_PREPOST }
 };
 
 static const std::string&

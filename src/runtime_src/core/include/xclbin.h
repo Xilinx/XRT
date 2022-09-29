@@ -530,7 +530,8 @@ extern "C" {
     enum CDO_Type {
         CT_UNKNOWN = 0,
         CT_PRIMARY = 1,
-        CT_LITE    = 2
+        CT_LITE    = 2,
+        CT_PREPOST = 3
     };
 
     struct cdo_group {
