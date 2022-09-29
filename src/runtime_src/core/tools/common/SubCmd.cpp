@@ -81,6 +81,9 @@ SubCmd::process_arguments( po::variables_map& vm,
   all_options.add(common_options);
   all_options.add(hidden_options);
 
+  for (const auto & subCmd : suboptions)
+      all_options.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
+
   try {
     po::command_line_parser parser(_options);
     const auto options = XBU::process_arguments(vm, parser, all_options, positionals, validate_arguments);
@@ -89,7 +92,7 @@ SubCmd::process_arguments( po::variables_map& vm,
         conflictingOptions(vm, suboptions[index1]->longName(), suboptions[index2]->longName());
     return options;
   } catch(boost::program_options::error& e) {
-    printHelp(common_options, hidden_options, suboptions);
+    printHelp();
     XBU::throw_cancel(boost::format("ERROR: %s\n") % e.what());
   }
   return std::vector<std::string>();
