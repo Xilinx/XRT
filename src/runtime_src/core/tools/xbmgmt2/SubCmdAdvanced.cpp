@@ -43,8 +43,8 @@ namespace po = boost::program_options;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("advanced", 
-             "Low level command operations")
+    : SubCmd("advanced", "Low level command operations")
+    , m_help(false)
 {
   const std::string longDescription = "Low level command operations.";
   setLongDescription(longDescription);
@@ -52,6 +52,12 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+
+  addSubOption(std::make_shared<OO_Hotplug>("hotplug"));
 }
 
 
@@ -60,65 +66,24 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: advanced");
 
-  // -- Common top level options ---
-  bool help = false;
-
-  po::options_description commonOptions("Common Options"); 
-  commonOptions.add_options()
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
-
-  // -- Define the supporting option options ----
-  SubOptionOptions subOptionOptions;
-  subOptionOptions.emplace_back(std::make_shared<OO_Hotplug>("hotplug"));
-
-  for (auto & subOO : subOptionOptions) {
-    if (subOO->isHidden()) 
-      hiddenOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
-    else
-      commonOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
-
-    subOO->setExecutable(getExecutableName());
-    subOO->setCommand(getName());
-  }
-
-  po::options_description allOptions("All Options");
-  allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
-
-  po::positional_options_description positionals;
-
   // =========== Process the options ========================================
 
   // 1) Process the common top level options 
   po::variables_map vm;
   // Used for the suboption arguments
-  auto topOptions = process_arguments(vm, _options, commonOptions, hiddenOptions, positionals, subOptionOptions, false);
+  auto topOptions = process_arguments(vm, _options, false);
 
-  // DRC check between suboptions
-  for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1)
-    for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2)
-      conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
-
-  // Find the subOption;
-  std::shared_ptr<OptionOptions> optionOption;
-  for (auto subOO : subOptionOptions) {
-    if (vm.count(subOO->longName().c_str()) != 0) {
-      optionOption = subOO;
-      break;
-    }
-  }
+  // Check for a suboption
+  auto optionOption = checkForSubOption(vm);
 
   // No suboption print help
   if (!optionOption) {
-    printHelp(commonOptions, hiddenOptions, subOptionOptions);
+    printHelp();
     return;
   }
 
   // 2) Process the top level options
-  if (help)
+  if (m_help)
     topOptions.push_back("--help");
 
   optionOption->setGlobalOptions(getGlobalOptions());

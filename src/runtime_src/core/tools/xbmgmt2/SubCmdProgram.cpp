@@ -33,12 +33,10 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-std::string device_str;
-bool help = false;
-
 SubCmdProgram::SubCmdProgram(const std::string& executable, bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("program",
-             "Update image(s) for a given device")
+    : SubCmd("program", "Update image(s) for a given device")
+    , m_device("")
+    , m_help(false)
 {
   const std::string longDescription = "Updates the image(s) for a given device.";
   setLongDescription(longDescription);
@@ -49,8 +47,8 @@ SubCmdProgram::SubCmdProgram(const std::string& executable, bool _isHidden, bool
   setExecutableName(executable);
 
   m_commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   addSubOption(std::make_shared<OO_UpdateBase>("base", "b"));
@@ -88,7 +86,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   }
 
   // Check to see if help was requested or no command was found
-  if (help) {
+  if (m_help) {
     printHelp();
     return;
   }

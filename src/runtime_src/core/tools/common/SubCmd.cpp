@@ -22,6 +22,7 @@
 #include <boost/format.hpp>
 
 #include "core/common/error.h"
+#include "XBUtilities.h"
 #include "XBUtilitiesCore.h"
 #include "XBHelpMenusCore.h"
 namespace XBU = XBUtilities;
@@ -82,12 +83,16 @@ SubCmd::process_arguments( po::variables_map& vm,
 
   try {
     po::command_line_parser parser(_options);
-    return XBU::process_arguments(vm, parser, all_options, positionals, validate_arguments);
+    const auto options = XBU::process_arguments(vm, parser, all_options, positionals, validate_arguments);
+    for (unsigned int index1 = 0; index1 < suboptions.size(); ++index1)
+      for (unsigned int index2 = index1 + 1; index2 < suboptions.size(); ++index2)
+        conflictingOptions(vm, suboptions[index1]->longName(), suboptions[index2]->longName());
+    return options;
   } catch(boost::program_options::error& e) {
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp(common_options, hidden_options, suboptions);
-    throw xrt_core::error(std::errc::operation_canceled);
+    XBU::throw_cancel(boost::format("ERROR: %s\n") % e.what());
   }
+  return std::vector<std::string>();
 }
 
 std::vector<std::string>
