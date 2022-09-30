@@ -45,29 +45,20 @@ SubCmd::SubCmd(const std::string & _name,
 }
 
 void
-SubCmd::printHelp( const boost::program_options::options_description & _optionDescription,
-                   const boost::program_options::options_description & _optionHidden,
-                   bool removeLongOptDashes,
-                   const std::string& customHelpSection) const
-{
-  boost::program_options::positional_options_description emptyPOD;
-  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, emptyPOD, m_globalOptions, removeLongOptDashes, customHelpSection);
-}
-
-void
-SubCmd::printHelp( const boost::program_options::options_description & _optionDescription,
-                   const boost::program_options::options_description & _optionHidden,
-                   const SubOptionOptions & _subOptionOptions) const
-{
-  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions, m_globalOptions);
-}
-
-void
-SubCmd::printHelp(bool removeLongOptDashes, 
+SubCmd::printHelp(bool removeLongOptDashes,
                   const std::string& customHelpSection) const
 {
-  std::cout << customHelpSection << removeLongOptDashes;
-  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, m_commonOptions, m_hiddenOptions, m_subOptionOptions, m_globalOptions);
+  XBUtilities::report_subcommand_help(m_executableName,
+                                      m_subCmdName,
+                                      m_longDescription,
+                                      m_exampleSyntax,
+                                      m_commonOptions,
+                                      m_hiddenOptions,
+                                      m_globalOptions,
+                                      m_positionals,
+                                      m_subOptionOptions,
+                                      removeLongOptDashes,
+                                      customHelpSection);
 }
 
 std::vector<std::string> 
@@ -106,7 +97,13 @@ SubCmd::process_arguments( boost::program_options::variables_map& vm,
                           const SubCmdOptions& _options,
                           bool validate_arguments) const
 {
-  return process_arguments(vm, _options, m_commonOptions, m_hiddenOptions, m_positionals, m_subOptionOptions, validate_arguments);
+  return process_arguments( vm,
+                            _options,
+                            m_commonOptions,
+                            m_hiddenOptions,
+                            m_positionals,
+                            m_subOptionOptions,
+                            validate_arguments);
 }
 
 void 

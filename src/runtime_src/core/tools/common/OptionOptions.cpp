@@ -66,9 +66,12 @@ OptionOptions::printHelp() const
 {
   XBU::report_subcommand_help( m_executable,
                                m_command,
-                               m_description, m_extendedHelp, 
-                               m_optionsDescription, m_optionsHidden, 
-                               m_positionalOptions, m_globalOptions);
+                               m_description,
+                               m_extendedHelp, 
+                               m_optionsDescription,
+                               m_optionsHidden,
+                               m_globalOptions,
+                               m_positionalOptions);
 }
 
 std::vector<std::string>

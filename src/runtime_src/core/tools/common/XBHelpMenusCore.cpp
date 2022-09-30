@@ -409,90 +409,17 @@ XBUtilities::report_option_help( const std::string & _groupName,
 }
 
 void 
-XBUtilities::report_subcommand_help( const std::string &_executableName,
-                                     const std::string &_subCommand,
-                                     const std::string &_description, 
-                                     const std::string &_extendedHelp,
-                                     const boost::program_options::options_description &_optionDescription,
-                                     const boost::program_options::options_description &_optionHidden,
-                                     const boost::program_options::positional_options_description & _positionalDescription,
-                                     const boost::program_options::options_description &_globalOptions,
-                                     bool removeLongOptDashes,
-                                     const std::string& customHelpSection)
-{
-  // Formatting color parameters
-  // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_poption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
-  const std::string fgc_poptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
-  const std::string fgc_usageBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-  const std::string fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
-  const std::string fgc_reset       = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
-
-  // -- Command description
-  {
-    static const std::string key = "DESCRIPTION: ";
-    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
-    boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
-    if ( !formattedString.empty() )
-      std::cout << fmtHeader % formattedString;
-  }
-
-  // -- Command usage
-  const std::string usage = XBU::create_usage_string(_optionDescription, _positionalDescription, removeLongOptDashes);
-  boost::format fmtUsage(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s %s\n" + fgc_reset);
-  std::cout << fmtUsage % _executableName % _subCommand % usage;
-  
-  // -- Add positional arguments
-  boost::format fmtOOSubPositional(fgc_poption + "  %-15s" + fgc_poptionBody + " - %s\n" + fgc_reset);
-  for (auto option : _optionDescription.options()) {
-    if ( !::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
-                          _positionalDescription))  {
-      continue;
-    }
-
-    std::string optionDisplayFormat = create_option_format_name(option.get(), false);
-    unsigned int optionDescTab = 33;
-    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth, false);
-
-    std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-    std::cout << fmtOOSubPositional % ("<" + option->long_name() + ">") % formattedString;
-  }
-
-
-  // -- Options
-  report_option_help("OPTIONS", _optionDescription, _positionalDescription, false, removeLongOptDashes);
-
-  // -- Custom Section
-  std::cout << customHelpSection << "\n";
-
-  // -- Global Options
-  report_option_help("GLOBAL OPTIONS", _globalOptions, _positionalDescription, false);
-
-  if (XBU::getShowHidden()) 
-    report_option_help("OPTIONS (Hidden)", _optionHidden, _positionalDescription, false);
-
-  // Extended help
-  {
-    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
-    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
-    if (!formattedString.empty()) 
-      std::cout << fmtExtHelp % formattedString;
-  }
-}
-
-void 
-XBUtilities::report_subcommand_help( const std::string &_executableName,
-                                     const std::string &_subCommand,
-                                     const std::string &_description, 
-                                     const std::string &_extendedHelp,
-                                     const boost::program_options::options_description &_optionDescription,
-                                     const boost::program_options::options_description &_optionHidden,
-                                     const SubCmd::SubOptionOptions & _subOptionOptions,
-                                     const boost::program_options::options_description &_globalOptions,
-                                     const boost::program_options::positional_options_description & _positionalDescription,
-                                     bool removeLongOptDashes)
+XBUtilities::report_subcommand_help(const std::string &_executableName,
+                                    const std::string &_subCommand,
+                                    const std::string &_description, 
+                                    const std::string &_extendedHelp,
+                                    const boost::program_options::options_description &_optionDescription,
+                                    const boost::program_options::options_description &_optionHidden,
+                                    const boost::program_options::options_description &_globalOptions,
+                                    const boost::program_options::positional_options_description & _positionalDescription,
+                                    const SubCmd::SubOptionOptions & _subOptionOptions,
+                                    bool removeLongOptDashes,
+                                    const std::string& customHelpSection)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -557,6 +484,9 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   // -- Options
   boost::program_options::positional_options_description emptyPOD;
   report_option_help("OPTIONS", allOptions, emptyPOD, false);
+
+  // -- Custom Section
+  std::cout << customHelpSection << "\n";
 
   // -- Global Options
   report_option_help("GLOBAL OPTIONS", _globalOptions, emptyPOD, false);
