@@ -21,6 +21,83 @@
 
 #include "xdp/profile/database/static_info/pl_constructs.h"
 
+// Anonymous namespace for local static helper functions
+namespace {
+
+  // This function will check if the spTag a particular port or argument
+  // is connected to belongs to a particular memory resource.  If the strings
+  // are an exact match, or if the memory resource is a range that the
+  // spTag is a part of, we return true.
+  static bool compare(const std::string& spTag, const std::string& memory)
+  {
+    if (spTag == memory)
+      return true;
+
+    // If it is not an exact match, check to see if there is a range
+    // specification and if the spTag falls in that range.  For example,
+    // PLRAM[2] should match PLRAM[0:2].
+
+    auto bracePosSpTag    = spTag.find("[");
+    auto endBracePosSpTag = spTag.find("]");
+    auto bracePosMem      = memory.find("[");
+    auto endBracePosMem   = memory.find("]");
+
+    // Both the spTag and memory resource must have braces in order
+    if (bracePosSpTag    == std::string::npos ||
+        bracePosMem      == std::string::npos ||
+        endBracePosSpTag == std::string::npos ||
+        endBracePosMem   == std::string::npos)
+      return false;
+
+    // First, make sure the memory type before the brace is the same
+    std::string spResource  = spTag.substr(0, bracePosSpTag);
+    std::string memResource = memory.substr(0, bracePosMem);
+
+    if (spResource != memResource)
+      return false;
+
+    // The two memory types are the same, so we need to check the range.
+    // We are assuming the spTag is a single location and the memory has
+    // the range.
+    std::string spRange = spTag.substr(bracePosSpTag + 1,
+                                       endBracePosSpTag - bracePosSpTag - 1);
+    std::string memRange = memory.substr(bracePosMem + 1,
+                                         endBracePosMem - bracePosMem - 1);
+
+    auto colonPos = memRange.find(":");
+    if (colonPos == std::string::npos)
+      return false;
+
+    int spBank = 0;
+    try {
+      spBank = std::stoi(spRange);
+    } catch (std::exception&) {
+      // If the spRange isn't actually a single integer, an exception
+      // will be thrown and we should just assume the spTag does not match
+      // the memory range
+      return false ;
+    }
+
+    std::string rangeStart = memRange.substr(0, colonPos);
+    std::string rangeEnd = memRange.substr(colonPos + 1);
+
+    int memRangeStart = 0;
+    int memRangeEnd = 0;
+    try {
+      memRangeStart = std::stoi(rangeStart);
+      memRangeEnd = std::stoi(rangeEnd);
+    } catch(std::exception&) {
+      // The start and/or end of the range aren't well formed integers.  Just
+      // return false then as we cannot compare the range.
+      return false;
+    }
+
+    // If the specified bank is in the range, return true
+    return (spBank >= memRangeStart) && (spBank <= memRangeEnd);
+  }
+
+} // end anonymous namespace
+
 namespace xdp {
 
   void Port::addMemoryConnection(Memory* mem)
@@ -37,7 +114,7 @@ namespace xdp {
     std::string argList = "";
     bool first = true;
     for (auto& arg : args) {
-      if (argToMemory[arg] && argToMemory[arg]->spTag == memoryName) {
+      if (argToMemory[arg] && compare(argToMemory[arg]->spTag, memoryName)) {
         if (!first)
           argList += "|";
         argList += arg;

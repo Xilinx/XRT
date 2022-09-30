@@ -44,8 +44,8 @@ namespace xrt {
     memcpy(xclbin_uuid,uuid,sizeof(xclbin_uuid));
 
     // Set sk_path according to sk_name
-    snprintf(sk_path, XRT_MAX_PATH_LENGTH, "%s%s%d", SOFT_KERNEL_FILE_PATH,
-	     sk_name,cu_idx);
+    snprintf(sk_path, XRT_MAX_PATH_LENGTH, "%s%s", SOFT_KERNEL_FILE_PATH,
+	     sk_name);
   }
 
   XCL_DRIVER_DLLESPEC
@@ -86,6 +86,14 @@ namespace xrt {
     }
     args = xrt_core::xclbin::get_kernel_arguments((char *)buf,prop.size,sk_name);
     num_args = args.size();
+    // Calculate offset to write return code into
+    // If the last argument is a global which means there will be 64-bit address and 64-bit size for total of 16 bytes
+    // Else the last argument size will be either 4-bytes or 8 bytes since arguments are 32-bit aligned
+    if(args[num_args-1].type == xrt_core::xclbin::kernel_argument::argtype::global)
+      return_offset = (args[num_args-1].offset+PS_KERNEL_REG_OFFSET+16)/4;
+    else
+      return_offset = (args[num_args-1].offset+PS_KERNEL_REG_OFFSET+((args[num_args-1].size>4)?8:4))/4;
+    syslog(LOG_INFO,"Return offset = %d\n",return_offset);
     syslog(LOG_INFO,"Num args = %d\n",num_args);
     munmap(buf, prop.size);
 
@@ -167,7 +175,7 @@ namespace xrt {
   XCL_DRIVER_DLLESPEC
   void
   skd::run() {
-    int32_t kernel_return = 0;
+    ffi_sarg kernel_return = 0;
     int ret = 0;
     void* ffi_arg_values[num_args];
     // Buffer Objects
@@ -185,7 +193,7 @@ namespace xrt {
 	break;
       }
 
-      syslog(LOG_INFO, "Got new kernel command!\n");
+      syslog(LOG_DEBUG, "Got new kernel command!\n");
 
       /* Reg file indicates the kernel should not be running. */
       if (!(args_from_host[0] & 0x1))
@@ -213,7 +221,7 @@ namespace xrt {
       }
 
       ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
-      args_from_host[1] = (uint32_t)kernel_return;
+      args_from_host[return_offset] = (kernel_return >= 0) ? static_cast<uint32_t>(kernel_return) : 255; // Exit status out of range if returning negative value
 
       // Unmap Buffers
       for(auto i:bo_list) {
@@ -301,26 +309,29 @@ namespace xrt {
     snprintf(path, XRT_MAX_PATH_LENGTH, "%s", SOFT_KERNEL_FILE_PATH);
 
     /* If not exist, create the path one by one. */
-    std::filesystem::create_directories(path);
+    if (!std::filesystem::exists(path))
+      std::filesystem::create_directories(path);
 
-    fptr = fopen(sk_path, "w+b");
-    if (fptr == NULL) {
-      syslog(LOG_ERR, "Cannot create file: %s\n", sk_path);
-      munmap(buf, prop.size);
-      return -1;
-    }
+    if (!std::filesystem::exists(sk_path)) {
+      fptr = fopen(sk_path, "w+b");
+      if (fptr == NULL) {
+	syslog(LOG_ERR, "Cannot create file: %s\n", sk_path);
+	munmap(buf, prop.size);
+	return -1;
+      }
 
-    /* copy the soft kernel to file */
-    if (fwrite(buf, prop.size, 1, fptr) != 1) {
-      syslog(LOG_ERR, "Fail to write to file %s.\n", sk_path);
+      /* copy the soft kernel to file */
+      if (fwrite(buf, prop.size, 1, fptr) != 1) {
+	syslog(LOG_ERR, "Fail to write to file %s.\n", sk_path);
+	fclose(fptr);
+	munmap(buf, prop.size);
+	return -1;
+      }
+      syslog(LOG_INFO,"File created at %s\n", sk_path);
+
       fclose(fptr);
       munmap(buf, prop.size);
-      return -1;
     }
-    syslog(LOG_INFO,"File created at %s\n", sk_path);
-
-    fclose(fptr);
-    munmap(buf, prop.size);
 
     return 0;
   }
@@ -330,7 +341,9 @@ namespace xrt {
    */
   int skd::deleteSoftKernelFile()
   {
-    return(remove(sk_path));
+      if (std::filesystem::exists(sk_path))
+	return std::filesystem::remove(sk_path);
+      return 0;
   }
 
   /* Convert argument to ffi_type */

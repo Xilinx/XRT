@@ -18,7 +18,9 @@
 #define XDP_SOURCE
 #include "core/include/xdp/am.h"
 #include "xdp/profile/device/am.h"
+#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/utility.h"
+
 #include <bitset>
 
 namespace xdp {
@@ -117,10 +119,10 @@ size_t AM::readCounter(xdp::CounterResults& counterResults)
         size += read(IP::AM::AXI_LITE::MIN_EXECUTION_CYCLES_UPPER, 4, &upper[2]);
         size += read(IP::AM::AXI_LITE::MAX_EXECUTION_CYCLES_UPPER, 4, &upper[3]);
 
-        counterResults.CuExecCount[s]     += (upper[0] << 32);
-        counterResults.CuExecCycles[s]    += (upper[1] << 32);
-        counterResults.CuMinExecCycles[s] += (upper[2] << 32);
-        counterResults.CuMaxExecCycles[s] += (upper[3] << 32);
+        counterResults.CuExecCount[s]     += (upper[0] << BITS_PER_WORD);
+        counterResults.CuExecCycles[s]    += (upper[1] << BITS_PER_WORD);
+        counterResults.CuMinExecCycles[s] += (upper[2] << BITS_PER_WORD);
+        counterResults.CuMaxExecCycles[s] += (upper[3] << BITS_PER_WORD);
 
 #if 0
         if(out_stream)
@@ -140,8 +142,8 @@ size_t AM::readCounter(xdp::CounterResults& counterResults)
             uint64_t upper[2] = {};
             size += read(IP::AM::AXI_LITE::BUSY_CYCLES_UPPER, 4, &upper[0]);
             size += read(IP::AM::AXI_LITE::MAX_PARALLEL_ITER_UPPER, 4, &upper[1]);
-            counterResults.CuBusyCycles[s]  += (upper[0] << 32);
-            counterResults.CuMaxParallelIter[s]  += (upper[1] << 32);
+            counterResults.CuBusyCycles[s]  += (upper[0] << BITS_PER_WORD);
+            counterResults.CuMaxParallelIter[s]  += (upper[1] << BITS_PER_WORD);
         }
     } else {
         counterResults.CuBusyCycles[s] = counterResults.CuExecCycles[s];

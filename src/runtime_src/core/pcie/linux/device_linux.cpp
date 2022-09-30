@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
 
@@ -29,21 +15,22 @@
 #include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
-#include "xrt.h"
 #include "scan.h"
+#include "xrt.h"
 
 #include <array>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
-#include <string>
 #include <poll.h>
+#include <string>
 #include <sys/syscall.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace {
 
@@ -76,7 +63,10 @@ get_render_value(const std::string& dir)
 inline pdev
 get_pcidev(const xrt_core::device* device)
 {
-  return pcidev::get_dev(device->get_device_id(), device->is_userpf());
+  auto pdev = pcidev::get_dev(device->get_device_id(), device->is_userpf());
+  if (!pdev)
+    throw xrt_core::error("Invalid device handle");
+  return pdev;
 }
 
 static std::vector<uint64_t>
@@ -448,6 +438,121 @@ struct hotplug_offline
       throw xrt_core::query::sysfs_error("Hotplug offline failed");
 
     return true;
+  }
+};
+
+struct clk_scaling_info
+{
+  using result_type = query::clk_scaling_info::result_type;
+  using data_type = query::clk_scaling_info::data_type;
+
+  static result_type
+  get_legacy_clk_scaling_stat(const xrt_core::device* device)
+  {
+    auto pdev = get_pcidev(device);
+    result_type ctStats;
+    std::string errmsg;
+    data_type data = {};
+    uint32_t uint_op = 0;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_enabled", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.enable = uint_op ? true : false;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_support", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.support = uint_op ? true : false;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_critical_power_threshold", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.pwr_shutdown_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_critical_temp_threshold", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.temp_shutdown_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_power_limit", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.pwr_scaling_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_temp_limit", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.temp_scaling_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_temp_override", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.temp_scaling_ovrd_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_power_override", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.pwr_scaling_ovrd_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_power_override_en", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.pwr_scaling_ovrd_enable = uint_op ? true : false;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_temp_override_en", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.temp_scaling_ovrd_enable = uint_op ? true : false;
+
+    ctStats.push_back(data);
+    return ctStats;
+  }
+
+  static uint16_t
+  get_value(const std::string & keyValue)
+  {
+    std::vector<std::string> stat;
+    boost::split(stat, keyValue, boost::is_any_of(":"));
+    if (stat.size() != 2) {
+      const auto errMsg = boost::format("Error: KeyValue pair doesn't meet expected format '<key>:<value>': '%s'") % keyValue;
+      throw std::runtime_error(errMsg.str());
+    }
+    return std::stoi(std::string(stat.at(1)));
+  }
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+    std::vector<std::string> stats;
+    result_type ctStats;
+    std::string errmsg;
+    bool is_versal = false;
+
+    pdev->sysfs_get<bool>("", "versal", errmsg, is_versal, false);
+	if (is_versal) {
+      pdev->sysfs_get("xgq_vmr", "clk_scaling_stat_raw", errmsg, stats);
+      if (!errmsg.empty())
+        return ctStats;
+	} else {
+      // Backward compatibilty check.
+      // Read XMC sysfs nodes
+      return get_legacy_clk_scaling_stat(device);
+    }
+
+    data_type data = {};
+    //parse one line at a time
+    // The clk_scaling_stat_raw is printing in formatted string of each line
+    // Format: "%s:%u"
+    // Using colon ":" as separator.
+    try {
+      data.support = get_value(stats[0]) ? true : false;
+      data.enable = get_value(stats[1]) ? true : false;
+      data.pwr_shutdown_limit = get_value(stats[2]);
+      data.temp_shutdown_limit = get_value(stats[3]);
+      data.pwr_scaling_limit = get_value(stats[4]);
+      data.temp_scaling_limit = get_value(stats[5]);
+      data.pwr_scaling_ovrd_limit = get_value(stats[6]);
+      data.temp_scaling_ovrd_limit = get_value(stats[7]);
+      data.pwr_scaling_ovrd_enable = get_value(stats[8]);
+      data.temp_scaling_ovrd_enable = get_value(stats[9]);
+    } catch (const std::exception& e) {
+      xrt_core::send_exception_message(e.what(), "Failed to receive clk_scaling_stat_raw data in specified format");
+    }
+
+    ctStats.push_back(data);
+    return ctStats;
   }
 };
 
@@ -1114,6 +1219,7 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                       bdf>();
   emplace_func0_request<query::instance,                       instance>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
+  emplace_func0_request<query::clk_scaling_info,               clk_scaling_info>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_func4_request<query::am_counter,                     am_counter>();
@@ -1127,6 +1233,9 @@ initialize_query_table()
   emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
   emplace_sysfs_get<query::extended_vmr_status>                ("xgq_vmr", "vmr_verbose_info");
+  emplace_sysfs_getput<query::xgq_scaling_enabled>             ("xgq_vmr", "xgq_scaling_enable");
+  emplace_sysfs_getput<query::xgq_scaling_power_override>      ("xgq_vmr", "xgq_scaling_power_override");
+  emplace_sysfs_getput<query::xgq_scaling_temp_override>       ("xgq_vmr", "xgq_scaling_temp_override");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
   emplace_sysfs_get<query::hwmon_sdm_serial_num>               ("hwmon_sdm", "serial_num");
@@ -1137,6 +1246,7 @@ initialize_query_table()
   emplace_sysfs_get<query::hwmon_sdm_mac_addr1>                ("hwmon_sdm", "mac_addr1");
   emplace_sysfs_get<query::hwmon_sdm_fan_presence>             ("hwmon_sdm", "fan_presence");
   emplace_sysfs_get<query::hwmon_sdm_revision>                 ("hwmon_sdm", "revision");
+  emplace_sysfs_get<query::hwmon_sdm_mfg_date>                 ("hwmon_sdm", "mfg_date");
 
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");

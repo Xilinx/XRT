@@ -50,6 +50,8 @@ namespace XBUtilities {
   void throw_cancel(const boost::format& format);
   void print_exception(const std::system_error& e);
 
+  void xrt_version_cmp(bool isUserDomain);
+
 
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
                         bool _inUserDomain,

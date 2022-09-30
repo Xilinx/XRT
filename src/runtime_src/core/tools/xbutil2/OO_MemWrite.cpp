@@ -58,15 +58,15 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand option: write mem");
 
-  // Parse sub-command ...
-  po::variables_map vm;
-  process_arguments(vm, _options);
-
   // Honor help option first
-  if (m_help) {
+  if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {
     printHelp();
     return;
   }
+
+  // Parse sub-command ...
+  po::variables_map vm;
+  process_arguments(vm, _options);
 
   if (m_count == 0)
     XBU::throw_cancel("Value for --count must be greater than 0");
@@ -205,6 +205,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
       addr += size;
     }
     std::cout << "Memory write succeeded" << std::endl;
+    return;
   }
 
   printHelp();

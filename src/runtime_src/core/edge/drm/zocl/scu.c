@@ -34,6 +34,12 @@ struct zocl_scu {
 	 */
 	u32		sc_pid;
 	u32		sc_parent_pid;
+	/*
+	 * This RW lock is to protect the scu sysfs nodes exported
+	 * by zocl driver.
+	 */
+	rwlock_t	attr_rwlock;
+
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -83,12 +89,50 @@ cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(cu_info);
 
 static ssize_t
-stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+stats_begin_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
+	ssize_t sz = 0;
+
 	struct platform_device *pdev = to_platform_device(dev);
 	struct zocl_scu *scu = platform_get_drvdata(pdev);
 
-	return show_formatted_cu_stat(&scu->base, buf);
+	read_lock(&scu->attr_rwlock);
+	sz = show_stats_begin(&scu->base, buf);
+	read_unlock(&scu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_begin);
+
+static ssize_t
+stats_end_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_scu *scu = platform_get_drvdata(pdev);
+
+	read_lock(&scu->attr_rwlock);
+	sz = show_stats_end(&scu->base, buf);
+	read_unlock(&scu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_end);
+
+static ssize_t
+stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_scu *scu = platform_get_drvdata(pdev);
+
+	read_lock(&scu->attr_rwlock);
+	sz = show_formatted_cu_stat(&scu->base, buf);
+	read_unlock(&scu->attr_rwlock);
+
+	return sz;
 }
 static DEVICE_ATTR_RO(stat);
 
@@ -116,6 +160,8 @@ static struct attribute *scu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
 	&dev_attr_cu_info.attr,
+	&dev_attr_stats_begin.attr,
+	&dev_attr_stats_end.attr,
 	&dev_attr_stat.attr,
 	&dev_attr_status.attr,
 	NULL,
@@ -128,9 +174,11 @@ static const struct attribute_group scu_attrgroup = {
 static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[16])
 {
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
-	struct soft_krnl *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = NULL;
 	struct soft_krnl_cmd *scmd = NULL;
 	struct config_sk_image_uuid *cp = NULL;
+
+	BUG_ON(!zdev);
 
 	cp = kmalloc(sizeof(struct config_sk_image_uuid), GFP_KERNEL);
 	cp->start_cuidx = cuidx;
@@ -138,6 +186,7 @@ static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[1
 	strncpy((char *)cp->sk_name,kname,PS_KERNEL_NAME_LENGTH);
 	memcpy(cp->sk_uuid,uuid,sizeof(cp->sk_uuid));
 
+	sk = zdev->soft_kernel;
 	// Locking soft kernel data structure
 	mutex_lock(&sk->sk_lock);
 
@@ -184,6 +233,7 @@ static int scu_probe(struct platform_device *pdev)
 	memcpy(&zcu->base.info, info, sizeof(struct xrt_cu_info));
 
 	zdev = zocl_get_zdev();
+	BUG_ON(!zdev);
 	zcu->sc_bo = zocl_drm_create_bo(zdev->ddev, SOFT_KERNEL_REG_SIZE, ZOCL_BO_FLAGS_CMA);
 	if (IS_ERR(zcu->sc_bo)) {
 		return -ENOMEM;
@@ -198,6 +248,7 @@ static int scu_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, zcu);
 
+	rwlock_init(&zcu->attr_rwlock);
 	err = sysfs_create_group(&pdev->dev.kobj, &scu_attrgroup);
 	if (err)
 		zocl_err(&pdev->dev, "create SCU attrs failed: %d", err);
@@ -228,7 +279,9 @@ static int scu_remove(struct platform_device *pdev)
 
 	// Free Command Buffer BO
 	zocl_drm_free_bo(zcu->sc_bo);
+	write_lock(&zcu->attr_rwlock);
 	sysfs_remove_group(&pdev->dev.kobj, &scu_attrgroup);
+	write_unlock(&zcu->attr_rwlock);
 
 	zocl_info(&pdev->dev, "SCU[%d] removed", info->cu_idx);
 	kfree(zcu);
@@ -319,6 +372,7 @@ void zocl_scu_sk_ready(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 
+	BUG_ON(!zcu);
 	up(&zcu->sc_sem);
 }
 

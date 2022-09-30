@@ -158,7 +158,8 @@ def runKernel(opt):
 
 def main(args):
     opt = Options()
-    Options.getOptions(opt, args)
+    b_file = "hostmemory.xclbin"
+    Options.getOptions(opt, args, b_file)
 
     try:
         initXRT(opt)

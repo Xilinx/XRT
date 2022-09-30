@@ -112,10 +112,15 @@ namespace xclcpuemhal2
     }
     if (buf_size < new_size)
     {
-      void *temp = buf;
-      buf = (void*)realloc(temp, new_size);
-      if (!buf) // prevent leak of original buf
-        free(temp);
+      void *result = realloc(buf, new_size);
+      // If realloc was unsuccessful, then give up and deallocate.
+      if (!result)
+      {
+        free(buf);
+        buf = nullptr;
+        return 0;
+      }
+      buf = result;
       return new_size;
     }
     return buf_size;
@@ -362,6 +367,12 @@ namespace xclcpuemhal2
     std::stringstream pidStream;
     pidStream << parentPid;
 
+    char *login_user = getenv("USER");
+    if (!login_user)
+    {
+      std::cerr << "ERROR: [SW-EMU 22] $USER variable is not SET. Please make sure the USER env variable is set properly." << std::endl;
+      exit(EXIT_FAILURE);
+    }
     // Spawn off the process to run the stub
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if (!simDontRun)
@@ -418,13 +429,14 @@ namespace xclcpuemhal2
           if (sLdLib)
             sLdLibs = std::string(sLdLib) + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fft_v9_1" + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fir_v7_1" + ":";
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fir_v7_0" + ":";
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "fpo_v7_1" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "tools" + DS + "opencv" + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
-          sLdLibs += sVivadoBinDir + DS + "data" + DS + "emulation" + DS + "ip_utils" + DS + "xtlm_ipc" + DS + "xtlm_ipc_v1_0" + DS + "cpp" + DS + "lib" + DS + ":";
+          sLdLibs += sVivadoBinDir + DS + "data" + DS + "emulation" + DS + "cpp" + DS + "lib" + DS + ":";
           sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
           sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
           sLdLibs += sVitisBinDir + DS + "tps" + DS + "lnx64" + DS + "python-3.8.3" + DS + "lib" + DS + ":";
@@ -796,6 +808,7 @@ namespace xclcpuemhal2
         aiesim_sock = nullptr;
       else
         aiesim_sock = new unix_socket("AIESIM_SOCKETID");
+        
     }
 
     return 0;
@@ -1298,6 +1311,7 @@ namespace xclcpuemhal2
 
   void CpuemShim::closeMessengerThread()
   {
+    mIsDeviceProcessStarted = false;
     if (mMessengerThread.joinable())
       mMessengerThread.join();
   }
@@ -1324,6 +1338,7 @@ namespace xclcpuemhal2
         // giving some time for the simulator to run
         if (count % 5 == 0)
           std::this_thread::sleep_for(std::chrono::seconds(std::min(10 * (count / 5), 300)));
+          //std::this_thread::sleep_for(std::chrono::seconds(5));
 
       }
     }
@@ -2290,7 +2305,7 @@ namespace xclcpuemhal2
 
     // ack = 0 : defines RPC Call is completed with failure status
     // ack = 1 : defines RPC Call is completed with success status
-    // ack = 2 : defines RPC Call is returned with running status. 
+    // ack = 2 : defines RPC Call is returned with running status.
     // Recalling the RPC after a wait if the ack returned is 2.
     do {
       {
@@ -2518,7 +2533,7 @@ namespace xclcpuemhal2
     // Emulation does not yet support multiple xclbins.  Call
     // regular flow.  Default access mode to shared unless explicitly
     // exclusive.
-    auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+    auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
     auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
     auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
     xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);

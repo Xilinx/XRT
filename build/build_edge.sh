@@ -80,7 +80,7 @@ install_recipes()
 
 enable_vdu()
 {
-    echo "IMAGE_INSTALL:append = \" libvdu-xlnx kernel-module-vdu vdu-firmware\""  >> build/conf/local.conf
+    echo "IMAGE_INSTALL:append = \" libvdu-ctrlsw kernel-module-vdu vdu-firmware\""  >> build/conf/local.conf
 }
 
 config_versal_project()
@@ -138,6 +138,7 @@ config_versal_project()
     echo "CONFIG_PM=n" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
     echo "CONFIG_SPI=n" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
     echo "CONFIG_DRM_XLNX_DSI=n" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_CMA_DEBUGFS=y" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
 
     # Configure inittab for getty
     INIT_TAB_FILE=$APU_RECIPES_DIR/sysvinit-inittab_%.bbappend
@@ -174,6 +175,21 @@ config_versal_project()
     cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd
     cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
     
+    # Create daemon to modprobe/rmmod vdu modules after xclbin load
+    # This daemon probes vdu drivers on first xclbin load and exit
+    SERVICE_FILE=$APU_RECIPES_DIR/vdu-init.service
+    BB_FILE=$APU_RECIPES_DIR/vdu-init.bb
+    INIT_SCRIPT=$APU_RECIPES_DIR/vdu-init
+
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n vdu-init --enable
+    fi
+
+    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
+    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init
+    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
+    
     # Generate vdu modules and add them to apu package
     
     # Enable VDU kernel module 
@@ -194,12 +210,12 @@ config_versal_project()
     
     # Enable VDU control software library 
     # This is not required as PS Kernels statically linking with control software, Enabling this to debug standalone control software 
-    VDU_LIBRARY_BB_FILE=$APU_RECIPES_DIR/libvdu-xlnx.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-xlnx ]; then
+    VDU_LIBRARY_BB_FILE=$APU_RECIPES_DIR/libvdu-ctrlsw.bb
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw ]; then
         $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n libvdu-xlnx --enable
+        $PETA_BIN/petalinux-create -t apps --template install -n libvdu-ctrlsw --enable
     fi
-    cp -rf $VDU_LIBRARY_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-xlnx/
+    cp -rf $VDU_LIBRARY_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw/
 
 }
 
@@ -226,7 +242,7 @@ XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
 full=0
 archiver=0
-gen_sysroot=0
+gen_sysroot=1
 SSTATE_CACHE=""
 SETTINGS_FILE="petalinux.build"
 while [ $# -gt 0 ]; do
@@ -323,10 +339,6 @@ if [ ! -f $PETA_BSP ]; then
     error "$PETA_BSP not accessible"
 fi
 
-if [ ! -d $SSTATE_CACHE ]; then
-    error "SSTATE_CACHE= not accessible"
-fi
-
 # Sanity check done
 
 PETA_CONFIG_OPT="--silentconfig"
@@ -365,13 +377,6 @@ echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/co
 #Uncomment the following 2 lines to change TMP_DIR location
 #echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\""
 #echo "CONFIG_TMP_DIR_LOCATION=\"/scratch/${USER}/petalinux-top/$PETALINUX_VER\"" >> project-spec/configs/config 
-
-if [ ! -z $SSTATE_CACHE ] && [ -d $SSTATE_CACHE ]; then
-    echo "SSTATE-CACHE:${SSTATE_CACHE} added"
-    echo "CONFIG_YOCTO_LOCAL_SSTATE_FEEDS_URL=\"${SSTATE_CACHE}\"" >> project-spec/configs/config
-else
-    echo "SSTATE-CACHE:${SSTATE_CACHE} not present"
-fi
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
@@ -452,7 +457,8 @@ cp $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh $ORIGINAL_DIR/$PETALINUX_NAME/
 if [[ $full == 1 ]]; then
   mkdir -p $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages
   export PATH=$PETALINUX/../../tool/petalinux-v$PETALINUX_VER-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin:$PATH
-  $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x14ca8093"
+  $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x14ca8093" -package-name xrt-apu-vck5000
+  $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x04cd7093" -package-name xrt-apu
   
 fi
 

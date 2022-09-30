@@ -122,6 +122,8 @@ enum drm_zocl_ops {
 	DRM_ZOCL_AIE_PUTCMD,
 	/* Set/Get freq of AIE partition */
 	DRM_ZOCL_AIE_FREQSCALE,
+	/* Set CU read-only range */
+	DRM_ZOCL_SET_CU_READONLY_RANGE,
 	DRM_ZOCL_NUM_IOCTLS
 };
 
@@ -225,6 +227,20 @@ struct drm_zocl_host_bo {
 	uint64_t	paddr;
 	size_t		size;
 	uint32_t	handle;
+};
+
+/**
+ * struct drm_zocl_set_cu_range - Set CU range
+ * used with DRM_IOCTL_ZOCL_SET_CU_READONLY_RANGE
+ *
+ * @cu_index: Index of the compute unit
+ * @start:    Start offset of the range
+ * @size:     Size of the range
+ */
+struct drm_zocl_set_cu_range {
+	uint32_t    cu_index;
+	uint32_t    start;
+	uint32_t    size;
 };
 
 /**
@@ -429,6 +445,7 @@ struct drm_zocl_axlf {
 	char			*za_kernels;
 	uint32_t		za_slot_id;
 	char			*za_dtbo_path;
+	uint32_t		za_dtbo_path_len;
 	uint8_t		        hw_gen;
 	struct drm_zocl_kds	kds_cfg;
 };
@@ -574,4 +591,6 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_AIE_PUTCMD, struct drm_zocl_aie_cmd)
 #define DRM_IOCTL_ZOCL_AIE_FREQSCALE   DRM_IOWR(DRM_COMMAND_BASE + \
 				       DRM_ZOCL_AIE_FREQSCALE, struct drm_zocl_aie_freq_scale)
+#define DRM_IOCTL_ZOCL_SET_CU_READONLY_RANGE   DRM_IOWR(DRM_COMMAND_BASE + \
+					       DRM_ZOCL_SET_CU_READONLY_RANGE, struct drm_zocl_set_cu_range)
 #endif

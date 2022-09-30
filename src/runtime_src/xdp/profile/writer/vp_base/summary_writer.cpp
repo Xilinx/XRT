@@ -1484,7 +1484,7 @@ namespace xdp {
                                               const std::string& args,
                                               const std::string& memoryName,
                                               bool isRead,
-                                              double numTransactions,
+                                              uint64_t numTransactions,
                                               double totalTransferTime,
                                               double bytes,
                                               double maxAchievableBW,
@@ -1505,8 +1505,8 @@ namespace xdp {
     if (idealBW > one_hundred)
       idealBW = one_hundred;
 
-    auto aveSize = (bytes / numTransactions) / one_thousand;
-    auto aveLatency = latency / numTransactions;
+    auto aveSize = (bytes / static_cast<double>(numTransactions)) / one_thousand;
+    auto aveLatency = latency / static_cast<double>(numTransactions);
 
     fout << deviceName << ",";
     fout << cuName << "/" << portName << ",";
@@ -1517,6 +1517,8 @@ namespace xdp {
     fout << transferRate << ",";
     fout << achievedBW << ",";
     fout << idealBW << ",";
+    fout << maxAchievableBW << ",";
+    fout << maxTheoreticalBW << ",";
     fout << aveSize << ",";
     fout << aveLatency << ",\n";
   }
@@ -1539,8 +1541,10 @@ namespace xdp {
          << "Transfer Type,"
          << "Number Of Transfers,"
          << "Transfer Rate (MB/s),"
-         << "Bandwidth Utilization On Current Port (%),"
-         << "Bandwidth Utilization On Ideal Port (%),"
+         << "Bandwidth Utilization With Respect To Current Port Configuration (%),"
+         << "Bandwidth Utilization With Respect To Ideal Port Configuration (%),"
+         << "Maximum Achievable BW on Current Port Configuration (MB/s),"
+         << "Maximum Theoretical BW on Ideal Port Configuration (MB/s),"
          << "Average Size (KB),"
          << "Average Latency (ns),\n";
 
@@ -1595,7 +1599,7 @@ namespace xdp {
                                     arguments,
                                     memoryName,
                                     false, // isRead
-                                    static_cast<double>(writeTranx),
+                                    writeTranx,
                                     transferTime,
                                     static_cast<double>(values.WriteBytes[monitorSlot]),
                                     maxAchievableBW,
@@ -1613,7 +1617,7 @@ namespace xdp {
                                     arguments,
                                     memoryName,
                                     true, // isRead
-                                    static_cast<double>(readTranx),
+                                    readTranx,
                                     transferTime,
                                     static_cast<double>(values.ReadBytes[monitorSlot]),
                                     maxAchievableBW,
