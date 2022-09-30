@@ -55,20 +55,6 @@ namespace xdp {
     unsortedEvents.push_back(event);
   }
 
-  /*
-  std::vector<VTFEvent*> HostDB::copySortedEvents()
-  {
-    std::lock_guard<std::mutex> lock(sortedLock);
-
-    std::vector<VTFEvent*> copied;
-    for (auto iter : sortedEvents) {
-      auto event = iter.second;
-      copied.push_back(event);
-    }
-    return copied;
-  }
-  */
-
   bool HostDB::sortedEventsExist(std::function<bool (VTFEvent*)>& filter)
   {
     std::lock_guard<std::mutex> lock(sortedLock);

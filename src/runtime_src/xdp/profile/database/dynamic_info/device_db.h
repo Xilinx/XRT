@@ -27,7 +27,6 @@
 
 #include "xdp/profile/database/dynamic_info/aie_db.h"
 #include "xdp/profile/database/dynamic_info/pl_db.h"
-//#include "xdp/profile/database/dynamic_info/samples.h"
 #include "xdp/profile/database/dynamic_info/types.h"
 
 namespace xdp {
@@ -45,6 +44,9 @@ namespace xdp {
     // Abstract all of the dynamic information related to the PL portion
     // of the device, including monitor counters, trace, and power samples.
     PLDB pl_db;
+
+    // Abstract all of the dynamic information related to the AIE portion
+    // of the device, including profile counter samples and AIE event trace.
     AIEDB aie_db;
 
   public:

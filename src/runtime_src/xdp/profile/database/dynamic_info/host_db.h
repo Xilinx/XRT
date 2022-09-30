@@ -75,11 +75,6 @@ namespace xdp {
     void addSortedEvent(VTFEvent* event);
     void addUnsortedEvent(VTFEvent* event);
 
-    // A function to copy pointers out of the database.  Events are still
-    // owned by the database and the expectation is that the copies will
-    // not be deleted.
-    //std::vector<VTFEvent*> copySortedEvents();
-
     // A function to check the sorted events to see if any events that
     // fit the filter exist are currently stored in the database.
     bool sortedEventsExist(std::function<bool (VTFEvent*)>& filter);

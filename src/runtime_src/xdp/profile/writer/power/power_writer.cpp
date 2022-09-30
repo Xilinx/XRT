@@ -36,7 +36,7 @@ namespace xdp {
   bool PowerProfilingWriter::write(bool openNewFile)
   {
     // Write header
-    fout << "Target device: " << deviceName << std::endl ;
+    fout << "Target device: " << deviceName << "\n";
     fout << "timestamp"    << ","
          << "12v_aux_curr" << ","
          << "12v_aux_vol"  << ","
@@ -61,19 +61,20 @@ namespace xdp {
          << "se98_temp1"   << ","
          << "se98_temp2"   << ","
          << "vccint_temp"  << ","
-         << "fan_rpm"
-         << std::endl;
+         << "fan_rpm\n";
 
     // Write all of the data elements
     std::vector<counters::Sample> samples =
-      (db->getDynamicInfo()).getPowerSamples(deviceIndex) ;
+      (db->getDynamicInfo()).getPowerSamples(deviceIndex);
 
     for (auto& sample : samples) {
-      fout << sample.timestamp << "," ; // Timestamp
+      fout << sample.timestamp << ",";
       for (auto& value : sample.values)
-        fout << value << "," ;
-      fout << std::endl ;
+        fout << value << ",";
+      fout << "\n";
     }
+
+    fout.flush();
     return true;
   }
 
