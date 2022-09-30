@@ -1520,7 +1520,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "dma", "p2p"};   
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "dma", "p2p"};
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
@@ -1528,8 +1528,8 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
 
     if (is_black_box_test()) {
-        black_box_tests_counter++;
-        pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
+      black_box_tests_counter++;
+      pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
     }
 
     testPtr->testHandle(device, ptTest);
@@ -1541,9 +1541,8 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     pretty_print_test_run(ptTest, status, std::cout);
 
     // consider only when testcase is part of lack_box_tests.
-    if (is_black_box_test() && boost::equals(ptTest.get<std::string>("status", ""), test_token_skipped)) {
-        black_box_tests_skipped++;
-    }
+    if (is_black_box_test() && boost::equals(ptTest.get<std::string>("status", ""), test_token_skipped))
+      black_box_tests_skipped++;
 
     // If a test fails, don't test the remaining ones
     if (status == test_status::failed) {
