@@ -23,6 +23,8 @@
 #include <mutex>
 #include <string>
 
+#include "xdp/config.h"
+
 namespace xdp {
 
   class StringTable
@@ -36,8 +38,8 @@ namespace xdp {
     StringTable() = default;
     ~StringTable() = default;
 
-    uint64_t addString(const std::string& value);
-    void dumpTable(std::ofstream& fout);
+    XDP_EXPORT uint64_t addString(const std::string& value);
+    XDP_EXPORT void dumpTable(std::ofstream& fout);
   };
 
 } // end namespace xdp

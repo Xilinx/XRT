@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/dynamic_info/pl_db.h"
 #include "xdp/profile/database/events/vtf_event.h"
