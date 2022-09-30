@@ -35,7 +35,8 @@ class SubCmdJSON : public SubCmd {
   SubCmdJSON(bool _isHidden, bool _isDepricated, bool _isPreliminary, std::string& name, std::string& desc, std::vector<struct JSONCmd>& _subCmdOptions);
 
  private:
-  std::vector<struct JSONCmd> subCmdOptions;
+  std::vector<struct JSONCmd> m_subCmdOptions;
+  bool                        m_help;
 };
 
 using SubCmdsCollection = std::vector<std::shared_ptr<SubCmd>>;

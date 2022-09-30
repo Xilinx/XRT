@@ -51,7 +51,9 @@ namespace pt = boost::property_tree;
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdJSON::SubCmdJSON(bool _isHidden, bool _isDepricated, bool _isPreliminary, std::string& name, std::string& desc, std::vector<struct JSONCmd>& _subCmdOptions)
-    : SubCmd(name, desc), subCmdOptions(_subCmdOptions)
+    : SubCmd(name, desc)
+    , m_subCmdOptions(_subCmdOptions)
+    , m_help(false)
 {
   const std::string longDescription = desc;
   setLongDescription(longDescription);
@@ -60,83 +62,56 @@ SubCmdJSON::SubCmdJSON(bool _isHidden, bool _isDepricated, bool _isPreliminary, 
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
   setIsDefaultDevValid(false);
+
+  m_commonOptions.add_options()
+     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+
+  for( auto &opt : m_subCmdOptions) {
+    m_commonOptions.add_options()
+      (opt.option.c_str(), opt.description.c_str())
+    ;
+  }
+
+  m_hiddenOptions.add_options()
+    ("subCmd", po::value<std::string>(), "Command to execute")
+    ("subCmdArgs", po::value<std::vector<std::string> >(), "Arguments for command")
+  ;
+
+  m_positionals.
+    add("subCmd", 1 /* max_count */).
+    add("subCmdArgs", -1 /* Unlimited max_count */);
 }
 
 void
 SubCmdJSON::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: " + getName());
-  // -- Retrieve and parse the subcommand options -----------------------------
-  bool help = false;
-
-  po::options_description commonOptions("Common Options");
-  commonOptions.add_options()
-    ("--help,h", "Help to use this sub-command")
-  ;
-
-  for( auto &opt : subCmdOptions) {
-      commonOptions.add_options()
-        (opt.option.c_str(),opt.description.c_str())
-      ;
-  }
-
-  po::options_description hiddenOptions("Hidden Options");
-  hiddenOptions.add_options()
-     ("subCmd", po::value<std::string>(), "Command to execute")
-     ("subCmdArgs", po::value<std::vector<std::string> >(), "Arguments for command")
-  ;
-
-  po::positional_options_description positionalCommand;
-  positionalCommand.
-    add("subCmd", 1 /* max_count */).
-    add("subCmdArgs", -1 /* Unlimited max_count */);
-
-  po::options_description allOptions("All Options");
-  allOptions.add_options()
-     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  allOptions.add(hiddenOptions);
-
-  po::parsed_options parsed = po::command_line_parser(_options).
-    options(allOptions).            // Global options
-    positional(positionalCommand).  // Our commands
-    allow_unregistered().           // Allow for unregistered options (needed for sub options)
-    run();                          // Parse the options
 
   po::variables_map vm;
-
-  try {
-    po::store(parsed, vm);
-    po::notify(vm); // Can throw
-  } catch (po::error& e) {
-    std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
-    printHelp(commonOptions, hiddenOptions, true);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
+  auto top_options = process_arguments(vm, _options);
 
   // Check to see if no command was found
   if ((vm.count("subCmd") == 0)) {
-    printHelp(commonOptions, hiddenOptions, true);
+    printHelp();
     return;
   }
 
   // -- Now process the subcommand --------------------------------------------
   std::string sCommand = vm["subCmd"].as<std::string>();
 
-  for ( auto &jsonCmd : subCmdOptions ) {
+  for ( auto &jsonCmd : m_subCmdOptions ) {
     if (sCommand.compare(jsonCmd.option) == 0) {
-      std::vector<std::string> opts = po::collect_unrecognized(parsed.options, po::include_positional);
-      opts.erase(opts.begin());
+      top_options.erase(top_options.begin());
 
-      if(help == true) {
-        opts.push_back("--help");
+      if(m_help) {
+        top_options.push_back("--help");
       }
 
       std::string finalCmd = jsonCmd.application + " " + jsonCmd.defaultArgs;
-      for (auto &opt : opts) {
+      for (auto &opt : top_options) {
         finalCmd += " ";
-	finalCmd += opt;
+        finalCmd += opt;
       }
 
       std::cout << "\nInvoking application : " << jsonCmd.application << std::endl;
@@ -151,7 +126,7 @@ SubCmdJSON::execute(const SubCmdOptions& _options) const
   }
 
   std::cout << "\nERROR: Missing valid program operation. No action taken.\n\n";
-  printHelp(commonOptions, hiddenOptions, true);
+  printHelp();
   throw xrt_core::error(std::errc::operation_canceled);
 }
 
