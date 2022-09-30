@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -56,140 +57,77 @@ namespace xdp {
 
   // ************** Human Readable output functions ******************
 
-  void LowOverheadTraceWriter::writeHumanReadableHeader()
-  {
-    VPTraceWriter::writeHeader() ;
-    fout << "TraceID," << traceID << std::endl
-         << "XRT Version," << getToolVersion() << std::endl ;
-  }
-
-  void LowOverheadTraceWriter::writeHumanReadableStructure()
-  {
-    fout << "STRUCTURE" << std::endl ;
-    fout << "Group_Start,Low Overhead OpenCL Host Trace" << std::endl ;
-    fout << "Group_Start,OpenCL API Calls" << std::endl ;
-    fout << "Dynamic_Row," << generalAPIBucket
-         << ",General,API Events not associated with a Queue" << std::endl ;
-
-    for (auto a : (db->getStaticInfo()).getCommandQueueAddresses())
-    {
-      fout << "Static_Row," << commandQueueToBucket[a] << ",Queue 0x" 
-           << std::hex << a << ",API events associated with the command queue"
-           << std::dec << std::endl ;
-    }
-    fout << "Group_End,OpenCL API Calls" << std::endl ;
-    fout << "Group_Start,Data Transfer" << std::endl ;
-    fout << "Dynamic_Row," << readBucket 
-         << ",Read,Read data transfers from global memory to host" 
-         << std::endl ;
-    fout << "Dynamic_Row," << writeBucket
-         << ",Write,Write data transfer from host to global memory"
-         << std::endl ;
-    fout << "Group_End,Data Transfer" << std::endl ;
-    fout << "Dynamic_Row_Summary," << enqueueBucket 
-         << ",Kernel Enqueues,Activity in kernel enqueues" << std::endl ;
-    fout << "Group_End,Low Overhead OpenCL Host Trace" << std::endl ;
-  }
-
-  void LowOverheadTraceWriter::writeHumanReadableStringTable()
-  {
-    fout << "MAPPING" << std::endl ;
-    (db->getDynamicInfo()).dumpStringTable(fout) ;
-  }
-
-  void LowOverheadTraceWriter::writeHumanReadableTraceEvents()
-  {
-    fout << "EVENTS" << std::endl ;
-    auto APIEvents = 
-      (db->getDynamicInfo()).filterEraseHostEvents( [](VTFEvent* e)
-                                           {
-                                             return e->isLOPAPI() ||
-                                                    e->isLOPHostEvent() ;
-                                           }
-                                         ) ;
-    for (auto& e : APIEvents)
-    {
-      int bucket = 0 ;
-      if (e->isOpenCLAPI() && (dynamic_cast<OpenCLAPICall*>(e.get()) != nullptr))
-      {
-        bucket = commandQueueToBucket[dynamic_cast<OpenCLAPICall*>(e.get())->getQueueAddress()] ;
-        // If there was no command queue, put it in the general bucket
-        if (bucket == 0) bucket = generalAPIBucket ;
-      }
-      else if (e->isReadBuffer())
-      {
-        bucket = readBucket ;
-      }
-      else if (e->isWriteBuffer())
-      {
-        bucket = writeBucket ;
-      }
-      else if (e->isKernelEnqueue())
-      {
-        bucket = enqueueBucket ;
-      }
-      e->dump(fout, bucket) ;
-    }
-  }
-
-  void LowOverheadTraceWriter::writeHumanReadableDependencies()
-  {
-    fout << "DEPENDENCIES" << std::endl ;
-    // No dependencies in low overhead profiling
-  }
-
-  // ************** Binary output functions ******************
-
-  void LowOverheadTraceWriter::writeBinaryHeader()
-  {
-  }
-
-  void LowOverheadTraceWriter::writeBinaryStructure()
-  {
-  }
-
-  void LowOverheadTraceWriter::writeBinaryStringTable()
-  {
-  }
-
-  void LowOverheadTraceWriter::writeBinaryTraceEvents()
-  {
-  }
-
-  void LowOverheadTraceWriter::writeBinaryDependencies()
-  {
-  }
-
-  // ************** Virtual output functions ******************
-
   void LowOverheadTraceWriter::writeHeader()
   {
-    if (humanReadable) writeHumanReadableHeader() ;
-    else               writeBinaryHeader() ;
+    VPTraceWriter::writeHeader() ;
+    fout << "TraceID," << traceID << "\n"
+         << "XRT Version," << getToolVersion() << "\n";
   }
 
   void LowOverheadTraceWriter::writeStructure()
   {
-    if (humanReadable) writeHumanReadableStructure() ;
-    else               writeBinaryStructure() ;
+    fout << "STRUCTURE\n";
+    fout << "Group_Start,Low Overhead OpenCL Host Trace\n";
+    fout << "Group_Start,OpenCL API Calls\n";
+    fout << "Dynamic_Row," << generalAPIBucket
+         << ",General,API Events not associated with a Queue\n";
+
+    for (auto a : (db->getStaticInfo()).getCommandQueueAddresses()) {
+      fout << "Static_Row," << commandQueueToBucket[a] << ",Queue 0x" 
+           << std::hex << a << ",API events associated with the command queue\n"
+           << std::dec;
+    }
+    fout << "Group_End,OpenCL API Calls\n";
+    fout << "Group_Start,Data Transfer\n";
+    fout << "Dynamic_Row," << readBucket 
+         << ",Read,Read data transfers from global memory to host\n";
+    fout << "Dynamic_Row," << writeBucket
+         << ",Write,Write data transfer from host to global memory\n";
+    fout << "Group_End,Data Transfer\n";
+    fout << "Dynamic_Row_Summary," << enqueueBucket 
+         << ",Kernel Enqueues,Activity in kernel enqueues\n";
+    fout << "Group_End,Low Overhead OpenCL Host Trace\n";
   }
 
   void LowOverheadTraceWriter::writeStringTable()
   {
-    if (humanReadable) writeHumanReadableStringTable() ;
-    else               writeBinaryStringTable() ;
+    fout << "MAPPING\n";
+    (db->getDynamicInfo()).dumpStringTable(fout) ;
   }
 
   void LowOverheadTraceWriter::writeTraceEvents()
   {
-    if (humanReadable) writeHumanReadableTraceEvents() ;
-    else               writeBinaryTraceEvents() ;
+    fout << "EVENTS\n";
+    auto APIEvents = 
+      (db->getDynamicInfo()).moveSortedHostEvents( [](VTFEvent* e)
+                                                   {
+                                                     return e->isLOPAPI() ||
+                                                            e->isLOPHostEvent();
+                                                   }
+                                                  );
+    for (auto& e : APIEvents) {
+      int bucket = 0 ;
+      if (e->isOpenCLAPI() && (dynamic_cast<OpenCLAPICall*>(e.get()) != nullptr)) {
+        bucket = commandQueueToBucket[dynamic_cast<OpenCLAPICall*>(e.get())->getQueueAddress()] ;
+        // If there was no command queue, put it in the general bucket
+        if (bucket == 0)
+          bucket = generalAPIBucket ;
+      }
+      else if (e->isReadBuffer())
+        bucket = readBucket ;
+      else if (e->isWriteBuffer())
+        bucket = writeBucket ;
+      else if (e->isKernelEnqueue())
+        bucket = enqueueBucket ;
+
+      e->dump(fout, bucket) ;
+    }
   }
 
   void LowOverheadTraceWriter::writeDependencies()
   {
-    if (humanReadable) writeHumanReadableDependencies() ;
-    else               writeBinaryDependencies() ;
+    fout << "DEPENDENCIES\n";
+    // No dependencies in low overhead profiling
   }
 
   bool LowOverheadTraceWriter::traceEventsExist()
@@ -207,26 +145,28 @@ namespace xdp {
 
   bool LowOverheadTraceWriter::write(bool openNewFile)
   {
-    if (openNewFile && !traceEventsExist()) {
+    if (openNewFile && !traceEventsExist())
       return false;
-    }
 
     // Before writing, set up our information for structures
     setupBuckets() ;
     //setupCommandQueueBuckets() ;
 
     writeHeader() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n";
     writeStructure() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n" ;
     writeStringTable() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n" ;
     writeTraceEvents() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n" ;
     writeDependencies() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n" ;
 
-    if (openNewFile) switchFiles() ;
+    fout.flush();
+
+    if (openNewFile)
+      switchFiles() ;
     return true;
   }
 

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -75,7 +76,7 @@ namespace xdp {
   void AIETraceWriter::writeTraceEvents()
   {
     // write the entire buffer
-    AIETraceDataType* traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
+    aie::TraceDataType* traceData = (db->getDynamicInfo()).getAIETraceData(deviceId, traceStreamId);
     if (nullptr == traceData) {
       fout << std::endl;
       return;

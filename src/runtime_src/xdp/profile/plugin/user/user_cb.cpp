@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -73,10 +74,9 @@ namespace xdp {
     (db->getDynamicInfo()).addEvent(event) ;
 
     // Record information for statistics
-    std::tuple<const char*, const char*, uint64_t> desc =
-      (db->getDynamicInfo()).matchingRange(functionID) ;
-    std::pair<const char*, const char*> str = { std::get<0>(desc), std::get<1>(desc) } ;
-    (db->getStats()).recordRangeDuration(str, timestamp - std::get<2>(desc)) ;
+    UserRangeInfo desc = db->getDynamicInfo().matchingRange(functionID) ;
+    std::pair<const char*, const char*> str = { desc.label, desc.tooltip } ;
+    (db->getStats()).recordRangeDuration(str, timestamp - desc.startTimestamp) ;
   }
 
   static void user_event_happened_cb(const char* label)

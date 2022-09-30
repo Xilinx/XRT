@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -64,16 +65,13 @@ namespace xdp {
          << std::endl;
 
     // Write all of the data elements
-    std::vector<VPDynamicDatabase::CounterSample> samples = 
+    std::vector<counters::Sample> samples =
       (db->getDynamicInfo()).getPowerSamples(deviceIndex) ;
 
-    for (auto sample : samples)
-    {
-      fout << sample.first << "," ; // Timestamp
-      for (auto value : sample.second)
-      {
+    for (auto& sample : samples) {
+      fout << sample.timestamp << "," ; // Timestamp
+      for (auto& value : sample.values)
         fout << value << "," ;
-      }
       fout << std::endl ;
     }
     return true;

@@ -393,7 +393,7 @@ namespace xdp {
     if (!(getFlowMode() == HW))
       return;
     if (device_trace) {
-      db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
+      db->getDynamicInfo().setPLTraceBufferFull(deviceId, offloader->trace_buffer_full());
     }
   }
 

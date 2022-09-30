@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -63,88 +64,75 @@ namespace xdp {
 
   // ************** Human Readable output functions ******************
 
-  void OpenCLTraceWriter::writeHumanReadableHeader()
+  void OpenCLTraceWriter::writeHeader()
   {
     VPTraceWriter::writeHeader() ;
-    fout << "TraceID," << traceID << std::endl
-         << "XRT Version," << getToolVersion() << std::endl ;
+    fout << "TraceID," << traceID << "\n"
+         << "XRT Version," << getToolVersion() << "\n";
   }
 
-  void OpenCLTraceWriter::writeHumanReadableStructure()
+  void OpenCLTraceWriter::writeStructure()
   {
-    fout << "STRUCTURE" << std::endl ;
-    fout << "Group_Start,OpenCL Host Trace" << std::endl ;
-    fout << "Group_Start,OpenCL API Calls" << std::endl ;
+    fout << "STRUCTURE\n";
+    fout << "Group_Start,OpenCL Host Trace\n";
+    fout << "Group_Start,OpenCL API Calls\n";
     fout << "Dynamic_Row," << generalAPIBucket
-         << ",General,API Events not associated with a Queue" << std::endl ;
+         << ",General,API Events not associated with a Queue\n";
 
-    for (auto a : (db->getStaticInfo()).getCommandQueueAddresses())
-    {
+    for (auto a : (db->getStaticInfo()).getCommandQueueAddresses()) {
       fout << "Static_Row," << commandQueueToBucket[a] << ",Queue 0x" 
-           << std::hex << a << ",API events associated with the command queue"
-           << std::dec << std::endl ;
+           << std::hex << a << ",API events associated with the command queue\n"
+           << std::dec;
     }
-    fout << "Group_End,OpenCL API Calls" << std::endl ;
-    fout << "Group_Start,Data Transfer" << std::endl ;
+    fout << "Group_End,OpenCL API Calls\n";
+    fout << "Group_Start,Data Transfer\n";
     fout << "Dynamic_Row," << readBucket 
-         << ",Read,Read data transfers from global memory to host" 
-         << std::endl ;
+         << ",Read,Read data transfers from global memory to host\n";
     fout << "Dynamic_Row," << writeBucket
-         << ",Write,Write data transfer from host to global memory"
-         << std::endl ;
+         << ",Write,Write data transfer from host to global memory\n";
     fout << "Dynamic_Row," << copyBucket
-         << ",Copy,Copy data transfers from global memory to global memory"
-         << std::endl ;
-    fout << "Group_End,Data Transfer" << std::endl ;
-    fout << "Group_Start,Kernel Enqueues" << std::endl ;
-    //fout << "Dynamic_Row_Summary," << enqueueSummaryBucket 
-    //	 << ",Kernel Enqueues,Activity in kernel enqueues" << std::endl ;
-    for (auto b : enqueueBuckets)
-    {
+         << ",Copy,Copy data transfers from global memory to global memory\n";
+    fout << "Group_End,Data Transfer\n";
+    fout << "Group_Start,Kernel Enqueues\n";
+
+    for (auto b : enqueueBuckets) {
       fout << "Dynamic_Row_Summary," << b.second << "," << b.first 
-           << ",Kernel Enqueue" << std::endl ;
+           << ",Kernel Enqueue\n";
     }
-    fout << "Group_End,Kernel Enqueues" << std::endl ;
-    fout << "Group_End,OpenCL Host Trace" << std::endl ;
+    fout << "Group_End,Kernel Enqueues\n";
+    fout << "Group_End,OpenCL Host Trace\n";
   }
 
-  void OpenCLTraceWriter::writeHumanReadableStringTable()
+  void OpenCLTraceWriter::writeStringTable()
   {
-    fout << "MAPPING" << std::endl ;
+    fout << "MAPPING\n";
     (db->getDynamicInfo()).dumpStringTable(fout) ;
   }
 
-  void OpenCLTraceWriter::writeHumanReadableTraceEvents()
+  void OpenCLTraceWriter::writeTraceEvents()
   {
-    fout << "EVENTS" << std::endl ;
+    fout << "EVENTS\n";
     auto APIEvents = 
-      (db->getDynamicInfo()).filterEraseHostEvents( [](VTFEvent* e)
-                                                  {
-                                                    return e->isOpenCLHostEvent();
-                                                  }
-                                             ) ;
-    for (auto& e : APIEvents)
-    {
+      (db->getDynamicInfo()).moveSortedHostEvents( [](VTFEvent* e)
+                                                   {
+                                                     return e->isOpenCLHostEvent();
+                                                   }
+                                                 );
+    for (auto& e : APIEvents) {
       int bucket = 0 ;
-      if (e->isOpenCLAPI() && (dynamic_cast<OpenCLAPICall*>(e.get()) != nullptr))
-      {
+      if (e->isOpenCLAPI() && (dynamic_cast<OpenCLAPICall*>(e.get()) != nullptr)) {
         bucket = commandQueueToBucket[dynamic_cast<OpenCLAPICall*>(e.get())->getQueueAddress()] ;
         // If there was no command queue, put it in the general bucket
-        if (bucket == 0) bucket = generalAPIBucket ;
+        if (bucket == 0)
+          bucket = generalAPIBucket ;
       }
       else if (e->isReadBuffer())
-      {
         bucket = readBucket ;
-      }
       else if (e->isWriteBuffer())
-      {
         bucket = writeBucket ;
-      }
-      else if (e->isCopyBuffer()) {
+      else if (e->isCopyBuffer())
         bucket = copyBucket ;
-      }
-      else if (e->isKernelEnqueue())
-      {
+      else if (e->isKernelEnqueue()) {
         // Construct the name
         KernelEnqueue* ke = dynamic_cast<KernelEnqueue*>(e.get()) ;
         if (ke != nullptr)
@@ -156,18 +144,16 @@ namespace xdp {
     }
   }
 
-  void OpenCLTraceWriter::writeHumanReadableDependencies()
+  void OpenCLTraceWriter::writeDependencies()
   {
-    fout << "DEPENDENCIES" << std::endl ;
+    fout << "DEPENDENCIES\n";
     std::map<uint64_t, std::vector<uint64_t>> dependencies = 
       (db->getDynamicInfo()).getDependencyMap() ;
 
     collapseDependencyChains(dependencies) ;
 
-    for (auto dependency : dependencies)
-    {
-      for (auto dependent : dependency.second)
-      {
+    for (auto dependency : dependencies) {
+      for (auto dependent : dependency.second) {
         // We have logged all of the dependencies of XRT side events.
         //  There is the possibility that these events don't correspond to
         //  any XDP event that we have logged.  We should just ignore those
@@ -182,7 +168,7 @@ namespace xdp {
         //  we need to output the end event ID of the first transaction
         //  followed by the start event ID of the second transaction.
         if (firstValue.second != 0 && secondValue.first != 0)
-          fout << secondValue.first << "," << firstValue.second << std::endl ;
+          fout << secondValue.first << "," << firstValue.second << "\n" ;
       }
     }
   }
@@ -215,60 +201,6 @@ namespace xdp {
     }
   }
 
-  // ************** Binary output functions ******************
-
-  void OpenCLTraceWriter::writeBinaryHeader()
-  {
-  }
-
-  void OpenCLTraceWriter::writeBinaryStructure()
-  {
-  }
-
-  void OpenCLTraceWriter::writeBinaryStringTable()
-  {
-  }
-
-  void OpenCLTraceWriter::writeBinaryTraceEvents()
-  {
-  }
-
-  void OpenCLTraceWriter::writeBinaryDependencies()
-  {
-  }
-
-  // ************** Virtual output functions ******************
-
-  void OpenCLTraceWriter::writeHeader()
-  {
-    if (humanReadable) writeHumanReadableHeader() ;
-    else               writeBinaryHeader() ;
-  }
-
-  void OpenCLTraceWriter::writeStructure()
-  {
-    if (humanReadable) writeHumanReadableStructure() ;
-    else               writeBinaryStructure() ;
-  }
-
-  void OpenCLTraceWriter::writeStringTable()
-  {
-    if (humanReadable) writeHumanReadableStringTable() ;
-    else               writeBinaryStringTable() ;
-  }
-
-  void OpenCLTraceWriter::writeTraceEvents()
-  {
-    if (humanReadable) writeHumanReadableTraceEvents() ;
-    else               writeBinaryTraceEvents() ;
-  }
-
-  void OpenCLTraceWriter::writeDependencies()
-  {
-    if (humanReadable) writeHumanReadableDependencies() ;
-    else               writeBinaryDependencies() ;
-  }
-
   bool OpenCLTraceWriter::traceEventsExist()
   {
     return (
@@ -283,26 +215,28 @@ namespace xdp {
 
   bool OpenCLTraceWriter::write(bool openNewFile)
   {
-    if (openNewFile && !traceEventsExist()) {
+    if (openNewFile && !traceEventsExist())
       return false;
-    }
 
     // Before writing, set up our information for structures
     setupBuckets() ;
     //setupCommandQueueBuckets() ;
 
     writeHeader() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n";
     writeStructure() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n";
     writeStringTable() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n";
     writeTraceEvents() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n";
     writeDependencies() ;
-    if (humanReadable) fout << std::endl ;
+    fout << "\n";
 
-    if (openNewFile) switchFiles() ;
+    fout.flush();
+
+    if (openNewFile)
+      switchFiles() ;
 
     return true;
   }
