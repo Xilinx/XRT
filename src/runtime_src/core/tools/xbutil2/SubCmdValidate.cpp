@@ -1512,22 +1512,25 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   int test_idx = 0;
   if (testObjectsToRun.size() == 1)
       XBU::setVerbose(true);// setting verbose true for single_case.
-  bool all_tests_skipped = true;
+  int black_box_tests_skipped = 0;
+  int black_box_tests_counter = 0;
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
     // Hack: Until we have an option in the tests to query SUPP/NOT SUPP
     // we need to print the test description before running the test
     auto is_black_box_test = [ptTest]() {
-      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "dma", "p2p"};
+      std::vector<std::string> black_box_tests = {"verify", "mem-bw", "iops", "vcu", "aie-pl", "dma", "p2p"};      
       auto test = ptTest.get<std::string>("name");
       return std::find(black_box_tests.begin(), black_box_tests.end(), test) != black_box_tests.end() ? true : false;
     };
 
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
 
-    if (is_black_box_test())
-      pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
+    if (is_black_box_test()) {
+        black_box_tests_counter++;
+        pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
+    }
 
     testPtr->testHandle(device, ptTest);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
@@ -1538,8 +1541,9 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     pretty_print_test_run(ptTest, status, std::cout);
 
     // consider only when testcase is part of lack_box_tests.
-    if (is_black_box_test() && !boost::equals(ptTest.get<std::string>("status", ""), test_token_skipped))
-      all_tests_skipped = false;
+    if (is_black_box_test() && boost::equals(ptTest.get<std::string>("status", ""), test_token_skipped)) {
+        black_box_tests_skipped++;
+    }
 
     // If a test fails, don't test the remaining ones
     if (status == test_status::failed) {
@@ -1547,7 +1551,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
     }
   }
 
-  if (all_tests_skipped)
+  if (black_box_tests_counter !=0 && black_box_tests_skipped == black_box_tests_counter)
     status = test_status::failed;
 
   print_status(status, std::cout);
