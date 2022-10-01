@@ -144,14 +144,14 @@ public:
   get_sysfs_path(const std::string& subdev, const std::string& entry);
 
   virtual std::string
-  get_subdev_path(const std::string& subdev, uint32_t idx);
+  get_subdev_path(const std::string& subdev, uint32_t idx) const;
   virtual int pcieBarRead(uint64_t offset, void *buf, uint64_t len);
   virtual int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
 
-  virtual int open(const std::string& subdev, int flag);
-  virtual int open(const std::string& subdev, uint32_t idx, int flag);
-  virtual void close(int devhdl);
-  virtual int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr);
+  virtual int open(const std::string& subdev, int flag) const;
+  virtual int open(const std::string& subdev, uint32_t idx, int flag) const;
+  virtual void close(int devhdl) const;
+  virtual int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr) const;
   virtual int poll(int devhdl, short events, int timeoutMilliSec);
   virtual void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
   virtual int munmap(int devhdl, void* addr, size_t len);
@@ -160,11 +160,12 @@ public:
   virtual std::shared_ptr<pcidev::pci_device> lookup_peer_dev();
   
   virtual
+  xrt_core::device::handle_type
+  create_shim(xrt_core::device::id_type id) const;
+
+  virtual
   std::shared_ptr<xrt_core::device>
-  create_device(xrt_core::device::handle_type handle, xrt_core::device::id_type id) const
-  {
-    return std::shared_ptr<xrt_core::device_linux>(new xrt_core::device_linux(handle, id, !is_mgmt));
-  }
+  create_device(xrt_core::device::handle_type handle, xrt_core::device::id_type id) const;
 
 private:
   int map_usr_bar(void);

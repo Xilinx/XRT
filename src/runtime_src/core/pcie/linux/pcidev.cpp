@@ -425,7 +425,7 @@ get_sysfs_path(const std::string& subdev, const std::string& entry)
 
 std::string
 pci_device::
-get_subdev_path(const std::string& subdev, uint idx)
+get_subdev_path(const std::string& subdev, uint idx) const
 {
   // Main devfs path
   if (subdev.empty()) {
@@ -452,7 +452,7 @@ get_subdev_path(const std::string& subdev, uint idx)
 
 int
 pci_device::
-open(const std::string& subdev, uint32_t idx, int flag)
+open(const std::string& subdev, uint32_t idx, int flag) const
 {
   if (is_mgmt && !::is_admin())
     throw std::runtime_error("Root privileges required");
@@ -463,7 +463,7 @@ open(const std::string& subdev, uint32_t idx, int flag)
 
 int
 pci_device::
-open(const std::string& subdev, int flag)
+open(const std::string& subdev, int flag) const
 {
   return open(subdev, 0, flag);
 }
@@ -523,7 +523,7 @@ map_usr_bar()
 
 void
 pci_device::
-close(int dev_handle)
+close(int dev_handle) const
 {
   if (dev_handle != -1)
     (void)::close(dev_handle);
@@ -558,7 +558,7 @@ pcieBarWrite(uint64_t offset, const void* buf, uint64_t len)
 
 int
 pci_device::
-ioctl(int dev_handle, unsigned long cmd, void *arg)
+ioctl(int dev_handle, unsigned long cmd, void *arg) const
 {
   if (dev_handle == -1) {
     errno = -EINVAL;
@@ -681,6 +681,20 @@ lookup_peer_dev()
       return udev;
 
   return nullptr;
+}
+  
+xrt_core::device::handle_type
+pci_device::
+create_shim(xrt_core::device::id_type id) const
+{
+  return xclOpen(id, nullptr, XCL_QUIET);
+}
+
+std::shared_ptr<xrt_core::device>
+pci_device::
+create_device(xrt_core::device::handle_type handle, xrt_core::device::id_type id) const
+{
+  return std::shared_ptr<xrt_core::device_linux>(new xrt_core::device_linux(handle, id, !is_mgmt));
 }
 
 int

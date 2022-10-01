@@ -266,7 +266,8 @@ std::shared_ptr<device>
 system_linux::
 get_userpf_device(device::id_type id) const
 {
-  return xrt_core::get_userpf_device(xclOpen(id, nullptr, XCL_QUIET));
+  auto pdev = get_pcidev(id, true);
+  return xrt_core::get_userpf_device(pdev->create_shim(id));
 }
 
 std::shared_ptr<device>

@@ -35,7 +35,7 @@ public:
   /**
    * get_device_handle() - Get underlying shim device handle
    *
-   * Throws if called on non userof devices
+   * Throws if called on non userpf devices
    */
   xclDeviceHandle
   get_device_handle() const;
