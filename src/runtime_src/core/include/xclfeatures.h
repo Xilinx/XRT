@@ -143,4 +143,10 @@ struct FeatureRomHeader {
 	uint32_t CDMABaseAddress[4];	    // CDMA base addresses
 };
 
+struct VmrStatus {
+	uint16_t boot_on_default;
+	uint16_t boot_on_backup;
+	uint16_t boot_on_recovery;
+};
+
 #endif // xclfeatures_h_

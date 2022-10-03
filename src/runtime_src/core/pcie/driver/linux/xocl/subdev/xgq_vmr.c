@@ -14,6 +14,7 @@
 #include "xrt_xclbin.h"
 #include "../xgq_xocl_plat.h"
 #include "../xocl_drv.h"
+#include "xclfeatures.h"
 
 /*
  * XGQ Host management driver design.
@@ -1149,7 +1150,7 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB);
 }
 
-static int xgq_default_boot_enabled(struct platform_device *pdev)
+static int xgq_status(struct platform_device *pdev, struct VmrStatus * vmr_status_ptr)
 {
 	int rc = 0;
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
@@ -1163,7 +1164,11 @@ static int xgq_default_boot_enabled(struct platform_device *pdev)
 	vmr_status =
 		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
 
-	return vmr_status->boot_on_default;
+	vmr_status_ptr->boot_on_default = vmr_status->boot_on_default;
+	vmr_status_ptr->boot_on_backup = vmr_status->boot_on_backup;
+	vmr_status_ptr->boot_on_recovery = vmr_status->boot_on_recovery;
+
+	return 0;
 }
 
 static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
@@ -3168,7 +3173,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
 	.vmr_load_firmware = xgq_log_page_metadata,
-	.vmr_default_boot_enabled = xgq_default_boot_enabled,
+	.vmr_status = xgq_status,
 };
 
 static const struct file_operations xgq_vmr_fops = {

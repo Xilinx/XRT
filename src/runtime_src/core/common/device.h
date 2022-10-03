@@ -511,6 +511,17 @@ device_query(const std::shared_ptr<device>& device, Args&&... args)
   return boost::any_cast<typename QueryRequestType::result_type>(ret);
 }
 
+template <typename QueryRequestType>
+inline typename QueryRequestType::result_type
+device_query_default(const std::shared_ptr<device>& device, const typename QueryRequestType::result_type& default_value)
+{
+  try {
+    return device_query<QueryRequestType>(device);
+  } catch(...) {
+    return default_value;
+  }
+}
+
 template <typename QueryRequestType, typename ...Args>
 inline void
 device_update(const device* device, Args&&... args)

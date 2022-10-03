@@ -312,7 +312,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  XBU::throw_if_not_ready(device);
+  XBU::check_versal_boot(device);
 
   try {
     p2p(device.get(), action, XBU::getForce());

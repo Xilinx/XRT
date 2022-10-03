@@ -261,6 +261,7 @@ enum class key_type
   boot_partition,
   flush_default_only,
   program_sc,
+  vmr_boot_status,
   vmr_status,
   extended_vmr_status,
 
@@ -2984,6 +2985,15 @@ struct program_sc : request
 
   virtual void
   put(const device*, const boost::any&) const = 0;
+};
+
+struct vmr_boot_status : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::vmr_boot_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct vmr_status : request

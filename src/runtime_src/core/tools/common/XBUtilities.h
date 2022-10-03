@@ -57,7 +57,7 @@ namespace XBUtilities {
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
 
-  void throw_if_not_ready(const std::shared_ptr<xrt_core::device>& device);
+  void check_versal_boot(const std::shared_ptr<xrt_core::device>& device);
   std::shared_ptr<xrt_core::device> get_device ( const std::string &deviceBDF,
                                                  bool in_user_domain);
 

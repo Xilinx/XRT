@@ -1561,12 +1561,10 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!xocl_ps_wait(lro))
 		xocl_xmc_get_serial_num(lro);
 
-	rc = xclmgmt_check_device_ready(lro);
-	if (rc)
-		is_device_ready = false;
-
-	xocl_hwmon_sdm_get_sensors_list(lro, true);
+	(void) xocl_hwmon_sdm_get_sensors_list(lro, true);
 	xocl_drvinst_set_offline(lro, false);
+
+	(void) xclmgmt_check_device_ready(lro);
 
 	lro->status.ready = is_device_ready;
 	/* Notify our peer that we're listening. */

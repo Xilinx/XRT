@@ -105,7 +105,7 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     // Find device of interest
     auto device = XBUtilities::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
 
-    XBUtilities::throw_if_not_ready(device);
+    XBUtilities::check_versal_boot(device);
 
     //Set host-mem
     host_mem(device.get(), enable, size);

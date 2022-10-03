@@ -8,6 +8,7 @@
 
 // Local - Include Files
 #include "core/common/error.h"
+#include "core/common/info_vmr.h"
 #include "core/common/utils.h"
 #include "core/common/message.h"
 
@@ -327,12 +328,13 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 }
 
   void 
-  XBUtilities::throw_if_not_ready(const std::shared_ptr<xrt_core::device>& device)
+  XBUtilities::check_versal_boot(const std::shared_ptr<xrt_core::device>& device)
   {
-    const auto ready_msgs = xrt_core::device_query<xrt_core::query::is_ready_msg>(device);
-    const auto is_ready = xrt_core::query::is_ready_msg::is_ready(ready_msgs);
-    if (!is_ready)
-      throw_cancel("Device is not ready");
+    if (xrt_core::vmr::is_default_boot(device.get()))
+      return;
+
+    std::cout << "******** WARNING ******** WARNING ********\n";
+    std::cout << "***** Versal Platform in backup boot *****\n";
   }
 
   std::shared_ptr<xrt_core::device>

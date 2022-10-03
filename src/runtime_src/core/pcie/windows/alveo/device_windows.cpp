@@ -68,40 +68,6 @@ struct flash
   }
 };
 
-struct ready
-{
-  using result_type = bool;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return true;
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return true;
-  }
-};
-
-struct ready_msg
-{
-  using result_type = query::is_ready::result_type;
-
-  static result_type
-  user(const xrt_core::device* device, key_type key)
-  {
-    return std::vector();
-  }
-
-  static result_type
-  mgmt(const xrt_core::device* device, key_type key)
-  {
-    return std::vector();
-  }
-};
-
 
 struct firewall
 {
@@ -1558,8 +1524,6 @@ initialize_query_table()
   emplace_function0_getter<query::f_flash_type,              flash>();
   emplace_function0_getter<query::flash_type,                flash>();
   emplace_function0_getter<query::is_mfg,                    devinfo>();
-  emplace_function0_getter<query::is_ready,                  ready>();
-  emplace_function0_getter<query::is_ready_msg,              ready_msg>();
   emplace_function0_getter<query::board_name,                devinfo>();
   emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
   emplace_function0_getter<query::xmc_sc_presence,           devinfo>();

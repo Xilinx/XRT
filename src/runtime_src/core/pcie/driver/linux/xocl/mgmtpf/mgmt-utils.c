@@ -11,6 +11,7 @@
 #include <linux/firmware.h>
 #include <linux/module.h>
 
+#include "xclfeatures.h"
 #include "../xocl_drv.h"
 #include "../xocl_xclbin.h"
 
@@ -380,9 +381,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	memset(&lro->status, 0, sizeof(struct xclmgmt_device_status));
 	lro->status.ready = true;
 
-	err = xclmgmt_check_device_ready(lro);
-	if(err)
-		lro->status.ready = false;
+	(void) xclmgmt_check_device_ready(lro);
 
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
@@ -614,11 +613,13 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 {
-	int len, userpf_idx;
-	int ret;
+	int len = 0;
+	int userpf_idx = 0;
+	int ret = 0;
 	struct FeatureRomHeader	rom_header;
-	int offset;
-	const int *version;
+	struct VmrStatus	vmr_header;
+	int offset = 0;
+	const int *version = NULL;
 
 	if (!lro->core.fdt_blob)
 		return 0;
@@ -661,6 +662,19 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 		sizeof(rom_header));
 	if (ret) {
 		mgmt_err(lro, "add vrom failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_vmr_status(lro, &vmr_header);
+	if (ret) {
+		mgmt_err(lro, "get featurerom raw header failed %d", ret);
+		goto failed;
+	}
+
+	ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vmr_status", &vmr_header,
+		sizeof(vmr_header));
+	if (ret) {
+		mgmt_err(lro, "add vmr status failed %d", ret);
 		goto failed;
 	}
 
@@ -972,25 +986,25 @@ void xclmgmt_set_device_status(struct xclmgmt_dev *lro, int ret, const char* msg
 int xclmgmt_check_device_ready(struct xclmgmt_dev *lro)
 {
 	int rc = 0;
+	struct VmrStatus vmr_status;
 
-	rc = xocl_vmr_default_boot_enabled(lro);
-	/* 
+	/*
 	 * Check for a negative error code. A positive value indicates a default boot
 	 * Zero indicates a non-default boot with no other errors
 	 * A missing device does not indicate failure as many cards do not have a VMR
 	 */
+	rc = xocl_vmr_status(lro, &vmr_status);
 	if (rc != -ENODEV) {
-		if (rc == 0) {
-			rc = -1;
-			xclmgmt_set_device_status(lro, rc, "VMR not using default image");
+		if (rc) {
+			mgmt_err(lro, "%s", "Failed to get VMR status");
 			return rc;
-		} else if(rc < 0) {
-			xclmgmt_set_device_status(lro, rc, "Failed to get VMR status");
-			return rc;
-		} else /* Change the default boot result to a zero to indicate no issues */
-			rc = 0;
-	} else /* A missing device does not indicate failure */
-		rc = 0;
+		}
 
-	return rc;
+		if (!vmr_status.boot_on_default) {
+			mgmt_err(lro, "%s", "VMR not using default image");
+			return -1;
+		}
+	}
+
+	return 0;
 }

@@ -43,8 +43,10 @@
 #include <linux/types.h>
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
+
 #include "xocl_types.h"
 #include "xclbin.h"
+#include "xclfeatures.h"
 #include "xrt_xclbin.h"
 #include "xocl_xclbin.h"
 #include "xrt_mem.h"
@@ -2143,7 +2145,7 @@ struct xocl_xgq_vmr_funcs {
 	int (*xgq_collect_all_inst_sensors)(struct platform_device *pdev, char *buf,
                                      uint8_t id, uint32_t len);
 	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
-	int (*vmr_default_boot_enabled)(struct platform_device *pdev);
+	int (*vmr_status)(struct platform_device *pdev, struct VmrStatus* vmr_status_ptr);
 };
 #define	XGQ_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR) ? 			\
@@ -2189,9 +2191,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_vmr_load_firmware(xdev, fw, fw_size)		\
 	(XGQ_CB(xdev, vmr_load_firmware) ?			\
 	XGQ_OPS(xdev)->vmr_load_firmware(XGQ_DEV(xdev), fw, fw_size) : -ENODEV)
-#define	xocl_vmr_default_boot_enabled(xdev)		\
+#define	xocl_vmr_status(xdev, vmr_status_ptr)		\
 	(XGQ_CB(xdev, vmr_load_firmware) ?			\
-	XGQ_OPS(xdev)->vmr_default_boot_enabled(XGQ_DEV(xdev)) : -ENODEV)
+	XGQ_OPS(xdev)->vmr_status(XGQ_DEV(xdev), vmr_status_ptr) : -ENODEV)
 
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;

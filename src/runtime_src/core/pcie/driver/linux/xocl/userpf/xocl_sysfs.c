@@ -7,6 +7,7 @@
  * Authors: Lizhi.Hou@xilinx.com
  */
 #include "common.h"
+#include "xclfeatures.h"
 #include "kds_core.h"
 
 extern int kds_echo;
@@ -753,6 +754,42 @@ static ssize_t ready_msg_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ready_msg);
 
+static ssize_t vmr_boot_status_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	void *blob = NULL;
+	const struct VmrStatus *vmr_status = NULL;
+	int proplen = 0;
+	ssize_t cnt = 0;
+
+	blob = xdev->core.fdt_blob;
+	if (!blob) {
+		xocl_err(dev, "Failed to get FDT blob");
+		return 0;
+	}
+
+	vmr_status = (struct VmrStatus*) fdt_getprop(blob, 0, "vmr_status", &proplen);
+
+	if (!vmr_status) {
+		xocl_err(dev, "Did not find vmr_status prop");
+		return 0;
+	}
+
+	if (proplen != sizeof(struct VmrStatus)) {
+		xocl_err(dev, "Invalid vmr_status length");
+		return 0;
+	}
+
+	cnt += sprintf(buf + cnt, "BOOT_ON_DEFAULT:%d\n", vmr_status->boot_on_default);
+	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n", vmr_status->boot_on_backup);
+	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n", vmr_status->boot_on_recovery);
+
+	return cnt;
+}
+
+static DEVICE_ATTR_RO(vmr_boot_status);
+
 static ssize_t interface_uuids_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -899,6 +936,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_ready.attr,
 	&dev_attr_ready_msg.attr,
+	&dev_attr_vmr_boot_status.attr,
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,

@@ -27,6 +27,10 @@ XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
 vmr_info(const xrt_core::device * device);
 
+XRT_CORE_COMMON_EXPORT
+bool
+is_default_boot(const xrt_core::device* device);
+
 }} // vmr, xrt
 
 #endif
