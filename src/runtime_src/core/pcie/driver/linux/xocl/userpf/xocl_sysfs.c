@@ -772,7 +772,7 @@ static ssize_t vmr_boot_status_show(struct device *dev,
 	vmr_status = (struct VmrStatus*) fdt_getprop(blob, 0, "vmr_status", &proplen);
 
 	if (!vmr_status) {
-		xocl_err(dev, "Did not find vmr_status prop");
+		xocl_info(dev, "Did not find vmr_status prop");
 		return 0;
 	}
 

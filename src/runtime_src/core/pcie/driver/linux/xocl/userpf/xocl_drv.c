@@ -827,9 +827,10 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	struct xcl_subdev	*resp = NULL;
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
-	char *blob = NULL, *tmp;
-	u32 blob_len;
-	uint64_t checksum;
+	char *blob = NULL;
+	char *tmp = NULL;
+	u32 blob_len = 0;
+	uint64_t checksum = 0;
 	size_t offset = 0;
 	bool offline = false;
 	int ret = 0;

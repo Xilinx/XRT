@@ -382,6 +382,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	lro->status.ready = true;
 
 	(void) xclmgmt_check_device_ready(lro);
+	(void) xclmgmt_update_userpf_blob(lro);
 
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
@@ -616,8 +617,8 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	int len = 0;
 	int userpf_idx = 0;
 	int ret = 0;
-	struct FeatureRomHeader	rom_header;
-	struct VmrStatus	vmr_header;
+	struct FeatureRomHeader rom_header;
+	struct VmrStatus vmr_header;
 	int offset = 0;
 	const int *version = NULL;
 
@@ -665,17 +666,20 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 		goto failed;
 	}
 
+	/* Only works on versal platforms */
 	ret = xocl_vmr_status(lro, &vmr_header);
-	if (ret) {
-		mgmt_err(lro, "get featurerom raw header failed %d", ret);
-		goto failed;
-	}
+	if (ret != -ENODEV) {
+		if (ret) {
+			mgmt_err(lro, "get vmr header failed %d", ret);
+			goto failed;
+		}
 
-	ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vmr_status", &vmr_header,
+		ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vmr_status", &vmr_header,
 		sizeof(vmr_header));
-	if (ret) {
-		mgmt_err(lro, "add vmr status failed %d", ret);
-		goto failed;
+		if (ret) {
+			mgmt_err(lro, "add vmr status failed %d", ret);
+			goto failed;
+		}
 	}
 
 	/* Get ERT firmware major version from mgmtpf blob */
