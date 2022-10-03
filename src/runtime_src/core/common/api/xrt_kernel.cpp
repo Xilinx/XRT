@@ -159,6 +159,29 @@ debug_cmd_packet(const std::string& msg, const ert_packet* pkt)
   return fnm;
 }
 
+std::string
+cmd_state_to_string(ert_cmd_state state)
+{
+  static const std::map<ert_cmd_state, const char*> ert_cmd_state_string {
+   {ERT_CMD_STATE_NEW, "ERT_CMD_STATE_NEW"},
+   {ERT_CMD_STATE_QUEUED, "ERT_CMD_STATE_QUEUED"},
+   {ERT_CMD_STATE_RUNNING, "ERT_CMD_STATE_RUNNING"},
+   {ERT_CMD_STATE_COMPLETED, "ERT_CMD_STATE_COMPLETED"},
+   {ERT_CMD_STATE_ERROR, "ERT_CMD_STATE_ERROR"},
+   {ERT_CMD_STATE_ABORT, "ERT_CMD_STATE_ABORT"},
+   {ERT_CMD_STATE_SUBMITTED, "ERT_CMD_STATE_SUBMITTED"},
+   {ERT_CMD_STATE_TIMEOUT, "ERT_CMD_STATE_TIMEOUT"},
+   {ERT_CMD_STATE_NORESPONSE, "ERT_CMD_STATE_NORESPONSE"},
+   {ERT_CMD_STATE_SKERROR, "ERT_CMD_STATE_SKERROR"},
+   {ERT_CMD_STATE_SKCRASHED, "ERT_CMD_STATE_SKCRASHED"}
+  };
+
+  auto itr = ert_cmd_state_string.find(state);
+  return itr == ert_cmd_state_string.end()
+    ? "out of range"
+    : itr->second;
+}
+
 // Helper class for representing an in-memory kernel argument.  User
 // calls kernel(arg1, arg2, ...).  This class stores the address of
 // the kernel argument as provided by user and its size in number of
@@ -830,21 +853,21 @@ public:
     return get_state_raw(); // state wont change after wait
   }
 
-  ert_cmd_state
+  std::pair<ert_cmd_state, std::cv_status>
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
     if (m_managed) {
       std::unique_lock<std::mutex> lk(m_mutex);
       while (!m_done)
         if (m_exec_done.wait_for(lk, timeout_ms) == std::cv_status::timeout)
-          return ERT_CMD_STATE_TIMEOUT;
+          return {get_state_raw(), std::cv_status::timeout};
     }
     else {
       if (m_hwqueue.wait(this, timeout_ms) == std::cv_status::timeout)
-        return ERT_CMD_STATE_TIMEOUT;
+        return {get_state_raw(), std::cv_status::timeout};
     }
 
-    return get_state_raw(); // state wont change after wait
+    return {get_state_raw(), std::cv_status::no_timeout};
   }
 
   ////////////////////////////////////////////////////////////////
@@ -2178,7 +2201,7 @@ public:
     // TODO: find offset once in meta data
     uint32_t value = 0;
     set_offset_value(mailbox_auto_restart_cntr, &value, sizeof(value));
-    wait(std::chrono::milliseconds{0});
+    cmd->wait();
   }
 
   ert_cmd_state
@@ -2208,11 +2231,47 @@ public:
     return cmd->wait();
   }
 
-  // wait() - wait for execution to complete
+  // Deprecated wait() semantics.
+  // Return ERT_CMD_STATE_TIMEOUT on API timeout (bad!)
+  // Return ert cmd state otherwise
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
-    return timeout_ms.count() ? cmd->wait(timeout_ms) : cmd->wait();
+    if (timeout_ms.count()) {
+      auto [ert_state, cv_status] = cmd->wait(timeout_ms);
+      return (cv_status == std::cv_status::timeout)
+        ? ERT_CMD_STATE_TIMEOUT
+        : ert_state;
+    }
+
+    return cmd->wait();
+  }
+
+
+  // wait() - wait for execution to complete
+  // Return std::cv_status::timeout on timeout
+  // Return std::cv_status::no_timeout on successful completion
+  // Throw on abnormal command termination
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
+  {
+    ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
+    if (timeout_ms.count()) {
+      auto [ert_state, cv_status] = cmd->wait(timeout_ms);
+      if (cv_status == std::cv_status::timeout)
+        return std::cv_status::timeout;
+
+      state = ert_state;
+    }
+    else {
+      state = cmd->wait();
+    }
+
+    if (state == ERT_CMD_STATE_COMPLETED)
+      return std::cv_status::no_timeout;
+
+    std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
+    throw xrt::run::command_error(state, msg);
   }
 
   // state() - get current execution state
@@ -2567,6 +2626,17 @@ public:
     auto value = xrt_core::bo::address(glb);
     update_arg_value(arg, &value, sizeof(value));
   }
+};
+
+class run::command_error_impl
+{
+public:
+  ert_cmd_state m_state;
+  std::string m_message;
+
+  command_error_impl(ert_cmd_state state, const std::string& msg)
+    : m_state(state), m_message(msg)
+  {}
 };
 
 } // namespace xrt
@@ -2955,6 +3025,16 @@ wait(const std::chrono::milliseconds& timeout_ms) const
     });
 }
 
+std::cv_status
+run::
+wait2(const std::chrono::milliseconds& timeout_ms) const
+{
+  return xdp::native::profiling_wrapper("xrt::run::wait",
+    [this, &timeout_ms] {
+      return handle->wait_throw_on_error(timeout_ms);
+    });
+}
+
 ert_cmd_state
 run::
 state() const
@@ -3184,6 +3264,33 @@ set_arg_at_index(int index, const xrt::bo& glb)
 }
 
 }
+
+////////////////////////////////////////////////////////////////
+// xrt::run::command_error
+////////////////////////////////////////////////////////////////
+namespace xrt {
+
+run::command_error::
+command_error(ert_cmd_state state, const std::string& msg)
+  : m_impl(std::make_shared<run::command_error_impl>(state, msg))
+{}
+
+ert_cmd_state
+run::command_error::
+get_command_state() const
+{
+  return m_impl->m_state;
+}
+
+const char*
+run::command_error::
+what() const noexcept
+{
+  return m_impl->m_message.c_str();
+}
+
+}
+
 ////////////////////////////////////////////////////////////////
 // xrt_kernel API implmentations (xrt_kernel.h)
 ////////////////////////////////////////////////////////////////
