@@ -2971,6 +2971,11 @@ struct program_sc : request
   put(const device*, const boost::any&) const = 0;
 };
 
+/**
+ * A call to return the boot status of a vmr subdevice
+ * This is intended for use on the user partition as
+ * the managment version (vmr_status) is not available
+ */
 struct vmr_boot_status : request
 {
   using result_type = std::vector<std::string>;
@@ -2980,6 +2985,12 @@ struct vmr_boot_status : request
   get(const device*) const = 0;
 };
 
+/**
+ * Returns the status the vmr subdevice. This
+ * includes boot information but is more detailed
+ * due to the higher access provided by the mgmt
+ * partition.
+ */
 struct vmr_status : request
 {
   using result_type = std::vector<std::string>;

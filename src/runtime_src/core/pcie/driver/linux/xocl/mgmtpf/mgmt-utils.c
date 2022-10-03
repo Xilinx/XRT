@@ -815,7 +815,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 
 	if (xocl_subdev_is_vsec_recovery(lro)) {
-		mgmt_info(lro, "%s\n", "Skip load_fdt for vsec Golden image");
+		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
 		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 		return 0;
 	}
@@ -831,7 +831,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
 	if (!dtc_header) {
 		ret = -ENOENT;
-		mgmt_err(lro, "%s\n", "Firmware does not contain PARTITION_METADATA");
+		mgmt_err(lro, "Firmware does not contain PARTITION_METADATA");
 		goto failed;
 	}
 
@@ -840,13 +840,13 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD,
 			bin_axlf->m_header.m_platformVBNV);
 	if (ret) {
-		mgmt_err(lro, "%s\n", "Invalid PARTITION_METADATA");
+		mgmt_err(lro, "Invalid PARTITION_METADATA");
 		goto failed;
 	}
 
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
 		/* Minimum set up for golden image. */
-		mgmt_err(lro, "%s\n", "Factory image detected. Performing minimum setup");
+		mgmt_err(lro, "Factory image detected. Performing minimum setup");
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_MB);
 		goto failed;
@@ -855,7 +855,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
 	if (!lro->core.blp_blob) {
 		ret = -ENOMEM;
-		mgmt_err(lro, "%s\n", "Failed to allocate blp data region");
+		mgmt_err(lro, "Failed to allocate blp data region");
 		goto failed;
 	}
 	memcpy(lro->core.blp_blob, lro->core.fdt_blob,
@@ -865,7 +865,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		mgmt_err(lro, "%s\n", "Failed to create sub devices");
+		mgmt_err(lro, "Failed to create sub devices");
 		goto failed;
 	}
 
@@ -874,7 +874,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		ret = xocl_icap_download_boot_firmware(lro);
 
 	if (ret) {
-		mgmt_err(lro, "%s\n", "Firmware ICAP download failed");
+		mgmt_err(lro, "Firmware ICAP download failed");
 		goto failed;
 	}
 
@@ -992,12 +992,12 @@ int xclmgmt_check_device_ready(struct xclmgmt_dev *lro)
 	rc = xocl_vmr_status(lro, &vmr_status);
 	if (rc != -ENODEV) {
 		if (rc) {
-			mgmt_err(lro, "%s", "Failed to get VMR status");
+			mgmt_err(lro, "Failed to get VMR status");
 			return rc;
 		}
 
 		if (!vmr_status.boot_on_default) {
-			mgmt_err(lro, "%s", "VMR not using default image");
+			mgmt_err(lro, "VMR not using default image");
 			return -1;
 		}
 	}
