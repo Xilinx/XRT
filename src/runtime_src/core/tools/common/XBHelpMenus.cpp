@@ -242,8 +242,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     consoleStream << dev_desc;
     consoleStream << std::string(dev_desc.length(), '-') << std::endl;
 
-    const auto ready_msgs = xrt_core::device_query_default<xrt_core::query::is_ready_msg>(device, xrt_core::query::is_ready_msg::result_type());
-    const auto is_ready = xrt_core::query::is_ready_msg::is_ready(ready_msgs);
+    const auto is_ready = xrt_core::device_query_default<xrt_core::query::is_ready>(device, true);
     bool is_recovery = false;
     try {
       is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);

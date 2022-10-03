@@ -215,7 +215,6 @@ enum class key_type
   is_recovery,
   is_versal,
   is_ready,
-  is_ready_msg,
   is_offline,
   f_flash_type,
   flash_type,
@@ -2539,21 +2538,6 @@ struct is_ready : request
 
   virtual boost::any
   get(const device*) const = 0;
-};
-
-struct is_ready_msg : request
-{
-  using result_type = std::vector<std::string>;
-  static const key_type key = key_type::is_ready_msg;
-
-  virtual boost::any
-  get(const device*) const = 0;
-
-  static bool
-  is_ready(const result_type& value)
-  {
-    return value.size() == 0;
-  }
 };
 
 // struct is_offline - check if device is offline (being reset)

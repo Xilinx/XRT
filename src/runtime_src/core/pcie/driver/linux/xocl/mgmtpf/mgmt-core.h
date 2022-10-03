@@ -111,11 +111,6 @@ enum {
 	XOCL_RP_PROGRAM = 2
 };
 
-struct xclmgmt_device_status {
-	bool ready;
-	char msg[256];
-};
-
 struct xclmgmt_dev {
 	struct xocl_dev_core	core;
 	/* MAGIC_DEVICE == 0xAAAAAAAA */
@@ -136,7 +131,7 @@ struct xclmgmt_dev {
 	struct msix_entry msix_irq_entries[XCLMGMT_MAX_INTR_NUM];
 #endif
 	int msix_user_start_vector;
-	struct xclmgmt_device_status status;
+	bool ready;
 	bool reset_requested;
 
 	void *userpf_blob;
@@ -200,7 +195,6 @@ void xclmgmt_ocl_reset(struct xclmgmt_dev *lro);
 void xclmgmt_ert_reset(struct xclmgmt_dev *lro);
 void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro);
 int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf *xclbin);
-void xclmgmt_set_device_status(struct xclmgmt_dev *lro, int ret, const char* msg);
 int xclmgmt_check_device_ready(struct xclmgmt_dev *lro);
 
 /* bifurcation-reset.c */

@@ -122,25 +122,17 @@ XBUtilities::get_available_devices(bool inUserDomain)
         // The id wasn't added
       }
 
-     try {
-       std::string stream;
-       auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
-       std::string pf = device->is_userpf() ? "user" : "mgmt";
-       pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
-     } catch(const xrt_core::query::exception&) {
-         // The instance wasn't added
-       }
+    try {
+      std::string stream;
+      auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
+      std::string pf = device->is_userpf() ? "user" : "mgmt";
+      pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
+    } catch(const xrt_core::query::exception&) {
+        // The instance wasn't added
+    }
 
     }
-    const auto ready_msg = xrt_core::device_query<xrt_core::query::is_ready_msg>(device);
-    pt_dev.put("is_ready", xrt_core::query::is_ready_msg::is_ready(ready_msg));
-    boost::property_tree::ptree msg_array;
-    for (const auto& msg : ready_msg) {
-      boost::property_tree::ptree msg_pt;
-      msg_pt.put("", msg);
-      msg_array.push_back(std::make_pair("", msg_pt));
-    }
-    pt_dev.add_child("is_ready_msg", msg_array);
+    pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
     pt.push_back(std::make_pair("", pt_dev));
   }
   return pt;

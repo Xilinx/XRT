@@ -378,8 +378,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	store_pcie_link_info(lro);
 
 	/* Clear previous state of device status */
-	memset(&lro->status, 0, sizeof(struct xclmgmt_device_status));
-	lro->status.ready = true;
+	lro->ready = true;
 
 	(void) xclmgmt_check_device_ready(lro);
 	(void) xclmgmt_update_userpf_blob(lro);
@@ -387,7 +386,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
 	else if (!force)
-		xclmgmt_connect_notify(lro, lro->status.ready);
+		xclmgmt_connect_notify(lro, lro->ready);
 
 	return 0;
 
@@ -722,7 +721,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 	char *blob = NULL;
 	int len;
 
-	if (!lro->status.ready) {
+	if (!lro->ready) {
 		mgmt_warn(lro, "not ready yet");
 		ret = -EINVAL;
 		goto failed;
@@ -816,8 +815,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 
 	if (xocl_subdev_is_vsec_recovery(lro)) {
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Skip load_fdt for vsec Golden image\n");
-		mgmt_info(lro, "%s", lro->status.msg);
+		mgmt_info(lro, "%s\n", "Skip load_fdt for vsec Golden image");
 		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 		return 0;
 	}
@@ -825,7 +823,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	mutex_lock(&lro->busy_mutex);
 	ret = xocl_rom_load_firmware(lro, &fw_buf, &fw_size);
 	if (ret) {
-		snprintf(lro->status.msg, sizeof(lro->status.msg), "Failed to load ROM firmware %d\n", ret);
+		mgmt_err(lro, "%s %d\n", "Skip load_fdt for vsec Golden image", ret);
 		goto failed;
 	}
 	bin_axlf = (struct axlf *)fw_buf;
@@ -833,7 +831,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
 	if (!dtc_header) {
 		ret = -ENOENT;
-		xclmgmt_set_device_status(lro, ret, "Firmware does not contain PARTITION_METADATA");
+		mgmt_err(lro, "%s\n", "Firmware does not contain PARTITION_METADATA");
 		goto failed;
 	}
 
@@ -842,13 +840,13 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD,
 			bin_axlf->m_header.m_platformVBNV);
 	if (ret) {
-		xclmgmt_set_device_status(lro, ret, "Invalid PARTITION_METADATA");
+		mgmt_err(lro, "%s\n", "Invalid PARTITION_METADATA");
 		goto failed;
 	}
 
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
 		/* Minimum set up for golden image. */
-		xclmgmt_set_device_status(lro, -EPERM, "Factory image detected. Performing minimum setup");
+		mgmt_err(lro, "%s\n", "Factory image detected. Performing minimum setup");
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_MB);
 		goto failed;
@@ -857,7 +855,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
 	if (!lro->core.blp_blob) {
 		ret = -ENOMEM;
-		xclmgmt_set_device_status(lro, ret, "Failed to allocate blp data region");
+		mgmt_err(lro, "%s\n", "Failed to allocate blp data region");
 		goto failed;
 	}
 	memcpy(lro->core.blp_blob, lro->core.fdt_blob,
@@ -867,7 +865,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		xclmgmt_set_device_status(lro, ret, "Failed to create sub devices");
+		mgmt_err(lro, "%s\n", "Failed to create sub devices");
 		goto failed;
 	}
 
@@ -876,7 +874,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 		ret = xocl_icap_download_boot_firmware(lro);
 
 	if (ret) {
-		xclmgmt_set_device_status(lro, ret, "Firmware ICAP download failed");
+		mgmt_err(lro, "%s\n", "Firmware ICAP download failed");
 		goto failed;
 	}
 
@@ -979,12 +977,6 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 done:
 	vfree(fw_buf);
 	return err;
-}
-
-void xclmgmt_set_device_status(struct xclmgmt_dev *lro, int ret, const char* msg)
-{
-	snprintf(lro->status.msg, sizeof(lro->status.msg), "%s - %d", msg, ret);
-	mgmt_err(lro, "%s", lro->status.msg);
 }
 
 int xclmgmt_check_device_ready(struct xclmgmt_dev *lro)
