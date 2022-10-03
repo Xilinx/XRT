@@ -20,14 +20,15 @@
 #include <cstdint>
 
 #include "xdp/profile/plugin/aie_trace_new/aie_trace_impl.h"
+#include "xaiefal/xaiefal.hpp"
 
 namespace xdp {
 
-  class AieTraceEdgeImpl : public AieTraceImpl{
+  class AieTrace_EdgeImpl : public AieTraceImpl{
     public:
-      AieTraceEdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
+      AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
         // : AieTraceImpl(database, metadata);
-      ~AieTraceEdgeImpl();
+      ~AieTrace_EdgeImpl();
 
       void updateDevice();
       void flushDevice();
@@ -38,9 +39,28 @@ namespace xdp {
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
       bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+      bool configureStartIteration(xaiefal::XAieMod& core);
+      bool configureStartDelay(xaiefal::XAieMod& core);
+      void getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
+                                           std::vector<std::string> graphmetricsSettings,
+                                           void* handle);
+
+      void setTraceStartControl(void* handle);
+      uint64_t checkTraceBufSize(uint64_t size);                                   
+      std::string getMetricSet(void* handle,
+                               const std::string& metricsStr,
+                               bool ignoreOldConfig);
       inline uint32_t bcIdToEvent(int bcId);
 
     private:
+      XAie_DevInst*     aieDevInst = nullptr;
+      xaiefal::XAieDev* aieDevice  = nullptr;
+
+         // Types
+      typedef XAie_Events            EventType;
+      typedef std::vector<EventType> EventVector;
+      typedef std::vector<uint32_t>  ValueVector;
+
       std::set<std::string> metricSets;
       std::map<std::string, EventVector> coreEventSets;
       std::map<std::string, EventVector> memoryEventSets;
@@ -68,6 +88,9 @@ namespace xdp {
       * need separate map for each type or a vector of maps for all types together.
       */
       std::map<tile_type, std::string> mConfigMetrics;
+      bool mUseOneDelayCtr = true;
+      uint32_t mIterationCount = 0;
+
       // std::vector<std::map<tile_type, std::string>> mConfigMetrics;
   };
 

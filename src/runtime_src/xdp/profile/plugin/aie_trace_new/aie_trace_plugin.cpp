@@ -33,13 +33,12 @@
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 
-// #ifdef XRT_NATIVE_BUILD
-#include "x86/aie_trace.h"
-// #else
-// #include "edge/aie_trace.h"
-// #include "core/edge/user/shim.h"
-// #endif
-
+#ifdef XRT_NATIVE_BUILD
+  #include "x86/aie_trace.h"
+#else
+  #include "edge/aie_trace.h"
+  #include "core/edge/user/shim.h"
+#endif
 
 #include "aie_trace_impl.h"
 #include "aie_trace_plugin.h"
@@ -102,12 +101,13 @@ namespace xdp {
     AIEData.supported = true; // initialize struct
     AIEData.devIntf = nullptr;
 
-// #ifdef XRT_NATIVE_BUILD
+#ifdef XRT_NATIVE_BUILD
     AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, metadata);
-// #else
-// AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, metadata);
-// #endif
+#else
+    AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, metadata);
+#endif
 
+    std::cout << "Created Implementation!" << std::endl;
     auto& implementation = AIEData.implementation;
 
     // Get Device info

@@ -47,6 +47,9 @@ class AieTraceMetadata{
     std::set<std::string> metricSets;
     // These flags are used to decide configuration at various points
     bool mUseDelay = false;
+    bool mUseUserControl = false;
+    bool mUseGraphIterator = false;
+    uint32_t mIterationCount = 0;
     uint32_t mDelayCycles = 0;
 
     bool continuousTrace;
@@ -73,10 +76,25 @@ class AieTraceMetadata{
     uint64_t getContinuousTrace() {return continuousTrace;}
     unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
+    bool getUseDelay(){return mUseDelay;}
+    bool getUseUserControl(){return mUseUserControl;}
+    bool getUseGraphIterator(){return mUseGraphIterator;}
+    
+    void setUseDelay(bool delay){mUseDelay = delay;}
+    void setUseUserControl(bool control){mUseUserControl = control;}
+    void setUseGraphIterator(bool graphiterator){mUseGraphIterator = graphiterator;}
+
+    uint32_t getIterationCount(){return mIterationCount;}
+    void setIterationCount(uint32_t iterationCount){mIterationCount = iterationCount;}
+
     uint32_t getDelay() {
       if (mUseDelay)
         return mDelayCycles;
       return 0;
+    }
+    
+    void setDelayCycles(uint32_t delayCycles) {
+      mDelayCycles = delayCycles;
     }
   };
 

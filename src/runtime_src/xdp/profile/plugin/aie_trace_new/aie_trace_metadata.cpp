@@ -89,8 +89,15 @@ namespace xdp {
     auto counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
 
     //Process the file dump interval
-    aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
-    if (aie_trace_file_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S){
+    aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_settings_file_dump_interval_s();
+    if (aie_trace_file_dump_int_s == DEFAULT_AIE_TRACE_DUMP_INTERVAL_S) {
+      // if set to default value, then check for old style config
+      aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
+      if (aie_trace_file_dump_int_s != DEFAULT_AIE_TRACE_DUMP_INTERVAL_S)
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "The xrt.ini flag \"aie_trace_file_dump_interval_s\" is deprecated and will be removed in future release. Please use \"file_dump_interval_s\" under \"AIE_trace_settings\" section.");
+    }
+    if (aie_trace_file_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S) {
       aie_trace_file_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
     }
