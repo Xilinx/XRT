@@ -177,7 +177,7 @@ if [[ ! -d $IMAGES_DIR ]]; then
 fi
 IMAGES_DIR=`realpath $IMAGES_DIR`
 #hack to fix pipeline. Need to file a CR on xclnbinutil
-source /proj/xbuilds/2022.2_0823_1/installs/lin64/Vitis/2022.2/settings64.sh
+source /proj/xbuilds/2022.2_1004_1/installs/lin64/Vitis/2022.2/settings64.sh
 
 
 if [[ ! (`which mkimage` && `which bootgen` && `which xclbinutil`) ]]; then
