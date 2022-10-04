@@ -55,12 +55,6 @@ get_vmr_status(const xrt_core::device* device)
     // only available for mgmt devices
   }
 
-  try {
-    vmr_status = xrt_core::device_query<xq::vmr_boot_status>(device);
-  }
-  catch (...) {
-    // only available for user devices
-  }
   return vmr_status;
 }
 

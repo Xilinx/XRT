@@ -260,7 +260,6 @@ enum class key_type
   boot_partition,
   flush_default_only,
   program_sc,
-  vmr_boot_status,
   vmr_status,
   extended_vmr_status,
 
@@ -2970,21 +2969,6 @@ struct program_sc : request
   virtual void
   put(const device*, const boost::any&) const = 0;
 };
-
-/**
- * A call to return the boot status of a vmr subdevice
- * This is intended for use on the user partition as
- * the managment version (vmr_status) is not available
- */
-struct vmr_boot_status : request
-{
-  using result_type = std::vector<std::string>;
-  static const key_type key = key_type::vmr_boot_status;
-
-  virtual boost::any
-  get(const device*) const = 0;
-};
-
 /**
  * Returns the status the vmr subdevice. This
  * includes boot information but is more detailed

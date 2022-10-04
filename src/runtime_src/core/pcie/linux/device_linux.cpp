@@ -919,6 +919,26 @@ struct sysfs_fcn<std::vector<VectorValueType>>
   }
 };
 
+/* Accelerator Deadlock Detector status
+ * In PCIe Linux, access the sysfs file for Accelerator Deadlock Detector to retrieve the deadlock status
+ */
+struct vmr_status
+{
+  using result_type = query::vmr_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    std::string err;
+    std::vector<std::string> value;
+
+    if (device->is_userpf())
+      return sysfs_fcn<result_type>::get(get_pcidev(device), "", "vmr_status");
+    else
+      return sysfs_fcn<result_type>::get(get_pcidev(device), "xgq_vmr", "vmr_status");
+  }
+};
+
 template <typename QueryRequestType>
 struct sysfs_get : virtual QueryRequestType
 {
@@ -1228,11 +1248,10 @@ initialize_query_table()
   emplace_func4_request<query::spc_status,                     spc_status>();
   emplace_func4_request<query::accel_deadlock_status,          accel_deadlock_status>();
 
-  emplace_sysfs_get<query::vmr_boot_status>                    ("", "vmr_boot_status");
   emplace_sysfs_getput<query::boot_partition>                  ("xgq_vmr", "boot_from_backup");
   emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
   emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
-  emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
+  emplace_func0_request<query::vmr_status,                     vmr_status>();
   emplace_sysfs_get<query::extended_vmr_status>                ("xgq_vmr", "vmr_verbose_info");
   emplace_sysfs_getput<query::xgq_scaling_enabled>             ("xgq_vmr", "xgq_scaling_enable");
   emplace_sysfs_getput<query::xgq_scaling_power_override>      ("xgq_vmr", "xgq_scaling_power_override");

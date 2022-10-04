@@ -692,7 +692,7 @@ static ssize_t ready_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ready);
 
-static ssize_t vmr_boot_status_show(struct device *dev,
+static ssize_t vmr_status_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
@@ -726,7 +726,7 @@ static ssize_t vmr_boot_status_show(struct device *dev,
 	return cnt;
 }
 
-static DEVICE_ATTR_RO(vmr_boot_status);
+static DEVICE_ATTR_RO(vmr_status);
 
 static ssize_t interface_uuids_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -873,7 +873,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_ready.attr,
-	&dev_attr_vmr_boot_status.attr,
+	&dev_attr_vmr_status.attr,
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
