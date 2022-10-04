@@ -267,7 +267,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
   boost::program_options::positional_options_description emptyPOD;
   std::string usage = XBU::create_usage_string(_optionDescription, emptyPOD);
   usage += " [command [commandArgs]]";
-  boost::format fmtUsage(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s%s\n" + fgc_reset);
+  boost::format fmtUsage(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s\n" + fgc_reset);
   std::cout << fmtUsage % _executable % usage;
 
   // -- Sort the SubCommands
@@ -280,7 +280,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
     if (!XBU::getShowHidden() && subCmdEntry->isHidden()) 
       continue;
 
-    // Depricated sub-command
+    // Deprecated sub-command
     if (subCmdEntry->isDeprecated()) {
       subCmdsDepricated.push_back(subCmdEntry);
       continue;
