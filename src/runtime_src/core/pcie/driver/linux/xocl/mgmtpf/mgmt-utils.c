@@ -380,8 +380,6 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	/* Clear previous state of device status */
 	lro->ready = true;
 
-	/* Log any messages if the device state indicates something is wrong */
-	(void) xclmgmt_check_device_ready(lro);
 	/* Update the userspace fdt with the current values in the mgmt driver */
 	(void) xclmgmt_update_userpf_blob(lro);
 
@@ -674,6 +672,9 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 			mgmt_err(lro, "Get vmr header failed %d", ret);
 			goto failed;
 		}
+
+		if (!vmr_header.boot_on_default)
+			mgmt_err(lro, "VMR not using default image");
 
 		ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vmr_status", &vmr_header,
 		sizeof(vmr_header));
@@ -979,30 +980,4 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 done:
 	vfree(fw_buf);
 	return err;
-}
-
-int xclmgmt_check_device_ready(struct xclmgmt_dev *lro)
-{
-	int rc = 0;
-	struct VmrStatus vmr_status;
-
-	/*
-	 * Check for a negative error code. A positive value indicates a default boot
-	 * Zero indicates a non-default boot with no other errors
-	 * A missing device does not indicate failure as many cards do not have a VMR
-	 */
-	rc = xocl_vmr_status(lro, &vmr_status);
-	if (rc != -ENODEV) {
-		if (rc) {
-			mgmt_err(lro, "Failed to get VMR status");
-			return rc;
-		}
-
-		if (!vmr_status.boot_on_default) {
-			mgmt_err(lro, "VMR not using default image");
-			return -1;
-		}
-	}
-
-	return 0;
 }

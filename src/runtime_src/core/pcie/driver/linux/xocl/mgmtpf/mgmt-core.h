@@ -1,27 +1,33 @@
 /**
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2017-2020 Xilinx, Inc. All rights reserved.
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (C) 2017-2020 Xilinx, Inc.
  *
  * Author(s):
  * Sonal Santan <sonal.santan@xilinx.com>
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  */
 
 #ifndef _XCL_MGT_PF_H_
 #define _XCL_MGT_PF_H_
 
-#include <asm/io.h>
 #include <linux/cdev.h>
-#include <linux/delay.h>
-#include <linux/init_task.h>
-#include <linux/iommu.h>
 #include <linux/list.h>
-#include <linux/mutex.h>
-#include <linux/pci.h>
 #include <linux/signal.h>
+#include <linux/init_task.h>
+#include <linux/mutex.h>
+#include <linux/iommu.h>
+#include <linux/pci.h>
+#include <linux/delay.h>
 #include <linux/time.h>
 #include <linux/types.h>
-
+#include <asm/io.h>
 #include "mgmt-ioctl.h"
 #include "xclfeatures.h"
 #include "../xocl_drv.h"
@@ -195,7 +201,6 @@ void xclmgmt_ocl_reset(struct xclmgmt_dev *lro);
 void xclmgmt_ert_reset(struct xclmgmt_dev *lro);
 void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro);
 int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf *xclbin);
-int xclmgmt_check_device_ready(struct xclmgmt_dev *lro);
 
 /* bifurcation-reset.c */
 long xclmgmt_hot_reset_bifurcation(struct xclmgmt_dev *lro,

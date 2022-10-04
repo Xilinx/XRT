@@ -1555,8 +1555,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_hwmon_sdm_get_sensors_list(lro, true);
 	xocl_drvinst_set_offline(lro, false);
 
-	(void) xclmgmt_check_device_ready(lro);
-
 	lro->ready = true;
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, lro->ready);
