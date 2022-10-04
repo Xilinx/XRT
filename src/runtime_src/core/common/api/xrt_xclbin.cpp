@@ -1293,6 +1293,16 @@ get_pre_post_fingerprint() const
   return handle->m_aiep->pre_post_fingerprint;
 }
 
+uint32_t
+xclbin::aie_partition::
+get_operations_per_cycle() const
+{
+  if (!handle)
+    throw std::runtime_error("internal error: missing aie_partition handle");
+
+  return handle->m_aiep->operations_per_cycle;
+}
+
 } // namespace xrt
 
 namespace {

@@ -124,6 +124,7 @@ std::ostream&
 operator << (std::ostream& ostr, const xrt::xclbin::aie_partition& aiep)
 {
   ostr << "aie_partition\n";
+  ostr << "operations_per_cycle: " << aiep.get_operations_per_cycle() << '\n';
   ostr << "inference_fingerprint: " << aiep.get_inference_fingerprint() << '\n';
   ostr << "pre_post_fingerprint: " << aiep.get_pre_post_fingerprint() << '\n';
 

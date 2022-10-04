@@ -548,6 +548,10 @@ public:
     XCL_DRIVER_DLLESPEC
     uint64_t
     get_pre_post_fingerprint() const;
+
+    XCL_DRIVER_DLLESPEC
+    uint32_t
+    get_operations_per_cycle() const;
   };
   /// @endcond
 
