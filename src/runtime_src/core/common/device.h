@@ -513,7 +513,18 @@ device_query(const std::shared_ptr<device>& device, Args&&... args)
 
 template <typename QueryRequestType>
 inline typename QueryRequestType::result_type
-device_query_default(const std::shared_ptr<device>& device, const typename QueryRequestType::result_type& default_value)
+device_query_default(const device* device, const typename QueryRequestType::result_type& default_value = typename QueryRequestType::result_type())
+{
+  try {
+    return device_query<QueryRequestType>(device);
+  } catch(...) {
+    return default_value;
+  }
+}
+
+template <typename QueryRequestType>
+inline typename QueryRequestType::result_type
+device_query_default(const std::shared_ptr<device>& device, const typename QueryRequestType::result_type& default_value = typename QueryRequestType::result_type())
 {
   try {
     return device_query<QueryRequestType>(device);

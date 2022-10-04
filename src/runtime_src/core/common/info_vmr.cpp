@@ -42,35 +42,21 @@ pretty_label(std::string label)
 namespace xrt_core { 
 namespace vmr {
 
-std::vector<std::string>
-get_vmr_status(const xrt_core::device* device)
-{
-  std::vector<std::string> vmr_status;
-  try {
-    vmr_status = xrt_core::device_query<xq::vmr_status>(device);
-    auto vmr_version = xrt_core::device_query<xq::extended_vmr_status>(device);
-    vmr_status.insert(vmr_status.begin(), vmr_version.begin(), vmr_version.end());
-  }
-  catch (...) {
-    // only available for mgmt devices
-  }
-
-  return vmr_status;
-}
-
 ptree_type
 vmr_info(const xrt_core::device* device)
 {
   ptree_type pt_vmr_status_array;
   ptree_type pt_vmr_stats;
-  auto vmr_status_raw = get_vmr_status(device);
+  auto vmr_status = xrt_core::device_query_default<xq::vmr_status>(device);
+  auto vmr_version = xrt_core::device_query_default<xq::extended_vmr_status>(device);
+  vmr_status.insert(vmr_status.begin(), vmr_version.begin(), vmr_version.end());
   
   // only available for versal
-  if (vmr_status_raw.empty())
+  if (vmr_status.empty())
     return pt_vmr_status_array;
 
   //parse one line at a time
-  for (auto& stat_raw : vmr_status_raw) {
+  for (auto& stat_raw : vmr_status) {
     ptree_type pt_stat;
     const auto idx = stat_raw.find_first_of(':');
     if (idx != std::string::npos) {
