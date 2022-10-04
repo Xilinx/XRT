@@ -328,8 +328,10 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     if (xrt_core::vmr::is_default_boot(device.get()))
       return;
 
-    std::cout << "******** WARNING ******** WARNING ********\n";
-    std::cout << "***** Versal Platform in backup boot *****\n";
+    std::cout << "***********************************************************\n";
+    std::cout << "******** WARNING ******** WARNING ******** WARNING ********\n";
+    std::cout << "************* Versal Platform in backup boot **************\n";
+    std::cout << "***********************************************************\n";
   }
 
   std::shared_ptr<xrt_core::device>
