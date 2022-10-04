@@ -322,6 +322,9 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   void 
   XBUtilities::check_versal_boot(const std::shared_ptr<xrt_core::device>& device)
   {
+    if (!xrt_core::device_query<xq::is_versal>(device))
+      return;
+
     if (xrt_core::vmr::is_default_boot(device.get()))
       return;
 
