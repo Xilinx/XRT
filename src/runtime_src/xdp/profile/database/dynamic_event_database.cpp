@@ -179,7 +179,7 @@ namespace xdp {
 
   std::vector<VTFEvent*>
   VPDynamicDatabase::
-  filterEraseUnsortedHostEvents(std::function<bool(VTFEvent*)> filter)
+  moveUnsortedHostEvents(std::function<bool(VTFEvent*)> filter)
   {
     return std::move(host->moveUnsortedEvents(filter));
   }
@@ -196,7 +196,7 @@ namespace xdp {
   }
 
   std::vector<std::unique_ptr<VTFEvent>>
-  VPDynamicDatabase::getEraseDeviceEvents(uint64_t deviceId)
+  VPDynamicDatabase::moveDeviceEvents(uint64_t deviceId)
   {
     auto device_db = getDeviceDB(deviceId);
     return std::move(device_db->moveEvents());

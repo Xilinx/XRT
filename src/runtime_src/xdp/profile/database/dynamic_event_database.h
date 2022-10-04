@@ -136,8 +136,8 @@ namespace xdp {
 
     // Erase events from db and transfer ownership to caller
     XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> moveSortedHostEvents(std::function<bool(VTFEvent*)> filter);
-    XDP_EXPORT std::vector<VTFEvent*> filterEraseUnsortedHostEvents(std::function<bool(VTFEvent*)> filter);
-    XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> getEraseDeviceEvents(uint64_t deviceId);
+    XDP_EXPORT std::vector<VTFEvent*> moveUnsortedHostEvents(std::function<bool(VTFEvent*)> filter);
+    XDP_EXPORT std::vector<std::unique_ptr<VTFEvent>> moveDeviceEvents(uint64_t deviceId);
 
     XDP_EXPORT bool deviceEventsExist(uint64_t deviceId);
     XDP_EXPORT bool hostEventsExist(std::function<bool(VTFEvent*)> filter);
