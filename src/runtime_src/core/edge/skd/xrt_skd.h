@@ -54,6 +54,14 @@
 
 namespace xrt {
 
+  struct ps_arg {
+    size_t paddr;
+    size_t psize;
+    size_t bo_offset;
+    void *vaddr;
+    int bo_handle;
+  };
+
 class skd
 {
  public:

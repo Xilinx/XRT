@@ -59,12 +59,20 @@ static void sigLog(const int sig)
       {
 // TO-DO: Remove after XRT Pipeline for edge build is updated to Centos8
 #ifndef __x86_64__
-	std::stringstream st;
-	st << boost::stacktrace::stacktrace();
-	xrt_core::message::send(severity_level::error, "SKD", st.str() );
+	std::stringstream backtrace;
+	backtrace << boost::stacktrace::stacktrace();
+	auto sigmsg = boost::format("SKD Signal handler caught signal %s!") % strsignal(sig);
+	xrt_core::message::send(severity_level::error, "SKD", sigmsg.str() );
+	std::string bt_line;
+	while (std::getline (backtrace, bt_line, '\n') )
+	  xrt_core::message::send(severity_level::error, "SKD", bt_line );
 #endif
-	signal(sig, SIG_DFL);
-	kill(getpid(),sig);
+	struct sigaction act = {};
+	act.sa_handler = SIG_DFL;
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = 0;
+	sigaction(sig, &act, nullptr);
+	raise(sig);
 	exit(sig);
       }
   }
@@ -117,6 +125,7 @@ void configSoftKernel(const xclDeviceHandle handle, xclSKCmd *cmd, const int par
     if (prctl(PR_SET_NAME, proc_name.c_str()) != 0) {
       const auto errMsg = boost::format("Unable to set process name to %s due to %s") % proc_name % strerror(errno);
       xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
+      exit(EXIT_FAILURE);
     } else {
       const auto Msg = boost::format("Setting process name to %s") % proc_name;
       xrt_core::message::send(severity_level::debug, "SKD", Msg.str());

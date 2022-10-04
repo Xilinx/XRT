@@ -90,10 +90,12 @@ int main(int argc, char *argv[])
     mem_size = xrt_core::device_query<xrt_core::query::host_mem_size>(xrt_core::device_int::get_core_device(xrtdHdl));
     mem_start_paddr = xrt_core::device_query<xrt_core::query::host_mem_addr>(xrt_core::device_int::get_core_device(xrtdHdl));
     parent_mem_bo = xclGetHostBO(handle,mem_start_paddr,mem_size);
-    syslog(LOG_INFO, "host_mem_size=%ld, host_mem_address=%lx\n",mem_size, mem_start_paddr);
+    const auto infoMsg = boost::format("host_mem_size=%ld, host_mem_address=%lx\n") % mem_size % mem_start_paddr;
+    xrt_core::message::send(severity_level::info, "SKD", infoMsg);
   }
   catch (const xrt_core::query::exception& ex) {
     xrt_core::send_exception_message(ex.what());
+    exit(EXIT_FAILURE);
   }
 #endif
 
@@ -103,21 +105,14 @@ int main(int argc, char *argv[])
     if (xclSKGetCmd(handle, &cmd) != 0)
       continue;
 
-    switch (cmd.opcode) {
-    case ERT_SK_CONFIG:
+    if (cmd.opcode == ERT_SK_CONFIG) {
       configSoftKernel(handle, &cmd, parent_mem_bo, mem_start_paddr, mem_size);
-      break;
-    default:
-      const auto warnmsg = "Unknow management command, ignore it";
-      xrt_core::message::send(severity_level::warning, "SKD", warnmsg);
-      break;
+      continue;
     }
+
+    // Unknown management command
+    const auto warnmsg = "Unknow management command, ignore it";
+    xrt_core::message::send(severity_level::warning, "SKD", warnmsg);
   }
 
-#ifdef SKD_MAP_BIG_BO
-  xclFreeBO(handle,parent_mem_bo);
-#endif
-  xclClose(handle);
-
-  return 0;
 }

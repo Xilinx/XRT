@@ -198,11 +198,7 @@ namespace xrt {
   skd::run() {
     ffi_arg kernel_return = 0;
     std::vector<void*> ffi_arg_values(m_kernel_args.size());
-    // Buffer Objects
-    std::vector<size_t> bo_offsets(m_kernel_args.size());
-    std::vector<void*> bos(m_kernel_args.size());
-    std::vector<int> bo_handles(m_kernel_args.size());
-    std::vector<int> bo_list;
+    std::vector<ps_arg> bo_args;
     clockc::time_point start;
     clockc::time_point end;
     clockc::time_point cmd_start;
@@ -242,17 +238,18 @@ namespace xrt {
 	  auto buf_size_ptr = reinterpret_cast<uint64_t *>(&m_args_from_host[(m_kernel_args[i].offset + PS_KERNEL_REG_OFFSET) / 4 + 2]);
 	  auto buf_size = reinterpret_cast<uint64_t>(*buf_size_ptr);
 
+	  ps_arg p;
+	  p.paddr = buf_addr;
+	  p.psize = buf_size;
 #ifdef SKD_MAP_BIG_BO
-	  bo_offsets[i] = buf_addr - mem_start_paddr;
-	  bos[i] = mem_start_vaddr + bo_offsets[i];
+	  p.bo_offset = buf_addr - mem_start_paddr;
+	  p.vaddr = mem_start_vaddr + p.bo_offset;
 #else
-	  bo_handles[i] = xclGetHostBO(m_devhdl, buf_addr, buf_size);
-	  bos[i] = xclMapBO(m_devhdl, bo_handles[i], true);
-	  bo_list.emplace_back(i);
+	  p.bo_handle = xclGetHostBO(m_devhdl, buf_addr, buf_size);
+	  p.vaddr = xclMapBO(m_devhdl, p.bo_handle, true);
+	  bo_args.emplace_back(p);
 #endif
-	  std::stringstream strm;
-	  strm << bos[i];
-	  ffi_arg_values[i] = &bos[i];
+	  ffi_arg_values[i] = &bo_args.back().vaddr;
 	} else {
 	  ffi_arg_values[i] = &m_args_from_host[(m_kernel_args[i].offset + PS_KERNEL_REG_OFFSET) / 4];
 	}
@@ -269,11 +266,11 @@ namespace xrt {
 #ifdef SKD_MAP_BIG_BO
 #else
       // Unmap Buffers
-      for(auto i:bo_list) {
-	xclUnmapBO(m_devhdl, bo_handles[i], bos[i]);
-	xclFreeBO(m_devhdl,bo_handles[i]);
+      for(auto it:bo_args) {
+	xclUnmapBO(m_devhdl, it.bo_handle, it.vaddr);
+	xclFreeBO(m_devhdl,it.bo_handle);
       }
-      bo_list.clear();
+      bo_args.clear();
 #endif
 
       cmd_end = clockc::now();
