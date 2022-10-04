@@ -2,7 +2,7 @@
  * sysfs for the device attributes.
  *
  * Copyright (C) 2016-2017 Xilinx, Inc. All rights reserved.
- * 
+ *
  * Authors:
  *    Lizhi Hou <lizhih@xilinx.com>
  *    Umang Parekh <umang.parekh@xilinx.com>

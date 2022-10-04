@@ -1269,7 +1269,7 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 		ret = xocl_subdev_create(lro, &subdev_info);
 		if (ret && ret != -ENODEV) {
-			mgmt_err(lro, "%s\n", "Failed to create sub devices");
+			mgmt_err(lro, "Failed to create sub devices");
 			goto fail;
 		}
 	}
@@ -1280,7 +1280,7 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 */
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
 	if (ret && ret != -ENODEV) {
-		mgmt_err(lro, "%s\n", "Failed to register firewall");
+		mgmt_err(lro, "Failed to register firewall");
 		goto fail_all_subdev;
 	}
 
@@ -1289,10 +1289,10 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	ret = xocl_subdev_create_all(lro);
 	if (ret) {
-		mgmt_err(lro, "%s\n", "Failed to register subdevs");
+		mgmt_err(lro, "Failed to register subdevs %d", ret);
 		goto fail_all_subdev;
 	}
-	xocl_info(&pdev->dev, "created all sub devices");
+	mgmt_info(lro, "Created all sub devices");
 
 	/* Attempt to load firmware and get the appropriate device */
 	if (!(dev_info->flags & (XOCL_DSAFLAG_SMARTN | XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)))
@@ -1317,11 +1317,11 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	if (ret == -ENODEV) { /* If no device was found attempt to load the device tree*/
 		ret = xclmgmt_load_fdt(lro);
 		if (ret) {
-			mgmt_err(lro, "%s\n", "Failed to load FDT");
+			mgmt_err(lro, "Failed to load FDT");
 			goto fail_all_subdev;
 		}
 	} else if (ret) { /* For general failures reset to minimum initalization */
-		mgmt_err(lro, "%s\n", "Firmware ICAP download failed");
+		mgmt_err(lro, "Firmware ICAP download failed");
 		goto fail_all_subdev;
 	}
 
@@ -1511,7 +1511,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	}
 
 	if (xclmgmt_extended_probe(lro))
-		mgmt_err(lro, "%s\n", "Extended probe failed");
+		mgmt_err(lro, "Extended probe failed");
 
 	/*
 	 * Even if extended probe fails, make sure feature ROM subdev
@@ -1520,11 +1520,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
 	if (rc && rc != -ENODEV)
-		mgmt_err(lro, "%s\n", "Failed to create ROM subdevice");
+		mgmt_err(lro, "Failed to create ROM subdevice");
 
 	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 	if (rc && rc != -ENODEV)
-		mgmt_err(lro, "%s\n", "Failed to create Flash subdevice");
+		mgmt_err(lro, "Failed to create Flash subdevice");
 
 	/*
 	 * if can not find BLP metadata, it has to bring up flash and xmc to
@@ -1532,11 +1532,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 */
 	rc = xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	if (rc && rc != -ENODEV)
-		mgmt_err(lro, "%s\n", "Failed to create BLD level");
+		mgmt_err(lro, "Failed to create BLD level");
 
 	rc = xocl_subdev_create_vsec_devs(lro);
 	if (rc && rc != -EEXIST)
-		mgmt_err(lro, "%s\n", "Failed to create VSEC devices");
+		mgmt_err(lro, "Failed to create VSEC devices");
 
 	/*
 	 * For u30 whose reset relies on SC, and the cmc is running on ps, we
@@ -1561,9 +1561,9 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	/* Notify our peer that we're listening. */
 	xclmgmt_connect_notify(lro, lro->ready);
 	if (lro->ready)
-		xocl_info(&pdev->dev, "Device fully initialized\n");
+		mgmt_info(lro, "Device fully initialized");
 	else
-		xocl_err(&pdev->dev, "Device not ready\n");
+		mgmt_err(lro, "Device not ready");
 	return 0;
 
 err_init_sysfs:

@@ -380,7 +380,9 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	/* Clear previous state of device status */
 	lro->ready = true;
 
+	/* Log any messages if the device state indicates something is wrong */
 	(void) xclmgmt_check_device_ready(lro);
+	/* Update the userspace fdt with the current values in the mgmt driver */
 	(void) xclmgmt_update_userpf_blob(lro);
 
 	if (xrt_reset_syncup)
@@ -669,14 +671,14 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	ret = xocl_vmr_status(lro, &vmr_header);
 	if (ret != -ENODEV) {
 		if (ret) {
-			mgmt_err(lro, "get vmr header failed %d", ret);
+			mgmt_err(lro, "Get vmr header failed %d", ret);
 			goto failed;
 		}
 
 		ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vmr_status", &vmr_header,
 		sizeof(vmr_header));
 		if (ret) {
-			mgmt_err(lro, "add vmr status failed %d", ret);
+			mgmt_err(lro, "Add vmr status failed %d", ret);
 			goto failed;
 		}
 	}
@@ -823,7 +825,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	mutex_lock(&lro->busy_mutex);
 	ret = xocl_rom_load_firmware(lro, &fw_buf, &fw_size);
 	if (ret) {
-		mgmt_err(lro, "%s %d\n", "Skip load_fdt for vsec Golden image", ret);
+		mgmt_err(lro, "ROM firmware load failure %d", ret);
 		goto failed;
 	}
 	bin_axlf = (struct axlf *)fw_buf;

@@ -319,12 +319,9 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 }
 
-  void 
-  XBUtilities::check_versal_boot(const std::shared_ptr<xrt_core::device>& device)
+  static void 
+  check_versal_boot(const std::shared_ptr<xrt_core::device>& device)
   {
-    if (!xrt_core::device_query<xq::is_versal>(device))
-      return;
-
     if (xrt_core::vmr::is_default_boot(device.get()))
       return;
 
@@ -335,7 +332,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 
   std::shared_ptr<xrt_core::device>
-  XBUtilities::get_device ( const std::string &deviceBDF, bool in_user_domain)
+  XBUtilities::get_device( const std::string &deviceBDF, bool in_user_domain)
   {
     // -- If the deviceBDF is empty then do nothing
     if (deviceBDF.empty())
@@ -349,7 +346,9 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     else
       device = xrt_core::get_mgmtpf_device(index);
 
-    check_versal_boot(device);
+    if (!xrt_core::device_query<xq::is_versal>(device))
+      check_versal_boot(device);
+
     return device;
   }
 

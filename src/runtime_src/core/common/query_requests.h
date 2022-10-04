@@ -2530,6 +2530,11 @@ struct is_versal : request
   get(const device*) const = 0;
 };
 
+/*
+ * struct is_ready - A boolean stating
+ * if the specified device is ready for
+ * XRT operations such as program or reset
+ */
 struct is_ready : request
 {
   using result_type = bool;
@@ -2969,11 +2974,12 @@ struct program_sc : request
   virtual void
   put(const device*, const boost::any&) const = 0;
 };
+
 /**
  * Returns the status the vmr subdevice. This
- * includes boot information but is more detailed
- * due to the higher access provided by the mgmt
- * partition.
+ * includes boot information and other data.
+ * In the user partition only the boot information
+ * is returned.
  */
 struct vmr_status : request
 {
