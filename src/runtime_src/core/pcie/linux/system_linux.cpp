@@ -41,23 +41,23 @@ namespace {
 xrt_core::system_linux* singleton = nullptr;
 
 // Singleton registers with base class xrt_core::system
-// during static global initialization.  If statically
+// during static global initialization. If statically
 // linking with libxrt_core, then explicit initialiation
 // is required
-inline xrt_core::system_linux&
+static inline xrt_core::system_linux*
 singleton_instance()
 {
   if (!singleton)
     static xrt_core::system_linux s;
 
   if (singleton)
-    return *singleton;
+    return singleton;
 
   throw std::runtime_error("system_linux singleton is not initialized");
 }
 
 // Dynamic linking automatically constructs the singleton
-// Do not instantiate singleton, if SHIM is extended outside.
+// Do not instantiate singleton, if SHIM is extended from outside.
 #ifndef EXTERNAL_SHIM
 struct X
 {
@@ -65,7 +65,7 @@ struct X
 } x;
 #endif
 
-boost::property_tree::ptree
+static boost::property_tree::ptree
 driver_version(const std::string& driver)
 {
   boost::property_tree::ptree _pt;
@@ -341,19 +341,19 @@ namespace pcidev {
 size_t
 get_dev_ready(bool user)
 {
-  return singleton_instance().get_num_dev_ready(user);
+  return singleton_instance()->get_num_dev_ready(user);
 }
 
 size_t
 get_dev_total(bool user)
 {
-  return singleton_instance().get_num_dev_total(user);
+  return singleton_instance()->get_num_dev_total(user);
 }
 
 std::shared_ptr<pci_device>
 get_dev(unsigned index, bool user)
 {
-  return singleton_instance().get_pcidev(index, user);
+  return singleton_instance()->get_pcidev(index, user);
 }
 
 } // pcidev
