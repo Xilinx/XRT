@@ -244,7 +244,7 @@ full=0
 archiver=0
 gen_sysroot=1
 SSTATE_CACHE=""
-SETTINGS_FILE="petalinux.build"
+SETTINGS_FILE="${THIS_SCRIPT_DIR}/petalinux.build"
 while [ $# -gt 0 ]; do
 	case $1 in
 		-help )
