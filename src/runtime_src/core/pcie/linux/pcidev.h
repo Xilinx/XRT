@@ -159,13 +159,20 @@ public:
   virtual int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
   virtual std::shared_ptr<pcidev::pci_device> lookup_peer_dev();
   
-  virtual
-  xrt_core::device::handle_type
-  create_shim(xrt_core::device::id_type id) const;
-
+  // Hand out a "device" instance that is specific to this type of pci_device.
+  // Caller will use this device to access device specific implementation of ishim.
   virtual
   std::shared_ptr<xrt_core::device>
   create_device(xrt_core::device::handle_type handle, xrt_core::device::id_type id) const;
+
+  // Hand out an opaque "shim" handle that is specific to this type of pci_device.
+  // On legacy Alveo device, this handle can be used to lookup a device instance and
+  // make xcl HAL API calls.
+  // On new platforms, this handle can only be used to look up a device. HAL API calls
+  // through it are not supported any more.
+  virtual
+  xrt_core::device::handle_type
+  create_shim(xrt_core::device::id_type id) const;
 
 private:
   int map_usr_bar(void);
