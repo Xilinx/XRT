@@ -476,8 +476,6 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(std::errc::operation_canceled);
     }
 
-    XBU::check_versal_boot(device);
-
     // Load Config commands
     // -- process "input" option -----------------------------------------------
     if (!path.empty()) {

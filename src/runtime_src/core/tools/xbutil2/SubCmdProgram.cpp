@@ -82,8 +82,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  XBU::check_versal_boot(device);
-
   // -- process "program" option -----------------------------------------------
   if (!xclbin.empty()) {
     std::ifstream stream(xclbin, std::ios::binary);

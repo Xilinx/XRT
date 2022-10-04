@@ -120,8 +120,6 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  XBU::check_versal_boot(device);
-
   xrt_core::query::reset_type type = XBU::str_to_reset_obj(resetType);
   pretty_print_action_list(device.get(), type);
 

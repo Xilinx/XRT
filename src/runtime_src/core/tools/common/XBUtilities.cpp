@@ -341,10 +341,14 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
     // -- Collect the devices by name
     auto index = str2index(deviceBDF, in_user_domain);    // Can throw
+    std::shared_ptr<xrt_core::device> device;
     if(in_user_domain)
-      return xrt_core::get_userpf_device(index);
+      device = xrt_core::get_userpf_device(index);
+    else
+      device = xrt_core::get_mgmtpf_device(index);
 
-    return xrt_core::get_mgmtpf_device(index);
+    check_versal_boot(device);
+    return device;
   }
 
 void

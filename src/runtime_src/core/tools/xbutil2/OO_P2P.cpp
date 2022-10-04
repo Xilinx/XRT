@@ -312,8 +312,6 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  XBU::check_versal_boot(device);
-
   try {
     p2p(device.get(), action, XBU::getForce());
   } catch (const xrt_core::system_error& ex) {
