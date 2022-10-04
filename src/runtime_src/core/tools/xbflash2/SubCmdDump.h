@@ -26,6 +26,9 @@ class SubCmdDump : public SubCmd {
  public:
   SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary);
   virtual ~SubCmdDump() {};
+
+ private:
+  bool m_help;
 };
 
 #endif

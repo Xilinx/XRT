@@ -34,6 +34,7 @@ namespace po = boost::program_options;
 SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("dump", 
              "Reads the image(s) for a given device for a given length and outputs the same to given file.\nIt is applicable for only QSPIPS flash.")
+    , m_help(false)
 {
   const std::string longDescription = "Reads the image(s) for a given device for a given length and outputs the same to given file.\nIt is applicable for only QSPIPS flash.";
   setLongDescription(longDescription);
@@ -41,89 +42,39 @@ SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+
+  addSubOption(std::make_shared<OO_Dump_Qspips>("qspips"));
 }
 
 
 void
 SubCmdDump::execute(const SubCmdOptions& _options) const
 {
-  // -- Common top level options ---
-  bool help = false;
-
-  po::options_description commonOptions("Common Options"); 
-  commonOptions.add_options()
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options"); 
-
-  // -- Define the supporting option options ----
-  SubOptionOptions subOptionOptions; 
-  subOptionOptions.emplace_back(std::make_shared<OO_Dump_Qspips>("qspips"));
-
-  for (auto & subOO : subOptionOptions) {
-    if (subOO->isHidden()) 
-      hiddenOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
-    else
-      commonOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
-    subOO->setExecutable(getExecutableName());
-    subOO->setCommand(getName());
-  }
-
-  po::options_description allOptions("All Options");
-  allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
-
   // =========== Process the options ========================================
-
-  // 1) Process the common top level options 
-  po::parsed_options parsedCommonTop = 
-    po::command_line_parser(_options).
-    options(allOptions).          
-    allow_unregistered().           // Allow for unregistered options
-    run();                          // Parse the options
-
   po::variables_map vm;
+  auto topOptions = process_arguments(vm, _options, false);
 
-  try {
-    po::store(parsedCommonTop, vm);  // Can throw
-    po::notify(vm);                  // Can throw (but really isn't used)
-
-    // Mutual DRC
-    for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1) {
-      for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2) {
-        conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
-      }
-    }
-  } catch (const std::exception & e) {
-    std::cerr << "ERROR: " << e.what() << std::endl;
-    printHelp(commonOptions, hiddenOptions, subOptionOptions);
-    throw std::errc::operation_canceled;
-  }
 
   // Find the subOption;
-  std::shared_ptr<OptionOptions> optionOption;
-  for (auto& subOO : subOptionOptions) {
-    if (vm.count(subOO->longName().c_str()) != 0) {
-      optionOption = subOO;
-      break;
-    }
-  }
+  auto optionOption = checkForSubOption(vm);
 
   // No suboption print help
   if (!optionOption) {
-      if (help) {
-          printHelp(commonOptions, hiddenOptions, subOptionOptions);
+      if (m_help) {
+          printHelp();
           return;
       }
       std::cerr << "\nERROR: Suboption missing" << std::endl;
-      printHelp(commonOptions, hiddenOptions, subOptionOptions);
+      printHelp();
       throw std::errc::operation_canceled;
   }
 
   // 2) Process the top level options
-  std::vector<std::string> topOptions = po::collect_unrecognized(parsedCommonTop.options, po::include_positional);
-  if (help)
+  if (m_help)
     topOptions.push_back("--help");
 
   optionOption->setGlobalOptions(getGlobalOptions());

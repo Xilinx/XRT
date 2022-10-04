@@ -26,6 +26,9 @@ class SubCmdProgram : public SubCmd {
  public:
   SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary);
   virtual ~SubCmdProgram() {};
+
+ private:
+  bool m_help;
 };
 
 #endif
