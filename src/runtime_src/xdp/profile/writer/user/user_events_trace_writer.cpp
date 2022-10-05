@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -59,17 +60,15 @@ namespace xdp {
 
   void UserEventsTraceWriter::writeTraceEvents()
   {
-    fout << "EVENTS" << std::endl ;
+    fout << "EVENTS\n";
     std::vector<VTFEvent*> userEvents = 
-      (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
-                                           {
-                                             return e->isUserEvent() ;
-                                           }
-                                         ) ;
+      db->getDynamicInfo().copySortedHostEvents( [](VTFEvent* e)
+                                                 {
+                                                   return e->isUserEvent();
+                                                 }
+                                               );
     for (auto e : userEvents)
-    {
       e->dump(fout, bucketId) ;
-    }
   }
 
   void UserEventsTraceWriter::writeDependencies()
