@@ -6,11 +6,6 @@
 
 #include "pcidev.h"
 
-// Forward declaration
-namespace pcidev {
-class pci_device;
-};
-
 namespace pcidrv {
 
 class pci_driver
