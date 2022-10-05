@@ -36,8 +36,7 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
              "Updates the image(s) for a given device")
     , m_help(false)
 {
-  const std::string longDescription = "Programs the given acceleration image into the device's shell.";
-  setLongDescription(longDescription);
+  setLongDescription("Programs the given acceleration image into the device's shell.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

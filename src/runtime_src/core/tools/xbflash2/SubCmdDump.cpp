@@ -36,8 +36,7 @@ SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
              "Reads the image(s) for a given device for a given length and outputs the same to given file.\nIt is applicable for only QSPIPS flash.")
     , m_help(false)
 {
-  const std::string longDescription = "Reads the image(s) for a given device for a given length and outputs the same to given file.\nIt is applicable for only QSPIPS flash.";
-  setLongDescription(longDescription);
+  setLongDescription("Reads the image(s) for a given device for a given length and outputs the same to given file.\nIt is applicable for only QSPIPS flash.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

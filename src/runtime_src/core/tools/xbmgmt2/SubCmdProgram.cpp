@@ -38,8 +38,7 @@ SubCmdProgram::SubCmdProgram(const std::string& executable, bool _isHidden, bool
     , m_device("")
     , m_help(false)
 {
-  const std::string longDescription = "Updates the image(s) for a given device.";
-  setLongDescription(longDescription);
+  setLongDescription("Updates the image(s) for a given device.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

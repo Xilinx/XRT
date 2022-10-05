@@ -14,11 +14,11 @@ class OO_UpdateBase : public OptionOptions {
   OO_UpdateBase( const std::string &_longName, const std::string &_shortName, bool _isHidden = false);
 
  private:
-  std::string m_device;
-  std::string m_update;
-  std::vector<std::string> m_image;
-  std::string m_flashType;
-  bool m_help;
+  std::string               m_device;
+  std::string               m_update;
+  std::vector<std::string>  m_image;
+  std::string               m_flashType;
+  bool                      m_help;
 };
 
 #endif

@@ -119,8 +119,7 @@ SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     , m_config(false)
     , m_help(false)
 {
-  const std::string longDescription = "Dump out the contents of the specified option.";
-  setLongDescription(longDescription);
+  setLongDescription("Dump out the contents of the specified option.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

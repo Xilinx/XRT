@@ -16,7 +16,7 @@ class OO_ChangeBoot : public OptionOptions {
  private:
   std::string m_device;
   std::string m_boot;
-  bool m_help;
+  bool        m_help;
 };
 
 #endif

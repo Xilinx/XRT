@@ -1628,8 +1628,7 @@ SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreli
     : SubCmd("validate",
              "Validates the basic shell acceleration functionality")
 {
-  const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
-  setLongDescription(longDescription);
+  setLongDescription("Validates the given device by executing the platform's validate executable.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

@@ -38,21 +38,19 @@ namespace po = boost::program_options;
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-bool help = false;
-
 SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("configure", 
              "Device and host configuration")
+    , m_help(false)
 {
-  const std::string longDescription = "Device and host configuration.";
-  setLongDescription(longDescription);
+  setLongDescription("Device and host configuration.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
 
   m_commonOptions.add_options()
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   addSubOption(std::make_shared<OO_HostMem>("host-mem"));
@@ -73,7 +71,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
   // No suboption print help
   if (!optionOption) {
-    if (help) {
+    if (m_help) {
       printHelp();
       return;
     }
@@ -85,7 +83,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
   }
 
   // 2) Process the top level options
-  if (help)
+  if (m_help)
     topOptions.push_back("--help");
 
   optionOption->setGlobalOptions(getGlobalOptions());

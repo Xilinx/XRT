@@ -16,7 +16,7 @@ class OO_Hotplug : public OptionOptions {
  private:
   std::string m_devices;
   std::string m_action;
-  bool m_help;
+  bool        m_help;
 };
 
 #endif

@@ -80,10 +80,14 @@ SubCmd::process_arguments( po::variables_map& vm,
   try {
     po::command_line_parser parser(_options);
     const auto options = XBU::process_arguments(vm, parser, all_options, positionals, validate_arguments);
-    for (unsigned int index1 = 0; index1 < suboptions.size(); ++index1)
-      for (unsigned int index2 = index1 + 1; index2 < suboptions.size(); ++index2)
-        conflictingOptions(vm, suboptions[index1]->longName(), suboptions[index2]->longName());
+
+    // Validate that only one suboption was selected if any exist
+    for (size_t source_option = 0; source_option < suboptions.size(); ++source_option)
+      for (size_t comparison_option = source_option + 1; comparison_option < suboptions.size(); ++comparison_option)
+        conflictingOptions(vm, suboptions[source_option]->longName(), suboptions[comparison_option]->longName());
+
     return options;
+
   } catch(boost::program_options::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
@@ -131,10 +135,14 @@ std::shared_ptr<OptionOptions>
 SubCmd::checkForSubOption(const boost::program_options::variables_map& vm) const
 {
   std::shared_ptr<OptionOptions> option;
+  // Loop through the available sub options searching for a name match
   for (auto& subOO : m_subOptionOptions) {
     if (vm.count(subOO->longName().c_str()) != 0) {
+      // Store the matched option if no other match has been found
       if (!option)
         option = subOO;
+      // XRT will not accept more than one suboption per invocation
+      // Throw an exception if more than one suboption is found within the command options
       else {
         auto err_fmt = boost::format("Mutually exclusive option selected: %s %s") 
                         % subOO->longName() % option->longName();

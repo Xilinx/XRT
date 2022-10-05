@@ -50,8 +50,7 @@ SubCmdAdvanced::SubCmdAdvanced(bool _isHidden, bool _isDepricated, bool _isPreli
     : SubCmd("advanced", "Low level command operations")
     , m_help(false)
 {
-  const std::string longDescription = "Low level command operations.";
-  setLongDescription(longDescription);
+  setLongDescription("Low level command operations.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

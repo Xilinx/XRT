@@ -55,8 +55,7 @@ SubCmdJSON::SubCmdJSON(bool _isHidden, bool _isDepricated, bool _isPreliminary, 
     , m_subCmdOptions(_subCmdOptions)
     , m_help(false)
 {
-  const std::string longDescription = desc;
-  setLongDescription(longDescription);
+  setLongDescription(desc);
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

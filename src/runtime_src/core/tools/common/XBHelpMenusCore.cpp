@@ -100,8 +100,12 @@ isPositional(const std::string &_name,
   return false;
 }
 
-/* This determines the order of options in the usage string */
-enum FlagType {
+/**
+ * An enumeration to describe the type of argument a given
+ * program option represents.
+ * This determines the output order of options in the usage string
+ */
+enum OptionDescriptionFlagType {
   short_required = 0,
   long_required,
   short_required_arg,
@@ -114,13 +118,13 @@ enum FlagType {
   flag_type_size
 };
 
-static enum FlagType
+static enum OptionDescriptionFlagType
 get_option_type(const boost::shared_ptr<boost::program_options::option_description>& option, const boost::program_options::positional_options_description & _pod)
 {
   const static int SHORT_OPTION_STRING_SIZE = 2;
   std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
 
-  if ( ::isPositional(optionDisplayName, _pod) )
+  if (isPositional(optionDisplayName, _pod))
     return positional;
 
   if (option->semantic()->is_required()) {
@@ -145,14 +149,14 @@ get_option_type(const boost::shared_ptr<boost::program_options::option_descripti
   } else { // Parse for flags with arguments
     if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
       return short_arg;
-    
+
     return long_arg;
   }
   throw std::runtime_error("Invalid argument setup detected");
 }
 
 static std::string
-create_option_string(enum FlagType optionType, const boost::shared_ptr<boost::program_options::option_description>& option, bool removeLongOptDashes)
+create_option_string(enum OptionDescriptionFlagType optionType, const boost::shared_ptr<boost::program_options::option_description>& option, bool removeLongOptDashes)
 {
   const std::string& shortName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
   const std::string& longName = removeLongOptDashes ? option->long_name() : 
@@ -202,9 +206,9 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
   for (auto i = 0; i < flag_type_size; i++)
     buffers.push_back(std::stringstream());
 
-  auto &options = _od.options();
+  const auto &options = _od.options();
 
-  for (const auto & option : options) {
+  for (const auto &option : options) {
     const auto optionType = get_option_type(option, _pod);
     const auto optionString = create_option_string(optionType, option, removeLongOptDashes);
     const auto is_buffer_empty = buffers[optionType].str().empty();
@@ -416,10 +420,10 @@ XBUtilities::report_subcommand_help(const std::string &_executableName,
                                     const boost::program_options::options_description &_optionDescription,
                                     const boost::program_options::options_description &_optionHidden,
                                     const boost::program_options::options_description &_globalOptions,
-                                    const boost::program_options::positional_options_description & _positionalDescription,
-                                    const SubCmd::SubOptionOptions & _subOptionOptions,
+                                    const boost::program_options::positional_options_description &_positionalDescription,
+                                    const SubCmd::SubOptionOptions &_subOptionOptions,
                                     bool removeLongOptDashes,
-                                    const std::string& customHelpSection)
+                                    const std::string &customHelpSection)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -482,17 +486,16 @@ XBUtilities::report_subcommand_help(const std::string &_executableName,
     std::cout << boost::format(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s [ %s ] %s\n" + fgc_reset) % _executableName % _subCommand % usageSubCmds % usage;
 
   // -- Options
-  boost::program_options::positional_options_description emptyPOD;
-  report_option_help("OPTIONS", allOptions, emptyPOD, false);
+  report_option_help("OPTIONS", allOptions, _positionalDescription, false);
 
   // -- Custom Section
   std::cout << customHelpSection << "\n";
 
   // -- Global Options
-  report_option_help("GLOBAL OPTIONS", _globalOptions, emptyPOD, false);
+  report_option_help("GLOBAL OPTIONS", _globalOptions, _positionalDescription, false);
 
   if (XBU::getShowHidden()) 
-    report_option_help("OPTIONS (Hidden)", allHiddenOptions, emptyPOD, false);
+    report_option_help("OPTIONS (Hidden)", allHiddenOptions, _positionalDescription, false);
 
   // Extended help
   {

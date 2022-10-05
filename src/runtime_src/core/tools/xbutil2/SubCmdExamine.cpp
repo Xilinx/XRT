@@ -88,9 +88,8 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
     , m_output("")
     , m_help(false)
 {
-  const std::string longDescription = "This command will 'examine' the state of the system/device and will"
-                                      " generate a report of interest in a text or JSON format.";
-  setLongDescription(longDescription);
+  setLongDescription( "This command will 'examine' the state of the system/device and will"
+                      " generate a report of interest in a text or JSON format.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

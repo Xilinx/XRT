@@ -57,9 +57,8 @@ supported(std::string resetType) {
   std::vector<std::string> vec { "user" };
   std::vector<std::string>::iterator it;
   it = std::find (vec.begin(), vec.end(), resetType); 
-  if (it == vec.end()) {
+  if (it == vec.end())
     throw xrt_core::error(std::errc::operation_canceled, "Reset type not supported");
-  }
 }
 
 SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
@@ -69,8 +68,7 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
     , m_resetType("user")
     , m_help(false)
 {
-  const std::string longDescription = "Resets the given device.";
-  setLongDescription(longDescription);
+  setLongDescription( "Resets the given device.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

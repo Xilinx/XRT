@@ -98,8 +98,7 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
     , m_cs_reset("")
     , m_showx(false)
 {
-  const std::string long_description = "Advanced options for configuring a device";
-  setLongDescription(long_description);
+  setLongDescription("Advanced options for configuring a device");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

@@ -78,8 +78,7 @@ SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary
     : SubCmd("reset", 
              "Resets the given device")
 {
-  const std::string longDescription = "Resets the given device.";
-  setLongDescription(longDescription);
+  setLongDescription("Resets the given device.");
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);

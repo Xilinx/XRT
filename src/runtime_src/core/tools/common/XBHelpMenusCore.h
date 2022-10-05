@@ -32,7 +32,7 @@ using SubCmdsCollection = std::vector<std::shared_ptr<SubCmd>>;
 
 namespace XBUtilities {
   void 
-    report_commands_help( const std::string &_executable, 
+    report_commands_help( const std::string &_executable,
                           const std::string &_description,
                           const boost::program_options::options_description& _optionDescription,
                           const boost::program_options::options_description& _optionHidden,
@@ -41,18 +41,18 @@ namespace XBUtilities {
   void 
     report_subcommand_help( const std::string &_executableName,
                             const std::string &_subCommand,
-                            const std::string &_description, 
+                            const std::string &_description,
                             const std::string &_extendedHelp,
                             const boost::program_options::options_description &_optionDescription,
                             const boost::program_options::options_description &_optionHidden,
                             const boost::program_options::options_description &_globalOptions,
-                            const boost::program_options::positional_options_description & _positionalDescription = boost::program_options::positional_options_description(),
-                            const SubCmd::SubOptionOptions & _subOptionOptions = SubCmd::SubOptionOptions(),
+                            const boost::program_options::positional_options_description &_positionalDescription = boost::program_options::positional_options_description(),
+                            const SubCmd::SubOptionOptions &_subOptionOptions = SubCmd::SubOptionOptions(),
                             bool removeLongOptDashes = false,
-                            const std::string& customHelpSection = "");
+                            const std::string &customHelpSection = "");
 
   void 
-    report_option_help( const std::string & _groupName, 
+    report_option_help( const std::string & _groupName,
                         const boost::program_options::options_description& _optionDescription,
                         const boost::program_options::positional_options_description & _positionalDescription,
                         bool _bReportParameter = true,
