@@ -39,7 +39,7 @@ private:
 /*
  * Internal data structures this sample plugin uses
  */ 
-    std::shared_ptr<pcidev::pci_device> mgmtDev;
+    std::shared_ptr<xrt_core::pci::dev> mgmtDev;
     int retrieve_xclbin(const xclBin *&orig_xclbin, std::vector<char> &real_xclbin);
     std::string calculate_md5(char *buf, size_t len);
     std::vector<char> read_file(const char *filename);

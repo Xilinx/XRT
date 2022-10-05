@@ -23,7 +23,7 @@ public:
     int getMailbox();
     uint64_t getSwitch();
     int getIndex() const;
-    std::shared_ptr<pcidev::pci_device> getDev() const;
+    std::shared_ptr<xrt_core::pci::dev> getDev() const;
 
     // Load config from device's sysfs nodes
     bool loadConf();
@@ -39,7 +39,7 @@ private:
     uint64_t chanSwitch = 0;
     int devId = 0;
     int mbxfd = -1;
-    std::shared_ptr<pcidev::pci_device> dev;
+    std::shared_ptr<xrt_core::pci::dev> dev;
     size_t index;
     std::mutex lock;
     bool validConf();

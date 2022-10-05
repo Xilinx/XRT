@@ -150,7 +150,7 @@ wordcopy(void *dst, const void* src, size_t bytes)
 
 } // namespace
 
-namespace pcidev {
+namespace xrt_core { namespace pci {
 
 namespace sysfs {
 
@@ -347,7 +347,7 @@ put(const std::string& name,
 } // sysfs
 
 void
-pci_device::
+dev::
 sysfs_get(const std::string& subdev, const std::string& entry,
           std::string& err, std::vector<std::string>& ret)
 {
@@ -355,7 +355,7 @@ sysfs_get(const std::string& subdev, const std::string& entry,
 }
 
 void
-pci_device::
+dev::
 sysfs_get(const std::string& subdev, const std::string& entry,
           std::string& err, std::vector<uint64_t>& ret)
 {
@@ -363,7 +363,7 @@ sysfs_get(const std::string& subdev, const std::string& entry,
 }
 
 void
-pci_device::
+dev::
 sysfs_get(const std::string& subdev, const std::string& entry,
           std::string& err, std::vector<char>& ret)
 {
@@ -371,7 +371,7 @@ sysfs_get(const std::string& subdev, const std::string& entry,
 }
 
 void
-pci_device::
+dev::
 sysfs_get(const std::string& subdev, const std::string& entry,
           std::string& err, std::string& s)
 {
@@ -379,7 +379,7 @@ sysfs_get(const std::string& subdev, const std::string& entry,
 }
 
 void
-pci_device::
+dev::
 sysfs_put(const std::string& subdev, const std::string& entry,
           std::string& err, const std::string& input)
 {
@@ -387,7 +387,7 @@ sysfs_put(const std::string& subdev, const std::string& entry,
 }
 
 void
-pci_device::
+dev::
 sysfs_put(const std::string& subdev, const std::string& entry,
           std::string& err, const std::vector<char>& buf)
 {
@@ -395,7 +395,7 @@ sysfs_put(const std::string& subdev, const std::string& entry,
 }
 
 void
-pci_device::
+dev::
 sysfs_put(const std::string& subdev, const std::string& entry,
           std::string& err, const unsigned int& buf)
 {
@@ -403,14 +403,14 @@ sysfs_put(const std::string& subdev, const std::string& entry,
 }
 
 std::string
-pci_device::
+dev::
 get_sysfs_path(const std::string& subdev, const std::string& entry)
 {
   return sysfs::get_path(sysfs_name, subdev, entry);
 }
 
 std::string
-pci_device::
+dev::
 get_subdev_path(const std::string& subdev, uint idx) const
 {
   // Main devfs path
@@ -431,13 +431,13 @@ get_subdev_path(const std::string& subdev, uint idx) const
   path += is_mgmt ? ".m" : ".u";
   //if the domain number is big, the shift overflows, hence need to cast
   uint32_t dom = static_cast<uint32_t>(domain);
-  path += std::to_string( (dom<<16)+ (bus<<8) + (dev<<3) + func);
+  path += std::to_string( (dom<<16)+ (bus<<8) + (dev_no<<3) + func);
   path += "." + std::to_string(idx);
   return path;
 }
 
 int
-pci_device::
+dev::
 open(const std::string& subdev, uint32_t idx, int flag) const
 {
   if (is_mgmt && !::is_admin())
@@ -448,18 +448,18 @@ open(const std::string& subdev, uint32_t idx, int flag) const
 }
 
 int
-pci_device::
+dev::
 open(const std::string& subdev, int flag) const
 {
   return open(subdev, 0, flag);
 }
 
-pci_device::
-pci_device(const pcidrv::pci_driver* driver, const std::string& sysfs) : sysfs_name(sysfs)
+dev::
+dev(const drv* driver, const std::string& sysfs) : sysfs_name(sysfs)
 {
   std::string err;
 
-  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &domain, &bus, &dev, &func) < 4)
+  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &domain, &bus, &dev_no, &func) < 4)
     throw std::invalid_argument(sysfs + " is not valid BDF");
 
   is_mgmt = !driver->is_user();
@@ -474,15 +474,15 @@ pci_device(const pcidrv::pci_driver* driver, const std::string& sysfs) : sysfs_n
   sysfs_get<bool>("", "ready", err, is_ready, false);
 }
 
-pci_device::
-~pci_device()
+dev::
+~dev()
 {
   if (user_bar_map != MAP_FAILED)
     ::munmap(user_bar_map, user_bar_size);
 }
 
 int
-pci_device::
+dev::
 map_usr_bar()
 {
   std::lock_guard<std::mutex> l(lock);
@@ -508,7 +508,7 @@ map_usr_bar()
 }
 
 void
-pci_device::
+dev::
 close(int dev_handle) const
 {
   if (dev_handle != -1)
@@ -517,7 +517,7 @@ close(int dev_handle) const
 
 
 int
-pci_device::
+dev::
 pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 {
   if (user_bar_map == MAP_FAILED) {
@@ -530,7 +530,7 @@ pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 }
 
 int
-pci_device::
+dev::
 pcieBarWrite(uint64_t offset, const void* buf, uint64_t len)
 {
   if (user_bar_map == MAP_FAILED) {
@@ -543,7 +543,7 @@ pcieBarWrite(uint64_t offset, const void* buf, uint64_t len)
 }
 
 int
-pci_device::
+dev::
 ioctl(int dev_handle, unsigned long cmd, void *arg) const
 {
   if (dev_handle == -1) {
@@ -554,7 +554,7 @@ ioctl(int dev_handle, unsigned long cmd, void *arg) const
 }
 
 int
-pci_device::
+dev::
 poll(int dev_handle, short events, int timeoutMilliSec)
 {
   pollfd info = {dev_handle, events, 0};
@@ -562,7 +562,7 @@ poll(int dev_handle, short events, int timeoutMilliSec)
 }
 
 void*
-pci_device::
+dev::
 mmap(int dev_handle, size_t len, int prot, int flags, off_t offset)
 {
   if (dev_handle == -1) {
@@ -573,7 +573,7 @@ mmap(int dev_handle, size_t len, int prot, int flags, off_t offset)
 }
 
 int
-pci_device::
+dev::
 munmap(int dev_handle, void* addr, size_t len)
 {
   if (dev_handle == -1) {
@@ -584,7 +584,7 @@ munmap(int dev_handle, void* addr, size_t len)
 }
 
 int
-pci_device::
+dev::
 get_partinfo(std::vector<std::string>& info, void *blob)
 {
   std::vector<char> buf;
@@ -644,7 +644,7 @@ get_partinfo(std::vector<std::string>& info, void *blob)
 }
 
 int
-pci_device::
+dev::
 flock(int dev_handle, int op)
 {
   if (dev_handle == -1) {
@@ -654,8 +654,8 @@ flock(int dev_handle, int op)
   return ::flock(dev_handle, op);
 }
 
-std::shared_ptr<pci_device>
-pci_device::
+std::shared_ptr<dev>
+dev::
 lookup_peer_dev()
 {
   if (!is_mgmt)
@@ -663,24 +663,24 @@ lookup_peer_dev()
 
   int i = 0;
   for (auto udev = get_dev(i, true); udev; udev = get_dev(i, true), ++i)
-    if (udev->domain == domain && udev->bus == bus && udev->dev == dev)
+    if (udev->domain == domain && udev->bus == bus && udev->dev_no == dev_no)
       return udev;
 
   return nullptr;
 }
   
-xrt_core::device::handle_type
-pci_device::
-create_shim(xrt_core::device::id_type id) const
+device::handle_type
+dev::
+create_shim(device::id_type id) const
 {
   return xclOpen(id, nullptr, XCL_QUIET);
 }
 
-std::shared_ptr<xrt_core::device>
-pci_device::
-create_device(xrt_core::device::handle_type handle, xrt_core::device::id_type id) const
+std::shared_ptr<device>
+dev::
+create_device(device::handle_type handle, device::id_type id) const
 {
-  return std::shared_ptr<xrt_core::device_linux>(new xrt_core::device_linux(handle, id, !is_mgmt));
+  return std::shared_ptr<device_linux>(new device_linux(handle, id, !is_mgmt));
 }
 
 int
@@ -800,7 +800,7 @@ get_runtime_active_kids(std::string &pci_bridge_path)
 }
 
 int
-shutdown(std::shared_ptr<pci_device> mgmt_dev, bool remove_user, bool remove_mgmt)
+shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user, bool remove_mgmt)
 {
   if (!mgmt_dev->is_mgmt)
     return -EINVAL;
@@ -917,7 +917,7 @@ shutdown(std::shared_ptr<pci_device> mgmt_dev, bool remove_user, bool remove_mgm
 }
 
 int
-check_p2p_config(const std::shared_ptr<pci_device>& dev, std::string &err)
+check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err)
 {
   std::string errmsg;
   int ret = P2P_CONFIG_DISABLED;
@@ -963,10 +963,10 @@ check_p2p_config(const std::shared_ptr<pci_device>& dev, std::string &err)
   return P2P_CONFIG_NOT_SUPP;
 }
 
-} // namespace pcidev
+} } // namespace xrt_core :: pci
 
 std::ostream&
-operator<<(std::ostream& stream, const std::shared_ptr<pcidev::pci_device>& dev)
+operator<<(std::ostream& stream, const std::shared_ptr<xrt_core::pci::dev>& dev)
 {
   std::ios_base::fmtflags f(stream.flags());
 
@@ -975,7 +975,7 @@ operator<<(std::ostream& stream, const std::shared_ptr<pcidev::pci_device>& dev)
   // [dddd:bb:dd.f]
   stream << std::setw(4) << dev->domain << ":"
          << std::setw(2) << dev->bus << ":"
-         << std::setw(2) << dev->dev << "."
+         << std::setw(2) << dev->dev_no << "."
          << std::setw(1) << dev->func;
 
   // board/shell name

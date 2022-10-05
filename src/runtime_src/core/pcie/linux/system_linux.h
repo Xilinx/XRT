@@ -49,7 +49,7 @@ public:
 
 public:
   virtual
-  std::shared_ptr<pcidev::pci_device>
+  std::shared_ptr<pci::dev>
   get_pcidev(unsigned index, bool is_user = true) const;
 
   virtual
@@ -62,19 +62,19 @@ public:
 
 protected:
   void
-  register_driver(std::shared_ptr<pcidrv::pci_driver> driver);
+  register_driver(std::shared_ptr<pci::drv> driver);
 
 private:
-  std::vector<std::shared_ptr<pcidrv::pci_driver>> driver_list;
+  std::vector<std::shared_ptr<pci::drv>> driver_list;
 
-  std::vector<std::shared_ptr<pcidev::pci_device>> user_ready_list;
-  std::vector<std::shared_ptr<pcidev::pci_device>> user_nonready_list;
+  std::vector<std::shared_ptr<pci::dev>> user_ready_list;
+  std::vector<std::shared_ptr<pci::dev>> user_nonready_list;
 
-  std::vector<std::shared_ptr<pcidev::pci_device>> mgmt_ready_list;
-  std::vector<std::shared_ptr<pcidev::pci_device>> mgmt_nonready_list;
+  std::vector<std::shared_ptr<pci::dev>> mgmt_ready_list;
+  std::vector<std::shared_ptr<pci::dev>> mgmt_nonready_list;
 };
 
-namespace pcie_linux {
+namespace pci {
 
 /**
  * get_userpf_device
@@ -92,7 +92,7 @@ get_userpf_device(device::handle_type device_handle, device::id_type id);
 device::id_type
 get_device_id_from_bdf(const std::string& bdf);
 
-} // pcie_linux
+} // pci
 
 } // xrt_core
 

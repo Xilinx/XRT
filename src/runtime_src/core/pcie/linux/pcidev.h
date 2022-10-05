@@ -52,15 +52,13 @@ struct fdt_header {
     uint32_t size_dt_struct;
 };
 
-// Forward declaration
-namespace pcidrv {
-class pci_driver;
-};
+namespace xrt_core { namespace pci {
 
-namespace pcidev {
+// Forward declaration
+class drv;
 
 // One PCIE function on FPGA or AIE device
-class pci_device
+class dev
 {
 public:
   // Fundamental and static information for this device are defined as class
@@ -71,7 +69,7 @@ public:
 
   uint16_t domain =           INVALID_ID;
   uint16_t bus =              INVALID_ID;
-  uint16_t dev =              INVALID_ID;
+  uint16_t dev_no =           INVALID_ID;
   uint16_t func =             INVALID_ID;
   uint32_t instance =         INVALID_ID;
   std::string sysfs_name =    ""; // dir name under /sys/bus/pci/devices
@@ -80,8 +78,8 @@ public:
   bool is_mgmt =              false;
   bool is_ready =             false;
 
-  pci_device(const pcidrv::pci_driver* driver, const std::string& sysfs_name);
-  virtual ~pci_device();
+  dev(const drv* driver, const std::string& sysfs_name);
+  virtual ~dev();
 
   virtual void
   sysfs_get(const std::string& subdev, const std::string& entry,
@@ -143,22 +141,22 @@ public:
   virtual int munmap(int devhdl, void* addr, size_t len);
   virtual int flock(int devhdl, int op);
   virtual int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
-  virtual std::shared_ptr<pcidev::pci_device> lookup_peer_dev();
+  virtual std::shared_ptr<dev> lookup_peer_dev();
   
-  // Hand out a "device" instance that is specific to this type of pci_device.
+  // Hand out a "device" instance that is specific to this type of device.
   // Caller will use this device to access device specific implementation of ishim.
   virtual
-  std::shared_ptr<xrt_core::device>
-  create_device(xrt_core::device::handle_type handle, xrt_core::device::id_type id) const;
+  std::shared_ptr<device>
+  create_device(device::handle_type handle, device::id_type id) const;
 
-  // Hand out an opaque "shim" handle that is specific to this type of pci_device.
+  // Hand out an opaque "shim" handle that is specific to this type of device.
   // On legacy Alveo device, this handle can be used to lookup a device instance and
   // make xcl HAL API calls.
   // On new platforms, this handle can only be used to look up a device. HAL API calls
   // through it are not supported any more.
   virtual
-  xrt_core::device::handle_type
-  create_shim(xrt_core::device::id_type id) const;
+  device::handle_type
+  create_shim(device::id_type id) const;
 
 private:
   int map_usr_bar(void);
@@ -168,18 +166,18 @@ private:
 
 size_t get_dev_total(bool user = true);
 size_t get_dev_ready(bool user = true);
-std::shared_ptr<pci_device> get_dev(unsigned index, bool user = true);
+std::shared_ptr<dev> get_dev(unsigned index, bool user = true);
 
 int get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char>& buf);
 int get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids);
-std::shared_ptr<pcidev::pci_device> lookup_user_dev(std::shared_ptr<pcidev::pci_device> mgmt_dev);
-int shutdown(std::shared_ptr<pcidev::pci_device> mgmt_dev, bool remove_user = false, bool remove_mgmt = false);
-int check_p2p_config(const std::shared_ptr<pcidev::pci_device>& dev, std::string &err);
+std::shared_ptr<dev> lookup_user_dev(std::shared_ptr<dev> mgmt_dev);
+int shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user = false, bool remove_mgmt = false);
+int check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err);
 
-} // namespace pcidev
+} } // namespace xrt_core :: pci
 
 // For print out per device info
 std::ostream&
-operator<< (std::ostream& stream, const std::shared_ptr<pcidev::pci_device>& dev);
+operator<< (std::ostream& stream, const std::shared_ptr<xrt_core::pci::dev>& dev);
 
 #endif

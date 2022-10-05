@@ -6,9 +6,9 @@
 
 #include "pcidrv.h"
 
-namespace pcidrv {
+namespace xrt_core { namespace pci {
 
-class pci_driver_xclmgmt : public pci_driver
+class drv_xclmgmt : public drv
 {
 public:
   const std::string
@@ -20,6 +20,6 @@ public:
   { return false; }
 };
 
-} // pcidrv
+} } // namespace xrt_core :: pci
 
 #endif

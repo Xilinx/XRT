@@ -328,8 +328,8 @@ void get_system_info() {
     static auto verbosity = xrt_core::config::get_verbosity();
     XmaLogLevelType level = (XmaLogLevelType) std::min({(uint32_t)XMA_INFO_LOG, (uint32_t)verbosity});
     xma_logmsg(level, "XMA-System-Info", "======= START =============");
-    for (unsigned j = 0; j < pcidev::get_dev_total(); j++) {
-        auto dev = pcidev::get_dev(j);
+    for (unsigned j = 0; j < xrt_core::pci::get_dev_total(); j++) {
+        auto dev = xrt_core::pci::get_dev(j);
         xma_logmsg(level, "XMA-System-Info", "dev index = %d; %s", j, dev->sysfs_name.c_str());
         if (dev->is_ready) {
             /* Let's keep this function as generic

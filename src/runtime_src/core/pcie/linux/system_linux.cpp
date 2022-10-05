@@ -116,7 +116,7 @@ namespace xrt_core {
 
 void
 system_linux::
-register_driver(std::shared_ptr<pcidrv::pci_driver> driver)
+register_driver(std::shared_ptr<pci::drv> driver)
 {
   driver_list.push_back(driver);
   if (driver->is_user())
@@ -125,7 +125,7 @@ register_driver(std::shared_ptr<pcidrv::pci_driver> driver)
     driver->scan_devices(mgmt_ready_list, mgmt_nonready_list);
 }
 
-std::shared_ptr<pcidev::pci_device>
+std::shared_ptr<pci::dev>
 system_linux::
 get_pcidev(unsigned index, bool is_user) const
 {
@@ -165,8 +165,8 @@ system_linux()
     throw std::runtime_error("More than one SHIM registered!");
   singleton = this;
 
-  register_driver(std::make_shared<pcidrv::pci_driver_xocl>());
-  register_driver(std::make_shared<pcidrv::pci_driver_xclmgmt>());
+  register_driver(std::make_shared<pci::drv_xocl>());
+  register_driver(std::make_shared<pci::drv_xclmgmt>());
 }
 
 void
@@ -233,12 +233,12 @@ get_device_id(const std::string& bdf) const
   unsigned int i = 0;
   for (auto dev = get_pcidev(i); dev; i++, dev = get_pcidev(i)) {
       // [dddd:bb:dd.f]
-      auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->domain % dev->bus % dev->dev % dev->func);
+      auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->domain % dev->bus % dev->dev_no % dev->func);
       if (dev_bdf == bdf)
         return i;
       //consider default domain as 0000 and try to find a matching device
       if(dev->domain == 0) {
-        dev_bdf = boost::str(boost::format("%02x:%02x.%01x") % dev->bus % dev->dev % dev->func);
+        dev_bdf = boost::str(boost::format("%02x:%02x.%01x") % dev->bus % dev->dev_no % dev->func);
         if(dev_bdf == bdf)
           return i;
       }
@@ -251,7 +251,7 @@ std::pair<device::id_type, device::id_type>
 system_linux::
 get_total_devices(bool is_user) const
 {
-  return std::make_pair(pcidev::get_dev_total(is_user), pcidev::get_dev_ready(is_user));
+  return std::make_pair(pci::get_dev_total(is_user), pci::get_dev_ready(is_user));
 }
 
 std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
@@ -259,7 +259,7 @@ system_linux::
 get_bdf_info(device::id_type id, bool is_user) const
 {
   auto pdev = get_pcidev(id, is_user);
-  return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
+  return std::make_tuple(pdev->domain, pdev->bus, pdev->dev_no, pdev->func);
 }
 
 std::shared_ptr<device>
@@ -316,7 +316,7 @@ program_plp(const device* dev, const std::vector<char> &buffer, bool force) cons
   }
 }
 
-namespace pcie_linux {
+namespace pci {
 
 std::shared_ptr<device>
 get_userpf_device(device::handle_type device_handle, device::id_type id)
@@ -332,12 +332,6 @@ get_device_id_from_bdf(const std::string& bdf)
   return xrt_core::get_device_id(bdf);
 }
 
-} // pcie_linux
-
-} // xrt_core
-
-namespace pcidev {
-
 size_t
 get_dev_ready(bool user)
 {
@@ -350,10 +344,12 @@ get_dev_total(bool user)
   return singleton_instance()->get_num_dev_total(user);
 }
 
-std::shared_ptr<pci_device>
+std::shared_ptr<dev>
 get_dev(unsigned index, bool user)
 {
   return singleton_instance()->get_pcidev(index, user);
 }
 
-} // pcidev
+} // namespace pci
+
+} // xrt_core

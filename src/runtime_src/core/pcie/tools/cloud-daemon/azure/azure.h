@@ -76,16 +76,16 @@ public:
     {
         std::regex sn("^[0-9a-zA-Z]{12}$");
         std::vector<std::string> ret = {};
-	    size_t total = pcidev::get_dev_total();
+	    size_t total = xrt_core::pci::get_dev_total();
 	    if (!total) {
             std::cerr << "azure: No device found!" << std::endl;
             return ret;
         }
         for (size_t i = 0; i < total; i++) {
             std::string serialNumber, errmsg;
-            pcidev::get_dev(i, true)->sysfs_get("xmc", "serial_num", errmsg, serialNumber); 
+	    xrt_core::pci::get_dev(i, true)->sysfs_get("xmc", "serial_num", errmsg, serialNumber); 
 	        if (!errmsg.empty() || !regex_match(serialNumber, sn)) {
-           	    std::cerr << "azure warning(" << pcidev::get_dev(i, true)->sysfs_name << ")";
+           	    std::cerr << "azure warning(" << xrt_core::pci::get_dev(i, true)->sysfs_name << ")";
                 std::cerr << " sysfs errmsg: " << errmsg;
                 std::cerr << " serialNumber: " << serialNumber;
                 std::cerr << std::endl;
@@ -101,7 +101,7 @@ private:
     static const int upload_retry { 15 };
     static const int reset_retry { 3 };
     static const int timeout_threshold { 120 }; //mailbox timeout set as 120 seconds
-    std::shared_ptr<pcidev::pci_device> dev;
+    std::shared_ptr<xrt_core::pci::dev> dev;
     size_t index;
     struct timeval start;
     int UploadToWireServer(

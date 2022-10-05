@@ -65,7 +65,7 @@ namespace xocl {
                                          uint8_t *properties, uint8_t *majorVersions, uint8_t *minorVersions,
                                          size_t size) {
     debug_ip_layout *map;
-    auto dev = pcidev::get_dev(mBoardNumber);
+    auto dev = xrt_core::pci::get_dev(mBoardNumber);
     std::string subdev_str = "icap";
     std::string entry_str = "debug_ip_layout";
     std::string path = dev->get_sysfs_path(subdev_str, entry_str);

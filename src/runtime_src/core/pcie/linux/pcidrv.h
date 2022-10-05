@@ -6,9 +6,9 @@
 
 #include "pcidev.h"
 
-namespace pcidrv {
+namespace xrt_core { namespace pci {
 
-class pci_driver
+class drv
 {
 public:
   virtual
@@ -20,14 +20,14 @@ public:
   is_user(void) const = 0;
 
   void
-  scan_devices(std::vector<std::shared_ptr<pcidev::pci_device>>& ready_list,
-               std::vector<std::shared_ptr<pcidev::pci_device>>& nonready_list) const;
+  scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
+               std::vector<std::shared_ptr<dev>>& nonready_list) const;
 private:
   virtual
-  std::shared_ptr<pcidev::pci_device>
+  std::shared_ptr<xrt_core::pci::dev>
   create_pcidev(const std::string& sysfs) const;
 };
 
-} // pcidrv
+} } // namespace xrt_core :: pci
 
 #endif

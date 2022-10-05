@@ -4,12 +4,12 @@
 #include <boost/filesystem.hpp>
 #include "pcidrv.h"
 
-namespace pcidrv {
+namespace xrt_core { namespace pci {
 
 void
-pci_driver::
-scan_devices(std::vector<std::shared_ptr<pcidev::pci_device>>& ready_list,
-             std::vector<std::shared_ptr<pcidev::pci_device>>& nonready_list) const
+drv::
+scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
+             std::vector<std::shared_ptr<dev>>& nonready_list) const
 {
   namespace bfs = boost::filesystem;
   const std::string drv_root = "/sys/bus/pci/drivers/";
@@ -42,11 +42,11 @@ scan_devices(std::vector<std::shared_ptr<pcidev::pci_device>>& ready_list,
   }
 }
 
-std::shared_ptr<pcidev::pci_device>
-pci_driver::
+std::shared_ptr<dev>
+drv::
 create_pcidev(const std::string& sysfs) const
 {
-  return std::make_shared<pcidev::pci_device>(this, sysfs);
+  return std::make_shared<dev>(this, sysfs);
 }
 
-} // pcidrv
+} } // namespace xrt_core :: pci
