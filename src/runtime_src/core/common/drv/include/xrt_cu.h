@@ -367,7 +367,8 @@ struct xrt_cu {
 	struct timer_list	  timer;
 	atomic_t		  tick;
 	u32			  start_tick;
-	
+	u32			  force_intr;
+
 	struct xrt_cu_stats        stats;
 	/**
 	 * @funcs:
