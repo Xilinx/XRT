@@ -31,13 +31,13 @@ OO_ChangeBoot::OO_ChangeBoot(const std::string &_longName, const std::string &_s
     : OptionOptions(_longName,
                     _shortName,
                     "Modify the boot for an RPU and/or APU to either partition A or partition B",
-                    boost::program_options::value<decltype(boot)>(&boot)->implicit_value("default")->required(),
+                    boost::program_options::value<decltype(m_boot)>(&m_boot)->implicit_value("default")->required(),
                     "RPU and/or APU will be booted to either partition A or partition B.  Valid values:\n"
                     "  DEFAULT - Reboot RPU to partition A\n"
                     "  BACKUP  - Reboot RPU to partition B\n",
                     _isHidden),
       m_device(""),
-      boot("")
+      m_boot("default")
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
@@ -46,13 +46,13 @@ OO_ChangeBoot::OO_ChangeBoot(const std::string &_longName, const std::string &_s
 }
 
 static void
-switch_partition(xrt_core::device* device, int boot)
+switch_partition(xrt_core::device* device, int m_boot)
 {
   auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
   std::cout << boost::format("Rebooting device: [%s] with '%s' partition")
-                % bdf % (boot ? "backup" : "default") << std::endl;
+                % bdf % (m_boot ? "backup" : "default") << std::endl;
   try {
-    auto value = xrt_core::query::flush_default_only::value_type(boot);
+    auto value = xrt_core::query::flush_default_only::value_type(m_boot);
     xrt_core::device_update<xrt_core::query::boot_partition>(device, value);
     std::cout << "Performing hot reset..." << std::endl;
     auto hot_reset = XBU::str_to_reset_obj("hot");
@@ -92,10 +92,10 @@ OO_ChangeBoot::execute(const SubCmdOptions& _options) const
     XBU::throw_cancel(e.what());
   }
 
-  if (boost::iequals(boot, "DEFAULT"))
+  if (boost::iequals(m_boot, "DEFAULT"))
     switch_partition(device.get(), 0);
-  else if (boost::iequals(boot, "BACKUP"))
+  else if (boost::iequals(m_boot, "BACKUP"))
     switch_partition(device.get(), 1);
   else 
-    XBU::throw_cancel(boost::format("Invalid value for boot: %s") % boot);
+    XBU::throw_cancel(boost::format("Invalid value for boot: %s") % m_boot);
 }

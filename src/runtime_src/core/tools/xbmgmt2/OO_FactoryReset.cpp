@@ -31,13 +31,13 @@ OO_FactoryReset::OO_FactoryReset(const std::string &_longName, const std::string
     : OptionOptions(_longName,
                     _shortName,
                     "Reset the FPGA PROM back to the factory image",
-                    boost::program_options::bool_switch(&revertToGolden)->required(),
+                    boost::program_options::bool_switch(&m_revertToGolden)->required(),
                     "Resets the FPGA PROM back to the factory image.\n"
                       "Note: The Satellite Controller does not have a golden image and cannot be reverted",
                     _isHidden),
       m_device(""),
-      flashType(""),
-      revertToGolden(false)
+      m_flashType(""),
+      m_revertToGolden(false)
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
@@ -45,7 +45,7 @@ OO_FactoryReset::OO_FactoryReset(const std::string &_longName, const std::string
   ;
 
   m_optionsHidden.add_options()
-    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType),
+    ("flash-type", boost::program_options::value<decltype(m_flashType)>(&m_flashType),
     "Overrides the flash mode. Use with caution.  Valid values:\n"
     "  ospi\n"
     "  ospi_versal")
@@ -81,7 +81,7 @@ OO_FactoryReset::execute(const SubCmdOptions& _options) const
   }
 
   // Populate flash type. Uses board's default when passing an empty input string.
-  if (!flashType.empty()) {
+  if (!m_flashType.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
         "Overriding flash mode is not recommended.\nYou may damage your device with this option.");
   }
@@ -92,7 +92,7 @@ OO_FactoryReset::execute(const SubCmdOptions& _options) const
   if (!flasher.isValid())
     xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
 
-  auto flash_type = flasher.getFlashType(flashType);
+  auto flash_type = flasher.getFlashType(m_flashType);
 
   std::cout << boost::format("%-8s : %s %s %s \n") % "INFO" % "Resetting device ["
     % flasher.sGetDBDF() % "] back to factory mode.";

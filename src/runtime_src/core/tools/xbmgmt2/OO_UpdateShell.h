@@ -15,7 +15,7 @@ class OO_UpdateShell : public OptionOptions {
 
  private:
   std::string m_device;
-  std::string plp;
+  std::string m_plp;
   bool m_help;
 };
 

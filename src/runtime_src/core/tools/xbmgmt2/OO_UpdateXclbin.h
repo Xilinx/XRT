@@ -15,7 +15,7 @@ class OO_UpdateXclbin : public OptionOptions {
 
  private:
   std::string m_device;
-  std::string xclbin;
+  std::string m_xclbin;
   bool m_help;
 };
 

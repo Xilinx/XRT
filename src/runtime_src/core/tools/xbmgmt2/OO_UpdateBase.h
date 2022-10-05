@@ -15,9 +15,9 @@ class OO_UpdateBase : public OptionOptions {
 
  private:
   std::string m_device;
-  std::string update;
-  std::vector<std::string> image;
-  std::string flashType;
+  std::string m_update;
+  std::vector<std::string> m_image;
+  std::string m_flashType;
   bool m_help;
 };
 

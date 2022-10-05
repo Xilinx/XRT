@@ -23,6 +23,7 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <atomic>
 #include <chrono>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -38,24 +39,25 @@ OO_UpdateBase::OO_UpdateBase(const std::string &_longName, const std::string &_s
     : OptionOptions(_longName,
                     _shortName,
                     "Update base partition",
-                    boost::program_options::value<decltype(update)>(&update)->implicit_value("all")->required(),
+                    boost::program_options::value<decltype(m_update)>(&m_update)->implicit_value("all")->required(),
                     "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
                       "  ALL   - All images will be updated\n"
                       "  SHELL - Platform image\n"
                       "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
                       "  NO-BACKUP   - Backup boot remains unchanged",
                     _isHidden)
+    , m_update("all")
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Valid values:\n"
+    ("image", boost::program_options::value<decltype(m_image)>(&m_image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Valid values:\n"
                                                                     "  Name (and path) to the mcs image on disk\n"
                                                                     "  Name (and path) to the xsabin image on disk")
     ("help", po::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_optionsHidden.add_options()
-    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType),
+    ("flash-type", boost::program_options::value<decltype(m_flashType)>(&m_flashType),
       "Overrides the flash mode. Use with caution.  Valid values:\n"
       "  ospi\n"
       "  ospi_versal")
@@ -673,29 +675,29 @@ OO_UpdateBase::execute(const SubCmdOptions& _options) const
   }
 
   // Only two images options are supported
-  if (image.size() > 2)
+  if (m_image.size() > 2)
     throw xrt_core::error("Multiple flash images provided. Please specify either 1 or 2 flash images.");
 
   // Populate flash type. Uses board's default when passing an empty input string.
-  if (!flashType.empty()) {
+  if (!m_flashType.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
         "Overriding flash mode is not recommended.\nYou may damage your device with this option.");
   }
   Flasher working_flasher(device->get_device_id());
-  auto flash_type = working_flasher.getFlashType(flashType);
+  auto flash_type = working_flasher.getFlashType(m_flashType);
 
   XBU::verbose("Sub command: --base");
   XBU::sudo_or_throw("Root privileges are required to update the devices flash image");
   // User did not provide an image for all. Select image automatically.
-  if (update.compare("all") == 0) {
+  if (m_update.compare("all") == 0) {
     update_default_only(device.get(), false);
-    if (image.empty()) {
+    if (m_image.empty()) {
       auto_flash(device, flash_type);
       return;
     }
   }
-  else if (update.compare("no-backup") == 0) {
-    if (image.empty()) {
+  else if (m_update.compare("no-backup") == 0) {
+    if (m_image.empty()) {
       update_default_only(device.get(), true);
       auto_flash(device, flash_type);
       return;
@@ -705,7 +707,7 @@ OO_UpdateBase::execute(const SubCmdOptions& _options) const
   // All other cases have a specified image
   // Get a list of images known exist
 
-  const auto validated_images = find_flash_image_paths(image);
+  const auto validated_images = find_flash_image_paths(m_image);
   // Fail early here to reduce additional conditions below
   // Technically validated_images will never be empty as: if image is not empty but has a bad
   // path or bad shell name find_flash_image_paths exits early. This statement can be removed
@@ -726,23 +728,23 @@ OO_UpdateBase::execute(const SubCmdOptions& _options) const
       break;
   }
 
-  if (update.compare("all") == 0) {
+  if (m_update.compare("all") == 0) {
       update_default_only(device.get(), false);
       auto_flash(device, flash_type, validated_image_map["primary"]);
   }
   // For the following two if conditions regarding the validated images portion
   // The user may have provided an image, but, it may not exist or the shell name is wrong
-  else if (update.compare("sc") == 0) {
+  else if (m_update.compare("sc") == 0) {
     update_SC(device.get()->get_device_id(), validated_image_map["primary"]);
   }
-  else if (update.compare("shell") == 0) {
+  else if (m_update.compare("shell") == 0) {
     update_default_only(device.get(), false);
     update_shell(device.get()->get_device_id(), validated_image_map, flash_type);
     std::cout << "****************************************************\n";
     std::cout << "Cold reboot machine to load the new image on device.\n";
     std::cout << "****************************************************\n";
   }
-  else if (update.compare("no-backup") == 0) {
+  else if (m_update.compare("no-backup") == 0) {
     update_default_only(device.get(), true);
     auto_flash(device, flash_type, validated_image_map["primary"]);
   }

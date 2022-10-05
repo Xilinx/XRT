@@ -15,8 +15,8 @@ class OO_FactoryReset : public OptionOptions {
 
  private:
   std::string m_device;
-  std::string flashType;
-  bool revertToGolden;
+  std::string m_flashType;
+  bool m_revertToGolden;
   bool m_help;
 };
 

@@ -33,10 +33,11 @@ OO_UpdateShell::OO_UpdateShell(const std::string &_longName, const std::string &
     : OptionOptions(_longName,
                     _shortName,
                     "Update the shell partition for a 2RP platform",
-                    boost::program_options::value<decltype(plp)>(&plp)->implicit_value("all")->required(),
+                    boost::program_options::value<decltype(m_plp)>(&m_plp)->implicit_value("all")->required(),
                     "The partition to be loaded.  Valid values:\n"
                       "  Name (and path) of the partition.",
                     _isHidden)
+    , m_plp("plp")
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
@@ -98,7 +99,7 @@ OO_UpdateShell::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  XBU::verbose(boost::str(boost::format("  shell: %s") % plp));
+  XBU::verbose(boost::str(boost::format("  shell: %s") % m_plp));
 
   Flasher flasher(device->get_device_id());
   if (!flasher.isValid())
@@ -109,10 +110,10 @@ OO_UpdateShell::execute(const SubCmdOptions& _options) const
                           " is installed.");
 
   // Check if file exists
-  if (!boost::filesystem::exists(plp))
+  if (!boost::filesystem::exists(m_plp))
     throw xrt_core::error("File not found. Please specify the correct path");
 
-  DSAInfo dsa(plp);
+  DSAInfo dsa(m_plp);
   //TO_DO: add a report for plp before asking permission to proceed. Replace following 2 lines
   std::cout << "Programming shell on device [" << flasher.sGetDBDF() << "]..." << std::endl;
   std::cout << "Partition file: " << dsa.file << std::endl;

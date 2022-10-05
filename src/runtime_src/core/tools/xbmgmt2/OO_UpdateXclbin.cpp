@@ -31,12 +31,12 @@ OO_UpdateXclbin::OO_UpdateXclbin(const std::string &_longName, const std::string
     : OptionOptions(_longName,
                     _shortName,
                     "Load an xclbin onto the FPGA",
-                    boost::program_options::value<decltype(xclbin)>(&xclbin)->required(),
+                    boost::program_options::value<decltype(m_xclbin)>(&m_xclbin)->required(),
                     "The xclbin to be loaded.  Valid values:\n"
                     "  Name (and path) of the xclbin.",
                     _isHidden),
       m_device(""),
-      xclbin("")
+      m_xclbin("")
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
@@ -72,9 +72,9 @@ OO_UpdateXclbin::execute(const SubCmdOptions& _options) const
 
   XBU::sudo_or_throw("Root privileges are required to download xclbin");
 
-  std::ifstream stream(xclbin, std::ios::binary);
+  std::ifstream stream(m_xclbin, std::ios::binary);
   if (!stream)
-    throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % xclbin));
+    throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % m_xclbin));
 
   stream.seekg(0,stream.end);
   ssize_t size = stream.tellg();
