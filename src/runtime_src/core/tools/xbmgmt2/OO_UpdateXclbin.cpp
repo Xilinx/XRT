@@ -17,7 +17,6 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -71,7 +70,9 @@ OO_UpdateXclbin::execute(const SubCmdOptions &_options) const
   if (!stream)
     throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % m_xclbin));
 
-  auto size = std::filesystem::file_size(m_xclbin);
+  stream.seekg(0,stream.end);
+  ssize_t size = stream.tellg();
+  stream.seekg(0,stream.beg);
 
   std::vector<char> xclbin_buffer(size);
   stream.read(xclbin_buffer.data(), size);

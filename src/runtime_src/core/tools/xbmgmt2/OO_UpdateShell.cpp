@@ -20,7 +20,6 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 
@@ -48,7 +47,9 @@ program_plp(const xrt_core::device *dev, const std::string &partition)
     throw xrt_core::error(boost::str(boost::format("Cannot open %s") % partition));
 
   // size of the stream
-  auto total_size = std::filesystem::file_size(partition);
+  stream.seekg(0, stream.end);
+  int total_size = static_cast<int>(stream.tellg());
+  stream.seekg(0, stream.beg);
 
   // copy stream into a vector
   std::vector<char> buffer(total_size);
