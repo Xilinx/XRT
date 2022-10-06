@@ -1626,6 +1626,8 @@ static const auto formatRunValues = XBU::create_suboption_list_string(testNameDe
 SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("validate",
              "Validates the basic shell acceleration functionality")
+    , m_tests_to_run({"all"})
+    , m_format("JSON")
 {
   setLongDescription("Validates the given device by executing the platform's validate executable.");
   setExampleSyntax("");

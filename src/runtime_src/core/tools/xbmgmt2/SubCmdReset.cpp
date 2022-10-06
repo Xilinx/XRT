@@ -77,6 +77,7 @@ supported(std::string resetType) {
 SubCmdReset::SubCmdReset(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("reset", 
              "Resets the given device")
+    , m_resetType("hot")
 {
   setLongDescription("Resets the given device.");
   setExampleSyntax("");
