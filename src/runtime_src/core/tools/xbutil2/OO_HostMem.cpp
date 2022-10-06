@@ -52,7 +52,7 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
 
   XBUtilities::verbose("Option(s):");
   for (auto & aString : _options)
-    XBUtilities::verbose(std::string(" ") + aString);
+    XBUtilities::verbose(" " + aString);
 
   // Honor help option first
   if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {

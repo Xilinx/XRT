@@ -8,10 +8,10 @@
 
 class OO_FactoryReset : public OptionOptions {
  public:
-  virtual void execute( const SubCmdOptions &_options ) const;
+  virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  OO_FactoryReset( const std::string &_longName, const std::string &_shortName="", bool _isHidden = false);
+  OO_FactoryReset(const std::string &_longName, const std::string &_shortName = "", bool _isHidden = false);
 
  private:
   std::string m_device;

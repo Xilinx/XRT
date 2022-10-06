@@ -80,6 +80,8 @@ namespace XBUtilities {
 
   bool can_proceed(bool force = false);
   void sudo_or_throw_err();
+  void throw_cancel(const std::string& msg);
+  void throw_cancel(const boost::format& format);
 
   template <typename T>
   std::vector<T> as_vector( boost::property_tree::ptree const& pt, 

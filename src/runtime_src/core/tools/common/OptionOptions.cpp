@@ -18,18 +18,17 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "OptionOptions.h"
-#include <iostream>
+
 #include <boost/format.hpp>
+#include <iostream>
 
 #include "core/common/error.h"
-#include "XBUtilitiesCore.h"
 #include "XBHelpMenusCore.h"
+#include "XBUtilitiesCore.h"
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
-OptionOptions::OptionOptions( const std::string & longName,
-                              bool isHidden,
-                              const std::string & description)
+OptionOptions::OptionOptions(const std::string &longName, bool isHidden, const std::string &description)
   : m_executable("<unknown>")
   , m_command("<unknown>")
   , m_longName(longName)
@@ -38,17 +37,18 @@ OptionOptions::OptionOptions( const std::string & longName,
   , m_extendedHelp("")
   , m_defaultOptionValue(false)
 {
-  m_selfOption.add_options()(m_longName.c_str(), boost::program_options::bool_switch(&m_defaultOptionValue)->required(), m_description.c_str());
+  m_selfOption.add_options()(m_longName.c_str(),
+                             boost::program_options::bool_switch(&m_defaultOptionValue)->required(),
+                             m_description.c_str());
   m_optionsDescription.add(m_selfOption);
 }
 
-OptionOptions::OptionOptions( const std::string & longName,
-                              const std::string & shortName,
-                              const std::string & optionDescription,
-                              const boost::program_options::value_semantic* optionValue,
-                              const std::string & valueDescription,
-                              bool isHidden
-                              )
+OptionOptions::OptionOptions(const std::string &longName,
+                             const std::string &shortName,
+                             const std::string &optionDescription,
+                             const boost::program_options::value_semantic *optionValue,
+                             const std::string &valueDescription,
+                             bool isHidden)
   : m_executable("<unknown>")
   , m_command("<unknown>")
   , m_longName(longName)
@@ -61,23 +61,23 @@ OptionOptions::OptionOptions( const std::string & longName,
   m_optionsDescription.add(m_selfOption);
 }
 
-void 
+void
 OptionOptions::printHelp() const
 {
-  XBU::report_subcommand_help( m_executable,
-                               m_command,
-                               m_description,
-                               m_extendedHelp, 
-                               m_optionsDescription,
-                               m_optionsHidden,
-                               m_globalOptions,
-                               m_positionalOptions);
+  XBU::report_subcommand_help(m_executable,
+                              m_command,
+                              m_description,
+                              m_extendedHelp,
+                              m_optionsDescription,
+                              m_optionsHidden,
+                              m_globalOptions,
+                              m_positionalOptions);
 }
 
 std::vector<std::string>
-OptionOptions::process_arguments( boost::program_options::variables_map& vm,
-                                  const SubCmdOptions& options,
-                                  bool validate_arguments) const
+OptionOptions::process_arguments(boost::program_options::variables_map &vm,
+                                 const SubCmdOptions &options,
+                                 bool validate_arguments) const
 {
   po::options_description all_options("All Options");
   all_options.add(m_optionsDescription);
@@ -86,10 +86,9 @@ OptionOptions::process_arguments( boost::program_options::variables_map& vm,
   try {
     po::command_line_parser parser(options);
     return XBU::process_arguments(vm, parser, all_options, m_positionalOptions, validate_arguments);
-  } catch(boost::program_options::error& e) {
+  } catch (boost::program_options::error &e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 }
-

@@ -99,7 +99,7 @@ OO_Dump_Qspips::execute(const SubCmdOptions& _options) const
 
   XBU::verbose("Option(s):");
   for (auto & aString : _options)
-      XBU::verbose(std::string(" ") + aString);
+      XBU::verbose(" " + aString);
 
   // Honor help option first
   if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {

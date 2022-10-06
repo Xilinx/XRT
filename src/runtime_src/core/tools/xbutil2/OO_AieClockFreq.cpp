@@ -24,7 +24,6 @@ namespace qr = xrt_core::query;
 #include <iostream>
 #include <math.h>
 
-// ----- H E L P E R M E T H O D S ------------------------------------------
 static double
 to_megaHz(uint64_t value)
 {
@@ -106,7 +105,7 @@ OO_AieClockFreq::execute(const SubCmdOptions& _options) const
 
   XBU::verbose("Option(s):");
   for (auto & aString : _options)
-    XBU::verbose(std::string(" ") + aString);
+    XBU::verbose(" " + aString);
 
   // Honor help option first
   if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {

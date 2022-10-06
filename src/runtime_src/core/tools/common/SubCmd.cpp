@@ -18,18 +18,18 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmd.h"
-#include <iostream>
+
 #include <boost/format.hpp>
+#include <iostream>
 
 #include "core/common/error.h"
+#include "XBHelpMenusCore.h"
 #include "XBUtilities.h"
 #include "XBUtilitiesCore.h"
-#include "XBHelpMenusCore.h"
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
-SubCmd::SubCmd(const std::string & _name, 
-               const std::string & _shortDescription)
+SubCmd::SubCmd(const std::string &_name, const std::string &_shortDescription)
   : m_commonOptions("Common Options")
   , m_hiddenOptions("Hidden Options")
   , m_executableName("")
@@ -45,8 +45,7 @@ SubCmd::SubCmd(const std::string & _name,
 }
 
 void
-SubCmd::printHelp(bool removeLongOptDashes,
-                  const std::string& customHelpSection) const
+SubCmd::printHelp(bool removeLongOptDashes, const std::string &customHelpSection) const
 {
   XBUtilities::report_subcommand_help(m_executableName,
                                       m_subCmdName,
@@ -61,21 +60,21 @@ SubCmd::printHelp(bool removeLongOptDashes,
                                       customHelpSection);
 }
 
-std::vector<std::string> 
-SubCmd::process_arguments( po::variables_map& vm,
-                           const SubCmdOptions& _options,
-                           const po::options_description& common_options,
-                           const po::options_description& hidden_options,
-                           const po::positional_options_description& positionals,
-                           const SubOptionOptions& suboptions,
-                           bool validate_arguments) const
+std::vector<std::string>
+SubCmd::process_arguments(po::variables_map &vm,
+                          const SubCmdOptions &_options,
+                          const po::options_description &common_options,
+                          const po::options_description &hidden_options,
+                          const po::positional_options_description &positionals,
+                          const SubOptionOptions &suboptions,
+                          bool validate_arguments) const
 {
   po::options_description all_options("All Options");
   all_options.add(common_options);
   all_options.add(hidden_options);
 
-  for (const auto & subCmd : suboptions)
-      all_options.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
+  for (const auto &subCmd : suboptions)
+    all_options.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
 
   try {
     po::command_line_parser parser(_options);
@@ -88,7 +87,7 @@ SubCmd::process_arguments( po::variables_map& vm,
 
     return options;
 
-  } catch(boost::program_options::error& e) {
+  } catch (boost::program_options::error &e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
@@ -97,8 +96,8 @@ SubCmd::process_arguments( po::variables_map& vm,
 }
 
 std::vector<std::string>
-SubCmd::process_arguments( boost::program_options::variables_map& vm,
-                          const SubCmdOptions& _options,
+SubCmd::process_arguments(boost::program_options::variables_map &vm,
+                          const SubCmdOptions &_options,
                           bool validate_arguments) const
 {
   return process_arguments( vm,
@@ -110,17 +109,16 @@ SubCmd::process_arguments( boost::program_options::variables_map& vm,
                             validate_arguments);
 }
 
-void 
-SubCmd::conflictingOptions( const boost::program_options::variables_map& _vm, 
-                            const std::string &_opt1, const std::string &_opt2) const
+void
+SubCmd::conflictingOptions(const boost::program_options::variables_map &_vm,
+                           const std::string &_opt1,
+                           const std::string &_opt2) const
 {
-  if ( _vm.count(_opt1.c_str())  
-       && !_vm[_opt1.c_str()].defaulted() 
-       && _vm.count(_opt2.c_str()) 
-       && !_vm[_opt2.c_str()].defaulted()) {
-    std::string errMsg = boost::str(boost::format("Mutually exclusive options: '%s' and '%s'") % _opt1 % _opt2);
-    throw std::logic_error(errMsg);
-  }
+  if (_vm.count(_opt1)
+      && !_vm[_opt1].defaulted()
+      && _vm.count(_opt2)
+      && !_vm[_opt2].defaulted())
+    XBUtilities::throw_cancel(boost::format("Mutually exclusive options: '%s' and '%s'") % _opt1 % _opt2);
 }
 
 void
@@ -132,22 +130,19 @@ SubCmd::addSubOption(std::shared_ptr<OptionOptions> option)
 }
 
 std::shared_ptr<OptionOptions>
-SubCmd::checkForSubOption(const boost::program_options::variables_map& vm) const
+SubCmd::checkForSubOption(const boost::program_options::variables_map &vm) const
 {
   std::shared_ptr<OptionOptions> option;
   // Loop through the available sub options searching for a name match
-  for (auto& subOO : m_subOptionOptions) {
-    if (vm.count(subOO->longName().c_str()) != 0) {
+  for (auto &subOO : m_subOptionOptions) {
+    if (vm.count(subOO->longName()) != 0) {
       // Store the matched option if no other match has been found
       if (!option)
         option = subOO;
       // XRT will not accept more than one suboption per invocation
       // Throw an exception if more than one suboption is found within the command options
-      else {
-        auto err_fmt = boost::format("Mutually exclusive option selected: %s %s") 
-                        % subOO->longName() % option->longName();
-        throw xrt_core::error(std::errc::operation_canceled, boost::str(err_fmt)); 
-      }
+      else
+        XBUtilities::throw_cancel(boost::format("Mutually exclusive option selected: %s %s") % subOO->longName() % option->longName());
     }
   }
   return option;

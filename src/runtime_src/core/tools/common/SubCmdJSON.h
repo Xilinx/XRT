@@ -19,12 +19,13 @@
 
 #include "tools/common/SubCmd.h"
 
-struct JSONCmd {
-    std::string parentName;
-    std::string description;
-    std::string application;
-    std::string defaultArgs;
-    std::string option;
+struct JSONCmd
+{
+  std::string parentName;
+  std::string description;
+  std::string application;
+  std::string defaultArgs;
+  std::string option;
 };
 
 class SubCmdJSON : public SubCmd {
@@ -32,14 +33,19 @@ class SubCmdJSON : public SubCmd {
   virtual void execute(const SubCmdOptions &_options) const;
 
  public:
-  SubCmdJSON(bool _isHidden, bool _isDepricated, bool _isPreliminary, std::string& name, std::string& desc, std::vector<struct JSONCmd>& _subCmdOptions);
+  SubCmdJSON(bool _isHidden,
+             bool _isDepricated,
+             bool _isPreliminary,
+             std::string &name,
+             std::string &desc,
+             std::vector<struct JSONCmd> &_subCmdOptions);
 
  private:
   std::vector<struct JSONCmd> m_subCmdOptions;
-  bool                        m_help;
+  bool m_help;
 };
 
 using SubCmdsCollection = std::vector<std::shared_ptr<SubCmd>>;
-void populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& exeName);
+void populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string &exeName);
 
 #endif

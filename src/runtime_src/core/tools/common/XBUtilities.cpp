@@ -372,18 +372,6 @@ XBUtilities::sudo_or_throw(const std::string& msg)
 }
 
 void
-XBUtilities::throw_cancel(const std::string& msg)
-{
-  throw_cancel(boost::format("%s") % msg);
-}
-
-void
-XBUtilities::throw_cancel(const boost::format& format)
-{
-  throw xrt_core::error(std::errc::operation_canceled, boost::str(format));
-}
-
-void
 XBUtilities::print_exception(const std::system_error& e)
 {
   // Remove the type of error from the message.

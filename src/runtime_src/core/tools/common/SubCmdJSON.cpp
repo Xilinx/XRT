@@ -17,8 +17,9 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdJSON.h"
-#include "tools/common/XBUtilitiesCore.h"
+
 #include "tools/common/XBUtilities.h"
+#include "tools/common/XBUtilitiesCore.h"
 namespace XBU = XBUtilities;
 
 #include "core/common/device.h"
@@ -26,7 +27,6 @@ namespace XBU = XBUtilities;
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
 #include "xrt.h"
-
 
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string.hpp>
@@ -45,12 +45,17 @@ namespace pt = boost::property_tree;
 #include <iostream>
 
 #ifdef _WIN32
-# pragma warning( disable : 4996 )
+#pragma warning(disable : 4996)
 #endif
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
-SubCmdJSON::SubCmdJSON(bool _isHidden, bool _isDepricated, bool _isPreliminary, std::string& name, std::string& desc, std::vector<struct JSONCmd>& _subCmdOptions)
+SubCmdJSON::SubCmdJSON(bool _isHidden,
+                       bool _isDepricated,
+                       bool _isPreliminary,
+                       std::string &name,
+                       std::string &desc,
+                       std::vector<struct JSONCmd> &_subCmdOptions)
     : SubCmd(name, desc)
     , m_subCmdOptions(_subCmdOptions)
     , m_help(false)
@@ -62,14 +67,10 @@ SubCmdJSON::SubCmdJSON(bool _isHidden, bool _isDepricated, bool _isPreliminary, 
   setIsPreliminary(_isPreliminary);
   setIsDefaultDevValid(false);
 
-  m_commonOptions.add_options()
-     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
-  ;
+  m_commonOptions.add_options()("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command");
 
-  for( auto &opt : m_subCmdOptions) {
-    m_commonOptions.add_options()
-      (opt.option.c_str(), opt.description.c_str())
-    ;
+  for (auto &opt : m_subCmdOptions) {
+    m_commonOptions.add_options()(opt.option.c_str(), opt.description.c_str());
   }
 
   m_hiddenOptions.add_options()
@@ -77,13 +78,13 @@ SubCmdJSON::SubCmdJSON(bool _isHidden, bool _isDepricated, bool _isPreliminary, 
     ("subCmdArgs", po::value<std::vector<std::string> >(), "Arguments for command")
   ;
 
-  m_positionals.
-    add("subCmd", 1 /* max_count */).
-    add("subCmdArgs", -1 /* Unlimited max_count */);
+  m_positionals
+    .add("subCmd", 1 /* max_count */)
+    .add("subCmdArgs", -1 /* Unlimited max_count */);
 }
 
 void
-SubCmdJSON::execute(const SubCmdOptions& _options) const
+SubCmdJSON::execute(const SubCmdOptions &_options) const
 {
   XBU::verbose("SubCommand: " + getName());
 
@@ -99,13 +100,12 @@ SubCmdJSON::execute(const SubCmdOptions& _options) const
   // -- Now process the subcommand --------------------------------------------
   std::string sCommand = vm["subCmd"].as<std::string>();
 
-  for ( auto &jsonCmd : m_subCmdOptions ) {
+  for (const auto &jsonCmd : m_subCmdOptions) {
     if (sCommand.compare(jsonCmd.option) == 0) {
       top_options.erase(top_options.begin());
 
-      if(m_help) {
+      if (m_help)
         top_options.push_back("--help");
-      }
 
       std::string finalCmd = jsonCmd.application + " " + jsonCmd.defaultArgs;
       for (auto &opt : top_options) {
@@ -117,7 +117,7 @@ SubCmdJSON::execute(const SubCmdOptions& _options) const
       std::cout << "\ncommand : " << finalCmd << "\n\n";
 
       int status = system(finalCmd.c_str());
-      if(status)
+      if (status)
         std::cout << "\nERROR: Failed to run the command - " << finalCmd << std::endl;
 
       return;
@@ -130,17 +130,18 @@ SubCmdJSON::execute(const SubCmdOptions& _options) const
 }
 
 // ----- H E L P E R   F U N C T I O N S -------------------------------------------
-static void collectJsonPaths(std::vector<std::string> &pathVec, std::string env)
+static void
+collectJsonPaths(std::vector<std::string> &pathVec, std::string env)
 {
-    char del = ':';
-    size_t start = 0;
-    size_t end = env.find(del);
-    while (end != std::string::npos) {
-        pathVec.emplace_back(env.substr(start, end - start));
-        start = end + 1;
-        end = env.find(del, start);
-    }
-    pathVec.emplace_back(env.substr(start, env.length() - start));
+  char del = ':';
+  size_t start = 0;
+  size_t end = env.find(del);
+  while (end != std::string::npos) {
+    pathVec.emplace_back(env.substr(start, end - start));
+    start = end + 1;
+    end = env.find(del, start);
+  }
+  pathVec.emplace_back(env.substr(start, env.length() - start));
 }
 
 /*
@@ -153,61 +154,59 @@ static void collectJsonPaths(std::vector<std::string> &pathVec, std::string env)
  * underlying application is invoked with respective command line options passed
  * as arguments, 'application' is one of the node entry for each sub command option.
  */
-static void populateSubCommandsFromJSONHelper(SubCmdsCollection &subCmds, const std::string& jsonPath, const std::string& exeName)
+static void
+populateSubCommandsFromJSONHelper(SubCmdsCollection &subCmds, const std::string &jsonPath, const std::string &exeName)
 {
-    // parse JSON and add valid Sub Commands
-    pt::ptree jtree;
+  // parse JSON and add valid Sub Commands
+  pt::ptree jtree;
+  try {
+    pt::read_json(jsonPath, jtree);
+
+    pt::ptree exetree;
+    // check exsistence of tree node for execuatble passed(eg: xbutil)
     try {
-        pt::read_json(jsonPath,jtree);
-
-	pt::ptree exetree;
-	// check exsistence of tree node for execuatble passed(eg: xbutil)
-	try {
-            exetree = jtree.get_child(exeName);
-	} catch (std::exception &e) {
-            throw std::runtime_error("Error: No JSON branch for executable '" + exeName + "'\n" + e.what());
-	}
-
-	// iterate over various sub commands
-        for (pt::ptree::value_type &JSONsubCmd : exetree.get_child("sub_commands"))
-        {
-            std::string subCmdName = JSONsubCmd.first;
-            std::string subCmdDesc = JSONsubCmd.second.get<std::string>("description");
-
-            std::vector<struct JSONCmd> subCmdOpts;
-	    // collect all the valid options of sub command
-            for(pt::ptree::value_type &subCmdOpt : JSONsubCmd.second.get_child("options"))
-            {
-                struct JSONCmd cmd;
-                cmd.parentName = subCmdName;
-                cmd.description = subCmdOpt.second.get<std::string>("description");
-                cmd.application = subCmdOpt.second.get<std::string>("application");
-                cmd.defaultArgs = subCmdOpt.second.get<std::string>("default_args");
-                cmd.option = subCmdOpt.second.get<std::string>("option");
-                subCmdOpts.emplace_back(cmd);
-            }
-            subCmds.emplace_back(std::make_shared<  SubCmdJSON  >(false, false, false, subCmdName, subCmdDesc, subCmdOpts));
-        }
+      exetree = jtree.get_child(exeName);
+    } catch (std::exception &e) {
+      throw std::runtime_error("Error: No JSON branch for executable '" + exeName + "'\n" + e.what());
     }
-    catch(std::exception &e) {
-        // Display message only when verbosity is enabled, exit silently otherwise
-        XBU::verbose("Exception occured while parsing " + jsonPath + "JSON file : " + e.what());
+
+    // iterate over various sub commands
+    for (pt::ptree::value_type &JSONsubCmd : exetree.get_child("sub_commands")) {
+      std::string subCmdName = JSONsubCmd.first;
+      std::string subCmdDesc = JSONsubCmd.second.get<std::string>("description");
+
+      std::vector<struct JSONCmd> subCmdOpts;
+      // collect all the valid options of sub command
+      for (pt::ptree::value_type &subCmdOpt : JSONsubCmd.second.get_child("options")) {
+        struct JSONCmd cmd;
+        cmd.parentName = subCmdName;
+        cmd.description = subCmdOpt.second.get<std::string>("description");
+        cmd.application = subCmdOpt.second.get<std::string>("application");
+        cmd.defaultArgs = subCmdOpt.second.get<std::string>("default_args");
+        cmd.option = subCmdOpt.second.get<std::string>("option");
+        subCmdOpts.emplace_back(cmd);
+      }
+      subCmds.emplace_back(std::make_shared<SubCmdJSON>(false, false, false, subCmdName, subCmdDesc, subCmdOpts));
     }
+  } catch (std::exception &e) {
+    // Display message only when verbosity is enabled, exit silently otherwise
+    XBU::verbose("Exception occured while parsing " + jsonPath + "JSON file : " + e.what());
+  }
 }
 
-void populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& exeName)
+void
+populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string &exeName)
 {
-    auto envJson = std::getenv("XRT_SUBCOMMANDS_JSON");
-    if(!envJson)
-        return;
+  auto envJson = std::getenv("XRT_SUBCOMMANDS_JSON");
+  if (!envJson)
+    return;
 
-    // multiple json file paths may be appended to env variable
-    std::vector<std::string> jsonPaths;
-    collectJsonPaths(jsonPaths, envJson);
+  // multiple json file paths may be appended to env variable
+  std::vector<std::string> jsonPaths;
+  collectJsonPaths(jsonPaths, envJson);
 
-    for(auto &path : jsonPaths)
-    {
-        if(boost::filesystem::is_regular_file(path))
-            populateSubCommandsFromJSONHelper(subCmds, path, exeName);
-    }
+  for (auto &path : jsonPaths) {
+    if (boost::filesystem::is_regular_file(path))
+      populateSubCommandsFromJSONHelper(subCmds, path, exeName);
+  }
 }

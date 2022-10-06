@@ -17,26 +17,21 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <vector>
-// =============================================================================
 
-// ----- H E L P E R M E T H O D S ------------------------------------------
-
-
-// ----- C L A S S   M E T H O D S -------------------------------------------
-
-OO_UpdateXclbin::OO_UpdateXclbin(const std::string &_longName, const std::string &_shortName, bool _isHidden )
+OO_UpdateXclbin::OO_UpdateXclbin(const std::string &_longName, const std::string &_shortName, bool _isHidden)
     : OptionOptions(_longName,
                     _shortName,
                     "Load an xclbin onto the FPGA",
                     boost::program_options::value<decltype(m_xclbin)>(&m_xclbin)->required(),
                     "The xclbin to be loaded.  Valid values:\n"
                     "  Name (and path) of the xclbin.",
-                    _isHidden),
-      m_device(""),
-      m_xclbin("")
+                    _isHidden)
+    , m_device("")
+    , m_xclbin("")
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
@@ -45,13 +40,13 @@ OO_UpdateXclbin::OO_UpdateXclbin(const std::string &_longName, const std::string
 }
 
 void
-OO_UpdateXclbin::execute(const SubCmdOptions& _options) const
+OO_UpdateXclbin::execute(const SubCmdOptions &_options) const
 {
   XBUtilities::verbose("SubCommand option: Update xclbin");
 
   XBUtilities::verbose("Option(s):");
-  for (const auto & aString : _options)
-    XBUtilities::verbose(std::string(" ") + aString);
+  for (const auto &aString : _options)
+    XBUtilities::verbose(" " + aString);
 
   // Honor help option first
   if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {
@@ -66,7 +61,7 @@ OO_UpdateXclbin::execute(const SubCmdOptions& _options) const
   std::shared_ptr<xrt_core::device> device;
   try {
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
-  } catch (const std::runtime_error& e) {
+  } catch (const std::runtime_error &e) {
     XBU::throw_cancel(e.what());
   }
 
@@ -76,9 +71,7 @@ OO_UpdateXclbin::execute(const SubCmdOptions& _options) const
   if (!stream)
     throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % m_xclbin));
 
-  stream.seekg(0,stream.end);
-  ssize_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
+  auto size = std::filesystem::file_size(m_xclbin);
 
   std::vector<char> xclbin_buffer(size);
   stream.read(xclbin_buffer.data(), size);
@@ -87,7 +80,7 @@ OO_UpdateXclbin::execute(const SubCmdOptions& _options) const
   std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
   try {
     device->xclmgmt_load_xclbin(xclbin_buffer.data());
-  } catch (xrt_core::error& e) {
+  } catch (xrt_core::error &e) {
     XBU::throw_cancel(e.what());
   }
   std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;

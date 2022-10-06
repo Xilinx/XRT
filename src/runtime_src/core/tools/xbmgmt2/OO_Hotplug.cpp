@@ -19,9 +19,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <fstream>
-// =============================================================================
 
-// ----- H E L P E R M E T H O D S ------------------------------------------
 static void
 hotplug_online()
 {
@@ -68,7 +66,7 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
 
   XBUtilities::verbose("Option(s):");
   for (const auto & aString : _options)
-    XBUtilities::verbose(std::string(" ") + aString);
+    XBUtilities::verbose(" " + aString);
 
   // Honor help option first
   if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {

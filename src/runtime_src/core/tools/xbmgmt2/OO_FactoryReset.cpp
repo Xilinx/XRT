@@ -9,8 +9,8 @@
 #include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "flash/flasher.h"
-#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
+#include "tools/common/XBUtilitiesCore.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -20,24 +20,18 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
-// =============================================================================
 
-// ----- H E L P E R M E T H O D S ------------------------------------------
-
-
-// ----- C L A S S   M E T H O D S -------------------------------------------
-
-OO_FactoryReset::OO_FactoryReset(const std::string &_longName, const std::string &_shortName, bool _isHidden )
+OO_FactoryReset::OO_FactoryReset(const std::string &_longName, const std::string &_shortName, bool _isHidden)
     : OptionOptions(_longName,
                     _shortName,
                     "Reset the FPGA PROM back to the factory image",
                     boost::program_options::bool_switch(&m_revertToGolden)->required(),
                     "Resets the FPGA PROM back to the factory image.\n"
-                      "Note: The Satellite Controller does not have a golden image and cannot be reverted",
-                    _isHidden),
-      m_device(""),
-      m_flashType(""),
-      m_revertToGolden(false)
+                    "Note: The Satellite Controller does not have a golden image and cannot be reverted",
+                    _isHidden)
+    , m_device("")
+    , m_flashType("")
+    , m_revertToGolden(false)
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
@@ -53,13 +47,13 @@ OO_FactoryReset::OO_FactoryReset(const std::string &_longName, const std::string
 }
 
 void
-OO_FactoryReset::execute(const SubCmdOptions& _options) const
+OO_FactoryReset::execute(const SubCmdOptions &_options) const
 {
   XBUtilities::verbose("SubCommand option: Factory Reset");
 
   XBUtilities::verbose("Option(s):");
-  for (const auto & aString : _options)
-    XBUtilities::verbose(std::string(" ") + aString);
+  for (const auto &aString : _options)
+    XBUtilities::verbose(" " + aString);
 
   // Honor help option first
   if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {
@@ -74,7 +68,7 @@ OO_FactoryReset::execute(const SubCmdOptions& _options) const
   std::shared_ptr<xrt_core::device> device;
   try {
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
-  } catch (const std::runtime_error& e) {
+  } catch (const std::runtime_error &e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
@@ -88,7 +82,7 @@ OO_FactoryReset::execute(const SubCmdOptions& _options) const
   Flasher flasher(device->get_device_id());
   bool has_reset = false;
 
-  //collect information of all the devices that will be reset
+  // collect information of all the devices that will be reset
   if (!flasher.isValid())
     xrt_core::error(boost::str(boost::format("%d is an invalid index") % device->get_device_id()));
 
@@ -99,7 +93,7 @@ OO_FactoryReset::execute(const SubCmdOptions& _options) const
 
   XBUtilities::sudo_or_throw("Root privileges are required to revert the device to its golden flash image");
 
-  //ask user's permission
+  // ask user's permission
   if (!XBU::can_proceed(XBU::getForce()))
     throw xrt_core::error(std::errc::operation_canceled);
 

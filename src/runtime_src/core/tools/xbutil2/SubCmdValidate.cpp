@@ -31,6 +31,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <regex>
 #include <sstream>
@@ -113,7 +114,7 @@ searchSSV2Xclbin(const std::string& logic_uuid,
           boost::filesystem::symlink_option::recurse), end; iter != end;) {
       std::string name = iter->path().string();
       std::smatch cm;
-      if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str()))) {
+      if (!boost::filesystem::is_directory(boost::filesystem::path(name))) {
         iter.no_push();
       }
       else {
@@ -695,9 +696,7 @@ program_xclbin(const xclDeviceHandle hdl, const std::string& xclbin, boost::prop
     return 1;
   }
 
-  stream.seekg(0,stream.end);
-  size_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
+  size_t size = std::filesystem::file_size(xclbin);
 
   std::vector<char> raw(size);
   stream.read(raw.data(),size);

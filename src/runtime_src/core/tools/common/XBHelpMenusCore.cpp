@@ -202,9 +202,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
                                   bool removeLongOptDashes)
 {
   // Create list of buffers to store each argument type
-  std::vector<std::stringstream> buffers;
-  for (auto i = 0; i < flag_type_size; i++)
-    buffers.push_back(std::stringstream());
+  std::vector<std::stringstream> buffers(flag_type_size);
 
   const auto &options = _od.options();
 

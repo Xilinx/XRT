@@ -18,6 +18,8 @@
 // Local - Include Files
 #include "XBUtilitiesCore.h"
 
+#include "core/common/error.h"
+
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string/split.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -318,4 +320,16 @@ XBUtilities::sudo_or_throw_err()
     std::cout << "ERROR: root privileges required." << std::endl;
     throw std::errc::operation_canceled;
 #endif
+}
+
+void
+XBUtilities::throw_cancel(const std::string& msg)
+{
+  throw_cancel(boost::format("%s") % msg);
+}
+
+void
+XBUtilities::throw_cancel(const boost::format& format)
+{
+  throw xrt_core::error(std::errc::operation_canceled, boost::str(format));
 }
