@@ -24,7 +24,7 @@ namespace xdp {
     // Delete sorted events still in the database and not moved
     {
       std::lock_guard<std::mutex> lock(sortedLock);
-      for (auto iter : sortedEvents) {
+      for (auto& iter : sortedEvents) {
         auto event = iter.second;
         delete event;
       }
@@ -58,7 +58,7 @@ namespace xdp {
   bool HostDB::sortedEventsExist(std::function<bool (VTFEvent*)>& filter)
   {
     std::lock_guard<std::mutex> lock(sortedLock);
-    for (auto iter : sortedEvents) {
+    for (auto& iter : sortedEvents) {
       auto event = iter.second;
       if (filter(event))
         return true;
@@ -72,7 +72,7 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(sortedLock);
 
     std::vector<VTFEvent*> collected;
-    for (auto iter : sortedEvents) {
+    for (auto& iter : sortedEvents) {
       auto event = iter.second;
       if (filter(event))
         collected.push_back(event);
