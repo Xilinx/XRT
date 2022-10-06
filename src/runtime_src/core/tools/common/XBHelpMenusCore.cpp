@@ -152,7 +152,6 @@ get_option_type(const boost::shared_ptr<boost::program_options::option_descripti
 
     return long_arg;
   }
-  throw std::runtime_error("Invalid argument setup detected");
 }
 
 static std::string

@@ -29,6 +29,10 @@ namespace po = boost::program_options;
 #include <map>
 #include <thread>
 
+#ifdef _WIN32
+#pragma warning(disable : 4996) // disable warning caused by std::asctime
+#endif
+
 OO_UpdateBase::OO_UpdateBase(const std::string &_longName, const std::string &_shortName, bool _isHidden)
   : OptionOptions(_longName,
                   _shortName,

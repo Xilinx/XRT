@@ -24,10 +24,6 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
-#ifdef _WIN32
-#pragma warning(disable : 4996) //std::asctime
-#endif
-
 
 // =============================================================================
 

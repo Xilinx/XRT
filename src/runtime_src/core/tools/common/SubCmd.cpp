@@ -92,7 +92,6 @@ SubCmd::process_arguments(po::variables_map &vm,
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-  return std::vector<std::string>();
 }
 
 std::vector<std::string>
