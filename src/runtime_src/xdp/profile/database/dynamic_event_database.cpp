@@ -39,7 +39,7 @@ namespace xdp {
       delete host;
 
     std::lock_guard<std::mutex> lock(deviceDBLock);
-    for (auto iter : devices) {
+    for (auto& iter : devices) {
       auto device = iter.second;
       delete device;
     }

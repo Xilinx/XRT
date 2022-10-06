@@ -95,7 +95,7 @@ namespace xdp {
     fout << "Group_End,Data Transfer\n";
     fout << "Group_Start,Kernel Enqueues\n";
 
-    for (auto b : enqueueBuckets) {
+    for (auto& b : enqueueBuckets) {
       fout << "Dynamic_Row_Summary," << b.second << "," << b.first 
            << ",Kernel Enqueue\n";
     }
@@ -152,7 +152,7 @@ namespace xdp {
 
     collapseDependencyChains(dependencies) ;
 
-    for (auto dependency : dependencies) {
+    for (auto& dependency : dependencies) {
       for (auto dependent : dependency.second) {
         // We have logged all of the dependencies of XRT side events.
         //  There is the possibility that these events don't correspond to
