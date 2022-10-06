@@ -44,8 +44,8 @@ xrt_core::system_linux* singleton = nullptr;
 // during static global initialization. If statically
 // linking with libxrt_core, then explicit initialiation
 // is required
-static inline xrt_core::system_linux*
-singleton_instance()
+static xrt_core::system_linux*
+singleton_system_linux()
 {
   if (!singleton)
     static xrt_core::system_linux s;
@@ -61,7 +61,7 @@ singleton_instance()
 #ifndef EXTERNAL_SHIM
 struct X
 {
-  X() { singleton_instance(); }
+  X() { singleton_system_linux(); }
 } x;
 #endif
 
@@ -118,11 +118,11 @@ void
 system_linux::
 register_driver(std::shared_ptr<pci::drv> driver)
 {
-  driver_list.push_back(driver);
   if (driver->is_user())
     driver->scan_devices(user_ready_list, user_nonready_list);
   else
     driver->scan_devices(mgmt_ready_list, mgmt_nonready_list);
+  driver_list.emplace_back(std::move(driver));
 }
 
 std::shared_ptr<pci::dev>
@@ -175,8 +175,8 @@ get_xrt_info(boost::property_tree::ptree &pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
 
-  for (auto drv : driver_list)
-    _ptDriverInfo.push_back(std::make_pair("", driver_version(drv->name())));
+  for (auto& drv : driver_list)
+    _ptDriverInfo.push_back( {"", driver_version(drv->name())} );
   pt.put_child("drivers", _ptDriverInfo);
 }
 
@@ -213,7 +213,7 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("cores", std::thread::hardware_concurrency());
   pt.put("memory_bytes", (boost::format("0x%lx") % (sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE))).str());
   boost::property_tree::ptree _ptLibInfo;
-  _ptLibInfo.push_back( std::make_pair("", glibc_info() ));
+  _ptLibInfo.push_back( {"", glibc_info()} );
   pt.put_child("libraries", _ptLibInfo);
 
   char hostname[256] = {0};
@@ -231,7 +231,7 @@ get_device_id(const std::string& bdf) const
     return system::get_device_id(bdf);
     
   unsigned int i = 0;
-  for (auto dev = get_pcidev(i); dev; i++, dev = get_pcidev(i)) {
+  for (auto dev = get_pcidev(0); dev; dev = get_pcidev(++i)) {
       // [dddd:bb:dd.f]
       auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->domain % dev->bus % dev->dev_no % dev->func);
       if (dev_bdf == bdf)
@@ -321,33 +321,33 @@ namespace pci {
 std::shared_ptr<device>
 get_userpf_device(device::handle_type device_handle, device::id_type id)
 {
-  singleton_instance(); // force loading if necessary
+  singleton_system_linux(); // force loading if necessary
   return xrt_core::get_userpf_device(device_handle, id);
 }
 
 device::id_type
 get_device_id_from_bdf(const std::string& bdf)
 {
-  singleton_instance(); // force loading if necessary
+  singleton_system_linux(); // force loading if necessary
   return xrt_core::get_device_id(bdf);
 }
 
 size_t
 get_dev_ready(bool user)
 {
-  return singleton_instance()->get_num_dev_ready(user);
+  return singleton_system_linux()->get_num_dev_ready(user);
 }
 
 size_t
 get_dev_total(bool user)
 {
-  return singleton_instance()->get_num_dev_total(user);
+  return singleton_system_linux()->get_num_dev_total(user);
 }
 
 std::shared_ptr<dev>
 get_dev(unsigned index, bool user)
 {
-  return singleton_instance()->get_pcidev(index, user);
+  return singleton_system_linux()->get_pcidev(index, user);
 }
 
 } // namespace pci

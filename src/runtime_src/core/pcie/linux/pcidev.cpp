@@ -455,14 +455,14 @@ open(const std::string& subdev, int flag) const
 }
 
 dev::
-dev(const drv* driver, const std::string& sysfs) : sysfs_name(sysfs)
+dev(const drv& driver, const std::string& sysfs) : sysfs_name(sysfs)
 {
   std::string err;
 
   if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &domain, &bus, &dev_no, &func) < 4)
     throw std::invalid_argument(sysfs + " is not valid BDF");
 
-  is_mgmt = !driver->is_user();
+  is_mgmt = !driver.is_user();
 
   if (is_mgmt)
     sysfs_get("", "instance", err, instance, static_cast<uint32_t>(INVALID_ID));

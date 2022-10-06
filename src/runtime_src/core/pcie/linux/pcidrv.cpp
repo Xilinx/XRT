@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include "pcidrv.h"
 
 namespace xrt_core { namespace pci {
@@ -11,15 +11,17 @@ drv::
 scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
              std::vector<std::shared_ptr<dev>>& nonready_list) const
 {
-  namespace bfs = boost::filesystem;
   const std::string drv_root = "/sys/bus/pci/drivers/";
-  const std::string drvpath = drv_root + name();
+  const std::filesystem::path drvpath = drv_root + name();
 
-  if(!bfs::exists(drvpath))
+  if (!std::filesystem::exists(drvpath))
     return;
 
   // Gather all sysfs directory and sort
-  std::vector<bfs::path> vec{bfs::directory_iterator(drvpath), bfs::directory_iterator()};
+  std::vector<std::filesystem::path> vec{
+    std::filesystem::directory_iterator(drvpath),
+    std::filesystem::directory_iterator()
+  };
   std::sort(vec.begin(), vec.end());
 
   for (auto& path : vec) {
@@ -28,7 +30,7 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
 
       // In docker, all host sysfs nodes are available. So, we need to check
       // devnode to make sure the device is really assigned to docker.
-      if (!bfs::exists(pf->get_subdev_path("", -1)))
+      if (!std::filesystem::exists(pf->get_subdev_path("", -1)))
         continue;
 
       // Insert detected device into proper list.
@@ -36,7 +38,7 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
         ready_list.push_back(pf);
       else
         nonready_list.push_back(pf);
-    } catch (std::invalid_argument const& ex) {
+    } catch (const std::invalid_argument& ex) {
       continue;
     }
   }
@@ -46,7 +48,7 @@ std::shared_ptr<dev>
 drv::
 create_pcidev(const std::string& sysfs) const
 {
-  return std::make_shared<dev>(this, sysfs);
+  return std::make_shared<dev>(*this, sysfs);
 }
 
 } } // namespace xrt_core :: pci

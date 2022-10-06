@@ -12,11 +12,11 @@ class drv_xocl : public drv
 {
 public:
   const std::string
-  name(void) const override
+  name() const override
   { return "xocl"; }
 
   bool
-  is_user(void) const override
+  is_user() const override
   { return true; }
 };
 

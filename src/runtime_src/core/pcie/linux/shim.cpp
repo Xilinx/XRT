@@ -996,7 +996,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax, static_cast<unsigned short>(-1));
 
     //dont try to get any information which needs mailbox communication when device is not ready.
-    if(!mDev->is_mgmt && !mDev->is_ready)
+    if (!mDev->is_mgmt && !mDev->is_ready)
         return;
 
     //get sensors

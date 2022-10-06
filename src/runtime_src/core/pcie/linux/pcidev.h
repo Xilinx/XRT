@@ -57,7 +57,7 @@ namespace xrt_core { namespace pci {
 // Forward declaration
 class drv;
 
-// One PCIE function on FPGA or AIE device
+// One PCIe function on FPGA or AIE device
 class dev
 {
 public:
@@ -78,8 +78,9 @@ public:
   bool is_mgmt =              false;
   bool is_ready =             false;
 
-  dev(const drv* driver, const std::string& sysfs_name);
-  virtual ~dev();
+  dev(const drv& driver, const std::string& sysfs_name);
+  virtual
+  ~dev();
 
   virtual void
   sysfs_get(const std::string& subdev, const std::string& entry,
@@ -129,24 +130,46 @@ public:
 
   virtual std::string
   get_subdev_path(const std::string& subdev, uint32_t idx) const;
-  virtual int pcieBarRead(uint64_t offset, void *buf, uint64_t len);
-  virtual int pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
 
-  virtual int open(const std::string& subdev, int flag) const;
-  virtual int open(const std::string& subdev, uint32_t idx, int flag) const;
-  virtual void close(int devhdl) const;
-  virtual int ioctl(int devhdl, unsigned long cmd, void *arg = nullptr) const;
-  virtual int poll(int devhdl, short events, int timeoutMilliSec);
-  virtual void *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
-  virtual int munmap(int devhdl, void* addr, size_t len);
-  virtual int flock(int devhdl, int op);
-  virtual int get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
-  virtual std::shared_ptr<dev> lookup_peer_dev();
+  virtual int
+  pcieBarRead(uint64_t offset, void *buf, uint64_t len);
+
+  virtual int
+  pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
+
+  virtual int
+  open(const std::string& subdev, int flag) const;
+
+  virtual int
+  open(const std::string& subdev, uint32_t idx, int flag) const;
+
+  virtual void
+  close(int devhdl) const;
+
+  virtual int
+  ioctl(int devhdl, unsigned long cmd, void *arg = nullptr) const;
+
+  virtual int
+  poll(int devhdl, short events, int timeoutMilliSec);
+
+  virtual void
+  *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
+
+  virtual int
+  munmap(int devhdl, void* addr, size_t len);
+
+  virtual int
+  flock(int devhdl, int op);
+
+  virtual int
+  get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
+
+  virtual std::shared_ptr<dev>
+  lookup_peer_dev();
   
   // Hand out a "device" instance that is specific to this type of device.
   // Caller will use this device to access device specific implementation of ishim.
-  virtual
-  std::shared_ptr<device>
+  virtual std::shared_ptr<device>
   create_device(device::handle_type handle, device::id_type id) const;
 
   // Hand out an opaque "shim" handle that is specific to this type of device.
@@ -154,25 +177,40 @@ public:
   // make xcl HAL API calls.
   // On new platforms, this handle can only be used to look up a device. HAL API calls
   // through it are not supported any more.
-  virtual
-  device::handle_type
+  virtual device::handle_type
   create_shim(device::id_type id) const;
 
 private:
-  int map_usr_bar(void);
+  int
+  map_usr_bar();
+
   std::mutex lock;
   char *user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 };
 
-size_t get_dev_total(bool user = true);
-size_t get_dev_ready(bool user = true);
-std::shared_ptr<dev> get_dev(unsigned index, bool user = true);
+size_t
+get_dev_total(bool user = true);
 
-int get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char>& buf);
-int get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids);
-std::shared_ptr<dev> lookup_user_dev(std::shared_ptr<dev> mgmt_dev);
-int shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user = false, bool remove_mgmt = false);
-int check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err);
+size_t
+get_dev_ready(bool user = true);
+
+std::shared_ptr<dev>
+get_dev(unsigned index, bool user = true);
+
+int
+get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char>& buf);
+
+int
+get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids);
+
+std::shared_ptr<dev>
+lookup_user_dev(std::shared_ptr<dev> mgmt_dev);
+
+int
+shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user = false, bool remove_mgmt = false);
+
+int
+check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err);
 
 } } // namespace xrt_core :: pci
 
