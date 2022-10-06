@@ -555,10 +555,10 @@ ioctl(int dev_handle, unsigned long cmd, void *arg) const
 
 int
 dev::
-poll(int dev_handle, short events, int timeoutMilliSec)
+poll(int dev_handle, short events, int timeout_ms)
 {
   pollfd info = {dev_handle, events, 0};
-  return ::poll(&info, 1, timeoutMilliSec);
+  return ::poll(&info, 1, timeout_ms);
 }
 
 void*
@@ -681,90 +681,6 @@ dev::
 create_device(device::handle_type handle, device::id_type id) const
 {
   return std::shared_ptr<device_linux>(new device_linux(handle, id, !is_mgmt));
-}
-
-int
-get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char>& buf)
-{
-  std::ifstream in(filename);
-  if (!in.is_open()) {
-    std::cout << "Can't open " << filename << std::endl;
-    return -ENOENT;
-  }
-
-  // Read axlf from dsabin file to find out number of sections in total.
-  axlf a;
-  size_t sz = sizeof (axlf);
-  in.read(reinterpret_cast<char *>(&a), sz);
-  if (!in.good()) {
-      std::cout << "Can't read axlf from "<< filename << std::endl;
-      return -EINVAL;
-  }
-  // Reread axlf from dsabin file, including all sections headers.
-  // Sanity check for number of sections coming from user input file
-  if (a.m_header.m_numSections > XCLBIN_MAX_NUM_SECTION)
-    return -EINVAL;
-
-  sz = sizeof (axlf) + sizeof (axlf_section_header) * (a.m_header.m_numSections - 1);
-
-  std::vector<char> top(sz);
-  in.seekg(0);
-  in.read(top.data(), sz);
-  if (!in.good()) {
-    std::cout << "Can't read axlf and section headers from "<< filename << std::endl;
-    return -EINVAL;
-  }
-  const axlf *ap = reinterpret_cast<const axlf *>(top.data());
-
-  const axlf_section_header* section = xclbin::get_axlf_section(ap, (enum axlf_section_kind)kind);
-  if (!section)
-    return -EINVAL;
-
-  buf = std::shared_ptr<char>(new char[section->m_sectionSize]);
-  in.seekg(section->m_sectionOffset);
-  in.read(buf.get(), section->m_sectionSize);
-
-  return 0;
-}
-
-int
-get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids)
-{
-  struct fdt_header *bph = (struct fdt_header *)dtbbuf.get();
-  uint32_t version = be32toh(bph->version);
-  uint32_t off_dt = be32toh(bph->off_dt_struct);
-  const char *p_struct = (const char *)bph + off_dt;
-  uint32_t off_str = be32toh(bph->off_dt_strings);
-  const char *p_strings = (const char *)bph + off_str;
-  const char *p, *s;
-  uint32_t tag;
-  int sz;
-
-  p = p_struct;
-  uuids.clear();
-  while ((tag = be32toh(GET_CELL(p))) != FDT_END) {
-    if (tag == FDT_BEGIN_NODE) {
-      s = p;
-      p = PALIGN(p + strlen(s) + 1, 4);
-      continue;
-    }
-    if (tag != FDT_PROP)
-      continue;
-
-    sz = be32toh(GET_CELL(p));
-    s = p_strings + be32toh(GET_CELL(p));
-    if (version < 16 && sz >= 8)
-      p = PALIGN(p, 8);
-
-    if (!strcmp(s, "logic_uuid"))
-      uuids.insert(uuids.begin(), std::string(p));
-    else if (!strcmp(s, "interface_uuid"))
-      uuids.push_back(std::string(p));
-
-    p = PALIGN(p + sz, 4);
-  }
-
-  return uuids.size() ? 0 : -EINVAL;
 }
 
 /*
@@ -964,54 +880,3 @@ check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err)
 }
 
 } } // namespace xrt_core :: pci
-
-std::ostream&
-operator<<(std::ostream& stream, const std::shared_ptr<xrt_core::pci::dev>& dev)
-{
-  std::ios_base::fmtflags f(stream.flags());
-
-  stream << std::hex << std::right << std::setfill('0');
-
-  // [dddd:bb:dd.f]
-  stream << std::setw(4) << dev->domain << ":"
-         << std::setw(2) << dev->bus << ":"
-         << std::setw(2) << dev->dev_no << "."
-         << std::setw(1) << dev->func;
-
-  // board/shell name
-  std::string shell_name;
-  std::string err;
-  bool is_mfg = false;
-  uint64_t ts = 0;
-  dev->sysfs_get<bool>("", "mfg", err, is_mfg, false);
-  if (is_mfg) {
-    unsigned ver = 0;
-    std::string nm;
-
-    dev->sysfs_get("", "board_name", err, nm);
-    dev->sysfs_get<unsigned>("", "mfg_ver", err, ver, 0);
-    shell_name += "xilinx_";
-    shell_name += nm;
-    shell_name += "_GOLDEN_";
-    shell_name += std::to_string(ver);
-  } else {
-    dev->sysfs_get("rom", "VBNV", err, shell_name);
-    dev->sysfs_get<uint64_t>("rom", "timestamp", err, ts, 0);
-  }
-  stream << " " << shell_name;
-  if (ts != 0)
-    stream << "(ID=0x" << std::hex << ts << ")";
-
-  if (dev->is_mgmt)
-    stream << " mgmt";
-  else
-    stream << " user";
-
-  // instance number
-  if (dev->instance != INVALID_ID)
-      stream << "(inst=" << std::dec << dev->instance << ")";
-
-  stream.flags(f);
-  return stream;
-}
-

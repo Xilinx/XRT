@@ -38,6 +38,8 @@
 
 namespace {
 
+// This pointer may be initialized by a external class derived from system_linux.
+// This is for short term implementation.
 xrt_core::system_linux* singleton = nullptr;
 
 // Singleton registers with base class xrt_core::system
@@ -53,7 +55,7 @@ singleton_system_linux()
   if (singleton)
     return singleton;
 
-  throw std::runtime_error("system_linux singleton is not initialized");
+  throw std::runtime_error("INTERNAL ERROR: system_linux singleton is not initialized");
 }
 
 // Dynamic linking automatically constructs the singleton

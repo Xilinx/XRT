@@ -4,6 +4,7 @@
 #ifndef _XCL_PCIDEV_H_
 #define _XCL_PCIDEV_H_
 
+#include "device_linux.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -13,7 +14,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <mutex>
-#include "device_linux.h"
 
 // Supported vendors
 #define XILINX_ID       0x10ee
@@ -132,10 +132,10 @@ public:
   get_subdev_path(const std::string& subdev, uint32_t idx) const;
 
   virtual int
-  pcieBarRead(uint64_t offset, void *buf, uint64_t len);
+  pcieBarRead(uint64_t offset, void* buf, uint64_t len);
 
   virtual int
-  pcieBarWrite(uint64_t offset, const void *buf, uint64_t len);
+  pcieBarWrite(uint64_t offset, const void* buf, uint64_t len);
 
   virtual int
   open(const std::string& subdev, int flag) const;
@@ -147,10 +147,10 @@ public:
   close(int devhdl) const;
 
   virtual int
-  ioctl(int devhdl, unsigned long cmd, void *arg = nullptr) const;
+  ioctl(int devhdl, unsigned long cmd, void* arg = nullptr) const;
 
   virtual int
-  poll(int devhdl, short events, int timeoutMilliSec);
+  poll(int devhdl, short events, int timeout_ms);
 
   virtual void
   *mmap(int devhdl, size_t len, int prot, int flags, off_t offset);
@@ -162,7 +162,7 @@ public:
   flock(int devhdl, int op);
 
   virtual int
-  get_partinfo(std::vector<std::string>& info, void *blob = nullptr);
+  get_partinfo(std::vector<std::string>& info, void* blob = nullptr);
 
   virtual std::shared_ptr<dev>
   lookup_peer_dev();
@@ -197,12 +197,6 @@ get_dev_ready(bool user = true);
 std::shared_ptr<dev>
 get_dev(unsigned index, bool user = true);
 
-int
-get_axlf_section(const std::string& filename, int kind, std::shared_ptr<char>& buf);
-
-int
-get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids);
-
 std::shared_ptr<dev>
 lookup_user_dev(std::shared_ptr<dev> mgmt_dev);
 
@@ -213,9 +207,5 @@ int
 check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err);
 
 } } // namespace xrt_core :: pci
-
-// For print out per device info
-std::ostream&
-operator<< (std::ostream& stream, const std::shared_ptr<xrt_core::pci::dev>& dev);
 
 #endif

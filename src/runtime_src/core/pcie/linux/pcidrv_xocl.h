@@ -5,13 +5,14 @@
 #define _XCL_PCIDRV_XOCL_H_
 
 #include "pcidrv.h"
+#include <string>
 
 namespace xrt_core { namespace pci {
 
 class drv_xocl : public drv
 {
 public:
-  const std::string
+  std::string
   name() const override
   { return "xocl"; }
 

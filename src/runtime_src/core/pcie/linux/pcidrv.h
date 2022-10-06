@@ -13,7 +13,7 @@ class drv
 public:
   // Name of the driver as shown under /sys/bus/pci/drivers/
   // The same name should also be driver module name as shown /sys/module
-  virtual const std::string
+  virtual std::string
   name() const = 0;
 
   // If device runs user work load, it is a user pf

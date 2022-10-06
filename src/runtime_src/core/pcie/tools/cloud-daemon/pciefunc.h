@@ -7,9 +7,9 @@
 #ifndef PCIEFUNC_H
 #define PCIEFUNC_H
 
-#include <string>
-#include <mutex>
 #include "core/pcie/linux/pcidev.h"
+#include <mutex>
+#include <string>
 
 class pcieFunc {
 public:
