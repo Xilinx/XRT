@@ -426,15 +426,17 @@ namespace xclhwemhal2 {
       mFirstBinary = false;
     }
     if(xclemulation::config::getInstance()->isNewMbscheduler()) {
-        m_scheduler = new hwemu::xocl_scheduler(this);
+        //m_scheduler = new hwemu::xocl_scheduler(this);
+        m_scheduler = std::make_shared<hwemu::xocl_scheduler>(shared_from_this());
     } else if (xclemulation::config::getInstance()->isXgqMode()) {
-        m_xgq = new hwemu::xocl_xgq(this);
+        //m_xgq = new hwemu::xocl_xgq(this);
+        m_xgq = std::make_shared<hwemu::xocl_xgq>(this);
         if (m_xgq && pdi && pdiSize > 0) {
             returnValue = m_xgq->load_xclbin(pdi.get(), pdiSize);
         }
     } else {
-        mCore = new exec_core;
-        mMBSch = new MBScheduler(this);
+        mCore = std::make_shared<exec_core>();
+        mMBSch = std::make_shared<MBScheduler>(shared_from_this());
         mMBSch->init_scheduler_thread();
     }
 
@@ -552,7 +554,7 @@ namespace xclhwemhal2 {
       for (auto it : mMembanks)
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));
+        mDDRMemoryManager.push_back(std::make_shared<xclemulation::MemoryManager>(it.size, it.base_addr, getpagesize(), it.tag));
 
         std::size_t found = it.tag.find("HOST");
         if (found != std::string::npos) {
@@ -1844,20 +1846,24 @@ namespace xclhwemhal2 {
       if(mMBSch && mCore)
       {
         mMBSch->fini_scheduler_thread();
-        delete mCore;
-        mCore = NULL;
-        delete mMBSch;
-        mMBSch = NULL;
+//        delete mCore;
+  //      mCore = NULL;
+        mCore.reset();
+        mMBSch.reset();
+        //delete mMBSch;
+        //mMBSch = NULL;
       }
       if(m_scheduler)
       {
-          delete m_scheduler;
-          m_scheduler = nullptr;
+        m_scheduler.reset();
+          //delete m_scheduler;
+          //m_scheduler = nullptr;
       }
       if(m_xgq)
       {
-          delete m_xgq;
-          m_xgq = nullptr;
+        m_xgq.reset();
+        //  delete m_xgq;
+        //  m_xgq = nullptr;
       }
       PRINTENDFUNC;
       if (mLogStream.is_open()) {
@@ -1926,20 +1932,24 @@ namespace xclhwemhal2 {
       if(mMBSch && mCore)
       {
         mMBSch->fini_scheduler_thread();
-        delete mCore;
-        mCore = NULL;
-        delete mMBSch;
-        mMBSch = NULL;
+        //delete mCore;
+        //mCore = NULL;
+        mCore.reset();
+        mMBSch.reset();
+        //delete mMBSch;
+        //mMBSch = NULL;
       }
       if(m_scheduler)
       {
-          delete m_scheduler;
-          m_scheduler = nullptr;
+        m_scheduler.reset();
+          //delete m_scheduler;
+          //m_scheduler = nullptr;
       }
       if(m_xgq)
       {
-          delete m_xgq;
-          m_xgq = nullptr;
+        m_xgq.reset();
+        //  delete m_xgq;
+        //  m_xgq = nullptr;
       }
       return 0;
     }
@@ -2051,20 +2061,26 @@ namespace xclhwemhal2 {
     if(mMBSch && mCore)
     {
       mMBSch->fini_scheduler_thread();
+      mCore.reset();
+      mMBSch.reset();
+      /*
       delete mCore;
       mCore = NULL;
       delete mMBSch;
       mMBSch = NULL;
+      */
     }
     if(m_scheduler)
     {
-        delete m_scheduler;
-        m_scheduler = nullptr;
+      m_scheduler.reset();
+      //  delete m_scheduler;
+      //  m_scheduler = nullptr;
     }
     if(m_xgq)
     {
-        delete m_xgq;
-        m_xgq = nullptr;
+      m_xgq.reset();
+      //  delete m_xgq;
+      //  m_xgq = nullptr;
     }
 
     return 0;
@@ -2106,20 +2122,26 @@ namespace xclhwemhal2 {
     if(mMBSch && mCore)
     {
       mMBSch->fini_scheduler_thread();
+      mCore.reset();
+      mMBSch.reset();
+      /*
       delete mCore;
       mCore = NULL;
       delete mMBSch;
       mMBSch = NULL;
+      */
     }
     if(m_scheduler)
     {
-        delete m_scheduler;
-        m_scheduler = nullptr;
+      m_scheduler.reset();
+      //  delete m_scheduler;
+      //  m_scheduler = nullptr;
     }
     if(m_xgq)
     {
-        delete m_xgq;
-        m_xgq = nullptr;
+      m_xgq.reset();
+      //  delete m_xgq;
+      //  m_xgq = nullptr;
     }
     if(mDataSpace)
     {
@@ -2138,7 +2160,7 @@ namespace xclhwemhal2 {
     {
       const uint64_t bankSize = (*start).ddrSize;
       mDdrBanks.push_back(*start);
-      mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base , getpagesize()));
+      mDDRMemoryManager.push_back(std::make_shared<xclemulation::MemoryManager>(bankSize, base , getpagesize()));
       base += bankSize;
     }
   }
@@ -2697,13 +2719,13 @@ static bool check_bo_user_flags(HwEmShim* dev, unsigned flags)
 	return true;
 }
 
-xclemulation::drm_xocl_bo* HwEmShim::xclGetBoByHandle(unsigned int boHandle)
+std::shared_ptr<xclemulation::drm_xocl_bo> HwEmShim::xclGetBoByHandle(unsigned int boHandle)
 {
   auto it = mXoclObjMap.find(boHandle);
   if(it == mXoclObjMap.end())
     return nullptr;
 
-  xclemulation::drm_xocl_bo* bo = (*it).second;
+  auto bo = (*it).second;
   return bo;
 }
 
@@ -2726,7 +2748,8 @@ int HwEmShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *propert
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  //xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  auto bo = xclGetBoByHandle(boHandle);
   if (!bo) {
     PRINTENDFUNC;
     return  -1;
@@ -2757,7 +2780,8 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
     return -1;
   }
 
-  auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
+  //auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
+  auto xobj = std::make_shared<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
   bool noHostMemory = xclemulation::no_host_memory(xobj.get());
@@ -2784,7 +2808,8 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
 
   info->handle = mBufferCount;
-  mXoclObjMap[mBufferCount++] = xobj.release();
+  //mXoclObjMap[mBufferCount++] = std::make_shared<xclemulation::drm_xocl_bo>(xobj.release());
+  mXoclObjMap[mBufferCount++] = xobj;
   return 0;
 }
 
@@ -2812,7 +2837,7 @@ unsigned int HwEmShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned fl
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   uint64_t result = xoclCreateBo(&info);
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(info.handle);
+  auto bo = xclGetBoByHandle(info.handle);
   if (bo) {
     bo->userptr = userptr;
   }
@@ -2829,7 +2854,7 @@ int HwEmShim::xclExportBO(unsigned int boHandle)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  auto bo = xclGetBoByHandle(boHandle);
   if(!bo)
     return -1;
 
@@ -2885,7 +2910,7 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
     unsigned boFlags = std::get<3>((*itr).second);
 
     unsigned int importedBo = xclAllocBO(size, 0, boFlags);
-    xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
+    auto bo = xclGetBoByHandle(importedBo);
     if(!bo)
     {
       std::cout<<"ERROR HERE in importBO "<<std::endl;
@@ -2911,14 +2936,14 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << dst_boHandle
       << ", "<< src_boHandle << ", "<< size << ", " << dst_offset << ", " << src_offset<< std::endl;
   }
-  xclemulation::drm_xocl_bo* sBO = xclGetBoByHandle(src_boHandle);
+  auto sBO = xclGetBoByHandle(src_boHandle);
   if(!sBO)
   {
     PRINTENDFUNC;
     return -1;
   }
 
-  xclemulation::drm_xocl_bo* dBO = xclGetBoByHandle(dst_boHandle);
+  auto dBO = xclGetBoByHandle(dst_boHandle);
   if(!dBO)
   {
     PRINTENDFUNC;
@@ -2962,13 +2987,13 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     }
 
   // source buffer is host_only and destination buffer is device_only
-  if (isHostOnlyBuffer(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
+  if (isHostOnlyBuffer(sBO) && !xclemulation::xocl_bo_p2p(sBO.get()) && xclemulation::xocl_bo_dev_only(dBO.get())) {
     unsigned char* host_only_buffer = (unsigned char*)(sBO->buf) + src_offset;
     if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset, dBO->topology) != size) {
       return -1;
     }
   } // source buffer is device_only and destination buffer is host_only
-  else if (isHostOnlyBuffer(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+  else if (isHostOnlyBuffer(dBO) && !xclemulation::xocl_bo_p2p(dBO.get()) && xclemulation::xocl_bo_dev_only(sBO.get())) {
     unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
     if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
       return -1;
@@ -3062,7 +3087,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << write << std::endl;
   }
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  auto bo = xclGetBoByHandle(boHandle);
   if (!bo) {
     PRINTENDFUNC;
     return nullptr;
@@ -3131,7 +3156,7 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << std::endl;
   }
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  auto bo = xclGetBoByHandle(boHandle);
   if(!bo)
   {
     PRINTENDFUNC;
@@ -3176,7 +3201,7 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
     return;
   }
 
-  xclemulation::drm_xocl_bo* bo = (*it).second;;
+  auto& bo = (*it).second;
   if(bo)
   {
     bool bSendToSim = true;
@@ -3193,7 +3218,9 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
     {
 	    xclFreeDeviceBuffer(bo->base, bSendToSim);
     }
+
     mXoclObjMap.erase(it);
+    //it.reset();
   }
   PRINTENDFUNC;
 }
@@ -3207,7 +3234,7 @@ size_t HwEmShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size,
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< src <<" , "<< size << ", " << seek << std::endl;
   }
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  auto bo = xclGetBoByHandle(boHandle);
   if(!bo)
   {
     PRINTENDFUNC;
@@ -3231,7 +3258,7 @@ size_t HwEmShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< dst <<" , "<< size << ", " << skip << std::endl;
   }
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(boHandle);
+  auto bo = xclGetBoByHandle(boHandle);
   if(!bo)
   {
     PRINTENDFUNC;
@@ -3255,7 +3282,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << std::endl;
   }
 
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
+  auto bo = xclGetBoByHandle(cmdBO);
   int ret=-1;
   if(xclemulation::config::getInstance()->isNewMbscheduler())
   {
@@ -3273,7 +3300,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
           PRINTENDFUNC;
           return ret;
       }
-      ret = m_xgq->add_exec_buffer(bo);
+      ret = m_xgq->add_exec_buffer(bo.get());  // will update
       PRINTENDFUNC;
       return ret;
   } else {
@@ -3298,7 +3325,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigne
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << cmdBO << ", " << num_bo_in_wait_list << ", " << bo_wait_list << std::endl;
   }
 
-  xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
+  auto bo = xclGetBoByHandle(cmdBO);
 
   xcl_LogMsg(XRT_INFO, "", "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
             __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);

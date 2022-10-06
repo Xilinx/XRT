@@ -133,6 +133,47 @@ namespace xclemulation {
     std::string           filename;
     int                   fd;
     std::map<uint64_t,uint64_t> chunks;
+    drm_xocl_bo() = default;
+    ~drm_xocl_bo() = default;
+    drm_xocl_bo(const drm_xocl_bo& rhs) {
+      this->metadata.state = rhs.metadata.state;
+      this->metadata.index = rhs.metadata.index;
+      this->base = rhs.base;
+      this->size = rhs.size;
+
+      this->buf = rhs.buf;             //shallow copy
+      this->userptr = rhs.userptr;         //shallow copy
+
+      this->flags = rhs.flags;
+      this->handle = rhs.handle;
+      this->topology = rhs.topology;
+      this->filename = rhs.filename;
+      this->fd = rhs.fd;
+      this->chunks = rhs.chunks;
+
+    }
+
+    drm_xocl_bo& operator = (const drm_xocl_bo& rhs) {
+      if (this == &rhs) {
+        return *this;
+      }
+      this->metadata.state = rhs.metadata.state;
+      this->metadata.index = rhs.metadata.index;
+      this->base = rhs.base;
+      this->size = rhs.size;
+
+      this->buf = rhs.buf;             //shallow copy
+      this->userptr = rhs.userptr;         //shallow copy
+
+      this->flags = rhs.flags;
+      this->handle = rhs.handle;
+      this->topology = rhs.topology;
+      this->filename = rhs.filename;
+      this->fd = rhs.fd;
+      this->chunks = rhs.chunks;
+
+    }
+
   };
 
   //we should not create a memory in default bank for hw_emu. As sw_emu doesnt have rtd information, we are not doing any error check

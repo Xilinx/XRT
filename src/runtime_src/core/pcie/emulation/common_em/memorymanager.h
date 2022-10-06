@@ -22,6 +22,7 @@
 #include <map>
 #include <cassert>
 #include <algorithm>
+#include <memory>
 
 #include "em_defines.h"
 #include "xclhal2.h"
@@ -46,7 +47,8 @@ static std::string DEFAULT_TAG("");
 
     public:
 	static const uint64_t mNull = 0xffffffffffffffffull;
-	std::list<MemoryManager*> mChildMemories;
+	//std::list<MemoryManager*> mChildMemories;
+    std::list<std::shared_ptr<MemoryManager> > mChildMemories;
 
     public:
         MemoryManager(uint64_t size, uint64_t start, unsigned alignment, std::string&tag = DEFAULT_TAG );

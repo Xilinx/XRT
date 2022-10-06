@@ -97,7 +97,7 @@ using addr_type = uint64_t;
  } KernelArg;
 
 
-  class HwEmShim {
+  class HwEmShim: public std::enable_shared_from_this<HwEmShim> {
 
     public:
 
@@ -158,10 +158,10 @@ using addr_type = uint64_t;
 
       int xclRegisterEventNotify( unsigned int userInterrupt, int fd);
       int xclExecWait( int timeoutMilliSec);
-      struct exec_core* getExecCore() { return mCore; }
-      MBScheduler* getScheduler() { return mMBSch; }
+      struct exec_core* getExecCore() { return mCore.get(); }
+      MBScheduler* getScheduler() { return mMBSch.get(); }
 
-      xclemulation::drm_xocl_bo* xclGetBoByHandle(unsigned int boHandle);
+      std::shared_ptr<xclemulation::drm_xocl_bo> xclGetBoByHandle(unsigned int boHandle);
       inline unsigned short xocl_ddr_channel_count();
       inline unsigned long long xocl_ddr_channel_size();
       // HAL2 RELATED member functions end
@@ -306,11 +306,11 @@ using addr_type = uint64_t;
       void dumpDeadlockMessages();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }
-      bool isHostOnlyBuffer(const struct xclemulation::drm_xocl_bo *bo) {
+      bool isHostOnlyBuffer(std::shared_ptr<xclemulation::drm_xocl_bo> &bo) {
     	  if(xclemulation::config::getInstance()->isDisabledHostBUffer()) {
     		  return false;
     	  } else {
-    		  return xclemulation::xocl_bo_host_only(bo);
+    		  return xclemulation::xocl_bo_host_only(bo.get());
     	  }
       }
 
@@ -334,7 +334,8 @@ using addr_type = uint64_t;
       //Mapped CU register space for xclRegRead/Write()
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
-      std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;
+      //std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;
+      std::vector<std::shared_ptr<xclemulation::MemoryManager> > mDDRMemoryManager;
       xclemulation::MemoryManager* mDataSpace;
       std::list<xclemulation::DDRBank> mDdrBanks;
       std::map<uint64_t,uint64_t> mAddrMap;
@@ -375,13 +376,16 @@ using addr_type = uint64_t;
       bool bXPR;
       //MemTopology topology;
       // HAL2 RELATED member variables start
-      std::map<int, xclemulation::drm_xocl_bo*> mXoclObjMap;
+      std::map<int, std::shared_ptr<xclemulation::drm_xocl_bo>> mXoclObjMap;
       static unsigned int mBufferCount;
       // HAL2 RELATED member variables end
-      exec_core* mCore;
-      MBScheduler* mMBSch;
-      hwemu::xocl_scheduler* m_scheduler;
-      hwemu::xocl_xgq* m_xgq;
+      //exec_core* mCore;
+      std::shared_ptr<exec_core> mCore;
+      std::shared_ptr<MBScheduler> mMBSch;
+      //hwemu::xocl_scheduler* m_scheduler;
+      std::shared_ptr<hwemu::xocl_scheduler> m_scheduler;
+      //hwemu::xocl_xgq* m_xgq;
+      std::shared_ptr<hwemu::xocl_xgq> m_xgq;
 
       // Information extracted from platform linker (for profile/debug)
       bool mIsDebugIpLayoutRead = false;

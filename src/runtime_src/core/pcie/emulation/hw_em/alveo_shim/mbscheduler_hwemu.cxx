@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <algorithm>
+//#include "mbscheduler_hwemu.h"
 
 #define	CU_ADDR_HANDSHAKE_MASK	(0xff)
 #define	CU_ADDR_VALID(addr)	(((addr) | CU_ADDR_HANDSHAKE_MASK) != (uint64_t)-1)
@@ -43,7 +44,7 @@ namespace hwemu {
         cu_idx = -1;
         slot_idx = -1;
         cu_bitmap.reset();
-        ert_pkt = NULL;
+        //ert_pkt = NULL;
         state = ERT_CMD_STATE_NEW;
         aborted = false;
     }
@@ -164,11 +165,12 @@ namespace hwemu {
      * to execute the command.  When ERT is enabled, the CU info
      * is not used.
      */
-    void xocl_cmd::bo_init(xclemulation::drm_xocl_bo *bo)
+    void xocl_cmd::bo_init(std::shared_ptr<xclemulation::drm_xocl_bo>& bo)
     {
         SCHED_DEBUGF("-> %s(%lu)\n", __func__, uid);
         this->bo = bo;
-        this->ert_pkt = (struct ert_packet *)bo->buf;
+        //this->ert_pkt = (struct ert_packet *)bo->buf;
+        this->ert_pkt = static_cast<ert_packet*>(bo->buf);
 
         // copy pkt cus to command object cu bitmap
         //if (type() == ERT_CU) 
@@ -246,9 +248,9 @@ namespace hwemu {
      * xocl_cu member functions
      *****************************************************/
 
-    xocl_cu::xocl_cu(HwEmShim* dev)
+    xocl_cu::xocl_cu(std::shared_ptr<xclhwemhal2::HwEmShim> dev)
     {
-        this->xdevice = dev;
+        this->weak_xdevice = std::weak_ptr{dev};
         this->error = false;
         this->idx = 0;
         this->uid = 0;
@@ -340,6 +342,11 @@ namespace hwemu {
      */
     void xocl_cu::cu_poll()
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return;
+        }
         xdevice->xclRead(XCL_ADDR_KERNEL_CTRL, cu_base_addr(),(void*)&(ctrlreg),4);
         if (run_cnt && (ctrlreg & ap_check)) {
             ++done_cnt;
@@ -367,12 +374,12 @@ namespace hwemu {
      *
      * Return: The first command that has completed or nullptr if none
      */
-    xocl_cmd* xocl_cu::cu_first_done()
+    std::shared_ptr<xocl_cmd>  xocl_cu::cu_first_done()
     {
         if (!done_cnt && run_cnt)
             cu_poll();
 
-        return done_cnt ? cu_cmdq.front() : NULL;
+        return done_cnt ? cu_cmdq.front() : nullptr;
     }
 
     /**
@@ -390,7 +397,7 @@ namespace hwemu {
     /**
      * cu_configure_ooo() - Configure a CU with {addr,val} pairs (out-of-order)
      */
-    void  xocl_cu::cu_configure_ooo(xocl_cmd *xcmd)
+    void  xocl_cu::cu_configure_ooo(std::shared_ptr<xocl_cmd>& xcmd)
     {
         unsigned int size = xcmd->regmap_size();
         uint32_t *regmap =  xcmd->regmap();
@@ -408,7 +415,7 @@ namespace hwemu {
     /**
      * cu_configure_ino() - Configure a CU with consecutive layout (in-order)
      */
-    void xocl_cu::cu_configure_ino(xocl_cmd *xcmd)
+    void xocl_cu::cu_configure_ino(std::shared_ptr<xocl_cmd>& xcmd)
     {
         unsigned int size = xcmd->regmap_size();
         uint32_t *regmap =  xcmd->regmap();
@@ -424,7 +431,7 @@ namespace hwemu {
      *
      * The command is pushed onto the running queue
      */
-    bool xocl_cu::cu_start(xocl_cmd *xcmd)
+    bool xocl_cu::cu_start(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s cu(%d) cmd(%lu)\n", __func__, idx, xcmd->uid);
 
@@ -459,6 +466,11 @@ namespace hwemu {
 
     void xocl_cu::iowrite32(uint32_t data, uint64_t addr)
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return;
+        }
         if (addr >= ERT_P2P_CMDQ_ADDR) {
             xdevice->xclCopyBufferHost2Device(addr, (void*)(&data) ,4,0,XCL_ADDR_SPACE_DEVICE_RAM);
         } else {
@@ -468,6 +480,11 @@ namespace hwemu {
 
     uint32_t  xocl_cu::ioread32(uint64_t addr) 
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return 0;
+        }
         uint32_t data = 0;
         xdevice->xclRead(XCL_ADDR_KERNEL_CTRL, addr, (void*)&data, 4);
         return data;
@@ -475,20 +492,30 @@ namespace hwemu {
 
     void xocl_cu::xocl_memcpy_toio(uint64_t addr, uint32_t* data, uint32_t len) 
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return;
+        }
         xdevice->xclCopyBufferHost2Device(addr, (void*)(&data), len ,0,XCL_ADDR_SPACE_DEVICE_RAM);
     }
 
     void xocl_cu::xocl_memcpy_fromio(uint32_t* data, uint64_t addr, uint32_t len) 
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return;
+        }
         xdevice->xclCopyBufferDevice2Host((void*)(&data),  addr, len, 0, XCL_ADDR_SPACE_DEVICE_RAM);
     }
 
     /*****************  xocl ert *******************************/
     /**********************************************************/
 
-    xocl_ert::xocl_ert(HwEmShim* dev, uint64_t csr_base, uint64_t cq_base)
+    xocl_ert::xocl_ert(std::shared_ptr<xclhwemhal2::HwEmShim> dev, uint64_t csr_base, uint64_t cq_base)
     {
-        this->xdevice = dev;
+        this->weak_xdevice = std::weak_ptr{dev};
         this->csr_base = csr_base;
         this->cq_base = cq_base;
         this->num_slots = 0;
@@ -584,7 +611,7 @@ namespace hwemu {
      * This function makes a special case for control commands which
      * must always dispatch to slot 0, otherwise normal acquisition
      */
-    uint32_t xocl_ert::ert_acquire_slot(xocl_cmd *xcmd)
+    uint32_t xocl_ert::ert_acquire_slot(std::shared_ptr<xocl_cmd>& xcmd)
     {
         // slot 0 is reserved for ctrl commands
         if (xcmd->type() == ERT_CTRL) {
@@ -614,7 +641,7 @@ namespace hwemu {
      * Special case for control commands that execute in slot 0.  This
      * slot cannot be marked free ever.
      */
-    void xocl_ert::ert_release_slot(xocl_cmd *xcmd)
+    void xocl_ert::ert_release_slot(std::shared_ptr<xocl_cmd>& xcmd)
     {
         if (xcmd->slot_idx == no_index)
             return; // already released
@@ -632,7 +659,7 @@ namespace hwemu {
         SCHED_DEBUGF("<- %s\n", __func__);
     }
 
-    xocl_cmd* xocl_ert::ert_get_cmd(uint32_t slotidx)
+    std::shared_ptr<xocl_cmd> xocl_ert::ert_get_cmd(uint32_t slotidx)
     {
         return this->command_queue[slotidx];
     }
@@ -644,10 +671,16 @@ namespace hwemu {
      *
      * Write command packet to ERT command queue
      */
-    bool xocl_ert::ert_start_cmd(xocl_cmd *xcmd)
+    bool xocl_ert::ert_start_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return false;
+        }
+
         uint32_t slot_addr = 0;
-        ert_packet *ecmd = xcmd->packet();
+        auto ecmd = xcmd->packet();
 
         SCHED_DEBUGF("-> %s ert(%d) cmd(%lu)\n", __func__, this->uid, xcmd->uid);
 
@@ -710,7 +743,7 @@ namespace hwemu {
      * [1  ]      : header
      * [#numcus]  : cu execution stats (number of executions)
      */
-    void xocl_ert::ert_read_custat(xocl_cmd *xcmd, uint32_t num_cus)
+    void xocl_ert::ert_read_custat(std::shared_ptr<xocl_cmd>& xcmd, uint32_t num_cus)
     {
         uint32_t slot_addr = xcmd->slot_idx*this->slot_size;
 
@@ -794,6 +827,11 @@ namespace hwemu {
 
     void xocl_ert::iowrite32(uint32_t data, uint64_t addr)
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return;
+        }
         SCHED_DEBUGF("-> %s addr(0x%lx) data(0x%x)\n", __func__, addr, data);
 
         if (addr >= ERT_P2P_CMDQ_ADDR) {
@@ -805,6 +843,11 @@ namespace hwemu {
 
     uint32_t  xocl_ert::ioread32(uint64_t addr) 
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return 0;
+        }
         SCHED_DEBUGF("-> %s addr(0x%lx) \n", __func__, addr);
         uint32_t data = 0;
         xdevice->xclRead(XCL_ADDR_KERNEL_CTRL, addr, (void*)&data, 4);
@@ -814,6 +857,12 @@ namespace hwemu {
     void xocl_ert::xocl_memcpy_toio(uint64_t addr, void* data, uint32_t len) 
     {
         SCHED_DEBUGF("-> %s addr(0x%lx) len(%d)\n", __func__, addr, len);
+        
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return;
+        }
 
         if (addr >= ERT_P2P_CMDQ_ADDR) {
             xdevice->xclCopyBufferHost2Device(addr, (void*)(data), len ,0,XCL_ADDR_SPACE_DEVICE_RAM);
@@ -824,6 +873,11 @@ namespace hwemu {
 
     void xocl_ert::xocl_memcpy_fromio(void* data, uint64_t addr, uint32_t len) 
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return;
+        }
         SCHED_DEBUGF("-> %s addr(0x%lx) len(%d)\n", __func__, addr, len);
         xdevice->xclCopyBufferDevice2Host((void*)(data),  addr, len, 0, XCL_ADDR_SPACE_DEVICE_RAM);
     }
@@ -832,6 +886,11 @@ namespace hwemu {
     void exec_core::iowrite32(uint32_t data, uint64_t addr)
     {
         SCHED_DEBUGF("-> %s addr(0x%lx) data(0x%x)\n", __func__, addr, data);
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return;
+        }
 
         if (addr >= ERT_P2P_CMDQ_ADDR) {
             xdevice->xclCopyBufferHost2Device(addr, (void*)(&data) ,4,0,XCL_ADDR_SPACE_DEVICE_RAM);
@@ -843,7 +902,11 @@ namespace hwemu {
     uint32_t  exec_core::ioread32(uint64_t addr) 
     {
         SCHED_DEBUGF("-> %s addr(0x%lx) \n", __func__, addr);
-
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return 0;
+        }
         uint32_t data = 0;
         xdevice->xclRead(XCL_ADDR_KERNEL_CTRL, addr, (void*)&data, 4);
         return data;
@@ -852,13 +915,13 @@ namespace hwemu {
 
     /******************************* exec_core ***********************************************/
 
-    exec_core::exec_core(HwEmShim* dev, xocl_scheduler* sched)
+    exec_core::exec_core(std::shared_ptr<HwEmShim> dev, std::shared_ptr<xocl_scheduler> sched)
     {
         static uint32_t next_uid = 1;
         uid     = next_uid++;
 
-        xdevice   = dev;
-        scheduler = sched;
+        weak_xdevice   = std::weak_ptr{dev};
+        weak_scheduler = std::weak_ptr{sched};
         ert       = nullptr;
 
         base = 0;  //! Bar address
@@ -894,8 +957,8 @@ namespace hwemu {
         sr1 = 0;
         sr2 = 0;
         sr3 = 0;
-
-        uint32_t ert_version = atoi(xdevice->getERTVersion().c_str());
+    
+        uint32_t ert_version = atoi(dev->getERTVersion().c_str());
         if(ert_version>=30) {
             this->cq_base =  ERT_P2P_CMDQ_ADDR;       
             this->csr_base = 0x10000;
@@ -905,8 +968,13 @@ namespace hwemu {
         }
     }
 
-    int exec_core::exec_cfg_cmd(xocl_cmd *xcmd)
+    int exec_core::exec_cfg_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
+        auto xdevice = weak_xdevice.lock();
+        if (!xdevice) {
+            std::cout<<"\n xdevice is nullptr \n";
+            return 0;
+        }
         ert_configure_cmd *cfg = xcmd->ert_cfg;
 
         int  ert_version = atoi(xdevice->getERTVersion().c_str());
@@ -950,13 +1018,17 @@ namespace hwemu {
         uint32_t cuidx = 0;
         for (cuidx = 0; cuidx < cfg->num_cus; ++cuidx) 
         {
-            xocl_cu *xcu = this->cus[cuidx];
+            auto xcu = this->cus[cuidx];
             uint64_t polladdr = (ert_poll) 			
                 // cuidx+1 to reserve slot 0 for ctrl => max 127 CUs in ert_poll mode
                 ? this->cq_base + (cuidx+1) * cfg->slot_size : 0;
 
-            if (!xcu)
-                xcu = this->cus[cuidx] = new xocl_cu(xdevice);
+            //if (!xcu)
+            //    xcu = this->cus[cuidx] = new xocl_cu(xdevice);
+            if (!xcu) {
+                xcu = std::make_shared<xocl_cu>(xdevice);
+                this->cus[cuidx] = xcu;
+            }
             xcu->cu_init(cuidx, this->base, cfg->data[cuidx], polladdr);
         }
         this->num_cus = cfg->num_cus;
@@ -969,12 +1041,16 @@ namespace hwemu {
             for (unsigned int i = 0 ; i < 4; i++) { /* 4 is from xclfeatures.h */
                 addr = xdevice->getCdmaBaseAddress(i);
                 if (addr) {
-                    xocl_cu *xcu = this->cus[cuidx];
+                    auto xcu = this->cus[cuidx];
                     uint64_t polladdr = (ert_poll) 					
                         ? this->cq_base + (cuidx+1) * cfg->slot_size : 0;
 
-                    if (!xcu)
-                        xcu = this->cus[cuidx] = new xocl_cu(xdevice);;
+                   // if (!xcu)
+                    //    xcu = this->cus[cuidx] = new xocl_cu(xdevice);
+                    if (!xcu) {
+                        xcu = std::make_shared<xocl_cu>(xdevice);
+                        this->cus[cuidx] = xcu;
+                    }
                     xcu->cu_init(cuidx, this->base, addr, polladdr);
 
                     cdmaEnabled = true;
@@ -989,7 +1065,7 @@ namespace hwemu {
         }
 
         if ((ert_full || ert_poll) && !this->ert) {
-            this->ert = new xocl_ert(xdevice, this->csr_base, this->cq_base);
+            this->ert = std::make_shared<xocl_ert>(xdevice, this->csr_base, this->cq_base);
         }
 
         if (ert_poll) {
@@ -998,19 +1074,19 @@ namespace hwemu {
             cfg->cu_isr = 0;
             cfg->cu_dma = 0;
             this->ert->ert_cfg(this->cq_size, MAX_CUS, cfg->cq_int);
-            this->ops = new ert_poll_ops(this);
+            this->ops = std::make_shared<ert_poll_ops>(shared_from_this());
             this->polling_mode = 1; //cfg->polling; 
         } else if (ert_full) {
             SCHED_INFO("configuring embedded scheduler mode\n");
             this->ert->ert_cfg(this->cq_size, ert_num_slots, cfg->cq_int);
-            this->ops = new ert_ops(this);
+            this->ops = std::make_shared<ert_ops>(shared_from_this());
             this->polling_mode = 1; //cfg->polling;
             this->cq_interrupt = cfg->cq_int;
             cfg->cu_dma = 0;
             cfg->cdma = cdmaEnabled ? 1 : 0;
         } else {
             SCHED_INFO("configuring penguin scheduler mode\n");
-            this->ops = new penguin_ops(this);
+            this->ops = std::make_shared<penguin_ops>(shared_from_this());
             this->polling_mode = true;
         }
 
@@ -1105,7 +1181,7 @@ namespace hwemu {
 
     bool exec_core::exec_valid_cu(uint32_t cuidx)
     {
-        xocl_cu *xcu = this->cus[cuidx];
+        auto xcu = this->cus[cuidx];
         return xcu ? xcu->cu_valid() : false;
     }
 
@@ -1115,9 +1191,9 @@ namespace hwemu {
     {
     }
 
-    xocl_scheduler * exec_core::exec_scheduler()
+    std::shared_ptr<xocl_scheduler> exec_core::exec_scheduler()
     {
-        return this->scheduler;
+        return this->weak_scheduler.lock();
     }
 
     void exec_core::exec_update_custatus()
@@ -1147,7 +1223,7 @@ namespace hwemu {
     /**
      * finish_cmd() - Special post processing of commands after execution
      */
-    int exec_core::exec_finish_cmd(xocl_cmd *xcmd)
+    int exec_core::exec_finish_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s\n", __func__);
 
@@ -1174,7 +1250,7 @@ namespace hwemu {
      *
      * This is special case for copying P2P
      */
-    int exec_core::exec_execute_copybo_cmd(xocl_cmd *xcmd)
+    int exec_core::exec_execute_copybo_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
 #if 0
         SCHED_DEBUGF("-> %s\n", __func__);
@@ -1197,7 +1273,7 @@ namespace hwemu {
      *
      * Update outstanding execs count for client and device.
      */
-    void exec_core::exec_notify_host(xocl_cmd* xcmd)
+    void exec_core::exec_notify_host(std::shared_ptr<xocl_cmd>&  xcmd)
     {
         SCHED_DEBUGF("<- %s\n", __func__);
     }
@@ -1218,7 +1294,7 @@ namespace hwemu {
      * because when ERT is enabled multiple commands can complete in one shot and
      * list iterations of running cmds (@exec_running_to_complete) would not work.
      */
-    void exec_core::exec_mark_cmd_state(xocl_cmd *xcmd, enum ert_cmd_state state)
+    void exec_core::exec_mark_cmd_state(std::shared_ptr<xocl_cmd>& xcmd, enum ert_cmd_state state)
     {
         SCHED_DEBUGF("-> %s exec(%d) xcmd(%lu) state(%d)\n",
                 __func__, this->uid, xcmd->uid, state);
@@ -1230,6 +1306,11 @@ namespace hwemu {
 
         xcmd->set_state(state);
 
+        auto scheduler = weak_scheduler.lock();
+        if (!scheduler) {
+            std::cout<<"\n scheduler shared ptr is not possible \n";
+            return;
+        }
         if (this->polling_mode)
             scheduler->scheduler_decr_poll();
 
@@ -1241,13 +1322,13 @@ namespace hwemu {
         SCHED_DEBUGF("<- %s\n", __func__);
     }
 
-    void exec_core::exec_mark_cmd_complete(xocl_cmd *xcmd)
+    void exec_core::exec_mark_cmd_complete(std::shared_ptr<xocl_cmd>& xcmd)
     {
         exec_mark_cmd_state(xcmd,
                 xcmd->aborted ? ERT_CMD_STATE_ABORT : ERT_CMD_STATE_COMPLETED);
     }
 
-    void exec_core::exec_mark_cmd_error(xocl_cmd *xcmd)
+    void exec_core::exec_mark_cmd_error(std::shared_ptr<xocl_cmd>& xcmd)
     {
         exec_mark_cmd_state(xcmd,
                 xcmd->aborted ? ERT_CMD_STATE_ABORT : ERT_CMD_STATE_ERROR);
@@ -1270,9 +1351,9 @@ namespace hwemu {
         SCHED_DEBUGF("-> %s(0x%x,%d)\n", __func__, mask, mask_idx);
 
         for (bit_idx = 0, cmd_idx = mask_idx<<5; bit_idx < 32; mask >>= 1, ++bit_idx, ++cmd_idx) {
-            xocl_cmd *xcmd = (mask & 0x1)
+            auto xcmd = (mask & 0x1)
                 ? ert->ert_get_cmd(cmd_idx)
-                : NULL;
+                : nullptr;
 
             if (xcmd)
                 exec_mark_cmd_complete(xcmd);
@@ -1301,8 +1382,8 @@ namespace hwemu {
 
         SCHED_DEBUGF("-> %s(0x%x,%d)\n", __func__, mask, mask_idx);
         for (bit_idx = 0, cu_idx = mask_idx<<5; bit_idx < 32; mask >>= 1, ++bit_idx, ++cu_idx) {
-            xocl_cu  *xcu;
-            xocl_cmd *xcmd;
+            std::shared_ptr<xocl_cu> xcu;
+            std::shared_ptr<xocl_cmd> xcmd;
 
             if (!(mask & 0x1))
                 continue;
@@ -1329,14 +1410,14 @@ namespace hwemu {
      * Used in penguin and ert poll mode where KDS schedules and starts
      * compute units.
      */
-    bool exec_core::exec_penguin_start_cu_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_penguin_start_cu_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
-        xocl_cu *xcu = NULL;
+        //xocl_cu *xcu = NULL;
 
         SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 
         // CU was selected when command was submitted
-        xcu = this->cus[xcmd->cu_idx];
+        auto xcu = this->cus[xcmd->cu_idx];
         if (xcu->cu_ready() && xcu->cu_start(xcmd)) 
         {
             xcmd->set_int_state(ERT_CMD_STATE_RUNNING);
@@ -1359,7 +1440,7 @@ namespace hwemu {
      * done, e.g. there is nothihng to poll for completion as there is nothing
      * left running
      */
-    bool exec_core::exec_penguin_start_ctrl_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_penguin_start_ctrl_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d)\n", __func__, this->uid);
 
@@ -1383,7 +1464,7 @@ namespace hwemu {
      *
      * Function is called in penguin mode where KDS polls CUs for completion
      */
-    void exec_core::exec_penguin_query_cmd(xocl_cmd *xcmd)
+    void exec_core::exec_penguin_query_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         uint32_t cmdtype = xcmd->type();
 
@@ -1391,7 +1472,7 @@ namespace hwemu {
                 __func__, xcmd->uid, xcmd->opcode(), cmdtype, xcmd->slot_idx);
 
         if (cmdtype == ERT_CU) {
-            xocl_cu *xcu = this->cus[xcmd->cu_idx];
+            auto& xcu = this->cus[xcmd->cu_idx];
 
             if (xcu->cu_first_done() == xcmd) {
                 xcu->cu_pop_done();
@@ -1411,7 +1492,7 @@ namespace hwemu {
      *
      * Used in ert mode where ERT schedules, starts, and polls compute units.
      */
-    bool exec_core::exec_ert_start_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_ert_start_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu) opcode(%d)\n", __func__,
                 this->uid, xcmd->uid, xcmd->opcode());
@@ -1438,7 +1519,7 @@ namespace hwemu {
      * to retrieve from ERT.  This could be split to two functions
      * through scheduler_ops, but not really critical.
      */
-    bool exec_core::exec_ert_start_ctrl_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_ert_start_ctrl_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) xcmd(%lu)\n", __func__, this->uid, xcmd->uid);
 
@@ -1485,7 +1566,7 @@ namespace hwemu {
      * The function checks all available entries in the mailbox so more than one
      * command may be marked complete by this function.
      */
-    void exec_core::exec_ert_query_mailbox(xocl_cmd *xcmd)
+    void exec_core::exec_ert_query_mailbox(std::shared_ptr<xocl_cmd>& xcmd)
     {
 #if 0
         uint32_t mask;
@@ -1535,7 +1616,7 @@ namespace hwemu {
      * argument command so more than one command may be marked complete by this
      * function.
      */
-    void exec_core::exec_ert_query_csr(xocl_cmd *xcmd, uint32_t mask_idx)
+    void exec_core::exec_ert_query_csr(std::shared_ptr<xocl_cmd>& xcmd, uint32_t mask_idx)
     {
         uint32_t mask = 0;
         uint32_t cmdtype = xcmd->type();
@@ -1591,7 +1672,7 @@ namespace hwemu {
      * The function checks all entries in the same status register as argument
      * command so more than one command may be marked complete by this function.
      */
-    void exec_core::exec_ert_query_cu(xocl_cmd *xcmd)
+    void exec_core::exec_ert_query_cu(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s cmd(%lu), cu_idx(%d)\n", __func__, xcmd->uid, xcmd->cu_idx);
         exec_ert_query_csr(xcmd, (xcmd->cu_idx+1) >> 5); // note offset
@@ -1619,7 +1700,7 @@ namespace hwemu {
      * The function checks all entries in the same status register as argument
      * command so more than one command may be marked complete by this function.
      */
-    void exec_core::exec_ert_query_cmd(xocl_cmd *xcmd)
+    void exec_core::exec_ert_query_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s cmd(%lu), slot_idx(%d)\n", __func__, xcmd->uid, xcmd->slot_idx);
 
@@ -1637,7 +1718,7 @@ namespace hwemu {
      * Function dispatches based on penguin vs ert mode.  In ERT mode
      * multiple commands can be marked complete by this function.
      */
-    void exec_core::exec_query_cmd(xocl_cmd *xcmd)
+    void exec_core::exec_query_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         uint32_t cmdtype = xcmd->type();
 
@@ -1652,13 +1733,19 @@ namespace hwemu {
         SCHED_DEBUGF("<- %s\n", __func__);
     }
 
-    void exec_core::exec_cmd_free(xocl_cmd* xcmd)
+    void exec_core::exec_cmd_free(std::shared_ptr<xocl_cmd>& xcmd)
     {
+        auto scheduler = weak_scheduler.lock();
+        if (!scheduler) {
+            std::cout<<"\n scheduler shared ptr is not possible \n";
+            return;
+        }
         //! Release the xcmd to object pool
-        scheduler->cmd_pool.destroy(xcmd);
+        scheduler->cmd_pool.destroy(xcmd.get());
+        xcmd = nullptr;
     }
 
-    void exec_core::exec_abort_cmd(xocl_cmd *xcmd)
+    void exec_core::exec_abort_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, this->uid, xcmd->uid);
         exec_notify_host(xcmd);
@@ -1673,7 +1760,7 @@ namespace hwemu {
      *
      * Function dispatches based on penguin vs ert mode
      */
-    bool exec_core::exec_start_cu_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_start_cu_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu) opcode(%d)\n", __func__,
                 this->uid, xcmd->uid, xcmd->opcode());
@@ -1694,7 +1781,7 @@ namespace hwemu {
      *
      * Function dispatches based on penguin vs ert mode
      */
-    bool exec_core::exec_start_ctrl_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_start_ctrl_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu) opcode(%d)\n", __func__,
                 this->uid, xcmd->uid, xcmd->opcode());
@@ -1714,7 +1801,7 @@ namespace hwemu {
     /**
      * exec_start_kds_cmd() - KDS commands run synchronously
      */
-    bool exec_core::exec_start_kds_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_start_kds_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu) opcode(%d)\n", __func__,
                 this->uid, xcmd->uid, xcmd->opcode());
@@ -1738,7 +1825,7 @@ namespace hwemu {
         {
             if(this->pending_cu_queue[cuidx].empty()) continue;
 
-            xocl_cmd *xcmd = this->pending_cu_queue[cuidx].front();
+            auto& xcmd = this->pending_cu_queue[cuidx].front();
             if (exec_start_cu_cmd(xcmd)) {
                 this->pending_cu_queue[cuidx].pop();
                 ++started;
@@ -1771,7 +1858,7 @@ namespace hwemu {
     {
         if(this->pending_ctrl_queue.empty()) return 0;
 
-        xocl_cmd *xcmd = this->pending_ctrl_queue.front();
+        auto& xcmd = this->pending_ctrl_queue.front();
         if(exec_start_ctrl_cmd(xcmd)) {
             this->pending_ctrl_queue.pop();
             return 1;
@@ -1784,7 +1871,7 @@ namespace hwemu {
     {
         if(this->pending_kds_queue.empty()) return 0;
 
-        xocl_cmd *xcmd = this->pending_kds_queue.front();
+        auto& xcmd = this->pending_kds_queue.front();
         if(exec_start_kds_cmd(xcmd)) {
             this->pending_kds_queue.pop();
             return 1;
@@ -1797,7 +1884,7 @@ namespace hwemu {
     {
         if(this->pending_scu_queue.empty()) return 0;
 
-        xocl_cmd *xcmd = this->pending_scu_queue.front();
+        auto& xcmd = this->pending_scu_queue.front();
         if(exec_start_cu_cmd(xcmd)) {
             this->pending_scu_queue.pop();
             return 1;
@@ -1806,7 +1893,7 @@ namespace hwemu {
         return 0;
     }
 
-    bool exec_core::exec_submit_cu_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_submit_cu_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         // Append cmd to end of shortest CU list
         uint32_t min_load_count = -1;
@@ -1832,7 +1919,7 @@ namespace hwemu {
         return true;
     }
 
-    bool exec_core::exec_submit_ctrl_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_submit_ctrl_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, this->uid, xcmd->uid);
 
@@ -1850,7 +1937,7 @@ namespace hwemu {
         return true;
     }
 
-    bool exec_core::exec_submit_kds_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_submit_kds_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, this->uid, xcmd->uid);
 
@@ -1868,7 +1955,7 @@ namespace hwemu {
         return true;
     }
 
-    bool exec_core::exec_submit_scu_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_submit_scu_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, this->uid, xcmd->uid);
 
@@ -1878,10 +1965,14 @@ namespace hwemu {
         return true;
     }
 
-    bool exec_core::exec_submit_cmd(xocl_cmd *xcmd)
+    bool exec_core::exec_submit_cmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         bool ret = false;
-
+        auto scheduler = weak_scheduler.lock();
+        if (!scheduler) {
+            std::cout<<"\n scheduler shared ptr is not possible \n";
+            return ret;
+        }
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, this->uid, xcmd->uid);
 
         if (xcmd->type() == ERT_CU)
@@ -1905,13 +1996,13 @@ namespace hwemu {
         return ret;
     }
 
-    void exec_core::exec_error_to_free(xocl_cmd *xcmd)
+    void exec_core::exec_error_to_free(std::shared_ptr<xocl_cmd>& xcmd)
     {
         exec_notify_host(xcmd);
         exec_cmd_free(xcmd);
     }
 
-    void exec_core::exec_new_to_queued(xocl_cmd *xcmd)
+    void exec_core::exec_new_to_queued(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, this->uid, xcmd->uid);
 
@@ -1926,7 +2017,7 @@ namespace hwemu {
         SCHED_DEBUGF("-> %s\n", __func__);
 
         while(!this->pending_cmd_queue.empty()) {
-            xocl_cmd *xcmd = this->pending_cmd_queue.front();
+            auto& xcmd = this->pending_cmd_queue.front();
             exec_submit_cmd(xcmd);
 
             this->pending_cmd_queue.pop();
@@ -1936,6 +2027,11 @@ namespace hwemu {
 
     void exec_core::exec_submitted_to_running()
     {
+        auto scheduler = weak_scheduler.lock();
+        if (!scheduler) {
+            std::cout<<"\n scheduler shared ptr is not possible \n";
+            return ; 
+        }
         uint32_t started = 0;
         SCHED_DEBUGF("-> %s exec(%d)\n", __func__, this->uid);
 
@@ -1958,22 +2054,22 @@ namespace hwemu {
     {
         SCHED_DEBUGF("-> %s exec(%d)\n", __func__, this->uid);
 
-        auto iter = running_cmd_queue.begin();
-        auto end  = running_cmd_queue.end();
-        while(iter != end)
+        auto iter_start = this->running_cmd_queue.begin();
+        auto iter_end  = this->running_cmd_queue.end();
+        while(iter_start != iter_end)
         {
-            xocl_cmd* xcmd = *iter;
+            auto xcmd = iter_start;
             // guard against exec_query_cmd completing multiple commands
             // in one call when ert is enabled.
-            if (xcmd->state == ERT_CMD_STATE_RUNNING)
-                this->exec_query_cmd(xcmd);
+            if (iter_start->get()->state == ERT_CMD_STATE_RUNNING)
+                this->exec_query_cmd(*xcmd);
 
-            if (xcmd->state >= ERT_CMD_STATE_COMPLETED) {
+            if (iter_start->get()->state >= ERT_CMD_STATE_COMPLETED) {
                 --this->num_running_cmds;
-                iter = this->running_cmd_queue.erase(iter);
-                exec_cmd_free(xcmd); 
+                iter_start = this->running_cmd_queue.erase(xcmd);
+                this->exec_cmd_free(*iter_start); 
             } else {
-                iter++;
+                iter_start++;
             }
         }
         SCHED_DEBUGF("<- %s\n", __func__);
@@ -1998,9 +2094,9 @@ namespace hwemu {
     /**
      * Inilize xocl_scheduler and scheduler_thread 
      */ 
-    xocl_scheduler::xocl_scheduler(HwEmShim* dev)
+    xocl_scheduler::xocl_scheduler(std::shared_ptr<xclhwemhal2::HwEmShim> dev)
     {
-        device = dev;
+        weak_device = std::weak_ptr{dev};
         error = false;
         stop = false;
         reset = false;
@@ -2008,8 +2104,8 @@ namespace hwemu {
         intc = 0;
         num_pending = 0;
 
-        exec = new exec_core(device, this);
-        scheduler_thread = new std::thread(&xocl_scheduler::scheduler, this);
+        exec = std::make_shared<exec_core>(dev, shared_from_this());
+        scheduler_thread = std::thread([&] { this->scheduler();} );     // Not a good way to start a thread from ctor.
     }
 
     /**
@@ -2023,11 +2119,11 @@ namespace hwemu {
             wait_condition.notify_all();
         }
 
-        if(scheduler_thread->joinable()) {
-            scheduler_thread->join(); //! Wait untill scheduler_thread exits
+        if(scheduler_thread.joinable()) {
+            scheduler_thread.join(); //! Wait untill scheduler_thread exits
         }
 
-        delete exec;
+        exec.reset();
         SCHED_DEBUGF("scheduler_thread exited\n");
     }
 
@@ -2203,7 +2299,7 @@ namespace hwemu {
      *
      * Return: 0 on success
      */
-    int xocl_scheduler::add_xcmd(xocl_cmd *xcmd)
+    int xocl_scheduler::add_xcmd(std::shared_ptr<xocl_cmd>& xcmd)
     {
         SCHED_DEBUGF("-> %s cmd(%lu)\n", __func__, xcmd->uid);
 
@@ -2227,8 +2323,14 @@ namespace hwemu {
         return 0;
     }
 
-    int xocl_scheduler::convert_execbuf(xocl_cmd* xcmd)
+    int xocl_scheduler::convert_execbuf(std::shared_ptr<xocl_cmd>&  xcmd)
     {
+        auto device = weak_device.lock();
+        if (!device) {
+            std::cout<<"\n shared pointer cannot be created\n";
+            return -EINVAL;
+        }
+            
         struct ert_start_copybo_cmd *scmd = xcmd->ert_cp;
 
         /* CU style commands must specify CU type */
@@ -2242,10 +2344,10 @@ namespace hwemu {
         size_t sz = ert_copybo_size(scmd);
 
         size_t src_off = ert_copybo_src_offset(scmd);
-        xclemulation::drm_xocl_bo* s_bo = device->xclGetBoByHandle(scmd->src_bo_hdl);
+        auto s_bo = device->xclGetBoByHandle(scmd->src_bo_hdl);
 
         size_t dst_off = ert_copybo_dst_offset(scmd);
-        xclemulation::drm_xocl_bo* d_bo = device->xclGetBoByHandle(scmd->dst_bo_hdl);
+        auto d_bo = device->xclGetBoByHandle(scmd->dst_bo_hdl);
 
         if(!s_bo && !d_bo)
             return -EINVAL;
@@ -2297,12 +2399,12 @@ namespace hwemu {
      *
      * Return: 0 on success, 1 on failure
      */
-    int xocl_scheduler::add_bo_cmd(xclemulation::drm_xocl_bo *buf)
+    int xocl_scheduler::add_bo_cmd(std::shared_ptr<xclemulation::drm_xocl_bo>& buf)
     {
         std::lock_guard<std::mutex> lk(pending_cmds_mutex);
         //! Get the command from boost object pool
-        xocl_cmd *xcmd = cmd_pool.construct();
-
+        xocl_cmd *lxcmd = cmd_pool.construct();
+        auto xcmd = std::shared_ptr<xocl_cmd>(lxcmd);
         if (!xcmd)
             return 1;
 
@@ -2328,7 +2430,7 @@ namespace hwemu {
      *
      * Function adds exec buffer to the pending list of commands
      */
-    int xocl_scheduler::add_exec_buffer(xclemulation::drm_xocl_bo *buf)
+    int xocl_scheduler::add_exec_buffer(std::shared_ptr<xclemulation::drm_xocl_bo>& buf)
     {
         // Add the command to pending list
         return add_bo_cmd(buf);

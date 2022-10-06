@@ -6,15 +6,18 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 #include <list>
 #include <queue>
 #include <bitset>
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <condition_variable>
 #include <boost/pool/object_pool.hpp>
 #include "ert.h"
+#include "em_defines.h"
 
 #define MAX_CUS	  128
 #define	MAX_SLOTS 128
@@ -66,14 +69,14 @@ namespace hwemu {
 
             void     set_int_state(enum ert_cmd_state state);
             void     set_state(enum ert_cmd_state state);
-            void     bo_init(xclemulation::drm_xocl_bo *bo);
+            void     bo_init(std::shared_ptr<xclemulation::drm_xocl_bo>& bo);
 
             bool     has_cu(uint32_t cuidx);
             uint32_t first_cu();
             uint32_t next_cu(uint32_t prev);
             void     set_cu(uint32_t cuidx);
 
-            xclemulation::drm_xocl_bo *bo;
+            std::shared_ptr<xclemulation::drm_xocl_bo> bo;
             enum ert_cmd_state state;
             union {
                 struct ert_packet	         *ert_pkt;
@@ -101,7 +104,7 @@ namespace hwemu {
     class xocl_cu 
     {
         public:
-            xocl_cu(xclhwemhal2::HwEmShim* dev);
+            xocl_cu(std::shared_ptr<xclhwemhal2::HwEmShim> dev);
             void      cu_init(unsigned int idx, uint64_t base, uint64_t addr, uint64_t polladdr);
             uint64_t  cu_base_addr();
             uint64_t  cu_polladdr();
@@ -114,10 +117,10 @@ namespace hwemu {
 
             bool      cu_ready();
             void      cu_pop_done();
-            void      cu_configure_ooo(xocl_cmd *xcmd);
-            void      cu_configure_ino(xocl_cmd *xcmd);
-            bool      cu_start(xocl_cmd *xcmd);
-            xocl_cmd* cu_first_done();
+            void      cu_configure_ooo(std::shared_ptr<xocl_cmd>& xcmd);
+            void      cu_configure_ino(std::shared_ptr<xocl_cmd>& xcmd);
+            bool      cu_start(std::shared_ptr<xocl_cmd>& xcmd);
+            std::shared_ptr<xocl_cmd>  cu_first_done();
 
             void      iowrite32(uint32_t data, uint64_t addr);
             uint32_t  ioread32(uint64_t addr);
@@ -140,8 +143,8 @@ namespace hwemu {
             uint32_t   done_cnt;
             uint32_t   run_cnt;
 
-            xclhwemhal2::HwEmShim*  xdevice;
-            std::queue<xocl_cmd*>   cu_cmdq;
+            std::weak_ptr<xclhwemhal2::HwEmShim>  weak_xdevice;
+            std::queue<std::shared_ptr<xocl_cmd>>   cu_cmdq;
     };
 
     /**
@@ -152,20 +155,20 @@ namespace hwemu {
     class xocl_ert 
     {
         public:
-            xocl_ert(xclhwemhal2::HwEmShim* dev, uint64_t csr_base, uint64_t cq_base);
+            xocl_ert(std::shared_ptr<xclhwemhal2::HwEmShim> dev, uint64_t csr_base, uint64_t cq_base);
             ~xocl_ert();
 
             void      ert_cfg(uint32_t cq_size, uint32_t num_slots, bool cq_intr);
             void      ert_clear_csr();
 
             uint32_t  ert_acquire_slot_idx();
-            uint32_t  ert_acquire_slot(xocl_cmd *xcmd);
+            uint32_t  ert_acquire_slot(std::shared_ptr<xocl_cmd>& xcmd);
             void      ert_release_slot_idx(uint32_t slot_idx);
-            void      ert_release_slot(xocl_cmd *xcmd);
-            xocl_cmd* ert_get_cmd(uint32_t slotidx);
-            bool      ert_start_cmd(xocl_cmd *xcmd);
+            void      ert_release_slot(std::shared_ptr<xocl_cmd>& xcmd);
+            std::shared_ptr<xocl_cmd>  ert_get_cmd(uint32_t slotidx);
+            bool      ert_start_cmd(std::shared_ptr<xocl_cmd>& xcmd);
 
-            void      ert_read_custat(xocl_cmd *xcmd, uint32_t num_cus);
+            void      ert_read_custat(std::shared_ptr<xocl_cmd>& xcmd, uint32_t num_cus);
             uint32_t  ert_version();
             uint32_t  ert_cu_usage( unsigned int cuidx);
             uint32_t  ert_cu_status(unsigned int cuidx);
@@ -188,7 +191,7 @@ namespace hwemu {
             uint32_t  slot_size;
             bool      cq_intr;
 
-            xocl_cmd * command_queue[MAX_SLOTS];
+            std::shared_ptr<xocl_cmd>  command_queue[MAX_SLOTS];
 
             // Bitmap tracks busy(1)/free(0) slots in command_queue
             std::bitset<MAX_SLOTS> slot_status;
@@ -202,7 +205,7 @@ namespace hwemu {
             uint32_t  cq_slot_usage[MAX_SLOTS];
 
             //! To acces device memory/CU's for Read/Write
-            xclhwemhal2::HwEmShim* xdevice;
+            std::weak_ptr<xclhwemhal2::HwEmShim> weak_xdevice;
     };
 
     /**
@@ -218,12 +221,12 @@ namespace hwemu {
      * completion only the commands in the running queue need to be checked.
      */
 
-    class exec_core 
+    class exec_core: public std::enable_shared_from_this<exec_core>  
     {
         public:
-            exec_core(xclhwemhal2::HwEmShim* dev, xocl_scheduler* sched);
+            exec_core(std::shared_ptr<xclhwemhal2::HwEmShim> dev, std::shared_ptr<xocl_scheduler> sched);
 
-            int      exec_cfg_cmd(xocl_cmd *xcmd);
+            int      exec_cfg_cmd(std::shared_ptr<xocl_cmd>& xcmd);
             bool     exec_is_ert();
             bool     exec_is_ert_poll();
             bool     exec_is_penguin();
@@ -243,36 +246,36 @@ namespace hwemu {
             //irqreturn_t versal_isr(int irq, void *arg);
             //irqreturn_t exec_isr(int irq, void *arg);
 
-            xocl_scheduler* exec_scheduler();
+            std::shared_ptr<xocl_scheduler> exec_scheduler();
             void   exec_update_custatus();
-            int    exec_finish_cmd(xocl_cmd *xcmd);
-            int    exec_execute_copybo_cmd(xocl_cmd *xcmd);
+            int    exec_finish_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            int    exec_execute_copybo_cmd(std::shared_ptr<xocl_cmd>& xcmd);
 
-            void   exec_notify_host(xocl_cmd* xcmd);
-            void   exec_mark_cmd_state(xocl_cmd *xcmd, enum ert_cmd_state state);
-            void   exec_mark_cmd_complete(xocl_cmd *xcmd);
-            void   exec_mark_cmd_error(xocl_cmd *xcmd);
+            void   exec_notify_host(std::shared_ptr<xocl_cmd>&  xcmd);
+            void   exec_mark_cmd_state(std::shared_ptr<xocl_cmd>& xcmd, enum ert_cmd_state state);
+            void   exec_mark_cmd_complete(std::shared_ptr<xocl_cmd>& xcmd);
+            void   exec_mark_cmd_error(std::shared_ptr<xocl_cmd>& xcmd);
             void   exec_process_cmd_mask(uint32_t mask, uint32_t mask_idx);
             void   exec_process_cu_mask(uint32_t mask, uint32_t mask_idx);
 
-            bool   exec_penguin_start_cu_cmd(xocl_cmd *xcmd);
-            bool   exec_penguin_start_ctrl_cmd(xocl_cmd *xcmd);
-            void   exec_penguin_query_cmd(xocl_cmd *xcmd);
-            bool   exec_ert_start_cmd(xocl_cmd *xcmd);
-            bool   exec_ert_start_ctrl_cmd(xocl_cmd *xcmd);
+            bool   exec_penguin_start_cu_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            bool   exec_penguin_start_ctrl_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            void   exec_penguin_query_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            bool   exec_ert_start_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            bool   exec_ert_start_ctrl_cmd(std::shared_ptr<xocl_cmd>& xcmd);
             void   exec_ert_clear_csr();
 
-            void   exec_ert_query_mailbox(xocl_cmd *xcmd);
-            void   exec_ert_query_csr(xocl_cmd *xcmd, uint32_t mask_idx);
-            void   exec_ert_query_cu(xocl_cmd *xcmd);
-            void   exec_ert_query_cmd(xocl_cmd *xcmd);
-            void   exec_query_cmd(xocl_cmd *xcmd);
-            void   exec_cmd_free(xocl_cmd *xcmd);
-            void   exec_abort_cmd(xocl_cmd *xcmd);
+            void   exec_ert_query_mailbox(std::shared_ptr<xocl_cmd>& xcmd);
+            void   exec_ert_query_csr(std::shared_ptr<xocl_cmd>& xcmd, uint32_t mask_idx);
+            void   exec_ert_query_cu(std::shared_ptr<xocl_cmd>& xcmd);
+            void   exec_ert_query_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            void   exec_query_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            void   exec_cmd_free(std::shared_ptr<xocl_cmd>& xcmd);
+            void   exec_abort_cmd(std::shared_ptr<xocl_cmd>& xcmd);
 
-            bool   exec_start_cu_cmd(xocl_cmd *xcmd);
-            bool   exec_start_ctrl_cmd(xocl_cmd *xcmd);
-            bool   exec_start_kds_cmd(xocl_cmd *xcmd);
+            bool   exec_start_cu_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            bool   exec_start_ctrl_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            bool   exec_start_kds_cmd(std::shared_ptr<xocl_cmd>& xcmd);
 
             int    exec_start_cu_range(uint32_t start, uint32_t end);
             int    exec_start_cus();
@@ -280,14 +283,14 @@ namespace hwemu {
             int    exec_start_kds();
             int    exec_start_scu();
 
-            bool   exec_submit_cu_cmd(xocl_cmd *xcmd);
-            bool   exec_submit_ctrl_cmd(xocl_cmd *xcmd);
-            bool   exec_submit_kds_cmd(xocl_cmd *xcmd);
-            bool   exec_submit_scu_cmd(xocl_cmd *xcmd);
-            bool   exec_submit_cmd(xocl_cmd *xcmd);
+            bool   exec_submit_cu_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            bool   exec_submit_ctrl_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            bool   exec_submit_kds_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            bool   exec_submit_scu_cmd(std::shared_ptr<xocl_cmd>& xcmd);
+            bool   exec_submit_cmd(std::shared_ptr<xocl_cmd>& xcmd);
 
-            void   exec_error_to_free(xocl_cmd *xcmd);
-            void   exec_new_to_queued(xocl_cmd *xcmd);
+            void   exec_error_to_free(std::shared_ptr<xocl_cmd>& xcmd);
+            void   exec_new_to_queued(std::shared_ptr<xocl_cmd>& xcmd);
             void   exec_queued_to_submitted();
             void   exec_submitted_to_running();
             void   exec_running_to_complete();
@@ -323,11 +326,11 @@ namespace hwemu {
             uint32_t   cu_usage[MAX_CUS];
             uint32_t   cu_status[MAX_CUS];
 
-            xocl_cu*   cus[MAX_CUS];
-            xocl_ert*  ert;
-            exec_ops*  ops;
-            xocl_scheduler*        scheduler;
-            xclhwemhal2::HwEmShim* xdevice;
+            std::shared_ptr<xocl_cu>   cus[MAX_CUS];
+            std::shared_ptr<xocl_ert>  ert;
+            std::shared_ptr<exec_ops>  ops;
+            std::weak_ptr<xocl_scheduler>        weak_scheduler;
+            std::weak_ptr<xclhwemhal2::HwEmShim> weak_xdevice;
 
             // Status register pending complete.  Written by ISR, cleared by
             // scheduler
@@ -336,12 +339,13 @@ namespace hwemu {
             std::atomic<int>  sr2;
             std::atomic<int>  sr3;
 
-            std::queue<xocl_cmd*>   pending_ctrl_queue;
-            std::queue<xocl_cmd*>   pending_kds_queue;
-            std::queue<xocl_cmd*>   pending_scu_queue;
-            std::queue<xocl_cmd*>   pending_cmd_queue;
-            std::list<xocl_cmd*>    running_cmd_queue;
-            std::queue<xocl_cmd*>   pending_cu_queue[MAX_CUS];
+            std::queue<std::shared_ptr<xocl_cmd>>   pending_ctrl_queue;
+            std::queue<std::shared_ptr<xocl_cmd>>   pending_kds_queue;
+            std::queue<std::shared_ptr<xocl_cmd>>   pending_scu_queue;
+            std::queue<std::shared_ptr<xocl_cmd>>   pending_cmd_queue;
+            std::list<std::shared_ptr<xocl_cmd>>    running_cmd_queue;
+            //std::vector<std::shared_ptr<xocl_cmd>>    running_cmd_queue;
+            std::queue<std::shared_ptr<xocl_cmd>>   pending_cu_queue[MAX_CUS];
     };
 
     /**
@@ -357,12 +361,12 @@ namespace hwemu {
     class exec_ops
     {
         public:
-            exec_ops(exec_core* core) { exec = core; }
+            exec_ops(std::shared_ptr<exec_core> core) { exec = core; }
 
-            virtual bool start_cmd(xocl_cmd  *xcmd) = 0;
-            virtual bool start_ctrl(xocl_cmd *xcmd) = 0;
-            virtual void query_cmd(xocl_cmd  *xcmd) = 0;
-            virtual void query_ctrl(xocl_cmd *xcmd) = 0;
+            virtual bool start_cmd(std::shared_ptr<xocl_cmd>& xcmd) = 0;
+            virtual bool start_ctrl(std::shared_ptr<xocl_cmd>& xcmd) = 0;
+            virtual void query_cmd(std::shared_ptr<xocl_cmd>& xcmd) = 0;
+            virtual void query_ctrl(std::shared_ptr<xocl_cmd>& xcmd) = 0;
 
             //Default implementation for penguin mode
             virtual void process_mask(uint32_t mask, uint32_t mask_idx) {}
@@ -372,7 +376,7 @@ namespace hwemu {
             virtual bool is_penguin()  { return false; }
 
         protected:
-            exec_core *exec;
+            std::weak_ptr<exec_core> exec;
     };
 
     /**
@@ -384,15 +388,16 @@ namespace hwemu {
     class ert_ops : public exec_ops
     {
         public:
-            ert_ops(exec_core* core): exec_ops(core) {}
+            ert_ops(std::shared_ptr<exec_core> core): exec_ops(core) {}
 
-            bool start_cmd(xocl_cmd  *xcmd) { return exec->exec_ert_start_cmd(xcmd); }
-            bool start_ctrl(xocl_cmd *xcmd) { return exec->exec_ert_start_ctrl_cmd(xcmd); }
-            void query_cmd(xocl_cmd  *xcmd) { exec->exec_ert_query_cmd(xcmd); }
-            void query_ctrl(xocl_cmd *xcmd) { exec->exec_ert_query_cmd(xcmd); }
+            bool start_cmd(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock();  return shared_exec->exec_ert_start_cmd(xcmd); }
+            bool start_ctrl(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock();  return shared_exec->exec_ert_start_ctrl_cmd(xcmd); }
+            void query_cmd(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock();  shared_exec->exec_ert_query_cmd(xcmd); }
+            void query_ctrl(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock(); shared_exec->exec_ert_query_cmd(xcmd); }
 
             void process_mask(uint32_t mask, uint32_t mask_idx) { 
-                exec->exec_process_cmd_mask(mask, mask_idx); 
+                auto shared_exec =exec.lock();
+                shared_exec->exec_process_cmd_mask(mask, mask_idx); 
             }
 
             bool is_ert() { return true; }
@@ -408,15 +413,16 @@ namespace hwemu {
     class ert_poll_ops : public exec_ops
     {
         public:
-            ert_poll_ops(exec_core* core): exec_ops(core) {}
+            ert_poll_ops(std::shared_ptr<exec_core> core): exec_ops(core) {}
 
-            bool start_cmd(xocl_cmd  *xcmd) { return exec->exec_penguin_start_cu_cmd(xcmd); }
-            bool start_ctrl(xocl_cmd *xcmd) { return exec->exec_ert_start_ctrl_cmd(xcmd); }
-            void query_cmd(xocl_cmd  *xcmd) { exec->exec_ert_query_cu(xcmd); }
-            void query_ctrl(xocl_cmd *xcmd) { exec->exec_ert_query_cmd(xcmd); }
+            bool start_cmd(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock();  return shared_exec->exec_penguin_start_cu_cmd(xcmd); }
+            bool start_ctrl(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock();  return shared_exec->exec_ert_start_ctrl_cmd(xcmd); }
+            void query_cmd(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock();  shared_exec->exec_ert_query_cu(xcmd); }
+            void query_ctrl(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock(); shared_exec->exec_ert_query_cmd(xcmd); }
 
             void process_mask(uint32_t mask, uint32_t mask_idx) { 
-                exec->exec_process_cu_mask(mask, mask_idx); 
+                auto shared_exec =exec.lock();
+                shared_exec->exec_process_cu_mask(mask, mask_idx); 
             }
 
             bool is_ert_poll() { return true; }
@@ -431,12 +437,12 @@ namespace hwemu {
     class penguin_ops : public exec_ops
     {
         public:
-            penguin_ops(exec_core* core): exec_ops(core) {}
+            penguin_ops(std::shared_ptr<exec_core> core): exec_ops(core) {}
 
-            bool start_cmd(xocl_cmd  *xcmd) { return exec->exec_penguin_start_cu_cmd(xcmd); }
-            bool start_ctrl(xocl_cmd *xcmd) { return exec->exec_penguin_start_ctrl_cmd(xcmd); }
-            void query_cmd(xocl_cmd  *xcmd) { exec->exec_penguin_query_cmd(xcmd); }
-            void query_ctrl(xocl_cmd *xcmd) { exec->exec_penguin_query_cmd(xcmd); }
+            bool start_cmd(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock();  return shared_exec->exec_penguin_start_cu_cmd(xcmd); }
+            bool start_ctrl(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock();  return shared_exec->exec_penguin_start_ctrl_cmd(xcmd); }
+            void query_cmd(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock();  shared_exec->exec_penguin_query_cmd(xcmd); }
+            void query_ctrl(std::shared_ptr<xocl_cmd>& xcmd) { auto shared_exec =exec.lock(); shared_exec->exec_penguin_query_cmd(xcmd); }
 
             bool is_penguin()  { return true; }
     };
@@ -445,10 +451,10 @@ namespace hwemu {
      * class xocl_sched: scheduler for xocl_cmd objects
      */
 
-    class xocl_scheduler 
+    class xocl_scheduler : public std::enable_shared_from_this<xocl_scheduler>
     {
         public:
-            xocl_scheduler(xclhwemhal2::HwEmShim* dev);
+            xocl_scheduler(std::shared_ptr<xclhwemhal2::HwEmShim> dev);
             ~xocl_scheduler();
 
             void  scheduler_wake_up();
@@ -466,16 +472,16 @@ namespace hwemu {
             void  scheduler_loop();
             int   scheduler();
 
-            int   add_xcmd(xocl_cmd *xcmd);
-            int   convert_execbuf(xocl_cmd* xcmd);
-            int   add_bo_cmd(xclemulation::drm_xocl_bo *buf);
-            int   add_exec_buffer(xclemulation::drm_xocl_bo *buf);
+            int   add_xcmd(std::shared_ptr<xocl_cmd>& xcmd);
+            int   convert_execbuf(std::shared_ptr<xocl_cmd>&  xcmd);
+            int   add_bo_cmd(std::shared_ptr<xclemulation::drm_xocl_bo>& buf);
+            int   add_exec_buffer(std::shared_ptr<xclemulation::drm_xocl_bo>& buf);
 
-            std::thread*             scheduler_thread;
+            std::thread             scheduler_thread;
             std::mutex               scheduler_mutex;
             std::condition_variable  wait_condition; //!< Condition variable to pause std::thread
 
-            std::list<xocl_cmd*>     pending_cmds;
+            std::list<std::shared_ptr<xocl_cmd>>     pending_cmds;
             std::mutex               pending_cmds_mutex;
             std::atomic<uint32_t>    num_pending;
 
@@ -483,8 +489,9 @@ namespace hwemu {
             boost::object_pool<xocl_cmd>  cmd_pool;
 
             //! exec_core
-            exec_core*  exec;
-            xclhwemhal2::HwEmShim*   device;
+            std::shared_ptr<exec_core>  exec;
+            //xclhwemhal2::HwEmShim*   device;
+            std::weak_ptr<xclhwemhal2::HwEmShim> weak_device;
 
             bool        error;
             bool        stop;
