@@ -24,7 +24,6 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
-#include <filesystem>
 #include <fstream>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -83,7 +82,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     if (!stream)
       throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % m_xclbin));
 
-    size_t size = std::filesystem::file_size(m_xclbin);
+    stream.seekg(0,stream.end);
+    size_t size = stream.tellg();
+    stream.seekg(0,stream.beg);
 
     std::vector<char> raw(size);
     stream.read(raw.data(),size);

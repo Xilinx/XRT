@@ -31,7 +31,6 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <algorithm>
-#include <filesystem>
 #include <iostream>
 #include <regex>
 #include <sstream>
@@ -696,7 +695,9 @@ program_xclbin(const xclDeviceHandle hdl, const std::string& xclbin, boost::prop
     return 1;
   }
 
-  size_t size = std::filesystem::file_size(xclbin);
+  stream.seekg(0,stream.end);
+  size_t size = stream.tellg();
+  stream.seekg(0,stream.beg);
 
   std::vector<char> raw(size);
   stream.read(raw.data(),size);

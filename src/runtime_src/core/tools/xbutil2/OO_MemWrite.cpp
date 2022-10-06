@@ -19,7 +19,6 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <math.h>
@@ -123,9 +122,10 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
     // If count is unspecified, calculate based on the file size and block size
     uint64_t count = m_count;
     if (vm["count"].defaulted()) {
+      input_stream.seekg(0, input_stream.end);
       // tellg returns a signed value as the number of bytes. Validate the return code and
       // cast it into a useful format
-      auto nonvalidated_length = std::filesystem::file_size(m_inputFile);
+      auto nonvalidated_length = input_stream.tellg();
       if (nonvalidated_length < 0)
         throw std::runtime_error("Failed to get input file length");
 
