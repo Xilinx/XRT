@@ -79,7 +79,7 @@ namespace XBUtilities {
 
 
   bool can_proceed(bool force = false);
-  void sudo_or_throw_err();
+  void sudo_or_throw(const std::string& msg);
   void throw_cancel(const std::string& msg);
   void throw_cancel(const boost::format& format);
 

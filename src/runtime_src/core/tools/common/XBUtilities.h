@@ -44,8 +44,6 @@ namespace XBUtilities {
  
   void can_proceed_or_throw(const std::string& info, const std::string& error);
 
-  void sudo_or_throw(const std::string& msg);
-
   void print_exception(const std::system_error& e);
 
   void xrt_version_cmp(bool isUserDomain);

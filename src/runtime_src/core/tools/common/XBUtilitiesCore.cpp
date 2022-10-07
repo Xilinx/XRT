@@ -312,13 +312,14 @@ XBUtilities::can_proceed(bool force)
 }
 
 void
-XBUtilities::sudo_or_throw_err()
+XBUtilities::sudo_or_throw(const std::string& msg)
 {
 #ifndef _WIN32
-    if ((getuid() == 0) || (geteuid() == 0))
-        return;
-    std::cout << "ERROR: root privileges required." << std::endl;
-    throw std::errc::operation_canceled;
+  if ((getuid() == 0) || (geteuid() == 0))
+    return;
+
+  std::cerr << "ERROR: " << msg << std::endl;
+  throw xrt_core::error(std::errc::operation_canceled);
 #endif
 }
 
