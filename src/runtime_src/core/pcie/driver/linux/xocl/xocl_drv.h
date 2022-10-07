@@ -2145,7 +2145,7 @@ struct xocl_xgq_vmr_funcs {
 	int (*xgq_collect_all_inst_sensors)(struct platform_device *pdev, char *buf,
                                      uint8_t id, uint32_t len);
 	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
-	int (*vmr_status)(struct platform_device *pdev, struct VmrStatus* vmr_status_ptr);
+	int (*vmr_status)(struct platform_device *pdev, struct VmrStatus *vmr_status_ptr);
 };
 #define	XGQ_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR) ? 			\

@@ -1122,8 +1122,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		xocl_mailbox_get(lro, CHAN_SWITCH, &ch_switch);
 		xocl_mailbox_get(lro, CHAN_DISABLE, &ch_disable);
 		resp->version = min(XCL_MB_PROTOCOL_VER, conn->version);
-		if (lro->ready)
-			resp->conn_flags |= XCL_MB_PEER_READY;
+		resp->conn_flags |= XCL_MB_PEER_READY;
 		/* Same domain check only applies when everything is thru HW. */
 		if (!ch_switch && xclmgmt_is_same_domain(lro, conn))
 			resp->conn_flags |= XCL_MB_PEER_SAME_DOMAIN;
@@ -1238,11 +1237,10 @@ void xclmgmt_connect_notify(struct xclmgmt_dev *lro, bool online)
  * If something goes wrong, it should clean up and return back to minimum
  * initialization stage.
  */
-static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
+static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 {
 	int ret = 0;
 	struct xocl_board_private *dev_info = &lro->core.priv;
-	struct pci_dev *pdev = lro->pci_dev;
 	int i = 0;
 
 	lro->core.thread_arg.thread_cb = health_check_cb;
@@ -1268,10 +1266,8 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 		}
 
 		ret = xocl_subdev_create(lro, &subdev_info);
-		if (ret && ret != -ENODEV) {
-			mgmt_err(lro, "Failed to create sub devices");
+		if (ret)
 			goto fail;
-		}
 	}
 
 	/*
@@ -1313,36 +1309,36 @@ static int xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	    (xocl_subdev_is_vsec(lro) || dev_info->flags & XOCL_DSAFLAG_CUSTOM_DTB))
 		ret = -ENODEV;
 
-	/* Validate the above two statements */
-	if (ret == -ENODEV) { /* If no device was found attempt to load the device tree*/
+	if (!ret) {
+		xocl_thread_start(lro);
+
+		/* Launch the mailbox server. */
+		(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv,
+			(void *)lro);
+
+		lro->ready = true;
+	} else if (ret == -ENODEV) {
 		ret = xclmgmt_load_fdt(lro);
-		if (ret) {
-			mgmt_err(lro, "Failed to load FDT");
+		if (ret)
 			goto fail_all_subdev;
-		}
-	} else if (ret) { /* For general failures reset to minimum initalization */
-		mgmt_err(lro, "Firmware ICAP download failed");
+	} else
 		goto fail_all_subdev;
-	}
-
-	/* Finish initialization. Getting here means nothing failed */
-	xocl_thread_start(lro);
-
-	/* Launch the mailbox server. */
-	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
 
 	/* Reset PCI link monitor */
 	check_pcie_link_toggle(lro, 1);
 
 	/* Store/cache PCI link width & speed info */
 	store_pcie_link_info(lro);
-	return 0;
+
+	/* Notify our peer that we're listening. */
+	xclmgmt_connect_notify(lro, true);
+	mgmt_info(lro, "device fully initialized\n");
+	return;
 
 fail_all_subdev:
 	xocl_subdev_destroy_all(lro);
 fail:
-	xocl_err(&pdev->dev, "failed to fully probe device, err: %d\n", ret);
-	return ret;
+	mgmt_err(lro, "failed to fully probe device, err: %d\n", ret);
 }
 
 int xclmgmt_config_pci(struct xclmgmt_dev *lro)
@@ -1510,8 +1506,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		return 0;
 	}
 
-	if (xclmgmt_extended_probe(lro))
-		mgmt_err(lro, "Extended probe failed");
+	/* Detect if the device is ready for operations */
+	xclmgmt_extended_probe(lro);
 
 	/*
 	 * Even if extended probe fails, make sure feature ROM subdev
@@ -1555,9 +1551,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_hwmon_sdm_get_sensors_list(lro, true);
 	xocl_drvinst_set_offline(lro, false);
 
-	lro->ready = true;
-	/* Notify our peer that we're listening. */
-	xclmgmt_connect_notify(lro, lro->ready);
 	if (lro->ready)
 		mgmt_info(lro, "Device fully initialized");
 	else

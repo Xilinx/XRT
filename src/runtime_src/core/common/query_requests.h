@@ -2515,12 +2515,11 @@ struct is_recovery : request
   get(const device*) const = 0;
 };
 
-/*
- * struct is_versal - check if device is versal or not
- * A value of true means it is a versal device.
- * This entry is needed as some of the operations are handled
- * differently on versal devices compared to Alveo devices
- */
+
+// struct is_versal - check if device is versal or not
+// A value of true means it is a versal device.
+// This entry is needed as some of the operations are handled
+// differently on versal devices compared to Alveo devices
 struct is_versal : request
 {
   using result_type = bool;
@@ -2530,11 +2529,9 @@ struct is_versal : request
   get(const device*) const = 0;
 };
 
-/*
- * struct is_ready - A boolean stating
- * if the specified device is ready for
- * XRT operations such as program or reset
- */
+// struct is_ready - A boolean stating
+// if the specified device is ready for
+// XRT operations such as program or reset
 struct is_ready : request
 {
   using result_type = bool;

@@ -113,10 +113,15 @@ struct FeatureRomHeader {
 	uint32_t CDMABaseAddress[4];	    // CDMA base addresses
 };
 
+// A boiled down version of the vmr status for userpf use
+// To get a complete version of the vmr status investigate the
+// vmr status sysfs node within the mgmtpf
+// This struct contains the status of the VMR subdevice found
+// on certain cards like u50s and versal platforms.
 struct VmrStatus {
-	uint16_t boot_on_default;
-	uint16_t boot_on_backup;
-	uint16_t boot_on_recovery;
+	uint16_t boot_on_default; // 1 If the VMR device is currently running on its "A" or default image
+	uint16_t boot_on_backup; // 1 If the VMR device is currently running on its "B" or backup image
+	uint16_t boot_on_recovery; // 1 If the VMR device is currently running on its recovery image
 };
 
 #endif // xclfeatures_h_

@@ -1150,7 +1150,7 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB);
 }
 
-static int xgq_status(struct platform_device *pdev, struct VmrStatus * vmr_status_ptr)
+static int xgq_status(struct platform_device *pdev, struct VmrStatus *vmr_status_ptr)
 {
 	int rc = 0;
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);

@@ -39,16 +39,16 @@ pretty_label(std::string label)
 
 } //unnamed namespace
 
-namespace xrt_core { 
-namespace vmr {
+namespace xrt_core::vmr {
 
 ptree_type
 vmr_info(const xrt_core::device* device)
 {
   ptree_type pt_vmr_status_array;
   ptree_type pt_vmr_stats;
-  auto vmr_status = xrt_core::device_query_default<xq::vmr_status>(device);
-  auto vmr_version = xrt_core::device_query_default<xq::extended_vmr_status>(device);
+  std::vector<std::string> empty_vector;
+  auto vmr_status = xrt_core::device_query_default<xq::vmr_status>(device, empty_vector);
+  auto vmr_version = xrt_core::device_query_default<xq::extended_vmr_status>(device, empty_vector);
   vmr_status.insert(vmr_status.begin(), vmr_version.begin(), vmr_version.end());
   
   // only available for versal
@@ -89,4 +89,4 @@ is_default_boot(const xrt_core::device* device)
   throw std::runtime_error("Missing 'Boot on default' data in VMR status");
 }
 
-}} // vmr, xrt
+} // vmr, xrt
