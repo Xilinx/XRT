@@ -246,7 +246,20 @@ namespace xrt_core {
 class hw_queue_impl : public command_manager::executor
 {
   std::unique_ptr<command_manager> m_cmd_manager;
-protected:
+
+  // Thread safe on-demand creation of m_cmd_manager
+  command_manager*
+  get_cmd_manager()
+  {
+    {
+      static std::mutex mutex;
+      std::lock_guard lk(mutex);
+      if (!m_cmd_manager)
+        m_cmd_manager = std::make_unique<command_manager>(this);
+    }
+
+    return m_cmd_manager.get();
+  }
 
 public:
   hw_queue_impl()
@@ -273,10 +286,7 @@ public:
   void
   managed_start(xrt_core::command* cmd)
   {
-    if (!m_cmd_manager)
-      m_cmd_manager = std::make_unique<command_manager>(this);
-
-    m_cmd_manager->launch(cmd);
+    get_cmd_manager()->launch(cmd);
   }
 
   // Unmanaged start submits command directly for execution
