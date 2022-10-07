@@ -279,6 +279,8 @@ file_size(const std::string &_file)
 }
 
 // Helper function for header info
+// Seperates the given file path into its path
+// and name components
 static std::pair<std::string, std::string>
 deployment_path_and_filename(std::string file)
 {
@@ -294,7 +296,7 @@ deployment_path_and_filename(std::string file)
   auto pos = file.rfind('/') != std::string::npos ? file.rfind('/') : file.rfind('\\');
   std::string path = file.erase(pos);
 
-  return std::make_pair(dsafile, path);
+  return { dsafile, path };
 }
 
 // Helper function for header info
