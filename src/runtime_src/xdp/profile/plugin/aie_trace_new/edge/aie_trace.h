@@ -14,8 +14,9 @@
  * under the License.
  */
 
-#ifndef AIE_TRACE_H
-#define AIE_TRACE_H
+
+#ifndef AIE_TRACE_DOT_H
+#define AIE_TRACE_DOT_H
 
 #include <cstdint>
 
@@ -26,14 +27,19 @@ namespace xdp {
 
   class AieTrace_EdgeImpl : public AieTraceImpl{
     public:
+      XDP_EXPORT
       AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
         // : AieTraceImpl(database, metadata);
-      ~AieTrace_EdgeImpl();
-
+      virtual ~AieTrace_EdgeImpl() = default;
+      
+      XDP_EXPORT
       void updateDevice();
+      XDP_EXPORT
       void flushDevice();
+      XDP_EXPORT
       void finishFlushDevice();
 
+    private:
       bool setMetrics(uint64_t deviceId, void* handle);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
@@ -41,10 +47,8 @@ namespace xdp {
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
       bool configureStartIteration(xaiefal::XAieMod& core);
       bool configureStartDelay(xaiefal::XAieMod& core);
-      void getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
-                                           std::vector<std::string> graphmetricsSettings,
-                                           void* handle);
-
+     
+      bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
       void setTraceStartControl(void* handle);
       uint64_t checkTraceBufSize(uint64_t size);                                   
       std::string getMetricSet(void* handle,
@@ -87,7 +91,6 @@ namespace xdp {
       * In future, when mem_tile and interface_tile metrics will be supported, we will
       * need separate map for each type or a vector of maps for all types together.
       */
-      std::map<tile_type, std::string> mConfigMetrics;
       bool mUseOneDelayCtr = true;
       uint32_t mIterationCount = 0;
 

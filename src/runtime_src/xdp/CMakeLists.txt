@@ -460,7 +460,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_library(xdp_aie_trace_plugin MODULE ${XRT_XDP_AIE_TRACE_NEW_PLUGIN_FILES})
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core)
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
-  target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_NATIVE_BUILD=1)
+  target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_X86_BUILD=1)
   install (TARGETS xdp_aie_trace_plugin
     LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
   )

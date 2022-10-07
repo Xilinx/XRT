@@ -77,7 +77,7 @@ namespace {
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using module_type = xrt_core::edge::aie::module_type;
-  constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0;
+  constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0; // should be changed
 
 
     AieTrace_EdgeImpl::AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
@@ -162,8 +162,36 @@ namespace xdp {
 
   }
 
+  bool AieTrace_EdgeImpl::checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle)
+  {
+    aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+    aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle));
+    if (!aieDevInst || !aieDevice) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+          "Unable to get AIE device. AIE event trace will not be available.");
+      return false;
+    }
+
+    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto compilerOptions = metadata->get_aiecompiler_options(device.get());
+    // runtimeMetrics = (compilerOptions.event_trace == "runtime");
+
+    if (!metadata->getRuntimeMetrics()) {
+      std::stringstream msg;
+      msg << "Found compiler trace option of " << compilerOptions.event_trace
+          << ". No runtime AIE metrics will be changed.";
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return true;
+    }
+    return true;
+  }
 
   void AieTrace_EdgeImpl::updateDevice() {
+    
+     if (!checkAieDeviceAndRuntimeMetrics(metadata->getDeviceID(), metadata->getHandle()))
+      return;
+    
     std::cout << "I reached the update device!" << std::endl;
     // Set metrics for counters and trace events 
     if (!setMetricsSettings(metadata->getDeviceID(), metadata->getHandle())) {
@@ -174,6 +202,114 @@ namespace xdp {
       }
     }
     std::cout << "I finished the update device!" << std::endl;
+  }
+
+  bool AieTrace_EdgeImpl::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet)
+  {
+    auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
+    uint32_t available = 0;
+    uint32_t required = 0;
+    std::stringstream msg;
+
+    // Core Module perf counters
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
+    required = coreCounterStartEvents.size();
+    if (metadata->getUseDelay()) {
+      ++required;
+      if (!mUseOneDelayCtr)
+        ++required;
+    } else if (metadata->getUseGraphIterator())
+      ++required;
+    if (available < required) {
+      msg << "Available core module performance counters for aie trace : " << available << std::endl
+          << "Required core module performance counters for aie trace : "  << required;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
+
+    // Core Module trace slots
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    required = coreCounterStartEvents.size() + coreEventSets[metricSet].size();
+    if (available < required) {
+      msg << "Available core module trace slots for aie trace : " << available << std::endl
+          << "Required core module trace slots for aie trace : "  << required;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
+
+    // Core Module broadcasts. 2 events for starting/ending trace
+    available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
+    required = memoryEventSets[metricSet].size() + 2;
+    if (available < required) {
+      msg << "Available core module broadcast channels for aie trace : " << available << std::endl
+          << "Required core module broadcast channels for aie trace : "  << required;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
+
+   // Memory Module perf counters
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
+    required = memoryCounterStartEvents.size();
+    if (available < required) {
+      msg << "Available memory module performance counters for aie trace : " << available << std::endl
+          << "Required memory module performance counters for aie trace : "  << required;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
+
+    // Memory Module trace slots
+    available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    required = memoryCounterStartEvents.size() + memoryEventSets[metricSet].size();
+    if (available < required) {
+      msg << "Available memory module trace slots for aie trace : " << available << std::endl
+          << "Required memory module trace slots for aie trace : "  << required;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
+
+    // No need to check memory module broadcast
+
+    return true;
+  }
+
+  void AieTrace_EdgeImpl::printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile)
+  {
+    auto col = tile.col;
+    auto row = tile.row + 1;
+    auto loc = XAie_TileLoc(col, row);
+    std::stringstream msg;
+
+    const std::string groups[3] = {
+      XAIEDEV_DEFAULT_GROUP_GENERIC,
+      XAIEDEV_DEFAULT_GROUP_STATIC,
+      XAIEDEV_DEFAULT_GROUP_AVAIL
+    };
+
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
+    for (auto&g : groups) {
+      auto stats = aieDevice->getRscStat(g);
+      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
+      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
+      msg << "Resource Group : " << std::left <<  std::setw(10) << g << " "
+          << "Performance Counters : " << pc << " "
+          << "Trace Slots : " << ts << " "
+          << "Broadcast Channels : " << bc << " "
+          << std::endl;
+    }
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
+    for (auto&g : groups) {
+    auto stats = aieDevice->getRscStat(g);
+    auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
+    auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
+    auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_BCAST_CHANNEL_RSC);
+    msg << "Resource Group : "  << std::left <<  std::setw(10) << g << " "
+        << "Performance Counters : " << pc << " "
+        << "Trace Slots : " << ts << " "
+        << "Broadcast Channels : " << bc << " "
+        << std::endl;
+    }
+    xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
   void AieTrace_EdgeImpl::setTraceStartControl(void* handle)
@@ -251,6 +387,22 @@ namespace xdp {
 
   }
 
+    // Release counters from latest tile (because something went wrong)
+  void AieTrace_EdgeImpl::releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters)
+  {
+    for (int i=0; i < numCoreCounters; i++) {
+      mCoreCounters.back()->stop();
+      mCoreCounters.back()->release();
+      mCoreCounters.pop_back();
+      mCoreCounterTiles.pop_back();
+    }
+    for (int i=0; i < numMemoryCounters; i++) {
+      mMemoryCounters.back()->stop();
+      mMemoryCounters.back()->release();
+      mMemoryCounters.pop_back();
+    }
+  }
+
   bool
   AieTrace_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
@@ -282,7 +434,7 @@ namespace xdp {
     boost::replace_all(graphmetricsConfig, " ", "");
     boost::split(graphmetricsSettings, graphmetricsConfig, boost::is_any_of(";"));
 
-    getConfigMetricsForTiles(metricsSettings, graphmetricsSettings, handle);
+    metadata->getConfigMetricsForTiles(metricsSettings, graphmetricsSettings, handle);
 
     setTraceStartControl(handle);
 
@@ -291,7 +443,7 @@ namespace xdp {
     int numTileMemoryTraceEvents[NUM_MEMORY_TRACE_EVENTS+1] = {0};
 
     // Iterate over all used/specified tiles
-    for (auto& tileMetric : mConfigMetrics) {
+    for (auto& tileMetric : metadata->getConfigMetrics()) {
       auto  tile   = tileMetric.first;
       auto  col    = tile.col;
       auto  row    = tile.row;
@@ -751,262 +903,6 @@ namespace xdp {
     return bcId + CORE_BROADCAST_EVENT_BASE;
   }
 
-  void
-  AieTrace_EdgeImpl::getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
-                                           std::vector<std::string> graphmetricsSettings,
-                                           void* handle)
-  {
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-
-    bool allGraphsDone = false;
-
-    // STEP 1 : Parse per-graph or per-kernel settings
-    /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
-     * "graphmetricsSettings" contains each metric value
-     * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>:<off|functions|functions_partial_stalls|functions_all_stalls>
-     */
-
-    std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
-
-    // Graph Pass 1 : process only "all" metric setting
-    for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
-      // split done only in Pass 1
-      boost::split(graphmetrics[i], graphmetricsSettings[i], boost::is_any_of(":"));
-
-      if (0 != graphmetrics[i][0].compare("all")) {
-        continue;
-      }
-      // Check kernel-name field
-      if (0 != graphmetrics[i][1].compare("all")) {
-        xrt_core::message::send(severity_level::warning, "XRT",
-          "Only \"all\" is supported in kernel-name field for graph_based_aie_tile_metrics. Any other specification is replaced with \"all\".");
-      }
-
-      std::vector<tile_type> tiles;
-      // Create superset of all tiles across all graphs
-      auto graphs = xrt_core::edge::aie::get_graphs(device.get());
-      for (auto& graph : graphs) {
-        auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
-        std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
-
-        // TODO: Differentiate between core and DMA-only tiles when 'all' is supported
-
-        // Core Tiles
-        //auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::core);
-        //std::unique_copy(coreTiles.begin(), coreTiles.end(), std::back_inserter(tiles), tileCompare);
-
-        // DMA-Only Tiles
-        // NOTE: These tiles are only needed when aie_trace_metrics = all
-        //auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::dma);
-        //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), std::back_inserter(tiles), tileCompare);
-#if 0
-    std::vector<tile_type> tiles;
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    
-    tiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
-                                 xrt_core::edge::aie::module_type::core);
-    if (mod == XAIE_MEM_MOD) {
-      auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
-          xrt_core::edge::aie::module_type::dma); 
-      std::move(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles));
-    }
-#endif
-      }
-      allGraphsDone = true;
-      for (auto &e : tiles) {
-        mConfigMetrics[e] = graphmetrics[i][2];
-      }
-    } // Graph Pass 1
-
-    // Graph Pass 2 : process per graph metric setting
-    for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
-
-      if (0 == graphmetrics[i][0].compare("all")) {
-        // already processed
-        continue;
-      }
-      // Check kernel-name field
-      if (0 != graphmetrics[i][1].compare("all")) {
-        xrt_core::message::send(severity_level::warning, "XRT",
-          "Only \"all\" is supported in kernel-name field for graph_based_aie_tile_metrics. Any other specification is replaced with \"all\".");
-      }
-
-      std::vector<tile_type> tiles;
-      // Create superset of all tiles across all graphs
-      auto graphs = xrt_core::edge::aie::get_graphs(device.get());
-      if (!graphs.empty() && graphs.end() == std::find(graphs.begin(), graphs.end(), graphmetrics[i][0])) {
-        std::string msg = "Could not find graph named " + graphmetrics[i][0] + ", as specified in graph_based_aie_tile_metrics configuration."
-                          + " Following graphs are present in the design : " + graphs[0] ;
-        for (size_t j = 1; j < graphs.size(); j++) {
-          msg += ", " + graphs[j];
-        }
-        msg += ".";
-        xrt_core::message::send(severity_level::warning, "XRT", msg);
-        continue;
-      }
-      auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graphmetrics[i][0]);
-      std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
-#if 0
-        // TODO: Differentiate between core and DMA-only tiles when 'all' is supported
-
-        // Core Tiles
-        //auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::core);
-        //std::unique_copy(coreTiles.begin(), coreTiles.end(), std::back_inserter(tiles), tileCompare);
-
-        // DMA-Only Tiles
-        // NOTE: These tiles are only needed when aie_trace_metrics = all
-        //auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::dma);
-        //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), std::back_inserter(tiles), tileCompare);
-#endif
-      for (auto &e : tiles) {
-        mConfigMetrics[e] = graphmetrics[i][2];
-      }
-    } // Graph Pass 2
-
-    // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
-
-    /*
-     * AI Engine Tiles
-     * Single or all tiles
-     * tile_based_aie_tile_metrics = <{<column>,<row>}|all>:<off|functions|functions_partial_stalls|functions_all_stalls>
-     * Range of tiles
-     * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|functions|functions_partial_stalls|functions_all_stalls>
-     *  
-     * MEM Tiles (AIE2 only)
-     * Single or all columns
-     * tile_based_mem_tile_metrics = <{<column>,<row>}|all>:<off|channels|input_channels_stalls|output_channels_stalls>[:<channel 1>][:<channel 2>]
-     * Range of columns
-     * tile_based_mem_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|channels|input_channels_stalls|output_channels_stalls>[:<channel 1>][:<channel 2>]
-     */
-
-    std::vector<std::vector<std::string>> metrics(metricsSettings.size());
-
-    // Pass 1 : process only "all" metric setting 
-    for (size_t i = 0; i < metricsSettings.size(); ++i) {
-      // split done only in Pass 1
-      boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
-
-      if (0 != metrics[i][0].compare("all")) {
-        continue;
-      }
-      std::vector<tile_type> tiles;
-      if (!allGraphsDone) {
-        // Create superset of all tiles across all graphs
-        auto graphs = xrt_core::edge::aie::get_graphs(device.get());
-        for (auto& graph : graphs) {
-          auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
-          std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
-        }
-      }
-      for (auto &e : tiles) {
-        mConfigMetrics[e] = metrics[i][1];
-      }
-    } // Pass 1 
-
-    // Pass 2 : process only range of tiles metric setting 
-    for (size_t i = 0; i < metricsSettings.size(); ++i) {
-
-      if (3 != metrics[i].size()) {
-        continue;
-      }
-      std::vector<std::string> minTile, maxTile;
-      uint32_t minCol = 0, minRow = 0;
-      uint32_t maxCol = 0, maxRow = 0;
-
-      try {
-        for (size_t j = 0; j < metrics[i].size(); ++j) {
-          boost::replace_all(metrics[i][j], "{", "");
-          boost::replace_all(metrics[i][j], "}", "");
-        }
-        boost::split(minTile, metrics[i][0], boost::is_any_of(","));
-        minCol = std::stoi(minTile[0]);
-        minRow = std::stoi(minTile[1]);
-
-        std::vector<std::string> maxTile;
-        boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
-        maxCol = std::stoi(maxTile[0]);
-        maxRow = std::stoi(maxTile[1]);
-      } catch (...) {
-        xrt_core::message::send(severity_level::warning, "XRT",
-           "Tile range specification in tile_based_aie_tile_metrics is not of valid format and hence skipped.");
-      }
-
-      for (uint32_t col = minCol; col <= maxCol; ++col) {
-        for (uint32_t row = minRow; row <= maxRow; ++row) {
-          xrt_core::edge::aie::tile_type tile;
-          tile.col = col;
-          tile.row = row;
-//            tiles.push_back(tile);
-          mConfigMetrics[tile] = metrics[i][2];
-        }
-      }
-    } // Pass 2
-
-    // Pass 3 : process only single tile metric setting 
-    for (size_t i = 0; i < metricsSettings.size(); ++i) {
-
-      if (2 != metrics[i].size()) {
-        continue;
-      }
-      if (0 == metrics[i][0].compare("all")) {
-        continue;
-      }
-
-      std::vector<std::string> tilePos;
-      uint32_t col = 0, row = 0;
-
-      try {
-        boost::replace_all(metrics[i][0], "{", "");
-        boost::replace_all(metrics[i][0], "}", "");
-
-        boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
-        col = std::stoi(tilePos[0]);
-        row = std::stoi(tilePos[1]);
-      } catch (...) {
-        xrt_core::message::send(severity_level::warning, "XRT",
-           "Tile specification in tile_based_aie_tile_metrics is not of valid format and hence skipped.");
-      }
-
-      xrt_core::edge::aie::tile_type tile;
-      tile.col = col;
-      tile.row = row;
-//        tiles.push_back(tile);
-      mConfigMetrics[tile] = metrics[i][1];
-    } // Pass 3 
-
-
-    // check validity and remove "off" tiles
-    std::vector<tile_type> offTiles;
-
-    for (auto &tileMetric : mConfigMetrics) {
-
-      // save list of "off" tiles
-      if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
-        offTiles.push_back(tileMetric.first);
-        continue;
-      }
-
-      // Ensure requested metric set is supported (if not, use default)
-      if (metricSets.find(tileMetric.second) == metricSets.end()) {
-        std::string defaultSet = "functions";
-        std::stringstream msg;
-        msg << "Unable to find AIE trace metric set " << tileMetric.second 
-            << ". Using default of " << defaultSet << "."
-            << " As new AIE_trace_settings section is given, old style configurations, if any, are ignored.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        tileMetric.second = defaultSet;
-      }
-    }
-
-    // remove all the "off" tiles
-    for (auto &t : offTiles) {
-      mConfigMetrics.erase(t);
-    }
-
-    // If requested, turn on debug fal messages
-    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug))
-      xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
-  }
 
   bool AieTrace_EdgeImpl::configureStartIteration(xaiefal::XAieMod& core)
   {
@@ -1043,6 +939,7 @@ namespace xdp {
 
   bool AieTrace_EdgeImpl::setMetrics(uint64_t deviceId, void* handle) {
   {
+    std::cout << "Reached setMetrics!" << std::endl;
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
       xrt_core::message::send(severity_level::warning, "XRT",
@@ -1052,15 +949,18 @@ namespace xdp {
       return false;
     }
 
-    auto metricSet = metadata->getMetricSet();
+    auto metricSet = metadata->getMetricSet(metricsStr);
     if (metricSet.empty()) {
       if (!metadata->getRuntimeMetrics())
         return true;
       return false;
     }
 
+    std::cout << "Got MetricSet" << std::endl;
+
     auto tiles = metadata->getTilesForTracing();
     setTraceStartControl(handle);
+    std::cout << "Got Tiles for tracing!" << std::endl;
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -1068,8 +968,12 @@ namespace xdp {
 
     // Iterate over all used/specified tiles
     for (auto& tile : tiles) {
+
       auto  col    = tile.col;
       auto  row    = tile.row;
+
+      std::cout << "Starting tiles col, row: " << col << ", " << row << std::endl;
+
       // NOTE: resource manager requires absolute row number
       auto& core   = aieDevice->tile(col, row + 1).core();
       auto& memory = aieDevice->tile(col, row + 1).mem();
@@ -1092,6 +996,7 @@ namespace xdp {
         printTileStats(aieDevice, tile);
         return false;
       }
+      std::cout << "Tile had free rsc. Starting 1" << std::endl;
 
       //
       // 1. Reserve and start core module counters (as needed)
@@ -1141,6 +1046,7 @@ namespace xdp {
           cfg.event_value = coreCounterEventValues[i];
         }
       }
+      std::cout << "Starting 2" << std::endl;
 
       //
       // 2. Reserve and start memory module counters (as needed)
@@ -1203,6 +1109,8 @@ namespace xdp {
       //
       // 3. Configure Core Tracing Events
       //
+      std::cout << "Starting 3!" << std::endl;
+
       {
         XAie_ModuleType mod = XAIE_CORE_MOD;
         uint8_t phyEvent = 0;
@@ -1275,6 +1183,8 @@ namespace xdp {
       // 4. Configure Memory Tracing Events
       //
       // TODO: Configure group or combo events where applicable
+      std::cout << "Starting 4!" << std::endl;
+
       uint32_t coreToMemBcMask = 0;
       {
         auto memoryTrace = memory.traceControl();
@@ -1395,6 +1305,7 @@ namespace xdp {
         // NOTE: Use time packets for memory module (type 1)
         cfgTile->memory_trace_config.packet_type = 1;
       }
+      std::cout << "Adding to the db!" << std::endl;
 
       std::stringstream msg;
       msg << "Adding tile (" << col << "," << row << ") to static database";

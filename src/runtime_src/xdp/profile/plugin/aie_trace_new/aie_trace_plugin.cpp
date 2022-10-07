@@ -33,8 +33,10 @@
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 
-#ifdef XRT_NATIVE_BUILD
-  #include "x86/aie_trace.h"
+#ifdef XRT_X86_BUILD
+  // #include "x86/aie_trace.h"
+  #include "edge/aie_trace.h"
+  #include "core/edge/user/shim.h"
 #else
   #include "edge/aie_trace.h"
   #include "core/edge/user/shim.h"
@@ -101,8 +103,9 @@ namespace xdp {
     AIEData.supported = true; // initialize struct
     AIEData.devIntf = nullptr;
 
-#ifdef XRT_NATIVE_BUILD
-    AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, metadata);
+#ifdef XRT_X86_BUILD
+    // AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, metadata);
+    AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, metadata);
 #else
     AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, metadata);
 #endif
@@ -163,7 +166,7 @@ namespace xdp {
     }
 
     // Needs to be changed later as there's no longer a global metric set
-    std::string metricSet = metadata->getMetricSet();
+    std::string metricSet = metadata->getMetricStr();
     if (metadata->getRuntimeMetrics()) {
       std::string configFile = "aie_event_runtime_config.json";
       VPWriter* writer = new AieTraceConfigWriter
