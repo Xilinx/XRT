@@ -231,11 +231,14 @@ namespace xrt {
 	  ffi_arg_values[i] = &m_xrtHandle;
 	  continue;
 	}
-	// If its a global argument, that means it is a buffer with physical address and size
+	// Calculate argument offset into command buffer -
+	// Offset is in bytes, so need to divide by 4 to get dword offset
+	const int arg_offset = (m_kernel_args[i].offset + PS_KERNEL_REG_OFFSET) / 4;
+	// If its a global argument, that means it is a buffer with physical address(64-bit) and size(64-bit)
 	if(m_kernel_args[i].type == xrt_core::xclbin::kernel_argument::argtype::global) {
-	  auto buf_addr_ptr = reinterpret_cast<uint64_t *>(&m_args_from_host[(m_kernel_args[i].offset + PS_KERNEL_REG_OFFSET) / 4]);
+	  auto buf_addr_ptr = reinterpret_cast<uint64_t *>(&m_args_from_host[arg_offset]);
 	  auto buf_addr = reinterpret_cast<uint64_t>(*buf_addr_ptr);
-	  auto buf_size_ptr = reinterpret_cast<uint64_t *>(&m_args_from_host[(m_kernel_args[i].offset + PS_KERNEL_REG_OFFSET) / 4 + 2]);
+	  auto buf_size_ptr = reinterpret_cast<uint64_t *>(&m_args_from_host[arg_offset + 2]);
 	  auto buf_size = reinterpret_cast<uint64_t>(*buf_size_ptr);
 
 	  ps_arg p;
@@ -245,13 +248,14 @@ namespace xrt {
 	  p.bo_offset = buf_addr - mem_start_paddr;
 	  p.vaddr = mem_start_vaddr + p.bo_offset;
 #else
+	  p.bo_offset = 0;
 	  p.bo_handle = xclGetHostBO(m_devhdl, buf_addr, buf_size);
 	  p.vaddr = xclMapBO(m_devhdl, p.bo_handle, true);
 	  bo_args.emplace_back(p);
 #endif
 	  ffi_arg_values[i] = &bo_args.back().vaddr;
 	} else {
-	  ffi_arg_values[i] = &m_args_from_host[(m_kernel_args[i].offset + PS_KERNEL_REG_OFFSET) / 4];
+	  ffi_arg_values[i] = &m_args_from_host[arg_offset];
 	}
       }
 
