@@ -929,9 +929,6 @@ struct vmr_status
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    std::string err;
-    std::vector<std::string> value;
-
     if (device->is_userpf())
       return sysfs_fcn<result_type>::get(get_pcidev(device), "", "vmr_status");
     else

@@ -1550,11 +1550,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	(void) xocl_hwmon_sdm_get_sensors_list(lro, true);
 	xocl_drvinst_set_offline(lro, false);
-
-	if (lro->ready)
-		mgmt_info(lro, "Device fully initialized");
-	else
-		mgmt_err(lro, "Device not ready");
 	return 0;
 
 err_init_sysfs:

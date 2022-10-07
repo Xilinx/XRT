@@ -93,10 +93,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
     pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
 
     //user pf doesn't have mfg node. Also if user pf is loaded, it means that the card is not is mfg mode
-    bool is_mfg = false;
-    try{
-      is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
-    } catch(...) {}
+    const auto is_mfg = xrt_core::device_query_default<xrt_core::query::is_mfg>(device, false);
 
     //if factory mode
     if (is_mfg) {
@@ -110,7 +107,8 @@ XBUtilities::get_available_devices(bool inUserDomain)
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
       try { //1RP
         pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      } catch(...) {
+      }
+      catch(...) {
         // The id wasn't added
       }
 
@@ -118,16 +116,17 @@ XBUtilities::get_available_devices(bool inUserDomain)
         auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
         if (!logic_uuids.empty())
           pt_dev.put("id", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
-      } catch(...) {
+      }
+      catch(...) {
         // The id wasn't added
       }
 
     try {
-      std::string stream;
       auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
       std::string pf = device->is_userpf() ? "user" : "mgmt";
       pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
-    } catch(const xrt_core::query::exception&) {
+    }
+    catch(const xrt_core::query::exception&) {
         // The instance wasn't added
     }
 

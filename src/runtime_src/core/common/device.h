@@ -517,7 +517,11 @@ device_query_default(const device* device, const typename QueryRequestType::resu
 {
   try {
     return device_query<QueryRequestType>(device);
-  } catch(...) {
+  }
+  catch (const query::no_such_key&) {
+    return default_value;
+  }
+  catch (const query::sysfs_error&) {
     return default_value;
   }
 }
@@ -528,7 +532,11 @@ device_query_default(const std::shared_ptr<device>& device, const typename Query
 {
   try {
     return device_query<QueryRequestType>(device);
-  } catch(...) {
+  }
+  catch (const query::no_such_key&) {
+    return default_value;
+  }
+  catch (const query::sysfs_error&) {
     return default_value;
   }
 }

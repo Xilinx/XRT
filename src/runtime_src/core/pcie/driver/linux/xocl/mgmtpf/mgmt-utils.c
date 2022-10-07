@@ -671,7 +671,7 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 		}
 
 		if (!vmr_header.boot_on_default)
-			mgmt_err(lro, "VMR not using default image");
+			mgmt_info(lro, "VMR not using default image");
 
 		ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vmr_status", &vmr_header,
 		sizeof(vmr_header));

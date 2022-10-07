@@ -46,9 +46,8 @@ vmr_info(const xrt_core::device* device)
 {
   ptree_type pt_vmr_status_array;
   ptree_type pt_vmr_stats;
-  std::vector<std::string> empty_vector;
-  auto vmr_status = xrt_core::device_query_default<xq::vmr_status>(device, empty_vector);
-  auto vmr_version = xrt_core::device_query_default<xq::extended_vmr_status>(device, empty_vector);
+  auto vmr_status = xrt_core::device_query_default<xq::vmr_status>(device, {});
+  auto vmr_version = xrt_core::device_query_default<xq::extended_vmr_status>(device, {});
   vmr_status.insert(vmr_status.begin(), vmr_version.begin(), vmr_version.end());
   
   // only available for versal
