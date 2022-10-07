@@ -51,6 +51,7 @@ int main(int argc, char *argv[])
 
   /* Open syslog and send the first message */
   openlog("skd", LOG_PID | LOG_CONS, LOG_LOCAL0);
+  setlogmask(LOG_UPTO(LOG_INFO)); // set log level
   syslog(LOG_INFO, "Daemon Start...\n");
 
   /* Create a new SID for the child process */
