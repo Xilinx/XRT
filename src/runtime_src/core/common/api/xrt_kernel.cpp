@@ -746,11 +746,11 @@ public:
   }
 
   // Return kernel return code from command object for PS kernels
-  int
+  uint32_t
   get_return_code() const
   {
     auto pkt = get_ert_packet();
-    int ret;
+    uint32_t ret;
     ert_read_return_code(pkt, ret);
     return ret;
   }
@@ -2292,7 +2292,7 @@ public:
   }
 
   // return_code() - get kernel execution return code
-  int
+  uint32_t
   return_code() const
   {
     auto ktype = kernel->get_kernel_type();
@@ -3064,7 +3064,7 @@ state() const
   });
 }
 
-int
+uint32_t
 run::
 return_code() const
 {

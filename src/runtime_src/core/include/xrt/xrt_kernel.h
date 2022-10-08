@@ -343,7 +343,7 @@ public:
    *  Return code from PS kernel run
    */
   XCL_DRIVER_DLLESPEC
-  int
+  uint32_t
   return_code() const;
 
   /**

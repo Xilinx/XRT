@@ -83,7 +83,6 @@ static void scu_xgq_start(struct xrt_cu_scu *scu, u32 *data)
 
 	scu->num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx)
 				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
-	printk("Num Kernel Reg = %d\n", scu->num_reg);
 	for (i = 0; i < scu->num_reg; ++i) {
 		cu_regfile[i+1] = cmd->data[i];
 	}
