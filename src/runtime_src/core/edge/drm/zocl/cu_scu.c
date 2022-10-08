@@ -39,7 +39,7 @@ struct xrt_cu_scu {
 	struct list_head	 completed;
 };
 
-static inline void cu_move_to_complete(struct xrt_cu_scu *cu, int status)
+static inline void cu_move_to_complete(struct xrt_cu_scu *cu, int status, u32 rcode)
 {
 	struct kds_command *xcmd = NULL;
 
@@ -48,6 +48,7 @@ static inline void cu_move_to_complete(struct xrt_cu_scu *cu, int status)
 
 	xcmd = list_first_entry(&cu->submitted, struct kds_command, list);
 	xcmd->status = status;
+	xcmd->rcode = rcode;
 	list_move_tail(&xcmd->list, &cu->completed);
 }
 
@@ -82,6 +83,7 @@ static void scu_xgq_start(struct xrt_cu_scu *scu, u32 *data)
 
 	scu->num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx)
 				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
+	printk("Num Kernel Reg = %d\n", scu->num_reg);
 	for (i = 0; i < scu->num_reg; ++i) {
 		cu_regfile[i+1] = cmd->data[i];
 	}
@@ -136,6 +138,7 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 	u32 done_reg = 0;
 	u32 ready_reg = 0;
 	u32 *cu_regfile = scu->vaddr;
+	u32 rcode = 0;
 
 	/* Avoid access CU register unless we do have running commands.
 	 * This has a huge impact on performance.
@@ -148,14 +151,15 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg  = 1;
 		ready_reg = 1;
+		rcode = cu_regfile[scu->num_reg+1];
 		scu->run_cnts--;
-		cu_move_to_complete(scu, KDS_COMPLETED);
+		cu_move_to_complete(scu, KDS_COMPLETED, rcode);
 	}
 
 	status->num_done  = done_reg;
 	status->num_ready = ready_reg;
 	status->new_status = ctrl_reg;
-	status->rcode = cu_regfile[scu->num_reg+1];
+	status->rcode = rcode;
 }
 
 static void scu_check(void *core, struct xcu_status *status, bool force)
