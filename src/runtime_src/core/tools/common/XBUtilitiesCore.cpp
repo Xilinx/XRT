@@ -19,6 +19,7 @@
 #include "XBUtilitiesCore.h"
 
 #include "core/common/error.h"
+#include "core/common/unistd.h"
 
 // 3rd Party Library - Include Files
 #include <boost/algorithm/string/split.hpp>
@@ -314,13 +315,11 @@ XBUtilities::can_proceed(bool force)
 void
 XBUtilities::sudo_or_throw(const std::string& msg)
 {
-#ifndef _WIN32
-  if ((getuid() == 0) || (geteuid() == 0))
+  if (xrt_core::is_user_privileged())
     return;
 
   std::cerr << "ERROR: " << msg << std::endl;
   throw xrt_core::error(std::errc::operation_canceled);
-#endif
 }
 
 void
