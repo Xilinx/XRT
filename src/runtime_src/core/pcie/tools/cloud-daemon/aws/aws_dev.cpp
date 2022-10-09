@@ -445,7 +445,7 @@ int awsReadP2pBarAddr(size_t index, const xcl_mailbox_p2p_bar_addr *addr, int *r
 #ifndef INTERNAL_TESTING_FOR_AWS
 static void awsPciRescan(int index)
 {
-    std::string sysfs_name = xrt_core::pci::get_dev(index, true)->sysfs_name;
+    std::string sysfs_name = xrt_core::pci::get_dev(index, true)->m_sysfs_name;
     int mBoardNumber = index_map[sysfs_name];
     std::this_thread::sleep_for(std::chrono::seconds(1));
     int dev_offline = -1;
@@ -725,7 +725,7 @@ AwsDev::AwsDev(size_t index, const char *logfileName)
         mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    std::string sysfs_name = xrt_core::pci::get_dev(index, true)->sysfs_name;
+    std::string sysfs_name = xrt_core::pci::get_dev(index, true)->m_sysfs_name;
     std::cout << "AwsDev: " << sysfs_name << "(index: " << index << ")" << std::endl;
 #ifdef INTERNAL_TESTING_FOR_AWS
     mBoardNumber = index;

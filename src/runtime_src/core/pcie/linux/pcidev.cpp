@@ -1,27 +1,30 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2016-2020 Xilinx, Inc
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-#include <stdexcept>
-#include <cassert>
-#include <iostream>
-#include <iomanip>
-#include <sstream>
-#include <fstream>
-#include <dirent.h>
-#include <cstring>
-#include <unistd.h>
-#include <algorithm>
-#include <mutex>
-#include <regex>
-#include <sys/stat.h>
-#include <sys/file.h>
-#include <poll.h>
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
-#include "xclbin.h"
 #include "pcidev.h"
 #include "pcidrv.h"
+#include "xclbin.h"
+
 #include "core/common/utils.h"
+
+#include <boost/filesystem/fstream.hpp>
+#include <boost/filesystem.hpp>
+
+#include <algorithm>
+#include <cassert>
+#include <cstring>
+#include <dirent.h>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <mutex>
+#include <poll.h>
+#include <regex>
+#include <sstream>
+#include <stdexcept>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #define RENDER_NM       "renderD"
 #define DEV_TIMEOUT	90 // seconds
@@ -351,7 +354,7 @@ dev::
 sysfs_get(const std::string& subdev, const std::string& entry,
           std::string& err, std::vector<std::string>& ret)
 {
-  sysfs::get(sysfs_name, subdev, entry, err, ret);
+  sysfs::get(m_sysfs_name, subdev, entry, err, ret);
 }
 
 void
@@ -359,7 +362,7 @@ dev::
 sysfs_get(const std::string& subdev, const std::string& entry,
           std::string& err, std::vector<uint64_t>& ret)
 {
-  sysfs::get(sysfs_name, subdev, entry, err, ret);
+  sysfs::get(m_sysfs_name, subdev, entry, err, ret);
 }
 
 void
@@ -367,7 +370,7 @@ dev::
 sysfs_get(const std::string& subdev, const std::string& entry,
           std::string& err, std::vector<char>& ret)
 {
-  sysfs::get(sysfs_name, subdev, entry, err, ret);
+  sysfs::get(m_sysfs_name, subdev, entry, err, ret);
 }
 
 void
@@ -375,7 +378,7 @@ dev::
 sysfs_get(const std::string& subdev, const std::string& entry,
           std::string& err, std::string& s)
 {
-  sysfs::get(sysfs_name, subdev, entry, err, s);
+  sysfs::get(m_sysfs_name, subdev, entry, err, s);
 }
 
 void
@@ -383,7 +386,7 @@ dev::
 sysfs_put(const std::string& subdev, const std::string& entry,
           std::string& err, const std::string& input)
 {
-  sysfs::put(sysfs_name, subdev, entry, err, input);
+  sysfs::put(m_sysfs_name, subdev, entry, err, input);
 }
 
 void
@@ -391,7 +394,7 @@ dev::
 sysfs_put(const std::string& subdev, const std::string& entry,
           std::string& err, const std::vector<char>& buf)
 {
-  sysfs::put(sysfs_name, subdev, entry, err, buf);
+  sysfs::put(m_sysfs_name, subdev, entry, err, buf);
 }
 
 void
@@ -399,14 +402,14 @@ dev::
 sysfs_put(const std::string& subdev, const std::string& entry,
           std::string& err, const unsigned int& buf)
 {
-  sysfs::put(sysfs_name, subdev, entry, err, buf);
+  sysfs::put(m_sysfs_name, subdev, entry, err, buf);
 }
 
 std::string
 dev::
 get_sysfs_path(const std::string& subdev, const std::string& entry)
 {
-  return sysfs::get_path(sysfs_name, subdev, entry);
+  return sysfs::get_path(m_sysfs_name, subdev, entry);
 }
 
 std::string
@@ -415,8 +418,8 @@ get_subdev_path(const std::string& subdev, uint idx) const
 {
   // Main devfs path
   if (subdev.empty()) {
-    std::string instStr = std::to_string(instance);
-    if (is_mgmt) {
+    std::string instStr = std::to_string(m_instance);
+    if (m_is_mgmt) {
       std::string prefixStr = "/dev/xclmgmt";
       return prefixStr + instStr;
     }
@@ -428,10 +431,10 @@ get_subdev_path(const std::string& subdev, uint idx) const
   std::string path("/dev/xfpga/");
 
   path += subdev;
-  path += is_mgmt ? ".m" : ".u";
+  path += m_is_mgmt ? ".m" : ".u";
   //if the domain number is big, the shift overflows, hence need to cast
-  uint32_t dom = static_cast<uint32_t>(domain);
-  path += std::to_string( (dom<<16)+ (bus<<8) + (dev_no<<3) + func);
+  uint32_t dom = static_cast<uint32_t>(m_domain);
+  path += std::to_string( (dom<<16)+ (m_bus<<8) + (m_dev<<3) + m_func);
   path += "." + std::to_string(idx);
   return path;
 }
@@ -440,7 +443,7 @@ int
 dev::
 open(const std::string& subdev, uint32_t idx, int flag) const
 {
-  if (is_mgmt && !::is_admin())
+  if (m_is_mgmt && !::is_admin())
     throw std::runtime_error("Root privileges required");
 
   std::string devfs = get_subdev_path(subdev, idx);
@@ -455,53 +458,54 @@ open(const std::string& subdev, int flag) const
 }
 
 dev::
-dev(const drv& driver, const std::string& sysfs) : sysfs_name(sysfs)
+dev(const drv& driver, const std::string& sysfs) : m_sysfs_name(sysfs)
 {
   std::string err;
 
-  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &domain, &bus, &dev_no, &func) < 4)
+  if(sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &m_domain, &m_bus, &m_dev, &m_func) < 4)
     throw std::invalid_argument(sysfs + " is not valid BDF");
 
-  is_mgmt = !driver.is_user();
+  m_is_mgmt = !driver.is_user();
 
-  if (is_mgmt)
-    sysfs_get("", "instance", err, instance, static_cast<uint32_t>(INVALID_ID));
+  if (m_is_mgmt)
+    sysfs_get("", "instance", err, m_instance, static_cast<uint32_t>(INVALID_ID));
   else
-    instance = get_render_value(sysfs::dev_root + sysfs + "/drm");
+    m_instance = get_render_value(sysfs::dev_root + sysfs + "/drm");
 
-  sysfs_get<int>("", "userbar", err, user_bar, 0);
-  user_bar_size = bar_size(sysfs::dev_root + sysfs, user_bar);
-  sysfs_get<bool>("", "ready", err, is_ready, false);
+  sysfs_get<int>("", "userbar", err, m_user_bar, 0);
+  m_user_bar_size = bar_size(sysfs::dev_root + sysfs, m_user_bar);
+  sysfs_get<bool>("", "ready", err, m_is_ready, false);
+  m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 }
 
 dev::
 ~dev()
 {
-  if (user_bar_map != MAP_FAILED)
-    ::munmap(user_bar_map, user_bar_size);
+  if (m_user_bar_map != MAP_FAILED)
+    ::munmap(m_user_bar_map, m_user_bar_size);
 }
 
 int
 dev::
 map_usr_bar()
 {
-  std::lock_guard<std::mutex> l(lock);
+  std::lock_guard<std::mutex> l(m_lock);
 
-  if (user_bar_map != MAP_FAILED)
+  if (m_user_bar_map != MAP_FAILED)
     return 0;
 
   int dev_handle = open("", O_RDWR);
   if (dev_handle < 0)
     return -errno;
 
-  user_bar_map = (char *)::mmap(0, user_bar_size,
+  m_user_bar_map = (char *)::mmap(0, m_user_bar_size,
                                 PROT_READ | PROT_WRITE, MAP_SHARED, dev_handle, 0);
 
   // Mapping should stay valid after handle is closed
   // (according to man page)
   (void)close(dev_handle);
 
-  if (user_bar_map == MAP_FAILED)
+  if (m_user_bar_map == MAP_FAILED)
     return -errno;
 
   return 0;
@@ -520,12 +524,12 @@ int
 dev::
 pcieBarRead(uint64_t offset, void* buf, uint64_t len)
 {
-  if (user_bar_map == MAP_FAILED) {
+  if (m_user_bar_map == MAP_FAILED) {
     int ret = map_usr_bar();
     if (ret)
       return ret;
   }
-  (void) wordcopy(buf, user_bar_map + offset, len);
+  (void) wordcopy(buf, m_user_bar_map + offset, len);
   return 0;
 }
 
@@ -533,12 +537,12 @@ int
 dev::
 pcieBarWrite(uint64_t offset, const void* buf, uint64_t len)
 {
-  if (user_bar_map == MAP_FAILED) {
+  if (m_user_bar_map == MAP_FAILED) {
     int ret = map_usr_bar();
     if (ret)
       return ret;
   }
-  (void) wordcopy(user_bar_map + offset, buf, len);
+  (void) wordcopy(m_user_bar_map + offset, buf, len);
   return 0;
 }
 
@@ -658,12 +662,12 @@ std::shared_ptr<dev>
 dev::
 lookup_peer_dev()
 {
-  if (!is_mgmt)
+  if (!m_is_mgmt)
     return nullptr;
 
   int i = 0;
   for (auto udev = get_dev(i, true); udev; udev = get_dev(i, true), ++i)
-    if (udev->domain == domain && udev->bus == bus && udev->dev_no == dev_no)
+    if (udev->m_domain == m_domain && udev->m_bus == m_bus && udev->m_dev == m_dev)
       return udev;
 
   return nullptr;
@@ -680,7 +684,7 @@ std::shared_ptr<device>
 dev::
 create_device(device::handle_type handle, device::id_type id) const
 {
-  return std::shared_ptr<device_linux>(new device_linux(handle, id, !is_mgmt));
+  return std::shared_ptr<device_linux>(new device_linux(handle, id, !m_is_mgmt));
 }
 
 /*
@@ -718,7 +722,7 @@ get_runtime_active_kids(std::string &pci_bridge_path)
 int
 shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user, bool remove_mgmt)
 {
-  if (!mgmt_dev->is_mgmt)
+  if (!mgmt_dev->m_is_mgmt)
     return -EINVAL;
 
   auto udev = mgmt_dev->lookup_peer_dev();
@@ -838,7 +842,7 @@ check_p2p_config(const std::shared_ptr<dev>& dev, std::string &err)
   std::string errmsg;
   int ret = P2P_CONFIG_DISABLED;
 
-  if (dev->is_mgmt) {
+  if (dev->m_is_mgmt) {
     return -EINVAL;
   }
   err.clear();

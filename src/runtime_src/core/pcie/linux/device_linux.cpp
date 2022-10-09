@@ -119,7 +119,7 @@ struct bdf
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
-    return std::make_tuple(pdev->domain, pdev->bus, pdev->dev_no, pdev->func);
+    return std::make_tuple(pdev->m_domain, pdev->m_bus, pdev->m_dev, pdev->m_func);
   }
 };
 
@@ -413,13 +413,13 @@ struct instance
     std::string errmsg;
     auto pdev = get_pcidev(device);
 
-    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->domain % pdev->bus % pdev->dev_no %  pdev->func);
+    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->m_domain % pdev->m_bus % pdev->m_dev % pdev->m_func);
     if(device->is_userpf())
-      pdev->instance = get_render_value(dev_root + sysfsname + "/drm");
+      pdev->m_instance = get_render_value(dev_root + sysfsname + "/drm");
     else
-      pdev->sysfs_get("", "instance", errmsg, pdev->instance,static_cast<uint32_t>(INVALID_ID));
+      pdev->sysfs_get("", "instance", errmsg, pdev->m_instance,static_cast<uint32_t>(INVALID_ID));
 
-    return pdev->instance;
+    return pdev->m_instance;
   }
 
 };

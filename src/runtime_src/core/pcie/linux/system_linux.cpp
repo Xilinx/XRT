@@ -1,27 +1,27 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-#include "system_linux.h"
 #include "device_linux.h"
-#include "core/common/query_requests.h"
+#include "system_linux.h"
 #include "gen/version.h"
 #include "pcidev.h"
-#include "pcidrv_xocl.h"
 #include "pcidrv_xclmgmt.h"
+#include "pcidrv_xocl.h"
 
-#include <boost/property_tree/ini_parser.hpp>
+#include "core/common/query_requests.h"
+
 #include <boost/format.hpp>
-
-#include <fstream>
-#include <memory>
-#include <vector>
-#include <map>
-#include <chrono>
-#include <thread>
-
-#include <sys/utsname.h>
+#include <boost/property_tree/ini_parser.hpp>
 #include <gnu/libc-version.h>
+#include <sys/utsname.h>
+
+#include <chrono>
+#include <fstream>
+#include <map>
+#include <memory>
+#include <thread>
 #include <unistd.h>
+#include <vector>
 
 #if defined(__aarch64__) || defined(__arm__) || defined(__mips__)
   #define MACHINE_NODE_PATH "/proc/device-tree/model"
@@ -124,6 +124,7 @@ register_driver(std::shared_ptr<pci::drv> driver)
     driver->scan_devices(user_ready_list, user_nonready_list);
   else
     driver->scan_devices(mgmt_ready_list, mgmt_nonready_list);
+
   driver_list.emplace_back(std::move(driver));
 }
 
@@ -134,11 +135,13 @@ get_pcidev(unsigned index, bool is_user) const
   if (is_user) {
     if (index < user_ready_list.size())
       return user_ready_list[index];
+
     return user_nonready_list[index - user_ready_list.size()];
   }
 
   if (index < mgmt_ready_list.size())
     return mgmt_ready_list[index];
+
   return mgmt_nonready_list[index - mgmt_ready_list.size()];
 }
 
@@ -148,6 +151,7 @@ get_num_dev_ready(bool is_user) const
 {
   if (is_user)
     return user_ready_list.size();
+
   return mgmt_ready_list.size();
 }
 
@@ -157,6 +161,7 @@ get_num_dev_total(bool is_user) const
 {
   if (is_user)
     return user_ready_list.size() + user_nonready_list.size();
+
   return mgmt_ready_list.size() + mgmt_nonready_list.size();
 }
 
@@ -235,12 +240,12 @@ get_device_id(const std::string& bdf) const
   unsigned int i = 0;
   for (auto dev = get_pcidev(0); dev; dev = get_pcidev(++i)) {
       // [dddd:bb:dd.f]
-      auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->domain % dev->bus % dev->dev_no % dev->func);
+      auto dev_bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % dev->m_domain % dev->m_bus % dev->m_dev % dev->m_func);
       if (dev_bdf == bdf)
         return i;
       //consider default domain as 0000 and try to find a matching device
-      if(dev->domain == 0) {
-        dev_bdf = boost::str(boost::format("%02x:%02x.%01x") % dev->bus % dev->dev_no % dev->func);
+      if(dev->m_domain == 0) {
+        dev_bdf = boost::str(boost::format("%02x:%02x.%01x") % dev->m_bus % dev->m_dev % dev->m_func);
         if(dev_bdf == bdf)
           return i;
       }
@@ -261,7 +266,7 @@ system_linux::
 get_bdf_info(device::id_type id, bool is_user) const
 {
   auto pdev = get_pcidev(id, is_user);
-  return std::make_tuple(pdev->domain, pdev->bus, pdev->dev_no, pdev->func);
+  return std::make_tuple(pdev->m_domain, pdev->m_bus, pdev->m_dev, pdev->m_func);
 }
 
 std::shared_ptr<device>

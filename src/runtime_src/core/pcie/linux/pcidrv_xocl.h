@@ -13,12 +13,10 @@ class drv_xocl : public drv
 {
 public:
   std::string
-  name() const override
-  { return "xocl"; }
+  name() const override { return "xocl"; }
 
   bool
-  is_user() const override
-  { return true; }
+  is_user() const override { return true; }
 };
 
 } } // namespace xrt_core :: pci

@@ -330,8 +330,8 @@ void get_system_info() {
     xma_logmsg(level, "XMA-System-Info", "======= START =============");
     for (unsigned j = 0; j < xrt_core::pci::get_dev_total(); j++) {
         auto dev = xrt_core::pci::get_dev(j);
-        xma_logmsg(level, "XMA-System-Info", "dev index = %d; %s", j, dev->sysfs_name.c_str());
-        if (dev->is_ready) {
+        xma_logmsg(level, "XMA-System-Info", "dev index = %d; %s", j, dev->m_sysfs_name.c_str());
+        if (dev->m_is_ready) {
             /* Let's keep this function as generic
             for more detials customers should use xbutil
             uint32_t hwcfg_dev_index = 0;

@@ -5,15 +5,17 @@
 #define _XCL_PCIDEV_H_
 
 #include "device_linux.h"
+
+#include <fcntl.h>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
-#include <memory>
+
 #include <sys/mman.h>
 #include <sys/ioctl.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <mutex>
+#include <sys/types.h>
 
 // Supported vendors
 #define XILINX_ID       0x10ee
@@ -67,20 +69,21 @@ public:
   // The rest of information related to the device shall be obtained
   // dynamically via sysfs APIs below.
 
-  uint16_t domain =           INVALID_ID;
-  uint16_t bus =              INVALID_ID;
-  uint16_t dev_no =           INVALID_ID;
-  uint16_t func =             INVALID_ID;
-  uint32_t instance =         INVALID_ID;
-  std::string sysfs_name =    ""; // dir name under /sys/bus/pci/devices
-  int user_bar =              0;  // BAR mapped in by tools, default is BAR0
-  size_t user_bar_size =      0;
-  bool is_mgmt =              false;
-  bool is_ready =             false;
+  uint16_t m_domain =           INVALID_ID;
+  uint16_t m_bus =              INVALID_ID;
+  uint16_t m_dev =              INVALID_ID;
+  uint16_t m_func =             INVALID_ID;
+  uint32_t m_instance =         INVALID_ID;
+  std::string m_sysfs_name;     // dir name under /sys/bus/pci/devices
+  int m_user_bar =              0;  // BAR mapped in by tools, default is BAR0
+  size_t m_user_bar_size =      0;
+  bool m_is_mgmt =              false;
+  bool m_is_ready =             false;
 
   dev(const drv& driver, const std::string& sysfs_name);
   virtual
   ~dev();
+  dev() = delete;
 
   virtual void
   sysfs_get(const std::string& subdev, const std::string& entry,
@@ -184,8 +187,8 @@ private:
   int
   map_usr_bar();
 
-  std::mutex lock;
-  char *user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
+  std::mutex m_lock;
+  char *m_user_bar_map = reinterpret_cast<char *>(MAP_FAILED);
 };
 
 size_t

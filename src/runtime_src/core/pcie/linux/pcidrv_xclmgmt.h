@@ -13,12 +13,10 @@ class drv_xclmgmt : public drv
 {
 public:
   std::string
-  name() const override
-  { return "xclmgmt"; }
+  name() const override { return "xclmgmt"; }
 
   bool
-  is_user() const override
-  { return false; }
+  is_user() const override { return false; }
 };
 
 } } // namespace xrt_core :: pci

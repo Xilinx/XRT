@@ -32,7 +32,7 @@ scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
         continue;
 
       // Insert detected device into proper list.
-      if (pf->is_ready)
+      if (pf->m_is_ready)
         ready_list.push_back(std::move(pf));
       else
         nonready_list.push_back(std::move(pf));

@@ -85,7 +85,7 @@ public:
             std::string serialNumber, errmsg;
 	    xrt_core::pci::get_dev(i, true)->sysfs_get("xmc", "serial_num", errmsg, serialNumber); 
 	        if (!errmsg.empty() || !regex_match(serialNumber, sn)) {
-           	    std::cerr << "azure warning(" << xrt_core::pci::get_dev(i, true)->sysfs_name << ")";
+           	    std::cerr << "azure warning(" << xrt_core::pci::get_dev(i, true)->m_sysfs_name << ")";
                 std::cerr << " sysfs errmsg: " << errmsg;
                 std::cerr << " serialNumber: " << serialNumber;
                 std::cerr << std::endl;

@@ -612,7 +612,7 @@ void AzureDev::get_fpga_serialNo(std::string &fpgaSerialNo)
         //save the serial in case the already saved is empty
         fpga_serial_number.at(index) = fpgaSerialNo;
     if (!errmsg.empty() || fpgaSerialNo.empty()) {
-        std::cerr << "get_fpga_serialNo warning(" << dev->sysfs_name << ")";
+        std::cerr << "get_fpga_serialNo warning(" << dev->m_sysfs_name << ")";
         std::cerr << " sysfs errmsg: " << errmsg;
         std::cerr << " serialNumber: " << fpga_serial_number.at(index);
         std::cerr << std::endl;

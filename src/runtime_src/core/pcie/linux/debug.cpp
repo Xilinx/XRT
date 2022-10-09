@@ -2,6 +2,11 @@
 // Copyright (C) 2015-2017 Xilinx, Inc
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
+#include "pcidev.h"
+#include "shim.h"
+#include "xclbin.h"
+
+#include "core/common/message.h"
 #include "core/include/xdp/aim.h"
 #include "core/include/xdp/am.h"
 #include "core/include/xdp/asm.h"
@@ -10,20 +15,15 @@
 #include "core/include/xdp/lapc.h"
 #include "core/include/xdp/spc.h"
 
-#include "shim.h"
-#include "pcidev.h"
-#include "xclbin.h"
-#include "core/common/message.h"
-
-#include <iostream>
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <cassert>
-#include <algorithm>
-#include <thread>
-#include <vector>
-#include <time.h>
+#include <iostream>
 #include <string>
+#include <thread>
+#include <time.h>
+#include <vector>
 
 #ifndef _WINDOWS
 // TODO: Windows build support

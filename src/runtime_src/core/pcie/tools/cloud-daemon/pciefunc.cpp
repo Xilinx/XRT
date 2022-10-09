@@ -147,8 +147,8 @@ void pcieFunc::log(int priority, const char *format, ...) const
 
     va_start(args, format);
 
-    ss << std::hex << "[" << dev->domain << ":" <<
-        dev->bus << ":" << dev->dev_no << "." << dev->func << "] ";
+    ss << std::hex << "[" << dev->m_domain << ":" <<
+        dev->m_bus << ":" << dev->m_dev << "." << dev->m_func << "] ";
 
     vsyslog(priority, (ss.str() + format).c_str(), args);
 
