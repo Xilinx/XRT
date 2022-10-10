@@ -33,18 +33,18 @@ namespace po = boost::program_options;
 #pragma warning(disable : 4996) // disable warning caused by std::asctime
 #endif
 
-OO_UpdateBase::OO_UpdateBase(const std::string &_longName, const std::string &_shortName, bool _isHidden)
-  : OptionOptions(_longName,
-                  _shortName,
-                  "Update base partition",
-                  boost::program_options::value<decltype(m_update)>(&m_update)->implicit_value("all")->required(),
-                  "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
-                  "  ALL   - All images will be updated\n"
-                  "  SHELL - Platform image\n"
-                  "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
-                  "  NO-BACKUP   - Backup boot remains unchanged",
-                  _isHidden)
-  , m_update("")
+OO_UpdateBase::OO_UpdateBase(const std::string& _longName, const std::string& _shortName, bool _isHidden)
+    : OptionOptions(_longName,
+                    _shortName,
+                    "Update base partition",
+                    boost::program_options::value<decltype(m_update)>(&m_update)->implicit_value("all")->required(),
+                    "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
+                    "  ALL   - All images will be updated\n"
+                    "  SHELL - Platform image\n"
+                    "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
+                    "  NO-BACKUP   - Backup boot remains unchanged",
+                    _isHidden)
+    , m_update("")
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
@@ -64,12 +64,12 @@ OO_UpdateBase::OO_UpdateBase(const std::string &_longName, const std::string &_s
 
 // Create a list of images that are known to exist based on given names and paths
 static std::vector<std::string>
-find_flash_image_paths(const std::vector<std::string> &image_list)
+find_flash_image_paths(const std::vector<std::string>& image_list)
 {
   std::vector<std::string> path_list;
   auto installedShells = firmwareImage::getIntalledDSAs();
 
-  for (const auto &img : image_list) {
+  for (const auto& img : image_list) {
     // Check if the passed in image is absolute path
     if (boost::filesystem::is_regular_file(img)) {
       if (boost::filesystem::extension(img).compare(".xsabin") != 0) {
@@ -83,7 +83,7 @@ find_flash_image_paths(const std::vector<std::string> &image_list)
     else {
       // Checks installed shell names against the shell name passed in by the user
       std::string img_path;
-      for (auto const &shell : installedShells) {
+      for (auto const& shell : installedShells) {
         if (img.compare(shell.name) == 0) {
           // Only set the image path on the first shell match
           if (img_path.empty())
@@ -113,7 +113,7 @@ find_flash_image_paths(const std::vector<std::string> &image_list)
  *                       blank to use the boards default flashing mode
  */
 static void
-update_shell(unsigned int index, std::map<std::string, std::string> &image_paths, Flasher::E_FlasherType flash_type)
+update_shell(unsigned int index, std::map<std::string, std::string>& image_paths, Flasher::E_FlasherType flash_type)
 {
   Flasher flasher(index);
   if (!flasher.isValid())
@@ -192,7 +192,7 @@ update_versal_SC(std::shared_ptr<xrt_core::device> dev)
     done = true;
     progress_reporter.get()->finish(true, "SC firmware image has been programmed successfully.");
     t.join();
-  } catch (const xrt_core::query::sysfs_error &e) {
+  } catch (const xrt_core::query::sysfs_error& e) {
     done = true;
     progress_reporter.get()->finish(false, "Failed to update SC flash image.");
     t.join();
@@ -202,7 +202,7 @@ update_versal_SC(std::shared_ptr<xrt_core::device> dev)
 
 // Update SC firmware on the board
 static void
-update_SC(unsigned int index, const std::string &file)
+update_SC(unsigned int index, const std::string& file)
 {
   Flasher flasher(index);
 
@@ -236,7 +236,7 @@ update_SC(unsigned int index, const std::string &file)
   // Mgmt pf needs to shutdown so that the board doesn't brick
   try {
     dev->device_shutdown();
-  } catch (const xrt_core::error &e) {
+  } catch (const xrt_core::error& e) {
     throw xrt_core::error(
         std::string("Only proceed with SC update if all user applications for the target card(s) are stopped. ")
         + e.what());
@@ -253,7 +253,7 @@ update_SC(unsigned int index, const std::string &file)
   // Bring back mgmt pf
   try {
     dev->device_online();
-  } catch (const xrt_core::error &e) {
+  } catch (const xrt_core::error& e) {
     throw xrt_core::error(e.what() + std::string(" Please warm reboot."));
   }
 
@@ -262,7 +262,7 @@ update_SC(unsigned int index, const std::string &file)
 
 // Helper function for header info
 static std::string
-file_size(const std::string &_file)
+file_size(const std::string& _file)
 {
   std::ifstream in(_file, std::ifstream::ate | std::ifstream::binary);
   auto total_size = std::to_string(in.tellg());
@@ -296,12 +296,12 @@ deployment_path_and_filename(std::string file)
   auto pos = file.rfind('/') != std::string::npos ? file.rfind('/') : file.rfind('\\');
   std::string path = file.erase(pos);
 
-  return { dsafile, path };
+  return {dsafile, path};
 }
 
 // Helper function for header info
 static std::string
-get_file_timestamp(const std::string &_file)
+get_file_timestamp(const std::string& _file)
 {
   boost::filesystem::path p(_file);
   if (!boost::filesystem::exists(p))
@@ -314,7 +314,7 @@ get_file_timestamp(const std::string &_file)
 }
 
 static void
-pretty_print_platform_info(const boost::property_tree::ptree &_ptDevice, const std::string &vbnv)
+pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const std::string& vbnv)
 {
   std::cout << boost::format("%s : [%s]\n") % "Device" % _ptDevice.get<std::string>("platform.bdf");
   std::cout << std::endl;
@@ -325,10 +325,10 @@ pretty_print_platform_info(const boost::property_tree::ptree &_ptDevice, const s
   std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % _ptDevice.get<std::string>("platform.current_shell.id", "N/A");
   std::cout << std::endl;
   std::cout << "\nIncoming Configuration\n";
-  const boost::property_tree::ptree &available_shells = _ptDevice.get_child("platform.available_shells");
+  const boost::property_tree::ptree& available_shells = _ptDevice.get_child("platform.available_shells");
 
   boost::property_tree::ptree platform_to_flash;
-  for (auto &image : available_shells) {
+  for (auto& image : available_shells) {
     if ((image.second.get<std::string>("vbnv")).compare(vbnv) == 0) {
       platform_to_flash = image.second;
       break;
@@ -351,7 +351,7 @@ pretty_print_platform_info(const boost::property_tree::ptree &_ptDevice, const s
 }
 
 static void
-report_status(const std::string &vbnv, boost::property_tree::ptree &pt_device)
+report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device)
 {
   std::cout << "----------------------------------------------------\n";
   pretty_print_platform_info(pt_device, vbnv);
@@ -372,7 +372,7 @@ report_status(const std::string &vbnv, boost::property_tree::ptree &pt_device)
 }
 
 static bool
-are_shells_equal(const DSAInfo &candidate, const DSAInfo &current)
+are_shells_equal(const DSAInfo& candidate, const DSAInfo& current)
 {
   if (current.dsaname().empty())
     throw std::runtime_error("Current shell name is empty.");
@@ -381,17 +381,16 @@ are_shells_equal(const DSAInfo &candidate, const DSAInfo &current)
 }
 
 static bool
-are_scs_equal(const DSAInfo &candidate, const DSAInfo &current)
+are_scs_equal(const DSAInfo& candidate, const DSAInfo& current)
 {
   if (current.dsaname().empty())
     throw std::runtime_error("Current shell name is empty.");
 
-  return ((current.bmcVer.compare("INACTIVE") == 0) ||
-          (candidate.bmc_ver() == current.bmc_ver()));
+  return ((current.bmcVer.compare("INACTIVE") == 0) || (candidate.bmc_ver() == current.bmc_ver()));
 }
 
 static bool
-update_sc(unsigned int boardIdx, DSAInfo &candidate)
+update_sc(unsigned int boardIdx, DSAInfo& candidate)
 {
   Flasher flasher(boardIdx);
 
@@ -438,7 +437,7 @@ update_sc(unsigned int boardIdx, DSAInfo &candidate)
 // Flash shell and sc firmware
 // Helper method for auto_flash
 static bool
-update_shell(unsigned int boardIdx, DSAInfo &candidate, Flasher::E_FlasherType flash_type)
+update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType flash_type)
 {
   Flasher flasher(boardIdx);
 
@@ -480,14 +479,14 @@ update_shell(unsigned int boardIdx, DSAInfo &candidate, Flasher::E_FlasherType f
 }
 
 static void
-update_default_only(xrt_core::device *device, bool value)
+update_default_only(xrt_core::device* device, bool value)
 {
   try {
     // get boot on backup from vmr_status sysfs node
     boost::property_tree::ptree pt_empty;
     const auto pt = xrt_core::vmr::vmr_info(device).get_child("vmr", pt_empty);
-    for (const auto &ks : pt) {
-      const boost::property_tree::ptree &vmr_stat = ks.second;
+    for (const auto& ks : pt) {
+      const boost::property_tree::ptree& vmr_stat = ks.second;
       if (boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
         // if backup is booted, then do not proceed
         if (std::stoi(vmr_stat.get<std::string>("value")) != 1) {
@@ -499,7 +498,7 @@ update_default_only(xrt_core::device *device, bool value)
 
     uint32_t val = xrt_core::query::flush_default_only::value_type(value);
     xrt_core::device_update<xrt_core::query::flush_default_only>(device, val);
-  } catch (const xrt_core::query::exception &) {
+  } catch (const xrt_core::query::exception&) {
     // only available for versal devices
   }
 }
@@ -507,7 +506,7 @@ update_default_only(xrt_core::device *device, bool value)
 // Update shell and sc firmware on the device automatically
 // Refactor code to support only 1 device.
 static void
-auto_flash(std::shared_ptr<xrt_core::device> &device, Flasher::E_FlasherType flashType, const std::string &image = "")
+auto_flash(std::shared_ptr<xrt_core::device>& device, Flasher::E_FlasherType flashType, const std::string& image = "")
 {
   // Get platform information
   boost::property_tree::ptree pt;
@@ -543,7 +542,7 @@ auto_flash(std::shared_ptr<xrt_core::device> &device, Flasher::E_FlasherType fla
   DSAInfo dsa(image_path);
 
   // If the shell is not up-to-date and dsa has a flash image, queue the board for update
-  boost::property_tree::ptree &pt_dev = pt.get_child(std::to_string(device->get_device_id()));
+  boost::property_tree::ptree& pt_dev = pt.get_child(std::to_string(device->get_device_id()));
   bool same_shell = (dsa.name == pt_dev.get<std::string>("platform.current_shell.vbnv", ""))
       && (dsa.matchId(pt_dev.get<std::string>("platform.current_shell.id", "")));
 
@@ -592,7 +591,7 @@ auto_flash(std::shared_ptr<xrt_core::device> &device, Flasher::E_FlasherType fla
 
   // Perform DSA and BMC updating
   std::stringstream error_stream;
-  for (auto &p : boardsToUpdate) {
+  for (auto& p : boardsToUpdate) {
     try {
       std::cout << std::endl;
       // 1) Flash the Satellite Controller image
@@ -622,7 +621,7 @@ auto_flash(std::shared_ptr<xrt_core::device> &device, Flasher::E_FlasherType fla
       } else
         report_stream << boost::format("  [%s] : Base (e.g., shell) image is up-to-date.  No actions taken.\n")
                 % getBDF(p.first);
-    } catch (const xrt_core::error &e) {
+    } catch (const xrt_core::error& e) {
       error_stream << boost::format("ERROR: %s\n") % e.what();
     }
   }
@@ -651,12 +650,12 @@ auto_flash(std::shared_ptr<xrt_core::device> &device, Flasher::E_FlasherType fla
 }
 
 void
-OO_UpdateBase::execute(const SubCmdOptions &_options) const
+OO_UpdateBase::execute(const SubCmdOptions& _options) const
 {
   XBUtilities::verbose("SubCommand option: Update Base");
 
   XBUtilities::verbose("Option(s):");
-  for (const auto &aString : _options)
+  for (const auto& aString : _options)
     XBUtilities::verbose(" " + aString);
 
   // Honor help option first
@@ -672,7 +671,7 @@ OO_UpdateBase::execute(const SubCmdOptions &_options) const
   std::shared_ptr<xrt_core::device> device;
   try {
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
-  } catch (const std::runtime_error &e) {
+  } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);

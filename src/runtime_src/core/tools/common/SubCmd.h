@@ -32,54 +32,54 @@ class SubCmd {
   using SubOptionOptions = std::vector<std::shared_ptr<OptionOptions>>;
 
  public:
-  virtual void execute(const SubCmdOptions &_options) const = 0;
+  virtual void execute(const SubCmdOptions& _options) const = 0;
 
  public:
-  const std::string &getName() const { return m_subCmdName; };
-  const std::string &getShortDescription() const { return m_shortDescription; };
+  const std::string& getName() const { return m_subCmdName; };
+  const std::string& getShortDescription() const { return m_shortDescription; };
   bool isHidden() const { return m_isHidden; };
   bool isDeprecated() const { return m_isDeprecated; };
   bool isPreliminary() const { return m_isPreliminary; };
   bool isDefaultDeviceValid() const { return m_defaultDeviceValid; };
 
  public:
-  void setExecutableName(const std::string &_name) { m_executableName = _name; };
-  const std::string &getExecutableName() const { return m_executableName; };
+  void setExecutableName(const std::string& _name) { m_executableName = _name; };
+  const std::string& getExecutableName() const { return m_executableName; };
 
-  void setGlobalOptions(const boost::program_options::options_description &globalOptions) { m_globalOptions.add(globalOptions); };
+  void setGlobalOptions(const boost::program_options::options_description& globalOptions) { m_globalOptions.add(globalOptions); };
 
  protected:
-  const boost::program_options::options_description &getGlobalOptions() const { return m_globalOptions; };
+  const boost::program_options::options_description& getGlobalOptions() const { return m_globalOptions; };
 
  public:
   virtual ~SubCmd(){};
 
   // Child class Helper methods
  protected:
-  SubCmd(const std::string &_name, const std::string &_shortDescription);
+  SubCmd(const std::string& _name, const std::string& _shortDescription);
   void setIsHidden(bool _isHidden) { m_isHidden = _isHidden; };
   void setIsDeprecated(bool _isDeprecated) { m_isDeprecated = _isDeprecated; };
   void setIsPreliminary(bool _isPreliminary) { m_isPreliminary = _isPreliminary; };
   void setIsDefaultDevValid(bool _defaultDeviceValid) { m_defaultDeviceValid = _defaultDeviceValid; };
-  void setLongDescription(const std::string &_longDescription) { m_longDescription = _longDescription; };
-  void setExampleSyntax(const std::string &_exampleSyntax) { m_exampleSyntax = _exampleSyntax; };
-  void printHelp(bool removeLongOptDashes = false, const std::string &customHelpSection = "") const;
-  std::vector<std::string> process_arguments(boost::program_options::variables_map &vm,
-                                             const SubCmdOptions &_options,
-                                             const boost::program_options::options_description &common_options,
-                                             const boost::program_options::options_description &hidden_options,
-                                             const boost::program_options::positional_options_description &positionals =
+  void setLongDescription(const std::string& _longDescription) { m_longDescription = _longDescription; };
+  void setExampleSyntax(const std::string& _exampleSyntax) { m_exampleSyntax = _exampleSyntax; };
+  void printHelp(bool removeLongOptDashes = false, const std::string& customHelpSection = "") const;
+  std::vector<std::string> process_arguments(boost::program_options::variables_map& vm,
+                                             const SubCmdOptions& _options,
+                                             const boost::program_options::options_description& common_options,
+                                             const boost::program_options::options_description& hidden_options,
+                                             const boost::program_options::positional_options_description& positionals =
                                                  boost::program_options::positional_options_description(),
-                                             const SubOptionOptions &suboptions = SubOptionOptions(),
+                                             const SubOptionOptions& suboptions = SubOptionOptions(),
                                              bool validate_arguments = true) const;
-  std::vector<std::string> process_arguments(boost::program_options::variables_map &vm,
-                                             const SubCmdOptions &_options,
+  std::vector<std::string> process_arguments(boost::program_options::variables_map& vm,
+                                             const SubCmdOptions& _options,
                                              bool validate_arguments = true) const;
-  void conflictingOptions(const boost::program_options::variables_map &_vm,
-                          const std::string &_opt1,
-                          const std::string &_opt2) const;
+  void conflictingOptions(const boost::program_options::variables_map& _vm,
+                          const std::string& _opt1,
+                          const std::string& _opt2) const;
   void addSubOption(std::shared_ptr<OptionOptions> option);
-  std::shared_ptr<OptionOptions> checkForSubOption(const boost::program_options::variables_map &vm) const;
+  std::shared_ptr<OptionOptions> checkForSubOption(const boost::program_options::variables_map& vm) const;
 
  protected:
   SubOptionOptions m_subOptionOptions;

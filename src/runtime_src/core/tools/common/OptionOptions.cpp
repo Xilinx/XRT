@@ -28,7 +28,7 @@
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
-OptionOptions::OptionOptions(const std::string &longName, bool isHidden, const std::string &description)
+OptionOptions::OptionOptions(const std::string& longName, bool isHidden, const std::string& description)
   : m_executable("<unknown>")
   , m_command("<unknown>")
   , m_longName(longName)
@@ -43,11 +43,11 @@ OptionOptions::OptionOptions(const std::string &longName, bool isHidden, const s
   m_optionsDescription.add(m_selfOption);
 }
 
-OptionOptions::OptionOptions(const std::string &longName,
-                             const std::string &shortName,
-                             const std::string &optionDescription,
-                             const boost::program_options::value_semantic *optionValue,
-                             const std::string &valueDescription,
+OptionOptions::OptionOptions(const std::string& longName,
+                             const std::string& shortName,
+                             const std::string& optionDescription,
+                             const boost::program_options::value_semantic* optionValue,
+                             const std::string& valueDescription,
                              bool isHidden)
   : m_executable("<unknown>")
   , m_command("<unknown>")
@@ -75,8 +75,8 @@ OptionOptions::printHelp() const
 }
 
 std::vector<std::string>
-OptionOptions::process_arguments(boost::program_options::variables_map &vm,
-                                 const SubCmdOptions &options,
+OptionOptions::process_arguments(boost::program_options::variables_map& vm,
+                                 const SubCmdOptions& options,
                                  bool validate_arguments) const
 {
   po::options_description all_options("All Options");
@@ -86,7 +86,7 @@ OptionOptions::process_arguments(boost::program_options::variables_map &vm,
   try {
     po::command_line_parser parser(options);
     return XBU::process_arguments(vm, parser, all_options, m_positionalOptions, validate_arguments);
-  } catch (boost::program_options::error &e) {
+  } catch (boost::program_options::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);

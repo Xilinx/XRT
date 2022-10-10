@@ -21,7 +21,7 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream>
 
-OO_FactoryReset::OO_FactoryReset(const std::string &_longName, const std::string &_shortName, bool _isHidden)
+OO_FactoryReset::OO_FactoryReset(const std::string& _longName, const std::string& _shortName, bool _isHidden)
     : OptionOptions(_longName,
                     _shortName,
                     "Reset the FPGA PROM back to the factory image",
@@ -47,12 +47,12 @@ OO_FactoryReset::OO_FactoryReset(const std::string &_longName, const std::string
 }
 
 void
-OO_FactoryReset::execute(const SubCmdOptions &_options) const
+OO_FactoryReset::execute(const SubCmdOptions& _options) const
 {
   XBUtilities::verbose("SubCommand option: Factory Reset");
 
   XBUtilities::verbose("Option(s):");
-  for (const auto &aString : _options)
+  for (const auto& aString : _options)
     XBUtilities::verbose(" " + aString);
 
   // Honor help option first
@@ -68,7 +68,7 @@ OO_FactoryReset::execute(const SubCmdOptions &_options) const
   std::shared_ptr<xrt_core::device> device;
   try {
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
-  } catch (const std::runtime_error &e) {
+  } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);

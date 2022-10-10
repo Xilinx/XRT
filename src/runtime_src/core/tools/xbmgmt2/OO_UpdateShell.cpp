@@ -23,7 +23,7 @@ namespace po = boost::program_options;
 #include <fstream>
 #include <iostream>
 
-OO_UpdateShell::OO_UpdateShell(const std::string &_longName, const std::string &_shortName, bool _isHidden)
+OO_UpdateShell::OO_UpdateShell(const std::string& _longName, const std::string& _shortName, bool _isHidden)
     : OptionOptions(_longName,
                     _shortName,
                     "Update the shell partition for a 2RP platform",
@@ -40,7 +40,7 @@ OO_UpdateShell::OO_UpdateShell(const std::string &_longName, const std::string &
 }
 
 static void
-program_plp(const xrt_core::device *dev, const std::string &partition)
+program_plp(const xrt_core::device* dev, const std::string& partition)
 {
   std::ifstream stream(partition, std::ios_base::binary);
   if (!stream.is_open())
@@ -57,7 +57,7 @@ program_plp(const xrt_core::device *dev, const std::string &partition)
 
   try {
     xrt_core::program_plp(dev, buffer, XBU::getForce());
-  } catch (xrt_core::error &e) {
+  } catch (xrt_core::error& e) {
     std::cout << "ERROR: " << e.what() << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
@@ -65,12 +65,12 @@ program_plp(const xrt_core::device *dev, const std::string &partition)
 }
 
 void
-OO_UpdateShell::execute(const SubCmdOptions &_options) const
+OO_UpdateShell::execute(const SubCmdOptions& _options) const
 {
   XBUtilities::verbose("SubCommand option: Update Shell");
 
   XBUtilities::verbose("Option(s):");
-  for (const auto &aString : _options)
+  for (const auto& aString : _options)
     XBUtilities::verbose(" " + aString);
 
   // Honor help option first
@@ -86,7 +86,7 @@ OO_UpdateShell::execute(const SubCmdOptions &_options) const
   std::shared_ptr<xrt_core::device> device;
   try {
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
-  } catch (const std::runtime_error &e) {
+  } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
@@ -111,7 +111,7 @@ OO_UpdateShell::execute(const SubCmdOptions &_options) const
   std::cout << "Programming shell on device [" << flasher.sGetDBDF() << "]..." << std::endl;
   std::cout << "Partition file: " << dsa.file << std::endl;
 
-  for (const auto &uuid : dsa.uuids) {
+  for (const auto& uuid : dsa.uuids) {
     // check if plp is compatible with the installed blp
     if (xrt_core::device_query<xrt_core::query::interface_uuids>(device).front().compare(uuid) == 0) {
       XBUtilities::sudo_or_throw("Root privileges are required to load the PLP image");

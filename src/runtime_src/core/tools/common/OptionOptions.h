@@ -27,42 +27,40 @@ class OptionOptions {
  public:
   typedef std::vector<std::string> SubCmdOptions;
 
-  virtual void execute(const SubCmdOptions &_options) const = 0;
+  virtual void execute(const SubCmdOptions& _options) const = 0;
 
  public:
-  const boost::shared_ptr<boost::program_options::option_description> &option() const { return m_selfOption.options()[0]; };
-  const std::string &longName() const { return m_longName; };
+  const boost::shared_ptr<boost::program_options::option_description>& option() const { return m_selfOption.options()[0]; };
+  const std::string& longName() const { return m_longName; };
   const std::string optionNameString() const { return m_shortName.empty() ? m_longName : m_longName + "," + m_shortName; };
-  const std::string &description() const { return m_description; };
-  const std::string &extendedHelp() const { return m_extendedHelp; };
+  const std::string& description() const { return m_description; };
+  const std::string& extendedHelp() const { return m_extendedHelp; };
   bool isHidden() const { return m_isHidden; };
 
-  void setExecutable(const std::string &_executable) { m_executable = _executable; };
-  void setCommand(const std::string &_command) { m_command = _command; };
+  void setExecutable(const std::string& _executable) { m_executable = _executable; };
+  void setCommand(const std::string& _command) { m_command = _command; };
 
-  const boost::program_options::options_description &
-    getOptionsDescription() const { return m_optionsDescription; };
-  const boost::program_options::positional_options_description &
-    getPositionalOptions() const { return m_positionalOptions; };
+  const boost::program_options::options_description& getOptionsDescription() const { return m_optionsDescription; };
+  const boost::program_options::positional_options_description& getPositionalOptions() const { return m_positionalOptions; };
 
-  void setGlobalOptions(const boost::program_options::options_description &globalOptions) { m_globalOptions.add(globalOptions); };
+  void setGlobalOptions(const boost::program_options::options_description& globalOptions) { m_globalOptions.add(globalOptions); };
 
  public:
   virtual ~OptionOptions(){};
 
   // Child class Helper methods
  protected:
-  OptionOptions(const std::string &longName, bool isHidden, const std::string &description);
-  OptionOptions(const std::string &longName,
-                const std::string &shortName,
-                const std::string &optionDescription,
-                const boost::program_options::value_semantic *optionValue,
-                const std::string &valueDescription,
+  OptionOptions(const std::string& longName, bool isHidden, const std::string& description);
+  OptionOptions(const std::string& longName,
+                const std::string& shortName,
+                const std::string& optionDescription,
+                const boost::program_options::value_semantic* optionValue,
+                const std::string& valueDescription,
                 bool isHidden);
-  void setExtendedHelp(const std::string &extendedHelp) { m_extendedHelp = extendedHelp; };
+  void setExtendedHelp(const std::string& extendedHelp) { m_extendedHelp = extendedHelp; };
   void printHelp() const;
-  std::vector<std::string> process_arguments(boost::program_options::variables_map &vm,
-                                             const SubCmdOptions &options,
+  std::vector<std::string> process_arguments(boost::program_options::variables_map& vm,
+                                             const SubCmdOptions& options,
                                              bool validate_arguments = true) const;
 
  private:

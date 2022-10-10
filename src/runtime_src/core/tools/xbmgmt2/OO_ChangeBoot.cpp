@@ -24,7 +24,7 @@ namespace po = boost::program_options;
 
 // ----- CLASS METHODS -------------------------------------------
 
-OO_ChangeBoot::OO_ChangeBoot(const std::string &_longName, const std::string &_shortName, bool _isHidden)
+OO_ChangeBoot::OO_ChangeBoot(const std::string& _longName, const std::string& _shortName, bool _isHidden)
     : OptionOptions(_longName,
                     _shortName,
                     "Modify the boot for an RPU and/or APU to either partition A or partition B",
@@ -43,11 +43,10 @@ OO_ChangeBoot::OO_ChangeBoot(const std::string &_longName, const std::string &_s
 }
 
 static void
-switch_partition(xrt_core::device *device, int m_boot)
+switch_partition(xrt_core::device* device, int m_boot)
 {
   auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  std::cout << boost::format("Rebooting device: [%s] with '%s' partition\n")
-                % bdf % (m_boot ? "backup" : "default");
+  std::cout << boost::format("Rebooting device: [%s] with '%s' partition\n") % bdf % (m_boot ? "backup" : "default");
   try {
     auto value = xrt_core::query::flush_default_only::value_type(m_boot);
     xrt_core::device_update<xrt_core::query::boot_partition>(device, value);
@@ -55,7 +54,7 @@ switch_partition(xrt_core::device *device, int m_boot)
     auto hot_reset = XBU::str_to_reset_obj("hot");
     device->reset(hot_reset);
     std::cout << "Rebooted successfully" << std::endl;
-  } catch (const xrt_core::query::exception &ex) {
+  } catch (const xrt_core::query::exception& ex) {
     std::cout << "ERROR: " << ex.what() << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
     // only available for versal devices
@@ -63,12 +62,12 @@ switch_partition(xrt_core::device *device, int m_boot)
 }
 
 void
-OO_ChangeBoot::execute(const SubCmdOptions &_options) const
+OO_ChangeBoot::execute(const SubCmdOptions& _options) const
 {
   XBUtilities::verbose("SubCommand option: Change boot");
 
   XBUtilities::verbose("Option(s):");
-  for (const auto &aString : _options)
+  for (const auto& aString : _options)
     XBUtilities::verbose(" " + aString);
 
   // Honor help option first
@@ -84,7 +83,7 @@ OO_ChangeBoot::execute(const SubCmdOptions &_options) const
   std::shared_ptr<xrt_core::device> device;
   try {
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
-  } catch (const std::runtime_error &e) {
+  } catch (const std::runtime_error& e) {
     XBU::throw_cancel(e.what());
   }
 

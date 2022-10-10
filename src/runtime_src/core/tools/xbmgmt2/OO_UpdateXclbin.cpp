@@ -21,7 +21,7 @@ namespace po = boost::program_options;
 #include <iostream>
 #include <vector>
 
-OO_UpdateXclbin::OO_UpdateXclbin(const std::string &_longName, const std::string &_shortName, bool _isHidden)
+OO_UpdateXclbin::OO_UpdateXclbin(const std::string& _longName, const std::string& _shortName, bool _isHidden)
     : OptionOptions(_longName,
                     _shortName,
                     "Load an xclbin onto the FPGA",
@@ -39,12 +39,12 @@ OO_UpdateXclbin::OO_UpdateXclbin(const std::string &_longName, const std::string
 }
 
 void
-OO_UpdateXclbin::execute(const SubCmdOptions &_options) const
+OO_UpdateXclbin::execute(const SubCmdOptions& _options) const
 {
   XBUtilities::verbose("SubCommand option: Update xclbin");
 
   XBUtilities::verbose("Option(s):");
-  for (const auto &aString : _options)
+  for (const auto& aString : _options)
     XBUtilities::verbose(" " + aString);
 
   // Honor help option first
@@ -60,7 +60,7 @@ OO_UpdateXclbin::execute(const SubCmdOptions &_options) const
   std::shared_ptr<xrt_core::device> device;
   try {
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
-  } catch (const std::runtime_error &e) {
+  } catch (const std::runtime_error& e) {
     XBU::throw_cancel(e.what());
   }
 
@@ -70,9 +70,9 @@ OO_UpdateXclbin::execute(const SubCmdOptions &_options) const
   if (!stream)
     throw xrt_core::error(boost::str(boost::format("Could not open %s for reading") % m_xclbin));
 
-  stream.seekg(0,stream.end);
+  stream.seekg(0, stream.end);
   ssize_t size = stream.tellg();
-  stream.seekg(0,stream.beg);
+  stream.seekg(0, stream.beg);
 
   std::vector<char> xclbin_buffer(size);
   stream.read(xclbin_buffer.data(), size);
@@ -81,7 +81,7 @@ OO_UpdateXclbin::execute(const SubCmdOptions &_options) const
   std::cout << "Downloading xclbin on device [" << bdf << "]..." << std::endl;
   try {
     device->xclmgmt_load_xclbin(xclbin_buffer.data());
-  } catch (xrt_core::error &e) {
+  } catch (xrt_core::error& e) {
     XBU::throw_cancel(e.what());
   }
   std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
