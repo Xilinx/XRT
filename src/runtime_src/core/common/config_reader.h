@@ -359,13 +359,6 @@ get_aie_trace_buffer_offload_interval_ms()
 }
 
 inline unsigned int
-get_aie_trace_buffer_offload_interval_us()
-{
-  static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_us", 100);
-  return value;
-}
-
-inline unsigned int
 get_aie_trace_file_dump_interval_s()
 {
   static unsigned int value = detail::get_uint_value("Debug.aie_trace_file_dump_interval_s", 5);
@@ -844,20 +837,6 @@ get_aie_profile_settings_graph_based_aie_memory_metrics()
 }
 
 inline std::string
-get_aie_profile_settings_graph_based_interface_tile_metrics()
-{
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_interface_tile_metrics", "");
-  return value;
-}
-
-inline std::string
-get_aie_profile_settings_graph_based_mem_tile_metrics()
-{
-  static std::string value = detail::get_string_value("AIE_profile_settings.graph_based_mem_tile_metrics", "");
-  return value;
-}
-
-inline std::string
 get_aie_profile_settings_tile_based_aie_metrics()
 {
   static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_aie_metrics", "");
@@ -878,22 +857,12 @@ get_aie_profile_settings_tile_based_interface_tile_metrics()
   return value;
 }
 
-inline std::string
-get_aie_profile_settings_tile_based_mem_tile_metrics()
-{
-  static std::string value = detail::get_string_value("AIE_profile_settings.tile_based_mem_tile_metrics", "");
-  return value;
-}
-
 // AIE_trace_settings
 
-/**
- * off|time|graph|user
- */
 inline std::string
 get_aie_trace_settings_start_type()
 {
-  static std::string value = detail::get_string_value("AIE_trace_settings.start_type", "off");
+  static std::string value = detail::get_string_value("AIE_trace_settings.start_type", "time");
   return value;
 }
 
@@ -924,23 +893,6 @@ get_aie_trace_settings_tile_based_aie_tile_metrics()
   static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_aie_tile_metrics", "");
   return value;
 }
-
-inline std::string
-get_aie_trace_settings_tile_based_mem_tile_metrics()
-{
-  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_mem_tile_metrics", "");
-  return value;
-}
-
-#if 0
-// Post 2022.2
-inline std::string
-get_aie_trace_settings_tile_based_interface_tile_metrics()
-{
-  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_interface_tile_metrics", "");
-  return value;
-}
-#endif
 
 inline std::string
 get_aie_trace_settings_buffer_size()

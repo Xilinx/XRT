@@ -36,9 +36,11 @@ struct mem_bank_t
 {
   uint64_t m_base_address;
   uint64_t m_size;
+  std::string m_tag;
   mem_bank_t(const struct mem_data& data)
   : m_base_address(data.m_base_address)
     , m_size(data.m_size * 1024) // In memory topology struct size is stored as KB. We convert to bytes for easy referencing
+    , m_tag(reinterpret_cast<const char*>(data.m_tag))
   {}
 };
 
@@ -165,12 +167,24 @@ perform_memory_action(xrt_core::device* device, xrt_core::aligned_ptr_type& buf,
 
     // Update the buffer index based on how far we have read
     void* current_buffer_location = static_cast<char *>(buf.get()) + bytes_seen;
+    boost::format err_fmt("%s: Code : %d - %s %u bytes from %s(0x%x)");
+    err_fmt % __func__;
     switch (action) {
       case operation_type::read:
-        device->unmgd_pread(current_buffer_location, bytes_to_edit, validated_start_addr);
+        try {
+          device->unmgd_pread(current_buffer_location, bytes_to_edit, validated_start_addr);
+        } catch (const std::exception&) {
+          const auto err_msg = err_fmt % errno % "reading" % bytes_to_edit % it->m_tag % current_addr;
+          throw xrt_core::error(std::errc::operation_canceled, err_msg.str());
+        }
         break;
       case operation_type::write:
-        device->unmgd_pwrite(current_buffer_location, bytes_to_edit, validated_start_addr);
+        try {
+          device->unmgd_pwrite(current_buffer_location, bytes_to_edit, validated_start_addr);
+        } catch (const std::exception&) {
+          const auto err_msg = err_fmt % errno % "writing" % bytes_to_edit % it->m_tag % current_addr;
+          throw xrt_core::error(std::errc::operation_canceled, err_msg.str());
+        }
         break;
     }
     remaining_bytes_to_see -= bytes_to_edit;

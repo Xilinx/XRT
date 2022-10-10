@@ -20,7 +20,9 @@
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
 
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 
 #include "core/common/message.h"
@@ -29,6 +31,7 @@
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 #include "core/edge/user/shim.h"
+
 #include <set>
 
 namespace {
@@ -315,21 +318,25 @@ namespace xdp {
 
         std::stringstream warningMessage;
         if (graphStallCounter == graphTilesVec.size()) {
-          // We have a stuck graph
-          warningMessage
-          << "Potential deadlock/hang found in AI Engines. Graph : " << graphName;
-          xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+          if (xdp::HW_EMU != xdp::getFlowMode()) {
+            // We have a stuck graph
+            warningMessage
+            << "Potential deadlock/hang found in AI Engines. Graph : " << graphName;
+            xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+          }
           // Send next warning if all tiles come out of hang & reach threshold again
           graphStallCounter = 0;
         } else if (foundStuckCores) {
-          // We have a stuck core within this graph
-          warningMessage
-          << "Potential stuck cores found in AI Engines. Graph : " << graphName << " "
-          << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row + 1 << ") "
-          << "Status 0x" << std::hex << stuckCoreStatus << std::dec
-          << " : " << getCoreStatusString(stuckCoreStatus);
+          if (xdp::HW_EMU != xdp::getFlowMode()) {
+            // We have a stuck core within this graph
+            warningMessage
+            << "Potential stuck cores found in AI Engines. Graph : " << graphName << " "
+            << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row + 1 << ") "
+            << "Status 0x" << std::hex << stuckCoreStatus << std::dec
+            << " : " << getCoreStatusString(stuckCoreStatus);
 
-          xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+            xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+          }
           foundStuckCores = false;
         }
 
@@ -377,12 +384,9 @@ namespace xdp {
     if (!xrt_core::config::get_aie_status())
       return;
 
-    const unsigned int PATH_LENGTH = 512;
-    char pathBuf[PATH_LENGTH];
-    memset(pathBuf, 0, PATH_LENGTH);
-    xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
-
-    std::string sysfspath(pathBuf);
+    std::array<char, sysfs_max_path_length> pathBuf = {0};
+    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (sysfs_max_path_length-1) ) ;
+    std::string sysfspath(pathBuf.data());
     uint64_t deviceID = db->addDevice(sysfspath); // Get the unique device Id
 
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {

@@ -74,6 +74,7 @@ set(XRT_XDP_PROFILE_BASE_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plug
 set(XRT_XDP_PROFILE_DATABASE_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/profile/database")
 set(XRT_XDP_PROFILE_EVENTS_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/database/events")
 set(XRT_XDP_PROFILE_STATIC_INFO_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/database/static_info")
+set(XRT_XDP_PROFILE_DYNAMIC_INFO_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/profile/database/dynamic_info")
 set(XRT_XDP_PROFILE_EVENTS_CREATOR_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/database/events/creator")
 set(XRT_XDP_PROFILE_VP_WRITER_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/vp_base")
 
@@ -92,6 +93,8 @@ file(GLOB XRT_NEW_XDP_CORE_FILES
   "${XRT_XDP_PROFILE_EVENTS_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_STATIC_INFO_DIR}/*.h"
   "${XRT_XDP_PROFILE_STATIC_INFO_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_DYNAMIC_INFO_DIR}/*.h"
+  "${XRT_XDP_PROFILE_DYNAMIC_INFO_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_EVENTS_CREATOR_DIR}/*.h"
   "${XRT_XDP_PROFILE_EVENTS_CREATOR_DIR}/*.cpp"
   "${XRT_XDP_PROFILE_VP_WRITER_DIR}/*.h"
@@ -372,6 +375,10 @@ set_target_properties(xdp_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION
 set_target_properties(xdp_hal_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
+# Install directories are different for Windows and Linux
+
+if (NOT WIN32)
+
 install (TARGETS xdp_hal_plugin
                  xdp_hal_api_interface_plugin
                  xdp_lop_plugin
@@ -384,6 +391,23 @@ install (TARGETS xdp_hal_plugin
                  xdp_pl_deadlock_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
+
+else()
+
+install (TARGETS xdp_hal_plugin
+                 xdp_hal_api_interface_plugin
+                 xdp_lop_plugin
+                 xdp_native_plugin
+                 xdp_opencl_trace_plugin
+                 xdp_opencl_counters_plugin
+                 xdp_user_plugin
+                 xdp_device_offload_plugin
+                 xdp_hal_device_offload_plugin
+                 xdp_pl_deadlock_plugin
+  LIBRARY DESTINATION ${XRT_INSTALL_BIN_DIR}
+)
+
+endif()
 
 # ============ Linux Specific Plugin modules =============
 if (NOT WIN32)
@@ -442,8 +466,8 @@ endif()
 if (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
   # AIE Profile plugin
   add_library(xdp_aie_profile_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
-  add_dependencies(xdp_aie_profile_plugin xdp_core xrt_core)
-  target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core xrt_core metal xaiengine)
+  add_dependencies(xdp_aie_profile_plugin xdp_core)
+  target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core metal xaiengine)
   set_target_properties(xdp_aie_profile_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_profile_plugin
@@ -462,8 +486,8 @@ if (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
 
   # AIE Debug plugin
   add_library(xdp_aie_debug_plugin MODULE ${XRT_XDP_AIE_DEBUG_PLUGIN_FILES})
-  add_dependencies(xdp_aie_debug_plugin xdp_core xrt_core)
-  target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_core metal xaiengine)
+  add_dependencies(xdp_aie_debug_plugin xdp_core)
+  target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core metal xaiengine)
   set_target_properties(xdp_aie_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_debug_plugin

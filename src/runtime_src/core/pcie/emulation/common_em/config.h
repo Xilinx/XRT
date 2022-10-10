@@ -31,7 +31,7 @@
 #include <vector>
 
 #define DEBUG_MSGS_COUT(x) 
-//#define DEBUG_MSGS_COUT(x) std::cout<<std::endl<<__func__<<__LINE__<<x<<std::endl;
+//#define DEBUG_MSGS_COUT(x) std::cout<<std::endl<<"\t"<<__func__<<"\t"<<std::dec<<__LINE__<<"\t"<<x<<".\t"<<std::endl
 
 namespace xclemulation{
   

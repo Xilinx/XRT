@@ -46,6 +46,11 @@
 /* The Clock IP use index 0 for data, 1 for kernel, 2 for sys, 3 for sys1 */ 
 #define XGQ_CLOCK_WIZ_MAX_RES           4
 
+/* VMR Identify Command Version Major and Minor Numbers */
+#define VMR_IDENTIFY_CMD_MAJOR                  1
+#define VMR_IDENTIFY_CMD_MINOR                  0
+
+
 /**
  * clock scaling request types
  */
@@ -86,6 +91,14 @@ enum xgq_cmd_clock_req_type {
 	XGQ_CMD_CLOCK_WIZARD 		= 0x0,
 	XGQ_CMD_CLOCK_COUNTER		= 0x1,
 	XGQ_CMD_CLOCK_SCALE		= 0x2,
+};
+
+/**
+ * clock scaling request types
+ */
+enum xgq_cmd_clock_scaling_req_type {
+	XGQ_CMD_CLK_SCALING_GET_STATUS	= 0x1,
+	XGQ_CMD_CLK_SCALING_SET_OVERRIDE= 0x2,
 };
 
 /**
@@ -361,6 +374,17 @@ struct xgq_cmd_cq_vmr_payload {
 };
 
 /*
+ * struct xgq_cmd_cq_vmr_identify_payload: Identify Command payload
+ *
+ * VMR Identify Command
+*/
+struct xgq_cmd_cq_vmr_identify_payload {
+    uint16_t ver_major;
+    uint16_t ver_minor;
+    uint32_t resvd;
+};
+
+/*
  * struct xgq_cmd_cq: vmr completion command
  *
  * @hdr:		vmr completion command header
@@ -380,6 +404,7 @@ struct xgq_cmd_cq {
 		struct xgq_cmd_cq_log_page_payload	cq_log_payload;
 		struct xgq_cmd_cq_data_payload		cq_xclbin_payload;
 		struct xgq_cmd_cq_clk_scaling_payload cq_clk_scaling_payload;
+		struct xgq_cmd_cq_vmr_identify_payload  cq_vmr_identify_payload;
 	};
 	uint32_t rcode;
 };

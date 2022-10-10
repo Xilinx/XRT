@@ -39,7 +39,7 @@ struct xclSKCmd {
     char	krnl_name[XRT_MAX_NAME_LENGTH];
     int		bohdl;
     int		meta_bohdl;
-    unsigned char uuid[16];
+    uuid_t      uuid;
 };
 
 struct xclAIECmd {

@@ -155,6 +155,7 @@ update_versal_SC(std::shared_ptr<xrt_core::device> dev)
   catch (const xrt_core::query::sysfs_error& e) {
     done = true;
     progress_reporter.get()->finish(false, "Failed to update SC flash image.");
+    t.join();
     throw xrt_core::error(std::string("Error accessing sysfs entry : ") + e.what());
   }
 }
@@ -676,11 +677,13 @@ switch_partition(xrt_core::device* device, int boot)
   std::cout << boost::format("Rebooting device: [%s] with '%s' partition")
                 % bdf % (boot ? "backup" : "default") << std::endl;
   try {
+    // sets sysfs node boot_from_back [1:backup, 0:default], then hot reset
     auto value = xrt_core::query::flush_default_only::value_type(boot);
     xrt_core::device_update<xrt_core::query::boot_partition>(device, value);
+
     std::cout << "Performing hot reset..." << std::endl;
-    auto hot_reset = XBU::str_to_reset_obj("hot");
-    device->reset(hot_reset);
+    device->device_shutdown();
+    device->device_online();
     std::cout << "Rebooted successfully" << std::endl;
   }
   catch (const xrt_core::query::exception& ex) {

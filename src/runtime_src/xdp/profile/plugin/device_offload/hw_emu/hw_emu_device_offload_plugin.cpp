@@ -21,8 +21,9 @@
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
 
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/device_offload/hw_emu/hw_emu_device_offload_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 
@@ -31,16 +32,12 @@ namespace {
 
   static std::string getDebugIPLayoutPath(void* handle)
   {
-    constexpr int MAX_PATH_LENGTH = 512 ;
-
-    char pathBuf[MAX_PATH_LENGTH] ;
-    memset(pathBuf, 0, MAX_PATH_LENGTH);
-    xclGetDebugIPlayoutPath(handle, pathBuf, (MAX_PATH_LENGTH-1) ) ;
-
-    std::string path(pathBuf) ;
+    std::array<char, xdp::sysfs_max_path_length> pathBuf = {0};
+    xclGetDebugIPlayoutPath(handle, pathBuf.data(), (xdp::sysfs_max_path_length-1) ) ;
+    std::string path(pathBuf.data());
 
     if (path == "")
-      return path ;
+      return path;
 
     // Full paths to the hardware emulation debug_ip_layout for different
     //  xclbins on the same device are different.  On disk, they are laid

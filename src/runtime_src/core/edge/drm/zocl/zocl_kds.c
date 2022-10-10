@@ -861,6 +861,9 @@ int zocl_create_client(struct device *dev, void **client_hdl)
 	if (!client)
 		return -ENOMEM;
 
+	if (!zdev)
+		return -EINVAL;
+
 	kds = &zdev->kds;
 	client->dev = dev;
 	ret = kds_init_client(kds, client);

@@ -83,11 +83,20 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
   child.put("cache_xclbin", xrt_core::device_query<xrt_core::query::cache_xclbin>(_dev));
 
   if (is_supported(_dev)) {
-    try {
-      child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_dev));
-      child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_dev));
-      child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_dev));
-    } catch(const xrt_core::query::exception&) {}
+    bool is_versal = xrt_core::device_query<xrt_core::query::is_versal>(_dev);
+    if (is_versal) {
+      try {
+        child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xgq_scaling_enabled>(_dev));
+        child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xgq_scaling_power_override>(_dev));
+        child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xgq_scaling_temp_override>(_dev));
+      } catch(const xrt_core::query::exception&) {}
+    } else {
+      try {
+        child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_dev));
+        child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_dev));
+        child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_dev));
+      } catch(const xrt_core::query::exception&) {}
+    }
   }
 
   ptRoot.put_child("Device", child);
@@ -154,7 +163,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   std::shared_ptr<xrt_core::device> device;
 
   try {
-    device = XBU::get_device(device_str, true /*inUserDomain*/);
+    device = XBU::get_device(device_str, false /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();

@@ -45,6 +45,7 @@
 #include "xdp/profile/device/traceFifoLite.h"
 #include "xdp/profile/device/traceFunnel.h"
 #include "xdp/profile/device/traceS2MM.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
@@ -238,10 +239,10 @@ class DeviceIntf {
      * For Edge Device:
      *  total BW: DDR4 memory bandwidth
      */
-    double mHostMaxReadBW    = 15753.85;
-    double mHostMaxWriteBW   = 15753.85;
-    double mKernelMaxReadBW  = 19250.00;
-    double mKernelMaxWriteBW = 19250.00;
+    double mHostMaxReadBW    = hw_constants::pcie_gen3x16_bandwidth;
+    double mHostMaxWriteBW   = hw_constants::pcie_gen3x16_bandwidth;
+    double mKernelMaxReadBW  = hw_constants::ddr4_2400_bandwidth;
+    double mKernelMaxWriteBW = hw_constants::ddr4_2400_bandwidth;
 
 }; /* DeviceIntf */
 

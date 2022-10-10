@@ -78,7 +78,7 @@ namespace xdp {
                                  const std::string& args,
                                  const std::string& memoryName,
                                  bool isRead,
-                                 double numTransactions,
+                                 uint64_t numTransactions,
                                  double totalTransferTime,
                                  double bytes,
                                  double maxAchievableBW,

@@ -127,7 +127,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
         continue;
 
       // This option shouldn't be required
-      if (option->semantic()->is_required() == true) 
+      if (option->semantic()->is_required())
         continue;
 
       if (!firstShortFlagFound) {
@@ -158,10 +158,9 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
         continue;
 
       // This option shouldn't be required
-      if (option->semantic()->is_required() == true) 
+      if (option->semantic()->is_required())
         continue;
 
-      
       const std::string completeOptionName = removeLongOptDashes ? option->long_name() : 
 				option->canonical_display_name(po::command_line_style::allow_long);
       buffer << boost::format(" [%s]") % completeOptionName;
@@ -174,12 +173,16 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
     if (option->semantic()->max_tokens() == 0)
       continue;
 
-    // This option shouldn't be required
-    if (option->semantic()->is_required()) 
+    // Required arguments are taken care of later
+    if (option->semantic()->is_required())
       continue;
 
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-    
+
+    // Positional arguments are taken care of later
+    if (::isPositional(completeOptionName, _pod))
+      continue;
+
     // See if we have a long flag
     if (completeOptionName.size() != SHORT_OPTION_STRING_SIZE)
       continue;
@@ -193,11 +196,15 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
     if (option->semantic()->max_tokens() == 0)
       continue;
 
-    // This option shouldn't be required
-    if (option->semantic()->is_required()) 
+    // Required arguments are taken care of later
+    if (option->semantic()->is_required())
       continue;
 
     const std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+
+    // Positional arguments are taken care of later
+    if (::isPositional(optionDisplayName, _pod))
+      continue;
 
     // See if we have a short flag
     if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
@@ -215,15 +222,14 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       continue;
 
     // This option is required
-    if (option->semantic()->is_required() == false) 
+    if (!option->semantic()->is_required())
       continue;
 
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
 
-    // We don't wish to have positional options
-    if ( ::isPositional(completeOptionName, _pod) ) {
+    // Positional arguments are taken care of later
+    if (::isPositional(completeOptionName, _pod))
       continue;
-    }
 
     buffer << boost::format(" %s arg") % completeOptionName;
   }

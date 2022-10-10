@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -35,7 +36,7 @@ namespace xdp {
   bool PowerProfilingWriter::write(bool openNewFile)
   {
     // Write header
-    fout << "Target device: " << deviceName << std::endl ;
+    fout << "Target device: " << deviceName << "\n";
     fout << "timestamp"    << ","
          << "12v_aux_curr" << ","
          << "12v_aux_vol"  << ","
@@ -60,22 +61,20 @@ namespace xdp {
          << "se98_temp1"   << ","
          << "se98_temp2"   << ","
          << "vccint_temp"  << ","
-         << "fan_rpm"
-         << std::endl;
+         << "fan_rpm\n";
 
     // Write all of the data elements
-    std::vector<VPDynamicDatabase::CounterSample> samples = 
-      (db->getDynamicInfo()).getPowerSamples(deviceIndex) ;
+    std::vector<counters::Sample> samples =
+      (db->getDynamicInfo()).getPowerSamples(deviceIndex);
 
-    for (auto sample : samples)
-    {
-      fout << sample.first << "," ; // Timestamp
-      for (auto value : sample.second)
-      {
-        fout << value << "," ;
-      }
-      fout << std::endl ;
+    for (auto& sample : samples) {
+      fout << sample.timestamp << ",";
+      for (auto& value : sample.values)
+        fout << value << ",";
+      fout << "\n";
     }
+
+    fout.flush();
     return true;
   }
 

@@ -1612,8 +1612,11 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg,
 	}
 
 	ret = xocl_scu_cfg_cmd(xdev, client, ecmd, ps_kernel);
-	if (ret)
-		userpf_err(xdev, "PS kernel config failed");
+	if (ret) {
+		userpf_err(xdev, "PS kernel config failed, ret %d", ret);
+		ret = 0;
+		userpf_info(xdev, "Application use PS kernel will fail");
+	}
 
 out:
 	vfree(ecmd);

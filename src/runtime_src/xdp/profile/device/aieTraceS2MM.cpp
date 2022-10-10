@@ -55,7 +55,7 @@ uint64_t AIETraceS2MM::getWordCount(bool final)
 
     uint32_t regValue = 0;
     read(TS2MM_WRITTEN_LOW, BYTES_PER_WORD, &regValue);
-    uint64_t wordCount = static_cast<uint64_t>(regValue);
+    auto wordCount = static_cast<uint64_t>(regValue);
     read(TS2MM_WRITTEN_HIGH, BYTES_PER_WORD, &regValue);
     wordCount |= static_cast<uint64_t>(regValue) << BITS_PER_WORD;
 

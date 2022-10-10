@@ -37,8 +37,8 @@ ReportFirewall::getPropertyTree20202( const xrt_core::device * _pDevice,
   try {
     pt.put("firewall_level", xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
     pt.put("firewall_level_name", xrt_core::device_query<xrt_core::query::firewall_detect_level_name>(_pDevice));
-    pt.put("firewall_status", boost::format("0x%x") % xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
-    pt.put("status", xrt_core::utils::parse_firewall_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice))));
+    pt.put("firewall_status", boost::format("0x%x") % xrt_core::device_query<xrt_core::query::firewall_status>(_pDevice));
+    pt.put("status", xrt_core::utils::parse_firewall_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::firewall_status>(_pDevice))));
   } catch(...) {}
   // There can only be 1 root node
   _pt.add_child("firewall", pt);

@@ -683,9 +683,6 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, u32 mem_id,
 
 		hash_start_addr = grp_topology->m_mem_data[i].m_base_address;
 		hash_for_each_possible(drm_p->mm_range, wrapper, node, hash_start_addr) {
-			if (!wrapper)
-				continue;
-
 			start_addr = wrapper->start_addr;
 			end_addr = wrapper->start_addr + wrapper->size;
 
@@ -796,7 +793,7 @@ done:
 	return err;
 }
 
-uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
+static uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	struct xocl_mm_wrapper *wrapper = NULL;
@@ -807,9 +804,6 @@ uint32_t xocl_get_shared_ddr(struct xocl_drm *drm_p, struct mem_data *m_data)
 	BUG_ON(!m_data);
 
 	hash_for_each_possible(drm_p->mm_range, wrapper, node, start_addr) {
-		if (!wrapper)
-			continue;
-
 		if (wrapper->start_addr == start_addr) {
 			if (wrapper->size == sz)
 				return wrapper->ddr;
