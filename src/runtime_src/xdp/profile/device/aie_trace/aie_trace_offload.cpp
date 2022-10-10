@@ -284,13 +284,19 @@ void AIETraceOffload::endReadTrace()
 
 void AIETraceOffload::readTraceGMIO(bool final)
 {
+  constexpr uint64_t one_megabyte = 0x100000;
+
   for (uint64_t index = 0; index < numStream; ++index) {
     auto& bd = buffers[index];
     if (bd.offloadDone)
       continue;
 
-    // read complete trace buffer
-    bd.usedSz = bufAllocSz;
+    // read in chunks for minimal impact
+    auto chunkEnd = bd.offset + one_megabyte;
+    if (final || chunkEnd > bufAllocSz)
+      chunkEnd = bufAllocSz;
+    bd.usedSz = chunkEnd;
+
     syncAndLog(index);
 
     if (bd.offset >= bufAllocSz) {
