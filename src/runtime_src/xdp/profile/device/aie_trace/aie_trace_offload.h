@@ -105,7 +105,9 @@ public:
     XDP_EXPORT
     bool initReadTrace();
     XDP_EXPORT
-    void readTrace(bool final);
+    void readTracePLIO(bool final);
+    XDP_EXPORT
+    void readTraceGMIO(bool final);
     XDP_EXPORT
     void endReadTrace();
     XDP_EXPORT
@@ -125,7 +127,7 @@ public:
       return offloadStatus;
     };
 
-    // no circular buffer for now
+    void readTrace(bool final) {mReadTrace(final);};
 
 private:
 
@@ -134,17 +136,17 @@ private:
     DeviceIntf*     deviceIntf;
     AIETraceLogger* traceLogger;
 
-    bool     isPLIO;
+    bool isPLIO;
     uint64_t totalSz;
     uint64_t numStream;
-
-    // Set this to true for more verbose trace offload
-    // Internal use only
-    bool m_debug = false;
-
     uint64_t bufAllocSz;
-
     std::vector<AIETraceBufferInfo>  buffers;
+
+    //Internal use only
+    // Set this for verbose trace offload
+    bool m_debug = true;
+    // Experimental support for periodic offload in gmio
+    bool useGMIOPeriodicOffload;
 
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
@@ -173,6 +175,8 @@ private:
     void offloadFinished();
     void checkCircularBufferSupport();
     bool syncAndLog(uint64_t index);
+    std::function<void(bool)> mReadTrace;
+    uint64_t searchWrittenBytes(void * buf, uint64_t bytes);
 };
 
 }

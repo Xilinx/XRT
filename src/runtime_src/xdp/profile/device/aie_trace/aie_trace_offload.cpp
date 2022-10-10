@@ -65,14 +65,19 @@ AIETraceOffload::AIETraceOffload
   , mCircularBufOverwrite(false)
 {
   bufAllocSz = deviceIntf->getAlignedTraceBufferSize(totalSz, static_cast<unsigned int>(numStream));
+
+  // Select appropriate reader
+  if (isPLIO)
+    mReadTrace = std::bind(&AIETraceOffload::readTracePLIO, this, std::placeholders::_1);
+  else
+    mReadTrace = std::bind(&AIETraceOffload::readTraceGMIO, this, std::placeholders::_1);
 }
 
 AIETraceOffload::~AIETraceOffload()
 {
   stopOffload();
-  if (offloadThread.joinable()) {
+  if (offloadThread.joinable())
     offloadThread.join();
-  }
 }
 
 bool AIETraceOffload::setupPSKernel() {
@@ -88,10 +93,10 @@ bool AIETraceOffload::setupPSKernel() {
   input_params->numStreams = numStream;
 
   xdp::built_in::GMIOBuffer hostBuffer[numStream];
-  for(uint64_t i = 0; i < numStream; i ++) {
+  for (uint64_t i = 0; i < numStream; i ++) {
     buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, 0);
     
-    if(!buffers[i].boHandle) {
+    if (!buffers[i].boHandle) {
       bufferInitialized = false;
       return bufferInitialized;
     }
@@ -160,7 +165,7 @@ bool AIETraceOffload::initReadTrace()
 
   for(uint64_t i = 0; i < numStream ; ++i) {
     buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
-    if(!buffers[i].boHandle) {
+    if (!buffers[i].boHandle) {
       bufferInitialized = false;
       return bufferInitialized;
     }
@@ -241,9 +246,9 @@ void AIETraceOffload::endReadTrace()
 {
   // reset
   for (uint64_t i = 0; i < numStream ; ++i) {
-  if (!buffers[i].boHandle) {
+  if (!buffers[i].boHandle)
     continue;
-  }
+
   if (isPLIO) {
     deviceIntf->resetAIETs2mm(i);
 //    deviceIntf->freeTraceBuf(b.boHandle);
@@ -277,7 +282,25 @@ void AIETraceOffload::endReadTrace()
   bufferInitialized = false;
 }
 
-void AIETraceOffload::readTrace(bool final)
+void AIETraceOffload::readTraceGMIO(bool final)
+{
+  for (uint64_t index = 0; index < numStream; ++index) {
+    auto& bd = buffers[index];
+    if (bd.offloadDone)
+      continue;
+
+    // read complete trace buffer
+    bd.usedSz = bufAllocSz;
+    syncAndLog(index);
+
+    if (bd.offset >= bufAllocSz) {
+      bd.offloadDone = true;
+      bd.isFull = true;
+    }
+  }
+}
+
+void AIETraceOffload::readTracePLIO(bool final)
 {
   if (mCircularBufOverwrite)
     return;
@@ -287,14 +310,6 @@ void AIETraceOffload::readTrace(bool final)
 
     if (bd.offloadDone)
       continue;
-
-    // read complete trace buffer in gmio
-    if (!isPLIO) {
-      bd.usedSz = bufAllocSz;
-      bd.offloadDone = true;
-      syncAndLog(index);
-      continue;
-    }
 
     uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(index, final);
     // AIE Trace packets are 4 words of 64 bit
@@ -388,24 +403,31 @@ bool AIETraceOffload::syncAndLog(uint64_t index)
   auto start = std::chrono::steady_clock::now();
   void* hostBuf = deviceIntf->syncTraceBuf(bd.boHandle, bd.offset, nBytes);
   auto end = std::chrono::steady_clock::now();
-
-  if (!hostBuf) {
-    bd.offloadDone = true;
-    return false;
-  }
-
-  // Log trace buffer
-  traceLogger->addAIETraceData(index, hostBuf, nBytes, mEnCircularBuf);
-
   debug_stream
     << "ts2mm_" << index << " : bytes : " << nBytes << " "
     << "sync: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << "µs "
     << std::hex << "from 0x" << bd.offset << " to 0x"
     << bd.usedSz << std::dec << std::endl;
 
+  if (!hostBuf) {
+    bd.offloadDone = true;
+    return false;
+  }
+
   // check for full buffer
-  if ((bd.offset + nBytes >= bufAllocSz) && !mEnCircularBuf)
+  if ((bd.offset + nBytes >= bufAllocSz) && !mEnCircularBuf && isPLIO)
     bd.isFull = true;
+
+  // Make adjustments for gmio
+  if (!isPLIO) {
+    // binary search buffer for trace boundary
+    nBytes = searchWrittenBytes(hostBuf, nBytes);
+    // Assume only this much data was synched
+    bd.offset += nBytes;
+  }
+
+  // Finally Log trace buffer
+  traceLogger->addAIETraceData(index, hostBuf, nBytes, mEnCircularBuf);
 
   return true;
 }
@@ -480,13 +502,15 @@ void AIETraceOffload::continuousOffload()
     return;
   }
 
+  std::cout << "START ct for gmio" << std::endl;
+
   while (keepOffloading()) {
-    readTrace(false);
+    mReadTrace(false);
     std::this_thread::sleep_for(std::chrono::microseconds(offloadIntervalUs));
   }
 
   // Note: This will call flush and reset on datamover
-  readTrace(true);
+  mReadTrace(true);
   endReadTrace();
   offloadFinished();
 }
@@ -511,6 +535,36 @@ void AIETraceOffload::offloadFinished()
   if (AIEOffloadThreadStatus::STOPPED == offloadStatus)
     return;
   offloadStatus = AIEOffloadThreadStatus::STOPPED;
+}
+
+uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
+{
+  auto arr = static_cast<uint64_t *>(buf);
+  uint64_t wordcount = bytes / TRACE_PACKET_SIZE;
+
+  // indices
+  int64_t low = 0;
+  int64_t high = static_cast<int64_t>(wordcount) - 1;
+
+  // Boundary at which trace ends and 0s begin
+  uint64_t boundary = wordcount;
+
+  while (low <= high) {
+    int64_t mid = low + (high - low) / 2;
+    if (!arr[mid]) {
+      boundary = mid;
+      high = mid - 1;
+    } else {
+      low = mid + 1;
+    }
+  }
+
+  uint64_t written = boundary * TRACE_PACKET_SIZE;
+
+  debug_stream
+    << "Found Boundary at 0x" << std::hex << written << std::dec << std::endl;
+
+  return written;
 }
 
 }
