@@ -265,13 +265,13 @@ void xma_thread2(uint32_t hw_dev_index) {
     bool desired = true;
     auto xrt_device_obj = g_xma_singleton->hwcfg.devices[hw_dev_index].xrt_device;
     while (!g_xma_singleton->xma_exit) {
+        std::lock_guard<std::mutex> lock(g_xma_singleton->m_mutex);
         if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(3));
         } else {
             xrt_device_obj.get_handle()->exec_wait(100);
         }
 
-        std::lock_guard<std::mutex> lock(g_xma_singleton->m_mutex);
         for (auto& itr1: g_xma_singleton->all_sessions_vec) {
             if (g_xma_singleton->xma_exit) {
                 break;
