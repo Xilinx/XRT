@@ -776,7 +776,7 @@ static void vmr_cq_result_copy(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd
  * Utilize shared memory between host and device to transfer data.
  */
 static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
-	u64 len, enum xgq_cmd_opcode opcode, u32 timer)
+	u64 len, u64 priv, enum xgq_cmd_opcode opcode, u32 timer)
 {
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
 	struct xgq_cmd_data_payload *payload = NULL;
@@ -831,6 +831,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	payload->size = len;
 	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
 	payload->flash_type = get_flash_type(xgq);
+	payload->priv = priv;
 
 	/* set up hdr */
 	hdr = &(cmd->xgq_cmd_entry.hdr);
@@ -892,7 +893,21 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 	u64 xclbin_len = xclbin->m_header.m_length;
 	int ret = 0;
 	
-	ret = xgq_transfer_data(xgq, u_xclbin, xclbin_len,
+	ret = xgq_transfer_data(xgq, u_xclbin, xclbin_len, 0,
+		XGQ_CMD_OP_LOAD_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
+
+	return ret == xclbin_len ? 0 : -EIO;
+}
+
+static int xgq_load_xclbin_slot(struct platform_device *pdev,
+	const void *u_xclbin, uint64_t slot)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct axlf *xclbin = (struct axlf *)u_xclbin;
+	u64 xclbin_len = xclbin->m_header.m_length;
+	int ret = 0;
+
+	ret = xgq_transfer_data(xgq, u_xclbin, xclbin_len, slot,
 		XGQ_CMD_OP_LOAD_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
 
 	return ret == xclbin_len ? 0 : -EIO;
@@ -902,7 +917,7 @@ static int xgq_program_scfw(struct platform_device *pdev)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 
-	return xgq_transfer_data(xgq, NULL, 0,
+	return xgq_transfer_data(xgq, NULL, 0, 0,
 		XGQ_CMD_OP_PROGRAM_SCFW, XOCL_XGQ_DOWNLOAD_TIME);
 }
 
@@ -1587,8 +1602,8 @@ static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
-		XOCL_XGQ_DOWNLOAD_TIME);
+	ret = xgq_transfer_data(xgq, buf, len, 0,
+		XGQ_CMD_OP_LOAD_APUBIN, XOCL_XGQ_DOWNLOAD_TIME);
 	if (ret != len) {
 		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
 		return -EIO;
@@ -2678,7 +2693,7 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 		goto done;
 	}
 
-	ret = xgq_transfer_data(xgq, kdata, data_len,
+	ret = xgq_transfer_data(xgq, kdata, data_len, 0,
 		XGQ_CMD_OP_DOWNLOAD_PDI, XOCL_XGQ_FLASH_TIME);
 done:
 	vfree(kdata);
@@ -2950,6 +2965,7 @@ attach_failed:
 
 static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_load_xclbin = xgq_load_xclbin,
+	.xgq_load_xclbin_slot = xgq_load_xclbin_slot,
 	.xgq_check_firewall = xgq_check_firewall,
 	.xgq_clear_firewall = xgq_clear_firewall,
 	.xgq_freq_scaling = xgq_freq_scaling,

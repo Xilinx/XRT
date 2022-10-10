@@ -47,8 +47,8 @@
 #define XGQ_CLOCK_WIZ_MAX_RES           4
 
 /* VMR Identify Command Version Major and Minor Numbers */
-#define VMR_IDENTIFY_CMD_MAJOR                  1
-#define VMR_IDENTIFY_CMD_MINOR                  0
+#define VMR_IDENTIFY_CMD_MAJOR		1
+#define VMR_IDENTIFY_CMD_MINOR		0
 
 
 /**
@@ -209,6 +209,7 @@ struct xgq_cmd_data_payload {
 	uint32_t flash_type:4;
 	uint32_t rsvd1:24;
 	uint32_t pad1;
+	uint64_t priv;
 };
 
 enum xgq_cmd_flash_type {
@@ -379,9 +380,9 @@ struct xgq_cmd_cq_vmr_payload {
  * VMR Identify Command
 */
 struct xgq_cmd_cq_vmr_identify_payload {
-    uint16_t ver_major;
-    uint16_t ver_minor;
-    uint32_t resvd;
+	uint16_t ver_major;
+	uint16_t ver_minor;
+	uint32_t resvd;
 };
 
 /*
@@ -403,7 +404,7 @@ struct xgq_cmd_cq {
 		struct xgq_cmd_cq_vmr_payload		cq_vmr_payload;
 		struct xgq_cmd_cq_log_page_payload	cq_log_payload;
 		struct xgq_cmd_cq_data_payload		cq_xclbin_payload;
-		struct xgq_cmd_cq_clk_scaling_payload cq_clk_scaling_payload;
+		struct xgq_cmd_cq_clk_scaling_payload	cq_clk_scaling_payload;
 		struct xgq_cmd_cq_vmr_identify_payload  cq_vmr_identify_payload;
 	};
 	uint32_t rcode;
