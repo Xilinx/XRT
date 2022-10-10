@@ -42,6 +42,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -89,16 +90,16 @@ namespace hwemu {
   class xgq_queue
   {
     public:
-      xgq_queue(xclhwemhal2::HwEmShim*, xocl_xgq*, uint16_t, uint32_t, uint64_t, uint64_t);
+      xgq_queue(std::shared_ptr<xclhwemhal2::HwEmShim>, std::shared_ptr<xocl_xgq>, uint16_t, uint32_t, uint64_t, uint64_t);
       ~xgq_queue();
 
-      xclhwemhal2::HwEmShim*   device;
-      xocl_xgq*                xgqp;
+      std::weak_ptr<xclhwemhal2::HwEmShim>   weak_ptr_device;
+      std::weak_ptr<xocl_xgq>                weak_ptr_xgqp;
 
       int      submit_worker();
       int      complete_worker();
       void     update_doorbell();
-      int      submit_cmd(xgq_cmd *xcmd);
+      int      submit_cmd(std::shared_ptr<xgq_cmd>& xcmd);
       void     read_completion(xgq_com_queue_entry& ccmd, uint64_t addr);
       void     iowrite32_ctrl(uint32_t addr, uint32_t data);
       void     iowrite32_mem(uint32_t addr, uint32_t data);
@@ -112,14 +113,16 @@ namespace hwemu {
       uint64_t        xgq_sub_base;
       uint64_t        xgq_com_base;
 
-      std::list<xgq_cmd*>          pending_cmds;
-      std::map<uint64_t, xgq_cmd*> submitted_cmds;
+      //std::list<xgq_cmd*>          pending_cmds;
+      std::list<std::shared_ptr<xgq_cmd>>          pending_cmds;
+      //std::map<uint64_t, xgq_cmd*> submitted_cmds;
+      std::map<uint64_t, std::shared_ptr<xgq_cmd>> submitted_cmds;
       std::mutex                   queue_mutex;
       bool                         stop;
 
-      std::thread*            sub_thread;
+      std::thread            sub_thread;
       std::condition_variable sub_cv;
-      std::thread*            com_thread;
+      std::thread            com_thread;
       std::condition_variable com_cv;
 
       struct xgq       queue;
@@ -145,7 +148,7 @@ namespace hwemu {
       uint32_t    payload_size();
       bool        is_ertpkt();
 
-      int         convert_bo(xclemulation::drm_xocl_bo *bo);
+      int         convert_bo(std::shared_ptr<xclemulation::drm_xocl_bo>& bo);
       int         load_xclbin(xrt::bo& xbo, char *buf, size_t size);
 
       uint32_t    xcmd_size();
@@ -169,13 +172,13 @@ namespace hwemu {
    * @add_exec_buffer:  Convert an exec buf to XGQ command, add it to XGQ
    *                    pending command list and notify XGQ thread.
    */
-  class xocl_xgq
+  class xocl_xgq: public std::enable_shared_from_this<xocl_xgq> 
   {
     public:
-      xocl_xgq(xclhwemhal2::HwEmShim* dev);
+      xocl_xgq(std::shared_ptr<xclhwemhal2::HwEmShim> dev);
       ~xocl_xgq();
 
-      int    add_exec_buffer(xclemulation::drm_xocl_bo *buf);
+      int    add_exec_buffer(std::shared_ptr<xclemulation::drm_xocl_bo>& buf);
       int    load_xclbin(char *buf, size_t size);
 
       // TODO support multiple queues
@@ -183,7 +186,7 @@ namespace hwemu {
 
       boost::object_pool<xgq_cmd> cmd_pool;
 
-      xclhwemhal2::HwEmShim*   device;
+      std::weak_ptr<xclhwemhal2::HwEmShim>   weak_ptr_device;
   };
 
 }  // namespace hwemu

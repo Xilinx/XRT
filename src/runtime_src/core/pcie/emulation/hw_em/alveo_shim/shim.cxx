@@ -430,7 +430,7 @@ namespace xclhwemhal2 {
         m_scheduler = std::make_shared<hwemu::xocl_scheduler>(shared_from_this());
     } else if (xclemulation::config::getInstance()->isXgqMode()) {
         //m_xgq = new hwemu::xocl_xgq(this);
-        m_xgq = std::make_shared<hwemu::xocl_xgq>(this);
+        m_xgq = std::make_shared<hwemu::xocl_xgq>(shared_from_this());
         if (m_xgq && pdi && pdiSize > 0) {
             returnValue = m_xgq->load_xclbin(pdi.get(), pdiSize);
         }
@@ -3300,7 +3300,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
           PRINTENDFUNC;
           return ret;
       }
-      ret = m_xgq->add_exec_buffer(bo.get());  // will update
+      ret = m_xgq->add_exec_buffer(bo);  // will update
       PRINTENDFUNC;
       return ret;
   } else {

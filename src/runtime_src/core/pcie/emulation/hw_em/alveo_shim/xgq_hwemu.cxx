@@ -70,9 +70,9 @@ namespace hwemu {
     return value;
   }
 
-  xgq_queue::xgq_queue(HwEmShim* in_dev, xocl_xgq* in_xgqp, uint16_t in_nslot, uint32_t in_slot_size, uint64_t in_xgq_sub_base, uint64_t in_xgq_com_base)
-    : device(in_dev)
-    , xgqp(in_xgqp)
+  xgq_queue::xgq_queue(std::shared_ptr<xclhwemhal2::HwEmShim> in_dev, std::shared_ptr<xocl_xgq> in_xgqp, uint16_t in_nslot, uint32_t in_slot_size, uint64_t in_xgq_sub_base, uint64_t in_xgq_com_base)
+    : weak_ptr_device{std::weak_ptr(in_dev)}
+    , weak_ptr_xgqp(std::weak_ptr(in_xgqp))
     , nslot(in_nslot)
     , slot_size(in_slot_size)
     , xgq_sub_base(in_xgq_sub_base)
@@ -81,11 +81,13 @@ namespace hwemu {
     stop = false;
     qid = 0;
 
-    sub_thread = new std::thread(&xgq_queue::submit_worker, this);
-    com_thread = new std::thread(&xgq_queue::complete_worker, this);
+    sub_thread = std::thread {[&] { this->submit_worker(); } };
+    //new std::thread(&xgq_queue::submit_worker, this);
+    com_thread = std::thread {[&] { this->complete_worker(); } };
+    //new std::thread(&xgq_queue::complete_worker, this);
 
     size_t ring_len = XRT_QUEUE1_RING_LENGTH;
-    auto devp = reinterpret_cast<uint64_t>(device);
+    auto devp = reinterpret_cast<uint64_t>(weak_ptr_device.lock().get());
     xgq_alloc(&queue, false, devp, XRT_QUEUE1_RING_BASE, &ring_len, slot_size, xgq_sub_base, xgq_com_base);
   }
 
@@ -98,40 +100,44 @@ namespace hwemu {
     sub_cv.notify_all();
     com_cv.notify_all();
 
-    if (sub_thread->joinable()) {
-      sub_thread->join();
+    if (sub_thread.joinable()) {
+      sub_thread.join();
     }
 
-    if (com_thread->joinable()) {
-      com_thread->join();
+    if (com_thread.joinable()) {
+      com_thread.join();
     }
   }
 
   void xgq_queue::iowrite32_ctrl(uint32_t addr, uint32_t data)
   {
+    auto device = weak_ptr_device.lock();
     device->xclWrite(XCL_ADDR_KERNEL_CTRL, addr, (void*)(&data), 4);
   }
 
   uint32_t xgq_queue::ioread32_ctrl(uint32_t addr)
   {
     uint32_t value;
+    auto device = weak_ptr_device.lock();
     device->xclRead(XCL_ADDR_KERNEL_CTRL, addr, (void*)(&value), 4);
     return value;
   }
 
   void xgq_queue::iowrite32_mem(uint32_t addr, uint32_t data)
   {
+    auto device = weak_ptr_device.lock();
     device->xclWrite(XCL_ADDR_SPACE_DEVICE_RAM, addr, (void*)(&data), 4);
   }
 
   uint32_t xgq_queue::ioread32_mem(uint32_t addr)
   {
     uint32_t value;
+    auto device = weak_ptr_device.lock();
     device->xclRead(XCL_ADDR_SPACE_DEVICE_RAM, addr, (void*)(&value), 4);
     return value;
   }
 
-  int xgq_queue::submit_cmd(xgq_cmd *xcmd)
+  int xgq_queue::submit_cmd(std::shared_ptr<xgq_cmd>& xcmd)
   {
     if (xcmd->xcmd_size() > slot_size)
       return -EINVAL;
@@ -216,7 +222,9 @@ namespace hwemu {
             scmd->set_state(ERT_CMD_STATE_COMPLETED);
           else
             scmd->set_state(ERT_CMD_STATE_ERROR);
-          xgqp->cmd_pool.destroy(scmd);
+          auto xgqp = weak_ptr_xgqp.lock();
+          xgqp->cmd_pool.destroy(scmd.get());
+          scmd = nullptr;
         } else {
           scmd->rval = ccmd.hdr.cstate == XGQ_CMD_STATE_COMPLETED ? 0 : -1;
           // Notify command completion
@@ -267,7 +275,7 @@ namespace hwemu {
     return sq_buf.size() * sizeof(uint32_t);
   }
 
-  int xgq_cmd::convert_bo(xclemulation::drm_xocl_bo *bo)
+  int xgq_cmd::convert_bo(std::shared_ptr<xclemulation::drm_xocl_bo>& bo)
   {
     this->ert_pkt = (struct ert_packet *)bo->buf;
 
@@ -340,19 +348,20 @@ namespace hwemu {
     return 0;
   }
 
-  xocl_xgq::xocl_xgq(HwEmShim* dev)
-    : queue(dev, this, XGQ_QUEUE1_SLOT_NUM, XGQ_SUB_Q1_SLOT_SIZE, XRT_XGQ_SUB_BASE, XRT_XGQ_COM_BASE)
+  xocl_xgq::xocl_xgq(std::shared_ptr<xclhwemhal2::HwEmShim> dev)
+    : queue(dev, shared_from_this(), XGQ_QUEUE1_SLOT_NUM, XGQ_SUB_Q1_SLOT_SIZE, XRT_XGQ_SUB_BASE, XRT_XGQ_COM_BASE)
   {
-    device = dev;
+    weak_ptr_device = std::weak_ptr{dev};
   }
 
   xocl_xgq::~xocl_xgq()
   {
   }
 
-  int xocl_xgq::add_exec_buffer(xclemulation::drm_xocl_bo *buf)
+  int xocl_xgq::add_exec_buffer(std::shared_ptr<xclemulation::drm_xocl_bo>& buf)
   {
-    xgq_cmd *xcmd = cmd_pool.construct();
+    xgq_cmd *raw_xcmd = cmd_pool.construct();
+    std::shared_ptr<xgq_cmd> xcmd(raw_xcmd);
     if (!xcmd)
       return 1;
 
@@ -370,10 +379,11 @@ namespace hwemu {
 
   int xocl_xgq::load_xclbin(char *buf, size_t size)
   {
-    xrt::device xdev(device->getMCoreDevice());
+    xrt::device xdev(weak_ptr_device.lock()->getMCoreDevice());
     xrt::bo xbo(xdev, size, xrt::bo::flags::host_only, 0);
 
-    xgq_cmd *xcmd = cmd_pool.construct();
+    xgq_cmd *raw_xcmd = cmd_pool.construct();
+    std::shared_ptr<xgq_cmd> xcmd(raw_xcmd);
     if (!xcmd)
       return 1;
 
@@ -393,8 +403,8 @@ namespace hwemu {
     }
 
     int rval = xcmd->rval;
-    cmd_pool.destroy(xcmd);
-
+    cmd_pool.destroy(xcmd.get());
+    xcmd = nullptr;
     return rval;
   }
 

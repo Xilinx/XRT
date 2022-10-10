@@ -1045,7 +1045,7 @@ namespace xclhwemhal2 {
 
   int MBScheduler::add_cmd(std::shared_ptr<exec_core>& exec, std::shared_ptr<xclemulation::drm_xocl_bo>&  bo)
   {
-    std::lock_guard<std::mutex> lk(pending_cmds_mutex);
+    //std::lock_guard<std::mutex> lk(pending_cmds_mutex);
     auto xcmd = get_free_xocl_cmd();
     //auto buf_ptr = reinterpret_cast<struct ert_packet *>(bo->buf);
     //auto buf_ptr = std::static_pointer_cast<struct ert_packet>(bo->buf);
@@ -1060,6 +1060,7 @@ namespace xclhwemhal2 {
 #endif
 
     set_cmd_state(xcmd,ERT_CMD_STATE_NEW);
+    std::lock_guard<std::mutex> lk(pending_cmds_mutex);
     pending_cmds.push_back(std::move(xcmd));
     num_pending++;
     scheduler_wait_condition();
@@ -1089,7 +1090,7 @@ namespace xclhwemhal2 {
     }
     if(bSchComeOutOfCond)
     {
-      pthread_cond_signal(&mScheduler->state_cond);
+     // pthread_cond_signal(&mScheduler->state_cond);
       return 0;
     }
     return 1;
@@ -1184,12 +1185,13 @@ namespace xclhwemhal2 {
     return NULL;
   }
 */
-  void MBScheduler::scheduler_periodic_loop_thread(std::shared_ptr<xocl_sched>& xs)
+  //void MBScheduler::scheduler_periodic_loop_thread(std::shared_ptr<xocl_sched>& xs)
+  void MBScheduler::scheduler_periodic_loop_thread()
   {
     //MBScheduler* pSch = xs->pSch;
     std::lock_guard<std::mutex> lk(this->pending_cmds_mutex);
 
-    if (xs->error) { return; }
+    if (mScheduler->error) { return; }
 
     /* queue new pending commands */
     this->scheduler_queue_cmds();
@@ -1198,11 +1200,12 @@ namespace xclhwemhal2 {
     this->scheduler_iterate_cmds();
   }
 
-  void MBScheduler::scheduler_thread(std::shared_ptr<xocl_sched>& xs)
+  //void MBScheduler::scheduler_thread(std::shared_ptr<xocl_sched>& xs)
+  void MBScheduler::scheduler_thread()
   {
-    while (!xs->stop && !xs->error)
+    while (!mScheduler->stop && !mScheduler->error)
     {
-      this->scheduler_periodic_loop_thread(xs);
+      this->scheduler_periodic_loop_thread();
       usleep(10);
     }
     std::cout << "\n exiting the scheduler thread";
@@ -1217,7 +1220,7 @@ namespace xclhwemhal2 {
 #ifdef EM_DEBUG_KDS
     std::cout<<"Scheduler Thread started "<< std::endl;
 #endif
-    this->mscheduler_thread = std::thread([&]{ this->scheduler_thread(mScheduler); });
+    this->mscheduler_thread = std::thread([&]{ this->scheduler_thread(); });
     
     /*
     int returnStatus = pthread_create(&(mScheduler->scheduler_thread), NULL, scheduler, (void *)mScheduler);

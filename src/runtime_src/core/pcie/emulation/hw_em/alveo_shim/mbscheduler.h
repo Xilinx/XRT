@@ -196,8 +196,10 @@ namespace xclhwemhal2 {
 
     //friend void scheduler_loop(std::shared_ptr<xocl_sched>& xs);
     //friend void* scheduler(void* data) ;
-    void scheduler_thread(std::shared_ptr<xocl_sched>& );
-    void scheduler_periodic_loop_thread(std::shared_ptr<xocl_sched>& xs);
+    //void scheduler_thread(std::shared_ptr<xocl_sched>& );
+    void scheduler_thread();
+    //void scheduler_periodic_loop_thread(std::shared_ptr<xocl_sched>& xs);
+    void scheduler_periodic_loop_thread();
 
     int init_scheduler_thread(void) ;
     int fini_scheduler_thread(void) ;
