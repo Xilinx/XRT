@@ -10,7 +10,6 @@ User=softkernel
 ExecStart=/usr/bin/skd
 RemainAfterExit=on
 StandardOutput=journal+console
-CPUShare=1024
 MemoryLimit=1G
 
 [Install]
