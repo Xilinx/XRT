@@ -846,7 +846,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
 		/* Minimum set up for golden image. */
-		mgmt_err(lro, "Factory image detected. Performing minimum setup");
+		mgmt_info(lro, "Factory image detected. Performing minimum setup");
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_MB);
 		goto failed;
@@ -884,6 +884,8 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 	/* Launch the mailbox server. */
 	(void) xocl_peer_listen(lro, xclmgmt_mailbox_srv, (void *)lro);
+
+	lro->ready = true;
 
 failed:
 	vfree(fw_buf);
