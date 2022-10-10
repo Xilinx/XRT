@@ -7,38 +7,38 @@
 
 // Include files
 // Please keep these to the bare minimum
+#include <boost/program_options.hpp>
+#include <string>
+#include <utility>  // Pair template
+#include <vector>
+
 #include "Report.h"
 
-#include <string>
-#include <vector>
-#include <utility> // Pair template
-#include <boost/program_options.hpp>
+namespace XBUtilities
+{
+using VectorPairStrings = std::vector<std::pair<std::string, std::string> >;
 
-namespace XBUtilities {
+std::string
+create_suboption_list_string(const VectorPairStrings& _collection);
 
-  using VectorPairStrings = std::vector< std::pair< std::string, std::string > >;
+std::string
+create_suboption_list_string(const ReportCollection& _reportCollection, bool _addAllOption);
 
-  std::string 
-    create_suboption_list_string(const VectorPairStrings &_collection);
+std::string
+create_suboption_list_string(const Report::SchemaDescriptionVector& _formatCollection);
 
-  std::string 
-    create_suboption_list_string(const ReportCollection &_reportCollection, bool _addAllOption);
+void
+collect_and_validate_reports(const ReportCollection& allReportsAvailable,
+                             const std::vector<std::string>& reportNamesToAdd,
+                             ReportCollection& reportsToUse);
 
-  std::string 
-    create_suboption_list_string(const Report::SchemaDescriptionVector &_formatCollection);
-
-  void 
-    collect_and_validate_reports( const ReportCollection & allReportsAvailable,
-                                  const std::vector<std::string> &reportNamesToAdd,
-                                  ReportCollection & reportsToUse);
-
-  void 
-     produce_reports( const std::shared_ptr<xrt_core::device>& device, 
-                      const ReportCollection & reportsToProcess, 
-                      const Report::SchemaVersion schema, 
-                      const std::vector<std::string> & elementFilter,
-                      std::ostream & consoleStream,
-                      std::ostream & schemaStream);
-};
+void
+produce_reports(const std::shared_ptr<xrt_core::device>& device,
+                const ReportCollection& reportsToProcess,
+                const Report::SchemaVersion schema,
+                const std::vector<std::string>& elementFilter,
+                std::ostream& consoleStream,
+                std::ostream& schemaStream);
+};  // namespace XBUtilities
 
 #endif

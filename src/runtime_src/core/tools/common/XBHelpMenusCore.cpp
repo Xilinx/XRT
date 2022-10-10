@@ -18,49 +18,48 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "XBHelpMenusCore.h"
+
 #include "XBUtilitiesCore.h"
 
 namespace XBU = XBUtilities;
 
-
 // 3rd Party Library - Include Files
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/format.hpp>
+#include <boost/property_tree/json_parser.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include <numeric>
 
 // ------ N A M E S P A C E ---------------------------------------------------
 using namespace XBUtilities;
 
 // Temporary color objects until the supporting color library becomes available
-namespace ec {
-  class fgcolor
-    {
-    public:
-      fgcolor(uint8_t _color) : m_color(_color) {};
-      std::string string() const { return "\033[38;5;" + std::to_string(m_color) + "m"; }
-      static const std::string reset() { return "\033[39m"; };
-      friend std::ostream& operator <<(std::ostream& os, const fgcolor & _obj) { return os << _obj.string(); }
-  
-   private:
-     uint8_t m_color;
-  };
+namespace ec
+{
+class fgcolor {
+ public:
+  fgcolor(uint8_t _color) : m_color(_color){};
+  std::string string() const { return "\033[38;5;" + std::to_string(m_color) + "m"; }
+  static const std::string reset() { return "\033[39m"; };
+  friend std::ostream& operator<<(std::ostream& os, const fgcolor& _obj) { return os << _obj.string(); }
 
-  class bgcolor
-    {
-    public:
-      bgcolor(uint8_t _color) : m_color(_color) {};
-      std::string string() const { return "\033[48;5;" + std::to_string(m_color) + "m"; }
-      static const std::string reset() { return "\033[49m"; };
-      friend std::ostream& operator <<(std::ostream& os, const bgcolor & _obj) { return  os << _obj.string(); }
+ private:
+  uint8_t m_color;
+};
 
-   private:
-     uint8_t m_color;
-  };
+class bgcolor {
+ public:
+  bgcolor(uint8_t _color) : m_color(_color){};
+  std::string string() const { return "\033[48;5;" + std::to_string(m_color) + "m"; }
+  static const std::string reset() { return "\033[49m"; };
+  friend std::ostream& operator<<(std::ostream& os, const bgcolor& _obj) { return os << _obj.string(); }
+
+ private:
+  uint8_t m_color;
+};
 }
 // ------ C O L O R S ---------------------------------------------------------
 static const uint8_t FGC_HEADER           = 3;   // 3
@@ -88,12 +87,11 @@ static unsigned int m_maxColumnWidth = 100;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 static bool
-isPositional(const std::string &_name, 
-             const boost::program_options::positional_options_description & _pod)
+isPositional(const std::string& _name, const boost::program_options::positional_options_description& _pod)
 {
   // Look through the list of positional arguments
   for (unsigned int index = 0; index < _pod.max_total_count(); ++index) {
-    if ( _name.compare(_pod.name_for_position(index)) == 0) {
+    if (_name.compare(_pod.name_for_position(index)) == 0) {
       return true;
     }
   }
@@ -119,7 +117,8 @@ enum OptionDescriptionFlagType {
 };
 
 static enum OptionDescriptionFlagType
-get_option_type(const boost::shared_ptr<boost::program_options::option_description>& option, const boost::program_options::positional_options_description & _pod)
+get_option_type(const boost::shared_ptr<boost::program_options::option_description>& option,
+                const boost::program_options::positional_options_description& _pod)
 {
   const static int SHORT_OPTION_STRING_SIZE = 2;
   std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
@@ -141,12 +140,13 @@ get_option_type(const boost::shared_ptr<boost::program_options::option_descripti
     }
   }
 
-  if (option->semantic()->max_tokens() == 0) { // Parse for simple flags
+  if (option->semantic()->max_tokens() == 0) {  // Parse for simple flags
     if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
       return short_simple;
 
     return long_simple;
-  } else { // Parse for flags with arguments
+  }
+  else { // Parse for flags with arguments
     if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
       return short_arg;
 
@@ -155,11 +155,13 @@ get_option_type(const boost::shared_ptr<boost::program_options::option_descripti
 }
 
 static std::string
-create_option_string(enum OptionDescriptionFlagType optionType, const boost::shared_ptr<boost::program_options::option_description>& option, bool removeLongOptDashes)
+create_option_string(enum OptionDescriptionFlagType optionType,
+                     const boost::shared_ptr<boost::program_options::option_description>& option,
+                     bool removeLongOptDashes)
 {
   const std::string& shortName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
-  const std::string& longName = removeLongOptDashes ? option->long_name() : 
-                                option->canonical_display_name(po::command_line_style::allow_long);
+  const std::string& longName =
+      removeLongOptDashes ? option->long_name() : option->canonical_display_name(po::command_line_style::allow_long);
   switch (optionType) {
     case short_simple:
       return boost::str(boost::format("%s") % shortName[1]);
@@ -196,16 +198,16 @@ create_option_string(enum OptionDescriptionFlagType optionType, const boost::sha
 }
 
 std::string
-XBUtilities::create_usage_string( const boost::program_options::options_description &_od,
-                                  const boost::program_options::positional_options_description & _pod,
-                                  bool removeLongOptDashes)
+XBUtilities::create_usage_string(const boost::program_options::options_description& _od,
+                                 const boost::program_options::positional_options_description& _pod,
+                                 bool removeLongOptDashes)
 {
   // Create list of buffers to store each argument type
   std::vector<std::stringstream> buffers(flag_type_size);
 
-  const auto &options = _od.options();
+  const auto& options = _od.options();
 
-  for (const auto &option : options) {
+  for (const auto& option : options) {
     const auto optionType = get_option_type(option, _pod);
     const auto optionString = create_option_string(optionType, option, removeLongOptDashes);
     const auto is_buffer_empty = buffers[optionType].str().empty();
@@ -213,7 +215,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
     if ((optionType == short_simple) && is_buffer_empty)
       buffers[optionType] << "[-";
     // Add spaces only after the first character to simplify upper level formatting
-    else if((optionType != short_simple) && !is_buffer_empty)
+    else if ((optionType != short_simple) && !is_buffer_empty)
       buffers[optionType] << " ";
 
     buffers[optionType] << boost::format("%s") % optionString;
@@ -236,12 +238,12 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
   return outputBuffer.str();
 }
 
-void 
-XBUtilities::report_commands_help( const std::string &_executable, 
-                                   const std::string &_description,
-                                   const boost::program_options::options_description& _optionDescription,
-                                   const boost::program_options::options_description& _optionHidden,
-                                   const SubCmdsCollection &_subCmds)
+void
+XBUtilities::report_commands_help(const std::string& _executable,
+                                  const std::string& _description,
+                                  const boost::program_options::options_description& _optionDescription,
+                                  const boost::program_options::options_description& _optionHidden,
+                                  const SubCmdsCollection& _subCmds)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -258,9 +260,12 @@ XBUtilities::report_commands_help( const std::string &_executable,
   // -- Command description
   {
     static const std::string key = "DESCRIPTION: ";
-    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
+    auto formattedString = XBU::wrap_paragraphs(_description,
+                                                static_cast<unsigned int>(key.size()),
+                                                m_maxColumnWidth - static_cast<unsigned int>(key.size()),
+                                                false);
     boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
-    if ( !formattedString.empty() )
+    if (!formattedString.empty())
       std::cout << fmtHeader % formattedString;
   }
 
@@ -278,7 +283,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   for (auto& subCmdEntry : _subCmds) {
     // Filter out hidden subcommand
-    if (!XBU::getShowHidden() && subCmdEntry->isHidden()) 
+    if (!XBU::getShowHidden() && subCmdEntry->isHidden())
       continue;
 
     // Deprecated sub-command
@@ -303,15 +308,14 @@ XBUtilities::report_commands_help( const std::string &_executable,
   std::sort(subCmdsPreliminary.begin(), subCmdsPreliminary.end(), sortByName);
   std::sort(subCmdsDepricated.begin(), subCmdsDepricated.end(), sortByName);
 
-
   // -- Report the SubCommands
-  boost::format fmtSubCmdHdr(fgc_header + "\n%s COMMANDS:\n" + fgc_reset);  
-  boost::format fmtSubCmd(fgc_subCmd + "  %-10s " + fgc_subCmdBody + "- %s\n" + fgc_reset); 
+  boost::format fmtSubCmdHdr(fgc_header + "\n%s COMMANDS:\n" + fgc_reset);
+  boost::format fmtSubCmd(fgc_subCmd + "  %-10s " + fgc_subCmdBody + "- %s\n" + fgc_reset);
   unsigned int subCmdDescTab = 15;
 
   if (!subCmdsReleased.empty()) {
     std::cout << fmtSubCmdHdr % "AVAILABLE";
-    for (auto & subCmdEntry : subCmdsReleased) {
+    for (auto& subCmdEntry : subCmdsReleased) {
       std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
       auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
@@ -320,7 +324,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   if (!subCmdsPreliminary.empty()) {
     std::cout << fmtSubCmdHdr % "PRELIMINARY";
-    for (auto & subCmdEntry : subCmdsPreliminary) {
+    for (auto& subCmdEntry : subCmdsPreliminary) {
       std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
       auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
@@ -329,7 +333,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   if (!subCmdsDepricated.empty()) {
     std::cout << fmtSubCmdHdr % "DEPRECATED";
-    for (auto & subCmdEntry : subCmdsDepricated) {
+    for (auto& subCmdEntry : subCmdsDepricated) {
       std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
       auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
@@ -338,16 +342,16 @@ XBUtilities::report_commands_help( const std::string &_executable,
 
   report_option_help("OPTIONS", _optionDescription, emptyPOD);
 
-  if (XBU::getShowHidden()) 
+  if (XBU::getShowHidden())
     report_option_help(std::string("OPTIONS ") + sHidden, _optionHidden, emptyPOD);
 }
 
-static std::string 
-create_option_format_name(const boost::program_options::option_description * _option,
+static std::string
+create_option_format_name(const boost::program_options::option_description* _option,
                           bool _reportParameter = true,
                           bool removeLongOptDashes = false)
 {
-  if (_option == nullptr) 
+  if (_option == nullptr)
     return "";
 
   std::string optionDisplayName = _option->canonical_display_name(po::command_line_style::allow_dash_for_short);
@@ -359,24 +363,24 @@ create_option_format_name(const boost::program_options::option_description * _op
   // Get the long name (if it exists)
   std::string longName = _option->canonical_display_name(po::command_line_style::allow_long);
   if ((longName.size() > 2) && (longName[0] == '-') && (longName[1] == '-')) {
-    if (!optionDisplayName.empty()) 
+    if (!optionDisplayName.empty())
       optionDisplayName += ", ";
 
     optionDisplayName += removeLongOptDashes ? _option->long_name() : longName;
   }
 
-  if (_reportParameter && !_option->format_parameter().empty()) 
+  if (_reportParameter && !_option->format_parameter().empty())
     optionDisplayName += " " + _option->format_parameter();
 
   return optionDisplayName;
 }
 
 void
-XBUtilities::report_option_help( const std::string & _groupName, 
-                                 const boost::program_options::options_description& _optionDescription,
-                                 const boost::program_options::positional_options_description & _positionalDescription,
-                                 bool _bReportParameter,
-                                 bool removeLongOptDashes)
+XBUtilities::report_option_help(const std::string& _groupName,
+                                const boost::program_options::options_description& _optionDescription,
+                                const boost::program_options::positional_options_description& _positionalDescription,
+                                bool _bReportParameter,
+                                bool removeLongOptDashes)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -391,14 +395,14 @@ XBUtilities::report_option_help( const std::string & _groupName,
 
   // Report option group name (if defined)
   boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
-  if ( !_groupName.empty() )
+  if (!_groupName.empty())
     std::cout << fmtHeader % _groupName;
 
   // Report the options
   boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
-  for (auto & option : _optionDescription.options()) {
-    if ( ::isPositional( option->canonical_display_name(po::command_line_style::allow_dash_for_short),
-                         _positionalDescription) )  {
+  for (auto& option : _optionDescription.options()) {
+    if (::isPositional(option->canonical_display_name(po::command_line_style::allow_dash_for_short),
+                       _positionalDescription)) {
       continue;
     }
 
@@ -409,18 +413,19 @@ XBUtilities::report_option_help( const std::string & _groupName,
   }
 }
 
-void 
-XBUtilities::report_subcommand_help(const std::string &_executableName,
-                                    const std::string &_subCommand,
-                                    const std::string &_description, 
-                                    const std::string &_extendedHelp,
-                                    const boost::program_options::options_description &_optionDescription,
-                                    const boost::program_options::options_description &_optionHidden,
-                                    const boost::program_options::options_description &_globalOptions,
-                                    const boost::program_options::positional_options_description &_positionalDescription,
-                                    const SubCmd::SubOptionOptions &_subOptionOptions,
-                                    bool removeLongOptDashes,
-                                    const std::string &customHelpSection)
+void
+XBUtilities::report_subcommand_help(
+    const std::string& _executableName,
+    const std::string& _subCommand,
+    const std::string& _description,
+    const std::string& _extendedHelp,
+    const boost::program_options::options_description& _optionDescription,
+    const boost::program_options::options_description& _optionHidden,
+    const boost::program_options::options_description& _globalOptions,
+    const boost::program_options::positional_options_description& _positionalDescription,
+    const SubCmd::SubOptionOptions& _subOptionOptions,
+    bool removeLongOptDashes,
+    const std::string& customHelpSection)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -438,14 +443,14 @@ XBUtilities::report_subcommand_help(const std::string &_executableName,
 
   // -- Command
   boost::format fmtCommand(fgc_header + "\nCOMMAND: " + fgc_commandBody + "%s\n" + fgc_reset);
-  if ( !_subCommand.empty() )
+  if (!_subCommand.empty())
     std::cout << fmtCommand % _subCommand;
- 
+
   // -- Command description
   {
     auto formattedString = XBU::wrap_paragraphs(_description, 15, m_maxColumnWidth, false);
     boost::format fmtHeader(fgc_header + "\nDESCRIPTION: " + fgc_headerBody + "%s\n" + fgc_reset);
-    if ( !formattedString.empty() )
+    if (!formattedString.empty())
       std::cout << fmtHeader % formattedString;
   }
 
@@ -458,17 +463,17 @@ XBUtilities::report_subcommand_help(const std::string &_executableName,
   boost::program_options::options_description allHiddenOptions(_optionHidden);
 
   std::string usageSubCmds;
-  for (const auto & subCmd : _subOptionOptions) {
+  for (const auto& subCmd : _subOptionOptions) {
     // As we go through the sub options add them into the options description for the list display
     if (subCmd->isHidden())
       allHiddenOptions.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
     else
       allOptions.add_options()(subCmd->optionNameString().c_str(), subCmd->description().c_str());
 
-    if (subCmd->isHidden() && !XBU::getShowHidden()) 
+    if (subCmd->isHidden() && !XBU::getShowHidden())
       continue;
 
-    if (!usageSubCmds.empty()) 
+    if (!usageSubCmds.empty())
       usageSubCmds.append(" | ");
 
     const auto& option = subCmd->option();
@@ -491,25 +496,24 @@ XBUtilities::report_subcommand_help(const std::string &_executableName,
   // -- Global Options
   report_option_help("GLOBAL OPTIONS", _globalOptions, _positionalDescription, false);
 
-  if (XBU::getShowHidden()) 
+  if (XBU::getShowHidden())
     report_option_help("OPTIONS (Hidden)", allHiddenOptions, _positionalDescription, false);
 
   // Extended help
   {
-    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
+    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" + fgc_reset);
     auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
-    if (!formattedString.empty()) 
+    if (!formattedString.empty())
       std::cout << fmtExtHelp % formattedString;
   }
 }
 
 std::vector<std::string>
-XBUtilities::process_arguments( po::variables_map& vm,
-                                po::command_line_parser& parser,
-                                const po::options_description& options,
-                                const po::positional_options_description& positionals,
-                                bool validate_arguments
-                                )
+XBUtilities::process_arguments(po::variables_map& vm,
+                               po::command_line_parser& parser,
+                               const po::options_description& options,
+                               const po::positional_options_description& positionals,
+                               bool validate_arguments)
 {
   // Add unregistered "option"" that will catch all extra positional arguments
   po::options_description all_options(options);
@@ -519,7 +523,7 @@ XBUtilities::process_arguments( po::variables_map& vm,
 
   // Parse the given options and hold onto the results
   auto parsed_options = parser.options(all_options).positional(all_positionals).allow_unregistered().run();
-  
+
   if (validate_arguments) {
     // This variables holds options denoted with a '-' or '--' that were not registered
     const auto unrecognized_options = po::collect_unrecognized(parsed_options.options, po::exclude_positional);
