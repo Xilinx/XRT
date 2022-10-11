@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#define XDP_SOURCE
 
 #include <cstdint>
 
@@ -75,8 +76,8 @@ namespace xdp {
 
     // Set Delay parameters
     // Update delay with clock cycles when we get device handle later
-    // mDelayCycles = static_cast<uint32_t>(getTraceStartDelayCycles());
-    // mUseDelay = (mDelayCycles > 0) ? true : false;
+    // delayCycles = static_cast<uint32_t>(getTraceStartDelayCycles());
+    // useDelay = (delayCycles > 0) ? true : false;
 
     // Pre-defined metric sets
     metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};
@@ -219,6 +220,82 @@ namespace xdp {
     return tiles;
   }
 
+  void AieTraceMetadata::setTraceStartControl()
+  {
+    useDelay = false;
+    useGraphIterator = false;
+    useUserControl = false;
+
+    auto startType = xrt_core::config::get_aie_trace_settings_start_type();
+
+    if (startType == "time") {
+      // Use number of cycles to start trace
+      double freqMhz = AIE_DEFAULT_FREQ_MHZ;
+      if (handle != nullptr) {
+        auto device = xrt_core::get_userpf_device(handle);
+        freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+      }
+
+      std::smatch pieces_match;
+      uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * uint_constants::one_million);
+
+      // AIE_trace_settings configs have higher priority than older Debug configs
+      std::string size_str = xrt_core::config::get_aie_trace_settings_start_time();
+      if (size_str == "0")
+        size_str = xrt_core::config::get_aie_trace_start_time();
+
+      // Catch cases like "1Ms" "1NS"
+      std::transform(size_str.begin(), size_str.end(), size_str.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+
+      // Default is 0 cycles
+      uint64_t cycles = 0;
+      // Regex can parse values like : "1s" "1ms" "1ns"
+      const std::regex size_regex("\\s*(\\d+\\.?\\d*)\\s*(s|ms|us|ns|)\\s*");
+      if (std::regex_match(size_str, pieces_match, size_regex)) {
+        try {
+          if (pieces_match[2] == "s") {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec);
+          } else if (pieces_match[2] == "ms") {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  uint_constants::one_thousand);
+          } else if (pieces_match[2] == "us") {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  uint_constants::one_million);
+          } else if (pieces_match[2] == "ns") {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  uint_constants::one_billion);
+          } else {
+            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]));
+          }
+        
+          std::string msg("Parsed aie_trace_start_time: " + std::to_string(cycles) + " cycles.");
+          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+
+        } catch (const std::exception& ) {
+          // User specified number cannot be parsed
+          std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+        }
+      } else {
+        std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+      }
+
+    if (cycles > std::numeric_limits<uint32_t>::max())
+        useOneDelayCtr = false;
+
+      useDelay = (cycles != 0);
+      delayCycles = cycles;
+    } else if (startType == "iteration") {
+      // Start trace when graph iterator reaches a threshold
+      iterationCount = xrt_core::config::get_aie_trace_settings_start_iteration();
+      useGraphIterator = (iterationCount != 0);
+    } else if (startType == "kernel_event0") {
+      // Start trace using user events
+      useUserControl = true;
+    }
+
+  }
+
+
   void AieTraceMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
   {
     std::stringstream aie_stream;
@@ -322,9 +399,8 @@ namespace xdp {
 
 
   void
-  AieTraceMetadata::getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
-                                           std::vector<std::string> graphmetricsSettings,
-                                           void* handle)
+  AieTraceMetadata::getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
+                                           std::vector<std::string>& graphmetricsSettings)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 

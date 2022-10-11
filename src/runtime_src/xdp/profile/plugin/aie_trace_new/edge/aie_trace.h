@@ -30,14 +30,10 @@ namespace xdp {
       XDP_EXPORT
       AieTrace_EdgeImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata);
         // : AieTraceImpl(database, metadata);
-      virtual ~AieTrace_EdgeImpl() = default;
+      ~AieTrace_EdgeImpl() = default;
       
       XDP_EXPORT
       void updateDevice();
-      XDP_EXPORT
-      void flushDevice();
-      XDP_EXPORT
-      void finishFlushDevice();
 
     private:
       bool setMetrics(uint64_t deviceId, void* handle);
@@ -86,15 +82,6 @@ namespace xdp {
       EventVector memoryCounterResetEvents;
       ValueVector memoryCounterEventValues;
 
-      /* Currently only "aie" tile metrics is supported for graph/tile based trace.
-      * So, a single map for tile and resolved metric is sufficient.
-      * In future, when mem_tile and interface_tile metrics will be supported, we will
-      * need separate map for each type or a vector of maps for all types together.
-      */
-      bool mUseOneDelayCtr = true;
-      uint32_t mIterationCount = 0;
-
-      // std::vector<std::map<tile_type, std::string>> mConfigMetrics;
   };
 
 }   

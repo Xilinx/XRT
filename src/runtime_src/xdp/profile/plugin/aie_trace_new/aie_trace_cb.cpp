@@ -14,8 +14,11 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "aie_trace_cb.h"
 #include "aie_trace_plugin.h"
+
 
 namespace xdp {
 
@@ -58,7 +61,8 @@ void flushAIEDevice(void* handle)
   xdp::flushAIEDevice(handle);
 }
 
-extern "C" 
+extern "C"
+XDP_EXPORT 
 void finishFlushAIEDevice(void* handle)
 {
   xdp::finishFlushAIEDevice(handle);

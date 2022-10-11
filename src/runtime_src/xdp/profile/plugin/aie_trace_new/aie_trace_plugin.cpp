@@ -14,6 +14,8 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include <boost/algorithm/string.hpp>
 #include <cmath>
 #include <iostream>
@@ -34,9 +36,7 @@
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
 
 #ifdef XRT_X86_BUILD
-  // #include "x86/aie_trace.h"
-  #include "edge/aie_trace.h"
-  #include "core/edge/user/shim.h"
+  #include "x86/aie_trace.h"
 #else
   #include "edge/aie_trace.h"
   #include "core/edge/user/shim.h"
@@ -104,8 +104,7 @@ namespace xdp {
     AIEData.devIntf = nullptr;
 
 #ifdef XRT_X86_BUILD
-    // AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, metadata);
-    AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, metadata);
+    AIEData.implementation = std::make_unique<AieTrace_x86Impl>(db, metadata);
 #else
     AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, metadata);
 #endif
@@ -305,8 +304,8 @@ namespace xdp {
       return;
 
     flushOffloader(AIEData.offloader, false);
-    if (AIEData.implementation)
-      AIEData.implementation->flushDevice();
+    // if (AIEData.implementation)
+    //   AIEData.implementation->flushDevice();
   }
 
   void AieTracePluginUnified::finishFlushAIEDevice(void* handle)
@@ -323,8 +322,11 @@ namespace xdp {
       return;
 
     flushOffloader(AIEData.offloader, true);
-    if (AIEData.implementation)
-      AIEData.implementation->finishFlushDevice();
+    // if (AIEData.implementation)
+    //   AIEData.implementation->finishFlushDevice();
+    
+    // we have to map::erase() AIEDdata[handle] entry now
+    
   }
 
   void AieTracePluginUnified::writeAll(bool openNewFiles)

@@ -216,7 +216,7 @@ namespace xdp {
     required = coreCounterStartEvents.size();
     if (metadata->getUseDelay()) {
       ++required;
-      if (!mUseOneDelayCtr)
+      if (!metadata->getUseOneDelayCounter())
         ++required;
     } else if (metadata->getUseGraphIterator())
       ++required;
@@ -312,81 +312,6 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
-  void AieTrace_EdgeImpl::setTraceStartControl(void* handle)
-  {
-    metadata->setUseDelay(false);
-    metadata->setUseGraphIterator(false);
-    metadata->setUseUserControl(false);
-
-    auto startType = xrt_core::config::get_aie_trace_settings_start_type();
-
-    if (startType == "time") {
-      // Use number of cycles to start trace
-      double freqMhz = AIE_DEFAULT_FREQ_MHZ;
-      if (handle != nullptr) {
-        auto device = xrt_core::get_userpf_device(handle);
-        freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
-      }
-
-      std::smatch pieces_match;
-      uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * uint_constants::one_million);
-
-      // AIE_trace_settings configs have higher priority than older Debug configs
-      std::string size_str = xrt_core::config::get_aie_trace_settings_start_time();
-      if (size_str == "0")
-        size_str = xrt_core::config::get_aie_trace_start_time();
-
-      // Catch cases like "1Ms" "1NS"
-      std::transform(size_str.begin(), size_str.end(), size_str.begin(),
-        [](unsigned char c){ return std::tolower(c); });
-
-      // Default is 0 cycles
-      uint64_t cycles = 0;
-      // Regex can parse values like : "1s" "1ms" "1ns"
-      const std::regex size_regex("\\s*(\\d+\\.?\\d*)\\s*(s|ms|us|ns|)\\s*");
-      if (std::regex_match(size_str, pieces_match, size_regex)) {
-        try {
-          if (pieces_match[2] == "s") {
-            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec);
-          } else if (pieces_match[2] == "ms") {
-            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  uint_constants::one_thousand);
-          } else if (pieces_match[2] == "us") {
-            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  uint_constants::one_million);
-          } else if (pieces_match[2] == "ns") {
-            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  uint_constants::one_billion);
-          } else {
-            cycles = static_cast<uint64_t>(std::stof(pieces_match[1]));
-          }
-        
-          std::string msg("Parsed aie_trace_start_time: " + std::to_string(cycles) + " cycles.");
-          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
-
-        } catch (const std::exception& ) {
-          // User specified number cannot be parsed
-          std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-        }
-      } else {
-        std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-      }
-
-      if (cycles > std::numeric_limits<uint32_t>::max())
-        mUseOneDelayCtr = false;
-
-      metadata->setUseDelay(cycles != 0);
-      metadata->setDelayCycles(cycles);
-    } else if (startType == "iteration") {
-      // Start trace when graph iterator reaches a threshold
-      metadata->setIterationCount(xrt_core::config::get_aie_trace_settings_start_iteration());
-      metadata->setUseGraphIterator(metadata->getIterationCount() != 0);
-    } else if (startType == "kernel_event0") {
-      // Start trace using user events
-      metadata->setUseUserControl(true);
-    }
-
-  }
-
     // Release counters from latest tile (because something went wrong)
   void AieTrace_EdgeImpl::releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters)
   {
@@ -434,9 +359,9 @@ namespace xdp {
     boost::replace_all(graphmetricsConfig, " ", "");
     boost::split(graphmetricsSettings, graphmetricsConfig, boost::is_any_of(";"));
 
-    metadata->getConfigMetricsForTiles(metricsSettings, graphmetricsSettings, handle);
+    metadata->getConfigMetricsForTiles(metricsSettings, graphmetricsSettings);
 
-    setTraceStartControl(handle);
+    metadata->setTraceStartControl();
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -816,16 +741,56 @@ namespace xdp {
     return true;
   } // end setMetricsSettings
 
+  // TODO Need to check on edge
+  uint64_t AieTrace_EdgeImpl::checkTraceBufSize(uint64_t aieTraceBufSize) {
 
-  void AieTrace_EdgeImpl::flushDevice() {
-  }
+#ifndef _WIN32
+    try {
+      std::string line;
+      std::ifstream ifs;
+      ifs.open("/proc/meminfo");
+      while (getline(ifs, line)) {
+        if (line.find("CmaTotal") == std::string::npos)
+          continue;
+          
+        // Memory sizes are always expressed in kB
+        std::vector<std::string> cmaVector;
+        boost::split(cmaVector, line, boost::is_any_of(":"));
+        auto deviceMemorySize = std::stoull(cmaVector.at(1)) * 1024;
+        if (deviceMemorySize == 0)
+          break;
 
-  void AieTrace_EdgeImpl::finishFlushDevice() {
-  }
+        double percentSize = (100.0 * aieTraceBufSize) / deviceMemorySize;
+        std::stringstream percentSizeStr;
+        percentSizeStr << std::fixed << std::setprecision(3) << percentSize;
 
-  // No CMA checks on x86
-  uint64_t AieTrace_EdgeImpl::checkTraceBufSize(uint64_t size) {
-    return 0;
+        // Limit size of trace buffer if requested amount is too high
+        if (percentSize >= 80.0) {
+          uint64_t newAieTraceBufSize = (uint64_t)std::ceil(0.8 * deviceMemorySize);
+          aieTraceBufSize = newAieTraceBufSize;
+
+          std::stringstream newBufSizeStr;
+          newBufSizeStr << std::fixed << std::setprecision(3) << (newAieTraceBufSize / (1024.0 * 1024.0));
+          
+          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory."
+              + " You may run into errors depending upon memory usage of your application."
+              + " Limiting to " + newBufSizeStr.str() + " MB.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
+        }
+        else {
+          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory.";
+          xrt_core::message::send(severity_level::info, "XRT", msg);
+        }
+        
+        break;
+      }
+      ifs.close();
+    }
+    catch (...) {
+        // Do nothing
+    }
+#endif
+    return aieTraceBufSize;
   }
 
   bool AieTrace_EdgeImpl::configureStartDelay(xaiefal::XAieMod& core)
@@ -839,7 +804,7 @@ namespace xdp {
     uint32_t delayCyclesLow = 0;
     XAie_ModuleType mod = XAIE_CORE_MOD;
 
-    if (!mUseOneDelayCtr) {
+    if (!metadata->getUseOneDelayCounter()) {
       // ceil(x/y) where x and y are  positive integers
       delayCyclesHigh = static_cast<uint32_t>(1 + ((metadata->getDelay() - 1) / std::numeric_limits<uint32_t>::max()));
       delayCyclesLow =  static_cast<uint32_t>(metadata->getDelay() / delayCyclesHigh);
@@ -864,7 +829,7 @@ namespace xdp {
 
     // Configure upper 32 bits if necessary
     // Use previous counter to start a new counter
-    if (!mUseOneDelayCtr && delayCyclesHigh) {
+    if (!metadata->getUseOneDelayCounter() && delayCyclesHigh) {
       auto pc = core.perfCounter();
       // Count by 1 when previous counter generates event
       if (pc->initialize(mod, counterEvent,
@@ -959,7 +924,7 @@ namespace xdp {
     std::cout << "Got MetricSet" << std::endl;
 
     auto tiles = metadata->getTilesForTracing();
-    setTraceStartControl(handle);
+    metadata->setTraceStartControl();
     std::cout << "Got Tiles for tracing!" << std::endl;
 
     // Keep track of number of events reserved per tile

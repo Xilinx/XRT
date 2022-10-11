@@ -54,15 +54,9 @@ namespace xdp {
     }
   }
 
-  void AieTrace_x86Impl::flushDevice() {
-  }
-
-  void AieTrace_x86Impl::finishFlushDevice() {
-    // Release aie resources here
-  }
-
   // No CMA checks on x86
   uint64_t AieTrace_x86Impl::checkTraceBufSize(uint64_t size) {
+    //TODO: Figure it out from XCLBIN metadata
     return size;
   }
 
