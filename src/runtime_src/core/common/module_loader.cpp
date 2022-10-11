@@ -21,6 +21,7 @@
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+#include <iostream>
 
 
 #ifdef _WIN32
@@ -146,6 +147,29 @@ shim_path()
   return path;
 }
 
+static std::vector<std::string>
+driver_plugin_paths()
+{
+  std::vector<std::string> ret;
+  std::vector<bfs::path> vec{
+    bfs::directory_iterator(shim_path().parent_path()),
+    bfs::directory_iterator()
+  };
+
+  // All driver plug-ins are in the same directory as shim .so and with below prefix and suffix.
+  const std::string pre = "libxrt_driver_";
+  const std::string suf = std::string(".so.") + XRT_VERSION_MAJOR;
+  for (auto& p : vec) {
+    std::string name = p.filename().string();
+    if (name.size() > pre.size() + suf.size() &&
+      !name.compare(0, pre.size(), pre) &&
+      !name.compare(name.size() - suf.size(), suf.size(), suf))
+      ret.push_back(p.string());
+  }
+
+  return ret;
+}
+
 static void*
 load_library(const std::string& path)
 {
@@ -191,6 +215,15 @@ shim_loader()
 {
   auto path = shim_path();
   load_library(path.string());
+}
+
+driver_loader::
+driver_loader()
+{
+  auto paths = driver_plugin_paths();
+
+  for (auto& p : paths)
+    load_library(p);
 }
 
 } // xrt_core
