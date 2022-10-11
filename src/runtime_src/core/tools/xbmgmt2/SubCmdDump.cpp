@@ -42,6 +42,7 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
     flasher.readBack(output);
   } catch(const std::exception& ex){
       std::cerr << "  ERROR: " << ex.what() << std::endl << std::endl;
+      throw xrt_core::error(std::errc::operation_canceled);
   }
 }
 
