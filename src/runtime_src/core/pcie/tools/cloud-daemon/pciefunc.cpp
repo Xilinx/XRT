@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019-2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2020 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 
 #include <syslog.h>
 #include <unistd.h>
@@ -61,7 +49,7 @@ int pcieFunc::getIndex() const
     return index;
 }
 
-std::shared_ptr<pcidev::pci_device> pcieFunc::getDev() const
+std::shared_ptr<xrt_core::pci::dev> pcieFunc::getDev() const
 {
     return dev;
 }
@@ -159,8 +147,8 @@ void pcieFunc::log(int priority, const char *format, ...) const
 
     va_start(args, format);
 
-    ss << std::hex << "[" << dev->domain << ":" <<
-        dev->bus << ":" << dev->dev << "." << dev->func << "] ";
+    ss << std::hex << "[" << dev->m_domain << ":" <<
+        dev->m_bus << ":" << dev->m_dev << "." << dev->m_func << "] ";
 
     vsyslog(priority, (ss.str() + format).c_str(), args);
 
@@ -169,7 +157,7 @@ void pcieFunc::log(int priority, const char *format, ...) const
 
 pcieFunc::pcieFunc(size_t index, bool user) : index(index)
 {
-    dev = pcidev::get_dev(index, user);
+    dev = xrt_core::pci::get_dev(index, user);
 }
 
 pcieFunc::~pcieFunc()

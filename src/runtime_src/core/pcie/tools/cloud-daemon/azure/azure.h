@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _BAREMETAL_DEV_H_
 #define _BAREMETAL_DEV_H_
 
@@ -22,7 +10,7 @@
 #include "xclhal2.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
-#include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/pcidev.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
 #include "../common.h"
 #include "../mpd_plugin.h"
@@ -88,16 +76,16 @@ public:
     {
         std::regex sn("^[0-9a-zA-Z]{12}$");
         std::vector<std::string> ret = {};
-	    size_t total = pcidev::get_dev_total();
+	    size_t total = xrt_core::pci::get_dev_total();
 	    if (!total) {
             std::cerr << "azure: No device found!" << std::endl;
             return ret;
         }
         for (size_t i = 0; i < total; i++) {
             std::string serialNumber, errmsg;
-            pcidev::get_dev(i, true)->sysfs_get("xmc", "serial_num", errmsg, serialNumber); 
+	    xrt_core::pci::get_dev(i, true)->sysfs_get("xmc", "serial_num", errmsg, serialNumber); 
 	        if (!errmsg.empty() || !regex_match(serialNumber, sn)) {
-           	    std::cerr << "azure warning(" << pcidev::get_dev(i, true)->sysfs_name << ")";
+           	    std::cerr << "azure warning(" << xrt_core::pci::get_dev(i, true)->m_sysfs_name << ")";
                 std::cerr << " sysfs errmsg: " << errmsg;
                 std::cerr << " serialNumber: " << serialNumber;
                 std::cerr << std::endl;
@@ -113,7 +101,7 @@ private:
     static const int upload_retry { 15 };
     static const int reset_retry { 3 };
     static const int timeout_threshold { 120 }; //mailbox timeout set as 120 seconds
-    std::shared_ptr<pcidev::pci_device> dev;
+    std::shared_ptr<xrt_core::pci::dev> dev;
     size_t index;
     struct timeval start;
     int UploadToWireServer(

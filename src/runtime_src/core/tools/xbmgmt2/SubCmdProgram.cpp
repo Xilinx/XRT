@@ -24,7 +24,7 @@ namespace XBU = XBUtilities;
 #include "core/common/info_vmr.h"
 // Remove linux specific code
 #ifdef __linux__
-#include "core/pcie/linux/scan.cpp"
+#include "core/pcie/linux/pcidev.cpp"
 #endif
 
 // 3rd Party Library - Include Files
