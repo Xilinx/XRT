@@ -493,7 +493,7 @@ namespace {
   {
     auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
     for (auto device : deviceInfos) {
-      bool full = db->getDynamicInfo().isTraceBufferFull(device->deviceId);
+      bool full = db->getDynamicInfo().isPLTraceBufferFull(device->deviceId);
       fout << "TRACE_BUFFER_FULL,"
            << device->getUniqueDeviceName() << ","
            << (full ? "true" : "false")

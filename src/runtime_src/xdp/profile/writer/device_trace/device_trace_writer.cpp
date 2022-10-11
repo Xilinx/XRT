@@ -44,18 +44,18 @@ namespace xdp {
 
   void DeviceTraceWriter::writeHeader()
   {
-    VPTraceWriter::writeHeader() ;
+    VPTraceWriter::writeHeader();
     std::string targetRun;
     if(xdp::getFlowMode() == xdp::HW) {
       targetRun = "System Run";
     } else if(xdp::getFlowMode() == xdp::HW_EMU) {
       targetRun = "Hardware Emulation";
     }
-    fout << "TraceID," << traceID << std::endl
-         << "XRT  Version," << xrtVersion  << std::endl
-         << "Tool Version," << toolVersion << std::endl
-         << "Platform," << (db->getStaticInfo()).getDeviceName(deviceId) << std::endl
-         << "Target," << targetRun << std::endl;
+    fout << "TraceID," << traceID << "\n"
+         << "XRT  Version," << xrtVersion  << "\n"
+         << "Tool Version," << toolVersion << "\n"
+         << "Platform," << (db->getStaticInfo()).getDeviceName(deviceId) << "\n"
+         << "Target," << targetRun << "\n";
   }
 
   // This function writes the portion of the structure that is true for
@@ -63,30 +63,30 @@ namespace xdp {
   //  monitors go here.
   void DeviceTraceWriter::writeDeviceStructure()
   {
-    uint64_t numKDMA = (db->getStaticInfo()).getKDMACount(deviceId) ;
+    uint64_t numKDMA = (db->getStaticInfo()).getKDMACount(deviceId);
     if(numKDMA) {
 #if 0
-      fout << "Group_Start,KDMA" << std::endl ;
+      fout << "Group_Start,KDMA\n";
       for (unsigned int i = 0 ; i < numKDMA ; ++i)
       {
-              fout << "Dynamic_Row," << ++rowCount << ",Read, ,KERNEL_READ" << std::endl;
-              fout << "Dynamic_Row," << ++rowCount << ",Write, ,KERNEL_WRITE" << std::endl;
+              fout << "Dynamic_Row," << ++rowCount << ",Read, ,KERNEL_READ\n";
+              fout << "Dynamic_Row," << ++rowCount << ",Write, ,KERNEL_WRITE\n";
       }
-      fout << "Group_End,KDMA" << std::endl ;
+      fout << "Group_End,KDMA\n";
 #endif
     }
   }
 
   void DeviceTraceWriter::writeLoadedXclbinsStructure()
   {
-    uint32_t rowCount = 0 ;
+    uint32_t rowCount = 0;
     std::vector<XclbinInfo*> xclbins =
-      (db->getStaticInfo()).getLoadedXclbins(deviceId) ;
+      (db->getStaticInfo()).getLoadedXclbins(deviceId);
 
     for (auto xclbin : xclbins) {
-      fout << "Group_Start," << xclbin->name << std::endl ;
-      writeSingleXclbinStructure(xclbin, rowCount) ;
-      fout << "Group_End," << xclbin->name << std::endl ;
+      fout << "Group_Start," << xclbin->name << "\n";
+      writeSingleXclbinStructure(xclbin, rowCount);
+      fout << "Group_End," << xclbin->name << "\n";
     }
   }
 
@@ -95,7 +95,7 @@ namespace xdp {
   {
     // Create structure for all CUs in the xclbin
     for (auto iter : xclbin->pl.cus) {
-      ComputeUnitInstance* cu = iter.second ;
+      ComputeUnitInstance* cu = iter.second;
       fout << "Group_Start,Compute Unit " << cu->getName();
 
       if(-1 == cu->getAccelMon() && !(cu->getDataTransferTraceEnabled())
@@ -104,17 +104,17 @@ namespace xdp {
       }
 
       fout << ",Activity in accelerator "<< cu->getKernelName() 
-           << ":" << cu->getName() << std::endl ;
+           << ":" << cu->getName() << "\n";
 
-      writeCUExecutionStructure(xclbin, cu, rowCount) ;
-      writeCUMemoryTransfersStructure(xclbin, cu, rowCount) ;
-      writeCUStreamTransfersStructure(xclbin, cu, rowCount) ;
+      writeCUExecutionStructure(xclbin, cu, rowCount);
+      writeCUMemoryTransfersStructure(xclbin, cu, rowCount);
+      writeCUStreamTransfersStructure(xclbin, cu, rowCount);
 
-      fout << "Group_End," << cu->getName() << std::endl ;
+      fout << "Group_End," << cu->getName() << "\n";
     }
     // Create structure for all floating monitors not attached to a CU, and enabled for trace
-    writeFloatingMemoryTransfersStructure(xclbin, rowCount) ;
-    writeFloatingStreamTransfersStructure(xclbin, rowCount) ;
+    writeFloatingMemoryTransfersStructure(xclbin, rowCount);
+    writeFloatingStreamTransfersStructure(xclbin, rowCount);
   }
 
   void DeviceTraceWriter::writeCUExecutionStructure(XclbinInfo* xclbin,
@@ -127,7 +127,7 @@ namespace xdp {
     } 
     fout << "Dynamic_Row_Summary," << ++rowCount
          << ",Executions,Execution in accelerator " 
-         << cu->getName() << std::endl;
+         << cu->getName() << "\n";
 
     if(xdp::getFlowMode() == xdp::HW_EMU) {
       size_t pos = xclbin->name.find(".xclbin");
@@ -136,20 +136,20 @@ namespace xdp {
            << "," << (db->getStaticInfo()).getDeviceName(deviceId) << "-0"
            << "," << xclbin->name.substr(0, pos)
            << "," << cu->getKernelName()
-           << "," << cu->getName() << std::endl;
+           << "," << cu->getName() << "\n";
     }
 
     std::pair<XclbinInfo*, int32_t> index =
-      std::make_pair(xclbin, cu->getIndex()) ;
+      std::make_pair(xclbin, cu->getIndex());
     cuBucketIdMap[index] = rowCount;
 
     // Generate wave group for Kernel Stall if Stall monitoring is enabled in CU
     if (cu->getStallEnabled()) {
-      fout << "Group_Summary_Start,Stall,Stalls in accelerator " << cu->getName() << std::endl;
-      fout << "Static_Row," << (rowCount + KERNEL_STALL_EXT_MEM - KERNEL)  << ",External Memory Stall, Stalls from accessing external memory" << std::endl;
-      fout << "Static_Row," << (rowCount + KERNEL_STALL_DATAFLOW - KERNEL) << ",Intra-Kernel Dataflow Stall,Stalls from dataflow streams inside compute unit" << std::endl;
-      fout << "Static_Row," << (rowCount + KERNEL_STALL_PIPE - KERNEL) << ",Inter-Kernel Pipe Stall,Stalls from accessing pipes between kernels" << std::endl;
-      fout << "Group_End,Stall" << std::endl;
+      fout << "Group_Summary_Start,Stall,Stalls in accelerator " << cu->getName() << "\n";
+      fout << "Static_Row," << (rowCount + KERNEL_STALL_EXT_MEM - KERNEL)  << ",External Memory Stall, Stalls from accessing external memory" << "\n";
+      fout << "Static_Row," << (rowCount + KERNEL_STALL_DATAFLOW - KERNEL) << ",Intra-Kernel Dataflow Stall,Stalls from dataflow streams inside compute unit" << "\n";
+      fout << "Static_Row," << (rowCount + KERNEL_STALL_PIPE - KERNEL) << ",Inter-Kernel Pipe Stall,Stalls from accessing pipes between kernels" << "\n";
+      fout << "Group_End,Stall\n";
 
       rowCount += (KERNEL_STALL_PIPE - KERNEL);
     }
@@ -159,15 +159,16 @@ namespace xdp {
   {
     // Generate Wave group for Read/Write if data transfer monitoring is enabled
     if (!(cu->getDataTransferTraceEnabled()))
-      return ;
+      return;
 
     std::vector<uint32_t>* cuAIMs = cu->getAIMsWithTrace() ;
     for (auto cuAIM : *cuAIMs) {
-      Monitor* aim = (db->getStaticInfo()).getAIMonitor(deviceId, xclbin, cuAIM) ;
-      if (nullptr == aim) continue ;
+      Monitor* aim = (db->getStaticInfo()).getAIMonitor(deviceId, xclbin, cuAIM);
+      if (nullptr == aim)
+        continue;
 
-      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, cuAIM) ;
-      aimBucketIdMap[index] = ++rowCount ;
+      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, cuAIM);
+      aimBucketIdMap[index] = ++rowCount;
 
       size_t pos = aim->name.find('/');
       std::string portAndArgs = (std::string::npos != pos) ? aim->name.substr(pos+1) : aim->name;
@@ -184,10 +185,10 @@ namespace xdp {
       }
 
       // Data Transfers
-      fout << "Group_Start," << portAndArgs << ",Data Transfers between " << cu->getName() << " and Global Memory over read and write channels of " << aim->name << std::endl;
-      fout << "Static_Row," << rowCount   << ",Read Channel,Read Data Transfers " << std::endl;
-      fout << "Static_Row," << ++rowCount << ",Write Channel,Write Data Transfers " << std::endl;
-      fout << "Group_End," << portAndArgs << std::endl;
+      fout << "Group_Start," << portAndArgs << ",Data Transfers between " << cu->getName() << " and Global Memory over read and write channels of " << aim->name << "\n";
+      fout << "Static_Row," << rowCount   << ",Read Channel,Read Data Transfers " << "\n";
+      fout << "Static_Row," << ++rowCount << ",Write Channel,Write Data Transfers " << "\n";
+      fout << "Group_End," << portAndArgs << "\n";
     }
   }
 
@@ -195,46 +196,47 @@ namespace xdp {
   {
     // Generate Wave group for stream data transfers if enabled
     if (!(cu->getStreamTraceEnabled()))
-      return ;
+      return;
 
-    std::vector<uint32_t>* cuASMs = cu->getASMsWithTrace() ;
+    std::vector<uint32_t>* cuASMs = cu->getASMsWithTrace();
     for (auto cuASM : *cuASMs) {
-      Monitor* ASM = (db->getStaticInfo()).getASMonitor(deviceId, xclbin, cuASM) ;
-      if (nullptr == ASM) continue ;
+      Monitor* ASM = (db->getStaticInfo()).getASMonitor(deviceId, xclbin, cuASM);
+      if (nullptr == ASM)
+        continue;
 
-      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, cuASM) ;
-      asmBucketIdMap[index] = ++rowCount ;
+      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, cuASM);
+      asmBucketIdMap[index] = ++rowCount;
 
       // KERNEL_STREAM_READ/WRITE
-      fout << "Group_Start," << ASM->name << ",AXI Stream transaction over " << ASM->name << std::endl;
-      fout << "Static_Row," << rowCount << ",Stream Activity,AXI Stream transactions over " << ASM->name << std::endl;
-      fout << "Static_Row," << ++rowCount << ",Link Stall" << std::endl;
-      fout << "Static_Row," << ++rowCount << ",Link Starve" << std::endl;
-      fout << "Group_End," << ASM->name << std::endl;
+      fout << "Group_Start," << ASM->name << ",AXI Stream transaction over " << ASM->name << "\n";
+      fout << "Static_Row," << rowCount << ",Stream Activity,AXI Stream transactions over " << ASM->name << "\n";
+      fout << "Static_Row," << ++rowCount << ",Link Stall" << "\n";
+      fout << "Static_Row," << ++rowCount << ",Link Starve" << "\n";
+      fout << "Group_End," << ASM->name << "\n";
     }
   }
 
   void DeviceTraceWriter::writeFloatingMemoryTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount)
   {
     if (!(db->getStaticInfo().hasFloatingAIMWithTrace(deviceId, xclbin)))
-      return ;
+      return;
 
-    fout << "Group_Start,AXI Memory Monitors,Read/Write data transfers over AXI Memory Mapped connection " << std::endl;
+    fout << "Group_Start,AXI Memory Monitors,Read/Write data transfers over AXI Memory Mapped connection \n";
 
     // Go through all of the AIMs in this xclbin to find the floating ones
     std::vector<Monitor*>* aims =
-      db->getStaticInfo().getAIMonitors(deviceId, xclbin) ;
+      db->getStaticInfo().getAIMonitors(deviceId, xclbin);
 
     size_t i = 0;
     for (auto aim : *aims) {
       if (nullptr == aim)
-        continue ;
+        continue;
       if (-1 != aim->cuIndex) {
         // not a floating AIM, must have been covered in CU section
-        ++i ;
-        continue ;
+        ++i;
+        continue;
       }
-      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
+      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i));
       aimBucketIdMap[index] = ++rowCount;
 
       std::string portAndArgs = aim->name;
@@ -250,80 +252,80 @@ namespace xdp {
         portAndArgs += ")";
       }
 
-      fout << "Group_Start," << portAndArgs << ",Data Transfers over read and write channels of AXI Memory Mapped " << aim->name << std::endl;
-      fout << "Static_Row,"  << rowCount   << ",Read Channel,Read Data Transfers " << std::endl;
-      fout << "Static_Row,"  << ++rowCount << ",Write Channel,Write Data Transfers " << std::endl;
-      fout << "Group_End,"   << portAndArgs << std::endl ;
+      fout << "Group_Start," << portAndArgs << ",Data Transfers over read and write channels of AXI Memory Mapped " << aim->name << "\n";
+      fout << "Static_Row,"  << rowCount   << ",Read Channel,Read Data Transfers " << "\n";
+      fout << "Static_Row,"  << ++rowCount << ",Write Channel,Write Data Transfers " << "\n";
+      fout << "Group_End,"   << portAndArgs << "\n";
       i++;
     }
-    fout << "Group_End,AXI Memory Monitors" << std::endl ;
+    fout << "Group_End,AXI Memory Monitors" << "\n";
   }
 
   void DeviceTraceWriter::writeFloatingStreamTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount)
   {
     if (!(db->getStaticInfo()).hasFloatingASMWithTrace(deviceId, xclbin))
-      return ;
+      return;
 
-    fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << std::endl;
+    fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << "\n";
 
     std::vector<Monitor*>* asms =
-      db->getStaticInfo().getASMonitors(deviceId, xclbin) ;
+      db->getStaticInfo().getASMonitors(deviceId, xclbin);
 
-    size_t i = 0 ;
+    size_t i = 0;
     for (auto asM : *asms) {
       if (nullptr == asM)
-        continue ;
+        continue;
       if (-1 != asM->cuIndex) {
         // Not a floating ASM.  Must have been covered in CU section
-        ++i ;
-        continue ;
+        ++i;
+        continue;
       }
 
-      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
+      std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i));
       asmBucketIdMap[index] = ++rowCount;
-      fout << "Group_Start," << asM->name << ",AXI Stream transactions over " << asM->name << std::endl;
-      fout << "Static_Row," << rowCount << ",Stream Activity,AXI Stream transactions over " << asM->name << std::endl;
-      fout << "Static_Row," << ++rowCount << ",Link Stall" << std::endl;
-      fout << "Static_Row," << ++rowCount << ",Link Starve" << std::endl;
-      fout << "Group_End," << asM->name << std::endl;
+      fout << "Group_Start," << asM->name << ",AXI Stream transactions over " << asM->name << "\n";
+      fout << "Static_Row," << rowCount << ",Stream Activity,AXI Stream transactions over " << asM->name << "\n";
+      fout << "Static_Row," << ++rowCount << ",Link Stall" << "\n";
+      fout << "Static_Row," << ++rowCount << ",Link Starve" << "\n";
+      fout << "Group_End," << asM->name << "\n";
       i++;
     }
-    fout << "Group_End,AXI Stream Monitors" << std::endl ;
+    fout << "Group_End,AXI Stream Monitors\n";
   }
 
   void DeviceTraceWriter::writeStructure()
   {
-    fout << "STRUCTURE" << std::endl ;
+    fout << "STRUCTURE\n";
     
     // Use the database's "static" information to discover how many
     //  kernels, compute units, etc. this device has.  Then, use that
     //  to build up the structure of the file we are generating
     
-    std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId) ;
-    fout << "Group_Start," << deviceName << std::endl ;
-    writeDeviceStructure() ;
-    writeLoadedXclbinsStructure() ;
-    fout << "Group_End," << deviceName << std::endl ;
+    std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId);
+    fout << "Group_Start," << deviceName << "\n";
+    writeDeviceStructure();
+    writeLoadedXclbinsStructure();
+    fout << "Group_End," << deviceName << "\n";
   }
 
   void DeviceTraceWriter::writeStringTable()
   {
-    fout << "MAPPING" << std::endl ;
-    (db->getDynamicInfo()).dumpStringTable(fout) ;
+    fout << "MAPPING\n";
+    (db->getDynamicInfo()).dumpStringTable(fout);
   }
 
   void DeviceTraceWriter::writeTraceEvents()
   {
-    fout << "EVENTS" << std::endl;
-    auto DeviceEvents = (db->getDynamicInfo()).getEraseDeviceEvents(deviceId);
+    fout << "EVENTS\n";
+    auto DeviceEvents = db->getDynamicInfo().moveDeviceEvents(deviceId);
 
     std::vector<XclbinInfo*> loadedXclbins =
-      (db->getStaticInfo()).getLoadedXclbins(deviceId) ;
+      (db->getStaticInfo()).getLoadedXclbins(deviceId);
     if (loadedXclbins.size() <= 0) {
-      return ;
+      return;
     }
-    int xclbinIndex = 0 ;
-    XclbinInfo* xclbin = loadedXclbins[xclbinIndex] ;
+    int xclbinIndex = 0;
+    XclbinInfo* xclbin = loadedXclbins[xclbinIndex];
 
     for(auto& e : DeviceEvents) {
       VTFDeviceEvent* deviceEvent = dynamic_cast<VTFDeviceEvent*>(e.get());
@@ -334,28 +336,28 @@ namespace xdp {
       VTFEventType eventType = deviceEvent->getEventType();
       if (XCLBIN_END == eventType) {
         // If we hit the end of an xclbin's execution, then increment xclbins
-        xclbin = loadedXclbins[++xclbinIndex] ;
+        xclbin = loadedXclbins[++xclbinIndex];
       } else if (KERNEL == eventType) {
-        KernelEvent* kernelEvent = dynamic_cast<KernelEvent*>(deviceEvent) ;
+        KernelEvent* kernelEvent = dynamic_cast<KernelEvent*>(deviceEvent);
         if (kernelEvent == nullptr)
-          continue ; // Coverity - In case dynamic cast fails
+          continue; // Coverity - In case dynamic cast fails
         std::pair<XclbinInfo*, int32_t> index =
-          std::make_pair(xclbin, cuId) ;
-        kernelEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL) ;
+          std::make_pair(xclbin, cuId);
+        kernelEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL);
         // Also output the tool tips
         for (auto iter : xclbin->pl.cus) {
-          ComputeUnitInstance* cu = iter.second ;
+          ComputeUnitInstance* cu = iter.second;
           if (cu->getAccelMon() == cuId) {
             fout << "," << db->getDynamicInfo().addString(cu->getKernelName());
             fout << "," << db->getDynamicInfo().addString(cu->getName());
           }
         }
-        fout << std::endl ;
+        fout << "\n";
       } else if(KERNEL_STALL_EXT_MEM == eventType
                 || KERNEL_STALL_DATAFLOW == eventType
                 || KERNEL_STALL_PIPE == eventType) {
         std::pair<XclbinInfo*, int32_t> index =
-          std::make_pair(xclbin, cuId) ;
+          std::make_pair(xclbin, cuId);
         deviceEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL);
       } else {
         // Memory or Stream Acceses
@@ -368,7 +370,7 @@ namespace xdp {
         }
         DeviceStreamAccess* streamEvent = dynamic_cast<DeviceStreamAccess*>(e.get());
         if (streamEvent) {
-          std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, monId) ;
+          std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, monId);
           if (KERNEL_STREAM_READ == eventType || KERNEL_STREAM_READ_STALL == eventType
                                               || KERNEL_STREAM_READ_STARVE == eventType) {
             deviceEvent->dump(fout, asmBucketIdMap[index] + eventType - KERNEL_STREAM_READ);
@@ -385,7 +387,7 @@ namespace xdp {
 
   void DeviceTraceWriter::writeDependencies()
   {
-    fout << "DEPENDENCIES" << std::endl ;
+    fout << "DEPENDENCIES\n";
     // No dependencies in device events
   }
 
@@ -399,22 +401,24 @@ namespace xdp {
     if (openNewFile && !traceEventsExist())
       return false;
 
-    initialize() ;
+    initialize();
 
-    writeHeader() ;
-    fout << std::endl ;
-    writeStructure() ;
-    fout << std::endl ;
-    writeStringTable() ;
-    fout << std::endl ;
-    writeTraceEvents() ;
-    fout << std::endl ;
-    writeDependencies() ;
-    fout << std::endl ;
+    writeHeader();
+    fout << "\n";
+    writeStructure();
+    fout << "\n";
+    writeStringTable();
+    fout << "\n";
+    writeTraceEvents();
+    fout << "\n";
+    writeDependencies();
+    fout << "\n";
+
+    fout.flush();
 
     if (openNewFile) {
-      switchFiles() ;
-      db->getStaticInfo().addOpenedFile(getcurrentFileName(), "VP_TRACE") ;
+      switchFiles();
+      db->getStaticInfo().addOpenedFile(getcurrentFileName(), "VP_TRACE");
     }
     return true;
   }
@@ -422,13 +426,13 @@ namespace xdp {
   void DeviceTraceWriter::initialize()
   {
     std::vector<XclbinInfo*> loadedXclbins =
-      (db->getStaticInfo()).getLoadedXclbins(deviceId) ;
+      (db->getStaticInfo()).getLoadedXclbins(deviceId);
 
     for (auto xclbin : loadedXclbins) {
       for (auto iter : xclbin->pl.cus) {
-        ComputeUnitInstance* cu = iter.second ;
-        db->getDynamicInfo().addString(cu->getKernelName()) ;
-        db->getDynamicInfo().addString(cu->getName()) ;
+        ComputeUnitInstance* cu = iter.second;
+        db->getDynamicInfo().addString(cu->getKernelName());
+        db->getDynamicInfo().addString(cu->getName());
       }
     }
   }

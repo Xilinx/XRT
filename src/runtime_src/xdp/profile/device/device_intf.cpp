@@ -22,6 +22,7 @@
 #include "tracedefs.h"
 
 #ifndef _WIN32
+#ifndef SKIP_IOCTL
 // open+ioctl based Profile IP 
 #include "ioctl_monitors/ioctl_aim.h"
 #include "ioctl_monitors/ioctl_am.h"
@@ -32,6 +33,7 @@
 #include "ioctl_monitors/ioctl_traceS2MM.h"
 #include "ioctl_monitors/ioctl_aieTraceS2MM.h"
 #include "ioctl_monitors/ioctl_add.h"
+#endif
 
 // open+mmap based Profile IP 
 #include "mmapped_monitors/mmapped_aim.h"
@@ -679,6 +681,7 @@ DeviceIntf::~DeviceIntf()
           }
         }
       }
+#ifndef SKIP_IOCTL
       else if (xrt_core::system::monitor_access_type::ioctl == accessType) {
         for(uint64_t i = 0; i < map->m_count; i++ ) {
           switch(map->m_debug_ip_data[i].m_type) {
@@ -782,6 +785,7 @@ DeviceIntf::~DeviceIntf()
           }
         }
       }
+#endif
       else {
         // other access types not supported yet
       }

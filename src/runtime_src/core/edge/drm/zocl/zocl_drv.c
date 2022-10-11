@@ -1098,6 +1098,21 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	mutex_init(&zdev->mm_lock);
 	INIT_LIST_HEAD(&zdev->zm_list_head);
 
+#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
+	/* Platform did not initialize dma_mask, try to set 64-bit DMA
+	 * first */
+	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	if (ret) {
+		/* If setting 64-bit DMA mask
+		 * fails, fall back to 32-bit
+		 * DMA mask */
+		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+		if (ret) {
+			DRM_ERROR("DMA configuration failed: 0x%x\n", ret);
+			return ret;
+		}
+	}
+#endif
 	subdev = zocl_find_pdev("ert_hw");
 	if (subdev) {
 		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
@@ -1259,10 +1274,10 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
 
-	zocl_ert_destroy_intc(zdev->cu_intc);
 	zocl_clear_mem(zdev);
 	mutex_destroy(&zdev->mm_lock);
 	zocl_pr_slot_fini(zdev);
+	zocl_ert_destroy_intc(zdev->cu_intc);
 	zocl_destroy_aie(zdev);
 	mutex_destroy(&zdev->aie_lock);
 	zocl_fini_sysfs(drm->dev);

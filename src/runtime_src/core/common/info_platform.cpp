@@ -88,6 +88,11 @@ add_board_info(const xrt_core::device* device, ptree_type& pt)
     bd_info.add("error_msg", ex.what());
   }
 
+  if (xrt_core::device_query<xq::is_versal>(device)) {
+    bd_info.put("revision", xrt_core::device_query<xq::hwmon_sdm_revision>(device));
+    bd_info.put("mfg_date", xrt_core::device_query<xq::hwmon_sdm_mfg_date>(device));
+  }
+
   pt.put_child("off_chip_board_info", bd_info);
 }
 

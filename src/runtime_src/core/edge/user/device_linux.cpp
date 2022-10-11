@@ -886,6 +886,8 @@ initialize_query_table()
   emplace_sysfs_get<query::memstat_raw>               ("memstat_raw");
   emplace_sysfs_get<query::error>                     ("errors");
   emplace_sysfs_get<query::xclbin_full>               ("xclbin_full");
+  emplace_sysfs_get<query::host_mem_addr>             ("host_mem_addr");
+  emplace_sysfs_get<query::host_mem_size>             ("host_mem_size");
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();

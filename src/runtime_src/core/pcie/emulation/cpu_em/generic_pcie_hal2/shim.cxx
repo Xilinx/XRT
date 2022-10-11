@@ -808,6 +808,7 @@ namespace xclcpuemhal2
         aiesim_sock = nullptr;
       else
         aiesim_sock = new unix_socket("AIESIM_SOCKETID");
+        
     }
 
     return 0;
@@ -1310,6 +1311,7 @@ namespace xclcpuemhal2
 
   void CpuemShim::closeMessengerThread()
   {
+    mIsDeviceProcessStarted = false;
     if (mMessengerThread.joinable())
       mMessengerThread.join();
   }
@@ -1336,6 +1338,7 @@ namespace xclcpuemhal2
         // giving some time for the simulator to run
         if (count % 5 == 0)
           std::this_thread::sleep_for(std::chrono::seconds(std::min(10 * (count / 5), 300)));
+          //std::this_thread::sleep_for(std::chrono::seconds(5));
 
       }
     }

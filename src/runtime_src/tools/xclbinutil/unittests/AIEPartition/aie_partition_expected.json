@@ -2,6 +2,8 @@
     "aie_partition": {
         "name": "Flavor",
         "operations_per_cycle": "135",
+        "inference_fingerprint": "23423",
+        "pre_post_fingerprint": "12345",
         "partition": {
             "column_width": "1",
             "start_columns": [

@@ -786,7 +786,7 @@ XclBin::removeSection(const std::string& _sSectionToRemove)
   Section::translateSectionKindStrToKind(sectionName, _eKind);
 
   if ((Section::supportsSectionIndex(_eKind) == true) &&
-      (sectionIndexName.empty())) {
+      (sectionIndexName.empty() && !Section::supportsSubSectionName(_eKind, ""))) {
     auto errMsg = boost::format("ERROR: Section '%s' can only be deleted with indexes.") % sectionName;
     throw std::runtime_error(errMsg.str());
   }

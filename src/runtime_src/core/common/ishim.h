@@ -170,6 +170,19 @@ struct ishim
   destroy_hw_queue(xcl_hwqueue_handle) const
   {}
 
+  // Submits command for execution through hw queue
+  virtual void
+  submit_command(xcl_hwqueue_handle, xclBufferHandle /*cmdbo*/) const
+  { throw not_supported_error{__func__}; }
+
+  // Wait for command completion through hw queue
+  // Returns 0 on timeout else a value that indicates specified
+  // cmdbo completed.  If cmdbo is XRT_NULL_BO then function must
+  // returns when some previously submitted command completes.
+  virtual int
+  wait_command(xcl_hwqueue_handle, xclBufferHandle /*cmdbo*/, int /*timeout_ms*/) const
+  { throw not_supported_error{__func__}; }
+
   // Registers an xclbin, but does not load it.
   virtual void
   register_xclbin(const xrt::xclbin&) const
