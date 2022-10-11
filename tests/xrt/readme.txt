@@ -3,17 +3,22 @@ This directory contains low level XRT tests.
 The tests are implemented using XRT native APIs
 https://xilinx.github.io/XRT/master/html/xrt_native_apis.html
 
-A bash script ``build.sh`` in this directory is provided to bootstrap
+A bash script ``build/build.sh`` is provided to bootstrap
 the build.  The script can be used both on Linux and on Windows under
-WSL bash.  Feel free to add a build.bat script if necessary.
+WSL bash.  Two build/ batch scripts are added to build specifically
+for windows within a batch terminal.
 
 To build xclbin, use the provided xclbin.mk file with XILINX_VITIS and
 XILINX_XRT set.  Specify DSA path to xpfm file. The xclbin is built in
 current directory.
 
-build.sh
 CMakeLists.txt
 readme.txt
+
+build
+├── build.sh     # both linux and wsl
+├── build19.bat  # visual studio 2019
+└── build22.bat  # visual studio 2022
 
 # Loopback example writing / reading buffer object
 00_hello

@@ -16,7 +16,7 @@
  * under the License.
  */
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(SKIP_IOCTL)
 
 #include <chrono>
 #include <cstring>

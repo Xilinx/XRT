@@ -1,30 +1,18 @@
-/**
- * Copyright (C) 2019 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _CONTAINER_H_
 #define _CONTAINER_H_
 
-#include <fstream>
-#include <vector>
-#include <string>
 #include "xclhal2.h"
+#include "../mpd_plugin.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
-#include "core/pcie/linux/scan.h"
 #include "core/pcie/driver/linux/include/xocl_ioctl.h"
-#include "../mpd_plugin.h"
+#include "core/pcie/linux/pcidev.h"
+#include <fstream>
+#include <string>
+#include <vector>
 
 /*
  * This class is used for container running on top of baremetal machines(Nimbix)
@@ -51,7 +39,7 @@ private:
 /*
  * Internal data structures this sample plugin uses
  */ 
-    std::shared_ptr<pcidev::pci_device> mgmtDev;
+    std::shared_ptr<xrt_core::pci::dev> mgmtDev;
     int retrieve_xclbin(const xclBin *&orig_xclbin, std::vector<char> &real_xclbin);
     std::string calculate_md5(char *buf, size_t len);
     std::vector<char> read_file(const char *filename);

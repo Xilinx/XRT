@@ -5,6 +5,8 @@
 #define SHIM_INT_H_
 
 #include "core/include/xrt.h"
+#include "core/include/xcl_hwctx.h"
+#include "core/include/xcl_hwqueue.h"
 #include "core/include/experimental/xrt_hw_context.h"
 #include "core/common/cuidx_type.h"
 
@@ -52,7 +54,7 @@ void
 close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
 
 // create_hw_context() -
-uint32_t // ctxhdl aka slotidx
+xcl_hwctx_handle // ctxhdl aka slotidx
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
@@ -60,11 +62,27 @@ create_hw_context(xclDeviceHandle handle,
 
 // dsstroy_hw_context() -
 void
-destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl);
+destroy_hw_context(xclDeviceHandle handle, xcl_hwctx_handle ctxhdl);
+
+// create_hw_queue() -
+xcl_hwqueue_handle
+create_hw_queue(xclDeviceHandle handle, const xrt::hw_context& hwctx);
+
+// create_hw_queue() -
+void
+destroy_hw_queue(xclDeviceHandle handle, xcl_hwqueue_handle qhdl);
 
 // register_xclbin() -
 void
 register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin);
+
+// submit_command() -
+void
+submit_command(xclDeviceHandle handle, xcl_hwqueue_handle qhdl, xclBufferHandle cmdbo);
+
+// wait_command() -
+int
+wait_command(xclDeviceHandle handle, xcl_hwqueue_handle qhdl, xclBufferHandle cmdbo, int timeout_ms);
 
 }} // shim_int, xrt
 

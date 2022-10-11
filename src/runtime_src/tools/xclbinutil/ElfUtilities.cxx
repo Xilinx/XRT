@@ -18,6 +18,7 @@
 
 #include "XclBinUtilities.h"
 
+#include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/split.hpp>
@@ -862,12 +863,24 @@ drcCheckExportedFunctions(const std::vector<std::string> exportedFunctions)
 {
   // Examine the exported functions.  If any have a signature, this indicates that
   // C++ mangling is enabled.
-  for (auto entry :exportedFunctions) {
+  XUtil::TRACE("DRC: Looking for mangled function names");
+  std::vector<std::string> mangledFunctions;
+  for (const auto & entry : exportedFunctions) {
     // A signature starts with a '('.  For example:  kernel0_fini(xrtHandles*)
-    if (entry.find("(") != std::string::npos) {
-      std::string errMsg = boost::str(boost::format("ERROR: C++ mangled functions are not supported, please export the function.  Offending function: '%s'"));
-      throw std::runtime_error(errMsg);
-    }
+    if (entry.find("(") != std::string::npos)
+      mangledFunctions.push_back(entry);
+  }
+
+  // Report all of the mangled functions
+  if (!mangledFunctions.empty()) {
+    std::sort(mangledFunctions.begin(), mangledFunctions.end());
+              
+    auto errMsg = boost::str(boost::format("ERROR: C++ mangled functions are not supported, please export the function. \nOffending function(s):\n"));
+
+    for (const auto& entry : mangledFunctions) 
+      errMsg += boost::str(boost::format("     %s\n") % entry);
+
+    throw std::runtime_error(errMsg);
   }
 }
 

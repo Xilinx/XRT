@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019-2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2020 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 
 /*
  * Xilinx Management Proxy Daemon (MPD) for cloud.
@@ -310,7 +298,7 @@ void Mpd::run()
      *
      */
     for (size_t i = 0; i < total; i++) {
-        std::string sysfs_name = pcidev::get_dev(i, true)->sysfs_name;
+        std::string sysfs_name = xrt_core::pci::get_dev(i, true)->m_sysfs_name;
 	std::string major_minor;;
 	major_minor = get_xocl_major_minor(sysfs_name);
 
@@ -328,7 +316,7 @@ void Mpd::run()
         if (total == 0)
             syslog(LOG_INFO, "no device found");
         for (size_t i = 0; i < total; i++) {
-            std::string sysfs_name = pcidev::get_dev(i, true)->sysfs_name;
+            std::string sysfs_name = xrt_core::pci::get_dev(i, true)->m_sysfs_name;
 
             if (state_machine[sysfs_name] != MAILBOX_ADDED)
                 continue;
@@ -679,7 +667,7 @@ int Mpd::localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
 // No retry is ever conducted.
 void Mpd::mpd_getMsg(size_t index)
 {
-    std::string sysfs_name = pcidev::get_dev(index, true)->sysfs_name;
+    std::string sysfs_name = xrt_core::pci::get_dev(index, true)->m_sysfs_name;
     std::shared_ptr<Msgq<queue_msg>> msgq = threads_msgq[sysfs_name];
     int msdfd = -1, mbxfd = -1;
     int ret = 0;
@@ -812,7 +800,7 @@ void Mpd::mpd_getMsg(size_t index)
         close(msdfd);
 
     dev.log(LOG_INFO, "mpd_getMsg thread for %s exit!!",
-	pcidev::get_dev(index)->sysfs_name.c_str());
+	xrt_core::pci::get_dev(index)->m_sysfs_name.c_str());
 }
 
 // Client of MPD handling msg. Will quit on any error from either local mailbox or socket fd.
@@ -820,7 +808,7 @@ void Mpd::mpd_getMsg(size_t index)
 void Mpd::mpd_handleMsg(size_t index)
 {
     pcieFunc dev(index);
-    std::string sysfs_name = pcidev::get_dev(index, true)->sysfs_name;
+    std::string sysfs_name = xrt_core::pci::get_dev(index, true)->m_sysfs_name;
     std::shared_ptr<Msgq<queue_msg>> msgq = threads_msgq[sysfs_name];
     for ( ;; ) {
         struct queue_msg msg;
@@ -837,7 +825,7 @@ void Mpd::mpd_handleMsg(size_t index)
     threads_handling[sysfs_name] = false;
 
     dev.log(LOG_INFO, "mpd_handleMsg thread for %s exit!!",
-	pcidev::get_dev(index)->sysfs_name.c_str());
+	xrt_core::pci::get_dev(index)->m_sysfs_name.c_str());
 }
 
 /*

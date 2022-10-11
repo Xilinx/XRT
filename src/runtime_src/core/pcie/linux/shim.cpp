@@ -1,26 +1,11 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * XRT PCIe library layered on top of xocl kernel driver
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"  // This file implements shim.h
 #include "xrt.h"   // This file implements xrt.h
 
 #include "ert.h"
-#include "scan.h"
+#include "pcidev.h"
 #include "system_linux.h"
 #include "xclbin.h"
 
@@ -547,7 +532,7 @@ public:
  */
 shim::
 shim(unsigned index)
-  : mCoreDevice(xrt_core::pcie_linux::get_userpf_device(this, index))
+  : mCoreDevice(xrt_core::pci::get_userpf_device(this, index))
   , mUserHandle(-1)
   , mStreamHandle(-1)
   , mBoardNumber(index)
@@ -564,7 +549,7 @@ shim(unsigned index)
 
 int shim::dev_init()
 {
-    auto dev = pcidev::get_dev(mBoardNumber);
+    auto dev = xrt_core::pci::get_dev(mBoardNumber);
     if(dev == nullptr) {
         xrt_logmsg(XRT_ERROR, "%s: Card [%d] not found", __func__, mBoardNumber);
         return -ENOENT;
@@ -637,7 +622,7 @@ init(unsigned int index)
 
     // Profiling - defaults
     // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-    mDevUserName = mDev->sysfs_name;
+    mDevUserName = mDev->m_sysfs_name;
     mMemoryProfilingNumberSlots = 0;
 }
 
@@ -1001,7 +986,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get<unsigned long long>("rom", "timestamp", errmsg, info->mTimeStamp, static_cast<unsigned long long>(-1));
     mDev->sysfs_get<unsigned short>("rom", "ddr_bank_count_max", errmsg, info->mDDRBankCount, static_cast<unsigned short>(-1));
     info->mDDRSize *= info->mDDRBankCount;
-    info->mPciSlot = (mDev->domain<<16) + (mDev->bus<<8) + (mDev->dev<<3) + mDev->func;
+    info->mPciSlot = (mDev->m_domain<<16) + (mDev->m_bus<<8) + (mDev->m_dev<<3) + mDev->m_func;
     info->mNumClocks = numClocks(info->mName);
     info->mNumCDMA = xrt_core::device_query<xrt_core::query::kds_numcdmas>(mCoreDevice);
 
@@ -1011,7 +996,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax, static_cast<unsigned short>(-1));
 
     //dont try to get any information which needs mailbox communication when device is not ready.
-    if(!mDev->is_mgmt() && !mDev->is_ready)
+    if (!mDev->m_is_mgmt && !mDev->m_is_ready)
         return;
 
     //get sensors
@@ -1130,7 +1115,7 @@ int shim::resetDevice(xclResetKind kind)
     auto start = std::chrono::system_clock::now();
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+	xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
             "dev_offline", err, dev_offline, -1);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -1216,6 +1201,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
         uint64_t allocated_size = 0;
         uint32_t page_num = size >> 30;
         drm_xocl_alloc_cma_info cma_info = {0};
+        std::vector<uint64_t> user_addr(page_num, 0);
 
         /* We check the sysfs node host_mem_size first before going forward
          * If the same size of host memory chunk is allocated
@@ -1228,8 +1214,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
         cma_info.total_size = size;
         cma_info.entry_num = page_num;
-
-        cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
+        cma_info.user_addr = user_addr.data();
 
         for (uint32_t i = 0; i < page_num; ++i) {
             void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
@@ -1252,7 +1237,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
             if (!cma_info.user_addr[i])
                 continue;
 
-             munmap((void*)cma_info.user_addr[i], page_sz);
+            munmap((void*)cma_info.user_addr[i], page_sz);
         }
 
         if (ret) {
@@ -1511,7 +1496,7 @@ int shim::xclLoadAxlf(const axlf *buffer)
         std::this_thread::sleep_for(std::chrono::seconds(5));
         while (!dev_hotplug_done) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+		xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
                 "dev_hotplug_done", err, dev_hotplug_done, 0);
         }
         dev_init();
@@ -1851,7 +1836,7 @@ int shim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 
 int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size)
 {
-    auto dev = pcidev::get_dev(mBoardNumber);
+    auto dev = xrt_core::pci::get_dev(mBoardNumber);
     std::string subdev_str = std::string(subdev);
 
     if (mLogStream.is_open()) {
@@ -1984,7 +1969,7 @@ double shim::xclGetKernelWriteMaxBandwidthMBps()
 
 int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
 {
-  auto dev = pcidev::get_dev(mBoardNumber);
+  auto dev = xrt_core::pci::get_dev(mBoardNumber);
   std::string subdev_str = std::string(subdev);
   std::string entry_str = std::string(entry);
   if (mLogStream.is_open()) {
@@ -2044,7 +2029,7 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     return -EINVAL;
   }
 
-  if (cumap.start != 0xFFFFFFFF) {
+  if (cumap.start) {
     if (!rd) {
         xrt_logmsg(XRT_ERROR, "%s: read range is set, not allow write", __func__);
         return -EINVAL;
@@ -2224,7 +2209,7 @@ namespace xrt::shim_int {
 xclDeviceHandle
 open_by_bdf(const std::string& bdf)
 {
-  return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
+  return xclOpen(xrt_core::pci::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
 }
 
 xrt_core::cuidx_type
@@ -2277,7 +2262,7 @@ unsigned int
 xclProbe()
 {
   return xdp::hal::profiling_wrapper("xclProbe", [] {
-    return pcidev::get_dev_ready();
+    return xrt_core::pci::get_dev_ready();
   }) ;
 }
 
@@ -2286,7 +2271,7 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
   return xdp::hal::profiling_wrapper("xclOpen", [deviceIndex] {
   try {
-    if(pcidev::get_dev_total() <= deviceIndex) {
+    if(xrt_core::pci::get_dev_total() <= deviceIndex) {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
         std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return static_cast<xclDeviceHandle>(nullptr);

@@ -47,7 +47,7 @@ namespace xclcpuemhal2
 {
   using key_type = xrt_core::query::key_type;
   //8GB MEMSIZE to access the MMAP FILE
-  const uint64_t MEMSIZE = 0x0000000200000000;
+  const uint64_t MEMSIZE = 0x0000000400000000;
   const auto endOfSimulationString = "received request to end simulation from connected initiator";
 
   // XDMA Shim
@@ -409,10 +409,8 @@ namespace xclcpuemhal2
     // aka xclOpenContextByName
     xrt_core::cuidx_type
     open_cu_context(const xrt::hw_context &hwctx, const std::string &cuname);
-
     void
     close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
-
   private:
     std::shared_ptr<xrt_core::device> mCoreDevice;
     std::mutex mMemManagerMutex;
@@ -591,7 +589,7 @@ namespace xclcpuemhal2
       {
         if (boost::filesystem::exists(mFileName))
         {
-          file.open(mFileName);
+          file.open(mFileName,std::ios::in);
           if (file.is_open())
             mFileExists = true;
         }

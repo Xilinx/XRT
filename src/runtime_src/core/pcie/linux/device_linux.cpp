@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
 
@@ -29,26 +15,27 @@
 #include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
+#include "pcidev.h"
 #include "xrt.h"
-#include "scan.h"
 
 #include <array>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
-#include <string>
 #include <poll.h>
+#include <string>
 #include <sys/syscall.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace {
 
 namespace query = xrt_core::query;
-using pdev = std::shared_ptr<pcidev::pci_device>;
+using pdev = std::shared_ptr<xrt_core::pci::dev>;
 using key_type = query::key_type;
 
 static int
@@ -76,7 +63,10 @@ get_render_value(const std::string& dir)
 inline pdev
 get_pcidev(const xrt_core::device* device)
 {
-  return pcidev::get_dev(device->get_device_id(), device->is_userpf());
+  auto pdev = xrt_core::pci::get_dev(device->get_device_id(), device->is_userpf());
+  if (!pdev)
+    throw xrt_core::error("Invalid device handle");
+  return pdev;
 }
 
 static std::vector<uint64_t>
@@ -129,7 +119,7 @@ struct bdf
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
-    return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
+    return std::make_tuple(pdev->m_domain, pdev->m_bus, pdev->m_dev, pdev->m_func);
   }
 };
 
@@ -423,13 +413,13 @@ struct instance
     std::string errmsg;
     auto pdev = get_pcidev(device);
 
-    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->domain % pdev->bus % pdev->dev %  pdev->func);
+    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->m_domain % pdev->m_bus % pdev->m_dev % pdev->m_func);
     if(device->is_userpf())
-      pdev->instance = get_render_value(dev_root + sysfsname + "/drm");
+      pdev->m_instance = get_render_value(dev_root + sysfsname + "/drm");
     else
-      pdev->sysfs_get("", "instance", errmsg, pdev->instance,static_cast<uint32_t>(INVALID_ID));
+      pdev->sysfs_get("", "instance", errmsg, pdev->m_instance,static_cast<uint32_t>(INVALID_ID));
 
-    return pdev->instance;
+    return pdev->m_instance;
   }
 
 };
@@ -441,10 +431,10 @@ struct hotplug_offline
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    auto mgmt_dev = pcidev::get_dev(device->get_device_id(), false);
+    auto mgmt_dev = xrt_core::pci::get_dev(device->get_device_id(), false);
 
     // Remove both user_pf and mgmt_pf
-    if (pcidev::shutdown(mgmt_dev, true, true))
+    if (xrt_core::pci::shutdown(mgmt_dev, true, true))
       throw xrt_core::query::sysfs_error("Hotplug offline failed");
 
     return true;
@@ -526,19 +516,21 @@ struct clk_scaling_info
   {
     auto pdev = get_pcidev(device);
     std::vector<std::string> stats;
+    result_type ctStats;
     std::string errmsg;
     bool is_versal = false;
 
     pdev->sysfs_get<bool>("", "versal", errmsg, is_versal, false);
 	if (is_versal) {
       pdev->sysfs_get("xgq_vmr", "clk_scaling_stat_raw", errmsg, stats);
+      if (!errmsg.empty())
+        return ctStats;
 	} else {
       // Backward compatibilty check.
       // Read XMC sysfs nodes
       return get_legacy_clk_scaling_stat(device);
     }
 
-    result_type ctStats;
     data_type data = {};
     //parse one line at a time
     // The clk_scaling_stat_raw is printing in formatted string of each line
@@ -1241,6 +1233,9 @@ initialize_query_table()
   emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
   emplace_sysfs_get<query::extended_vmr_status>                ("xgq_vmr", "vmr_verbose_info");
+  emplace_sysfs_getput<query::xgq_scaling_enabled>             ("xgq_vmr", "xgq_scaling_enable");
+  emplace_sysfs_getput<query::xgq_scaling_power_override>      ("xgq_vmr", "xgq_scaling_power_override");
+  emplace_sysfs_getput<query::xgq_scaling_temp_override>       ("xgq_vmr", "xgq_scaling_temp_override");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
   emplace_sysfs_get<query::hwmon_sdm_serial_num>               ("hwmon_sdm", "serial_num");
@@ -1251,6 +1246,7 @@ initialize_query_table()
   emplace_sysfs_get<query::hwmon_sdm_mac_addr1>                ("hwmon_sdm", "mac_addr1");
   emplace_sysfs_get<query::hwmon_sdm_fan_presence>             ("hwmon_sdm", "fan_presence");
   emplace_sysfs_get<query::hwmon_sdm_revision>                 ("hwmon_sdm", "revision");
+  emplace_sysfs_get<query::hwmon_sdm_mfg_date>                 ("hwmon_sdm", "mfg_date");
 
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
@@ -1308,7 +1304,7 @@ void
 device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
-  if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
+  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
     throw error(err, "read failed");
 }
 
@@ -1316,7 +1312,7 @@ void
 device_linux::
 write(uint64_t offset, const void* buf, uint64_t len) const
 {
-  if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
+  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
     throw error(err, "write failed");
 }
 
@@ -1325,7 +1321,8 @@ device_linux::
 reset(query::reset_type& key) const
 {
   std::string err;
-  pcidev::get_dev(get_device_id(), false)->sysfs_put(key.get_subdev(), key.get_entry(), err, key.get_value());
+  xrt_core::pci::get_dev(get_device_id(), false)->sysfs_put(
+    key.get_subdev(), key.get_entry(), err, key.get_value());
   if (!err.empty())
     throw error("reset failed");
 }
@@ -1334,14 +1331,14 @@ int
 device_linux::
 open(const std::string& subdev, int flag) const
 {
-  return pcidev::get_dev(get_device_id(), false)->open(subdev, flag);
+  return xrt_core::pci::get_dev(get_device_id(), false)->open(subdev, flag);
 }
 
 void
 device_linux::
 close(int dev_handle) const
 {
-  pcidev::get_dev(get_device_id(), false)->close(dev_handle);
+  xrt_core::pci::get_dev(get_device_id(), false)->close(dev_handle);
 }
 
 void
@@ -1357,7 +1354,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
     xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
-    ret = pcidev::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    ret = xrt_core::pci::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
   } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
   }
@@ -1370,16 +1367,16 @@ xclmgmt_load_xclbin(const char* buffer) const {
 void
 device_linux::
 device_shutdown() const {
-  auto mgmt_dev = pcidev::get_dev(get_device_id(), false);
+  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
   // hot reset pcie device
-  if (pcidev::shutdown(mgmt_dev))
+  if (xrt_core::pci::shutdown(mgmt_dev))
     throw xrt_core::error("Hot resetting pci device failed.");
 }
 
 void
 device_linux::
 device_online() const {
-  auto mgmt_dev = pcidev::get_dev(get_device_id(), false);
+  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
   auto peer_dev = mgmt_dev->lookup_peer_dev();
   std::string errmsg;
 

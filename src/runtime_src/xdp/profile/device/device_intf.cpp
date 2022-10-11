@@ -22,6 +22,7 @@
 #include "tracedefs.h"
 
 #ifndef _WIN32
+#ifndef SKIP_IOCTL
 // open+ioctl based Profile IP 
 #include "ioctl_monitors/ioctl_aim.h"
 #include "ioctl_monitors/ioctl_am.h"
@@ -32,6 +33,7 @@
 #include "ioctl_monitors/ioctl_traceS2MM.h"
 #include "ioctl_monitors/ioctl_aieTraceS2MM.h"
 #include "ioctl_monitors/ioctl_add.h"
+#endif
 
 // open+mmap based Profile IP 
 #include "mmapped_monitors/mmapped_aim.h"
@@ -86,6 +88,7 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
 {
   std::string size_str;
   if (isAIETrace) {
+#ifndef SKIP_AIE_INI
     size_str = xrt_core::config::get_aie_trace_settings_buffer_size();
     if (0 == size_str.compare("8M")) {
       // if set to default value, then check for old style config
@@ -95,6 +98,9 @@ uint64_t GetTS2MMBufSize(bool isAIETrace)
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
           "The xrt.ini flag \"aie_trace_buffer_size\" is deprecated and will be removed in future release. Please use \"buffer_size\" under \"AIE_trace_settings\" section.");
     }
+#else
+    size_str = "8M";
+#endif
   } else {
     size_str = xrt_core::config::get_trace_buffer_size();
   }
@@ -675,6 +681,7 @@ DeviceIntf::~DeviceIntf()
           }
         }
       }
+#ifndef SKIP_IOCTL
       else if (xrt_core::system::monitor_access_type::ioctl == accessType) {
         for(uint64_t i = 0; i < map->m_count; i++ ) {
           switch(map->m_debug_ip_data[i].m_type) {
@@ -778,6 +785,7 @@ DeviceIntf::~DeviceIntf()
           }
         }
       }
+#endif
       else {
         // other access types not supported yet
       }

@@ -103,19 +103,16 @@ runTestThread(const xrt::device& device, const xrt::kernel& hello_world,
               arg_t& arg)
 {
     std::vector<xrt::run> cmds;
+    std::vector<xrt::bo> bos;
 
-    auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
-    auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));
-    auto bo0_map = bo0.map<int*>();
-    auto bo1_map = bo1.map<int*>();
-    std::fill(bo0_map, bo0_map + COUNT, 0);
-    std::fill(bo1_map, bo1_map + COUNT, 0);
-    bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
-    bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, DATA_SIZE, 0);
     for (int i = 0; i < arg.queueLength; i++) {
         auto run = xrt::run(hello_world);
+	auto bo0 = xrt::bo(device, DATA_SIZE, hello_world.group_id(0));
         run.set_arg(0, bo0);
+	bos.push_back(std::move(bo0));
+	auto bo1 = xrt::bo(device, DATA_SIZE, hello_world.group_id(1));
         run.set_arg(1, bo1);
+	bos.push_back(std::move(bo1));
         run.set_arg(2, COUNT);
         cmds.push_back(std::move(run));
     }
@@ -143,8 +140,7 @@ testMultiThreads(const std::string& dev, const std::string& xclbin_fn,
         arg[i].thread_id = i;
         arg[i].queueLength = queueLength;
         arg[i].total = total;
-        threads.push_back(std::thread(
-            [&](int i) { runTestThread(device, hello_world, arg[i]); }, i));
+        threads[i] = std::thread([&](int i){ runTestThread(device, hello_world, arg[i]); }, i);
     }
 
     /* Wait threads to prepare to start */

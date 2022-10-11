@@ -124,6 +124,9 @@ namespace xdp {
   {
     uint64_t deviceId = db->addDevice(sysfsPath) ;
 
+    if (!device_trace)
+        return;
+    
     // When adding a device, also add a writer to dump the information
     std::string version = "1.1" ;
     std::string creationTime = xdp::getCurrentDateTime() ;
@@ -139,7 +142,7 @@ namespace xdp {
                                              creationTime,
                                              xrtVersion,
                                              toolVersion);
-    writers.push_back(writer) ;
+    writers.push_back(writer);
     (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
 
     if (continuous_trace)
@@ -402,7 +405,7 @@ namespace xdp {
     if (!(getFlowMode() == HW))
       return;
     if (device_trace) {
-      db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
+      db->getDynamicInfo().setPLTraceBufferFull(deviceId, offloader->trace_buffer_full());
     }
   }
 

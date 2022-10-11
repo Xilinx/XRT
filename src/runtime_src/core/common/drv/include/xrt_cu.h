@@ -31,13 +31,13 @@
 /* Avoid the CU soft lockup warning when CU thread keep busy.
  * Small value leads to lower performance on APU.
  */
-#define MAX_CU_LOOP 100
+#define MAX_CU_LOOP 300
 
 /* If poll count reach this threashold, switch to interrupt mode */
 #if defined(CONFIG_ARM64)
 #define CU_DEFAULT_POLL_THRESHOLD 30 /* About 60 us on APU */
 #else
-#define CU_DEFAULT_POLL_THRESHOLD 200 /* About 50 us on host */
+#define CU_DEFAULT_POLL_THRESHOLD 300 /* About 75 us on host */
 #endif
 
 /* The normal CU in ip_layout would assign a interrupt
@@ -61,6 +61,9 @@
 #define CU_TICKS_PER_SEC	2
 #define CU_TIMER		(HZ / CU_TICKS_PER_SEC) /* in jiffies */
 #define CU_EXEC_DEFAULT_TTL	(5UL * CU_TICKS_PER_SEC)
+/* A customed frequency timer per CU to collect data */
+#define CU_STATS_TICKS_PER_SEC  20
+#define CU_STATS_TIMER          (HZ / CU_STATS_TICKS_PER_SEC) /* in jiffies */
 
 /* HLS CU macros */
 #define CU_AP_START	(0x1 << 0)
@@ -264,10 +267,6 @@ struct xrt_cu_info {
 	unsigned char		 uuid[16];
 };
 
-struct per_custat {
-	u64		usage;
-};
-
 #define CU_STATE_GOOD  0x1
 #define CU_STATE_BAD   0x2
 
@@ -287,6 +286,34 @@ struct xrt_cu_range {
 	struct mutex		  xcr_lock;
 	u32			  xcr_start;
 	u32			  xcr_end;
+};
+
+/* For cu profiling statistic */
+struct xrt_cu_stats {
+	spinlock_t		   xcs_lock;
+	struct timer_list          stats_timer;
+	u32                        stats_tick;
+
+	u32                        stats_enabled;
+	u32                        last_ts_status;
+	/* length of sq*/
+	u32                        max_sq_length;
+	u32                        sq_total;
+	u32                        sq_count;
+	u32                        idle;
+	/* last timestamp used for calculation*/
+	u64                        last_timestamp;
+	u64                        last_read_idle_start;
+	u64                        last_idle_total;
+	/* cmds count */
+	u64                        usage_prev;
+	u64                        usage_curr;
+	u64                        incre_ecmds;
+	/* for idle time calculation*/
+	u64                        idle_total;
+	u64                        idle_start;
+	u64                        idle_end;
+
 };
 
 /* Supported event type */
@@ -340,9 +367,9 @@ struct xrt_cu {
 	struct timer_list	  timer;
 	atomic_t		  tick;
 	u32			  start_tick;
+	u32			  force_intr;
 
-	struct per_custat	  cu_stat;
-
+	struct xrt_cu_stats        stats;
 	/**
 	 * @funcs:
 	 *
@@ -534,6 +561,13 @@ void xrt_cu_fini(struct xrt_cu *xcu);
 ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
 ssize_t show_cu_info(struct xrt_cu *xcu, char *buf);
 ssize_t show_formatted_cu_stat(struct xrt_cu *xcu, char *buf);
+ssize_t show_stats_begin(struct xrt_cu *xcu, char *buf);
+ssize_t show_stats_end(struct xrt_cu *xcu, char *buf);
+
+void xrt_cu_incr_sq_count(struct xrt_cu *xcu);
+u64 xrt_cu_get_iops(struct xrt_cu *xcu, u64 last_timestamp, u64 incre_ecmds, u64 new_ts);
+u64 xrt_cu_get_average_sq(struct xrt_cu *xcu, u32 sq_total, u32 sq_count);
+u64 xrt_cu_get_idle(struct xrt_cu *xcu, u64 last_timestamp, u64 idle_start, u64 last_read_idle_start, u64 delta_idle_time, u32 idle, u64 new_ts);
 
 void xrt_cu_circ_produce(struct xrt_cu *xcu, u32 stage, uintptr_t cmd);
 ssize_t xrt_cu_circ_consume_all(struct xrt_cu *xcu, char *buf, size_t size);
