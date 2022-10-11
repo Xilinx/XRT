@@ -144,7 +144,7 @@ private:
 
     //Internal use only
     // Set this for verbose trace offload
-    bool m_debug = true;
+    bool m_debug = false;
     // Experimental support for periodic offload in gmio
     bool useGMIOPeriodicOffload;
 
