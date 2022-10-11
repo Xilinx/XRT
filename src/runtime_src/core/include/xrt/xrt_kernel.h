@@ -254,6 +254,16 @@ class run
   state() const;
 
   /**
+   * return_code() - Get the return code from PS kernel
+   *
+   * @return
+   *  Return code from PS kernel run
+   */
+  XCL_DRIVER_DLLESPEC
+  uint32_t
+  return_code() const;
+
+  /**
    * add_callback() - Add a callback function for run state
    *
    * @param state       State to invoke callback on
