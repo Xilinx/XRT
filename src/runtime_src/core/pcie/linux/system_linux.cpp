@@ -148,18 +148,19 @@ system_linux::
 system_linux()
 {
   // Add built-in driver to the list.
-  pci::register_driver(std::make_shared<pci::drv_xocl>());
-  pci::register_driver(std::make_shared<pci::drv_xclmgmt>());
+  driver_list.emplace_back(std::make_shared<pci::drv_xocl>());
+  driver_list.emplace_back(std::make_shared<pci::drv_xclmgmt>());
 
-  // Load driver plug-ins. Don't need to die on a plug-in loading failure.
+  // Load driver plug-ins. Driver list will be updated during loading.
+  // Don't need to die on a plug-in loading failure.
   try {
     xrt_core::driver_loader plugins;
   }
   catch (const std::runtime_error& err) {
-    std::cerr << "WARNING: " << err.what() << std::endl;
+    xrt_core::send_exception_message(err.what(), "WARNING");
   }
 
-  for (auto driver : driver_list) {
+  for (const auto& driver : driver_list) {
     if (driver->is_user())
       driver->scan_devices(user_ready_list, user_nonready_list);
     else
