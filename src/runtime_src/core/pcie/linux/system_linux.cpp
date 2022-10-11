@@ -39,7 +39,23 @@
 
 namespace {
 
-std::vector<std::shared_ptr<xrt_core::pci::drv>> driver_list;
+namespace driver_list {
+
+static std::vector<std::shared_ptr<xrt_core::pci::drv>> list;
+
+void
+append(std::shared_ptr<xrt_core::pci::drv> driver)
+{
+  list.push_back(std::move(driver));
+}
+
+const std::vector<std::shared_ptr<xrt_core::pci::drv>>&
+get()
+{
+  return list;
+}
+
+}
 
 // Singleton registers with base class xrt_core::system
 // during static global initialization.  If statically
@@ -148,8 +164,8 @@ system_linux::
 system_linux()
 {
   // Add built-in driver to the list.
-  driver_list.emplace_back(std::make_shared<pci::drv_xocl>());
-  driver_list.emplace_back(std::make_shared<pci::drv_xclmgmt>());
+  driver_list::append(std::make_shared<pci::drv_xocl>());
+  driver_list::append(std::make_shared<pci::drv_xclmgmt>());
 
   // Load driver plug-ins. Driver list will be updated during loading.
   // Don't need to die on a plug-in loading failure.
@@ -160,7 +176,7 @@ system_linux()
     xrt_core::send_exception_message(err.what(), "WARNING");
   }
 
-  for (const auto& driver : driver_list) {
+  for (const auto& driver : driver_list::get()) {
     if (driver->is_user())
       driver->scan_devices(user_ready_list, user_nonready_list);
     else
@@ -174,7 +190,7 @@ get_xrt_info(boost::property_tree::ptree &pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
 
-  for (auto& drv : driver_list)
+  for (const auto& drv : driver_list::get())
     _ptDriverInfo.push_back( {"", driver_version(drv->name())} );
   pt.put_child("drivers", _ptDriverInfo);
 }
@@ -352,7 +368,7 @@ get_dev(unsigned index, bool user)
 void
 register_driver(std::shared_ptr<drv> driver)
 {
-  driver_list.emplace_back(std::move(driver));
+  driver_list::append(driver);
 }
 
 } // namespace pci
