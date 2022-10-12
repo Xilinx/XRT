@@ -1531,7 +1531,7 @@ int shim::xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx)
             std::this_thread::sleep_for(std::chrono::seconds(5));
             while (!dev_hotplug_done) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+		xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
                 "dev_hotplug_done", err, dev_hotplug_done, 0);
             }
             dev_init();
