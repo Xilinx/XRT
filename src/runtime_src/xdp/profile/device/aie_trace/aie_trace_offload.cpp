@@ -30,10 +30,10 @@
 #include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
 
 /*
- * XRT_NATIVE_BUILD is set only for x86 builds
+ * XRT_X86_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
 #include <sys/mman.h>
 #include "core/include/xrt.h"
 #include "core/edge/user/shim.h"
@@ -141,16 +141,16 @@ bool AIETraceOffload::initReadTrace()
   } else {
     memIndex = 0;  // for now
 
-#if defined (XRT_ENABLE_AIE) && defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && defined (XRT_X86_BUILD)
   bool success = setupPSKernel();
   return success;
 #endif
 
 /*
- * XRT_NATIVE_BUILD is set only for x86 builds
+ * XRT_X86_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
   gmioDMAInsts.clear();
   gmioDMAInsts.resize(numStream);
 #endif
@@ -175,10 +175,10 @@ bool AIETraceOffload::initReadTrace()
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i, mEnCircularBuf);
     } else {
   /*
-   * XRT_NATIVE_BUILD is set only for x86 builds
+   * XRT_X86_BUILD is set only for x86 builds
    * Only compile this on edge+versal build
    */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
       VPDatabase* db = VPDatabase::Instance();
       TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
@@ -252,7 +252,7 @@ void AIETraceOffload::endReadTrace()
  * XRT_NATIVE_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
     VPDatabase* db = VPDatabase::Instance();
     TraceGMIO*  traceGMIO = (db->getStaticInfo()).getTraceGMIO(deviceId, i);
 
