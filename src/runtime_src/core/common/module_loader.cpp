@@ -157,8 +157,8 @@ driver_plugin_paths()
   const std::string pre = "libxrt_driver_";
   const std::string suf = std::string(".so.") + XRT_VERSION_MAJOR;
   while (p != bfs::directory_iterator{}) {
-    std::string name = p->path().filename().string();
-    if (name.size() > pre.size() + suf.size() &&
+    const auto name = p->path().filename().string();
+    if ((name.size() > (pre.size() + suf.size())) &&
       !name.compare(0, pre.size(), pre) &&
       !name.compare(name.size() - suf.size(), suf.size(), suf))
       ret.push_back(p->path().string());
