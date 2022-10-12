@@ -147,52 +147,6 @@ namespace xdp {
     //   xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
 
     return metricSet;
-
-    // // Catch when compile-time trace is specified (e.g., --event-trace=functions)
-    // if (!getRuntimeMetrics()) {
-    //   auto device = xrt_core::get_userpf_device(handle);
-    //   auto compilerOptions = get_aiecompiler_options(device.get());
-    //   std::stringstream msg;
-    //   msg << "Found compiler trace option of " << compilerOptions.event_trace
-    //       << ". No runtime AIE metrics will be changed.";
-    //   xrt_core::message::send(severity_level::info, "XRT", msg.str());
-    //   return {};
-    // }
-
-    // std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
-    // if (metricsStr.empty()) {
-    //   std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will not be available.");
-    //   xrt_core::message::send(severity_level::warning, "XRT", msg);
-    //   return {};
-    // }
-
-    // std::vector<std::string> vec;
-    // boost::split(vec, metricsStr, boost::is_any_of(":"));
-
-    // for (unsigned int i=0; i < vec.size(); ++i) {
-    //   boost::replace_all(vec.at(i), "{", "");
-    //   boost::replace_all(vec.at(i), "}", "");
-    // }
-
-    // // Determine specification type based on vector size:
-    // //   * Size = 1: All tiles
-    // //     * aie_trace_metrics = <functions|functions_partial_stalls|functions_all_stalls|all>
-    // //   * Size = 2: Single tile or kernel name (supported in future release)
-    // //     * aie_trace_metrics = {<column>,<row>}:<functions|functions_partial_stalls|functions_all_stalls|all>
-    // //     * aie_trace_metrics= <kernel name>:<functions|functions_partial_stalls|functions_all_stalls|all>
-    // //   * Size = 3: Range of tiles (supported in future release)
-    // //     * aie_trace_metrics= {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<functions|functions_partial_stalls|functions_all_stalls|all>
-    // metricSet = vec.at( vec.size()-1 );
-
-    // if (metricSets.find(metricSet) == metricSets.end()) {
-    //   std::string defaultSet = "functions";
-    //   std::stringstream msg;
-    //   msg << "Unable to find AIE trace metric set " << metricSet 
-    //       << ". Using default of " << defaultSet << ".";
-    //   xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-    //   metricSet = defaultSet;
-    // }
-    // return metricSet;
   }
 
   std::vector<tile_type> AieTraceMetadata::getTilesForTracing()
@@ -295,14 +249,12 @@ namespace xdp {
 
   }
 
-
   void AieTraceMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
   {
     std::stringstream aie_stream;
     aie_stream.write(data,size);
     pt::read_json(aie_stream,aie_project);
   }
-
 
   //locally defined xrt::core::edge functions 
 
@@ -399,12 +351,10 @@ namespace xdp {
 
 
   void
-  AieTraceMetadata::getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
-                                           std::vector<std::string>& graphmetricsSettings)
+  AieTraceMetadata::getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
+                                           std::vector<std::string> graphmetricsSettings)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-
-    bool allGraphsDone = false;
 
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
@@ -413,6 +363,15 @@ namespace xdp {
      */
 
     std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
+
+    std::set<tile_type> allValidTiles;
+    auto graphs = get_graphs(device.get());
+    for (auto& graph : graphs) {
+      auto currTiles = get_tiles(device.get(), graph);
+      for (auto& e : currTiles) {
+        allValidTiles.insert(e);
+      }
+    }
 
     // Graph Pass 1 : process only "all" metric setting
     for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
@@ -428,7 +387,10 @@ namespace xdp {
           "Only \"all\" is supported in kernel-name field for graph_based_aie_tile_metrics. Any other specification is replaced with \"all\".");
       }
 
-      std::vector<tile_type> tiles;
+      for (auto &e : allValidTiles) {
+        configMetrics[e] = graphmetrics[i][2];
+      }
+#if 0
       // Create superset of all tiles across all graphs
       auto graphs = get_graphs(device.get());
       for (auto& graph : graphs) {
@@ -458,10 +420,7 @@ namespace xdp {
     }
 #endif
       }
-      allGraphsDone = true;
-      for (auto &e : tiles) {
-        mConfigMetrics[e] = graphmetrics[i][2];
-      }
+#endif
     } // Graph Pass 1
 
     // Graph Pass 2 : process per graph metric setting
@@ -490,7 +449,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", msg);
         continue;
       }
-      auto currTiles = get_tiles(device.get(), graphmetrics[i][0]);
+      auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graphmetrics[i][0]);
       std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
 #if 0
         // TODO: Differentiate between core and DMA-only tiles when 'all' is supported
@@ -505,7 +464,7 @@ namespace xdp {
         //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), std::back_inserter(tiles), tileCompare);
 #endif
       for (auto &e : tiles) {
-        mConfigMetrics[e] = graphmetrics[i][2];
+        configMetrics[e] = graphmetrics[i][2];
       }
     } // Graph Pass 2
 
@@ -535,17 +494,8 @@ namespace xdp {
       if (0 != metrics[i][0].compare("all")) {
         continue;
       }
-      std::vector<tile_type> tiles;
-      if (!allGraphsDone) {
-        // Create superset of all tiles across all graphs
-        auto graphs = get_graphs(device.get());
-        for (auto& graph : graphs) {
-          auto currTiles = get_tiles(device.get(), graph);
-          std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
-        }
-      }
-      for (auto &e : tiles) {
-        mConfigMetrics[e] = metrics[i][1];
+      for (auto &e : allValidTiles) {
+        configMetrics[e] = metrics[i][1];
       }
     } // Pass 1 
 
@@ -582,8 +532,23 @@ namespace xdp {
           xrt_core::edge::aie::tile_type tile;
           tile.col = col;
           tile.row = row;
-//            tiles.push_back(tile);
-          mConfigMetrics[tile] = metrics[i][2];
+
+          auto itr = configMetrics.find(tile);
+          if (itr == configMetrics.end()) {
+            // If current tile not encountered yet, check whether valid and then insert
+            auto itr1 = allValidTiles.find(tile);
+            if (itr1 != allValidTiles.end()) {
+              // Current tile is used in current design
+              configMetrics[tile] = metrics[i][2];
+            } else {
+              std::string m = "Specified Tile {" + std::to_string(tile.col) 
+                                                 + "," + std::to_string(tile.row)
+                              + "} is not active. Hence skipped.";
+              xrt_core::message::send(severity_level::warning, "XRT", m);
+            }
+          } else {
+            itr->second = metrics[i][2];
+          }
         }
       }
     } // Pass 2
@@ -616,15 +581,29 @@ namespace xdp {
       xrt_core::edge::aie::tile_type tile;
       tile.col = col;
       tile.row = row;
-//        tiles.push_back(tile);
-      mConfigMetrics[tile] = metrics[i][1];
-    } // Pass 3 
 
+      auto itr = configMetrics.find(tile);
+      if (itr == configMetrics.end()) {
+        // If current tile not encountered yet, check whether valid and then insert
+        auto itr1 = allValidTiles.find(tile);
+        if (itr1 != allValidTiles.end()) {
+          // Current tile is used in current design
+          configMetrics[tile] = metrics[i][2];
+        } else {
+          std::string m = "Specified Tile {" + std::to_string(tile.col) 
+                                             + "," + std::to_string(tile.row)
+                          + "} is not active. Hence skipped.";
+          xrt_core::message::send(severity_level::warning, "XRT", m);
+        }
+      } else {
+        itr->second = metrics[i][2];
+      }
+    } // Pass 3 
 
     // check validity and remove "off" tiles
     std::vector<tile_type> offTiles;
 
-    for (auto &tileMetric : mConfigMetrics) {
+    for (auto &tileMetric : configMetrics) {
 
       // save list of "off" tiles
       if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
@@ -646,7 +625,7 @@ namespace xdp {
 
     // remove all the "off" tiles
     for (auto &t : offTiles) {
-      mConfigMetrics.erase(t);
+      configMetrics.erase(t);
     }
 
     // If requested, turn on debug fal messages

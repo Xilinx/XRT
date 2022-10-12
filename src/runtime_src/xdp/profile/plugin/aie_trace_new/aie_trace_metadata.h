@@ -36,31 +36,27 @@ typedef std::vector<uint32_t>  ValueVector;
 
 class AieTraceMetadata{
   private:
-    uint64_t deviceID;
     void* handle;
 
-    uint64_t numAIETraceOutput;
-    // Runtime or compile-time specified trace metrics?
-    bool runtimeMetrics;
-     // Trace metrics
-    std::string metricSet;
-    std::set<std::string> metricSets;
-    // These flags are used to decide configuration at various points
     bool useDelay = false;
     bool useUserControl = false;
     bool useGraphIterator = false;
+    bool useOneDelayCtr = true;
+    bool runtimeMetrics;
+    bool continuousTrace;
+
     uint32_t iterationCount = 0;
     uint32_t delayCycles = 0;
-    bool useOneDelayCtr = true;
-
-    std::map<tile_type, std::string> mConfigMetrics;
-
-    bool continuousTrace;
+    uint64_t deviceID;
+    uint64_t numAIETraceOutput;
     uint64_t offloadIntervalUs;
     unsigned int aie_trace_file_dump_int_s;
 
+    std::string metricSet;
+    std::set<std::string> metricSets;
+    std::map<tile_type, std::string> configMetrics;
+
   public:
-    //ADD XDP_EXPORT FOR ALL THESE FILES:
     XDP_EXPORT
     AieTraceMetadata(uint64_t deviceID, void* handle);
 
@@ -89,28 +85,30 @@ class AieTraceMetadata{
     std::vector<gmio_type> get_trace_gmios(const xrt_core::device* device);
 
     XDP_EXPORT
-    void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
-                                           std::vector<std::string>& graphmetricsSettings);
+    void getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
+                                           std::vector<std::string> graphmetricsSettings);
     XDP_EXPORT  
     void setTraceStartControl();
 
-    bool getRuntimeMetrics() {return runtimeMetrics;}
-    uint64_t getDeviceID() {return deviceID;}
-    void* getHandle() {return handle;}
-    void setNumStreams(uint64_t value) {numAIETraceOutput = value;}
-    uint64_t getNumStreams() {return numAIETraceOutput;}
-    uint64_t getContinuousTrace() {return continuousTrace;}
-    unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
-    uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
-   
     bool getUseDelay(){return useDelay;}
     bool getUseUserControl(){return useUserControl;}
     bool getUseGraphIterator(){return useGraphIterator;}
-    uint32_t getIterationCount(){return iterationCount;}
     bool getUseOneDelayCounter(){return useOneDelayCtr;}
+    bool getRuntimeMetrics() {return runtimeMetrics;}
 
-    std::map<tile_type, std::string> getConfigMetrics(){return mConfigMetrics;}
+    uint32_t getIterationCount(){return iterationCount;}
+    uint64_t getNumStreams() {return numAIETraceOutput;}
+    uint64_t getContinuousTrace() {return continuousTrace;}
+    uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
+    uint64_t getDeviceID() {return deviceID;}
+
+    void* getHandle() {return handle;}
+    unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
+    std::map<tile_type, std::string> getConfigMetrics(){return configMetrics;}
     std::string getMetricStr(){return metricSet;}
+
+    void setNumStreams(uint64_t value) {numAIETraceOutput = value;}
+    void setDelayCycles(uint32_t newDelayCycles) {delayCycles = newDelayCycles;}
 
     uint32_t getDelay() {
       if (useDelay)
@@ -118,7 +116,6 @@ class AieTraceMetadata{
       return 0;
     }
     
-    void setDelayCycles(uint32_t newDelayCycles) {delayCycles = newDelayCycles;}
   };
 
 }

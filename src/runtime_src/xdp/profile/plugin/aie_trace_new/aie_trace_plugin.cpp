@@ -304,8 +304,6 @@ namespace xdp {
       return;
 
     flushOffloader(AIEData.offloader, false);
-    // if (AIEData.implementation)
-    //   AIEData.implementation->flushDevice();
   }
 
   void AieTracePluginUnified::finishFlushAIEDevice(void* handle)
@@ -322,11 +320,7 @@ namespace xdp {
       return;
 
     flushOffloader(AIEData.offloader, true);
-    // if (AIEData.implementation)
-    //   AIEData.implementation->finishFlushDevice();
-    
-    // we have to map::erase() AIEDdata[handle] entry now
-    
+    handleToAIEData.erase(itr);
   }
 
   void AieTracePluginUnified::writeAll(bool openNewFiles)
