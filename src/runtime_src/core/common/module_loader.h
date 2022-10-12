@@ -79,6 +79,23 @@ public:
   shim_loader();
 };
 
+/**
+ * Load XRT driver library at runtime
+ */
+class driver_loader
+{
+public:
+  /**
+   * driver_loader() - Load one or more versioned XRT driver libraries.
+   *
+   * The driver library is a plugin library to XRT core library. It is
+   * a link library in the same directory as core XRT library. The name
+   * of the library needs to match "libxrt_driver_xxx.so.<XRT-core-lib-version>".
+   */
+  XRT_CORE_COMMON_EXPORT
+  driver_loader();
+};
+
 } // end namespace xrt_core
 
 #endif

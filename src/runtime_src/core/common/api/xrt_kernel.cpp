@@ -745,6 +745,16 @@ public:
     return state;
   }
 
+  // Return kernel return code from command object for PS kernels
+  uint32_t
+  get_return_code() const
+  {
+    auto pkt = get_ert_packet();
+    uint32_t ret;
+    ert_read_return_code(pkt, ret);
+    return ret;
+  }
+
   // Cast underlying exec buffer to its requested type
   template <typename ERT_COMMAND_TYPE>
   const ERT_COMMAND_TYPE
@@ -2281,6 +2291,16 @@ public:
     return cmd->get_state();
   }
 
+  // return_code() - get kernel execution return code
+  uint32_t
+  return_code() const
+  {
+    auto ktype = kernel->get_kernel_type();
+    if (ktype == kernel_type::ps)
+      return cmd->get_return_code();
+    return 0;
+  }
+
   ert_packet*
   get_ert_packet() const
   {
@@ -3041,6 +3061,15 @@ state() const
 {
   return xdp::native::profiling_wrapper("xrt::run::state", [this]{
     return handle->state();
+  });
+}
+
+uint32_t
+run::
+return_code() const
+{
+  return xdp::native::profiling_wrapper("xrt::run::return_code", [this]{
+    return handle->return_code();
   });
 }
 

@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef _AWS_DEV_H_
 #define _AWS_DEV_H_
 
@@ -25,7 +13,7 @@
 #include "xclhal2.h"
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
-#include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/pcidev.h"
 #include "core/pcie/linux/shim.h"
 #include "../mpd_plugin.h"
 #include "../common.h"

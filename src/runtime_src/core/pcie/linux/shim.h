@@ -4,7 +4,7 @@
 #ifndef PCIE_LINUX_SHIM_H_
 #define PCIE_LINUX_SHIM_H_
 
-#include "scan.h"
+#include "pcidev.h"
 #include "xclhal2.h"
 
 #include "core/common/device.h"
@@ -161,7 +161,7 @@ public:
 
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;
-  std::shared_ptr<pcidev::pci_device> mDev;
+  std::shared_ptr<xrt_core::pci::dev> mDev;
   std::ofstream mLogStream;
   int mUserHandle;
   int mStreamHandle;
