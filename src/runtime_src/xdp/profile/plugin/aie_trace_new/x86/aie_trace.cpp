@@ -68,14 +68,17 @@ namespace xdp {
 
     //Gather data to send to PS Kernel
     std::string counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
-    std::string metricSet = metadata->getMetricSet();
+    std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
+    std::string metricSet = metadata->getMetricSet(metricStr);
     uint8_t counterSchemeInt;
     uint8_t metricSetInt;
 
     auto tiles = metadata->getTilesForTracing();
-    uint32_t delayCycles = static_cast<uint32_t>(metadata->getTraceStartDelayCycles());
-    bool userControl = xrt_core::config::get_aie_trace_settings_start_type() == "kernel_event0";
-    bool useDelay = (metadata->getDelay() != 0);
+
+    metadata->setTraceStartControl();
+    uint32_t delayCycles = metadata->getDelay();//static_cast<uint32_t>(metadata->getTraceStartDelayCycles());
+    bool userControl = metadata->getUseUserControl();//xrt_core::config::get_aie_trace_settings_start_type() == "kernel_event0";
+    bool useDelay = metadata->getUseDelay();
 
     uint16_t rows[MAX_TILES];
     uint16_t cols[MAX_TILES];

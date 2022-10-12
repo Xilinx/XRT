@@ -112,7 +112,7 @@ namespace xdp {
   std::string AieTraceMetadata::getMetricSet(const std::string& metricsStr, bool ignoreOldConfig)
   {
 
-        std::vector<std::string> vec;
+    std::vector<std::string> vec;
     boost::split(vec, metricsStr, boost::is_any_of(":"));
 
     for (int i=0; i < vec.size(); ++i) {
