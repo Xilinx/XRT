@@ -1438,12 +1438,13 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       if (offloader->continuousTrace()) {
         offloader->stopOffload() ;
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
+      } else {
+        offloader->readTrace(true);
+        offloader->endReadTrace();
       }
 
-      offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
-      offloader->endReadTrace();
 
       delete (offloader);
       delete (logger);
@@ -1463,12 +1464,13 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       if (offloader->continuousTrace()) {
         offloader->stopOffload() ;
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
+      } else {
+        offloader->readTrace(true);
+        offloader->endReadTrace();
       }
 
-      offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
-      offloader->endReadTrace();
 
       delete offloader;
       delete logger;

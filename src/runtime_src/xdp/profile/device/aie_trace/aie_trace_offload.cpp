@@ -440,13 +440,11 @@ bool AIETraceOffload::syncAndLog(uint64_t index)
 
 bool AIETraceOffload::isTraceBufferFull()
 {
-  // Detect if any trace buffer was full
-  if (isPLIO) {
-    for (auto& buf: buffers) {
-      if (buf.isFull)
-        return true;
-    }
+  for (auto& buf: buffers) {
+    if (buf.isFull)
+      return true;
   }
+
   return false;
 }
 
@@ -507,8 +505,6 @@ void AIETraceOffload::continuousOffload()
     offloadFinished();
     return;
   }
-
-  std::cout << "START ct for gmio" << std::endl;
 
   while (keepOffloading()) {
     mReadTrace(false);
