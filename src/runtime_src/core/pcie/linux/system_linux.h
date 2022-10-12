@@ -5,7 +5,7 @@
 #define PCIE_SYSTEM_LINUX_H
 
 #include "pcidev.h"
-#include "pcie/common/system_pcie.h"
+#include "core/pcie/common/system_pcie.h"
 
 namespace xrt_core {
 
@@ -60,13 +60,7 @@ public:
   size_t
   get_num_dev_total(bool is_user) const;
 
-protected:
-  void
-  register_driver(std::shared_ptr<pci::drv> driver);
-
 private:
-  std::vector<std::shared_ptr<pci::drv>> driver_list;
-
   std::vector<std::shared_ptr<pci::dev>> user_ready_list;
   std::vector<std::shared_ptr<pci::dev>> user_nonready_list;
 
@@ -91,6 +85,14 @@ get_userpf_device(device::handle_type device_handle, device::id_type id);
  */
 device::id_type
 get_device_id_from_bdf(const std::string& bdf);
+
+/**
+ * Adding driver instance to the global list. Should only be called during system_linux's
+ * constructor, either explicitly for built-in drivers or through dlopen for plug-in ones.
+ * For now, once added, it cannot be removed until the list itself is out of scope.
+ */
+void
+register_driver(std::shared_ptr<drv> driver);
 
 } // pci
 
