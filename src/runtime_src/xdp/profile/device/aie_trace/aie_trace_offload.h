@@ -174,7 +174,7 @@ private:
     bool keepOffloading();
     void offloadFinished();
     void checkCircularBufferSupport();
-    bool syncAndLog(uint64_t index);
+    uint64_t syncAndLog(uint64_t index);
     std::function<void(bool)> mReadTrace;
     uint64_t searchWrittenBytes(void * buf, uint64_t bytes);
 };

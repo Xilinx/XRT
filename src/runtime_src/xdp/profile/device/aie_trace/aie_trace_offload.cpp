@@ -284,7 +284,7 @@ void AIETraceOffload::endReadTrace()
 
 void AIETraceOffload::readTraceGMIO(bool final)
 {
-  constexpr uint64_t one_megabyte = 0x100000;
+  constexpr uint64_t one_megabyte_chunk = 0x100000;
 
   for (uint64_t index = 0; index < numStream; ++index) {
     auto& bd = buffers[index];
@@ -292,17 +292,12 @@ void AIETraceOffload::readTraceGMIO(bool final)
       continue;
 
     // read in chunks for minimal impact
-    auto chunkEnd = bd.offset + one_megabyte;
+    auto chunkEnd = bd.offset + one_megabyte_chunk;
     if (final || chunkEnd > bufAllocSz)
       chunkEnd = bufAllocSz;
     bd.usedSz = chunkEnd;
 
-    syncAndLog(index);
-
-    if (bd.offset >= bufAllocSz) {
-      bd.offloadDone = true;
-      bd.isFull = true;
-    }
+    bd.offset += syncAndLog(index);
   }
 }
 
@@ -347,10 +342,6 @@ void AIETraceOffload::readTracePLIO(bool final)
     // Start Offload from previous offset
     bd.offset = bd.usedSz;
     if (bd.offset == bufAllocSz) {
-      if (!mEnCircularBuf) {
-        bd.offloadDone = true;
-        continue;
-      }
       bd.rollover_count++;
       bd.offset = 0;
     }
@@ -395,12 +386,12 @@ void AIETraceOffload::readTracePLIO(bool final)
   }
 }
 
-bool AIETraceOffload::syncAndLog(uint64_t index)
+uint64_t AIETraceOffload::syncAndLog(uint64_t index)
 {
   auto& bd = buffers[index];
 
   if (bd.offset >= bd.usedSz)
-    return false;
+    return 0;
 
   // Amount of newly written trace
   uint64_t nBytes = bd.usedSz - bd.offset;
@@ -417,25 +408,22 @@ bool AIETraceOffload::syncAndLog(uint64_t index)
 
   if (!hostBuf) {
     bd.offloadDone = true;
-    return false;
+    return 0;
   }
+
+  // Find amount of non-zero data in buffer
+  if (!isPLIO)
+    nBytes = searchWrittenBytes(hostBuf, nBytes);
 
   // check for full buffer
-  if ((bd.offset + nBytes >= bufAllocSz) && !mEnCircularBuf && isPLIO)
+  if ((bd.offset + nBytes >= bufAllocSz) && !mEnCircularBuf) {
     bd.isFull = true;
-
-  // Make adjustments for gmio
-  if (!isPLIO) {
-    // binary search buffer for trace boundary
-    nBytes = searchWrittenBytes(hostBuf, nBytes);
-    // Assume only this much data was synched
-    bd.offset += nBytes;
+    bd.offloadDone = true;
   }
 
-  // Finally Log trace buffer
+  // Log nBytes of trace
   traceLogger->addAIETraceData(index, hostBuf, nBytes, mEnCircularBuf);
-
-  return true;
+  return nBytes;
 }
 
 bool AIETraceOffload::isTraceBufferFull()
