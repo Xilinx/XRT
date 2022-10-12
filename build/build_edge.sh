@@ -15,7 +15,7 @@ usage()
     echo "Usage: $PROGRAM [options] "
     echo "  options:"
     echo "          -help                           Print this usage"
-    echo "          -aarch                          Architecture <aarch32/aarch64/versal>"
+    echo "          -aarch                          Architecture <aarch64/versal>"
     echo "          -cache                          path to sstate-cache"
     echo "          -setup                          setup file to use"
     echo "          -clean, clean                   Remove build directories"
@@ -285,14 +285,13 @@ while [ $# -gt 0 ]; do
 done
 
 aarch64_dir="aarch64"
-aarch32_dir="aarch32"
 versal_dir="versal"
 YOCTO_MACHINE=""
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf $aarch64_dir $aarch32_dir $versal_dir"
-    /bin/rm -rf $aarch64_dir $aarch32_dir $versal_dir
+    echo "/bin/rm -rf $aarch64_dir $versal_dir"
+    /bin/rm -rf $aarch64_dir $versal_dir
     exit 0
 fi
 
@@ -311,15 +310,6 @@ if [[ $AARCH = $aarch64_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/internal/zynqmp-common-v$PETALINUX_VER-final.bsp"
     fi
     YOCTO_MACHINE="zynqmp-generic"
-elif [[ $AARCH = $aarch32_dir ]]; then
-    if [[ -f $PETALINUX/../../bsp/release/zynq-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/release/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
-    elif [[ -f $PETALINUX/../../bsp/internal/zynq/zynq-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/internal/zynq/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
-    else
-    PETA_BSP="$PETALINUX/../../bsp/internal/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
-    fi
-    YOCTO_MACHINE="zynq-generic"
 elif [[ $AARCH = $versal_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/versal-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/versal-rootfs-common-v$PETALINUX_VER-final.bsp"
