@@ -54,7 +54,7 @@ public:
   /**
    * get_exec_bo() - get BO handle of command buffer
    */
-  virtual xclBufferHandle
+  virtual xrt_buffer_handle
   get_exec_bo() const = 0;
 
   /**

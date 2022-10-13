@@ -68,7 +68,7 @@ public:
   std::cv_status
   wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout) override;
 
-  xclBufferHandle
+  xrt_buffer_handle
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
 
   uint32_t // ctx handle aka slotidx

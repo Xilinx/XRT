@@ -37,8 +37,8 @@ namespace xrt_core { namespace kernel_int {
 void
 copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
                   size_t sz,
-                  xclBufferHandle dst_bo, size_t dst_offset,
-                  xclBufferHandle src_bo, size_t src_offset);
+                  xrt_buffer_handle dst_bo, size_t dst_offset,
+                  xrt_buffer_handle src_bo, size_t src_offset);
 
 XRT_CORE_COMMON_EXPORT
 std::vector<const xclbin::kernel_argument*>

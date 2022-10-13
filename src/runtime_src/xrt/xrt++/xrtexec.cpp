@@ -182,7 +182,7 @@ struct command::impl : xrt_core::command
     return m_device->get_core_device().get();
   }
 
-  virtual xclBufferHandle
+  virtual xrt_buffer_handle
   get_exec_bo() const
   {
     return m_execbuf.first;
