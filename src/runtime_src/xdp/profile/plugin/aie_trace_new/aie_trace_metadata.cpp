@@ -115,7 +115,7 @@ namespace xdp {
     std::vector<std::string> vec;
     boost::split(vec, metricsStr, boost::is_any_of(":"));
 
-    for (int i=0; i < vec.size(); ++i) {
+    for (size_t i=0; i < vec.size(); ++i) {
       boost::replace_all(vec.at(i), "{", "");
       boost::replace_all(vec.at(i), "}", "");
     }
@@ -187,7 +187,7 @@ namespace xdp {
       double freqMhz = AIE_DEFAULT_FREQ_MHZ;
       if (handle != nullptr) {
         auto device = xrt_core::get_userpf_device(handle);
-        freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+        freqMhz = get_clock_freq_mhz(device.get());
       }
 
       std::smatch pieces_match;
@@ -449,7 +449,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", msg);
         continue;
       }
-      auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graphmetrics[i][0]);
+      auto currTiles = get_tiles(device.get(), graphmetrics[i][0]);
       std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
 #if 0
         // TODO: Differentiate between core and DMA-only tiles when 'all' is supported

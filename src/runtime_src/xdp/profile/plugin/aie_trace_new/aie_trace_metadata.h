@@ -36,8 +36,6 @@ typedef std::vector<uint32_t>  ValueVector;
 
 class AieTraceMetadata{
   private:
-    void* handle;
-
     bool useDelay = false;
     bool useUserControl = false;
     bool useGraphIterator = false;
@@ -56,6 +54,7 @@ class AieTraceMetadata{
     std::set<std::string> metricSets;
     std::map<tile_type, std::string> configMetrics;
 
+    void* handle;
   public:
     XDP_EXPORT
     AieTraceMetadata(uint64_t deviceID, void* handle);

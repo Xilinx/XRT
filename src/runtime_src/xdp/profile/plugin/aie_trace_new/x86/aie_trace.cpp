@@ -69,7 +69,7 @@ namespace xdp {
     //Gather data to send to PS Kernel
     std::string counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
-    std::string metricSet = metadata->getMetricSet(metricStr);
+    std::string metricSet = metadata->getMetricSet(metricsStr);
     uint8_t counterSchemeInt;
     uint8_t metricSetInt;
 
@@ -118,7 +118,7 @@ namespace xdp {
     input_params->userControl = userControl;
 
     int tileIdx = 0;
-    for (int i = 0; i < numTiles * 2; i +=2) {
+    for (uint16_t i = 0; i < numTiles * 2; i +=2) {
       input_params->tiles[i] = rows[tileIdx];
       input_params->tiles[i+1] = cols[tileIdx];
       tileIdx += 1;
