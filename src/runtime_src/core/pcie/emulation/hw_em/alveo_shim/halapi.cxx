@@ -305,7 +305,7 @@ unsigned xclProbe()
     FeatureRomHeader fRomHeader = std::get<4>(it);
     boost::property_tree::ptree platformData = std::get<5>(it);
 
-    xclhwemhal2::HwEmShim *handle = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
+    auto handle = std::make_shared<xclhwemhal2::HwEmShim>(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
     xclhwemhal2::devices[deviceIndex++] = handle;
   }
 
@@ -351,24 +351,28 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
   boost::property_tree::ptree platformData;
 
-  xclhwemhal2::HwEmShim *handle = NULL;
+  std::shared_ptr<xclhwemhal2::HwEmShim> handle = nullptr;
 
   bool bDefaultDevice = false;
-  std::map<unsigned int, xclhwemhal2::HwEmShim*>::iterator it = xclhwemhal2::devices.find(deviceIndex);
+  auto it = xclhwemhal2::devices.find(deviceIndex);
   if(it != xclhwemhal2::devices.end())
   {
     handle = (*it).second;
   }
   else
   {
-    handle = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
+    handle = std::make_shared<xclhwemhal2::HwEmShim>(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
+    
   }
 
-  if (!xclhwemhal2::HwEmShim::handleCheck(handle)) {
-    delete handle;
+  if (!xclhwemhal2::HwEmShim::handleCheck(handle.get())) {
+    std::cout << "\n cleaning the memory \n";
+    
+    delete (xclhwemhal2::HwEmShim*)handle.get();
     handle = 0;
   }
+  
   if(handle)
   {
     handle->xclOpen(logfileName);
@@ -378,7 +382,9 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
       handle->logMessage(sDummyDeviceMsg);
     }
   }
-  return (xclDeviceHandle *)handle;
+  auto ptr = handle.get();
+  //handle = nullptr; // This should be live throught the lifetime of the handle object
+  return (xclDeviceHandle *)ptr;
   }) ;
 }
 

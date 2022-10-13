@@ -55,8 +55,10 @@ namespace hwemu {
     {
         public:
             xocl_cmd();
-
-            uint32_t    opcode();
+            ~xocl_cmd(){ 
+                //bo= nullptr; 
+                };
+            uint32_t opcode();
             uint32_t    type();
             uint64_t    cmd_uid();
             uint32_t    payload_size();
@@ -76,7 +78,8 @@ namespace hwemu {
             uint32_t next_cu(uint32_t prev);
             void     set_cu(uint32_t cuidx);
 
-            std::shared_ptr<xclemulation::drm_xocl_bo> bo;
+            //std::shared_ptr<xclemulation::drm_xocl_bo> bo;
+            xclemulation::drm_xocl_bo* bo;
             enum ert_cmd_state state;
             union {
                 struct ert_packet	         *ert_pkt;
@@ -225,7 +228,7 @@ namespace hwemu {
     {
         public:
             exec_core(std::shared_ptr<xclhwemhal2::HwEmShim> dev, std::shared_ptr<xocl_scheduler> sched);
-
+            ~exec_core();
             int      exec_cfg_cmd(std::shared_ptr<xocl_cmd>& xcmd);
             bool     exec_is_ert();
             bool     exec_is_ert_poll();
@@ -344,7 +347,6 @@ namespace hwemu {
             std::queue<std::shared_ptr<xocl_cmd>>   pending_scu_queue;
             std::queue<std::shared_ptr<xocl_cmd>>   pending_cmd_queue;
             std::list<std::shared_ptr<xocl_cmd>>    running_cmd_queue;
-            //std::vector<std::shared_ptr<xocl_cmd>>    running_cmd_queue;
             std::queue<std::shared_ptr<xocl_cmd>>   pending_cu_queue[MAX_CUS];
     };
 
@@ -456,6 +458,8 @@ namespace hwemu {
         public:
             xocl_scheduler(std::shared_ptr<xclhwemhal2::HwEmShim> dev);
             ~xocl_scheduler();
+
+            void initialize();
 
             void  scheduler_wake_up();
             void  scheduler_intr();

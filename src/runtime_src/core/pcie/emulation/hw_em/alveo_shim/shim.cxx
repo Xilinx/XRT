@@ -67,7 +67,8 @@ namespace xclhwemhal2 {
   namespace pt = boost::property_tree;
   namespace fs = boost::filesystem;
 
-  std::map<unsigned int, HwEmShim*> devices;
+  //std::map<unsigned int, HwEmShim*> devices;
+std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
   std::map<std::string, std::string> HwEmShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
   std::map<int, std::tuple<std::string,int,void*, unsigned int> > HwEmShim::mFdToFileNameMap;
   std::ofstream HwEmShim::mDebugLogStream;
@@ -103,17 +104,18 @@ namespace xclhwemhal2 {
   // this compilation unit and not be data members of the shim class.
   namespace device_handles {
     static std::mutex mutex;
-    static std::set<xclDeviceHandle> handles;
+    //static std::set<xclDeviceHandle> handles;
+    static std::set<std::shared_ptr<xclhwemhal2::HwEmShim>> handles;
 
     inline void
-    add(xclDeviceHandle hdl)
+    add(std::shared_ptr<xclhwemhal2::HwEmShim> hdl)
     {
       std::lock_guard<std::mutex> lk(mutex);
       handles.insert(hdl);
     }
 
     inline void
-    remove(xclDeviceHandle hdl)
+    remove(std::shared_ptr<xclhwemhal2::HwEmShim> hdl)
     {
       std::lock_guard<std::mutex> lk(mutex);
       handles.erase(hdl);
@@ -125,7 +127,7 @@ namespace xclhwemhal2 {
       {
         auto end = handles.end();
         for (auto itr = handles.begin(); itr != end;) {
-          xclClose(*itr);  // removes handle from handles
+          xclClose(itr->get());  // removes handle from handles
           itr = handles.begin();
         }
       }
@@ -170,11 +172,13 @@ namespace xclhwemhal2 {
 
   static void saveWaveDataBases()
   {
-    std::map<unsigned int, HwEmShim*>::iterator start = devices.begin();
-    std::map<unsigned int, HwEmShim*>::iterator end = devices.end();
+    //std::map<unsigned int, HwEmShim*>::iterator 
+    auto start = devices.begin();
+    //std::map<unsigned int, HwEmShim*>::iterator 
+    auto end = devices.end();
     for(; start != end; start++)
     {
-      HwEmShim* handle = (*start).second;
+      auto handle = (*start).second;
       if(!handle)
         continue;
       handle->saveWaveDataBase();
@@ -428,6 +432,7 @@ namespace xclhwemhal2 {
     if(xclemulation::config::getInstance()->isNewMbscheduler()) {
         //m_scheduler = new hwemu::xocl_scheduler(this);
         m_scheduler = std::make_shared<hwemu::xocl_scheduler>(shared_from_this());
+        m_scheduler->initialize();
     } else if (xclemulation::config::getInstance()->isXgqMode()) {
         //m_xgq = new hwemu::xocl_xgq(this);
         m_xgq = std::make_shared<hwemu::xocl_xgq>(shared_from_this());
@@ -1835,7 +1840,7 @@ namespace xclhwemhal2 {
     // reset here rather than in destructor
     xdp::hw_emu::flush_device(this);
     mCoreDevice.reset();
-    device_handles::remove(this);
+    device_handles::remove(shared_from_this());
 
     if (!sock)
     {
@@ -2090,9 +2095,10 @@ namespace xclhwemhal2 {
     if (!handle)
       return 0;
 
-    return (HwEmShim *)handle;
+    return reinterpret_cast<HwEmShim*>(handle);
 
   }
+
 
   HwEmShim::~HwEmShim() {
     free(ci_buf);
@@ -2694,7 +2700,7 @@ namespace xclhwemhal2 {
     // create here rather than in constructor
     mCoreDevice = xrt_core::hwemu::get_userpf_device(this, mDeviceIndex);
 
-    device_handles::add(this);
+    device_handles::add(shared_from_this());
   }
 
 /**********************************************HAL2 API's START HERE **********************************************/

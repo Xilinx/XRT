@@ -54,6 +54,28 @@ using key_type = xrt_core::query::key_type;
 using addr_type = uint64_t;
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
+/*
+  template< class T>
+  class raw_pointer
+  {
+    public:
+      raw_pointer(const T* lhs) {
+        m_pointer = std::make_shared<T>(lhs);
+      }
+      raw_pointer(const raw_pointer &lhs) : m_pointer{lhs.m_pointer} { lhs.m_pointer = nullptr;  }
+      T* operator ->() { return this->m_pointer.get(); }
+      T* operator * () { return this->m_pointer.get(); }
+      bool operator !() const { return (this->m_pointer == nullptr)?true:false;}
+      bool operator() () const { return (this->m_pointer == nullptr)?false:true;}
+      ~raw_pointer() {
+        m_pointer = nullptr;    // No ownership 
+      }
+
+      private:
+        std::shared_ptr<T> m_pointer;
+  };
+*/
+
   class Event {
     public:
       uint8_t awlen;
@@ -234,7 +256,8 @@ using addr_type = uint64_t;
 
       //destructor
       ~HwEmShim();
-
+      HwEmShim& operator=(const HwEmShim& lhs) = default;
+      HwEmShim(const HwEmShim& lhs) = default;
       static const int SPIR_ADDRSPACE_PRIVATE;  //0
       static const int SPIR_ADDRSPACE_GLOBAL;   //1
       static const int SPIR_ADDRSPACE_CONSTANT; //2
@@ -430,6 +453,7 @@ using addr_type = uint64_t;
       nocddr_fastaccess_hwemu mNocFastAccess;
   };
 
-  extern std::map<unsigned int, HwEmShim*> devices;
+  //extern std::map<unsigned int, HwEmShim*> devices;
+  extern std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
  }
 #endif

@@ -168,7 +168,7 @@ namespace hwemu {
     void xocl_cmd::bo_init(std::shared_ptr<xclemulation::drm_xocl_bo>& bo)
     {
         SCHED_DEBUGF("-> %s(%lu)\n", __func__, uid);
-        this->bo = bo;
+        this->bo = bo.get();
         //this->ert_pkt = (struct ert_packet *)bo->buf;
         this->ert_pkt = static_cast<ert_packet*>(bo->buf);
 
@@ -227,8 +227,9 @@ namespace hwemu {
             if(cu_bitmap.test(i)) {
                 cu_idx = i; break;
             }
+
         }
-        return cu_idx;
+        return cu_idx; 
     }
 
     /**
@@ -966,6 +967,20 @@ namespace hwemu {
             this->cq_base =  0x190000;
             this->csr_base = 0x180000;
         }
+    }
+    exec_core::~exec_core() {
+        // all shared pointers should clean in reverse order of their creation
+        /*
+        pending_ctrl_queue.clear();
+pending_kds_queue.clear();
+pending_scu_queue.clear();
+pending_cmd_queue.clear();
+running_cmd_queue.clear();
+*/
+//pending_cu_queue.clear();
+
+
+        
     }
 
     int exec_core::exec_cfg_cmd(std::shared_ptr<xocl_cmd>& xcmd)
@@ -1741,8 +1756,8 @@ namespace hwemu {
             return;
         }
         //! Release the xcmd to object pool
-        scheduler->cmd_pool.destroy(xcmd.get());
-        xcmd = nullptr;
+        //scheduler->cmd_pool.destroy(xcmd.get());
+        //xcmd = nullptr;
     }
 
     void exec_core::exec_abort_cmd(std::shared_ptr<xocl_cmd>& xcmd)
@@ -2056,18 +2071,19 @@ namespace hwemu {
 
         auto iter_start = this->running_cmd_queue.begin();
         auto iter_end  = this->running_cmd_queue.end();
+        
         while(iter_start != iter_end)
         {
-            auto xcmd = iter_start;
+            auto xcmd = *iter_start;
             // guard against exec_query_cmd completing multiple commands
             // in one call when ert is enabled.
-            if (iter_start->get()->state == ERT_CMD_STATE_RUNNING)
-                this->exec_query_cmd(*xcmd);
+            if (xcmd->state == ERT_CMD_STATE_RUNNING)
+                this->exec_query_cmd(xcmd);
 
-            if (iter_start->get()->state >= ERT_CMD_STATE_COMPLETED) {
+            if ( xcmd->state >= ERT_CMD_STATE_COMPLETED) {
                 --this->num_running_cmds;
-                iter_start = this->running_cmd_queue.erase(xcmd);
-                this->exec_cmd_free(*iter_start); 
+                iter_start = this->running_cmd_queue.erase(iter_start);
+                this->exec_cmd_free(xcmd); 
             } else {
                 iter_start++;
             }
@@ -2104,10 +2120,13 @@ namespace hwemu {
         intc = 0;
         num_pending = 0;
 
-        exec = std::make_shared<exec_core>(dev, shared_from_this());
-        scheduler_thread = std::thread([&] { this->scheduler();} );     // Not a good way to start a thread from ctor.
     }
 
+    void xocl_scheduler::initialize() {
+        exec = std::make_shared<exec_core>(weak_device.lock(), shared_from_this());
+        scheduler_thread = std::thread([&] { std::cout<<"\n testing this \n";
+        this->scheduler();} );     // Not a good way to start a thread from ctor.
+    }
     /**
      * cleanup scheduler_thread and other resources on exit
      */
@@ -2123,7 +2142,7 @@ namespace hwemu {
             scheduler_thread.join(); //! Wait untill scheduler_thread exits
         }
 
-        exec.reset();
+        //exec.reset();
         SCHED_DEBUGF("scheduler_thread exited\n");
     }
 
@@ -2403,8 +2422,9 @@ namespace hwemu {
     {
         std::lock_guard<std::mutex> lk(pending_cmds_mutex);
         //! Get the command from boost object pool
-        xocl_cmd *lxcmd = cmd_pool.construct();
-        auto xcmd = std::shared_ptr<xocl_cmd>(lxcmd);
+        //xocl_cmd *lxcmd = cmd_pool.construct();
+        //std::shared_ptr<xocl_cmd> xcmd{lxcmd};
+        std::shared_ptr<xocl_cmd> xcmd = std::make_shared<xocl_cmd>();
         if (!xcmd)
             return 1;
 
