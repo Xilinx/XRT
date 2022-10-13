@@ -45,7 +45,7 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 	return count;
 }
 
-ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
+ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf, size_t buf_size)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	struct xrt_cu *xcu = NULL;
@@ -68,7 +68,7 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 			if (xcu->info.slot_idx != j)
 				continue;
 
-			sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, j,
+			sz += scnprintf(buf+sz, buf_size - sz, cu_fmt, j,
 					set_domain(DOMAIN_PL, i),
 					xcu->info.kname, xcu->info.iname,
 					xcu->info.addr, xcu->status,
@@ -80,7 +80,7 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 	return sz;
 }
 
-ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
+ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf, size_t buf_size)
 {
 	struct kds_cu_mgmt *scu_mgmt = &kds->scu_mgmt;
 	/* Each line is a PS kernel, format:
@@ -113,7 +113,7 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 			if (xcu->info.slot_idx != j)
 				continue;
 
-			sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, j,
+			sz += scnprintf(buf+sz, buf_size - sz, cu_fmt, j,
 					set_domain(DOMAIN_PS, i),
 					xcu->info.kname,xcu->info.iname,
 					xcu->status,

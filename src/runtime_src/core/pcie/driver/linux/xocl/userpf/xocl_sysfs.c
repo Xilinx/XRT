@@ -279,11 +279,62 @@ kds_custat_raw_show(struct device *dev, struct device_attribute *attr, char *buf
 	ssize_t ret;
 
 	mutex_lock(&xdev->dev_lock);
-	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buf);
+	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buf, PAGE_SIZE);
 	mutex_unlock(&xdev->dev_lock);
 	return ret;
 }
 static DEVICE_ATTR_RO(kds_custat_raw);
+
+#define MAX_CU_OUTPUT_LENGTH 128
+#define CU_BUFFER_SIZE (MAX_CU_OUTPUT_LENGTH * MAX_CUS)
+static ssize_t kds_custat_bin_show(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	/**
+	 * A seperate buffer needs to be allocated so that the information
+	 * does not change between invocations. kmalloc is used so that the
+	 * data can be freed once the operation is complete
+	 */
+	static char * buf = NULL;
+	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
+	ssize_t ret = 0;
+	u32 nread = 0;
+
+	/* If the buffer has not been allocatd create one and populate it */
+	if (!buf) {
+		buf = kmalloc(CU_BUFFER_SIZE * sizeof(char), GFP_KERNEL);
+		mutex_lock(&xdev->dev_lock);
+		ret = show_kds_custat_raw(&XDEV(xdev)->kds, buf, CU_BUFFER_SIZE);
+		mutex_unlock(&xdev->dev_lock);
+	}
+
+	/* Check if the maximum read amount exceeds the amount of data to read */
+	if (count < CU_BUFFER_SIZE - offset)
+		nread = count;
+	else
+		nread = CU_BUFFER_SIZE - offset;
+
+	/* If no bytes are left to read finish the operation */
+	if (nread == 0)
+		goto complete;
+
+	memcpy(buffer, buf + offset, nread);
+	return nread;
+
+complete:
+	kfree(buf);
+	return 0;
+}
+
+static struct bin_attribute kds_custat_bin_attr = {
+	.attr = {
+		.name = "kds_custat_bin",
+		.mode = 0444
+	},
+	.read = kds_custat_bin_show,
+	.write = NULL,
+	.size = CU_BUFFER_SIZE
+};
 
 static ssize_t
 kds_scustat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -292,7 +343,7 @@ kds_scustat_raw_show(struct device *dev, struct device_attribute *attr, char *bu
 	ssize_t ret;
 
 	mutex_lock(&xdev->dev_lock);
-	ret = show_kds_scustat_raw(&XDEV(xdev)->kds, buf);
+	ret = show_kds_scustat_raw(&XDEV(xdev)->kds, buf, PAGE_SIZE);
 	mutex_unlock(&xdev->dev_lock);
 	return ret;
 }
@@ -869,6 +920,7 @@ static struct bin_attribute fdt_blob_attr = {
 
 static struct bin_attribute  *xocl_bin_attrs[] = {
 	&fdt_blob_attr,
+	&kds_custat_bin_attr,
 	NULL,
 };
 
