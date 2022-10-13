@@ -284,15 +284,16 @@ void AIETraceOffload::endReadTrace()
 
 void AIETraceOffload::readTraceGMIO(bool final)
 {
-  constexpr uint64_t one_megabyte_chunk = 0x100000;
+  // Keep it low to save bandwidth
+  constexpr uint64_t chunk_512k = 0x80000;
 
   for (uint64_t index = 0; index < numStream; ++index) {
     auto& bd = buffers[index];
     if (bd.offloadDone)
       continue;
 
-    // read in chunks for minimal impact
-    auto chunkEnd = bd.offset + one_megabyte_chunk;
+    // read one chunk or till the end of buffer
+    auto chunkEnd = bd.offset + chunk_512k;
     if (final || chunkEnd > bufAllocSz)
       chunkEnd = bufAllocSz;
     bd.usedSz = chunkEnd;
@@ -529,7 +530,11 @@ void AIETraceOffload::offloadFinished()
 
 uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
 {
-  auto arr = static_cast<uint64_t *>(buf);
+  /*
+   * Look For trace boundary using binary search.
+   * Use Dword to be safe
+   */
+  auto words = static_cast<uint64_t *>(buf);
   uint64_t wordcount = bytes / TRACE_PACKET_SIZE;
 
   // indices
@@ -541,7 +546,7 @@ uint64_t AIETraceOffload::searchWrittenBytes(void* buf, uint64_t bytes)
 
   while (low <= high) {
     int64_t mid = low + (high - low) / 2;
-    if (!arr[mid]) {
+    if (!words[mid]) {
       boundary = mid;
       high = mid - 1;
     } else {
