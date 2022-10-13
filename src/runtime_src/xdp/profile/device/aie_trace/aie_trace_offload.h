@@ -105,10 +105,6 @@ public:
     XDP_EXPORT
     bool initReadTrace();
     XDP_EXPORT
-    void readTracePLIO(bool final);
-    XDP_EXPORT
-    void readTraceGMIO(bool final);
-    XDP_EXPORT
     void endReadTrace();
     XDP_EXPORT
     bool isTraceBufferFull();
@@ -145,8 +141,6 @@ private:
     //Internal use only
     // Set this for verbose trace offload
     bool m_debug = false;
-    // Experimental support for periodic offload in gmio
-    bool useGMIOPeriodicOffload;
 
 /*
  * XRT_NATIVE_BUILD is set only for x86 builds
@@ -169,6 +163,8 @@ private:
     bool mCircularBufOverwrite;
 
 private:
+    void readTracePLIO(bool final);
+    void readTraceGMIO(bool final);
     bool setupPSKernel();
     void continuousOffload();
     bool keepOffloading();
