@@ -2132,6 +2132,8 @@ struct xocl_xgq_vmr_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
+	int (*xgq_load_xclbin_slot)(struct platform_device *pdev,
+		const void __user *arg, uint64_t slot);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
 	int (*xgq_clear_firewall)(struct platform_device *pdev);
 	int (*xgq_freq_scaling)(struct platform_device *pdev,
