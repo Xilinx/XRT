@@ -200,8 +200,8 @@ public:
     size = prop.size;
   }
 
-  bo_impl(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
-    : device(xrt_core::get_userpf_device(dhdl)), handle(xhdl.bhdl), free_bo(false)
+  bo_impl(xclDeviceHandle dhdl, xrt_buffer_handle xhdl)
+    : device(xrt_core::get_userpf_device(dhdl)), handle(xhdl), free_bo(false)
   {
     xclBOProperties prop{};
     device->get_bo_properties(handle, &prop);
@@ -855,7 +855,7 @@ class buffer_xbuf : public bo_impl
 {
 public:
   buffer_xbuf(xclDeviceHandle dhdl, xrt_buffer_handle bhdl)
-    : bo_impl(dhdl, xcl_buffer_handle{bhdl})
+    : bo_impl(dhdl, bhdl)
   {}
 
   void*
@@ -1244,7 +1244,7 @@ bo(const bo& parent, size_t size, size_t offset)
 
 bo::
 bo(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
-  : handle(alloc_xbuf(dhdl, xhdl.bhdl))
+  : handle(alloc_xbuf(dhdl, to_xrt_buffer_handle(xhdl.bhdl)))
 {}
 
 bo::
@@ -1489,11 +1489,11 @@ xrtBOExport(xrtBufferHandle bhdl)
 }
 
 xrtBufferHandle
-xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xrt_buffer_handle xhdl)
+xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xclBufferHandle xhdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, xhdl] {
-      auto boh = alloc_xbuf(xrtDeviceToXclDevice(dhdl), xhdl);
+      auto boh = alloc_xbuf(xrtDeviceToXclDevice(dhdl), to_xrt_buffer_handle(xhdl));
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;

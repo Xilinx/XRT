@@ -44,7 +44,7 @@ typedef uint32_t xrtMemoryGroup;
  * @details
  * Use when constructing xrt::bo from xclBufferHandle
  */
-struct xcl_buffer_handle { xrt_buffer_handle bhdl; };
+struct xcl_buffer_handle { xclBufferHandle bhdl; };
 
 #ifdef __cplusplus
 
