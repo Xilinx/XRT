@@ -93,7 +93,13 @@ typedef void * xrt_buffer_handle;
 static inline xclBufferHandle
 to_xclBufferHandle(xrt_buffer_handle hdl)
 {
-  return hdl == XRT_INVALID_BUFFER_HANDLE ? XRT_NULL_BO : reinterpret_cast<uintptr_t>(hdl);
+  return hdl == XRT_INVALID_BUFFER_HANDLE
+    ? XRT_NULL_BO
+#ifdef _WIN32
+    : hdl; // No cast needed, happen to be the same define as xclBufferHandle
+#else
+    : reinterpret_cast<uintptr_t>(hdl);
+#endif
 }
 
 static inline xrt_buffer_handle
