@@ -26,7 +26,7 @@ namespace xdp {
   class AieTrace_x86Impl : public AieTraceImpl{
     public:
 
-      AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
+      AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata>& metadata)
         : AieTraceImpl(database, metadata){}
       ~AieTrace_x86Impl() = default;
       void updateDevice();
