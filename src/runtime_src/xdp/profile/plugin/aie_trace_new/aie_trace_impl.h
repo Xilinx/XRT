@@ -40,7 +40,7 @@ namespace xdp {
     std::shared_ptr<AieTraceMetadata> metadata;
 
   public:
-    AieTraceImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata>& metadata)
+    AieTraceImpl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
       :db(database), metadata(metadata) {}
 
     AieTraceImpl() = delete;
