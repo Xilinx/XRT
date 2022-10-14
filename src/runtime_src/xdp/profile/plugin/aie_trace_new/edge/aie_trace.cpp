@@ -192,7 +192,6 @@ namespace xdp {
      if (!checkAieDeviceAndRuntimeMetrics(metadata->getDeviceID(), metadata->getHandle()))
       return;
     
-    std::cout << "I reached the update device!" << std::endl;
     // Set metrics for counters and trace events 
     if (!setMetricsSettings(metadata->getDeviceID(), metadata->getHandle())) {
       if (!setMetrics(metadata->getDeviceID(), metadata->getHandle())) {
@@ -201,7 +200,6 @@ namespace xdp {
         return;
       }
     }
-    std::cout << "I finished the update device!" << std::endl;
   }
 
   bool AieTrace_EdgeImpl::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet)
@@ -331,11 +329,7 @@ namespace xdp {
   bool
   AieTrace_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
-
-    std::cout << "Reached setMetricsSettings@!" << std::endl;
-
     std::string metricsConfig = xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics();
-
     std::string graphmetricsConfig = xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics();
 
     if (metricsConfig.empty() && graphmetricsConfig.empty()) {
@@ -352,8 +346,6 @@ namespace xdp {
       return false;
     }
 
-    std::cout << "Finished first Set of Processing" << std::endl;
-
     // Process AIE_trace_settings metrics
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::string> metricsSettings;
@@ -367,17 +359,9 @@ namespace xdp {
       boost::split(graphmetricsSettings, graphmetricsConfig,
       boost::is_any_of(";"));
 
-    std::cout << "Size of vectors: metrics,GraphMetrics" <<
     metricsSettings.size() << " " << graphmetricsSettings.size() << std::endl;
-    std::cout << "Finished Second Set of Processing" << std::endl;
-
     metadata->getConfigMetricsForTiles(metricsSettings, graphmetricsSettings);
-
-    std::cout << "Finished getConfigMetricsForTiles" << std::endl;
-
     metadata->setTraceStartControl();
-
-    std::cout << "Finished setTraceStartControl" << std::endl;
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -388,9 +372,6 @@ namespace xdp {
       auto  tile   = tileMetric.first;
       auto  col    = tile.col;
       auto  row    = tile.row;
-
-
-    std::cout << "Starting on COl, Row: " << col << " "  << row << std::endl;
 
       auto& metricSet = tileMetric.second;
       // NOTE: resource manager requires absolute row number
@@ -465,7 +446,6 @@ namespace xdp {
           cfg.event_value = coreCounterEventValues[i];
         }
       }
-      std::cout << "Finished step1" << std::endl;
 
       //
       // 2. Reserve and start memory module counters (as needed)
@@ -524,7 +504,6 @@ namespace xdp {
         printTileStats(aieDevice, tile);
         return false;
       }
-      std::cout << "Finished step2" << std::endl;
 
       //
       // 3. Configure Core Tracing Events
@@ -596,7 +575,6 @@ namespace xdp {
         if (coreTrace->start() != XAIE_OK) 
           break;
       }
-      std::cout << "Finished step3" << std::endl;
 
       //
       // 4. Configure Memory Tracing Events
@@ -928,7 +906,6 @@ namespace xdp {
 
   bool AieTrace_EdgeImpl::setMetrics(uint64_t deviceId, void* handle) {
   {
-    std::cout << "Reached setMetrics!" << std::endl;
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
       xrt_core::message::send(severity_level::warning, "XRT",
@@ -945,11 +922,8 @@ namespace xdp {
       return false;
     }
 
-    std::cout << "Got MetricSet" << std::endl;
-
     auto tiles = metadata->getTilesForTracing();
     metadata->setTraceStartControl();
-    std::cout << "Got Tiles for tracing!" << std::endl;
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -960,8 +934,6 @@ namespace xdp {
 
       auto  col    = tile.col;
       auto  row    = tile.row;
-
-      std::cout << "Starting tiles col, row: " << col << ", " << row << std::endl;
 
       // NOTE: resource manager requires absolute row number
       auto& core   = aieDevice->tile(col, row + 1).core();
@@ -985,7 +957,6 @@ namespace xdp {
         printTileStats(aieDevice, tile);
         return false;
       }
-      std::cout << "Tile had free rsc. Starting 1" << std::endl;
 
       //
       // 1. Reserve and start core module counters (as needed)
@@ -1035,7 +1006,6 @@ namespace xdp {
           cfg.event_value = coreCounterEventValues[i];
         }
       }
-      std::cout << "Starting 2" << std::endl;
 
       //
       // 2. Reserve and start memory module counters (as needed)
@@ -1098,7 +1068,6 @@ namespace xdp {
       //
       // 3. Configure Core Tracing Events
       //
-      std::cout << "Starting 3!" << std::endl;
 
       {
         XAie_ModuleType mod = XAIE_CORE_MOD;
@@ -1172,8 +1141,6 @@ namespace xdp {
       // 4. Configure Memory Tracing Events
       //
       // TODO: Configure group or combo events where applicable
-      std::cout << "Starting 4!" << std::endl;
-
       uint32_t coreToMemBcMask = 0;
       {
         auto memoryTrace = memory.traceControl();
@@ -1294,7 +1261,6 @@ namespace xdp {
         // NOTE: Use time packets for memory module (type 1)
         cfgTile->memory_trace_config.packet_type = 1;
       }
-      std::cout << "Adding to the db!" << std::endl;
 
       std::stringstream msg;
       msg << "Adding tile (" << col << "," << row << ") to static database";

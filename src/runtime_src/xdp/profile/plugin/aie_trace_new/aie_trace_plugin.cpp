@@ -109,7 +109,6 @@ namespace xdp {
     AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, metadata);
 #endif
 
-    std::cout << "Created Implementation!" << std::endl;
     auto& implementation = AIEData.implementation;
 
     // Get Device info
