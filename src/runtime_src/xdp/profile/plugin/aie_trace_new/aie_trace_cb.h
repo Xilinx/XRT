@@ -19,9 +19,9 @@
 
 extern "C" {
 
-void updateAIEDevice(void* handle) ;
-void flushAIEDevice(void* handle) ;
-void finishFlushAIEDevice(void* handle) ;
+XDP_EXPORT void updateAIEDevice(void* handle) ;
+XDP_EXPORT void flushAIEDevice(void* handle) ;
+XDP_EXPORT void finishFlushAIEDevice(void* handle) ;
 
 }
 #endif

@@ -17,15 +17,9 @@
 #ifndef AIE_TRACE_METADATA_H
 #define AIE_TRACE_METADATA_H
 
-#include <iostream>
-#include <memory>
+// #include <memory>
 #include "core/edge/common/aie_parser.h"
-//#include "xaiefal/xaiefal.hpp"
 #include <boost/property_tree/ptree.hpp>
-
-//extern "C" {
-//#include <xaiengine.h>
-//}
 
 namespace xdp {
 

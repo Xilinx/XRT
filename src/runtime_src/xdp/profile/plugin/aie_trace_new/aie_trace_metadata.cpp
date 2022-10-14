@@ -18,36 +18,20 @@
 
 #include <cstdint>
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "core/common/message.h"
-#include "xdp/profile/device/tracedefs.h"
-
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <boost/algorithm/string.hpp>
-#include <cmath>
-#include <iostream>
 #include <memory>
 
+#include "aie_trace_metadata.h"
+
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/profile/device/tracedefs.h"
+
 #include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
-//#include "core/edge/user/shim.h"
 #include "core/edge/common/aie_parser.h"
 
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
-#include "xdp/profile/database/static_info/aie_constructs.h"
-#include "xdp/profile/database/static_info/pl_constructs.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
-#include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
-#include "xdp/profile/plugin/vp_base/info.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
-#include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
-#include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
-
-#include "aie_trace_metadata.h"
-#include "aie_trace_plugin.h"
+// #include "aie_trace_plugin.h"
 
 namespace xdp {
   namespace pt = boost::property_tree;

@@ -16,9 +16,6 @@
 
 #define XDP_SOURCE
 
-#include <boost/algorithm/string.hpp>
-#include <cmath>
-#include <iostream>
 #include <memory>
 
 #include "core/common/message.h"
@@ -91,16 +88,18 @@ namespace xdp {
     if (!handle)
       return;
 
-    // delete old data
+    // Clean out old data every time xclbin gets updated
     if (handleToAIEData.find(handle) != handleToAIEData.end())
         handleToAIEData.erase(handle);
+
+    //Setting up struct 
     auto& AIEData = handleToAIEData[handle];
 
     auto deviceID = getDeviceIDFromHandle(handle);
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
     auto& metadata = AIEData.metadata;
-    AIEData.supported = true; // initialize struct
+    AIEData.valid = true; // initialize struct
     AIEData.devIntf = nullptr;
 
 #ifdef XRT_X86_BUILD
@@ -125,9 +124,9 @@ namespace xdp {
     // Check for device interface
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
     if (deviceIntf == nullptr) {
-    // If DeviceIntf is not already created, create a new one to communicate with physical device
-    deviceIntf = new DeviceIntf();
-    AIEData.devIntf = deviceIntf;
+      // If DeviceIntf is not already created, create a new one to communicate with physical device
+      deviceIntf = new DeviceIntf();
+      AIEData.devIntf = deviceIntf;
     try {
       deviceIntf->setDevice(new HalDevice(handle));
       deviceIntf->readDebugIPlayout();
@@ -136,7 +135,7 @@ namespace xdp {
       std::stringstream msg;
       msg << "Unable to read debug IP layout for device " << deviceID << ": " << e.what();
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      AIEData.supported = false;
+      AIEData.valid = false;
       return;
     }
     (db->getStaticInfo()).setDeviceIntf(deviceID, deviceIntf);
@@ -158,20 +157,14 @@ namespace xdp {
     // Check if trace streams are available
     metadata->setNumStreams((db->getStaticInfo()).getNumAIETraceStream(deviceID));
     if (metadata->getNumStreams() == 0) {
-      AIEData.supported = false;
+      AIEData.valid = false;
       xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_UNAVAILABLE);
       return;
     }
 
-    // Needs to be changed later as there's no longer a global metric set
-    std::string metricSet = metadata->getMetricStr();
     if (metadata->getRuntimeMetrics()) {
       std::string configFile = "aie_event_runtime_config.json";
-      VPWriter* writer = new AieTraceConfigWriter
-      ( configFile.c_str()
-      , deviceID
-      , metricSet
-      );
+      VPWriter* writer = new AieTraceConfigWriter(configFile.c_str(),deviceID);
       writers.push_back(writer);
       (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_RUNTIME_CONFIG");
     }
@@ -222,7 +215,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::warning, "XRT", msg);
       }
     }
-    // Platform specific things like CMA
+    // Ensures Contiguous Memory Allocation specific for linux/edge.
     aieTraceBufSize = implementation->checkTraceBufSize(aieTraceBufSize);
 
     // Create AIE Trace Offloader
@@ -259,13 +252,13 @@ namespace xdp {
     try {
       if (!offloader->initReadTrace()) {
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_BUF_ALLOC_FAIL);
-        AIEData.supported = false;
+        AIEData.valid = false;
         return;
       }
     } catch (...) {
         std::string msg = "AIE trace is currently not supported on this platform.";
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-        platformSupported = false;
+        AIEData.valid = false;
     }
 
     //Sets up and calls the PS kernel on x86 implementation
@@ -299,7 +292,7 @@ namespace xdp {
       return;
 
     auto& AIEData = itr->second;
-    if (!AIEData.supported)
+    if (!AIEData.valid)
       return;
 
     flushOffloader(AIEData.offloader, false);
@@ -315,7 +308,7 @@ namespace xdp {
       return;
 
     auto& AIEData = itr->second;
-    if (!AIEData.supported)
+    if (!AIEData.valid)
       return;
 
     flushOffloader(AIEData.offloader, true);
@@ -326,14 +319,13 @@ namespace xdp {
   {
     for (const auto& kv : handleToAIEData) {
       auto& AIEData = kv.second;
-      if (!AIEData.supported)
-        continue;
-      flushOffloader(AIEData.offloader, true);
+      if (AIEData.valid)
+        flushOffloader(AIEData.offloader, true);
     }
+
+    XDPPlugin::endWrite();
     handleToAIEData.clear();
 	
-    if (platformSupported)
-      XDPPlugin::endWrite();
   }
 
   bool AieTracePluginUnified::alive()

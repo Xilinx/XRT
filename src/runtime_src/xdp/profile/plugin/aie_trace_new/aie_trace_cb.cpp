@@ -28,23 +28,20 @@ namespace xdp {
 
   static void updateAIEDevice(void* handle)
   {
-    if (AieTracePluginUnified::alive()) {
+    if (AieTracePluginUnified::alive())
       aieTracePluginInstance.updateAIEDevice(handle);
-    }
   }
 
   static void flushAIEDevice(void* handle)
   {
-    if (AieTracePluginUnified::alive()) {
+    if (AieTracePluginUnified::alive())
       aieTracePluginInstance.flushAIEDevice(handle);
-    }
   }
 
   static void finishFlushAIEDevice(void* handle)
   {
-    if (AieTracePluginUnified::alive()) {
+    if (AieTracePluginUnified::alive())
       aieTracePluginInstance.finishFlushAIEDevice(handle);
-    }
   }
 
 } // end namespace xdp
@@ -62,7 +59,6 @@ void flushAIEDevice(void* handle)
 }
 
 extern "C"
-XDP_EXPORT 
 void finishFlushAIEDevice(void* handle)
 {
   xdp::finishFlushAIEDevice(handle);
