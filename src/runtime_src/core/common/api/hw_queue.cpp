@@ -53,6 +53,12 @@ notify_host(xrt_core::command* cmd, ert_cmd_state state)
 {
   XRT_DEBUGF("xrt_core::kds::command(%d), [running->done]\n", cmd->get_uid());
   auto retain = cmd->shared_from_this();
+
+  // If retain is last reference to cmd, then the command object is
+  // deleted here from the monitor thread, but that can result in
+  // hwqueue destruction (command owns reference). If the hwqueue owns
+  // the monitor thread and stops and joins with it, the result will
+  // be a resource deadlock exception.
   cmd->notify(state);
 }
 
@@ -187,14 +193,29 @@ public:
   // Constructor starts monitor thread
   command_manager(executor* impl)
     : m_impl(impl), monitor_thread(xrt_core::thread(&command_manager::monitor, this))
-  {}
+  {
+    XRT_DEBUGF("command_manager::command_manager(0x%x)\n", impl);
+  }
 
   // Destructor stops and joins monitor thread
   ~command_manager()
   {
+    XRT_DEBUGF("command_manager::~command_manager() executor(0x%x)\n", m_impl);
     stop = true;
     work_cond.notify_one();
     monitor_thread.join();
+  }
+
+  void
+  clear_executor()
+  {
+    m_impl = nullptr;
+  }
+
+  void
+  set_executor(executor* impl)
+  {
+    m_impl = impl;
   }
 
   // launch() - Submit a command for managed execution
@@ -235,6 +256,20 @@ public:
   }
 };
 
+// Ideally a command manager should be owned by a hw_queue which
+// constructs the manager on demand.  But there is a thread exit
+// problem that can result in resource deadlock exception when the
+// hwqueue is destructed from the monitor thread itself as part of
+// calling notify_host (see comment in notify_host() above).
+//
+// To work-around this, command_managers are managed globally and
+// destructed only at program exit by the main thread.  The managers
+// are recycled for subsequent use by a new hwqueue.
+//
+// Statically allocated command managers to handle thread exit
+static std::vector<std::unique_ptr<command_manager>> s_command_manager_pool;
+static std::mutex s_pool_mutex;
+
 } // namespace
 
 namespace xrt_core {
@@ -246,28 +281,48 @@ namespace xrt_core {
 class hw_queue_impl : public command_manager::executor
 {
   std::unique_ptr<command_manager> m_cmd_manager;
+  unsigned int m_uid = 0;
 
   // Thread safe on-demand creation of m_cmd_manager
   command_manager*
   get_cmd_manager()
   {
-    {
-      static std::mutex mutex;
-      std::lock_guard lk(mutex);
-      if (!m_cmd_manager)
-        m_cmd_manager = std::make_unique<command_manager>(this);
+    std::lock_guard lk(s_pool_mutex);
+
+    if (m_cmd_manager)
+      return m_cmd_manager.get();
+
+    // Use recycled manager if any
+    if (!s_command_manager_pool.empty()) {
+      m_cmd_manager = std::move(s_command_manager_pool.back());
+      s_command_manager_pool.pop_back();
+      m_cmd_manager->set_executor(this);
+      return m_cmd_manager.get();
     }
 
+    // Construct new manager
+    m_cmd_manager = std::make_unique<command_manager>(this);
     return m_cmd_manager.get();
   }
 
 public:
   hw_queue_impl()
-  {}
+  {
+    static unsigned int count = 0;
+    m_uid = count++;
+    XRT_DEBUGF("hw_queue_impl::hw_queue_impl(%d) this(0x%x)\n", m_uid, this);
+  }
 
   virtual
   ~hw_queue_impl()
-  {}
+  {
+    XRT_DEBUGF("hw_queue_impl::~hw_queue_impl(%d)\n", m_uid);
+    if (m_cmd_manager) {
+      m_cmd_manager->clear_executor();
+      std::lock_guard lk(s_pool_mutex);
+      s_command_manager_pool.push_back(std::move(m_cmd_manager));
+    }
+  }
 
   // Submit command for execution
   virtual void
@@ -556,6 +611,12 @@ void
 hw_queue::
 stop()
 {
+  // Ensure all threads are joined prior to other cleanup
+  // This is used by OpenCL code path before it deletes the
+  // global platform and takes care of completing outstanding
+  // event synchronization for commands.
+  std::lock_guard lk(s_pool_mutex);
+  s_command_manager_pool.clear();
 }
 
 } // namespace xrt_core
