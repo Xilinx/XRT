@@ -200,8 +200,10 @@ public:
     size = prop.size;
   }
 
-  bo_impl(xclDeviceHandle dhdl, xrt_buffer_handle xhdl)
-    : device(xrt_core::get_userpf_device(dhdl)), handle(xhdl), free_bo(false)
+  bo_impl(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
+    : device(xrt_core::get_userpf_device(dhdl))
+    , handle(to_xrt_buffer_handle(xhdl.bhdl))
+    , free_bo(false)
   {
     xclBOProperties prop{};
     device->get_bo_properties(handle, &prop);
@@ -845,17 +847,17 @@ public:
   }
 };
 
-// class buffer_xbuf - Wrapper for extern managed xrt_buffer_handle
+// class buffer_xbuf - Wrapper for extern managed xclBufferHandle
 //
 // This class is added to support xrt::bo object for host
-// managed xrt_buffer_handle.  This allows the xrt_buffer_handle
+// managed xclBufferHandles.  This allows the xclBufferHandle
 // to be used as argument for kernel execution.  All other
 // operations must be managed explicity by host via xcl APIs.
 class buffer_xbuf : public bo_impl
 {
 public:
-  buffer_xbuf(xclDeviceHandle dhdl, xrt_buffer_handle bhdl)
-    : bo_impl(dhdl, bhdl)
+  buffer_xbuf(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
+    : bo_impl(dhdl, xhdl)
   {}
 
   void*
@@ -1041,7 +1043,7 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_xbuf(xclDeviceHandle dhdl, xrt_buffer_handle xhdl)
+alloc_xbuf(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
 {
   return std::make_shared<xrt::buffer_xbuf>(dhdl, xhdl);
 }
@@ -1244,7 +1246,7 @@ bo(const bo& parent, size_t size, size_t offset)
 
 bo::
 bo(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
-  : handle(alloc_xbuf(dhdl, to_xrt_buffer_handle(xhdl.bhdl)))
+  : handle(alloc_xbuf(dhdl, xhdl))
 {}
 
 bo::
@@ -1493,7 +1495,7 @@ xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xclBufferHandle xhdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, xhdl] {
-      auto boh = alloc_xbuf(xrtDeviceToXclDevice(dhdl), to_xrt_buffer_handle(xhdl));
+      auto boh = alloc_xbuf(xrtDeviceToXclDevice(dhdl), xcl_buffer_handle{xhdl});
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
