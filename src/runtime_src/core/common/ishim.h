@@ -366,7 +366,7 @@ struct shim : public DeviceType
   {
     auto ehdl = xclExportBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo));
     if (ehdl == XRT_NULL_BO_EXPORT)
-      throw system_error(EINVAL, "Unable to export BO");
+      throw system_error(EINVAL, "Unable to export BO: bad export BO handle");
     if (ehdl < 0) // system error code
       throw system_error(ENODEV, "Unable to export BO");
     return ehdl;
@@ -377,7 +377,7 @@ struct shim : public DeviceType
   {
     auto ihdl = xclImportBO(DeviceType::get_device_handle(), ehdl, 0);
     if (ihdl == XRT_NULL_BO)
-      throw system_error(EINVAL, "unable to import BO");
+      throw system_error(EINVAL, "unable to import BO: bad BO handle");
     if (ihdl < 0) // system error code
       throw system_error(ENODEV, "unable to import BO");
     return to_xrt_buffer_handle(ihdl);
@@ -393,15 +393,17 @@ struct shim : public DeviceType
   void
   copy_bo(xrt_buffer_handle dst, xrt_buffer_handle src, size_t size, size_t dst_offset, size_t src_offset) override
   {
-    if (auto err = xclCopyBO(DeviceType::get_device_handle(),
-      to_xclBufferHandle(dst), to_xclBufferHandle(src), size, dst_offset, src_offset))
+    auto err = xclCopyBO(DeviceType::get_device_handle(),
+      to_xclBufferHandle(dst), to_xclBufferHandle(src), size, dst_offset, src_offset);
+    if (err)
       throw system_error(err, "unable to copy BO");
   }
 
   void
   sync_bo(xrt_buffer_handle bo, xclBOSyncDirection dir, size_t size, size_t offset) override
   {
-    if (auto err = xclSyncBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo), dir, size, offset))
+    auto err = xclSyncBO(DeviceType::get_device_handle(), to_xclBufferHandle(bo), dir, size, offset);
+    if (err)
       throw system_error(err, "unable to sync BO");
   }
 
