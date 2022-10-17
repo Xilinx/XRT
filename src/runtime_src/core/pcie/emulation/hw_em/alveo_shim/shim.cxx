@@ -319,20 +319,30 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     }
   }
 
-  static void printMem(std::ofstream &os, int base, uint64_t offset, void* buf, unsigned int size )
+  //static void printMem(std::ofstream &os, int base, uint64_t offset, void* buf, unsigned int size )
+  static void printMem(std::shared_ptr<std::ofstream> &os, int base, uint64_t offset, void* buf, unsigned int size )
   {
-    std::ios_base::fmtflags f( os.flags() );
-    if(os.is_open())
+    if (!os) {
+      //std::cerr << __func__<<"\nERROR: [HW-EMU] file pointer is not opened yet!!";
+      return;
+    }
+    if(os->is_open())
     {
+      std::ios_base::fmtflags f( os->flags() );
       for(uint64_t i = 0; i < size ; i = i + base)
       {
-        os << "@" << std::hex << offset + i <<std::endl;
+        *os << "@" << std::hex << offset + i <<std::endl;
         for(int j = base-1 ;j >=0 ; j--)
-          os << std::hex << std::setfill('0') << std::setw(2) << (unsigned int)(((unsigned char*)buf)[i+j]);
-        os << std::endl;
+          *os << std::hex << std::setfill('0') << std::setw(2) << (unsigned int)(((unsigned char*)buf)[i+j]);
+        *os << std::endl;
       }
+      os->flush();
+      os->flags( f );
     }
-    os.flags( f );
+    else {
+      std::cout << "ERROR: [HW-EMU] file pointer is not opened yet!!";
+    }
+    
   }
 
   bool HwEmShim::isUltraScale() const
@@ -465,8 +475,9 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
 
     if (mMemModel)
     {
-      delete mMemModel;
-      mMemModel = NULL;
+      mMemModel.reset();
+      //delete mMemModel;
+      //mMemModel = NULL;
     }
 
     if (sock)
@@ -643,7 +654,8 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
           //trim instance_name to get actual instance name
           auto position = instance_name.find(":");
           auto trimmed_instance_name = instance_name.substr(position+1);
-          mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,new std::ofstream(trimmed_instance_name + "_control.mem")));
+          //mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,new std::ofstream(trimmed_instance_name + "_control.mem")));
+          mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,std::make_shared<std::ofstream>(trimmed_instance_name + "_control.mem")));
         }
 
         if (props.address_range != 0 && !props.name.empty() && !instance_name.empty())
@@ -1326,11 +1338,11 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
            auto controlStreamItr = mOffsetInstanceStreamMap.find(offset);
            if(controlStreamItr != mOffsetInstanceStreamMap.end())
            {
-             std::ofstream* controlStream = (*controlStreamItr).second;
+             auto& controlStream = (*controlStreamItr).second;
              if(hostBuf32[0] & CONTROL_AP_START)
-               printMem(*controlStream,4, offset, (void*)hostBuf, 4 );
+               printMem(controlStream,4, offset, (void*)hostBuf, 4 );
              else
-               printMem(*controlStream,4, offset, (void*)hostBuf, size );
+               printMem(controlStream,4, offset, (void*)hostBuf, size );
            }
 
            if(hostBuf32[0] & CONTROL_AP_START)
@@ -1472,7 +1484,9 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     if (!sock)
     {
       if (!mMemModel)
-        mMemModel = new mem_model(deviceName);
+        mMemModel = std::make_shared<mem_model>(deviceName);
+
+        //mMemModel = new mem_model(deviceName);
       mMemModel->writeDevMem(dest, src, size);
       return size;
     }
@@ -1544,7 +1558,9 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     if(!sock)
     {
       if(!mMemModel)
-        mMemModel = new mem_model(deviceName);
+        mMemModel = std::make_shared<mem_model>(deviceName);
+        
+      //mMemModel = new mem_model(deviceName);
       mMemModel->readDevMem(src,dest,size);
       return size;
     }
@@ -1937,24 +1953,16 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
       if(mMBSch && mCore)
       {
         mMBSch->fini_scheduler_thread();
-        //delete mCore;
-        //mCore = NULL;
         mCore.reset();
         mMBSch.reset();
-        //delete mMBSch;
-        //mMBSch = NULL;
       }
       if(m_scheduler)
       {
         m_scheduler.reset();
-          //delete m_scheduler;
-          //m_scheduler = nullptr;
       }
       if(m_xgq)
       {
         m_xgq.reset();
-        //  delete m_xgq;
-        //  m_xgq = nullptr;
       }
       return 0;
     }
@@ -2068,24 +2076,14 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
       mMBSch->fini_scheduler_thread();
       mCore.reset();
       mMBSch.reset();
-      /*
-      delete mCore;
-      mCore = NULL;
-      delete mMBSch;
-      mMBSch = NULL;
-      */
     }
     if(m_scheduler)
     {
       m_scheduler.reset();
-      //  delete m_scheduler;
-      //  m_scheduler = nullptr;
     }
     if(m_xgq)
     {
       m_xgq.reset();
-      //  delete m_xgq;
-      //  m_xgq = nullptr;
     }
 
     return 0;
@@ -2096,7 +2094,6 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
       return 0;
 
     return reinterpret_cast<HwEmShim*>(handle);
-
   }
 
 
@@ -2112,17 +2109,20 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     }
     if (xclemulation::config::getInstance()->isMemLogsEnabled())
     {
-      mGlobalInMemStream.close();
-      mGlobalOutMemStream.close();
+     // mGlobalInMemStream.close();
+     // mGlobalOutMemStream.close();
+
+      mGlobalInMemStream->close();
+      mGlobalOutMemStream->close();
     }
     for(auto controlStreamItr : mOffsetInstanceStreamMap)
     {
-      std::ofstream* os = controlStreamItr.second;
+      auto& os = controlStreamItr.second;
       if(os)
       {
+        os->flush();
         os->close();
-        delete os;
-        os=NULL;
+        os.reset(); // let os cleanup the stream
       }
     }
     if(mMBSch && mCore)
@@ -2130,29 +2130,20 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
       mMBSch->fini_scheduler_thread();
       mCore.reset();
       mMBSch.reset();
-      /*
-      delete mCore;
-      mCore = NULL;
-      delete mMBSch;
-      mMBSch = NULL;
-      */
     }
     if(m_scheduler)
     {
       m_scheduler.reset();
-      //  delete m_scheduler;
-      //  m_scheduler = nullptr;
     }
     if(m_xgq)
     {
       m_xgq.reset();
-      //  delete m_xgq;
-      //  m_xgq = nullptr;
     }
     if(mDataSpace)
     {
-      delete mDataSpace;
-      mDataSpace = NULL;
+      mDataSpace.reset();
+      //delete mDataSpace;
+      //mDataSpace = NULL;
     }
     closeMessengerThread();
   }
@@ -2322,7 +2313,8 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
     mTraceFunnelAddress = 0;
-    mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
+   // mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
+    mDataSpace = std::make_shared<xclemulation::MemoryManager>(0x10000000, 0, getpagesize());
     mCuBaseAddress = 0x0;
     mMessengerThreadStarted = false;
     mIsTraceHubAvailable = false;
@@ -2691,8 +2683,19 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
 
     if (xclemulation::config::getInstance()->isMemLogsEnabled())
     {
-      mGlobalInMemStream.open("global_in.mem");
-      mGlobalOutMemStream.open("global_out.mem");
+      //mGlobalInMemStream.open("global_in.mem");
+      //mGlobalOutMemStream.open("global_out.mem");
+
+      mGlobalInMemStream = std::make_shared<std::ofstream>("global_in.mem");
+      if (mGlobalInMemStream->is_open() == false) {
+        std::cerr << " Unable to open global_in.mem file" << std::endl;
+        mGlobalInMemStream->open("global_in.mem");
+      }
+      mGlobalOutMemStream = std::make_shared<std::ofstream>("global_out.mem");
+      if (mGlobalOutMemStream->is_open() == false) {
+        std::cerr << " Unable to open global_out.mem file" << std::endl;
+        mGlobalOutMemStream->open("global_out.mem");
+      }
     }
 
     // Shim object creation doesn't follow xclOpen/xclClose.

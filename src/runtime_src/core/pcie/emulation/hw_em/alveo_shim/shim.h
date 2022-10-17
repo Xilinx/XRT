@@ -54,28 +54,6 @@ using key_type = xrt_core::query::key_type;
 using addr_type = uint64_t;
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
-/*
-  template< class T>
-  class raw_pointer
-  {
-    public:
-      raw_pointer(const T* lhs) {
-        m_pointer = std::make_shared<T>(lhs);
-      }
-      raw_pointer(const raw_pointer &lhs) : m_pointer{lhs.m_pointer} { lhs.m_pointer = nullptr;  }
-      T* operator ->() { return this->m_pointer.get(); }
-      T* operator * () { return this->m_pointer.get(); }
-      bool operator !() const { return (this->m_pointer == nullptr)?true:false;}
-      bool operator() () const { return (this->m_pointer == nullptr)?false:true;}
-      ~raw_pointer() {
-        m_pointer = nullptr;    // No ownership 
-      }
-
-      private:
-        std::shared_ptr<T> m_pointer;
-  };
-*/
-
   class Event {
     public:
       uint8_t awlen;
@@ -359,11 +337,13 @@ using addr_type = uint64_t;
 
       //std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;
       std::vector<std::shared_ptr<xclemulation::MemoryManager> > mDDRMemoryManager;
-      xclemulation::MemoryManager* mDataSpace;
+      //xclemulation::MemoryManager* mDataSpace;
+      std::shared_ptr<xclemulation::MemoryManager> mDataSpace;
       std::list<xclemulation::DDRBank> mDdrBanks;
       std::map<uint64_t,uint64_t> mAddrMap;
       std::map<std::string,std::string> mBinaryDirectories;
-      std::map<uint64_t , std::ofstream*> mOffsetInstanceStreamMap;
+      //std::map<uint64_t , std::ofstream*> mOffsetInstanceStreamMap;
+      std::map<uint64_t , std::shared_ptr<std::ofstream>> mOffsetInstanceStreamMap;
 
       //mutex to control parellel RPC calls
       std::mutex mtx;
@@ -382,9 +362,14 @@ using addr_type = uint64_t;
       void* buf;
       size_t buf_size;
       std::ofstream mLogStream;
+      /*
       std::ofstream mGlobalInMemStream;
       std::ofstream mGlobalOutMemStream;
+*/
+      std::shared_ptr<std::ofstream> mGlobalInMemStream;
+      std::shared_ptr<std::ofstream> mGlobalOutMemStream;
       static std::ofstream mDebugLogStream;
+
       static bool mFirstBinary;
       unsigned int binaryCounter;
 
@@ -394,7 +379,8 @@ using addr_type = uint64_t;
       unsigned int mDeviceIndex;
       clock_t last_clk_time;
       bool mCloseAll;
-      mem_model* mMemModel;
+      //mem_model* mMemModel;
+      std::shared_ptr<mem_model> mMemModel;
       bool bUnified;
       bool bXPR;
       //MemTopology topology;

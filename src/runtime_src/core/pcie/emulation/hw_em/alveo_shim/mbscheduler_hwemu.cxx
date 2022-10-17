@@ -345,7 +345,7 @@ namespace hwemu {
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return;
         }
         xdevice->xclRead(XCL_ADDR_KERNEL_CTRL, cu_base_addr(),(void*)&(ctrlreg),4);
@@ -469,7 +469,7 @@ namespace hwemu {
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_DEBUGF("xdevice is nullptr %s", __func__);
             return;
         }
         if (addr >= ERT_P2P_CMDQ_ADDR) {
@@ -483,7 +483,7 @@ namespace hwemu {
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return 0;
         }
         uint32_t data = 0;
@@ -495,7 +495,7 @@ namespace hwemu {
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return;
         }
         xdevice->xclCopyBufferHost2Device(addr, (void*)(&data), len ,0,XCL_ADDR_SPACE_DEVICE_RAM);
@@ -505,7 +505,7 @@ namespace hwemu {
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return;
         }
         xdevice->xclCopyBufferDevice2Host((void*)(&data),  addr, len, 0, XCL_ADDR_SPACE_DEVICE_RAM);
@@ -676,7 +676,7 @@ namespace hwemu {
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return false;
         }
 
@@ -830,7 +830,7 @@ namespace hwemu {
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return;
         }
         SCHED_DEBUGF("-> %s addr(0x%lx) data(0x%x)\n", __func__, addr, data);
@@ -846,7 +846,7 @@ namespace hwemu {
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return 0;
         }
         SCHED_DEBUGF("-> %s addr(0x%lx) \n", __func__, addr);
@@ -861,7 +861,7 @@ namespace hwemu {
         
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return;
         }
 
@@ -876,7 +876,7 @@ namespace hwemu {
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return;
         }
         SCHED_DEBUGF("-> %s addr(0x%lx) len(%d)\n", __func__, addr, len);
@@ -889,7 +889,7 @@ namespace hwemu {
         SCHED_DEBUGF("-> %s addr(0x%lx) data(0x%x)\n", __func__, addr, data);
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return;
         }
 
@@ -905,7 +905,7 @@ namespace hwemu {
         SCHED_DEBUGF("-> %s addr(0x%lx) \n", __func__, addr);
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return 0;
         }
         uint32_t data = 0;
@@ -987,7 +987,7 @@ running_cmd_queue.clear();
     {
         auto xdevice = weak_xdevice.lock();
         if (!xdevice) {
-            std::cout<<"\n xdevice is nullptr \n";
+            SCHED_INFO("xdevice is nullptr %s", __func__);
             return 0;
         }
         ert_configure_cmd *cfg = xcmd->ert_cfg;
@@ -1323,7 +1323,7 @@ running_cmd_queue.clear();
 
         auto scheduler = weak_scheduler.lock();
         if (!scheduler) {
-            std::cout<<"\n scheduler shared ptr is not possible \n";
+            SCHED_INFO("scheduler weak_ptr is nullptr %s", __func__);
             return;
         }
         if (this->polling_mode)
@@ -1752,7 +1752,7 @@ running_cmd_queue.clear();
     {
         auto scheduler = weak_scheduler.lock();
         if (!scheduler) {
-            std::cout<<"\n scheduler shared ptr is not possible \n";
+            SCHED_INFO("scheduler is nullptr %s", __func__);
             return;
         }
         //! Release the xcmd to object pool
@@ -1985,7 +1985,7 @@ running_cmd_queue.clear();
         bool ret = false;
         auto scheduler = weak_scheduler.lock();
         if (!scheduler) {
-            std::cout<<"\n scheduler shared ptr is not possible \n";
+            SCHED_INFO("scheduler is nullptr %s", __func__);
             return ret;
         }
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, this->uid, xcmd->uid);
@@ -2044,7 +2044,7 @@ running_cmd_queue.clear();
     {
         auto scheduler = weak_scheduler.lock();
         if (!scheduler) {
-            std::cout<<"\n scheduler shared ptr is not possible \n";
+            SCHED_INFO("scheduler is nullptr %s", __func__);
             return ; 
         }
         uint32_t started = 0;
@@ -2124,8 +2124,8 @@ running_cmd_queue.clear();
 
     void xocl_scheduler::initialize() {
         exec = std::make_shared<exec_core>(weak_device.lock(), shared_from_this());
-        scheduler_thread = std::thread([&] { std::cout<<"\n testing this \n";
-        this->scheduler();} );     // Not a good way to start a thread from ctor.
+        scheduler_thread = std::thread([&] { 
+        this->scheduler();} );     
     }
     /**
      * cleanup scheduler_thread and other resources on exit
@@ -2346,7 +2346,7 @@ running_cmd_queue.clear();
     {
         auto device = weak_device.lock();
         if (!device) {
-            std::cout<<"\n shared pointer cannot be created\n";
+            SCHED_INFO("device is nullptr %s", __func__);
             return -EINVAL;
         }
             

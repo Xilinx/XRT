@@ -39,7 +39,7 @@ static std::string DEFAULT_TAG("");
         uint64_t mSize;
         uint64_t mStart;
         uint64_t mAlignment;
-	std::string mTag;
+	    std::string mTag;
         const unsigned mCoalesceThreshold;
         uint64_t mFreeSize;
 
@@ -47,7 +47,6 @@ static std::string DEFAULT_TAG("");
 
     public:
 	static const uint64_t mNull = 0xffffffffffffffffull;
-	//std::list<MemoryManager*> mChildMemories;
     std::list<std::shared_ptr<MemoryManager> > mChildMemories;
 
     public:

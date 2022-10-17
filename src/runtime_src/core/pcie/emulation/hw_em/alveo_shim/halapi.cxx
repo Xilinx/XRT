@@ -327,7 +327,10 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
-  return xdp::hw_emu::trace::profiling_wrapper("xclOpen", [=] {
+  std::shared_ptr<xclhwemhal2::HwEmShim> handle = nullptr;
+  bool bDefaultDevice = false;
+
+  return xdp::hw_emu::trace::profiling_wrapper("xclOpen", [&] {
   xclDeviceInfo2 info;
   std::strcpy(info.mName, "xilinx:pcie-hw-em:7v3:1.0");
   info.mMagic = 0X586C0C6C;
@@ -351,26 +354,26 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
   boost::property_tree::ptree platformData;
 
-  std::shared_ptr<xclhwemhal2::HwEmShim> handle = nullptr;
+  //std::shared_ptr<xclhwemhal2::HwEmShim> handle = nullptr;
 
-  bool bDefaultDevice = false;
+  
   auto it = xclhwemhal2::devices.find(deviceIndex);
-  if(it != xclhwemhal2::devices.end())
+  if (it != xclhwemhal2::devices.end())
   {
     handle = (*it).second;
   }
   else
   {
+    std::cerr << "\n Memory should be assigned to Map, right?\n";
     handle = std::make_shared<xclhwemhal2::HwEmShim>(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
-    
+    // careful here
+    xclhwemhal2::devices[deviceIndex++] = handle;
   }
 
   if (!xclhwemhal2::HwEmShim::handleCheck(handle.get())) {
-    std::cout << "\n cleaning the memory \n";
-    
+    std::cout << "\n Clearing handle memory! Take a look at the memory creation\n"; 
     delete (xclhwemhal2::HwEmShim*)handle.get();
-    handle = 0;
   }
   
   if(handle)
@@ -383,9 +386,9 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
     }
   }
   auto ptr = handle.get();
-  //handle = nullptr; // This should be live throught the lifetime of the handle object
   return (xclDeviceHandle *)ptr;
   }) ;
+  
 }
 
 
