@@ -359,7 +359,6 @@ namespace xdp {
       boost::split(graphmetricsSettings, graphmetricsConfig,
       boost::is_any_of(";"));
 
-    metricsSettings.size() << " " << graphmetricsSettings.size() << std::endl;
     metadata->getConfigMetricsForTiles(metricsSettings, graphmetricsSettings);
     metadata->setTraceStartControl();
 

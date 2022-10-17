@@ -110,7 +110,7 @@ namespace xdp {
 
     // auto& implementation = AIEData.implementation;
 
-    // Get Device info
+    // Get Device info // Investigate further (isDeviceReady should be always called??)
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
       (db->getStaticInfo()).updateDevice(deviceID, handle);

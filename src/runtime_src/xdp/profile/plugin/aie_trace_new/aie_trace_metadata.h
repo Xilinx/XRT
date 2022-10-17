@@ -18,8 +18,12 @@
 #define AIE_TRACE_METADATA_H
 
 // #include <memory>
-#include "core/edge/common/aie_parser.h"
 #include <boost/property_tree/ptree.hpp>
+#include <set>
+#include <map>
+#include <vector>
+
+#include "xdp/config.h"
 
 namespace xdp {
 
@@ -78,8 +82,8 @@ class AieTraceMetadata{
     std::vector<gmio_type> get_trace_gmios(const xrt_core::device* device);
 
     XDP_EXPORT
-    void getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
-                                           std::vector<std::string> graphmetricsSettings);
+    void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
+                                           std::vector<std::string>& graphmetricsSettings);
     XDP_EXPORT  
     void setTraceStartControl();
 

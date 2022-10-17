@@ -16,20 +16,21 @@
 
 #define XDP_SOURCE
 
-#include <cstdint>
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
+#include <cstdint>
+#include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <boost/algorithm/string.hpp>
 #include <memory>
+#include <regex>
 
 #include "aie_trace_metadata.h"
-
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/device/tracedefs.h"
-
 #include "core/common/message.h"
 #include "core/edge/common/aie_parser.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/device/tracedefs.h"
+
 
 // #include "aie_trace_plugin.h"
 
@@ -335,8 +336,8 @@ namespace xdp {
 
 
   void
-  AieTraceMetadata::getConfigMetricsForTiles(std::vector<std::string> metricsSettings,
-                                           std::vector<std::string> graphmetricsSettings)
+  AieTraceMetadata::getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
+                                           std::vector<std::string>& graphmetricsSettings)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
