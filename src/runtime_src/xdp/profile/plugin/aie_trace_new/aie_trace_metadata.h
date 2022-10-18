@@ -101,8 +101,8 @@ class AieTraceMetadata{
     XDP_EXPORT
     std::vector<tile_type> getTilesForTracing();
 
-    XDP_EXPORT
-    adf::aiecompiler_options get_aiecompiler_options(const xrt_core::device* device);
+    // XDP_EXPORT
+    // adf::aiecompiler_options get_aiecompiler_options(const xrt_core::device* device);
 
     XDP_EXPORT
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
@@ -148,6 +148,7 @@ class AieTraceMetadata{
 
     void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}
     void setDelayCycles(uint32_t newDelayCycles) {delayCycles = newDelayCycles;}
+    bool setRuntimeMetrics(bool metrics) {runtimeMmetrics = metrics;}
 
     uint32_t getDelay() {
       if (useDelay)

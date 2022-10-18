@@ -90,8 +90,8 @@ namespace xdp {
 
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     auto device = xrt_core::get_userpf_device(handle);
-    auto compilerOptions = get_aiecompiler_options(device.get());
-    runtimeMetrics = (compilerOptions.event_trace == "runtime");
+    // auto compilerOptions = get_aiecompiler_options(device.get());
+    // runtimeMetrics = (compilerOptions.event_trace == "runtime");
   }
 
   std::string AieTraceMetadata::getMetricSet(const std::string& metricsStr, bool ignoreOldConfig)
@@ -243,19 +243,19 @@ namespace xdp {
 
   //locally defined xrt::core::edge functions 
 
-  adf::aiecompiler_options AieTraceMetadata::get_aiecompiler_options(const xrt_core::device* device)
-  {
-    auto data = device->get_axlf_section(AIE_METADATA);
-    if (!data.first || !data.second)
-      return {};
+  // adf::aiecompiler_options AieTraceMetadata::get_aiecompiler_options(const xrt_core::device* device)
+  // {
+  //   auto data = device->get_axlf_section(AIE_METADATA);
+  //   if (!data.first || !data.second)
+  //     return {};
 
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
-    adf::aiecompiler_options aiecompiler_options;
-    aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
-    aiecompiler_options.event_trace = aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
-    return aiecompiler_options;
-  }
+  //   pt::ptree aie_meta;
+  //   read_aie_metadata(data.first, data.second, aie_meta);
+  //   adf::aiecompiler_options aiecompiler_options;
+  //   aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
+  //   aiecompiler_options.event_trace = aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
+  //   return aiecompiler_options;
+  // }
 
   std::vector<std::string> AieTraceMetadata::get_graphs(const xrt_core::device* device)
   {

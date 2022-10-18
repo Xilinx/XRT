@@ -174,8 +174,8 @@ namespace xdp {
 
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    auto compilerOptions = metadata->get_aiecompiler_options(device.get());
-    // runtimeMetrics = (compilerOptions.event_trace == "runtime");
+    auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+    metadata->setRuntimeMetrics(compilerOptions.event_trace == "runtime");
 
     if (!metadata->getRuntimeMetrics()) {
       std::stringstream msg;
@@ -340,7 +340,7 @@ namespace xdp {
 #endif
 #if 0
       // Need to check whether Debug configs are present
-      if (!runtimeMetrics)
+      if (!metadata->getRuntimeMetrics())
         return true;
 #endif
       return false;
