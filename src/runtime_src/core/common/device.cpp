@@ -254,6 +254,7 @@ void
 device::
 register_axlf(const axlf* top)
 {
+  std::lock_guard<std::mutex> lk(device_lock);
   xrt::uuid xid{top->m_header.uuid};
 
   // Update xclbin caching from [slot, xclbin_uuid]+ data

@@ -266,6 +266,31 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(kds_stat);
 
+kds_cuctx_stat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	ssize_t ret;
+
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_cuctx_stat_raw(&XDEV(xdev)->kds, buf, DOMAIN_PL);
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
+}
+static DEVICE_ATTR_RO(kds_cuctx_stat_raw);
+
+static ssize_t
+kds_scuctx_stat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	ssize_t ret;
+
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_cuctx_stat_raw(&XDEV(xdev)->kds, buf, DOMAIN_PS);
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
+}
+static DEVICE_ATTR_RO(kds_scuctx_stat_raw);
+
 static ssize_t
 kds_cuctx_stat_raw_show(struct file *filp, struct kobject *kobj,
         struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
