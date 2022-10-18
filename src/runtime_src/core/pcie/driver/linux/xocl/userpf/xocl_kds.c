@@ -265,6 +265,8 @@ out_cu_ctx:
 out_hw_ctx:
 	kds_free_hw_ctx(client, cu_ctx->hw_ctx);	
 
+	mutex_unlock(&client->lock);
+	return ret;
 out1:
 	/* If client still has no opened context at this point */
 	vfree(client->ctx->xclbin_id);
