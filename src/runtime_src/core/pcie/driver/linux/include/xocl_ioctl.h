@@ -1,5 +1,6 @@
 /*
  *  Copyright (C) 2017, Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *  Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
  *
@@ -72,20 +73,28 @@
  * 7    Read back data in bo backing storage   DRM_IOCTL_XOCL_PREAD_BO        drm_xocl_pread_bo
  * 8    Open/close a context on a compute unit DRM_IOCTL_XOCL_CTX             drm_xocl_ctx
  *      on the device
- * 9    Unprotected write to device memory     DRM_IOCTL_XOCL_PWRITE_UNMGD    drm_xocl_pwrite_unmgd
- * 10   Unprotected read from device memory    DRM_IOCTL_XOCL_PREAD_UNMGD     drm_xocl_pread_unmgd
- * 11   Send an execute job to a compute unit  DRM_IOCTL_XOCL_EXECBUF         drm_xocl_execbuf
- * 12   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
+ * 9    Create a hw context on a slot for a    DRM_IOCTL_XOCL_CREATE_HW_CTX   drm_xocl_create_hw_ctx
+ *      xclbin on the device
+ * 10   Destroy a hw context on a slot for a   DRM_IOCTL_XOCL_DESTROY_HW_CTX  drm_xocl_destroy_hw_ctx
+ *      xclbin on the device
+ * 11   Open a context on a compute unit       DRM_IOCTL_XOCL_OPEN_CU_CTX     drm_xocl_open_cu_ctx
+ *      on the device
+ * 12   Close a context on a compute unit      DRM_IOCTL_XOCL_CLOSE_CU_CTX    drm_xocl_close_cu_ctx
+ *      on the device
+ * 13   Unprotected write to device memory     DRM_IOCTL_XOCL_PWRITE_UNMGD    drm_xocl_pwrite_unmgd
+ * 14   Unprotected read from device memory    DRM_IOCTL_XOCL_PREAD_UNMGD     drm_xocl_pread_unmgd
+ * 15   Send an execute job to a compute unit  DRM_IOCTL_XOCL_EXECBUF         drm_xocl_execbuf
+ * 16   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
  *      interrupt
- * 13   Update device view with a specific     DRM_IOCTL_XOCL_READ_AXLF       drm_xocl_axlf
+ * 17   Update device view with a specific     DRM_IOCTL_XOCL_READ_AXLF       drm_xocl_axlf
  *      xclbin image
- * 14   Obtain info of bo                      DRM_IOCTL_XOCL_INFO            drm_xocl_info_bo
- * 15   Obtain bo related statistics           DRM_IOCTL_XOCL_OCL_USAGE_STAT  drm_xocl_usage_stat
- * 16   Perform hot reset                      DRM_IOCTL_XOCL_HOT_RESET       N/A
- * 17   Perform clock scaling                  DRM_IOCTL_XOCL_RECLOCK         drm_xocl_reclock_info
- * 18   Allocate buffer on host memory         DRM_IOCTL_XOCL_ALLOC_CMA       drm_xocl_alloc_cma_info
- * 19   Free host memory buffer                DRM_IOCTL_XOCL_FREE_CMA        N/A
- * 20   Copy bo buffers                        DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
+ * 18   Obtain info of bo                      DRM_IOCTL_XOCL_INFO            drm_xocl_info_bo
+ * 19   Obtain bo related statistics           DRM_IOCTL_XOCL_OCL_USAGE_STAT  drm_xocl_usage_stat
+ * 20   Perform hot reset                      DRM_IOCTL_XOCL_HOT_RESET       N/A
+ * 21   Perform clock scaling                  DRM_IOCTL_XOCL_RECLOCK         drm_xocl_reclock_info
+ * 22   Allocate buffer on host memory         DRM_IOCTL_XOCL_ALLOC_CMA       drm_xocl_alloc_cma_info
+ * 23   Free host memory buffer                DRM_IOCTL_XOCL_FREE_CMA        N/A
+ * 24   Copy bo buffers                        DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
  * ==== ====================================== ============================== ==================================
  */
 
@@ -141,6 +150,14 @@ enum drm_xocl_ops {
 	DRM_XOCL_OCL_RESET,
 	/* Open/close a context */
 	DRM_XOCL_CTX,
+	/* Create a hw context */
+	DRM_XOCL_CREATE_HW_CTX,
+	/* Destroy a hw context */
+	DRM_XOCL_DESTROY_HW_CTX,
+	/* Open a cu context */
+	DRM_XOCL_OPEN_CU_CTX,
+	/* Close a cu context */
+	DRM_XOCL_CLOSE_CU_CTX,
 	/* Get information from device */
 	DRM_XOCL_INFO,
 	/* Unmanaged DMA from/to device */
@@ -526,6 +543,66 @@ struct drm_xocl_ctx {
 	uint32_t handle;
 };
 
+/**
+ * struct drm_xocl_create_hw_ctx - Create a hw context on a slot on device
+ * used with DRM_XOCL_CREATE_HW_CTX ioctl
+ *
+ * @axlf_ptr:      axlf pointer which need to download
+ * @qos:           QOS information
+ * @hw_context:    Returns Context handle
+ */
+struct drm_xocl_create_hw_ctx {
+	struct drm_xocl_axlf	*axlf_ptr;
+	uint32_t		qos;
+
+	// return context id
+	uint32_t		hw_context;
+};
+
+/**
+ * struct drm_xocl_destroy_hw_ctx - Close/Destroy a hw context on a slot on device
+ * used with DRM_XOCL_DESTROY_HW_CTX ioctl
+ *
+ * @hw_context:    Context handle which need to close
+ */
+struct drm_xocl_destroy_hw_ctx {
+	uint32_t	hw_context;
+};
+
+/**
+ * struct drm_xocl_open_cu_ctx - Open a cu context under a hw context on device
+ * used with DRM_XOCL_OPEN_CU_CTX ioctl
+ *
+ * @hw_context:    Open CU under this hw Context handle
+ * @cu_name:       Name of the compute unit in the device image for which
+ * 		   the open request is being made
+ * @flags:         Shared or exclusive context (XOCL_CTX_SHARED/XOCL_CTX_EXCLUSIVE)
+ * @cu_index:      Return the acquired CU index. This will require for close cu context
+ */
+struct drm_xocl_open_cu_ctx {
+	// Under this hw context id
+	uint32_t	hw_context;
+	char		cu_name[64];
+	uint32_t	flags;
+
+	// Return the acquired CU index.
+	uint32_t	cu_index;
+};
+
+/**
+ * struct drm_xocl_close_cu_ctx - Open a cu context under a hw context on device
+ * used with DRM_XOCL_CLOSE_CU_CTX ioctl
+ *
+ * @hw_context:    Open CU under this hw Context handle
+ * @cu_index:      Index of the compute unit in the device image for which
+ *                 the close request is being made
+ */
+struct drm_xocl_close_cu_ctx {
+	// Under this hw context id
+	uint32_t	hw_context;
+	uint32_t	cu_index;
+};
+
 struct drm_xocl_info {
 	unsigned short vendor;
 	unsigned short device;
@@ -698,6 +775,10 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_PWRITE_BO	XOCL_IOC_ARG(PWRITE_BO, pwrite_bo)
 #define	DRM_IOCTL_XOCL_PREAD_BO		XOCL_IOC_ARG(PREAD_BO, pread_bo)
 #define	DRM_IOCTL_XOCL_CTX		XOCL_IOC_ARG(CTX, ctx)
+#define	DRM_IOCTL_XOCL_CREATE_HW_CTX	XOCL_IOC_ARG(CREATE_HW_CTX, create_hw_ctx)
+#define	DRM_IOCTL_XOCL_DESTROY_HW_CTX	XOCL_IOC_ARG(DESTROY_HW_CTX, destroy_hw_ctx)
+#define	DRM_IOCTL_XOCL_OPEN_CU_CTX	XOCL_IOC_ARG(OPEN_CU_CTX, open_cu_ctx)
+#define	DRM_IOCTL_XOCL_CLOSE_CU_CTX	XOCL_IOC_ARG(CLOSE_CU_CTX, close_cu_ctx)
 #define	DRM_IOCTL_XOCL_INFO		XOCL_IOC_ARG(INFO, info)
 #define	DRM_IOCTL_XOCL_READ_AXLF	XOCL_IOC_ARG(READ_AXLF, axlf)
 #define	DRM_IOCTL_XOCL_PWRITE_UNMGD	XOCL_IOC_ARG(PWRITE_UNMGD, pwrite_unmgd)
