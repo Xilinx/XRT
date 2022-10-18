@@ -42,7 +42,6 @@ constexpr uint32_t ALIGNMENT_SIZE = 4096;
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
-  using module_type = xrt_core::edge::aie::module_type;
 
   void AieTrace_x86Impl::updateDevice() {
     // Set metrics for counters and trace events 

@@ -25,9 +25,11 @@
 #include <memory>
 #include <regex>
 
+#include "core/common/device.h"
+#include "core/common/xrt_profiling.h"
 #include "aie_trace_metadata.h"
 #include "core/common/message.h"
-// #include "core/edge/common/aie_parser.h"
+#include "core/edge/common/aie_parser.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/tracedefs.h"
 

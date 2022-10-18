@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "xdp/config.h"
+#include "core/common/device.h"
 
 namespace xdp {
 
@@ -32,25 +33,21 @@ namespace xdp {
 
 typedef std::vector<uint32_t>  ValueVector;
 
-
-
-class AieTraceMetadata{
-  private:
-    enum class module_type {
+  enum class module_type {
       core = 0,
       dma,
       shim
     };
 
     struct tile_type
-    {
+    { 
       uint16_t row;
       uint16_t col;
       uint16_t itr_mem_row;
       uint16_t itr_mem_col;
       uint64_t itr_mem_addr;
       bool     is_trigger;
-
+      
       bool operator==(const tile_type &tile) const {
         return (col == tile.col) && (row == tile.row);
       }
@@ -69,6 +66,11 @@ class AieTraceMetadata{
       uint16_t        streamId;
       uint16_t        burstLength;
     };
+
+class AieTraceMetadata{
+  private:
+    
+  //using module_type = xrt_core::edge::aie::module_type;
 
     bool useDelay = false;
     bool useUserControl = false;
@@ -90,43 +92,33 @@ class AieTraceMetadata{
 
     void* handle;
 
-  
   public:
-    XDP_EXPORT
+    
     AieTraceMetadata(uint64_t deviceID, void* handle);
 
-    XDP_EXPORT    
     std::string getMetricSet(const std::string& metricsStr, bool ignoreOldConfig = false);
 
-    XDP_EXPORT
     std::vector<tile_type> getTilesForTracing();
 
     // XDP_EXPORT
     // adf::aiecompiler_options get_aiecompiler_options(const xrt_core::device* device);
 
-    XDP_EXPORT
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
-    XDP_EXPORT
     std::vector<tile_type> get_tiles(const xrt_core::device* device, const std::string& graph_name);
 
-    XDP_EXPORT
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
                                            const std::string& graph_name,
-                                           module_type type)
-    XDP_EXPORT
+                                           module_type type);
+
     std::vector<std::string> get_graphs(const xrt_core::device* device);
 
-    XDP_EXPORT
     double get_clock_freq_mhz(const xrt_core::device* device);
 
-    XDP_EXPORT
     std::vector<gmio_type> get_trace_gmios(const xrt_core::device* device);
 
-    XDP_EXPORT
     void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
                                   std::vector<std::string>& graphmetricsSettings);
-    XDP_EXPORT  
     void setTraceStartControl();
 
     bool getUseDelay(){return useDelay;}
@@ -148,7 +140,7 @@ class AieTraceMetadata{
 
     void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}
     void setDelayCycles(uint32_t newDelayCycles) {delayCycles = newDelayCycles;}
-    bool setRuntimeMetrics(bool metrics) {runtimeMmetrics = metrics;}
+    void setRuntimeMetrics(bool metrics) {runtimeMetrics = metrics;}
 
     uint32_t getDelay() {
       if (useDelay)
