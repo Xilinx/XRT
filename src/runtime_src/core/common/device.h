@@ -109,6 +109,7 @@ public:
   using slot_id = xclbin_map::slot_id;
   using handle_type = xclDeviceHandle;
   using memory_type = xrt::xclbin::mem::memory_type;
+  std::mutex device_lock;
 
 public:
   XRT_CORE_COMMON_EXPORT
