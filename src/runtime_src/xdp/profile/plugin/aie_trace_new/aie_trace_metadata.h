@@ -36,26 +36,6 @@ typedef std::vector<uint32_t>  ValueVector;
 
 class AieTraceMetadata{
   private:
-    bool useDelay = false;
-    bool useUserControl = false;
-    bool useGraphIterator = false;
-    bool useOneDelayCtr = true;
-    bool runtimeMetrics;
-    bool continuousTrace;
-
-    uint32_t iterationCount = 0;
-    uint32_t delayCycles = 0;
-    uint64_t deviceID;
-    uint64_t numAIETraceOutput;
-    uint64_t offloadIntervalUs;
-    unsigned int aie_trace_file_dump_int_s;
-
-    std::string metricSet;
-    std::set<std::string> metricSets;
-    std::map<tile_type, std::string> configMetrics;
-
-    void* handle;
-
     enum class module_type {
       core = 0,
       dma,
@@ -89,6 +69,28 @@ class AieTraceMetadata{
       uint16_t        streamId;
       uint16_t        burstLength;
     };
+
+    bool useDelay = false;
+    bool useUserControl = false;
+    bool useGraphIterator = false;
+    bool useOneDelayCtr = true;
+    bool runtimeMetrics;
+    bool continuousTrace;
+
+    uint32_t iterationCount = 0;
+    uint32_t delayCycles = 0;
+    uint64_t deviceID;
+    uint64_t numAIETraceOutput;
+    uint64_t offloadIntervalUs;
+    unsigned int aie_trace_file_dump_int_s;
+
+    std::string metricSet;
+    std::set<std::string> metricSets;
+    std::map<tile_type, std::string> configMetrics;
+
+    void* handle;
+
+  
   public:
     XDP_EXPORT
     AieTraceMetadata(uint64_t deviceID, void* handle);
