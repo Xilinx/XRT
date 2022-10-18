@@ -66,7 +66,7 @@ namespace xdp {
       std::map<std::string, EventVector> memoryEventSets;
 
       // AIE profile counters
-      std::vector<xrt_core::edge::aie::tile_type> mCoreCounterTiles;
+      std::vector<tile_type> mCoreCounterTiles;
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mCoreCounters;
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mMemoryCounters;
 

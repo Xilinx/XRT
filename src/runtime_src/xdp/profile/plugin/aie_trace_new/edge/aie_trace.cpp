@@ -76,7 +76,8 @@ namespace {
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
-  using module_type = xrt_core::edge::aie::module_type;
+  // using module_type = xrt_core::edge::aie::module_type;
+  
   constexpr double AIE_DEFAULT_FREQ_MHZ = 1000.0; // should be changed
 
 

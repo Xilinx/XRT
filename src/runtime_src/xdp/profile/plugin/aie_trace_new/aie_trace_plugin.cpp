@@ -82,6 +82,8 @@ namespace xdp {
     uint64_t deviceID =  db->addDevice(sysfspath); // Get the unique device Id
     return deviceID;
   }
+  
+  
 
   void AieTracePluginUnified::updateAIEDevice(void* handle)
   {
@@ -98,7 +100,6 @@ namespace xdp {
     auto deviceID = getDeviceIDFromHandle(handle);
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieTraceMetadata>(deviceID, handle);
-    // auto& metadata = AIEData.metadata;
     AIEData.valid = true; // initialize struct
     AIEData.devIntf = nullptr;
 
@@ -108,7 +109,6 @@ namespace xdp {
     AIEData.implementation = std::make_unique<AieTrace_EdgeImpl>(db, AIEData.metadata);
 #endif
 
-    // auto& implementation = AIEData.implementation;
 
     // Get Device info // Investigate further (isDeviceReady should be always called??)
     if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
