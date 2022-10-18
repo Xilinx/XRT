@@ -27,10 +27,12 @@
 
 namespace xdp {
 
-using tile_type = xrt_core::edge::aie::tile_type;
-using gmio_type = xrt_core::edge::aie::gmio_type;
+// using tile_type = xrt_core::edge::aie::tile_type;
+// using gmio_type = xrt_core::edge::aie::gmio_type;
 
 typedef std::vector<uint32_t>  ValueVector;
+
+
 
 class AieTraceMetadata{
   private:
@@ -53,6 +55,40 @@ class AieTraceMetadata{
     std::map<tile_type, std::string> configMetrics;
 
     void* handle;
+
+    enum class module_type {
+      core = 0,
+      dma,
+      shim
+    };
+
+    struct tile_type
+    {
+      uint16_t row;
+      uint16_t col;
+      uint16_t itr_mem_row;
+      uint16_t itr_mem_col;
+      uint64_t itr_mem_addr;
+      bool     is_trigger;
+
+      bool operator==(const tile_type &tile) const {
+        return (col == tile.col) && (row == tile.row);
+      }
+      bool operator<(const tile_type &tile) const {
+        return (col < tile.col) || ((col == tile.col) && (row < tile.row));
+      }
+    };
+
+    struct gmio_type
+    {
+      std::string     name;
+      uint32_t        id;
+      uint16_t        type;
+      uint16_t        shimColumn;
+      uint16_t        channelNum;
+      uint16_t        streamId;
+      uint16_t        burstLength;
+    };
   public:
     XDP_EXPORT
     AieTraceMetadata(uint64_t deviceID, void* handle);
@@ -73,6 +109,10 @@ class AieTraceMetadata{
     std::vector<tile_type> get_tiles(const xrt_core::device* device, const std::string& graph_name);
 
     XDP_EXPORT
+    std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
+                                           const std::string& graph_name,
+                                           module_type type)
+    XDP_EXPORT
     std::vector<std::string> get_graphs(const xrt_core::device* device);
 
     XDP_EXPORT
@@ -83,7 +123,7 @@ class AieTraceMetadata{
 
     XDP_EXPORT
     void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
-                                           std::vector<std::string>& graphmetricsSettings);
+                                  std::vector<std::string>& graphmetricsSettings);
     XDP_EXPORT  
     void setTraceStartControl();
 
@@ -104,7 +144,7 @@ class AieTraceMetadata{
     std::map<tile_type, std::string> getConfigMetrics(){return configMetrics;}
     std::string getMetricStr(){return metricSet;}
 
-    void setNumStreams(uint64_t value) {numAIETraceOutput = value;}
+    void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}
     void setDelayCycles(uint32_t newDelayCycles) {delayCycles = newDelayCycles;}
 
     uint32_t getDelay() {

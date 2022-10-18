@@ -27,7 +27,7 @@
 
 #include "aie_trace_metadata.h"
 #include "core/common/message.h"
-#include "core/edge/common/aie_parser.h"
+// #include "core/edge/common/aie_parser.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/tracedefs.h"
 
@@ -396,11 +396,11 @@ namespace xdp {
     std::vector<tile_type> tiles;
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     
-    tiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
-                                 xrt_core::edge::aie::module_type::core);
+    tiles = get_event_tiles(device.get(), graph,
+                                 module_type::core);
     if (mod == XAIE_MEM_MOD) {
-      auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
-          xrt_core::edge::aie::module_type::dma); 
+      auto dmaTiles = get_event_tiles(device.get(), graph,
+          module_type::dma); 
       std::move(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles));
     }
 #endif
@@ -514,7 +514,7 @@ namespace xdp {
 
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         for (uint32_t row = minRow; row <= maxRow; ++row) {
-          xrt_core::edge::aie::tile_type tile;
+          tile_type tile;
           tile.col = col;
           tile.row = row;
 
@@ -563,7 +563,7 @@ namespace xdp {
            "Tile specification in tile_based_aie_tile_metrics is not of valid format and hence skipped.");
       }
 
-      xrt_core::edge::aie::tile_type tile;
+      tile_type tile;
       tile.col = col;
       tile.row = row;
 
@@ -659,6 +659,47 @@ namespace xdp {
     }
 
     return gmios;
+  }
+
+  std::vector<tile_type>
+  AieTraceMetadata::get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
+                module_type type)
+  {
+    auto data = device->get_axlf_section(AIE_METADATA);
+    if (!data.first || !data.second)
+      return {};
+
+    pt::ptree aie_meta;
+    read_aie_metadata(data.first, data.second, aie_meta);
+
+    // Not supported yet
+    if (type == module_type::shim)
+      return {};
+
+    const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
+    const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
+
+    std::vector<tile_type> tiles;
+  
+    for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
+      if (graph.second.get<std::string>("name") != graph_name)
+        continue;
+
+      int count = 0;
+        for (auto& node : graph.second.get_child(col_name)) {
+          tiles.push_back(tile_type());
+          auto& t = tiles.at(count++);
+          t.col = std::stoul(node.second.data());
+        }
+
+        int num_tiles = count;
+        count = 0;
+        for (auto& node : graph.second.get_child(row_name))
+          tiles.at(count++).row = std::stoul(node.second.data());
+        throw_if_error(count < num_tiles,"rows < num_tiles");
+    }
+
+    return tiles;
   }
   
 }
