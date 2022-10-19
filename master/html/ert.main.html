@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>Embedded Runtime Library &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="XRT Core Library" href="xrt.main.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -101,6 +114,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -163,10 +177,10 @@ struct <code class="descname">ert_packet</code><a class="headerlink" href="#c.er
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_packet</span> <span class="p">{</span>
-  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
-  <span class="n">uint32_t</span> <span class="n">data</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_packet {
+  union {unnamed_union};
+  uint32_t data;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -182,11 +196,11 @@ struct <code class="descname">ert_start_kernel_cmd</code><a class="headerlink" h
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_start_kernel_cmd</span> <span class="p">{</span>
-  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
-  <span class="n">uint32_t</span> <span class="n">cu_mask</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">data</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_start_kernel_cmd {
+  union {unnamed_union};
+  uint32_t cu_mask;
+  uint32_t data;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -208,11 +222,11 @@ struct <code class="descname">ert_init_kernel_cmd</code><a class="headerlink" hr
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_init_kernel_cmd</span> <span class="p">{</span>
-  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
-  <span class="n">uint32_t</span> <span class="n">cu_mask</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">data</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_init_kernel_cmd {
+  union {unnamed_union};
+  uint32_t cu_mask;
+  uint32_t data;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -244,21 +258,21 @@ struct <code class="descname">ert_configure_cmd</code><a class="headerlink" href
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_configure_cmd</span> <span class="p">{</span>
-  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
-  <span class="n">uint32_t</span> <span class="n">slot_size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">num_cus</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cu_shift</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cu_base_addr</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">ert</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">polling</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cu_dma</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cu_isr</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cq_int</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cdma</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">dsa52</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">data</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_configure_cmd {
+  union {unnamed_union};
+  uint32_t slot_size;
+  uint32_t num_cus;
+  uint32_t cu_shift;
+  uint32_t cu_base_addr;
+  uint32_t ert:1;
+  uint32_t polling:1;
+  uint32_t cu_dma:1;
+  uint32_t cu_isr:1;
+  uint32_t cq_int:1;
+  uint32_t cdma:1;
+  uint32_t dsa52:1;
+  uint32_t data;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -296,10 +310,10 @@ struct <code class="descname">ert_configure_sk_cmd</code><a class="headerlink" h
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_configure_sk_cmd</span> <span class="p">{</span>
-  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
-  <span class="n">uint32_t</span> <span class="n">num_image</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_configure_sk_cmd {
+  union {unnamed_union};
+  uint32_t num_image;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -315,11 +329,11 @@ struct <code class="descname">ert_unconfigure_sk_cmd</code><a class="headerlink"
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_unconfigure_sk_cmd</span> <span class="p">{</span>
-  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
-  <span class="n">uint32_t</span> <span class="n">start_cuidx</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">num_cus</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_unconfigure_sk_cmd {
+  union {unnamed_union};
+  uint32_t start_cuidx;
+  uint32_t num_cus;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -337,10 +351,10 @@ struct <code class="descname">ert_abort_cmd</code><a class="headerlink" href="#c
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_abort_cmd</span> <span class="p">{</span>
-  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
-  <span class="n">uint64_t</span> <span class="n">exec_bo_handle</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_abort_cmd {
+  union {unnamed_union};
+  uint64_t exec_bo_handle;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -356,9 +370,9 @@ struct <code class="descname">ert_validate_cmd</code><a class="headerlink" href=
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_validate_cmd</span> <span class="p">{</span>
-  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_validate_cmd {
+  union {unnamed_union};
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -372,9 +386,9 @@ struct <code class="descname">ert_access_valid_cmd</code><a class="headerlink" h
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">ert_access_valid_cmd</span> <span class="p">{</span>
-  <span class="n">union</span> <span class="p">{</span><span class="n">unnamed_union</span><span class="p">};</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_access_valid_cmd {
+  union {unnamed_union};
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -543,8 +557,8 @@ MB(W)</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -556,7 +570,7 @@ MB(W)</p>
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

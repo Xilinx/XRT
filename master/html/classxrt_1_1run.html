@@ -66,6 +66,7 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
+<a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="classxrt_1_1run-members.html">List of all members</a>  </div>
   <div class="headertitle">
@@ -78,6 +79,11 @@ $(function() {
 
 <p><code>#include &lt;<a class="el" href="xrt__kernel_8h_source.html">xrt_kernel.h</a>&gt;</code></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
+Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run_1_1command__error.html">command_error</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a43f61719426fff8f5f24f0d550e0f29f"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a43f61719426fff8f5f24f0d550e0f29f">run</a> ()=default</td></tr>
@@ -96,8 +102,14 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:afaf1ff8225e15d8802401982f62321e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a788df7565091221de5376d6c1d4a5f24"><td class="memItemLeft" align="right" valign="top">ert_cmd_state&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">wait</a> (unsigned int timeout_ms) const</td></tr>
 <tr class="separator:a788df7565091221de5376d6c1d4a5f24"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab1943c6897297263da86ef998c2e419c"><td class="memItemLeft" align="right" valign="top">std::cv_status&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#ab1943c6897297263da86ef998c2e419c">wait2</a> (const std::chrono::milliseconds &amp;timeout) const</td></tr>
+<tr class="separator:ab1943c6897297263da86ef998c2e419c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a95bc7156eb3b30bfe117d875ac40d018"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a95bc7156eb3b30bfe117d875ac40d018">wait2</a> () const</td></tr>
+<tr class="separator:a95bc7156eb3b30bfe117d875ac40d018"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3baec6b476f99e4e10a06044690558ac"><td class="memItemLeft" align="right" valign="top">ert_cmd_state&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">state</a> () const</td></tr>
 <tr class="separator:a3baec6b476f99e4e10a06044690558ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a21fd0c511149be9082f4ae165b7c14b9"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a21fd0c511149be9082f4ae165b7c14b9">return_code</a> () const</td></tr>
+<tr class="separator:a21fd0c511149be9082f4ae165b7c14b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a268c7ad2d9bab32d6ba2878a0b00c628"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a268c7ad2d9bab32d6ba2878a0b00c628">add_callback</a> (ert_cmd_state <a class="el" href="classxrt_1_1run.html#a3baec6b476f99e4e10a06044690558ac">state</a>, std::function&lt; void(const void *, ert_cmd_state, void *)&gt; callback, void *data)</td></tr>
 <tr class="separator:a268c7ad2d9bab32d6ba2878a0b00c628"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa768dd562f3d84242644134c79c83e46"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#aa768dd562f3d84242644134c79c83e46">operator bool</a> () const</td></tr>
@@ -409,6 +421,25 @@ template&lt;typename ... Args&gt; </div>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>True if object is ordered less that compared with other </dd></dl>
+
+</div>
+</div>
+<a id="a21fd0c511149be9082f4ae165b7c14b9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a21fd0c511149be9082f4ae165b7c14b9">&#9670;&nbsp;</a></span>return_code()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint32_t xrt::run::return_code </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1run.html#a21fd0c511149be9082f4ae165b7c14b9">return_code()</a> - Get the return code from PS kernel</p>
+<dl class="section return"><dt>Returns</dt><dd>Return code from PS kernel run </dd></dl>
 
 </div>
 </div>
@@ -963,8 +994,67 @@ template&lt;typename ArgType &gt; </div>
 
 </div>
 </div>
+<a id="a95bc7156eb3b30bfe117d875ac40d018"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a95bc7156eb3b30bfe117d875ac40d018">&#9670;&nbsp;</a></span>wait2() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void xrt::run::wait2 </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1run.html#ab1943c6897297263da86ef998c2e419c">wait2()</a> - Wait for successful command completion</p>
+<p>Successful command completion means that the command state is ERT_CMD_STATE_COMPLETED. All other command states result in this function throwing <code><a class="el" href="classxrt_1_1run_1_1command__error.html">command_error</a></code> exception with the command state embedded in the exception.</p>
+<p>Throws <code><a class="el" href="classxrt_1_1run_1_1command__error.html">xrt::run::command_error</a></code> on abnormal command termination. </p>
+
+</div>
+</div>
+<a id="ab1943c6897297263da86ef998c2e419c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab1943c6897297263da86ef998c2e419c">&#9670;&nbsp;</a></span>wait2() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::cv_status xrt::run::wait2 </td>
+          <td>(</td>
+          <td class="paramtype">const std::chrono::milliseconds &amp;&#160;</td>
+          <td class="paramname"><em>timeout</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1run.html#ab1943c6897297263da86ef998c2e419c">wait2()</a> - Wait for specified milliseconds for run to complete</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">timeout</td><td>Timeout for wait (default block until run completes) </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>std::cv_status::no_timeout when command completes successfully. std::cv_status::timeout when wait timed out without command completing.</dd></dl>
+<p>Successful command completion means that the command state is ERT_CMD_STATE_COMPLETED. All other command states result in this function throwing <code><a class="el" href="classxrt_1_1run_1_1command__error.html">command_error</a></code> exception with the command state embedded in the exception.</p>
+<p>Throws <code><a class="el" href="classxrt_1_1run_1_1command__error.html">xrt::run::command_error</a></code> on abnormal command termination.</p>
+<p>The current thread blocks until the run successfully completes or timeout expires. A return code of std::cv_state::no_timeout guarantees that the command completed successfully.</p>
+<p>If specified time out is exceeded, the function returns with std::cv_status::timeout, it is the callers responsibility to abort the run if it continues to time out.</p>
+<p>The current implementation of this API can mask out the timeout of this run so that the call either never returns or doesn't return until the run completes by itself. This can happen if other runs are continuosly completing within the specified timeout for this run. If the device is otherwise idle, or if the time between run completion exceeds the specified timeout, then this function will identify the timeout. </p>
+
+</div>
+</div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>/scratch/DOC/XRT/src/runtime_src/core/include/xrt/<a class="el" href="xrt__kernel_8h_source.html">xrt_kernel.h</a></li>
+<li>/scratch/DOC/NEW/XRT/src/runtime_src/core/include/xrt/<a class="el" href="xrt__kernel_8h_source.html">xrt_kernel.h</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

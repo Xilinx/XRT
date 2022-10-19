@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['pid_5ftype_181',['pid_type',['../structxrt_1_1pid__type.html',1,'xrt']]]
+  ['mailbox_188',['mailbox',['../classxrt_1_1mailbox.html',1,'xrt']]],
+  ['mem_189',['mem',['../classxrt_1_1xclbin_1_1mem.html',1,'xrt::xclbin']]]
 ];

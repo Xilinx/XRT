@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>XOCL (PCIe User Physical Function) Driver Interfaces &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="XCLMGMT (PCIe Management Physical Function) Driver Interfaces" href="mgmt-ioctl.main.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -101,6 +114,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -301,12 +315,12 @@ struct <code class="descname">drm_xocl_create_bo</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_create_bo</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="nb">type</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_create_bo {
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+  uint32_t type;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -327,13 +341,13 @@ struct <code class="descname">drm_xocl_userptr_bo</code><a class="headerlink" hr
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_userptr_bo</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">addr</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="nb">type</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_userptr_bo {
+  uint64_t addr;
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+  uint32_t type;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -356,12 +370,12 @@ struct <code class="descname">drm_xocl_map_kern_mem</code><a class="headerlink" 
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_map_kern_mem</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">addr</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_map_kern_mem {
+  uint32_t handle;
+  uint64_t addr;
+  uint64_t size;
+  uint32_t flags;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -382,11 +396,11 @@ struct <code class="descname">drm_xocl_map_bo</code><a class="headerlink" href="
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_map_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">pad</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_map_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -405,13 +419,13 @@ struct <code class="descname">drm_xocl_sync_bo</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_sync_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
-  <span class="n">enum</span> <span class="n">drm_xocl_sync_bo_dir</span> <span class="nb">dir</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_sync_bo {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t offset;
+  enum drm_xocl_sync_bo_dir dir;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -434,15 +448,15 @@ struct <code class="descname">drm_xocl_sync_bo_cb</code><a class="headerlink" hr
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_sync_bo_cb</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
-  <span class="n">enum</span> <span class="n">drm_xocl_sync_bo_dir</span> <span class="nb">dir</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">cb_func</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">cb_data</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_sync_bo_cb {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t offset;
+  enum drm_xocl_sync_bo_dir dir;
+  uint64_t cb_func;
+  uint64_t cb_data;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -469,12 +483,12 @@ struct <code class="descname">drm_xocl_info_bo</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_info_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">paddr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_info_bo {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t paddr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -495,13 +509,13 @@ struct <code class="descname">drm_xocl_copy_bo</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_copy_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">dst_handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">src_handle</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">dst_offset</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">src_offset</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_copy_bo {
+  uint32_t dst_handle;
+  uint32_t src_handle;
+  uint64_t size;
+  uint64_t dst_offset;
+  uint64_t src_offset;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -524,11 +538,11 @@ struct <code class="descname">drm_xocl_set_cu_range</code><a class="headerlink" 
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_set_cu_range</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">cu_index</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">start</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">size</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_set_cu_range {
+  uint32_t cu_index;
+  uint32_t start;
+  uint32_t size;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -547,12 +561,12 @@ struct <code class="descname">argument_info</code><a class="headerlink" href="#c
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">argument_info</span> <span class="p">{</span>
-  <span class="n">char</span> <span class="n">name</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">offset</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="nb">dir</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct argument_info {
+  char name;
+  uint32_t offset;
+  uint32_t size;
+  uint32_t dir;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -573,13 +587,13 @@ struct <code class="descname">kernel_info</code><a class="headerlink" href="#c.k
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">kernel_info</span> <span class="p">{</span>
-  <span class="n">char</span> <span class="n">name</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="nb">range</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">anums</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">features</span><span class="p">;</span>
-  <span class="n">struct</span> <span class="n">argument_info</span> <span class="n">args</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct kernel_info {
+  char name;
+  uint32_t range;
+  int anums;
+  int features;
+  struct argument_info args;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -602,13 +616,13 @@ struct <code class="descname">drm_xocl_kinfo_bo</code><a class="headerlink" href
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_kinfo_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">paddr</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">vaddr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_kinfo_bo {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t paddr;
+  uint64_t vaddr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -631,16 +645,16 @@ struct <code class="descname">drm_xocl_kds</code><a class="headerlink" href="#c.
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_kds</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">slot_size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">ert</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">polling</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cu_dma</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cu_isr</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cq_int</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">dataflow</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">rw_shared</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_kds {
+  uint32_t slot_size;
+  uint32_t ert:1;
+  uint32_t polling:1;
+  uint32_t cu_dma:1;
+  uint32_t cu_isr:1;
+  uint32_t cq_int:1;
+  uint32_t dataflow:1;
+  uint32_t rw_shared:1;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -669,13 +683,13 @@ struct <code class="descname">drm_xocl_axlf</code><a class="headerlink" href="#c
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_axlf</span> <span class="p">{</span>
-  <span class="n">struct</span> <span class="n">axlf</span> <span class="o">*</span> <span class="n">xclbin</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">ksize</span><span class="p">;</span>
-  <span class="n">char</span> <span class="o">*</span> <span class="n">kernels</span><span class="p">;</span>
-  <span class="n">struct</span> <span class="n">drm_xocl_kds</span> <span class="n">kds_cfg</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_axlf {
+  struct axlf * xclbin;
+  int ksize;
+  char * kernels;
+  struct drm_xocl_kds kds_cfg;
+  uint32_t flags;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -700,13 +714,13 @@ struct <code class="descname">drm_xocl_pwrite_bo</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_pwrite_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">pad</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">data_ptr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_pwrite_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -729,13 +743,13 @@ struct <code class="descname">drm_xocl_pread_bo</code><a class="headerlink" href
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_pread_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">pad</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">data_ptr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_pread_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -758,13 +772,13 @@ struct <code class="descname">drm_xocl_ctx</code><a class="headerlink" href="#c.
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_ctx</span> <span class="p">{</span>
-  <span class="n">enum</span> <span class="n">drm_xocl_ctx_code</span> <span class="n">op</span><span class="p">;</span>
-  <span class="n">xuid_t</span> <span class="n">xclbin_id</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cu_index</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_ctx {
+  enum drm_xocl_ctx_code op;
+  xuid_t xclbin_id;
+  uint32_t cu_index;
+  uint32_t flags;
+  uint32_t handle;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -788,13 +802,13 @@ struct <code class="descname">drm_xocl_pwrite_unmgd</code><a class="headerlink" 
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_pwrite_unmgd</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">address_space</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">pad</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">paddr</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">data_ptr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_pwrite_unmgd {
+  uint32_t address_space;
+  uint32_t pad;
+  uint64_t paddr;
+  uint64_t size;
+  uint64_t data_ptr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -817,13 +831,13 @@ struct <code class="descname">drm_xocl_pread_unmgd</code><a class="headerlink" h
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_pread_unmgd</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">address_space</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">pad</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">paddr</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">data_ptr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_pread_unmgd {
+  uint32_t address_space;
+  uint32_t pad;
+  uint64_t paddr;
+  uint64_t size;
+  uint64_t data_ptr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -846,13 +860,13 @@ struct <code class="descname">drm_xocl_usage_stat</code><a class="headerlink" hr
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_usage_stat</span> <span class="p">{</span>
-  <span class="n">unsigned</span> <span class="n">dma_channel_count</span><span class="p">;</span>
-  <span class="n">unsigned</span> <span class="n">mm_channel_count</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">h2c</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">c2h</span><span class="p">;</span>
-  <span class="n">struct</span> <span class="n">drm_xocl_mm_stat</span> <span class="n">mm</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_usage_stat {
+  unsigned dma_channel_count;
+  unsigned mm_channel_count;
+  uint64_t h2c;
+  uint64_t c2h;
+  struct drm_xocl_mm_stat mm;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -875,11 +889,11 @@ struct <code class="descname">drm_xocl_execbuf</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_execbuf</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">ctx_id</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">exec_bo_handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">deps</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_execbuf {
+  uint32_t ctx_id;
+  uint32_t exec_bo_handle;
+  uint32_t deps;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -899,13 +913,13 @@ struct <code class="descname">drm_xocl_execbuf_cb</code><a class="headerlink" hr
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_execbuf_cb</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">ctx_id</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">exec_bo_handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">deps</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">cb_func</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">cb_data</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_execbuf_cb {
+  uint32_t ctx_id;
+  uint32_t exec_bo_handle;
+  uint32_t deps;
+  uint64_t cb_func;
+  uint64_t cb_data;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -929,11 +943,11 @@ struct <code class="descname">drm_xocl_user_intr</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_user_intr</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">ctx_id</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">fd</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">msix</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_user_intr {
+  uint32_t ctx_id;
+  int fd;
+  int msix;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -952,10 +966,10 @@ struct <code class="descname">drm_xocl_reclock_info</code><a class="headerlink" 
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_reclock_info</span> <span class="p">{</span>
-  <span class="n">unsigned</span> <span class="n">region</span><span class="p">;</span>
-  <span class="n">unsigned</span> <span class="n">short</span> <span class="n">ocl_target_freq</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_reclock_info {
+  unsigned region;
+  unsigned short ocl_target_freq;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -972,11 +986,11 @@ struct <code class="descname">drm_xocl_alloc_cma_info</code><a class="headerlink
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_xocl_alloc_cma_info</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">total_size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">entry_num</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="o">*</span> <span class="n">user_addr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_xocl_alloc_cma_info {
+  uint64_t total_size;
+  uint64_t entry_num;
+  uint64_t * user_addr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -1011,8 +1025,8 @@ struct <code class="descname">drm_xocl_alloc_cma_info</code><a class="headerlink
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -1024,7 +1038,7 @@ struct <code class="descname">drm_xocl_alloc_cma_info</code><a class="headerlink
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

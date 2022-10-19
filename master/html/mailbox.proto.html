@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>Mailbox Inter-domain Communication Protocol &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="Mailbox Subdevice Driver" href="mailbox.main.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -101,6 +114,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -197,6 +211,12 @@ enum <code class="descname">xcl_mailbox_request</code><a class="headerlink" href
 <dd><em>undescribed</em></dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_SDR_DATA</span></code></dt>
 <dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR</span></code></dt>
+<dd>download xclbin (pointed to by a pointer)
+to a specific slot (PS/PL)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_SLOT_XCLBIN</span></code></dt>
+<dd>download xclbin (bitstream is in payload)
+to a specific slot (PS/PL)</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MAX</span></code></dt>
 <dd><em>undescribed</em></dd>
 </dl>
@@ -207,10 +227,10 @@ struct <code class="descname">xcl_mailbox_req_bitstream_lock</code><a class="hea
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_req_bitstream_lock</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">reserved</span><span class="p">;</span>
-  <span class="n">uint8_t</span> <span class="n">uuid</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_req_bitstream_lock {
+  uint64_t reserved;
+  uint8_t uuid;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -252,6 +272,8 @@ enum <code class="descname">xcl_group_kind</code><a class="headerlink" href="#c.
 <dd><em>undescribed</em></dd>
 <dt><code class="docutils literal notranslate"><span class="pre">XCL_SDR_POWER</span></code></dt>
 <dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MULTISLOT_VERSION</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
 <dl class="type">
 <dt id="c.xcl_board_info">
@@ -260,8 +282,8 @@ struct <code class="descname">xcl_board_info</code><a class="headerlink" href="#
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_board_info</span> <span class="p">{</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_board_info {
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -272,8 +294,20 @@ struct <code class="descname">xcl_sensor</code><a class="headerlink" href="#c.xc
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_sensor</span> <span class="p">{</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_sensor {
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="type">
+<dt id="c.xcl_multislot_info">
+struct <code class="descname">xcl_multislot_info</code><a class="headerlink" href="#c.xcl_multislot_info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data structure used to fetch multislot version</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_multislot_info {
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -284,8 +318,8 @@ struct <code class="descname">xcl_pr_region</code><a class="headerlink" href="#c
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_pr_region</span> <span class="p">{</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_pr_region {
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -296,8 +330,8 @@ struct <code class="descname">xcl_mig_ecc</code><a class="headerlink" href="#c.x
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mig_ecc</span> <span class="p">{</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mig_ecc {
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -308,8 +342,8 @@ struct <code class="descname">xcl_firewall</code><a class="headerlink" href="#c.
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_firewall</span> <span class="p">{</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_firewall {
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -320,8 +354,8 @@ struct <code class="descname">xcl_dna</code><a class="headerlink" href="#c.xcl_d
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_dna</span> <span class="p">{</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_dna {
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -332,10 +366,10 @@ struct <code class="descname">xcl_mailbox_subdev_peer</code><a class="headerlink
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_subdev_peer</span> <span class="p">{</span>
-  <span class="n">int32_t</span> <span class="n">kind</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_subdev_peer {
+  int32_t kind;
+  uint64_t size;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -352,12 +386,12 @@ struct <code class="descname">xcl_mailbox_conn</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_conn</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">kaddr</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">paddr</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">crc32</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">version</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_conn {
+  uint64_t kaddr;
+  uint64_t paddr;
+  uint32_t crc32;
+  uint32_t version;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -378,12 +412,12 @@ struct <code class="descname">xcl_mailbox_conn_resp</code><a class="headerlink" 
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_conn_resp</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">version</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">conn_flags</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">chan_switch</span><span class="p">;</span>
-  <span class="n">int8_t</span> <span class="n">comm_id</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_conn_resp {
+  uint32_t version;
+  uint64_t conn_flags;
+  uint64_t chan_switch;
+  int8_t comm_id;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -404,9 +438,9 @@ struct <code class="descname">xcl_mailbox_peer_state</code><a class="headerlink"
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_peer_state</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">state_flags</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_peer_state {
+  uint64_t state_flags;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -415,15 +449,35 @@ struct <code class="descname">xcl_mailbox_peer_state</code><a class="headerlink"
 <dd>peer state flags</dd>
 </dl>
 <dl class="type">
+<dt id="c.xcl_mailbox_bitstream_slot_kaddr">
+struct <code class="descname">xcl_mailbox_bitstream_slot_kaddr</code><a class="headerlink" href="#c.xcl_mailbox_bitstream_slot_kaddr" title="Permalink to this definition">¶</a></dt>
+<dd><p>MAILBOX_REQ_LOAD_XCLBIN_SLOT_KADDR payload type to pass slot information</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_bitstream_slot_kaddr {
+  uint64_t addr;
+  uint32_t slot_idx;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">addr</span></code></dt>
+<dd>pointer to xclbin body</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">slot_idx</span></code></dt>
+<dd>Target slot index</dd>
+</dl>
+<dl class="type">
 <dt id="c.xcl_mailbox_bitstream_kaddr">
 struct <code class="descname">xcl_mailbox_bitstream_kaddr</code><a class="headerlink" href="#c.xcl_mailbox_bitstream_kaddr" title="Permalink to this definition">¶</a></dt>
 <dd><p>MAILBOX_REQ_LOAD_XCLBIN_KADDR payload type</p>
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_bitstream_kaddr</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">addr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_bitstream_kaddr {
+  uint64_t addr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -432,16 +486,33 @@ struct <code class="descname">xcl_mailbox_bitstream_kaddr</code><a class="header
 <dd>pointer to xclbin body</dd>
 </dl>
 <dl class="type">
+<dt id="c.xcl_mailbox_bitstream_slot_xclbin">
+struct <code class="descname">xcl_mailbox_bitstream_slot_xclbin</code><a class="headerlink" href="#c.xcl_mailbox_bitstream_slot_xclbin" title="Permalink to this definition">¶</a></dt>
+<dd><p>MAILBOX_REQ_LOAD_SLOT_XCLBIN payload type</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_bitstream_slot_xclbin {
+  uint32_t slot_idx;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">slot_idx</span></code></dt>
+<dd>Target slot index</dd>
+</dl>
+<dl class="type">
 <dt id="c.xcl_mailbox_clock_freqscaling">
 struct <code class="descname">xcl_mailbox_clock_freqscaling</code><a class="headerlink" href="#c.xcl_mailbox_clock_freqscaling" title="Permalink to this definition">¶</a></dt>
 <dd><p>MAILBOX_REQ_RECLOCK payload type</p>
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_clock_freqscaling</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">region</span><span class="p">;</span>
-  <span class="n">uint16_t</span> <span class="n">target_freqs</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_clock_freqscaling {
+  uint32_t region;
+  uint16_t target_freqs;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -458,11 +529,11 @@ struct <code class="descname">xcl_mailbox_req</code><a class="headerlink" href="
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_req</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">int32_t</span> <span class="n">req</span><span class="p">;</span>
-  <span class="n">int32_t</span> <span class="n">data</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_req {
+  uint64_t flags;
+  int32_t req;
+  int32_t data;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -481,12 +552,12 @@ struct <code class="descname">xcl_sw_chan</code><a class="headerlink" href="#c.x
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_sw_chan</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">sz</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="nb">id</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">data</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_sw_chan {
+  uint64_t sz;
+  uint64_t flags;
+  uint64_t id;
+  uint64_t data;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -506,8 +577,8 @@ struct <code class="descname">xcl_mailbox_p2p_bar_addr</code><a class="headerlin
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">xcl_mailbox_p2p_bar_addr</span> <span class="p">{</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct xcl_mailbox_p2p_bar_addr {
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -534,8 +605,8 @@ struct <code class="descname">xcl_mailbox_p2p_bar_addr</code><a class="headerlin
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -547,7 +618,7 @@ struct <code class="descname">xcl_mailbox_p2p_bar_addr</code><a class="headerlin
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

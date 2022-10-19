@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>ZOCL Driver Interfaces &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="XOCL (PCIe User Physical Function) Driver Interfaces" href="xocl_ioctl.main.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -101,6 +114,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -276,11 +290,11 @@ struct <code class="descname">drm_zocl_create_bo</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_create_bo</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_create_bo {
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -299,12 +313,12 @@ struct <code class="descname">drm_zocl_userptr_bo</code><a class="headerlink" hr
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_userptr_bo</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">addr</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_userptr_bo {
+  uint64_t addr;
+  uint64_t size;
+  uint32_t handle;
+  uint32_t flags;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -325,11 +339,11 @@ struct <code class="descname">drm_zocl_map_bo</code><a class="headerlink" href="
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_map_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">pad</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_map_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -348,12 +362,12 @@ struct <code class="descname">drm_zocl_sync_bo</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_sync_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">enum</span> <span class="n">drm_zocl_sync_bo_dir</span> <span class="nb">dir</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sync_bo {
+  uint32_t handle;
+  enum drm_zocl_sync_bo_dir dir;
+  uint64_t offset;
+  uint64_t size;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -374,12 +388,12 @@ struct <code class="descname">drm_zocl_info_bo</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_info_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">flags</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">paddr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_info_bo {
+  uint32_t handle;
+  uint32_t flags;
+  uint64_t size;
+  uint64_t paddr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -400,11 +414,11 @@ struct <code class="descname">drm_zocl_host_bo</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_host_bo</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">paddr</span><span class="p">;</span>
-  <span class="n">size_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_host_bo {
+  uint64_t paddr;
+  size_t size;
+  uint32_t handle;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -417,19 +431,42 @@ struct <code class="descname">drm_zocl_host_bo</code><a class="headerlink" href=
 <dd>GEM object handle</dd>
 </dl>
 <dl class="type">
+<dt id="c.drm_zocl_set_cu_range">
+struct <code class="descname">drm_zocl_set_cu_range</code><a class="headerlink" href="#c.drm_zocl_set_cu_range" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set CU range used with DRM_IOCTL_ZOCL_SET_CU_READONLY_RANGE</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_set_cu_range {
+  uint32_t cu_index;
+  uint32_t start;
+  uint32_t size;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">cu_index</span></code></dt>
+<dd>Index of the compute unit</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">start</span></code></dt>
+<dd>Start offset of the range</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>Size of the range</dd>
+</dl>
+<dl class="type">
 <dt id="c.drm_zocl_pwrite_bo">
 struct <code class="descname">drm_zocl_pwrite_bo</code><a class="headerlink" href="#c.drm_zocl_pwrite_bo" title="Permalink to this definition">¶</a></dt>
 <dd><p>Update bo with user’s data used with DRM_IOCTL_ZOCL_PWRITE_BO ioctl</p>
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_pwrite_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">pad</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">data_ptr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_pwrite_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -452,13 +489,13 @@ struct <code class="descname">drm_zocl_pread_bo</code><a class="headerlink" href
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_pread_bo</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">handle</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">pad</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">offset</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint64_t</span> <span class="n">data_ptr</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_pread_bo {
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t offset;
+  uint64_t size;
+  uint64_t data_ptr;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -481,11 +518,11 @@ struct <code class="descname">drm_zocl_info_cu</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_info_cu</span> <span class="p">{</span>
-  <span class="n">uint64_t</span> <span class="n">paddr</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">apt_idx</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">cu_idx</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_info_cu {
+  uint64_t paddr;
+  int apt_idx;
+  int cu_idx;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -504,10 +541,10 @@ struct <code class="descname">drm_zocl_execbuf</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_execbuf</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">ctx_id</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">exec_bo_handle</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_execbuf {
+  uint32_t ctx_id;
+  uint32_t exec_bo_handle;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -524,12 +561,12 @@ struct <code class="descname">argument_info</code><a class="headerlink" href="#c
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">argument_info</span> <span class="p">{</span>
-  <span class="n">char</span> <span class="n">name</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">offset</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="nb">dir</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct argument_info {
+  char name;
+  uint32_t offset;
+  uint32_t size;
+  uint32_t dir;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -550,12 +587,12 @@ struct <code class="descname">kernel_info</code><a class="headerlink" href="#c.k
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">kernel_info</span> <span class="p">{</span>
-  <span class="n">char</span> <span class="n">name</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="nb">range</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">anums</span><span class="p">;</span>
-  <span class="n">struct</span> <span class="n">argument_info</span> <span class="n">args</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct kernel_info {
+  char name;
+  uint32_t range;
+  int anums;
+  struct argument_info args;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -576,9 +613,9 @@ struct <code class="descname">drm_zocl_kds</code><a class="headerlink" href="#c.
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_kds</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">polling</span><span class="p">:</span><span class="mi">1</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_kds {
+  uint32_t polling:1;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -593,14 +630,14 @@ struct <code class="descname">drm_zocl_axlf</code><a class="headerlink" href="#c
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_axlf</span> <span class="p">{</span>
-  <span class="n">struct</span> <span class="n">axlf</span> <span class="o">*</span> <span class="n">za_xclbin_ptr</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">za_flags</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">za_ksize</span><span class="p">;</span>
-  <span class="n">char</span> <span class="o">*</span> <span class="n">za_kernels</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">za_slot_id</span><span class="p">;</span>
-  <span class="n">uint8_t</span> <span class="n">hw_gen</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_axlf {
+  struct axlf * za_xclbin_ptr;
+  uint32_t za_flags;
+  int za_ksize;
+  char * za_kernels;
+  uint32_t za_slot_id;
+  uint8_t hw_gen;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -625,15 +662,15 @@ struct <code class="descname">drm_zocl_sk_getcmd</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_sk_getcmd</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">opcode</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">start_cuidx</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">cu_nums</span><span class="p">;</span>
-  <span class="n">char</span> <span class="n">name</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">bohdl</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">meta_bohdl</span><span class="p">;</span>
-  <span class="n">unsigned</span> <span class="n">char</span> <span class="n">uuid</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_getcmd {
+  uint32_t opcode;
+  uint32_t start_cuidx;
+  uint32_t cu_nums;
+  char name;
+  int bohdl;
+  int meta_bohdl;
+  unsigned char uuid;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -660,11 +697,11 @@ struct <code class="descname">drm_zocl_aie_cmd</code><a class="headerlink" href=
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_aie_cmd</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">opcode</span><span class="p">;</span>
-  <span class="n">uint32_t</span> <span class="n">size</span><span class="p">;</span>
-  <span class="n">char</span> <span class="n">info</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_aie_cmd {
+  uint32_t opcode;
+  uint32_t size;
+  char info;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -683,10 +720,10 @@ struct <code class="descname">drm_zocl_sk_create</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_sk_create</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">cu_idx</span><span class="p">;</span>
-  <span class="nb">int</span> <span class="n">handle</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_create {
+  uint32_t cu_idx;
+  int handle;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -703,10 +740,10 @@ struct <code class="descname">drm_zocl_sk_report</code><a class="headerlink" hre
 </dd></dl>
 
 <p><strong>Definition</strong></p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span> <span class="n">drm_zocl_sk_report</span> <span class="p">{</span>
-  <span class="n">uint32_t</span> <span class="n">cu_idx</span><span class="p">;</span>
-  <span class="n">enum</span> <span class="n">drm_zocl_scu_state</span> <span class="n">cu_state</span><span class="p">;</span>
-<span class="p">};</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_report {
+  uint32_t cu_idx;
+  enum drm_zocl_scu_state cu_state;
+};
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
@@ -739,8 +776,8 @@ struct <code class="descname">drm_zocl_sk_report</code><a class="headerlink" hre
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -752,7 +789,7 @@ struct <code class="descname">drm_zocl_sk_report</code><a class="headerlink" hre
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>
