@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>PCIe Peer-to-Peer (P2P) &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="Multi-Process Support" href="multiprocess.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -125,6 +138,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -214,10 +228,10 @@ If a system stops responding after enabling P2P and warm reboot does not recover
 <div class="section" id="current-p2p-configuration">
 <h3>Current P2P Configuration<a class="headerlink" href="#current-p2p-configuration" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">P2P</span> <span class="pre">Enabled</span></code> is shown within <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code> output as below.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># xbutil examine --device 0000:03:00.1</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># xbutil examine --device 0000:03:00.1
 
- <span class="o">.</span> <span class="o">.</span> <span class="o">.</span>
- <span class="n">P2P</span> <span class="n">Status</span>             <span class="p">:</span> <span class="n">disabled</span>
+ . . .
+ P2P Status             : disabled
 </pre></div>
 </div>
 <p>There are three possible values for <code class="docutils literal notranslate"><span class="pre">P2P</span> <span class="pre">Status</span></code> field above.</p>
@@ -248,7 +262,7 @@ memory, warm reboot is needed</td>
 <div class="section" id="enable-p2p">
 <h3>Enable P2P<a class="headerlink" href="#enable-p2p" title="Permalink to this headline">¶</a></h3>
 <p>The command for enabling p2p is as below</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># sudo xbutil configure --device 0000:b3:00.1 --p2p enable</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># sudo xbutil configure --device 0000:b3:00.1 --p2p enable
 </pre></div>
 </div>
 <p>When trying to enable p2p, it is possible that the Pcie Bar increase cannot happen without an warm reboot. In those situation when trying to enable the P2P, you will see a message for warm reboot request. You can also verify this through <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code> that would show P2P status is <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">iomem</span></code></p>
@@ -256,7 +270,7 @@ memory, warm reboot is needed</td>
 <div class="section" id="disable-p2p">
 <h3>Disable P2P<a class="headerlink" href="#disable-p2p" title="Permalink to this headline">¶</a></h3>
 <p>The commands for disabling p2p is as below</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># sudo xbutil configure --device 0000:b3:00.1 --p2p disable</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># sudo xbutil configure --device 0000:b3:00.1 --p2p disable
 </pre></div>
 </div>
 <p>Disabling and re-enabling P2P work without a warm reboot in-between.</p>
@@ -525,8 +539,8 @@ Latency(ns)</th>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -538,7 +552,7 @@ Latency(ns)</th>
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

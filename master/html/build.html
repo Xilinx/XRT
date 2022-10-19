@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>Building the XRT Software Stack &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="System Requirements" href="system_requirements.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -110,6 +123,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -170,7 +184,7 @@ function OptanonWrapper() { }
 <p>XRT requires C++14 compiler and a few development libraries bundled
 with modern Linux distribution. Please install the necessary tools and
 dependencies using the provided <code class="docutils literal notranslate"><span class="pre">xrtdeps.sh</span></code>.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sudo</span> <span class="o">&lt;</span><span class="n">XRT</span><span class="o">&gt;/</span><span class="n">src</span><span class="o">/</span><span class="n">runtime_src</span><span class="o">/</span><span class="n">tools</span><span class="o">/</span><span class="n">scripts</span><span class="o">/</span><span class="n">xrtdeps</span><span class="o">.</span><span class="n">sh</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>sudo &lt;XRT&gt;/src/runtime_src/tools/scripts/xrtdeps.sh
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">xrtdeps.sh</span></code> script installs the standard distribution packages
@@ -180,7 +194,7 @@ standard versions, then XRT must be rebuilt.</p>
 <p>On RHEL7.x/CentOS7.x use devtoolset to switch to C++14 devlopment
 environment. This step is not applicable to Ubuntu, which already has
 C++14 capable GCC.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">scl</span> <span class="n">enable</span> <span class="n">devtoolset</span><span class="o">-</span><span class="mi">9</span> <span class="n">bash</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>scl enable devtoolset-9 bash
 </pre></div>
 </div>
 <p>XRT includes source code for ERT firmware.
@@ -192,8 +206,8 @@ If it’s not available, errors will be reported.</p>
 </div>
 <div class="section" id="building-the-xrt-runtime">
 <h3>Building the XRT Runtime<a class="headerlink" href="#building-the-xrt-runtime" title="Permalink to this headline">¶</a></h3>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">build</span>
-<span class="o">./</span><span class="n">build</span><span class="o">.</span><span class="n">sh</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd build
+./build.sh
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">build.sh</span></code> script builds for both Debug and Release profiles.</p>
@@ -206,10 +220,10 @@ running <code class="docutils literal notranslate"><span class="pre">build.sh</s
 <h3>Packaging RPM on RHEL/CentOS or DEB on Ubuntu<a class="headerlink" href="#packaging-rpm-on-rhel-centos-or-deb-on-ubuntu" title="Permalink to this headline">¶</a></h3>
 <p>The package is automatically built for the <code class="docutils literal notranslate"><span class="pre">Release</span></code>
 version but not for the <code class="docutils literal notranslate"><span class="pre">Debug</span></code> version:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">build</span><span class="o">/</span><span class="n">Release</span>
-<span class="n">make</span> <span class="n">package</span>
-<span class="n">cd</span> <span class="o">../</span><span class="n">Debug</span>
-<span class="n">make</span> <span class="n">package</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd build/Release
+make package
+cd ../Debug
+make package
 </pre></div>
 </div>
 </div>
@@ -220,10 +234,10 @@ version but not for the <code class="docutils literal notranslate"><span class="
 together with Linux kernel based <code class="docutils literal notranslate"><span class="pre">kernel-doc</span></code> utility.</p>
 <p>To compile and install the documentation into the <code class="docutils literal notranslate"><span class="pre">doc</span></code> directory at
 the top of the repository:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">build</span>
-<span class="o">./</span><span class="n">build</span><span class="o">.</span><span class="n">sh</span> <span class="n">docs</span>
-<span class="c1"># To browse the generated local documentation with a web browser:</span>
-<span class="n">xdg</span><span class="o">-</span><span class="nb">open</span> <span class="n">Release</span><span class="o">/</span><span class="n">runtime_src</span><span class="o">/</span><span class="n">doc</span><span class="o">/</span><span class="n">html</span><span class="o">/</span><span class="n">index</span><span class="o">.</span><span class="n">html</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>cd build
+./build.sh docs
+# To browse the generated local documentation with a web browser:
+xdg-open Release/runtime_src/doc/html/index.html
 </pre></div>
 </div>
 </div>
@@ -250,8 +264,8 @@ the top of the repository:</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -263,7 +277,7 @@ the top of the repository:</p>
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

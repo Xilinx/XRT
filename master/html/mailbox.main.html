@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>Mailbox Subdevice Driver &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="XRT Setup for Embedded Flow" href="yocto.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -101,6 +114,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -284,13 +298,13 @@ All requests initiated from user pf requires a response and all requests from
 mgmt pf does not require a response. This should avoid any possible deadlock
 derived from each side blocking and waiting for response from the peer.</p>
 <p>The overall architecture can be shown as below:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>      <span class="o">+----------+</span>      <span class="o">+----------+</span>            <span class="o">+----------+</span>
-      <span class="p">[</span> <span class="n">Req</span><span class="o">/</span><span class="n">Resp</span> <span class="p">]</span>  <span class="o">&lt;---</span><span class="p">[</span><span class="n">SW</span> <span class="n">Channel</span><span class="p">]</span><span class="o">----&gt;</span>       <span class="p">[</span> <span class="n">Req</span><span class="o">/</span><span class="n">Resp</span> <span class="p">]</span>
-<span class="o">+-----+----------+</span>      <span class="o">+----------+</span>      <span class="o">+-----+----------+</span>
-<span class="p">[</span> <span class="n">Msg</span> <span class="o">|</span> <span class="n">Req</span><span class="o">/</span><span class="n">Resp</span> <span class="p">]</span>                        <span class="p">[</span> <span class="n">Msg</span> <span class="o">|</span> <span class="n">Req</span><span class="o">/</span><span class="n">Resp</span> <span class="p">]</span>
-<span class="o">+---+-+------+---+</span>      <span class="o">+----------+</span>      <span class="o">+---+-+-----+----+</span>
-<span class="p">[</span><span class="n">Pkt</span><span class="p">]</span><span class="o">...</span><span class="p">[]</span><span class="o">...</span><span class="p">[</span><span class="n">Pkt</span><span class="p">]</span>  <span class="o">&lt;---</span><span class="p">[</span><span class="n">HW</span> <span class="n">Channel</span><span class="p">]</span><span class="o">----&gt;</span> <span class="p">[</span><span class="n">Pkt</span><span class="p">]</span><span class="o">...</span><span class="p">[]</span><span class="o">...</span><span class="p">[</span><span class="n">Pkt</span><span class="p">]</span>
-<span class="o">+---+</span>        <span class="o">+---+</span>      <span class="o">+----------+</span>      <span class="o">+---+</span>        <span class="o">+---+</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>      +----------+      +----------+            +----------+
+      [ Req/Resp ]  &lt;---[SW Channel]----&gt;       [ Req/Resp ]
++-----+----------+      +----------+      +-----+----------+
+[ Msg | Req/Resp ]                        [ Msg | Req/Resp ]
++---+-+------+---+      +----------+      +---+-+-----+----+
+[Pkt]...[]...[Pkt]  &lt;---[HW Channel]----&gt; [Pkt]...[]...[Pkt]
++---+        +---+      +----------+      +---+        +---+
 </pre></div>
 </div>
 </div>
@@ -316,8 +330,8 @@ derived from each side blocking and waiting for response from the peer.</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -329,7 +343,7 @@ derived from each side blocking and waiting for response from the peer.</p>
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

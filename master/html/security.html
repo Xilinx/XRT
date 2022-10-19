@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>Security of Alveo Platform &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="Accessing vsec within VM" href="vsec.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -101,6 +114,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -285,34 +299,34 @@ using XRT xbutil tool as described in <a class="reference internal" href="p2p.ht
 </tbody>
 </table>
 <p>Sample output of Linux <code class="docutils literal notranslate"><span class="pre">lspci</span></code> command for U50 device below:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dx4300</span><span class="p">:</span><span class="o">~&gt;</span><span class="n">lspci</span> <span class="o">-</span><span class="n">vvv</span> <span class="o">-</span><span class="n">d</span> <span class="mi">10</span><span class="n">ee</span><span class="p">:</span>
-<span class="mi">02</span><span class="p">:</span><span class="mf">00.0</span> <span class="n">Processing</span> <span class="n">accelerators</span><span class="p">:</span> <span class="n">Xilinx</span> <span class="n">Corporation</span> <span class="n">Device</span> <span class="mi">5020</span>
-        <span class="n">Subsystem</span><span class="p">:</span> <span class="n">Xilinx</span> <span class="n">Corporation</span> <span class="n">Device</span> <span class="mi">000</span><span class="n">e</span>
-        <span class="n">Control</span><span class="p">:</span> <span class="n">I</span><span class="o">/</span><span class="n">O</span><span class="o">-</span> <span class="n">Mem</span><span class="o">+</span> <span class="n">BusMaster</span><span class="o">+</span> <span class="n">SpecCycle</span><span class="o">-</span> <span class="n">MemWINV</span><span class="o">-</span> <span class="n">VGASnoop</span><span class="o">-</span> <span class="n">ParErr</span><span class="o">-</span> <span class="n">Stepping</span><span class="o">-</span> <span class="n">SERR</span><span class="o">-</span> <span class="n">FastB2B</span><span class="o">-</span> <span class="n">DisINTx</span><span class="o">+</span>
-        <span class="n">Status</span><span class="p">:</span> <span class="n">Cap</span><span class="o">+</span> <span class="mi">66</span><span class="n">MHz</span><span class="o">-</span> <span class="n">UDF</span><span class="o">-</span> <span class="n">FastB2B</span><span class="o">-</span> <span class="n">ParErr</span><span class="o">-</span> <span class="n">DEVSEL</span><span class="o">=</span><span class="n">fast</span> <span class="o">&gt;</span><span class="n">TAbort</span><span class="o">-</span> <span class="o">&lt;</span><span class="n">TAbort</span><span class="o">-</span> <span class="o">&lt;</span><span class="n">MAbort</span><span class="o">-</span> <span class="o">&gt;</span><span class="n">SERR</span><span class="o">-</span> <span class="o">&lt;</span><span class="n">PERR</span><span class="o">-</span> <span class="n">INTx</span><span class="o">-</span>
-        <span class="n">Latency</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="n">Cache</span> <span class="n">Line</span> <span class="n">Size</span><span class="p">:</span> <span class="mi">64</span> <span class="nb">bytes</span>
-        <span class="n">NUMA</span> <span class="n">node</span><span class="p">:</span> <span class="mi">0</span>
-        <span class="n">Region</span> <span class="mi">0</span><span class="p">:</span> <span class="n">Memory</span> <span class="n">at</span> <span class="mi">20</span><span class="n">fd2000000</span> <span class="p">(</span><span class="mi">64</span><span class="o">-</span><span class="n">bit</span><span class="p">,</span> <span class="n">prefetchable</span><span class="p">)</span> <span class="p">[</span><span class="n">size</span><span class="o">=</span><span class="mi">32</span><span class="n">M</span><span class="p">]</span>
-        <span class="n">Region</span> <span class="mi">2</span><span class="p">:</span> <span class="n">Memory</span> <span class="n">at</span> <span class="mi">20</span><span class="n">fd4020000</span> <span class="p">(</span><span class="mi">64</span><span class="o">-</span><span class="n">bit</span><span class="p">,</span> <span class="n">prefetchable</span><span class="p">)</span> <span class="p">[</span><span class="n">size</span><span class="o">=</span><span class="mi">128</span><span class="n">K</span><span class="p">]</span>
-        <span class="n">Capabilities</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">access</span> <span class="n">denied</span><span class="o">&gt;</span>
-        <span class="n">Kernel</span> <span class="n">driver</span> <span class="ow">in</span> <span class="n">use</span><span class="p">:</span> <span class="n">xclmgmt</span>
-        <span class="n">Kernel</span> <span class="n">modules</span><span class="p">:</span> <span class="n">xclmgmt</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>dx4300:~&gt;lspci -vvv -d 10ee:
+02:00.0 Processing accelerators: Xilinx Corporation Device 5020
+        Subsystem: Xilinx Corporation Device 000e
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx+
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast &gt;TAbort- &lt;TAbort- &lt;MAbort- &gt;SERR- &lt;PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        NUMA node: 0
+        Region 0: Memory at 20fd2000000 (64-bit, prefetchable) [size=32M]
+        Region 2: Memory at 20fd4020000 (64-bit, prefetchable) [size=128K]
+        Capabilities: &lt;access denied&gt;
+        Kernel driver in use: xclmgmt
+        Kernel modules: xclmgmt
 
-<span class="mi">02</span><span class="p">:</span><span class="mf">00.1</span> <span class="n">Processing</span> <span class="n">accelerators</span><span class="p">:</span> <span class="n">Xilinx</span> <span class="n">Corporation</span> <span class="n">Device</span> <span class="mi">5021</span>
-        <span class="n">Subsystem</span><span class="p">:</span> <span class="n">Xilinx</span> <span class="n">Corporation</span> <span class="n">Device</span> <span class="mi">000</span><span class="n">e</span>
-        <span class="n">Control</span><span class="p">:</span> <span class="n">I</span><span class="o">/</span><span class="n">O</span><span class="o">-</span> <span class="n">Mem</span><span class="o">+</span> <span class="n">BusMaster</span><span class="o">+</span> <span class="n">SpecCycle</span><span class="o">-</span> <span class="n">MemWINV</span><span class="o">-</span> <span class="n">VGASnoop</span><span class="o">-</span> <span class="n">ParErr</span><span class="o">-</span> <span class="n">Stepping</span><span class="o">-</span> <span class="n">SERR</span><span class="o">-</span> <span class="n">FastB2B</span><span class="o">-</span> <span class="n">DisINTx</span><span class="o">-</span>
-        <span class="n">Status</span><span class="p">:</span> <span class="n">Cap</span><span class="o">+</span> <span class="mi">66</span><span class="n">MHz</span><span class="o">-</span> <span class="n">UDF</span><span class="o">-</span> <span class="n">FastB2B</span><span class="o">-</span> <span class="n">ParErr</span><span class="o">-</span> <span class="n">DEVSEL</span><span class="o">=</span><span class="n">fast</span> <span class="o">&gt;</span><span class="n">TAbort</span><span class="o">-</span> <span class="o">&lt;</span><span class="n">TAbort</span><span class="o">-</span> <span class="o">&lt;</span><span class="n">MAbort</span><span class="o">-</span> <span class="o">&gt;</span><span class="n">SERR</span><span class="o">-</span> <span class="o">&lt;</span><span class="n">PERR</span><span class="o">-</span> <span class="n">INTx</span><span class="o">-</span>
-        <span class="n">Latency</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="n">Cache</span> <span class="n">Line</span> <span class="n">Size</span><span class="p">:</span> <span class="mi">64</span> <span class="nb">bytes</span>
-        <span class="n">Interrupt</span><span class="p">:</span> <span class="n">pin</span> <span class="n">A</span> <span class="n">routed</span> <span class="n">to</span> <span class="n">IRQ</span> <span class="mi">66</span>
-        <span class="n">NUMA</span> <span class="n">node</span><span class="p">:</span> <span class="mi">0</span>
-        <span class="n">Region</span> <span class="mi">0</span><span class="p">:</span> <span class="n">Memory</span> <span class="n">at</span> <span class="mi">20</span><span class="n">fd0000000</span> <span class="p">(</span><span class="mi">64</span><span class="o">-</span><span class="n">bit</span><span class="p">,</span> <span class="n">prefetchable</span><span class="p">)</span> <span class="p">[</span><span class="n">size</span><span class="o">=</span><span class="mi">32</span><span class="n">M</span><span class="p">]</span>
-        <span class="n">Region</span> <span class="mi">2</span><span class="p">:</span> <span class="n">Memory</span> <span class="n">at</span> <span class="mi">20</span><span class="n">fd4000000</span> <span class="p">(</span><span class="mi">64</span><span class="o">-</span><span class="n">bit</span><span class="p">,</span> <span class="n">prefetchable</span><span class="p">)</span> <span class="p">[</span><span class="n">size</span><span class="o">=</span><span class="mi">128</span><span class="n">K</span><span class="p">]</span>
-        <span class="n">Region</span> <span class="mi">4</span><span class="p">:</span> <span class="n">Memory</span> <span class="n">at</span> <span class="mi">20</span><span class="n">fc0000000</span> <span class="p">(</span><span class="mi">64</span><span class="o">-</span><span class="n">bit</span><span class="p">,</span> <span class="n">prefetchable</span><span class="p">)</span> <span class="p">[</span><span class="n">size</span><span class="o">=</span><span class="mi">256</span><span class="n">M</span><span class="p">]</span>
-        <span class="n">Capabilities</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">access</span> <span class="n">denied</span><span class="o">&gt;</span>
-        <span class="n">Kernel</span> <span class="n">driver</span> <span class="ow">in</span> <span class="n">use</span><span class="p">:</span> <span class="n">xocl</span>
-        <span class="n">Kernel</span> <span class="n">modules</span><span class="p">:</span> <span class="n">xocl</span>
+02:00.1 Processing accelerators: Xilinx Corporation Device 5021
+        Subsystem: Xilinx Corporation Device 000e
+        Control: I/O- Mem+ BusMaster+ SpecCycle- MemWINV- VGASnoop- ParErr- Stepping- SERR- FastB2B- DisINTx-
+        Status: Cap+ 66MHz- UDF- FastB2B- ParErr- DEVSEL=fast &gt;TAbort- &lt;TAbort- &lt;MAbort- &gt;SERR- &lt;PERR- INTx-
+        Latency: 0, Cache Line Size: 64 bytes
+        Interrupt: pin A routed to IRQ 66
+        NUMA node: 0
+        Region 0: Memory at 20fd0000000 (64-bit, prefetchable) [size=32M]
+        Region 2: Memory at 20fd4000000 (64-bit, prefetchable) [size=128K]
+        Region 4: Memory at 20fc0000000 (64-bit, prefetchable) [size=256M]
+        Capabilities: &lt;access denied&gt;
+        Kernel driver in use: xocl
+        Kernel modules: xocl
 
-<span class="n">dx4300</span><span class="p">:</span><span class="o">~&gt;</span>
+dx4300:~&gt;
 </pre></div>
 </div>
 </div>
@@ -348,32 +362,9 @@ Shell are going through fixed pins exposed by Shell.</p>
 <h2>Signing of Xclbins<a class="headerlink" href="#signing-of-xclbins" title="Permalink to this headline">¶</a></h2>
 <p>xclbin signing process is similar to signing of Linux kernel modules. xclbins can be signed by
 XRT <strong>xclbinutil</strong> utility. The signing adds a PKCS7 signature at the end of xclbin. The signing
-certificate is then registered with appropriate key-ring. XRT supports one of three levels of
-security which can be configured with XRT <strong>xbmgmt</strong> utility running with root privileges.</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="19%" />
-<col width="81%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Security level</th>
-<th class="head">Xclbin signature verification behavior of xclmgmt driver</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>0</td>
-<td>No verification</td>
-</tr>
-<tr class="row-odd"><td>1</td>
-<td>Signature verification enforced using signing certificate in
-<em>.xilinx_fpga_xclbin_keys</em> key-ring</td>
-</tr>
-<tr class="row-even"><td>2</td>
-<td>Linux is running in UEFI secure mode and signature verification
-is enforced using signing certificate in <em>system</em> key-ring</td>
-</tr>
-</tbody>
-</table>
+certificate is then registered with appropriate key-ring. When Linux is running in UEFI secure
+mode, signature verification is enforced using signing certification in <em>system</em> key-ring (when
+Linux is not running in secure mode there is no such verification).</p>
 </div>
 <div class="section" id="firewall">
 <h2>Firewall<a class="headerlink" href="#firewall" title="Permalink to this headline">¶</a></h2>
@@ -591,8 +582,8 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -604,7 +595,7 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

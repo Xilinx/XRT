@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>XMA Overview &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="Configuration File xrt.ini" href="xrt_ini.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -108,6 +121,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -264,39 +278,39 @@ b. Use it to pass DDR addr to CUs as part of regmap with xma_plg_schedule_cu_cmd
 </ol>
 <p>By way of example, the following represents the interface of the XMA Encoder
 class:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">typedef</span> <span class="n">struct</span> <span class="n">XmaEncoderPlugin</span>
-<span class="p">{</span>
-    <span class="o">/**</span> <span class="n">specific</span> <span class="n">encoder</span> <span class="nb">type</span> <span class="o">*/</span>
-    <span class="n">XmaEncoderType</span>  <span class="n">hwencoder_type</span><span class="p">;</span>
-    <span class="o">/**</span> <span class="n">Specific</span> <span class="n">encoder</span> <span class="n">vendor</span> <span class="o">*/</span>
-    <span class="n">const</span> <span class="n">char</span>     <span class="o">*</span><span class="n">hwvendor_string</span><span class="p">;</span>
-    <span class="o">/**</span> <span class="nb">input</span> <span class="n">video</span> <span class="nb">format</span> <span class="n">fourcc</span> <span class="n">index</span> <span class="o">*/</span>
-    <span class="n">XmaFormatType</span>   <span class="nb">format</span><span class="p">;</span>
-    <span class="o">/**</span> <span class="n">bits</span> <span class="n">per</span> <span class="n">pixel</span> <span class="k">for</span> <span class="n">primary</span> <span class="n">plane</span> <span class="n">of</span> <span class="nb">input</span> <span class="nb">format</span> <span class="o">*/</span>
-    <span class="n">int32_t</span>         <span class="n">bits_per_pixel</span><span class="p">;</span>
-    <span class="o">/**</span> <span class="n">size</span> <span class="n">of</span> <span class="n">allocated</span> <span class="n">kernel</span><span class="o">-</span><span class="n">wide</span> <span class="n">private</span> <span class="n">data</span> <span class="o">*/</span>
-    <span class="o">//</span><span class="n">size_t</span>          <span class="n">kernel_data_size</span><span class="p">;</span><span class="n">This</span> <span class="ow">is</span> <span class="n">removed</span><span class="p">;</span>
-    <span class="o">/**</span> <span class="n">size</span> <span class="n">of</span> <span class="n">allocated</span> <span class="n">private</span> <span class="n">plugin</span> <span class="n">data</span><span class="o">.*/</span>
-    <span class="n">size_t</span>          <span class="n">plugin_data_size</span><span class="p">;</span>
-    <span class="o">/**</span> <span class="n">Initalization</span> <span class="n">callback</span><span class="o">.</span>  <span class="n">Called</span> <span class="n">during</span> <span class="n">session_create</span><span class="p">()</span> <span class="o">*/</span>
-    <span class="n">int32_t</span>         <span class="p">(</span><span class="o">*</span><span class="n">init</span><span class="p">)(</span><span class="n">XmaEncoderSession</span> <span class="o">*</span><span class="n">enc_session</span><span class="p">);</span>
-    <span class="o">/**</span> <span class="n">Callback</span> <span class="n">called</span> <span class="n">when</span> <span class="n">application</span> <span class="n">calls</span> <span class="n">xma_enc_send_frame</span><span class="p">()</span> <span class="o">*/</span>
-    <span class="n">int32_t</span>         <span class="p">(</span><span class="o">*</span><span class="n">send_frame</span><span class="p">)(</span><span class="n">XmaEncoderSession</span> <span class="o">*</span><span class="n">enc_session</span><span class="p">,</span>
-                                <span class="n">XmaFrame</span>          <span class="o">*</span><span class="n">frame</span><span class="p">);</span>
-    <span class="o">/**</span> <span class="n">Callback</span> <span class="n">called</span> <span class="n">when</span> <span class="n">application</span> <span class="n">calls</span> <span class="n">xma_enc_recv_data</span><span class="p">()</span> <span class="o">*/</span>
-    <span class="n">int32_t</span>         <span class="p">(</span><span class="o">*</span><span class="n">recv_data</span><span class="p">)(</span><span class="n">XmaEncoderSession</span>  <span class="o">*</span><span class="n">enc_session</span><span class="p">,</span>
-                                <span class="n">XmaDataBuffer</span>      <span class="o">*</span><span class="n">data</span><span class="p">,</span>
-                                <span class="n">int32_t</span>            <span class="o">*</span><span class="n">data_size</span><span class="p">);</span>
-    <span class="o">/**</span> <span class="n">Callback</span> <span class="n">called</span> <span class="n">when</span> <span class="n">application</span> <span class="n">calls</span> <span class="n">xma_enc_session_destroy</span><span class="p">()</span> <span class="o">*/</span>
-    <span class="n">int32_t</span>         <span class="p">(</span><span class="o">*</span><span class="n">close</span><span class="p">)(</span><span class="n">XmaEncoderSession</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>typedef struct XmaEncoderPlugin
+{
+    /** specific encoder type */
+    XmaEncoderType  hwencoder_type;
+    /** Specific encoder vendor */
+    const char     *hwvendor_string;
+    /** input video format fourcc index */
+    XmaFormatType   format;
+    /** bits per pixel for primary plane of input format */
+    int32_t         bits_per_pixel;
+    /** size of allocated kernel-wide private data */
+    //size_t          kernel_data_size;This is removed;
+    /** size of allocated private plugin data.*/
+    size_t          plugin_data_size;
+    /** Initalization callback.  Called during session_create() */
+    int32_t         (*init)(XmaEncoderSession *enc_session);
+    /** Callback called when application calls xma_enc_send_frame() */
+    int32_t         (*send_frame)(XmaEncoderSession *enc_session,
+                                XmaFrame          *frame);
+    /** Callback called when application calls xma_enc_recv_data() */
+    int32_t         (*recv_data)(XmaEncoderSession  *enc_session,
+                                XmaDataBuffer      *data,
+                                int32_t            *data_size);
+    /** Callback called when application calls xma_enc_session_destroy() */
+    int32_t         (*close)(XmaEncoderSession *session);
 
-    <span class="o">/**</span> <span class="n">Callback</span> <span class="n">invoked</span> <span class="n">at</span> <span class="n">start</span> <span class="n">to</span> <span class="n">check</span> <span class="n">compatibility</span> <span class="k">with</span> <span class="n">XMA</span> <span class="n">version</span> <span class="o">*/</span>
-    <span class="n">int32_t</span>         <span class="p">(</span><span class="o">*</span><span class="n">xma_version</span><span class="p">)(</span><span class="n">int32_t</span> <span class="o">*</span><span class="n">main_version</span><span class="p">,</span> <span class="n">int32_t</span> <span class="o">*</span><span class="n">sub_version</span><span class="p">);</span>
+    /** Callback invoked at start to check compatibility with XMA version */
+    int32_t         (*xma_version)(int32_t *main_version, int32_t *sub_version);
 
-    <span class="o">/**</span> <span class="n">Reserved</span> <span class="o">*/</span>
-    <span class="n">uint32_t</span>        <span class="n">reserved</span><span class="p">[</span><span class="mi">4</span><span class="p">];</span>
+    /** Reserved */
+    uint32_t        reserved[4];
 
-<span class="p">}</span> <span class="n">XmaEncoderPlugin</span><span class="p">;</span>
+} XmaEncoderPlugin;
 </pre></div>
 </div>
 <p>Finally, the XMA offers a set of buffer management utilities that includes
@@ -413,8 +427,8 @@ should be used to start the kernel with supplied kernel arguments</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -426,7 +440,7 @@ should be used to start the kernel with supplied kernel arguments</p>
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

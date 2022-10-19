@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>New XSA Bringup &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +36,11 @@ function OptanonWrapper() { }
     <link rel="search" title="Search" href="search.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -99,6 +112,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -174,8 +188,8 @@ function OptanonWrapper() { }
 </dd>
 </dl>
 <p>Then add entries corresponding for the new XSA. The PCI ID combination has to be unique. <code class="docutils literal notranslate"><span class="pre">PCI_ANY_ID</span></code> is acceptable wildcast. The behavior of overlapped combination is undefined.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span> <span class="n">XOCL_PCI_DEVID</span><span class="p">(</span><span class="mh">0x10EE</span><span class="p">,</span> <span class="mh">0x4B88</span><span class="p">,</span> <span class="mh">0x4351</span><span class="p">,</span> <span class="n">USER_XDMA</span><span class="p">)</span> <span class="p">},</span>
-<span class="p">{</span> <span class="n">XOCL_PCI_DEVID</span><span class="p">(</span><span class="mh">0x10EE</span><span class="p">,</span> <span class="mh">0x6850</span><span class="p">,</span> <span class="n">PCI_ANY_ID</span><span class="p">,</span> <span class="n">USER_XDMA</span><span class="p">)</span> <span class="p">},</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{ XOCL_PCI_DEVID(0x10EE, 0x4B88, 0x4351, USER_XDMA) },
+{ XOCL_PCI_DEVID(0x10EE, 0x6850, PCI_ANY_ID, USER_XDMA) },
 </pre></div>
 </div>
 <p>The “USER_XDMA” in above example is XSA profile macro which describes the IPs implemented by the XSA.</p>
@@ -183,7 +197,7 @@ function OptanonWrapper() { }
 <div class="section" id="add-new-vbna">
 <h3>Add new VBNA<a class="headerlink" href="#add-new-vbna" title="Permalink to this headline">¶</a></h3>
 <p>In some cases, two different XSAs use the same PCI ID combination. VBNV is used to identify them. Macro <code class="docutils literal notranslate"><span class="pre">XOCL_DSA_VBNV_MAP</span></code> in devices.h is used to combine the VBNV name with XSA profile macro.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span> <span class="mh">0x10EE</span><span class="p">,</span> <span class="mh">0x5001</span><span class="p">,</span> <span class="n">PCI_ANY_ID</span><span class="p">,</span> <span class="s2">&quot;xilinx_u200_xdma_201820_1&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">XOCL_BOARD_USER_XDMA</span> <span class="p">},</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>{ 0x10EE, 0x5001, PCI_ANY_ID, &quot;xilinx_u200_xdma_201820_1&quot;, &amp;XOCL_BOARD_USER_XDMA },
 </pre></div>
 </div>
 <p>Above example specifies xdma XSA profile for XSA which has VBNV “xilinx_u200_xdma_201820_1”. This is going to overwrite the XSA profile combination defined in PCI ID table.</p>
@@ -234,8 +248,8 @@ function OptanonWrapper() { }
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -247,7 +261,7 @@ function OptanonWrapper() { }
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

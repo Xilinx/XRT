@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>XRT/Board Debug FAQ &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -28,7 +37,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="XRT Python Bindings" href="pyxrt.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -100,6 +113,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -199,21 +213,21 @@ runtime_log=my_run.log</div></blockquote>
 <dl class="docutils">
 <dt>Board Enumeration</dt>
 <dd><p class="first">Check if BIOS and Linux can see the board. So for Xilinx® boards use <code class="docutils literal notranslate"><span class="pre">lspci</span></code> utility</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lspci</span> <span class="o">-</span><span class="n">v</span> <span class="o">-</span><span class="n">d</span> <span class="mi">10</span><span class="n">ee</span><span class="p">:</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>lspci -v -d 10ee:
 </pre></div>
 </div>
 <p>Check if XRT can see the board and reports sane values</p>
-<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">examine</span>
+<div class="last highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil examine
 </pre></div>
 </div>
 </dd>
 <dt>XSA Sanity Test</dt>
 <dd><p class="first">Card validation on kernel, bandwidth, dmatest and etc. (–device &lt;bdf&gt; for pointing a specific board)</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">validate</span> <span class="o">--</span><span class="n">device</span> <span class="o">&lt;</span><span class="n">bdf</span><span class="o">&gt;</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil validate --device &lt;bdf&gt;
 </pre></div>
 </div>
 <p>Check DDR and PCIe bandwidth</p>
-<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">validate</span> <span class="o">--</span><span class="n">device</span> <span class="o">&lt;</span><span class="n">bdf</span><span class="o">&gt;</span> <span class="o">--</span><span class="n">run</span> <span class="n">dma</span>
+<div class="last highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil validate --device &lt;bdf&gt; --run dma
 </pre></div>
 </div>
 </dd>
@@ -282,7 +296,7 @@ messages in <code class="docutils literal notranslate"><span class="pre">dmesg</
 <code class="docutils literal notranslate"><span class="pre">0XFF</span></code>. In this state <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code> would show bizarre
 metrics. For example <code class="docutils literal notranslate"><span class="pre">Temp</span></code> would be very high. Boards in crashed state
 may be recovered with PCIe hot reset</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xbutil</span> <span class="n">reset</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil reset
 </pre></div>
 </div>
 <p>If this does not recover the board perform a warm reboot. After reset/reboot please follow steps in <a class="reference internal" href="#validating-a-working-setup">Validating a Working Setup</a></p>
@@ -295,9 +309,9 @@ may be recovered with PCIe hot reset</p>
 <div class="section" id="xrt-scheduling-options">
 <h2>XRT Scheduling Options<a class="headerlink" href="#xrt-scheduling-options" title="Permalink to this headline">¶</a></h2>
 <p>XRT has three kernel execution schedulers today: ERT, KDS and legacy. By default XRT uses ERT which runs on Microblaze. ERT is accessed through KDS which runs inside xocl Linux kernel driver. If ERT is not available KDS uses its own built-in scheduler. From 2018.2 release onwards KDS (tgether with ERT if available in the XSA) is enabled by default. Users can optionally switch to legacy scheduler which runs in userspace. Switching scheduler will help isolate any scheduler related XRT bugs</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">Runtime</span><span class="p">]</span>
-<span class="n">ert</span><span class="o">=</span><span class="n">false</span>
-<span class="n">kds</span><span class="o">=</span><span class="n">false</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[Runtime]
+ert=false
+kds=false
 </pre></div>
 </div>
 </div>
@@ -334,8 +348,8 @@ may be recovered with PCIe hot reset</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -347,7 +361,7 @@ may be recovered with PCIe hot reset</p>
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

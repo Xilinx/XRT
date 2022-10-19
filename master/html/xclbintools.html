@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>xclbinutil &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="ZOCL Driver Interfaces" href="zocl_ioctl.main.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -109,6 +122,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -170,7 +184,7 @@ function OptanonWrapper() { }
 <p>Various information can be obtained through the –info option, including information on the creation date, hardware platform, clocks, memory configuration, kernel, tool generation options, and etc. Note that optionally an output file can be specified. If none is specified, then the output will go to the console.</p>
 <blockquote>
 <div><p>Getting Information from xclbin</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xclbinutil</span> <span class="o">-</span><span class="n">i</span> <span class="n">binary_container_1</span><span class="o">.</span><span class="n">xclbin</span> <span class="p">[</span><span class="o">--</span><span class="n">info</span><span class="o">=&lt;</span><span class="n">FILE_NAME</span><span class="o">&gt;</span><span class="p">]</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil -i binary_container_1.xclbin [--info=&lt;FILE_NAME&gt;]
 </pre></div>
 </div>
 </div></blockquote>
@@ -180,15 +194,15 @@ function OptanonWrapper() { }
 <p>This include various operations on xclbin sections, like extracting the bitstream image, extracting the build metadata, removing a section and so on.</p>
 <blockquote>
 <div><p>Extracting the bitstream image</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xclbinutil</span> <span class="o">--</span><span class="n">dump</span><span class="o">-</span><span class="n">section</span> <span class="n">BITSTREAM</span><span class="p">:</span><span class="n">RAW</span><span class="p">:</span><span class="n">bitstream</span><span class="o">.</span><span class="n">bit</span> <span class="o">--</span><span class="nb">input</span> <span class="n">binary_container_1</span><span class="o">.</span><span class="n">xclbin</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --dump-section BITSTREAM:RAW:bitstream.bit --input binary_container_1.xclbin
 </pre></div>
 </div>
 <p>Extracting the build metadata</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xclbinutil</span> <span class="o">--</span><span class="n">dump</span><span class="o">-</span><span class="n">section</span> <span class="n">BUILD_METADATA</span><span class="p">:</span><span class="n">HTML</span><span class="p">:</span><span class="n">buildMetadata</span><span class="o">.</span><span class="n">json</span> <span class="o">--</span><span class="nb">input</span> <span class="n">binary_container_1</span><span class="o">.</span><span class="n">xclbin</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --dump-section BUILD_METADATA:HTML:buildMetadata.json --input binary_container_1.xclbin
 </pre></div>
 </div>
 <p>Removing a section</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xclbinutil</span> <span class="o">--</span><span class="n">remove</span><span class="o">-</span><span class="n">section</span> <span class="n">BITSTREAM</span> <span class="o">--</span><span class="nb">input</span> <span class="n">binary_container_1</span><span class="o">.</span><span class="n">xclbin</span> <span class="o">--</span><span class="n">output</span> <span class="n">binary_container_modified</span><span class="o">.</span><span class="n">xclbin</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --remove-section BITSTREAM --input binary_container_1.xclbin --output binary_container_modified.xclbin
 </pre></div>
 </div>
 </div></blockquote>
@@ -198,7 +212,7 @@ function OptanonWrapper() { }
 <p>This is to migrate an older xclbin binary format (via the mirror JSON data) forward to the current binary format (compatible with new xclbin.h).</p>
 <blockquote>
 <div><p>Migrating forward</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">xclbinutil</span> <span class="o">--</span><span class="n">migrate</span><span class="o">-</span><span class="n">forward</span> <span class="o">-</span><span class="n">i</span> <span class="n">binary_container_1</span><span class="o">.</span><span class="n">xclbin</span> <span class="o">-</span><span class="n">o</span> <span class="n">output</span><span class="o">.</span><span class="n">xclbin</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --migrate-forward -i binary_container_1.xclbin -o output.xclbin
 </pre></div>
 </div>
 </div></blockquote>
@@ -228,8 +242,8 @@ function OptanonWrapper() { }
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -241,7 +255,7 @@ function OptanonWrapper() { }
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>

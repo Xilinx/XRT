@@ -11,8 +11,17 @@
 function OptanonWrapper() { }
 </script>
 <!-- OneTrust Cookies Consent Notice end for xilinx.github.io -->
+<!-- Google Tag Manager -->
+<script type="text/plain" class="optanon-category-C0002">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'//www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5RHQV7');</script>
+<!-- End Google Tag Manager -->
   <title>XRT Python Bindings &mdash; XRT Master documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+      <link rel="stylesheet" href="_static/custom.css" type="text/css" />
       <link rel="stylesheet" href="_static/_static/custom.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -29,7 +38,11 @@ function OptanonWrapper() { }
     <link rel="prev" title="Security of Alveo Platform" href="security.html" /> 
 </head>
 
-<body class="wy-body-for-nav"> 
+<body class="wy-body-for-nav">
+
+<!-- Google Tag Manager -->
+<noscript><iframe src="//www.googletagmanager.com/ns.html?id=GTM-5RHQV7" height="0" width="0" style="display:none;visibility:hidden" class="optanon-category-C0002"></iframe></noscript>
+<!-- End Google Tag Manager --> 
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
@@ -101,6 +114,7 @@ function OptanonWrapper() { }
 <li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtop.html">xbtop</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nagios_plugin.html">xrt nagios plugin</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -152,358 +166,8 @@ function OptanonWrapper() { }
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="module-pyxrt">
-<span id="xrt-python-bindings"></span><h1>XRT Python Bindings<a class="headerlink" href="#module-pyxrt" title="Permalink to this headline">¶</a></h1>
-<p>Pybind11 module for XRT</p>
-<dl class="class">
-<dt id="pyxrt.bo">
-<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">bo</code><a class="headerlink" href="#pyxrt.bo" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represents a buffer object</p>
-<dl class="method">
-<dt id="pyxrt.bo.address">
-<code class="descname">address</code><span class="sig-paren">(</span><em>self: pyxrt.bo</em><span class="sig-paren">)</span> &#x2192; int<a class="headerlink" href="#pyxrt.bo.address" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the device physical address of the buffer object</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.bo.flags">
-<em class="property">class </em><code class="descname">flags</code><a class="headerlink" href="#pyxrt.bo.flags" title="Permalink to this definition">¶</a></dt>
-<dd><p>Buffer object creation flags</p>
-<p>Members:</p>
-<blockquote>
-<div><p>normal</p>
-<p>cacheable</p>
-<p>device_only</p>
-<p>host_only</p>
-<p>p2p</p>
-<p>svm</p>
-</div></blockquote>
-<dl class="attribute">
-<dt id="pyxrt.bo.flags.name">
-<code class="descname">name</code><a class="headerlink" href="#pyxrt.bo.flags.name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.bo.map">
-<code class="descname">map</code><span class="sig-paren">(</span><em>self: pyxrt.bo</em><span class="sig-paren">)</span> &#x2192; memoryview<a class="headerlink" href="#pyxrt.bo.map" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create a byte accessible memory view of the buffer object</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.bo.read">
-<code class="descname">read</code><span class="sig-paren">(</span><em>self: pyxrt.bo</em>, <em>arg0: int</em>, <em>arg1: int</em><span class="sig-paren">)</span> &#x2192; numpy.ndarray[numpy.int8]<a class="headerlink" href="#pyxrt.bo.read" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read from the buffer object requested number of bytes starting from specified offset</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.bo.size">
-<code class="descname">size</code><span class="sig-paren">(</span><em>self: pyxrt.bo</em><span class="sig-paren">)</span> &#x2192; int<a class="headerlink" href="#pyxrt.bo.size" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the size of the buffer object</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.bo.sync">
-<code class="descname">sync</code><span class="sig-paren">(</span><em>self: pyxrt.bo</em>, <em>arg0: pyxrt.xclBOSyncDirection</em>, <em>arg1: int</em>, <em>arg2: int</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#pyxrt.bo.sync" title="Permalink to this definition">¶</a></dt>
-<dd><p>Synchronize (DMA or cache flush/invalidation) the buffer in the requested direction</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.bo.write">
-<code class="descname">write</code><span class="sig-paren">(</span><em>self: pyxrt.bo</em>, <em>arg0: buffer</em>, <em>arg1: int</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#pyxrt.bo.write" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write the provided data into the buffer object starting at specified offset</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.device">
-<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">device</code><a class="headerlink" href="#pyxrt.device" title="Permalink to this definition">¶</a></dt>
-<dd><p>Abstraction of an acceleration device</p>
-<dl class="method">
-<dt id="pyxrt.device.get_info">
-<code class="descname">get_info</code><span class="sig-paren">(</span><em>self: pyxrt.device</em>, <em>arg0: pyxrt.xrt_info_device</em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#pyxrt.device.get_info" title="Permalink to this definition">¶</a></dt>
-<dd><p>Obtain the device properties and sensor information</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.device.get_xclbin_uuid">
-<code class="descname">get_xclbin_uuid</code><span class="sig-paren">(</span><em>self: pyxrt.device</em><span class="sig-paren">)</span> &#x2192; pyxrt.uuid<a class="headerlink" href="#pyxrt.device.get_xclbin_uuid" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the UUID object representing the xclbin loaded on the device</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.device.load_xclbin">
-<code class="descname">load_xclbin</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.device.load_xclbin" title="Permalink to this definition">¶</a></dt>
-<dd><p>Overloaded function.</p>
-<ol class="arabic simple">
-<li>load_xclbin(self: pyxrt.device, arg0: str) -&gt; pyxrt.uuid</li>
-</ol>
-<p>Load an xclbin given the path to the device</p>
-<ol class="arabic simple" start="2">
-<li>load_xclbin(self: pyxrt.device, arg0: xrt::xclbin) -&gt; pyxrt.uuid</li>
-</ol>
-<p>Load the xclbin to the device</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.ert_cmd_state">
-<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">ert_cmd_state</code><a class="headerlink" href="#pyxrt.ert_cmd_state" title="Permalink to this definition">¶</a></dt>
-<dd><p>Kernel execution status</p>
-<p>Members:</p>
-<blockquote>
-<div><p>ERT_CMD_STATE_NEW</p>
-<p>ERT_CMD_STATE_QUEUED</p>
-<p>ERT_CMD_STATE_COMPLETED</p>
-<p>ERT_CMD_STATE_ERROR</p>
-<p>ERT_CMD_STATE_ABORT</p>
-<p>ERT_CMD_STATE_SUBMITTED</p>
-<p>ERT_CMD_STATE_TIMEOUT</p>
-<p>ERT_CMD_STATE_NORESPONSE</p>
-<p>ERT_CMD_STATE_SKERROR</p>
-<p>ERT_CMD_STATE_SKCRASHED</p>
-</div></blockquote>
-<dl class="attribute">
-<dt id="pyxrt.ert_cmd_state.name">
-<code class="descname">name</code><a class="headerlink" href="#pyxrt.ert_cmd_state.name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.kernel">
-<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">kernel</code><a class="headerlink" href="#pyxrt.kernel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represents a set of instances matching a specified name</p>
-<dl class="class">
-<dt id="pyxrt.kernel.cu_access_mode">
-<em class="property">class </em><code class="descname">cu_access_mode</code><a class="headerlink" href="#pyxrt.kernel.cu_access_mode" title="Permalink to this definition">¶</a></dt>
-<dd><p>Compute unit access mode</p>
-<p>Members:</p>
-<blockquote>
-<div><p>exclusive</p>
-<p>shared</p>
-<p>none</p>
-</div></blockquote>
-<dl class="attribute">
-<dt id="pyxrt.kernel.cu_access_mode.name">
-<code class="descname">name</code><a class="headerlink" href="#pyxrt.kernel.cu_access_mode.name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.kernel.group_id">
-<code class="descname">group_id</code><span class="sig-paren">(</span><em>self: pyxrt.kernel</em>, <em>arg0: int</em><span class="sig-paren">)</span> &#x2192; int<a class="headerlink" href="#pyxrt.kernel.group_id" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the memory bank group id of an kernel argument</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.run">
-<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">run</code><a class="headerlink" href="#pyxrt.run" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represents one execution of a kernel</p>
-<dl class="method">
-<dt id="pyxrt.run.add_callback">
-<code class="descname">add_callback</code><span class="sig-paren">(</span><em>self: pyxrt.run</em>, <em>arg0: pyxrt.ert_cmd_state</em>, <em>arg1: std::function&lt;void (void const*</em>, <em>ert_cmd_state</em>, <em>void*)&gt;</em>, <em>arg2: capsule</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#pyxrt.run.add_callback" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add a callback function for run state</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.run.set_arg">
-<code class="descname">set_arg</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.run.set_arg" title="Permalink to this definition">¶</a></dt>
-<dd><p>Overloaded function.</p>
-<ol class="arabic simple">
-<li>set_arg(self: pyxrt.run, arg0: int, arg1: xrt::bo) -&gt; None</li>
-</ol>
-<p>Set a specific kernel global argument for a run</p>
-<ol class="arabic simple" start="2">
-<li>set_arg(self: pyxrt.run, arg0: int, arg1: int) -&gt; None</li>
-</ol>
-<p>Set a specific kernel scalar argument for this run</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.run.start">
-<code class="descname">start</code><span class="sig-paren">(</span><em>self: pyxrt.run</em><span class="sig-paren">)</span> &#x2192; None<a class="headerlink" href="#pyxrt.run.start" title="Permalink to this definition">¶</a></dt>
-<dd><p>Start one execution of a run</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.run.state">
-<code class="descname">state</code><span class="sig-paren">(</span><em>self: pyxrt.run</em><span class="sig-paren">)</span> &#x2192; pyxrt.ert_cmd_state<a class="headerlink" href="#pyxrt.run.state" title="Permalink to this definition">¶</a></dt>
-<dd><p>Check the current state of a run object</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.run.wait">
-<code class="descname">wait</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.run.wait" title="Permalink to this definition">¶</a></dt>
-<dd><p>Overloaded function.</p>
-<ol class="arabic simple">
-<li>wait(self: pyxrt.run) -&gt; pyxrt.ert_cmd_state</li>
-</ol>
-<p>Wait for the run to complete</p>
-<ol class="arabic simple" start="2">
-<li>wait(self: pyxrt.run, arg0: int) -&gt; pyxrt.ert_cmd_state</li>
-</ol>
-<p>Wait for the specified milliseconds for the run to complete</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.uuid">
-<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">uuid</code><a class="headerlink" href="#pyxrt.uuid" title="Permalink to this definition">¶</a></dt>
-<dd><p>XRT UUID object to identify a compiled xclbin binary</p>
-<dl class="method">
-<dt id="pyxrt.uuid.to_string">
-<code class="descname">to_string</code><span class="sig-paren">(</span><em>self: pyxrt.uuid</em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#pyxrt.uuid.to_string" title="Permalink to this definition">¶</a></dt>
-<dd><p>Convert XRT UUID object to string</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.xclBOSyncDirection">
-<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">xclBOSyncDirection</code><a class="headerlink" href="#pyxrt.xclBOSyncDirection" title="Permalink to this definition">¶</a></dt>
-<dd><p>DMA flags used with DMA API</p>
-<p>Members:</p>
-<blockquote>
-<div><p>XCL_BO_SYNC_BO_TO_DEVICE</p>
-<p>XCL_BO_SYNC_BO_FROM_DEVICE</p>
-<p>XCL_BO_SYNC_BO_GMIO_TO_AIE</p>
-<p>XCL_BO_SYNC_BO_AIE_TO_GMIO</p>
-</div></blockquote>
-<dl class="attribute">
-<dt id="pyxrt.xclBOSyncDirection.name">
-<code class="descname">name</code><a class="headerlink" href="#pyxrt.xclBOSyncDirection.name" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.xclbin">
-<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">xclbin</code><a class="headerlink" href="#pyxrt.xclbin" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represents an xclbin and provides APIs to access meta data</p>
-<dl class="method">
-<dt id="pyxrt.xclbin.get_ips">
-<code class="descname">get_ips</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.xclbin.get_ips" title="Permalink to this definition">¶</a></dt>
-<dd><p>Overloaded function.</p>
-<ol class="arabic simple">
-<li>get_ips(self: pyxrt.xclbin) -&gt; None</li>
-<li>get_ips(self: pyxrt.xclbin, arg0: str) -&gt; None</li>
-</ol>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.xclbin.get_kernels">
-<code class="descname">get_kernels</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin</em><span class="sig-paren">)</span> &#x2192; List[pyxrt.xclbin.xclbinkernel]<a class="headerlink" href="#pyxrt.xclbin.get_kernels" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get list of kernels from xclbin</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.xclbin.get_mems">
-<code class="descname">get_mems</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin</em><span class="sig-paren">)</span> &#x2192; List[pyxrt.xclbin.xclbinmem]<a class="headerlink" href="#pyxrt.xclbin.get_mems" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get list of memory objects</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.xclbin.get_uuid">
-<code class="descname">get_uuid</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin</em><span class="sig-paren">)</span> &#x2192; pyxrt.uuid<a class="headerlink" href="#pyxrt.xclbin.get_uuid" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the uuid of the xclbin</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.xclbin.get_xsa_name">
-<code class="descname">get_xsa_name</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin</em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#pyxrt.xclbin.get_xsa_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get Xilinx Support Archive (XSA) name of xclbin</p>
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.xclbin.xclbinkernel">
-<em class="property">class </em><code class="descname">xclbinkernel</code><a class="headerlink" href="#pyxrt.xclbin.xclbinkernel" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represents a kernel in an xclbin</p>
-<dl class="method">
-<dt id="pyxrt.xclbin.xclbinkernel.get_name">
-<code class="descname">get_name</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin.xclbinkernel</em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#pyxrt.xclbin.xclbinkernel.get_name" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get kernel name</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.xclbin.xclbinkernel.get_num_args">
-<code class="descname">get_num_args</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin.xclbinkernel</em><span class="sig-paren">)</span> &#x2192; int<a class="headerlink" href="#pyxrt.xclbin.xclbinkernel.get_num_args" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of arguments</p>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.xclbin.xclbinmem">
-<em class="property">class </em><code class="descname">xclbinmem</code><a class="headerlink" href="#pyxrt.xclbin.xclbinmem" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represents a physical device memory bank</p>
-<dl class="method">
-<dt id="pyxrt.xclbin.xclbinmem.get_base_address">
-<code class="descname">get_base_address</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin.xclbinmem</em><span class="sig-paren">)</span> &#x2192; int<a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_base_address" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the base address of the memory bank</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.xclbin.xclbinmem.get_index">
-<code class="descname">get_index</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin.xclbinmem</em><span class="sig-paren">)</span> &#x2192; int<a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_index" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the index of the memory</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.xclbin.xclbinmem.get_size_kb">
-<code class="descname">get_size_kb</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin.xclbinmem</em><span class="sig-paren">)</span> &#x2192; int<a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_size_kb" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the size of the memory in KB</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.xclbin.xclbinmem.get_tag">
-<code class="descname">get_tag</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin.xclbinmem</em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_tag" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get tag name</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="pyxrt.xclbin.xclbinmem.get_used">
-<code class="descname">get_used</code><span class="sig-paren">(</span><em>self: pyxrt.xclbin.xclbinmem</em><span class="sig-paren">)</span> &#x2192; bool<a class="headerlink" href="#pyxrt.xclbin.xclbinmem.get_used" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get used status of the memory</p>
-</dd></dl>
-
-</dd></dl>
-
-</dd></dl>
-
-<dl class="class">
-<dt id="pyxrt.xrt_info_device">
-<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">xrt_info_device</code><a class="headerlink" href="#pyxrt.xrt_info_device" title="Permalink to this definition">¶</a></dt>
-<dd><p>Device feature and sensor information</p>
-<p>Members:</p>
-<blockquote>
-<div><p>bdf</p>
-<p>interface_uuid</p>
-<p>kdma</p>
-<p>max_clock_frequency_mhz</p>
-<p>m2m</p>
-<p>name</p>
-<p>nodma</p>
-<p>offline</p>
-<p>electrical</p>
-<p>thermal</p>
-<p>mechanical</p>
-<p>memory</p>
-<p>platform</p>
-<p>pcie_info</p>
-<p>host</p>
-<p>dynamic_regions</p>
-<p>vmr</p>
-</div></blockquote>
-</dd></dl>
-
+  <div class="section" id="xrt-python-bindings">
+<h1>XRT Python Bindings<a class="headerlink" href="#xrt-python-bindings" title="Permalink to this headline">¶</a></h1>
 </div>
 
 
@@ -527,8 +191,8 @@ function OptanonWrapper() { }
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2021-2022, Xilinx, Inc. Xilinx is now a part of AMD.
-      <span class="lastupdated">Last updated on July 20, 2022.
+    <p>&#169; Copyright 2017-2022, Advanced Micro Devices, Inc.
+      <span class="lastupdated">Last updated on October 7, 2022.
       </span></p>
   </div>
 
@@ -540,7 +204,7 @@ function OptanonWrapper() { }
 
 													                    <div class="row">
                         <div class="col-xs-24">
-                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="https://pages.gitenterprise.xilinx.com/techdocs/Test/vvas/build/html/index.html#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
+                          <p><a target="_blank" href="https://www.amd.com/en/corporate/copyright">Terms and Conditions</a> | <a target="_blank" href="https://www.amd.com/en/corporate/privacy">Privacy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/cookies">Cookie Policy</a> | <a target="_blank" href="https://www.amd.com/en/corporate/trademarks">Trademarks</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/statement-human-trafficking-forced-labor.pdf">Statement on Forced Labor</a> | <a target="_blank" href="https://www.amd.com/en/corporate/competition">Fair and Open Competition</a> | <a target="_blank" href="https://www.amd.com/system/files/documents/amd-uk-tax-strategy.pdf">UK Tax Strategy</a> | <a target="_blank" href="https://docs.xilinx.com/v/u/9x6YvZKuWyhJId7y7RQQKA">Inclusive Terminology</a> | <a href="#cookiessettings" class="ot-sdk-show-settings">Cookies Settings</a></p>
                         </div>
                     </div>
 												</div>
