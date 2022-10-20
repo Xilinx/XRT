@@ -74,23 +74,25 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
   boost::property_tree::ptree platformData;
 
-  xclcpuemhal2::CpuemShim *handle = NULL;
+  std::shared_ptr<xclcpuemhal2::CpuemShim> handle = nullptr;
   bool bDefaultDevice = false;
-  std::map<unsigned int, xclcpuemhal2::CpuemShim*>::iterator it = xclcpuemhal2::devices.find(deviceIndex);
+  auto it = xclcpuemhal2::devices.find(deviceIndex);
   if(it != xclcpuemhal2::devices.end())
   {
     handle = (*it).second;
   }
   else
   {
-    handle = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
+    handle = std::make_shared<xclcpuemhal2::CpuemShim>(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
+    xclcpuemhal2::devices[deviceIndex++] = handle;
   }
-
+/*
   if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {
     delete handle;
     handle = 0;
   }
+  */
   if (handle) {
     handle->xclOpen(logfileName);
     if (bDefaultDevice)
@@ -100,24 +102,25 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
         std::cout << sDummyDeviceMsg << std::endl;
     }
   }
-  return (xclDeviceHandle *)handle;
+  return (xclDeviceHandle *)handle.get();
 }
 
 void xclClose(xclDeviceHandle handle)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return ;
   drv->xclClose();
   if (xclcpuemhal2::CpuemShim::handleCheck(handle) && xclcpuemhal2::devices.size() == 0) {
-    delete ((xclcpuemhal2::CpuemShim*)handle);
+    // smart pointers dtor will take care of this.
+    //delete ((xclcpuemhal2::CpuemShim*)handle);
   }
 }
 
 
 int xclGetDeviceInfo2(xclDeviceHandle handle, xclDeviceInfo2 *info)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclGetDeviceInfo2(info);
@@ -125,7 +128,7 @@ int xclGetDeviceInfo2(xclDeviceHandle handle, xclDeviceInfo2 *info)
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   auto ret = drv->xclLoadXclBin(buffer);
@@ -140,7 +143,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
 uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclAllocDeviceBuffer(size);
@@ -149,7 +152,7 @@ uint64_t xclAllocDeviceBuffer(xclDeviceHandle handle, size_t size)
 uint64_t xclAllocDeviceBuffer2(xclDeviceHandle handle, size_t size, xclMemoryDomains domain,
                                unsigned flags)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   bool p2pBuffer = false;
@@ -159,7 +162,7 @@ uint64_t xclAllocDeviceBuffer2(xclDeviceHandle handle, size_t size, xclMemoryDom
 
 void xclFreeDeviceBuffer(xclDeviceHandle handle, uint64_t buf)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return;
   return drv->xclFreeDeviceBuffer(buf);
@@ -168,7 +171,7 @@ void xclFreeDeviceBuffer(xclDeviceHandle handle, uint64_t buf)
 
 size_t xclCopyBufferHost2Device(xclDeviceHandle handle, uint64_t dest, const void *src, size_t size, size_t seek)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclCopyBufferHost2Device(dest, src, size, seek);
@@ -177,7 +180,7 @@ size_t xclCopyBufferHost2Device(xclDeviceHandle handle, uint64_t dest, const voi
 
 size_t xclCopyBufferDevice2Host(xclDeviceHandle handle, void *dest, uint64_t src, size_t size, size_t skip)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclCopyBufferDevice2Host(dest, src, size, skip);
@@ -185,7 +188,7 @@ size_t xclCopyBufferDevice2Host(xclDeviceHandle handle, void *dest, uint64_t src
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclWrite(space, offset, hostBuf, size);
@@ -193,7 +196,7 @@ size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, 
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclRead(space, offset, hostBuf, size);
@@ -211,7 +214,7 @@ int xclBootFPGA(xclDeviceHandle handle)
 
 int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   drv->resetProgram();
@@ -220,7 +223,7 @@ int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 
 int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned short *targetFreqMHz)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   drv->resetProgram();
@@ -240,7 +243,7 @@ int xclUnlockDevice(xclDeviceHandle handle)
 
 size_t xclPerfMonStartCounters(xclDeviceHandle handle, xdp::MonitorType type)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return 0;
@@ -249,7 +252,7 @@ size_t xclPerfMonStartCounters(xclDeviceHandle handle, xdp::MonitorType type)
 
 size_t xclPerfMonStopCounters(xclDeviceHandle handle, xdp::MonitorType type)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return 0;
@@ -258,7 +261,7 @@ size_t xclPerfMonStopCounters(xclDeviceHandle handle, xdp::MonitorType type)
 
 size_t xclPerfMonReadCounters(xclDeviceHandle handle, xdp::MonitorType type, xdp::CounterResults& counterResults)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return 0;
@@ -271,7 +274,7 @@ size_t xclDebugReadIPStatus(xclDeviceHandle handle, xclDebugReadType type, void*
 
 size_t xclPerfMonClockTraining(xclDeviceHandle handle, xdp::MonitorType type)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return 0;
@@ -280,7 +283,7 @@ size_t xclPerfMonClockTraining(xclDeviceHandle handle, xdp::MonitorType type)
 
 size_t xclPerfMonStartTrace(xclDeviceHandle handle, xdp::MonitorType type, uint32_t startTrigger)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return 0;
@@ -289,7 +292,7 @@ size_t xclPerfMonStartTrace(xclDeviceHandle handle, xdp::MonitorType type, uint3
 
 size_t xclPerfMonStopTrace(xclDeviceHandle handle, xdp::MonitorType type)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return 0;
@@ -298,7 +301,7 @@ size_t xclPerfMonStopTrace(xclDeviceHandle handle, xdp::MonitorType type)
 
 uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xdp::MonitorType type)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return 0;
@@ -307,7 +310,7 @@ uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xdp::MonitorType type)
 
 size_t xclPerfMonReadTrace(xclDeviceHandle handle, xdp::MonitorType type, xdp::TraceEventsVector& traceVector)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return 0;
@@ -394,7 +397,7 @@ unsigned xclProbe()
     FeatureRomHeader fRomHeader = std::get<4>(it);
     boost::property_tree::ptree platformData = std::get<5>(it);
 
-    xclcpuemhal2::CpuemShim *handle = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
+    auto handle = std::make_shared<xclcpuemhal2::CpuemShim>(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }
 
@@ -411,7 +414,7 @@ unsigned int xclVersion ()
 
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclExportBO(boHandle);
@@ -419,7 +422,7 @@ int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 
 unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle,unsigned flags)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclImportBO(boGlobalHandle,flags);
@@ -433,14 +436,14 @@ int xclCloseExportHandle(int ehdl)
 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
-    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+    auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
     return drv ? drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
 }
 
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
                  size_t size, size_t skip)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
   return drv->xclReadBO(boHandle, dst, size, skip);
@@ -448,7 +451,7 @@ size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return mNullBO;
   return drv->xclAllocUserPtrBO(userptr,size,flags);
@@ -456,7 +459,7 @@ unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t siz
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
   return drv->xclAllocBO(size, unused, flags);
@@ -465,7 +468,7 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigne
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return nullptr;
   return drv->xclMapBO(boHandle, write);
@@ -473,7 +476,7 @@ void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 
 int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
   return drv->xclUnmapBO(boHandle, addr);
@@ -481,7 +484,7 @@ int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
   return drv->xclSyncBO(boHandle, dir , size, offset);
@@ -490,14 +493,14 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
 size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src,
                   size_t size, size_t seek)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
   return drv->xclWriteBO(boHandle, src, size, seek);
 }
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return;
   drv->xclFreeBO(boHandle);
@@ -505,7 +508,7 @@ void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle)
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclGetBOProperties(boHandle, properties);
@@ -558,38 +561,38 @@ int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, con
 //Added below calls as a fix for CR-1034151
 int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
 }
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
 }
 
 int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
 }
 
 int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
 }
 
 // Restricted read/write on IP register space
 int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclRegWrite(cu_index, offset, data) : -ENODEV;
 }
 
 int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
 }
 
@@ -649,7 +652,7 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
 //Get CU index from IP_LAYOUT section for corresponding kernel name
 int xclIPName2Index(xclDeviceHandle handle, const char *name)
 {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+  auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   return drv ? drv->xclIPName2Index(name) : -ENODEV;
 }
 
@@ -659,21 +662,24 @@ void*
 xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
 {
   try {
-    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-    xclGraphHandle graphHandle = new xclcpuemhal2::GraphType(drv, graph);
+    //auto raw_drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+    std::shared_ptr<xclcpuemhal2::CpuemShim> drv{xclcpuemhal2::CpuemShim::handleCheck(handle)};
+    // xclGraphHandle graphHandle = new xclcpuemhal2::GraphType(drv, graph);
+    auto graphHandle = std::make_shared<xclcpuemhal2::GraphType>(drv, graph);
     if (graphHandle) {
-      auto ghPtr = (xclcpuemhal2::GraphType*)graphHandle;
-      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      auto drv = graphHandle->getDeviceHandle();
       if (drv) {
+        xclcpuemhal2::graph_devices[graphHandle->getGraphHandle()] = graphHandle;
         drv->xrtGraphInit(graphHandle);
       }
       else {
-        delete ghPtr;
-        ghPtr = nullptr;
+        //delete ghPtr;
+        // A graph handler without a shim device handle
+        graphHandle.reset();
         return XRT_NULL_HANDLE;
       }
     }
-    return graphHandle;
+    return graphHandle.get();
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -885,7 +891,7 @@ xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum x
 {
   try {
     if (handle) {
-      xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+      auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
       return drv ? drv->xrtSyncBOAIENB(bo, gmioName, dir, size, offset) : -1;
     }
     return -1;
@@ -906,7 +912,7 @@ xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
 {
   try {
     if (handle) {
-      xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+      auto drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
       return drv ? drv->xrtGMIOWait(gmioName) : -1;
     }
     return -1;

@@ -36,6 +36,7 @@
 #include <sys/wait.h>
 
 #include <atomic>
+#include <memory>
 #include <thread>
 #include <tuple>
 
@@ -45,13 +46,15 @@
 
 namespace xclcpuemhal2
 {
+  //forward declarations
+  class GraphType;
   using key_type = xrt_core::query::key_type;
   //8GB MEMSIZE to access the MMAP FILE
   const uint64_t MEMSIZE = 0x0000000400000000;
   const auto endOfSimulationString = "received request to end simulation from connected initiator";
 
   // XDMA Shim
-  class CpuemShim
+  class CpuemShim: public std::enable_shared_from_this<CpuemShim>
   {
   public:
     static const unsigned TAG;
@@ -90,7 +93,7 @@ namespace xclcpuemhal2
     int xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset);
     static int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char *tag, const char *format, va_list args1);
 
-    xclemulation::drm_xocl_bo *xclGetBoByHandle(unsigned int boHandle);
+    std::shared_ptr<xclemulation::drm_xocl_bo> xclGetBoByHandle(unsigned int boHandle);
     inline unsigned short xocl_ddr_channel_count();
     inline unsigned long long xocl_ddr_channel_size();
     // HAL2 RELATED member functions end
@@ -149,7 +152,7 @@ namespace xclcpuemhal2
     CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank> &DDRBankList, bool bUnified,
               bool bXPR, FeatureRomHeader &featureRom, const boost::property_tree::ptree &platformData);
 
-    static CpuemShim *handleCheck(void *handle);
+    static CpuemShim* handleCheck(void *handle);
     bool isGood() const;
 
     int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
@@ -172,8 +175,8 @@ namespace xclcpuemhal2
         return true;
       return false;
     }
-    struct exec_core *getExecCore() { return mCore; }
-    SWScheduler *getScheduler() { return mSWSch; }
+    std::shared_ptr<exec_core> getExecCore() { return mCore; }
+    std::shared_ptr<SWScheduler> getScheduler() { return mSWSch; }
 
     // New API's for m2m and no-dma
     void constructQueryTable();
@@ -190,7 +193,7 @@ namespace xclcpuemhal2
       * Note: Run by enable tiles and disable tile reset
       */
     int
-    xrtGraphInit(void *gh);
+    xrtGraphInit(std::shared_ptr<GraphType> gh);
 
     /**
       * xrtGraphRun() - Start a graph execution
@@ -454,7 +457,7 @@ namespace xclcpuemhal2
     void launchDeviceProcess(bool debuggable, std::string &binDir);
     void launchTempProcess();
     void initMemoryManager(std::list<xclemulation::DDRBank> &DDRBankList);
-    std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;
+    std::vector<std::shared_ptr<xclemulation::MemoryManager>> mDDRMemoryManager;
 
     void *ci_buf;
     call_packet_info ci_msg;
@@ -466,8 +469,8 @@ namespace xclcpuemhal2
     void *buf;
     size_t buf_size;
     unsigned int binaryCounter;
-    unix_socket *sock;
-    unix_socket *aiesim_sock;
+    std::shared_ptr<unix_socket> sock;
+    std::shared_ptr<unix_socket> aiesim_sock;
 
     uint64_t mRAMSize;
     size_t mCoalesceThreshold;
@@ -480,7 +483,7 @@ namespace xclcpuemhal2
     bool bUnified;
     bool bXPR;
     // HAL2 RELATED member variables start
-    std::map<int, xclemulation::drm_xocl_bo *> mXoclObjMap;
+    std::map<int, std::shared_ptr<xclemulation::drm_xocl_bo> > mXoclObjMap;
     static unsigned int mBufferCount;
     static std::map<int, std::tuple<std::string, uint64_t, void *>> mFdToFileNameMap;
     // HAL2 RELATED member variables end
@@ -492,21 +495,21 @@ namespace xclcpuemhal2
     std::map<std::string, uint64_t> mCURangeMap;
     xrt::xclbin m_xclbin;
     std::set<unsigned int> mImportedBOs;
-    exec_core *mCore;
-    SWScheduler *mSWSch;
+    std::shared_ptr<exec_core> mCore;
+    std::shared_ptr<SWScheduler> mSWSch;
     bool mIsKdsSwEmu;
     std::atomic<bool> mIsDeviceProcessStarted;
   };
 
-  class GraphType
+  class GraphType: public std::enable_shared_from_this<GraphType>
   {
     // Core device to which the graph belongs.  The core device
     // has been loaded with an xclbin from which meta data can
     // be extracted
   public:
-    GraphType(xclcpuemhal2::CpuemShim *handle, const char *graph)
+    GraphType(std::shared_ptr<xclcpuemhal2::CpuemShim> handle, const char *graph)
     {
-      _deviceHandle = handle;
+      _deviceHandle = std::weak_ptr{handle};
       //_xclbin_uuid = xclbin_uuid;
       _graph = graph;
       graphHandle = mGraphHandle++;
@@ -514,12 +517,12 @@ namespace xclcpuemhal2
       _name = "";
       _startTime = 0;
     }
-    xclcpuemhal2::CpuemShim *getDeviceHandle() { return _deviceHandle; }
+    std::shared_ptr<xclcpuemhal2::CpuemShim> getDeviceHandle() { return _deviceHandle.lock(); }
     const char *getGraphName() { return _graph; }
     unsigned int getGraphHandle() { return graphHandle; }
 
   private:
-    xclcpuemhal2::CpuemShim *_deviceHandle;
+    std::weak_ptr<xclcpuemhal2::CpuemShim> _deviceHandle;
     //const uuid_t _xclbin_uuid;
     const char *_graph;
     unsigned int graphHandle;
@@ -538,7 +541,8 @@ namespace xclcpuemhal2
     std::vector<std::string> rtps;
     static unsigned int mGraphHandle;
   };
-  extern std::map<unsigned int, CpuemShim *> devices;
+  extern std::map<unsigned int, std::shared_ptr<CpuemShim> > devices;
+  extern std::map<unsigned int, std::shared_ptr<GraphType> > graph_devices;
 
   // sParseLog structure parses a file named mFileName and looks for a matchString
   // On successfull match, print the line to the console

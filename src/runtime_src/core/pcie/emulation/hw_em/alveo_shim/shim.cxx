@@ -459,215 +459,11 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     return returnValue;
   }
 
-  int HwEmShim::xclLoadBitstreamWorker(bitStreamArg args)
+  int HwEmShim::LaunchSimulatorWithEnvironmentSetUp(bitStreamArg args, std::string& zip_fileName, std::string& binaryDirectory, std::string& xclBinName)
   {
+
     bool is_enable_debug = xrt_core::config::get_is_enable_debug();
     std::string aie_sim_options = xrt_core::config::get_aie_sim_options();
-
-    if (mLogStream.is_open()) {
-         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " <<  std::endl;
-    }
-    mCuIndx = 0;
-    //TBD the file read may slowdown things...whenever xclLoadBitStream hal API implementation changes, we also need to make changes.
-
-    boost::format fmt = boost::format("%1%/tempFile_%2%.zip") % deviceDirectory.c_str() % std::to_string(binaryCounter);
-    std::string zip_fileName = fmt.str();
-
-    if (mMemModel)
-    {
-      mMemModel.reset();
-      //delete mMemModel;
-      //mMemModel = NULL;
-    }
-
-    if (sock)
-    {
-      resetProgram();
-    }
-
-    //CR-1116870 changes. Clearing "mOffsetInstanceStreamMap" for each kernel in case of multiple kernels with different xclbin's
-    //required for sys_opt/kernel_swap example
-    mOffsetInstanceStreamMap.clear();
-
-    std::stringstream ss;
-    ss << deviceDirectory << "/binary_" << binaryCounter;
-    std::string binaryDirectory = ss.str();
-
-    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE, "", std::to_string(__LINE__));
-    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
-
-    mRunDeviceBinDir = binaryDirectory;
-
-    std::ofstream os(zip_fileName);
-    os.write(args.m_zipFile, args.m_zipFileSize);
-    os.close();
-
-    struct sigaction s;
-    memset(&s, 0, sizeof(s));
-    s.sa_flags = SA_SIGINFO;
-    s.sa_sigaction = sigHandler;
-    if (sigaction(SIGSEGV, &s, (struct sigaction *)0) ||
-      sigaction(SIGFPE, &s, (struct sigaction *)0) ||
-      sigaction(SIGABRT, &s, (struct sigaction *)0))
-    {
-      //debug_print("unable to support all signals");
-    }
-
-    std::string sim_file("launch_hw_emu.sh");
-
-    // Write and read debug IP layout (for debug & profiling)
-    // NOTE: for now, let's do this file based so we can debug
-    std::string debugFileName = mRunDeviceBinDir + "/debug_ip_layout";
-    FILE *fp2 = fopen(debugFileName.c_str(), "wb");
-    if (fp2 == NULL) {
-      if (mLogStream.is_open())
-        mLogStream << __func__ << " failed to create temporary debug_ip_layout file " << std::endl;
-      return -1;
-    }
-
-    if ((args.m_debugFile != nullptr) && (args.m_debugFileSize > 1))
-      fwrite(args.m_debugFile, args.m_debugFileSize, 1, fp2);
-    fflush(fp2);
-    fclose(fp2);
-
-    std::string pdiFileName = binaryDirectory + "/aie_pdi";
-
-    if ((args.m_pdi != nullptr) && (args.m_pdiSize > 1))
-    {
-      FILE *fp2 = fopen(pdiFileName.c_str(), "wb");
-      if (fp2 == NULL) {
-        if (mLogStream.is_open())
-          mLogStream << __func__ << " failed to create temporary aie_pdi file " << std::endl;
-        return -1;
-      }
-
-      fwrite(args.m_pdi, args.m_pdiSize, 1, fp2);
-      fflush(fp2);
-      fclose(fp2);
-    }
-
-    readDebugIpLayout(debugFileName);
-
-    const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(args.m_memTopology));
-    if (m_mem)
-    {
-      mMembanks.clear();
-      for (int32_t i = 0; i<m_mem->m_count; ++i)
-      {
-        if (m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
-          continue;
-        std::string tag = reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag);
-        mMembanks.emplace_back(membank{ m_mem->m_mem_data[i].m_base_address, tag, m_mem->m_mem_data[i].m_size * 1024, i });
-      }
-      if (m_mem->m_count > 0)
-      {
-        mDDRMemoryManager.clear();
-      }
-
-      if (mLogStream.is_open())
-         mLogStream << __func__ << " Creating the DDRMemoryManager Object with RTD section info" << std::endl;
-
-      for (auto it : mMembanks)
-      {
-        //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(std::make_shared<xclemulation::MemoryManager>(it.size, it.base_addr, getpagesize(), it.tag));
-
-        std::size_t found = it.tag.find("HOST");
-        if (found != std::string::npos) {
-          host_sptag_idx = it.index;
-        }
-      }
-
-      for (auto it : mDDRMemoryManager)
-      {
-        std::string tag = it->tag();
-
-        //continue if not MBG group
-        if (tag.find("MBG") == std::string::npos) {
-          continue;
-        }
-
-        // Connectivity provided with the bus direction for HBM[31:0], XCLBIN creates the large group of memory with all the HBM[31:0] size
-        // like MBG. It indicates allocation of sequential memory is possible and not to limited size of one HBM. Hence creating the
-        // HBM child memories (HBM subsets listed in RTD which falls under the range of MBG) for MBG memory type
-        for (auto it2 : mDDRMemoryManager)
-        {
-          if (it2->size() != 0 && it2 != it &&
-            it->start() <= it2->start() &&
-            (it->start() + it->size()) >= (it2->start() + it2->size()))
-          {
-            //add HBM child memories to MBG large group[
-            it->mChildMemories.push_back(it2);
-          }
-        }
-      }
-    }
-
-    //CR-1116870 Changes Start
-
-    auto projectName = xrt_core::xclbin::get_project_name(args.m_top);
-    xrt::xclbin xclbin_object{args.m_top};
-    auto fpgaDeviceName = xclbin_object.get_fpga_device_name();
-
-    //New DRC check for Versal Platforms
-    if (!fpgaDeviceName.empty() && fpgaDeviceName.find("versal:") != std::string::npos) {
-      mVersalPlatform=true;
-      if ((args.m_emuData == nullptr) && (args.m_emuDataSize <= 0)) {
-        std::string dMsg = "ERROR: [HW-EMU 09] EMULATION_DATA section is missing in XCLBIN. This is a mandatory section required for Versal platforms. Please ensure the design is built with 'v++ -package' step, which inserts EMULATION_DATA into the XCLBIN.";
-        logMessage(dMsg, 0);
-        return -1;
-      }
-    }
-    if (xclemulation::config::getInstance()->isSharedFmodel() && !mVersalPlatform) {
-      setenv("SDX_USE_SHARED_MEMORY","true",true);
-    }
-
-    std::string instance_name = "";
-    //CR-1122692:'auto' is treated as 32 bit int.But 'uint64_t' is needed
-    uint64_t base_address = 0;
-    for (const auto& kernel : xclbin_object.get_kernels())
-    {
-      // get properties of each kernel object
-      auto props = xrt_core::xclbin_int::get_properties(kernel);
-      //get CU's of each kernel object
-      //iterate over CU's to get arguments
-      for (const auto& cu : kernel.get_cus())
-      {
-        base_address = cu.get_base_address();
-        //CR-1122692: Adding checks to validate base_address and adding 'mVersalPlatform' check
-        if (base_address != (uint64_t)-1 && mVersalPlatform) {
-          mCuBaseAddress = base_address & 0xFFFFFFFF00000000;
-          //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
-          if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
-          {
-            mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
-          }
-          else if(mVersalPlatform)
-          {
-            mCuBaseAddress = 0x20200000000;
-          }
-        }
-        //fetch instance name
-        instance_name = cu.get_name();
-        if (xclemulation::config::getInstance()->isMemLogsEnabled())
-        {
-          //trim instance_name to get actual instance name
-          auto position = instance_name.find(":");
-          auto trimmed_instance_name = instance_name.substr(position+1);
-          //mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,new std::ofstream(trimmed_instance_name + "_control.mem")));
-          mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,std::make_shared<std::ofstream>(trimmed_instance_name + "_control.mem")));
-        }
-
-        if (props.address_range != 0 && !props.name.empty() && !instance_name.empty())
-        {
-          mCURangeMap[instance_name] = props.address_range;
-        }
-      }
-    }
-    std::string xclBinName = projectName;
-
-    //CR-1116870 Changes End
-
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     std::string launcherArgs = xclemulation::config::getInstance()->getLauncherArgs();
@@ -844,49 +640,6 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
           sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
           setSimPath(sim_path);
         }
-
-        // As gdb feature is unsupported for 2021.1, we removed this cross check. We will re-enable it once we have 2 possibilities
-        /*if (boost::filesystem::exists(sim_path) == false)
-        {
-          if (lWaveform == xclemulation::debug_mode::gdb) {
-            sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
-            setSimPath(sim_path);
-            std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
-
-            std::string dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gdb' in INI file and none of kernels compiled in 'gdb' mode. Running simulation using waveform mode. Do run v++ link with -g and --xp param:hw_emu.debugMode=gdb options to launch simulation in 'gdb' mode";
-            logMessage(dMsg, 0);
-
-            std::string protoFileName = "./" + bdName + "_behav.protoinst";
-            std::stringstream cmdLineOption;
-            cmdLineOption << " --wdb " << wdbFileName << ".wdb"
-              << " --protoinst " << protoFileName;
-
-            launcherArgs = launcherArgs + cmdLineOption.str();
-            std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
-            setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
-            if (boost::filesystem::exists(waveformDebugfilePath) != false) {
-              setenv("VITIS_WAVEFORM", generatedWcfgFileName.c_str(), true);
-              setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
-            }
-
-            // Commented to set these when debug_mode is set to gdb
-            //setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
-            //setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
-          }
-          else {
-            std::string dMsg;
-            sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
-            setSimPath(sim_path);
-            if (lWaveform == xclemulation::debug_mode::gui)
-              dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gui' in ini file. Cannot enable simulator gui in this mode. Using " + sim_path + " as simulation directory.";
-            else if (lWaveform == xclemulation::debug_mode::batch)
-              dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'batch' in ini file. Using " + sim_path + " as simulation directory.";
-            else
-              dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'off' in ini file (or) considered by default. Using " + sim_path + " as simulation directory.";
-
-            logMessage(dMsg, 0);
-          }
-        }*/
       }
 
       if (mLogStream.is_open())
@@ -1073,7 +826,7 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
         if (!launcherArgs.empty())
           simMode = launcherArgs.c_str();
 
-        //if (!xclemulation::file_exists(sim_file))
+        std::string sim_file("launch_hw_emu.sh");
         if (!boost::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
           
@@ -1111,6 +864,216 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
 
     std::string simulationDirectoryMsg = "INFO: [HW-EMU 05] Path of the simulation directory : " + getSimPath();
     logMessage(simulationDirectoryMsg);
+    return 0;
+  }
+
+  int HwEmShim::xclLoadBitstreamWorker(bitStreamArg args)
+  {
+
+    if (mLogStream.is_open()) {
+         mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " <<  std::endl;
+    }
+    mCuIndx = 0;
+    //TBD the file read may slowdown things...whenever xclLoadBitStream hal API implementation changes, we also need to make changes.
+
+   
+
+    if (mMemModel)
+    {
+      mMemModel.reset();
+      //delete mMemModel;
+      //mMemModel = NULL;
+    }
+
+    if (sock)
+    {
+      resetProgram();
+    }
+
+    //CR-1116870 changes. Clearing "mOffsetInstanceStreamMap" for each kernel in case of multiple kernels with different xclbin's
+    //required for sys_opt/kernel_swap example
+    mOffsetInstanceStreamMap.clear();
+
+    std::stringstream ss;
+    ss << deviceDirectory << "/binary_" << binaryCounter;
+    std::string binaryDirectory = ss.str();
+
+    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE, "", std::to_string(__LINE__));
+    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
+
+    mRunDeviceBinDir = binaryDirectory;
+
+    boost::format fmt = boost::format("%1%/tempFile_%2%.zip") % deviceDirectory.c_str() % std::to_string(binaryCounter);
+    std::string zip_fileName = fmt.str();
+
+    std::ofstream os(zip_fileName);
+    os.write(args.m_zipFile, args.m_zipFileSize);
+    os.close();
+
+    struct sigaction s;
+    memset(&s, 0, sizeof(s));
+    s.sa_flags = SA_SIGINFO;
+    s.sa_sigaction = sigHandler;
+    if (sigaction(SIGSEGV, &s, (struct sigaction *)0) ||
+      sigaction(SIGFPE, &s, (struct sigaction *)0) ||
+      sigaction(SIGABRT, &s, (struct sigaction *)0))
+    {
+      //debug_print("unable to support all signals");
+    }
+
+    // Write and read debug IP layout (for debug & profiling)
+    // NOTE: for now, let's do this file based so we can debug
+    std::string debugFileName = mRunDeviceBinDir + "/debug_ip_layout";
+    FILE *fp2 = fopen(debugFileName.c_str(), "wb");
+    if (fp2 == NULL) {
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " failed to create temporary debug_ip_layout file " << std::endl;
+      return -1;
+    }
+
+    if ((args.m_debugFile != nullptr) && (args.m_debugFileSize > 1))
+      fwrite(args.m_debugFile, args.m_debugFileSize, 1, fp2);
+    fflush(fp2);
+    fclose(fp2);
+
+    std::string pdiFileName = binaryDirectory + "/aie_pdi";
+
+    if ((args.m_pdi != nullptr) && (args.m_pdiSize > 1))
+    {
+      FILE *fp2 = fopen(pdiFileName.c_str(), "wb");
+      if (fp2 == NULL) {
+        if (mLogStream.is_open())
+          mLogStream << __func__ << " failed to create temporary aie_pdi file " << std::endl;
+        return -1;
+      }
+
+      fwrite(args.m_pdi, args.m_pdiSize, 1, fp2);
+      fflush(fp2);
+      fclose(fp2);
+    }
+
+    readDebugIpLayout(debugFileName);
+
+    const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(args.m_memTopology));
+    if (m_mem)
+    {
+      mMembanks.clear();
+      for (int32_t i = 0; i<m_mem->m_count; ++i)
+      {
+        if (m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+          continue;
+        std::string tag = reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag);
+        mMembanks.emplace_back(membank{ m_mem->m_mem_data[i].m_base_address, tag, m_mem->m_mem_data[i].m_size * 1024, i });
+      }
+      if (m_mem->m_count > 0)
+      {
+        mDDRMemoryManager.clear();
+      }
+
+      if (mLogStream.is_open())
+         mLogStream << __func__ << " Creating the DDRMemoryManager Object with RTD section info" << std::endl;
+
+      for (auto it : mMembanks)
+      {
+        //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
+        mDDRMemoryManager.push_back(std::make_shared<xclemulation::MemoryManager>(it.size, it.base_addr, getpagesize(), it.tag));
+
+        std::size_t found = it.tag.find("HOST");
+        if (found != std::string::npos) {
+          host_sptag_idx = it.index;
+        }
+      }
+
+      for (auto it : mDDRMemoryManager)
+      {
+        std::string tag = it->tag();
+
+        //continue if not MBG group
+        if (tag.find("MBG") == std::string::npos) {
+          continue;
+        }
+
+        // Connectivity provided with the bus direction for HBM[31:0], XCLBIN creates the large group of memory with all the HBM[31:0] size
+        // like MBG. It indicates allocation of sequential memory is possible and not to limited size of one HBM. Hence creating the
+        // HBM child memories (HBM subsets listed in RTD which falls under the range of MBG) for MBG memory type
+        for (auto it2 : mDDRMemoryManager)
+        {
+          if (it2->size() != 0 && it2 != it &&
+            it->start() <= it2->start() &&
+            (it->start() + it->size()) >= (it2->start() + it2->size()))
+          {
+            //add HBM child memories to MBG large group[
+            it->mChildMemories.push_back(it2);
+          }
+        }
+      }
+    }
+
+    //CR-1116870 Changes Start
+
+    auto projectName = xrt_core::xclbin::get_project_name(args.m_top);
+    xrt::xclbin xclbin_object{args.m_top};
+    auto fpgaDeviceName = xclbin_object.get_fpga_device_name();
+
+    //New DRC check for Versal Platforms
+    if (!fpgaDeviceName.empty() && fpgaDeviceName.find("versal:") != std::string::npos) {
+      mVersalPlatform=true;
+      if ((args.m_emuData == nullptr) && (args.m_emuDataSize <= 0)) {
+        std::string dMsg = "ERROR: [HW-EMU 09] EMULATION_DATA section is missing in XCLBIN. This is a mandatory section required for Versal platforms. Please ensure the design is built with 'v++ -package' step, which inserts EMULATION_DATA into the XCLBIN.";
+        logMessage(dMsg, 0);
+        return -1;
+      }
+    }
+    if (xclemulation::config::getInstance()->isSharedFmodel() && !mVersalPlatform) {
+      setenv("SDX_USE_SHARED_MEMORY","true",true);
+    }
+
+    std::string instance_name = "";
+    //CR-1122692:'auto' is treated as 32 bit int.But 'uint64_t' is needed
+    uint64_t base_address = 0;
+    for (const auto& kernel : xclbin_object.get_kernels())
+    {
+      // get properties of each kernel object
+      auto props = xrt_core::xclbin_int::get_properties(kernel);
+      //get CU's of each kernel object
+      //iterate over CU's to get arguments
+      for (const auto& cu : kernel.get_cus())
+      {
+        base_address = cu.get_base_address();
+        //CR-1122692: Adding checks to validate base_address and adding 'mVersalPlatform' check
+        if (base_address != (uint64_t)-1 && mVersalPlatform) {
+          mCuBaseAddress = base_address & 0xFFFFFFFF00000000;
+          //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
+          if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
+          {
+            mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+          }
+          else if(mVersalPlatform)
+          {
+            mCuBaseAddress = 0x20200000000;
+          }
+        }
+        //fetch instance name
+        instance_name = cu.get_name();
+        if (xclemulation::config::getInstance()->isMemLogsEnabled())
+        {
+          //trim instance_name to get actual instance name
+          auto position = instance_name.find(":");
+          auto trimmed_instance_name = instance_name.substr(position+1);
+          //mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,new std::ofstream(trimmed_instance_name + "_control.mem")));
+          mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,std::make_shared<std::ofstream>(trimmed_instance_name + "_control.mem")));
+        }
+
+        if (props.address_range != 0 && !props.name.empty() && !instance_name.empty())
+        {
+          mCURangeMap[instance_name] = props.address_range;
+        }
+      }
+    }
+    std::string xclBinName = projectName;
+
+    //CR-1116870 Changes End
+    LaunchSimulatorWithEnvironmentSetUp(args, zip_fileName, binaryDirectory, projectName);
 
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);

@@ -170,6 +170,7 @@ using addr_type = uint64_t;
       int xclLoadXclBin(const xclBin *buffer);
       //int xclLoadBitstream(const char *fileName);
       int xclLoadBitstreamWorker(bitStreamArg);
+      int LaunchSimulatorWithEnvironmentSetUp(bitStreamArg args, std::string& zip_fileName, std::string& binaryDirectory, std::string& xclBinName);
       bool isUltraScale() const;
       int xclUpgradeFirmware(const char *fileName);
       int xclBootFPGA();

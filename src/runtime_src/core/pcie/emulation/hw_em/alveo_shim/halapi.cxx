@@ -370,12 +370,12 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
     // careful here
     xclhwemhal2::devices[deviceIndex++] = handle;
   }
-
+/*
   if (!xclhwemhal2::HwEmShim::handleCheck(handle.get())) {
     std::cout << "\n Clearing handle memory! Take a look at the memory creation\n"; 
     delete (xclhwemhal2::HwEmShim*)handle.get();
   }
-  
+  */
   if(handle)
   {
     handle->xclOpen(logfileName);

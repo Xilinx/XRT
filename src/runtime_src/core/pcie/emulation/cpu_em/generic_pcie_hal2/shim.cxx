@@ -20,7 +20,8 @@
 
 namespace xclcpuemhal2
 {
-  std::map<unsigned int, CpuemShim *> devices;
+  std::map<unsigned int, std::shared_ptr<CpuemShim> > devices;
+  std::map<unsigned int, std::shared_ptr<GraphType> > graph_devices;
   unsigned int CpuemShim::mBufferCount = 0;
   unsigned int GraphType::mGraphHandle = 0;
   std::map<int, std::tuple<std::string, uint64_t, void *>> CpuemShim::mFdToFileNameMap;
@@ -136,7 +137,8 @@ namespace xclcpuemhal2
       const uint64_t bankSize = (*start).ddrSize;
       mDdrBanks.push_back(*start);
       //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-      mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base, getpagesize()));
+      //mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base, getpagesize()));
+      mDDRMemoryManager.push_back(std::make_shared<xclemulation::MemoryManager>(bankSize, base, getpagesize()));
       base += bankSize;
     }
   }
@@ -153,21 +155,25 @@ namespace xclcpuemhal2
     // Sanity checks
     if (!handle)
       return 0;
+    return reinterpret_cast<CpuemShim *>(handle);
+/*
+
     if (*(unsigned *)handle != TAG)
       return 0;
     if (!((CpuemShim *)handle)->isGood())
       return 0;
 
     return (CpuemShim *)handle;
+    */
   }
 
   static void saveDeviceProcessOutputs()
   {
-    std::map<unsigned int, CpuemShim *>::iterator start = devices.begin();
-    std::map<unsigned int, CpuemShim *>::iterator end = devices.end();
+    auto start = devices.begin();
+    auto end = devices.end();
     for (; start != end; start++)
     {
-      CpuemShim *handle = (*start).second;
+      auto handle = (*start).second;
       if (!handle)
         continue;
       handle->saveDeviceProcessOutput();
@@ -516,7 +522,8 @@ namespace xclcpuemhal2
         exit(0);
       }
     }
-    sock = new unix_socket("EMULATION_SOCKETID");
+    sock = std::make_shared<unix_socket>("EMULATION_SOCKETID");
+    
   }
 
   void CpuemShim::getCuRangeIdx()
@@ -762,8 +769,8 @@ namespace xclcpuemhal2
 
       if (mIsKdsSwEmu)
       {
-        mCore = new exec_core;
-        mSWSch = new SWScheduler(this);
+        mCore = std::make_shared<exec_core>() ;
+        mSWSch = std::make_shared<SWScheduler>(shared_from_this());
         mSWSch->init_scheduler_thread();
       }
 
@@ -807,7 +814,7 @@ namespace xclcpuemhal2
       if (bf::exists(fp) && !bf::is_empty(fp))
         aiesim_sock = nullptr;
       else
-        aiesim_sock = new unix_socket("AIESIM_SOCKETID");
+        aiesim_sock = std::make_shared<unix_socket>("AIESIM_SOCKETID");
         
     }
 
@@ -1288,10 +1295,10 @@ namespace xclcpuemhal2
       if (mIsKdsSwEmu && mSWSch && mCore)
       {
         mSWSch->fini_scheduler_thread();
-        delete mCore;
-        mCore = nullptr;
-        delete mSWSch;
-        mSWSch = nullptr;
+        //delete mCore;
+        mCore.reset();
+        mSWSch.reset();
+        
       }
       return;
     }
@@ -1362,10 +1369,14 @@ namespace xclcpuemhal2
       if (mIsKdsSwEmu && mSWSch && mCore)
       {
         mSWSch->fini_scheduler_thread();
+        mCore.reset();
+        mSWSch.reset();
+        /*
         delete mCore;
         mCore = nullptr;
         delete mSWSch;
         mSWSch = nullptr;
+        */
       }
       return;
     }
@@ -1399,16 +1410,11 @@ namespace xclcpuemhal2
       while (-1 == waitpid(0, &status, 0));
 
     systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
-    delete sock;
-    sock = nullptr;
-    PRINTENDFUNC;
-    if (mIsKdsSwEmu && mSWSch && mCore)
+      sock.reset();
     {
       mSWSch->fini_scheduler_thread();
-      delete mCore;
-      mCore = nullptr;
-      delete mSWSch;
-      mSWSch = nullptr;
+      mCore.reset();
+      mSWSch.reset();
     }
     //clean up directories which are created inside the driver
     if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
@@ -1425,10 +1431,8 @@ namespace xclcpuemhal2
     if (mIsKdsSwEmu && mSWSch && mCore)
     {
       mSWSch->fini_scheduler_thread();
-      delete mCore;
-      mCore = nullptr;
-      delete mSWSch;
-      mSWSch = nullptr;
+      mCore.reset();
+      mSWSch.reset();
     }
     if (mLogStream.is_open())
     {
@@ -1455,13 +1459,13 @@ namespace xclcpuemhal2
 
   /*********************************** Utility ******************************************/
 
-  xclemulation::drm_xocl_bo *CpuemShim::xclGetBoByHandle(unsigned int boHandle)
+  std::shared_ptr<xclemulation::drm_xocl_bo> CpuemShim::xclGetBoByHandle(unsigned int boHandle)
   {
     auto it = mXoclObjMap.find(boHandle);
     if (it == mXoclObjMap.end())
       return nullptr;
 
-    xclemulation::drm_xocl_bo *bo = (*it).second;
+    auto bo = (*it).second;
     return bo;
   }
 
@@ -1482,7 +1486,7 @@ namespace xclcpuemhal2
     {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
     }
-    xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(boHandle);
+    auto bo = xclGetBoByHandle(boHandle);
     if (!bo)
     {
       PRINTENDFUNC;
@@ -1543,7 +1547,8 @@ namespace xclcpuemhal2
     }
 
     DEBUG_MSGS("%s, %d( mBufferCount: %x sFileName: %s deviceName: %s)\n", __func__, __LINE__, mBufferCount, sFileName.c_str(), deviceName.c_str());
-    mXoclObjMap[mBufferCount++] = xobj.release();
+    std::shared_ptr<xclemulation::drm_xocl_bo> a{xobj.release()};
+    mXoclObjMap[mBufferCount++] = a;
     return 0;
   }
 
@@ -1570,7 +1575,7 @@ namespace xclcpuemhal2
 
     xclemulation::xocl_create_bo info = {size, mNullBO, flags};
     uint64_t result = xoclCreateBo(&info);
-    xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(info.handle);
+    auto bo = xclGetBoByHandle(info.handle);
     if (bo)
       bo->userptr = userptr;
 
@@ -1587,12 +1592,12 @@ namespace xclcpuemhal2
 
     DEBUG_MSGS("%s, %d( boHandle: %x )\n", __func__, __LINE__, boHandle);
 
-    xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(boHandle);
+    auto bo = xclGetBoByHandle(boHandle);
 
     if (!bo)
       return -1;
 
-    bool zeroCopy = xclemulation::is_zero_copy(bo);
+    bool zeroCopy = xclemulation::is_zero_copy(bo.get());
 
     if (!zeroCopy)
     {
@@ -1671,7 +1676,7 @@ namespace xclcpuemhal2
 
       unsigned int importedBo = xclAllocBO(size, 0, flags);
 
-      xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(importedBo);
+      auto bo = xclGetBoByHandle(importedBo);
       if (!bo)
       {
         std::cerr << "ERROR HERE in importBO " << std::endl;
@@ -1715,14 +1720,14 @@ namespace xclcpuemhal2
 
     DEBUG_MSGS("%s, %d( src_boHandle: %x dst_boHandle: %x size: %zx  dst_offset: %zx src_offset: %zx )\n", __func__, __LINE__, src_boHandle, dst_boHandle, size, dst_offset, src_offset);
 
-    xclemulation::drm_xocl_bo *sBO = xclGetBoByHandle(src_boHandle);
+    auto sBO = xclGetBoByHandle(src_boHandle);
     if (!sBO)
     {
       PRINTENDFUNC;
       return -1;
     }
 
-    xclemulation::drm_xocl_bo *dBO = xclGetBoByHandle(dst_boHandle);
+    auto dBO = xclGetBoByHandle(dst_boHandle);
     if (!dBO)
     {
       PRINTENDFUNC;
@@ -1730,7 +1735,7 @@ namespace xclcpuemhal2
     }
 
     // source buffer is host_only and destination buffer is device_only
-    if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO))
+    if (xclemulation::xocl_bo_host_only(sBO.get()) && !xclemulation::xocl_bo_p2p(sBO.get()) && xclemulation::xocl_bo_dev_only(dBO.get()))
     {
       unsigned char *host_only_buffer = (unsigned char *)(sBO->buf) + src_offset;
       if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset) != size)
@@ -1739,7 +1744,7 @@ namespace xclcpuemhal2
         return -1;
       }
     } // source buffer is device_only and destination buffer is host_only
-    else if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO))
+    else if (xclemulation::xocl_bo_host_only(dBO.get()) && !xclemulation::xocl_bo_p2p(dBO.get()) && xclemulation::xocl_bo_dev_only(sBO.get()))
     {
       unsigned char *host_only_buffer = (unsigned char *)(dBO->buf) + dst_offset;
       if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset) != size)
@@ -1748,7 +1753,7 @@ namespace xclcpuemhal2
         return -1;
       }
     }
-    else if (!xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_host_only(dBO) && (dBO->fd < 0) && (sBO->fd < 0))
+    else if (!xclemulation::xocl_bo_host_only(sBO.get()) && !xclemulation::xocl_bo_host_only(dBO.get()) && (dBO->fd < 0) && (sBO->fd < 0))
     {
       unsigned char temp_buffer[size];
       // copy data from source buffer to temp buffer
@@ -1846,14 +1851,14 @@ namespace xclcpuemhal2
 
     DEBUG_MSGS("%s, %d(boHandle: %x write: %s)\n", __func__, __LINE__, boHandle, write ? "true" : "false");
 
-    xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(boHandle);
+    auto bo = xclGetBoByHandle(boHandle);
     if (!bo)
     {
       PRINTENDFUNC;
       return nullptr;
     }
 
-    bool zeroCopy = xclemulation::is_zero_copy(bo);
+    bool zeroCopy = xclemulation::is_zero_copy(bo.get());
     if (zeroCopy)
     {
       std::string sFileName = bo->filename;
@@ -1941,7 +1946,7 @@ namespace xclcpuemhal2
 
     DEBUG_MSGS("%s, %d(boHandle: %x offset: %zx)\n", __func__, __LINE__, boHandle, offset);
 
-    xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(boHandle);
+    auto bo = xclGetBoByHandle(boHandle);
     if (!bo)
     {
       PRINTENDFUNC;
@@ -1979,7 +1984,7 @@ namespace xclcpuemhal2
       PRINTENDFUNC;
       return;
     }
-    xclemulation::drm_xocl_bo *bo = (*it).second;
+    auto bo = (*it).second;
 
     if (bo)
     {
@@ -1996,7 +2001,7 @@ namespace xclcpuemhal2
     std::lock_guard lk(mApiMtx);
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << src << " , " << size << ", " << seek << std::endl;
-    xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(boHandle);
+    auto bo = xclGetBoByHandle(boHandle);
     if (!bo)
     {
       PRINTENDFUNC;
@@ -2017,7 +2022,7 @@ namespace xclcpuemhal2
     std::lock_guard lk(mApiMtx);
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << dst << " , " << size << ", " << skip << std::endl;
-    xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(boHandle);
+    auto bo = xclGetBoByHandle(boHandle);
     if (!bo)
     {
       PRINTENDFUNC;
@@ -2104,7 +2109,7 @@ namespace xclcpuemhal2
     if (!mIsKdsSwEmu)
       return 0;
 
-    xclemulation::drm_xocl_bo *bo = xclGetBoByHandle(cmdBO);
+    auto bo = xclGetBoByHandle(cmdBO);
     if (!mSWSch || !bo)
     {
       PRINTENDFUNC;
@@ -2163,14 +2168,14 @@ namespace xclcpuemhal2
   /**
 * xrtGraphInit() - Initialize  graph
 */
-  int CpuemShim::xrtGraphInit(void *gh)
+  int CpuemShim::xrtGraphInit(std::shared_ptr<xclcpuemhal2::GraphType> ghPtr)
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
 
     std::lock_guard lk(mApiMtx);
     bool ack = false;
-    auto ghPtr = (xclcpuemhal2::GraphType *)gh;
+    //auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
       return -1;
     auto graphhandle = ghPtr->getGraphHandle();

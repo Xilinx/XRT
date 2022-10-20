@@ -12,8 +12,6 @@ namespace xclcpuemhal2 {
 
   xocl_cmd::xocl_cmd()
   {
-    bo = NULL;
-    exec = NULL;
     cu_idx = 0;
     slot_idx = 0;
     packet = NULL;
@@ -22,21 +20,19 @@ namespace xclcpuemhal2 {
 
   xocl_cmd::~xocl_cmd()
   {
-    bo = NULL;
-    exec = NULL;
     cu_idx = 0;
     slot_idx = 0;
     packet = NULL;
   }
 
-  xocl_sched::xocl_sched (SWScheduler* _sch)
+  xocl_sched::xocl_sched (std::shared_ptr<SWScheduler> _sch)
   {
     bThreadCreated = false;
     error = 0;
     intc = 0;
     poll = 0;
     stop = false;
-    pSch = _sch ;
+    pSch = std::weak_ptr{_sch} ;
     //pthread_mutex_init(&state_lock,NULL);
     //pthread_cond_init(&state_cond,NULL);
     //scheduler_thread = 0;
@@ -49,7 +45,6 @@ namespace xclcpuemhal2 {
     intc = 0;
     poll = 0;
     stop = false;
-    pSch = NULL ;
     //pthread_mutex_init(&state_lock,NULL);
     //pthread_cond_init(&state_cond,NULL);
   }
@@ -127,25 +122,25 @@ namespace xclcpuemhal2 {
     run_cnt = 0;
   }
 
-  void SWScheduler::cu_continue(struct xocl_cu *xcu)
+  void SWScheduler::cu_continue(std::shared_ptr<xocl_cu>& xcu)
   {
     PRINTSTARTFUNC
     if (!xcu->dataflow)//TODO
       return;
 
     // acknowledge done directly to CU (xcu->addr)
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)&CpuemShim::CONTROL_AP_CONTINUE, 4);
+    mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)&CpuemShim::CONTROL_AP_CONTINUE, 4);
 
     // in ert_poll mode acknowlegde done to ERT
     if (xcu->polladdr && xcu->run_cnt) {
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->polladdr, (void*)&CpuemShim::CONTROL_AP_CONTINUE, 4);
+      mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->polladdr, (void*)&CpuemShim::CONTROL_AP_CONTINUE, 4);
     }
   }
 
-  void SWScheduler::cu_poll(struct xocl_cu *xcu)
+  void SWScheduler::cu_poll(std::shared_ptr<xocl_cu>& xcu)
   {
     PRINTSTARTFUNC
-    mParent->xclRead(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->addr,(void*)&(xcu->ctrlreg),4);
+    mParent.lock()->xclRead(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->addr,(void*)&(xcu->ctrlreg),4);
     if (xcu->run_cnt && (xcu->ctrlreg & (CpuemShim::CONTROL_AP_DONE | CpuemShim::CONTROL_AP_IDLE)))
     {
       ++xcu->done_cnt;
@@ -154,7 +149,7 @@ namespace xclcpuemhal2 {
     }
   }
 
-  bool SWScheduler::cu_ready(struct xocl_cu *xcu)
+  bool SWScheduler::cu_ready(std::shared_ptr<xocl_cu>& xcu)
   {
     PRINTSTARTFUNC
     if ((xcu->ctrlreg & CpuemShim::CONTROL_AP_START) || (!xcu->dataflow && xcu->run_cnt))
@@ -164,28 +159,28 @@ namespace xclcpuemhal2 {
     return bReady;
   }
 
-  static inline uint32_t* cmd_regmap(struct xocl_cmd *xcmd)
+  static inline uint32_t* cmd_regmap(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     struct ert_start_kernel_cmd *ecmd = (struct ert_start_kernel_cmd *)xcmd->packet;
     return ecmd->data + ecmd->extra_cu_masks;
   }
 
-  void SWScheduler::cu_configure_ino(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+  void SWScheduler::cu_configure_ino(std::shared_ptr<xocl_cu>& xcu, std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     unsigned int size = regmap_size(xcmd);
     uint32_t *regmap = cmd_regmap(xcmd);
     //unsigned int idx;
     regmap[0] = 0;
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr , (void*)(regmap), size*4);
+    mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr , (void*)(regmap), size*4);
    /* for (idx = 4; idx < size; ++idx)
     {
       mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr + (idx << 2), (void*)(regmap+idx) ,4);
     }*/
   }
 
-  void SWScheduler::cu_configure_ooo(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+  void SWScheduler::cu_configure_ooo(std::shared_ptr<xocl_cu>& xcu, std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     unsigned int size = regmap_size(xcmd);
@@ -196,11 +191,11 @@ namespace xclcpuemhal2 {
     {
       uint32_t offset = *(regmap + idx);
       uint32_t val = *(regmap + idx + 1);
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + offset , (void*)(&val) ,4);
+      mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + offset , (void*)(&val) ,4);
     }
   }
 
-  bool SWScheduler::cu_start(struct xocl_cu *xcu, struct xocl_cmd *xcmd)
+  bool SWScheduler::cu_start(std::shared_ptr<xocl_cu>& xcu, std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     /* write register map, starting at base + 0x10
@@ -221,10 +216,10 @@ namespace xclcpuemhal2 {
     xcu->ctrlreg |= CpuemShim::CONTROL_AP_START;
     const_cast<uint32_t*>(regmap)[0] = CpuemShim::CONTROL_AP_START;
     //mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr,(void*)& CpuemShim::CONTROL_AP_START, 4);
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)(regmap), size*4);
+    mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)(regmap), size*4);
     // in ert poll mode request ERT to poll CU
     if (xcu->polladdr) {
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->polladdr, (void*)& CpuemShim::CONTROL_AP_START, 4);
+      mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->polladdr, (void*)& CpuemShim::CONTROL_AP_START, 4);
     }
 
     ++xcu->run_cnt;
@@ -233,16 +228,16 @@ namespace xclcpuemhal2 {
   }
 
 
-  xocl_cmd* SWScheduler::cu_first_done(struct xocl_cu *xcu)
+  std::shared_ptr<xocl_cmd> SWScheduler::cu_first_done(std::shared_ptr<xocl_cu>& xcu)
   {
     PRINTSTARTFUNC
     if (!xcu->done_cnt && xcu->run_cnt)
       cu_poll(xcu);
 
-    return xcu->done_cnt ? (xcu->running_queue).front() : NULL;
+    return xcu->done_cnt ? (xcu->running_queue).front() : nullptr;
   }
 
-  void SWScheduler::cu_pop_done(struct xocl_cu *xcu)
+  void SWScheduler::cu_pop_done(std::shared_ptr<xocl_cu>& xcu)
   {
     PRINTSTARTFUNC
     if (!xcu->done_cnt)
@@ -271,7 +266,7 @@ namespace xclcpuemhal2 {
       return false;
   }
 
-  bool SWScheduler::cmd_has_cu(struct xocl_cmd* xcmd, uint32_t f_cu_idx)
+  bool SWScheduler::cmd_has_cu(std::shared_ptr<xocl_cmd>&  xcmd, uint32_t f_cu_idx)
   {
     PRINTSTARTFUNC
     uint32_t mask_idx = 0;
@@ -291,7 +286,7 @@ namespace xclcpuemhal2 {
     return false;
   }
 
-  void cu_reset(xocl_cu* xcu, unsigned int idx, uint32_t base, uint32_t addr, uint32_t polladdr)
+  void cu_reset(std::shared_ptr<xocl_cu>& xcu, unsigned int idx, uint32_t base, uint32_t addr, uint32_t polladdr)
   {
     PRINTSTARTFUNC
     xcu->idx = idx;
@@ -305,35 +300,35 @@ namespace xclcpuemhal2 {
   }
 
 
-  SWScheduler::SWScheduler(CpuemShim* _parent)
+  SWScheduler::SWScheduler(std::shared_ptr<CpuemShim> _parent)
   {
     PRINTSTARTFUNC
-    mParent = _parent;
-    mScheduler = new xocl_sched(this);
+    mParent = std::weak_ptr{_parent};
+    //mScheduler = new xocl_sched(this);
     num_pending = 0;
   }
 
   SWScheduler::~SWScheduler()
   {
     PRINTSTARTFUNC
-    delete mScheduler;
-    mScheduler = NULL;
+    //delete
+    mScheduler.reset();
     num_pending = 0;
   }
 
 //KDS FLOW STARTED...
-  static uint32_t cu_idx_to_addr(struct exec_core *exec,unsigned int cu_idx)
+  static uint32_t cu_idx_to_addr(std::shared_ptr<exec_core>& exec,unsigned int cu_idx)
   {
     return exec->cu_addr_map[cu_idx];
   }
 
-  bool SWScheduler::cu_done(struct exec_core *exec, unsigned int cu_idx)
+  bool SWScheduler::cu_done(std::shared_ptr<exec_core>& exec, unsigned int cu_idx)
   {
     PRINTSTARTFUNC
     uint32_t cu_addr = cu_idx_to_addr(exec,cu_idx);
 
     uint32_t mask = 0;
-    mParent->xclRead(XCL_ADDR_KERNEL_CTRL, exec->base + cu_addr, (void*)&mask, 4);
+    mParent.lock()->xclRead(XCL_ADDR_KERNEL_CTRL, exec->base + cu_addr, (void*)&mask, 4);
     /* done is indicated by AP_DONE(2) alone or by AP_DONE(2) | AP_IDLE(4)
      * but not by AP_IDLE itself.  Since 0x10 | (0x10 | 0x100) = 0x110
      * checking for 0x10 is sufficient. */
@@ -346,34 +341,36 @@ namespace xclcpuemhal2 {
     }
     return false;
   }
-   int SWScheduler::acquire_slot(struct xocl_cmd* xcmd)
+   int SWScheduler::acquire_slot(std::shared_ptr<xocl_cmd>&  xcmd)
   {
      PRINTSTARTFUNC
     if (type(xcmd)==ERT_CTRL)
       return 0;
 
-    return acquire_slot_idx(xcmd->exec);
+    auto exec = xcmd->exec.lock();
+    return acquire_slot_idx(exec);
   }
 
-  int SWScheduler::get_free_cu(struct xocl_cmd *xcmd)
+  int SWScheduler::get_free_cu(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
+    auto exec = xcmd->exec.lock();
     uint32_t mask_idx=0;
     uint32_t num_masks = cu_masks(xcmd);
     for (mask_idx=0; mask_idx<num_masks; ++mask_idx) {
       uint32_t cmd_mask = xcmd->packet->data[mask_idx]; /* skip header */
-      uint32_t busy_mask = xcmd->exec->cu_status[mask_idx];
+      uint32_t busy_mask = exec->cu_status[mask_idx];
       int cu_idx = getFirstSetBitPos((cmd_mask | busy_mask) ^ busy_mask);
       if (cu_idx>=0)
       {
-        xcmd->exec->cu_status[mask_idx] ^= 1<<cu_idx;
+        exec->cu_status[mask_idx] ^= 1<<cu_idx;
         return cu_idx_from_mask(cu_idx,mask_idx);
       }
     }
     return -1;
   }
 
-  uint32_t SWScheduler::cu_masks(struct xocl_cmd *xcmd)
+  uint32_t SWScheduler::cu_masks(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     struct ert_start_kernel_cmd *sk;
@@ -383,16 +380,16 @@ namespace xclcpuemhal2 {
     return 1 + sk->extra_cu_masks;
   }
 
-  uint32_t SWScheduler::regmap_size(struct xocl_cmd* xcmd)
+  uint32_t SWScheduler::regmap_size(std::shared_ptr<xocl_cmd>&  xcmd)
   {
     return payload_size(xcmd) - cu_masks(xcmd);
   }
 
-  void SWScheduler::configure_cu(struct xocl_cmd *xcmd, int cu_idx)
+  void SWScheduler::configure_cu(std::shared_ptr<xocl_cmd>& xcmd, int cu_idx)
   {
     PRINTSTARTFUNC
-    struct exec_core *exec = xcmd->exec;
-    uint32_t cu_addr = cu_idx_to_addr(xcmd->exec,cu_idx);
+    auto exec = xcmd->exec.lock();
+    uint32_t cu_addr = cu_idx_to_addr(exec,cu_idx);
     uint32_t size = regmap_size(xcmd);
     struct ert_start_kernel_cmd *ecmd = (struct ert_start_kernel_cmd *)xcmd->packet;
 
@@ -400,11 +397,11 @@ namespace xclcpuemhal2 {
     /* can't get memcpy_toio to work */
     /* memcpy_toio(user_bar + cu_addr + 4,ecmd->data + ecmd->extra_cu_masks + 1,(size-1)*4); */
 
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,exec->base + cu_addr + 4 , ecmd->data + ecmd->extra_cu_masks + 1 , size*4);
+    mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL,exec->base + cu_addr + 4 , ecmd->data + ecmd->extra_cu_masks + 1 , size*4);
 
     /* start CU at base + 0x0 */
     int ap_start = 0x1;
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,exec->base + cu_addr, (void*)&ap_start , 4 );
+    mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL,exec->base + cu_addr, (void*)&ap_start , 4 );
   }
 
 //  static unsigned int get_cu_idx(struct exec_core *exec, unsigned int cmd_idx)
@@ -415,7 +412,7 @@ namespace xclcpuemhal2 {
 //    return xcmd->cu_idx;
 //  }
 
-  int SWScheduler::penguin_submit(xocl_cmd* xcmd)
+  int SWScheduler::penguin_submit(std::shared_ptr<xocl_cmd>&  xcmd)
   {
     PRINTSTARTFUNC
     /* execution done by submit_cmds, ensure the cmd retired properly */
@@ -428,10 +425,10 @@ namespace xclcpuemhal2 {
       return false;
 
     // Find a ready CU
-    struct exec_core *exec = xcmd->exec;
+    auto exec = xcmd->exec.lock();
     for (unsigned int cuidx = 0; cuidx < exec->num_cus; ++cuidx)
     {
-      xocl_cu *xcu = exec->cus[cuidx];
+      auto xcu = exec->cus[cuidx];
 
       if (cmd_has_cu(xcmd, cuidx) && cu_ready(xcu))
       {
@@ -444,7 +441,7 @@ namespace xclcpuemhal2 {
           exec->submitted_cmds[xcmd->slot_idx] = NULL;
           //exec_release_slot(exec, xcmd);
           xcmd->cu_idx = cuidx;
-          ++xcmd->exec->cu_usage[xcmd->cu_idx];
+          ++exec->cu_usage[xcmd->cu_idx];
           (xcu->running_queue).push(xcmd);
           return true;
         }
@@ -453,7 +450,7 @@ namespace xclcpuemhal2 {
     return false;
   }
 
-  void SWScheduler::penguin_query(xocl_cmd* xcmd)
+  void SWScheduler::penguin_query(std::shared_ptr<xocl_cmd>&  xcmd)
   {
     PRINTSTARTFUNC
     uint32_t cmd_opcode = opcode(xcmd);
@@ -470,7 +467,7 @@ namespace xclcpuemhal2 {
       {
         return;
       }
-      struct xocl_cu *xcu = xcmd->exec->cus[xcmd->cu_idx];
+      auto xcu = xcmd->exec.lock()->cus[xcmd->cu_idx];
       if (xcu && cu_first_done(xcu) == xcmd)
       {
         cu_pop_done(xcu);
@@ -480,7 +477,7 @@ namespace xclcpuemhal2 {
   }
 //KDS FLOW ENDED...
 
-  void SWScheduler::mb_query(xocl_cmd *xcmd)
+  void SWScheduler::mb_query(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     if (type(xcmd) == ERT_KDS_LOCAL)
@@ -488,7 +485,7 @@ namespace xclcpuemhal2 {
       penguin_query(xcmd);
       return;
     }
-    exec_core *exec = xcmd->exec;
+    auto exec = xcmd->exec.lock();
     unsigned int cmd_mask_idx = slot_mask_idx(xcmd->slot_idx);
 
 
@@ -504,7 +501,7 @@ namespace xclcpuemhal2 {
       if (opcode(xcmd)==ERT_CONFIGURE)
         waitForResp = true;
       do{
-        mParent->xclRead(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + csr_addr, (void*)&mask, 4);
+        mParent.lock()->xclRead(XCL_ADDR_KERNEL_CTRL, exec->base + csr_addr, (void*)&mask, 4);
       }while(waitForResp && !mask);
 
       if (mask)
@@ -512,12 +509,12 @@ namespace xclcpuemhal2 {
 #ifdef EM_DEBUG_KDS
         std::cout<<"Mask is non-zero. Mark respective command complete "<< mask << std::endl;
 #endif
-        mark_mask_complete(xcmd->exec,mask,cmd_mask_idx);
+        mark_mask_complete(exec,mask,cmd_mask_idx);
       }
     }
   }
 
-  int SWScheduler::acquire_slot_idx(exec_core *exec)
+  int SWScheduler::acquire_slot_idx(std::shared_ptr<exec_core>& exec)
   {
     PRINTSTARTFUNC
     unsigned int mask_idx=0, slot_idx=-1;
@@ -537,15 +534,15 @@ namespace xclcpuemhal2 {
     return -1;
   }
 
-  int SWScheduler::mb_submit(xocl_cmd *xcmd)
+  int SWScheduler::mb_submit(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     if (type(xcmd) == ERT_KDS_LOCAL)
       return penguin_submit(xcmd);
 
     uint32_t slot_addr;
-
-    xcmd->slot_idx = acquire_slot_idx(xcmd->exec);
+    auto exec = xcmd->exec.lock();
+    xcmd->slot_idx = acquire_slot_idx(exec);
 #ifdef EM_DEBUG_KDS
     std::cout<<"Acquring slot index "<<xcmd->slot_idx<<" for CXMD: "<<xcmd<<" PACKET: "<<xcmd->packet<< " BO: "<< xcmd->bo << std::endl;
 #endif
@@ -553,22 +550,22 @@ namespace xclcpuemhal2 {
       return false;
     }
 
-    slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(xcmd->exec);
+    slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(exec);
 
     /* TODO write packet minus header */
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data, (packet_size(xcmd)-1)*sizeof(uint32_t));
+    mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL, exec->base + slot_addr + 4, xcmd->packet->data, (packet_size(xcmd)-1)*sizeof(uint32_t));
     //memcpy_toio(xcmd->exec->base + slot_addr + 4,xcmd->packet->data,(packet_size(xcmd)-1)*sizeof(uint32_t));
 
     /* TODO write header */
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr, (void*)(&xcmd->packet->header), 4);
+    mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL, exec->base + slot_addr, (void*)(&xcmd->packet->header), 4);
     //iowrite32(xcmd->packet->header,xcmd->exec->base + slot_addr);
 
     /* trigger interrupt to embedded scheduler if feature is enabled */
-    if (xcmd->exec->cq_interrupt) {
+    if (exec->cq_interrupt) {
       uint32_t cq_int_addr = ERT_CQ_STATUS_REGISTER_ADDR + (slot_mask_idx(xcmd->slot_idx)<<2);
       uint32_t mask = 1<<slot_idx_in_mask(xcmd->slot_idx);
       //TODO
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcmd->exec->base + cq_int_addr, (void*)(&mask), 4);
+      mParent.lock()->xclWrite(XCL_ADDR_KERNEL_CTRL,exec->base + cq_int_addr, (void*)(&mask), 4);
         //iowrite32(mask,xcmd->exec->base + cq_int_addr);
     }
 #ifdef EM_DEBUG_KDS
@@ -578,7 +575,7 @@ namespace xclcpuemhal2 {
     return true;
   }
 
-  int SWScheduler::ert_poll_submit_ctrl(xocl_cmd *xcmd)
+  int SWScheduler::ert_poll_submit_ctrl(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     if (opcode(xcmd) == ERT_CU_STAT)
@@ -587,7 +584,7 @@ namespace xclcpuemhal2 {
     return mb_submit(xcmd);
   }
 
-  void SWScheduler::ert_poll_query_ctrl(struct xocl_cmd *xcmd)
+  void SWScheduler::ert_poll_query_ctrl(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     if (opcode(xcmd) == ERT_CU_STAT)
@@ -597,16 +594,16 @@ namespace xclcpuemhal2 {
   }
 
 
-  int SWScheduler::ert_poll_submit(xocl_cmd *xcmd)
+  int SWScheduler::ert_poll_submit(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     return penguin_submit(xcmd);
   }
 
-  void SWScheduler::ert_poll_query(xocl_cmd *xcmd)
+  void SWScheduler::ert_poll_query(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
-    exec_core *exec = xcmd->exec;
+    auto exec = xcmd->exec.lock();
     unsigned int cmd_mask_idx = slot_mask_idx((xcmd->cu_idx+1));
 
     if (exec->polling_mode
@@ -621,7 +618,7 @@ namespace xclcpuemhal2 {
       if (opcode(xcmd)==ERT_CONFIGURE)
         waitForResp = true;
       do{
-        mParent->xclRead(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + csr_addr, (void*)&mask, 4);
+        mParent.lock()->xclRead(XCL_ADDR_KERNEL_CTRL, exec->base + csr_addr, (void*)&mask, 4);
       }while(waitForResp && !mask);
 
       if (mask)
@@ -629,16 +626,16 @@ namespace xclcpuemhal2 {
 #ifdef EM_DEBUG_KDS
         std::cout<<"Mask is non-zero. Mark respective command complete "<< mask << std::endl;
 #endif
-        mark_mask_complete(xcmd->exec,mask,cmd_mask_idx);
+        mark_mask_complete(exec,mask,cmd_mask_idx);
       }
     }
   }
 
 
-  int SWScheduler::configure(xocl_cmd *xcmd)
+  int SWScheduler::configure(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
-    exec_core *exec=xcmd->exec;
+    auto exec=xcmd->exec.lock();
     struct ert_configure_cmd *cfg;
 
     cfg = (struct ert_configure_cmd *)(xcmd->packet);
@@ -661,7 +658,7 @@ namespace xclcpuemhal2 {
       for ( cuidx=0; cuidx<exec->num_cus; cuidx++)
       {
         exec->cu_addr_map[cuidx] = cfg->data[cuidx];
-        xocl_cu* nCu = new xocl_cu();
+        auto nCu = std::make_shared<xocl_cu>();
         exec->cus[cuidx] =  nCu;
         uint32_t polladdr = (ert_poll) ? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size : 0;
         cu_reset(nCu, cuidx, exec->base, cfg->data[cuidx], polladdr);
@@ -683,7 +680,7 @@ namespace xclcpuemhal2 {
             ++cfg->count;
             cfg->data[cuidx] = addr;
             exec->cu_addr_map[cuidx] = cfg->data[cuidx];
-            xocl_cu* nCu = new xocl_cu();
+            auto nCu = std::make_shared<xocl_cu>();
             exec->cus[cuidx] =  nCu;
             uint32_t polladdr = (ert_poll) ? ERT_CQ_BASE_ADDR + (cuidx+1) * cfg->slot_size : 0;
             cu_reset(nCu, cuidx, exec->base, cfg->data[cuidx], polladdr);
@@ -723,7 +720,7 @@ namespace xclcpuemhal2 {
     return 1;
   }
 
-  void SWScheduler::release_slot_idx(exec_core *exec, unsigned int slot_idx)
+  void SWScheduler::release_slot_idx(std::shared_ptr<exec_core>& exec, unsigned int slot_idx)
   {
     PRINTSTARTFUNC
     unsigned int mask_idx = slot_mask_idx(slot_idx);
@@ -731,27 +728,28 @@ namespace xclcpuemhal2 {
     exec->slot_status[mask_idx] ^= (1<<pos);
   }
 
-  void SWScheduler::notify_host(xocl_cmd *xcmd)
+  void SWScheduler::notify_host(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
-    exec_core *exec = xcmd->exec;
+    auto exec = xcmd->exec.lock();
 
     /* now for each client update the trigger counter in the context */
-    for(auto it: exec->ctx_list)
+    for(auto& it: exec->ctx_list)
     {
-      client_ctx* entry = it;
+      auto entry = it;
       entry->trigger++;
     }
   }
 
-  void SWScheduler::mark_cmd_complete(xocl_cmd *xcmd)
+  void SWScheduler::mark_cmd_complete(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
-    xcmd->exec->submitted_cmds[xcmd->slot_idx] = NULL;
+    auto exec = xcmd->exec.lock();
+    exec->submitted_cmds[xcmd->slot_idx] = NULL;
     set_cmd_state(xcmd,ERT_CMD_STATE_COMPLETED);
-    if (xcmd->exec->polling_mode)
+    if (exec->polling_mode)
       mScheduler->poll--;
-    release_slot_idx(xcmd->exec,xcmd->slot_idx);
+    release_slot_idx(exec,xcmd->slot_idx);
 #ifdef EM_DEBUG_KDS
     std::cout<<"Marking command Complete XCMD: " <<xcmd<<" PACKET: "<<xcmd->packet<< " BO: "<< xcmd->bo << std::endl;
     std::cout<<"Releasing slot " << xcmd->slot_idx << std::endl<<std::endl;
@@ -759,7 +757,7 @@ namespace xclcpuemhal2 {
     notify_host(xcmd);
   }
 
-  void SWScheduler::mark_mask_complete(exec_core *exec, uint32_t mask, unsigned int mask_idx)
+  void SWScheduler::mark_mask_complete(std::shared_ptr<exec_core>& exec, uint32_t mask, unsigned int mask_idx)
   {
     PRINTSTARTFUNC
 #ifdef EM_DEBUG_KDS
@@ -780,7 +778,7 @@ namespace xclcpuemhal2 {
     }
   }
 
-  int SWScheduler::queued_to_running(xocl_cmd *xcmd)
+  int SWScheduler::queued_to_running(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     int retval = false;
@@ -794,7 +792,7 @@ namespace xclcpuemhal2 {
       bConfigure = true;
     }
 
-    exec_core *exec = xcmd->exec;
+    auto exec = xcmd->exec.lock();
     bool submitted  = false;
     if(exec->ertfull)
     {
@@ -812,19 +810,19 @@ namespace xclcpuemhal2 {
 
     if ( submitted ) {
       set_cmd_state(xcmd,ERT_CMD_STATE_RUNNING);
-      if (xcmd->exec->polling_mode)
+      if (exec->polling_mode)
         mScheduler->poll++;
-      xcmd->exec->submitted_cmds[xcmd->slot_idx] = xcmd;
+      exec->submitted_cmds[xcmd->slot_idx] = xcmd;
       retval = true;
     }
 
     return retval;
   }
 
-  void SWScheduler::running_to_complete(xocl_cmd *xcmd)
+  void SWScheduler::running_to_complete(std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
-    exec_core *exec = xcmd->exec;
+    auto exec = xcmd->exec.lock();
 
     bool bConfigure = false;
     if (opcode(xcmd)==ERT_CONFIGURE)
@@ -843,14 +841,14 @@ namespace xclcpuemhal2 {
       penguin_query(xcmd);
   }
 
-  xocl_cmd* SWScheduler::get_free_xocl_cmd(void)
+  std::shared_ptr<xocl_cmd> SWScheduler::get_free_xocl_cmd(void)
   {
     PRINTSTARTFUNC
-    xocl_cmd* cmd = new xocl_cmd;
+    auto cmd = std::make_shared<xocl_cmd>();
     return cmd;
   }
 
-  int SWScheduler::convert_execbuf(exec_core *exec, xclemulation::drm_xocl_bo *xobj, xocl_cmd* xcmd)
+  int SWScheduler::convert_execbuf(std::shared_ptr<exec_core>& exec, std::shared_ptr<xclemulation::drm_xocl_bo>& xobj, std::shared_ptr<xocl_cmd>& xcmd)
   {
     PRINTSTARTFUNC
     size_t src_off;
@@ -871,10 +869,10 @@ namespace xclcpuemhal2 {
     sz = ert_copybo_size(scmd);
 
     src_off = ert_copybo_src_offset(scmd);
-    xclemulation::drm_xocl_bo* sBo = mParent->xclGetBoByHandle(scmd->src_bo_hdl);
+    auto sBo = mParent.lock()->xclGetBoByHandle(scmd->src_bo_hdl);
 
     dst_off = ert_copybo_dst_offset(scmd);
-    xclemulation::drm_xocl_bo* dBo = mParent->xclGetBoByHandle(scmd->dst_bo_hdl);
+    auto dBo = mParent.lock()->xclGetBoByHandle(scmd->dst_bo_hdl);
 
     if(!sBo && !dBo)
     {
@@ -886,9 +884,9 @@ namespace xclcpuemhal2 {
     if(dBo)
       dst_addr = dBo->base;
 
-    if (( !sBo || !dBo || mParent->isImported(scmd->src_bo_hdl) || mParent->isImported(scmd->dst_bo_hdl)) )
+    if (( !sBo || !dBo || mParent.lock()->isImported(scmd->src_bo_hdl) || mParent.lock()->isImported(scmd->dst_bo_hdl)) )
     {
-      int ret =  mParent->xclCopyBO(scmd->dst_bo_hdl, scmd->src_bo_hdl , sz , dst_off, src_off);
+      int ret =  mParent.lock()->xclCopyBO(scmd->dst_bo_hdl, scmd->src_bo_hdl , sz , dst_off, src_off);
       scmd->type = ERT_KDS_LOCAL;
       return ret;
     }
@@ -914,14 +912,14 @@ namespace xclcpuemhal2 {
 
   }
 
-  int SWScheduler::add_cmd(exec_core *exec, xclemulation::drm_xocl_bo* bo)
+  int SWScheduler::add_cmd(std::shared_ptr<exec_core>& exec, std::shared_ptr<xclemulation::drm_xocl_bo>& bo)
   {
     PRINTSTARTFUNC
     std::lock_guard<std::mutex> lk(pending_cmds_mutex);
-    xocl_cmd *xcmd = get_free_xocl_cmd();
+    auto xcmd = get_free_xocl_cmd();
     xcmd->packet = (struct ert_packet*)bo->buf;
-    xcmd->bo=bo;
-    xcmd->exec=exec;
+    xcmd->bo=std::weak_ptr{bo};
+    xcmd->exec=std::weak_ptr{exec};
     xcmd->cu_idx=-1;
     xcmd->slot_idx=-1;
     int ret = convert_execbuf(exec, bo , xcmd);
@@ -976,7 +974,7 @@ namespace xclcpuemhal2 {
 #endif
     for(auto it: pending_cmds)
     {
-      xocl_cmd *xcmd = it;
+      auto xcmd = it;
 
       /* CU style commands must specify CU type */
       if (opcode(xcmd) == ERT_START_CU || opcode(xcmd) == ERT_EXEC_WRITE)
@@ -1002,7 +1000,7 @@ namespace xclcpuemhal2 {
 #endif
      for (auto itr=mScheduler->command_queue.begin(); itr!=end; )
      {
-       xocl_cmd *xcmd = *itr;
+       auto xcmd = *itr;
        if (xcmd->state == ERT_CMD_STATE_QUEUED)
        {
 #ifdef EM_DEBUG_KDS
@@ -1031,35 +1029,34 @@ namespace xclcpuemhal2 {
 
   }
 
-  void scheduler_loop(xocl_sched *xs)
+  void SWScheduler::scheduler_loop()
   {
     //PRINTSTARTFUNC
-    SWScheduler* pSch = xs->pSch;
-    std::lock_guard<std::mutex> lk(pSch->pending_cmds_mutex);
+    std::lock_guard<std::mutex> lk(this->pending_cmds_mutex);
 
-    if (xs->error) { return; }
+    if (mScheduler->error) { return; }
 
     /* queue new pending commands */
-    pSch->scheduler_queue_cmds();
+    this->scheduler_queue_cmds();
 
     /* iterate all commands */
-    pSch->scheduler_iterate_cmds();
+    this->scheduler_iterate_cmds();
   }
 
-  void* scheduler(void* data)
+  void SWScheduler::scheduler()
   {
     PRINTSTARTFUNC
-    xocl_sched *xs = (xocl_sched *)data;
-    while (!xs->stop && !xs->error)
+    while (!mScheduler->stop && !mScheduler->error)
     {
-      scheduler_loop(xs);
+      scheduler_loop();
       usleep(10);
     }
-    return NULL;
+    
   }
 
   int SWScheduler::init_scheduler_thread(void)
   {
+     mScheduler = std::make_shared<xocl_sched>(shared_from_this());
     PRINTSTARTFUNC
     if (mScheduler->bThreadCreated)
       return 0;
@@ -1069,14 +1066,8 @@ namespace xclcpuemhal2 {
 #endif
 
     //int returnStatus  =  pthread_create(&(mScheduler->scheduler_thread) , NULL, scheduler, (void *)mScheduler);
-    int returnStatus = 0;
-    mScheduler->scheduler_thread = std::thread(scheduler, (void *)mScheduler);
-   
-    if (returnStatus != 0)
-    {
-      std::cout << __func__ <<  " pthread_create failed " << " " << returnStatus<< std::endl;
-      exit(1);
-    }
+    mScheduler->scheduler_thread = std::thread([&]
+                                               { this->scheduler();  });
     mScheduler->bThreadCreated = true;
 
     return 0;
@@ -1109,7 +1100,7 @@ namespace xclcpuemhal2 {
     return retval;
   }
 
-  int SWScheduler::add_exec_buffer(exec_core* exec, xclemulation::drm_xocl_bo *buf)
+  int SWScheduler::add_exec_buffer(std::shared_ptr<exec_core> &exec, std::shared_ptr<xclemulation::drm_xocl_bo> &buf)
   {
     PRINTSTARTFUNC
     return add_cmd(exec, buf);
