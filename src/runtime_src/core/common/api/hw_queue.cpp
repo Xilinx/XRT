@@ -372,7 +372,7 @@ public:
   std::cv_status
   wait(size_t timeout_ms) override
   {
-    return m_device->wait_command(m_qhdl, XRT_NULL_BO, static_cast<int>(timeout_ms))
+    return m_device->wait_command(m_qhdl, XRT_INVALID_BUFFER_HANDLE, static_cast<int>(timeout_ms))
       ? std::cv_status::no_timeout
       : std::cv_status::timeout;
   }
