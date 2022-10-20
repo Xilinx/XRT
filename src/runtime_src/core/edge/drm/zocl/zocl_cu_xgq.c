@@ -26,7 +26,7 @@
 #define zcu_xgq_dbg(zcu_xgq, fmt, args...)	zocl_dbg(ZCU_XGQ2DEV(zcu_xgq), fmt"\n", ##args)
 
 #define ZCU_XGQ_MAX_SLOT_SIZE	1024
-#define ZCU_XGQ_FAST_PATH(zcu_xgq)		((zcu_xgq)->zxc_num_cu == 1)
+#define ZCU_XGQ_FAST_PATH(zcu_xgq)		(((zcu_xgq)->zxc_num_cu == 1) && ((zcu_xgq)->zxc_cu_domain == 0))
 
 static void zcu_xgq_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd);
 
@@ -409,6 +409,16 @@ static void init_resp(struct xgq_com_queue_entry *resp, u16 cid, u32 rcode)
 	memset(resp, 0, sizeof(*resp));
 	resp->hdr.cid = cid;
 	resp->hdr.cstate = XGQ_CMD_STATE_COMPLETED;
+	resp->result = KDS_COMPLETED;
+	resp->rcode = rcode;
+}
+
+static void init_resp_abort(struct xgq_com_queue_entry *resp, u16 cid, u32 rcode, int status)
+{
+	memset(resp, 0, sizeof(*resp));
+	resp->hdr.cid = cid;
+	resp->hdr.cstate = XGQ_CMD_STATE_ABORTED;
+	resp->result = status;
 	resp->rcode = rcode;
 }
 
@@ -427,13 +437,31 @@ zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, i
 	kfree(cmd);
 }
 
+static inline void
+zcu_xgq_cmd_complete_with_status(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, int ret, int status)
+{
+	struct xgq_com_queue_entry r;
+	struct zocl_cu_xgq *zcu_xgq = platform_get_drvdata(pdev);
+
+	if (likely(ret == 0 && ZCU_XGQ_FAST_PATH(zcu_xgq))) {
+		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, NULL);
+	} else if (status == KDS_SKCRASHED) {
+		init_resp_abort(&r, cmd->cid, ret, status);
+		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, &r);
+	} else {
+		init_resp(&r, cmd->cid, ret);
+		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, &r);
+	}
+	kfree(cmd);
+}
+
 static void zcu_xgq_cmd_notify(struct kds_command *xcmd, int status)
 {
 	struct zocl_cu_xgq *zcu_xgq = (struct zocl_cu_xgq *)xcmd->priv;
 	struct xgq_cmd_sq_hdr *cmd = xcmd->info;
 
 	xcmd->info = NULL;
-	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, xcmd->rcode);
+	zcu_xgq_cmd_complete_with_status(ZCU_XGQ2PDEV(zcu_xgq), cmd, xcmd->rcode, xcmd->status);
 
 	if (xcmd->cu_idx >= 0) {
 		if (cmd->cu_domain != 0)

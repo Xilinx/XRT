@@ -494,6 +494,10 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 		ecmd->state = ERT_CMD_STATE_TIMEOUT;
 	else if (status == KDS_ABORT)
 		ecmd->state = ERT_CMD_STATE_ABORT;
+	else if (status == KDS_SKERROR)
+		ecmd->state = ERT_CMD_STATE_SKERROR;
+	else if (status == KDS_SKCRASHED)
+		ecmd->state = ERT_CMD_STATE_SKCRASHED;
 
 	if (xcmd->timestamp_enabled) {
 		/* Only start kernel command supports timestamps */

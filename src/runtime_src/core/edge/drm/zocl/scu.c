@@ -368,6 +368,7 @@ int zocl_scu_wait_ready(struct platform_device *pdev)
 	return 0;
 }
 
+// Signal SKD Ready
 void zocl_scu_sk_ready(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
@@ -376,12 +377,14 @@ void zocl_scu_sk_ready(struct platform_device *pdev)
 	up(&zcu->sc_sem);
 }
 
+// Signal PS kernel crashed
 void zocl_scu_sk_crash(struct platform_device *pdev)
 {
-	//struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
 
-	// TO-DO
-	// Add taks to indicate PS kernel crash
+	scu_crashed(xcu->core);
+
 	return; /* Place holder */
 }
 

@@ -50,6 +50,8 @@ enum kds_status {
 	KDS_ABORT,
 	KDS_TIMEOUT,
 	KDS_STAT_MAX,
+	KDS_SKERROR,
+	KDS_SKCRASHED,
 };
 
 struct kds_command;

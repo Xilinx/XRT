@@ -34,6 +34,7 @@ struct xrt_cu_scu {
 	int			 run_cnts;
 	void			*vaddr;
 	int			 num_reg;
+	bool			 sk_crashed;
 	struct semaphore	*sc_sem;
 	struct list_head	 submitted;
 	struct list_head	 completed;
@@ -147,12 +148,17 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 
 	ctrl_reg = *cu_regfile;
 	/* ap_ready and ap_done would assert at the same cycle */
-	if (ctrl_reg & CU_AP_DONE) {
+	if ((ctrl_reg & CU_AP_DONE) || scu->sk_crashed) {
 		done_reg  = 1;
 		ready_reg = 1;
-		rcode = cu_regfile[scu->num_reg+1];
 		scu->run_cnts--;
-		cu_move_to_complete(scu, KDS_COMPLETED, rcode);
+		if (scu->sk_crashed) {
+			rcode = EIO;
+			cu_move_to_complete(scu, KDS_SKCRASHED, rcode);
+		} else {
+			rcode = cu_regfile[scu->num_reg+1];
+			cu_move_to_complete(scu, KDS_COMPLETED, rcode);
+		}
 	}
 
 	status->num_done  = done_reg;
@@ -216,10 +222,19 @@ static int scu_abort(void *core, void *cond,
 			continue;
 
 		xcmd->status = KDS_TIMEOUT;
+		xcmd->rcode = ETIMEDOUT;
 		list_move_tail(&xcmd->list, &scu->completed);
 	}
 
 	return ret;
+}
+
+// Signal PS kernel crashed
+void scu_crashed(void *core)
+{
+	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
+
+	scu->sk_crashed = 1;
 }
 
 static struct xcu_funcs xrt_scu_funcs = {
@@ -248,6 +263,7 @@ int xrt_cu_scu_init(struct xrt_cu *xcu, void *vaddr, struct semaphore *sem)
 	core->max_credits = 1;
 	core->credits = core->max_credits;
 	core->run_cnts = 0;
+	core->sk_crashed = 0;
 	core->sc_sem = sem;
 	core->vaddr = vaddr;
 	INIT_LIST_HEAD(&core->submitted);

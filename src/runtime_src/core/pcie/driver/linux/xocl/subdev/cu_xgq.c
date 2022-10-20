@@ -57,8 +57,7 @@ static void cu_xgq_check(void *core, struct xcu_status *status, bool force)
 	struct xrt_cu_xgq *cu_xgq = core;
 
 	status->num_ready = 1;
-	while (!xocl_xgq_check_response(cu_xgq->xgq, cu_xgq->xgq_client_id));
-	status->new_status = 0x4;
+	while (!xocl_xgq_check_response(cu_xgq->xgq, cu_xgq->xgq_client_id, &status->new_status));
 }
 
 static void cu_xgq_enable_intr(void *core, u32 intr_type)

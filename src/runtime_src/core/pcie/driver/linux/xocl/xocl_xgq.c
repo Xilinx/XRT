@@ -120,7 +120,7 @@ void xocl_xgq_notify(void *xgq_handle)
 	xocl_xgq_trigger_sq_intr(xgq);
 }
 
-static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int id, u64 resp_addr)
+static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int id, u64 resp_addr, int *status)
 {
 	struct xgq_com_queue_entry *resp = (struct xgq_com_queue_entry *)resp_addr;
 	struct xocl_xgq_client *client = &xgq->xx_clients[id];
@@ -135,10 +135,16 @@ static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int id, u64 resp_addr)
 
 	xcmd = list_first_entry(&client->xxc_submitted, struct kds_command, list);
 
-	if (client->xxc_prot & XGQ_PROT_NEED_RESP)
+	if (client->xxc_prot & XGQ_PROT_NEED_RESP) {
 		xocl_xgq_read_queue((u32 *)&xcmd->rcode, (u32 __iomem *)&resp->rcode, sizeof(xcmd->rcode)/4);
-
-	xcmd->status = KDS_COMPLETED;
+		xocl_xgq_read_queue((u32 *)&xcmd->status, (u32 __iomem *)&resp->result, sizeof(xcmd->status)/4);
+#if 1
+		printk("DEBUG: xgq resp rcode = %x\n", xcmd->rcode);
+		printk("DEBUG: xgq resp status = %x\n", xcmd->status);
+#endif
+	} else
+		xcmd->status = KDS_COMPLETED;
+	*status = xcmd->status;
 	list_move_tail(&xcmd->list, &client->xxc_completed);
 	client->xxc_num_submit--;
 	client->xxc_num_complete++;
@@ -147,7 +153,7 @@ static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int id, u64 resp_addr)
 	return 0;
 }
 
-int xocl_xgq_check_response(void *xgq_handle, int id)
+int xocl_xgq_check_response(void *xgq_handle, int id, int *status)
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
 	struct xgq_cmd_cq_hdr hdr;
@@ -168,7 +174,7 @@ int xocl_xgq_check_response(void *xgq_handle, int id)
 		target_id = hdr.cid & CLIENT_ID_MASK;
 	}
 
-	xocl_xgq_handle_resp(xgq, target_id, addr);
+	xocl_xgq_handle_resp(xgq, target_id, addr, status);
 
 	xgq_notify_peer_consumed(&xgq->xx_xgq);
 	if (id != target_id)
