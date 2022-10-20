@@ -16,12 +16,16 @@
 #include "core/include/ert.h"
 #include "core/include/xcl_hwqueue.h"
 
+#include <atomic>
 #include <algorithm>
+#include <chrono>
 #include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <thread>
+
+using namespace std::chrono_literals;
 
 ////////////////////////////////////////////////////////////////
 // Main command execution interface for scheduling commands for
@@ -94,6 +98,9 @@ public:
 
     virtual void
     submit(xrt_core::command* cmd) = 0;
+
+    virtual void
+    notify(xrt_core::command* cmd) = 0;
   };
 
 private:
@@ -161,7 +168,7 @@ private:
       // Preserve order of processing
       for (auto cmd : running_cmds) {
         if (completed(cmd))
-          notify_host(cmd);
+          m_impl->notify(cmd);
         else
           busy_cmds.push_back(cmd);
       }
@@ -332,6 +339,13 @@ public:
   virtual std::cv_status
   wait(size_t timeout_ms) = 0;
 
+  // Notify host on command completion
+  virtual void
+  notify(xrt_core::command* cmd)
+  {
+    notify_host(cmd);
+  }
+
   // Wait for specified command to finish
   virtual std::cv_status
   wait(const xrt_core::command* cmd, size_t timeout_ms) = 0;
@@ -402,6 +416,15 @@ public:
   }
 };
 
+// s_exec_wait_progress_counter is a counter value that is synced up
+// with local thread counters when exec_wait is called.  Since a
+// thread can be reused, potentially with more than one device object
+// or with new device objects, it is vital to keep the progress counter
+// global for the process.  The downside of keeping the counter global
+// is that threads spanning multiple device objects may end up resyncing
+// unnecessarily with the global counter.
+static std::atomic<uint64_t> s_exec_wait_call_count {0};
+
 // class kds_device - queue implementation for legacy shim support
 //
 // @exec_wait_mutex: Synchronize access to exec_wait
@@ -409,8 +432,55 @@ public:
 class kds_device : public hw_queue_impl
 {
   xrt_core::device* m_device;
-  std::mutex m_exec_wait_mutex;
-  uint64_t m_exec_wait_call_count = 0;
+
+  // The order of the member variables is important based
+  // on usage.  For example the m_exec_wait_runner relies
+  // on proper initialization of the shared atomic variables.
+  std::atomic<uint64_t> m_commands_in_flight {0};
+  std::atomic<bool> m_stop {false};
+  std::condition_variable m_work;
+  std::mutex m_mutex;
+  std::thread m_exec_wait_runner; // initialize last
+
+  // The exec_wait_runner is a per-device thread that is responsible
+  // for managing command completion ensuring that only one thread
+  // calls exec_wait.
+  //
+  // The thread sleeps until commands are in-flight, meaning that some
+  // commands have been sent to the device through exec_buf calls. As
+  // long as commands are in-flight, the thread repeatedly calls
+  // exec_wait until some command has completed.
+  //
+  // Upon command completion, the thread increments a progress counter
+  // and notifies all waiting threads.
+  void
+  exec_wait_runner()
+  {
+    while (!m_stop) {
+      // This is pre-mature optimization trying to avoid an uncessary
+      // mutex lock while believing that checking an atomic variable
+      // is cheaper than acquiring the lock.
+      if (!m_commands_in_flight) {
+        std::unique_lock lk(m_mutex);
+        while (!m_stop && !m_commands_in_flight)
+          m_work.wait(lk);
+      }
+
+      // Do not hold the mutex while running exec_wait.  Stop
+      // iterating when no more commands are in flight after last
+      // timeout from exec_wait.  On command completion, exec_wait
+      // return value quits the loop so that waiting threads can be
+      // notified.
+      while (!m_stop && m_commands_in_flight && m_device->exec_wait(100) == 0) {}
+
+      // Update call progress counter under the mutex else worker
+      // threads can miss the update right as they enter wait.
+      std::lock_guard lk(m_mutex);
+      ++s_exec_wait_call_count;
+      m_work.notify_all();
+    }
+  }
+
 
   // Thread safe shim level exec wait call.   This function allows
   // multiple threads to call exec_wait through same device handle.
@@ -423,51 +493,52 @@ class kds_device : public hw_queue_impl
   // prevents that scenario from happening.
   //
   // Thread local storage keeps a call count that syncs with the
-  // number of times device->exec_wait has been called. If thread
-  // local call count is different from the global count, then this
-  // function resets the thread local call count and return without
-  // calling shim exec_wait.
+  // number of times device->exec_wait has successfully returned. If
+  // thread local call count is different from the global count, then
+  // this function resets the thread local call count and return
+  // without waiting for next exec_wait.
   //
-  // The specified timeout has effect only when underlying xclExecWait
-  // times out. The timeout can be masked if device is busy and many
-  // commands complete with the specified timeout.
+  // The specified timeout affects how long the thread will wait for
+  // the exec_wait runner to notify the condition variable (this
+  // thread).  The timeout can can be masked if device is busy and
+  // many commands complete within the specified timeout.
   std::cv_status
   exec_wait(size_t timeout_ms=0)
   {
     static thread_local uint64_t thread_exec_wait_call_count = 0;
-    std::lock_guard lk(m_exec_wait_mutex);
+    std::unique_lock lk(m_mutex);
 
-    if (thread_exec_wait_call_count != m_exec_wait_call_count) {
-      // some other thread has called exec_wait and may have
+    if (thread_exec_wait_call_count != s_exec_wait_call_count) {
+      // Some other thread has called exec_wait and may have
       // covered this thread's commands, synchronize thread
       // local call count and return to caller.
-      thread_exec_wait_call_count = m_exec_wait_call_count;
+      thread_exec_wait_call_count = s_exec_wait_call_count;
       return std::cv_status::no_timeout;
     }
 
     auto status = std::cv_status::no_timeout;
-    if (timeout_ms) {
-      // device exec_wait is a system poll which returns
-      // 0 when specified timeout is exceeded without any
-      // file descriptors to read
-      if (m_device->exec_wait(static_cast<int>(timeout_ms)) == 0)
-        status = std::cv_status::timeout;
-    }
-    else {
-      // wait for ever for some command to complete
-      while (m_device->exec_wait(1000) == 0) {}
-    }
+    if (timeout_ms)
+      status = m_work.wait_for(lk, timeout_ms * 1ms);
+    else
+      m_work.wait(lk);
 
-    // synchronize this thread with total call count
-    thread_exec_wait_call_count = ++m_exec_wait_call_count;
-
+    // Synchronize this thread with total progress count
+    thread_exec_wait_call_count = s_exec_wait_call_count;
     return status;
   }
 
 public:
   kds_device(xrt_core::device* device)
     : m_device(device)
+    , m_exec_wait_runner(std::thread(&kds_device::exec_wait_runner, this))
   {}
+
+  ~kds_device()
+  {
+    m_stop = true;
+    m_work.notify_all();
+    m_exec_wait_runner.join();
+  }
 
   std::cv_status
   wait(size_t timeout_ms) override
@@ -478,12 +549,19 @@ public:
   std::cv_status
   wait(const xrt_core::command* cmd, size_t timeout_ms) override
   {
-    auto pkt = cmd->get_ert_packet();
+    volatile auto pkt = cmd->get_ert_packet();
     while (pkt->state < ERT_CMD_STATE_COMPLETED) {
       // return immediately on timeout
       if (exec_wait(timeout_ms) == std::cv_status::timeout)
         return std::cv_status::timeout;
     }
+
+    // One command is completed, give the runner a chance
+    // for entering sleep at next iteration.  This variable
+    // update doesn't have to be modified under a mutex lock
+    // since the exec_wait_runner will at most complete one
+    // more loop before noticing the change.
+    --m_commands_in_flight;
 
     // notify_host is not strictly necessary for unmanaged
     // command execution but provides a central place to update
@@ -497,7 +575,30 @@ public:
   submit(xrt_core::command* cmd) override
   {
     m_device->exec_buf(cmd->get_exec_bo());
+
+    // Notify exec_wait_runner of commands in flight.  This must be
+    // done under synchronized mutex otherwise the runner may miss the
+    // change to m_commands_in_flight right when it waits on work.  If
+    // the runner is already running, then this notification also
+    // wakes up all waiting threads to check for command completion,
+    // but that is just one maybe useless iteration.
+    std::lock_guard lk(m_mutex);
+    ++m_commands_in_flight;
+    m_work.notify_all();
   }
+
+  // Callback from execution monitor (OpenCL command callback path)
+  // when a command has completed.  This override is necessary to
+  // manage m_commands_in_flight. We safely call the wait function
+  // which does exactly what we want.
+  void
+  notify(xrt_core::command* cmd) override
+  {
+    // Safe to call wait since command is complete;
+    if (wait(cmd, 1) == std::cv_status::timeout)
+      throw std::runtime_error("Internal error, command status is bogus");
+  }
+
 };
 
 }  // xrt_core
