@@ -202,6 +202,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id);
 		if (ret) {
 			vfree(client->ctx);
+			client->ctx = NULL;
 			goto out;
 		}
 
@@ -209,6 +210,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		if (!uuid) {
 			ret = -ENOMEM;
 			vfree(client->ctx);
+			client->ctx = NULL;
 			(void) xocl_icap_unlock_bitstream(xdev,
 							  &args->xclbin_id);
 			goto out;
