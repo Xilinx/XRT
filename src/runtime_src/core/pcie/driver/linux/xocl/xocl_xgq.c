@@ -138,10 +138,6 @@ static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int id, u64 resp_addr, int
 	if (client->xxc_prot & XGQ_PROT_NEED_RESP) {
 		xocl_xgq_read_queue((u32 *)&xcmd->rcode, (u32 __iomem *)&resp->rcode, sizeof(xcmd->rcode)/4);
 		xocl_xgq_read_queue((u32 *)&xcmd->status, (u32 __iomem *)&resp->result, sizeof(xcmd->status)/4);
-#if 1
-		printk("DEBUG: xgq resp rcode = %x\n", xcmd->rcode);
-		printk("DEBUG: xgq resp status = %x\n", xcmd->status);
-#endif
 	} else
 		xcmd->status = KDS_COMPLETED;
 	*status = xcmd->status;
