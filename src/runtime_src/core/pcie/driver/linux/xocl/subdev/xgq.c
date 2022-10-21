@@ -78,6 +78,10 @@
 static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_VMR_INVALID_CID	0xFFFF
 
+/* Retry is set to 200 seconds for SC to be active*/
+#define MAX_SC_WAIT             200 //sec
+#define SC_WAIT_INTERVAL        1000 //ms
+
 /* cmd timeout in seconds */
 #define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(600 * 1000) 
 #define XOCL_XGQ_DOWNLOAD_TIME	msecs_to_jiffies(300 * 1000) 
@@ -2252,6 +2256,7 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "PROGRAM_PROGRESS:%d\n", vmr_status->program_progress);
 	cnt += sprintf(buf + cnt, "PL_IS_READY:%d\n", vmr_status->pl_is_ready);
 	cnt += sprintf(buf + cnt, "PS_IS_READY:%d\n", vmr_status->ps_is_ready);
+	cnt += sprintf(buf + cnt, "SC_IS_READY:%d\n", vmr_status->sc_is_ready);
 
 	return cnt;
 }
@@ -2780,7 +2785,31 @@ static inline bool xgq_device_is_ready(struct xocl_xgq_vmr *xgq)
 				return true;
 		}
 	}
-	
+
+	return false;
+}
+
+static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq)
+{
+	struct xgq_cmd_cq_vmr_payload *vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
+	int i, ret;
+
+	for (i = 0; i < MAX_SC_WAIT; i++) {
+		ret = vmr_status_query(xgq->xgq_pdev);
+		if (ret)
+			XGQ_ERR(xgq, "received error %d for vmr_status_query xgq request", ret);
+
+		if (vmr_status->sc_is_ready) {
+			XGQ_INFO(xgq, "SC is ready and active");
+			return true;
+		}
+
+		XGQ_WARN(xgq, "waiting for SC to be in ready state");
+		msleep(SC_WAIT_INTERVAL);
+	}
+
+	XGQ_ERR(xgq, "SC state is unknown");
 	return false;
 }
 
@@ -2790,6 +2819,7 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	struct xocl_xgq_vmr *xgq = NULL;
 	struct resource *res = NULL;
 	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_HWMON_SDM;
+	bool sc_ready = true;
 	u64 flags = 0;
 	int ret = 0, i = 0;
 	void *hdl;
@@ -2918,6 +2948,11 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		goto done;
 	}
 
+	if (!vmr_check_sc_is_ready(xgq)) {
+		sc_ready = false;
+		XGQ_ERR(xgq, "SC is not ready and inactive, some user functions may not work properly");
+	}
+
 	ret = xgq_log_page_system_dtb(pdev, &xgq->xgq_vmr_system_dtb,
 			&xgq->xgq_vmr_system_dtb_size);
 	if (ret) {
@@ -2944,10 +2979,12 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 			XGQ_INFO(xgq, "clock scaling feature is not supported");
 	}
 
-	ret = xocl_subdev_create(xdev, &subdev_info);
-	if (ret) {
-		XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
-		ret = 0;
+	if (sc_ready) {
+		ret = xocl_subdev_create(xdev, &subdev_info);
+		if (ret) {
+			XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
+			ret = 0;
+		}
 	}
 
 done:
