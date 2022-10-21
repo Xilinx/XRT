@@ -395,6 +395,10 @@ struct xgq_cmd_cq_vmr_identify_payload {
  * @clock_payload:
  * @sensor_payload:
  * @multiboot_payload:
+ * @log_payload:
+ * @xclbin_payload:
+ * @clk_scaling_payload:
+ * @vmr_identify_payload:
  */
 struct xgq_cmd_cq {
 	struct xgq_cmd_cq_hdr hdr;
