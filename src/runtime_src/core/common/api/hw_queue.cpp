@@ -372,7 +372,7 @@ public:
   std::cv_status
   wait(size_t timeout_ms) override
   {
-    return m_device->wait_command(m_qhdl, XRT_NULL_BO, static_cast<int>(timeout_ms))
+    return m_device->wait_command(m_qhdl, XRT_INVALID_BUFFER_HANDLE, static_cast<int>(timeout_ms))
       ? std::cv_status::no_timeout
       : std::cv_status::timeout;
   }
@@ -508,8 +508,24 @@ namespace {
 // For time being there is only one hw_queue per hw_context
 // Use static map with weak pointers to implementation.
 using hwc2hwq_type = std::map<xcl_hwctx_handle, std::weak_ptr<xrt_core::hw_queue_impl>>;
+using queue_ptr = std::shared_ptr<xrt_core::hw_queue_impl>;
 static std::mutex mutex;
 static std::map<const xrt_core::device*, hwc2hwq_type> dev2hwc;  // per device
+
+// This function ensures that only one kds_device is created per
+// xrt_core::device regardless of hwctx.  It allocates (if necessary)
+// a kds_device queue impl in the sentinel slot that represents a null
+// hardware context.
+static std::shared_ptr<xrt_core::hw_queue_impl>
+get_kds_device_nolock(hwc2hwq_type& queues, const xrt_core::device* device)
+{
+  auto hwqimpl = queues[XRT_NULL_HWCTX].lock();
+  if (!hwqimpl)
+    queues[XRT_NULL_HWCTX] = hwqimpl =
+      queue_ptr{new xrt_core::kds_device(const_cast<xrt_core::device*>(device))};
+
+  return hwqimpl;
+}
 
 // Create a hw_queue implementation assosicated with a device without
 // any hw context.  This is used for legacy construction for internal
@@ -520,17 +536,13 @@ get_hw_queue_impl(const xrt_core::device* device)
 {
   std::lock_guard lk(mutex);
   auto& queues = dev2hwc[device];
-  auto hwqimpl = queues[XRT_NULL_HWCTX].lock();
-  if (!hwqimpl)
-    queues[XRT_NULL_HWCTX] = hwqimpl =
-      std::shared_ptr<xrt_core::hw_queue_impl>(new xrt_core::kds_device(const_cast<xrt_core::device*>(device)));
-
-  return hwqimpl;
+  return get_kds_device_nolock(queues, device);
 }
 
 // Create a hw_queue implementation for a hw context.
 // Ensure unique queue per device since driver doesn't currently
-// guarantee unique hwctx handle cross devices
+// guarantee unique hwctx handle cross devices.  Also make sure
+// only one kds_device queue impl is created per device.
 static std::shared_ptr<xrt_core::hw_queue_impl>
 get_hw_queue_impl(const xrt::hw_context& hwctx)
 {
@@ -542,10 +554,9 @@ get_hw_queue_impl(const xrt::hw_context& hwctx)
   if (!hwqimpl) {
     auto hwqueue_hdl = device->create_hw_queue(hwctx);
     queues[hwctx_hdl] = hwqimpl = (hwqueue_hdl == XRT_NULL_HWQUEUE)
-      ? std::shared_ptr<xrt_core::hw_queue_impl>(new xrt_core::kds_device(device))
-      : std::shared_ptr<xrt_core::hw_queue_impl>(new xrt_core::qds_device(device, hwqueue_hdl));
+      ? get_kds_device_nolock(queues, device)
+      : queue_ptr{new xrt_core::qds_device(device, hwqueue_hdl)};
   }
-
   return hwqimpl;
 }
 

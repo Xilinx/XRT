@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrt_core_command_h_
 #define xrt_core_command_h_
 
@@ -54,7 +55,7 @@ public:
   /**
    * get_exec_bo() - get BO handle of command buffer
    */
-  virtual xclBufferHandle
+  virtual xrt_buffer_handle
   get_exec_bo() const = 0;
 
   /**
