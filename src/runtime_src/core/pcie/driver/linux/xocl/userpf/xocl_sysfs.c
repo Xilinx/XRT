@@ -1,18 +1,11 @@
 /*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2016-2020 Xilinx, Inc.  All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ *
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
- *
  * Authors: Lizhi.Hou@xilinx.com
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 #include "common.h"
 #include "kds_core.h"
@@ -285,45 +278,38 @@ kds_custat_raw_show(struct device *dev, struct device_attribute *attr, char *buf
 }
 static DEVICE_ATTR_RO(kds_custat_raw);
 
-#define MAX_CU_OUTPUT_LENGTH 128
-#define CU_BUFFER_SIZE (MAX_CU_OUTPUT_LENGTH * MAX_CUS)
 static ssize_t kds_custat_bin_show(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
-	/**
-	 * A seperate buffer needs to be allocated so that the information
-	 * does not change between invocations. kmalloc is used so that the
-	 * data can be freed once the operation is complete
-	 */
-	static char * buf = NULL;
 	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	ssize_t ret = 0;
 	u32 nread = 0;
 
-	/* If the buffer has not been allocatd create one and populate it */
-	if (!buf) {
-		buf = kmalloc(CU_BUFFER_SIZE * sizeof(char), GFP_KERNEL);
-		mutex_lock(&xdev->dev_lock);
-		ret = show_kds_custat_raw(&XDEV(xdev)->kds, buf, CU_BUFFER_SIZE);
-		mutex_unlock(&xdev->dev_lock);
-	}
+	/* Allocate a buffer as the buffer is too big to fit on the stack */
+	char *buf = kmalloc(MAX_CU_STAT_BUFFER_SIZE * sizeof(char), GFP_KERNEL);
 
-	/* Check if the maximum read amount exceeds the amount of data to read */
-	if (count < CU_BUFFER_SIZE - offset)
+	/* Populate the allocated buffer with CU data */
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buf, MAX_CU_STAT_BUFFER_SIZE);
+	mutex_unlock(&xdev->dev_lock);
+
+	/* Set the amount to write out dependant on the number of bytes received */
+	ret = (ret < MAX_CU_STAT_BUFFER_SIZE) ? ret : MAX_CU_STAT_BUFFER_SIZE;
+
+	/* Validate the number of bytes to send out for the current operation */
+	if (count < ret - offset)
 		nread = count;
 	else
-		nread = CU_BUFFER_SIZE - offset;
+		nread = ret - offset;
 
 	/* If no bytes are left to read finish the operation */
-	if (nread == 0)
-		goto complete;
+	if (nread <= 0)
+		nread = 0;
+	else
+		memcpy(buffer, buf + offset, nread);
 
-	memcpy(buffer, buf + offset, nread);
-	return nread;
-
-complete:
 	kfree(buf);
-	return 0;
+	return nread;
 }
 
 static struct bin_attribute kds_custat_bin_attr = {
@@ -333,7 +319,7 @@ static struct bin_attribute kds_custat_bin_attr = {
 	},
 	.read = kds_custat_bin_show,
 	.write = NULL,
-	.size = CU_BUFFER_SIZE
+	.size = MAX_CU_STAT_BUFFER_SIZE
 };
 
 static ssize_t
