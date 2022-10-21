@@ -40,17 +40,16 @@ namespace xclhwemhal2 {
       pthread_t                   scheduler_thread;
       pthread_mutex_t             state_lock;
       pthread_cond_t              state_cond;
-      std::thread scheduler_threadID;
-      std::mutex state_mutex;
-      std::condition_variable state_condvar;
-      //std::list<xocl_cmd*>        command_queue;
+      std::thread                 scheduler_threadID;
+      std::mutex                  state_mutex;
+      std::condition_variable     state_condvar;
       std::list<std::shared_ptr<xocl_cmd>>        command_queue;
       bool                        bThreadCreated;
       unsigned int                error;
       int                         intc;
       int                         poll;
       bool                        stop;
-      std::weak_ptr<MBScheduler>              pSch;
+      std::weak_ptr<MBScheduler>  pSch;
       xocl_sched(std::shared_ptr<MBScheduler>);
       ~xocl_sched();
   };
@@ -194,11 +193,7 @@ namespace xclhwemhal2 {
     bool cu_ready(std::shared_ptr<xocl_cu>& xcu);
     bool cu_start(std::shared_ptr<xocl_cu>& xcu, std::shared_ptr<xocl_cmd>& xcmd);
 
-    //friend void scheduler_loop(std::shared_ptr<xocl_sched>& xs);
-    //friend void* scheduler(void* data) ;
-    //void scheduler_thread(std::shared_ptr<xocl_sched>& );
     void scheduler_thread();
-    //void scheduler_periodic_loop_thread(std::shared_ptr<xocl_sched>& xs);
     void scheduler_periodic_loop_thread();
 
     int init_scheduler_thread(void) ;

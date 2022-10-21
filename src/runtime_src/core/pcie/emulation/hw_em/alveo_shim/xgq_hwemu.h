@@ -113,9 +113,7 @@ namespace hwemu {
       uint64_t        xgq_sub_base;
       uint64_t        xgq_com_base;
 
-      //std::list<xgq_cmd*>          pending_cmds;
       std::list<std::shared_ptr<xgq_cmd>>          pending_cmds;
-      //std::map<uint64_t, xgq_cmd*> submitted_cmds;
       std::map<uint64_t, std::shared_ptr<xgq_cmd>> submitted_cmds;
       std::mutex                   queue_mutex;
       bool                         stop;

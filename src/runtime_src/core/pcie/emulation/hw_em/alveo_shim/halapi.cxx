@@ -353,9 +353,6 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   FeatureRomHeader fRomHeader;
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
   boost::property_tree::ptree platformData;
-
-  //std::shared_ptr<xclhwemhal2::HwEmShim> handle = nullptr;
-
   
   auto it = xclhwemhal2::devices.find(deviceIndex);
   if (it != xclhwemhal2::devices.end())
@@ -364,7 +361,6 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   }
   else
   {
-    std::cerr << "\n Memory should be assigned to Map, right?\n";
     handle = std::make_shared<xclhwemhal2::HwEmShim>(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
     // careful here

@@ -42,7 +42,7 @@ namespace xclcpuemhal2 {
       //pthread_mutex_t             state_lock;
       //pthread_cond_t              state_cond;
       std::condition_variable_any    state_cond;
-      std::list<std::shared_ptr<xocl_cmd>>        command_queue;
+      std::list<std::shared_ptr<xocl_cmd>>   command_queue;
       bool                        bThreadCreated;
       unsigned int                error;
       int                         intc;

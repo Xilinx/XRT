@@ -311,7 +311,6 @@ namespace xclcpuemhal2 {
   SWScheduler::~SWScheduler()
   {
     PRINTSTARTFUNC
-    //delete
     mScheduler.reset();
     num_pending = 0;
   }
@@ -1056,7 +1055,7 @@ namespace xclcpuemhal2 {
 
   int SWScheduler::init_scheduler_thread(void)
   {
-     mScheduler = std::make_shared<xocl_sched>(shared_from_this());
+    mScheduler = std::make_shared<xocl_sched>(shared_from_this());
     PRINTSTARTFUNC
     if (mScheduler->bThreadCreated)
       return 0;
@@ -1067,7 +1066,7 @@ namespace xclcpuemhal2 {
 
     //int returnStatus  =  pthread_create(&(mScheduler->scheduler_thread) , NULL, scheduler, (void *)mScheduler);
     mScheduler->scheduler_thread = std::thread([&]
-                                               { this->scheduler();  });
+                                               { this->scheduler(); });
     mScheduler->bThreadCreated = true;
 
     return 0;

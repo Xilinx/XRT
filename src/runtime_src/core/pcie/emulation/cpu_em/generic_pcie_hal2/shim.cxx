@@ -157,7 +157,7 @@ namespace xclcpuemhal2
       return 0;
     return reinterpret_cast<CpuemShim *>(handle);
 /*
-
+    // why are we checking shim pointer address with a const address?
     if (*(unsigned *)handle != TAG)
       return 0;
     if (!((CpuemShim *)handle)->isGood())
@@ -523,7 +523,7 @@ namespace xclcpuemhal2
       }
     }
     sock = std::make_shared<unix_socket>("EMULATION_SOCKETID");
-    
+
   }
 
   void CpuemShim::getCuRangeIdx()
@@ -1295,7 +1295,6 @@ namespace xclcpuemhal2
       if (mIsKdsSwEmu && mSWSch && mCore)
       {
         mSWSch->fini_scheduler_thread();
-        //delete mCore;
         mCore.reset();
         mSWSch.reset();
         
@@ -1371,12 +1370,6 @@ namespace xclcpuemhal2
         mSWSch->fini_scheduler_thread();
         mCore.reset();
         mSWSch.reset();
-        /*
-        delete mCore;
-        mCore = nullptr;
-        delete mSWSch;
-        mSWSch = nullptr;
-        */
       }
       return;
     }
@@ -1410,7 +1403,9 @@ namespace xclcpuemhal2
       while (-1 == waitpid(0, &status, 0));
 
     systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
-      sock.reset();
+    sock.reset();
+    PRINTENDFUNC;
+    if (mIsKdsSwEmu && mSWSch && mCore)
     {
       mSWSch->fini_scheduler_thread();
       mCore.reset();

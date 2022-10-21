@@ -87,7 +87,8 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
     bDefaultDevice = true;
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }
-/*
+/* 
+// To be deleted section
   if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {
     delete handle;
     handle = 0;
@@ -669,6 +670,7 @@ xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph
     if (graphHandle) {
       auto drv = graphHandle->getDeviceHandle();
       if (drv) {
+        //graph handler should be live somewhere thourgh out this shim scope so let's shim devices map here.
         xclcpuemhal2::graph_devices[graphHandle->getGraphHandle()] = graphHandle;
         drv->xrtGraphInit(graphHandle);
       }

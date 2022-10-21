@@ -10,11 +10,7 @@ namespace xclhwemhal2 {
 
   xocl_cmd::xocl_cmd()
   {
-    /*
-    bo = NULL;
-    exec = NULL;
     packet = NULL;
-    */
     cu_idx = 0;
     slot_idx = 0;
     state = ERT_CMD_STATE_NEW;
@@ -24,10 +20,6 @@ namespace xclhwemhal2 {
   {
     bo.reset();
     exec.reset();
-    //packet.reset();
-
-    //bo = NULL;
-    //exec = NULL;
     cu_idx = 0;
     slot_idx = 0;
     packet = NULL;  // buf address from shim class is the real owner of this pointer
@@ -137,7 +129,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return ;
     }
 
@@ -161,7 +153,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return;
     }
 
@@ -194,7 +186,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return;
     }
 
@@ -212,7 +204,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return;
     }
     unsigned int size = regmap_size(xcmd);
@@ -231,7 +223,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return false;
     }
 
@@ -335,7 +327,6 @@ namespace xclhwemhal2 {
   MBScheduler::MBScheduler(std::shared_ptr<xclhwemhal2::HwEmShim> _parent)
   {
     weak_mParent = std::weak_ptr{_parent};
-    //mScheduler = new xocl_sched(this);
     mScheduler = std::make_shared<xocl_sched>(shared_from_this());
     num_pending = 0;
     ert_version = atoi(_parent->getERTVersion().c_str());
@@ -372,7 +363,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return false;
     }
 
@@ -444,7 +435,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return ;
     }
     auto exec = xcmd->exec.lock();
@@ -542,7 +533,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return ;
     }
     if (type(xcmd) == ERT_KDS_LOCAL)
@@ -602,7 +593,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return 0;
     }
     if (type(xcmd) == ERT_KDS_LOCAL)
@@ -715,7 +706,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return ;
     }
 
@@ -752,13 +743,11 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return 0;
     }
 
     auto exec=xcmd->exec.lock();
-    //struct ert_configure_cmd *cfg;
-
     //cfg = (struct ert_configure_cmd *)(xcmd->packet);
     auto cfg =  reinterpret_cast<ert_configure_cmd*>(xcmd->packet);
 
@@ -785,7 +774,6 @@ namespace xclhwemhal2 {
       for ( cuidx=0; cuidx<exec->num_cus; cuidx++)
       {
         exec->cu_addr_map[cuidx] = cfg->data[cuidx];
-        //xocl_cu* nCu = new xocl_cu();
         auto nCu = std::make_shared<xocl_cu>();
         exec->cus[cuidx] =  nCu;
         uint64_t polladdr = (ert_poll) ? _CMDQ_BASE_ADDR  + (cuidx+1) * cfg->slot_size : 0;
@@ -808,7 +796,6 @@ namespace xclhwemhal2 {
             ++cfg->count;
             cfg->data[cuidx] = addr;
             exec->cu_addr_map[cuidx] = cfg->data[cuidx];
-            //xocl_cu* nCu = new xocl_cu();
             auto nCu = std::make_shared<xocl_cu>();
             exec->cus[cuidx] =  nCu;
             uint64_t polladdr = (ert_poll) ? _CMDQ_BASE_ADDR + (cuidx+1) * cfg->slot_size : 0;
@@ -978,7 +965,7 @@ namespace xclhwemhal2 {
   {
     auto mParent = weak_mParent.lock();
     if (!mParent) {
-        std::cout<<"\n mParent is nullptr \n";
+        DEBUG_MSGS_COUT("mParent is nullptr");
         return 0;
     }
 
@@ -1159,33 +1146,7 @@ namespace xclhwemhal2 {
      }
 
   }
-/*
-  void scheduler_loop(std::shared_ptr<xocl_sched>& xs)
-  {
-    auto& pSch = xs->pSch;
-    std::lock_guard<std::mutex> lk(pSch->pending_cmds_mutex);
 
-    if (xs->error) { return; }
-
-    // queue new pending commands 
-    pSch->scheduler_queue_cmds();
-
-    // iterate all commands 
-    pSch->scheduler_iterate_cmds();
-  }
-
-  void* scheduler(void* data)
-  {
-    xocl_sched *xs = (xocl_sched *)data;
-    while (!xs->stop && !xs->error)
-    {
-      scheduler_loop(xs);
-      usleep(10);
-    }
-    return NULL;
-  }
-*/
-  //void MBScheduler::scheduler_periodic_loop_thread(std::shared_ptr<xocl_sched>& xs)
   void MBScheduler::scheduler_periodic_loop_thread()
   {
     //MBScheduler* pSch = xs->pSch;
@@ -1222,15 +1183,6 @@ namespace xclhwemhal2 {
 #endif
     this->mscheduler_thread = std::thread([&]{ this->scheduler_thread(); });
     
-    /*
-    int returnStatus = pthread_create(&(mScheduler->scheduler_thread), NULL, scheduler, (void *)mScheduler);
-
-    if (returnStatus != 0)
-    {
-      std::cout << __func__ <<  " pthread_create failed " << " " << returnStatus<< std::endl;
-      exit(1);
-    }
-    */
     mScheduler->bThreadCreated = true;
 
     return 0;

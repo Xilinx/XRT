@@ -82,9 +82,7 @@ namespace hwemu {
     qid = 0;
 
     sub_thread = std::thread {[&] { this->submit_worker(); } };
-    //new std::thread(&xgq_queue::submit_worker, this);
     com_thread = std::thread {[&] { this->complete_worker(); } };
-    //new std::thread(&xgq_queue::complete_worker, this);
 
     size_t ring_len = XRT_QUEUE1_RING_LENGTH;
     auto devp = reinterpret_cast<uint64_t>(weak_ptr_device.lock().get());

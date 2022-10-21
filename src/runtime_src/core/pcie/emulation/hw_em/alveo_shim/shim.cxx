@@ -67,8 +67,7 @@ namespace xclhwemhal2 {
   namespace pt = boost::property_tree;
   namespace fs = boost::filesystem;
 
-  //std::map<unsigned int, HwEmShim*> devices;
-std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
+  std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
   std::map<std::string, std::string> HwEmShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
   std::map<int, std::tuple<std::string,int,void*, unsigned int> > HwEmShim::mFdToFileNameMap;
   std::ofstream HwEmShim::mDebugLogStream;
@@ -104,7 +103,6 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
   // this compilation unit and not be data members of the shim class.
   namespace device_handles {
     static std::mutex mutex;
-    //static std::set<xclDeviceHandle> handles;
     static std::set<std::shared_ptr<xclhwemhal2::HwEmShim>> handles;
 
     inline void
@@ -336,7 +334,7 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
           *os << std::hex << std::setfill('0') << std::setw(2) << (unsigned int)(((unsigned char*)buf)[i+j]);
         *os << std::endl;
       }
-      os->flush();
+      os->flush();        // ensure it is not missed as file pointer is opened already!
       os->flags( f );
     }
     else {
@@ -440,11 +438,9 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
       mFirstBinary = false;
     }
     if(xclemulation::config::getInstance()->isNewMbscheduler()) {
-        //m_scheduler = new hwemu::xocl_scheduler(this);
         m_scheduler = std::make_shared<hwemu::xocl_scheduler>(shared_from_this());
         m_scheduler->initialize();
     } else if (xclemulation::config::getInstance()->isXgqMode()) {
-        //m_xgq = new hwemu::xocl_xgq(this);
         m_xgq = std::make_shared<hwemu::xocl_xgq>(shared_from_this());
         if (m_xgq && pdi && pdiSize > 0) {
             returnValue = m_xgq->load_xclbin(pdi.get(), pdiSize);
@@ -881,8 +877,6 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     if (mMemModel)
     {
       mMemModel.reset();
-      //delete mMemModel;
-      //mMemModel = NULL;
     }
 
     if (sock)
@@ -1060,7 +1054,6 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
           //trim instance_name to get actual instance name
           auto position = instance_name.find(":");
           auto trimmed_instance_name = instance_name.substr(position+1);
-          //mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,new std::ofstream(trimmed_instance_name + "_control.mem")));
           mOffsetInstanceStreamMap.emplace(std::make_pair(base_address,std::make_shared<std::ofstream>(trimmed_instance_name + "_control.mem")));
         }
 
@@ -1449,7 +1442,6 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
       if (!mMemModel)
         mMemModel = std::make_shared<mem_model>(deviceName);
 
-        //mMemModel = new mem_model(deviceName);
       mMemModel->writeDevMem(dest, src, size);
       return size;
     }
@@ -1830,24 +1822,16 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
       if(mMBSch && mCore)
       {
         mMBSch->fini_scheduler_thread();
-//        delete mCore;
-  //      mCore = NULL;
         mCore.reset();
         mMBSch.reset();
-        //delete mMBSch;
-        //mMBSch = NULL;
       }
       if(m_scheduler)
       {
         m_scheduler.reset();
-          //delete m_scheduler;
-          //m_scheduler = nullptr;
       }
       if(m_xgq)
       {
         m_xgq.reset();
-        //  delete m_xgq;
-        //  m_xgq = nullptr;
       }
       PRINTENDFUNC;
       if (mLogStream.is_open()) {
@@ -2072,9 +2056,6 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     }
     if (xclemulation::config::getInstance()->isMemLogsEnabled())
     {
-     // mGlobalInMemStream.close();
-     // mGlobalOutMemStream.close();
-
       mGlobalInMemStream->close();
       mGlobalOutMemStream->close();
     }
@@ -2105,8 +2086,6 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     if(mDataSpace)
     {
       mDataSpace.reset();
-      //delete mDataSpace;
-      //mDataSpace = NULL;
     }
     closeMessengerThread();
   }
@@ -2276,7 +2255,6 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
     mPerfMonFifoCtrlBaseAddress = 0;
     mPerfMonFifoReadBaseAddress = 0;
     mTraceFunnelAddress = 0;
-   // mDataSpace = new xclemulation::MemoryManager(0x10000000, 0, getpagesize());
     mDataSpace = std::make_shared<xclemulation::MemoryManager>(0x10000000, 0, getpagesize());
     mCuBaseAddress = 0x0;
     mMessengerThreadStarted = false;
@@ -2646,17 +2624,15 @@ std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
 
     if (xclemulation::config::getInstance()->isMemLogsEnabled())
     {
-      //mGlobalInMemStream.open("global_in.mem");
-      //mGlobalOutMemStream.open("global_out.mem");
 
       mGlobalInMemStream = std::make_shared<std::ofstream>("global_in.mem");
       if (mGlobalInMemStream->is_open() == false) {
-        std::cerr << " Unable to open global_in.mem file" << std::endl;
+        std::cerr << " ERROR: [HW-EMU 28] Unable to open global_in.mem file" << std::endl;
         mGlobalInMemStream->open("global_in.mem");
       }
       mGlobalOutMemStream = std::make_shared<std::ofstream>("global_out.mem");
       if (mGlobalOutMemStream->is_open() == false) {
-        std::cerr << " Unable to open global_out.mem file" << std::endl;
+        std::cerr << " ERROR: [HW-EMU 29] Unable to open global_out.mem file" << std::endl;
         mGlobalOutMemStream->open("global_out.mem");
       }
     }
@@ -2752,7 +2728,6 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
     return -1;
   }
 
-  //auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   auto xobj = std::make_shared<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
@@ -2780,7 +2755,6 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   }
 
   info->handle = mBufferCount;
-  //mXoclObjMap[mBufferCount++] = std::make_shared<xclemulation::drm_xocl_bo>(xobj.release());
   mXoclObjMap[mBufferCount++] = xobj;
   return 0;
 }

@@ -336,14 +336,11 @@ using addr_type = uint64_t;
       //Mapped CU register space for xclRegRead/Write()
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
 
-      //std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;
       std::vector<std::shared_ptr<xclemulation::MemoryManager> > mDDRMemoryManager;
-      //xclemulation::MemoryManager* mDataSpace;
       std::shared_ptr<xclemulation::MemoryManager> mDataSpace;
       std::list<xclemulation::DDRBank> mDdrBanks;
       std::map<uint64_t,uint64_t> mAddrMap;
       std::map<std::string,std::string> mBinaryDirectories;
-      //std::map<uint64_t , std::ofstream*> mOffsetInstanceStreamMap;
       std::map<uint64_t , std::shared_ptr<std::ofstream>> mOffsetInstanceStreamMap;
 
       //mutex to control parellel RPC calls
@@ -363,10 +360,7 @@ using addr_type = uint64_t;
       void* buf;
       size_t buf_size;
       std::ofstream mLogStream;
-      /*
-      std::ofstream mGlobalInMemStream;
-      std::ofstream mGlobalOutMemStream;
-*/
+
       std::shared_ptr<std::ofstream> mGlobalInMemStream;
       std::shared_ptr<std::ofstream> mGlobalOutMemStream;
       static std::ofstream mDebugLogStream;
@@ -380,7 +374,6 @@ using addr_type = uint64_t;
       unsigned int mDeviceIndex;
       clock_t last_clk_time;
       bool mCloseAll;
-      //mem_model* mMemModel;
       std::shared_ptr<mem_model> mMemModel;
       bool bUnified;
       bool bXPR;
@@ -389,12 +382,9 @@ using addr_type = uint64_t;
       std::map<int, std::shared_ptr<xclemulation::drm_xocl_bo>> mXoclObjMap;
       static unsigned int mBufferCount;
       // HAL2 RELATED member variables end
-      //exec_core* mCore;
       std::shared_ptr<exec_core> mCore;
       std::shared_ptr<MBScheduler> mMBSch;
-      //hwemu::xocl_scheduler* m_scheduler;
       std::shared_ptr<hwemu::xocl_scheduler> m_scheduler;
-      //hwemu::xocl_xgq* m_xgq;
       std::shared_ptr<hwemu::xocl_xgq> m_xgq;
 
       // Information extracted from platform linker (for profile/debug)
