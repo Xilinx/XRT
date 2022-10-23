@@ -17,11 +17,17 @@
 #include "core/include/xcl_hwqueue.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <thread>
+
+#include <iostream>
+
+using namespace std::chrono_literals;
 
 ////////////////////////////////////////////////////////////////
 // Main command execution interface for scheduling commands for
@@ -410,7 +416,9 @@ class kds_device : public hw_queue_impl
 {
   xrt_core::device* m_device;
   std::mutex m_exec_wait_mutex;
-  uint64_t m_exec_wait_call_count = 0;
+  std::condition_variable m_work;
+  uint64_t m_exec_wait_call_count {0};
+  uint32_t m_exec_wait_active {0};
 
   // Thread safe shim level exec wait call.   This function allows
   // multiple threads to call exec_wait through same device handle.
@@ -418,39 +426,79 @@ class kds_device : public hw_queue_impl
   // In multi-threaded applications it is possible that a call to shim
   // level exec_wait by one thread covers completion for other
   // threads.  Without careful synchronization, a thread that calls
-  // device->exec_wait could end up being stuck either forever or
+  // device::exec_wait could end up being stuck either forever or
   // until some other unrelated command completes.  This function
   // prevents that scenario from happening.
   //
   // Thread local storage keeps a call count that syncs with the
-  // number of times device->exec_wait has been called. If thread
+  // number of times device::exec_wait has been called. If thread
   // local call count is different from the global count, then this
   // function resets the thread local call count and return without
-  // calling shim exec_wait.
+  // calling device::exec_wait.
   //
-  // The specified timeout has effect only when underlying xclExecWait
-  // times out. The timeout can be masked if device is busy and many
+  // In order to reduce multi-threaded wait time, condition variable
+  // wait is used for subsequent threads calling this function while
+  // some other thread is busy running device->exec_wait. Condition
+  // variable wait and wake up is faster than letting multiple threads
+  // wait on a single mutex lock.  This means that device::exec_wait
+  // is done by the first host thread that needs the call to
+  // exec_wait, while condition variable notification is used for
+  // additional threads.
+  //
+  // The specified timeout affects the waiting for device::exec_wait
+  // only. The timeout can be masked if device is busy and many
   // commands complete with the specified timeout.
   std::cv_status
   exec_wait(size_t timeout_ms=0)
   {
     static thread_local uint64_t thread_exec_wait_call_count = 0;
-    std::lock_guard lk(m_exec_wait_mutex);
 
-    if (thread_exec_wait_call_count != m_exec_wait_call_count) {
-      // some other thread has called exec_wait and may have
-      // covered this thread's commands, synchronize thread
-      // local call count and return to caller.
-      thread_exec_wait_call_count = m_exec_wait_call_count;
-      return std::cv_status::no_timeout;
+    // Critical section to check if this thread needs to call
+    // device::exec_wait or should wait on some other thread
+    // completing the call.
+    {
+      std::unique_lock lk(m_exec_wait_mutex);
+      if (thread_exec_wait_call_count != m_exec_wait_call_count) {
+        // Some other thread has called exec_wait and may have
+        // covered this thread's commands, synchronize thread
+        // local call count and return to caller.
+        thread_exec_wait_call_count = m_exec_wait_call_count;
+        return std::cv_status::no_timeout;
+      }
+
+      if (m_exec_wait_active) {
+        // Some other thread is calling device::exec_wait, wait
+        // for it complete its work and notify this thread
+        auto status = std::cv_status::no_timeout;
+        if (timeout_ms)
+          status = m_work.wait_for(lk, timeout_ms * 1ms);
+        else
+          m_work.wait(lk);
+
+        // The other thread has completed its exec_wait call,
+        // sync with current global call count and return
+        thread_exec_wait_call_count = m_exec_wait_call_count;
+        return status;
+      }
+
+      // Critical section updates wait status to prevent other threads
+      // from calling exec_wait while this thread is calling it.
+      ++m_exec_wait_active;
     }
 
+    // Call device exec_wait without keeping the lock to allow other
+    // threads to proceed into a conditional wait.  This scales better
+    // than one giant exclusive region.  It is guaranteed that only
+    // this thread will be here because other threads are blocked by
+    // the active count that is only modified in the exclusive region.
+    // assert(m_exec_wait_active == 1);
     auto status = std::cv_status::no_timeout;
     if (timeout_ms) {
       // device exec_wait is a system poll which returns
       // 0 when specified timeout is exceeded without any
       // file descriptors to read
       if (m_device->exec_wait(static_cast<int>(timeout_ms)) == 0)
+        // nothing happened within specified time
         status = std::cv_status::timeout;
     }
     else {
@@ -458,8 +506,16 @@ class kds_device : public hw_queue_impl
       while (m_device->exec_wait(1000) == 0) {}
     }
 
-    // synchronize this thread with total call count
+    // Acquire lock before updating shared state
+    std::lock_guard lk(m_exec_wait_mutex);
+
+    // Synchronize this thread with total call count
     thread_exec_wait_call_count = ++m_exec_wait_call_count;
+
+    // Notify any waiting threads so they can check command status and
+    // possibly call exec_wait again.
+    --m_exec_wait_active;
+    m_work.notify_all();
 
     return status;
   }
@@ -478,7 +534,7 @@ public:
   std::cv_status
   wait(const xrt_core::command* cmd, size_t timeout_ms) override
   {
-    auto pkt = cmd->get_ert_packet();
+    volatile auto pkt = cmd->get_ert_packet();
     while (pkt->state < ERT_CMD_STATE_COMPLETED) {
       // return immediately on timeout
       if (exec_wait(timeout_ms) == std::cv_status::timeout)
