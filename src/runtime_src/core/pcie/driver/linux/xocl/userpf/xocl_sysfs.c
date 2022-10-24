@@ -265,61 +265,28 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(kds_stat);
 
-static ssize_t
-kds_custat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	ssize_t ret;
-
-	mutex_lock(&xdev->dev_lock);
-	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buf, PAGE_SIZE);
-	mutex_unlock(&xdev->dev_lock);
-	return ret;
-}
-static DEVICE_ATTR_RO(kds_custat_raw);
-
-static ssize_t kds_custat_bin_show(struct file *filp, struct kobject *kobj,
+static ssize_t kds_custat_raw_show(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	ssize_t ret = 0;
-	u32 nread = 0;
-
-	/* Allocate a buffer as the buffer is too big to fit on the stack */
-	char *buf = kmalloc(MAX_CU_STAT_BUFFER_SIZE * sizeof(char), GFP_KERNEL);
 
 	/* Populate the allocated buffer with CU data */
 	mutex_lock(&xdev->dev_lock);
-	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buf, MAX_CU_STAT_BUFFER_SIZE);
+	ret = show_kds_custat_raw_offset(&XDEV(xdev)->kds, buffer, count, offset);
 	mutex_unlock(&xdev->dev_lock);
 
-	/* Set the amount to write out dependant on the number of bytes received */
-	ret = (ret < MAX_CU_STAT_BUFFER_SIZE) ? ret : MAX_CU_STAT_BUFFER_SIZE;
-
-	/* Validate the number of bytes to send out for the current operation */
-	if (count < ret - offset)
-		nread = count;
-	else
-		nread = ret - offset;
-
-	/* If no bytes are left to read finish the operation */
-	if (nread <= 0)
-		nread = 0;
-	else
-		memcpy(buffer, buf + offset, nread);
-
-	kfree(buf);
-	return nread;
+	return ret;
 }
 
-static struct bin_attribute kds_custat_bin_attr = {
+static struct bin_attribute kds_custat_raw_attr = {
 	.attr = {
-		.name = "kds_custat_bin",
+		.name = "kds_custat_raw",
 		.mode = 0444
 	},
-	.read = kds_custat_bin_show,
+	.read = kds_custat_raw_show,
 	.write = NULL,
-	.size = MAX_CU_STAT_BUFFER_SIZE
+	.size = 0
 };
 
 static ssize_t
@@ -827,7 +794,6 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_numcdmas.attr,
 	&dev_attr_kds_stat.attr,
-	&dev_attr_kds_custat_raw.attr,
 	&dev_attr_kds_scustat_raw.attr,
 	&dev_attr_kds_interrupt.attr,
 	&dev_attr_kds_interval.attr,
@@ -906,7 +872,7 @@ static struct bin_attribute fdt_blob_attr = {
 
 static struct bin_attribute  *xocl_bin_attrs[] = {
 	&fdt_blob_attr,
-	&kds_custat_bin_attr,
+	&kds_custat_raw_attr,
 	NULL,
 };
 

@@ -270,10 +270,10 @@ struct kds_cu_info
     std::vector<std::string> stats;
     std::string errmsg;
 
-    // The kds_custat_bin is printing in formatted string of each line
+    // The kds_custat_raw is printing in formatted string of each line
     // Format: "%d,%s:%s,0x%lx,0x%x,%lu"
     // Using comma as separator.
-    edev->sysfs_get("kds_custat_bin", errmsg, stats);
+    edev->sysfs_get("kds_custat_raw", errmsg, stats);
     if (!errmsg.empty())
       throw xrt_core::query::sysfs_error(errmsg);
 

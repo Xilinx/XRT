@@ -45,7 +45,12 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 	return count;
 }
 
-ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf, size_t buf_size)
+ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
+{
+	return show_kds_custat_raw_offset(kds, buf, PAGE_SIZE, 0);
+}
+
+ssize_t show_kds_custat_raw_offset(struct kds_sched *kds, char *buf, size_t buf_size, loff_t offset)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	struct xrt_cu *xcu = NULL;
@@ -54,6 +59,9 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf, size_t buf_size)
 	 */
 	char *cu_fmt = "%d,%d,%s:%s,0x%llx,0x%x,%llu\n";
 	ssize_t sz = 0;
+	ssize_t cu_sz = 0;
+	ssize_t all_cu_sz = 0;
+	char cu_buf[MAX_CU_STAT_LINE_LENGTH];
 	int i;
 	int j;
 
@@ -68,11 +76,24 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf, size_t buf_size)
 			if (xcu->info.slot_idx != j)
 				continue;
 
-			sz += scnprintf(buf+sz, buf_size - sz, cu_fmt, j,
+			/* Generate the current CU string to write into the buffer */
+			memset(cu_buf, 0, sizeof(cu_buf));
+			cu_sz = 0;
+			cu_sz = scnprintf(cu_buf, sizeof(cu_buf), cu_fmt, j,
 					set_domain(DOMAIN_PL, i),
 					xcu->info.kname, xcu->info.iname,
 					xcu->info.addr, xcu->status,
 					cu_stat_read(cu_mgmt, usage[i]));
+			/* Store the current CU string length with all previous lengths */
+			all_cu_sz += cu_sz;
+
+			/**
+			 * Verify that
+			 * 1. The correct data starts after the requested offset
+			 * 2. The buffer can hold the data
+			 */
+			if (all_cu_sz > offset && sz + cu_sz < buf_size)
+				sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
 		}
 	}
 	mutex_unlock(&cu_mgmt->lock);
