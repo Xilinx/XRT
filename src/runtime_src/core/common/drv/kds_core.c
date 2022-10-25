@@ -806,7 +806,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	/* Some reference count (i.e. hw context ) is still active */
-	if (cu_mgmt->cu_hwctx_refs[cu_idx] > 0)
+	if (kds_get_cu_hwctx_refcnt(cu_mgmt, cu_idx) > 0)
 		goto skip;
 
 	/* Some reference count (i.e. hw context ) is still active */
