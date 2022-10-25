@@ -804,6 +804,9 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 			pid_nr(client->pid), domain, cu_idx);
 		return -EINVAL;
 	}
+	/* Some reference count (i.e. hw context ) is still active */
+	if (cu_set > 1)
+		goto skip;
 
 	/* Some reference count (i.e. hw context ) is still active */
 	if (kds_get_cu_hwctx_refcnt(cu_mgmt, cu_idx) > 0)
