@@ -716,6 +716,10 @@ kds_add_cu_context(struct kds_sched *kds, struct kds_client *client,
 	else
 		if (cu_set == 0)
 			++cu_mgmt->cu_refs[cu_idx];
+	
+	/* Increment the hw reference count for this CU */	
+	++cu_mgmt->cu_hwctx_refs[cu_idx];
+
 	mutex_unlock(&cu_mgmt->lock);
 
 	return 0;
@@ -754,8 +758,9 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 			pid_nr(client->pid), domain, cu_idx);
 		return -EINVAL;
 	}
+
 	/* Some reference count (i.e. hw context ) is still active */
-	if (cu_set > 1)
+	if (cu_mgmt->cu_hwctx_refs[cu_idx] > 0)
 		goto skip;
 
 	/* Before close, make sure no remain commands in CU's queue. */
@@ -847,6 +852,9 @@ skip:
 			/* it means that the context number of the client is set to 0 */
 			--cu_mgmt->cu_refs[cu_idx];
 		}
+
+	/* Decrement the hw context reference count for this CU */
+	--cu_mgmt->cu_hwctx_refs[cu_idx];
 	mutex_unlock(&cu_mgmt->lock);
 
 	return 0;
