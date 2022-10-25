@@ -754,6 +754,9 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 			pid_nr(client->pid), domain, cu_idx);
 		return -EINVAL;
 	}
+	/* Some reference count (i.e. hw context ) is still active */
+	if (cu_set > 1)
+		goto skip;
 
 	/* Before close, make sure no remain commands in CU's queue. */
 	if (domain == DOMAIN_PL) {
