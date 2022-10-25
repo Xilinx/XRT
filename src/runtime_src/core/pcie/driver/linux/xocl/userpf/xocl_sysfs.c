@@ -296,7 +296,7 @@ kds_scustat_raw_show(struct device *dev, struct device_attribute *attr, char *bu
 	ssize_t ret;
 
 	mutex_lock(&xdev->dev_lock);
-	ret = show_kds_scustat_raw(&XDEV(xdev)->kds, buf, PAGE_SIZE);
+	ret = show_kds_scustat_raw(&XDEV(xdev)->kds, buf);
 	mutex_unlock(&xdev->dev_lock);
 	return ret;
 }

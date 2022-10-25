@@ -101,7 +101,7 @@ ssize_t show_kds_custat_raw_offset(struct kds_sched *kds, char *buf, size_t buf_
 	return sz;
 }
 
-ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf, size_t buf_size)
+ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 {
 	struct kds_cu_mgmt *scu_mgmt = &kds->scu_mgmt;
 	/* Each line is a PS kernel, format:
@@ -134,7 +134,7 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf, size_t buf_size)
 			if (xcu->info.slot_idx != j)
 				continue;
 
-			sz += scnprintf(buf+sz, buf_size - sz, cu_fmt, j,
+			sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, j,
 					set_domain(DOMAIN_PS, i),
 					xcu->info.kname,xcu->info.iname,
 					xcu->status,
