@@ -157,6 +157,8 @@ struct xocl_xgq_vmr {
 	u8			xgq_vmr_debug_type;
 	char			*xgq_vmr_system_dtb;
 	size_t			xgq_vmr_system_dtb_size;
+	char			*xgq_vmr_plm_sync;
+	size_t			xgq_vmr_plm_sync_size;
 	u16			pwr_scaling_ovrd_limit;
 	u8			temp_scaling_ovrd_limit;
 	bool			xgq_vmr_program;
@@ -1125,6 +1127,12 @@ static int xgq_log_page_metadata(struct platform_device *pdev,
 	char **fw, size_t *fw_size)
 {
 	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_FW);
+}
+
+static int xgq_log_page_plm_sync(struct platform_device *pdev,
+	char **fw, size_t *fw_size)
+{
+	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_PLM_SYNC);
 }
 
 static int xgq_log_page_system_dtb(struct platform_device *pdev,
@@ -2752,6 +2760,44 @@ static struct bin_attribute bin_attr_vmr_system_dtb = {
 	.size = 0
 };
 
+static ssize_t vmr_plm_sync_read(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct xocl_xgq_vmr *xgq =
+		dev_get_drvdata(container_of(kobj, struct device, kobj));
+	unsigned char *blob;
+	size_t size;
+	ssize_t ret = 0;
+
+	mutex_lock(&xgq->xgq_lock);
+	blob = xgq->xgq_vmr_plm_sync;
+	size = xgq->xgq_vmr_plm_sync_size;
+	mutex_unlock(&xgq->xgq_lock);
+
+	if (off >= size)
+		goto out;
+
+	if (off + count > size)
+		count = size - off;
+	memcpy(buf, blob + off, count);
+
+	ret = count;
+out:
+	return ret;
+}
+/* Some older linux kernel doesn't support
+ * static BIN_ATTR_RO(vmr_plm_sync, 0);
+ */
+static struct bin_attribute bin_attr_vmr_plm_sync = {
+	.attr = {
+		.name = "vmr_plm_sync",
+		.mode = 0444
+	},
+	.read = vmr_plm_sync_read,
+	.write = NULL,
+	.size = 0
+};
+
 static struct attribute *vmr_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
@@ -2777,6 +2823,7 @@ static struct attribute *vmr_attrs[] = {
 
 static struct bin_attribute *vmr_bin_attrs[] = {
 	&bin_attr_vmr_system_dtb,
+	&bin_attr_vmr_plm_sync,
 	NULL,
 };
 static struct attribute_group xgq_attr_group = {
@@ -2914,6 +2961,10 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	/* make sure cached system_dtb blob is freed */
 	if (xgq->xgq_vmr_system_dtb)
 		vfree(xgq->xgq_vmr_system_dtb);
+	
+	/* make sure cached plm_sync blob is freed */
+	if (xgq->xgq_vmr_plm_sync)
+		vfree(xgq->xgq_vmr_plm_sync);
 
 	mutex_destroy(&xgq->clk_scaling_lock);
 	mutex_destroy(&xgq->xgq_lock);
@@ -2942,7 +2993,13 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	xgq->xgq_cmd_id = 0;
 	xgq->xgq_vmr_system_dtb = NULL;
 	xgq->xgq_vmr_system_dtb_size = 0;
+<<<<<<< HEAD
 	xgq->xgq_halted = true;
+=======
+	xgq->xgq_vmr_plm_sync = NULL;
+	xgq->xgq_vmr_plm_sync_size = 0;
+
+>>>>>>> CR-1140807_PLM Initial Draft
 
 	mutex_init(&xgq->xgq_lock);
 	mutex_init(&xgq->clk_scaling_lock);
@@ -3035,6 +3092,14 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		XGQ_WARN(xgq, "cannot load system dtb from shell, ret: %d", ret);
 		ret = 0;
 	}
+
+	ret = xgq_log_page_plm_sync(pdev, &xgq->xgq_vmr_plm_sync,
+			&xgq->xgq_vmr_plm_sync_size);
+	if (ret) {
+		XGQ_WARN(xgq, "cannot load PLM Data from VMR, ret: %d", ret);
+		ret = 0;
+	}
+
 	ret = xgq_download_apu_firmware(pdev);
 	if (ret) {
 		XGQ_WARN(xgq, "unable to download APU, ret: %d", ret);
