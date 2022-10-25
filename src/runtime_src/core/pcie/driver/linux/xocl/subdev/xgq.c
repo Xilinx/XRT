@@ -2741,6 +2741,7 @@ static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 	if (off + count > size)
 		count = size - off;
 	memcpy(buf, blob + off, count);
+	mutex_unlock(&xgq->xgq_lock);
 
 	ret = count;
 out:
@@ -2772,7 +2773,7 @@ static ssize_t vmr_plm_sync_read(struct file *filp, struct kobject *kobj,
 	mutex_lock(&xgq->xgq_lock);
 	blob = xgq->xgq_vmr_plm_sync;
 	size = xgq->xgq_vmr_plm_sync_size;
-	mutex_unlock(&xgq->xgq_lock);
+	
 
 	if (off >= size)
 		goto out;
