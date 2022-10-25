@@ -287,6 +287,7 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const s
 
   if(available_shells.empty())
     throw xrt_core::error("No shell matched for given flash image");
+  
   boost::property_tree::ptree platform_to_flash;
   for (auto& image : available_shells) {
     if ((image.second.get<std::string>("vbnv")).compare(vbnv) == 0) {
