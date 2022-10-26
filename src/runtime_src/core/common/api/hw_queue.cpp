@@ -612,7 +612,6 @@ get_hw_queue_impl(const xrt::hw_context& hwctx)
 {
   auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
   auto hwctx_hdl = static_cast<xcl_hwctx_handle>(hwctx);
-  hwctx_hdl = 0;
   std::lock_guard lk(mutex);
   auto& queues = dev2hwc[device];
   auto hwqimpl = queues[hwctx_hdl].lock();
