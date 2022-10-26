@@ -6,7 +6,7 @@
 /*
  * Test C compilation with xrt.h header file
  */
-#include "xrt.h"
+#include "core/include/xrt.h"
 
 int main()
 {
