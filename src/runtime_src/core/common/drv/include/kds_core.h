@@ -229,7 +229,6 @@ int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_in
 int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 		   int *echo);
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
-ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf);
-ssize_t show_kds_custat_raw_offset(struct kds_sched *kds, char *buf, size_t buf_size, loff_t offset);
+ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf, size_t buf_size, loff_t offset);
 ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf);
 #endif

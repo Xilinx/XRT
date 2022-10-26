@@ -274,7 +274,7 @@ kds_custat_raw_show(struct file *filp, struct kobject *kobj,
 
 	/* Populate the allocated buffer with CU data */
 	mutex_lock(&xdev->dev_lock);
-	ret = show_kds_custat_raw_offset(&XDEV(xdev)->kds, buffer, count, offset);
+	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buffer, count, offset);
 	mutex_unlock(&xdev->dev_lock);
 
 	return ret;
