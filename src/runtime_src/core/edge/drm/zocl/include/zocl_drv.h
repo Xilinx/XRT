@@ -40,6 +40,18 @@
 #define ZOCL_PLATFORM_ARM64   0
 #endif
 
+#ifndef XRT_DRIVER_VERSION
+#define XRT_DRIVER_VERSION ""
+#endif
+
+#ifndef XRT_HASH
+#define XRT_HASH ""
+#endif
+
+#ifndef XRT_HASH_DATE
+#define XRT_HASH_DATE ""
+#endif
+
 /* Ensure compatibility with newer kernels and backported Red Hat kernels. */
 /* The y2k38 bug fix was introduced with Kernel 3.17 and backported to Red Hat
  * 7.2.
