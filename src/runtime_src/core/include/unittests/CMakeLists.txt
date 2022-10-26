@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2022, Advanced Micro Devices, Inc. All rights reserved.
 
-add_subdirectory(xrt_h_c_compilation)
+if (NOT WIN32)
+  add_subdirectory(xrt_h_c_compilation)
+endif()
