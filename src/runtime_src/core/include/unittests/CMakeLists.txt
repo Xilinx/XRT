@@ -2,5 +2,5 @@
 # Copyright (C) 2022, Advanced Micro Devices, Inc. All rights reserved.
 
 if (NOT WIN32)
-  add_subdirectory(xrt_h_c_compilation)
+  add_subdirectory(xrt_c_compilation)
 endif()

@@ -4,11 +4,6 @@
  */
 
 /*
- * Test C compilation with xrt.h header file
+ * Test C compilation with xrt header files
  */
 #include "core/include/xrt.h"
-
-int main()
-{
-  return 0;
-}
