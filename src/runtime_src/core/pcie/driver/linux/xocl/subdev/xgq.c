@@ -2951,7 +2951,7 @@ static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq)
 		}
 
 		if (loop_counter % SC_ERR_MSG_INTERVAL_SEC == 0)
-			XGQ_WARN(xgq, "SC is not ready after %d sec, waiting for SC to be ready", loop_counter);
+			XGQ_WARN(xgq, "SC is not ready in %d sec, waiting for SC to be ready", i + 1);
 		msleep(SC_WAIT_INTERVAL_MILLI_SEC);
 	}
 
