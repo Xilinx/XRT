@@ -98,6 +98,7 @@
 #define NODE_PMC_MUX	"ep_pmc_mux_00"
 #define NODE_ERT_UARTLITE_00 "ep_ert_debug_uart_00"
 #define NODE_ERT_UARTLITE_01 "ep_ert_debug_uart_01"
+#define NODE_ERT_UARTLITE_02 "ep_ert_debug_uart_02"
 #define NODE_ERT_CFG_GPIO "ep_ert_config_00"
 #define NODE_INTC_CU_00 "ep_intc_cu_00"
 #define NODE_INTC_CU_01 "ep_intc_cu_01"
