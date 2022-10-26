@@ -61,10 +61,14 @@ vmr_info(const xrt_core::device* device)
   //parse one line at a time
   for (auto& stat_raw : vmr_status_raw) {
     ptree_type pt_stat;
-    std::vector<std::string> stat;
-    boost::split(stat, stat_raw, boost::is_any_of(":")); // eg: HAS_FPT:1
-    pt_stat.add("label", pretty_label(stat.at(0)));      // eg: Has ftp
-    pt_stat.add("value", stat.at(1));                    // eg: 1
+    const auto idx = stat_raw.find_first_of(':');
+    if (idx != std::string::npos) {
+      pt_stat.add("label", pretty_label(stat_raw.substr(0, idx)));
+      pt_stat.add("value", stat_raw.substr(idx + 1));
+    }
+    else {
+      throw std::runtime_error("Incorrect vmr stat format");
+    }
     pt_vmr_stats.push_back(std::make_pair("", pt_stat));
   }
   pt_vmr_status_array.add_child("vmr", pt_vmr_stats);

@@ -67,6 +67,9 @@ install_recipes()
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $ZOCL_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $ZOCL_BB
         echo 'LIC_FILES_CHKSUM = "file://LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8"' >> $ZOCL_BB
+        if [[ ! -z $XRT_VERSION_PATCH ]]; then
+            echo "EXTRA_OEMAKE += \"XRT_VERSION_PATCH=$XRT_VERSION_PATCH\"" >> $ZOCL_BB
+        fi
         echo 'pkg_postinst_ontarget_${PN}() {' >> $ZOCL_BB
         echo '  #!/bin/sh' >> $ZOCL_BB
         echo '  echo "Unloading old XRT Linux kernel modules"' >> $ZOCL_BB
