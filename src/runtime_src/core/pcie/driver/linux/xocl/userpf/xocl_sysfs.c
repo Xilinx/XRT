@@ -272,6 +272,14 @@ kds_custat_raw_show(struct file *filp, struct kobject *kobj,
 	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	ssize_t ret = 0;
 
+	/**
+	 * The CU data will not be consistent between multiple calls to
+	 * this function. Meaning large sysfs reads requests may have strange
+	 * output results if the CUs change mid read.
+	 * This was an acceptable cost to simplify the logic as it is a rare
+	 * condition.
+	 */
+
 	/* Populate the allocated buffer with CU data */
 	mutex_lock(&xdev->dev_lock);
 	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buffer, count, offset);

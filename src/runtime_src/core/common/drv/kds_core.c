@@ -132,13 +132,6 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf, size_t buf_size, l
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 	ssize_t sz = 0;
 
-	/**
-	 * The data will not be consistent between multiple calls to 
-	 * this function. Meaning large sysfs reads requests may have strange
-	 * output results if the CUs change mid read.
-	 * This was an acceptable cost to simplify the logic as it is a rare
-	 * condition.
-	 */
 	mutex_lock(&cu_mgmt->lock);
 	sz = kds_populate_cu_buf(cu_mgmt, buf, buf_size, offset, KDS_CU);
 	mutex_unlock(&cu_mgmt->lock);
