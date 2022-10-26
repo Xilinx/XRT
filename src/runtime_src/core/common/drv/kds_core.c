@@ -114,14 +114,14 @@ static ssize_t kds_populate_cu_buf(struct kds_cu_mgmt *cu_mgmt, char *buf,
 
 			/**
 			 * Verify that
-			 * 1. The buffer can hold the data
-			 * 2. The data starts after the requested offset
+			 * 1. The data starts after the requested offset
+			 * 2. The buffer can hold the data
 			 */
-			if (sz + cu_sz > buf_size)
-				return sz;
-
-			if (all_cu_sz > offset)
+			if (all_cu_sz > offset) {
+				if (sz + cu_sz > buf_size)
+					return sz;
 				sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
+			}
 		}
 	}
 	return sz;
