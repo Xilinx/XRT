@@ -2733,7 +2733,6 @@ static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 	mutex_lock(&xgq->xgq_lock);
 	blob = xgq->xgq_vmr_system_dtb;
 	size = xgq->xgq_vmr_system_dtb_size;
-	mutex_unlock(&xgq->xgq_lock);
 
 	if (off >= size)
 		goto out;
