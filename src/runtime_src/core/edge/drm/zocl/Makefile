@@ -87,7 +87,6 @@ git_variables:
 	$(eval DATE_NOW ?= $(shell date "+%Y-%m-%d"))
 
 	$(eval cflags_module := -DXRT_HASH="\"$(GIT_HASH)\"" -DXRT_HASH_DATE="\"$(GIT_HASH_DATE)\"" -DXRT_BRANCH="\"$(GIT_BRANCH)\"" -DXRT_MODIFIED_FILES="\"$(GIT_MODIFIED_FILES)\"" -DXRT_DATE="\"$(DATE_NOW)\"" -DXRT_DRIVER_VERSION="\"$(XRT_DRIVER_VERSION)\"")
-	$(error "flags - $(cflags_module)")
 
 modules: git_variables
 	$(MAKE) -C $(KERNEL_SRC) M=$(SRC) CFLAGS_MODULE='$(cflags_module)' modules
