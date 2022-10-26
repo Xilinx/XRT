@@ -163,6 +163,7 @@ struct xocl_xgq_vmr {
 	size_t			xgq_vmr_system_dtb_size;
 	u16			pwr_scaling_ovrd_limit;
 	u8			temp_scaling_ovrd_limit;
+	bool			xgq_vmr_program;
 };
 
 static int vmr_status_query(struct platform_device *pdev);
@@ -421,6 +422,8 @@ static struct opcode_name {
 	{"LOAD APUBIN", XGQ_CMD_OP_LOAD_APUBIN},
 	{"VMR CONTROL", XGQ_CMD_OP_VMR_CONTROL},
 	{"PROGRAM SCFW", XGQ_CMD_OP_PROGRAM_SCFW},
+	{"CLK THROTTLING", XGQ_CMD_OP_CLK_THROTTLING},
+	{"PROGRAM VMR", XGQ_CMD_OP_PROGRAM_VMR},
 };
 
 const char *get_opcode_name(int opcode)
@@ -447,6 +450,79 @@ static void xgq_vmr_log_dump_debug(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr
 	xgq_vmr_log_dump(xgq, 20, true);
 }
 
+/* Wait for xgq service is fully ready after a reset. */
+static inline bool xgq_device_is_ready(struct xocl_xgq_vmr *xgq)
+{
+	u32 rval = 0;
+	int i = 0, retry = 100, interval = 100;
+
+	for (i = 0; i < retry; i++) {
+		msleep(interval);
+
+		memcpy_fromio(&xgq->xgq_vmr_shared_mem, xgq->xgq_payload_base,
+			sizeof(xgq->xgq_vmr_shared_mem));
+		if (xgq->xgq_vmr_shared_mem.vmr_magic_no == VMR_MAGIC_NO) {
+			rval = ioread32(xgq->xgq_payload_base +
+				xgq->xgq_vmr_shared_mem.vmr_status_off);
+			if (rval) {
+				XGQ_INFO(xgq, "ready after %d ms", interval * i);
+				return true;
+			}
+		}
+	}
+
+	XGQ_ERR(xgq, "not ready after %d ms", interval * retry);
+	return false;
+}
+
+static int xgq_start_services(struct xocl_xgq_vmr *xgq)
+{
+	u64 flags = 0;
+	int ret = 0;
+
+	XGQ_INFO(xgq, "starting xgq services");
+
+	/* wait for xgq service ready */
+	if (!xgq_device_is_ready(xgq))
+		return -ENODEV;
+
+	xgq->xgq_ring_base = xgq->xgq_payload_base + xgq->xgq_vmr_shared_mem.ring_buffer_off;
+
+	ret = xgq_attach(&xgq->xgq_queue, flags, 0, (u64)xgq->xgq_ring_base,
+		(u64)xgq->xgq_sq_base, (u64)xgq->xgq_cq_base);
+	if (ret) {
+		XGQ_ERR(xgq, "xgq_attache failed: %d, please reset device", ret);
+		return -ENODEV;
+	}
+
+	XGQ_DBG(xgq, "sq_slot_size 0x%lx\n", xgq->xgq_queue.xq_sq.xr_slot_sz);
+	XGQ_DBG(xgq, "cq_slot_size 0x%lx\n", xgq->xgq_queue.xq_cq.xr_slot_sz);
+	XGQ_DBG(xgq, "sq_num_slots %d\n", xgq->xgq_queue.xq_sq.xr_slot_num);
+	XGQ_DBG(xgq, "cq_num_slots %d\n", xgq->xgq_queue.xq_cq.xr_slot_num);
+	XGQ_DBG(xgq, "SQ 0x%lx off: 0x%llx\n", xgq->xgq_queue.xq_sq.xr_slot_addr);
+	XGQ_DBG(xgq, "CQ 0x%lx off: 0x%llx\n", xgq->xgq_queue.xq_cq.xr_slot_addr);
+	XGQ_DBG(xgq, "SQ xr_produced_addr 0x%lx off: 0x%llx\n",
+		xgq->xgq_queue.xq_sq.xr_produced_addr,
+		xgq->xgq_queue.xq_sq.xr_produced_addr - (u64)xgq->xgq_ring_base);
+	XGQ_DBG(xgq, "SQ xr_consumed_addr 0x%lx off: 0x%llx\n",
+		xgq->xgq_queue.xq_sq.xr_consumed_addr,
+		xgq->xgq_queue.xq_sq.xr_consumed_addr - (u64)xgq->xgq_ring_base);
+	XGQ_DBG(xgq, "CQ xr_produced_addr 0x%lx off: 0x%llx\n",
+		xgq->xgq_queue.xq_cq.xr_produced_addr,
+		xgq->xgq_queue.xq_cq.xr_produced_addr - (u64)xgq->xgq_ring_base);
+	XGQ_DBG(xgq, "CQ xr_consumed_addr 0x%lx off: 0x%llx\n",
+		xgq->xgq_queue.xq_cq.xr_consumed_addr,
+		xgq->xgq_queue.xq_cq.xr_consumed_addr - (u64)xgq->xgq_ring_base);
+
+	/* start receiving incoming commands */
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_halted = false;
+	mutex_unlock(&xgq->xgq_lock);
+
+	XGQ_INFO(xgq, "succeeded");
+	return ret;
+}
+
 /*
  * stop service will be called from driver remove or found timeout cmd from health_worker
  * 3 steps to stop the service:
@@ -458,7 +534,7 @@ static void xgq_vmr_log_dump_debug(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr
  */
 static void xgq_stop_services(struct xocl_xgq_vmr *xgq)
 {
-	XGQ_INFO(xgq, "halting xgq services");
+	XGQ_INFO(xgq, "stopping xgq services");
 
 	/* stop receiving incoming commands */
 	mutex_lock(&xgq->xgq_lock);
@@ -485,12 +561,12 @@ static void xgq_stop_services(struct xocl_xgq_vmr *xgq)
 		xgq_submitted_cmds_drain(xgq);
 	}
 
-	XGQ_INFO(xgq, "xgq service is halted");
+	XGQ_INFO(xgq, "xgq services are stopped");
 }
 
 static void xgq_offline_service(struct xocl_xgq_vmr *xgq)
 {
-	XGQ_INFO(xgq, "xgq service is going offline...");
+	XGQ_INFO(xgq, "xgq services are going offline...");
 
 	/* If we see timeout cmd first time, dump log into dmesg */
 	if (!xgq->xgq_halted) {
@@ -500,7 +576,7 @@ static void xgq_offline_service(struct xocl_xgq_vmr *xgq)
 	/* then we stop service */
 	xgq_stop_services(xgq);
 
-	XGQ_INFO(xgq, "xgq service is offline");
+	XGQ_INFO(xgq, "xgq services are offline");
 }
 
 /*
@@ -603,7 +679,8 @@ bool vmr_xgq_basic_op(struct xocl_xgq_vmr_cmd *cmd)
 /*
  * submit new cmd into XGQ SQ(submition queue)
  */
-static int submit_cmd(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
+static int submit_cmd_impl(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd,
+	bool check_halted)
 {
 	u64 slot_addr = 0;
 	int rval = 0;
@@ -611,11 +688,15 @@ static int submit_cmd(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
 	mutex_lock(&xgq->xgq_lock);
 	/*
 	 * We might not support newer xgq commands after checking VMR
-	 * supported XGQ version, but those basic ops should always
-	 * be supported and unchanged. They will provide basic operations
-	 * across older and newer VMR versions.
+	 *   supported XGQ version, but those basic ops in vmr_xgq_basic_op
+	 *   should always be supported and unchanged. They will provide basic
+	 *   operations across older and newer VMR versions.
+	 *
+	 * If check_halted is false, we continue send cmd out.
+	 *   This is designed to send special command when incoming cmds are
+	 *   blocked and submitted cmds are finished.
 	 */
-	if (xgq->xgq_halted && !vmr_xgq_basic_op(cmd)) {
+	if (check_halted && xgq->xgq_halted && !vmr_xgq_basic_op(cmd)) {
 		XGQ_ERR(xgq, "xgq service is halted");
 		rval = -EIO;
 		goto done;
@@ -638,6 +719,12 @@ static int submit_cmd(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
 done:
 	mutex_unlock(&xgq->xgq_lock);
 	return rval;
+}
+
+static int submit_cmd(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
+{
+	/* Regular cmd should not bypass check_halted flag */
+	return submit_cmd_impl(xgq, cmd, true);
 }
 
 static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
@@ -793,7 +880,8 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN && 
 	    opcode != XGQ_CMD_OP_DOWNLOAD_PDI &&
 	    opcode != XGQ_CMD_OP_LOAD_APUBIN &&
-	    opcode != XGQ_CMD_OP_PROGRAM_SCFW) {
+	    opcode != XGQ_CMD_OP_PROGRAM_SCFW &&
+	    opcode != XGQ_CMD_OP_PROGRAM_VMR) {
 		XGQ_WARN(xgq, "unsupported opcode %d", opcode);
 		return -EINVAL;
 	}
@@ -856,7 +944,13 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	/* set timeout actual jiffies */
 	cmd->xgq_cmd_timeout_jiffies = jiffies + timer;
 
-	if (submit_cmd(xgq, cmd)) {
+	if (opcode == XGQ_CMD_OP_PROGRAM_VMR) {
+		ret = submit_cmd_impl(xgq, cmd, false);
+	} else {
+		ret = submit_cmd(xgq, cmd);
+	}
+
+	if (ret) {
 		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
 		goto done;
 	}
@@ -2604,6 +2698,26 @@ static ssize_t xgq_scaling_enable_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(xgq_scaling_enable);
 
+static ssize_t program_vmr_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL) {
+		return -EINVAL;
+	}
+
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_vmr_program = val ? true: false;
+	mutex_unlock(&xgq->xgq_lock);
+
+	XGQ_INFO(xgq, "set to %s", val ? "TRUE" : "FALSE");
+
+	return count;
+}
+static DEVICE_ATTR_WO(program_vmr);
+
 static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
@@ -2629,6 +2743,7 @@ static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 out:
 	return ret;
 }
+
 /* Some older linux kernel doesn't support
  * static BIN_ATTR_RO(vmr_system_dtb, 0);
  */
@@ -2653,6 +2768,7 @@ static struct attribute *vmr_attrs[] = {
 	&dev_attr_vmr_task_stats.attr,
 	&dev_attr_vmr_mem_stats.attr,
 	&dev_attr_program_sc.attr,
+	&dev_attr_program_vmr.attr,
 	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_vmr_debug_dump.attr,
 	&dev_attr_vmr_debug_type.attr,
@@ -2679,9 +2795,26 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 	struct xocl_xgq_vmr *xgq = filp->private_data;
 	ssize_t ret;
 	char *kdata = NULL;
+	enum xgq_cmd_opcode opcode = XGQ_CMD_OP_DOWNLOAD_PDI;
+
+	mutex_lock(&xgq->xgq_lock);
+	/*
+	 * Default opcode is DOWNLOAD_PDI, only when xgq_vmr_program is set,
+	 * turn opcode to PROGRAM_VMR once.
+	 */
+	if (xgq->xgq_vmr_program) {
+		opcode = XGQ_CMD_OP_PROGRAM_VMR;
+		xgq->xgq_vmr_program = false;
+	}
+	mutex_unlock(&xgq->xgq_lock);
 
 	if (*off != 0) {
 		XGQ_ERR(xgq, "OSPI offset non-zero is not supported");
+		return -EINVAL;
+	}
+
+	if (data_len == 0) {
+		XGQ_ERR(xgq, "OSPI data len cannot be 0");
 		return -EINVAL;
 	}
 
@@ -2698,8 +2831,39 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 		goto done;
 	}
 
-	ret = xgq_transfer_data(xgq, kdata, data_len, 0,
-		XGQ_CMD_OP_DOWNLOAD_PDI, XOCL_XGQ_FLASH_TIME);
+	/*
+	 * The program_vmr will live upgrade vmr to new version, thus stopping
+	 * xgq services so that all other commands will be drained cleanly.
+	 */
+	if (opcode == XGQ_CMD_OP_PROGRAM_VMR)
+		xgq_stop_services(xgq);
+
+	ret = xgq_transfer_data(xgq, kdata, data_len, 0, opcode, XOCL_XGQ_FLASH_TIME);
+
+	/*
+	 * After program_vmr, live upgrade vmr, is done. Resume xgq services by:
+	 *  1) wait a decent time till vmr boots up;
+	 *  2) attach xgq to start xgq communication services;
+	 *  3) download APU pdi because the APU is reseted too;
+	 */
+	if (opcode == XGQ_CMD_OP_PROGRAM_VMR) {
+		int rval = 0;
+		msleep(WAIT_INTERVAL);
+
+		rval = xgq_start_services(xgq);
+		if (rval) {
+			XGQ_ERR(xgq, "xgq_start_service failed: %d", rval);
+			ret = rval;
+			goto done;
+		}
+
+		rval = xgq_download_apu_firmware(xgq->xgq_pdev);
+		if (rval) {
+			ret = rval;
+			XGQ_WARN(xgq, "unable to download APU: %d", rval);
+		}
+	}
+
 done:
 	vfree(kdata);
 
@@ -2767,28 +2931,7 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	return 0;
 }
 
-/* Wait for xgq service is fully ready after a reset. */
-static inline bool xgq_device_is_ready(struct xocl_xgq_vmr *xgq)
-{
-	u32 rval = 0;
-	int i = 0, retry = 50;
-
-	for (i = 0; i < retry; i++) {
-		msleep(100);
-
-		memcpy_fromio(&xgq->xgq_vmr_shared_mem, xgq->xgq_payload_base,
-			sizeof(xgq->xgq_vmr_shared_mem));
-		if (xgq->xgq_vmr_shared_mem.vmr_magic_no == VMR_MAGIC_NO) {
-			rval = ioread32(xgq->xgq_payload_base +
-				xgq->xgq_vmr_shared_mem.vmr_status_off);
-			if (rval)
-				return true;
-		}
-	}
-
-	return false;
-}
-
+/* Wait for SC is fully ready during driver init (in reset) */
 static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq)
 {
 	struct xgq_cmd_cq_vmr_payload *vmr_status =
@@ -2820,23 +2963,24 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	struct resource *res = NULL;
 	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_HWMON_SDM;
 	bool sc_ready = true;
-	u64 flags = 0;
 	int ret = 0, i = 0;
 	void *hdl;
 
 	xgq = xocl_drvinst_alloc(&pdev->dev, sizeof (*xgq));
 	if (!xgq)
 		return -ENOMEM;
-	platform_set_drvdata(pdev, xgq);
 	xgq->xgq_pdev = pdev;
 	xgq->xgq_cmd_id = 0;
 	xgq->xgq_vmr_system_dtb = NULL;
 	xgq->xgq_vmr_system_dtb_size = 0;
+	xgq->xgq_halted = true;
 
 	mutex_init(&xgq->xgq_lock);
 	mutex_init(&xgq->clk_scaling_lock);
 	sema_init(&xgq->xgq_data_sema, 1);
 	sema_init(&xgq->xgq_log_page_sema, 1); /*TODO: improve to n based on availabity */
+
+	platform_set_drvdata(pdev, xgq);
 
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
@@ -2861,40 +3005,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	xgq->xgq_sq_base = xgq->xgq_sq_base + XGQ_SQ_TAIL_POINTER;
 	xgq->xgq_cq_base = xgq->xgq_sq_base + XGQ_CQ_TAIL_POINTER;
 
-	/* check device is ready */
-	if (!xgq_device_is_ready(xgq)) {
-		ret = -ENODEV;
-		XGQ_ERR(xgq, "device is not ready, please reset device.");
+	if (xgq_start_services(xgq))
 		goto attach_failed;
-	}
-
-	xgq->xgq_ring_base = xgq->xgq_payload_base + xgq->xgq_vmr_shared_mem.ring_buffer_off;
-	ret = xgq_attach(&xgq->xgq_queue, flags, 0, (u64)xgq->xgq_ring_base,
-		(u64)xgq->xgq_sq_base, (u64)xgq->xgq_cq_base);
-	if (ret != 0) {
-		XGQ_ERR(xgq, "xgq_attache failed: %d, please reset device", ret);
-		ret = -ENODEV;
-		goto attach_failed;
-	}
-
-	XGQ_DBG(xgq, "sq_slot_size 0x%lx\n", xgq->xgq_queue.xq_sq.xr_slot_sz);
-	XGQ_DBG(xgq, "cq_slot_size 0x%lx\n", xgq->xgq_queue.xq_cq.xr_slot_sz);
-	XGQ_DBG(xgq, "sq_num_slots %d\n", xgq->xgq_queue.xq_sq.xr_slot_num);
-	XGQ_DBG(xgq, "cq_num_slots %d\n", xgq->xgq_queue.xq_cq.xr_slot_num);
-	XGQ_DBG(xgq, "SQ 0x%lx off: 0x%llx\n", xgq->xgq_queue.xq_sq.xr_slot_addr);
-	XGQ_DBG(xgq, "CQ 0x%lx off: 0x%llx\n", xgq->xgq_queue.xq_cq.xr_slot_addr);
-	XGQ_DBG(xgq, "SQ xr_produced_addr 0x%lx off: 0x%llx\n",
-		xgq->xgq_queue.xq_sq.xr_produced_addr,
-		xgq->xgq_queue.xq_sq.xr_produced_addr - (u64)xgq->xgq_ring_base);
-	XGQ_DBG(xgq, "SQ xr_consumed_addr 0x%lx off: 0x%llx\n",
-		xgq->xgq_queue.xq_sq.xr_consumed_addr,
-		xgq->xgq_queue.xq_sq.xr_consumed_addr - (u64)xgq->xgq_ring_base);
-	XGQ_DBG(xgq, "CQ xr_produced_addr 0x%lx off: 0x%llx\n",
-		xgq->xgq_queue.xq_cq.xr_produced_addr,
-		xgq->xgq_queue.xq_cq.xr_produced_addr - (u64)xgq->xgq_ring_base);
-	XGQ_DBG(xgq, "CQ xr_consumed_addr 0x%lx off: 0x%llx\n",
-		xgq->xgq_queue.xq_cq.xr_consumed_addr,
-		xgq->xgq_queue.xq_cq.xr_consumed_addr - (u64)xgq->xgq_ring_base);
 
 	/* init condition veriable */
 	init_completion(&xgq->xgq_irq_complete);
