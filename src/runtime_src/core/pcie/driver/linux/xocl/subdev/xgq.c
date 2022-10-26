@@ -2994,13 +2994,9 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	xgq->xgq_cmd_id = 0;
 	xgq->xgq_vmr_system_dtb = NULL;
 	xgq->xgq_vmr_system_dtb_size = 0;
-<<<<<<< HEAD
 	xgq->xgq_halted = true;
-=======
 	xgq->xgq_vmr_plm_sync = NULL;
 	xgq->xgq_vmr_plm_sync_size = 0;
-
->>>>>>> CR-1140807_PLM Initial Draft
 
 	mutex_init(&xgq->xgq_lock);
 	mutex_init(&xgq->clk_scaling_lock);
