@@ -69,7 +69,7 @@ static void sigLog(const int sig)
 #endif
 	skd_inst->report_crash();
 	xrt_core::message::send(severity_level::error, "SKD", "SKD Reported crash!");
-	exit(sig);
+	exit(128 + sig); // Convert to Linux exit code
       }
   }
 }

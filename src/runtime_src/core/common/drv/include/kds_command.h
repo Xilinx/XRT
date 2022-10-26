@@ -40,6 +40,7 @@ enum kds_opcode {
  * KDS_ERROR:		Command is error out
  * KDS_ABORT:		Command is abort
  * KDS_TIMEOUT:		Command is timeout
+ * KDS_SKCRASHED:	Command is PS kernel crashed
  */
 enum kds_status {
 	KDS_NEW = 0,
@@ -49,9 +50,8 @@ enum kds_status {
 	KDS_ERROR,
 	KDS_ABORT,
 	KDS_TIMEOUT,
-	KDS_STAT_MAX,
-	KDS_SKERROR,
 	KDS_SKCRASHED,
+	KDS_STAT_MAX,
 };
 
 struct kds_command;

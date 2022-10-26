@@ -441,17 +441,16 @@ static inline void
 zcu_xgq_cmd_complete_with_status(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, int ret, int status)
 {
 	struct xgq_com_queue_entry r;
+	struct xgq_com_queue_entry *rptr = &r;
 	struct zocl_cu_xgq *zcu_xgq = platform_get_drvdata(pdev);
 
-	if (likely(ret == 0 && ZCU_XGQ_FAST_PATH(zcu_xgq))) {
-		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, NULL);
-	} else if (status == KDS_SKCRASHED) {
+	if (likely(ret == 0 && ZCU_XGQ_FAST_PATH(zcu_xgq)))
+		rptr = NULL;
+	else if (unlikely(status == KDS_SKCRASHED))
 		init_resp_abort(&r, cmd->cid, ret, status);
-		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, &r);
-	} else {
+	else
 		init_resp(&r, cmd->cid, ret);
-		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, &r);
-	}
+	zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, rptr);
 	kfree(cmd);
 }
 

@@ -15,6 +15,7 @@
 #include "zocl_util.h"
 #include "zocl_xclbin.h"
 #include "kds_core.h"
+#include "kds_ert_table.h"
 #include "xclbin.h"
 
 #define print_ecmd_info(ecmd) \
@@ -582,18 +583,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-	else if (status == KDS_TIMEOUT)
-		ecmd->state = ERT_CMD_STATE_TIMEOUT;
-	else if (status == KDS_ABORT)
-		ecmd->state = ERT_CMD_STATE_ABORT;
-	else if (status == KDS_SKERROR)
-		ecmd->state = ERT_CMD_STATE_SKERROR;
-	else if (status == KDS_SKCRASHED)
-		ecmd->state = ERT_CMD_STATE_SKCRASHED;
+	ecmd->state = kds_ert_table[status];
 
 	if (xcmd->timestamp_enabled) {
 		/* Only start kernel command supports timestamps */

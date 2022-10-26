@@ -488,7 +488,9 @@ static inline void __xrt_cu_check(struct xrt_cu *xcu, bool force)
 	/* XRT CU assume command finished in order */
 	xcu->done_cnt += status.num_done;
 	xcu->ready_cnt += status.num_ready;
-	xcu->status = status.new_status;
+	// Do not update CU status if it has crashed
+	if (xcu->status != 0xffffffff)
+	  xcu->status = status.new_status;
 	xcu->rcode  = status.rcode;
 }
 
@@ -617,6 +619,6 @@ void xrt_cu_fa_fini(struct xrt_cu *xcu);
 
 int xrt_cu_scu_init(struct xrt_cu *xcu, void *vaddr, struct semaphore *sem);
 void xrt_cu_scu_fini(struct xrt_cu *xcu);
-void scu_crashed(void *core);
+void xrt_cu_scu_crashed(void *core);
 
 #endif /* _XRT_CU_H */
