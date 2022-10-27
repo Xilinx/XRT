@@ -471,9 +471,17 @@ class kds_device : public hw_queue_impl
         // for it complete its work and notify this thread
         auto status = std::cv_status::no_timeout;
         if (timeout_ms)
-          status = m_work.wait_for(lk, timeout_ms * 1ms);
+          status = (m_work.wait_for(lk, timeout_ms * 1ms,
+                                    [this] {
+                                      return thread_exec_wait_call_count != m_exec_wait_call_count;
+                                    }))
+            ? std::cv_status::no_timeout
+            : std::cv_status::timeout;
         else
-          m_work.wait(lk);
+          m_work.wait(lk,
+                      [this] {
+                        return thread_exec_wait_call_count != m_exec_wait_call_count;
+                      });
 
         // The other thread has completed its exec_wait call,
         // sync with current global call count and return
@@ -507,14 +515,14 @@ class kds_device : public hw_queue_impl
     }
 
     // Acquire lock before updating shared state
-    std::lock_guard lk(m_exec_wait_mutex);
-
-    // Synchronize this thread with total call count
-    thread_exec_wait_call_count = ++m_exec_wait_call_count;
+    {
+      std::lock_guard lk(m_exec_wait_mutex);
+      thread_exec_wait_call_count = ++m_exec_wait_call_count;
+      --m_exec_wait_active;
+    }
 
     // Notify any waiting threads so they can check command status and
     // possibly call exec_wait again.
-    --m_exec_wait_active;
     m_work.notify_all();
 
     return status;
