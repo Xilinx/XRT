@@ -41,7 +41,7 @@
 #define ERT_CTRL_SQ_TAIL_OFF	0x4
 #define ERT_CTRL_CQ_TAIL_OFF	0x8
 
-#define ERT_CTRL_CMD_TIMEOUT	msecs_to_jiffies(2 * 1000)
+#define ERT_CTRL_CMD_TIMEOUT	msecs_to_jiffies(8 * 1000)
 
 #define ERT_CTRL_ADD_NUM_ERT_XGQ	4
 
