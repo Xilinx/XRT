@@ -266,6 +266,7 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(kds_stat);
 
+static ssize_t
 kds_cuctx_stat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
