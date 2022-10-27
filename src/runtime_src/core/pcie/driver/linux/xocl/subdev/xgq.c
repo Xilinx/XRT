@@ -2744,6 +2744,7 @@ static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 
 	ret = count;
 out:
+	mutex_unlock(&xgq->xgq_lock);
 	return ret;
 }
 
@@ -2783,6 +2784,7 @@ static ssize_t vmr_plm_sync_read(struct file *filp, struct kobject *kobj,
 
 	ret = count;
 out:
+	mutex_unlock(&xgq->xgq_lock);
 	return ret;
 }
 /* Some older linux kernel doesn't support
