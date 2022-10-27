@@ -47,14 +47,13 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(kds_stat);
 
 static ssize_t
-kds_custat_raw_show(struct device *dev, struct device_attribute *attr,
-		    char *buf)
+kds_custat_raw_show(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
-	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct drm_zocl_dev *zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 
-	return show_kds_custat_raw(&zdev->kds, buf);
+	return show_kds_custat_raw(&zdev->kds, buffer, count, offset);
 }
-static DEVICE_ATTR_RO(kds_custat_raw);
 
 static ssize_t xclbinid_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -424,7 +423,6 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_kds_xrt_version.attr,
 	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_stat.attr,
-	&dev_attr_kds_custat_raw.attr,
 	&dev_attr_kds_interval.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
@@ -673,6 +671,16 @@ static struct bin_attribute aie_metadata_attr = {
 	.size = 0
 };
 
+static struct bin_attribute connectivity_attr = {
+	.attr = {
+		.name = "connectivity",
+		.mode = 0444
+	},
+	.read = read_connectivity,
+	.write = NULL,
+	.size = 0
+};
+
 static struct bin_attribute debug_ip_layout_attr = {
 	.attr = {
 		.name = "debug_ip_layout",
@@ -693,12 +701,12 @@ static struct bin_attribute ip_layout_attr = {
 	.size = 0
 };
 
-static struct bin_attribute connectivity_attr = {
+static struct bin_attribute kds_custat_raw_attr = {
 	.attr = {
-		.name = "connectivity",
+		.name = "kds_custat_raw",
 		.mode = 0444
 	},
-	.read = read_connectivity,
+	.read = kds_custat_raw_show,
 	.write = NULL,
 	.size = 0
 };
@@ -725,11 +733,12 @@ static struct bin_attribute xclbin_full_attr = {
 
 
 static struct bin_attribute *zocl_bin_attrs[] = {
+	&aie_metadata_attr,
+	&connectivity_attr,
 	&debug_ip_layout_attr,
 	&ip_layout_attr,
-	&connectivity_attr,
+	&kds_custat_raw_attr,
 	&mem_topology_attr,
-	&aie_metadata_attr,
 	&xclbin_full_attr,
 	NULL,
 };

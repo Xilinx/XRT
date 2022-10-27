@@ -45,19 +45,54 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 	return count;
 }
 
-ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
+static ssize_t kds_create_cu_string(struct xrt_cu *xcu,
+				    char (*buf)[MAX_CU_STAT_LINE_LENGTH],
+				    int slot, int idx, u64 usage_count,
+				    enum kds_type type)
 {
-	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
-	struct xrt_cu *xcu = NULL;
-	/* Each line is a CU, format:
-	 * "slot,cu_idx,kernel_name:cu_name,address,status,usage"
-	 */
-	char *cu_fmt = "%d,%d,%s:%s,0x%llx,0x%x,%llu\n";
-	ssize_t sz = 0;
-	int i;
-	int j;
+	ssize_t cu_sz = 0;
+	switch (type) {
+		case KDS_CU:
+			/* Each line is a CU, format:
+			* "slot,cu_idx,kernel_name:cu_name,address,status,usage"
+			*/
+			cu_sz = scnprintf(*buf, sizeof(*buf),
+					"%d,%d,%s:%s,0x%llx,0x%x,%llu\n", slot,
+					idx,
+					xcu->info.kname, xcu->info.iname,
+					xcu->info.addr, xcu->status,
+					usage_count);
+			break;
+		case KDS_SCU:
+			/* Each line is a PS kernel, format:
+			* "slot,idx,kernel_name,status,usage"
+			*/
+			cu_sz = scnprintf(*buf, sizeof(*buf),
+					"%d,%d,%s:%s,0x%x,%llu\n", slot,
+					idx,
+					xcu->info.kname, xcu->info.iname,
+					xcu->status,
+					usage_count);
+			break;
+		default:
+			/* Default condition should output nothing */
+			break;
+	}
+	return cu_sz;
+}
 
-	mutex_lock(&cu_mgmt->lock);
+static ssize_t kds_populate_cu_buf(struct kds_cu_mgmt *cu_mgmt, char *buf,
+				   size_t buf_size, loff_t offset,
+				   enum kds_type type)
+{
+	struct xrt_cu *xcu = NULL;
+	ssize_t sz = 0;
+	ssize_t cu_sz = 0;
+	ssize_t all_cu_sz = 0;
+	char cu_buf[MAX_CU_STAT_LINE_LENGTH];
+	int i = 0;
+	int j = 0;
+
 	for (j = 0; j < MAX_SLOT; ++j) {
 		for (i = 0; i < MAX_CUS; ++i) {
 			xcu = cu_mgmt->xcus[i];
@@ -68,13 +103,37 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 			if (xcu->info.slot_idx != j)
 				continue;
 
-			sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, j,
+			/* Generate the CU string to write into the buffer */
+			memset(cu_buf, 0, sizeof(cu_buf));
+			cu_sz = kds_create_cu_string(xcu, &cu_buf, j,
 					set_domain(DOMAIN_PL, i),
-					xcu->info.kname, xcu->info.iname,
-					xcu->info.addr, xcu->status,
-					cu_stat_read(cu_mgmt, usage[i]));
+					cu_stat_read(cu_mgmt, usage[i]), type);
+
+			/* Store the CU string length with previous lengths */
+			all_cu_sz += cu_sz;
+
+			/**
+			 * Verify that
+			 * 1. The data starts after the requested offset
+			 * 2. The buffer can hold the data
+			 */
+			if (all_cu_sz > offset) {
+				if (sz + cu_sz > buf_size)
+					return sz;
+				sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
+			}
 		}
 	}
+	return sz;
+}
+
+ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf, size_t buf_size, loff_t offset)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	ssize_t sz = 0;
+
+	mutex_lock(&cu_mgmt->lock);
+	sz = kds_populate_cu_buf(cu_mgmt, buf, buf_size, offset, KDS_CU);
 	mutex_unlock(&cu_mgmt->lock);
 
 	return sz;
