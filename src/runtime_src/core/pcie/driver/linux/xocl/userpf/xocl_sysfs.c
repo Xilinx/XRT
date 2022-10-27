@@ -299,17 +299,37 @@ static struct bin_attribute kds_custat_raw_attr = {
 };
 
 static ssize_t
-kds_scustat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
+kds_scustat_raw_show(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	ssize_t ret;
+	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
+	ssize_t ret = 0;
 
+	/**
+	 * The CU data will not be consistent between multiple calls to
+	 * this function. Meaning large sysfs reads requests may have strange
+	 * output results if the CUs change mid read.
+	 * This was an acceptable cost to simplify the logic as it is a rare
+	 * condition.
+	 */
+
+	/* Populate the allocated buffer with CU data */
 	mutex_lock(&xdev->dev_lock);
-	ret = show_kds_scustat_raw(&XDEV(xdev)->kds, buf);
+	ret = show_kds_scustat_raw(&XDEV(xdev)->kds, buffer, count, offset);
 	mutex_unlock(&xdev->dev_lock);
+
 	return ret;
 }
-static DEVICE_ATTR_RO(kds_scustat_raw);
+
+static struct bin_attribute kds_scustat_raw_attr = {
+	.attr = {
+		.name = "kds_scustat_raw",
+		.mode = 0444
+	},
+	.read = kds_scustat_raw_show,
+	.write = NULL,
+	.size = 0
+};
 
 static ssize_t
 kds_interrupt_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -803,7 +823,6 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_numcdmas.attr,
 	&dev_attr_kds_stat.attr,
-	&dev_attr_kds_scustat_raw.attr,
 	&dev_attr_kds_interrupt.attr,
 	&dev_attr_kds_interval.attr,
 	&dev_attr_ert_disable.attr,
@@ -882,6 +901,7 @@ static struct bin_attribute fdt_blob_attr = {
 static struct bin_attribute  *xocl_bin_attrs[] = {
 	&fdt_blob_attr,
 	&kds_custat_raw_attr,
+	&kds_scustat_raw_attr,
 	NULL,
 };
 
