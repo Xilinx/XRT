@@ -663,12 +663,12 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	struct drm_xocl_mm_stat *mm_stat = NULL;
 
 	if (!xocl_mm) {
-        xocl_err(drm_p->ddev->dev, "Invalid memory manager");
+        	xocl_err(drm_p->ddev->dev, "Invalid memory manager");
 		return;
 	}
 
 	if (!pstat) {
-        xocl_err(drm_p->ddev->dev, "Invalid memory stats");
+        	xocl_err(drm_p->ddev->dev, "Invalid memory stats");
 		return;
 	}
 
@@ -684,13 +684,13 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	struct drm_xocl_mm_stat *mm_stat = NULL;
 
 	if (!xocl_mm) {
-        xocl_err(drm_p->ddev->dev, "Invalid memory manager");
+        	xocl_err(drm_p->ddev->dev, "Invalid memory manager");
 		return;
 	}
 
 	mm_stat = xocl_mm->mm_usage_stat[ddr];
 	if (!mm_stat) {
-        xocl_err(drm_p->ddev->dev, "Invalid memory stats");
+        	xocl_err(drm_p->ddev->dev, "Invalid memory stats");
 		return;
 	}
 
