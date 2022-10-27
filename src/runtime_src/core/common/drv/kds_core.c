@@ -58,7 +58,7 @@ static ssize_t kds_create_cu_string(struct xrt_cu *xcu,
 			*/
 			cu_sz = scnprintf(*buf, sizeof(*buf),
 					"%d,%d,%s:%s,0x%llx,0x%x,%llu\n", slot,
-					idx,
+					set_domain(DOMAIN_PL, idx),
 					xcu->info.kname, xcu->info.iname,
 					xcu->info.addr, xcu->status,
 					usage_count);
@@ -69,7 +69,7 @@ static ssize_t kds_create_cu_string(struct xrt_cu *xcu,
 			*/
 			cu_sz = scnprintf(*buf, sizeof(*buf),
 					"%d,%d,%s:%s,0x%x,%llu\n", slot,
-					idx,
+					set_domain(DOMAIN_PS, idx),
 					xcu->info.kname, xcu->info.iname,
 					xcu->status,
 					usage_count);
@@ -105,8 +105,7 @@ static ssize_t kds_populate_cu_buf(struct kds_cu_mgmt *cu_mgmt, char *buf,
 
 			/* Generate the CU string to write into the buffer */
 			memset(cu_buf, 0, sizeof(cu_buf));
-			cu_sz = kds_create_cu_string(xcu, &cu_buf, j,
-					set_domain(DOMAIN_PL, i),
+			cu_sz = kds_create_cu_string(xcu, &cu_buf, j, i,
 					cu_stat_read(cu_mgmt, usage[i]), type);
 
 			/* Store the CU string length with previous lengths */
