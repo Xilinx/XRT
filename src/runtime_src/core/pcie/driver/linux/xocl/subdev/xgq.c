@@ -3024,7 +3024,7 @@ static bool vmr_wait_for_sc_ready(struct xocl_xgq_vmr *xgq)
 		}
 
 		// display SC status for every SC_ERR_MSG_INTERVAL_SEC i.e. 5 seconds
-		if (!(loop_counter % SC_ERR_MSG_INTERVAL_SEC))
+		if (!(i % SC_ERR_MSG_INTERVAL_SEC))
 			XGQ_WARN(xgq, "SC is not ready in %d sec, waiting for SC to be ready", i);
 	}
 
