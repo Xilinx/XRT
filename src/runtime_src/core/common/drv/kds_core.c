@@ -1075,7 +1075,7 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 
 	 * To avoid this, wait for few seconds for ERT to complete command.
 	 */
-	ret = wait_for_completion_timeout(&kds->comp, msecs_to_jiffies(3000));
+	ret = wait_for_completion_timeout(&kds->comp, msecs_to_jiffies(10000));
 	if (!ret) {
 		kds->ert->abort_sync(kds->ert, client, NO_INDEX);
 		/* ERT abort would handle command in time. The command would be
