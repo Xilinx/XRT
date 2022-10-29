@@ -169,6 +169,7 @@ struct xocl_xgq_vmr {
 
 static int vmr_status_query(struct platform_device *pdev);
 static void xgq_offline_service(struct xocl_xgq_vmr *xgq);
+static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq);
 
 /*
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
@@ -2035,6 +2036,11 @@ static int xgq_collect_sensors(struct platform_device *pdev, int aid, int sid,
 	int ret = 0;
 	int id = 0;
 
+	if (!vmr_check_sc_is_ready(xgq)) {
+		XGQ_ERR(xgq, "SC is not ready, skipping sensors request command");
+		return -EAGAIN;
+	}
+
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
@@ -2932,30 +2938,42 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	return 0;
 }
 
-/* Wait for SC is fully ready during driver init (in reset) */
 static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq)
 {
 	struct xgq_cmd_cq_vmr_payload *vmr_status =
 		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
-	int i = 0, ret = 0;
+	int ret = 0;;
+
+	ret = vmr_status_query(xgq->xgq_pdev);
+	if (ret)
+		XGQ_ERR(xgq, "received error %d for vmr_status_query xgq request", ret);
+
+	if (vmr_status->sc_is_ready)
+		return true;
+
+	return false;
+}
+
+/* Wait for SC is fully ready during driver init (in reset) */
+static bool vmr_wait_for_sc_ready(struct xocl_xgq_vmr *xgq)
+{
 	int loop_counter = MAX_SC_WAIT_TIMEOUT_SEC * (1000 / SC_WAIT_INTERVAL_MILLI_SEC);
+	int sleep_time = SC_WAIT_INTERVAL_MILLI_SEC;
+	int i = 0;
 
-	for (i = 0; i < loop_counter; i++) {
-		ret = vmr_status_query(xgq->xgq_pdev);
-		if (ret)
-			XGQ_ERR(xgq, "received error %d for vmr_status_query xgq request", ret);
-
-		if (vmr_status->sc_is_ready) {
-			XGQ_INFO(xgq, "SC is ready after %d sec", loop_counter);
+	for (i = 1; i <= loop_counter; i++) {
+		msleep(SC_WAIT_INTERVAL_MILLI_SEC);
+		if (vmr_check_sc_is_ready(xgq)) {
+			XGQ_INFO(xgq, "SC is ready after %d sec", i);
 			return true;
 		}
 
-		if (loop_counter % SC_ERR_MSG_INTERVAL_SEC == 0)
-			XGQ_WARN(xgq, "SC is not ready in %d sec, waiting for SC to be ready", i + 1);
-		msleep(SC_WAIT_INTERVAL_MILLI_SEC);
+		// display SC status for every SC_ERR_MSG_INTERVAL_SEC i.e. 5 seconds
+		if (!(loop_counter % SC_ERR_MSG_INTERVAL_SEC))
+			XGQ_WARN(xgq, "SC is not ready in %d sec, waiting for SC to be ready", i);
 	}
 
-	XGQ_ERR(xgq, "SC state is unknown after %d sec", loop_counter);
+	XGQ_ERR(xgq, "SC state is unknown, total wait time %d sec", loop_counter);
 	return false;
 }
 
@@ -3088,7 +3106,7 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 			XGQ_INFO(xgq, "clock scaling feature is not supported");
 	}
 
-	if (vmr_check_sc_is_ready(xgq)) {
+	if (vmr_wait_for_sc_ready(xgq)) {
 		ret = xocl_subdev_create(xdev, &subdev_info);
 		if (ret) {
 			XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
