@@ -423,22 +423,7 @@ static void init_resp_abort(struct xgq_com_queue_entry *resp, u16 cid, u32 rcode
 }
 
 static inline void
-zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, int ret)
-{
-	struct xgq_com_queue_entry r;
-	struct zocl_cu_xgq *zcu_xgq = platform_get_drvdata(pdev);
-
-	if (likely(ret == 0 && ZCU_XGQ_FAST_PATH(zcu_xgq))) {
-		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, NULL);
-	} else {
-		init_resp(&r, cmd->cid, ret);
-		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, &r);
-	}
-	kfree(cmd);
-}
-
-static inline void
-zcu_xgq_cmd_complete_with_status(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, int ret, int status)
+zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, int ret, int status)
 {
 	struct xgq_com_queue_entry r;
 	struct xgq_com_queue_entry *rptr = &r;
@@ -460,7 +445,7 @@ static void zcu_xgq_cmd_notify(struct kds_command *xcmd, int status)
 	struct xgq_cmd_sq_hdr *cmd = xcmd->info;
 
 	xcmd->info = NULL;
-	zcu_xgq_cmd_complete_with_status(ZCU_XGQ2PDEV(zcu_xgq), cmd, xcmd->rcode, xcmd->status);
+	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, xcmd->rcode, xcmd->status);
 
 	if (xcmd->cu_idx >= 0) {
 		if (cmd->cu_domain != 0)
@@ -478,12 +463,12 @@ zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 	int bit_idx;
 
 #if 0
-	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, 0);
+	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, 0, 0);
 	return;
 #endif
 	xcmd = kds_alloc_command(zcu_xgq->zxc_client_hdl, 0);
 	if (!xcmd) {
-		zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -ENOMEM);
+		zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -ENOMEM, 0);
 		return;
 	}
 
@@ -523,7 +508,7 @@ zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 static void zcu_xgq_cmd_default(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 {
 	zcu_xgq_err(zcu_xgq, "Unknown cmd: %d", cmd->opcode);
-	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -ENOTTY);
+	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -ENOTTY, 0);
 }
 
 static void zcu_xgq_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd)

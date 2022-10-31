@@ -383,7 +383,7 @@ void zocl_scu_sk_crash(struct platform_device *pdev)
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &zcu->base;
 
-	xrt_cu_scu_crashed(xcu->core);
+	xrt_cu_scu_crashed(xcu);
 
 	return; /* Place holder */
 }

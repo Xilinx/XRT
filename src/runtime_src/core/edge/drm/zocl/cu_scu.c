@@ -34,6 +34,10 @@ struct xrt_cu_scu {
 	int			 run_cnts;
 	void			*vaddr;
 	int			 num_reg;
+	/* sk_crashed - Flag to indicate PS kernel has crashed
+	 * Will be set through IOCTL and never be reset
+	 * as there is no support currently to relaunch PS kernel
+	 */
 	bool			 sk_crashed;
 	struct semaphore	*sc_sem;
 	struct list_head	 submitted;
@@ -230,9 +234,9 @@ static int scu_abort(void *core, void *cond,
 	return ret;
 }
 
-void xrt_cu_scu_crashed(void *core)
+void xrt_cu_scu_crashed(struct xrt_cu *xcu)
 {
-	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
+	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)xcu->core;
 
 	scu->sk_crashed = 1;
 }
@@ -263,7 +267,7 @@ int xrt_cu_scu_init(struct xrt_cu *xcu, void *vaddr, struct semaphore *sem)
 	core->max_credits = 1;
 	core->credits = core->max_credits;
 	core->run_cnts = 0;
-	core->sk_crashed = 0;
+	core->sk_crashed = false;
 	core->sc_sem = sem;
 	core->vaddr = vaddr;
 	INIT_LIST_HEAD(&core->submitted);
