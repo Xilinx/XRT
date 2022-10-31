@@ -2,6 +2,7 @@
  * Copyright (C) 2019-2022 Xilinx, Inc
  * Author(s): Min Ma	<min.ma@xilinx.com>
  *          : Larry Liu	<yliu@xilinx.com>
+ *          : Jeff Lin	<jeffli@xilinx.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,13 +17,15 @@
  * under the License.
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
+#include <cstdio>
+#include <cerrno>
 
+#include "core/common/api/device_int.h"
+#include "core/common/device.h"
+#include "core/common/query_requests.h"
+#include "ert.h"
 #include "sk_daemon.h"
 #include "xclhal2_mpsoc.h"
-#include "ert.h"
 
 /*
  * This is a daemon code running on PS. It receives commands from
@@ -34,71 +37,82 @@
  * and exit.
  */
 
+using severity_level = xrt_core::message::severity_level;
+
 int main(int argc, char *argv[])
 {
-  pid_t pid, sid;
-  xclDeviceHandle handle;
-  xclSKCmd cmd;
-
-  pid = fork();
-  if (pid < 0) {
+  const pid_t pid = fork();
+  if (pid < 0)
     exit(EXIT_FAILURE);
-  }
+
   if (pid > 0)
     exit(EXIT_SUCCESS);
 
+  // Starting the child process
   umask(0);
 
-  /* Open syslog and send the first message */
-  openlog("skd", LOG_PID | LOG_CONS, LOG_LOCAL0);
-  syslog(LOG_INFO, "Daemon Start...\n");
+  // Send the first message to XRT log
+  const auto msg = "Daemon Start...";
+  xrt_core::message::send(severity_level::info, "SKD", msg);
 
-  /* Create a new SID for the child process */
-  sid = setsid();
+  // Create a new SID for the child process
+  const pid_t sid = setsid();
   if (sid < 0) {
-    syslog(LOG_INFO, "Set SID failed. Daemon exiting\n");
-    closelog();
+    const auto errMsg = "Set SID failed. Daemon exiting - errno: " + std::to_string(errno);
+    xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
-  syslog(LOG_INFO, "SID set %d\n", sid);
+  const auto sid_msg = boost::format("SID set %d") % sid;
+  xrt_core::message::send(severity_level::info, "SKD", sid_msg.str());
 
-  if (chdir("/") < 0) {
-    syslog(LOG_INFO, "Could NOT change to \"/\" directory\n");
-    closelog();
-    exit(EXIT_FAILURE);
-  }
-
-  handle = initXRTHandle(0);
+  // Opening first device since this is the only device available on APU
+  xclDeviceHandle handle = initXRTHandle(0);
   if (!handle) {
-    syslog(LOG_INFO, "Fail to init XRT first time\n");
+    const auto errMsg = "Fail to init XRT first time";
+    xrt_core::message::send(severity_level::error, "SKD", errMsg);
   }
   // Retry XRT init after delay
   sleep(1);
   handle = initXRTHandle(0);
   if (!handle) {
-    syslog(LOG_INFO, "Fail to init XRT\n");
-    closelog();
+    const auto errMsg = "Fail to init XRT";
+    xrt_core::message::send(severity_level::error, "SKD", errMsg);
     exit(EXIT_FAILURE);
   }
 
-  while (1) {
-    /* Calling XRT interface to wait for commands */
+  uint64_t mem_start_paddr = 0;
+  uint64_t mem_size = 0;
+  int parent_mem_bo = 0;
+#ifdef SKD_MAP_BIG_BO
+  // Map entire PS reserve memory space
+  xrtDeviceHandle xrtdHdl = xrtDeviceOpenFromXcl(handle);
+  try {
+    mem_size = xrt_core::device_query<xrt_core::query::host_mem_size>(xrt_core::device_int::get_core_device(xrtdHdl));
+    mem_start_paddr = xrt_core::device_query<xrt_core::query::host_mem_addr>(xrt_core::device_int::get_core_device(xrtdHdl));
+    parent_mem_bo = xclGetHostBO(handle,mem_start_paddr,mem_size);
+    const auto infoMsg = boost::format("host_mem_size=%ld, host_mem_address=%lx\n") % mem_size % mem_start_paddr;
+    xrt_core::message::send(severity_level::info, "SKD", infoMsg);
+  }
+  catch (const xrt_core::query::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    exit(EXIT_FAILURE);
+  }
+#endif
+
+  xclSKCmd cmd = {};
+  while (true) {
+    // Calling XRT interface to wait for commands - xclSKGetCmd will block and wait
     if (xclSKGetCmd(handle, &cmd) != 0)
       continue;
 
-    switch (cmd.opcode) {
-    case ERT_SK_CONFIG:
-      configSoftKernel(handle, &cmd);
-      break;
-    default:
-      syslog(LOG_WARNING, "Unknow management command, ignore it");
-      break;
+    if (cmd.opcode == ERT_SK_CONFIG) {
+      configSoftKernel(handle, &cmd, parent_mem_bo, mem_start_paddr, mem_size);
+      continue;
     }
+
+    // Unknown management command
+    const auto warnmsg = "Unknow management command, ignore it";
+    xrt_core::message::send(severity_level::warning, "SKD", warnmsg);
   }
 
-  xclClose(handle);
-  syslog(LOG_INFO, "Daemon stop\n");
-  closelog();
-
-  return 0;
 }
