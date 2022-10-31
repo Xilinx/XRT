@@ -254,7 +254,7 @@ void
 device::
 register_axlf(const axlf* top)
 {
-  // This lock is required when xrt::hw_context is created from
+  // This lock is required when multiple xrt::hw_context are created from
   // different threads
   std::lock_guard<std::mutex> lk(device_lock);
   xrt::uuid xid{top->m_header.uuid};
