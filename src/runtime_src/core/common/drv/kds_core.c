@@ -98,47 +98,53 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, uint32_t domai
 	int i, j;
 
 	mutex_lock(&cu_mgmt->lock);
+	/* For legacy context */
 	list_for_each(ptr, &kds->clients) {
 		client = list_entry(ptr, struct kds_client, link);
+		if (!client->ctx || list_empty(&client->ctx->cu_ctx_list)) 
+			continue;
 
-		/* For legacy context */
-		if(client->ctx && !list_empty(&client->ctx->cu_ctx_list)) {
-			/* Find out if same CU context is already exists  */
-			list_for_each_entry(cu_ctx, &client->ctx->cu_ctx_list, link) {
-				xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
-				if ((xcu != NULL) &&
-						(cu_ctx->cu_domain == domain)) {
-					j = cu_ctx->ctx->slot_idx;
-					i = cu_ctx->cu_idx;
-					sz += scnprintf(buf+sz, PAGE_SIZE - sz,
-							cu_fmt, j,
-							set_domain(domain, i),
-							xcu->info.kname, xcu->info.iname,
-							xcu->info.addr, xcu->status,
-							cu_stat_read(cu_mgmt, usage[i]));
-				}
-			}
+		/* Find out if same CU context is already exists  */
+		list_for_each_entry(cu_ctx, &client->ctx->cu_ctx_list, link) {
+			xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
+			if ((xcu == NULL) || (cu_ctx->cu_domain != domain)) 
+				continue;
+
+			j = cu_ctx->ctx->slot_idx;
+			i = cu_ctx->cu_idx;
+			sz += scnprintf(buf+sz, PAGE_SIZE - sz,
+					cu_fmt, j,
+					set_domain(domain, i),
+					xcu->info.kname, xcu->info.iname,
+					xcu->info.addr, xcu->status,
+					cu_stat_read(cu_mgmt, usage[i]));
 		}
+	}
 
-		/* For hw context */
+	/* For hw context */
+	list_for_each(ptr, &kds->clients) {
+		client = list_entry(ptr, struct kds_client, link);
+		if (!client->ctx || list_empty(&client->hw_ctx_list)) 
+			continue;
+
 		list_for_each_entry(curr, &client->hw_ctx_list, link) {
-			if(!list_empty(&curr->cu_ctx_list)) {
-				/* Find out if same CU context is already exists  */
-				list_for_each_entry(cu_ctx, &curr->cu_ctx_list, link) {
-					xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
-					if ((xcu != NULL) &&
-							(cu_ctx->cu_domain == domain)) {
-						j = cu_ctx->hw_ctx->hw_ctx_idx;
-						i = cu_ctx->cu_idx;
-						sz += scnprintf(buf+sz, PAGE_SIZE - sz,
-								cu_fmt, j,
-								set_domain(domain, i),
-								xcu->info.kname, xcu->info.iname,
-								xcu->info.addr, xcu->status,
-								cu_stat_read(cu_mgmt, usage[i]));
-					}
-				}
+			if (list_empty(&curr->cu_ctx_list))
+				continue;
 
+			/* Find out if same CU context is already exists  */
+			list_for_each_entry(cu_ctx, &curr->cu_ctx_list, link) {
+				xcu = cu_mgmt->xcus[cu_ctx->cu_idx];
+				if ((xcu == NULL) || (cu_ctx->cu_domain != domain))
+					continue;
+
+				j = cu_ctx->hw_ctx->hw_ctx_idx;
+				i = cu_ctx->cu_idx;
+				sz += scnprintf(buf+sz, PAGE_SIZE - sz,
+						cu_fmt, j,
+						set_domain(domain, i),
+						xcu->info.kname, xcu->info.iname,
+						xcu->info.addr, xcu->status,
+						cu_stat_read(cu_mgmt, usage[i]));
 			}
 		}
 	}
