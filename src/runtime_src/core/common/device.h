@@ -109,7 +109,6 @@ public:
   using slot_id = xclbin_map::slot_id;
   using handle_type = xclDeviceHandle;
   using memory_type = xrt::xclbin::mem::memory_type;
-  std::mutex device_lock;
 
 public:
   XRT_CORE_COMMON_EXPORT
@@ -465,6 +464,7 @@ public:
 
  private:
   id_type m_device_id;
+  std::mutex device_lock;
   mutable boost::optional<bool> m_nodma = boost::none;
 
   using name2idx_type = std::map<std::string, cuidx_type>;
