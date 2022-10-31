@@ -2854,7 +2854,6 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 
 		rval = xgq_download_apu_firmware(xgq->xgq_pdev);
 		if (rval) {
-			ret = rval;
 			XGQ_WARN(xgq, "unable to download APU: %d", rval);
 		}
 	}
