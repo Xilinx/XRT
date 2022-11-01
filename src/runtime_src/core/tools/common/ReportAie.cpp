@@ -34,7 +34,10 @@ populate_aie(const xrt_core::device * _pDevice, const std::string& desc)
   boost::property_tree::ptree pt_aie;
   pt_aie.put("description", desc);
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::aie>();
+  auto aieInfoStr = device.get_info<xrt::info::device::aie>();
+  if(aieInfoStr.find("error_msg") != std::string::npos)
+	  aieInfoStr = "{\n    \"description\": \"Aie_Metadata\",\n    \"error_msg\": \"AIE information unavailable\"\n}\n";
+  ss << aieInfoStr;
   boost::property_tree::read_json(ss, pt_aie);
 
   return pt_aie;

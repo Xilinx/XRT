@@ -27,13 +27,16 @@
 #define fmt16(x) boost::format("%16s%-22s: " x "\n") % " "
 
 boost::property_tree::ptree
-populate_aie_shim(const xrt_core::device * _pDevice, const std::string& desc)
+populate_aie_shim(const xrt_core::device * _pDevice, const std::string& desc, const bool& aieStatus)
 {
   xrt::device device(_pDevice->get_device_id());
   boost::property_tree::ptree pt_shim;
   pt_shim.put("description", desc);
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::aie_shim>();
+  if(aieStatus)
+	  ss << device.get_info<xrt::info::device::aie_shim>();
+  else
+	  ss << "{\n    \"description\": \"Aie_Shim_Status\",\n    \"error_msg\": \"AIE information unavailable\"\n}\n";
   boost::property_tree::read_json(ss, pt_shim);
 
   return pt_shim;
@@ -52,7 +55,13 @@ void
 ReportAieShim::getPropertyTree20202(const xrt_core::device * _pDevice, 
                                 boost::property_tree::ptree &_pt) const
 {
-  _pt.add_child("aie_shim_status", populate_aie_shim(_pDevice, "Aie_Shim_Status"));
+   boost::property_tree::ptree empty_ptree;
+   const boost::property_tree::ptree ptShimTiles = _pt.get_child("aie_shim_status.tiles", empty_ptree);
+   bool AieStatus = true;
+   if (ptShimTiles.empty()) {
+	   AieStatus = false;	
+   }
+   _pt.add_child("aie_shim_status", populate_aie_shim(_pDevice, "Aie_Shim_Status", AieStatus));
 }
 
 void 
