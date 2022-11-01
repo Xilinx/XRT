@@ -78,7 +78,12 @@
 static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_VMR_INVALID_CID	0xFFFF
 
-/* Retry is set to 200 seconds for SC to be active*/
+/* Retry is set to 200 seconds for SC to be active/ready
+ * On the SC firmware side there is a HW watchdog timer, which will automatically recover the SC
+ * when SC got hung during the bootup.
+ * If SC get hung during bootup, it would take 180 secs to recover and another ~20 secs window
+ * as a buffer time to fetch and get ready with all the sensor data.
+ */
 #define MAX_SC_WAIT_TIMEOUT_SEC     200
 #define SC_WAIT_INTERVAL_MILLI_SEC  1000
 #define SC_ERR_MSG_INTERVAL_SEC     5
