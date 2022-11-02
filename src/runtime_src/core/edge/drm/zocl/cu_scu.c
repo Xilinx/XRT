@@ -151,14 +151,13 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 		return;
 
 	ctrl_reg = *cu_regfile;
-	/* ap_ready and ap_done would assert at the same cycle */
 	if ((ctrl_reg == CU_AP_DONE) || scu->sk_crashed) {
 		done_reg  = 1;
 		ready_reg = 1;
 		scu->run_cnts--;
 		if (scu->sk_crashed) {
 			rcode = EIO;
-			ctrl_reg = 0xffffffff;
+			ctrl_reg = CU_AP_CRASHED;
 			cu_move_to_complete(scu, KDS_SKCRASHED, rcode);
 		} else {
 			rcode = cu_regfile[scu->num_reg+1];

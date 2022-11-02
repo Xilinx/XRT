@@ -489,7 +489,7 @@ static inline void __xrt_cu_check(struct xrt_cu *xcu, bool force)
 	xcu->done_cnt += status.num_done;
 	xcu->ready_cnt += status.num_ready;
 	// Do not update CU status if it has crashed
-	if (xcu->status != 0xffffffff)
+	if (xcu->status != CU_AP_CRASHED)
 	  xcu->status = status.new_status;
 	xcu->rcode  = status.rcode;
 }

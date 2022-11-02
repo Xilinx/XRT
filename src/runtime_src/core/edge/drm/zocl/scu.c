@@ -384,8 +384,6 @@ void zocl_scu_sk_crash(struct platform_device *pdev)
 	struct xrt_cu *xcu = &zcu->base;
 
 	xrt_cu_scu_crashed(xcu);
-
-	return; /* Place holder */
 }
 
 void zocl_scu_sk_shutdown(struct platform_device *pdev)
