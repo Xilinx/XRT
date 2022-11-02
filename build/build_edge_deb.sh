@@ -14,7 +14,7 @@ usage()
     echo "  options:"
     echo "          -help                           Print this usage"
     echo "          -aarch                          Architecture <aarch32/aarch64>"
-    echo "          -sysroot_name                   Name of sysroot folder created for compilation"
+    echo "          -dist                           Distribution for the package build <focal/jammy>"
     echo "          -clean, clean                   Remove build directories, pass 'aarch' option to it"
     echo ""
 }
@@ -30,13 +30,16 @@ SAVED_OPTIONS=$(set +o)
 set +x
 # Get the canonical file name of the current script
 THIS_SCRIPT=`readlink -f ${BASH_SOURCE[0]}`
- 
+
 PROGRAM=`basename $0`
 
 # XRT Version variables
 XRT_MAJOR_VERSION=2
-XRT_MINOR_VERSION=13
-RELEASE_VERSION=202210
+XRT_MINOR_VERSION=15
+RELEASE_VERSION=202310
+
+# Default distribution
+DIST=jammy
 
 # Pick XRT_VERSION_PATCH from Env variable
 if [ -z $XRT_VERSION_PATCH ]; then
@@ -57,13 +60,13 @@ while [ $# -gt 0 ]; do
                 -help | --help )
                         usage_and_exit 0
                         ;;
+                -dist | --dist )
+                        shift
+                        DIST=$1
+                        ;;
                 -aarch | --aarch )
                         shift
                         AARCH=$1
-                        ;;
-                -sysroot_name | --sysroot_name )
-                        shift
-                        SYSROOT=$1
                         ;;
                 -clean | clean | --clean )
                         clean=1
@@ -81,6 +84,18 @@ done
 THIS_SCRIPT_DIR=$(dirname "$THIS_SCRIPT")
 XRT_DIR=`readlink -f $THIS_SCRIPT_DIR/../`
 DEBIAN=`readlink -f $THIS_SCRIPT_DIR/debian`
+
+if [ -z $DIST ]; then
+    error "-dist is required option"
+fi
+
+if [[ $DIST == "jammy" ]]; then
+    OS_VERSION="22.04"
+elif [[ $DIST == "focal" ]]; then
+    OS_VERSION="20.04"
+else
+    error "$DIST is not a valid dist option"
+fi
 
 if [ -z $AARCH ]; then
     error "-aarch is required option"
@@ -101,11 +116,6 @@ if [[ $clean == 1 ]]; then
     exit 0
 fi
 
-# Sanity Check
-if [ -z $SYSROOT ] ; then
-    error "Please provide the required option 'sysroot_name'"
-fi
-
 if [ ! -d $DEBIAN ]; then
     error "$DEBIAN is not accessible"
 fi
@@ -113,7 +123,7 @@ fi
 DEBIAN_ARTIFACTS=$THIS_SCRIPT_DIR/$BUILD_FOLDER/debian_artifacts
 mkdir -p $DEBIAN_ARTIFACTS
 cd $DEBIAN_ARTIFACTS
-# TODO: 
+# TODO:
 # Debian expects XRT source tarball to be in parent directory of folder having debian folder, that way we should place
 # tar ball outside XRT directory which makes clean process difficult, find a flag to point to XRT source tar ball.
 # Current implementation copies source code to build folder
@@ -128,13 +138,13 @@ cp -rf $DEBIAN $DEBIAN_ARTIFACTS
 sed -i "1d" $DEBIAN_ARTIFACTS/debian/changelog
 sed -i "1s/^/xrt (${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}) experimental;urgency=medium\n/" $DEBIAN_ARTIFACTS/debian/changelog
 
-time sbuild --no-run-lintian -d focal --arch=arm64 -c $SYSROOT -s -n
+time sbuild --no-run-lintian -d $DIST --arch=arm64 -s -n
 
 cd $THIS_SCRIPT_DIR/$BUILD_FOLDER
 # rename the packages created for consistency
-mv xrt-embedded_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_embedded_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_20.04-arm64.deb
-mv xrt-zocl-dkms_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_zocl_dkms_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_20.04-arm64.deb
-mv xrt-embedded-dbgsym_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.ddeb xrt_embedded_dbgsym_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_20.04-arm64.ddeb
+mv xrt-embedded_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_embedded_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_${OS_VERSION}-arm64.deb
+mv xrt-zocl-dkms_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_zocl_dkms_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_${OS_VERSION}-arm64.deb
+mv xrt-embedded-dbgsym_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.ddeb xrt_embedded_dbgsym_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_${OS_VERSION}-arm64.ddeb
 
 eval "$SAVED_OPTIONS"; # Restore shell options
 echo "** COMPLETE [${BASH_SOURCE[0]}] **"
