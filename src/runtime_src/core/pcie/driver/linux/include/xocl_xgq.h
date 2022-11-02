@@ -22,6 +22,8 @@
 #include "xgq_xocl_plat.h"
 #include "kds_command.h"
 
+struct xocl_xgq;
+
 /* Property bit used in xocl_xgq_attach() */
 #define XGQ_PROT_NEED_RESP (1 << 0)
 
@@ -43,7 +45,7 @@ int xocl_xgq_abort(struct xocl_xgq *xgq_handle, int client_id, void *cond,
 		   bool (*match)(struct kds_command *xcmd, void *cond));
 
 irqreturn_t xgq_isr(int irq, void *arg);
-void *xocl_xgq_init(struct xocl_xgq_info *info);
-void xocl_xgq_fini(void *xgq_handle);
+struct xocl_xgq *xocl_xgq_init(struct xocl_xgq_info *info);
+void xocl_xgq_fini(struct xocl_xgq *xgq_handle);
 
 #endif /* _XOCL_XGQ_H_ */
