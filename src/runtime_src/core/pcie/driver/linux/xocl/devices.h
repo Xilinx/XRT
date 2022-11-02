@@ -322,6 +322,7 @@ enum subdev_id {
 	XOCL_SUBDEV_SRSR,
 	XOCL_SUBDEV_UARTLITE,
 	XOCL_SUBDEV_UARTLITE_01,
+	XOCL_SUBDEV_UARTLITE_02,
 	XOCL_SUBDEV_CALIB_STORAGE,
 	XOCL_SUBDEV_ADDR_TRANSLATOR,
 	XOCL_SUBDEV_INTC,
@@ -2940,7 +2941,7 @@ struct xocl_subdev_map {
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
-		.board_name = "avalon",					\
+		.board_name = "avalon"					\
 	}
 
 #define	XOCL_BOARD_AVALON_MGMT_RAPTOR2				\
@@ -2949,7 +2950,7 @@ struct xocl_subdev_map {
 		.subdev_info	= RES_MGMT_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
-		.board_name = "avalon"					\
+		.board_name = "avalon"		                        \
 	}
 
 /*********************************VCK190 MGMTPF START*******************/
@@ -3640,11 +3641,11 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_BOARD_U30_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5099, PCI_ANY_ID,					\
-		.vbnv = "xilinx_avalon",				\
+		.vbnv = "xilinx_ul3x24",				\
 		.priv_data = &XOCL_BOARD_AVALON_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5098, PCI_ANY_ID,					\
-		.vbnv = "xilinx_avalon",				\
+		.vbnv = "xilinx_ul3x24",				\
 		.priv_data = &XOCL_BOARD_AVALON_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 }
 

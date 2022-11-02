@@ -8,6 +8,7 @@
 #include "pcidrv_xclmgmt.h"
 #include "pcidrv_xocl.h"
 
+#include "core/common/module_loader.h"
 #include "core/common/query_requests.h"
 
 #include <boost/format.hpp>
@@ -38,34 +39,40 @@
 
 namespace {
 
-// This pointer may be initialized by a external class derived from system_linux.
-// This is for short term implementation.
-xrt_core::system_linux* singleton = nullptr;
+namespace driver_list {
+
+static std::vector<std::shared_ptr<xrt_core::pci::drv>> list;
+
+void
+append(std::shared_ptr<xrt_core::pci::drv> driver)
+{
+  list.push_back(std::move(driver));
+}
+
+const std::vector<std::shared_ptr<xrt_core::pci::drv>>&
+get()
+{
+  return list;
+}
+
+}
 
 // Singleton registers with base class xrt_core::system
-// during static global initialization. If statically
+// during static global initialization.  If statically
 // linking with libxrt_core, then explicit initialiation
 // is required
 static xrt_core::system_linux*
 singleton_system_linux()
 {
-  if (!singleton)
-    static xrt_core::system_linux s;
-
-  if (singleton)
-    return singleton;
-
-  throw std::runtime_error("INTERNAL ERROR: system_linux singleton is not initialized");
+  static xrt_core::system_linux singleton;
+  return &singleton;
 }
 
 // Dynamic linking automatically constructs the singleton
-// Do not instantiate singleton, if SHIM is extended from outside.
-#ifndef EXTERNAL_SHIM
 struct X
 {
   X() { singleton_system_linux(); }
 } x;
-#endif
 
 static boost::property_tree::ptree
 driver_version(const std::string& driver)
@@ -116,18 +123,6 @@ static std::string machine_info()
 
 namespace xrt_core {
 
-void
-system_linux::
-register_driver(std::shared_ptr<pci::drv> driver)
-{
-  if (driver->is_user())
-    driver->scan_devices(user_ready_list, user_nonready_list);
-  else
-    driver->scan_devices(mgmt_ready_list, mgmt_nonready_list);
-
-  driver_list.emplace_back(std::move(driver));
-}
-
 std::shared_ptr<pci::dev>
 system_linux::
 get_pcidev(unsigned index, bool is_user) const
@@ -168,12 +163,25 @@ get_num_dev_total(bool is_user) const
 system_linux::
 system_linux()
 {
-  if (singleton)
-    throw std::runtime_error("More than one SHIM registered!");
-  singleton = this;
+  // Add built-in driver to the list.
+  driver_list::append(std::make_shared<pci::drv_xocl>());
+  driver_list::append(std::make_shared<pci::drv_xclmgmt>());
 
-  register_driver(std::make_shared<pci::drv_xocl>());
-  register_driver(std::make_shared<pci::drv_xclmgmt>());
+  // Load driver plug-ins. Driver list will be updated during loading.
+  // Don't need to die on a plug-in loading failure.
+  try {
+    xrt_core::driver_loader plugins;
+  }
+  catch (const std::runtime_error& err) {
+    xrt_core::send_exception_message(err.what(), "WARNING");
+  }
+
+  for (const auto& driver : driver_list::get()) {
+    if (driver->is_user())
+      driver->scan_devices(user_ready_list, user_nonready_list);
+    else
+      driver->scan_devices(mgmt_ready_list, mgmt_nonready_list);
+  }
 }
 
 void
@@ -182,7 +190,7 @@ get_xrt_info(boost::property_tree::ptree &pt)
 {
   boost::property_tree::ptree _ptDriverInfo;
 
-  for (auto& drv : driver_list)
+  for (const auto& drv : driver_list::get())
     _ptDriverInfo.push_back( {"", driver_version(drv->name())} );
   pt.put_child("drivers", _ptDriverInfo);
 }
@@ -355,6 +363,12 @@ std::shared_ptr<dev>
 get_dev(unsigned index, bool user)
 {
   return singleton_system_linux()->get_pcidev(index, user);
+}
+
+void
+register_driver(std::shared_ptr<drv> driver)
+{
+  driver_list::append(driver);
 }
 
 } // namespace pci

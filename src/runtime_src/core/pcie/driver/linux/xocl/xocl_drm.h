@@ -54,22 +54,41 @@ struct xocl_cma_bank {
 	struct xocl_cma_memory	cma_mem[1];
 };
 
-struct xocl_drm {
-	xdev_handle_t		xdev;
-	/* memory management */
-	struct drm_device       *ddev;
+struct xocl_mm {
 	/* Memory manager */
 	struct drm_mm           *mm;
-	struct mutex            mm_lock;
-	struct drm_xocl_mm_stat **mm_usage_stat;
-	/* Array of bo usage stats */
+	uint64_t		start_addr;
+	uint64_t		end_addr;
+	uint32_t                m_count;
+
+	/* Array of bo and memory usage stats 
+	 * for whole device memory manager */
 	struct drm_xocl_mm_stat *bo_usage_stat;
+	struct drm_xocl_mm_stat **mm_usage_stat;
+};
+
+struct xocl_mem_stat {
+	struct list_head        link;
+	uint32_t 		mem_idx;
+	uint32_t 		slot_idx;
+	
+	/* Memory usage stats for each memory bank per slot */
+	struct drm_xocl_mm_stat mm_usage_stat;
+};
+
+struct xocl_drm {
+	xdev_handle_t		xdev;
+	struct drm_device       *ddev;
+	struct mutex            mm_lock;
+
+	/* Memory manager */
+	struct xocl_mm		*xocl_mm;
+	bool			xocl_mm_done;
+
+	/* Xocl driver memory list head */
+	struct list_head        mem_list_head;
 
 	int			cma_bank_idx;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
-	DECLARE_HASHTABLE(mm_range, 6);
-#endif
 };
 
 struct drm_xocl_bo {
@@ -108,8 +127,8 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         u64 size, int count);
 
-int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
-                struct drm_mm_node *node, u64 size);
+int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
+                uint32_t slotidx, struct drm_mm_node *node, u64 size);
 
 void *xocl_drm_init(xdev_handle_t xdev);
 void xocl_drm_fini(struct xocl_drm *drm_p);

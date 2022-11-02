@@ -92,6 +92,7 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_VMR_CONTROL		= 0xe,
 	XGQ_CMD_OP_PROGRAM_SCFW		= 0xf,
 	XGQ_CMD_OP_CLK_THROTTLING	= 0x10,
+	XGQ_CMD_OP_PROGRAM_VMR		= 0x11,
 
 	/* User command type */
 	XGQ_CMD_OP_START_CUIDX	        = 0x100,
