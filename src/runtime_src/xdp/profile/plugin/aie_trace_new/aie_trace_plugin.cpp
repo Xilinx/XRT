@@ -123,24 +123,8 @@ namespace xdp {
     
     // Check for device interface
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceID);
-    if (deviceIntf == nullptr) {
-      // If DeviceIntf is not already created, create a new one to communicate with physical device
-      deviceIntf = new DeviceIntf();
-      AIEData.devIntf = deviceIntf;
-    try {
-      deviceIntf->setDevice(new HalDevice(handle));
-      deviceIntf->readDebugIPlayout();
-    } catch (std::exception& e) {
-      // Read debug IP layout could throw an exception
-      std::stringstream msg;
-      msg << "Unable to read debug IP layout for device " << deviceID << ": " << e.what();
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      AIEData.valid = false;
-      return;
-    }
-    (db->getStaticInfo()).setDeviceIntf(deviceID, deviceIntf);
-    // configure dataflow etc. may not be required here as those are for PL side
-    }
+    if (deviceIntf == nullptr) 
+      deviceIntf = db->getStaticInfo().createDeviceIntf(deviceID, new HalDevice(handle));
 
     // Create gmio metadata
     if (!(db->getStaticInfo()).isGMIORead(deviceID)) {

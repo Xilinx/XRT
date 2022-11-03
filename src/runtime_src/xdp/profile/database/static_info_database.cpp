@@ -415,6 +415,33 @@ namespace xdp {
     return xclbin->deviceIntf ;
   }
 
+  DeviceIntf* VPStaticDatabase::createDeviceIntf(uint64_t deviceId,
+                                                 xdp::Device* dev)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock);
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin();
+    if (xclbin == nullptr)
+      return nullptr;
+    if (xclbin->deviceIntf != nullptr)
+      return xclbin->deviceIntf;
+
+    xclbin->deviceIntf = new DeviceIntf();
+    xclbin->deviceIntf->setDevice(dev);
+    try {
+      xclbin->deviceIntf->readDebugIPlayout();
+    }
+    catch (std::exception& /* e */) {
+      // If reading the debug ip layout fails, we shouldn't have
+      // any device interface at all
+      delete xclbin->deviceIntf;
+      xclbin->deviceIntf = nullptr;
+    }
+    return xclbin->deviceIntf;
+  } 
+
   void VPStaticDatabase::setKDMACount(uint64_t deviceId, uint64_t num)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
