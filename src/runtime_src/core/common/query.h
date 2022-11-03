@@ -114,7 +114,7 @@ public:
   explicit
   exception(const std::string& err)
     : std::runtime_error(err)
-  {}
+  { /*empty*/ }
 };
 
 class no_such_key : public exception
@@ -147,7 +147,7 @@ public:
   explicit
   sysfs_error(const std::string& msg)
     : exception(msg)
-  {}
+  { /*empty*/ }
 };
 
 class not_supported : public exception
@@ -156,7 +156,7 @@ public:
   explicit
   not_supported(const std::string& msg)
     : exception(msg)
-  {}
+  { /*empty*/ }
 };
 
 } // query

@@ -613,8 +613,8 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	int len = 0;
 	int userpf_idx = 0;
 	int ret = 0;
-	struct FeatureRomHeader rom_header;
-	struct VmrStatus vmr_header;
+	struct FeatureRomHeader rom_header = {};
+	struct VmrStatus vmr_header = {};
 	int offset = 0;
 	const int *version = NULL;
 

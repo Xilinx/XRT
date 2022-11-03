@@ -1275,7 +1275,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * data after the platform has been reset
 	 */
 	ret = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_AF);
-	if (ret && ret != -ENODEV) {
+	if (ret && (ret != -ENODEV)) {
 		mgmt_err(lro, "Failed to register firewall");
 		goto fail_all_subdev;
 	}
@@ -1515,11 +1515,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 * FLASH to be able to flash new shell.
 	 */
 	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FEATURE_ROM);
-	if (rc && rc != -ENODEV)
+	if (rc && (rc != -ENODEV))
 		mgmt_err(lro, "Failed to create ROM subdevice");
 
 	rc = xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
-	if (rc && rc != -ENODEV)
+	if (rc && (rc != -ENODEV))
 		mgmt_err(lro, "Failed to create Flash subdevice");
 
 	/*
@@ -1527,11 +1527,11 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	 * allow user switch BLP
 	 */
 	rc = xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
-	if (rc && rc != -ENODEV)
+	if (rc && (rc != -ENODEV))
 		mgmt_err(lro, "Failed to create BLD level");
 
 	rc = xocl_subdev_create_vsec_devs(lro);
-	if (rc && rc != -EEXIST)
+	if (rc && (rc != -ENODEV))
 		mgmt_err(lro, "Failed to create VSEC devices");
 
 	/*

@@ -49,13 +49,13 @@ vmr_info(const xrt_core::device* device)
   auto vmr_status = xrt_core::device_query_default<xq::vmr_status>(device, {});
   auto vmr_version = xrt_core::device_query_default<xq::extended_vmr_status>(device, {});
   vmr_status.insert(vmr_status.begin(), vmr_version.begin(), vmr_version.end());
-  
+
   // only available for versal
   if (vmr_status.empty())
     return pt_vmr_status_array;
 
   //parse one line at a time
-  for (auto& stat_raw : vmr_status) {
+  for (const auto& stat_raw : vmr_status) {
     ptree_type pt_stat;
     const auto idx = stat_raw.find_first_of(':');
     if (idx != std::string::npos) {
