@@ -713,7 +713,7 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_i
 	for (i = 0; i < grp_topology->m_count; i++) {
 		mem_data = &grp_topology->m_mem_data[i];
 		if ((convert_mem_tag(mem_data->m_tag) == MEM_TAG_HOST) ||
-				!XOCL_IS_PS_KERNEL_MEM(grp_topology, i))
+				XOCL_IS_PS_KERNEL_MEM(grp_topology, i))
 			continue;
 
 		start_addr = mem_data->m_base_address;
@@ -775,6 +775,10 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
                 return 0;
 
 	if (grp_topology->m_mem_data[memidx].m_type == MEM_PS_KERNEL) {
+        /* For PS kernel case the memidx is specified will be dummy.
+         * The memory will be created from the actual Banks. Hence,
+         * memidx will be updated accordingly.
+         */
 		ret = xocl_mm_insert_node_range_all(drm_p, &memidx,
 				grp_topology, node, size);
 	}
