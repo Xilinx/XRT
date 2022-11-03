@@ -273,7 +273,7 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
     boost::property_tree::read_json(ss, pt_shim);
   } catch (const xrt_core::query::no_such_key&){
     pt.put("error_msg", "AIE information is not available");
-	return pt;
+    return pt;
   } catch (const xrt_core::query::exception&){
     pt.put("error_msg", "AIE information is not available");
     return pt;
@@ -604,7 +604,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
     return pt;
   } catch (const xrt_core::query::exception&){
     pt.put("error_msg", "AIE information is not available");
-	  return pt;
+    return pt;
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
     return pt;
