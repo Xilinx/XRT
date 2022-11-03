@@ -30,9 +30,9 @@
 #include "aie_trace_metadata.h"
 #include "core/common/message.h"
 #include "core/edge/common/aie_parser.h"
+#include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/device/tracedefs.h"
-
 
 // #include "aie_trace_plugin.h"
 
@@ -94,6 +94,7 @@ namespace xdp {
     auto device = xrt_core::get_userpf_device(handle);
     // auto compilerOptions = get_aiecompiler_options(device.get());
     // runtimeMetrics = (compilerOptions.event_trace == "runtime");
+    runtimeMetrics = true;
   }
 
   std::string AieTraceMetadata::getMetricSet(const std::string& metricsStr, bool ignoreOldConfig)
@@ -171,11 +172,8 @@ namespace xdp {
 
     if (startType == "time") {
       // Use number of cycles to start trace
-      double freqMhz = AIE_DEFAULT_FREQ_MHZ;
-      if (handle != nullptr) {
-        auto device = xrt_core::get_userpf_device(handle);
-        freqMhz = get_clock_freq_mhz(device.get());
-      }
+      VPDatabase* db = VPDatabase::Instance();
+      double freqMhz = (db->getStaticInfo()).getClockRateMHz(deviceID,false);
 
       std::smatch pieces_match;
       uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * uint_constants::one_million);
@@ -620,6 +618,7 @@ namespace xdp {
     //   xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
   }
 
+/*
   double AieTraceMetadata::get_clock_freq_mhz(const xrt_core::device* device)
   {
     auto data = device->get_axlf_section(AIE_METADATA);
@@ -631,6 +630,8 @@ namespace xdp {
     auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
     return dev_node.get<double>("AIEFrequency");
   }
+
+*/
 
   std::vector<gmio_type> AieTraceMetadata::get_trace_gmios(const xrt_core::device* device)
   {

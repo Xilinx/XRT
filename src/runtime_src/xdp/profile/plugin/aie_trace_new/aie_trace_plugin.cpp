@@ -193,13 +193,8 @@ namespace xdp {
     uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
     bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceID) ? true : false;
 
-    if (AIEData.metadata->getContinuousTrace()) {
-      // Continuous Trace Offload is supported only for PLIO flow
-      if (isPLIO)
-        XDPPlugin::startWriteThread(AIEData.metadata->getFileDumpIntS(), "AIE_EVENT_TRACE", false);
-      else
-        xrt_core::message::send(severity_level::warning, "XRT", AIE_TRACE_PERIODIC_OFFLOAD_UNSUPPORTED);
-    }
+    if (AIEData.metadata->getContinuousTrace())
+      XDPPlugin::startWriteThread(AIEData.metadata->getFileDumpIntS(), "AIE_EVENT_TRACE", false);
 
     // First, check against memory bank size
     // NOTE: Check first buffer for PLIO; assume bank 0 for GMIO
@@ -244,7 +239,7 @@ namespace xdp {
     auto& offloader = AIEData.offloader;
 
     // Can't call init without setting important details in offloader
-    if (AIEData.metadata->getContinuousTrace() && isPLIO) {
+    if (AIEData.metadata->getContinuousTrace()) {
       offloader->setContinuousTrace();
       offloader->setOffloadIntervalUs(AIEData.metadata->getOffloadIntervalUs());
     }
@@ -266,7 +261,7 @@ namespace xdp {
     AIEData.implementation->updateDevice();
 
     // Continuous Trace Offload is supported only for PLIO flow
-    if (AIEData.metadata->getContinuousTrace() && isPLIO)
+    if (AIEData.metadata->getContinuousTrace())
       offloader->startOffload();
   }
 
@@ -275,11 +270,13 @@ namespace xdp {
     if (offloader->continuousTrace()) {
       offloader->stopOffload();
       while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED);
-    }
-    offloader->readTrace(true);
+    } else {
+      offloader->readTrace(true);
+      offloader->endReadTrace();
+    } 
+
     if (warn && offloader->isTraceBufferFull())
       xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
-    offloader->endReadTrace();
   }
 
   void AieTracePluginUnified::flushAIEDevice(void* handle)

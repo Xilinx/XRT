@@ -33,9 +33,14 @@ namespace xdp {
       ~AieTrace_EdgeImpl() = default;
       
       XDP_EXPORT
-      void updateDevice();
+      virtual void updateDevice();
 
     private:
+ 
+      typedef XAie_Events            EventType;
+      typedef std::vector<EventType> EventVector;
+      typedef std::vector<uint32_t>  ValueVector;
+
       bool setMetrics(uint64_t deviceId, void* handle);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
@@ -44,6 +49,14 @@ namespace xdp {
       bool configureStartIteration(xaiefal::XAieMod& core);
       bool configureStartDelay(xaiefal::XAieMod& core);
      
+      // int startCoreModuleCounters(std::unique_ptr<aie_cfg_tile>& cfgTile, xaiefal::XAieMod& core, XAie_LocType loc,
+      //                              EventVector& coreEvents, EventVector& memoryCrossEvents, tile_type& tile);
+      // int startMemoryModuleCounters(std::unique_ptr<aie_cfg_tile>& cfgTile, xaiefal::XAieMod& memory, XAie_LocType loc, EventVector& memoryEvents);
+      // bool configureCoreTracingEvents(std::unique_ptr<aie_cfg_tile>& cfgTile, int* numTileCoreTraceEvents, xaiefal::XAieMod& core, XAie_LocType loc, EventVector& coreEvents);
+      // bool configureMemoryTracingEvents(std::unique_ptr<aie_cfg_tile>& cfgTile, int* numTileMemoryTraceEvents, xaiefal::XAieMod& memory, XAie_LocType loc,  EventVector& memoryEvents, EventVector& memoryCrossEvents);
+      // void reportTraceEvents (int* numTileCoreTraceEvents, int* numTileMemoryTraceEvents);
+
+
       bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
       void setTraceStartControl(void* handle);
       uint64_t checkTraceBufSize(uint64_t size);                                   
@@ -56,14 +69,9 @@ namespace xdp {
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;
 
-         // Types
-      typedef XAie_Events            EventType;
-      typedef std::vector<EventType> EventVector;
-      typedef std::vector<uint32_t>  ValueVector;
-
       std::set<std::string> metricSets;
-      std::map<std::string, EventVector> coreEventSets;
-      std::map<std::string, EventVector> memoryEventSets;
+      std::map<std::string, EventVector> mCoreEventSets;
+      std::map<std::string, EventVector> mMemoryEventSets;
 
       // AIE profile counters
       std::vector<tile_type> mCoreCounterTiles;
@@ -71,16 +79,15 @@ namespace xdp {
       std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mMemoryCounters;
 
       // Counter metrics (same for all sets)
-      EventType   coreTraceStartEvent;
-      EventType   coreTraceEndEvent;
-      EventVector coreCounterStartEvents;
-      EventVector coreCounterEndEvents;
-      ValueVector coreCounterEventValues;
+      EventType   mCoreTraceStartEvent;
+      EventType   mCoreTraceEndEvent;
+      EventVector mCoreCounterStartEvents;
+      EventVector mCoreCounterEndEvents;
+      ValueVector mCoreCounterEventValues;
 
-      EventVector memoryCounterStartEvents;
-      EventVector memoryCounterEndEvents;
-      EventVector memoryCounterResetEvents;
-      ValueVector memoryCounterEventValues;
+      EventVector mMemoryCounterStartEvents;
+      EventVector mMemoryCounterEndEvents;
+      ValueVector mMemoryCounterEventValues;
 
   };
 

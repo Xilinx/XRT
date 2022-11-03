@@ -29,7 +29,7 @@ namespace xdp {
       AieTrace_x86Impl(VPDatabase* database, std::shared_ptr<AieTraceMetadata> metadata)
         : AieTraceImpl(database, metadata){}
       ~AieTrace_x86Impl() = default;
-      void updateDevice();
+      virtual void updateDevice();
       bool setMetrics(uint64_t deviceId, void* handle);
       uint64_t checkTraceBufSize(uint64_t size);
       void parseMessages(uint8_t* messages);

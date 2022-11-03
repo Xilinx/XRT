@@ -90,7 +90,7 @@ namespace xdp {
     //
     // **** Core Module Trace ****
     // NOTE: these are supplemented with counter events as those are dependent on counter #
-    coreEventSets = {
+    mCoreEventSets = {
       {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
       {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
       {"functions_all_stalls",     {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
@@ -98,15 +98,15 @@ namespace xdp {
     };
 
     // These are also broadcast to memory module
-    coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
-    coreTraceEndEvent   = XAIE_EVENT_DISABLED_CORE;
+    mCoreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
+    mCoreTraceEndEvent   = XAIE_EVENT_DISABLED_CORE;
     
     // **** Memory Module Trace ****
     // NOTE 1: Core events listed here are broadcast by the resource manager
     // NOTE 2: These are supplemented with counter events as those are dependent on counter #
     // NOTE 3: For now, 'all' is the same as 'functions_all_stalls'. Combo events (required 
     //         for all) have limited support in the resource manager.
-    memoryEventSets = {
+    mMemoryEventSets = {
       {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
       {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
                                     XAIE_EVENT_STREAM_STALL_CORE, 
@@ -135,14 +135,14 @@ namespace xdp {
     }
 
     if (counterScheme == "es1") {
-      coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
-      coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
-      coreCounterEventValues   = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
+      mCoreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
+      mCoreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
+      mCoreCounterEventValues   = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
     }
     else if (counterScheme == "es2") {
-      coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE};
-      coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE};
-      coreCounterEventValues   = {ES2_TRACE_COUNTER};
+      mCoreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE};
+      mCoreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE};
+      mCoreCounterEventValues   = {ES2_TRACE_COUNTER};
     }
     
     // **** Memory Module Counters ****
@@ -151,14 +151,14 @@ namespace xdp {
     //         They are only required for ES1 devices. For ES2 devices, the core
     //         counter is broadcast.
     if (counterScheme == "es1") {
-      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                XAIE_EVENT_TRUE_MEM};
-      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
+      mMemoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                XAIE_EVENT_TRUE_MEM};
+      mMemoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
+      mMemoryCounterEventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
     }
     else if (counterScheme == "es2") {
-      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
-      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {ES2_TRACE_COUNTER};
+      mMemoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
+      mMemoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
+      mMemoryCounterEventValues = {ES2_TRACE_COUNTER};
     }
 
   }
@@ -212,7 +212,7 @@ namespace xdp {
 
     // Core Module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
-    required = coreCounterStartEvents.size();
+    required = mCoreCounterStartEvents.size();
     if (metadata->getUseDelay()) {
       ++required;
       if (!metadata->getUseOneDelayCounter())
@@ -228,7 +228,7 @@ namespace xdp {
 
     // Core Module trace slots
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-    required = coreCounterStartEvents.size() + coreEventSets[metricSet].size();
+    required = mCoreCounterStartEvents.size() + mCoreEventSets[metricSet].size();
     if (available < required) {
       msg << "Available core module trace slots for aie trace : " << available << std::endl
           << "Required core module trace slots for aie trace : "  << required;
@@ -238,7 +238,7 @@ namespace xdp {
 
     // Core Module broadcasts. 2 events for starting/ending trace
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
-    required = memoryEventSets[metricSet].size() + 2;
+    required = mMemoryEventSets[metricSet].size() + 2;
     if (available < required) {
       msg << "Available core module broadcast channels for aie trace : " << available << std::endl
           << "Required core module broadcast channels for aie trace : "  << required;
@@ -248,7 +248,7 @@ namespace xdp {
 
    // Memory Module perf counters
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
-    required = memoryCounterStartEvents.size();
+    required = mMemoryCounterStartEvents.size();
     if (available < required) {
       msg << "Available memory module performance counters for aie trace : " << available << std::endl
           << "Required memory module performance counters for aie trace : "  << required;
@@ -258,7 +258,7 @@ namespace xdp {
 
     // Memory Module trace slots
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-    required = memoryCounterStartEvents.size() + memoryEventSets[metricSet].size();
+    required = mMemoryCounterStartEvents.size() + mMemoryEventSets[metricSet].size();
     if (available < required) {
       msg << "Available memory module trace slots for aie trace : " << available << std::endl
           << "Required memory module trace slots for aie trace : "  << required;
@@ -385,8 +385,8 @@ namespace xdp {
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
-      EventVector coreEvents = coreEventSets[metricSet];
-      EventVector memoryCrossEvents = memoryEventSets[metricSet];
+      EventVector coreEvents = mCoreEventSets[metricSet];
+      EventVector memoryCrossEvents = mMemoryEventSets[metricSet];
       EventVector memoryEvents;
 
       // Check Resource Availability
@@ -405,10 +405,10 @@ namespace xdp {
       {
         XAie_ModuleType mod = XAIE_CORE_MOD;
 
-        for (int i=0; i < coreCounterStartEvents.size(); ++i) {
+        for (int i=0; i < mCoreCounterStartEvents.size(); ++i) {
           auto perfCounter = core.perfCounter();
-          if (perfCounter->initialize(mod, coreCounterStartEvents.at(i),
-                                      mod, coreCounterEndEvents.at(i)) != XAIE_OK)
+          if (perfCounter->initialize(mod, mCoreCounterStartEvents.at(i),
+                                      mod, mCoreCounterStartEvents.at(i)) != XAIE_OK)
             break;
           if (perfCounter->reserve() != XAIE_OK) 
             break;
@@ -417,14 +417,14 @@ namespace xdp {
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
-          perfCounter->changeThreshold(coreCounterEventValues.at(i));
+          perfCounter->changeThreshold(mCoreCounterEventValues.at(i));
 
           // Set reset event based on counter number
           perfCounter->changeRstEvent(mod, counterEvent);
           coreEvents.push_back(counterEvent);
 
           // If no memory counters are used, then we need to broadcast the core counter
-          if (memoryCounterStartEvents.empty())
+          if (mMemoryCounterStartEvents.empty())
             memoryCrossEvents.push_back(counterEvent);
 
           if (perfCounter->start() != XAIE_OK) 
@@ -437,13 +437,13 @@ namespace xdp {
           // Update config file
           uint8_t phyEvent = 0;
           auto& cfg = cfgTile->core_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterEndEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreCounterStartEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
-          cfg.event_value = coreCounterEventValues[i];
+          cfg.event_value = mCoreCounterEventValues[i];
         }
       }
 
@@ -454,10 +454,10 @@ namespace xdp {
       {
         XAie_ModuleType mod = XAIE_MEM_MOD;
 
-        for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
+        for (int i=0; i < mMemoryCounterStartEvents.size(); ++i) {
           auto perfCounter = memory.perfCounter();
-          if (perfCounter->initialize(mod, memoryCounterStartEvents.at(i),
-                                      mod, memoryCounterEndEvents.at(i)) != XAIE_OK) 
+          if (perfCounter->initialize(mod, mMemoryCounterStartEvents.at(i),
+                                      mod, mMemoryCounterEndEvents.at(i)) != XAIE_OK) 
             break;
           if (perfCounter->reserve() != XAIE_OK) 
             break;
@@ -466,7 +466,7 @@ namespace xdp {
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
-          perfCounter->changeThreshold(memoryCounterEventValues.at(i));
+          perfCounter->changeThreshold(mMemoryCounterEndEvents.at(i));
 
           perfCounter->changeRstEvent(mod, counterEvent);
           memoryEvents.push_back(counterEvent);
@@ -480,22 +480,22 @@ namespace xdp {
           // Update config file
           uint8_t phyEvent = 0;
           auto& cfg = cfgTile->memory_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mMemoryCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterEndEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mMemoryCounterEndEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
-          cfg.event_value = memoryCounterEventValues[i];
+          cfg.event_value = mMemoryCounterEndEvents[i];
         }
       }
 
       // Catch when counters cannot be reserved: report, release, and return
-      if ((numCoreCounters < coreCounterStartEvents.size())
-          || (numMemoryCounters < memoryCounterStartEvents.size())) {
+      if ((numCoreCounters < mCoreCounterStartEvents.size())
+          || (numMemoryCounters < mMemoryCounterStartEvents.size())) {
         std::stringstream msg;
-        msg << "Unable to reserve " << coreCounterStartEvents.size() << " core counters"
-            << " and " << memoryCounterStartEvents.size() << " memory counters"
+        msg << "Unable to reserve " << mCoreCounterStartEvents.size() << " core counters"
+            << " and " << mMemoryCounterStartEvents.size() << " memory counters"
             << " for AIE tile (" << col << "," << row + 1 << ") required for trace.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
@@ -515,8 +515,8 @@ namespace xdp {
 
         // Delay cycles and user control are not compatible with each other
         if (metadata->getUseUserControl()) {
-          coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-          coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+          mCoreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
+          mCoreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
         } else if (metadata->getUseGraphIterator() && !configureStartIteration(core)) {
           break;
         } else if (metadata->getUseDelay() && !configureStartDelay(core)) {
@@ -525,7 +525,7 @@ namespace xdp {
 
         // Set overall start/end for trace capture
         // Wendy said this should be done first
-        if (coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK) 
+        if (coreTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK) 
           break;
 
         auto ret = coreTrace->reserve();
@@ -555,9 +555,9 @@ namespace xdp {
           cfgTile->core_trace_config.traced_events[slot] = phyEvent;
         }
         // Update config file
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceStartEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceStartEvent, &phyEvent);
         cfgTile->core_trace_config.start_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceEndEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceEndEvent, &phyEvent);
         cfgTile->core_trace_config.stop_event = phyEvent;
         
         coreEvents.clear();
@@ -585,7 +585,7 @@ namespace xdp {
         auto memoryTrace = memory.traceControl();
         // Set overall start/end for trace capture
         // Wendy said this should be done first
-        if (memoryTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK) 
+        if (memoryTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK) 
           break;
 
         auto ret = memoryTrace->reserve();
@@ -661,14 +661,14 @@ namespace xdp {
           coreToMemBcMask |= (bcBit << bcId);
           auto mod = XAIE_CORE_MOD;
           uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceStartEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceStartEvent, &phyEvent);
           cfgTile->memory_trace_config.start_event = bcIdToEvent(bcId);
           cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
 
           bcBit = 0x1;
           bcId = memoryTrace->getStopBc();
           coreToMemBcMask |= (bcBit << bcId);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceEndEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceEndEvent, &phyEvent);
           cfgTile->memory_trace_config.stop_event = bcIdToEvent(bcId);
           cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
         }
@@ -857,10 +857,10 @@ namespace xdp {
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 
-    coreTraceStartEvent = counterEvent;
+    mCoreTraceStartEvent = counterEvent;
     // This is needed because the cores are started/stopped during execution
     // to get around some hw bugs. We cannot restart tracemodules when that happens
-    coreTraceEndEvent = XAIE_EVENT_NONE_CORE;
+    mCoreTraceEndEvent = XAIE_EVENT_NONE_CORE;
 
     return true;
   }
@@ -895,17 +895,17 @@ namespace xdp {
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
 
-    coreTraceStartEvent = counterEvent;
+    mCoreTraceStartEvent = counterEvent;
     // This is needed because the cores are started/stopped during execution
     // to get around some hw bugs. We cannot restart tracemodules when that happens
-    coreTraceEndEvent = XAIE_EVENT_NONE_CORE;
+    mCoreTraceEndEvent = XAIE_EVENT_NONE_CORE;
 
     return true;
   }
 
 
   bool AieTrace_EdgeImpl::setMetrics(uint64_t deviceId, void* handle) {
-  {
+  
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
       xrt_core::message::send(severity_level::warning, "XRT",
@@ -946,8 +946,8 @@ namespace xdp {
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
-      EventVector coreEvents = coreEventSets[metricSet];
-      EventVector memoryCrossEvents = memoryEventSets[metricSet];
+      EventVector coreEvents = mCoreEventSets[metricSet];
+      EventVector memoryCrossEvents = mMemoryEventSets[metricSet];
       EventVector memoryEvents;
 
       // Check Resource Availability
@@ -965,10 +965,10 @@ namespace xdp {
       {
         XAie_ModuleType mod = XAIE_CORE_MOD;
 
-        for (int i=0; i < coreCounterStartEvents.size(); ++i) {
+        for (int i=0; i < mCoreCounterStartEvents.size(); ++i) {
           auto perfCounter = core.perfCounter();
-          if (perfCounter->initialize(mod, coreCounterStartEvents.at(i),
-                                      mod, coreCounterEndEvents.at(i)) != XAIE_OK)
+          if (perfCounter->initialize(mod, mCoreCounterStartEvents.at(i),
+                                      mod, mCoreCounterEndEvents.at(i)) != XAIE_OK)
             break;
           if (perfCounter->reserve() != XAIE_OK) 
             break;
@@ -977,14 +977,14 @@ namespace xdp {
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
-          perfCounter->changeThreshold(coreCounterEventValues.at(i));
+          perfCounter->changeThreshold(mCoreCounterEventValues.at(i));
 
           // Set reset event based on counter number
           perfCounter->changeRstEvent(mod, counterEvent);
           coreEvents.push_back(counterEvent);
 
           // If no memory counters are used, then we need to broadcast the core counter
-          if (memoryCounterStartEvents.empty())
+          if (mMemoryCounterStartEvents.empty())
             memoryCrossEvents.push_back(counterEvent);
 
           if (perfCounter->start() != XAIE_OK) 
@@ -997,13 +997,13 @@ namespace xdp {
           // Update config file
           uint8_t phyEvent = 0;
           auto& cfg = cfgTile->core_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterEndEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreCounterEndEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
-          cfg.event_value = coreCounterEventValues[i];
+          cfg.event_value = mCoreCounterEventValues[i];
         }
       }
 
@@ -1014,10 +1014,10 @@ namespace xdp {
       {
         XAie_ModuleType mod = XAIE_MEM_MOD;
 
-        for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
+        for (int i=0; i < mMemoryCounterStartEvents.size(); ++i) {
           auto perfCounter = memory.perfCounter();
-          if (perfCounter->initialize(mod, memoryCounterStartEvents.at(i),
-                                      mod, memoryCounterEndEvents.at(i)) != XAIE_OK) 
+          if (perfCounter->initialize(mod, mMemoryCounterStartEvents.at(i),
+                                      mod, mMemoryCounterEndEvents.at(i)) != XAIE_OK) 
             break;
           if (perfCounter->reserve() != XAIE_OK) 
             break;
@@ -1026,7 +1026,7 @@ namespace xdp {
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
           int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
-          perfCounter->changeThreshold(memoryCounterEventValues.at(i));
+          perfCounter->changeThreshold(mMemoryCounterEventValues.at(i));
 
           perfCounter->changeRstEvent(mod, counterEvent);
           memoryEvents.push_back(counterEvent);
@@ -1040,22 +1040,22 @@ namespace xdp {
           // Update config file
           uint8_t phyEvent = 0;
           auto& cfg = cfgTile->memory_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterStartEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mMemoryCounterStartEvents[i], &phyEvent);
           cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterEndEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mMemoryCounterEndEvents[i], &phyEvent);
           cfg.stop_event = phyEvent;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
-          cfg.event_value = memoryCounterEventValues[i];
+          cfg.event_value = mMemoryCounterEventValues[i];
         }
       }
 
       // Catch when counters cannot be reserved: report, release, and return
-      if ((numCoreCounters < coreCounterStartEvents.size())
-          || (numMemoryCounters < memoryCounterStartEvents.size())) {
+      if ((numCoreCounters < mCoreCounterStartEvents.size())
+          || (numMemoryCounters < mMemoryCounterStartEvents.size())) {
         std::stringstream msg;
-        msg << "Unable to reserve " << coreCounterStartEvents.size() << " core counters"
-            << " and " << memoryCounterStartEvents.size() << " memory counters"
+        msg << "Unable to reserve " << mCoreCounterStartEvents.size() << " core counters"
+            << " and " << mMemoryCounterStartEvents.size() << " memory counters"
             << " for AIE tile (" << col << "," << row + 1 << ") required for trace.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
 
@@ -1076,8 +1076,8 @@ namespace xdp {
 
         // Delay cycles and user control are not compatible with each other
         if (metadata->getUseUserControl()) {
-          coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-          coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+          mCoreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
+          mCoreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
         } else if (metadata->getUseGraphIterator() && !configureStartIteration(core)) {
           break;
         } else if (metadata->getUseDelay() && !configureStartDelay(core)) {
@@ -1086,7 +1086,7 @@ namespace xdp {
 
         // Set overall start/end for trace capture
         // Wendy said this should be done first
-        if (coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK) 
+        if (coreTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK) 
           break;
 
         auto ret = coreTrace->reserve();
@@ -1116,9 +1116,9 @@ namespace xdp {
           cfgTile->core_trace_config.traced_events[slot] = phyEvent;
         }
         // Update config file
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceStartEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceStartEvent, &phyEvent);
         cfgTile->core_trace_config.start_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceEndEvent, &phyEvent);
+        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceEndEvent, &phyEvent);
         cfgTile->core_trace_config.stop_event = phyEvent;
         
         coreEvents.clear();
@@ -1146,7 +1146,7 @@ namespace xdp {
         auto memoryTrace = memory.traceControl();
         // Set overall start/end for trace capture
         // Wendy said this should be done first
-        if (memoryTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK) 
+        if (memoryTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK) 
           break;
 
         auto ret = memoryTrace->reserve();
@@ -1222,14 +1222,14 @@ namespace xdp {
           coreToMemBcMask |= (bcBit << bcId);
           auto mod = XAIE_CORE_MOD;
           uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceStartEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceStartEvent, &phyEvent);
           cfgTile->memory_trace_config.start_event = bcIdToEvent(bcId);
           cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
 
           bcBit = 0x1;
           bcId = memoryTrace->getStopBc();
           coreToMemBcMask |= (bcBit << bcId);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreTraceEndEvent, &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceEndEvent, &phyEvent);
           cfgTile->memory_trace_config.stop_event = bcIdToEvent(bcId);
           cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
         }
@@ -1305,6 +1305,4 @@ namespace xdp {
   } // end setMetrics
 
    
-  
-  }
 }
