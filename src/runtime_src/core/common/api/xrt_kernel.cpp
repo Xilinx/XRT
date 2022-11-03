@@ -895,7 +895,7 @@ public:
     return m_device->get_core_device();
   }
 
-  xclBufferHandle
+  xrt_buffer_handle
   get_exec_bo() const override
   {
     return m_execbuf.first;
@@ -2884,8 +2884,8 @@ namespace xrt_core { namespace kernel_int {
 void
 copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
                   size_t sz,
-                  xclBufferHandle dst_bo, size_t dst_offset,
-                  xclBufferHandle src_bo, size_t src_offset)
+                  xrt_buffer_handle dst_bo, size_t dst_offset,
+                  xrt_buffer_handle src_bo, size_t src_offset)
 {
 #ifndef _WIN32
   if (is_sw_emulation())
@@ -2898,7 +2898,8 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
 
   // Get and fill the underlying packet
   auto pkt = cmd->get_ert_cmd<ert_start_copybo_cmd*>();
-  ert_fill_copybo_cmd(pkt, src_bo, dst_bo, src_offset, dst_offset, sz);
+  ert_fill_copybo_cmd(pkt, to_xclBufferHandle(src_bo), to_xclBufferHandle(dst_bo),
+    src_offset, dst_offset, sz);
 
   // Run the command and wait for completion
   cmd->run();

@@ -472,7 +472,7 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                       src_offset, dst_offset, size);
 
-  ret = xclExecBuf(bo.first);
+  ret = xclExecBuf(to_xclBufferHandle(bo.first));
   if (ret) {
     mCmdBOCache->release(bo);
     return ret;

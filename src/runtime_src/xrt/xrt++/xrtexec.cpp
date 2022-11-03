@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "xrtexec.hpp"
 #include "xrt/device/device.h"
 #include "core/common/bo_cache.h"
@@ -182,7 +183,7 @@ struct command::impl : xrt_core::command
     return m_device->get_core_device().get();
   }
 
-  virtual xclBufferHandle
+  virtual xrt_buffer_handle
   get_exec_bo() const
   {
     return m_execbuf.first;

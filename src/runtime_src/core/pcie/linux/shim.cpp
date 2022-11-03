@@ -853,7 +853,7 @@ int shim::execbufCopyBO(unsigned int dst_bo_handle,
     ert_fill_copybo_cmd(bo.second, src_bo_handle, dst_bo_handle,
                         src_offset, dst_offset, size);
 
-    int ret = xclExecBuf(bo.first);
+    int ret = xclExecBuf(to_xclBufferHandle(bo.first));
     if (ret) {
         mCmdBOCache->release<ert_start_copybo_cmd>(bo);
         return ret;
@@ -907,7 +907,7 @@ int shim::xclUpdateSchedulerStat()
     bo.second->opcode = ERT_CU_STAT;
     bo.second->type = ERT_CTRL;
 
-    int ret = xclExecBuf(bo.first);
+    int ret = xclExecBuf(to_xclBufferHandle(bo.first));
     if (ret) {
         mCmdBOCache->release(bo);
         return ret;
