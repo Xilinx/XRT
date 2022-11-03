@@ -271,13 +271,16 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
     std::string aie_data = xrt_core::device_query<qr::aie_shim_info>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_shim);
-  } catch (const xrt_core::query::no_such_key&){
+  }
+  catch (const xrt_core::query::no_such_key&){
     pt.put("error_msg", "AIE information is not available");
     return pt;
-  } catch (const xrt_core::query::exception&){
+  }
+  catch (const xrt_core::query::exception&){
     pt.put("error_msg", "AIE information is not available");
     return pt;
-  } catch (const std::exception& ex){
+  }
+  catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
     return pt;
   }
@@ -599,13 +602,16 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
     aie_data = xrt_core::device_query<qr::aie_metadata>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_aie);
-  } catch (const xrt_core::query::no_such_key&){
+  } 
+  catch (const xrt_core::query::no_such_key&){
     pt.put("error_msg", "AIE information is not available");
     return pt;
-  } catch (const xrt_core::query::exception&){
+  }
+  catch (const xrt_core::query::exception&){
     pt.put("error_msg", "AIE information is not available");
     return pt;
-  } catch (const std::exception& ex){
+  }
+  catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
     return pt;
   }
