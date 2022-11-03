@@ -5,8 +5,6 @@
  *
  * Copyright (C) 2019-2022 Xilinx, Inc
  *
- * Authors: graham.schelle@xilinx.com
- *          sonal.santan@xilinx.com
  */
 
 

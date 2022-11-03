@@ -11,7 +11,6 @@ include(CPackComponent)
 SET(CPACK_GENERATOR WIX)
 
 SET(CPACK_PACKAGE_VENDOR "Xilinx Inc")
-SET(CPACK_PACKAGE_CONTACT "sonal.santan@xilinx.com")
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Xilinx RunTime stack for use with Xilinx FPGA platforms")
 
 SET(CPACK_PACKAGE_NAME "XRT")
