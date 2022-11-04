@@ -12,6 +12,7 @@
 #include "common.h"
 #include "xocl_errors.h"
 #include "kds_core.h"
+#include "kds_ert_table.h"
 /* Need detect fast adapter and find out cmdmem
  * Cound not avoid coupling xclbin.h
  */
@@ -430,14 +431,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		if (xcmd->opcode == OP_GET_STAT)
 			read_ert_stat(xcmd);
 
-		if (status == KDS_COMPLETED)
-			ecmd->state = ERT_CMD_STATE_COMPLETED;
-		else if (status == KDS_ERROR)
-			ecmd->state = ERT_CMD_STATE_ERROR;
-		else if (status == KDS_TIMEOUT)
-			ecmd->state = ERT_CMD_STATE_TIMEOUT;
-		else if (status == KDS_ABORT)
-			ecmd->state = ERT_CMD_STATE_ABORT;
+		ecmd->state = kds_ert_table[status];
 	}
 
 	if (xcmd->timestamp_enabled) {
@@ -486,14 +480,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 		client_stat_inc(client, scu_c_cnt[xcmd->cu_idx]);
 	}
 
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-	else if (status == KDS_TIMEOUT)
-		ecmd->state = ERT_CMD_STATE_TIMEOUT;
-	else if (status == KDS_ABORT)
-		ecmd->state = ERT_CMD_STATE_ABORT;
+	ecmd->state = kds_ert_table[status];
 
 	if (xcmd->timestamp_enabled) {
 		/* Only start kernel command supports timestamps */
@@ -1155,14 +1142,7 @@ static void xocl_cfg_notify(struct kds_command *xcmd, int status)
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
 
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-	else if (status == KDS_TIMEOUT)
-		ecmd->state = ERT_CMD_STATE_TIMEOUT;
-	else if (status == KDS_ABORT)
-		ecmd->state = ERT_CMD_STATE_ABORT;
+	ecmd->state = kds_ert_table[status];
 
 	complete(&kds->comp);
 }

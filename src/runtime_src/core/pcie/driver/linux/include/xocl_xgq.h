@@ -33,13 +33,13 @@ struct xocl_xgq_info {
 	void __iomem		*xi_cq_prod;
 };
 
-ssize_t xocl_xgq_dump_info(void *xgq_handle, char *buf, int count);
-int xocl_xgq_set_command(void *xgq_handle, int id, struct kds_command *xcmd);
-void xocl_xgq_notify(void *xgq_handle);
-int xocl_xgq_check_response(void *xgq_handle, int id);
-struct kds_command *xocl_xgq_get_command(void *xgq_handle, int id);
-int xocl_xgq_attach(void *xgq_handle, void *client, struct semaphore *sem, u32 prot, int *client_id);
-int xocl_xgq_abort(void *xgq_handle, int id, void *cond,
+ssize_t xocl_xgq_dump_info(struct xocl_xgq *xgq_handle, char *buf, int count);
+int xocl_xgq_set_command(struct xocl_xgq *xgq_handle, int client_id, struct kds_command *xcmd);
+void xocl_xgq_notify(struct xocl_xgq *xgq_handle);
+int xocl_xgq_check_response(struct xocl_xgq *xgq_handle, int client_id, int *status);
+struct kds_command *xocl_xgq_get_command(struct xocl_xgq *xgq_handle, int client_id);
+int xocl_xgq_attach(struct xocl_xgq *xgq_handle, void *client, struct semaphore *sem, u32 prot, int *client_id);
+int xocl_xgq_abort(struct xocl_xgq *xgq_handle, int client_id, void *cond,
 		   bool (*match)(struct kds_command *xcmd, void *cond));
 
 irqreturn_t xgq_isr(int irq, void *arg);
