@@ -206,17 +206,17 @@ namespace xrt {
 
     while (true) {
       int ret = wait_next_cmd();
-      cmd_start = clockc::now();
-      if(cmd_end < cmd_start) {
-	  const auto msg = boost::format("PS Kernel Command interval = %s") % std::to_string((std::chrono::duration_cast<ms_t>(cmd_start - cmd_end)).count());
-	  xrt_core::message::send(severity_level::info, "SKD", msg.str());
-      }
-
       if (ret && (signal==SIGTERM)) {
 	// We are told to exit the soft kernel loop
 	const auto msg = boost::format("Exit soft kernel %s") % m_sk_name;
 	xrt_core::message::send(severity_level::info, "SKD", msg.str());
 	break;
+      }
+
+      cmd_start = clockc::now();
+      if(cmd_end < cmd_start) {
+	  const auto msg = boost::format("PS Kernel Command interval = %s") % std::to_string((std::chrono::duration_cast<ms_t>(cmd_start - cmd_end)).count());
+	  xrt_core::message::send(severity_level::info, "SKD", msg.str());
       }
 
       // Reg file indicates the kernel should not be running.
@@ -333,7 +333,6 @@ namespace xrt {
 	xrt_core::message::send(severity_level::info, "SKD", errMsg.str());
     }
     xclClose(m_devhdl);
-    report_fini();
   }
 
   int skd::create_softkernel(int *boh) {
@@ -455,10 +454,6 @@ namespace xrt {
   // Respond to SCU subdevice PS kernel initialization is done
   void skd::report_ready() const {
     xclSKReport(m_devhdl,m_cu_idx,XRT_SCU_STATE_READY);
-  }
-
-  void skd::report_fini() const {
-    xclSKReport(m_devhdl,m_cu_idx,XRT_SCU_STATE_FINI);
   }
 
   void skd::report_crash() const {

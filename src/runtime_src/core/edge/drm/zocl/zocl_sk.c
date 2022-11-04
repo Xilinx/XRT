@@ -199,10 +199,6 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		zocl_scu_sk_crash(scu_pdev);
 		break;
 
-	case ZOCL_SCU_STATE_FINI:
-		zocl_scu_sk_fini(scu_pdev);
-		break;
-
 	default:
 		/*
 		 * More soft kernel state will be added as the kernel
