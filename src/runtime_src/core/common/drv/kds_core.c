@@ -938,6 +938,7 @@ int kds_init_sched(struct kds_sched *kds)
 	/* At this point, I don't know if ERT subdev exist or not */
 	kds->ert_disable = true;
 	kds->ini_disable = false;
+	kds->timestamp_set = false;
 	init_completion(&kds->comp);
 	init_waitqueue_head(&kds->wait_queue);
 
@@ -1569,6 +1570,7 @@ void kds_reset(struct kds_sched *kds)
 {
 	kds->bad_state = 0;
 	kds->ini_disable = false;
+	kds->timestamp_set = false;
 
 	if (!kds->ert)
 		kds->ert_disable = true;

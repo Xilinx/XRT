@@ -10,6 +10,7 @@
  * License version 2 or Apache License, Version 2.0.
  */
 
+#include <linux/time.h>
 #include <linux/platform_device.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
@@ -819,6 +820,18 @@ static void zert_cmd_identify(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 	r->minor = ZERT_CMD_HANDLER_VER_MINOR;
 }
 
+static void zert_cmd_timeset(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
+			      struct xgq_com_queue_entry *resp)
+{
+	struct xgq_cmd_timeset *c = (struct xgq_cmd_timeset *)cmd;
+	struct timespec64 ts;
+	int ret = 0;
+
+	ts = ns_to_timespec64((const long long int)(c->ts));
+	ret = do_settimeofday64(&ts);
+	init_resp(resp, cmd->cid, ret);
+}
+
 static void zert_cmd_cfg_start(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *cmd,
 			       struct xgq_com_queue_entry *resp)
 {
@@ -978,7 +991,8 @@ struct zert_ops {
 	{ XGQ_CMD_OP_CFG_END, "XGQ_CMD_OP_CFG_END", zert_cmd_cfg_end },
 	{ XGQ_CMD_OP_CFG_CU, "XGQ_CMD_OP_CFG_CU", zert_cmd_cfg_cu },
 	{ XGQ_CMD_OP_QUERY_CU, "XGQ_CMD_OP_QUERY_CU", zert_cmd_query_cu },
-	{ XGQ_CMD_OP_IDENTIFY, "XGQ_CMD_OP_IDENTIFY", zert_cmd_identify }
+	{ XGQ_CMD_OP_IDENTIFY, "XGQ_CMD_OP_IDENTIFY", zert_cmd_identify },
+	{ XGQ_CMD_OP_TIMESET, "XGQ_CMD_OP_TIMESET", zert_cmd_timeset }
 };
 
 static inline const struct zert_ops *opcode2op(u32 op)

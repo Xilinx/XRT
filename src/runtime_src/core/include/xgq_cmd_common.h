@@ -116,6 +116,7 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_BARRIER		= 0x200,
 	XGQ_CMD_OP_EXIT_ERT		= 0x201,
 	XGQ_CMD_OP_IDENTIFY		= 0x202,
+	XGQ_CMD_OP_TIMESET		= 0x204,
 };
 
 enum xgq_cmd_addr_type {
@@ -300,7 +301,7 @@ struct xgq_cmd_configure {
 };
 
 /**
- * struct xgq_cmd_indentify: identify command
+ * struct xgq_cmd_identify: identify command
  *
  * @hdr: header of the command
  *
@@ -312,7 +313,7 @@ struct xgq_cmd_identify {
 };
 
 /**
- * struct xgq_cmd_resp_indentify: identify command response
+ * struct xgq_cmd_resp_identify: identify command response
  *
  * @minor: minor version of the XGQ command set
  * @major: major version of the XGQ command set
@@ -328,6 +329,28 @@ struct xgq_cmd_resp_identify {
 		};
 		uint32_t result;
 	};
+	uint32_t resvd;
+	uint32_t rcode;
+};
+
+/**
+ * struct xgq_cmd_timeset: timeset command
+ *
+ * @hdr: header of the command
+ *
+ * This command is used to set Linux system time
+ */
+struct xgq_cmd_timeset {
+	struct xgq_cmd_sq_hdr  hdr;
+	int64_t ts;
+};
+
+/**
+ * struct xgq_cmd_resp_indentify: timeset command response
+ */
+struct xgq_cmd_resp_timeset {
+	struct xgq_cmd_cq_hdr  hdr;
+	uint32_t result;
 	uint32_t resvd;
 	uint32_t rcode;
 };

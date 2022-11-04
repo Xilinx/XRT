@@ -8,6 +8,7 @@
  * Authors: min.ma@xilinx.com
  */
 
+#include <linux/time.h>
 #include <linux/workqueue.h>
 #include "common.h"
 #include "xocl_errors.h"
@@ -1624,6 +1625,51 @@ xocl_kds_xgq_identify(struct xocl_dev *xdev, int *major, int *minor)
 }
 
 static int
+xocl_kds_xgq_set_timestamp(struct xocl_dev *xdev)
+{
+	struct xgq_cmd_timeset *timeset = NULL;
+	struct xgq_cmd_resp_timeset resp = {0};
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	struct timespec ts;
+	int ret = 0;
+
+	client = kds->anon_client;
+	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_timeset));
+	if (!xcmd)
+		return -ENOMEM;
+
+	timeset = xcmd->info;
+
+	timeset->hdr.opcode = XGQ_CMD_OP_TIMESET;
+	timeset->hdr.count = 12;
+	timeset->hdr.state = 1;
+	getnstimeofday(&ts);
+	timeset->ts = timespec_to_ns(&ts);
+
+	xcmd->cb.notify_host = xocl_kds_xgq_notify;
+	xcmd->cb.free = kds_free_command;
+	xcmd->priv = kds;
+	xcmd->type = KDS_ERT;
+	xcmd->opcode = OP_CONFIG;
+	xcmd->response = &resp;
+	xcmd->response_size = sizeof(resp);
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		return ret;
+
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Config start failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_cus, int num_scus)
 {
 	struct xgq_cmd_config_start *cfg_start = NULL;
@@ -1986,6 +2032,9 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		xocl_ert_ctrl_dump(xdev);	/* TODO: remove this line before 2022.2 release */
 		goto out;
 	}
+
+	// Set APU Timestamp
+	xocl_kds_xgq_set_timestamp(xdev);
 
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus, num_scus);
 	if (ret)
