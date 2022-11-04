@@ -431,7 +431,8 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		if (xcmd->opcode == OP_GET_STAT)
 			read_ert_stat(xcmd);
 
-		ecmd->state = kds_ert_table[status];
+		if ((status >=  0) && (status < KDS_STAT_MAX))
+			ecmd->state = kds_ert_table[status];
 	}
 
 	if (xcmd->timestamp_enabled) {
@@ -480,7 +481,8 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 		client_stat_inc(client, scu_c_cnt[xcmd->cu_idx]);
 	}
 
-	ecmd->state = kds_ert_table[status];
+	if ((status >=  0) && (status < KDS_STAT_MAX))
+		ecmd->state = kds_ert_table[status];
 
 	if (xcmd->timestamp_enabled) {
 		/* Only start kernel command supports timestamps */
@@ -1142,7 +1144,8 @@ static void xocl_cfg_notify(struct kds_command *xcmd, int status)
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
 
-	ecmd->state = kds_ert_table[status];
+	if ((status >=  0) && (status < KDS_STAT_MAX))
+		ecmd->state = kds_ert_table[status];
 
 	complete(&kds->comp);
 }

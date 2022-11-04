@@ -2,9 +2,11 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
+ *          jefflin@amd.com
  *
  * This file is dual-licensed; you may select either the GNU General Public
  * License version 2 or Apache License, Version 2.0.
@@ -51,7 +53,7 @@ enum kds_status {
 	KDS_ABORT,
 	KDS_TIMEOUT,
 	KDS_SKCRASHED,
-	KDS_STAT_MAX,
+	KDS_STAT_MAX,  // Always the last one
 };
 
 struct kds_command;
