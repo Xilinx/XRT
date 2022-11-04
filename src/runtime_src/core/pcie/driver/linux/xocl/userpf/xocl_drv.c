@@ -17,7 +17,7 @@
 #include <linux/version.h>
 
 #include "common.h"
-#include "version.h"
+#include "version.h" /* Generated file. The XRT version the driver works with */
 #include "xocl_errors.h"
 #include "../xocl_drv.h"
 
