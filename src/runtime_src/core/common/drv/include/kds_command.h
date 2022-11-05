@@ -59,7 +59,7 @@ enum kds_status {
 struct kds_command;
 
 struct kds_cmd_ops {
-	void (*notify_host)(struct kds_command *xcmd, int status);
+	void (*notify_host)(struct kds_command *xcmd, enum kds_status status);
 	void (*free)(struct kds_command *xcmd);
 };
 
@@ -78,7 +78,7 @@ struct in_kernel_cb {
  */
 struct kds_command {
 	struct kds_client	*client;
-	int			 status;
+	enum kds_status		 status;
 	u32			 rcode;
 	int			 cu_idx;
 	u32			 type;

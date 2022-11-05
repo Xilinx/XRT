@@ -405,7 +405,7 @@ int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 }
 
 static inline void
-zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, int ret, int status)
+zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, int ret, enum kds_status status)
 {
 	struct xgq_com_queue_entry r = {0};
 	struct xgq_com_queue_entry *rptr = NULL;
@@ -414,17 +414,15 @@ zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, i
 	if (unlikely(!(ret == 0 && ZCU_XGQ_FAST_PATH(zcu_xgq)))) {
 		rptr = &r;
 		r.hdr.cid = cmd->cid;
-		r.hdr.cstate = XGQ_CMD_STATE_COMPLETED;
 		r.result = status;
 		r.rcode = ret;
-		if (unlikely(status == KDS_SKCRASHED))
-			r.hdr.cstate = XGQ_CMD_STATE_ABORTED;
+		r.hdr.cstate = (status = KDS_SKCRASHED) ? XGQ_CMD_STATE_ABORTED : XGQ_CMD_STATE_COMPLETED;
 	}
 	zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, rptr);
 	kfree(cmd);
 }
 
-static void zcu_xgq_cmd_notify(struct kds_command *xcmd, int status)
+static void zcu_xgq_cmd_notify(struct kds_command *xcmd, enum kds_status status)
 {
 	struct zocl_cu_xgq *zcu_xgq = (struct zocl_cu_xgq *)xcmd->priv;
 	struct xgq_cmd_sq_hdr *cmd = xcmd->info;
