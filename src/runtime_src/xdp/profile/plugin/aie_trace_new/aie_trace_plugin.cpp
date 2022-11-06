@@ -63,6 +63,7 @@ namespace xdp {
       }
       catch(...) {
       }
+      //(db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(AIEData.deviceID);
       db->unregisterPlugin(this);
     }
     // If the database is dead, then we must have already forced a 
@@ -293,6 +294,9 @@ namespace xdp {
       return;
 
     flushOffloader(AIEData.offloader, true);
+    XDPPlugin::endWrite();
+    (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(AIEData.deviceID);
+    
     handleToAIEData.erase(itr);
   }
 
