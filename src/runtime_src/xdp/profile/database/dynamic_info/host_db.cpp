@@ -122,7 +122,7 @@ namespace xdp {
     for (auto iter = unsortedEvents.begin();
          iter != unsortedEvents.end();
          /* Intentionally blank*/) {
-      auto event = (*iter);
+      auto event = *iter;
       if (filter(event)) {
         collected.emplace_back(event);
         iter = unsortedEvents.erase(iter);
