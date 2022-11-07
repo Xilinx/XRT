@@ -405,7 +405,7 @@ int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 }
 
 static inline void
-zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, int ret, enum kds_status status)
+zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, uint ret, enum kds_status status)
 {
 	struct xgq_com_queue_entry r = {0};
 	struct xgq_com_queue_entry *rptr = NULL;

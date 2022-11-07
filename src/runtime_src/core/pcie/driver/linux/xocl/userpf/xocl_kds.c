@@ -453,7 +453,7 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
-		int error = (status == KDS_COMPLETED)?0:-EFAULT;
+		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
 		xcmd->inkern_cb->func((unsigned long)xcmd->inkern_cb->data, error);
 		kfree(xcmd->inkern_cb);
 	} else {
@@ -501,7 +501,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
-		int error = (status == KDS_COMPLETED)?0:-EFAULT;
+		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
 		xcmd->inkern_cb->func((unsigned long)xcmd->inkern_cb->data, error);
 		kfree(xcmd->inkern_cb);
 	} else {
