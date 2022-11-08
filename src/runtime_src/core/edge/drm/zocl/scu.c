@@ -330,9 +330,9 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 	u32 *vaddr = zcu->sc_bo->cma_base.vaddr;
 
 	/* If the CU is running, mark it as done */
-	if (*vaddr & 1)
-		/* Clear Bit 0 and set Bit 1 */
-		*vaddr = 2 | (*vaddr & ~3);
+	if (*vaddr == CU_AP_START)
+		/* Set CU to AP_DONE */
+		*vaddr = CU_AP_DONE;
 
 	if (down_interruptible(&zcu->sc_sem)) {
 		ret = -EINTR;
@@ -343,8 +343,8 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 		return ret;
 	}
 
-	/* Clear Bit 1 and set Bit 0 */
-	*vaddr = 1 | (*vaddr & ~3);
+	/* set CU AP_START */
+	*vaddr = CU_AP_START;
 
 	return 0;
 }
@@ -368,6 +368,7 @@ int zocl_scu_wait_ready(struct platform_device *pdev)
 	return 0;
 }
 
+// Signal SKD Ready
 void zocl_scu_sk_ready(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
@@ -376,13 +377,13 @@ void zocl_scu_sk_ready(struct platform_device *pdev)
 	up(&zcu->sc_sem);
 }
 
+// Signal PS kernel crashed
 void zocl_scu_sk_crash(struct platform_device *pdev)
 {
-	//struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
 
-	// TO-DO
-	// Add taks to indicate PS kernel crash
-	return; /* Place holder */
+	xrt_cu_scu_crashed(xcu);
 }
 
 void zocl_scu_sk_shutdown(struct platform_device *pdev)
@@ -419,15 +420,6 @@ void zocl_scu_sk_shutdown(struct platform_device *pdev)
 	}
 	put_pid(p);
 
-	if (down_timeout(&zcu->sc_sem, msecs_to_jiffies(1)))
-		DRM_WARN("Wait for PS kernel timeout\n");
  skip_kill:
 	return;
-}
-
-void zocl_scu_sk_fini(struct platform_device *pdev)
-{
-	struct zocl_scu *zcu = platform_get_drvdata(pdev);
-
-	up(&zcu->sc_sem);
 }

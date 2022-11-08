@@ -713,7 +713,7 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, uint32_t *mem_i
 	for (i = 0; i < grp_topology->m_count; i++) {
 		mem_data = &grp_topology->m_mem_data[i];
 		if ((convert_mem_tag(mem_data->m_tag) == MEM_TAG_HOST) ||
-				!XOCL_IS_PS_KERNEL_MEM(grp_topology, i))
+				XOCL_IS_PS_KERNEL_MEM(grp_topology, i))
 			continue;
 
 		start_addr = mem_data->m_base_address;
@@ -775,6 +775,10 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
                 return 0;
 
 	if (grp_topology->m_mem_data[memidx].m_type == MEM_PS_KERNEL) {
+		/* For PS kernel case the memidx is specified will be dummy.
+		 * The memory will be created from the actual Banks. Hence,
+		 * memidx will be updated accordingly.
+		 */
 		ret = xocl_mm_insert_node_range_all(drm_p, &memidx,
 				grp_topology, node, size);
 	}
@@ -833,6 +837,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 	struct xocl_mem_stat *curr_mem = NULL;
         struct xocl_mem_stat *next = NULL;
 	uint32_t slot_id = 0; // Default slot till multi slot support added
+	int i = 0;
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
@@ -846,6 +851,12 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 		goto done;
 
 	if (group_topology) {
+		for (i = 0; i < group_topology->m_count; i++) {
+			if (convert_mem_tag(group_topology->m_mem_data[i].m_tag)
+					== MEM_TAG_HOST)
+                                xocl_addr_translator_clean(drm_p->xdev);
+                }
+
 		if (list_empty(&drm_p->mem_list_head))
 			goto done;
 
@@ -1055,11 +1066,8 @@ error:
 
 static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
 {
-	struct mem_topology *topo = NULL;
 	struct xocl_mm *xocl_mm = NULL;
-	struct mem_data *mem_data = NULL;
 	int err = 0;
-	int i = 0;
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
@@ -1070,30 +1078,6 @@ static int xocl_cleanup_memory_manager(struct xocl_drm *drm_p)
 	err = xocl_check_topology(drm_p);
 	if (err)
 		return err;
-
-        err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
-        if (err)
-		return err;
-
-	if (topo) {
-		for (i = 0; i < topo->m_count; i++) {
-			mem_data = &topo->m_mem_data[i];
-			if (XOCL_IS_STREAM(topo, i))
-				continue;
-
-			if (XOCL_IS_PS_KERNEL_MEM(topo, i))
-				continue;
-
-			if (!is_mem_region_valid(drm_p, mem_data))
-				continue;
-
-			if (convert_mem_tag(topo->m_mem_data[i].m_tag) == MEM_TAG_HOST)
-                                xocl_addr_translator_clean(drm_p->xdev);
-
-                        xocl_info(drm_p->ddev->dev, "Taking down DDR : %d", i);
-                }
-        }
-        XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
 
 	/* Now cleanup the P2P memory */
         xocl_p2p_mem_cleanup(drm_p->xdev);
@@ -1162,17 +1146,6 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
                         mm_start_addr = mem_data->m_base_address;
                 if ((mem_data->m_base_address + ddr_bank_size) > mm_end_addr)
                         mm_end_addr = mem_data->m_base_address + ddr_bank_size;
-
-		if (convert_mem_tag(mem_data->m_tag) == MEM_TAG_HOST) {
-			drm_p->cma_bank_idx = i;
-			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
-			if (err) {
-				xocl_err(drm_p->ddev->dev, 
-					"Run host_mem to setup host memory access, request 0x%lx bytes",
-					ddr_bank_size);
-				goto error;
-			}
-		}
 	}
 
 	if (drm_p->xocl_mm == NULL) {
@@ -1275,7 +1248,18 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		xocl_info(drm_p->ddev->dev, "   Initializing Memory Bank: %s", mem_data->m_tag);
 		xocl_info(drm_p->ddev->dev, "    base_addr:0x%llx, total size:0x%lx",
 			mem_data->m_base_address, ddr_bank_size);
-		
+	
+		if (convert_mem_tag(mem_data->m_tag) == MEM_TAG_HOST) {
+			drm_p->cma_bank_idx = i;
+			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
+			if (err) {
+				xocl_err(drm_p->ddev->dev, 
+					"Run host_mem to setup host memory access, request 0x%lx bytes",
+					ddr_bank_size);
+				goto done;
+			}
+		}
+	
 		if (XOCL_DSA_IS_MPSOC(drm_p->xdev)) {
 			reserved_end = mem_data->m_base_address + ddr_bank_size;
 			reserved_start = reserved_end - reserved1 - reserved2;
