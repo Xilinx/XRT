@@ -1100,21 +1100,6 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	int i = 0;
 
 	mutex_lock(&drm_p->mm_lock);
-	/* Memory manager initialize should be done only once */
-        if (drm_p->xocl_mm_done) {
-		mutex_unlock(&drm_p->mm_lock);
-                return 0; // Memory manager is already initialized
-	}
-
-        err = xocl_p2p_mem_init(drm_p->xdev);
-        if (err && err != -ENODEV) {
-		mutex_unlock(&drm_p->mm_lock);
-                xocl_err(drm_p->ddev->dev,
-                        "init p2p mem failed, err %d", err);
-                return err;
-        }
-        err = 0;
-
 	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo);
 	if (err) {
 		mutex_unlock(&drm_p->mm_lock);
@@ -1124,7 +1109,6 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	/* Initialize with max and min possible value */
         mm_start_addr = 0xffffFFFFffffFFFF;
         mm_end_addr = 0;
-	drm_p->cma_bank_idx = -1;
 
         /* Initialize all the banks and their sizes */
         /* Currently only fixed sizes are supported */
@@ -1132,20 +1116,41 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
                 mem_data = &topo->m_mem_data[i];
                 ddr_bank_size = mem_data->m_size * 1024;
 
+		if (!ddr_bank_size)
+			continue;
+
 		if (XOCL_IS_STREAM(topo, i))
                         continue;
 
-                if (XOCL_IS_PS_KERNEL_MEM(topo, i))
-                        continue;
+		if (XOCL_IS_PS_KERNEL_MEM(topo, i))
+			continue;
 
-                if (!is_mem_region_valid(drm_p, mem_data))
-                        continue;
+		if (!is_mem_region_valid(drm_p, mem_data))
+			continue;
 
-                /* Update the start and end address for the memory manager */
-                if (mem_data->m_base_address < mm_start_addr)
-                        mm_start_addr = mem_data->m_base_address;
-                if ((mem_data->m_base_address + ddr_bank_size) > mm_end_addr)
-                        mm_end_addr = mem_data->m_base_address + ddr_bank_size;
+		/* Update the start and end address for the memory manager */
+		if (mem_data->m_base_address < mm_start_addr)
+			mm_start_addr = mem_data->m_base_address;
+		if ((mem_data->m_base_address + ddr_bank_size) > mm_end_addr)
+			mm_end_addr = mem_data->m_base_address + ddr_bank_size;
+	}
+
+	/* Memory manager initialize should be done only once */
+	if (drm_p->xocl_mm_done && (drm_p->xocl_mm != NULL)) {
+		/* Validate the new memory topology with existing memory manager */
+		if ((drm_p->xocl_mm->start_addr != mm_start_addr) ||
+				(drm_p->xocl_mm->end_addr != mm_end_addr) ||
+				(drm_p->xocl_mm->m_count != topo->m_count)) {
+			xocl_err(drm_p->ddev->dev,
+					"Memory Topology doesn't consistent in xclbins");
+			err = -EINVAL;
+			goto error;
+		}
+		else {
+			/* Memory manager initialization is done and consistent */
+			mutex_unlock(&drm_p->mm_lock);
+			return 0;
+		}
 	}
 
 	if (drm_p->xocl_mm == NULL) {
@@ -1162,8 +1167,16 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	}
 
 	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev);
-        drm_p->xocl_mm_done = true;
-        mutex_unlock(&drm_p->mm_lock);
+
+	err = xocl_p2p_mem_init(drm_p->xdev);
+	if (err && err != -ENODEV) {
+		xocl_err(drm_p->ddev->dev,
+				"init p2p mem failed, err %d", err);
+		goto error;
+	}
+
+	drm_p->xocl_mm_done = true;
+	mutex_unlock(&drm_p->mm_lock);
 
 	return 0;
 
@@ -1204,6 +1217,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	}
 
 	mutex_lock(&drm_p->mm_lock);
+	drm_p->cma_bank_idx = -1;
 
 	/* Initialize memory stats based on Group topology for this xclbin */
 	err = XOCL_GET_GROUP_TOPOLOGY(drm_p->xdev, group_topo);
