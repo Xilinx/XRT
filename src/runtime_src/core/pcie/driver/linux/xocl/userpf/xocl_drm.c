@@ -763,9 +763,10 @@ static int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 }
 
 int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
-			uint32_t slotidx, struct drm_mm_node *node, u64 size)
+			uint32_t slotidx, struct drm_xocl_bo *xobj, u64 size)
 {
 	int ret = 0;
+	struct drm_mm_node *node = xobj->mm_node;
 	struct xocl_mem_stat *curr_mem = NULL;
 	struct mem_topology *grp_topology = NULL;
 	
@@ -804,6 +805,8 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, unsigned memidx,
 			}
 		}
 	}
+	/* Record the DDR we allocated the buffer on */
+	xobj->mem_idx = memidx;
 
         return ret;
 }
