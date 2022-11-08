@@ -216,7 +216,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/pcie_firewall.c
   xocl/subdev/command_queue.c
   xocl/subdev/cfg_gpio.c
-  xocl/subdev/xgq.c
+  xocl/subdev/xgq_vmr.c
   xocl/subdev/hwmon_sdm.c
   xocl/subdev/ert_ctrl.c
   xocl/subdev/cu_xgq.c
