@@ -124,7 +124,7 @@ enum xgq_cmd_log_page_type {
 	XGQ_CMD_LOG_TASK_STATS  = 0x5,
 	XGQ_CMD_LOG_MEM_STATS	= 0x6,
 	XGQ_CMD_LOG_SYSTEM_DTB	= 0x7,
-	XGQ_CMD_LOG_PLM_SYNC	= 0x8,
+	XGQ_CMD_LOG_PLM_LOG	= 0x8,
 
 };
 
