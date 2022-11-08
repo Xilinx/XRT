@@ -63,7 +63,6 @@ namespace xdp {
       }
       catch(...) {
       }
-      //(db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(AIEData.deviceID);
       db->unregisterPlugin(this);
     }
     // If the database is dead, then we must have already forced a 
