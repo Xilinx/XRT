@@ -23,6 +23,8 @@
 #include <linux/hashtable.h>
 #endif
 
+#define MAX_MEM_BANK_COUNT 	128
+
 typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
 
 /**
@@ -61,10 +63,9 @@ struct xocl_mm {
 	uint64_t		end_addr;
 	uint32_t                m_count;
 
-	/* Array of bo and memory usage stats 
+	/* Array of bo  stats 
 	 * for whole device memory manager */
 	struct drm_xocl_mm_stat *bo_usage_stat;
-	struct drm_xocl_mm_stat **mm_usage_stat;
 };
 
 struct xocl_mem_stat {
@@ -84,6 +85,7 @@ struct xocl_drm {
 	/* Memory manager */
 	struct xocl_mm		*xocl_mm;
 	bool			xocl_mm_done;
+	struct drm_xocl_mm_stat mm_usage_stat[MAX_MEM_BANK_COUNT];
 
 	/* Xocl driver memory list head */
 	struct list_head        mem_list_head;

@@ -576,6 +576,7 @@ struct drm_xocl_pread_unmgd {
 
 
 struct drm_xocl_mm_stat {
+	bool 	is_used;
 	size_t memory_usage;
 	unsigned int bo_count;
 };

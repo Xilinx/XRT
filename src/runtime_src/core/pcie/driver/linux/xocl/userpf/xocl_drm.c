@@ -672,9 +672,12 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 		return;
 	}
 
-	mm_stat = xocl_mm->mm_usage_stat[ddr];
-	pstat->memory_usage = mm_stat ? mm_stat->memory_usage : 0;
-	pstat->bo_count = mm_stat ? mm_stat->bo_count : 0;
+	mm_stat = &drm_p->mm_usage_stat[ddr];
+
+	if (mm_stat->is_used) {
+		pstat->memory_usage = mm_stat ? mm_stat->memory_usage : 0;
+		pstat->bo_count = mm_stat ? mm_stat->bo_count : 0;
+	}
 }
 
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
@@ -688,8 +691,8 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 		return;
 	}
 
-	mm_stat = xocl_mm->mm_usage_stat[ddr];
-	if (!mm_stat) {
+	mm_stat = &drm_p->mm_usage_stat[ddr];
+	if (!mm_stat && !mm_stat->is_used) {
         	xocl_err(drm_p->ddev->dev, "Invalid memory stats");
 		return;
 	}
@@ -918,18 +921,13 @@ static int xocl_cleanup_drm_memory_manager(struct xocl_mm *xocl_mm)
 	if (!xocl_mm)
 		return 0;
 
-	for (i = 0; i < xocl_mm->m_count; i++) {
-		if (xocl_mm->mm_usage_stat && xocl_mm->mm_usage_stat[i])
-			vfree(xocl_mm->mm_usage_stat[i]);
-	}
-
-	vfree(xocl_mm->mm_usage_stat);
-
 	if (xocl_mm->bo_usage_stat)
 		vfree(xocl_mm->bo_usage_stat);
 
-	if (xocl_mm->mm)
+	if (xocl_mm->mm) {
+		drm_mm_takedown(xocl_mm->mm);
 		vfree(xocl_mm->mm);
+	}
 
 	vfree(xocl_mm);
 
@@ -948,13 +946,6 @@ static int xocl_init_drm_mm(struct xocl_drm *drm_p, struct xocl_mm *xocl_mm,
 	if (!xocl_mm)
 		return -EINVAL;
 
-	size = m_count * sizeof(void *);
-	xocl_mm->mm_usage_stat = vzalloc(size);
-	if (!xocl_mm->mm_usage_stat) {
-		err = -ENOMEM;
-		goto error;
-	}
-
 	/* Initialize memory status for the memory manager */
 	xocl_mm->bo_usage_stat = vzalloc(XOCL_BO_USAGE_TOTAL *
 			sizeof(struct drm_xocl_mm_stat));
@@ -963,13 +954,8 @@ static int xocl_init_drm_mm(struct xocl_drm *drm_p, struct xocl_mm *xocl_mm,
 		goto error;
 	}
 
-	for (i = 0; i < m_count; i++) {
-		xocl_mm->mm_usage_stat[i] = vzalloc(sizeof(struct drm_xocl_mm_stat));
-		if (!xocl_mm->mm_usage_stat[i]) {
-			err = -ENOMEM;
-			goto error;
-		}
-	}
+        for (i = 0; i < MAX_MEM_BANK_COUNT; i++)
+		drm_p->mm_usage_stat[i].is_used = false;
 
 	/* Initialize the memory manager */
 	xocl_mm->mm = vzalloc(sizeof(struct drm_mm));
@@ -1141,9 +1127,9 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 		if ((drm_p->xocl_mm->start_addr != mm_start_addr) ||
 				(drm_p->xocl_mm->end_addr != mm_end_addr) ||
 				(drm_p->xocl_mm->m_count != topo->m_count)) {
-			xocl_err(drm_p->ddev->dev,
-					"Memory Topology doesn't consistent in xclbins");
-			err = -EINVAL;
+			xocl_warn(drm_p->ddev->dev, "Memory Topology doesn't "
+				"consistent in xclbins. Re-initializing Memory Manager");
+			err = -EAGAIN;
 			goto error;
 		}
 		else {
@@ -1212,8 +1198,17 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	/* Initialize the memory manager  */
 	err = xocl_init_memory_manager(drm_p);
 	if (err) {
-		xocl_xdev_err(drm_p->ddev->dev, "Memory Initialize failed 0x%x", err);
-		return err;
+
+		/* If mem topology is not consistent then reintialize it 
+		 * again with the updated memory topology.
+		 */
+		if (err == -EAGAIN) 
+			err = xocl_init_memory_manager(drm_p);
+
+		if (err) {
+			xocl_xdev_err(drm_p->ddev->dev, "Memory Initialize failed 0x%x", err);
+			return err;
+		}
 	}
 
 	mutex_lock(&drm_p->mm_lock);
@@ -1290,6 +1285,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		mem_stat->mem_idx = i;
 		mem_stat->slot_idx = 0; // Default slot id
 		list_add_tail(&mem_stat->link, &drm_p->mem_list_head);
+		drm_p->mm_usage_stat[i].is_used = true;
 	}
 
 done:
