@@ -144,6 +144,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 	for (i = 0; i < topo->m_count; i++) {
+		memset(&stat, 0, sizeof(struct drm_xocl_mm_stat));
 		xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
 
 		if (raw) {
