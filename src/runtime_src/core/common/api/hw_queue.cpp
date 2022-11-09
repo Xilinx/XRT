@@ -268,7 +268,7 @@ public:
   // of argument command having been scheduled for execution.
   void
   exec_buf(xrt_core::command* cmd, const xrt::hw_context& hwctx)
-  {    
+  {
     device->exec_buf_ctx(cmd->get_exec_bo(), hwctx);
   }
 
