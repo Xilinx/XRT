@@ -76,6 +76,9 @@ destroy_hw_queue(xclDeviceHandle handle, xcl_hwqueue_handle qhdl);
 void
 register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin);
 
+//exec_buf_ctx() - Exec Buf with ctx handle.
+void
+exec_buf_ctx(xclDeviceHandle handle, xclBufferHandle bohdl, const xrt::hw_context& hwctx);
 }} // shim_int, xrt
 
 #endif

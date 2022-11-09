@@ -174,6 +174,11 @@ struct ishim
   virtual void
   register_xclbin(const xrt::xclbin&) const
   { throw not_supported_error{__func__}; }
+
+  //Exec Buf with ctx handle.
+  virtual void
+  exec_buf_ctx(xclBufferHandle /*boh*/, const xrt::hw_context& /*hwctx*/) const
+  { throw not_supported_error{ __func__ }; }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////

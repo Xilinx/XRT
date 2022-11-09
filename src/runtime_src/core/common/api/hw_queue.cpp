@@ -267,8 +267,16 @@ public:
   // execution. The execution monitor is by-passed and will be unaware
   // of argument command having been scheduled for execution.
   void
-  exec_buf(xrt_core::command* cmd)
-  {
+  exec_buf(xrt_core::command* cmd, const xrt::hw_context& hwctx)
+  {    
+    try 
+    {
+      device->exec_buf_ctx(cmd->get_exec_bo(), hwctx);
+      return;
+    }
+    catch (const xrt_core::error& ex) {
+        //do nothing
+    }
     device->exec_buf(cmd->get_exec_bo());
   }
 
@@ -279,7 +287,7 @@ public:
   // completion and notified upon completion.  Notification is through
   // command callback.
   void
-  launch(xrt_core::command* cmd)
+  launch(xrt_core::command* cmd, const xrt::hw_context& hwctx)
   {
     XRT_DEBUGF("xrt_core::kds::command(%d) [new->submitted->running]\n", cmd->get_uid());
 
@@ -293,7 +301,7 @@ public:
 
     // Submit the command
     try {
-      exec_buf(cmd);
+      exec_buf(cmd, hwctx);
     }
     catch (...) {
       // Remove the pending command
@@ -372,7 +380,7 @@ public:
   void
   managed_start(xrt_core::command* cmd)
   {
-    m_kds_device->launch(cmd);
+    m_kds_device->launch(cmd, m_hwctx);
   }
 
   // Unmanaged start submits command directly for execution
@@ -380,7 +388,7 @@ public:
   void
   unmanaged_start(xrt_core::command* cmd)
   {
-    m_kds_device->exec_buf(cmd);
+    m_kds_device->exec_buf(cmd, m_hwctx);
   }
 
   // Wait for command completion. Supports both managed and
