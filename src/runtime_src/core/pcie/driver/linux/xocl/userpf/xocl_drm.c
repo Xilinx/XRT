@@ -659,40 +659,23 @@ void xocl_drm_fini(struct xocl_drm *drm_p)
 void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	struct drm_xocl_mm_stat *pstat)
 {
-	struct xocl_mm *xocl_mm = drm_p->xocl_mm;
-	struct drm_xocl_mm_stat *mm_stat = NULL;
-
-	if (!xocl_mm) {
-        	xocl_err(drm_p->ddev->dev, "Invalid memory manager");
-		return;
-	}
+	struct drm_xocl_mm_stat *mm_stat = &drm_p->mm_usage_stat[ddr];
 
 	if (!pstat) {
         	xocl_err(drm_p->ddev->dev, "Invalid memory stats");
 		return;
 	}
 
-	mm_stat = &drm_p->mm_usage_stat[ddr];
-
-	if (mm_stat->is_used) {
-		pstat->memory_usage = mm_stat ? mm_stat->memory_usage : 0;
-		pstat->bo_count = mm_stat ? mm_stat->bo_count : 0;
-	}
+	pstat->memory_usage = mm_stat->is_used ? mm_stat->memory_usage : 0;
+	pstat->bo_count = mm_stat->is_used ? mm_stat->bo_count : 0;
 }
 
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	u64 size, int count)
 {
-	struct xocl_mm *xocl_mm = drm_p->xocl_mm;
-	struct drm_xocl_mm_stat *mm_stat = NULL;
+	struct drm_xocl_mm_stat *mm_stat = &drm_p->mm_usage_stat[ddr];
 
-	if (!xocl_mm) {
-        	xocl_err(drm_p->ddev->dev, "Invalid memory manager");
-		return;
-	}
-
-	mm_stat = &drm_p->mm_usage_stat[ddr];
-	if (!mm_stat && !mm_stat->is_used) {
+	if (!mm_stat->is_used) {
         	xocl_err(drm_p->ddev->dev, "Invalid memory stats");
 		return;
 	}
@@ -815,15 +798,11 @@ int xocl_check_topology(struct xocl_drm *drm_p)
 {
 	struct xocl_mem_stat *curr_mem = NULL;
 	int err = 0;
-	uint32_t slot_id = 0;
 
 	if (list_empty(&drm_p->mem_list_head))
 		return 0;
 
 	list_for_each_entry(curr_mem, &drm_p->mem_list_head, link) {
-		if (slot_id != curr_mem->slot_idx)
-			continue;
-
 		if (curr_mem->mm_usage_stat.bo_count != 0) {
 			err = -EPERM;
 			xocl_err(drm_p->ddev->dev,
@@ -1124,15 +1103,21 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 			mm_end_addr = mem_data->m_base_address + ddr_bank_size;
 	}
 
-	/* Memory manager initialize should be done only once */
 	if (drm_p->xocl_mm_done && (drm_p->xocl_mm != NULL)) {
 		/* Validate the new memory topology with existing memory manager */
 		if ((drm_p->xocl_mm->start_addr != mm_start_addr) ||
 				(drm_p->xocl_mm->end_addr != mm_end_addr) ||
 				(drm_p->xocl_mm->m_count != topo->m_count)) {
-			xocl_warn(drm_p->ddev->dev, "Memory Topology doesn't "
-				"consistent in xclbins. Re-initializing Memory Manager");
-			err = -EAGAIN;
+			/* If there is some memory already in use then we can't 
+			 * reinitialize the memory manager. But if no memory is 
+			 * in use then we will be able to reintialize the memory
+			 * manager again with updated topology.
+			 */
+			if(xocl_check_topology(drm_p))
+				err = -EINVAL;
+			else
+				err = -EAGAIN;
+
 			goto error;
 		}
 		else {
