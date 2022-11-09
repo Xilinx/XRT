@@ -49,14 +49,6 @@ namespace xdp {
       bool configureStartIteration(xaiefal::XAieMod& core);
       bool configureStartDelay(xaiefal::XAieMod& core);
      
-      // int startCoreModuleCounters(std::unique_ptr<aie_cfg_tile>& cfgTile, xaiefal::XAieMod& core, XAie_LocType loc,
-      //                              EventVector& coreEvents, EventVector& memoryCrossEvents, tile_type& tile);
-      // int startMemoryModuleCounters(std::unique_ptr<aie_cfg_tile>& cfgTile, xaiefal::XAieMod& memory, XAie_LocType loc, EventVector& memoryEvents);
-      // bool configureCoreTracingEvents(std::unique_ptr<aie_cfg_tile>& cfgTile, int* numTileCoreTraceEvents, xaiefal::XAieMod& core, XAie_LocType loc, EventVector& coreEvents);
-      // bool configureMemoryTracingEvents(std::unique_ptr<aie_cfg_tile>& cfgTile, int* numTileMemoryTraceEvents, xaiefal::XAieMod& memory, XAie_LocType loc,  EventVector& memoryEvents, EventVector& memoryCrossEvents);
-      // void reportTraceEvents (int* numTileCoreTraceEvents, int* numTileMemoryTraceEvents);
-
-
       bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
       void setTraceStartControl(void* handle);
       uint64_t checkTraceBufSize(uint64_t size);                                   

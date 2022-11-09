@@ -54,7 +54,6 @@ namespace xdp {
 
   // No CMA checks on x86
   uint64_t AieTrace_x86Impl::checkTraceBufSize(uint64_t size) {
-    //TODO: Figure it out from XCLBIN metadata
     return size;
   }
 
@@ -74,7 +73,7 @@ namespace xdp {
     auto tiles = metadata->getTilesForTracing();
 
     metadata->setTraceStartControl();
-    uint32_t delayCycles = metadata->getDelay();//static_cast<uint32_t>(metadata->getTraceStartDelayCycles());
+    uint64_t delayCycles = metadata->getDelay();
     bool userControl = metadata->getUseUserControl();//xrt_core::config::get_aie_trace_settings_start_type() == "kernel_event0";
     bool useDelay = metadata->getUseDelay();
 

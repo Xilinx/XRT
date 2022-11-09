@@ -126,13 +126,6 @@ namespace xdp {
     //         occur after 1024 cycles and with no events, is incorrectly repeated.
     auto counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
 
-    if (0 == counterScheme.compare("es2")) {
-      // if set to default value, then check for old style config
-      counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
-      if (0 != counterScheme.compare("es2"))
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-          "The xrt.ini flag \"aie_trace_counter_scheme\" is deprecated and will be removed in future release. Please use \"counter_scheme\" under \"AIE_trace_settings\" section.");
-    }
 
     if (counterScheme == "es1") {
       mCoreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
@@ -743,7 +736,6 @@ namespace xdp {
     return true;
   } // end setMetricsSettings
 
-  // TODO Need to check on edge
   uint64_t AieTrace_EdgeImpl::checkTraceBufSize(uint64_t aieTraceBufSize) {
 
 #ifndef _WIN32

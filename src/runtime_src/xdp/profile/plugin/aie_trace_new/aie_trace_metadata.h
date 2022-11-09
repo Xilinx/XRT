@@ -17,7 +17,6 @@
 #ifndef AIE_TRACE_METADATA_H
 #define AIE_TRACE_METADATA_H
 
-// #include <memory>
 #include <boost/property_tree/ptree.hpp>
 #include <set>
 #include <map>
@@ -27,9 +26,6 @@
 #include "core/common/device.h"
 
 namespace xdp {
-
-// using tile_type = xrt_core::edge::aie::tile_type;
-// using gmio_type = xrt_core::edge::aie::gmio_type;
 
 typedef std::vector<uint32_t>  ValueVector;
 
@@ -80,7 +76,7 @@ class AieTraceMetadata{
     bool continuousTrace;
 
     uint32_t iterationCount = 0;
-    uint32_t delayCycles = 0;
+    uint64_t delayCycles = 0;
     uint64_t deviceID;
     uint64_t numAIETraceOutput;
     uint64_t offloadIntervalUs;
@@ -99,9 +95,6 @@ class AieTraceMetadata{
     std::string getMetricSet(const std::string& metricsStr, bool ignoreOldConfig = false);
 
     std::vector<tile_type> getTilesForTracing();
-
-    // XDP_EXPORT
-    // adf::aiecompiler_options get_aiecompiler_options(const xrt_core::device* device);
 
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
@@ -139,10 +132,10 @@ class AieTraceMetadata{
     std::string getMetricStr(){return metricSet;}
 
     void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}
-    void setDelayCycles(uint32_t newDelayCycles) {delayCycles = newDelayCycles;}
+    void setDelayCycles(uint64_t newDelayCycles) {delayCycles = newDelayCycles;}
     void setRuntimeMetrics(bool metrics) {runtimeMetrics = metrics;}
 
-    uint32_t getDelay() {
+    uint64_t getDelay() {
       if (useDelay)
         return delayCycles;
       return 0;

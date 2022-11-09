@@ -61,11 +61,6 @@ namespace xdp {
       }
     }
 
-    // Set Delay parameters
-    // Update delay with clock cycles when we get device handle later
-    // delayCycles = static_cast<uint32_t>(getTraceStartDelayCycles());
-    // useDelay = (delayCycles > 0) ? true : false;
-
     // Pre-defined metric sets
     metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};
 
@@ -78,13 +73,7 @@ namespace xdp {
 
     //Process the file dump interval
     aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_settings_file_dump_interval_s();
-    if (aie_trace_file_dump_int_s == DEFAULT_AIE_TRACE_DUMP_INTERVAL_S) {
-      // if set to default value, then check for old style config
-      aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
-      if (aie_trace_file_dump_int_s != DEFAULT_AIE_TRACE_DUMP_INTERVAL_S)
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-          "The xrt.ini flag \"aie_trace_file_dump_interval_s\" is deprecated and will be removed in future release. Please use \"file_dump_interval_s\" under \"AIE_trace_settings\" section.");
-    }
+    
     if (aie_trace_file_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S) {
       aie_trace_file_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
@@ -123,9 +112,9 @@ namespace xdp {
       std::stringstream msg;
       msg << "Unable to find AIE trace metric set " << metricSet 
           << ". Using default of " << defaultSet << ".";
-      if (ignoreOldConfig) {
+      if (ignoreOldConfig)
         msg << " As new AIE_trace_settings section is given, old style configurations, if any, are ignored.";
-      }
+
       xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       metricSet = defaultSet;
     }
@@ -240,22 +229,6 @@ namespace xdp {
     aie_stream.write(data,size);
     pt::read_json(aie_stream,aie_project);
   }
-
-  //locally defined xrt::core::edge functions 
-
-  // adf::aiecompiler_options AieTraceMetadata::get_aiecompiler_options(const xrt_core::device* device)
-  // {
-  //   auto data = device->get_axlf_section(AIE_METADATA);
-  //   if (!data.first || !data.second)
-  //     return {};
-
-  //   pt::ptree aie_meta;
-  //   read_aie_metadata(data.first, data.second, aie_meta);
-  //   adf::aiecompiler_options aiecompiler_options;
-  //   aiecompiler_options.broadcast_enable_core = aie_meta.get<bool>("aie_metadata.aiecompiler_options.broadcast_enable_core");
-  //   aiecompiler_options.event_trace = aie_meta.get("aie_metadata.aiecompiler_options.event_trace", "runtime");
-  //   return aiecompiler_options;
-  // }
 
   std::vector<std::string> AieTraceMetadata::get_graphs(const xrt_core::device* device)
   {
