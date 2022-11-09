@@ -68,6 +68,7 @@ set(XRT_XDP_POWER_PROFILE_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer
 set(XRT_XDP_SYSTEM_COMPILER_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/system_compiler")
 set(XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/pl_deadlock")
 set(XRT_XDP_AIE_TRACE_NEW_PLUGIN_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/aie_trace_new")
+set(XRT_XDP_AIE_PROFILE_NEW_PLUGIN_DIR       "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/aie_profile_new")
 
 # Files for the new xdp core
 set(XRT_XDP_PROFILE_BASE_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/vp_base")
@@ -282,6 +283,15 @@ file(GLOB XRT_XDP_AIE_TRACE_NEW_PLUGIN_FILES
   "${XRT_XDP_AIE_TRACE_WRITER_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_AIE_PROFILE_NEW_PLUGIN_FILES
+  "${XRT_XDP_AIE_PROFILE_NEW_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_AIE_PROFILE_NEW_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_AIE_PROFILE_NEW_PLUGIN_DIR}/x86/*.h"
+  "${XRT_XDP_AIE_PROFILE_NEW_PLUGIN_DIR}/x86/*.cpp"
+  "${XRT_XDP_PROFILE_AIE_WRITER_DIR}/*.h"
+  "${XRT_XDP_PROFILE_AIE_WRITER_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_AIE_DEBUG_PLUGIN_FILES
   "${XRT_XDP_AIE_DEBUG_PLUGIN_DIR}/*.h"
   "${XRT_XDP_AIE_DEBUG_PLUGIN_DIR}/*.cpp"
@@ -455,6 +465,15 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_NATIVE_BUILD=1)
   install (TARGETS xdp_aie_trace_plugin
+    LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
+  )
+  
+  #Profile Plugin
+  add_library(xdp_aie_profile_plugin MODULE ${XRT_XDP_AIE_PROFILE_NEW_PLUGIN_FILES})
+  target_link_libraries(xdp_aie_profile_plugin PRIVATE xdp_core xrt_core)
+  set_target_properties(xdp_aie_profile_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+  # target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_NATIVE_BUILD=1)
+  install (TARGETS xdp_aie_profile_plugin
     LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
   )
 endif()
