@@ -85,7 +85,7 @@ static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
  * as a buffer time to fetch and get ready with all the sensor data.
  */
 #define MAX_SC_WAIT_TIMEOUT_SEC     200
-#define SC_WAIT_INTERVAL_MILLI_SEC  1000
+#define SC_WAIT_INTERVAL_MSEC  1000
 #define SC_ERR_MSG_INTERVAL_SEC     5
 
 /* cmd timeout in seconds */
@@ -3012,9 +3012,8 @@ static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq)
 {
 	struct xgq_cmd_cq_vmr_payload *vmr_status =
 		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
-	int ret = 0;;
+	int ret = vmr_status_query(xgq->xgq_pdev);
 
-	ret = vmr_status_query(xgq->xgq_pdev);
 	if (ret)
 		XGQ_ERR(xgq, "received error %d for vmr_status_query xgq request", ret);
 
@@ -3027,12 +3026,11 @@ static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq)
 /* Wait for SC is fully ready during driver init (in reset) */
 static bool vmr_wait_for_sc_ready(struct xocl_xgq_vmr *xgq)
 {
-	int loop_counter = MAX_SC_WAIT_TIMEOUT_SEC * (1000 / SC_WAIT_INTERVAL_MILLI_SEC);
-	int sleep_time = SC_WAIT_INTERVAL_MILLI_SEC;
-	int i = 0;
+	const unsigned int loop_counter = MAX_SC_WAIT_TIMEOUT_SEC * (1000 / SC_WAIT_INTERVAL_MSEC);
+	unsigned int i = 0;
 
 	for (i = 1; i <= loop_counter; i++) {
-		msleep(SC_WAIT_INTERVAL_MILLI_SEC);
+		msleep(SC_WAIT_INTERVAL_MSEC);
 		if (vmr_check_sc_is_ready(xgq)) {
 			XGQ_INFO(xgq, "SC is ready after %d sec", i);
 			return true;
