@@ -2741,7 +2741,10 @@ static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 	 * which indicates that there is a new request.
 	 */
 	if (off == 0)
-		xgq_refresh_system_dtb(xgq);
+		ret = xgq_refresh_system_dtb(xgq);
+
+	if (ret)
+		return ret;
 
 	mutex_lock(&xgq->xgq_lock);
 
@@ -2785,7 +2788,10 @@ static ssize_t vmr_plm_log_read(struct file *filp, struct kobject *kobj,
 
 	/* refresh cached data if off is 0 */
 	if (off == 0)
-		xgq_refresh_plm_log(xgq);
+		ret = xgq_refresh_plm_log(xgq);
+
+	if (ret)
+		return ret;
 
 	mutex_lock(&xgq->xgq_lock);
 
