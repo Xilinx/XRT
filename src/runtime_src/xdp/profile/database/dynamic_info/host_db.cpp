@@ -121,10 +121,14 @@ namespace xdp {
 
     for (auto iter = unsortedEvents.begin();
          iter != unsortedEvents.end();
-         ++iter) {
-      auto event = (*iter);
-      if (filter(event))
+         /* Intentionally blank*/) {
+      auto event = *iter;
+      if (filter(event)) {
         collected.emplace_back(event);
+        iter = unsortedEvents.erase(iter);
+      }
+      else
+        ++iter;
     }
     return collected;
   }

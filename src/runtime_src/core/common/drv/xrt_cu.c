@@ -266,6 +266,7 @@ static inline void process_cq(struct xrt_cu *xcu)
 		xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
 		set_xcmd_timestamp(xcmd, xcmd->status);
 		xrt_cu_circ_produce(xcu, CU_LOG_STAGE_CQ, (uintptr_t)xcmd);
+		xcu->bad_state = (xcmd->status == KDS_SKCRASHED);
 		xcmd->cb.notify_host(xcmd, xcmd->status);
 		xrt_cu_incr_ecmd_count(xcu);
 		list_del(&xcmd->list);

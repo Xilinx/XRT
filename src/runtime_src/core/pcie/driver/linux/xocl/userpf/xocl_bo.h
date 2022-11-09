@@ -128,7 +128,18 @@ static inline struct drm_xocl_dev *bo_xocl_dev(const struct drm_xocl_bo *bo)
 
 static inline unsigned xocl_bo_ddr_idx(unsigned user_flags)
 {
-        return user_flags & XRT_BO_FLAGS_MEMIDX_MASK;
+	struct xcl_bo_flags bo_flag = {};
+
+	bo_flag.flags = user_flags & XRT_BO_FLAGS_MEMIDX_MASK;
+	return bo_flag.bank; 
+}
+
+static inline unsigned xocl_bo_slot_idx(unsigned user_flags)
+{
+	struct xcl_bo_flags bo_flag = {};
+
+	bo_flag.flags = user_flags & XRT_BO_FLAGS_MEMIDX_MASK;
+	return bo_flag.slot; 
 }
 
 static inline unsigned xocl_bo_type(unsigned user_flags)

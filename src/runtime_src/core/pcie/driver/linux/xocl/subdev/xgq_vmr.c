@@ -47,7 +47,7 @@
  *
  * The XGQ Host Mgmt driver is a client.
  * The server is running on ARM R5 embedded FreeRTOS.
- * 
+ *
  * Note: to minimized error-prone, current version only supports
  *	 synchronized operation, client always wait till server respond.
  */
@@ -89,9 +89,9 @@ static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define SC_ERR_MSG_INTERVAL_SEC     5
 
 /* cmd timeout in seconds */
-#define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(600 * 1000) 
-#define XOCL_XGQ_DOWNLOAD_TIME	msecs_to_jiffies(300 * 1000) 
-#define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(30 * 1000) 
+#define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(600 * 1000)
+#define XOCL_XGQ_DOWNLOAD_TIME	msecs_to_jiffies(300 * 1000)
+#define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(30 * 1000)
 #define XOCL_XGQ_WAIT_TIMEOUT	msecs_to_jiffies(60 * 1000)
 #define XOCL_XGQ_MSLEEP_1S	(1000)      //1 s
 
@@ -167,8 +167,8 @@ struct xocl_xgq_vmr {
 	u8			xgq_vmr_debug_type;
 	char			*xgq_vmr_system_dtb;
 	size_t			xgq_vmr_system_dtb_size;
-	char			*xgq_vmr_plm_sync;
-	size_t			xgq_vmr_plm_sync_size;
+	char			*xgq_vmr_plm_log;
+	size_t			xgq_vmr_plm_log_size;
 	u16			pwr_scaling_ovrd_limit;
 	u8			temp_scaling_ovrd_limit;
 	bool			xgq_vmr_program;
@@ -239,7 +239,7 @@ static int complete_worker(void *data)
 	struct xocl_xgq_vmr *xgq = xw->xgq_vmr;
 
 	while (!xw->stop) {
-		
+
 		while (!list_empty(&xgq->xgq_submitted_cmds)) {
 			u64 slot_addr = 0;
 			struct xgq_com_queue_entry ccmd;
@@ -278,7 +278,7 @@ static int complete_worker(void *data)
 			xw->stop = true;
 		}
 	}
-	
+
 	return xw->error ? 1 : 0;
 }
 
@@ -318,7 +318,7 @@ static void xgq_submitted_cmds_drain(struct xocl_xgq_vmr *xgq)
 		/* Finding timed out cmds */
 		if (xgq_cmd->xgq_cmd_timeout_jiffies < jiffies) {
 			list_del(pos);
-			
+
 			xgq_cmd->xgq_cmd_rcode = -ETIME;
 			complete(&xgq_cmd->xgq_cmd_complete);
 			XGQ_ERR(xgq, "cmd id: %d op: 0x%x timed out, hot reset is required!",
@@ -341,7 +341,7 @@ static void xgq_submitted_cmd_remove(struct xocl_xgq_vmr *xgq, struct xocl_xgq_v
 		/* Finding aborted cmds */
 		if (xgq_cmd == cmd) {
 			list_del(pos);
-			
+
 			xgq_cmd->xgq_cmd_rcode = -EIO;
 
 			XGQ_ERR(xgq, "cmd id: %d op: 0x%x reomved.",
@@ -367,7 +367,7 @@ static bool xgq_submitted_cmds_empty(struct xocl_xgq_vmr *xgq)
 		return true;
 	}
 	mutex_unlock(&xgq->xgq_lock);
-	
+
 	return false;
 }
 
@@ -402,9 +402,9 @@ static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, bool dump_t
 			log_idx = (log_idx + 1) % VMR_LOG_MAX_RECS;
 
 			if (dump_to_debug_log)
-				XGQ_DBG(xgq, "%s", log.log_buf); 
+				XGQ_DBG(xgq, "%s", log.log_buf);
 			else
-				XGQ_WARN(xgq, "%s", log.log_buf); 
+				XGQ_WARN(xgq, "%s", log.log_buf);
 		}
 
 		if (!dump_to_debug_log)
@@ -550,7 +550,7 @@ static void xgq_stop_services(struct xocl_xgq_vmr *xgq)
 	xgq->xgq_halted = true;
 	mutex_unlock(&xgq->xgq_lock);
 
-#if 0	
+#if 0
 	/*TODO: disable interrupts */
 	if (!xgq->xgq_polling)
 		xrt_cu_disable_intr(&xgq->xgq_cu, CU_INTR_DONE);
@@ -886,7 +886,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	u32 length = 0;
 	int id = 0;
 
-	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN && 
+	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN &&
 	    opcode != XGQ_CMD_OP_DOWNLOAD_PDI &&
 	    opcode != XGQ_CMD_OP_LOAD_APUBIN &&
 	    opcode != XGQ_CMD_OP_PROGRAM_SCFW &&
@@ -999,7 +999,7 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 	struct axlf *xclbin = (struct axlf *)u_xclbin;
 	u64 xclbin_len = xclbin->m_header.m_length;
 	int ret = 0;
-	
+
 	ret = xgq_transfer_data(xgq, u_xclbin, xclbin_len, 0,
 		XGQ_CMD_OP_LOAD_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
 
@@ -1102,7 +1102,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 		fw_result = (struct xgq_cmd_cq_log_page_payload *)&cmd->xgq_cmd_cq_payload;
 
 		if (fw_result->count > len) {
-			XGQ_ERR(xgq, "need to alloc %d for device data", 
+			XGQ_ERR(xgq, "need to alloc %d for device data",
 				fw_result->count);
 			ret = -ENOSPC;
 		} else if (fw_result->count == 0) {
@@ -1140,16 +1140,22 @@ static int xgq_log_page_metadata(struct platform_device *pdev,
 	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_FW);
 }
 
-static int xgq_log_page_plm_sync(struct platform_device *pdev,
-	char **fw, size_t *fw_size)
+static int xgq_refresh_plm_log(struct xocl_xgq_vmr *xgq)
 {
-	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_PLM_SYNC);
+	if (xgq->xgq_vmr_plm_log)
+		vfree(xgq->xgq_vmr_plm_log);
+
+	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_plm_log,
+		&xgq->xgq_vmr_plm_log_size, XGQ_CMD_LOG_PLM_LOG);
 }
 
-static int xgq_log_page_system_dtb(struct platform_device *pdev,
-	char **fw, size_t *fw_size)
+static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 {
-	return xgq_log_page_fw(pdev, fw, fw_size, XGQ_CMD_LOG_SYSTEM_DTB);
+	if (xgq->xgq_vmr_system_dtb)
+		vfree(xgq->xgq_vmr_system_dtb);
+
+	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_system_dtb,
+		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB);
 }
 
 static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
@@ -1252,7 +1258,7 @@ static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_t
 			XGQ_ERR(xgq, "%s", log_msg);
 			vfree(log_msg);
 		}
-	} 
+	}
 
 done:
 	remove_xgq_cid(xgq, id);
@@ -1350,7 +1356,7 @@ static int vmr_info_query_op(struct platform_device *pdev,
 		info_size = info->count;
 
 		if (info_size > len) {
-			XGQ_WARN(xgq, "return info size %d is greater than request %d", 
+			XGQ_WARN(xgq, "return info size %d is greater than request %d",
 				info->count, len);
 			info_size = len;
 		} else if (info_size == 0) {
@@ -1481,7 +1487,7 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 	ret = cmd->xgq_cmd_rcode;
 	if (ret) {
 		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
-	} 
+	}
 
 done:
 	remove_xgq_cid(xgq, id);
@@ -1750,7 +1756,7 @@ static int xgq_download_apu_firmware(struct platform_device *pdev)
 	XGQ_INFO(xgq, "start vmr-downloading apu firmware");
 	ret = xgq_download_apu_bin(pdev, apu_bin_buf, apu_bin_len);
 	vfree(apu_bin_buf);
-	if (ret) 
+	if (ret)
 		return ret;
 
 	XGQ_INFO(xgq, "start waiting apu becomes ready");
@@ -2743,26 +2749,32 @@ static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 {
 	struct xocl_xgq_vmr *xgq =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
-	unsigned char *blob;
-	size_t size;
+	char *blob = NULL;
+	size_t size = 0;
 	ssize_t ret = 0;
 
+	/*
+	 * refresh cached data only if off is 0,
+	 * which indicates that there is a new request.
+	 */
+	if (off == 0)
+		xgq_refresh_system_dtb(xgq);
+
 	mutex_lock(&xgq->xgq_lock);
+
 	blob = xgq->xgq_vmr_system_dtb;
 	size = xgq->xgq_vmr_system_dtb_size;
 
-	if (off >= size){
-		mutex_unlock(&xgq->xgq_lock);
+	if (off >= size)
 		goto out;
-	}
 
 	if (off + count > size)
 		count = size - off;
 	memcpy(buf, blob + off, count);
-	mutex_unlock(&xgq->xgq_lock);
 
 	ret = count;
 out:
+	mutex_unlock(&xgq->xgq_lock);
 	return ret;
 }
 
@@ -2779,42 +2791,43 @@ static struct bin_attribute bin_attr_vmr_system_dtb = {
 	.size = 0
 };
 
-static ssize_t vmr_plm_sync_read(struct file *filp, struct kobject *kobj,
+static ssize_t vmr_plm_log_read(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct xocl_xgq_vmr *xgq =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
-	unsigned char *blob;
-	size_t size;
+	char *blob = NULL;
+	size_t size = 0;
 	ssize_t ret = 0;
 
-	mutex_lock(&xgq->xgq_lock);
-	blob = xgq->xgq_vmr_plm_sync;
-	size = xgq->xgq_vmr_plm_sync_size;
+	/* refresh cached data if off is 0 */
+	if (off == 0)
+		xgq_refresh_plm_log(xgq);
 
-	if (off >= size){
-		mutex_unlock(&xgq->xgq_lock);
+	mutex_lock(&xgq->xgq_lock);
+
+	blob = xgq->xgq_vmr_plm_log;
+	size = xgq->xgq_vmr_plm_log_size;
+
+	if (off >= size)
 		goto out;
-	}
 
 	if (off + count > size)
 		count = size - off;
 	memcpy(buf, blob + off, count);
-	mutex_unlock(&xgq->xgq_lock);
 
 	ret = count;
 out:
+	mutex_unlock(&xgq->xgq_lock);
 	return ret;
 }
-/* Some older linux kernel doesn't support
- * static BIN_ATTR_RO(vmr_plm_sync, 0);
- */
-static struct bin_attribute bin_attr_vmr_plm_sync = {
+
+static struct bin_attribute bin_attr_vmr_plm_log = {
 	.attr = {
-		.name = "vmr_plm_sync",
+		.name = "vmr_plm_log",
 		.mode = 0444
 	},
-	.read = vmr_plm_sync_read,
+	.read = vmr_plm_log_read,
 	.write = NULL,
 	.size = 0
 };
@@ -2844,7 +2857,7 @@ static struct attribute *vmr_attrs[] = {
 
 static struct bin_attribute *vmr_bin_attrs[] = {
 	&bin_attr_vmr_system_dtb,
-	&bin_attr_vmr_plm_sync,
+	&bin_attr_vmr_plm_log,
 	NULL,
 };
 static struct attribute_group xgq_attr_group = {
@@ -2978,13 +2991,11 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 
 	sysfs_remove_group(&pdev->dev.kobj, &xgq_attr_group);
 
-	/* make sure cached system_dtb blob is freed */
+	/* free cached data */
 	if (xgq->xgq_vmr_system_dtb)
 		vfree(xgq->xgq_vmr_system_dtb);
-	
-	/* make sure cached plm_sync blob is freed */
-	if (xgq->xgq_vmr_plm_sync)
-		vfree(xgq->xgq_vmr_plm_sync);
+	if (xgq->xgq_vmr_plm_log)
+		vfree(xgq->xgq_vmr_plm_log);
 
 	mutex_destroy(&xgq->clk_scaling_lock);
 	mutex_destroy(&xgq->xgq_lock);
@@ -3050,11 +3061,11 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	xgq->xgq_pdev = pdev;
 	xgq->xgq_cmd_id = 0;
+	xgq->xgq_halted = true;
 	xgq->xgq_vmr_system_dtb = NULL;
 	xgq->xgq_vmr_system_dtb_size = 0;
-	xgq->xgq_halted = true;
-	xgq->xgq_vmr_plm_sync = NULL;
-	xgq->xgq_vmr_plm_sync_size = 0;
+	xgq->xgq_vmr_plm_log = NULL;
+	xgq->xgq_vmr_plm_log_size = 0;
 
 	mutex_init(&xgq->xgq_lock);
 	mutex_init(&xgq->clk_scaling_lock);
@@ -3139,20 +3150,6 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		xgq_stop_services(xgq);
 		ret = 0;
 		goto done;
-	}
-
-	ret = xgq_log_page_system_dtb(pdev, &xgq->xgq_vmr_system_dtb,
-			&xgq->xgq_vmr_system_dtb_size);
-	if (ret) {
-		XGQ_WARN(xgq, "cannot load system dtb from shell, ret: %d", ret);
-		ret = 0;
-	}
-
-	ret = xgq_log_page_plm_sync(pdev, &xgq->xgq_vmr_plm_sync,
-			&xgq->xgq_vmr_plm_sync_size);
-	if (ret) {
-		XGQ_WARN(xgq, "cannot load PLM Data from VMR, ret: %d", ret);
-		ret = 0;
 	}
 
 	ret = xgq_download_apu_firmware(pdev);
