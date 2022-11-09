@@ -269,14 +269,7 @@ public:
   void
   exec_buf(xrt_core::command* cmd, const xrt::hw_context& hwctx)
   {    
-    try {
-      device->exec_buf_ctx(cmd->get_exec_bo(), hwctx);
-      return;
-    }
-    catch (const xrt_core::error&) {
-        //do nothing
-    }
-    device->exec_buf(cmd->get_exec_bo());
+    device->exec_buf_ctx(cmd->get_exec_bo(), hwctx);
   }
 
   // launch() - Submit a command for managed execution

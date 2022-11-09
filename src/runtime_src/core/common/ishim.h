@@ -177,8 +177,11 @@ struct ishim
 
   //Exec Buf with ctx handle.
   virtual void
-  exec_buf_ctx(xclBufferHandle /*boh*/, const xrt::hw_context& /*hwctx*/) const
-  { throw not_supported_error{ __func__ }; }
+  exec_buf_ctx(xclBufferHandle boh, const xrt::hw_context& /*hwctx*/)
+  {      
+    // Context aware execution is an opt-in.  If not supported, then just call legacy exec_buf
+    exec_buf(boh);
+  }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
