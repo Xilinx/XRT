@@ -15,14 +15,14 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 
 // ---- Reports ------
 #include "tools/common/Report.h"
@@ -130,7 +130,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
   // Output file
-  if (!sOutput.empty() && boost::filesystem::exists(sOutput) && !XBU::getForce()) 
+  if (!sOutput.empty() && std::filesystem::exists(sOutput) && !XBU::getForce()) 
       throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
 
   // Find device of interest

@@ -66,6 +66,7 @@ if (XRT_STATIC_BUILD)
     xrt_core_static
     xrt_coreutil_static
     boost_system
+    stdc++fs
     boost_filesystem
     boost_program_options
     -Wl,--whole-archive rt pthread -Wl,--no-whole-archive
@@ -80,6 +81,7 @@ target_link_libraries(${XBMGMT2_NAME}
   PRIVATE
   xrt_core
   xrt_coreutil
+  stdc++fs
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${Boost_PROGRAM_OPTIONS_LIBRARY}

@@ -7,13 +7,11 @@
 
 #include "core/common/utils.h"
 
-#include <boost/filesystem/fstream.hpp>
-#include <boost/filesystem.hpp>
-
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <dirent.h>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -31,7 +29,7 @@
 
 namespace {
 
-namespace bfs = boost::filesystem;
+namespace fs = std::filesystem;
 
 static std::string
 get_name(const std::string& dir, const std::string& subdir)
@@ -696,19 +694,19 @@ int
 get_runtime_active_kids(std::string &pci_bridge_path)
 {
   int curr_act_dev = 0;
-  std::vector<bfs::path> vec{bfs::directory_iterator(pci_bridge_path), bfs::directory_iterator()};
+  std::vector<fs::path> vec{fs::directory_iterator(pci_bridge_path), fs::directory_iterator()};
 
   // Check number of Xilinx devices under this bridge.
   for (auto& path : vec) {
-    if (!bfs::is_directory(path))
+    if (!fs::is_directory(path))
       continue;
 
     path += "/vendor";
-    if(!bfs::exists(path))
+    if(!fs::exists(path))
 	    continue;
 
     unsigned int vendor_id;
-    bfs::ifstream file(path);
+    std::ifstream file(path);
     file >> std::hex >> vendor_id;
     if (vendor_id != XILINX_ID)
 	    continue;
@@ -778,7 +776,7 @@ shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user, bool remove_mgmt)
   /* Cache the parent sysfs path before remove the PF */
   std::string parent_path = mgmt_dev->get_sysfs_path("", "dparent");
   /* Get the absolute path from the symbolic link */
-  parent_path = (bfs::canonical(parent_path)).c_str();
+  parent_path = (fs::canonical(parent_path)).c_str();
 
   int active_dev_num;
   mgmt_dev->sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, active_dev_num, EINVAL);
@@ -816,12 +814,12 @@ shutdown(std::shared_ptr<dev> mgmt_dev, bool remove_user, bool remove_mgmt)
   for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
     int curr_act_dev;
     std::string active_kids_path = parent_path + "/power/runtime_active_kids";
-    if (!bfs::exists(active_kids_path)) {
+    if (!fs::exists(active_kids_path)) {
       // RHEL 8.x specific 
       curr_act_dev = get_runtime_active_kids(parent_path);
     }
     else {
-      bfs::ifstream file(active_kids_path);
+      std::ifstream file(active_kids_path);
       file >> curr_act_dev;
     }
 

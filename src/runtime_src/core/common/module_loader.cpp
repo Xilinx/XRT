@@ -19,8 +19,8 @@
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
 
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+#include <cstring>
+#include <filesystem>
 #include <iostream>
 
 
@@ -28,7 +28,7 @@
 # pragma warning (disable : 4996)
 #endif
 
-namespace bfs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -95,15 +95,15 @@ shim_name()
   throw std::runtime_error("Unexected error creating shim library name");
 }
 
-static bfs::path
+static fs::path
 xilinx_xrt()
 {
-  bfs::path xrt(value_or_empty(getenv("XILINX_XRT")));
+  fs::path xrt(value_or_empty(getenv("XILINX_XRT")));
   if (xrt.empty()){
 #if defined (__aarch64__) || defined (__arm__)
-    xrt = bfs::path("/usr");
+    xrt = fs::path("/usr");
 #elif defined (_WIN32)
-    xrt = bfs::path("C:/Windows/System32/AMD");
+    xrt = fs::path("C:/Windows/System32/AMD");
 #else
     throw std::runtime_error("XILINX_XRT not set");
 #endif
@@ -112,7 +112,7 @@ xilinx_xrt()
   return xrt;
 }
 
-static bfs::path
+static fs::path
 module_path(const std::string& module)
 {
   auto path = xilinx_xrt();
@@ -122,14 +122,14 @@ module_path(const std::string& module)
   path /= "lib/xrt/module/lib" + module + ".so";
 #endif
 
-  if (!bfs::exists(path) || !bfs::is_regular_file(path))
+  if (!fs::exists(path) || !fs::is_regular_file(path))
     throw std::runtime_error("No such library '" + path.string() + "'");
 
   return path;
 }
 
   
-static bfs::path
+static fs::path
 shim_path()
 {
   auto path = xilinx_xrt();
@@ -141,7 +141,7 @@ shim_path()
   path /= "lib/lib" + name + ".so." + XRT_VERSION_MAJOR;
 #endif
 
-  if (!bfs::exists(path) || !bfs::is_regular_file(path))
+  if (!fs::exists(path) || !fs::is_regular_file(path))
     throw std::runtime_error("No such library '" + path.string() + "'");
 
   return path;
@@ -151,12 +151,12 @@ static std::vector<std::string>
 driver_plugin_paths()
 {
   std::vector<std::string> ret;
-  bfs::directory_iterator p{shim_path().parent_path()};
+  fs::directory_iterator p{shim_path().parent_path()};
 
   // All driver plug-ins are in the same directory as shim .so and with below prefix and suffix.
   const std::string pre = "libxrt_driver_";
   const std::string suf = std::string(".so.") + XRT_VERSION_MAJOR;
-  while (p != bfs::directory_iterator{}) {
+  while (p != fs::directory_iterator{}) {
     const auto name = p->path().filename().string();
     if ((name.size() > (pre.size() + suf.size())) &&
       !name.compare(0, pre.size(), pre) &&

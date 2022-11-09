@@ -17,12 +17,11 @@
 #ifndef XDP_PROFILE_HAL_INTERFACE_PLUGIN_H_
 #define XDP_PROFILE_HAL_INTERFACE_PLUGIN_H_
 
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <atomic>
 #include <mutex>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
 #include "core/include/xclhal2.h"
 #include "core/include/xdp/hal_api.h"
 

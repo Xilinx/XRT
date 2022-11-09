@@ -1009,7 +1009,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 
 #if (BOOST_VERSION >= 106400)
 int 
-XclBinUtilities::exec(const boost::filesystem::path &cmd,
+XclBinUtilities::exec(const std::filesystem::path &cmd,
                       const std::vector<std::string> &args,
                       bool bThrow,
                       std::ostringstream & os_stdout,
@@ -1055,7 +1055,7 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
 
 #else
 int 
-XclBinUtilities::exec(const boost::filesystem::path &cmd,
+XclBinUtilities::exec(const std::filesystem::path &cmd,
                       const std::vector<std::string> &args,
                       bool bThrow,
                       std::ostringstream & os_stdout,

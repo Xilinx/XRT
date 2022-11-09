@@ -3,8 +3,8 @@
 #include "ParameterSectionData.h"
 #include "globals.h"
 
+#include <filesystem>
 #include <string>
-#include <boost/filesystem.hpp>
 
 TEST(MetaData, AddingMissingFile) {
   XclBin xclBin;
@@ -16,7 +16,7 @@ TEST(MetaData, AddingMissingFile) {
 
 TEST(MetaData, AddingValidFile) {
   // Get the file of interest
-  boost::filesystem::path sampleMetadata(TestUtilities::getResourceDir());
+  std::filesystem::path sampleMetadata(TestUtilities::getResourceDir());
   sampleMetadata /= "metadata.json";
 
   const std::string formattedString = std::string("BUILD_METADATA:JSON:") + sampleMetadata.string();

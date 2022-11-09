@@ -46,6 +46,7 @@ set_target_properties(xrt_hwemu PROPERTIES VERSION ${XRT_VERSION_STRING}
 
 target_link_libraries(xrt_hwemu
   PRIVATE
+  stdc++fs
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
@@ -57,6 +58,7 @@ target_link_libraries(xrt_hwemu
 
 target_link_libraries(xrt_hwemu_static
   INTERFACE
+  stdc++fs
   boost_filesystem
   boost_system
   ${PROTOBUF_LIBRARY}

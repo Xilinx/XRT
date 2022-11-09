@@ -19,10 +19,9 @@
 
 // System include files
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <string>
-
-#include <boost/filesystem.hpp>
 
 // Program entry
 int main( int argc, char** argv )

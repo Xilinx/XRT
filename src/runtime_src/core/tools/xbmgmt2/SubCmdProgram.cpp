@@ -25,12 +25,12 @@ namespace XBU = XBUtilities;
 // Remove linux specific code
 #ifdef __linux__
 #include "core/pcie/linux/pcidev.cpp"
+#include <unistd.h>
 #endif
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
@@ -45,6 +45,7 @@ namespace po = boost::program_options;
 #include <chrono>
 #include <ctime>
 #include <fcntl.h>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <locale>
@@ -53,6 +54,7 @@ namespace po = boost::program_options;
 
 #ifdef _WIN32
 #pragma warning(disable : 4996) //std::asctime
+#define stat _stat
 #endif
 
 
@@ -261,12 +263,19 @@ deployment_path_and_filename(std::string file)
 static std::string
 get_file_timestamp(const std::string & _file)
 {
-  boost::filesystem::path p(_file);
-	if (!boost::filesystem::exists(p)) {
-		throw xrt_core::error("Invalid platform path.");
-	}
-  std::time_t ftime = boost::filesystem::last_write_time(boost::filesystem::path(_file));
-  std::string timeStr(std::asctime(std::localtime(&ftime)));
+  std::filesystem::path p(_file);
+  if (!std::filesystem::exists(p)) {
+    throw xrt_core::error("Invalid platform path.");
+  }
+  // Switch to use OS stat to get file's last modified time
+  // in order to resolve incompatible time returned from last_write_time
+  // between gcc8 and gcc9
+  struct stat result;
+  std::string timeStr;
+  if (stat(_file.c_str(), &result) == 0) {
+    auto mtime = result.st_mtime;
+    timeStr = std::asctime(std::localtime(&mtime));
+  }
   timeStr.pop_back();  // Remove the new-line character that gets inserted by asctime.
   return timeStr;
 }
@@ -640,8 +649,8 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
 
   for (const auto& img : image_list) {
     // Check if the passed in image is absolute path
-    if (boost::filesystem::is_regular_file(img)){
-      if (boost::filesystem::extension(img).compare(".xsabin") != 0) {
+    if (std::filesystem::is_regular_file(img)){
+      if (std::filesystem::path(img).extension().compare(".xsabin") != 0) {
         std::cout << "Warning: Non-xsabin file detected. Development usage, this may damage the card\n";
         if (!XBU::can_proceed(XBU::getForce()))
           throw xrt_core::error(std::errc::operation_canceled);
@@ -928,7 +937,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                             " is installed.");
 
     // Check if file exists
-    if (!boost::filesystem::exists(plp))
+    if (!std::filesystem::exists(plp))
       throw xrt_core::error("File not found. Please specify the correct path");
 
     DSAInfo dsa(plp);

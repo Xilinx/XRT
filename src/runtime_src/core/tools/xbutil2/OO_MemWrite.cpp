@@ -13,12 +13,12 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <math.h>
@@ -114,7 +114,7 @@ OO_MemWrite::execute(const SubCmdOptions& _options) const
   // Parse the input option path
   if (!m_inputFile.empty()) {
     // Verify that the file exists and is not a directory
-    if (!boost::filesystem::exists(m_inputFile) && boost::filesystem::is_regular_file(m_inputFile))
+    if (!std::filesystem::exists(m_inputFile) && std::filesystem::is_regular_file(m_inputFile))
       XBU::throw_cancel(boost::format("Input file does not exist: '%s'") % m_inputFile);
 
     // Open the input file stream after validating the file path and name

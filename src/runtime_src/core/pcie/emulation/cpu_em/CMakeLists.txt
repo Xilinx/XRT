@@ -42,6 +42,7 @@ set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
 
 target_link_libraries(xrt_swemu
   PRIVATE
+  stdc++fs
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${PROTOBUF_LIBRARY}
@@ -53,6 +54,7 @@ target_link_libraries(xrt_swemu
 
 target_link_libraries(xrt_swemu_static
   INTERFACE
+  stdc++fs
   boost_filesystem
   boost_system
   ${PROTOBUF_LIBRARY}

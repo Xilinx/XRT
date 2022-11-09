@@ -3,6 +3,7 @@
 #include "xrt/xrt_kernel.h"
 
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <set>
@@ -14,7 +15,6 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -242,14 +242,14 @@ get_ps_kernel_data( char *output,
   openlog("new_kernel_source", LOG_PID | LOG_CONS | LOG_NDELAY, LOG_NEWS);
   log_info("Stared new kernel\n", enable_debug);
 
-  boost::filesystem::path p("/sys/devices/platform/ert_hw/");
-  boost::filesystem::directory_iterator dir(p);
+  std::filesystem::path p("/sys/devices/platform/ert_hw/");
+  std::filesystem::directory_iterator dir(p);
   pt::ptree all_data;
   add_schema(all_data);
   get_os_release(all_data);
 
   pt::ptree all_ps_data;
-  while (dir != boost::filesystem::directory_iterator()) {
+  while (dir != std::filesystem::directory_iterator()) {
     // Get a copy of the current directories name.
     // Getting a reference cause a undesired change when the
     // the directory updates

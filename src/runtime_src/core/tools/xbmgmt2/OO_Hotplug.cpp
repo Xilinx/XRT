@@ -12,12 +12,12 @@
 #include "core/common/system.h"
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
+#include <filesystem>
 #include <fstream>
 // =============================================================================
 
@@ -27,7 +27,7 @@ hotplug_online()
 {
   static const std::string  rescan_path = "/sys/bus/pci/rescan";
 
-  if (!boost::filesystem::exists(rescan_path))
+  if (!std::filesystem::exists(rescan_path))
     throw xrt_core::error((boost::format("Invalid sysfs file path '%s'.") % rescan_path).str());
 
   std::ofstream rescan_file(rescan_path);

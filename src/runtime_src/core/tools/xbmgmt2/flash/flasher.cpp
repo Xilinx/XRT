@@ -19,18 +19,19 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "flasher.h"
+#include "boost/format.hpp"
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
-#include <limits>
-#include <cstddef>
-#include <cassert>
-#include <vector>
-#include <cstring>
-#include <cstdarg>
-#include "boost/format.hpp"
+#include "flasher.h"
+
 #include <boost/algorithm/string.hpp>
-#include "boost/filesystem.hpp"
+#include <cassert>
+#include <cstdarg>
+#include <cstddef>
+#include <cstring>
+#include <filesystem>
+#include <limits>
+#include <vector>
 
 #define INVALID_ID      0xffff
 
@@ -503,7 +504,7 @@ std::string Flasher::getQspiGolden()
     std::string start = FORMATTED_FW_DIR;
     start += "/";
     start += board_name;
-    boost::filesystem::recursive_directory_iterator dir(start), end;
+    std::filesystem::recursive_directory_iterator dir(start), end;
     while (dir != end) {
         std::string fn = dir->path().filename().string();
         if (!fn.compare(QSPI_GOLDEN_IMAGE)) {

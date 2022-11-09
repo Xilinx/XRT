@@ -5,6 +5,7 @@
 
 #ifndef __SYSTEM_UTILS_H__
 #define __SYSTEM_UTILS_H__
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <stdio.h>
@@ -12,9 +13,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
 
 namespace systemUtil {
   

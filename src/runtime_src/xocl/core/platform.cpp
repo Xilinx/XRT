@@ -21,8 +21,7 @@
 #include "xocl/xclbin/xclbin.h"
 #include "core/common/api/hw_queue.h"
 
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <cassert>

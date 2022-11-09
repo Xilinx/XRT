@@ -10,11 +10,11 @@
 
 #include "xocl/api/plugin/xdp/profile_v2.h"
 
-#include <boost/filesystem/operations.hpp>
-#include <vector>
-#include <iostream>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <memory>
+#include <vector>
 
 #ifdef _WIN32
 #pragma warning ( disable : 4996 )

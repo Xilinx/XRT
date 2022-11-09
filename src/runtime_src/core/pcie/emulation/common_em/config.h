@@ -13,8 +13,6 @@
 #endif
 #include <atomic>
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
-#include "boost/filesystem/path.hpp"
 #include <boost/foreach.hpp>
 #include <boost/locale.hpp>
 #include <boost/property_tree/ini_parser.hpp>
@@ -22,6 +20,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <chrono>
 #include <cstring>
+#include <filesystem>
 #include <list>
 #include <map>
 #include <sys/stat.h>
@@ -172,7 +171,7 @@ struct sParseLog
     // mFileName might be created/updated by xsim, check its existence always.
     if (not mFileExists.load())
     {
-      if (boost::filesystem::exists(mFileName))
+      if (std::filesystem::exists(mFileName))
       {
         mFileStream.open(mFileName);
         if (mFileStream.is_open())

@@ -34,7 +34,7 @@ namespace xclcpuemhal2
 
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 
-  namespace bf = boost::filesystem;
+  namespace fs = std::filesystem;
 #define PRINTENDFUNC        \
   if (mLogStream.is_open()) \
     mLogStream << __func__ << " ended " << std::endl;
@@ -591,8 +591,8 @@ namespace xclcpuemhal2
 
     //Check if device_process.log already exists. Remove if exists.
     auto extIoTxtFile = getDeviceProcessLogPath();
-    if (boost::filesystem::exists(extIoTxtFile))
-      boost::filesystem::remove(extIoTxtFile);
+    if (std::filesystem::exists(extIoTxtFile))
+      std::filesystem::remove(extIoTxtFile);
 
     launchDeviceProcess(debuggable, binaryDirectory);
 
@@ -800,11 +800,11 @@ namespace xclcpuemhal2
     if (isVersal)
     {
       std::string aieLibSimPath = binaryDirectory + "/aie/aie.libsim";
-      bf::path fp(aieLibSimPath);
+      fs::path fp(aieLibSimPath);
 
       // Setting the aiesim_sock to null when we have the aie.libsim which is ideally generated only for the x86sim target
       // This determines the whether we are running the sw_emu interacting with the x86sim process or the aiesim process
-      if (bf::exists(fp) && !bf::is_empty(fp))
+      if (fs::exists(fp) && !fs::is_empty(fp))
         aiesim_sock = nullptr;
       else
         aiesim_sock = new unix_socket("AIESIM_SOCKETID");

@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
 
 namespace po = boost::program_options;
 
+#include <filesystem>
 #include <iostream>
 #include "globals.h"
 
@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv); 
 
   // -- Process the remaining arguments
-  std::string resourceDirectory = boost::filesystem::path(boost::filesystem::current_path()).string();
+  std::string resourceDirectory = std::filesystem::path(std::filesystem::current_path()).string();
   bool bQuiet = false;
 
   po::options_description options("Common Options");

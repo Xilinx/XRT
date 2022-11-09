@@ -12,13 +12,13 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
+#include <filesystem>
 #include <iostream>
 
 constexpr const char* config_file  = "/etc/msd.conf";
@@ -282,11 +282,11 @@ remove_daemon_config()
     throw xrt_core::error(std::errc::operation_canceled);
 
   try {
-    if (boost::filesystem::remove(config_file))
+    if (std::filesystem::remove(config_file))
       std::cout << boost::format("Succesfully removed the Daemon configuration file.\n");
     else
       std::cout << boost::format("WARNING: Daemon configuration file does not exist.\n");
-  } catch (const boost::filesystem::filesystem_error &e) {
+  } catch (const std::filesystem::filesystem_error &e) {
       std::cerr << boost::format("ERROR: %s\n") % e.what();
       throw xrt_core::error(std::errc::operation_canceled);
   }
@@ -479,12 +479,12 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // Load Config commands
     // -- process "input" option -----------------------------------------------
     if (!path.empty()) {
-        if (!boost::filesystem::exists(path)) {
+        if (!std::filesystem::exists(path)) {
             std::cerr << boost::format("ERROR: Input file does not exist: '%s'") % path << "\n\n";
             throw xrt_core::error(std::errc::operation_canceled);
         }
 
-        if(boost::filesystem::extension(path).compare(".ini") != 0) {
+        if(std::filesystem::path(path).extension().compare(".ini") != 0) {
             std::cerr << boost::format("ERROR: Input file should be an INI file: '%s'") % path << "\n\n";
             throw xrt_core::error(std::errc::operation_canceled);
         }

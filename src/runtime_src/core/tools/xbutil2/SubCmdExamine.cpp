@@ -16,15 +16,15 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <regex>
 
 // ---- Reports ------
@@ -164,7 +164,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   }
 
   // DRC: Output file
-  if (!sOutput.empty() && boost::filesystem::exists(sOutput) && !XBU::getForce()) {
+  if (!sOutput.empty() && std::filesystem::exists(sOutput) && !XBU::getForce()) {
     std::cerr << boost::format("ERROR: The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it.") % sOutput << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }

@@ -173,7 +173,9 @@ ub_package_list()
      curl \
      dkms \
      g++ \
+     g++-8 \
      gcc \
+     gcc-8 \
      gdb \
      git \
      gnuplot \
@@ -230,13 +232,6 @@ ub_package_list()
     #dmidecode is only applicable for x86_64
     if [ $ARCH == "x86_64" ]; then
 	UB_LIST+=( dmidecode )
-    fi
-
-    # Use GCC8 on ARM64 Ubuntu as GCC7 randomly crashes with Internal Compiler Error on
-    # Travis CI ARM64 platform
-    if [ $ARCH == "aarch64" ]; then
-        UB_LIST+=( gcc-8 )
-        UB_LIST+=( g++-8 )
     fi
 
 }

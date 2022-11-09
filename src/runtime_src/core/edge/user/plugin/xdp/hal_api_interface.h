@@ -18,8 +18,7 @@
 #define XDP_PROFILE_HAL_INTERFACE_PLUGIN_H_
 
 #include <atomic>
-#include <boost/filesystem/operations.hpp>
-#include <boost/filesystem/path.hpp>
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <mutex>

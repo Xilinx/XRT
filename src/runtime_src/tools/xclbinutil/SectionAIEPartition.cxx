@@ -159,11 +159,11 @@ process_PDI_uuid(const boost::property_tree::ptree& ptPDI,
 
 static void
 read_file_into_buffer(const std::string& fileName,
-                      const boost::filesystem::path& fromRelativeDir,
+                      const std::filesystem::path& fromRelativeDir,
                       std::vector<char>& buffer)
 {
   // Build the path to our file of interest
-  boost::filesystem::path filePath = fileName;
+  std::filesystem::path filePath = fileName;
 
   if (filePath.is_relative()) {
     filePath = fromRelativeDir;
@@ -195,7 +195,7 @@ read_file_into_buffer(const std::string& fileName,
 
 static void
 process_PDI_file(const boost::property_tree::ptree& ptAIEPartitionPDI,
-                 const boost::filesystem::path& relativeFromDir,
+                 const std::filesystem::path& relativeFromDir,
                  aie_pdi& aiePartitionPDI,
                  SectionHeap& heap)
 {
@@ -314,7 +314,7 @@ process_PDI_cdo_groups(const boost::property_tree::ptree& ptAIEPartitionPDI,
 
 static void
 process_PDIs(const boost::property_tree::ptree& ptAIEPartition,
-             const boost::filesystem::path& relativeFromDir,
+             const std::filesystem::path& relativeFromDir,
              aie_partition& aiePartitionHdr,
              SectionHeap& heap)
 {
@@ -387,7 +387,7 @@ process_partition_info(const boost::property_tree::ptree& ptAIEPartition,
 
 static void
 createAIEPartitionImage(const std::string& sectionIndexName,
-                        const boost::filesystem::path& relativeFromDir,
+                        const std::filesystem::path& relativeFromDir,
                         std::istream& iStream,
                         std::ostringstream& osBuffer)
 {
@@ -454,7 +454,7 @@ SectionAIEPartition::readSubPayload(const char* pOrigDataSection,
 
   // Get the JSON's file parent directory.  This is used later to any
   // relative PDI images that might need need to be read in.
-  boost::filesystem::path p(getPathAndName());
+  std::filesystem::path p(getPathAndName());
   const auto relativeFromDir = p.parent_path();
 
   createAIEPartitionImage(getSectionIndexName(), relativeFromDir, iStream, buffer);
@@ -565,9 +565,9 @@ static void
 write_pdi_image(const char* pBase,
                 const aie_pdi& aiePDI,
                 const std::string& fileName,
-                const boost::filesystem::path& relativeToDir)
+                const std::filesystem::path& relativeToDir)
 {
-  boost::filesystem::path filePath = relativeToDir;
+  std::filesystem::path filePath = relativeToDir;
   filePath /= fileName;
 
   XUtil::TRACE(boost::format("Creating PDI Image: %s") % filePath.string());
@@ -585,7 +585,7 @@ write_pdi_image(const char* pBase,
 // -------------------------------------------------------------------------
 static void
 populate_PDIs(const char* pBase,
-              const boost::filesystem::path& relativeToDir,
+              const std::filesystem::path& relativeToDir,
               const aie_partition& aiePartition,
               boost::property_tree::ptree& ptAiePartition)
 {
@@ -620,7 +620,7 @@ populate_PDIs(const char* pBase,
 static void
 writeAIEPartitionImage(const char* pBuffer,
                        unsigned int bufferSize,
-                       const boost::filesystem::path& relativeToDir,
+                       const std::filesystem::path& relativeToDir,
                        std::ostream& oStream)
 {
   XUtil::TRACE("AIE_PARTITION : Creating JSON IMAGE");
@@ -681,7 +681,7 @@ SectionAIEPartition::writeSubPayload(const std::string& sSubSectionName,
     throw std::runtime_error(errMsg);
   }
 
-  boost::filesystem::path p(getPathAndName());
+  std::filesystem::path p(getPathAndName());
   const auto relativeToDir = p.parent_path();
 
   writeAIEPartitionImage(m_pBuffer, m_bufferSize, relativeToDir, oStream);

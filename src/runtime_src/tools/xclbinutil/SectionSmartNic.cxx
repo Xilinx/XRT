@@ -25,10 +25,10 @@
 #include "ResourcesSmartNic.h"
 #include "XclBinUtilities.h"
 #include <boost/algorithm/hex.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/functional/factory.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <filesystem>
 #include <fstream>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -95,7 +95,7 @@ read_file_into_buffer(const std::string& fileName,
                       std::vector<char>& buffer)
 {
   // Build the path to our file of interest
-  boost::filesystem::path filePath = fileName;
+  std::filesystem::path filePath = fileName;
 
   if (filePath.is_relative()) {
     filePath = fromRelativeDir;
@@ -265,7 +265,7 @@ SectionSmartNic::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   XUtil::validate_against_schema(nodeName, document, getSmartNicSchema());
 
   // -- Read in the byte code
-  boost::filesystem::path p(getPathAndName());
+  std::filesystem::path p(getPathAndName());
   std::string fromRelativeDir = p.parent_path().string();
   readAndTransposeByteFiles(document, keyTypeCollection, fromRelativeDir);
 

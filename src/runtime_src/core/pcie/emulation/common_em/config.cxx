@@ -385,7 +385,7 @@ namespace xclemulation{
       return pathStr;
     }
 
-    return boost::filesystem::absolute(pathStr.c_str(), absBuildDirStr.c_str()).string();
+    return std::filesystem::absolute(pathStr).string();
   }
 
   std::string getExecutablePath()

@@ -26,11 +26,11 @@
 #include "XclBinUtilities.h"
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/uuid/uuid.hpp>                  // for uuid
 #include <boost/uuid/uuid_io.hpp>               // for to_string
+#include <filesystem>
 #include <random>
 #include <sstream>
 #include <stdexcept>
@@ -846,7 +846,7 @@ XclBin::replaceSection(ParameterSectionData& _PSD)
 
   updateHeaderFromSection(pSection);
 
-  boost::filesystem::path p(sSectionFileName);
+  std::filesystem::path p(sSectionFileName);
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 
@@ -953,7 +953,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
       throw std::runtime_error(boost::str(errMsg));
     }
 
-    boost::filesystem::path p(_PSD.getFile());
+    std::filesystem::path p(_PSD.getFile());
     std::string sBaseName = p.stem().string();
     pSection->setName(sBaseName);
   }
@@ -1049,7 +1049,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
   pSection->readPayload(iSectionFile, _PSD.getFormatType());
 
   // Post-cleanup
-  boost::filesystem::path p(sSectionFileName);
+  std::filesystem::path p(sSectionFileName);
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 

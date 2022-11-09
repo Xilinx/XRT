@@ -36,6 +36,7 @@ add_executable(${XBFLASH_NAME} ${XBFLASH_QSPI_SRC})
 set(Boost_USE_STATIC_LIBS ON)
 target_link_libraries(${XBFLASH_NAME}
       PRIVATE
+      stdc++fs
       boost_filesystem
       boost_system
       boost_program_options

@@ -23,7 +23,6 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -31,6 +30,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
 #include <regex>
 #include <sstream>
@@ -97,8 +97,8 @@ searchSSV2Xclbin(const std::string& logic_uuid,
                   const std::string& xclbin, boost::property_tree::ptree& _ptTest)
 {
   std::string formatted_fw_path("/opt/xilinx/firmware/");
-  boost::filesystem::path fw_dir(formatted_fw_path);
-  if (!boost::filesystem::is_directory(fw_dir)) {
+  std::filesystem::path fw_dir(formatted_fw_path);
+  if (!std::filesystem::is_directory(fw_dir)) {
     logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % fw_dir));
     logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
     _ptTest.put("status", test_token_failed);
@@ -109,15 +109,12 @@ searchSSV2Xclbin(const std::string& logic_uuid,
 
   for (const std::string& t : suffix) {
     std::regex e("(^" + formatted_fw_path + "[^/]+/[^/]+/[^/]+/).+\\." + t);
-    for (boost::filesystem::recursive_directory_iterator iter(fw_dir,
-          boost::filesystem::symlink_option::recurse), end; iter != end;) {
+    for (std::filesystem::recursive_directory_iterator iter(fw_dir,
+	 std::filesystem::directory_options::follow_directory_symlink), end; iter != end;) {
       std::string name = iter->path().string();
       std::smatch cm;
-      if (!boost::filesystem::is_directory(boost::filesystem::path(name.c_str()))) {
-        iter.no_push();
-      }
-      else {
-        iter.no_push(false);
+      if (!std::filesystem::is_directory(std::filesystem::path(name.c_str()))) {
+        iter.disable_recursion_pending();
       }
 
       std::regex_match(name, cm, e);
@@ -135,7 +132,7 @@ searchSSV2Xclbin(const std::string& logic_uuid,
           return cm.str(1) + "test/" + xclbin;
         }
       }
-      else if (iter.level() > 4) {
+      else if (iter.depth() > 4) {
         iter.pop();
         continue;
       }
@@ -175,7 +172,7 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
   const std::string dsapath("/opt/xilinx/dsa/");
   const std::string xsapath(getXsaPath(vendor));
 
-  if (!boost::filesystem::is_directory(dsapath) && !boost::filesystem::is_directory(xsapath)) {
+  if (!std::filesystem::is_directory(dsapath) && !std::filesystem::is_directory(xsapath)) {
     logger(_ptTest, "Error", boost::str(boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath));
     logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
     _ptTest.put("status", test_token_failed);
@@ -185,12 +182,12 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
   //create possible xclbin paths
   std::string xsaXclbinPath = xsapath + dev_name + "/test/" + xclbin;
   std::string dsaXclbinPath = dsapath + dev_name + "/test/" + xclbin;
-  boost::filesystem::path xsa_xclbin(xsaXclbinPath);
-  boost::filesystem::path dsa_xclbin(dsaXclbinPath);
-  if (boost::filesystem::exists(xsa_xclbin)) {
+  std::filesystem::path xsa_xclbin(xsaXclbinPath);
+  std::filesystem::path dsa_xclbin(dsaXclbinPath);
+  if (std::filesystem::exists(xsa_xclbin)) {
     return xsaXclbinPath;
   }
-  else if (boost::filesystem::exists(dsa_xclbin)) {
+  else if (std::filesystem::exists(dsa_xclbin)) {
     return dsaXclbinPath;
   }
 
@@ -244,27 +241,27 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
   // 0RP (nonDFX) flat shell support.
   // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
-  if (!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
+  if (!logic_uuid.empty() && !std::filesystem::exists(xclbinPath)) {
     logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
     _ptTest.put("status", test_token_skipped);
     return;
   }
 
   //check if xclbin is present
-  if (xclbinPath.empty() || !boost::filesystem::exists(xclbinPath)) {
+  if (xclbinPath.empty() || !std::filesystem::exists(xclbinPath)) {
     _ptTest.put("status", test_token_skipped);
     return;
   }
 
   // log xclbin test dir for debugging purposes
-  boost::filesystem::path xclbin_path(xclbinPath);
+  std::filesystem::path xclbin_path(xclbinPath);
   auto test_dir = xclbin_path.parent_path().string();
   logger(_ptTest, "Xclbin", test_dir);
 
   auto json_exists = [test_dir]() {
     const static std::string platform_metadata = "/platform.json";
     std::string platform_json_path(test_dir + platform_metadata);
-    return boost::filesystem::exists(platform_json_path) ? true : false;
+    return std::filesystem::exists(platform_json_path) ? true : false;
   };
 
   std::ostringstream os_stdout;
@@ -290,8 +287,8 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
 
     // Parse if the file exists here
     std::string  xrtTestCasePath = "/opt/xilinx/xrt/test/" + test_name;
-    boost::filesystem::path xrt_path(xrtTestCasePath);
-    if (!boost::filesystem::exists(xrt_path)) {
+    std::filesystem::path xrt_path(xrtTestCasePath);
+    if (!std::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
       logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
       _ptTest.put("status", test_token_failed);
@@ -324,8 +321,8 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
   else {
     //check if testcase is present
     std::string xrtTestCasePath = "/opt/xilinx/xrt/test/" + py;
-    boost::filesystem::path xrt_path(xrtTestCasePath);
-    if (!boost::filesystem::exists(xrt_path)) {
+    std::filesystem::path xrt_path(xrtTestCasePath);
+    if (!std::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
       logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
       _ptTest.put("status", test_token_failed);
@@ -742,7 +739,7 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
     xclbinPath = searchLegacyXclbin(vendor, name, xclbin, ptTest);
   }
 
-  if (!boost::filesystem::exists(xclbinPath)) {
+  if (!std::filesystem::exists(xclbinPath)) {
     logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin));
     ptTest.put("status", test_token_skipped);
     return false;
@@ -1724,7 +1721,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
     // Output file
-    if (!sOutput.empty() && !XBU::getForce() && boost::filesystem::exists(sOutput))
+    if (!sOutput.empty() && !XBU::getForce() && std::filesystem::exists(sOutput))
         throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
 
     if (testsToRun.empty())
@@ -1747,10 +1744,10 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     // check if xclbin folder path is provided
     if (!xclbin_location.empty()) {
       XBU::verbose("Sub command: --path");
-      if (!boost::filesystem::exists(xclbin_location) || !boost::filesystem::is_directory(xclbin_location))
+      if (!std::filesystem::exists(xclbin_location) || !std::filesystem::is_directory(xclbin_location))
         throw xrt_core::error((boost::format("Invalid directory path : '%s'") % xclbin_location).str());
       if (xclbin_location.compare(".") == 0 || xclbin_location.compare("./") == 0)
-        xclbin_location = boost::filesystem::current_path().string();
+        xclbin_location = std::filesystem::current_path().string();
       if (xclbin_location.back() != '/')
         xclbin_location.append("/");
     }
