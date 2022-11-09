@@ -93,9 +93,9 @@ public:
 
   //Exec Buf with ctx handle.
   void
-  exec_buf_ctx(xclBufferHandle boh, const xrt::hw_context& hwctx) override
+  exec_buf(xclBufferHandle boh, const xrt::hw_context& hwctx) override
   {
-      xrt::shim_int::exec_buf_ctx(get_device_handle(), boh, hwctx);
+      xrt::shim_int::exec_buf(get_device_handle(), boh, hwctx);
   }
   ////////////////////////////////////////////////////////////////
 

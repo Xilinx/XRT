@@ -2217,10 +2217,10 @@ register_xclbin(const xrt::xclbin&)
 //Exec Buf with ctx handle.
 void
 shim::
-exec_buf_ctx(xclBufferHandle boh, const xrt::hw_context& hwctx)
+exec_buf(xclBufferHandle boh, const xrt::hw_context& hwctx)
 {
-  //TODO: Implement new fuction
-  throw xrt_core::ishim::not_supported_error{ __func__ };
+  // TODO: Implement new function, for now just call legacy xclExecBuf().
+    xclExecBuf(boh);
 }
 
 } // namespace xocl
@@ -2276,10 +2276,10 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
 
 //Exec Buf with ctx handle.
 void
-exec_buf_ctx(xclDeviceHandle handle, xclBufferHandle bohdl, const xrt::hw_context& hwctx)
+exec_buf(xclDeviceHandle handle, xclBufferHandle bohdl, const xrt::hw_context& hwctx)
 {
     auto shim = get_shim_object(handle);
-    return shim->exec_buf_ctx(bohdl, hwctx);
+    return shim->exec_buf(bohdl, hwctx);
 }
 
 } // xrt::shim_int
