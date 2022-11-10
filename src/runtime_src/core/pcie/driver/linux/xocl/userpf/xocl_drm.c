@@ -662,7 +662,7 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	struct drm_xocl_mm_stat *mm_stat = &drm_p->mm_usage_stat[ddr];
 
 	if (!pstat) {
-        	xocl_err(drm_p->ddev->dev, "Invalid memory stats");
+        	xocl_err(drm_p->ddev->dev, "Invalid memory %d stats", ddr);
 		return;
 	}
 
@@ -676,7 +676,7 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	struct drm_xocl_mm_stat *mm_stat = &drm_p->mm_usage_stat[ddr];
 
 	if (!mm_stat->is_used) {
-        	xocl_err(drm_p->ddev->dev, "Invalid memory stats");
+        	xocl_err(drm_p->ddev->dev, "Invalid memory %d stats", ddr);
 		return;
 	}
 
