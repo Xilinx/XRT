@@ -64,13 +64,6 @@ namespace xdp {
     // Pre-defined metric sets
     metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};
 
-    // **** Core Module Counters ****
-    // NOTE 1: Reset events are dependent on actual profile counter reserved.
-    // NOTE 2: These counters are required HW workarounds with thresholds chosen 
-    //         to produce events before hitting the bug. For example, sync packets 
-    //         occur after 1024 cycles and with no events, is incorrectly repeated.
-    auto counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
-
     //Process the file dump interval
     aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_settings_file_dump_interval_s();
     
