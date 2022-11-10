@@ -114,6 +114,7 @@ namespace xdp {
     input_params->useDelay = useDelay;
     input_params->userControl = userControl;
 
+    //tile pairs are consecutive in the array
     int tileIdx = 0;
     for (uint16_t i = 0; i < numTiles * 2; i +=2) {
       input_params->tiles[i] = rows[tileIdx];
