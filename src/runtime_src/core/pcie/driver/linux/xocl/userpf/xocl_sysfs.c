@@ -888,7 +888,6 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kds_stat.attr,
 	&dev_attr_kds_cuctx_stat_raw.attr,
 	&dev_attr_kds_scuctx_stat_raw.attr,
-	&dev_attr_kds_scustat_raw.attr,
 	&dev_attr_kds_interrupt.attr,
 	&dev_attr_kds_interval.attr,
 	&dev_attr_ert_disable.attr,

@@ -375,18 +375,6 @@ kds_client_domain_refcnt(struct kds_client *client, int domain)
 	return refs;
 }
 
-static inline int
-kds_get_cu_hwctx_refcnt(struct kds_cu_mgmt *cu_mgmt, u32 idx)
-{
-	u32 ref_cnt = 0;
-
-	mutex_lock(&cu_mgmt->lock);
-	ref_cnt = cu_mgmt->cu_hwctx_refs[idx];
-	mutex_unlock(&cu_mgmt->lock);
-
-	return ref_cnt;
-}
-
 /**
  * kds_test_refcnt - Determine whether the cu_refs[idx] is set
  *
@@ -735,9 +723,6 @@ kds_add_cu_context(struct kds_sched *kds, struct kds_client *client,
 		if (cu_set == 0)
 			++cu_mgmt->cu_refs[cu_idx];
 	
-	/* Increment the hw reference count for this CU */	
-	++cu_mgmt->cu_hwctx_refs[cu_idx];
-
 	mutex_unlock(&cu_mgmt->lock);
 
 	return 0;
@@ -776,10 +761,6 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 			pid_nr(client->pid), domain, cu_idx);
 		return -EINVAL;
 	}
-
-	/* Some reference count (i.e. hw context ) is still active */
-	if (kds_get_cu_hwctx_refcnt(cu_mgmt, cu_idx) > 0)
-		goto skip;
 
 	/* Before close, make sure no remain commands in CU's queue. */
 	if (domain == DOMAIN_PL) {
@@ -871,8 +852,6 @@ skip:
 			--cu_mgmt->cu_refs[cu_idx];
 		}
 
-	/* Decrement the hw context reference count for this CU */
-	--cu_mgmt->cu_hwctx_refs[cu_idx];
 	mutex_unlock(&cu_mgmt->lock);
 
 	return 0;
@@ -1214,7 +1193,6 @@ static void
 _kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_hw_ctx *hw_ctx)
 {
-	int ret = 0;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_ctx *next = NULL;
 
