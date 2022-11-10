@@ -8,13 +8,16 @@
 // core/include/experimental/xrt_bo.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
-#include "core/include/experimental/xrt_bo.h"
-#include "core/include/experimental/xrt_aie.h"
+#include "core/include/xrt/xrt_bo.h"
+#include "core/include/xrt/xrt_aie.h"
+#include "core/include/experimental/xrt_hw_context.h"
+
 #include "native_profile.h"
 #include "bo.h"
 
 #include "device_int.h"
 #include "handle.h"
+#include "hw_context_int.h"
 #include "kernel_int.h"
 #include "core/common/device.h"
 #include "core/common/memalign.h"
@@ -55,21 +58,15 @@ is_sw_emulation()
 }
 
 inline bool
-is_nodma(const xrt_core::device* core_device)
+is_nodma(const xrt_core::device* device)
 {
-  return core_device->is_nodma();
+  return device->is_nodma();
 }
 
 inline bool
 is_nodma(const xrt::device& device)
 {
   return is_nodma(device.get_handle().get());
-}
-
-inline bool
-is_nodma(xclDeviceHandle xhdl)
-{
-  return is_nodma(xrt_core::get_userpf_device(xhdl).get());
 }
 
 }
@@ -106,6 +103,51 @@ send_exception_message(const std::string& msg)
 {
   send_exception_message(msg.c_str());
 }
+
+} // namespace
+
+namespace {
+
+// The xrt::bo is extended to capture the hardware context (if any) in
+// which the bo is allocated.  In order to minimize changes to various
+// constructors, the device_type class captures both a core device
+// object and a hardware context, where the hardware context is allowed
+// to be empty.
+class device_type
+{
+  xrt::hw_context m_hwctx;
+  std::shared_ptr<xrt_core::device> m_device;
+public:
+  device_type()
+  {}
+
+  device_type(std::shared_ptr<xrt_core::device> device)
+    : m_device(std::move(device))
+  {}
+
+  device_type(xrt::hw_context hwctx)
+    : m_hwctx(std::move(hwctx))
+    , m_device(xrt_core::hw_context_int::get_core_device(m_hwctx))
+  {}
+
+  const xrt_core::device*
+  get_core_device() const
+  {
+    return m_device.get();
+  }
+
+  const std::shared_ptr<xrt_core::device>&
+  get_device() const
+  {
+    return m_device;
+  }
+
+  xrt_core::device*
+  operator->() const
+  {
+    return m_device.get();
+  }
+};
 
 } // namespace
 
@@ -154,7 +196,7 @@ private:
 
 protected:
   // deliberately made protected, this is a file-scoped controlled API
-  std::shared_ptr<xrt_core::device> device;     // NOLINT device where bo is allocated
+  device_type device;                           // NOLINT device where bo is allocated
   std::vector<std::shared_ptr<bo_impl>> clones; // NOLINT local m2m clones if any
   xrt_buffer_handle handle = null_bo;           // NOLINT driver bo handle
   size_t size = 0;                              // NOLINT size of buffer
@@ -166,31 +208,40 @@ protected:
 
 public:
   explicit bo_impl(size_t sz)
-    : handle(XRT_INVALID_BUFFER_HANDLE), size(sz), free_bo(false)
+    : handle(XRT_INVALID_BUFFER_HANDLE)
+    , size(sz)
+    , free_bo(false)
   {}
 
-  bo_impl(xclDeviceHandle dhdl, xrt_buffer_handle bhdl, size_t sz)
-    : device(xrt_core::get_userpf_device(dhdl)), handle(bhdl), size(sz), free_bo(true)
+  bo_impl(device_type dev, xrt_buffer_handle bhdl, size_t sz)
+    : device(std::move(dev))
+    , handle(bhdl)
+    , size(sz)
+    , free_bo(true)
   {}
 
-  bo_impl(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
-    : device(xrt_core::get_userpf_device(dhdl)), handle(device->import_bo(ehdl)), free_bo(true)
+  bo_impl(device_type dev, xclBufferExportHandle ehdl)
+    : device(std::move(dev))
+    , handle(device->import_bo(ehdl))
+    , free_bo(true)
   {
     xclBOProperties prop{};
     device->get_bo_properties(handle, &prop);
     size = prop.size;
   }
 
-  bo_impl(xclDeviceHandle dhdl, pid_type pid, xclBufferExportHandle ehdl)
-    : device(xrt_core::get_userpf_device(dhdl)), handle(device->import_bo(pid.pid, ehdl)), free_bo(true)
+  bo_impl(device_type dev, pid_type pid, xclBufferExportHandle ehdl)
+    : device(std::move(dev))
+    , handle(device->import_bo(pid.pid, ehdl))
+    , free_bo(true)
   {
     xclBOProperties prop{};
     device->get_bo_properties(handle, &prop);
     size = prop.size;
   }
 
-  bo_impl(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
-    : device(xrt_core::get_userpf_device(dhdl))
+  bo_impl(device_type dev, xcl_buffer_handle xhdl)
+    : device(std::move(dev))
     , handle(to_xrt_buffer_handle(xhdl.bhdl))
     , free_bo(false)
   {
@@ -200,7 +251,10 @@ public:
   }
 
   bo_impl(const bo_impl* parent, size_t sz)
-    : device(parent->device), handle(parent->handle), size(sz), free_bo(false)
+    : device(parent->device)
+    , handle(parent->handle)
+    , size(sz)
+    , free_bo(false)
   {}
 
   virtual
@@ -240,9 +294,15 @@ public:
   }
 
   const xrt_core::device*
+  get_core_device() const
+  {
+    return device.get_core_device();
+  }
+
+  const std::shared_ptr<xrt_core::device>&
   get_device() const
   {
-    return device.get();
+    return device.get_device();
   }
 
   xclBufferExportHandle
@@ -303,7 +363,7 @@ public:
     try {
       if (xrt_core::config::get_cdma()) {
         xrt_core::kernel_int::copy_bo_with_kdma
-          (device, sz, get_xcl_handle(), dst_offset, src->get_xcl_handle(), src_offset);
+          (get_device(), sz, get_xcl_handle(), dst_offset, src->get_xcl_handle(), src_offset);
         return;
       }
     }
@@ -511,10 +571,10 @@ public:
     if(!async_info.found(m_gmio_name, this))
       return;
 
-    auto dev = const_cast<xrt_core::device*>(m_bo.get_handle()->get_device());
+    auto device = m_bo.get_handle()->get_device();
     // DMA has not finished; Wait for it;
     // In future wait only for specific m_bd_num
-    dev->wait_gmio(m_gmio_name.c_str());
+    device->wait_gmio(m_gmio_name.c_str());
     // All outstanding DMAs for this gmio_name have finishedd; for all bd numbers
     async_info.clear(m_gmio_name);
   }
@@ -555,8 +615,8 @@ class buffer_ubuf : public bo_impl
   void* ubuf;
 
 public:
-  buffer_ubuf(xclDeviceHandle dhdl, xrt_buffer_handle bhdl, size_t sz, void* buf)
-    : bo_impl(dhdl, bhdl, sz)
+  buffer_ubuf(const device_type& dev, xrt_buffer_handle bhdl, size_t sz, void* buf)
+    : bo_impl(dev, bhdl, sz)
     , ubuf(buf)
   {}
 
@@ -577,8 +637,9 @@ class buffer_hbuf : public bo_impl
   xrt_core::aligned_ptr_type hbuf;
 
 public:
-  buffer_hbuf(xclDeviceHandle dhdl, xrt_buffer_handle bhdl, size_t sz, xrt_core::aligned_ptr_type&& b)
-    : bo_impl(dhdl, bhdl, sz), hbuf(std::move(b))
+  buffer_hbuf(const device_type& dev, xrt_buffer_handle bhdl, size_t sz, xrt_core::aligned_ptr_type&& b)
+    : bo_impl(dev, bhdl, sz)
+    , hbuf(std::move(b))
   {}
 
   void*
@@ -597,8 +658,8 @@ class buffer_kbuf : public bo_impl
   void* hbuf;
 
 public:
-  buffer_kbuf(xclDeviceHandle dhdl, xrt_buffer_handle bhdl, size_t sz)
-    : bo_impl(dhdl, bhdl, sz), hbuf(device->map_bo(handle, true))
+  buffer_kbuf(const device_type& dev, xrt_buffer_handle bhdl, size_t sz)
+    : bo_impl(dev, bhdl, sz), hbuf(device->map_bo(handle, true))
   {}
 
   ~buffer_kbuf() override
@@ -639,8 +700,8 @@ public:
   //
   // @device:  device to import to
   // @ehdl:    export handle obtained by calling export_buffer
-  buffer_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
-    : bo_impl(dhdl, ehdl)
+  buffer_import(const device_type& dev, xclBufferExportHandle ehdl)
+    : bo_impl(dev, ehdl)
   {
     try {
       hbuf = device->map_bo(handle, true);
@@ -658,8 +719,8 @@ public:
   //
   // This consrructor works on linux only and require pidfd support in
   // linux kernel.
-  buffer_import(xclDeviceHandle dhdl, pid_type pid, xclBufferExportHandle ehdl)
-    : bo_impl(dhdl, pid, ehdl)
+  buffer_import(const device_type& dev, pid_type pid, xclBufferExportHandle ehdl)
+    : bo_impl(dev, pid, ehdl)
   {
     try {
       hbuf = device->map_bo(handle, true);
@@ -705,8 +766,8 @@ public:
 class buffer_dbuf : public bo_impl
 {
 public:
-  buffer_dbuf(xclDeviceHandle dhdl, xrt_buffer_handle bhdl, size_t sz)
-    : bo_impl(dhdl, bhdl, sz)
+  buffer_dbuf(const device_type& dev, xrt_buffer_handle bhdl, size_t sz)
+    : bo_impl(dev, bhdl, sz)
   {}
 
   void*
@@ -747,10 +808,12 @@ class buffer_nodma : public bo_impl
   }
 
 public:
-  buffer_nodma(xclDeviceHandle dhdl, xrt_buffer_handle hbuf, xrt_buffer_handle dbuf, size_t sz)
-    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
+  buffer_nodma(const device_type& dev, xrt_buffer_handle hbuf, xrt_buffer_handle dbuf, size_t sz)
+    : bo_impl(sz)
+    , m_host_only(dev, hbuf, sz)
+    , m_device_only(dev, dbuf, sz)
   {
-    device = xrt_core::get_userpf_device(dhdl);
+    device = dev;
     handle = dbuf;
   }
 
@@ -845,8 +908,8 @@ public:
 class buffer_xbuf : public bo_impl
 {
 public:
-  buffer_xbuf(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
-    : bo_impl(dhdl, xhdl)
+  buffer_xbuf(const device_type& dev, xcl_buffer_handle xhdl)
+    : bo_impl(dev, xhdl)
   {}
 
   void*
@@ -889,8 +952,8 @@ public:
 class buffer_clone : public bo_impl
 {
 public:
-  buffer_clone(xclDeviceHandle dhdl, const std::shared_ptr<bo_impl>& src, xrt_buffer_handle clone, size_t sz)
-    : bo_impl(dhdl, clone, sz)
+  buffer_clone(const device_type& dev, const std::shared_ptr<bo_impl>& src, xrt_buffer_handle clone, size_t sz)
+    : bo_impl(dev, clone, sz)
   {
     // copy src to clone
     copy(src.get(), src->get_size(), 0, 0);
@@ -915,17 +978,15 @@ get_boh(xrtBufferHandle bhdl)
 }
 
 static xrt_buffer_handle
-alloc_bo(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
+alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  auto device = xrt_core::get_userpf_device(dhdl);
   flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
   return device->alloc_bo(userptr, sz, flags);
 }
 
 static xrt_buffer_handle
-alloc_bo(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
+alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  auto device = xrt_core::get_userpf_device(dhdl);
   auto xflags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
   try {
     return device->alloc_bo(sz, xflags);
@@ -942,21 +1003,21 @@ alloc_bo(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup g
 
 // driver allocates host buffer
 static std::shared_ptr<xrt::bo_impl>
-alloc_kbuf(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
+alloc_kbuf(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  auto handle = alloc_bo(dhdl, sz, flags, grp);
-  auto boh = std::make_shared<xrt::buffer_kbuf>(dhdl, handle, sz);
+  auto handle = alloc_bo(device, sz, flags, grp);
+  auto boh = std::make_shared<xrt::buffer_kbuf>(device, handle, sz);
   return boh;
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_ubuf(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
+alloc_ubuf(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   // On NoDMA platforms a userptr would require userspace management
   // of specified userptr with extra memcpy on sync and copy.  If
   // supported then it would hide inefficient application code, so
   // just say no.
-  if (is_nodma(dhdl))
+  if (is_nodma(device.get_core_device()))
     throw xrt_core::error(EINVAL, "userptr is not supported for NoDMA platforms");
 
   if (flags & XRT_BO_FLAGS_HOST_ONLY)
@@ -967,92 +1028,92 @@ alloc_ubuf(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags,
     throw xrt_core::error(EINVAL, "userptr is not aligned");
 
   // driver pins and manages userptr
-  auto handle = alloc_bo(dhdl, userptr, sz, flags, grp);
-  auto boh = std::make_shared<xrt::buffer_ubuf>(dhdl, handle, sz, userptr);
+  auto handle = alloc_bo(device, userptr, sz, flags, grp);
+  auto boh = std::make_shared<xrt::buffer_ubuf>(device, handle, sz, userptr);
   return boh;
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_hbuf(xclDeviceHandle dhdl, xrt_core::aligned_ptr_type&& hbuf, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
+alloc_hbuf(const device_type& device, xrt_core::aligned_ptr_type&& hbuf, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  auto handle =  alloc_bo(dhdl, hbuf.get(), sz, flags, grp);
-  auto boh = std::make_shared<xrt::buffer_hbuf>(dhdl, handle, sz, std::move(hbuf));
+  auto handle =  alloc_bo(device, hbuf.get(), sz, flags, grp);
+  auto boh = std::make_shared<xrt::buffer_hbuf>(device, handle, sz, std::move(hbuf));
   return boh;
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_dbuf(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
+alloc_dbuf(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
-  auto handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
-  auto boh = std::make_shared<xrt::buffer_dbuf>(dhdl, handle, sz);
+  auto handle = alloc_bo(device, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
+  auto boh = std::make_shared<xrt::buffer_dbuf>(device, handle, sz);
   return boh;
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
+alloc_nodma(const device_type& device, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
   constexpr size_t align = 64;
   if (sz % align)
     throw xrt_core::error(EINVAL, "Invalid buffer size '" + std::to_string(sz) +
                           "', must be multiple of 64 bytes for NoDMA platforms");
 
-  auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
-  auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
-  auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
+  auto hbuf_handle = alloc_bo(device, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
+  auto dbuf_handle = alloc_bo(device, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
+  auto boh = std::make_shared<xrt::buffer_nodma>(device, hbuf_handle, dbuf_handle, sz);
   return boh;
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
+alloc(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   auto type = flags & ~XRT_BO_FLAGS_MEMIDX_MASK;
   switch (type) {
   case 0:
 #ifndef XRT_EDGE
-    if (is_nodma(dhdl))
-      return alloc_nodma(dhdl, sz, flags, grp);
+    if (is_nodma(device.get_core_device()))
+      return alloc_nodma(device, sz, flags, grp);
     else if (is_sw_emulation())
       // In DC scenario, for sw_emu, use the xclAllocBO and xclMapBO instead of xclAllocUserPtrBO,
       // which helps to remove the extra copy in sw_emu.
-      return alloc_kbuf(dhdl, sz, flags, grp);
+      return alloc_kbuf(device, sz, flags, grp);
     else
-      return alloc_hbuf(dhdl, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
+      return alloc_hbuf(device, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
 #endif
   case XCL_BO_FLAGS_CACHEABLE:
   case XCL_BO_FLAGS_SVM:
   case XCL_BO_FLAGS_HOST_ONLY:
   case XCL_BO_FLAGS_P2P:
   case XCL_BO_FLAGS_EXECBUF:
-    return alloc_kbuf(dhdl, sz, flags, grp);
+    return alloc_kbuf(device, sz, flags, grp);
   case XCL_BO_FLAGS_DEV_ONLY:
-    return alloc_dbuf(dhdl, sz, flags, grp);
+    return alloc_dbuf(device, sz, flags, grp);
   default:
     throw std::runtime_error("Unknown buffer type");
   }
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_xbuf(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
+alloc_xbuf(const device_type& device, xcl_buffer_handle xhdl)
 {
-  return std::make_shared<xrt::buffer_xbuf>(dhdl, xhdl);
+  return std::make_shared<xrt::buffer_xbuf>(device, xhdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_userptr(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
+alloc_userptr(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  return alloc_ubuf(dhdl, userptr, sz, flags, grp);
+  return alloc_ubuf(device, userptr, sz, flags, grp);
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
+alloc_import(const device_type& device, xclBufferExportHandle ehdl)
 {
-  return std::make_shared<xrt::buffer_import>(dhdl, ehdl);
+  return std::make_shared<xrt::buffer_import>(device, ehdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_import_from_pid(xclDeviceHandle dhdl, xrt::pid_type pid, xclBufferExportHandle ehdl)
+alloc_import_from_pid(const device_type& device, xrt::pid_type pid, xclBufferExportHandle ehdl)
 {
-  return std::make_shared<xrt::buffer_import>(dhdl, pid, ehdl);
+  return std::make_shared<xrt::buffer_import>(device, pid, ehdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
@@ -1066,21 +1127,28 @@ static std::shared_ptr<xrt::bo_impl>
 alloc_clone(const std::shared_ptr<xrt::bo_impl>& src, xrt::memory_group grp)
 {
   // Same device and flags as src bo
-  auto dhdl = src->get_device()->get_device_handle();
+  auto device = src->get_device();
   auto xflags = static_cast<xrtBufferFlags>(src->get_flags());
 
-  auto clone_handle = alloc_bo(dhdl, src->get_size(), xflags, grp);
-  auto clone = std::make_shared<xrt::buffer_clone>(dhdl, src, clone_handle, src->get_size());
+  auto clone_handle = alloc_bo(device, src->get_size(), xflags, grp);
+  auto clone = std::make_shared<xrt::buffer_clone>(device, src, clone_handle, src->get_size());
 
   // the clone implmentation lifetime is tied to src
   src->add_clone(clone);
   return clone;
 }
 
-static xclDeviceHandle
-get_xcl_device_handle(xrtDeviceHandle dhdl)
+static device_type
+xcl_to_core_device(xclDeviceHandle xhdl)
 {
-  return xrt_core::device_int::get_xcl_device_handle(dhdl);
+  return {xrt_core::get_userpf_device(xhdl)};
+}
+
+
+static device_type
+xrt_to_core_device(xrtDeviceHandle dhdl)
+{
+  return {xrt_core::device_int::get_core_device(dhdl)};
 }
 
 // When no flags are specified, automatically infer host_only for
@@ -1104,10 +1172,10 @@ adjust_buffer_flags(const xrt::device& device, xrt::bo::flags flags, xrt::memory
 // NoDMA platforms when memory bank is host memory only.
 // Optimized short cut to avoid converting xclDeviceHandle to core device
 static xrtBufferFlags
-adjust_buffer_flags(xclDeviceHandle dhdl, xrt::bo::flags flags, xrt::memory_group grp)
+adjust_buffer_flags(const device_type& dev, xrt::bo::flags flags, xrt::memory_group grp)
 {
   if (flags == xrt::bo::flags::normal)
-    return adjust_buffer_flags(xrt::device{dhdl}, flags, grp);
+    return adjust_buffer_flags(xrt::device{dev.get_device()}, flags, grp);
   return static_cast<xrtBufferFlags>(flags);
 }
 
@@ -1206,42 +1274,42 @@ wait()
 bo::
 bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc_userptr, dhdl, userptr, sz, adjust_buffer_flags(dhdl, flags, grp), grp))
+      alloc_userptr, xcl_to_core_device(dhdl), userptr, sz, adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc, dhdl, size, adjust_buffer_flags(dhdl, flags, grp), grp))
+      alloc, xcl_to_core_device(dhdl), size, adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-	   alloc_import, dhdl, ehdl))
+      alloc_import, xcl_to_core_device(dhdl), ehdl))
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, pid_type pid, xclBufferExportHandle ehdl)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-            alloc_import_from_pid, dhdl, pid , ehdl))
+      alloc_import_from_pid, xcl_to_core_device(dhdl), pid , ehdl))
 {}
 
 bo::
 bo(const bo& parent, size_t size, size_t offset)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-	   alloc_sub, parent.handle, size, offset))
+      alloc_sub, parent.handle, size, offset))
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
-  : handle(alloc_xbuf(dhdl, xhdl))
+  : handle(alloc_xbuf(xcl_to_core_device(dhdl), xhdl))
 {}
 
 bo::
 bo(xrtBufferHandle xhdl)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-	   get_boh, xhdl))
+      get_boh, xhdl))
 {}
 
 size_t
@@ -1378,7 +1446,7 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, userptr, size, flags, grp]{
-      auto boh = alloc_userptr(get_xcl_device_handle(dhdl), userptr, size, flags, grp);
+      auto boh = alloc_userptr(xcl_to_core_device(dhdl), userptr, size, flags, grp);
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
@@ -1401,7 +1469,7 @@ xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGro
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, size, flags, grp]{
-      auto boh = alloc(get_xcl_device_handle(dhdl), size, flags, grp);
+      auto boh = alloc(xcl_to_core_device(dhdl), size, flags, grp);
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
@@ -1445,7 +1513,7 @@ xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, ehdl]{
-      auto boh = alloc_import(get_xcl_device_handle(dhdl), ehdl);
+      auto boh = alloc_import(xcl_to_core_device(dhdl), ehdl);
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
@@ -1484,7 +1552,7 @@ xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xclBufferHandle xhdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, xhdl] {
-      auto boh = alloc_xbuf(xrtDeviceToXclDevice(dhdl), xcl_buffer_handle{xhdl});
+      auto boh = alloc_xbuf(xrt_to_core_device(dhdl), xcl_buffer_handle{xhdl});
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
