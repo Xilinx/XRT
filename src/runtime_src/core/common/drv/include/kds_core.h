@@ -96,7 +96,6 @@ struct kds_cu_mgmt {
 	int			  num_cdma;
 	u32			  cu_intr[MAX_CUS];
 	u32			  cu_refs[MAX_CUS];
-	u32			  cu_hwctx_refs[MAX_CUS];
 	struct cu_stats __percpu *cu_stats;
 	int			  rw_shared;
 };
