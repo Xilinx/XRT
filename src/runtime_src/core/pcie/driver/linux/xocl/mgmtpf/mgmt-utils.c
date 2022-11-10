@@ -1,23 +1,17 @@
 /**
- *  Copyright (C) 2017-2022 Xilinx, Inc. All rights reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2017-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  *  Utility Functions for sysmon, axi firewall and other peripherals.
  *  Author: Umang Parekh
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
  */
+#include "mgmt-core.h"
 
 #include <linux/firmware.h>
-#include "mgmt-core.h"
 #include <linux/module.h>
+
+#include "xclfeatures.h"
 #include "../xocl_drv.h"
 #include "../xocl_xclbin.h"
 
@@ -383,6 +377,9 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_clear_pci_errors(lro);
 	store_pcie_link_info(lro);
 
+	/* Update the userspace fdt with the current values in the mgmt driver */
+	(void) xclmgmt_update_userpf_blob(lro);
+
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
 	else if (!force)
@@ -613,11 +610,13 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 {
-	int len, userpf_idx;
-	int ret;
-	struct FeatureRomHeader	rom_header;
-	int offset;
-	const int *version;
+	int len = 0;
+	int userpf_idx = 0;
+	int ret = 0;
+	struct FeatureRomHeader rom_header = {};
+	struct VmrStatus vmr_header = {};
+	int offset = 0;
+	const int *version = NULL;
 
 	if (!lro->core.fdt_blob)
 		return 0;
@@ -661,6 +660,25 @@ int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 	if (ret) {
 		mgmt_err(lro, "add vrom failed %d", ret);
 		goto failed;
+	}
+
+	/* Only works on versal platforms */
+	ret = xocl_vmr_status(lro, &vmr_header);
+	if (ret != -ENODEV) {
+		if (ret) {
+			mgmt_err(lro, "Get vmr header failed %d", ret);
+			goto failed;
+		}
+
+		if (!vmr_header.boot_on_default)
+			mgmt_info(lro, "VMR not using default image");
+
+		ret = xocl_fdt_add_pair(lro, lro->userpf_blob, "vmr_status", &vmr_header,
+		sizeof(vmr_header));
+		if (ret) {
+			mgmt_err(lro, "Add vmr status failed %d", ret);
+			goto failed;
+		}
 	}
 
 	/* Get ERT firmware major version from mgmtpf blob */
@@ -804,14 +822,16 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 	mutex_lock(&lro->busy_mutex);
 	ret = xocl_rom_load_firmware(lro, &fw_buf, &fw_size);
-	if (ret)
+	if (ret) {
+		mgmt_err(lro, "ROM firmware load failure %d", ret);
 		goto failed;
+	}
 	bin_axlf = (struct axlf *)fw_buf;
 
 	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
 	if (!dtc_header) {
 		ret = -ENOENT;
-		mgmt_err(lro, "firmware does not contain PARTITION_METADATA");
+		mgmt_err(lro, "Firmware does not contain PARTITION_METADATA");
 		goto failed;
 	}
 
@@ -826,6 +846,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
 		/* Minimum set up for golden image. */
+		mgmt_info(lro, "Factory image detected. Performing minimum setup");
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_create_by_id(lro, XOCL_SUBDEV_MB);
 		goto failed;
@@ -834,6 +855,7 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
 	if (!lro->core.blp_blob) {
 		ret = -ENOMEM;
+		mgmt_err(lro, "Failed to allocate blp data region");
 		goto failed;
 	}
 	memcpy(lro->core.blp_blob, lro->core.fdt_blob,
@@ -842,15 +864,19 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	xclmgmt_connect_notify(lro, false);
 	xocl_subdev_destroy_all(lro);
 	ret = xocl_subdev_create_all(lro);
-	if (ret)
+	if (ret) {
+		mgmt_err(lro, "Failed to create sub devices");
 		goto failed;
+	}
 
 	/* VERSAL doesn't have icap to download, will need to refactor the code */
 	if (!(dev_info->flags & XOCL_DSAFLAG_VERSAL))
 		ret = xocl_icap_download_boot_firmware(lro);
 
-	if (ret)
+	if (ret) {
+		mgmt_err(lro, "Firmware ICAP download failed");
 		goto failed;
+	}
 
 	xclmgmt_update_userpf_blob(lro);
 

@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2020-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
@@ -295,69 +283,6 @@ enum class key_type
   xgq_scaling_power_override,
   xgq_scaling_temp_override,
   noop
-};
-
-// Base class for query request exceptions.
-//
-// Provides granularity for calling code to catch errors specific to
-// query request which are often acceptable errors because some
-// devices may not support all types of query requests.
-//
-// Other non query exceptions signal a different kind of error which
-// should maybe not be caught.
-//
-// The addition of the query request exception hierarchy does not
-// break existing code that catches std::exception (or all errors)
-// because ultimately the base query exception is-a std::exception
-class exception : public std::runtime_error
-{
-public:
-  explicit
-  exception(const std::string& err)
-    : std::runtime_error(err)
-  {}
-};
-
-class no_such_key : public exception
-{
-  key_type m_key;
-
-  using qtype = std::underlying_type<query::key_type>::type;
-public:
-  explicit
-  no_such_key(key_type k)
-    : exception(boost::str(boost::format("No such query request (%d)") % static_cast<qtype>(k)))
-    , m_key(k)
-  {}
-
-  no_such_key(key_type k, const std::string& msg)
-    : exception(msg)
-    , m_key(k)
-  {}
-
-  key_type
-  get_key() const
-  {
-    return m_key;
-  }
-};
-
-class sysfs_error : public exception
-{
-public:
-  explicit
-  sysfs_error(const std::string& msg)
-    : exception(msg)
-  {}
-};
-
-class not_supported : public exception
-{
-public:
-  explicit
-  not_supported(const std::string& msg)
-    : exception(msg)
-  {}
 };
 
 struct pcie_vendor : request
@@ -2527,12 +2452,11 @@ struct is_recovery : request
   get(const device*) const = 0;
 };
 
-/*
- * struct is_versal - check if device is versal or not
- * A value of true means it is a versal device.
- * This entry is needed as some of the operations are handled
- * differently on versal devices compared to Alveo devices
- */
+
+// struct is_versal - check if device is versal or not
+// A value of true means it is a versal device.
+// This entry is needed as some of the operations are handled
+// differently on versal devices compared to Alveo devices
 struct is_versal : request
 {
   using result_type = bool;
@@ -2542,6 +2466,9 @@ struct is_versal : request
   get(const device*) const = 0;
 };
 
+// struct is_ready - A boolean stating
+// if the specified device is ready for
+// XRT operations such as program or reset
 struct is_ready : request
 {
   using result_type = bool;
@@ -2982,6 +2909,11 @@ struct program_sc : request
   put(const device*, const boost::any&) const = 0;
 };
 
+
+// Returns the status the vmr subdevice. This
+// includes boot information and other data.
+// In the user partition only the boot information
+// is returned.
 struct vmr_status : request
 {
   using result_type = std::vector<std::string>;
