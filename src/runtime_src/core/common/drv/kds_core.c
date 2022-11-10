@@ -404,18 +404,6 @@ kds_client_domain_refcnt(struct kds_client *client, int domain)
 	return refs;
 }
 
-static inline int
-kds_get_cu_hwctx_refcnt(struct kds_cu_mgmt *cu_mgmt, u32 idx)
-{
-	u32 ref_cnt = 0;
-
-	mutex_lock(&cu_mgmt->lock);
-	ref_cnt = cu_mgmt->cu_hwctx_refs[idx];
-	mutex_unlock(&cu_mgmt->lock);
-
-	return ref_cnt;
-}
-
 /**
  * kds_test_refcnt - Determine whether the cu_refs[idx] is set
  *
