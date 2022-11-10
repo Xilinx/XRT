@@ -76,7 +76,7 @@ namespace built_in {
     static constexpr auto NUM_CORE_TRACE_EVENTS = 8;
     static constexpr auto NUM_MEMORY_TRACE_EVENTS = 8;
 
-    uint64_t delayCycles;
+    uint32_t delayCycles;
     uint16_t numTiles;
     uint8_t counterScheme;
     uint8_t metricSet; // functions, partial_stalls, all_stalls, etc. (enum above)
