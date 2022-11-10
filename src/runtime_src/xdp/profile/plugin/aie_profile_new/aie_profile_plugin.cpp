@@ -93,6 +93,15 @@ namespace xdp {
     if (!handle)
       return;
 
+    // Update the static database with information from xclbin
+    (db->getStaticInfo()).updateDevice(deviceID, handle);
+    {
+      struct xclDeviceInfo2 info;
+      if(xclGetDeviceInfo2(handle, &info) == 0) {
+        (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
+      }
+    }
+    
     // delete old data
     if (handleToAIEData.find(handle) != handleToAIEData.end())
         handleToAIEData.erase(handle);
@@ -105,71 +114,27 @@ namespace xdp {
     AIEData.supported = true; // initialize struct
 
     //Get the polling interval after the metadata has been defined.
-    metadata->getPollingInterval(); //moved later
+    metadata->getPollingInterval(); 
 
 
     AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, metadata);
     auto& implementation = AIEData.implementation;
 
-    if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
-      // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceID, handle);
-      {
-        struct xclDeviceInfo2 info;
-        if(xclGetDeviceInfo2(handle, &info) == 0) {
-          (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
-        }
-      }
-    }
+    
 
     // Ensure we only read/configure once per xclbin
     if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
       // Update the AIE specific portion of the device
       // When new xclbin is loaded, the xclbin specific datastructure is already recreated
 
-      // 1. Runtime-defined counters
-      // NOTE: these take precedence
-
-
       //@TODO Implement specific CheckAIEDevice for only edge
       // if(!checkAieDevice(deviceId, handle))
       //   return;
-
-      // bool runtimeCounters = setMetrics(deviceId,handle);
-      // // bool runtimeCounters = setMetricsSettings(deviceId, handle);
-      // if(!runtimeCounters) 
-      //   runtimeCounters = setMetrics(deviceId, handle);
 
       //Sets up and calls the PS kernel on x86 implementation
       //Sets up and the hardware on the edge implementation
       implementation->updateDevice();
 
-      // 2. Compiler-defined counters
-      // if (!runtimeCounters) {
-      //   std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-      //   auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
-
-      //   if (counters.empty()) {
-      //     xrt_core::message::send(severity_level::warning, "XRT", 
-      //       "AIE Profile Counters were not found for this design. Please specify tile_based_[aie|aie_memory|interface_tile]_metrics under \"AIE_profile_settings\" section in your xrt.ini.");
-      //     (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
-      //     return;
-      //   }
-      //   else {
-      //     // XAie_DevInst* aieDevInst =
-      //     //   static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
-
-      //     // for (auto& counter : counters) {
-      //     //   tile_type tile;
-      //     //   auto payload = getCounterPayload(aieDevInst, tile, counter.column, counter.row, 
-      //     //                                    counter.startEvent);
-
-      //     //   (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,
-      //     //       counter.row + 1, counter.counterNumber, counter.startEvent, counter.endEvent,
-      //     //       counter.resetEvent, payload, counter.clockFreqMhz, counter.module, counter.name);
-      //     //}
-      //   }
-      // }
 
       (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
     }
@@ -237,8 +202,12 @@ namespace xdp {
     // Ask all threads to end
     for (auto& p : handleToAIEData){
       p.second.mThreadCtrlBool = false;
+    }
+
+    for (auto& p : handleToAIEData){
       p.second.mThread.join();
     }
+
   }
     // for (auto& t : handleToAIEData)
     //   t.second.mThread.join();

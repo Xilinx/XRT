@@ -33,7 +33,7 @@ namespace xdp {
 
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
-    bool checkAieDevice(uint64_t deviceId, void* handle);
+    // bool checkAieDevice(uint64_t deviceId, void* handle);
     void endPoll();
 
 
