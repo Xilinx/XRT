@@ -8,6 +8,7 @@
 
 // Local - Include Files
 #include "core/common/error.h"
+#include "core/common/info_vmr.h"
 #include "core/common/utils.h"
 #include "core/common/message.h"
 
@@ -92,10 +93,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
     pt_dev.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
 
     //user pf doesn't have mfg node. Also if user pf is loaded, it means that the card is not is mfg mode
-    bool is_mfg = false;
-    try{
-      is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
-    } catch(...) {}
+    const auto is_mfg = xrt_core::device_query_default<xrt_core::query::is_mfg>(device, false);
 
     //if factory mode
     if (is_mfg) {
@@ -109,7 +107,8 @@ XBUtilities::get_available_devices(bool inUserDomain)
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
       try { //1RP
         pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      } catch(...) {
+      }
+      catch(...) {
         // The id wasn't added
       }
 
@@ -117,18 +116,19 @@ XBUtilities::get_available_devices(bool inUserDomain)
         auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
         if (!logic_uuids.empty())
           pt_dev.put("id", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
-      } catch(...) {
+      }
+      catch(...) {
         // The id wasn't added
       }
 
-     try {
-       std::string stream;
-       auto  instance = xrt_core::device_query<xrt_core::query::instance>(device);
-       std::string pf = device->is_userpf() ? "user" : "mgmt";
-       pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
-     } catch(const xrt_core::query::exception&) {
-         // The instance wasn't added
-       }
+    try {
+      auto instance = xrt_core::device_query<xrt_core::query::instance>(device);
+      std::string pf = device->is_userpf() ? "user" : "mgmt";
+      pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
+    }
+    catch(const xrt_core::query::exception&) {
+        // The instance wasn't added
+    }
 
     }
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
@@ -318,8 +318,20 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   }
 }
 
+  static void 
+  check_versal_boot(const std::shared_ptr<xrt_core::device> &device)
+  {
+    if (xrt_core::vmr::is_default_boot(device.get()))
+      return;
+
+    std::cout << "***********************************************************\n";
+    std::cout << "*        WARNING          WARNING          WARNING        *\n";
+    std::cout << "*             Versal Platform in backup boot              *\n";
+    std::cout << "***********************************************************\n";
+  }
+
   std::shared_ptr<xrt_core::device>
-  XBUtilities::get_device ( const std::string &deviceBDF, bool in_user_domain)
+  XBUtilities::get_device( const std::string &deviceBDF, bool in_user_domain)
   {
     // -- If the deviceBDF is empty then do nothing
     if (deviceBDF.empty())
@@ -327,10 +339,16 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 
     // -- Collect the devices by name
     auto index = str2index(deviceBDF, in_user_domain);    // Can throw
+    std::shared_ptr<xrt_core::device> device;
     if(in_user_domain)
-      return xrt_core::get_userpf_device(index);
+      device = xrt_core::get_userpf_device(index);
+    else
+      device = xrt_core::get_mgmtpf_device(index);
 
-    return xrt_core::get_mgmtpf_device(index);
+    if (xrt_core::device_query<xq::is_versal>(device))
+      check_versal_boot(device);
+
+    return device;
   }
 
 void

@@ -1,17 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0
-/*
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2021-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ * 
  * Xilinx CU driver for memory to memory BO copy
- *
- * Copyright (C) 2021-2022 Xilinx, Inc.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  */
 
-#include "xrt_xclbin.h"
-#include "../xocl_drv.h"
-#include "xgq_cmd_vmr.h"
-#include "../xgq_xocl_plat.h"
 #include <linux/time.h>
+
+#include "xgq_cmd_vmr.h"
+#include "xrt_xclbin.h"
+#include "../xgq_xocl_plat.h"
+#include "../xocl_drv.h"
+#include "xclfeatures.h"
 
 /*
  * XGQ Host management driver design.
@@ -1156,6 +1159,27 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 
 	return xgq_log_page_fw(xgq->xgq_pdev, &xgq->xgq_vmr_system_dtb,
 		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB);
+}
+
+static int xgq_status(struct platform_device *pdev, struct VmrStatus *vmr_status_ptr)
+{
+	int rc = 0;
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xgq_cmd_cq_vmr_payload *vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
+
+	rc = vmr_status_query(xgq->xgq_pdev);
+	if (rc)
+		return rc;
+
+	vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
+
+	vmr_status_ptr->boot_on_default = vmr_status->boot_on_default;
+	vmr_status_ptr->boot_on_backup = vmr_status->boot_on_backup;
+	vmr_status_ptr->boot_on_recovery = vmr_status->boot_on_recovery;
+
+	return 0;
 }
 
 static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
@@ -3356,6 +3380,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
 	.vmr_load_firmware = xgq_log_page_metadata,
+	.vmr_status = xgq_status,
 };
 
 static const struct file_operations xgq_vmr_fops = {
