@@ -18,7 +18,6 @@
 
 #include <boost/algorithm/string.hpp>
 #include <cmath>
-#include <iostream>
 #include <memory>
 #include <cstring>
 
@@ -43,7 +42,6 @@ constexpr uint32_t ALIGNMENT_SIZE = 4096;
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
-  using module_type = xrt_core::edge::aie::module_type;
 
   void AieTrace_x86Impl::updateDevice() {
     // Set metrics for counters and trace events 
@@ -52,13 +50,6 @@ namespace xdp {
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       return;
     }
-  }
-
-  void AieTrace_x86Impl::flushDevice() {
-  }
-
-  void AieTrace_x86Impl::finishFlushDevice() {
-    // Release aie resources here
   }
 
   // No CMA checks on x86
@@ -73,15 +64,18 @@ namespace xdp {
     constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(xdp::built_in::MessageConfiguration)%ALIGNMENT_SIZE) > 0 ? (sizeof(xdp::built_in::MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(xdp::built_in::MessageConfiguration)%ALIGNMENT_SIZE));
 
     //Gather data to send to PS Kernel
-    std::string counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
-    std::string metricSet = metadata->getMetricSet();
+    std::string counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
+    std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
+    std::string metricSet = metadata->getMetricSet(metricsStr);
     uint8_t counterSchemeInt;
     uint8_t metricSetInt;
 
     auto tiles = metadata->getTilesForTracing();
-    uint32_t delayCycles = static_cast<uint32_t>(metadata->getTraceStartDelayCycles());
-    bool userControl = xrt_core::config::get_aie_trace_settings_start_type() == "kernel_event0";
-    bool useDelay = (metadata->getDelay() != 0);
+
+    metadata->setTraceStartControl();
+    uint32_t delayCycles = static_cast<uint32_t>(metadata->getDelay());
+    bool userControl = metadata->getUseUserControl();//xrt_core::config::get_aie_trace_settings_start_type() == "kernel_event0";
+    bool useDelay = metadata->getUseDelay();
 
     uint16_t rows[MAX_TILES];
     uint16_t cols[MAX_TILES];
@@ -120,8 +114,9 @@ namespace xdp {
     input_params->useDelay = useDelay;
     input_params->userControl = userControl;
 
+    //tile pairs are consecutive in the array
     int tileIdx = 0;
-    for (int i = 0; i < numTiles * 2; i +=2) {
+    for (uint16_t i = 0; i < numTiles * 2; i +=2) {
       input_params->tiles[i] = rows[tileIdx];
       input_params->tiles[i+1] = cols[tileIdx];
       tileIdx += 1;

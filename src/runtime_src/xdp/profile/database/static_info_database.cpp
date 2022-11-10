@@ -344,9 +344,35 @@ namespace xdp {
     else
       return xclbin->aie.clockRateAIEMHz ;
   }
+  
+  void VPStaticDatabase::setAIEClockRateMHz(std::shared_ptr<xrt_core::device> device, uint64_t deviceId){
+    std::lock_guard<std::mutex> lock(deviceLock) ;
 
-  void
-  VPStaticDatabase::setDeviceName(uint64_t deviceId, const std::string& name)
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return;
+
+    auto data = device->get_axlf_section(AIE_METADATA);
+    if (!data.first || !data.second)
+      return;
+
+    boost::property_tree::ptree aie_meta;
+
+    std::stringstream aie_stream;
+    aie_stream.write(data.first, data.second);
+    boost::property_tree::read_json(aie_stream,aie_meta);
+
+    //read_aie_metadata(data.first, data.second, aie_meta);
+    auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
+    
+    xclbin->aie.clockRateAIEMHz = dev_node.get<double>("AIEFrequency");
+  }
+
+
+  void VPStaticDatabase::setDeviceName(uint64_t deviceId, const std::string& name)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
 
@@ -388,6 +414,33 @@ namespace xdp {
 
     return xclbin->deviceIntf ;
   }
+
+  DeviceIntf* VPStaticDatabase::createDeviceIntf(uint64_t deviceId,
+                                                 xdp::Device* dev)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock);
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin();
+    if (xclbin == nullptr)
+      return nullptr;
+    if (xclbin->deviceIntf != nullptr)
+      return xclbin->deviceIntf;
+
+    xclbin->deviceIntf = new DeviceIntf();
+    xclbin->deviceIntf->setDevice(dev);
+    try {
+      xclbin->deviceIntf->readDebugIPlayout();
+    }
+    catch (std::exception& /* e */) {
+      // If reading the debug ip layout fails, we shouldn't have
+      // any device interface at all
+      delete xclbin->deviceIntf;
+      xclbin->deviceIntf = nullptr;
+    }
+    return xclbin->deviceIntf;
+  } 
 
   void VPStaticDatabase::setKDMACount(uint64_t deviceId, uint64_t num)
   {
@@ -1352,8 +1405,8 @@ namespace xdp {
     
     XclbinInfo* currentXclbin = new XclbinInfo() ;
     currentXclbin->uuid = device->get_xclbin_uuid() ;
-    currentXclbin->pl.clockRatePLMHz = findClockRate(device) ;
-
+    currentXclbin->pl.clockRatePLMHz = findClockRate(device) ;  
+    setAIEClockRateMHz(device,deviceId);
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
      */

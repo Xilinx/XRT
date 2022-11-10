@@ -313,20 +313,6 @@ get_aie_trace()
   return value;
 }
 
-inline bool
-get_aie_trace_flush()
-{
-  static bool value = detail::get_bool_value("Debug.aie_trace_flush", false);
-  return value;
-}
-
-inline std::string
-get_aie_trace_counter_scheme()
-{
-  static std::string value = detail::get_string_value("Debug.aie_trace_counter_scheme", "es2");
-  return value;
-}
-
 inline std::string
 get_aie_trace_metrics()
 {
@@ -355,13 +341,6 @@ inline unsigned int
 get_aie_trace_buffer_offload_interval_ms()
 {
   static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_ms", 10);
-  return value;
-}
-
-inline unsigned int
-get_aie_trace_file_dump_interval_s()
-{
-  static unsigned int value = detail::get_uint_value("Debug.aie_trace_file_dump_interval_s", 5);
   return value;
 }
 

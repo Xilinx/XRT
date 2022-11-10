@@ -20,18 +20,22 @@
 #include <cstdint>
 
 #include "xdp/profile/plugin/aie_trace_new/aie_trace_impl.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
+#include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
+#include "aie_trace_metadata.h"
 
 namespace xdp {
 
   class AieTracePluginUnified : public XDPPlugin {
   public:
-    XDP_EXPORT AieTracePluginUnified();
-    XDP_EXPORT ~AieTracePluginUnified();
-    XDP_EXPORT void updateAIEDevice(void* handle);
-    XDP_EXPORT void flushAIEDevice(void* handle);
-    XDP_EXPORT void finishFlushAIEDevice(void* handle);
-    XDP_EXPORT virtual void writeAll(bool openNewFiles);
-    XDP_EXPORT static bool alive();
+    AieTracePluginUnified();
+    virtual ~AieTracePluginUnified();
+    void updateAIEDevice(void* handle);
+    void flushAIEDevice(void* handle);
+    void finishFlushAIEDevice(void* handle);
+    virtual void writeAll(bool openNewFiles) override;
+    static bool alive();
 
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
@@ -39,10 +43,9 @@ namespace xdp {
 
   private:
     static bool live;
-    bool platformSupported = true;
     struct AIEData {
       uint64_t deviceID;
-      bool supported;
+      bool valid;
       DeviceIntf* devIntf;
       std::unique_ptr<AIETraceOffload> offloader;
       std::unique_ptr<AIETraceLogger> logger;
