@@ -64,7 +64,7 @@ namespace xdp {
     constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(xdp::built_in::MessageConfiguration)%ALIGNMENT_SIZE) > 0 ? (sizeof(xdp::built_in::MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(xdp::built_in::MessageConfiguration)%ALIGNMENT_SIZE));
 
     //Gather data to send to PS Kernel
-    std::string counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
+    std::string counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     std::string metricSet = metadata->getMetricSet(metricsStr);
     uint8_t counterSchemeInt;
