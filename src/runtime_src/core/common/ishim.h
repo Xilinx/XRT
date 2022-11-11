@@ -152,7 +152,7 @@ struct ishim
   // cannot be created for that xclbin.  This function throws
   // not_supported_error, if either not implemented or an xclbin
   // was explicitly loaded using load_xclbin
-  virtual xcl_hwctx_handle // ctx handle aka slot idx
+  virtual xcl_hwctx_handle
   create_hw_context(const xrt::uuid& /*xclbin_uuid*/, const xrt::hw_context::qos_type& /*qos*/, xrt::hw_context::access_mode /*mode*/) const
   { throw not_supported_error{__func__}; }
 
@@ -183,10 +183,27 @@ struct ishim
   wait_command(xcl_hwqueue_handle, xrt_buffer_handle /*cmdbo*/, int /*timeout_ms*/) const
   { throw not_supported_error{__func__}; }
 
-  // Registers an xclbin, but does not load it.
+  // Registers an xclbin with shim, but does not load it.
+  // This is no-op for most platform shims
   virtual void
   register_xclbin(const xrt::xclbin&) const
   { throw not_supported_error{__func__}; }
+
+  // Allocate a bo within ctx.  This is opt-in, currently reverts to
+  // legacy alloc_bo
+  virtual xrt_buffer_handle
+  alloc_bo(xcl_hwctx_handle, size_t size, unsigned int flags)
+  {
+    return alloc_bo(size, flags);
+  }
+
+  // Allocate a userptr bo within ctx.  This is opt-in, currently
+  // reverts to legacy alloc_bo
+  virtual xrt_buffer_handle
+  alloc_bo(xcl_hwctx_handle, void* userptr, size_t size, unsigned int flags)
+  {
+    return alloc_bo(userptr, size, flags);
+  }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
