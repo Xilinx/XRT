@@ -59,12 +59,7 @@ static void cu_xgq_check(void *core, struct xcu_status *status, bool force)
 	int ret = 0;
 
 	status->num_ready = 1;
-
-	do {
-		ret = xocl_xgq_check_response(cu_xgq->xgq, cu_xgq->xgq_client_id, &cu_status);
-	}
-	while (!ret);
-
+	while (!xocl_xgq_check_response(cu_xgq->xgq, cu_xgq->xgq_client_id, &cu_status));
 	status->new_status = (cu_status == KDS_SKCRASHED) ? CU_AP_CRASHED : CU_AP_IDLE;
 }
 
