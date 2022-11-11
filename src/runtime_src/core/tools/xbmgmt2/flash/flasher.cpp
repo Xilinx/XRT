@@ -232,6 +232,7 @@ void Flasher::readBack(const std::string& output)
     {
         XQSPIPS_Flasher xqspi_ps(m_device);
         xqspi_ps.readBack(output);
+	return;
     }
     case SPI:
     case OSPIVERSAL:
