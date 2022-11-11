@@ -35,52 +35,6 @@
 namespace xf {
 namespace plctrl {
 
-// re-use this code from "./core/edge/common/aie_parser.h"
-struct tile_type
-{
-    uint16_t row;
-    uint16_t col;
-    uint16_t itr_mem_row;
-    uint16_t itr_mem_col;
-    uint64_t itr_mem_addr;
-
-    bool is_trigger;
-};
-struct rtp_type
-{
-    std::string name;
-
-    uint16_t selector_row;
-    uint16_t selector_col;
-    uint16_t selector_lock_id;
-    uint64_t selector_addr;
-
-    uint16_t ping_row;
-    uint16_t ping_col;
-    uint16_t ping_lock_id;
-    uint64_t ping_addr;
-
-    uint16_t pong_row;
-    uint16_t pong_col;
-    uint16_t pong_lock_id;
-    uint64_t pong_addr;
-
-    bool is_plrtp;
-    bool is_input;
-    bool is_async;
-    bool is_connected;
-    bool require_lock;
-};
-struct buffer_type
-{
-    uint16_t row;
-    uint16_t col;
-    uint16_t ch_num;
-    uint16_t lock_id;
-    uint16_t bd_num;
-    bool s2mm;
-};
-
 class plController
 {
   public:

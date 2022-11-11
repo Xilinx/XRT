@@ -75,7 +75,7 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
                    (num_tile - 1) % tile.itr_mem_addr;
     }
     uint32_t metadata_num = num_tile;
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SET_AIE_ITERATION));
+    opcodeBuffer.push_back(static_cast<uint32_t>(SET_AIE_ITERATION));
     opcodeBuffer.push_back(num_iter);
     opcodeBuffer.push_back(itr_mem_addr);
     std::cout << boost::format("enqueue_set_aie_iteration: INFO: num_iter: %u, "
@@ -86,33 +86,33 @@ plController::enqueue_set_aie_iteration(const std::string& graphName,
 void
 plController::enqueue_enable_aie_cores()
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::ENABLE_AIE_CORES));
+    opcodeBuffer.push_back(static_cast<uint32_t>(ENABLE_AIE_CORES));
 }
 
 void
 plController::enqueue_disable_aie_cores()
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::DISABLE_AIE_CORES));
+    opcodeBuffer.push_back(static_cast<uint32_t>(DISABLE_AIE_CORES));
 }
 
 void
 plController::enqueue_sync(uint32_t pld)
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SYNC));
+    opcodeBuffer.push_back(static_cast<uint32_t>(SYNC));
     opcodeBuffer.push_back(pld);
 }
 
 void
 plController::enqueue_loop_begin(int trip_count)
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::LOOP_BEGIN));
+    opcodeBuffer.push_back(static_cast<uint32_t>(LOOP_BEGIN));
     opcodeBuffer.push_back(trip_count);
 }
 
 void
 plController::enqueue_loop_end()
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::LOOP_END));
+    opcodeBuffer.push_back(static_cast<uint32_t>(LOOP_END));
 }
 
 void
@@ -130,11 +130,11 @@ plController::enqueue_set_and_enqueue_dma_bd(const std::string& portName,
     auto buffer = buffers.at(idx);
 
     uint32_t dma_bd_value = 0x83FC0000 + dma_bd_len - 1;
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SET_DMA_BD));
+    opcodeBuffer.push_back(static_cast<uint32_t>(SET_DMA_BD));
     opcodeBuffer.push_back(buffer.bd_num);
     opcodeBuffer.push_back(dma_bd_value);
 
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::ENQUEUE_DMA_BD));
+    opcodeBuffer.push_back(static_cast<uint32_t>(ENQUEUE_DMA_BD));
     opcodeBuffer.push_back(buffer.bd_num);
     opcodeBuffer.push_back(buffer.ch_num);
     opcodeBuffer.push_back(buffer.s2mm);
@@ -156,7 +156,7 @@ plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal)
         throw std::runtime_error("Can't update RTP port '" + rtpPort +
                                  "' is not input");
 
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::UPDATE_AIE_RTP));
+    opcodeBuffer.push_back(static_cast<uint32_t>(UPDATE_AIE_RTP));
     opcodeBuffer.push_back(rtpVal);
     opcodeBuffer.push_back(ping_pong ? rtp.ping_addr : rtp.pong_addr);
 
@@ -175,14 +175,14 @@ plController::enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal)
 void
 plController::enqueue_sleep(uint32_t num_cycles)
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::SLEEP));
+    opcodeBuffer.push_back(static_cast<uint32_t>(SLEEP));
     opcodeBuffer.push_back(num_cycles);
 }
 
 void
 plController::enqueue_halt()
 {
-    opcodeBuffer.push_back(static_cast<uint32_t>(aie_cmd::HALT));
+    opcodeBuffer.push_back(static_cast<uint32_t>(HALT));
 }
 
 // re-use this code from "core/edge/common/aie_parser.cpp"
