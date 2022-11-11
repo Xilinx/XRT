@@ -64,7 +64,6 @@ set_target_properties(xrt_coreutil PROPERTIES
 # Private dependencies for fully resolved dynamic xrt_coreutil
 target_link_libraries(xrt_coreutil
   PRIVATE
-  stdc++fs
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   )
@@ -76,7 +75,6 @@ target_link_libraries(xrt_coreutil
 # libraries of boost
 target_link_libraries(xrt_coreutil_static
   INTERFACE
-  stdc++fs
   boost_filesystem
   boost_system
   )
@@ -84,11 +82,11 @@ target_link_libraries(xrt_coreutil_static
 if (NOT WIN32)
   # Additional link dependencies for xrt_coreutil
   # xrt_uuid.h depends on uuid
-  target_link_libraries(xrt_coreutil PRIVATE pthread dl PUBLIC uuid)
+  target_link_libraries(xrt_coreutil PRIVATE stdc++fs pthread dl PUBLIC uuid)
 
   # Targets of xrt_coreutil_static must link with these additional
   # system libraries
-  target_link_libraries(xrt_coreutil_static INTERFACE uuid dl rt pthread)
+  target_link_libraries(xrt_coreutil_static INTERFACE stdc++fs uuid dl rt pthread)
 endif()
 
 install(TARGETS xrt_coreutil
