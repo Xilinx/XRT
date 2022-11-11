@@ -22,5 +22,5 @@ override_dh_install:
 # Create configuration file for OpenCL
 	mkdir -p debian/tmp/etc/OpenCL/vendors/
 	echo "libxilinxopencl.so" > debian/tmp/etc/OpenCL/vendors/xilinx.icd
-	chmod -R 755 /etc/OpenCL
+	chmod -R 755 debian/tmp/etc/OpenCL
 	dh_install

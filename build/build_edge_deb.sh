@@ -13,8 +13,8 @@ usage()
     echo "Usage: $PROGRAM [options] "
     echo "  options:"
     echo "          -help                           Print this usage"
-    echo "          -aarch                          Architecture <aarch32/aarch64>"
-    echo "          -dist                           Distribution for the package build <focal/jammy>"
+    echo "          -aarch                          Architecture <arm64/arm32>"
+    echo "          -dist                           Distribution for the package build eg: focal or jammy"
     echo "          -clean, clean                   Remove build directories, pass 'aarch' option to it"
     echo ""
 }
@@ -85,26 +85,14 @@ THIS_SCRIPT_DIR=$(dirname "$THIS_SCRIPT")
 XRT_DIR=`readlink -f $THIS_SCRIPT_DIR/../`
 DEBIAN=`readlink -f $THIS_SCRIPT_DIR/debian`
 
-if [ -z $DIST ]; then
-    error "-dist is required option"
-fi
-
-if [[ $DIST == "jammy" ]]; then
-    OS_VERSION="22.04"
-elif [[ $DIST == "focal" ]]; then
-    OS_VERSION="20.04"
-else
-    error "$DIST is not a valid dist option"
-fi
-
 if [ -z $AARCH ]; then
     error "-aarch is required option"
 fi
 
-if [[ $AARCH == "aarch64" ]]; then
-    BUILD_FOLDER=deb_aarch64
-elif [[ $AARCH == "aarch32" ]]; then
-    BUILD_FOLDER=deb_aarch32
+if [[ $AARCH == "arm64" ]]; then
+    BUILD_FOLDER=deb_arm64
+elif [[ $AARCH == "arm32" ]]; then
+    BUILD_FOLDER=deb_arm32
 else
     error "$AARCH not valid aarch option"
 fi
@@ -138,7 +126,17 @@ cp -rf $DEBIAN $DEBIAN_ARTIFACTS
 sed -i "1d" $DEBIAN_ARTIFACTS/debian/changelog
 sed -i "1s/^/xrt (${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}) experimental;urgency=medium\n/" $DEBIAN_ARTIFACTS/debian/changelog
 
-time sbuild --no-run-lintian -d $DIST --arch=arm64 -s -n
+# Get distribution version from sysroot created
+OS_VERSION_STRING=`schroot -c ${DIST}-${AARCH} -d /home -- bash -c "grep '^DISTRIB_RELEASE' /etc/lsb-release"`
+if [ $? != 0 ]; then
+    echo "Error: sysroot $DIST-$AARCH not found"
+    exit 1
+fi
+
+OS_VERSION=`echo $OS_VERSION_STRING | awk -F= '{print $2}'`
+
+# Cross compile XRT using sysroot
+time sbuild --no-run-lintian -d $DIST --arch=$AARCH -s -n
 
 cd $THIS_SCRIPT_DIR/$BUILD_FOLDER
 # rename the packages created for consistency

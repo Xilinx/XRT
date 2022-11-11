@@ -6,18 +6,19 @@ KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 ifneq ($(src),)
 # building modules
 ifneq ($(wildcard $(src)/../common),)
-# dkms dir
-common_dir = ../common
+# dkms flow
+common_dir := ../common
 else
 # build from source code
-common_dir = ../../../common/drv
+common_dir := ../../../common/drv
 endif
 
 else
 # clean
-common_dir = ../../../common/drv
-ifeq ($(wildcard ../../../common/drv),)
-common_dir = ../common
+make_dir := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+common_dir := $(make_dir)/../../../common/drv
+ifeq ($(wildcard $(make_dir)/../../../common/drv),)
+common_dir := $(make_dir)/../common
 endif
 
 endif
