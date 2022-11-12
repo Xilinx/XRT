@@ -689,15 +689,15 @@ private:
 public:
   explicit
   kernel_command(std::shared_ptr<device_type> dev, xrt_core::hw_queue hwqueue, xrt::hw_context hwctx = xrt::hw_context())
-      : m_device(std::move(dev))
-      , m_hwqueue(std::move(hwqueue))
-      , m_hwctx(std::move(hwctx))
-      , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
-      , m_done(true)
+    : m_device(std::move(dev))
+    , m_hwqueue(std::move(hwqueue))
+    , m_hwctx(std::move(hwctx))
+    , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
+    , m_done(true)
   {
-      static unsigned int count = 0;
-      m_uid = count++;
-      XRT_DEBUGF("kernel_command::kernel_command(%d)\n", m_uid);
+    static unsigned int count = 0;
+    m_uid = count++;
+    XRT_DEBUGF("kernel_command::kernel_command(%d)\n", m_uid);
   }
 
   ~kernel_command() override

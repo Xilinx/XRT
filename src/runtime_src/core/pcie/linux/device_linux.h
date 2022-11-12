@@ -79,7 +79,7 @@ public:
     xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
   }
 
-  //Exec Buf with ctx handle.
+  // Exec Buf with hw ctx handle.
   void
   exec_buf(xrt_buffer_handle boh, xcl_hwctx_handle ctxhdl) override
   {

@@ -2199,7 +2199,7 @@ register_xclbin(const xrt::xclbin&)
   throw xrt_core::ishim::not_supported_error{__func__};
 }
 
-//Exec Buf with ctx handle.
+// Exec Buf with hw ctx handle.
 void
 shim::
 exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl)
@@ -2259,7 +2259,7 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
   shim->register_xclbin(xclbin);
 }
 
-//Exec Buf with ctx handle.
+// Exec Buf with hw ctx handle.
 void
 exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xcl_hwctx_handle ctxhdl)
 {

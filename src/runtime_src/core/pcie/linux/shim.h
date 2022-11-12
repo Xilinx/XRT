@@ -159,7 +159,7 @@ public:
   void
   register_xclbin(const xrt::xclbin&);
 
-  //Exec Buf with ctx handle.
+  // Exec Buf with hw ctx handle.
   void
   exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl);
 private:
