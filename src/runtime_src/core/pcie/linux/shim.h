@@ -159,6 +159,9 @@ public:
   void
   register_xclbin(const xrt::xclbin&);
 
+  //Exec Buf with ctx handle.
+  void
+  exec_buf(xclBufferHandle boh, const xrt::hw_context& hwctx);
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;
   std::shared_ptr<xrt_core::pci::dev> mDev;

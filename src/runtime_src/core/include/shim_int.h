@@ -84,6 +84,9 @@ submit_command(xclDeviceHandle handle, xcl_hwqueue_handle qhdl, xclBufferHandle 
 int
 wait_command(xclDeviceHandle handle, xcl_hwqueue_handle qhdl, xclBufferHandle cmdbo, int timeout_ms);
 
+//exec_buf_ctx() - Exec Buf with hw ctx handle.
+void
+exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, const xrt::hw_context& hwctx);
 }} // shim_int, xrt
 
 #endif

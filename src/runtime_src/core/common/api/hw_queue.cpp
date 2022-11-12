@@ -560,7 +560,7 @@ public:
   void
   submit(xrt_core::command* cmd) override
   {
-    m_device->exec_buf(cmd->get_exec_bo());
+    m_device->exec_buf(cmd->get_exec_bo(), cmd->get_hw_context());
   }
 };
 

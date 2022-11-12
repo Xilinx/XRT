@@ -114,6 +114,7 @@ struct command::impl : xrt_core::command
 
   xrt_xocl::device* m_device;
   xrt_core::hw_queue m_hwqueue;
+  xrt::hw_context m_hwctx;       // hw_context for command
   execbuf_type m_execbuf;      // underlying execution buffer
   mutable bool m_done = true;
 
@@ -187,6 +188,12 @@ struct command::impl : xrt_core::command
   get_exec_bo() const
   {
     return m_execbuf.first;
+  }
+
+  virtual xrt::hw_context
+  get_hw_context() const
+  {
+      return m_hwctx;
   }
 
   virtual void

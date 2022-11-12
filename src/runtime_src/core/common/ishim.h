@@ -226,6 +226,7 @@ struct ishim
   register_xclbin(const xrt::xclbin&) const
   { throw not_supported_error{__func__}; }
 
+
   // Allocate a bo within ctx.  This is opt-in, currently reverts to
   // legacy alloc_bo
   virtual xrt_buffer_handle
@@ -240,6 +241,14 @@ struct ishim
   alloc_bo(xcl_hwctx_handle, void* userptr, size_t size, unsigned int flags)
   {
     return alloc_bo(userptr, size, flags);
+  }
+
+  //Exec Buf with ctx handle.
+  virtual void
+  exec_buf(xrt_buffer_handle boh, const xrt::hw_context& /*hwctx*/)
+  {      
+    // Context aware execution is an opt-in.  If not supported, then just call legacy exec_buf
+    exec_buf(boh);
   }
   ////////////////////////////////////////////////////////////////
 

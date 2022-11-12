@@ -64,6 +64,12 @@ public:
   virtual void
   notify(ert_cmd_state) const = 0;
 
+  /**
+  * get_hw_context() - get hw context of command buffer
+  */
+  virtual xrt::hw_context
+  get_hw_context() const = 0;
+
 private:
   unsigned long m_uid;
 };

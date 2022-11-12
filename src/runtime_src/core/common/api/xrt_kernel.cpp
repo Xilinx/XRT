@@ -688,9 +688,10 @@ private:
 
 public:
   explicit
-  kernel_command(std::shared_ptr<device_type> dev, xrt_core::hw_queue hwqueue)
+  kernel_command(std::shared_ptr<device_type> dev, xrt_core::hw_queue hwqueue, xrt::hw_context hwctx)
     : m_device(std::move(dev))
     , m_hwqueue(std::move(hwqueue))
+    , m_hwctx(std::move(hwctx))
     , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
     , m_done(true)
   {
@@ -901,6 +902,12 @@ public:
     return m_execbuf.first;
   }
 
+  xrt::hw_context
+  get_hw_context() const override
+  {
+      return m_hwctx;
+  }
+
   void
   notify(ert_cmd_state s) const override
   {
@@ -930,6 +937,7 @@ public:
 private:
   std::shared_ptr<device_type> m_device;
   xrt_core::hw_queue m_hwqueue;  // hwqueue for command submission
+  xrt::hw_context m_hwctx;       // hw_context for command
   execbuf_type m_execbuf;        // underlying execution buffer
   unsigned int m_uid = 0;
   bool m_managed = false;
@@ -1985,7 +1993,7 @@ public:
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
     , core_device(kernel->get_core_device())      // cache core device
-    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context()))
     , data(kernel->initialize_command(cmd.get())) // default encodes CUs
     , uid(create_uid())
   {
@@ -2000,7 +2008,7 @@ public:
     , ips(rhs->ips)
     , cumask(rhs->cumask)
     , core_device(rhs->core_device)
-    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context()))
     , data(clone_command_data(rhs))
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
@@ -2225,7 +2233,7 @@ public:
     }
 
     // create and populate abort command
-    auto abort_cmd = std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue());
+    auto abort_cmd = std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context());
     auto abort_pkt = abort_cmd->get_ert_cmd<ert_abort_cmd*>();
     abort_pkt->state = ERT_CMD_STATE_NEW;
     abort_pkt->count = sizeof(abort_pkt->exec_bo_handle) / sizeof(uint32_t);
@@ -2575,7 +2583,7 @@ public:
   run_update_type(run_impl* r)
     : run(r)
     , kernel(run->get_kernel())
-    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context()))
   {
     auto kcmd = cmd->get_ert_cmd<ert_init_kernel_cmd*>();
     auto rcmd = run->get_ert_cmd<ert_start_kernel_cmd*>();
@@ -2893,8 +2901,9 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
 
   // Construct a kernel command to copy bo.  Kernel commands
   // must be shared ptrs
+  xrt::hw_context hwctx;
   auto dev = get_device(core_device);
-  auto cmd = std::make_shared<kernel_command>(dev, xrt_core::hw_queue{core_device.get()});
+  auto cmd = std::make_shared<kernel_command>(dev, xrt_core::hw_queue{core_device.get()}, hwctx);
 
   // Get and fill the underlying packet
   auto pkt = cmd->get_ert_cmd<ert_start_copybo_cmd*>();
