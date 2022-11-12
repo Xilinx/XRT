@@ -20,6 +20,12 @@
 #include <cstdint>
 
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
+#include "xaiefal/xaiefal.hpp"
+
+extern "C" {
+#include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
+}
 
 namespace xdp {
 
@@ -30,7 +36,7 @@ namespace xdp {
       ~AieProfile_EdgeImpl() = default;
 
       void updateDevice();
-      void pollAIECounters(uint32_t index, void* handle);
+      void poll(uint32_t index, void* handle);
       void endPollDevice();
 
       bool setMetrics(uint64_t deviceId, void* handle);
@@ -48,6 +54,17 @@ namespace xdp {
       std::vector<tile_type> getTilesForProfiling(const XAie_ModuleType mod,
                                                       const std::string& metricsStr,
                                                       void* handle);
+
+     void getConfigMetricsForTiles(int moduleIdx,
+                                    std::vector<std::string> metricsSettings,
+                                    std::vector<std::string> graphmetricsSettings,
+                                    const XAie_ModuleType mod,
+                                    void* handle);
+
+      void getInterfaceConfigMetricsForTiles(int moduleIdx,
+                                              std::vector<std::string> metricsSettings,
+                                              /* std::vector<std::string> graphmetricsSettings, */
+                                              void* handle);
       // Find minimum number of counters that are available across all tiles
       uint32_t getNumFreeCtr(xaiefal::XAieDev* aieDevice,
                             const std::vector<tile_type>& tiles,
@@ -94,8 +111,8 @@ namespace xdp {
       std::map<std::string, std::vector<std::string>> mCoreEventStrings;
       std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
       std::map<std::string, std::vector<std::string>> mShimEventStrings;
-
       std::vector<std::map<tile_type, std::string>> mConfigMetrics;                  
+
   };
 
 }   

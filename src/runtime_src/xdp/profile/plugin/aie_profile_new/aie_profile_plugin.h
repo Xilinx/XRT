@@ -33,6 +33,7 @@ namespace xdp {
 
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
+    void pollAIECounters(uint32_t index, void* handle);
     // bool checkAieDevice(uint64_t deviceId, void* handle);
     void endPoll();
 
@@ -46,8 +47,8 @@ namespace xdp {
       bool supported;
       std::unique_ptr<AieProfileImpl> implementation;
       std::shared_ptr<AieProfileMetadata> metadata;
-      std::atomic<bool> mThreadCtrlBool;
-      std::thread mThread;
+      std::atomic<bool> threadCtrlBool;
+      std::thread thread;
 
     };
     std::map<void*, AIEData>  handleToAIEData;

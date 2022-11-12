@@ -23,6 +23,8 @@
 
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/time.h"
+#include "core/edge/user/shim.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
@@ -32,6 +34,51 @@
 #include "core/include/xrt/xrt_kernel.h"
 
 #include "aie_profile.h"
+
+constexpr unsigned int NUM_CORE_COUNTERS   = 4;
+constexpr unsigned int NUM_MEMORY_COUNTERS = 2;
+constexpr unsigned int NUM_SHIM_COUNTERS  =  2;
+constexpr unsigned int BASE_MEMORY_COUNTER = 128;
+constexpr unsigned int BASE_SHIM_COUNTER =   256;
+
+constexpr uint32_t GROUP_DMA_MASK                   = 0x0000f000;
+constexpr uint32_t GROUP_LOCK_MASK                  = 0x55555555;
+constexpr uint32_t GROUP_CONFLICT_MASK              = 0x000000ff;
+constexpr uint32_t GROUP_ERROR_MASK                 = 0x00003fff;
+constexpr uint32_t GROUP_STREAM_SWITCH_IDLE_MASK    = 0x11111111;
+constexpr uint32_t GROUP_STREAM_SWITCH_RUNNING_MASK = 0x22222222;
+constexpr uint32_t GROUP_STREAM_SWITCH_STALLED_MASK = 0x44444444;
+constexpr uint32_t GROUP_STREAM_SWITCH_TLAST_MASK   = 0x88888888;
+constexpr uint32_t GROUP_CORE_PROGRAM_FLOW_MASK     = 0x00001FE0;
+constexpr uint32_t GROUP_CORE_STALL_MASK            = 0x0000000F;
+
+namespace {
+  static void* fetchAieDevInst(void* devHandle)
+  {
+    auto drv = ZYNQ::shim::handleCheck(devHandle);
+    if (!drv)
+      return nullptr ;
+    auto aieArray = drv->getAieArray() ;
+    if (!aieArray)
+      return nullptr ;
+    return aieArray->getDevInst() ;
+  }
+
+  static void* allocateAieDevice(void* devHandle)
+  {
+    auto aieDevInst = static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
+    if (!aieDevInst)
+      return nullptr;
+    return new xaiefal::XAieDev(aieDevInst, false) ;
+  }
+
+  static void deallocateAieDevice(void* aieDevice)
+  {
+    auto object = static_cast<xaiefal::XAieDev*>(aieDevice) ;
+    if (object != nullptr)
+      delete object ;
+  }
+} // end anonymous namespace
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -43,25 +90,25 @@ namespace xdp {
         runtimeCounters = setMetrics(metadata->getDeviceID(), metadata->getHandle());
 
       if (!runtimeCounters) {
-        std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+        std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(metadata->getHandle());
         auto counters = xrt_core::edge::aie::get_profile_counters(device.get());
 
         if (counters.empty()) {
           xrt_core::message::send(severity_level::warning, "XRT", 
             "AIE Profile Counters were not found for this design. Please specify tile_based_[aie|aie_memory|interface_tile]_metrics under \"AIE_profile_settings\" section in your xrt.ini.");
-          (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
+          (db->getStaticInfo()).setIsAIECounterRead(metadata->getDeviceID(),true);
           return;
         }
         else {
           XAie_DevInst* aieDevInst =
-            static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+            static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, metadata->getHandle()));
 
           for (auto& counter : counters) {
             tile_type tile;
             auto payload = getCounterPayload(aieDevInst, tile, counter.column, counter.row, 
                                              counter.startEvent);
 
-            (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,
+            (db->getStaticInfo()).addAIECounter(metadata->getDeviceID(), counter.id, counter.column,
                 counter.row + 1, counter.counterNumber, counter.startEvent, counter.endEvent,
                 counter.resetEvent, payload, counter.clockFreqMhz, counter.module, counter.name);
           }
@@ -360,6 +407,453 @@ namespace xdp {
     return tiles;
   }
 
+  // Resolve Processor and Memory metrics on all tiles
+  // Mem tile metrics is not supported now.
+  void
+  AieProfile_EdgeImpl::getConfigMetricsForTiles(int moduleIdx,
+                                               std::vector<std::string> metricsSettings,
+                                               std::vector<std::string> graphmetricsSettings,
+                                               const XAie_ModuleType mod,
+                                               void* handle)
+  {
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+
+    bool allGraphsDone = false;
+
+    // STEP 1 : Parse per-graph or per-kernel settings
+
+    /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
+     * "graphmetricsSettings" contains each metric value
+     * graph_based_aie_metrics = <graph name|all>:<kernel name|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>
+     * graph_based_aie_memory_metrics = <graph name|all>:<kernel name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths>
+     * graph_based_mem_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
+     */
+
+    std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
+
+    // Graph Pass 1 : process only "all" metric setting 
+    for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
+      // split done only in Pass 1
+      boost::split(graphmetrics[i], graphmetricsSettings[i], boost::is_any_of(":"));
+      if (3 != graphmetrics[i].size()) {
+        /* Note : only graph_mem_tile_metrics can have more than 3 items in a metric value.
+         * But it is not supported now.
+         */
+        xrt_core::message::send(severity_level::warning, "XRT", 
+           "Expected three \":\" separated fields for graph_based_aie_[memory_]metrics not found. Hence ignored.");
+        continue;
+      }
+
+      std::vector<tile_type> tiles;
+      /*
+       * Core profiling uses all unique core tiles in aie control
+       * Memory profiling uses all unique core + dma tiles in aie control
+       */
+      if (XAIE_CORE_MOD == mod || XAIE_MEM_MOD == mod) {
+        if (0 == graphmetrics[i][0].compare("all")) {
+
+          // Check kernel-name field
+          if (0 != graphmetrics[i][1].compare("all")) {
+            xrt_core::message::send(severity_level::warning, "XRT", 
+              "Only \"all\" is supported in kernel-name field for graph_based_aie_[memory_]metrics. Any other specification is replaced with \"all\".");
+          }
+          // Capture all tiles across all graphs
+          auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+          for (auto& graph : graphs) {
+            std::vector<tile_type> nwTiles = getAllTilesForCoreMemoryProfiling(mod, graph, handle);
+            tiles.insert(tiles.end(), nwTiles.begin(), nwTiles.end());
+          } 
+          allGraphsDone = true;
+        } // "all" 
+      }
+      for (auto &e : tiles) {
+        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+      }
+    }  // Graph Pass 1
+
+    // Graph Pass 2 : process per graph metric setting 
+    for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
+      if (3 != graphmetrics[i].size()) {
+        // Warning must be already generated in Graph Pass 1. So continue silently here.
+        continue;
+      }
+      std::vector<tile_type> tiles;
+      /*
+       * Core profiling uses all unique core tiles in aie control
+       * Memory profiling uses all unique core + dma tiles in aie control
+       */
+      if (XAIE_CORE_MOD == mod || XAIE_MEM_MOD == mod) {
+        if (0 != graphmetrics[i][0].compare("all")) {
+          // Check kernel-name field
+          if (0 != graphmetrics[i][1].compare("all")) {
+            xrt_core::message::send(severity_level::warning, "XRT", 
+              "Only \"all\" is supported in kernel-name field for graph_based_aie_[memory_]metrics. Any other specification is replaced with \"all\".");
+          }
+          // Capture all tiles in the given graph
+          tiles = getAllTilesForCoreMemoryProfiling(mod, graphmetrics[i][0] /*graph name*/, handle);
+        }
+      }
+      for (auto &e : tiles) {
+        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+      }
+    }  // Graph Pass 2
+
+    // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
+
+    /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
+     * tile_based_aie_metrics = [[{<column>,<row>}|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]]
+     *
+     * tile_based_aie_memory_metrics = [[<{<column>,<row>}|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths> ]; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths>]]
+     *
+     * tile_based_mem_tile_metrics = [[<{<column>,<row>}|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]] ; [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|output_channels|memory_stats>[:<channel>]]]
+     */
+
+    std::vector<std::vector<std::string>> metrics(metricsSettings.size());
+
+    // Pass 1 : process only "all" metric setting 
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      // split done only in Pass 1
+      boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
+
+      if (0 == metrics[i][0].compare("all")) {
+        std::vector<tile_type> tiles;
+        if (!allGraphsDone) {
+          if (XAIE_CORE_MOD == mod || XAIE_MEM_MOD == mod) {
+            // Capture all tiles across all graphs
+            auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+            for (auto& graph : graphs) {
+              std::vector<tile_type> nwTiles = getAllTilesForCoreMemoryProfiling(mod, graph, handle);
+              tiles.insert(tiles.end(), nwTiles.begin(), nwTiles.end());
+            } 
+            allGraphsDone = true;
+          }
+        } // allGraphsDone
+        for (auto &e : tiles) {
+          mConfigMetrics[moduleIdx][e] = metrics[i][1];
+        }
+      }
+    } // Pass 1 
+
+    // Pass 2 : process only range of tiles metric setting 
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      std::vector<tile_type> tiles;
+
+      if (3 != metrics[i].size()) {
+        continue;
+      }
+
+      for (size_t j = 0; j < metrics[i].size(); ++j) {
+        boost::replace_all(metrics[i][j], "{", "");
+        boost::replace_all(metrics[i][j], "}", "");
+      }
+
+      uint32_t minRow = 0, minCol = 0;
+      uint32_t maxRow = 0, maxCol = 0;
+
+      std::vector<std::string> minTile, maxTile;
+
+      try {
+        boost::split(minTile, metrics[i][0], boost::is_any_of(","));
+        minCol = std::stoi(minTile[0]);
+        minRow = std::stoi(minTile[1]);
+
+        std::vector<std::string> maxTile;
+        boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
+        maxCol = std::stoi(maxTile[0]);
+        maxRow = std::stoi(maxTile[1]);
+      } catch (...) {
+        xrt_core::message::send(severity_level::warning, "XRT", 
+           "Tile range specification in tile_based_aie_[memory}_metrics is not of valid format and hence skipped.");
+        continue;
+      }
+
+      for (uint32_t col = minCol; col <= maxCol; ++col) {
+        for (uint32_t row = minRow; row <= maxRow; ++row) {
+          xrt_core::edge::aie::tile_type tile;
+          tile.col = col;
+          tile.row = row;
+          tiles.push_back(tile);
+        }
+      }
+      for (auto &e : tiles) {
+        mConfigMetrics[moduleIdx][e] = metrics[i][2];
+      }
+    } // Pass 2 
+
+    // Pass 3 : process only single tile metric setting 
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+
+      std::vector<tile_type> tiles;
+      if (2 != metrics[i].size()) {
+        continue;
+      }
+      if (0 == metrics[i][0].compare("all")) {
+        continue;
+      }
+      xrt_core::edge::aie::tile_type tile;
+      std::vector<std::string> tilePos;
+
+      try {
+        boost::replace_all(metrics[i][0], "{", "");
+        boost::replace_all(metrics[i][0], "}", "");
+
+        boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
+
+        tile.col = std::stoi(tilePos[0]);
+        tile.row = std::stoi(tilePos[1]);
+        tiles.push_back(tile);
+      } catch (...) {
+        xrt_core::message::send(severity_level::warning, "XRT", 
+           "Tile specification in tile_based_aie_[memory}_metrics is not of valid format and hence skipped.");
+        continue;
+      }
+
+      for (auto &e : tiles) {
+        mConfigMetrics[moduleIdx][e] = metrics[i][1];
+      }
+    } // Pass 3 
+
+    // check validity, set default and remove "off" tiles
+    std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" : "aie_memory";
+
+    std::vector<tile_type> offTiles;
+
+    for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+
+      // save list of "off" tiles
+      if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
+
+      // Ensure requested metric set is supported (if not, use default)
+      if (((mod == XAIE_CORE_MOD) && (mCoreStartEvents.find(tileMetric.second) == mCoreStartEvents.end()))
+          || ((mod == XAIE_MEM_MOD) && (mMemoryStartEvents.find(tileMetric.second) == mMemoryStartEvents.end()))) {
+        std::string defaultSet = (mod == XAIE_CORE_MOD) ? "heat_map" : "conflicts";
+        std::stringstream msg;
+        msg << "Unable to find " << moduleName << " metric set " << tileMetric.second
+            << ". Using default of " << defaultSet << "."
+            << " As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        tileMetric.second = defaultSet;
+      }
+    }
+
+    // remove all the "off" tiles
+    for (auto &t : offTiles) {
+      mConfigMetrics[moduleIdx].erase(t);
+    }
+  }
+
+   // Resolve Interface metrics 
+  void
+  AieProfile_EdgeImpl::getInterfaceConfigMetricsForTiles(int moduleIdx,
+                                               std::vector<std::string> metricsSettings,
+                                               /* std::vector<std::string> graphmetricsSettings, */
+                                               void* handle)
+  {
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+
+#if 0
+    // graph_based_interface_tile_metrics is not supported in XRT in 2022.2
+
+    bool allGraphsDone = false;
+
+    // STEP 1 : Parse per-graph settings
+
+    /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
+     * "graphmetricsSettings" contains each metric value
+     * graph_based_interface_tile_metrics = <graph name|all>:<port name|all>:<off|input_bandwidths|output_bandwidths|packets>
+     */
+
+    std::vector<std::vector<std::string>> graphmetrics(graphmetricsSettings.size());
+
+    // Graph Pass 1 : process only "all" metric setting 
+    for (size_t i = 0; i < graphmetricsSettings.size(); ++i) {
+      // split done only in Pass 1
+      boost::split(graphmetrics[i], graphmetricsSettings[i], boost::is_any_of(":"));
+      if (3 > graphmetrics[i].size()) {
+        // Add unexpected format warning
+        continue;
+      }
+      if (0 != graphmetrics[i][0].compare("all")) {
+        continue;
+      }
+
+      if (0 != graphmetrics[i][1].compare("all")) {
+        xrt_core::message::send(severity_level::warning, "XRT",
+           "Specific port name is not yet supported in \"graph_based_interface_tile_metrics\" configuration. This will be ignored. Please use \"all\" in port name field.");
+      }
+      /*
+       * Shim profiling uses all tiles utilized by PLIOs
+       */
+      std::vector<tile_type> tiles;
+      tiles = getAllTilesForShimProfiling(handle, graphmetrics[i][2]);
+      allGraphsDone = true;
+
+      for (auto &e : tiles) {
+        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+      }
+    }  // Graph Pass 1
+
+    // Graph Pass 2 : process per graph metric setting 
+    /* Currently interfaces cannot be tied to graphs.
+     * graph_based_interface_tile_metrics = <graph name>:<port name|all>:<off|input_bandwidths|output_bandwidths|packets>
+     * is not supported yet.
+     */
+#endif
+
+    // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
+
+    /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
+     * tile_based_interface_tile_metrics = [[<column|all>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]] ; [<mincolumn>:<maxcolumn>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]]]
+     */
+
+    std::vector<std::vector<std::string>> metrics(metricsSettings.size());
+
+    // Pass 1 : process only "all" metric setting 
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      // split done only in Pass 1
+      boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
+
+      if (0 == metrics[i][0].compare("all")) {
+
+        int16_t channelId = -1;
+        if (3 == metrics[i].size()) {
+          channelId = std::stoi(metrics[i][2]);
+        }
+
+        std::vector<tile_type> tiles;
+        tiles = getAllTilesForShimProfiling(handle, metrics[i][1], channelId);
+
+        for (auto &e : tiles) {
+          mConfigMetrics[moduleIdx][e] = metrics[i][1];
+        }
+      }
+    } // Pass 1 
+
+    // Pass 2 : process only range of tiles metric setting 
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      std::vector<tile_type> tiles;
+
+      if (3 > metrics[i].size()) {
+        continue;
+      }
+     /* The following two styles are applicable here 
+      * tile_based_interface_tile_metrics = <column|all>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>] 
+      * OR
+      * tile_based_interface_tile_metrics = <mincolumn>:<maxcolumn>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]]
+      * Handle only the 2nd style here.
+      */
+
+      uint32_t maxCol = 0;
+      try {
+        maxCol = std::stoi(metrics[i][1]);
+      } catch (std::invalid_argument const &e) {
+        // maxColumn is not an integer i.e either 1st style or wrong format, skip for now
+        continue;
+      }
+      uint32_t minCol = 0;
+      try {
+        minCol = std::stoi(metrics[i][0]);
+      } catch (std::invalid_argument const &e) {
+        // 2nd style but expected min column is not an integer, give warning and skip 
+        xrt_core::message::send(severity_level::warning, "XRT", 
+           "Minimum column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
+        continue;
+      }
+
+      int16_t channelId = 0;
+      if (4 == metrics[i].size()) {
+        try {
+          channelId = std::stoi(metrics[i][3]);
+        } catch (std::invalid_argument const &e) {
+          // Expected channel Id is not an integer, give warning and ignore channelId
+          xrt_core::message::send(severity_level::warning, "XRT", 
+             "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+          channelId = -1;
+        }
+      }
+      tiles = getAllTilesForShimProfiling(handle, metrics[i][2], channelId,
+                                          true, minCol, maxCol);
+
+      for (auto &t : tiles) {
+        mConfigMetrics[moduleIdx][t] = metrics[i][2];
+      }
+    } // Pass 2 
+
+    // Pass 3 : process only single tile metric setting 
+    for (size_t i = 0; i < metricsSettings.size(); ++i) {
+      std::vector<tile_type> tiles;
+
+      if (4 == metrics[i].size() /* skip column range specification with channel */
+            || 2 > metrics[i].size() /* invalid format */) {
+        continue;
+      }
+      if (0 == metrics[i][0].compare("all")) {
+        continue;
+      }
+      uint32_t col = 0;
+      try {
+        col = std::stoi(metrics[i][1]);
+      } catch (std::invalid_argument const &e) {
+        // max column is not a number, so the expected single column specification. Handle this here
+
+        try {
+          col = std::stoi(metrics[i][0]);
+        } catch (std::invalid_argument const &e) {
+          // Expected column specification is not a number. Give warning and skip
+          xrt_core::message::send(severity_level::warning, "XRT", 
+             "Column specification in tile_based_interface_tile_metrics is not an integer and hence skipped.");
+          continue;
+        }
+
+        int16_t channelId = -1;
+        if (3 == metrics[i].size()) {
+          try {
+            channelId = std::stoi(metrics[i][2]);
+          } catch (std::invalid_argument const &e) {
+            // Expected channel Id is not an integer, give warning and ignore channelId
+            xrt_core::message::send(severity_level::warning, "XRT", 
+               "Channel ID specification in tile_based_interface_tile_metrics is not an integer and hence ignored.");
+            channelId = -1;
+          }
+        }
+        tiles = getAllTilesForShimProfiling(handle, metrics[i][1], channelId,
+                                            true, col, col);
+
+        for (auto &t : tiles) {
+          mConfigMetrics[moduleIdx][t] = metrics[i][1];
+        }
+      }
+    } // Pass 3 
+
+    // check validity, set default and remove "off" tiles
+    std::vector<tile_type> offTiles;
+    for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+
+      // save list of "off" tiles
+      if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
+        offTiles.push_back(tileMetric.first);
+        continue;
+      }
+
+      // Ensure requested metric set is supported (if not, use default)
+      if (mShimStartEvents.find(tileMetric.second) == mShimStartEvents.end()) {
+        std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
+                          + ". Using default of input_bandwidths. "
+                          + "As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+        tileMetric.second = "input_bandwidths" ;
+      }
+    }
+
+    // remove all the "off" tiles
+    for (auto &t : offTiles) {
+      mConfigMetrics[moduleIdx].erase(t);
+    }
+  }
+
     // Set metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
   bool 
   AieProfile_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
@@ -592,7 +1086,7 @@ namespace xdp {
     std::vector<std::string> interfaceVec;
     boost::split(interfaceVec, interfaceMetricStr, boost::is_any_of(":"));
     auto interfaceMetric = interfaceVec.at(0);
-    try {mChannelId = std::stoi(interfaceVec.at(1));} catch (...) {mChannelId = -1;}
+    try {metadata->setChannelId(std::stoi(interfaceVec.at(1)));} catch (...) {metadata->setChannelId(-1);}
 
     int numCounters[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
@@ -726,21 +1220,14 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  void AieProfile_EdgeImpl::pollAIECounters(uint32_t index, void* handle)
-  {
-    auto it = mThreadCtrlMap.find(handle);
-    if (it == mThreadCtrlMap.end())
-      return;
-
-    auto& should_continue = it->second;
-    while (should_continue) {
+  void AieProfile_EdgeImpl::poll(uint32_t index, void* handle){
       // Wait until xclbin has been loaded and device has been updated in database
       if (!(db->getStaticInfo().isDeviceReady(index)))
-        continue;
+        return;
       XAie_DevInst* aieDevInst =
         static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
       if (!aieDevInst)
-        continue;
+        return;
 
       uint32_t prevColumn = 0;
       uint32_t prevRow = 0;
@@ -788,9 +1275,6 @@ namespace xdp {
         double timestamp = xrt_core::time_ns() / 1.0e6;
         db->getDynamicInfo().addAIESample(index, timestamp, values);
       }
-
-      std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
-    }
   }
 
 }

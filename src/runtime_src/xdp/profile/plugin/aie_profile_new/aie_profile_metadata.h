@@ -29,38 +29,49 @@ namespace xdp {
   using tile_type = xrt_core::edge::aie::tile_type;
   using module_type = xrt_core::edge::aie::module_type;
 
+  // enum class module_type {
+  //     core = 0,
+  //     dma,
+  //     shim
+  //   };
+
+  //   struct tile_type
+  //   { 
+  //     uint16_t row;
+  //     uint16_t col;
+  //     uint16_t itr_mem_row;
+  //     uint16_t itr_mem_col;
+  //     uint64_t itr_mem_addr;
+  //     bool     is_trigger;
+      
+  //     bool operator==(const tile_type &tile) const {
+  //       return (col == tile.col) && (row == tile.row);
+  //     }
+  //     bool operator<(const tile_type &tile) const {
+  //       return (col < tile.col) || ((col == tile.col) && (row < tile.row));
+  //     }
+  //   };
+
 class AieProfileMetadata{
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
     void getPollingInterval();
-    // std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
-    //                                                     const std::string &graph,
-    //                                                     void* handle);
-    // std::vector<tile_type> getAllTilesForShimProfiling(void* handle,
-    //                           const std::string &metricStr,
-    //                           int16_t channelId = -1,
-    //                           bool useColumn = false, uint32_t minCol = 0, uint32_t maxCol = 0);
-    // void getConfigMetricsForTiles(int moduleIdx, std::vector<std::string> metricsSettings,
-    //                                            std::vector<std::string> graphmetricsSettings,
-    //                                            const XAie_ModuleType mod,
-    //                                            void* handle);
-    void getInterfaceConfigMetricsForTiles(int moduleIdx,
-                                           std::vector<std::string> metricsSettings,
-                                           /* std::vector<std::string> graphmetricsSettings, */
-                                           void* handle);                
+               
     std::string getMetricSet(const int mod, 
                               const std::string& metricsStr, 
                               bool ignoreOldConfig = false);
-    std::vector<tile_type> getTilesForProfiling(const int mod, 
-                                                const std::string& metricsStr,
-                                                void* handle);
+
     uint64_t getDeviceID() {return deviceID;}
     void* getHandle() {return handle;}
     std::string getCoreMetricSet(){return mCoreMetricSet;}            
     std::string getMemoryMetricSet(){return mMemoryMetricSet;}
     std::string getShimMetricSet(){return mShimMetricSet;}
     int16_t getChannelId(){return mChannelId;}
+    uint32_t getPollingIntervalVal(){return mPollingInterval;}
+
+    void setChannelId(uint16_t newChannelId){mChannelId = newChannelId;}
+
   private:
     int16_t mChannelId = -1;
     uint32_t mIndex = 0;
@@ -70,7 +81,6 @@ class AieProfileMetadata{
     std::string mCoreMetricSet;
     std::string mMemoryMetricSet;
     std::string mShimMetricSet;
-
   };
 }
 

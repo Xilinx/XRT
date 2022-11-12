@@ -31,7 +31,13 @@
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
-#include "x86/aie_profile.h"
+
+#ifdef XRT_X86_BUILD
+  #include "x86/aie_profile.h"
+#else
+  #include "edge/aie_profile.h"
+  #include "core/edge/user/shim.h"
+#endif
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -70,6 +76,21 @@ namespace xdp {
     return AieProfilePluginUnified::live;
   }
 
+  uint64_t AieProfilePluginUnified::getDeviceIDFromHandle(void* handle)
+  {
+    constexpr uint32_t PATH_LENGTH = 512;
+
+    auto itr = handleToAIEData.find(handle);
+    if (itr != handleToAIEData.end())
+      return itr->second.deviceID;
+
+    char pathBuf[PATH_LENGTH];
+    memset(pathBuf, 0, PATH_LENGTH);
+    xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
+    std::string sysfspath(pathBuf);
+    uint64_t deviceID =  db->addDevice(sysfspath); // Get the unique device Id
+    return deviceID;
+  }
 
   // bool AieProfilePluginUnified::checkAieDevice(uint64_t deviceId, void* handle)
   // {
@@ -93,6 +114,8 @@ namespace xdp {
     if (!handle)
       return;
 
+    auto deviceID = getDeviceIDFromHandle(handle);
+
     // Update the static database with information from xclbin
     (db->getStaticInfo()).updateDevice(deviceID, handle);
     {
@@ -107,7 +130,6 @@ namespace xdp {
         handleToAIEData.erase(handle);
     auto& AIEData = handleToAIEData[handle];
 
-    auto deviceID = getDeviceIDFromHandle(handle);
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
     auto& metadata = AIEData.metadata;
@@ -116,8 +138,11 @@ namespace xdp {
     //Get the polling interval after the metadata has been defined.
     metadata->getPollingInterval(); 
 
-
-    AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, metadata);
+    #ifdef XRT_X86_BUILD
+        AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
+    #else
+        AIEData.implementation = std::make_unique<AieProfile_EdgeImpl>(db, AIEData.metadata);
+    #endif
     auto& implementation = AIEData.implementation;
 
     
@@ -158,42 +183,39 @@ namespace xdp {
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
     // Start the AIE profiling thread
-    AIEData.mThreadCtrlBool = true; 
-    // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters, this, mIndex, handle);
-    auto device_thread = std::thread(&AieProfileImpl::pollAIECounters, implementation.get(), mIndex, handle);
-    AIEData.mThread = std::move(device_thread);
+    AIEData.threadCtrlBool = true; 
+    auto device_thread = std::thread(&AieProfilePluginUnified::pollAIECounters, this, mIndex, handle);
+    // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters, implementation.get(), mIndex, handle);
+    AIEData.thread = std::move(device_thread);
 
     ++mIndex;
   }
 
-  uint64_t AieProfilePluginUnified::getDeviceIDFromHandle(void* handle)
+ void AieProfilePluginUnified::pollAIECounters(uint32_t index, void* handle)
   {
-    constexpr uint32_t PATH_LENGTH = 512;
+    auto it = handleToAIEData.find(handle);
+    if (it == handleToAIEData.end())
+      return;
 
-    auto itr = handleToAIEData.find(handle);
-    if (itr != handleToAIEData.end())
-      return itr->second.deviceID;
+    auto& should_continue = it->second.threadCtrlBool;
 
-    char pathBuf[PATH_LENGTH];
-    memset(pathBuf, 0, PATH_LENGTH);
-    xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
-    std::string sysfspath(pathBuf);
-    uint64_t deviceID =  db->addDevice(sysfspath); // Get the unique device Id
-    return deviceID;
+    while (should_continue) {
+      handleToAIEData[handle].implementation->poll(index, handle);
+      std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));     
+    }
   }
-
 
   void AieProfilePluginUnified::endPollforDevice(void* handle)
   {
     // Ask thread to stop
     auto& AIEData = handleToAIEData[handle];
-    AIEData.mThreadCtrlBool = false;
+    AIEData.threadCtrlBool = false;
 
-    //auto it = mThreadMap.find(handle);
-    // auto it = AIEData.mThread;
-    AIEData.mThread.join();
-    // mThreadMap.erase(it);
-    // mThreadCtrlMap.erase(handle); //Do we need to do this?
+    //auto it = threadMap.find(handle);
+    // auto it = AIEData.thread;
+    AIEData.thread.join();
+    // threadMap.erase(it);
+    // threadCtrlMap.erase(handle); //Do we need to do this?
 
   }
 
@@ -201,18 +223,18 @@ namespace xdp {
   {
     // Ask all threads to end
     for (auto& p : handleToAIEData){
-      p.second.mThreadCtrlBool = false;
+      p.second.threadCtrlBool = false;
     }
 
     for (auto& p : handleToAIEData){
-      p.second.mThread.join();
+      p.second.thread.join();
     }
 
   }
     // for (auto& t : handleToAIEData)
-    //   t.second.mThread.join();
+    //   t.second.thread.join();
 
-    // mThreadCtrlMap.clear(); //Do  we need to do this?
-    // mThreadMap.clear();
+    // threadCtrlMap.clear(); //Do  we need to do this?
+    // threadMap.clear();
 
 } // end namespace xdp
