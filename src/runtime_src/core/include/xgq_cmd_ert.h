@@ -243,6 +243,22 @@ struct xgq_cmd_config_cu {
 };
 
 /**
+ * struct xgq_cmd_uncfg_cu: Unconfigure CU command
+ *
+ * @cu_idx: cu index to query
+ * @cu_domain: cu domain to configure
+ *
+ */
+struct xgq_cmd_uncfg_cu {
+	struct xgq_cmd_sq_hdr hdr;
+
+	/* word 2 */
+	uint32_t cu_idx:12;
+	uint32_t cu_domain:4;
+	uint32_t rsvd2:16;
+};
+
+/**
  * struct xgq_cmd_query_cu: query CU command
  *
  * @cu_idx: cu index to query
