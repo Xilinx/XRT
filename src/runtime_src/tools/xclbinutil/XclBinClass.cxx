@@ -30,7 +30,15 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/uuid/uuid.hpp>                  // for uuid
 #include <boost/uuid/uuid_io.hpp>               // for to_string
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <random>
 #include <sstream>
 #include <stdexcept>
@@ -846,7 +854,7 @@ XclBin::replaceSection(ParameterSectionData& _PSD)
 
   updateHeaderFromSection(pSection);
 
-  std::filesystem::path p(sSectionFileName);
+  fs::path p(sSectionFileName);
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 
@@ -953,7 +961,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
       throw std::runtime_error(boost::str(errMsg));
     }
 
-    std::filesystem::path p(_PSD.getFile());
+    fs::path p(_PSD.getFile());
     std::string sBaseName = p.stem().string();
     pSection->setName(sBaseName);
   }
@@ -1049,7 +1057,7 @@ XclBin::addSection(ParameterSectionData& _PSD)
   pSection->readPayload(iSectionFile, _PSD.getFormatType());
 
   // Post-cleanup
-  std::filesystem::path p(sSectionFileName);
+  fs::path p(sSectionFileName);
   std::string sBaseName = p.stem().string();
   pSection->setName(sBaseName);
 

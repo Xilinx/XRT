@@ -31,7 +31,15 @@
 #include <stdexcept>
 
 // System - Include Files
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <iostream>
 #include <set>
 #include <string>
@@ -55,21 +63,21 @@ void drcCheckFiles(const std::vector<std::string> & _inputFiles,
    std::set<std::string> normalizedInputFiles;
 
    for( auto file : _inputFiles) {
-     if ( !std::filesystem::exists(file) ) {
+     if ( !fs::exists(file) ) {
        std::string errMsg = "ERROR: The following input file does not exist: " + file;
        throw std::runtime_error(errMsg);
      }
-     normalizedInputFiles.insert(std::filesystem::canonical(file).string());
+     normalizedInputFiles.insert(fs::canonical(file).string());
    }
 
    std::vector<std::string> normalizedOutputFiles;
    for ( auto file : _outputFiles) {
-     if ( std::filesystem::exists(file) ) {
+     if ( fs::exists(file) ) {
        if (_bForce == false) {
          std::string errMsg = "ERROR: The following output file already exists on disk (use the force option to overwrite): " + file;
          throw std::runtime_error(errMsg);
        } else {
-         normalizedOutputFiles.push_back(std::filesystem::canonical(file).string());
+         normalizedOutputFiles.push_back(fs::canonical(file).string());
        }
      }
    }

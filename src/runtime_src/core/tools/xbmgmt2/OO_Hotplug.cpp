@@ -17,7 +17,15 @@
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 // =============================================================================
 
@@ -27,7 +35,7 @@ hotplug_online()
 {
   static const std::string  rescan_path = "/sys/bus/pci/rescan";
 
-  if (!std::filesystem::exists(rescan_path))
+  if (!fs::exists(rescan_path))
     throw xrt_core::error((boost::format("Invalid sysfs file path '%s'.") % rescan_path).str());
 
   std::ofstream rescan_file(rescan_path);

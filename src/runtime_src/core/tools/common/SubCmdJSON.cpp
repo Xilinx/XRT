@@ -40,7 +40,15 @@ namespace pt = boost::property_tree;
 
 // System - Include Files
 #include <cstdlib>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <iostream>
 
@@ -233,7 +241,7 @@ void populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& 
 
     for(auto &path : jsonPaths)
     {
-        if(std::filesystem::is_regular_file(path))
+        if(fs::is_regular_file(path))
             populateSubCommandsFromJSONHelper(subCmds, path, exeName);
     }
 }

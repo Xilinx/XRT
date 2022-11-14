@@ -29,7 +29,15 @@
 #include <cstdarg>
 #include <cstddef>
 #include <cstring>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <limits>
 #include <vector>
 
@@ -504,7 +512,7 @@ std::string Flasher::getQspiGolden()
     std::string start = FORMATTED_FW_DIR;
     start += "/";
     start += board_name;
-    std::filesystem::recursive_directory_iterator dir(start), end;
+    fs::recursive_directory_iterator dir(start), end;
     while (dir != end) {
         std::string fn = dir->path().filename().string();
         if (!fn.compare(QSPI_GOLDEN_IMAGE)) {

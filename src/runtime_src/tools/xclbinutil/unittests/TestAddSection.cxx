@@ -2,7 +2,15 @@
 #include "XclBinClass.h"
 #include "globals.h"
 #include <gtest/gtest.h>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
@@ -17,7 +25,7 @@ TEST(AddSection, AddClearingBitstream) {
    Section::translateSectionKindStrToKind(sSection, _eKind);
 
    // Get the file of interest
-   std::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
+   fs::path sampleXclbin(TestUtilities::getResourceDir());
    sampleXclbin /= "sample_1_2018.2.xclbin";
 
    xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);
@@ -46,7 +54,7 @@ TEST(AddSection, AddReplaceClearingBitstream) {
    Section::translateSectionKindStrToKind(sSection, _eKind);
 
    // Load the xclbin image of interest
-   std::filesystem::path sampleXclbin(TestUtilities::getResourceDir());
+   fs::path sampleXclbin(TestUtilities::getResourceDir());
    sampleXclbin /= "sample_1_2018.2.xclbin";
    xclBin.readXclBinBinary(sampleXclbin.string(), false /* bMigrateForward */);
 
@@ -56,7 +64,7 @@ TEST(AddSection, AddReplaceClearingBitstream) {
 
    {
       // Add dummy unique data to the "clearning bitstream" section
-      std::filesystem::path uniqueData1(TestUtilities::getResourceDir());
+      fs::path uniqueData1(TestUtilities::getResourceDir());
       uniqueData1 /= "unique_data1.bin";
 
       const std::string formattedString = sSection + ":RAW:" + uniqueData1.string();
@@ -74,7 +82,7 @@ TEST(AddSection, AddReplaceClearingBitstream) {
 
    {
       // Replace the contents of the CLEARING_BITSTREAM section
-      std::filesystem::path uniqueData2(TestUtilities::getResourceDir());
+      fs::path uniqueData2(TestUtilities::getResourceDir());
       uniqueData2 /= "unique_data2.bin";
 
       const std::string formattedString = sSection + ":RAW:" + uniqueData2.string();
@@ -110,7 +118,7 @@ TEST(AddSection, AddMergeIPLayout) {
 
    {
       // Add an IP_LAYOUT section
-      std::filesystem::path ip_layoutBase(TestUtilities::getResourceDir());
+      fs::path ip_layoutBase(TestUtilities::getResourceDir());
       ip_layoutBase /= "ip_layout_base.json";
 
       const std::string formattedString = sSection + ":JSON:" + ip_layoutBase.string();
@@ -124,7 +132,7 @@ TEST(AddSection, AddMergeIPLayout) {
 
    {
       // Merge additional data into the IP_LAYOUT seciton
-      std::filesystem::path ip_layoutMerge(TestUtilities::getResourceDir());
+      fs::path ip_layoutMerge(TestUtilities::getResourceDir());
       ip_layoutMerge /= "ip_layout_merge.json";
 
       const std::string formattedString = sSection + ":JSON:" + ip_layoutMerge.string();
@@ -150,7 +158,7 @@ TEST(AddSection, AddMergeIPLayout) {
       boost::property_tree::write_json(obuffer, ptOutput);
    }
 
-   std::filesystem::path ip_layoutMergeExpect(TestUtilities::getResourceDir());
+   fs::path ip_layoutMergeExpect(TestUtilities::getResourceDir());
    ip_layoutMergeExpect /= "ip_layout_merged_expected.json";
    std::stringstream ebuffer;
    {

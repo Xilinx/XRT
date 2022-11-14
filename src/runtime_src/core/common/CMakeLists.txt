@@ -64,6 +64,7 @@ set_target_properties(xrt_coreutil PROPERTIES
 # Private dependencies for fully resolved dynamic xrt_coreutil
 target_link_libraries(xrt_coreutil
   PRIVATE
+  stdc++fs
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   )
@@ -75,6 +76,7 @@ target_link_libraries(xrt_coreutil
 # libraries of boost
 target_link_libraries(xrt_coreutil_static
   INTERFACE
+  stdc++fs
   boost_filesystem
   boost_system
   )

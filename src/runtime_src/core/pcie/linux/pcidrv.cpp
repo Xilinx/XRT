@@ -2,7 +2,15 @@
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "pcidrv.h"
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 
 namespace xrt_core { namespace pci {
 
@@ -11,7 +19,6 @@ drv::
 scan_devices(std::vector<std::shared_ptr<dev>>& ready_list,
              std::vector<std::shared_ptr<dev>>& nonready_list) const
 {
-  namespace fs = std::filesystem;
   const std::string drv_root = "/sys/bus/pci/drivers/";
   const std::string drvpath = drv_root + name();
 

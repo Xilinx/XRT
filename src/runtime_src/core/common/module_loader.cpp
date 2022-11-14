@@ -20,15 +20,21 @@
 #include "core/common/config_reader.h"
 
 #include <cstring>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <iostream>
 
 
 #ifdef _WIN32
 # pragma warning (disable : 4996)
 #endif
-
-namespace fs = std::filesystem;
 
 namespace {
 

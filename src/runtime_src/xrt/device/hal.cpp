@@ -18,7 +18,15 @@
 
 #include "core/common/dlfcn.h"
 #include "core/common/device.h"
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 4706 4505 )
@@ -26,7 +34,6 @@
 
 namespace hal = xrt_xocl::hal;
 namespace hal2 = xrt_xocl::hal2;
-namespace fs = std::filesystem;
 
 namespace {
 
@@ -67,13 +74,13 @@ versionFunc()
   return sVersionFunc;
 }
 
-static std::filesystem::path&
+static fs::path&
 dllExt()
 {
 #ifdef _WIN32
-  static std::filesystem::path sDllExt(".dll");
+  static fs::path sDllExt(".dll");
 #else
-  static std::filesystem::path sDllExt(".so.2");
+  static fs::path sDllExt(".so.2");
 #endif
   return sDllExt;
 }
@@ -86,8 +93,8 @@ isDLL(const fs::path& path)
           && ends_with(path.string(), dllExt().string()));
 }
 
-std::filesystem::path
-dllpath(const std::filesystem::path& root, const std::string& libnm)
+fs::path
+dllpath(const fs::path& root, const std::string& libnm)
 {
 #ifdef _WIN32
   return root / "bin" / (libnm + dllExt().string());

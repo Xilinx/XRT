@@ -16,7 +16,15 @@
 #include "core/common/api/bo.h"
 #include "core/common/device.h"
 #include <dlfcn.h>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <iostream>
 #include <sstream>
 #include <bitset>
@@ -141,7 +149,6 @@ namespace xma_core {
 namespace xma_core { namespace utils {
 
 constexpr std::uint64_t cu_base_min = 0x1800000;
-namespace fs = std::filesystem;
 
 static const char*
 emptyOrValue(const char* cstr)
@@ -158,10 +165,10 @@ directoryOrError(const fs::path& path)
    return XMA_SUCCESS;
 }
 
-static std::filesystem::path&
+static fs::path&
 dllExt()
 {
-  static std::filesystem::path sDllExt(".so");
+  static fs::path sDllExt(".so");
   return sDllExt;
 }
 

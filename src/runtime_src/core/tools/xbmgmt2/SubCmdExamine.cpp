@@ -20,7 +20,15 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <iostream>
 
@@ -130,7 +138,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
   // Output file
-  if (!sOutput.empty() && std::filesystem::exists(sOutput) && !XBU::getForce()) 
+  if (!sOutput.empty() && fs::exists(sOutput) && !XBU::getForce()) 
       throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
 
   // Find device of interest

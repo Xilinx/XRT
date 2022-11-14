@@ -20,7 +20,15 @@
 #include "error.h"
 
 #include <cstdlib>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <iostream>
 #include <mutex>
 #include <set>
@@ -93,14 +101,14 @@ get_self_path()
  * Look for xrt.ini and if not found look for legacy sdaccel.ini.
  */
 static std::string
-verify_ini_path(const std::filesystem::path& dir)
+verify_ini_path(const fs::path& dir)
 {
   auto file_path = dir / "xrt.ini";
-  if (std::filesystem::exists(file_path))
+  if (fs::exists(file_path))
     return file_path.string();
 
   file_path = dir / "sdaccel.ini";
-  if (std::filesystem::exists(file_path))
+  if (fs::exists(file_path))
     return file_path.string();
 
   return "";
@@ -112,27 +120,27 @@ get_ini_path()
   std::string full_path;
   try {
     //The env variable should be the full path which includes xrt.ini
-    auto xrt_path = std::filesystem::path(value_or_empty(std::getenv("XRT_INI_PATH")));
-    if (std::filesystem::exists(xrt_path))
+    auto xrt_path = fs::path(value_or_empty(std::getenv("XRT_INI_PATH")));
+    if (fs::exists(xrt_path))
       return xrt_path.string();
 
     //The env variable should be the full path which includes sdaccel.ini
-    auto sda_path = std::filesystem::path(value_or_empty(std::getenv("SDACCEL_INI_PATH")));
-    if (std::filesystem::exists(sda_path))
+    auto sda_path = fs::path(value_or_empty(std::getenv("SDACCEL_INI_PATH")));
+    if (fs::exists(sda_path))
       return sda_path.string();
 
-    auto exe_path = std::filesystem::path(get_self_path()).parent_path();
+    auto exe_path = fs::path(get_self_path()).parent_path();
     full_path = verify_ini_path(exe_path);
     if (!full_path.empty())
       return full_path;
 
-    auto self_path = std::filesystem::current_path();
+    auto self_path = fs::current_path();
     full_path = verify_ini_path(self_path);
     if (!full_path.empty())
       return full_path;
 
   }
-  catch (const std::filesystem::filesystem_error&) {
+  catch (const fs::filesystem_error&) {
   }
   return full_path;
 }

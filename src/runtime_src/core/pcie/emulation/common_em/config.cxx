@@ -385,7 +385,7 @@ namespace xclemulation{
       return pathStr;
     }
 
-    return std::filesystem::absolute(pathStr).string();
+    return fs::absolute(pathStr).string();
   }
 
   std::string getExecutablePath()

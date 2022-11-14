@@ -34,7 +34,6 @@ namespace xclcpuemhal2
 
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 
-  namespace fs = std::filesystem;
 #define PRINTENDFUNC        \
   if (mLogStream.is_open()) \
     mLogStream << __func__ << " ended " << std::endl;
@@ -591,8 +590,8 @@ namespace xclcpuemhal2
 
     //Check if device_process.log already exists. Remove if exists.
     auto extIoTxtFile = getDeviceProcessLogPath();
-    if (std::filesystem::exists(extIoTxtFile))
-      std::filesystem::remove(extIoTxtFile);
+    if (fs::exists(extIoTxtFile))
+      fs::remove(extIoTxtFile);
 
     launchDeviceProcess(debuggable, binaryDirectory);
 

@@ -20,8 +20,6 @@
 #include "core/common/message.h"
 #include "core/common/dlfcn.h"
 
-namespace fs = std::filesystem;
-
 namespace xdphalinterface {
 
   std::function<void(unsigned int, void*)> cb ;

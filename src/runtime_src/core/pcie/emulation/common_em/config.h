@@ -20,7 +20,15 @@
 #include <boost/property_tree/ptree.hpp>
 #include <chrono>
 #include <cstring>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <list>
 #include <map>
 #include <sys/stat.h>
@@ -171,7 +179,7 @@ struct sParseLog
     // mFileName might be created/updated by xsim, check its existence always.
     if (not mFileExists.load())
     {
-      if (std::filesystem::exists(mFileName))
+      if (fs::exists(mFileName))
       {
         mFileStream.open(mFileName);
         if (mFileStream.is_open())

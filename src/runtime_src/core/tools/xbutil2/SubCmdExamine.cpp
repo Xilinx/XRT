@@ -22,7 +22,15 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <iostream>
 #include <regex>
@@ -164,7 +172,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   }
 
   // DRC: Output file
-  if (!sOutput.empty() && std::filesystem::exists(sOutput) && !XBU::getForce()) {
+  if (!sOutput.empty() && fs::exists(sOutput) && !XBU::getForce()) {
     std::cerr << boost::format("ERROR: The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it.") % sOutput << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }

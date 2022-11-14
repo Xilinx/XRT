@@ -17,7 +17,15 @@
 #define XDP_SOURCE
 
 #include <cstdlib>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <sstream>
 #include <cstdio>
@@ -99,14 +107,14 @@ namespace xdp {
   
   bool KernelDebugManager::exists(const char* filename)
   {
-    return std::filesystem::exists(filename) ;
+    return fs::exists(filename) ;
   }
 
   void KernelDebugManager::createDirectory(const char* filename)
   {
     // If this succeeds or fails, just return.
     try {
-      std::filesystem::create_directory(filename) ;
+      fs::create_directory(filename) ;
     }
     catch (...) {
     }

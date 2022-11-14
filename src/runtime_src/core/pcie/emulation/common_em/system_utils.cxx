@@ -29,18 +29,18 @@ namespace systemUtil {
         case CREATE :
           {
             operationStr = "CREATE";
-            if (std::filesystem::exists(operand1) == false)
+            if (fs::exists(operand1) == false)
             {
-              std::filesystem::create_directories(operand1);
+              fs::create_directories(operand1);
             }
             break;
           }
         case REMOVE :
           {
             operationStr = "REMOVE";
-            if (std::filesystem::exists(operand1) )
+            if (fs::exists(operand1) )
             {
-              std::filesystem::remove_all(operand1);
+              fs::remove_all(operand1);
             }
             break;
           }
@@ -49,7 +49,7 @@ namespace systemUtil {
             operationStr = "COPY";
             std::stringstream copyCommand;
             copyCommand <<"cp "<<operand1<<" "<<operand2;
-            if (std::filesystem::exists(operand1) )
+            if (fs::exists(operand1) )
             {
               int status = system(copyCommand.str().c_str());
               printErrorMessage(copyCommand.str(),status, LineNo);
@@ -61,7 +61,7 @@ namespace systemUtil {
             operationStr = "APPEND";
             std::stringstream appendCommand;
             appendCommand <<"cat "<<operand1<<">> "<<operand2;
-            if (std::filesystem::exists(operand1) )
+            if (fs::exists(operand1) )
             {
               int status = system(appendCommand.str().c_str());
               printErrorMessage(appendCommand.str(),status, LineNo);

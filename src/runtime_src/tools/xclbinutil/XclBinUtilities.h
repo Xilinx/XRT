@@ -22,7 +22,15 @@
 
 #include <boost/format.hpp>
 #include <boost/property_tree/ptree.hpp>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -162,7 +170,7 @@ uint64_t stringToUInt64(const std::string& _sInteger, bool _bForceHex = false);
 void printKinds();
 std::string getUUIDAsString( const unsigned char (&_uuid)[16] );
 
-int exec(const std::filesystem::path &cmd, const std::vector<std::string> &args, bool bThrow, std::ostringstream & os_stdout, std::ostringstream & os_stderr);
+int exec(const fs::path &cmd, const std::vector<std::string> &args, bool bThrow, std::ostringstream & os_stdout, std::ostringstream & os_stderr);
 void write_htonl(std::ostream & _buf, uint32_t _word32);
 
 void createMemoryBankGrouping(XclBin & xclbin);

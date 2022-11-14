@@ -25,7 +25,15 @@
 #include <boost/tokenizer.hpp>
 
 #include <iostream>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <algorithm>
 #include <climits>
@@ -423,7 +431,7 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
     // Obtain installed DSA info.
     for (auto root : FIRMWARE_DIRS) {
       try {
-        if (!std::filesystem::exists(root) || !std::filesystem::is_directory(root))
+        if (!fs::exists(root) || !fs::is_directory(root))
             continue;
       }
       catch (const std::exception&) {
@@ -432,9 +440,9 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
         continue;
       }
 
-      std::filesystem::recursive_directory_iterator end_iter;
-      // for (auto const & iter : std::filesystem::recursive_directory_iterator(root)) {
-      for(std::filesystem::recursive_directory_iterator iter(root); iter != end_iter; ++iter) {
+      fs::recursive_directory_iterator end_iter;
+      // for (auto const & iter : fs::recursive_directory_iterator(root)) {
+      for(fs::recursive_directory_iterator iter(root); iter != end_iter; ++iter) {
         if ((iter->path().extension() == ".xsabin" || iter->path().extension() == ".dsabin")) {
           DSAInfo dsa(iter->path().string());
           installedDSA.push_back(dsa);

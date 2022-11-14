@@ -11,7 +11,15 @@
 #include <cassert>
 #include <cstring>
 #include <dirent.h>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -28,8 +36,6 @@
 #define DEV_TIMEOUT	90 // seconds
 
 namespace {
-
-namespace fs = std::filesystem;
 
 static std::string
 get_name(const std::string& dir, const std::string& subdir)

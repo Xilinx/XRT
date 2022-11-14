@@ -29,10 +29,16 @@
 
 #include <CL/opencl.h>
 
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
-
-namespace fs = std::filesystem;
 
 #ifdef _WIN32
 # pragma warning ( disable : 4996 4189 4505 )

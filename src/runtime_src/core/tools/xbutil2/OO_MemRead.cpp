@@ -19,7 +19,15 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -74,7 +82,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
 
     //-- Output file
-    if (!m_outputFile.empty() && std::filesystem::exists(m_outputFile) && !XBU::getForce())
+    if (!m_outputFile.empty() && fs::exists(m_outputFile) && !XBU::getForce())
       throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_outputFile).str());
 
   } catch (const xrt_core::error&) {

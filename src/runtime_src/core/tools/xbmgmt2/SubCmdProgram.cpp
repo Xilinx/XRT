@@ -45,7 +45,15 @@ namespace po = boost::program_options;
 #include <chrono>
 #include <ctime>
 #include <fcntl.h>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <iostream>
 #include <locale>
@@ -263,8 +271,8 @@ deployment_path_and_filename(std::string file)
 static std::string
 get_file_timestamp(const std::string & _file)
 {
-  std::filesystem::path p(_file);
-  if (!std::filesystem::exists(p)) {
+  fs::path p(_file);
+  if (!fs::exists(p)) {
     throw xrt_core::error("Invalid platform path.");
   }
   // Switch to use OS stat to get file's last modified time
@@ -649,8 +657,8 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
 
   for (const auto& img : image_list) {
     // Check if the passed in image is absolute path
-    if (std::filesystem::is_regular_file(img)){
-      if (std::filesystem::path(img).extension().compare(".xsabin") != 0) {
+    if (fs::is_regular_file(img)){
+      if (fs::path(img).extension().compare(".xsabin") != 0) {
         std::cout << "Warning: Non-xsabin file detected. Development usage, this may damage the card\n";
         if (!XBU::can_proceed(XBU::getForce()))
           throw xrt_core::error(std::errc::operation_canceled);
@@ -937,7 +945,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                             " is installed.");
 
     // Check if file exists
-    if (!std::filesystem::exists(plp))
+    if (!fs::exists(plp))
       throw xrt_core::error("File not found. Please specify the correct path");
 
     DSAInfo dsa(plp);

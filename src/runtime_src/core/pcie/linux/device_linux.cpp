@@ -19,7 +19,15 @@
 #include "xrt.h"
 
 #include <array>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -44,12 +52,12 @@ get_render_value(const std::string& dir)
   static const std::string render_name = "renderD";
   int instance_num = INVALID_ID; // argh, what is this?
 
-  std::filesystem::path render_dirs(dir);
-  if (!std::filesystem::is_directory(render_dirs))
+  fs::path render_dirs(dir);
+  if (!fs::is_directory(render_dirs))
     return instance_num;
 
-  std::filesystem::recursive_directory_iterator end_iter;
-  for(std::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
+  fs::recursive_directory_iterator end_iter;
+  for(fs::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
     auto path = iter->path().filename().string();
     if (!path.compare(0, render_name.size(), render_name)) {
       auto sub = path.substr(render_name.size());
@@ -308,15 +316,15 @@ struct sdm_sensor_info
      * hwmon sysfs directory has a sysfs node called "name", and it is decision factor.
      * So, the target hwmon sysfs dir is the one whose name contains target_name.
      */
-    std::filesystem::path render_dirs(parent_path);
-    if (!std::filesystem::is_directory(render_dirs))
+    fs::path render_dirs(parent_path);
+    if (!fs::is_directory(render_dirs))
       return result_type();
 
     //iterate over list of hwmon syfs directory's directories
-    std::filesystem::directory_iterator iter(render_dirs);
-    while (iter != std::filesystem::directory_iterator{})
+    fs::directory_iterator iter(render_dirs);
+    while (iter != fs::directory_iterator{})
     {
-      if (!std::filesystem::is_directory(iter->path()))
+      if (!fs::is_directory(iter->path()))
       {
         ++iter;
         continue;

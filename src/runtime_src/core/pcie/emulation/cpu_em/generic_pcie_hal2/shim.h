@@ -587,7 +587,7 @@ namespace xclcpuemhal2
     {
       if (!mFileExists)
       {
-        if (std::filesystem::exists(mFileName))
+        if (fs::exists(mFileName))
         {
           file.open(mFileName,std::ios::in);
           if (file.is_open())

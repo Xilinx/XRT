@@ -19,7 +19,15 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  error "Missing the <filesystem> header."
+#endif
 #include <fstream>
 #include <iostream>
 
@@ -179,7 +187,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     printHelp(commonOptions, hiddenOptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }
-  if (!output.empty() && std::filesystem::exists(output) && !XBU::getForce()) {
+  if (!output.empty() && fs::exists(output) && !XBU::getForce()) {
     std::cerr << boost::format("Output file already exists: '%s'") % output << "\n\n";
     throw xrt_core::error(std::errc::operation_canceled);
   }
