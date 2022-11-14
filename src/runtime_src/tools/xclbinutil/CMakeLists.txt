@@ -86,7 +86,7 @@ if(NOT WIN32)
    endif()
 endif()
 
-target_link_libraries(${XCLBINUTIL_NAME} PRIVATE stdc++fs ${Boost_LIBRARIES} Threads::Threads)
+target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES} Threads::Threads)
 
 install (TARGETS ${XCLBINUTIL_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
