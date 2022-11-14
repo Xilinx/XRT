@@ -76,7 +76,7 @@ add_executable(${XCLBINUTIL_NAME} ${XCLBINUTIL_SRCS})
 
 # Signing xclbin images currently is not support on windows
 if(NOT WIN32)
-  target_link_libraries(${XCLBINUTIL_NAME} PRIVATE crypto)
+  target_link_libraries(${XCLBINUTIL_NAME} PRIVATE stdc++fs crypto)
 endif()
 
 # Add compile definitions
