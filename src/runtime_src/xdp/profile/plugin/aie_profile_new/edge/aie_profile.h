@@ -37,7 +37,7 @@ namespace xdp {
 
       void updateDevice();
       void poll(uint32_t index, void* handle);
-      void endPollDevice();
+      bool checkAieDevice(uint64_t deviceId, void* handle);
 
       bool setMetrics(uint64_t deviceId, void* handle);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
@@ -112,7 +112,9 @@ namespace xdp {
       std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
       std::map<std::string, std::vector<std::string>> mShimEventStrings;
       std::vector<std::map<tile_type, std::string>> mConfigMetrics;                  
-
+      std::string mCoreMetricSet;
+      std::string mMemoryMetricSet;
+      std::string mShimMetricSet;
   };
 
 }   
