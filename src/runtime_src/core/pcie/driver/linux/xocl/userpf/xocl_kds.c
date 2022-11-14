@@ -1413,6 +1413,7 @@ static int
 xocl_kds_get_cu_info(struct xocl_dev *xdev, int slot_hdl,
 		      struct xrt_cu_info *cu_info, u32 domain)
 {
+	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct kds_cu_mgmt *cu_mgmt = NULL;
 	struct xrt_cu *xcu = NULL;
 	int cur = 0;
@@ -1432,7 +1433,6 @@ xocl_kds_get_cu_info(struct xocl_dev *xdev, int slot_hdl,
 		cur++;
 	}
 
-done:
 	return cur;
 }
 
@@ -1845,9 +1845,9 @@ static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domai
 	if (ret)
 		return ret;
 
-	if (resp->hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
 		userpf_err(xdev, "Unconfigure CU(%d) failed cstate(%d) rcode(%d)",
-			   cu_idx, resp->hdr.cstate, resp->rcode);
+			   cu_idx, resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
 
@@ -2194,7 +2194,6 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	struct xrt_cu_info *scu_info = NULL;
 	int major = 0, minor = 0;
 	int num_cus = 0;
-	int num_ooc_cus = 0;
 	int num_scus = 0;
 	int ret = 0;
 	int i = 0;
@@ -2218,11 +2217,6 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	if (!XDEV(xdev)->kds.ert)
 		goto out;
 
-	if (!cfg.ert) {
-		XDEV(xdev)->kds.ert_disable = true;
-		goto out;
-	}
-
 	// Soft Kernel Info
 	scu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
 	if (!scu_info) {
@@ -2244,22 +2238,24 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		goto out;
 	}
 
-	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus, num_scus);
+	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, num_cus, num_scus);
 	if (ret)
 		goto out;
 
 	for (i = 0; i < num_cus; ++i) {
-		ret = xocl_kds_xgq_uncfg_cu(xdev, cu_info[i]->cu_idx, DOMAIN_PL);
+		ret = xocl_kds_xgq_uncfg_cu(xdev, cu_info[i].cu_idx, DOMAIN_PL);
 		if (ret) {
-			userpf_info(xdev, "CU[%d] unconfigure failed, ret %d\n", ret);
+			userpf_info(xdev, "CU[%d] unconfigure failed, ret %d\n",
+					cu_info[i].cu_idx, ret);
 			return ret;
 		}
 	}
 
 	for (i = 0; i < num_scus; ++i) {
-		ret = xocl_kds_xgq_uncfg_cu(xdev, scu_info[i]->cu_idx, DOMAIN_PS);
+		ret = xocl_kds_xgq_uncfg_cu(xdev, scu_info[i].cu_idx, DOMAIN_PS);
 		if (ret) {
-			userpf_info(xdev, "SCU[%d] unconfigure failed, ret %d\n", ret);
+			userpf_info(xdev, "SCU[%d] unconfigure failed, ret %d\n",
+					scu_info[i].cu_idx, ret);
 			return ret;
 		}
 	}
@@ -2271,6 +2267,10 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		kds_reset(&XDEV(xdev)->kds);
 
 	xocl_ert_ctrl_unset_xgq(xdev);
+out:
+	if (ret)
+		XDEV(xdev)->kds.bad_state = 1;
+
 	return ret;
 }
 
