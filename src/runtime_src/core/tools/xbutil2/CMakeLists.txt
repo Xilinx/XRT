@@ -87,14 +87,13 @@ target_link_libraries(${XBUTIL2_NAME}
   PRIVATE
   xrt_core
   xrt_coreutil
-  stdc++fs
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_SYSTEM_LIBRARY}
   ${Boost_PROGRAM_OPTIONS_LIBRARY}
   )
 
 if (NOT WIN32)
-  target_link_libraries(${XBUTIL2_NAME} PRIVATE pthread uuid dl)
+  target_link_libraries(${XBUTIL2_NAME} PRIVATE stdc++fs pthread uuid dl)
 endif()
 
 # Package xrt sub commands json file for embedded builds

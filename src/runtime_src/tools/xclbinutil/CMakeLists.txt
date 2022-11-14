@@ -170,7 +170,7 @@ if (GTEST_FOUND)
   add_executable(${UNIT_TEST_NAME} ${XCLBINTEST_SRCS})
 
   if(WIN32)
-    target_link_libraries(${UNIT_TEST_NAME} PRIVATE stdc++fs Boost::filesystem Boost::program_options Boost::system )
+    target_link_libraries(${UNIT_TEST_NAME} PRIVATE Boost::filesystem Boost::program_options Boost::system )
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE ${GTEST_BOTH_LIBRARIES})
   else()
     target_link_libraries(${UNIT_TEST_NAME} PRIVATE stdc++fs ${Boost_LIBRARIES} ${GTEST_BOTH_LIBRARIES} pthread crypto)
