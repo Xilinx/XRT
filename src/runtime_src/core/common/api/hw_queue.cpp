@@ -616,7 +616,7 @@ get_hw_queue_impl(const xrt::hw_context& hwctx)
   auto& queues = dev2hwc[device];
   auto hwqimpl = queues[hwctx_hdl].lock();
   if (!hwqimpl) {
-    auto hwqueue_hdl = device->create_hw_queue(hwctx);
+    auto hwqueue_hdl = device->create_hw_queue(static_cast<xcl_hwctx_handle>(hwctx));
     queues[hwctx_hdl] = hwqimpl = (hwqueue_hdl == XRT_NULL_HWQUEUE)
       ? get_kds_device_nolock(queues, device)
       : queue_ptr{new xrt_core::qds_device(device, hwqueue_hdl)};
