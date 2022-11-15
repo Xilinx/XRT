@@ -1,10 +1,8 @@
 [Unit]
-Description=Soft Kernel Daemon
-After=init-apu.service
+Description=APU init Daemon
 
 [Service]
-Type=forking
-ExecStart=/usr/bin/skd
+ExecStart=/usr/bin/init-apu
 StandardOutput=journal+console
 MemoryLimit=1G
 

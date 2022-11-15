@@ -1,6 +1,5 @@
 [Unit]
 Description=apu-boot
-Requires=skd.service
 After=skd.service
  
 [Service]
