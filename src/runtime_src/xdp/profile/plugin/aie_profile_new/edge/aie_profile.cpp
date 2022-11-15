@@ -83,6 +83,128 @@ namespace {
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
+    AieProfile_EdgeImpl::AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
+      : AieProfileImpl(database, metadata)
+    {
+      mCoreStartEvents = {
+        {"heat_map",              {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                                  XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
+        {"stalls",                {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
+                                  XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
+        {"execution",             {XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_INSTR_LOAD_CORE,
+                                  XAIE_EVENT_INSTR_STORE_CORE,          XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
+        {"floating_point",        {XAIE_EVENT_FP_OVERFLOW_CORE,          XAIE_EVENT_FP_UNDERFLOW_CORE,
+                                  XAIE_EVENT_FP_INVALID_CORE,           XAIE_EVENT_FP_DIV_BY_ZERO_CORE}},
+        {"stream_put_get",        {XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
+                                  XAIE_EVENT_INSTR_STREAM_GET_CORE,     XAIE_EVENT_INSTR_STREAM_PUT_CORE}},
+        {"write_bandwidths",      {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_PUT_CORE,
+                                  XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
+        {"read_bandwidths",       {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_GET_CORE,
+                                  XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
+        {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE,
+                                  XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
+        {"events",                {XAIE_EVENT_INSTR_EVENT_0_CORE,        XAIE_EVENT_INSTR_EVENT_1_CORE,
+                                  XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
+      };
+      mCoreEndEvents = {
+        {"heat_map",              {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                                  XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
+        {"stalls",                {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
+                                  XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
+        {"execution",             {XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_INSTR_LOAD_CORE,
+                                  XAIE_EVENT_INSTR_STORE_CORE,          XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
+        {"floating_point",        {XAIE_EVENT_FP_OVERFLOW_CORE,          XAIE_EVENT_FP_UNDERFLOW_CORE,
+                                  XAIE_EVENT_FP_INVALID_CORE,           XAIE_EVENT_FP_DIV_BY_ZERO_CORE}},
+        {"stream_put_get",        {XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
+                                  XAIE_EVENT_INSTR_STREAM_GET_CORE,     XAIE_EVENT_INSTR_STREAM_PUT_CORE}},
+        {"write_bandwidths",      {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_PUT_CORE,
+                                  XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
+        {"read_bandwidths",       {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_GET_CORE,
+                                  XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
+        {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE,
+                                  XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
+        {"events",                {XAIE_EVENT_INSTR_EVENT_0_CORE,        XAIE_EVENT_INSTR_EVENT_1_CORE,
+                                  XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
+      };
+
+      // **** Memory Module Counters ****
+      mMemoryStartEvents = {
+        {"conflicts",             {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
+        {"dma_locks",             {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}},
+        {"dma_stalls_s2mm",       {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
+                                  XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
+        {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
+                                  XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}},
+        {"write_bandwidths",      {XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
+                                  XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
+        {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
+                                  XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
+      };
+      mMemoryEndEvents = {
+        {"conflicts",             {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
+        {"dma_locks",             {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}}, 
+        {"dma_stalls_s2mm",       {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
+                                  XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
+        {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
+                                  XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}},
+        {"write_bandwidths",      {XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
+                                  XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
+        {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
+                                  XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
+      };
+
+      // **** PL/Shim Counters ****
+      mShimStartEvents = {
+        {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
+        {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
+        {"packets",               {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL}}
+      };
+      mShimEndEvents = {
+        {"input_bandwidths",      {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
+        {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
+        {"packets",               {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL}}
+      };
+
+      // String event values for guidance and output
+      mCoreEventStrings = {
+        {"heat_map",              {"ACTIVE_CORE",               "GROUP_CORE_STALL_CORE",
+                                  "INSTR_VECTOR_CORE",         "GROUP_CORE_PROGRAM_FLOW"}},
+        {"stalls",                {"MEMORY_STALL_CORE",         "STREAM_STALL_CORE",
+                                  "LOCK_STALL_CORE",           "CASCADE_STALL_CORE"}},
+        {"execution",             {"INSTR_VECTOR_CORE",         "INSTR_LOAD_CORE",
+                                  "INSTR_STORE_CORE",          "GROUP_CORE_PROGRAM_FLOW"}},
+        {"floating_point",        {"FP_OVERFLOW_CORE",          "FP_UNDERFLOW_CORE",
+                                  "FP_INVALID_CORE",           "FP_DIV_BY_ZERO_CORE"}},
+        {"stream_put_get",        {"INSTR_CASCADE_GET_CORE",    "INSTR_CASCADE_PUT_CORE",
+                                  "INSTR_STREAM_GET_CORE",     "INSTR_STREAM_PUT_CORE"}},
+        {"write_bandwidths",      {"ACTIVE_CORE",               "INSTR_STREAM_PUT_CORE",
+                                  "INSTR_CASCADE_PUT_CORE",    "EVENT_TRUE_CORE"}},
+        {"read_bandwidths",       {"ACTIVE_CORE",               "INSTR_STREAM_GET_CORE",
+                                  "INSTR_CASCADE_GET_CORE",    "EVENT_TRUE_CORE"}},
+        {"aie_trace",             {"CORE_TRACE_RUNNING",        "CORE_TRACE_STALLED",
+                                  "MEMORY_TRACE_RUNNING",      "MEMORY_TRACE_STALLED"}},
+        {"events",                {"INSTR_EVENT_0_CORE",        "INSTR_EVENT_1_CORE",
+                                  "USER_EVENT_0_CORE",         "USER_EVENT_1_CORE"}}
+      };
+      mMemoryEventStrings = {
+        {"conflicts",             {"GROUP_MEMORY_CONFLICT_MEM", "GROUP_ERRORS_MEM"}},
+        {"dma_locks",             {"GROUP_DMA_ACTIVITY_MEM",    "GROUP_LOCK_MEM"}},
+        {"dma_stalls_s2mm",       {"DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM",
+                                  "DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM"}},
+        {"dma_stalls_mm2s",       {"DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM",
+                                  "DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM"}},
+        {"write_bandwidths",      {"DMA_MM2S_0_FINISHED_BD_MEM",
+                                  "DMA_MM2S_1_FINISHED_BD_MEM"}},
+        {"read_bandwidths",       {"DMA_S2MM_0_FINISHED_BD_MEM",
+                                  "DMA_S2MM_1_FINISHED_BD_MEM"}}
+      };
+      mShimEventStrings = {
+        {"input_bandwidths",      {"PORT_RUNNING_0_PL", "PORT_STALLED_0_PL"}},
+        {"output_bandwidths",     {"PORT_RUNNING_0_PL", "PORT_STALLED_0_PL"}},
+        {"packets",               {"PORT_TLAST_0_PL",   "PORT_TLAST_1_PL"}}
+      };
+    }
+
   bool AieProfile_EdgeImpl::checkAieDevice(uint64_t deviceId, void* handle)
   {
     aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
@@ -135,25 +257,18 @@ namespace xdp {
                                              const XAie_ModuleType mod,
                                              const std::string& metricSet)
   {
-    std::cout << "I'm in get Num Free Counters" << std::endl;
-    std::cout << "tiles: " << tiles.size() << std::endl;
-    std::cout << "tiles row col" << tiles[0].row << " " << tiles[0].col << std::endl;
-    std::cout << "I'm here now" << std::endl;
-
+  
     uint32_t numFreeCtr = 0;
     uint32_t tileId = 0;
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "aie" 
                            : ((mod == XAIE_MEM_MOD) ? "aie_memory" 
                            : "interface_tile");
 
-    std::cout <<  "I'm about to get the stats" << std::endl;
 
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
 
-    std::cout << "Finished getting stats!" << std::endl;
     // Calculate number of free counters based on minimum available across tiles
     for (unsigned int i=0; i < tiles.size(); i++) {
-      std::cout << "Getting Tile i:  " << i << std::endl;
       auto row = (mod == XAIE_PL_MOD) ? tiles[i].row : tiles[i].row + 1;
       auto loc = XAie_TileLoc(tiles[i].col, row);
       auto avail = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
@@ -166,7 +281,6 @@ namespace xdp {
         }
       }
     }
-    std::cout << "I'm still in get Num Free Counters" << std::endl;
 
     auto requestedEvents = (mod == XAIE_CORE_MOD) ? mCoreStartEvents[metricSet]
                          : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet] 
@@ -200,7 +314,6 @@ namespace xdp {
       if (tiles.size() > 0)
         printTileModStats(aieDevice, tiles[tileId], mod);
     }
-    std::cout << "I'm still still in get Num Free Counters" << std::endl;
 
 
     return numFreeCtr;
@@ -1334,10 +1447,8 @@ namespace xdp {
       auto metricSet         = getMetricSet(mod, metricsStr);
       auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
 
-      std::cout << " I got to this point!" << std::endl;
       // Ask Resource manager for resource availability
       auto numFreeCounters   = getNumFreeCtr(aieDevice, tiles, mod, metricSet);
-      std::cout << " I could  get the free counters" << std::endl;
 
       if (numFreeCounters == 0)
         continue;
@@ -1353,10 +1464,8 @@ namespace xdp {
 
       int numTileCounters[NUM_COUNTERS+1] = {0};
       
-      std::cout << " About to iterate through the tiles" << std::endl;
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tile : tiles) {
-        std::cout << "I am in the tile loop" << std::endl;
         int numCounters = 0;
         auto col = tile.col;
         auto row = tile.row;
@@ -1371,8 +1480,10 @@ namespace xdp {
                         : xaieTile.pl());
         
         for (int i=0; i < numFreeCounters; ++i) {
+
           auto startEvent = startEvents.at(i);
           auto endEvent   = endEvents.at(i);
+
 
           // Request counter from resource manager
           auto perfCounter = xaieModule.perfCounter();
@@ -1380,10 +1491,10 @@ namespace xdp {
           if (ret != XAIE_OK) break;
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
-          
+        
           configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
           configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, startEvent, metricSet);
-          
+
           // Start the counters after group events have been configured
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;
@@ -1403,6 +1514,7 @@ namespace xdp {
 
           auto payload = getCounterPayload(aieDevInst, tile, col, row, startEvent);
 
+
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
@@ -1417,7 +1529,6 @@ namespace xdp {
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }
-      std::cout << " Reporting tiles" << std::endl;
 
       // Report counters reserved per tile
       {
@@ -1441,8 +1552,6 @@ namespace xdp {
 
   void AieProfile_EdgeImpl::poll(uint32_t index, void* handle){
       // Wait until xclbin has been loaded and device has been updated in database
-      std::cout << " I'm polling" << std::endl;
-
       if (!(db->getStaticInfo().isDeviceReady(index)))
         return;
       XAie_DevInst* aieDevInst =

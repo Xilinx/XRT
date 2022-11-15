@@ -31,8 +31,10 @@ namespace xdp {
 
   class AieProfile_EdgeImpl : public AieProfileImpl{
     public:
-      AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
-        : AieProfileImpl(database, metadata){}
+      // AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
+      //   : AieProfileImpl(database, metadata){}
+      AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
+
       ~AieProfile_EdgeImpl() = default;
 
       void updateDevice();

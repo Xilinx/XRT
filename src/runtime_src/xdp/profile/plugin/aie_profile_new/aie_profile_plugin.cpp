@@ -207,6 +207,7 @@ namespace xdp {
 
   void AieProfilePluginUnified::endPollforDevice(void* handle)
   {
+    std::cout << "reached End poll!" << std::endl;
     // Ask thread to stop
     auto& AIEData = handleToAIEData[handle];
     AIEData.threadCtrlBool = false;
@@ -214,6 +215,7 @@ namespace xdp {
     //auto it = threadMap.find(handle);
     // auto it = AIEData.thread;
     AIEData.thread.join();
+    handleToAIEData.erase(handle);
     // threadMap.erase(it);
     // threadCtrlMap.erase(handle); //Do we need to do this?
 
@@ -221,15 +223,15 @@ namespace xdp {
 
   void AieProfilePluginUnified::endPoll()
   {
+    std::cout << "Reached the end poll function!" << std::endl;
     // Ask all threads to end
-    for (auto& p : handleToAIEData){
+    for (auto& p : handleToAIEData)
       p.second.threadCtrlBool = false;
-    }
 
-    for (auto& p : handleToAIEData){
+    for (auto& p : handleToAIEData)
       p.second.thread.join();
-    }
 
+    handleToAIEData.clear();
   }
     // for (auto& t : handleToAIEData)
     //   t.second.thread.join();
