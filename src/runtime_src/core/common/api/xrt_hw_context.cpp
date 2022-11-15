@@ -14,10 +14,6 @@
 
 #include <limits>
 
-#ifdef _WIN32
-//# pragma warning( disable : 4244 )
-#endif
-
 namespace xrt {
 
 // class hw_context_impl - insulated implemention of an xrt::hw_context
@@ -196,16 +192,6 @@ hw_context::
 get_mode() const
 {
   return get_handle()->get_mode();
-}
-
-uint32_t
-hw_context::
-get_memory_group_id() const
-{
-  xcl_bo_flags grp = {0}; // xrt_mem.h
-  grp.bank = 0;
-  grp.slot = static_cast<uint8_t>(get_handle()->get_xcl_handle());
-  return grp.flags;
 }
 
 hw_context::

@@ -8,6 +8,7 @@
 // core/include/experimental/xrt_bo.h
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_bo.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#define XRT_API_SOURCE         // in same dll as api
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_aie.h"
 #include "core/include/experimental/xrt_hw_context.h"
@@ -140,6 +141,14 @@ public:
   get_device() const
   {
     return m_device;
+  }
+
+  xcl_hwctx_handle
+  get_hwctx_handle() const
+  {
+    return (m_hwctx)
+      ? static_cast<xcl_hwctx_handle>(m_hwctx)
+      : XRT_NULL_HWCTX;
   }
 
   xrt_core::device*
@@ -981,7 +990,7 @@ static xrt_buffer_handle
 alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
-  return device->alloc_bo(userptr, sz, flags);
+  return device->alloc_bo(device.get_hwctx_handle(), userptr, sz, flags);
 }
 
 static xrt_buffer_handle
@@ -989,7 +998,7 @@ alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGr
 {
   auto xflags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
   try {
-    return device->alloc_bo(sz, xflags);
+    return device->alloc_bo(device.get_hwctx_handle(), sz, xflags);
   }
   catch (const std::exception& ex) {
     if (flags == XRT_BO_FLAGS_HOST_ONLY) {
@@ -1179,7 +1188,6 @@ adjust_buffer_flags(const device_type& dev, xrt::bo::flags flags, xrt::memory_gr
   return static_cast<xrtBufferFlags>(flags);
 }
 
-
 } // namespace
 
 ////////////////////////////////////////////////////////////////
@@ -1270,6 +1278,28 @@ wait()
 {
   handle->wait();
 }
+
+bo::
+bo(const xrt::hw_context& hwctx, void* userptr, size_t sz, bo::flags flags, memory_group grp)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+      alloc_userptr, device_type{hwctx}, userptr, sz, adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
+{}
+
+bo::
+bo(const xrt::hw_context& hwctx, void* userptr, size_t sz, memory_group grp)
+  : bo(hwctx, userptr, sz, bo::flags::normal, grp)
+{}
+
+bo::
+bo(const xrt::hw_context& hwctx, size_t sz, bo::flags flags, memory_group grp)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+      alloc, device_type{hwctx}, sz, adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
+{}
+
+bo::
+bo(const xrt::hw_context& hwctx, size_t sz, memory_group grp)
+  : bo(hwctx, sz, bo::flags::normal, grp)
+{}
 
 bo::
 bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
