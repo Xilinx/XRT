@@ -1759,7 +1759,6 @@ static int kds_cfg_xgq_update(struct kds_sched *kds)
 	int ret = 0;
 	int i = 0;
 
-	printk ("************** %s %d ****************\n", __func__, __LINE__);
 	for (i = 0; i < MAX_CUS; i++) {
 		xcu = cu_mgmt->xcus[i];
 		if (!xcu)
@@ -1773,18 +1772,15 @@ static int kds_cfg_xgq_update(struct kds_sched *kds)
 		return -ENOSYS;
 	}
 
-	printk ("************** %s %d ****************\n", __func__, __LINE__);
 	ret = kds_start_all_cu_threads(kds, DOMAIN_PL);
 	if (ret)
 		goto run_polling;
 
-	printk ("************** %s %d ****************\n", __func__, __LINE__);
 	ret = kds_start_all_cu_threads(kds, DOMAIN_PS);
 	if (ret) {
 		kds_stop_all_cu_threads(kds, DOMAIN_PL);
 		goto run_polling;
 	}
-	printk ("************** %s %d ****************\n", __func__, __LINE__);
 
 	return 0;
 
@@ -1805,7 +1801,6 @@ int kds_cfg_update(struct kds_sched *kds)
 {
 	int ret = 0;
 
-	printk ("************** %s %d ****************\n", __func__, __LINE__);
 	if (kds->xgq_enable)
 		ret = kds_cfg_xgq_update(kds);
 	else

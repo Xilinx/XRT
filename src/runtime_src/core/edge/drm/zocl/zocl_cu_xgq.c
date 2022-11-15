@@ -329,6 +329,9 @@ static int zcu_xgq_probe(struct platform_device *pdev)
 	ret = sysfs_create_group(&pdev->dev.kobj, &zcu_xgq_attrgroup);
 	if (ret)
 		zcu_xgq_err(zcu_xgq, "create ZCU_XGQ attrs failed: %d", ret);
+
+	zcu_xgq_init_xgq(zcu_xgq);
+
 	return 0;
 }
 
@@ -377,11 +380,6 @@ int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 	zcu_xgq->zxc_cu_idx = cu_idx;
 	rc = zocl_add_context_kernel(zcu_xgq->zxc_zdev, zcu_xgq->zxc_client_hdl,
 				     cu_idx, CU_CTX_SHARED, cu_domain);
-	if (!rc) {
-		/* Re-init xgq since we may have > 1 CU assigned so can't use fast path anymore. */
-		zcu_xgq_fini_xgq(zcu_xgq);
-		zcu_xgq_init_xgq(zcu_xgq);
-	}
 	mutex_unlock(&zcu_xgq->zxc_lock);
 
 	zcu_xgq_info(zcu_xgq, "CU Domain[%d] CU[%d] assigned", cu_domain, cu_idx);
