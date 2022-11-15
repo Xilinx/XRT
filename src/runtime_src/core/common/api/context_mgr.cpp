@@ -99,7 +99,8 @@ public:
       if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
         throw std::runtime_error("aquiring cu context timed out");
     }
-    auto ipidx = m_device->open_cu_context(hwctx, ipname);
+
+    auto ipidx = m_device->open_cu_context_wrap(hwctx, ipname);
     ctx.add(ipname, ipidx);
     return ipidx;
   }
@@ -113,7 +114,8 @@ public:
     auto& ctx = m_ctx[static_cast<xcl_hwctx_handle>(hwctx)];
     if (!ctx.get(ipidx))
       throw std::runtime_error("ctx " + std::to_string(ipidx.index) + " not open");
-    m_device->close_cu_context(hwctx, ipidx);
+
+    m_device->close_cu_context_wrap(hwctx, ipidx);
     ctx.erase(ipidx);
     m_cv.notify_all();
   }

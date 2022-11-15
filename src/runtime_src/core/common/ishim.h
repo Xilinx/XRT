@@ -47,12 +47,6 @@ struct ishim
   virtual void
   close_device() = 0;
 
-  virtual cuidx_type
-  open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname) = 0;
-
-  virtual void
-  close_cu_context(const xrt::hw_context& hwctx, cuidx_type ip_index) = 0;
-
   // Legacy, to be removed
   virtual void
   open_context(const xrt::uuid& xclbin_uuid, unsigned int ip_index, bool shared) = 0;
@@ -144,6 +138,49 @@ struct ishim
   virtual void
   user_reset(xclResetKind kind) = 0;
 
+  virtual cuidx_type
+  open_cu_context(xcl_hwctx_handle, const std::string& /*cuname*/)
+  { throw not_supported_error{__func__}; }
+
+  virtual void
+  close_cu_context(xcl_hwctx_handle, cuidx_type /*ip_index*/)
+  { throw not_supported_error{__func__}; }
+
+  // Deprecated API to be removed when all shims manage a hwctx handle
+  virtual cuidx_type
+  open_cu_context(const xrt::hw_context&, const std::string& /*cuname*/)
+  { throw not_supported_error{__func__}; }
+
+  // Deprecated API to be removed when all shims manage a hwctx handle
+  virtual void
+  close_cu_context(const xrt::hw_context&, cuidx_type /*ip_index*/)
+  { throw not_supported_error{__func__}; }
+
+  // Wrapper used by upper level code to ensure that the handle
+  // version of open / close is called if defined. This wrapper
+  // is needed because there is no way to get from handle to hwctx.
+  cuidx_type
+  open_cu_context_wrap(const xrt::hw_context& hwctx, const std::string& cuname)
+  {
+    try {
+      return open_cu_context(static_cast<xcl_hwctx_handle>(hwctx), cuname);
+    }
+    catch (const not_supported_error&) {
+      return open_cu_context(hwctx, cuname);
+    }
+  }
+
+  void
+  close_cu_context_wrap(const xrt::hw_context& hwctx, cuidx_type ip_index)
+  {
+    try {
+      close_cu_context(static_cast<xcl_hwctx_handle>(hwctx), ip_index);
+    }
+    catch (const not_supported_error&) {
+      close_cu_context(hwctx, ip_index);
+    }
+  }
+
   ////////////////////////////////////////////////////////////////
   // Interfaces for hw context handling
   // Implemented explicitly by concrete shim device class
@@ -162,7 +199,7 @@ struct ishim
 
   // Return default sentinel for legacy platforms without hw_queue support
   virtual xcl_hwqueue_handle
-  create_hw_queue(const xrt::hw_context&) const
+  create_hw_queue(xcl_hwctx_handle) const
   { return XRT_NULL_HWQUEUE; }
 
   // Default noop for legacy platforms without hw_queue support
