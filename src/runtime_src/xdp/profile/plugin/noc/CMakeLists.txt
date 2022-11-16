@@ -7,14 +7,14 @@
 # completely implemented, but included for future expansion.
 # ====================================================================
 
-file(GLOB USER_PLUGIN_FILES
+file(GLOB NOC_PLUGIN_FILES
   "${PROFILE_DIR}/plugin/noc/*.h"
   "${PROFILE_DIR}/plugin/noc/*.cpp"
   "${PROFILE_DIR}/writer/noc/*.h"
   "${PROFILE_DIR}/writer/noc/*.cpp"
 )
 
-add_library(xdp_noc_plugin MODULE ${USER_PLUGIN_FILES})
+add_library(xdp_noc_plugin MODULE ${NOC_PLUGIN_FILES})
 add_dependencies(xdp_noc_plugin xdp_core xrt_core)
 target_link_libraries(xdp_noc_plugin PRIVATE xdp_core xrt_core)
 
