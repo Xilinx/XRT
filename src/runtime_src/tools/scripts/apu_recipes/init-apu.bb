@@ -1,4 +1,4 @@
-SUMMARY = "PS Kernel Daemon"
+SUMMARY = "Init apu service"
 SECTION = "PETALINUX/apps"
 LICENSE = "MIT"
  

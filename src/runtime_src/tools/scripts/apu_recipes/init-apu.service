@@ -4,7 +4,6 @@ Description=APU init Daemon
 [Service]
 ExecStart=/usr/bin/init-apu
 StandardOutput=journal+console
-MemoryLimit=1G
 
 [Install]
 WantedBy=multi-user.target
