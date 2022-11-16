@@ -906,8 +906,6 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 
 static int xocl_cleanup_drm_memory_manager(struct xocl_mm *xocl_mm)
 {
-	int i = 0;
-
 	if (!xocl_mm)
 		return 0;
 
@@ -927,7 +925,6 @@ static int xocl_cleanup_drm_memory_manager(struct xocl_mm *xocl_mm)
 static int xocl_init_drm_mm(struct xocl_drm *drm_p, struct xocl_mm *xocl_mm,
 		uint64_t mm_start_addr, uint64_t mm_end_addr, uint32_t m_count)
 {
-	size_t size = 0;
 	int err = 0;
 	int i = 0;
 	

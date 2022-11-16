@@ -1499,7 +1499,7 @@ int shim::xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx)
 	    std::this_thread::sleep_for(std::chrono::seconds(5));
 	    while (!dev_hotplug_done) {
 		    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		    xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
+		    pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
 				    "dev_hotplug_done", err, dev_hotplug_done, 0);
 	    }
 	    dev_init();
@@ -2357,6 +2357,7 @@ register_xclbin(const xrt::xclbin&)
 {
   // Explicit hardware contexts are not supported in Alveo.
   xrt_logmsg(XRT_INFO, "%s: XCLBIN successfully registered for this device", __func__);
+}
 
 //Exec Buf with ctx handle.
 void
