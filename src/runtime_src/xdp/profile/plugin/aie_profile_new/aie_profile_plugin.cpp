@@ -169,13 +169,14 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
     // Create and register writer and file
-    std::string core_str = (metadata->getCoreMetricSet().empty())   ? "" : "_" + metadata->getCoreMetricSet();
-    std::string mem_str  = (metadata->getMemoryMetricSet().empty()) ? "" : "_" + metadata->getMemoryMetricSet();
-    std::string shim_str = (metadata->getShimMetricSet().empty())   ? "" : "_" + metadata->getShimMetricSet();    
-    std::string chan_str = (metadata->getChannelId() < 0)           ? "" : "_chan" + std::to_string(metadata->getChannelId());
-
-    std::string outputFile = "aie_profile_" + deviceName + core_str + mem_str 
-        + shim_str + chan_str + ".csv";
+    // std::string core_str = (metadata->getCoreMetricSet().empty())   ? "" : "_" + metadata->getCoreMetricSet();
+    // std::string mem_str  = (metadata->getMemoryMetricSet().empty()) ? "" : "_" + metadata->getMemoryMetricSet();
+    // std::string shim_str = (metadata->getShimMetricSet().empty())   ? "" : "_" + metadata->getShimMetricSet();    
+    std::string chan_str = (metadata->getChannelId() < 0) ? "" : "_chan" + std::to_string(metadata->getChannelId());
+    std::string timestamp = "_" + std::to_string(xrt_core::time_ns());
+    // std::string outputFile = "aie_profile_" + deviceName + chan_str + timestamp + ".csv";
+    std::cout << "TIMESTAMP IS: " << timestamp << std::endl;
+    std::string outputFile = "aie_profile_" + deviceName + chan_str + timestamp + ".csv";
 
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
                                               deviceName.c_str(), mIndex);

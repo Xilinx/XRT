@@ -57,16 +57,9 @@ class AieProfileMetadata{
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
     void getPollingInterval();
-               
-    std::string getMetricSet(const int mod, 
-                              const std::string& metricsStr, 
-                              bool ignoreOldConfig = false);
-
+    
     uint64_t getDeviceID() {return deviceID;}
     void* getHandle() {return handle;}
-    std::string getCoreMetricSet(){return mCoreMetricSet;}            
-    std::string getMemoryMetricSet(){return mMemoryMetricSet;}
-    std::string getShimMetricSet(){return mShimMetricSet;}
     int16_t getChannelId(){return mChannelId;}
     uint32_t getPollingIntervalVal(){return mPollingInterval;}
 
@@ -78,9 +71,6 @@ class AieProfileMetadata{
     uint32_t mPollingInterval;
     uint64_t deviceID;
     void* handle;
-    std::string mCoreMetricSet;
-    std::string mMemoryMetricSet;
-    std::string mShimMetricSet;
   };
 }
 

@@ -41,7 +41,6 @@ namespace xdp {
       void poll(uint32_t index, void* handle);
       bool checkAieDevice(uint64_t deviceId, void* handle);
 
-      bool setMetrics(uint64_t deviceId, void* handle);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
                                                         const std::string &graph,
@@ -50,12 +49,6 @@ namespace xdp {
                               const std::string &metricStr,
                               int16_t channelId = -1,
                               bool useColumn = false, uint32_t minCol = 0, uint32_t maxCol = 0);
-      std::string getMetricSet(const XAie_ModuleType mod, 
-                                  const std::string& metricsStr,
-                                  bool  ignoreOldConfig = false);
-      std::vector<tile_type> getTilesForProfiling(const XAie_ModuleType mod,
-                                                      const std::string& metricsStr,
-                                                      void* handle);
 
      void getConfigMetricsForTiles(int moduleIdx,
                                     std::vector<std::string> metricsSettings,
@@ -67,11 +60,7 @@ namespace xdp {
                                               std::vector<std::string> metricsSettings,
                                               /* std::vector<std::string> graphmetricsSettings, */
                                               void* handle);
-      // Find minimum number of counters that are available across all tiles
-      uint32_t getNumFreeCtr(xaiefal::XAieDev* aieDevice,
-                            const std::vector<tile_type>& tiles,
-                            const XAie_ModuleType mod,
-                            const std::string& metricSet);
+    
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                             const tile_type& tile, 
                             const XAie_ModuleType mod);
@@ -114,9 +103,7 @@ namespace xdp {
       std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
       std::map<std::string, std::vector<std::string>> mShimEventStrings;
       std::vector<std::map<tile_type, std::string>> mConfigMetrics;                  
-      std::string mCoreMetricSet;
-      std::string mMemoryMetricSet;
-      std::string mShimMetricSet;
+    
   };
 
 }   
