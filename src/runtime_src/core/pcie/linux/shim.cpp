@@ -2202,7 +2202,7 @@ register_xclbin(const xrt::xclbin&)
 //Exec Buf with ctx handle.
 void
 shim::
-exec_buf(xclBufferHandle boh, const xrt::hw_context& hwctx)
+exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl)
 {
   // TODO: Implement new function, for now just call legacy xclExecBuf().
     xclExecBuf(boh);
@@ -2261,10 +2261,10 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
 
 //Exec Buf with ctx handle.
 void
-exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, const xrt::hw_context& hwctx)
+exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xcl_hwctx_handle ctxhdl)
 {
     auto shim = get_shim_object(handle);
-    return shim->exec_buf(to_xclBufferHandle(bohdl), hwctx);
+    return shim->exec_buf(to_xclBufferHandle(bohdl), ctxhdl);
 }
 
 } // xrt::shim_int
