@@ -150,6 +150,20 @@ config_versal_project()
     fi
     cp $INIT_TAB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-core/sysvinit
 
+    # Create startup script to initialize apu tasks
+    SERVICE_FILE=$APU_RECIPES_DIR/init-apu.service
+    BB_FILE=$APU_RECIPES_DIR/init-apu.bb
+    INIT_SCRIPT=$APU_RECIPES_DIR/init-apu
+
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+	$PETA_BIN/petalinux-create -t apps --template install -n init-apu --enable
+    fi
+
+    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu/files
+    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu
+    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu/files
+
     # Create startup script to write to sysfs entry to indicate apu booted
     SERVICE_FILE=$APU_RECIPES_DIR/apu-boot.service
     BB_FILE=$APU_RECIPES_DIR/apu-boot.bb
