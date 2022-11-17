@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
  * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -92,18 +91,6 @@ namespace xdp {
     return deviceID;
   }
 
-  // bool AieProfilePluginUnified::checkAieDevice(uint64_t deviceId, void* handle)
-  // {
-  //   aieDevInst = static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
-  //   aieDevice  = static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
-  //   if (!aieDevInst || !aieDevice) {
-  //     xrt_core::message::send(severity_level::warning, "XRT", 
-  //         "Unable to get AIE device. There will be no AIE profiling.");
-  //     return false;
-  //   }
-  //   return true;
-  // }
-
   void AieProfilePluginUnified::updateAIEDevice(void* handle)
   {
 
@@ -133,7 +120,6 @@ namespace xdp {
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
     auto& metadata = AIEData.metadata;
-    AIEData.supported = true; // initialize struct
 
     //Get the polling interval after the metadata has been defined.
     metadata->getPollingInterval(); 
@@ -168,14 +154,10 @@ namespace xdp {
     struct xclDeviceInfo2 info;
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
-    // Create and register writer and file
-    // std::string core_str = (metadata->getCoreMetricSet().empty())   ? "" : "_" + metadata->getCoreMetricSet();
-    // std::string mem_str  = (metadata->getMemoryMetricSet().empty()) ? "" : "_" + metadata->getMemoryMetricSet();
-    // std::string shim_str = (metadata->getShimMetricSet().empty())   ? "" : "_" + metadata->getShimMetricSet();    
+   
     std::string chan_str = (metadata->getChannelId() < 0) ? "" : "_chan" + std::to_string(metadata->getChannelId());
     std::string timestamp = "_" + std::to_string(xrt_core::time_ns());
     // std::string outputFile = "aie_profile_" + deviceName + chan_str + timestamp + ".csv";
-    std::cout << "TIMESTAMP IS: " << timestamp << std::endl;
     std::string outputFile = "aie_profile_" + deviceName + chan_str + timestamp + ".csv";
 
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
@@ -208,23 +190,18 @@ namespace xdp {
 
   void AieProfilePluginUnified::endPollforDevice(void* handle)
   {
-    std::cout << "reached End poll!" << std::endl;
     // Ask thread to stop
     auto& AIEData = handleToAIEData[handle];
     AIEData.threadCtrlBool = false;
 
-    //auto it = threadMap.find(handle);
-    // auto it = AIEData.thread;
     AIEData.thread.join();
     handleToAIEData.erase(handle);
-    // threadMap.erase(it);
-    // threadCtrlMap.erase(handle); //Do we need to do this?
+
 
   }
 
   void AieProfilePluginUnified::endPoll()
   {
-    std::cout << "Reached the end poll function!" << std::endl;
     // Ask all threads to end
     for (auto& p : handleToAIEData)
       p.second.threadCtrlBool = false;
@@ -234,10 +211,5 @@ namespace xdp {
 
     handleToAIEData.clear();
   }
-    // for (auto& t : handleToAIEData)
-    //   t.second.thread.join();
-
-    // threadCtrlMap.clear(); //Do  we need to do this?
-    // threadMap.clear();
 
 } // end namespace xdp

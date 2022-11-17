@@ -30,6 +30,7 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_metadata.h"
+ #include "core/edge/common/aie_parser.h"
 
 #include "core/include/xrt/xrt_kernel.h"
 
@@ -81,6 +82,7 @@ namespace {
 } // end anonymous namespace
 
 namespace xdp {
+  
   using severity_level = xrt_core::message::severity_level;
 
     AieProfile_EdgeImpl::AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
@@ -929,7 +931,6 @@ namespace xdp {
   bool 
   AieProfile_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
-    std::cout << "Reached setMetricsSettings" << std::endl;
     int counterId = 0;
     bool runtimeCounters = false;
 
@@ -969,7 +970,6 @@ namespace xdp {
     std::vector<std::vector<std::string>> graphmetricsSettings(NUM_MODULES);
 
     mConfigMetrics.resize(NUM_MODULES);
-    std::cout << "Finished resizing" << std::endl;
 
     bool newConfigUsed = false;
     for(int module = 0; module < NUM_MODULES; ++module) {
@@ -1022,13 +1022,11 @@ namespace xdp {
         }
       }
     }
-    std::cout << "Finished Configuration" << std::endl;
 
     if (!newConfigUsed) {
       // None of the new style AIE profile metrics have been used. So check for old style.
       return false;
     }
-    std::cout << "About to iterate through mdouels" << std::endl;
 
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
 
@@ -1142,7 +1140,6 @@ namespace xdp {
 
       runtimeCounters = true;
     } // modules
-    std::cout << "Reached end with runtimeCounters = " << (int)runtimeCounters << std::endl;
 
     return runtimeCounters;
   }

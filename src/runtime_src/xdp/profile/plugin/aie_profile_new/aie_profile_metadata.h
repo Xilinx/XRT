@@ -19,39 +19,9 @@
 
 #include "core/edge/common/aie_parser.h"
 
-// #include "xaiefal/xaiefal.hpp"
-
-// extern "C" {
-// #include <xaiengine.h>
-// #include <xaiengine/xaiegbl_params.h>
-// }
 namespace xdp {
   using tile_type = xrt_core::edge::aie::tile_type;
   using module_type = xrt_core::edge::aie::module_type;
-
-  // enum class module_type {
-  //     core = 0,
-  //     dma,
-  //     shim
-  //   };
-
-  //   struct tile_type
-  //   { 
-  //     uint16_t row;
-  //     uint16_t col;
-  //     uint16_t itr_mem_row;
-  //     uint16_t itr_mem_col;
-  //     uint64_t itr_mem_addr;
-  //     bool     is_trigger;
-      
-  //     bool operator==(const tile_type &tile) const {
-  //       return (col == tile.col) && (row == tile.row);
-  //     }
-  //     bool operator<(const tile_type &tile) const {
-  //       return (col < tile.col) || ((col == tile.col) && (row < tile.row));
-  //     }
-  //   };
-
 class AieProfileMetadata{
 
   public:

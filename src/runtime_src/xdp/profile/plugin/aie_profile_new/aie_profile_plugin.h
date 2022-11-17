@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
  * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -44,7 +43,6 @@ namespace xdp {
     static bool live;
     struct AIEData {
       uint64_t deviceID;
-      bool supported;
       std::unique_ptr<AieProfileImpl> implementation;
       std::shared_ptr<AieProfileMetadata> metadata;
       std::atomic<bool> threadCtrlBool;
