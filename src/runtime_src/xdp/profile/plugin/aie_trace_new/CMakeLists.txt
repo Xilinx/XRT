@@ -3,8 +3,9 @@
 #
 
 # ====================================================================
-# This builds the AIE Trace plugin.  It is currently built on both
-# x86 and Edge systems.  It also has a dependency on the hardware shim
+# This builds the AIE Trace plugin.  It is currently built on x86 and
+# Edge-Versal systems, but not Edge-aarch64.  It also has a dependency
+# on the hardware shim
 # ====================================================================
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
@@ -26,19 +27,34 @@ file(GLOB AIE_TRACE_PLUGIN_FILES
   "${IMPL_DIR}/*.cpp"
 )
 
-add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES})
-
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+
+  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES})
+
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_core)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core)
   target_compile_definitions(xdp_aie_trace_plugin PRIVATE XRT_X86_BUILD=1)
+
+  set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+
+  install (TARGETS xdp_aie_trace_plugin
+    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+  )
+
 elseif (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
+
+  add_library(xdp_aie_trace_plugin MODULE ${AIE_TRACE_PLUGIN_FILES})
+
   add_dependencies(xdp_aie_trace_plugin xdp_core xrt_core)
   target_link_libraries(xdp_aie_trace_plugin PRIVATE xdp_core xrt_core metal xaiengine)
+  set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+
+  install (TARGETS xdp_aie_trace_plugin
+    LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
+  )
+
+# Else, on edge-aarch64 don't build at all
+
 endif()
 
-set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-install (TARGETS xdp_aie_trace_plugin
-  LIBRARY DESTINATION ${XDP_PLUGIN_INSTALL_DIR}
-)
