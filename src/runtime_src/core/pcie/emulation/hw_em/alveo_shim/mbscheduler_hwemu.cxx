@@ -7,7 +7,6 @@
 #include <chrono>
 #include <cmath>
 #include <algorithm>
-//#include "mbscheduler_hwemu.h"
 
 #define	CU_ADDR_HANDSHAKE_MASK	(0xff)
 #define	CU_ADDR_VALID(addr)	(((addr) | CU_ADDR_HANDSHAKE_MASK) != (uint64_t)-1)
@@ -44,7 +43,6 @@ namespace hwemu {
         cu_idx = -1;
         slot_idx = -1;
         cu_bitmap.reset();
-        //ert_pkt = NULL;
         state = ERT_CMD_STATE_NEW;
         aborted = false;
     }
@@ -169,7 +167,6 @@ namespace hwemu {
     {
         SCHED_DEBUGF("-> %s(%lu)\n", __func__, uid);
         this->bo = bo.get();
-        //this->ert_pkt = (struct ert_packet *)bo->buf;
         this->ert_pkt = static_cast<ert_packet*>(bo->buf);
 
         // copy pkt cus to command object cu bitmap
@@ -969,18 +966,16 @@ namespace hwemu {
         }
     }
     exec_core::~exec_core() {
-        // all shared pointers should clean in reverse order of their creation
-        /*
-        pending_ctrl_queue.clear();
-pending_kds_queue.clear();
-pending_scu_queue.clear();
-pending_cmd_queue.clear();
-running_cmd_queue.clear();
-*/
-//pending_cu_queue.clear();
-
-
         
+        /* Let's have it for now.
+        // all shared pointers should clean in reverse order of their creation
+        pending_ctrl_queue.clear();
+        pending_kds_queue.clear();
+        pending_scu_queue.clear();
+        pending_cmd_queue.clear();
+        running_cmd_queue.clear();
+        pending_cu_queue.clear();
+        */
     }
 
     int exec_core::exec_cfg_cmd(std::shared_ptr<xocl_cmd>& xcmd)
@@ -1038,8 +1033,6 @@ running_cmd_queue.clear();
                 // cuidx+1 to reserve slot 0 for ctrl => max 127 CUs in ert_poll mode
                 ? this->cq_base + (cuidx+1) * cfg->slot_size : 0;
 
-            //if (!xcu)
-            //    xcu = this->cus[cuidx] = new xocl_cu(xdevice);
             if (!xcu) {
                 xcu = std::make_shared<xocl_cu>(xdevice);
                 this->cus[cuidx] = xcu;
@@ -1060,8 +1053,6 @@ running_cmd_queue.clear();
                     uint64_t polladdr = (ert_poll) 					
                         ? this->cq_base + (cuidx+1) * cfg->slot_size : 0;
 
-                   // if (!xcu)
-                    //    xcu = this->cus[cuidx] = new xocl_cu(xdevice);
                     if (!xcu) {
                         xcu = std::make_shared<xocl_cu>(xdevice);
                         this->cus[cuidx] = xcu;
@@ -1755,9 +1746,6 @@ running_cmd_queue.clear();
             SCHED_INFO("scheduler is nullptr %s", __func__);
             return;
         }
-        //! Release the xcmd to object pool
-        //scheduler->cmd_pool.destroy(xcmd.get());
-        //xcmd = nullptr;
     }
 
     void exec_core::exec_abort_cmd(std::shared_ptr<xocl_cmd>& xcmd)
@@ -2422,8 +2410,6 @@ running_cmd_queue.clear();
     {
         std::lock_guard<std::mutex> lk(pending_cmds_mutex);
         //! Get the command from boost object pool
-        //xocl_cmd *lxcmd = cmd_pool.construct();
-        //std::shared_ptr<xocl_cmd> xcmd{lxcmd};
         std::shared_ptr<xocl_cmd> xcmd = std::make_shared<xocl_cmd>();
         if (!xcmd)
             return 1;

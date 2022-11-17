@@ -170,13 +170,9 @@ namespace xclhwemhal2 {
 
   static void saveWaveDataBases()
   {
-    //std::map<unsigned int, HwEmShim*>::iterator 
-    auto start = devices.begin();
-    //std::map<unsigned int, HwEmShim*>::iterator 
-    auto end = devices.end();
-    for(; start != end; start++)
+    for(auto& handle_pair : devices)
     {
-      auto handle = (*start).second;
+      auto handle = handle_pair.second;
       if(!handle)
         continue;
       handle->saveWaveDataBase();
@@ -317,7 +313,6 @@ namespace xclhwemhal2 {
     }
   }
 
-  //static void printMem(std::ofstream &os, int base, uint64_t offset, void* buf, unsigned int size )
   static void printMem(std::shared_ptr<std::ofstream> &os, int base, uint64_t offset, void* buf, unsigned int size )
   {
     if (!os) {
@@ -1515,7 +1510,6 @@ namespace xclhwemhal2 {
       if(!mMemModel)
         mMemModel = std::make_shared<mem_model>(deviceName);
         
-      //mMemModel = new mem_model(deviceName);
       mMemModel->readDevMem(src,dest,size);
       return size;
     }

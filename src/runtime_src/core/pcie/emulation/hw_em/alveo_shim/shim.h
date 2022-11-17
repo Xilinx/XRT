@@ -433,7 +433,6 @@ using addr_type = uint64_t;
       uint32_t  mDevice_Index_for_this_device;
   };
 
-  //extern std::map<unsigned int, HwEmShim*> devices;
   extern std::map<unsigned int, std::shared_ptr<HwEmShim>> devices;
  }
 #endif

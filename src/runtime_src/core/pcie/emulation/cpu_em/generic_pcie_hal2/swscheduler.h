@@ -37,10 +37,7 @@ namespace xclcpuemhal2 {
   class xocl_sched
   {
     public:
-      //pthread_t                   scheduler_thread;
       std::thread                 scheduler_thread;
-      //pthread_mutex_t             state_lock;
-      //pthread_cond_t              state_cond;
       std::condition_variable_any    state_cond;
       std::list<std::shared_ptr<xocl_cmd>>   command_queue;
       bool                        bThreadCreated;

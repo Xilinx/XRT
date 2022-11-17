@@ -47,7 +47,6 @@ static std::string DEFAULT_TAG("");
 
     public:
         static const uint64_t mNull = 0xffffffffffffffffull;
-        //std::list<std::shared_ptr<MemoryManager> > mChildMemories;
         std::vector<std::shared_ptr<MemoryManager> > mChildMemories;
     public:
         MemoryManager(uint64_t size, uint64_t start, unsigned alignment, std::string&tag = DEFAULT_TAG );
@@ -59,7 +58,7 @@ static std::string DEFAULT_TAG("");
         uint64_t size()     { return mSize; }
         uint64_t start()    { return mStart; }
         uint64_t freeSize() { return mFreeSize; }
-	    std::string tag()   { return mTag; }
+        std::string tag()   { return mTag; }
         static bool isNullAlloc(const std::pair<uint64_t, uint64_t>& buf) { return ((buf.first == mNull) || (buf.second == mNull)); }
 
         std::pair<uint64_t, uint64_t>lookup(uint64_t buf);

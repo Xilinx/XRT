@@ -33,9 +33,6 @@ namespace xclcpuemhal2 {
     poll = 0;
     stop = false;
     pSch = std::weak_ptr{_sch} ;
-    //pthread_mutex_init(&state_lock,NULL);
-    //pthread_cond_init(&state_cond,NULL);
-    //scheduler_thread = 0;
   }
 
   xocl_sched::~xocl_sched()
@@ -45,8 +42,6 @@ namespace xclcpuemhal2 {
     intc = 0;
     poll = 0;
     stop = false;
-    //pthread_mutex_init(&state_lock,NULL);
-    //pthread_cond_init(&state_cond,NULL);
   }
 
   exec_core::exec_core()
@@ -304,7 +299,6 @@ namespace xclcpuemhal2 {
   {
     PRINTSTARTFUNC
     mParent = std::weak_ptr{_parent};
-    //mScheduler = new xocl_sched(this);
     num_pending = 0;
   }
 
@@ -1064,7 +1058,6 @@ namespace xclcpuemhal2 {
     std::cout<<"SWScheduler Thread started "<< std::endl;
 #endif
 
-    //int returnStatus  =  pthread_create(&(mScheduler->scheduler_thread) , NULL, scheduler, (void *)mScheduler);
     mScheduler->scheduler_thread = std::thread([&]
                                                { this->scheduler(); });
     mScheduler->bThreadCreated = true;

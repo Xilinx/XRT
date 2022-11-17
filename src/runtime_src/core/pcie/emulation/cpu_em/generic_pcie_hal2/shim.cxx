@@ -137,7 +137,6 @@ namespace xclcpuemhal2
       const uint64_t bankSize = (*start).ddrSize;
       mDdrBanks.push_back(*start);
       //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-      //mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base, getpagesize()));
       mDDRMemoryManager.push_back(std::make_shared<xclemulation::MemoryManager>(bankSize, base, getpagesize()));
       base += bankSize;
     }
@@ -157,21 +156,15 @@ namespace xclcpuemhal2
       return 0;
     return reinterpret_cast<CpuemShim *>(handle);
 /*
-    // why are we checking shim pointer address with a const address?
+    //  This check is to ensure this is a sw_emu shim object only, this will be obselete in future, 
+    //  Lets have it for now.
     if (*(unsigned *)handle != TAG)
       return 0;
-    if (!((CpuemShim *)handle)->isGood())
-      return 0;
-
-    return (CpuemShim *)handle;
     */
   }
 
   static void saveDeviceProcessOutputs()
   {
-    //auto start = devices.begin();
-    //auto end = devices.end();
-    //for (; start != end; start++)
     for(auto & device_pair : devices)
     {
       auto handle = device_pair.second;
@@ -1513,7 +1506,6 @@ namespace xclcpuemhal2
       ddr = 0;
     }
 
-    //struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
     auto xobj = std::make_shared<xclemulation::drm_xocl_bo>();
     xobj->flags = info->flags;
     bool zeroCopy = xclemulation::is_zero_copy(xobj);
@@ -2170,7 +2162,6 @@ namespace xclcpuemhal2
 
     std::lock_guard lk(mApiMtx);
     bool ack = false;
-    //auto ghPtr = (xclcpuemhal2::GraphType *)gh;
     if (!ghPtr)
       return -1;
     auto graphhandle = ghPtr->getGraphHandle();

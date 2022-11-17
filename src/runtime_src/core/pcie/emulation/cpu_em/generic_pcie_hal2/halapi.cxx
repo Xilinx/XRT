@@ -88,13 +88,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
     handle->set_my_device_index(deviceIndex);
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }
-/* 
-// To be deleted section
-  if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {
-    delete handle;
-    handle = 0;
-  }
-  */
+
   if (handle) {
     handle->xclOpen(logfileName);
     if (bDefaultDevice)
@@ -113,7 +107,7 @@ void xclClose(xclDeviceHandle handle)
   if (!drv)
     return ;
   drv->xclClose();
-  if (xclcpuemhal2::CpuemShim::handleCheck(handle)){ // && xclcpuemhal2::devices.size() == 0) {
+  if (xclcpuemhal2::CpuemShim::handleCheck(handle)){ 
     auto device_index = drv->get_my_device_index();
     auto itr = xclcpuemhal2::devices.find(device_index);
     if (itr != xclcpuemhal2::devices.end()) {
@@ -670,20 +664,18 @@ void*
 xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
 {
   try {
-    //auto raw_drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
     std::shared_ptr<xclcpuemhal2::CpuemShim> drv{xclcpuemhal2::CpuemShim::handleCheck(handle)};
-    // xclGraphHandle graphHandle = new xclcpuemhal2::GraphType(drv, graph);
     auto graphHandle = std::make_shared<xclcpuemhal2::GraphType>(drv, graph);
     if (graphHandle) {
       auto drv = graphHandle->getDeviceHandle();
       if (drv) {
-        //graph handler should be live somewhere thourgh out this shim scope so let's have graph devices map take care of it.
+        // graph handler should be live somewhere thourgh out this shim scope 
+        // so let's have graph devices map to take care of it.
         xclcpuemhal2::graph_devices[graphHandle->getGraphHandle()] = graphHandle;
         drv->xrtGraphInit(graphHandle);
       }
       else {
-        //delete ghPtr;
-        // A graph handler without a shim device handle
+        // A graph handler without a shim device handle, Not possible?
         graphHandle.reset();
         return XRT_NULL_HANDLE;
       }
@@ -712,7 +704,6 @@ xclGraphClose(xclGraphHandle ghl)
       else {
         std::cout << " \n Graph device is invalid, so unable to delete it." << std::endl;
       }
-      // delete ghPtr;
     }
   }
   catch (const std::exception& ex) {

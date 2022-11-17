@@ -56,8 +56,7 @@ namespace hwemu {
         public:
             xocl_cmd();
             ~xocl_cmd(){ 
-                //bo= nullptr; 
-                };
+            };
             uint32_t opcode();
             uint32_t    type();
             uint64_t    cmd_uid();
@@ -78,7 +77,6 @@ namespace hwemu {
             uint32_t next_cu(uint32_t prev);
             void     set_cu(uint32_t cuidx);
 
-            //std::shared_ptr<xclemulation::drm_xocl_bo> bo;
             xclemulation::drm_xocl_bo* bo;
             enum ert_cmd_state state;
             union {
@@ -490,11 +488,10 @@ namespace hwemu {
             std::atomic<uint32_t>    num_pending;
 
             //! Boost object pool to manage the memory for xocl cmds
-            boost::object_pool<xocl_cmd>  cmd_pool;
+            //boost::object_pool<xocl_cmd>  cmd_pool;
 
             //! exec_core
             std::shared_ptr<exec_core>  exec;
-            //xclhwemhal2::HwEmShim*   device;
             std::weak_ptr<xclhwemhal2::HwEmShim> weak_device;
 
             bool        error;
