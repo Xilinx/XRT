@@ -65,10 +65,14 @@ public:
   notify(ert_cmd_state) const = 0;
 
   /**
-  * get_hw_context() - get hw context of command buffer
+  * get_hwctx_handle() - get submission hw context of command buffer
+  * 
+  * The submission hw context is the hardware context used for command execution.
+  * This context is used in multi-xclbin / slot support when submitting a command with 
+  * execbuf when the core implementation does not support hardware queue.
   */
-  virtual xrt::hw_context
-  get_hw_context() const = 0;
+  virtual xcl_hwctx_handle
+  get_hwctx_handle() const = 0;
 
 private:
   unsigned long m_uid;

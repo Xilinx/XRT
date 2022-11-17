@@ -2205,7 +2205,7 @@ shim::
 exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl)
 {
   // TODO: Implement new function, for now just call legacy xclExecBuf().
-    xclExecBuf(boh);
+  xclExecBuf(boh);
 }
 
 } // namespace xocl

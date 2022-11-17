@@ -688,19 +688,7 @@ private:
 
 public:
   explicit
-  kernel_command(std::shared_ptr<device_type> dev, xrt_core::hw_queue hwqueue)
-    : m_device(std::move(dev))
-    , m_hwqueue(std::move(hwqueue))
-    , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
-    , m_done(true)
-  {
-    static unsigned int count = 0;
-    m_uid = count++;
-    XRT_DEBUGF("kernel_command::kernel_command(%d)\n", m_uid);
-  }
-
-  explicit
-  kernel_command(std::shared_ptr<device_type> dev, xrt_core::hw_queue hwqueue, xrt::hw_context hwctx)
+  kernel_command(std::shared_ptr<device_type> dev, xrt_core::hw_queue hwqueue, xrt::hw_context hwctx = xrt::hw_context())
       : m_device(std::move(dev))
       , m_hwqueue(std::move(hwqueue))
       , m_hwctx(std::move(hwctx))
@@ -914,10 +902,12 @@ public:
     return m_execbuf.first;
   }
 
-  xrt::hw_context
-  get_hw_context() const override
+  xcl_hwctx_handle
+  get_hwctx_handle() const override
   {
-      return m_hwctx;
+    return (m_hwctx)
+       ? static_cast<xcl_hwctx_handle>(m_hwctx)
+       : XRT_NULL_HWCTX;
   }
 
   void

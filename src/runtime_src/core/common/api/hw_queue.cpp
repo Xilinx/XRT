@@ -560,8 +560,7 @@ public:
   void
   submit(xrt_core::command* cmd) override
   {
-    auto ctxhndl = (cmd->get_hw_context()) ? static_cast<xcl_hwctx_handle>(cmd->get_hw_context()) : XRT_NULL_HWCTX;
-    m_device->exec_buf(cmd->get_exec_bo(), ctxhndl);
+    m_device->exec_buf(cmd->get_exec_bo(), cmd->get_hwctx_handle());
   }
 };
 
