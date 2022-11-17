@@ -55,6 +55,7 @@ class pscontext {
 public:
  pscontext()
    : pimpl{std::make_shared<pscontext::impl>()} {}
+__attribute__((visibility("default")))
   virtual ~pscontext() {}
  
 protected:
