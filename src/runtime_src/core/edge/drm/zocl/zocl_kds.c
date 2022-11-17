@@ -578,7 +578,7 @@ int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 	return ret;
 }
 
-static void notify_execbuf(struct kds_command *xcmd, int status)
+static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 {
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;

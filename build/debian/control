@@ -28,6 +28,7 @@ Build-Depends: cmake,
                opencl-clhpp-headers,
                pkg-config,
                protobuf-compiler,
+               rapidjson-dev,
                uuid-dev,
 Standards-Version: 4.5.0
 

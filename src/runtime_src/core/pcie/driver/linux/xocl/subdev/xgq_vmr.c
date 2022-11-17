@@ -1,17 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0
-/*
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2021-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+ * 
  * Xilinx CU driver for memory to memory BO copy
- *
- * Copyright (C) 2021-2022 Xilinx, Inc.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  */
 
-#include "xrt_xclbin.h"
-#include "../xocl_drv.h"
-#include "xgq_cmd_vmr.h"
-#include "../xgq_xocl_plat.h"
 #include <linux/time.h>
+
+#include "xgq_cmd_vmr.h"
+#include "xrt_xclbin.h"
+#include "../xgq_xocl_plat.h"
+#include "../xocl_drv.h"
+#include "xclfeatures.h"
 
 /*
  * XGQ Host management driver design.
@@ -77,6 +80,16 @@
 
 static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_VMR_INVALID_CID	0xFFFF
+
+/* Retry is set to 200 seconds for SC to be active/ready
+ * On the SC firmware side there is a HW watchdog timer, which will automatically recover the SC
+ * when SC got hung during the bootup.
+ * If SC get hung during bootup, it would take 180 secs to recover and another ~20 secs window
+ * as a buffer time to fetch and get ready with all the sensor data.
+ */
+#define MAX_SC_WAIT_TIMEOUT_SEC     200
+#define SC_WAIT_INTERVAL_MSEC  1000
+#define SC_ERR_MSG_INTERVAL_SEC     5
 
 /* cmd timeout in seconds */
 #define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(600 * 1000)
@@ -166,6 +179,7 @@ struct xocl_xgq_vmr {
 
 static int vmr_status_query(struct platform_device *pdev);
 static void xgq_offline_service(struct xocl_xgq_vmr *xgq);
+static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq);
 
 /*
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
@@ -1147,6 +1161,27 @@ static int xgq_refresh_system_dtb(struct xocl_xgq_vmr *xgq)
 		&xgq->xgq_vmr_system_dtb_size, XGQ_CMD_LOG_SYSTEM_DTB);
 }
 
+static int xgq_status(struct platform_device *pdev, struct VmrStatus *vmr_status_ptr)
+{
+	int rc = 0;
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xgq_cmd_cq_vmr_payload *vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
+
+	rc = vmr_status_query(xgq->xgq_pdev);
+	if (rc)
+		return rc;
+
+	vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
+
+	vmr_status_ptr->boot_on_default = vmr_status->boot_on_default;
+	vmr_status_ptr->boot_on_backup = vmr_status->boot_on_backup;
+	vmr_status_ptr->boot_on_recovery = vmr_status->boot_on_recovery;
+
+	return 0;
+}
+
 static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
@@ -2044,6 +2079,11 @@ static int xgq_collect_sensors(struct platform_device *pdev, int aid, int sid,
 	int ret = 0;
 	int id = 0;
 
+	if (!vmr_check_sc_is_ready(xgq)) {
+		XGQ_ERR(xgq, "SC is not ready, skipping sensors request command");
+		return -EAGAIN;
+	}
+
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
@@ -2360,6 +2400,7 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "PROGRAM_PROGRESS:%d\n", vmr_status->program_progress);
 	cnt += sprintf(buf + cnt, "PL_IS_READY:%d\n", vmr_status->pl_is_ready);
 	cnt += sprintf(buf + cnt, "PS_IS_READY:%d\n", vmr_status->ps_is_ready);
+	cnt += sprintf(buf + cnt, "SC_IS_READY:%d\n", vmr_status->sc_is_ready);
 
 	return cnt;
 }
@@ -2741,7 +2782,10 @@ static ssize_t vmr_system_dtb_read(struct file *filp, struct kobject *kobj,
 	 * which indicates that there is a new request.
 	 */
 	if (off == 0)
-		xgq_refresh_system_dtb(xgq);
+		ret = xgq_refresh_system_dtb(xgq);
+
+	if (ret)
+		return ret;
 
 	mutex_lock(&xgq->xgq_lock);
 
@@ -2785,7 +2829,10 @@ static ssize_t vmr_plm_log_read(struct file *filp, struct kobject *kobj,
 
 	/* refresh cached data if off is 0 */
 	if (off == 0)
-		xgq_refresh_plm_log(xgq);
+		ret = xgq_refresh_plm_log(xgq);
+
+	if (ret)
+		return ret;
 
 	mutex_lock(&xgq->xgq_lock);
 
@@ -2991,6 +3038,43 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq)
+{
+	struct xgq_cmd_cq_vmr_payload *vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
+	int ret = vmr_status_query(xgq->xgq_pdev);
+
+	if (ret)
+		XGQ_ERR(xgq, "received error %d for vmr_status_query xgq request", ret);
+
+	if (vmr_status->sc_is_ready)
+		return true;
+
+	return false;
+}
+
+/* Wait for SC is fully ready during driver init (in reset) */
+static bool vmr_wait_for_sc_ready(struct xocl_xgq_vmr *xgq)
+{
+	const unsigned int loop_counter = MAX_SC_WAIT_TIMEOUT_SEC * (1000 / SC_WAIT_INTERVAL_MSEC);
+	unsigned int i = 0;
+
+	for (i = 1; i <= loop_counter; i++) {
+		msleep(SC_WAIT_INTERVAL_MSEC);
+		if (vmr_check_sc_is_ready(xgq)) {
+			XGQ_INFO(xgq, "SC is ready after %d sec", i);
+			return true;
+		}
+
+		// display SC status for every SC_ERR_MSG_INTERVAL_SEC i.e. 5 seconds
+		if (!(i % SC_ERR_MSG_INTERVAL_SEC))
+			XGQ_WARN(xgq, "SC is not ready in %d sec, waiting for SC to be ready", i);
+	}
+
+	XGQ_ERR(xgq, "SC state is unknown, total wait time %d sec", loop_counter);
+	return false;
+}
+
 static int xgq_vmr_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -3116,10 +3200,14 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 			XGQ_INFO(xgq, "clock scaling feature is not supported");
 	}
 
-	ret = xocl_subdev_create(xdev, &subdev_info);
-	if (ret) {
-		XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
-		ret = 0;
+	if (vmr_wait_for_sc_ready(xgq)) {
+		ret = xocl_subdev_create(xdev, &subdev_info);
+		if (ret) {
+			XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
+			ret = 0;
+		}
+	} else {
+		XGQ_ERR(xgq, "SC is not ready and inactive, some user functions may not work properly");
 	}
 
 done:
@@ -3149,6 +3237,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_collect_sensors_by_sensor_id = xgq_collect_sensors_by_sensor_id,
 	.xgq_collect_all_inst_sensors = xgq_collect_all_inst_sensors,
 	.vmr_load_firmware = xgq_log_page_metadata,
+	.vmr_status = xgq_status,
 };
 
 static const struct file_operations xgq_vmr_fops = {

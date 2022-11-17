@@ -61,12 +61,25 @@ get_device_id(const std::string& str) const
 static void
 load_shim()
 {
+  // This is where the xrt_core library is loaded at run-time. Loading
+  // of the library will create an instance of the system singleton
+  // and set the singleton variable in this file. However, the
+  // singleton, while set, can not be assumed to be valid until after
+  // this function returns.  This is because the derived system class
+  // could have constructor body that is executed after the base
+  // class is constructed.
   static xrt_core::shim_loader shim;
 }
 
 inline system&
 instance()
 {
+  // Multiple threads could enter here at the same time.  The first
+  // thread will call the shim loader, where the singleton is set, but
+  // not necessarily ready.  See comment in load_shim().
+  static std::mutex mtx;
+  std::lock_guard lk(mtx);
+
   if (!singleton)
     load_shim();
 

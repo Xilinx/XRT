@@ -1,6 +1,6 @@
 [Unit]
 Description=Soft Kernel Daemon
-After=apu-boot.service
+After=init-apu.service
 
 [Service]
 Type=forking

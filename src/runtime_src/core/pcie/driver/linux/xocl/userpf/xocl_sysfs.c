@@ -1,13 +1,13 @@
-/*
+/**
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2016-2020 Xilinx, Inc.  All rights reserved.
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Authors: Lizhi.Hou@xilinx.com
  */
 #include "common.h"
+#include "xclfeatures.h"
 #include "kds_core.h"
 
 extern int kds_echo;
@@ -144,6 +144,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 	for (i = 0; i < topo->m_count; i++) {
+		memset(&stat, 0, sizeof(struct drm_xocl_mm_stat));
 		xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
 
 		if (raw) {
@@ -692,6 +693,42 @@ static ssize_t ready_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ready);
 
+static ssize_t vmr_status_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	void *blob = NULL;
+	const struct VmrStatus *vmr_status = NULL;
+	int proplen = 0;
+	ssize_t cnt = 0;
+
+	blob = xdev->core.fdt_blob;
+	if (!blob) {
+		xocl_err(dev, "Failed to get FDT blob");
+		return 0;
+	}
+
+	vmr_status = (struct VmrStatus*) fdt_getprop(blob, 0, "vmr_status", &proplen);
+
+	if (!vmr_status) {
+		xocl_info(dev, "Did not find vmr_status prop");
+		return 0;
+	}
+
+	if (proplen != sizeof(struct VmrStatus)) {
+		xocl_err(dev, "Invalid vmr_status length");
+		return 0;
+	}
+
+	cnt += sprintf(buf + cnt, "BOOT_ON_DEFAULT:%d\n", vmr_status->boot_on_default);
+	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n", vmr_status->boot_on_backup);
+	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n", vmr_status->boot_on_recovery);
+
+	return cnt;
+}
+
+static DEVICE_ATTR_RO(vmr_status);
+
 static ssize_t interface_uuids_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -837,6 +874,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_ready.attr,
+	&dev_attr_vmr_status.attr,
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
