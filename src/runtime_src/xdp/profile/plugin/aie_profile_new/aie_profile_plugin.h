@@ -18,6 +18,7 @@
 #define XDP_AIE_PLUGIN_DOT_H
 
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
+#include "xdp/profile/plugin/aie_profile_new/aie_profile_metadata.h"
 
 namespace xdp {
 
@@ -33,7 +34,6 @@ namespace xdp {
   private:
     uint64_t getDeviceIDFromHandle(void* handle);
     void pollAIECounters(uint32_t index, void* handle);
-    // bool checkAieDevice(uint64_t deviceId, void* handle);
     void endPoll();
 
 

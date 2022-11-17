@@ -135,12 +135,6 @@ namespace xdp {
 
     // Ensure we only read/configure once per xclbin
     if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
-      // Update the AIE specific portion of the device
-      // When new xclbin is loaded, the xclbin specific datastructure is already recreated
-
-      //@TODO Implement specific CheckAIEDevice for only edge
-      // if(!checkAieDevice(deviceId, handle))
-      //   return;
 
       //Sets up and calls the PS kernel on x86 implementation
       //Sets up and the hardware on the edge implementation

@@ -19,6 +19,7 @@
 
 #include <cstdint>
 
+#include "core/edge/common/aie_parser.h"
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
 #include "xaiefal/xaiefal.hpp"
 
@@ -28,7 +29,8 @@ extern "C" {
 }
 
 namespace xdp {
-
+  using tile_type = xrt_core::edge::aie::tile_type;
+  
   class AieProfile_EdgeImpl : public AieProfileImpl{
     public:
       // AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)

@@ -21,20 +21,17 @@
 #include <memory>
 #include <cstring>
 
-#include "core/common/message.h"
-#include "core/common/xrt_profiling.h"
-#include "core/common/time.h"
+#include "aie_profile.h"
 #include "core/edge/user/shim.h"
+#include "core/common/message.h"
+#include "core/common/time.h"
+#include "core/common/xrt_profiling.h"
+#include "core/include/xrt/xrt_kernel.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_metadata.h"
- #include "core/edge/common/aie_parser.h"
-
-#include "core/include/xrt/xrt_kernel.h"
-
-#include "aie_profile.h"
 
 constexpr unsigned int NUM_CORE_COUNTERS   = 4;
 constexpr unsigned int NUM_MEMORY_COUNTERS = 2;
@@ -82,7 +79,8 @@ namespace {
 } // end anonymous namespace
 
 namespace xdp {
-  
+  using tile_type = xrt_core::edge::aie::tile_type;
+  using module_type = xrt_core::edge::aie::module_type;
   using severity_level = xrt_core::message::severity_level;
 
     AieProfile_EdgeImpl::AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)

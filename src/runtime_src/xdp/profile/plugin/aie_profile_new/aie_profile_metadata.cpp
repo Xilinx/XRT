@@ -19,7 +19,6 @@
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "aie_profile_metadata.h"
-#include "aie_profile_plugin.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;

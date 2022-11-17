@@ -17,11 +17,8 @@
 #ifndef AIE_PROFILE_METADATA_H
 #define AIE_PROFILE_METADATA_H
 
-#include "core/edge/common/aie_parser.h"
-
 namespace xdp {
-  using tile_type = xrt_core::edge::aie::tile_type;
-  using module_type = xrt_core::edge::aie::module_type;
+
 class AieProfileMetadata{
 
   public:
