@@ -107,7 +107,8 @@ namespace xclcpuemhal2
     int xclBootFPGA();
     void xclClose();
     void resetProgram(bool callingFromClose = false);
-
+    uint32_t get_my_device_index() { return mDevice_Index_for_this_device; };
+    void set_my_device_index(uint32_t index) { mDevice_Index_for_this_device = index; };
     // Raw read/write
     size_t xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size);
     size_t xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size);
@@ -193,7 +194,7 @@ namespace xclcpuemhal2
       * Note: Run by enable tiles and disable tile reset
       */
     int
-    xrtGraphInit(std::shared_ptr<GraphType> gh);
+    xrtGraphInit(std::shared_ptr<GraphType>& gh);
 
     /**
       * xrtGraphRun() - Start a graph execution
@@ -499,6 +500,7 @@ namespace xclcpuemhal2
     std::shared_ptr<SWScheduler> mSWSch;
     bool mIsKdsSwEmu;
     std::atomic<bool> mIsDeviceProcessStarted;
+    uint32_t  mDevice_Index_for_this_device;
   };
 
   class GraphType: public std::enable_shared_from_this<GraphType>

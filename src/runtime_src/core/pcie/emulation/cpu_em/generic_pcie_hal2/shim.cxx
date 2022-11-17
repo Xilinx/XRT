@@ -169,11 +169,12 @@ namespace xclcpuemhal2
 
   static void saveDeviceProcessOutputs()
   {
-    auto start = devices.begin();
-    auto end = devices.end();
-    for (; start != end; start++)
+    //auto start = devices.begin();
+    //auto end = devices.end();
+    //for (; start != end; start++)
+    for(auto & device_pair : devices)
     {
-      auto handle = (*start).second;
+      auto handle = device_pair.second;
       if (!handle)
         continue;
       handle->saveDeviceProcessOutput();
@@ -1460,7 +1461,7 @@ namespace xclcpuemhal2
     if (it == mXoclObjMap.end())
       return nullptr;
 
-    auto bo = (*it).second;
+    auto bo = it->second;
     return bo;
   }
 
@@ -1513,10 +1514,9 @@ namespace xclcpuemhal2
     }
 
     //struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
-    auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
+    auto xobj = std::make_shared<xclemulation::drm_xocl_bo>();
     xobj->flags = info->flags;
-
-    bool zeroCopy = xclemulation::is_zero_copy(xobj.get());
+    bool zeroCopy = xclemulation::is_zero_copy(xobj);
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", zeroCopy: " << zeroCopy << std::endl;
 
@@ -1542,8 +1542,8 @@ namespace xclcpuemhal2
     }
 
     DEBUG_MSGS("%s, %d( mBufferCount: %x sFileName: %s deviceName: %s)\n", __func__, __LINE__, mBufferCount, sFileName.c_str(), deviceName.c_str());
-    std::shared_ptr<xclemulation::drm_xocl_bo> a{xobj.release()};
-    mXoclObjMap[mBufferCount++] = a;
+    //std::shared_ptr<xclemulation::drm_xocl_bo> a{xobj.release()};
+    mXoclObjMap[mBufferCount++] = xobj;
     return 0;
   }
 
@@ -1592,7 +1592,7 @@ namespace xclcpuemhal2
     if (!bo)
       return -1;
 
-    bool zeroCopy = xclemulation::is_zero_copy(bo.get());
+    bool zeroCopy = xclemulation::is_zero_copy(bo);
 
     if (!zeroCopy)
     {
@@ -1730,7 +1730,7 @@ namespace xclcpuemhal2
     }
 
     // source buffer is host_only and destination buffer is device_only
-    if (xclemulation::xocl_bo_host_only(sBO.get()) && !xclemulation::xocl_bo_p2p(sBO.get()) && xclemulation::xocl_bo_dev_only(dBO.get()))
+    if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO))
     {
       unsigned char *host_only_buffer = (unsigned char *)(sBO->buf) + src_offset;
       if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset) != size)
@@ -1739,7 +1739,7 @@ namespace xclcpuemhal2
         return -1;
       }
     } // source buffer is device_only and destination buffer is host_only
-    else if (xclemulation::xocl_bo_host_only(dBO.get()) && !xclemulation::xocl_bo_p2p(dBO.get()) && xclemulation::xocl_bo_dev_only(sBO.get()))
+    else if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO))
     {
       unsigned char *host_only_buffer = (unsigned char *)(dBO->buf) + dst_offset;
       if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset) != size)
@@ -1748,7 +1748,7 @@ namespace xclcpuemhal2
         return -1;
       }
     }
-    else if (!xclemulation::xocl_bo_host_only(sBO.get()) && !xclemulation::xocl_bo_host_only(dBO.get()) && (dBO->fd < 0) && (sBO->fd < 0))
+    else if (!xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_host_only(dBO) && (dBO->fd < 0) && (sBO->fd < 0))
     {
       unsigned char temp_buffer[size];
       // copy data from source buffer to temp buffer
@@ -1853,7 +1853,7 @@ namespace xclcpuemhal2
       return nullptr;
     }
 
-    bool zeroCopy = xclemulation::is_zero_copy(bo.get());
+    bool zeroCopy = xclemulation::is_zero_copy(bo);
     if (zeroCopy)
     {
       std::string sFileName = bo->filename;
@@ -2163,7 +2163,7 @@ namespace xclcpuemhal2
   /**
 * xrtGraphInit() - Initialize  graph
 */
-  int CpuemShim::xrtGraphInit(std::shared_ptr<xclcpuemhal2::GraphType> ghPtr)
+  int CpuemShim::xrtGraphInit(std::shared_ptr<xclcpuemhal2::GraphType>& ghPtr)
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;

@@ -34,6 +34,7 @@
 #include <cstdint>
 #include <iostream>
 #include <map>
+#include <memory>
 #include "xrt_mem.h"
 #define GCC_VERSION (__GNUC__ * 10000 \
                      + __GNUC_MINOR__ * 100 \
@@ -147,32 +148,32 @@ namespace xclemulation {
     return flag;
   }
 
-  static inline bool xocl_bo_p2p(const struct drm_xocl_bo *bo)
+  static inline bool xocl_bo_p2p(const std::shared_ptr<struct drm_xocl_bo>& bo)
   {
     return (bo->flags & XCL_BO_FLAGS_P2P);
   }
   
-  static inline bool xocl_bo_dev_only(const struct drm_xocl_bo *bo)
+  static inline bool xocl_bo_dev_only(const std::shared_ptr<struct drm_xocl_bo>& bo)
   {
     return (bo->flags & XCL_BO_FLAGS_DEV_ONLY);
   }
 
-  static inline bool xocl_bo_host_only(const struct drm_xocl_bo *bo)
+  static inline bool xocl_bo_host_only(const std::shared_ptr<struct drm_xocl_bo>& bo)
   {
     return (bo->flags & XCL_BO_FLAGS_HOST_ONLY);
   }  
 
-  static inline bool no_host_memory(const struct drm_xocl_bo *bo)
+  static inline bool no_host_memory(const std::shared_ptr<struct drm_xocl_bo>& bo)
   {
     return xocl_bo_dev_only(bo) || xocl_bo_p2p(bo) ;
   }
 
-  static inline bool is_cacheable(const struct drm_xocl_bo *bo) {
+  static inline bool is_cacheable(const std::shared_ptr<struct drm_xocl_bo>& bo) {
     return (bo->flags & XCL_BO_FLAGS_CACHEABLE);
   }
 
   //API which denotes whether the sync of data is required or not
-  static inline bool is_zero_copy(const struct drm_xocl_bo *bo) {
+  static inline bool is_zero_copy(const std::shared_ptr<struct drm_xocl_bo>& bo) {
     bool isCacheable = xclemulation::is_cacheable(bo);
     bool memCheck = xclemulation::no_host_memory(bo) || xclemulation::xocl_bo_host_only(bo);
     bool zeroCopy = (memCheck || !isCacheable) ? true : false;

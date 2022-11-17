@@ -2731,7 +2731,7 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   auto xobj = std::make_shared<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool noHostMemory = xclemulation::no_host_memory(xobj.get());
+  bool noHostMemory = xclemulation::no_host_memory(xobj);
   std::string sFileName("");
 
   if(xobj->flags & XCL_BO_FLAGS_EXECBUF)
@@ -2933,13 +2933,13 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     }
 
   // source buffer is host_only and destination buffer is device_only
-  if (isHostOnlyBuffer(sBO) && !xclemulation::xocl_bo_p2p(sBO.get()) && xclemulation::xocl_bo_dev_only(dBO.get())) {
+  if (isHostOnlyBuffer(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(sBO->buf) + src_offset;
     if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset, dBO->topology) != size) {
       return -1;
     }
   } // source buffer is device_only and destination buffer is host_only
-  else if (isHostOnlyBuffer(dBO) && !xclemulation::xocl_bo_p2p(dBO.get()) && xclemulation::xocl_bo_dev_only(sBO.get())) {
+  else if (isHostOnlyBuffer(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
     if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
       return -1;

@@ -306,6 +306,7 @@ unsigned xclProbe()
     boost::property_tree::ptree platformData = std::get<5>(it);
 
     auto handle = std::make_shared<xclhwemhal2::HwEmShim>(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
+    handle->set_my_device_index(deviceIndex);
     xclhwemhal2::devices[deviceIndex++] = handle;
   }
 
@@ -363,6 +364,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   {
     handle = std::make_shared<xclhwemhal2::HwEmShim>(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
+    handle->set_my_device_index(deviceIndex);
     // careful here
     xclhwemhal2::devices[deviceIndex++] = handle;
   }
@@ -396,8 +398,16 @@ void xclClose(xclDeviceHandle handle)
     return ;
   try {
     drv->xclClose();
-    if (xclhwemhal2::HwEmShim::handleCheck(handle) && xclhwemhal2::devices.size() == 0)
-      delete ((xclhwemhal2::HwEmShim *)handle);
+    if (xclhwemhal2::HwEmShim::handleCheck(handle)) {
+      auto key = drv->get_my_device_index();
+      auto itr = xclhwemhal2::devices.find(key);
+      if (itr != xclhwemhal2::devices.end()) {
+        xclhwemhal2::devices.erase(itr);
+      }
+      else {
+        std::cout << "\n The device is not found in map so not cleaning it up from map." << std::endl;
+      }
+    }
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());

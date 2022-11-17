@@ -39,16 +39,16 @@ static std::string DEFAULT_TAG("");
         uint64_t mSize;
         uint64_t mStart;
         uint64_t mAlignment;
-	    std::string mTag;
+        std::string mTag;
         const unsigned mCoalesceThreshold;
         uint64_t mFreeSize;
 
         typedef std::list<std::pair<uint64_t, uint64_t> > PairList;
 
     public:
-	static const uint64_t mNull = 0xffffffffffffffffull;
-    std::list<std::shared_ptr<MemoryManager> > mChildMemories;
-
+        static const uint64_t mNull = 0xffffffffffffffffull;
+        //std::list<std::shared_ptr<MemoryManager> > mChildMemories;
+        std::vector<std::shared_ptr<MemoryManager> > mChildMemories;
     public:
         MemoryManager(uint64_t size, uint64_t start, unsigned alignment, std::string&tag = DEFAULT_TAG );
         ~MemoryManager();
@@ -59,7 +59,7 @@ static std::string DEFAULT_TAG("");
         uint64_t size()     { return mSize; }
         uint64_t start()    { return mStart; }
         uint64_t freeSize() { return mFreeSize; }
-	std::string tag()   { return mTag; }
+	    std::string tag()   { return mTag; }
         static bool isNullAlloc(const std::pair<uint64_t, uint64_t>& buf) { return ((buf.first == mNull) || (buf.second == mNull)); }
 
         std::pair<uint64_t, uint64_t>lookup(uint64_t buf);

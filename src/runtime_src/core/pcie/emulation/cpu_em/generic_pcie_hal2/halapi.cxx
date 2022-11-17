@@ -85,6 +85,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   {
     handle = std::make_shared<xclcpuemhal2::CpuemShim>(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
+    handle->set_my_device_index(deviceIndex);
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }
 /* 
@@ -112,9 +113,14 @@ void xclClose(xclDeviceHandle handle)
   if (!drv)
     return ;
   drv->xclClose();
-  if (xclcpuemhal2::CpuemShim::handleCheck(handle) && xclcpuemhal2::devices.size() == 0) {
-    // smart pointers dtor will take care of this.
-    //delete ((xclcpuemhal2::CpuemShim*)handle);
+  if (xclcpuemhal2::CpuemShim::handleCheck(handle)){ // && xclcpuemhal2::devices.size() == 0) {
+    auto device_index = drv->get_my_device_index();
+    auto itr = xclcpuemhal2::devices.find(device_index);
+    if (itr != xclcpuemhal2::devices.end()) {
+      xclcpuemhal2::devices.erase(itr);
+    }
+    else
+      std::cout << "\n device is not found in map with a device index as " << device_index <<std::endl;
   }
 }
 
@@ -399,6 +405,7 @@ unsigned xclProbe()
     boost::property_tree::ptree platformData = std::get<5>(it);
 
     auto handle = std::make_shared<xclcpuemhal2::CpuemShim>(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
+    handle->set_my_device_index(deviceIndex);
     xclcpuemhal2::devices[deviceIndex++] = handle;
   }
 
@@ -670,7 +677,7 @@ xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph
     if (graphHandle) {
       auto drv = graphHandle->getDeviceHandle();
       if (drv) {
-        //graph handler should be live somewhere thourgh out this shim scope so let's shim devices map here.
+        //graph handler should be live somewhere thourgh out this shim scope so let's have graph devices map take care of it.
         xclcpuemhal2::graph_devices[graphHandle->getGraphHandle()] = graphHandle;
         drv->xrtGraphInit(graphHandle);
       }
@@ -697,7 +704,15 @@ xclGraphClose(xclGraphHandle ghl)
   try {
     if (ghl) {
       auto ghPtr = (xclcpuemhal2::GraphType*)ghl;
-      delete ghPtr;
+      auto key = ghPtr->getGraphHandle();
+      auto itr = xclcpuemhal2::graph_devices.find(key);
+      if (itr != xclcpuemhal2::graph_devices.end()) {
+        xclcpuemhal2::graph_devices.erase(itr);
+      }
+      else {
+        std::cout << " \n Graph device is invalid, so unable to delete it." << std::endl;
+      }
+      // delete ghPtr;
     }
   }
   catch (const std::exception& ex) {

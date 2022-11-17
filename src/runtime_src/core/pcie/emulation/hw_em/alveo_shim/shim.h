@@ -312,11 +312,13 @@ using addr_type = uint64_t;
     	  if(xclemulation::config::getInstance()->isDisabledHostBUffer()) {
     		  return false;
     	  } else {
-    		  return xclemulation::xocl_bo_host_only(bo.get());
+    		  return xclemulation::xocl_bo_host_only(bo);
     	  }
       }
 
       bool readEmuSettingsJsonFile(const std::string& emuSettingsFilePath);
+      uint32_t get_my_device_index() { return mDevice_Index_for_this_device; };
+      void set_my_device_index(uint32_t index) { mDevice_Index_for_this_device = index; };
 
     private:
       std::thread mMessengerThread;
@@ -428,6 +430,7 @@ using addr_type = uint64_t;
       unsigned int host_sptag_idx;
       bool mSimDontRun;
       nocddr_fastaccess_hwemu mNocFastAccess;
+      uint32_t  mDevice_Index_for_this_device;
   };
 
   //extern std::map<unsigned int, HwEmShim*> devices;
