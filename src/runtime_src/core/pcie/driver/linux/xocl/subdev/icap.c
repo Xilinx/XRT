@@ -2516,11 +2516,12 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int err = 0;
 
-	/* TODO: Use slot handle to unregister CUs. CU subdev will be destroyed */
-	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
+	/* Use slot handle to unregister CUs. CU subdev will be destroyed */
 	err = xocl_unregister_cus(xdev, slot_id);
 	if (err && (err != -ENODEV))
 		goto done;
+
+	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
 	err = __icap_peer_xclbin_download(icap, xclbin, force_download, slot_id);
 
