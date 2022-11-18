@@ -19,6 +19,7 @@
 
 #include <mutex>
 #include <list>
+#include <vector>
 #include <map>
 #include <cassert>
 #include <algorithm>
