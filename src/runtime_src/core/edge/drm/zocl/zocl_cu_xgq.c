@@ -26,7 +26,12 @@
 #define zcu_xgq_dbg(zcu_xgq, fmt, args...)	zocl_dbg(ZCU_XGQ2DEV(zcu_xgq), fmt"\n", ##args)
 
 #define ZCU_XGQ_MAX_SLOT_SIZE	1024
-#define ZCU_XGQ_FAST_PATH(zcu_xgq)		(((zcu_xgq)->zxc_num_cu == 1) && ((zcu_xgq)->zxc_cu_domain == 0))
+
+/* We can't support FAST PATH with multislot. As we are initializing the CU XGQs
+ * at the probe time and there could be a chance that in future multiple
+ * CUs/SCUs are assigned to a single CU XGQs.
+ */
+#define ZCU_XGQ_FAST_PATH(zcu_xgq)		false
 
 static void zcu_xgq_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd);
 
