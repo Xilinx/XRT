@@ -1410,33 +1410,6 @@ done:
 }
 
 static int
-xocl_kds_get_cu_info(struct xocl_dev *xdev, int slot_hdl,
-		      struct xrt_cu_info *cu_info, u32 domain)
-{
-	struct kds_sched *kds = &XDEV(xdev)->kds;
-	struct kds_cu_mgmt *cu_mgmt = NULL;
-	struct xrt_cu *xcu = NULL;
-	int cur = 0;
-	int i = 0;
-
-	cu_mgmt = (domain == DOMAIN_PL) ? &kds->cu_mgmt : &kds->scu_mgmt;
-	for (i = 0; i < MAX_CUS; i++) {
-		xcu = cu_mgmt->xcus[i];
-		if (!xcu)
-			continue;
-
-		/* Show the CUs as per slot order */
-		if (xcu->info.slot_idx != slot_hdl)
-			continue;
-
-		memcpy(&cu_info[cur], &xcu->info, sizeof(struct xrt_cu_info));
-		cur++;
-	}
-
-	return cur;
-}
-
-static int
 xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_layout,
 		       struct xrt_cu_info *cu_info, int num_info)
 {
@@ -1477,6 +1450,7 @@ xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip
 			continue;
 		}
 
+		cu_info[i].slot_idx = slot_hdl;
 		cu_info[i].cu_domain = 1;
 		cu_info[i].size = krnl_info->range;
 		cu_info[i].sw_reset = false;
@@ -2031,8 +2005,8 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	 */
 	xocl_kds_xgq_identify(xdev, &major, &minor);
 	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
-	if (major != 1 && minor != 0) {
-		userpf_err(xdev, "Only support ERT XGQ command 1.0\n");
+	if ((major != 1 || major != 2) && minor != 0) {
+		userpf_err(xdev, "Only support ERT XGQ command 1.0 & 2.0\n");
 		ret = -ENOTSUPP;
 		xocl_ert_ctrl_dump(xdev);	/* TODO: remove this line before 2022.2 release */
 		goto out;
@@ -2190,40 +2164,26 @@ out:
 
 int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 {
-	struct xrt_cu_info *cu_info = NULL;
-	struct xrt_cu_info *scu_info = NULL;
-	int major = 0, minor = 0;
-	int num_cus = 0;
-	int num_scus = 0;
 	int ret = 0;
+	int major = 0, minor = 0;
 	int i = 0;
+	struct xrt_cu *xcu = NULL;
+	struct kds_cu_mgmt *cu_mgmt = NULL;
 
-	cu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
-	if (!cu_info)
-		return -ENOMEM;
-
-	num_cus = xocl_kds_get_cu_info(xdev, slot_hdl, cu_info, DOMAIN_PL);
-
-	 /* The XGQ ERT doesn't support more than 64 CUs. Let this hardcoding.
-	  * We will re-looking at this once at supporting multiple xclbins.
-	  */
-	if (num_cus > 64) {
-		userpf_err(xdev, "More than 64 CUs found\n");
-		ret = -EINVAL;
-		goto out;
+	XDEV(xdev)->kds.xgq_enable = false;
+	ret = xocl_ert_ctrl_connect(xdev);
+	if (ret) {
+		userpf_info_once(xdev, "ERT will be disabled, ret %d\n", ret);
+		XDEV(xdev)->kds.ert_disable = true;
+		return ret;
 	}
 
-	/* Don't send config command if ERT doesn't present */
-	if (!XDEV(xdev)->kds.ert)
-		goto out;
+	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
+		return ret;
 
-	// Soft Kernel Info
-	scu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
-	if (!scu_info) {
-		kfree(cu_info);
-		return -ENOMEM;
-	}
-	num_scus = xocl_kds_get_cu_info(xdev, slot_hdl, scu_info, DOMAIN_PS);
+	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, 0, 0);
+	if (ret)
+		goto out;
 
 	/*
 	 * The XGQ Identify command is used to identify the version of firmware which
@@ -2231,40 +2191,43 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	 */
 	xocl_kds_xgq_identify(xdev, &major, &minor);
 	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
-	if (major != 1 && minor != 0) {
-		userpf_err(xdev, "Only support ERT XGQ command 1.0\n");
-		ret = -ENOTSUPP;
-		xocl_ert_ctrl_dump(xdev);	/* TODO: remove this line before 2022.2 release */
-		goto out;
-	}
+	if (major == 2 && minor == 0) {
+		/* Unconfigure the CUs support only 2.0 version */
+		cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
+		for (i = 0; i < MAX_CUS; i++) {
+			xcu = cu_mgmt->xcus[i];
+			if (!xcu)
+				continue;
 
-	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, num_cus, num_scus);
-	if (ret)
-		goto out;
+			/* Unregister the CUs as per slot order */
+			if (xcu->info.slot_idx != slot_hdl)
+				continue;
 
-	for (i = 0; i < num_cus; ++i) {
-		ret = xocl_kds_xgq_uncfg_cu(xdev, cu_info[i].cu_idx, DOMAIN_PL);
-		if (ret) {
-			userpf_info(xdev, "CU[%d] unconfigure failed, ret %d\n",
-					cu_info[i].cu_idx, ret);
-			return ret;
+			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PL);
+			if (ret)
+				goto out;
 		}
-	}
 
-	for (i = 0; i < num_scus; ++i) {
-		ret = xocl_kds_xgq_uncfg_cu(xdev, scu_info[i].cu_idx, DOMAIN_PS);
-		if (ret) {
-			userpf_info(xdev, "SCU[%d] unconfigure failed, ret %d\n",
-					scu_info[i].cu_idx, ret);
-			return ret;
+		/* Unconfigure the SCUs */
+		cu_mgmt = &XDEV(xdev)->kds.scu_mgmt;
+		for (i = 0; i < MAX_CUS; i++) {
+			xcu = cu_mgmt->xcus[i];
+			if (!xcu)
+				continue;
+
+			/* Unregister the SCUs as per slot order */
+			if (xcu->info.slot_idx != slot_hdl)
+				continue;
+
+			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PS);
+			if (ret)
+				goto out;
 		}
 	}
 
 	ret = xocl_kds_xgq_cfg_end(xdev);
 	if (ret)
-		XDEV(xdev)->kds.bad_state = 1;
-	else
-		kds_reset(&XDEV(xdev)->kds);
+		goto out;
 
 	xocl_ert_ctrl_unset_xgq(xdev);
 out:
