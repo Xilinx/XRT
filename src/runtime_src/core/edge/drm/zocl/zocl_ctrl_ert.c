@@ -851,8 +851,6 @@ static void zert_cmd_cfg_start(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr
 
 	zert->zce_config_completed = false;
 	zert->zce_echo_mode = c->echo;
-	/* TODO : We need to fix KDS for this case */
-	kds_reset(&zocl_get_zdev()->kds);
 
 	init_resp(resp, cmd->cid, 0);
 	r->i2h = true;
