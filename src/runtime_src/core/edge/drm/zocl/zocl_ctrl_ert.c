@@ -132,12 +132,8 @@ struct zocl_ctrl_ert {
 	size_t			zce_num_cu_xgqs;
 	struct zocl_ctrl_ert_cu_xgq *zce_cu_xgqs;
 
-	size_t			zce_num_cus;
-	struct zocl_ctrl_ert_cu *zce_cus;
-	resource_size_t		zce_max_cu_size;
-
-	size_t			zce_num_scus;
-	struct zocl_ctrl_ert_cu *zce_scus;
+	struct zocl_ctrl_ert_cu zce_cus[MAX_CUS];
+	struct zocl_ctrl_ert_cu zce_scus[MAX_CUS];
 
 	struct platform_device	*zce_xgq_intc;
 	struct platform_device	*zce_cu_intc;
@@ -189,13 +185,15 @@ static int zert_create_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu *
 	struct xrt_cu_info info = {0};
 	u32 cuidx = conf->cu_idx;
 
-	if (cuidx >= zert->zce_num_cus) {
+	if (cuidx >= MAX_CUS) {
 		zert_err(zert, "CU index (%d) is out of range", cuidx);
 		return -EINVAL;
 	}
 
-	if (conf->payload_size > zert->zce_max_cu_size) {
-		zert_err(zert, "CU.%d failed to initialize. Size overflowed", cuidx);
+	if (conf->payload_size > CTRL_XGQ_CU_SLOT_SIZE) {
+		zert_err(zert, "CU.%d failed to initialize. Size overflowed."
+			 " Expected %x, Requested %x", cuidx,
+			 CTRL_XGQ_CU_SLOT_SIZE, conf->payload_size);
 		return -EOVERFLOW;
 	}
 
@@ -216,13 +214,15 @@ static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu 
 	struct xrt_cu_info info = {0};
 	u32 cuidx = conf->cu_idx;
 
-	if (cuidx >= zert->zce_num_scus) {
+	if (cuidx >= MAX_CUS) {
 		zert_err(zert, "SCU index (%d) is out of range", cuidx);
 		return -EINVAL;
 	}
 
-	if (conf->payload_size > zert->zce_max_cu_size) {
-		zert_err(zert, "SCU.%d failed to initialize. Size overflowed", cuidx);
+	if (conf->payload_size > CTRL_XGQ_CU_SLOT_SIZE) {
+		zert_err(zert, "CU.%d failed to initialize. Size overflowed."
+			 " Expected %x, Requested %x", cuidx,
+			 CTRL_XGQ_CU_SLOT_SIZE, conf->payload_size);
 		return -EOVERFLOW;
 	}
 
@@ -248,31 +248,14 @@ static void zert_init_cus(struct zocl_ctrl_ert *zert)
 	u32 i = 0;
 	struct zocl_ctrl_ert_cu *cu = NULL;
 
-	zert->zce_cus = kzalloc(sizeof(struct zocl_ctrl_ert_cu) * MAX_CUS,
-				GFP_KERNEL);
-	if (!zert->zce_cus) {
-		zert_err(zert, "Memory allocation for CUs are failed");
-		return;
-	}
-	zert->zce_num_cus = MAX_CUS;
-
-	zert->zce_scus = kzalloc(sizeof(struct zocl_ctrl_ert_cu) * MAX_CUS,
-				GFP_KERNEL);
-	if (!zert->zce_scus) {
-		vfree(zert->zce_cus);
-		zert_err(zert, "Memory allocation for SCUs are failed");
-		return;
-	}
-	zert->zce_num_scus = MAX_CUS;
-
 	cu = &zert->zce_cus[0];
-	for (i = 0; i < zert->zce_num_cus; i++, cu++) {
+	for (i = 0; i < MAX_CUS; i++, cu++) {
 		cu->zcec_pdev = NULL;
 		cu->zcec_xgq_idx = ZERT_INVALID_XGQ_ID;
 	}
 
 	cu = &zert->zce_scus[0];
-	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
+	for (i = 0; i < MAX_CUS; i++, cu++) {
 		cu->zcec_pdev = NULL;
 		cu->zcec_xgq_idx = ZERT_INVALID_XGQ_ID;
 	}
@@ -283,7 +266,7 @@ static int zert_validate_cus(struct zocl_ctrl_ert *zert)
 	u32 i = 0;
 	struct zocl_ctrl_ert_cu *cu = &zert->zce_cus[0];
 
-	for (i = 0; i < zert->zce_num_cus; i++, cu++) {
+	for (i = 0; i < MAX_CUS; i++, cu++) {
 		if (cu->zcec_pdev && (cu->zcec_xgq_idx == ZERT_INVALID_XGQ_ID)) {
 			zert_err(zert, "Some CUs are not configured properly.");
 			return -EINVAL;
@@ -291,7 +274,7 @@ static int zert_validate_cus(struct zocl_ctrl_ert *zert)
 	}
 
 	cu = &zert->zce_scus[0];
-	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
+	for (i = 0; i < MAX_CUS; i++, cu++) {
 		if ((cu->zcec_pdev) && (cu->zcec_xgq_idx == ZERT_INVALID_XGQ_ID)) {
 			zert_err(zert, "Some SCUs are not configured properly.");
 			return -EINVAL;
@@ -308,7 +291,7 @@ static void zert_unassign_cu_xgqs(struct zocl_ctrl_ert *zert)
 	u32 idx = 0;
 	struct zocl_ctrl_ert_cu *cu = &zert->zce_cus[0];
 
-	for (i = 0; i < zert->zce_num_cus; i++, cu++) {
+	for (i = 0; i < MAX_CUS; i++, cu++) {
 		idx = cu->zcec_xgq_idx;
 		if (idx != ZERT_INVALID_XGQ_ID) {
 			ret = zcu_xgq_unassign_cu(zert->zce_cu_xgqs[idx].zcecx_pdev, i, 0);
@@ -319,8 +302,7 @@ static void zert_unassign_cu_xgqs(struct zocl_ctrl_ert *zert)
 	}
 
 	cu = &zert->zce_scus[0];
-
-	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
+	for (i = 0; i < MAX_CUS; i++, cu++) {
 		idx = cu->zcec_xgq_idx;
 		if (idx != ZERT_INVALID_XGQ_ID) {
 			ret = zcu_xgq_unassign_cu(zert->zce_cu_xgqs[idx].zcecx_pdev, i, DOMAIN_PS);
@@ -341,7 +323,7 @@ static void zert_destroy_cus(struct zocl_ctrl_ert *zert)
 
 	// Need to remove PS kernel first before removing PL CU contexts.
 	// TO-DO: Will need to make this more robust in future
-	for (i = 0; i < zert->zce_num_scus; i++, cu++) {
+	for (i = 0; i < MAX_CUS; i++, cu++) {
 		if (cu->zcec_pdev) {
 			zocl_scu_sk_shutdown(cu->zcec_pdev);
 			zlib_destroy_subdev(cu->zcec_pdev);
@@ -349,24 +331,15 @@ static void zert_destroy_cus(struct zocl_ctrl_ert *zert)
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
 		}
 	}
-	zert->zce_num_scus = 0;
-	kfree(zert->zce_scus);
-	zert->zce_scus = NULL;
 
 	cu = &zert->zce_cus[0];
-
-	for (i = 0; i < zert->zce_num_cus; i++, cu++) {
+	for (i = 0; i < MAX_CUS; i++, cu++) {
 		if (cu->zcec_pdev) {
 			zlib_destroy_subdev(cu->zcec_pdev);
 			cu->zcec_pdev = NULL;
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
 		}
 	}
-	zert->zce_num_cus = 0;
-	zert->zce_max_cu_size = 0;
-	kfree(zert->zce_cus);
-	zert->zce_cus = NULL;
-
 }
 
 static int zert_create_cu_xgq(struct zocl_ctrl_ert *zert, struct zocl_ctrl_ert_cu_xgq *info)
@@ -456,19 +429,13 @@ static int zert_create_cu_xgqs(struct zocl_ctrl_ert *zert)
 	int rc, i;
 	const u32 alignment = sizeof(u32);
 	struct zocl_ctrl_ert_cu_xgq *xcu;
-	size_t slot_sz = zert->zce_max_cu_size;
+	size_t slot_sz = CTRL_XGQ_CU_SLOT_SIZE;
 	size_t slot_num = ZERT_CU_XGQ_MAX_SLOTS;
 	size_t xgq_ring_size;
 	size_t nxgqs;
 
 	BUG_ON(zert->zce_cu_xgq_ring_start % alignment);
 	BUG_ON(zert->zce_cu_xgq_ring_size % alignment);
-
-	/* No need to create CU XGQ if there is no CU configured. */
-	if ((zert->zce_num_cus == 0) && (zert->zce_num_scus == 0)) {
-		zert_info(zert, "No CU is configured, skip creating XGQs");
-		return 0;
-	}
 
 	/* Find out the appropriate number of slots. */
 	xgq_ring_size = xgq_ring_len(slot_num, slot_sz);
@@ -483,13 +450,11 @@ static int zert_create_cu_xgqs(struct zocl_ctrl_ert *zert)
 
 	/* Find out the appropriate number of XGQs to enable. */
 	nxgqs = zert->zce_cu_xgq_ring_size / xgq_ring_size;
-	if (nxgqs > (zert->zce_num_cus + zert->zce_num_scus))
-		nxgqs = zert->zce_num_cus + zert->zce_num_scus;
 	if (nxgqs > zert->zce_num_cu_xgqs)
 		nxgqs = zert->zce_num_cu_xgqs;
 
-	zert_info(zert, "Creating %ld XGQs (slot size 0x%lx) for %ld CUs and %ld SCUs",
-		  nxgqs, slot_sz, zert->zce_num_cus, zert->zce_num_scus);
+	zert_info(zert, "Creating %ld XGQs (slot size 0x%lx)",
+		  nxgqs, slot_sz);
 
 	/* Enable first nxgqs number of CU XGQs. */
 	for (i = 0; i < nxgqs; i++) {
@@ -763,7 +728,6 @@ static int zert_probe(struct platform_device *pdev)
 		zert_err(zert, "failed to initialize CTRL XGQ");
 
 	zert_init_cus(zert);
-	zert->zce_max_cu_size = CTRL_XGQ_CU_SLOT_SIZE;
 	ret = zert_create_cu_xgqs(zert);
 	if (ret)
 		zert_err(zert, "failed to initialize CU XGQs");
@@ -952,7 +916,7 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 	struct xgq_cmd_resp_query_cu *r = (struct xgq_cmd_resp_query_cu *)resp;
 
 	if(c->cu_domain == DOMAIN_PS) {
-		if (zert->zce_num_scus <= c->cu_idx) {
+		if (c->cu_idx >= MAX_CUS) {
 			zert_err(zert, "SCU index (%d) out of range", c->cu_idx);
 			init_resp(resp, cmd->cid, -EINVAL);
 			return;
@@ -965,7 +929,7 @@ static void zert_cmd_query_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr 
 			return;
 		}
 	} else {
-		if (zert->zce_num_cus <= c->cu_idx) {
+		if (c->cu_idx >= MAX_CUS) {
 			zert_err(zert, "CU index (%d) out of range", c->cu_idx);
 			init_resp(resp, cmd->cid, -EINVAL);
 			return;
@@ -1061,7 +1025,7 @@ struct platform_device *zert_get_scu_pdev(struct platform_device *pdev, u32 cu_i
 	struct zocl_ctrl_ert *zert = platform_get_drvdata(pdev);
 	struct zocl_ctrl_ert_cu *cu = NULL;
 
-	if((zert->zce_num_scus <= 0) && (cu_idx >= zert->zce_num_scus))
+	if(cu_idx >= MAX_CUS)
 		return NULL;
 
 	cu = &zert->zce_scus[cu_idx];
