@@ -142,4 +142,13 @@ init(xrt_core::device* device)
     sws::init(device);
 }
 
+void
+finish(const xrt_core::device* device)
+{
+  if (kds_enabled())
+    kds::finish(device);
+  else
+    sws::finish(device);
+}
+
 }} // exec, xrt_core

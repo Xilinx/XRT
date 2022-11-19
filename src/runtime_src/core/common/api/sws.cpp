@@ -807,6 +807,7 @@ static bool s_running=false;
 
 // Each device has a execution core
 static std::map<const xrt_core::device*, std::unique_ptr<exec_core>> s_device_exec_core;
+static std::mutex s_device_exec_core_mutex;
 
 // Thread routine for scheduler loop
 static void
@@ -902,10 +903,18 @@ init(xrt_core::device* xdev)
   // create execution core for this device
   cu_trace_enabled = xrt_core::config::get_opencl_summary();
 
+  std::lock_guard lk(s_device_exec_core_mutex);
   s_device_exec_core.erase(xdev);
   s_device_exec_core.insert
     (std::make_pair
      (xdev,std::make_unique<exec_core>(xdev,&s_global_scheduler,slots,amap)));
+}
+
+void
+finish(const xrt_core::device* device)
+{
+  std::lock_guard lk(s_device_exec_core_mutex);
+  s_device_exec_core.erase(device);
 }
 
 }} // sws,xrt

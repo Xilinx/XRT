@@ -49,6 +49,9 @@ stop();
 void
 init(xrt_core::device* device);
 
+void
+finish(const xrt_core::device* device);
+
 } // sws
 
 /**
@@ -79,6 +82,9 @@ stop();
 
 void
 init(xrt_core::device* device);
+
+void
+finish(const xrt_core::device* device);
 
 } // kds
 
@@ -133,6 +139,9 @@ stop();
 XRT_CORE_COMMON_EXPORT
 void
 init(xrt_core::device* device);
+
+void
+finish(const xrt_core::device* device);
 
 } // scheduler
 
