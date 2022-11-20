@@ -65,6 +65,12 @@ public:
   static std::cv_status
   exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms);
 
+  // Cleanup after device object is no longer valid
+  // Static data is cached per xrt_core::device object, this function
+  // removes the static data when it is no longer needed.
+  static void
+  finish(const xrt_core::device*);
+
   // Internal API to synchronize static global destruction.
   // Used by OpenCL implementation.
   XRT_CORE_COMMON_EXPORT
