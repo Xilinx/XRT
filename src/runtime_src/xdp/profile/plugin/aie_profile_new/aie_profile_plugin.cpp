@@ -17,11 +17,13 @@
 #define XDP_SOURCE
 
 #include <boost/algorithm/string.hpp>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/common/time.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "core/include/experimental/xrt-next.h"
 
@@ -149,10 +151,15 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
    
-    std::string timestamp = "_" + std::to_string(xrt_core::time_ns());
-    // std::string outputFile = "aie_profile_" + deviceName + chan_str + timestamp + ".csv";
-    std::string outputFile = "aie_profile_" + deviceName + timestamp + ".csv";
+    // Get current time
+    auto time = std::time(nullptr);
+    auto tm = *std::localtime(&time);
+    std::ostringstream timeOss;
+    timeOss << std::put_time(&tm, "_%Y_%m_%d_%H%M%S");
+    std::string timestamp = timeOss.str();
 
+    std::string outputFile = "aie_profile_" + deviceName + timestamp + ".csv";
+    
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
                                               deviceName.c_str(), mIndex);
     writers.push_back(writer);

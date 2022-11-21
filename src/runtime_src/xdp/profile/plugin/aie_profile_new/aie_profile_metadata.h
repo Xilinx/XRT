@@ -28,9 +28,7 @@ class AieProfileMetadata{
     uint64_t getDeviceID() {return deviceID;}
     void* getHandle() {return handle;}
     uint32_t getPollingIntervalVal(){return mPollingInterval;}
-
-    // void setChannelId(uint16_t newChannelId){mChannelId = newChannelId;}
-
+    
   private:
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
