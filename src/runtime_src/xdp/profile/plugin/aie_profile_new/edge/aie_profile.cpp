@@ -426,7 +426,7 @@ namespace xdp {
   }
 
   std::vector<tile_type>
-  AieProfile_EdgeImpl::getAllTilesForShimProfiling(void* handle, 
+  AieProfile_EdgeImpl::getAllTilesForInterfaceProfiling(void* handle, 
                         const std::string &metricsStr, 
                         int16_t channelId,
                         bool useColumn, uint32_t minCol, uint32_t maxCol)
@@ -482,8 +482,8 @@ namespace xdp {
   // Mem tile metrics is not supported now.
   void
   AieProfile_EdgeImpl::getConfigMetricsForTiles(int moduleIdx,
-                                               std::vector<std::string> metricsSettings,
-                                               std::vector<std::string> graphmetricsSettings,
+                                               const std::vector<std::string>& metricsSettings,
+                                               const std::vector<std::string>& graphmetricsSettings,
                                                const XAie_ModuleType mod,
                                                void* handle)
   {
@@ -719,7 +719,7 @@ namespace xdp {
    // Resolve Interface metrics 
   void
   AieProfile_EdgeImpl::getInterfaceConfigMetricsForTiles(int moduleIdx,
-                                               std::vector<std::string> metricsSettings,
+                                               const std::vector<std::string>& metricsSettings,
                                                /* std::vector<std::string> graphmetricsSettings, */
                                                void* handle)
   {
@@ -759,7 +759,7 @@ namespace xdp {
        * Shim profiling uses all tiles utilized by PLIOs
        */
       std::vector<tile_type> tiles;
-      tiles = getAllTilesForShimProfiling(handle, graphmetrics[i][2]);
+      tiles = getAllTilesForInterfaceProfiling(handle, graphmetrics[i][2]);
       allGraphsDone = true;
 
       for (auto &e : tiles) {
@@ -795,7 +795,7 @@ namespace xdp {
         }
 
         std::vector<tile_type> tiles;
-        tiles = getAllTilesForShimProfiling(handle, metrics[i][1], channelId);
+        tiles = getAllTilesForInterfaceProfiling(handle, metrics[i][1], channelId);
 
         for (auto &e : tiles) {
           mConfigMetrics[moduleIdx][e] = metrics[i][1];
@@ -845,7 +845,7 @@ namespace xdp {
           channelId = -1;
         }
       }
-      tiles = getAllTilesForShimProfiling(handle, metrics[i][2], channelId,
+      tiles = getAllTilesForInterfaceProfiling(handle, metrics[i][2], channelId,
                                           true, minCol, maxCol);
 
       for (auto &t : tiles) {
@@ -890,7 +890,7 @@ namespace xdp {
             channelId = -1;
           }
         }
-        tiles = getAllTilesForShimProfiling(handle, metrics[i][1], channelId,
+        tiles = getAllTilesForInterfaceProfiling(handle, metrics[i][1], channelId,
                                             true, col, col);
 
         for (auto &t : tiles) {

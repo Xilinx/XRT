@@ -22,11 +22,11 @@
 
 namespace xdp {
 
-  class AieProfilePluginUnified : public XDPPlugin
+  class AieProfilePlugin : public XDPPlugin
   {
   public:
-    XDP_EXPORT AieProfilePluginUnified();
-    XDP_EXPORT ~AieProfilePluginUnified();
+    XDP_EXPORT AieProfilePlugin();
+    XDP_EXPORT ~AieProfilePlugin();
     XDP_EXPORT void updateAIEDevice(void* handle);
     XDP_EXPORT void endPollforDevice(void* handle);
     XDP_EXPORT static bool alive();

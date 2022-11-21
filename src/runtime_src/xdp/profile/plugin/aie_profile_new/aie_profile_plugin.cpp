@@ -41,12 +41,12 @@
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
-  bool AieProfilePluginUnified::live = false;
+  bool AieProfilePlugin::live = false;
 
-  AieProfilePluginUnified::AieProfilePluginUnified() 
+  AieProfilePlugin::AieProfilePlugin() 
       : XDPPlugin()
   {
-    AieProfilePluginUnified::live = true;
+    AieProfilePlugin::live = true;
 
     db->registerPlugin(this);
     db->registerInfo(info::aie_profile);
@@ -55,7 +55,7 @@ namespace xdp {
 
   }
 
-  AieProfilePluginUnified::~AieProfilePluginUnified()
+  AieProfilePlugin::~AieProfilePlugin()
   {
     // Stop the polling thread
     endPoll();
@@ -67,15 +67,15 @@ namespace xdp {
 
       db->unregisterPlugin(this);
     }
-    AieProfilePluginUnified::live = false;
+    AieProfilePlugin::live = false;
   }
 
-  bool AieProfilePluginUnified::alive()
+  bool AieProfilePlugin::alive()
   {
-    return AieProfilePluginUnified::live;
+    return AieProfilePlugin::live;
   }
 
-  uint64_t AieProfilePluginUnified::getDeviceIDFromHandle(void* handle)
+  uint64_t AieProfilePlugin::getDeviceIDFromHandle(void* handle)
   {
     constexpr uint32_t PATH_LENGTH = 512;
 
@@ -91,7 +91,7 @@ namespace xdp {
     return deviceID;
   }
 
-  void AieProfilePluginUnified::updateAIEDevice(void* handle)
+  void AieProfilePlugin::updateAIEDevice(void* handle)
   {
 
     // Don't update if no profiling is requested
@@ -122,7 +122,7 @@ namespace xdp {
     auto& metadata = AIEData.metadata;
 
     //Get the polling interval after the metadata has been defined.
-    metadata->getPollingInterval(); 
+    metadata->parsePollingInterval(); 
 
     #ifdef XRT_X86_BUILD
         AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
@@ -149,10 +149,9 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
    
-    std::string chan_str = (metadata->getChannelId() < 0) ? "" : "_chan" + std::to_string(metadata->getChannelId());
     std::string timestamp = "_" + std::to_string(xrt_core::time_ns());
     // std::string outputFile = "aie_profile_" + deviceName + chan_str + timestamp + ".csv";
-    std::string outputFile = "aie_profile_" + deviceName + chan_str + timestamp + ".csv";
+    std::string outputFile = "aie_profile_" + deviceName + timestamp + ".csv";
 
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
                                               deviceName.c_str(), mIndex);
@@ -161,14 +160,14 @@ namespace xdp {
 
     // Start the AIE profiling thread
     AIEData.threadCtrlBool = true; 
-    auto device_thread = std::thread(&AieProfilePluginUnified::pollAIECounters, this, mIndex, handle);
+    auto device_thread = std::thread(&AieProfilePlugin::pollAIECounters, this, mIndex, handle);
     // auto device_thread = std::thread(&AieProfileImpl::pollAIECounters, implementation.get(), mIndex, handle);
     AIEData.thread = std::move(device_thread);
 
     ++mIndex;
   }
 
- void AieProfilePluginUnified::pollAIECounters(uint32_t index, void* handle)
+ void AieProfilePlugin::pollAIECounters(uint32_t index, void* handle)
   {
     auto it = handleToAIEData.find(handle);
     if (it == handleToAIEData.end())
@@ -182,7 +181,7 @@ namespace xdp {
     }
   }
 
-  void AieProfilePluginUnified::endPollforDevice(void* handle)
+  void AieProfilePlugin::endPollforDevice(void* handle)
   {
     // Ask thread to stop
     auto& AIEData = handleToAIEData[handle];
@@ -194,7 +193,7 @@ namespace xdp {
 
   }
 
-  void AieProfilePluginUnified::endPoll()
+  void AieProfilePlugin::endPoll()
   {
     // Ask all threads to end
     for (auto& p : handleToAIEData)

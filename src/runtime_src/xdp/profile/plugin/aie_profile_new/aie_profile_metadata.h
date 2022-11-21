@@ -23,17 +23,15 @@ class AieProfileMetadata{
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
-    void getPollingInterval();
+    void parsePollingInterval();
     
     uint64_t getDeviceID() {return deviceID;}
     void* getHandle() {return handle;}
-    int16_t getChannelId(){return mChannelId;}
     uint32_t getPollingIntervalVal(){return mPollingInterval;}
 
-    void setChannelId(uint16_t newChannelId){mChannelId = newChannelId;}
+    // void setChannelId(uint16_t newChannelId){mChannelId = newChannelId;}
 
   private:
-    int16_t mChannelId = -1;
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
     uint64_t deviceID;

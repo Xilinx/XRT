@@ -28,7 +28,7 @@ namespace xdp {
   , handle(handle)
   {}
 
-  void AieProfileMetadata::getPollingInterval()
+  void AieProfileMetadata::parsePollingInterval()
   {
     // Get polling interval (in usec; minimum is 100)
     mPollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();

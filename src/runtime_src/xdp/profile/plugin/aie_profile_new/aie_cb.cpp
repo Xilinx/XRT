@@ -18,21 +18,18 @@
 
 namespace xdp {
 
-  // The AIE profiling plugin doesn't have any callbacks. Instead, it
-  //  only has a single static instance of the plugin object
-
-  static AieProfilePluginUnified aieProfilePluginInstance;
+  static AieProfilePlugin aieProfilePluginInstance;
 
   static void updateAIECtrDevice(void* handle)
   {
-    if (AieProfilePluginUnified::alive()) {
+    if (AieProfilePlugin::alive()) {
       aieProfilePluginInstance.updateAIEDevice(handle);
     }
   }
 
   static void endAIECtrPoll(void* handle)
   {
-    if (AieProfilePluginUnified::alive()) {
+    if (AieProfilePlugin::alive()) {
       aieProfilePluginInstance.endPollforDevice(handle);
     }
   }
