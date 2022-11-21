@@ -1512,42 +1512,6 @@ xocl_kds_create_scus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 	}
 }
 
-static void
-xocl_kds_destroy_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info)
-{
-	int ret = 0;
-
-	if (!cu_info)
-		return;
-
-	ret = xocl_subdev_online_by_id_and_inst(xdev,
-				XOCL_SUBDEV_CU, cu_info->inst_idx);
-	if (ret) {
-		userpf_err(xdev, "Destroying CU %s failed. Skip", cu_info[i].iname);
-		return;
-	}
-
-	userpf_err(xdev, "Destroyed CU %s subdevice", cu_info[i].iname);
-}
-
-static void
-xocl_kds_destroy_scu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info)
-{
-	int ret = 0;
-
-	if (!cu_info)
-		return;
-
-	ret = xocl_subdev_online_by_id_and_inst(xdev,
-				XOCL_SUBDEV_SCU, cu_info->inst_idx);
-	if (ret) {
-		userpf_err(xdev, "Destroying SCU %s failed. Skip", cu_info[i].iname);
-		return;
-	}
-
-	userpf_err(xdev, "Destroyed SCU %s subdevice", cu_info[i].iname);
-}
-
 static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg,
 				  struct ip_layout *ip_layout,
 				  struct ps_kernel_node *ps_kernel)
