@@ -162,7 +162,7 @@ static int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 	}
 
 	if (subdev->state != XOCL_SUBDEV_STATE_UNINIT) {
-		xocl_xdev_dbg(xdev_hdl, "subdev is in-use");
+		xocl_xdev_err(xdev_hdl, "subdev is in-use");
 		return -EEXIST;
 	}
 
@@ -998,6 +998,28 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level)
 				core->subdevs[i][j]->info.level == level)
 				__xocl_subdev_destroy(xdev_hdl,
 					core->subdevs[i][j]);
+	xocl_unlock_xdev(xdev_hdl);
+}
+
+void xocl_subdev_destroy_by_level_skip_cus_scus(xdev_handle_t xdev_hdl,
+						int level)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i, j;
+
+	xocl_lock_xdev(xdev_hdl);
+	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--) {
+		/* Avoid CUs and SCUs subdevices */
+		if ((i == XOCL_SUBDEV_CU) || (i == XOCL_SUBDEV_SCU))
+			continue;
+
+		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++)
+			if (core->subdevs[i][j] &&
+			    core->subdevs[i][j]->info.level == level)
+				__xocl_subdev_destroy(xdev_hdl,
+						      core->subdevs[i][j]);
+	}
+
 	xocl_unlock_xdev(xdev_hdl);
 }
 
