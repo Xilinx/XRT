@@ -1023,6 +1023,23 @@ void xocl_subdev_destroy_by_level_skip_cus_scus(xdev_handle_t xdev_hdl,
 	xocl_unlock_xdev(xdev_hdl);
 }
 
+void xocl_subdev_destroy_by_id_and_inst(xdev_handle_t xdev_hdl,
+					uint32_t subdev_id, uint32_t inst_id)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+
+	if( (subdev_id == INVALID_SUBDEVICE) ||
+	    (inst_id >= XOCL_SUBDEV_MAX_INST))
+		return;
+
+	xocl_lock_xdev(xdev_hdl);
+
+	__xocl_subdev_destroy(xdev_hdl,
+			      core->subdevs[subdev_id][inst_id]);
+
+	xocl_unlock_xdev(xdev_hdl);
+}
+
 void xocl_subdev_destroy_by_baridx(xdev_handle_t xdev_hdl, int bar_idx)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
