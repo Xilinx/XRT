@@ -1969,8 +1969,6 @@ static void clk_scaling_cq_result_copy(struct xocl_xgq_vmr *xgq,
 
 	mutex_lock(&xgq->xgq_lock);
 	memcpy(&xgq->xgq_cq_payload, payload, sizeof(*payload));
-	xgq->pwr_scaling_ovrd_limit = cs_payload->pwr_scaling_limit;
-	xgq->temp_scaling_ovrd_limit = cs_payload->temp_scaling_limit;
 	mutex_unlock(&xgq->xgq_lock);
 }
 
@@ -2487,6 +2485,13 @@ static ssize_t clk_scaling_stat_raw_show(struct device *dev,
 	struct xgq_cmd_cq_clk_scaling_payload *cs_payload=
 		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
 	ssize_t cnt = 0;
+	int ret = 0;
+
+	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Failed to receive clock scaling configs, ret: %d", ret);
+		return ret;
+	}
 
 	//Read clock scaling configuration settings
 	cnt += sprintf(buf + cnt, "HAS_CLOCK_THROTTLING:%d\n", cs_payload->has_clk_scaling);
@@ -2512,6 +2517,13 @@ static ssize_t clk_scaling_configure_show(struct device *dev,
 	struct xgq_cmd_cq_clk_scaling_payload *cs_payload=
 		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
 	ssize_t cnt = 0;
+	int ret = 0;
+
+	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Failed to receive clock scaling configs, ret: %d", ret);
+		return ret;
+	}
 
 	cnt += sprintf(buf + cnt, "%d,%u,%u\n", cs_payload->clk_scaling_en,
 				   xgq->pwr_scaling_ovrd_limit, xgq->temp_scaling_ovrd_limit);
@@ -2546,6 +2558,12 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 	char* args = (char*) buf;
 	char* end = (char*) buf;
 	int ret = 0;
+
+	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Failed to receive clock scaling configs, ret: %d", ret);
+		return ret;
+	}
 
 	if (!cs_payload->has_clk_scaling)
 	{
@@ -2583,6 +2601,7 @@ static ssize_t clk_scaling_configure_store(struct device *dev,
 		}
 		args = end;
 	}
+
 	mutex_lock(&xgq->clk_scaling_lock);
 	ret = clk_scaling_configure_op(xgq->xgq_pdev,
                                    XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
@@ -2625,6 +2644,12 @@ static ssize_t xgq_scaling_temp_override_store(struct device *dev,
 		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
 	u16 temp = 0;
 	int ret = 0;
+
+	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Failed to receive clock scaling configs, ret: %d", ret);
+		return ret;
+	}
 
 	if (!cs_payload->has_clk_scaling)
 	{
@@ -2672,6 +2697,12 @@ static ssize_t xgq_scaling_power_override_store(struct device *dev,
 	u16 pwr = 0;
 	int ret = 0;
 
+	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Failed to receive clock scaling configs, ret: %d", ret);
+		return ret;
+	}
+
 	if (!cs_payload->has_clk_scaling)
 	{
 		XGQ_ERR(xgq, "clock scaling feature is not supported");
@@ -2704,6 +2735,13 @@ static ssize_t xgq_scaling_enable_show(struct device *dev,
 	struct xgq_cmd_cq_clk_scaling_payload *cs_payload =
 		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
 	ssize_t cnt = 0;
+	int ret = 0;
+
+	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Failed to receive clock scaling configs, ret: %d", ret);
+		return ret;
+	}
 
 	cnt += sprintf(buf + cnt, "%d\n", cs_payload->clk_scaling_en);
 
@@ -2720,6 +2758,12 @@ static ssize_t xgq_scaling_enable_store(struct device *dev,
 	bool enable = false;
 	u32 val = 0;
 	int ret = 0;
+
+	ret = clk_scaling_status_query(xgq->xgq_pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Failed to receive clock scaling configs, ret: %d", ret);
+		return ret;
+	}
 
 	if (!cs_payload->has_clk_scaling)
 	{
