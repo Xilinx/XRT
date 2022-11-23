@@ -230,6 +230,7 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bo
 	u32 ready_reg = 0;
 	u32 used_credit;
 	unsigned long flags;
+	int i = 0;
 
 	used_credit = cu_hls->max_credits - cu_hls->credits;
 
@@ -260,8 +261,10 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bo
 	if (ctrl_reg & CU_AP_DONE) {
 		done_reg += 1;
 		cu_write32(cu_hls, CTRL, CU_AP_CONTINUE);
-		cu_move_to_complete(cu_hls, KDS_COMPLETED);
 	}
+
+	for (i = 0; i < done_reg; i++)
+		cu_move_to_complete(cu_hls, KDS_COMPLETED);
 	spin_unlock_irqrestore(&cu_hls->cu_lock, flags);
 
 	status->num_done  = done_reg;
@@ -350,7 +353,6 @@ static u32 cu_hls_clear_intr(void *core)
 				ctrl_reg = cu_read32(cu_hls, CTRL);
 				if (ctrl_reg & CU_AP_DONE) {
 					cu_hls->done++;
-					cu_move_to_complete(cu_hls, KDS_COMPLETED);
 					cu_write32(cu_hls, CTRL, CU_AP_CONTINUE);
 				}
 			}
