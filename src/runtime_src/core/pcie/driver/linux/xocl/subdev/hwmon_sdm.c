@@ -70,7 +70,7 @@ struct xocl_sdr_bdinfo {
 	char revision[SDR_BDINFO_ENTRY_LEN_MAX];
 	uint64_t mfg_date;
 	uint64_t pcie_info;
-	char uuid[UUID_STRING_LEN];
+	char uuid[UUID_STRING_LEN + 1];
 	char mac_addr0[SDR_BDINFO_ENTRY_LEN_MAX];
 	char mac_addr1[SDR_BDINFO_ENTRY_LEN_MAX];
 	char active_msp_ver[SDR_BDINFO_ENTRY_LEN_MAX];
