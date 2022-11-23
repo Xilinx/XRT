@@ -19,6 +19,7 @@
 #include "core/include/xrt/xrt_uuid.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
+#include "core/common/api/hw_queue.h"
 #include "core/common/api/xclbin_int.h"
 
 #include <boost/format.hpp>
@@ -46,6 +47,7 @@ device::
 {
   // virtual must be declared and defined
   XRT_DEBUGF("xrt_core::device::~device(0x%x) idx(%d)\n", this, m_device_id);
+  hw_queue::finish(this);
 }
 
 bool
