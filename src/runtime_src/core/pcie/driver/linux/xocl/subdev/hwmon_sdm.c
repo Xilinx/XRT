@@ -70,7 +70,7 @@ struct xocl_sdr_bdinfo {
 	char revision[SDR_BDINFO_ENTRY_LEN_MAX];
 	uint64_t mfg_date;
 	uint64_t pcie_info;
-	char uuid[SDR_BDINFO_ENTRY_LEN];
+	char uuid[UUID_STRING_LEN];
 	char mac_addr0[SDR_BDINFO_ENTRY_LEN_MAX];
 	char mac_addr1[SDR_BDINFO_ENTRY_LEN_MAX];
 	char active_msp_ver[SDR_BDINFO_ENTRY_LEN_MAX];
@@ -1307,14 +1307,8 @@ static ssize_t
 uuid_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
-	int count = 0, i = 0;
 
-	count += sprintf(buf, "0x");
-	for (i = 0; i < strlen(sdm->bdinfo.uuid); i++)
-		count += sprintf(buf + count, "%02hhX", sdm->bdinfo.uuid[i]);
-	count += sprintf(buf + count, "\n");
-
-	return count;
+	return sprintf(buf, "%pUB", sdm->bdinfo.uuid);
 };
 static DEVICE_ATTR_RO(uuid);
 
