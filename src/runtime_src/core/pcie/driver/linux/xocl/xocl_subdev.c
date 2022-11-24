@@ -527,6 +527,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	if (retval)
 		goto error;
 	priv_data->debug_hdl = reg.hdl;
+	priv_data->inst_idx = subdev->info.dev_idx; 
 	priv_data->data_sz = data_len;
 
 	retval = platform_device_add_data(subdev->pldev, priv_data,
@@ -629,7 +630,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 
 	subdev->state = XOCL_SUBDEV_STATE_ADDED;
 
-	xocl_xdev_info(xdev_hdl, "Created subdev %s inst %d level %d",
+	xocl_xdev_info(xdev_hdl, "Created subdev %s inst %x level %d",
 			sdev_info->name, subdev->inst, sdev_info->level);
 
 	if (XOCL_GET_DRV_PRI(subdev->pldev) &&
@@ -968,6 +969,21 @@ void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, uint32_t subdev_id)
 	xocl_unlock_xdev(xdev_hdl);
 }
 
+void xocl_subdev_destroy_by_id_and_inst(xdev_handle_t xdev_hdl,
+					uint32_t subdev_id, uint32_t inst_id)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i;
+
+	if ((subdev_id == INVALID_SUBDEVICE) ||
+		(inst_id > XOCL_SUBDEV_MAX_INST))
+		return;
+
+	xocl_lock_xdev(xdev_hdl);
+	__xocl_subdev_destroy(xdev_hdl, core->subdevs[subdev_id][inst_id]);
+	xocl_unlock_xdev(xdev_hdl);
+}
+
 #define for_each_subdev(core, subdev)					\
 	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--)		\
 		for (j = 0, subdev = core->subdevs[i][j];		\
@@ -986,6 +1002,25 @@ void xocl_subdev_destroy_all(xdev_handle_t xdev_hdl)
 	xocl_unlock_xdev(xdev_hdl);
 }
 
+void xocl_subdev_destroy_by_level_skip_cus(xdev_handle_t xdev_hdl, int level)
+{
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
+	int i, j;
+
+	xocl_lock_xdev(xdev_hdl);
+	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--) {
+		if ((i == XOCL_SUBDEV_CU) || (i == XOCL_SUBDEV_SCU))
+			continue;
+
+		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++)
+			if (core->subdevs[i][j] &&
+				core->subdevs[i][j]->info.level == level)
+				__xocl_subdev_destroy(xdev_hdl,
+					core->subdevs[i][j]);
+	}
+	xocl_unlock_xdev(xdev_hdl);
+}
+
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
@@ -998,45 +1033,6 @@ void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level)
 				core->subdevs[i][j]->info.level == level)
 				__xocl_subdev_destroy(xdev_hdl,
 					core->subdevs[i][j]);
-	xocl_unlock_xdev(xdev_hdl);
-}
-
-void xocl_subdev_destroy_by_level_skip_cus_scus(xdev_handle_t xdev_hdl,
-						int level)
-{
-	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	int i, j;
-
-	xocl_lock_xdev(xdev_hdl);
-	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--) {
-		/* Avoid CUs and SCUs subdevices */
-		if ((i == XOCL_SUBDEV_CU) || (i == XOCL_SUBDEV_SCU))
-			continue;
-
-		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++)
-			if (core->subdevs[i][j] &&
-			    core->subdevs[i][j]->info.level == level)
-				__xocl_subdev_destroy(xdev_hdl,
-						      core->subdevs[i][j]);
-	}
-
-	xocl_unlock_xdev(xdev_hdl);
-}
-
-void xocl_subdev_destroy_by_id_and_inst(xdev_handle_t xdev_hdl,
-					uint32_t subdev_id, uint32_t inst_id)
-{
-	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-
-	if( (subdev_id == INVALID_SUBDEVICE) ||
-	    (inst_id >= XOCL_SUBDEV_MAX_INST))
-		return;
-
-	xocl_lock_xdev(xdev_hdl);
-
-	__xocl_subdev_destroy(xdev_hdl,
-			      core->subdevs[subdev_id][inst_id]);
-
 	xocl_unlock_xdev(xdev_hdl);
 }
 

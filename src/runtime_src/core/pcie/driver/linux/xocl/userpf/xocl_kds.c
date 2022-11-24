@@ -1480,13 +1480,8 @@ xocl_kds_create_cus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		subdev_info.priv_data = &cu_info[i];
 		subdev_info.data_len = sizeof(struct xrt_cu_info);
 		subdev_info.override_idx = i;
-		if (xocl_subdev_create(xdev, &subdev_info)) {
+		if (xocl_subdev_create(xdev, &subdev_info))
 			userpf_info(xdev, "Create CU %s failed. Skip", cu_info[i].iname);
-			return;
-		}
-
-		/* Update the subdev index for future reference */
-		cu_info[i].inst_idx = subdev_info.dev_idx;
 	}
 }
 
@@ -1502,13 +1497,35 @@ xocl_kds_create_scus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		subdev_info.priv_data = &cu_info[i];
 		subdev_info.data_len = sizeof(struct xrt_cu_info);
 		subdev_info.override_idx = i;
-		if (xocl_subdev_create(xdev, &subdev_info)) {
+		if (xocl_subdev_create(xdev, &subdev_info))
 			userpf_info(xdev, "Create SCU %s failed. Skip", cu_info[i].iname);
-			return;
-		}
+	}
+}
 
-		/* Update the subdev index for future reference */
-		cu_info[i].inst_idx = subdev_info.dev_idx;
+static void
+xocl_kds_destroy_cus(struct xocl_dev *xdev, uint32_t slot_hdl, u32 domain)
+{
+	int i = 0;
+	struct xrt_cu *xcu = NULL;
+	struct kds_cu_mgmt *cu_mgmt = NULL;
+	uint32_t xocl_subdev_type = 0 ;
+
+	if (domain == DOMAIN_PL) {
+	       cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
+	       xocl_subdev_type = XOCL_SUBDEV_CU;
+	} else {
+	       cu_mgmt = XDEV(xdev)->kds.scu_mgmt;
+	       xocl_subdev_type = XOCL_SUBDEV_SCU;
+	}
+
+	for (i = 0; i < MAX_CUS; i++) {
+		xcu = cu_mgmt->xcus[i];
+		if ((!xcu) && (xcu->info.slot_idx != slot_hdl))
+			continue;
+
+		/* Destroy subdev of  the CUs/SCUs as per slot */
+		xocl_subdev_destroy_by_id_and_inst(xdev, xocl_subdev_type,
+						   xcu->info.inst_idx);
 	}
 }
 
@@ -2212,16 +2229,14 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		if (xcu->info.slot_idx != slot_hdl)
 			continue;
 
-		/* Unconfigure the CUs support only 2.0 version */
 		if (major == 2 && minor == 0) {
 			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PL);
 			if (ret)
 				goto out;
 		}
-		xocl_subdev_destroy_by_id_and_inst(xdev,
-				XOCL_SUBDEV_CU, xcu->info.inst_idx);
 	}
 
+	/* Unconfigure the SCUs */
 	cu_mgmt = &XDEV(xdev)->kds.scu_mgmt;
 	for (i = 0; i < MAX_CUS; i++) {
 		xcu = cu_mgmt->xcus[i];
@@ -2232,14 +2247,11 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		if (xcu->info.slot_idx != slot_hdl)
 			continue;
 
-		/* Unconfigure the SCUs support only 2.0 version */
 		if (major == 2 && minor == 0) {
 			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PS);
 			if (ret)
 				goto out;
 		}
-		xocl_subdev_destroy_by_id_and_inst(xdev,
-				XOCL_SUBDEV_SCU, xcu->info.inst_idx);
 	}
 
 	ret = xocl_kds_xgq_cfg_end(xdev);
@@ -2247,6 +2259,13 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		goto out;
 
 	xocl_ert_ctrl_unset_xgq(xdev);
+
+	/* Destroy the CUs based on slot */
+	xocl_kds_destroy_cus(xdev, slot_hdl, DOMAIN_PL);
+
+	/* Destroy the SCUs based on slot */
+	xocl_kds_destroy_cus(xdev, slot_hdl, DOMAIN_PS);
+
 out:
 	if (ret)
 		XDEV(xdev)->kds.bad_state = 1;
