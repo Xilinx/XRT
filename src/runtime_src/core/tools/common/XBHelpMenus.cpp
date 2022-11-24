@@ -4,24 +4,23 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
+#include "core/common/time.h"
+#include "core/common/query_requests.h"
 #include "XBHelpMenusCore.h"
 #include "XBUtilitiesCore.h"
 #include "XBHelpMenus.h"
 #include "XBUtilities.h"
-#include "core/common/time.h"
-#include "core/common/query_requests.h"
-
 namespace XBU = XBUtilities;
 
 
 // 3rd Party Library - Include Files
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/format.hpp>
+#include <boost/property_tree/json_parser.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include <numeric>
 
 // ------ N A M E S P A C E ---------------------------------------------------
@@ -243,7 +242,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     consoleStream << dev_desc;
     consoleStream << std::string(dev_desc.length(), '-') << std::endl;
 
-    const auto is_ready = xrt_core::device_query<xrt_core::query::is_ready>(device);
+    const auto is_ready = xrt_core::device_query_default<xrt_core::query::is_ready>(device, true);
     bool is_recovery = false;
     try {
       is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
@@ -257,7 +256,7 @@ XBUtilities::produce_reports( const std::shared_ptr<xrt_core::device>& device,
     // 1. Is in factory mode and is not in recovery mode
     // 2. Is not ready and is not in recovery mode
     if ((is_mfg || !is_ready) && !is_recovery)
-      std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n\n";
+      std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n";
 
     for (auto &report : reportsToProcess) {
       if (!report->isDeviceRequired())

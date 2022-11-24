@@ -24,7 +24,7 @@ namespace XBU = XBUtilities;
 #include "core/common/info_vmr.h"
 // Remove linux specific code
 #ifdef __linux__
-#include "core/pcie/linux/scan.cpp"
+#include "core/pcie/linux/pcidev.cpp"
 #endif
 
 // 3rd Party Library - Include Files
@@ -285,6 +285,9 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const s
   std::cout << "\nIncoming Configuration\n";
   const boost::property_tree::ptree& available_shells = _ptDevice.get_child("platform.available_shells");
 
+  if (available_shells.empty())
+    throw xrt_core::error("No shell matched for given flash image");
+  
   boost::property_tree::ptree platform_to_flash;
   for (auto& image : available_shells) {
     if ((image.second.get<std::string>("vbnv")).compare(vbnv) == 0) {

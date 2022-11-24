@@ -688,9 +688,10 @@ private:
 
 public:
   explicit
-  kernel_command(std::shared_ptr<device_type> dev, xrt_core::hw_queue hwqueue)
+  kernel_command(std::shared_ptr<device_type> dev, xrt_core::hw_queue hwqueue, xrt::hw_context hwctx = xrt::hw_context())
     : m_device(std::move(dev))
     , m_hwqueue(std::move(hwqueue))
+    , m_hwctx(std::move(hwctx))
     , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
     , m_done(true)
   {
@@ -743,6 +744,16 @@ public:
     auto state = get_state_raw();
     notify(state);  // update command state accordingly
     return state;
+  }
+
+  // Return kernel return code from command object for PS kernels
+  uint32_t
+  get_return_code() const
+  {
+    auto pkt = get_ert_packet();
+    uint32_t ret;
+    ert_read_return_code(pkt, ret);
+    return ret;
   }
 
   // Cast underlying exec buffer to its requested type
@@ -885,10 +896,18 @@ public:
     return m_device->get_core_device();
   }
 
-  xclBufferHandle
+  xrt_buffer_handle
   get_exec_bo() const override
   {
     return m_execbuf.first;
+  }
+
+  xcl_hwctx_handle
+  get_hwctx_handle() const override
+  {
+    return (m_hwctx)
+       ? static_cast<xcl_hwctx_handle>(m_hwctx)
+       : XRT_NULL_HWCTX;
   }
 
   void
@@ -920,6 +939,7 @@ public:
 private:
   std::shared_ptr<device_type> m_device;
   xrt_core::hw_queue m_hwqueue;  // hwqueue for command submission
+  xrt::hw_context m_hwctx;       // hw_context for command
   execbuf_type m_execbuf;        // underlying execution buffer
   unsigned int m_uid = 0;
   bool m_managed = false;
@@ -1975,7 +1995,7 @@ public:
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
     , core_device(kernel->get_core_device())      // cache core device
-    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context()))
     , data(kernel->initialize_command(cmd.get())) // default encodes CUs
     , uid(create_uid())
   {
@@ -1990,7 +2010,7 @@ public:
     , ips(rhs->ips)
     , cumask(rhs->cumask)
     , core_device(rhs->core_device)
-    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context()))
     , data(clone_command_data(rhs))
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
@@ -2215,7 +2235,7 @@ public:
     }
 
     // create and populate abort command
-    auto abort_cmd = std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue());
+    auto abort_cmd = std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context());
     auto abort_pkt = abort_cmd->get_ert_cmd<ert_abort_cmd*>();
     abort_pkt->state = ERT_CMD_STATE_NEW;
     abort_pkt->count = sizeof(abort_pkt->exec_bo_handle) / sizeof(uint32_t);
@@ -2279,6 +2299,16 @@ public:
   state() const
   {
     return cmd->get_state();
+  }
+
+  // return_code() - get kernel execution return code
+  uint32_t
+  return_code() const
+  {
+    auto ktype = kernel->get_kernel_type();
+    if (ktype == kernel_type::ps)
+      return cmd->get_return_code();
+    return 0;
   }
 
   ert_packet*
@@ -2555,7 +2585,7 @@ public:
   run_update_type(run_impl* r)
     : run(r)
     , kernel(run->get_kernel())
-    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue(), kernel->get_hw_context()))
   {
     auto kcmd = cmd->get_ert_cmd<ert_init_kernel_cmd*>();
     auto rcmd = run->get_ert_cmd<ert_start_kernel_cmd*>();
@@ -2864,8 +2894,8 @@ namespace xrt_core { namespace kernel_int {
 void
 copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
                   size_t sz,
-                  xclBufferHandle dst_bo, size_t dst_offset,
-                  xclBufferHandle src_bo, size_t src_offset)
+                  xrt_buffer_handle dst_bo, size_t dst_offset,
+                  xrt_buffer_handle src_bo, size_t src_offset)
 {
 #ifndef _WIN32
   if (is_sw_emulation())
@@ -2878,7 +2908,8 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
 
   // Get and fill the underlying packet
   auto pkt = cmd->get_ert_cmd<ert_start_copybo_cmd*>();
-  ert_fill_copybo_cmd(pkt, src_bo, dst_bo, src_offset, dst_offset, sz);
+  ert_fill_copybo_cmd(pkt, to_xclBufferHandle(src_bo), to_xclBufferHandle(dst_bo),
+    src_offset, dst_offset, sz);
 
   // Run the command and wait for completion
   cmd->run();
@@ -3041,6 +3072,15 @@ state() const
 {
   return xdp::native::profiling_wrapper("xrt::run::state", [this]{
     return handle->state();
+  });
+}
+
+uint32_t
+run::
+return_code() const
+{
+  return xdp::native::profiling_wrapper("xrt::run::return_code", [this]{
+    return handle->return_code();
   });
 }
 

@@ -15,7 +15,7 @@ usage()
     echo "Usage: $PROGRAM [options] "
     echo "  options:"
     echo "          -help                           Print this usage"
-    echo "          -aarch                          Architecture <aarch32/aarch64/versal>"
+    echo "          -aarch                          Architecture <aarch64/versal>"
     echo "          -cache                          path to sstate-cache"
     echo "          -setup                          setup file to use"
     echo "          -clean, clean                   Remove build directories"
@@ -67,6 +67,9 @@ install_recipes()
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $ZOCL_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $ZOCL_BB
         echo 'LIC_FILES_CHKSUM = "file://LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8"' >> $ZOCL_BB
+        if [[ ! -z $XRT_VERSION_PATCH ]]; then
+            echo "EXTRA_OEMAKE += \"XRT_VERSION_PATCH=$XRT_VERSION_PATCH\"" >> $ZOCL_BB
+        fi
         echo 'pkg_postinst_ontarget_${PN}() {' >> $ZOCL_BB
         echo '  #!/bin/sh' >> $ZOCL_BB
         echo '  echo "Unloading old XRT Linux kernel modules"' >> $ZOCL_BB
@@ -109,7 +112,6 @@ config_versal_project()
     sed -i 's/^CONFIG_imagefeature-ssh-server-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_imagefeature-package-management.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_gdb.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_valgrind.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_packagegroup-core-ssh-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
@@ -124,6 +126,7 @@ config_versal_project()
     sed -i 's/.*CONFIG_ldd is.*/CONFIG_ldd=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_binutils is.*/CONFIG_binutils=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_ai-engine-driver is.*/CONFIG_ai-engine-driver=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_gdb is.*/CONFIG_gdb=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_ADD_EXTRA_USERS is.*/CONFIG_ADD_EXTRA_USERS="petalinux:petalinux;"/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_ROOTFS_ROOT_PASSWD=\"root\".*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     echo "CONFIG_ROOTFS_ROOT_PASSWD=\"root\"" >> $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
@@ -146,6 +149,20 @@ config_versal_project()
         mkdir -p $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-core/sysvinit
     fi
     cp $INIT_TAB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-core/sysvinit
+
+    # Create startup script to initialize apu tasks
+    SERVICE_FILE=$APU_RECIPES_DIR/init-apu.service
+    BB_FILE=$APU_RECIPES_DIR/init-apu.bb
+    INIT_SCRIPT=$APU_RECIPES_DIR/init-apu
+
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+	$PETA_BIN/petalinux-create -t apps --template install -n init-apu --enable
+    fi
+
+    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu/files
+    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu
+    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/init-apu/files
 
     # Create startup script to write to sysfs entry to indicate apu booted
     SERVICE_FILE=$APU_RECIPES_DIR/apu-boot.service
@@ -244,7 +261,7 @@ full=0
 archiver=0
 gen_sysroot=1
 SSTATE_CACHE=""
-SETTINGS_FILE="petalinux.build"
+SETTINGS_FILE="${THIS_SCRIPT_DIR}/petalinux.build"
 while [ $# -gt 0 ]; do
 	case $1 in
 		-help )
@@ -285,14 +302,13 @@ while [ $# -gt 0 ]; do
 done
 
 aarch64_dir="aarch64"
-aarch32_dir="aarch32"
 versal_dir="versal"
 YOCTO_MACHINE=""
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf $aarch64_dir $aarch32_dir $versal_dir"
-    /bin/rm -rf $aarch64_dir $aarch32_dir $versal_dir
+    echo "/bin/rm -rf $aarch64_dir $versal_dir"
+    /bin/rm -rf $aarch64_dir $versal_dir
     exit 0
 fi
 
@@ -311,15 +327,6 @@ if [[ $AARCH = $aarch64_dir ]]; then
     PETA_BSP="$PETALINUX/../../bsp/internal/zynqmp-common-v$PETALINUX_VER-final.bsp"
     fi
     YOCTO_MACHINE="zynqmp-generic"
-elif [[ $AARCH = $aarch32_dir ]]; then
-    if [[ -f $PETALINUX/../../bsp/release/zynq-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/release/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
-    elif [[ -f $PETALINUX/../../bsp/internal/zynq/zynq-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
-    PETA_BSP="$PETALINUX/../../bsp/internal/zynq/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
-    else
-    PETA_BSP="$PETALINUX/../../bsp/internal/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
-    fi
-    YOCTO_MACHINE="zynq-generic"
 elif [[ $AARCH = $versal_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/versal-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/versal-rootfs-common-v$PETALINUX_VER-final.bsp"

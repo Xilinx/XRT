@@ -26,7 +26,7 @@
 #define zcu_xgq_dbg(zcu_xgq, fmt, args...)	zocl_dbg(ZCU_XGQ2DEV(zcu_xgq), fmt"\n", ##args)
 
 #define ZCU_XGQ_MAX_SLOT_SIZE	1024
-#define ZCU_XGQ_FAST_PATH(zcu_xgq)		((zcu_xgq)->zxc_num_cu == 1)
+#define ZCU_XGQ_FAST_PATH(zcu_xgq)		(((zcu_xgq)->zxc_num_cu == 1) && ((zcu_xgq)->zxc_cu_domain == 0))
 
 static void zcu_xgq_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd);
 
@@ -404,36 +404,31 @@ int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 	return rc;
 }
 
-static void init_resp(struct xgq_com_queue_entry *resp, u16 cid, u32 rcode)
-{
-	memset(resp, 0, sizeof(*resp));
-	resp->hdr.cid = cid;
-	resp->hdr.cstate = XGQ_CMD_STATE_COMPLETED;
-	resp->rcode = rcode;
-}
-
 static inline void
-zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, int ret)
+zcu_xgq_cmd_complete(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd, uint ret, enum kds_status status)
 {
-	struct xgq_com_queue_entry r;
+	struct xgq_com_queue_entry r = {0};
+	struct xgq_com_queue_entry *rptr = NULL;
 	struct zocl_cu_xgq *zcu_xgq = platform_get_drvdata(pdev);
 
-	if (likely(ret == 0 && ZCU_XGQ_FAST_PATH(zcu_xgq))) {
-		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, NULL);
-	} else {
-		init_resp(&r, cmd->cid, ret);
-		zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, &r);
+	if (unlikely(!(ret == 0 && ZCU_XGQ_FAST_PATH(zcu_xgq)))) {
+		rptr = &r;
+		r.hdr.cid = cmd->cid;
+		r.result = status;
+		r.rcode = ret;
+		r.hdr.cstate = (status = KDS_SKCRASHED) ? XGQ_CMD_STATE_ABORTED : XGQ_CMD_STATE_COMPLETED;
 	}
+	zxgq_send_response(zcu_xgq->zxc_zxgq_hdl, rptr);
 	kfree(cmd);
 }
 
-static void zcu_xgq_cmd_notify(struct kds_command *xcmd, int status)
+static void zcu_xgq_cmd_notify(struct kds_command *xcmd, enum kds_status status)
 {
 	struct zocl_cu_xgq *zcu_xgq = (struct zocl_cu_xgq *)xcmd->priv;
 	struct xgq_cmd_sq_hdr *cmd = xcmd->info;
 
 	xcmd->info = NULL;
-	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, xcmd->rcode);
+	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, xcmd->rcode, xcmd->status);
 
 	if (xcmd->cu_idx >= 0) {
 		if (cmd->cu_domain != 0)
@@ -447,16 +442,16 @@ static inline void
 zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 {
 	struct kds_command *xcmd;
-	int mask_idx;
-	int bit_idx;
+	int mask_idx = 0;
+	int bit_idx = 0;
 
 #if 0
-	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, 0);
+	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, 0, KDS_COMPLETED);
 	return;
 #endif
 	xcmd = kds_alloc_command(zcu_xgq->zxc_client_hdl, 0);
 	if (!xcmd) {
-		zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -ENOMEM);
+		zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -ENOMEM, KDS_COMPLETED);
 		return;
 	}
 
@@ -496,7 +491,7 @@ zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 static void zcu_xgq_cmd_default(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 {
 	zcu_xgq_err(zcu_xgq, "Unknown cmd: %d", cmd->opcode);
-	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -ENOTTY);
+	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, -ENOTTY, KDS_COMPLETED);
 }
 
 static void zcu_xgq_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd)

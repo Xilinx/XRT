@@ -46,6 +46,11 @@
 /* The Clock IP use index 0 for data, 1 for kernel, 2 for sys, 3 for sys1 */ 
 #define XGQ_CLOCK_WIZ_MAX_RES           4
 
+/* VMR Identify Command Version Major and Minor Numbers */
+#define VMR_IDENTIFY_CMD_MAJOR		1
+#define VMR_IDENTIFY_CMD_MINOR		0
+
+
 /**
  * clock scaling request types
  */
@@ -89,6 +94,14 @@ enum xgq_cmd_clock_req_type {
 };
 
 /**
+ * clock scaling request types
+ */
+enum xgq_cmd_clock_scaling_req_type {
+	XGQ_CMD_CLK_SCALING_GET_STATUS	= 0x1,
+	XGQ_CMD_CLK_SCALING_SET_OVERRIDE= 0x2,
+};
+
+/**
  * multi-boot operation request types
  */
 enum xgq_cmd_vmr_control_type {
@@ -111,6 +124,8 @@ enum xgq_cmd_log_page_type {
 	XGQ_CMD_LOG_TASK_STATS  = 0x5,
 	XGQ_CMD_LOG_MEM_STATS	= 0x6,
 	XGQ_CMD_LOG_SYSTEM_DTB	= 0x7,
+	XGQ_CMD_LOG_PLM_LOG	= 0x8,
+
 };
 
 /**
@@ -196,6 +211,7 @@ struct xgq_cmd_data_payload {
 	uint32_t flash_type:4;
 	uint32_t rsvd1:24;
 	uint32_t pad1;
+	uint64_t priv;
 };
 
 enum xgq_cmd_flash_type {
@@ -352,12 +368,24 @@ struct xgq_cmd_cq_vmr_payload {
 	uint16_t has_ext_sysdtb:1;
 	uint16_t ps_is_ready:1;
 	uint16_t pl_is_ready:1;
-	uint16_t resvd1:5;
+	uint16_t sc_is_ready:1;
+	uint16_t resvd1:4;
 	uint16_t current_multi_boot_offset;
 	uint32_t debug_level:3;
 	uint32_t program_progress:7;
 	uint16_t resvd2:6;
 	uint16_t boot_on_offset;
+};
+
+/*
+ * struct xgq_cmd_cq_vmr_identify_payload: Identify Command payload
+ *
+ * VMR Identify Command
+*/
+struct xgq_cmd_cq_vmr_identify_payload {
+	uint16_t ver_major;
+	uint16_t ver_minor;
+	uint32_t resvd;
 };
 
 /*
@@ -369,6 +397,10 @@ struct xgq_cmd_cq_vmr_payload {
  * @clock_payload:
  * @sensor_payload:
  * @multiboot_payload:
+ * @log_payload:
+ * @xclbin_payload:
+ * @clk_scaling_payload:
+ * @vmr_identify_payload:
  */
 struct xgq_cmd_cq {
 	struct xgq_cmd_cq_hdr hdr;
@@ -379,7 +411,8 @@ struct xgq_cmd_cq {
 		struct xgq_cmd_cq_vmr_payload		cq_vmr_payload;
 		struct xgq_cmd_cq_log_page_payload	cq_log_payload;
 		struct xgq_cmd_cq_data_payload		cq_xclbin_payload;
-		struct xgq_cmd_cq_clk_scaling_payload cq_clk_scaling_payload;
+		struct xgq_cmd_cq_clk_scaling_payload	cq_clk_scaling_payload;
+		struct xgq_cmd_cq_vmr_identify_payload  cq_vmr_identify_payload;
 	};
 	uint32_t rcode;
 };

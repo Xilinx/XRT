@@ -472,7 +472,7 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                       src_offset, dst_offset, size);
 
-  ret = xclExecBuf(bo.first);
+  ret = xclExecBuf(to_xclBufferHandle(bo.first));
   if (ret) {
     mCmdBOCache->release(bo);
     return ret;
@@ -736,7 +736,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_kernels = NULL,
       .za_slot_id = 0, // TODO Cleanup: Once uuid interface id available we need to remove this
       .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
-      .za_dtbo_path_len = dtbo_path.length(),
+      .za_dtbo_path_len = static_cast<unsigned int>(dtbo_path.length()),
       .hw_gen = hw_gen,
     };
 

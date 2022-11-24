@@ -8,9 +8,8 @@ multiple xclbins
 ****************************************************************/
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+#include "xrt/xrt_hw_context.h"
 #include "xrt/xrt_kernel.h"
-
-#include "experimental/xrt_hw_context.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -95,10 +94,10 @@ run(int argc, char** argv)
 
   std::vector<xrt::run> runs;
   for (const auto& xclbin : xclbins) {
-    xrt::hw_context ctx{device, xclbin.get_uuid()};
-    xrt::kernel kernel{ctx, kname};
-    xrt::bo a(device, data_size * sizeof(unsigned long), kernel.group_id(0));
-    xrt::bo b(device, data_size * sizeof(unsigned long), kernel.group_id(1));
+    xrt::hw_context hwctx{device, xclbin.get_uuid()};
+    xrt::kernel kernel{hwctx, kname};
+    xrt::bo a(hwctx, data_size * sizeof(unsigned long), kernel.group_id(0));
+    xrt::bo b(hwctx, data_size * sizeof(unsigned long), kernel.group_id(1));
     runs.push_back(kernel(a, b, elements));
   }
 

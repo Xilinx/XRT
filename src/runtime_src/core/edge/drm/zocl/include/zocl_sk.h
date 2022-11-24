@@ -92,6 +92,5 @@ extern int zocl_scu_wait_ready(struct platform_device *pdev);
 extern void zocl_scu_sk_ready(struct platform_device *pdev);
 extern void zocl_scu_sk_crash(struct platform_device *pdev);
 extern void zocl_scu_sk_shutdown(struct platform_device *pdev);
-extern void zocl_scu_sk_fini(struct platform_device *pdev);
 
 #endif

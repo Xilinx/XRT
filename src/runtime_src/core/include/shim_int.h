@@ -76,6 +76,17 @@ destroy_hw_queue(xclDeviceHandle handle, xcl_hwqueue_handle qhdl);
 void
 register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin);
 
+// submit_command() -
+void
+submit_command(xclDeviceHandle handle, xcl_hwqueue_handle qhdl, xclBufferHandle cmdbo);
+
+// wait_command() -
+int
+wait_command(xclDeviceHandle handle, xcl_hwqueue_handle qhdl, xclBufferHandle cmdbo, int timeout_ms);
+
+// exec_buf() - Exec Buf with hw ctx handle.
+void
+exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xcl_hwctx_handle ctxhdl);
 }} // shim_int, xrt
 
 #endif

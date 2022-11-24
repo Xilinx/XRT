@@ -266,6 +266,7 @@ static inline void process_cq(struct xrt_cu *xcu)
 		xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
 		set_xcmd_timestamp(xcmd, xcmd->status);
 		xrt_cu_circ_produce(xcu, CU_LOG_STAGE_CQ, (uintptr_t)xcmd);
+		xcu->bad_state = (xcmd->status == KDS_SKCRASHED);
 		xcmd->cb.notify_host(xcmd, xcmd->status);
 		xrt_cu_incr_ecmd_count(xcu);
 		list_del(&xcmd->list);
@@ -385,7 +386,7 @@ static inline int process_rq(struct xrt_cu *xcu)
 	xrt_cu_start(xcu);
 	if (xcu->thread) {
 		xcu->poll_count = 0;
-		if (xcu->interrupt_used)
+		if (!xcu->force_intr && xcu->interrupt_used)
 			xrt_cu_switch_to_poll(xcu);
 	}
 	set_xcmd_timestamp(xcmd, KDS_RUNNING);
@@ -551,6 +552,8 @@ int xrt_cu_intr_thread(void *data)
 	xcu->interrupt_used = 0;
 	xcu_info(xcu, "CU[%d] start", xcu->info.cu_idx);
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
+	if (xcu->force_intr)
+		xrt_cu_switch_to_interrupt(xcu);
 	while (!xcu->stop) {
 		/* Make sure to submit as many commands as possible.
 		 * This is why we call continue here. This is important to make

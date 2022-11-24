@@ -1152,15 +1152,8 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
     bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceId) ? true : false;
 
-    if (continuousTrace) {
-      // Continuous Trace Offload is supported only for PLIO flow
-      if (isPLIO) {
-        XDPPlugin::startWriteThread(aie_trace_file_dump_int_s, "AIE_EVENT_TRACE", false);
-      } else {
-        std::string msg("Continuous offload of AIE Trace is not supported for GMIO mode. So, AIE Trace for GMIO mode will be offloaded only at the end of application.");
-        xrt_core::message::send(severity_level::warning, "XRT", msg);
-      }
-    }
+    if (continuousTrace)
+      XDPPlugin::startWriteThread(aie_trace_file_dump_int_s, "AIE_EVENT_TRACE", false);
 
     // First, check against memory bank size
     // NOTE: Check first buffer for PLIO; assume bank 0 for GMIO
@@ -1243,7 +1236,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
                                               numAIETraceOutput);  // numStream
 
     // Can't call init without setting important details in offloader
-    if (continuousTrace && isPLIO) {
+    if (continuousTrace) {
       aieTraceOffloader->setContinuousTrace();
       aieTraceOffloader->setOffloadIntervalUs(offloadIntervalUs);
     }
@@ -1257,8 +1250,7 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
     }
     aieOffloaders[deviceId] = std::make_tuple(aieTraceOffloader, aieTraceLogger, deviceIntf);
 
-    // Continuous Trace Offload is supported only for PLIO flow
-    if (continuousTrace && isPLIO)
+    if (continuousTrace)
       aieTraceOffloader->startOffload();
   }
 
@@ -1446,12 +1438,13 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       if (offloader->continuousTrace()) {
         offloader->stopOffload() ;
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
+      } else {
+        offloader->readTrace(true);
+        offloader->endReadTrace();
       }
 
-      offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
-      offloader->endReadTrace();
 
       delete (offloader);
       delete (logger);
@@ -1471,12 +1464,13 @@ bool AieTracePlugin::configureStartIteration(xaiefal::XAieMod& core)
       if (offloader->continuousTrace()) {
         offloader->stopOffload() ;
         while(offloader->getOffloadStatus() != AIEOffloadThreadStatus::STOPPED) ;
+      } else {
+        offloader->readTrace(true);
+        offloader->endReadTrace();
       }
 
-      offloader->readTrace(true);
       if (offloader->isTraceBufferFull())
         xrt_core::message::send(severity_level::warning, "XRT", AIE_TS2MM_WARN_MSG_BUF_FULL);
-      offloader->endReadTrace();
 
       delete offloader;
       delete logger;

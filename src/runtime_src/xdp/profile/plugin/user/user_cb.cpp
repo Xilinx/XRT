@@ -75,10 +75,9 @@ namespace xdp {
     (db->getDynamicInfo()).addEvent(event) ;
 
     // Record information for statistics
-    std::tuple<const char*, const char*, uint64_t> desc =
-      (db->getDynamicInfo()).matchingRange(functionID) ;
-    std::pair<const char*, const char*> str = { std::get<0>(desc), std::get<1>(desc) } ;
-    (db->getStats()).recordRangeDuration(str, timestamp - std::get<2>(desc)) ;
+    UserRangeInfo desc = db->getDynamicInfo().matchingRange(functionID) ;
+    std::pair<const char*, const char*> str = { desc.label, desc.tooltip } ;
+    (db->getStats()).recordRangeDuration(str, timestamp - desc.startTimestamp) ;
   }
 
   static void user_event_happened_cb(const char* label)

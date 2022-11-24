@@ -19,6 +19,7 @@
 #include "core/include/xrt/xrt_uuid.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
+#include "core/common/api/hw_queue.h"
 #include "core/common/api/xclbin_int.h"
 
 #include <boost/format.hpp>
@@ -46,6 +47,7 @@ device::
 {
   // virtual must be declared and defined
   XRT_DEBUGF("xrt_core::device::~device(0x%x) idx(%d)\n", this, m_device_id);
+  hw_queue::finish(this);
 }
 
 bool
@@ -92,7 +94,17 @@ void
 device::
 record_xclbin(const xrt::xclbin& xclbin)
 {
-  register_xclbin(xclbin); // shim level registration
+  try {
+    register_xclbin(xclbin); // shim level registration
+  }
+  catch (const not_supported_error&) {
+    // Shim does not support register xclbin, meaning it
+    // doesn't support multi-xclbin, so just take the
+    // load_xclbin flow.
+    load_xclbin(xclbin);
+    return;
+  }
+
   m_xclbins.insert(xclbin);
 
   // For single xclbin case, where shim doesn't implement

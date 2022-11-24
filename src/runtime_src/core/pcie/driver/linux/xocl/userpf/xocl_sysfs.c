@@ -1,20 +1,13 @@
-/*
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
- *
  * Authors: Lizhi.Hou@xilinx.com
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 #include "common.h"
+#include "xclfeatures.h"
 #include "kds_core.h"
 
 extern int kds_echo;
@@ -151,6 +144,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 	for (i = 0; i < topo->m_count; i++) {
+		memset(&stat, 0, sizeof(struct drm_xocl_mm_stat));
 		xocl_mm_get_usage_stat(XOCL_DRM(xdev), i, &stat);
 
 		if (raw) {
@@ -273,30 +267,70 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(kds_stat);
 
 static ssize_t
-kds_custat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
+kds_custat_raw_show(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	ssize_t ret;
+	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
+	ssize_t ret = 0;
 
+	/**
+	 * The CU data will not be consistent between multiple calls to
+	 * this function. Meaning large sysfs reads requests may have strange
+	 * output results if the CUs change mid read.
+	 * This was an acceptable cost to simplify the logic as it is a rare
+	 * condition.
+	 */
+
+	/* Populate the allocated buffer with CU data */
 	mutex_lock(&xdev->dev_lock);
-	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buf);
+	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buffer, count, offset);
 	mutex_unlock(&xdev->dev_lock);
+
 	return ret;
 }
-static DEVICE_ATTR_RO(kds_custat_raw);
+
+static struct bin_attribute kds_custat_raw_attr = {
+	.attr = {
+		.name = "kds_custat_raw",
+		.mode = 0444
+	},
+	.read = kds_custat_raw_show,
+	.write = NULL,
+	.size = 0
+};
 
 static ssize_t
-kds_scustat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
+kds_scustat_raw_show(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
-	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	ssize_t ret;
+	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
+	ssize_t ret = 0;
 
+	/**
+	 * The CU data will not be consistent between multiple calls to
+	 * this function. Meaning large sysfs reads requests may have strange
+	 * output results if the CUs change mid read.
+	 * This was an acceptable cost to simplify the logic as it is a rare
+	 * condition.
+	 */
+
+	/* Populate the allocated buffer with CU data */
 	mutex_lock(&xdev->dev_lock);
-	ret = show_kds_scustat_raw(&XDEV(xdev)->kds, buf);
+	ret = show_kds_scustat_raw(&XDEV(xdev)->kds, buffer, count, offset);
 	mutex_unlock(&xdev->dev_lock);
+
 	return ret;
 }
-static DEVICE_ATTR_RO(kds_scustat_raw);
+
+static struct bin_attribute kds_scustat_raw_attr = {
+	.attr = {
+		.name = "kds_scustat_raw",
+		.mode = 0444
+	},
+	.read = kds_scustat_raw_show,
+	.write = NULL,
+	.size = 0
+};
 
 static ssize_t
 kds_interrupt_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -659,6 +693,42 @@ static ssize_t ready_show(struct device *dev,
 
 static DEVICE_ATTR_RO(ready);
 
+static ssize_t vmr_status_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	void *blob = NULL;
+	const struct VmrStatus *vmr_status = NULL;
+	int proplen = 0;
+	ssize_t cnt = 0;
+
+	blob = xdev->core.fdt_blob;
+	if (!blob) {
+		xocl_err(dev, "Failed to get FDT blob");
+		return 0;
+	}
+
+	vmr_status = (struct VmrStatus*) fdt_getprop(blob, 0, "vmr_status", &proplen);
+
+	if (!vmr_status) {
+		xocl_info(dev, "Did not find vmr_status prop");
+		return 0;
+	}
+
+	if (proplen != sizeof(struct VmrStatus)) {
+		xocl_err(dev, "Invalid vmr_status length");
+		return 0;
+	}
+
+	cnt += sprintf(buf + cnt, "BOOT_ON_DEFAULT:%d\n", vmr_status->boot_on_default);
+	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n", vmr_status->boot_on_backup);
+	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n", vmr_status->boot_on_recovery);
+
+	return cnt;
+}
+
+static DEVICE_ATTR_RO(vmr_status);
+
 static ssize_t interface_uuids_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -790,8 +860,6 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kds_echo.attr,
 	&dev_attr_kds_numcdmas.attr,
 	&dev_attr_kds_stat.attr,
-	&dev_attr_kds_custat_raw.attr,
-	&dev_attr_kds_scustat_raw.attr,
 	&dev_attr_kds_interrupt.attr,
 	&dev_attr_kds_interval.attr,
 	&dev_attr_ert_disable.attr,
@@ -806,6 +874,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_config_mailbox_channel_switch.attr,
 	&dev_attr_config_mailbox_comm_id.attr,
 	&dev_attr_ready.attr,
+	&dev_attr_vmr_status.attr,
 	&dev_attr_interface_uuids.attr,
 	&dev_attr_logic_uuids.attr,
 	&dev_attr_ulp_uuids.attr,
@@ -869,6 +938,8 @@ static struct bin_attribute fdt_blob_attr = {
 
 static struct bin_attribute  *xocl_bin_attrs[] = {
 	&fdt_blob_attr,
+	&kds_custat_raw_attr,
+	&kds_scustat_raw_attr,
 	NULL,
 };
 
