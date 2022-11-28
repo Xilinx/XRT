@@ -297,6 +297,7 @@ out:
 static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_info cu_info = {};
 	xuid_t *uuid;
@@ -353,6 +354,17 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 
 	ret = kds_free_cu_ctx(client, cu_ctx);
+	if (ret)
+		goto out;
+
+	hw_ctx = kds_get_hw_ctx_by_id(client, 0);
+	if (!hw_ctx) {
+		userpf_err(xdev, "No valid HW context is open");
+		mutex_unlock(&client->lock);
+		return -EINVAL;
+	}
+
+	ret = kds_free_hw_ctx(client, hw_ctx);
 	if (ret)
 		goto out;
 
@@ -959,11 +971,12 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 	return ret;
 }
 
-static int xocl_command_exec(struct xocl_dev *xdev, struct drm_file *filp,
-		uint32_t hw_ctx_id, uint32_t exec_bo_handle, bool in_kernel)
+static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
+			      struct drm_file *filp, bool in_kernel)
 {
 	struct drm_device *ddev = filp->minor->dev;
 	struct kds_client *client = filp->driver_priv;
+	struct drm_xocl_execbuf *args = data;
 	struct drm_gem_object *obj;
 	struct drm_xocl_bo *xobj;
 	struct ert_packet *ecmd = NULL;
@@ -980,10 +993,10 @@ static int xocl_command_exec(struct xocl_dev *xdev, struct drm_file *filp,
 		return -EDEADLK;
 	}
 
-	obj = xocl_gem_object_lookup(ddev, filp, exec_bo_handle);
+	obj = xocl_gem_object_lookup(ddev, filp, args->exec_bo_handle);
 	if (!obj) {
 		userpf_err(xdev, "Failed to look up GEM BO %d\n",
-		exec_bo_handle);
+		args->exec_bo_handle);
 		return -ENOENT;
 	}
 
