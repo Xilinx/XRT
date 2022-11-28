@@ -465,6 +465,7 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, int domain, struct kds_command *xcmd
 	struct kds_client *client = xcmd->client;
 	/* User marked CUs */
 	uint8_t user_cus[MAX_CUS];
+	uint32_t hw_ctx = xcmd->hw_ctx_id;
 	int num_marked;
 	/* After validation */
 	uint8_t valid_cus[MAX_CUS];
@@ -520,12 +521,12 @@ out:
 	cu_stat_inc(cu_mgmt, usage[index]);
 	/* Before it go, make sure selected CU is still opening. */
 	if (domain == DOMAIN_PL) {
-		client_stat_inc(client, s_cnt[index]);
+		client_stat_inc(client, hw_ctx, s_cnt[index]);
 		cu_set = kds_test_refcnt(client, domain, index);
 		if (cu_set < 0)
 			return -EINVAL;
 	} else {
-		client_stat_inc(client, scu_s_cnt[index]);
+		client_stat_inc(client, hw_ctx, scu_s_cnt[index]);
 		cu_set = kds_test_refcnt(client, domain, index);
 		if (cu_set < 0)
 			return -EINVAL;
@@ -533,9 +534,9 @@ out:
 	xcmd->cu_idx = index;
 	if (unlikely(!cu_set)) {
 		if (domain == DOMAIN_PL)
-			client_stat_dec(client, s_cnt[index]);
+			client_stat_dec(client, hw_ctx, s_cnt[index]);
 		else
-			client_stat_dec(client, scu_s_cnt[index]);
+			client_stat_dec(client, hw_ctx, scu_s_cnt[index]);
 
 		index = -EAGAIN;
 	}
@@ -740,6 +741,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	struct kds_cu_mgmt *cu_mgmt = NULL;
 	u32 cu_idx = cu_ctx->cu_idx;
 	int domain = cu_ctx->cu_domain;
+	uint32_t hw_ctx = cu_ctx->hw_ctx->hw_ctx_idx;
 	unsigned long submitted;
 	unsigned long completed;
 	bool bad_state = false;
@@ -764,11 +766,11 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 
 	/* Before close, make sure no remain commands in CU's queue. */
 	if (domain == DOMAIN_PL) {
-		submitted = client_stat_read(client, s_cnt[cu_idx]);
-		completed = client_stat_read(client, c_cnt[cu_idx]);
+		submitted = client_stat_read(client, hw_ctx, s_cnt[cu_idx]);
+		completed = client_stat_read(client, hw_ctx, c_cnt[cu_idx]);
 	} else {
-		submitted = client_stat_read(client, scu_s_cnt[cu_idx]);
-		completed = client_stat_read(client, scu_c_cnt[cu_idx]);
+		submitted = client_stat_read(client, hw_ctx, scu_s_cnt[cu_idx]);
+		completed = client_stat_read(client, hw_ctx, scu_c_cnt[cu_idx]);
 	}
 	if (submitted == completed)
 		goto skip;
@@ -783,11 +785,11 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 				 submitted - completed, domain, cu_idx);
 			msleep(wait_ms);
 			if (domain == DOMAIN_PL) {
-				submitted = client_stat_read(client, s_cnt[cu_idx]);
-				completed = client_stat_read(client, c_cnt[cu_idx]);
+				submitted = client_stat_read(client, hw_ctx, s_cnt[cu_idx]);
+				completed = client_stat_read(client, hw_ctx, c_cnt[cu_idx]);
 			} else {
-				submitted = client_stat_read(client, scu_s_cnt[cu_idx]);
-				completed = client_stat_read(client, scu_c_cnt[cu_idx]);
+				submitted = client_stat_read(client, hw_ctx, scu_s_cnt[cu_idx]);
+				completed = client_stat_read(client, hw_ctx, scu_c_cnt[cu_idx]);
 			}
 		} while (submitted != completed);
 
@@ -804,11 +806,11 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 				 submitted - completed, domain, cu_idx);
 			msleep(wait_ms);
 			if (domain == DOMAIN_PL) {
-				submitted = client_stat_read(client, s_cnt[cu_idx]);
-				completed = client_stat_read(client, c_cnt[cu_idx]);
+				submitted = client_stat_read(client, hw_ctx, s_cnt[cu_idx]);
+				completed = client_stat_read(client, hw_ctx, c_cnt[cu_idx]);
 			} else {
-				submitted = client_stat_read(client, scu_s_cnt[cu_idx]);
-				completed = client_stat_read(client, scu_c_cnt[cu_idx]);
+				submitted = client_stat_read(client, hw_ctx, scu_s_cnt[cu_idx]);
+				completed = client_stat_read(client, hw_ctx, scu_c_cnt[cu_idx]);
 			}
 		} while (submitted != completed);
 
@@ -822,11 +824,11 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 			msleep(500);
 			wait_ms -= 500;
 			if (domain == DOMAIN_PL) {
-				submitted = client_stat_read(client, s_cnt[cu_idx]);
-				completed = client_stat_read(client, c_cnt[cu_idx]);
+				submitted = client_stat_read(client, hw_ctx, s_cnt[cu_idx]);
+				completed = client_stat_read(client, hw_ctx, c_cnt[cu_idx]);
 			} else {
-				submitted = client_stat_read(client, scu_s_cnt[cu_idx]);
-				completed = client_stat_read(client, scu_c_cnt[cu_idx]);
+				submitted = client_stat_read(client, hw_ctx, scu_s_cnt[cu_idx]);
+				completed = client_stat_read(client, hw_ctx, scu_c_cnt[cu_idx]);
 			}
 			if (submitted == completed)
 				break;
@@ -940,6 +942,7 @@ int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx)
 	int fd;
 	struct kds_cu_mgmt *cu_mgmt;
 	struct xrt_cu *xcu;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 
 	cu_mgmt = &kds->cu_mgmt;
 	if ((cu_idx >= MAX_CUS) || (!cu_mgmt->xcus[cu_idx])) {
@@ -963,10 +966,20 @@ int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx)
 	}
 	mutex_unlock(&cu_mgmt->lock);
 
+	/* This is required to maintain the command stats per hw context.
+	 * For legacy context case assume there is only one hw context present
+	 * of id 0.
+	 */
+	client->next_hw_ctx_id = 0;
+	hw_ctx = kds_alloc_hw_ctx(client, NULL /* xclbin id*/, 0 /*slot id */);
+	if (!hw_ctx) {
+		return -EINVAL;
+	}
+
 	xcu = cu_mgmt->xcus[cu_idx];
-	if (!client_stat_read(client, s_cnt[cu_idx])) {
+	if (!client_stat_read(client, hw_ctx->hw_ctx_id, s_cnt[cu_idx])) {
 		set_bit(0, xcu->is_ucu);
-		if (client_stat_read(client, s_cnt[cu_idx])) {
+		if (client_stat_read(client, hw_ctx->hw_ctx_id, s_cnt[cu_idx])) {
 			clear_bit(0, xcu->is_ucu);
 			return -EBUSY;
 		}
@@ -1130,13 +1143,8 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 
 int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 {
-	client->stats = alloc_percpu(struct client_stats);
-	if (!client->stats)
-		return -ENOMEM;
-
 	client->refcnt = kzalloc(sizeof(struct kds_client_cu_refcnt), GFP_KERNEL);
 	if (!client->refcnt) {
-		free_percpu(client->stats);
 		return -ENOMEM;
 	}
 
@@ -1257,11 +1265,8 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	list_del(&client->link);
 	kds->num_client--;
 	mutex_unlock(&kds->lock);
-
-	free_percpu(client->stats);
 }
 
-/* Begning Legacy Context for backward compartability */
 struct kds_client_cu_ctx *
 kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
 		struct kds_client_cu_info *cu_info)
@@ -1580,6 +1585,13 @@ kds_alloc_hw_ctx(struct kds_client *client, uuid_t *xclbin_id, uint32_t slot_id)
                 return NULL;
         }
 
+	hw_ctx->stats = alloc_percpu(struct client_stats);
+	if (!hw_ctx->stats) {
+		vfree(hw_ctx);
+                kds_err(client, "Memory is not available for hw context stats");
+		return NULL;
+	}
+
 	/* Initialize the hw context here */
 	hw_ctx->hw_ctx_idx = client->next_hw_ctx_id;
 	hw_ctx->slot_idx = slot_id;
@@ -1607,6 +1619,7 @@ int kds_free_hw_ctx(struct kds_client *client, struct kds_client_hw_ctx *hw_ctx)
 		return -EINVAL;
 	}
 	
+	free_percpu(hw_ctx->stats);	
 	list_del(&hw_ctx->link);
 	vfree(hw_ctx); 
 

@@ -69,6 +69,12 @@ struct kds_client_hw_ctx {
 	struct list_head		link;
 	/* To support multiple CU context */
 	struct list_head		cu_ctx_list;
+
+	/* Per context statistics. Use percpu variable for two reasons
+	 * 1. no lock is need while modifying these counters
+	 * 2. do not need to worry about cache false share
+	 */
+	struct client_stats __percpu 	*stats;
 };
 
 struct kds_client_cu_refcnt {
@@ -117,12 +123,6 @@ struct kds_client {
 	u32                       aie_ctx;
 	struct kds_client_cu_refcnt  *refcnt;
 
-	/* Per client statistics. Use percpu variable for two reasons
-	 * 1. no lock is need while modifying these counters
-	 * 2. do not need to worry about cache false share
-	 */
-	struct client_stats __percpu *stats;
-
 	struct list_head	  ev_entry;
 	int			  ev_type;
 
@@ -136,13 +136,30 @@ struct kds_client {
 };
 
 /* Macros to operates client statistics */
-#define client_stat_read(client, field) \
-	stat_read((client)->stats, field)
+#define client_stat_read(client, hw_ctx, field)				\
+({									\
+	struct kds_client_hw_ctx *curr_ctx;				\
+	typeof(((curr_ctx)->stats)->field) res = 0;			\
+	list_for_each_entry(curr_ctx, &client->hw_ctx_list, link)	\
+                if (curr_ctx->hw_ctx_idx == hw_ctx)			\
+			res = stat_read((curr_ctx)->stats, field);	\
+	res;								\
+})
 
-#define client_stat_inc(client, field) \
-	this_stat_inc((client)->stats, field)
+#define client_stat_inc(client, hw_ctx, field)				\
+({									\
+	struct kds_client_hw_ctx *curr_ctx;				\
+	list_for_each_entry(curr_ctx, &client->hw_ctx_list, link)	\
+		if (curr_ctx->hw_ctx_idx == hw_ctx)			\
+			this_stat_inc((curr_ctx)->stats, field);	\
+})
 
-#define client_stat_dec(client, field) \
-	this_stat_dec((client)->stats, field)
+#define client_stat_dec(client, hw_ctx, field)				\
+({									\
+	struct kds_client_hw_ctx *curr_ctx;				\
+        list_for_each_entry(curr_ctx, &client->hw_ctx_list, link)	\
+                if (curr_ctx->hw_ctx_idx == hw_ctx)			\
+			this_stat_dec((curr_ctx)->stats, field);	\
+})
 
 #endif

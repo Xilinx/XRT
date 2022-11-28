@@ -1834,6 +1834,18 @@ int shim::xclExecBuf(unsigned int cmdBO)
 /*
  * xclExecBuf()
  */
+int shim::xclExecBuf(unsigned int cmdBO, xcl_hwctx_handle ctxhdl)
+{
+    int ret;
+    xrt_logmsg(XRT_INFO, "%s, cmdBO: %d", __func__, cmdBO);
+    drm_xocl_hw_ctx_execbuf exec = {ctxhdl, cmdBO, 0,0,0,0,0,0,0,0};
+    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_HW_CTX_EXECBUF, &exec);
+    return ret ? -errno : ret;
+}
+
+/*
+ * xclExecBuf()
+ */
 int shim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
 {
     xrt_logmsg(XRT_INFO, "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
@@ -2404,8 +2416,13 @@ shim::
 exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl)
 {
   // TODO: Implement new function, for now just call legacy xclExecBuf().
-  if (auto ret = xclExecBuf(boh))
-    throw xrt_core::system_error(ret, "failed to launch execution buffer");
+  if (ctxhdl == XRT_NULL_HWCTX) {
+    if (auto ret = xclExecBuf(boh))
+      throw xrt_core::system_error(ret, "failed to launch execution buffer");
+  } else {
+    if (auto ret = xclExecBuf(boh, ctxhdl))
+      throw xrt_core::system_error(ret, "failed to launch hw ctx execution buffer");
+  }
 }
 
 } // namespace xocl
