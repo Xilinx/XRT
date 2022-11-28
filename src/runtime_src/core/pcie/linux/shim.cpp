@@ -2199,6 +2199,16 @@ register_xclbin(const xrt::xclbin&)
   throw xrt_core::ishim::not_supported_error{__func__};
 }
 
+// Exec Buf with hw ctx handle.
+void
+shim::
+exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl)
+{
+  // TODO: Implement new function, for now just call legacy xclExecBuf().
+  if (auto ret = xclExecBuf(boh))
+    throw xrt_core::system_error(ret, "failed to launch execution buffer");
+}
+
 } // namespace xocl
 
 ////////////////////////////////////////////////////////////////
@@ -2250,6 +2260,13 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
   shim->register_xclbin(xclbin);
 }
 
+// Exec Buf with hw ctx handle.
+void
+exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xcl_hwctx_handle ctxhdl)
+{
+    auto shim = get_shim_object(handle);
+    return shim->exec_buf(to_xclBufferHandle(bohdl), ctxhdl);
+}
 
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////
