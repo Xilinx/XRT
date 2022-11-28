@@ -2434,7 +2434,7 @@ void
 shim::
 register_xclbin(const xrt::xclbin&)
 {
-  /* XRT Core will register the new XCLBIN. No action required here */
+  // Explicit hardware contexts are not supported in Alveo.
   xrt_logmsg(XRT_INFO, "%s: XCLBIN successfully registered for this device", __func__);
 }
 
