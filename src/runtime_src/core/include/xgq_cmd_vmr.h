@@ -255,7 +255,10 @@ struct xgq_cmd_clk_scaling_payload {
 	uint32_t scaling_en:1;
 	uint32_t pwr_scaling_ovrd_limit:16;
 	uint32_t temp_scaling_ovrd_limit:8;
-	uint32_t rsvd1:4;
+	uint32_t reset:1;
+	uint32_t pwr_scaling_ovrd_en:1;
+	uint32_t temp_scaling_ovrd_en:1;
+	uint32_t rsvd1:1;
 };
 
 /**
@@ -343,7 +346,9 @@ struct xgq_cmd_cq_clk_scaling_payload {
 	uint8_t has_clk_scaling:1;
 	uint8_t clk_scaling_mode:2;
 	uint8_t clk_scaling_en:1;
-	uint8_t rsvd:4;
+	uint8_t pwr_scaling_ovrd_en:1;
+	uint8_t temp_scaling_ovrd_en:1;
+	uint8_t rsvd:2;
 	uint8_t temp_shutdown_limit;
 	uint8_t temp_scaling_limit;
 	uint16_t pwr_shutdown_limit;
