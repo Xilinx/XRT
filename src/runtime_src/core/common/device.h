@@ -464,7 +464,6 @@ public:
 
  private:
   id_type m_device_id;
-  std::mutex device_lock;
   mutable boost::optional<bool> m_nodma = boost::none;
 
   using name2idx_type = std::map<std::string, cuidx_type>;

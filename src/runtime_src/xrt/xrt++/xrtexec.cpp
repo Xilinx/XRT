@@ -189,6 +189,11 @@ struct command::impl : xrt_core::command
     return m_execbuf.first;
   }
 
+  virtual xcl_hwctx_handle
+  get_hwctx_handle() const
+  {
+      return XRT_NULL_HWCTX;
+  }
   virtual void
   notify(ert_cmd_state s) const
   {
