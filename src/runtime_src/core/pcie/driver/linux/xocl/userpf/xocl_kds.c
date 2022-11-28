@@ -732,7 +732,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 		scmd = (struct ert_start_kernel_cmd *)ecmd;
 		ert_write_return_code(scmd, xcmd->rcode);
 
-		client_stat_inc(client, scu_c_cnt[xcmd->cu_idx]);
+		client_stat_inc(client, hw_ctx, scu_c_cnt[xcmd->cu_idx]);
 	}
 
 	ecmd->state = kds_ert_table[status];
@@ -1133,7 +1133,7 @@ int xocl_hw_ctx_command(struct xocl_dev *xdev, void *data,
 	legacy_args.ctx_id = args->hw_ctx_id;
 	legacy_args.exec_bo_handle = args->exec_bo_handle;
 
-	return xocl_command_ioctl(xdev, &legacy_args, flip, false);
+	return xocl_command_ioctl(xdev, &legacy_args, filp, false);
 }
 
 int xocl_create_client(struct xocl_dev *xdev, void **priv)
