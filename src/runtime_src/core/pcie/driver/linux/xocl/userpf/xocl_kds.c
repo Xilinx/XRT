@@ -185,6 +185,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
 	xuid_t *uuid;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_info cu_info = { };
 	int ret;
@@ -220,6 +221,17 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		client->ctx->xclbin_id = uuid;
 		/* Multiple CU context can be active. Initializing CU context list */
 		INIT_LIST_HEAD(&client->ctx->cu_ctx_list);
+		
+		/* This is required to maintain the command stats per hw context. 
+		 * For legacy context case assume there is only one hw context present
+		 * of id 0.
+		 */
+		client->next_hw_ctx_id = 0;
+		hw_ctx = kds_alloc_hw_ctx(client, uuid, 0 /*slot id */);
+		if (!hw_ctx) {
+			ret = -EINVAL;
+			goto out1;
+		}
 	}
 
 	/* Bitstream is locked. No one could load a new one
@@ -258,6 +270,7 @@ out:
 static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_info cu_info = { };
 	xuid_t *uuid;
@@ -294,6 +307,17 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 		goto out;
 
 	ret = kds_free_cu_ctx(client, cu_ctx);
+	if (ret)
+		goto out;
+
+	hw_ctx = kds_get_hw_ctx_by_id(client, 0);
+	if (!hw_ctx) {
+		userpf_err(xdev, "No valid HW context is open");
+		mutex_unlock(&client->lock);
+		return -EINVAL;
+	}
+
+	ret = kds_free_hw_ctx(client, hw_ctx);
 	if (ret)
 		goto out;
 
@@ -647,6 +671,7 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 {
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
+	uint32_t hw_ctx = xcmd->hw_ctx_id;
 
 	if (xcmd->opcode == OP_START_SK) {
 		/* For PS kernel get cmd state and return_code */
@@ -680,7 +705,7 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 	kfree(xcmd->execbuf);
 
 	if (xcmd->cu_idx >= 0)
-		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
+		client_stat_inc(client, hw_ctx, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
 		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
@@ -696,6 +721,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 {
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
+	uint32_t hw_ctx = xcmd->hw_ctx_id;
 
 	if (xcmd->opcode == OP_GET_STAT)
 		read_ert_stat(xcmd);
@@ -728,7 +754,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 	kfree(xcmd->execbuf);
 
 	if (xcmd->opcode == OP_START)
-		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
+		client_stat_inc(client, hw_ctx, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
 		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
@@ -898,11 +924,12 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 	return ret;
 }
 
-static int xocl_command_exec(struct xocl_dev *xdev, struct drm_file *filp,
-		uint32_t hw_ctx_id, uint32_t exec_bo_handle, bool in_kernel)
+static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
+			      struct drm_file *filp, bool in_kernel)
 {
 	struct drm_device *ddev = filp->minor->dev;
 	struct kds_client *client = filp->driver_priv;
+	struct drm_xocl_execbuf *args = data;
 	struct drm_gem_object *obj;
 	struct drm_xocl_bo *xobj;
 	struct ert_packet *ecmd = NULL;
@@ -919,10 +946,10 @@ static int xocl_command_exec(struct xocl_dev *xdev, struct drm_file *filp,
 		return -EDEADLK;
 	}
 
-	obj = xocl_gem_object_lookup(ddev, filp, exec_bo_handle);
+	obj = xocl_gem_object_lookup(ddev, filp, args->exec_bo_handle);
 	if (!obj) {
 		userpf_err(xdev, "Failed to look up GEM BO %d\n",
-		exec_bo_handle);
+		args->exec_bo_handle);
 		return -ENOENT;
 	}
 
@@ -971,8 +998,8 @@ static int xocl_command_exec(struct xocl_dev *xdev, struct drm_file *filp,
 	/* xcmd->u_execbuf points to user's original for write back/notice */
 	xcmd->u_execbuf = xobj->vmapping;
 	xcmd->gem_obj = obj;
-	xcmd->exec_bo_handle = exec_bo_handle;
-	xcmd->hw_ctx_id = hw_ctx_id;
+	xcmd->exec_bo_handle = args->exec_bo_handle;
+	xcmd->hw_ctx_id = args->ctx_id;
 
 	print_ecmd_info(ecmd);
 
@@ -1096,20 +1123,17 @@ out:
 	return ret;
 }
 
-static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
-			      struct drm_file *filp, bool in_kernel)
-{
-	struct drm_xocl_execbuf *args = data;
-	return xocl_command_exec(xdev, filp, 0/* default slot */,
-				   args->exec_bo_handle, in_kernel);
-}
-
 int xocl_hw_ctx_command(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp)
 {
 	struct drm_xocl_hw_ctx_execbuf *args = data;
-	return xocl_command_exec(xdev, filp, args->hw_ctx_id,
-				   args->exec_bo_handle, false);
+	struct drm_xocl_execbuf legacy_args = { 0 };
+
+	/* Update the legacy structure with the appropiate value */
+	legacy_args.ctx_id = args->hw_ctx_id;
+	legacy_args.exec_bo_handle = args->exec_bo_handle;
+
+	return xocl_command_ioctl(xdev, &legacy_args, flip, false);
 }
 
 int xocl_create_client(struct xocl_dev *xdev, void **priv)

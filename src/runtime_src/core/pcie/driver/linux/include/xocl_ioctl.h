@@ -714,9 +714,9 @@ struct drm_xocl_execbuf {
  *                  for automatic event dependency handling by ERT
  */
 struct drm_xocl_hw_ctx_execbuf {
-	xcl_hwctx_handle hw_ctx_id;
-	uint32_t	 exec_bo_handle;
-	uint32_t	 deps[8];
+	uint32_t hw_ctx_id;
+	uint32_t exec_bo_handle;
+	uint32_t deps[8];
 };
 
 /**
