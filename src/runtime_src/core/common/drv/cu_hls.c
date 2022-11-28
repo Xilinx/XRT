@@ -50,7 +50,6 @@ struct xrt_cu_hls {
 	bool			 sw_reset;
 	spinlock_t		 cu_lock;
 	u32			 done;
-	u32			 ready;
 	struct list_head	 submitted;
 	struct list_head	 completed;
 };
@@ -246,16 +245,15 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bo
 	 */
 	spin_lock_irqsave(&cu_hls->cu_lock, flags);
 	done_reg  = cu_hls->done;
-	ready_reg = cu_hls->ready;
 	cu_hls->done = 0;
-	cu_hls->ready = 0;
 
 	ctrl_reg = cu_read32(cu_hls, CTRL);
+	spin_unlock_irqrestore(&cu_hls->cu_lock, flags);
 
 	/* if there is submitted tasks, then check if ap_start bit is clear
 	 * See comments in cu_hls_start().
 	 */
-	if (!ready_reg && used_credit && !(ctrl_reg & CU_AP_START))
+	if (used_credit && !(ctrl_reg & CU_AP_START))
 		ready_reg = 1;
 
 	if (ctrl_reg & CU_AP_DONE) {
@@ -265,7 +263,6 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bo
 
 	for (i = 0; i < done_reg; i++)
 		cu_move_to_complete(cu_hls, KDS_COMPLETED);
-	spin_unlock_irqrestore(&cu_hls->cu_lock, flags);
 
 	status->num_done  = done_reg;
 	status->num_ready = ready_reg;
@@ -346,9 +343,6 @@ static u32 cu_hls_clear_intr(void *core)
 		/* See comment in cu_hls_ctrl_chain_check() */
 		if (cu_hls->ctrl_chain) {
 			spin_lock_irqsave(&cu_hls->cu_lock, flags);
-			if (isr & CU_INTR_READY)
-				cu_hls->ready++;
-
 			if (isr & CU_INTR_DONE) {
 				ctrl_reg = cu_read32(cu_hls, CTRL);
 				if (ctrl_reg & CU_AP_DONE) {
@@ -504,7 +498,6 @@ int xrt_cu_hls_init(struct xrt_cu *xcu)
 	core->ctrl_chain = (xcu->info.protocol == CTRL_CHAIN)? true : false;
 	spin_lock_init(&core->cu_lock);
 	core->done = 0;
-	core->ready = 0;
 	core->sw_reset = xcu->info.sw_reset;
 	INIT_LIST_HEAD(&core->submitted);
 	INIT_LIST_HEAD(&core->completed);
