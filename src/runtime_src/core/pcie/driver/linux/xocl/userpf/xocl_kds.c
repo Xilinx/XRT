@@ -959,12 +959,11 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 	return ret;
 }
 
-static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
-			      struct drm_file *filp, bool in_kernel)
+static int xocl_command_exec(struct xocl_dev *xdev, struct drm_file *filp,
+		uint32_t hw_ctx_id, uint32_t exec_bo_handle, bool in_kernel)
 {
 	struct drm_device *ddev = filp->minor->dev;
 	struct kds_client *client = filp->driver_priv;
-	struct drm_xocl_execbuf *args = data;
 	struct drm_gem_object *obj;
 	struct drm_xocl_bo *xobj;
 	struct ert_packet *ecmd = NULL;
@@ -981,10 +980,10 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		return -EDEADLK;
 	}
 
-	obj = xocl_gem_object_lookup(ddev, filp, args->exec_bo_handle);
+	obj = xocl_gem_object_lookup(ddev, filp, exec_bo_handle);
 	if (!obj) {
 		userpf_err(xdev, "Failed to look up GEM BO %d\n",
-		args->exec_bo_handle);
+		exec_bo_handle);
 		return -ENOENT;
 	}
 

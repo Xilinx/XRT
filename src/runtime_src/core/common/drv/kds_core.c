@@ -1316,7 +1316,6 @@ void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	mutex_unlock(&kds->lock);
 }
 
-/* Begning Legacy Context for backward compartability */
 struct kds_client_cu_ctx *
 kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
 		struct kds_client_cu_info *cu_info)
