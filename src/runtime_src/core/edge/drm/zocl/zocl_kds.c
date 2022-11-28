@@ -990,10 +990,14 @@ static void zocl_detect_fa_cmdmem(struct drm_zocl_dev *zdev,
 	if (IS_ERR(bo))
 		return;
 
-	
-	bar_paddr = (uint64_t)bo->cma_base.paddr;	
-	base_addr = (uint64_t)bo->cma_base.paddr;	
-	vaddr = bo->cma_base.vaddr;	
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	bar_paddr = (uint64_t)bo->cma_base.dma_addr;
+	base_addr = (uint64_t)bo->cma_base.dma_addr;
+#else
+	bar_paddr = (uint64_t)bo->cma_base.paddr;
+	base_addr = (uint64_t)bo->cma_base.paddr;
+#endif
+	vaddr = bo->cma_base.vaddr;
 
 	zdev->kds.cmdmem.bo = bo;
 	zdev->kds.cmdmem.bar_paddr = bar_paddr;
