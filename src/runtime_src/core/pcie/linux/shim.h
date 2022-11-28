@@ -125,6 +125,7 @@ public:
 
   // Execute and interrupt abstraction
   int xclExecBuf(unsigned int cmdBO);
+  int xclExecBuf(unsigned int cmdBO, xcl_hwctx_handle ctxhdl);
   int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
   int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
   int xclExecWait(int timeoutMilliSec);

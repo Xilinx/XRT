@@ -146,6 +146,10 @@ int xocl_info_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_execbuf_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
+int xocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
+int xocl_hw_ctx_execbuf_ioctl(struct drm_device *dev, void *data,
+	struct drm_file *filp);
 int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
@@ -231,6 +235,8 @@ int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
                 struct drm_xocl_open_cu_ctx *drm_cu_args);
 int xocl_close_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
                 struct drm_xocl_close_cu_ctx *drm_cu_args);
+int xocl_hw_ctx_command(struct xocl_dev *xdev, void *data,
+		      struct drm_file *filp);
 /* End of new hw context support functions */
 
 int xocl_poll_client(struct file *filp, poll_table *wait, void *priv);

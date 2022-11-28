@@ -898,12 +898,11 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 	return ret;
 }
 
-static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
-			      struct drm_file *filp, bool in_kernel)
+static int xocl_command_exec(struct xocl_dev *xdev, struct drm_file *filp,
+		uint32_t hw_ctx_id, uint32_t exec_bo_handle, bool in_kernel)
 {
 	struct drm_device *ddev = filp->minor->dev;
 	struct kds_client *client = filp->driver_priv;
-	struct drm_xocl_execbuf *args = data;
 	struct drm_gem_object *obj;
 	struct drm_xocl_bo *xobj;
 	struct ert_packet *ecmd = NULL;
@@ -920,10 +919,10 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		return -EDEADLK;
 	}
 
-	obj = xocl_gem_object_lookup(ddev, filp, args->exec_bo_handle);
+	obj = xocl_gem_object_lookup(ddev, filp, exec_bo_handle);
 	if (!obj) {
 		userpf_err(xdev, "Failed to look up GEM BO %d\n",
-		args->exec_bo_handle);
+		exec_bo_handle);
 		return -ENOENT;
 	}
 
@@ -972,7 +971,8 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	/* xcmd->u_execbuf points to user's original for write back/notice */
 	xcmd->u_execbuf = xobj->vmapping;
 	xcmd->gem_obj = obj;
-	xcmd->exec_bo_handle = args->exec_bo_handle;
+	xcmd->exec_bo_handle = exec_bo_handle;
+	xcmd->hw_ctx_id = hw_ctx_id;
 
 	print_ecmd_info(ecmd);
 
@@ -983,7 +983,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			goto out2;
 		goto out1;
 	}
-	
+
 	xcmd->cb.notify_host = notify_execbuf;
 
 	/* xcmd->type is the only thing determine who to handle this command.
@@ -1094,6 +1094,22 @@ out:
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 	}
 	return ret;
+}
+
+static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
+			      struct drm_file *filp, bool in_kernel)
+{
+	struct drm_xocl_execbuf *args = data;
+	return xocl_command_exec(xdev, filp, 0/* default slot */,
+				   args->exec_bo_handle, in_kernel);
+}
+
+int xocl_hw_ctx_command(struct xocl_dev *xdev, void *data,
+			      struct drm_file *filp)
+{
+	struct drm_xocl_hw_ctx_execbuf *args = data;
+	return xocl_command_exec(xdev, filp, args->hw_ctx_id,
+				   args->exec_bo_handle, false);
 }
 
 int xocl_create_client(struct xocl_dev *xdev, void **priv)
