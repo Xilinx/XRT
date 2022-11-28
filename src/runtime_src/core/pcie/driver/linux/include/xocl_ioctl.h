@@ -84,17 +84,19 @@
  * 13   Unprotected write to device memory     DRM_IOCTL_XOCL_PWRITE_UNMGD    drm_xocl_pwrite_unmgd
  * 14   Unprotected read from device memory    DRM_IOCTL_XOCL_PREAD_UNMGD     drm_xocl_pread_unmgd
  * 15   Send an execute job to a compute unit  DRM_IOCTL_XOCL_EXECBUF         drm_xocl_execbuf
- * 16   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
+ * 16   Send an execute job to a compute unit  DRM_IOCTL_XOCL_HW_CTX_EXECBUF  drm_xocl_hw_ctx_execbuf
+	under a specific hw context
+ * 17   Register eventfd handle for MSIX       DRM_IOCTL_XOCL_USER_INTR       drm_xocl_user_intr
  *      interrupt
- * 17   Update device view with a specific     DRM_IOCTL_XOCL_READ_AXLF       drm_xocl_axlf
+ * 18   Update device view with a specific     DRM_IOCTL_XOCL_READ_AXLF       drm_xocl_axlf
  *      xclbin image
- * 18   Obtain info of bo                      DRM_IOCTL_XOCL_INFO            drm_xocl_info_bo
- * 19   Obtain bo related statistics           DRM_IOCTL_XOCL_OCL_USAGE_STAT  drm_xocl_usage_stat
- * 20   Perform hot reset                      DRM_IOCTL_XOCL_HOT_RESET       N/A
- * 21   Perform clock scaling                  DRM_IOCTL_XOCL_RECLOCK         drm_xocl_reclock_info
- * 22   Allocate buffer on host memory         DRM_IOCTL_XOCL_ALLOC_CMA       drm_xocl_alloc_cma_info
- * 23   Free host memory buffer                DRM_IOCTL_XOCL_FREE_CMA        N/A
- * 24   Copy bo buffers                        DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
+ * 19   Obtain info of bo                      DRM_IOCTL_XOCL_INFO            drm_xocl_info_bo
+ * 20   Obtain bo related statistics           DRM_IOCTL_XOCL_OCL_USAGE_STAT  drm_xocl_usage_stat
+ * 21   Perform hot reset                      DRM_IOCTL_XOCL_HOT_RESET       N/A
+ * 22   Perform clock scaling                  DRM_IOCTL_XOCL_RECLOCK         drm_xocl_reclock_info
+ * 23   Allocate buffer on host memory         DRM_IOCTL_XOCL_ALLOC_CMA       drm_xocl_alloc_cma_info
+ * 24   Free host memory buffer                DRM_IOCTL_XOCL_FREE_CMA        N/A
+ * 25   Copy bo buffers                        DRM_IOCTL_XOCL_COPY_BO         drm_xocl_copy_bo
  * ==== ====================================== ============================== ==================================
  */
 
@@ -167,6 +169,8 @@ enum drm_xocl_ops {
 	DRM_XOCL_USAGE_STAT,
 	/* Command to run on one or more CUs */
 	DRM_XOCL_EXECBUF,
+	/* Command to run on one or more CUs under hw context */
+	DRM_XOCL_HW_CTX_EXECBUF,
 	/* Register eventfd for user interrupts */
 	DRM_XOCL_USER_INTR,
 	/* Read xclbin/axlf */
@@ -701,6 +705,21 @@ struct drm_xocl_execbuf {
 };
 
 /**
+ * struct drm_xocl_hw_ctx_execbuf - Submit a command buffer for execution on a compute unit
+ * used with DRM_IOCTL_XOCL_HW_CTX_EXECBUF ioctl with new hw context parameters
+ *
+ * @hw_ctx_id:	    Pass the HW Context id
+ * @exec_bo_handle: BO handle of command buffer formatted as ERT command
+ * @deps:	    Upto 8 dependency command BO handles this command is dependent on
+ *                  for automatic event dependency handling by ERT
+ */
+struct drm_xocl_hw_ctx_execbuf {
+	xcl_hwctx_handle hw_ctx_id;
+	uint32_t	 exec_bo_handle;
+	uint32_t	 deps[8];
+};
+
+/**
  * struct drm_xocl_execbuf_cb - Submit a command buffer for execution on a compute unit
  * used with DRM_IOCTL_XOCL_EXECBUF_CB ioctl with a callback (linux kernel only)
  * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.
@@ -785,6 +804,7 @@ struct drm_xocl_alloc_cma_info {
 #define	DRM_IOCTL_XOCL_PREAD_UNMGD	XOCL_IOC_ARG(PREAD_UNMGD, pread_unmgd)
 #define	DRM_IOCTL_XOCL_USAGE_STAT	XOCL_IOC_ARG(USAGE_STAT, usage_stat)
 #define	DRM_IOCTL_XOCL_EXECBUF		XOCL_IOC_ARG(EXECBUF, execbuf)
+#define	DRM_IOCTL_XOCL_HW_CTX_EXECBUF	XOCL_IOC_ARG(HW_CTX_EXECBUF, hw_ctx_execbuf)
 #define	DRM_IOCTL_XOCL_USER_INTR	XOCL_IOC_ARG(USER_INTR, user_intr)
 #define	DRM_IOCTL_XOCL_HOT_RESET	XOCL_IOC(HOT_RESET)
 #define	DRM_IOCTL_XOCL_RECLOCK		XOCL_IOC_ARG(RECLOCK, reclock_info)
