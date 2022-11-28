@@ -977,9 +977,9 @@ int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx)
 	}
 
 	xcu = cu_mgmt->xcus[cu_idx];
-	if (!client_stat_read(client, hw_ctx->hw_ctx_id, s_cnt[cu_idx])) {
+	if (!client_stat_read(client, hw_ctx->hw_ctx_idx, s_cnt[cu_idx])) {
 		set_bit(0, xcu->is_ucu);
-		if (client_stat_read(client, hw_ctx->hw_ctx_id, s_cnt[cu_idx])) {
+		if (client_stat_read(client, hw_ctx->hw_ctx_idx, s_cnt[cu_idx])) {
 			clear_bit(0, xcu->is_ucu);
 			return -EBUSY;
 		}
