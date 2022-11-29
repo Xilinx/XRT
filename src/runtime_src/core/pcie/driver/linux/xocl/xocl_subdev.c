@@ -1001,7 +1001,6 @@ void xocl_subdev_destroy_by_id_and_inst(xdev_handle_t xdev_hdl,
 					uint32_t subdev_id, uint32_t inst_id)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	int i;
 
 	if ((subdev_id == INVALID_SUBDEVICE) ||
 		(inst_id > XOCL_SUBDEV_MAX_INST))

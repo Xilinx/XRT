@@ -433,7 +433,7 @@ struct xocl_subdev_priv {
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
 	(void *)((_PRIV(dev) && _PRIV(dev)->data_sz) ? _PRIV(dev)->data : NULL)
 #define XOCL_SUBDEV_INST_IDX(dev)				\
-	((_PRIV(dev)) ? (_PRIV)->inst_idx : INVALID_INST_INDEX)
+	((_PRIV(dev)) ? (_PRIV(dev))->inst_idx : INVALID_INST_INDEX)
 
 #define XOCL_SUBDEV_DBG_HDL(dev)				\
 	(((dev)->bus == &platform_bus_type && dev_get_platdata(dev)) ?	\

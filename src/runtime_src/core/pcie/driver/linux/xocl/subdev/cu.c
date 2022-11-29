@@ -418,10 +418,11 @@ static int cu_probe(struct platform_device *pdev)
 	BUG_ON(!info);
 
 	subdev_inst_idx = XOCL_SUBDEV_INST_IDX(&pdev->dev);
-	if (subdev_inst_idx = INVALID_INST_INDEX) {
+	if (subdev_inst_idx == INVALID_INST_INDEX) {
 		XCU_ERR(xcu, "Unknown Instance index");
 		return -EINVAL;
 	}
+
 	/* Store sunbdevice instance index with this CU info.
 	 * This will be required to destroy this subdevice.
 	 */
