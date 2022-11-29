@@ -194,6 +194,7 @@ struct command::impl : xrt_core::command
   {
       return XRT_NULL_HWCTX;
   }
+
   virtual void
   notify(ert_cmd_state s) const
   {

@@ -2425,6 +2425,16 @@ exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl)
   }
 }
 
+// Exec Buf with hw ctx handle.
+void
+shim::
+exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl)
+{
+  // TODO: Implement new function, for now just call legacy xclExecBuf().
+  if (auto ret = xclExecBuf(boh))
+    throw xrt_core::system_error(ret, "failed to launch execution buffer");
+}
+
 } // namespace xocl
 
 ////////////////////////////////////////////////////////////////
