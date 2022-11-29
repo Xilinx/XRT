@@ -47,6 +47,7 @@ namespace xdp {
       std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
                                                         const std::string &graph,
                                                         void* handle);
+                                                        
       std::vector<tile_type> getAllTilesForInterfaceProfiling(void* handle,
                               const std::string &metricStr,
                               int16_t channelId = -1,

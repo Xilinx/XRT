@@ -940,6 +940,7 @@ namespace xdp {
     constexpr int NUM_MODULES = 3;
 
     std::string moduleNames[NUM_MODULES] = {"aie", "aie_memory", "interface_tile"};
+    std::string defaultSets[NUM_MODULES] = {"all:heat_map", "all:conflicts", "all:packets"};
 
     int numCountersMod[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
@@ -952,7 +953,7 @@ namespace xdp {
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
-//    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics());
+    //metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics());
 
     // Get the graph metrics settings
     std::vector<std::string> graphmetricsConfig;
@@ -969,6 +970,13 @@ namespace xdp {
 
     mConfigMetrics.resize(NUM_MODULES);
 
+    // Check if all the metrics are empty - We must use default metric sets.
+    bool emptyMetrics = true;
+    for (int module = 0; module < NUM_MODULES; ++module){
+      if (!metricsConfig[module].empty())
+        emptyMetrics  = false;
+    }
+
     bool newConfigUsed = false;
     for(int module = 0; module < NUM_MODULES; ++module) {
       bool findTileMetric = false;
@@ -977,14 +985,19 @@ namespace xdp {
         boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
         findTileMetric = true;        
       } else {
-#if 0
-// Add warning later
-// No need to add the warning message here, as all the tests are using configs under Debug
-        std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
-        std::string metricMsg = "No metric set specified for " + modName + " module. " +
-                                "Please specify the AIE_profile_settings." + modName + "_metrics setting in your xrt.ini.";
-        xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
-#endif
+        if (emptyMetrics){
+          // Add warning later
+          // No need to add the warning message here, as all the tests are using configs under Debug
+          std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
+          std::string metricMsg = "No metric set specified for " + modName + " module. " +
+                                  "Please specify the AIE_profile_settings." + modName + "_metrics setting in your xrt.ini. A default set of " + defaultSets[module] + " has been specified.";
+          xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
+
+          metricsConfig[module] = defaultSets[module];
+          boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
+          findTileMetric = true;
+        }
+
       }
       if ((module < graphmetricsConfig.size()) && !graphmetricsConfig[module].empty()) {
         /* interface_tile metrics is not supported for Graph based metrics.
@@ -994,14 +1007,14 @@ namespace xdp {
         boost::split(graphmetricsSettings[module], graphmetricsConfig[module], boost::is_any_of(";"));
         findTileMetric = true;        
       } else {
-#if 0
-// Add warning later
-// No need to add the warning message here, as all the tests are using configs under Debug
-        std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
-        std::string metricMsg = "No graph metric set specified for " + modName + " module. " +
-                                "Please specify the AIE_profile_settings.graph_" + modName + "_metrics setting in your xrt.ini.";
-        xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
-#endif
+// #if 0
+// // Add warning later
+// // No need to add the warning message here, as all the tests are using configs under Debug
+//         std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
+//         std::string metricMsg = "No graph metric set specified for " + modName + " module. " +
+//                                 "Please specify the AIE_profile_settings.graph_" + modName + "_metrics setting in your xrt.ini.";
+//         xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
+// #endif
       }
       if(findTileMetric) {
         newConfigUsed = true;
