@@ -526,6 +526,11 @@ install()
         apt-get install -y "${UB_LIST[@]}"
     fi
 
+    if [ $FLAVOR == "ubuntu" ] && [ $MAJOR == 18 ]; then
+	update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 100
+	update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 100
+    fi
+
     if [ $FLAVOR == "ubuntu" ] && [ $MAJOR == 20 ]; then
 	apt-get install -y clang-tidy
     fi
