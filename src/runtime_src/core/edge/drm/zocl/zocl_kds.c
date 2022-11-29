@@ -601,7 +601,7 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	if (xcmd->cu_idx >= 0)
-		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
+		client_stat_inc(client, xcmd->hw_ctx_id, c_cnt[xcmd->cu_idx]);
 
 	atomic_inc(&client->event);
 	wake_up_interruptible(&client->waitq);
@@ -762,6 +762,8 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	xcmd->execbuf = (u32 *)ecmd;
 	xcmd->gem_obj = gem_obj;
 	xcmd->exec_bo_handle = args->exec_bo_handle;
+	/* Default hw context. For backward compartability */
+	xcmd->hw_ctx_id = 0;
 
 	//print_ecmd_info(ecmd);
 
