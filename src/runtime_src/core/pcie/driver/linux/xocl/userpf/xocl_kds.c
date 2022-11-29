@@ -2046,6 +2046,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	if (ret)
 		goto create_regular_cu;
 
+	// Configure and create subdevices for all the CUs
 	for (i = 0; i < num_cus; i++) {
 		ret = xocl_get_free_subdev_instance(&xdev->core, XOCL_SUBDEV_CU);
 		if (ret == -ENOSPC)
