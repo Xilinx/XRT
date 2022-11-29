@@ -19,6 +19,8 @@
 
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_metadata.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+
 
 namespace xdp {
 
