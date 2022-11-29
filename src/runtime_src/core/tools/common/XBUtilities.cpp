@@ -131,7 +131,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
     }
 
     }
-    pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
+    pt_dev.put("is_ready", xrt_core::device_query_default<xrt_core::query::is_ready>(device, true));
     pt.push_back(std::make_pair("", pt_dev));
   }
   return pt;

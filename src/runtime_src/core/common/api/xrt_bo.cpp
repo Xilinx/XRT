@@ -1476,7 +1476,7 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, userptr, size, flags, grp]{
-      auto boh = alloc_userptr(xcl_to_core_device(dhdl), userptr, size, flags, grp);
+      auto boh = alloc_userptr(xrt_to_core_device(dhdl), userptr, size, flags, grp);
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
@@ -1499,7 +1499,7 @@ xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGro
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, size, flags, grp]{
-      auto boh = alloc(xcl_to_core_device(dhdl), size, flags, grp);
+      auto boh = alloc(xrt_to_core_device(dhdl), size, flags, grp);
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
@@ -1543,7 +1543,7 @@ xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, ehdl]{
-      auto boh = alloc_import(xcl_to_core_device(dhdl), ehdl);
+      auto boh = alloc_import(xrt_to_core_device(dhdl), ehdl);
       auto hdl = boh.get();
       bo_cache.add(hdl, std::move(boh));
       return hdl;
