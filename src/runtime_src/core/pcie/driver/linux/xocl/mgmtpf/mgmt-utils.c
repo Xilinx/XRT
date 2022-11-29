@@ -620,37 +620,13 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	xclmgmt_config_pci(lro);
 }
 
-static void xclmgmt_debug_dump_uuid(struct xclmgmt_dev *lro)
-{
-	int node = -1;
-	const void *uuid;
-
-	if (!lro->core.fdt_blob)
-		return;
-
-	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.fdt_blob,
-		-1, PROP_INTERFACE_UUID, &uuid, NULL);
-	if (!uuid || node < 0)
-		mgmt_dbg(lro, "no uuid");
-
-	mgmt_dbg(lro, "interface_uuid:%s", (char *)uuid);
-
-	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.fdt_blob,
-		-1, PROP_LOGIC_UUID, &uuid, NULL);
-	if (!uuid || node < 0)
-		mgmt_dbg(lro, "no logic uuid");
-
-	mgmt_dbg(lro, "logic_uuid:%s", (char *)uuid);
-
-}
-
 int xclmgmt_update_userpf_blob(struct xclmgmt_dev *lro)
 {
 	int len = 0;
 	int userpf_idx = 0;
 	int ret = 0;
-	struct FeatureRomHeader rom_header = { 0 };
-	struct VmrStatus vmr_header = { 0 };
+	struct FeatureRomHeader rom_header = {};
+	struct VmrStatus vmr_header = {};
 	int offset = 0;
 	const int *version = NULL;
 
@@ -863,8 +839,6 @@ static int xclmgmt_refresh_fdt_blob(struct xclmgmt_dev *lro, const char *fw_buf)
 	if (ret)
 		mgmt_err(lro, "Invalid PARTITION_METADATA");
 
-	xclmgmt_debug_dump_uuid(lro);
-
 	return ret;
 }
 
@@ -915,21 +889,26 @@ static int xclmgmt_reload_fdt_blob_vmr(struct xclmgmt_dev *lro)
 		lro->core.fdt_blob = NULL;
 	}
 
-	ret = xclmgmt_refresh_fdt_blob(lro, fw_buf);
-
-	/* replace blp_blob */
+	/* clean up blp_blob */
 	if (lro->core.blp_blob) {
 		vfree(lro->core.blp_blob);
-		lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
-		if (!lro->core.blp_blob) {
-			ret = -ENOMEM;
-			mgmt_err(lro, "Failed to allocate blp data region");
-			goto out;
-		}
-
-		memcpy(lro->core.blp_blob, lro->core.fdt_blob,
-			fdt_totalsize(lro->core.fdt_blob));
+		lro->core.blp_blob = NULL;
 	}
+
+	ret = xclmgmt_refresh_fdt_blob(lro, fw_buf);
+	if (ret)
+		goto out;
+
+	lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
+	if (!lro->core.blp_blob) {
+		ret = -ENOMEM;
+		mgmt_err(lro, "Failed to allocate blp data region");
+		goto out;
+	}
+
+	memcpy(lro->core.blp_blob, lro->core.fdt_blob,
+		fdt_totalsize(lro->core.fdt_blob));
+
 out:
 	vfree(fw_buf);
 	return ret;

@@ -1727,7 +1727,6 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 	if (!blob)
 		return -EINVAL;
 
-
 	len = fdt_totalsize(blob);
 	if (len > blob_sz) {
 		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
