@@ -689,8 +689,24 @@ namespace xdp {
 
     std::vector<tile_type> offTiles;
 
-    for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+    // Default any unspecified to the default metric sets.
+    std::vector<tile_type> totalTiles;
+    // Capture all tiles across all graphs
+    auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+    for (auto& graph : graphs) {
+      std::vector<tile_type> nwTiles = getAllTilesForCoreMemoryProfiling(mod, graph, handle);
+      totalTiles.insert(totalTiles.end(), nwTiles.begin(), nwTiles.end());
+    } 
 
+    for (auto &e : totalTiles) {
+      if (mConfigMetrics[moduleIdx].find(e) == mConfigMetrics[moduleIdx].end()) {
+        std::string defaultSet = (mod == XAIE_CORE_MOD) ? "heat_map" : "conflicts";
+        mConfigMetrics[moduleIdx][e] = defaultSet;
+      }
+    }
+
+    for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+    
       // save list of "off" tiles
       if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
         offTiles.push_back(tileMetric.first);
@@ -901,6 +917,17 @@ namespace xdp {
 
     // check validity, set default and remove "off" tiles
     std::vector<tile_type> offTiles;
+    
+    // Default any unspecified to the default metric sets.
+    std::vector<tile_type> totalTiles;
+    totalTiles = getAllTilesForInterfaceProfiling(handle, "input_bandwidths", -1);
+
+    for (auto &e : totalTiles) {
+      if (mConfigMetrics[moduleIdx].find(e) == mConfigMetrics[moduleIdx].end()) {
+        mConfigMetrics[moduleIdx][e] = "input_bandwidths";
+      }
+    }
+
     for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
 
       // save list of "off" tiles
@@ -940,7 +967,7 @@ namespace xdp {
     constexpr int NUM_MODULES = 3;
 
     std::string moduleNames[NUM_MODULES] = {"aie", "aie_memory", "interface_tile"};
-    std::string defaultSets[NUM_MODULES] = {"all:heat_map", "all:conflicts", "all:packets"};
+    std::string defaultSets[NUM_MODULES] = {"all:heat_map", "all:conflicts", "all:input_bandwidths"};
 
     int numCountersMod[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
@@ -970,12 +997,12 @@ namespace xdp {
 
     mConfigMetrics.resize(NUM_MODULES);
 
-    // Check if all the metrics are empty - We must use default metric sets.
-    bool emptyMetrics = true;
-    for (int module = 0; module < NUM_MODULES; ++module){
-      if (!metricsConfig[module].empty())
-        emptyMetrics  = false;
-    }
+    // // Check if all the metrics are empty - We must use default metric sets.
+    // bool emptyMetrics = true;
+    // for (int module = 0; module < NUM_MODULES; ++module){
+    //   if (!metricsConfig[module].empty())
+    //     emptyMetrics  = false;
+    // }
 
     bool newConfigUsed = false;
     for(int module = 0; module < NUM_MODULES; ++module) {
@@ -985,7 +1012,7 @@ namespace xdp {
         boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
         findTileMetric = true;        
       } else {
-        if (emptyMetrics){
+        // if (emptyMetrics){
           // Add warning later
           // No need to add the warning message here, as all the tests are using configs under Debug
           std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
@@ -996,7 +1023,7 @@ namespace xdp {
           metricsConfig[module] = defaultSets[module];
           boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
           findTileMetric = true;
-        }
+        //}
 
       }
       if ((module < graphmetricsConfig.size()) && !graphmetricsConfig[module].empty()) {
