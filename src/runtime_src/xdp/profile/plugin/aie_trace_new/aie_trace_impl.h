@@ -18,14 +18,12 @@
 #define AIE_TRACE_IMPL_H
 
 #include <cstdint>
-
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
-#include "xdp/profile/database/events/creator/aie_trace_data_logger.h"
-
+#include <memory>
 #include "aie_trace_metadata.h"
 
 namespace xdp {
+  
+  class VPDatabase;
 
   // AIE trace configurations can be done in different ways depending
   // on the platform.  For example, platforms like the VCK5000 or
@@ -47,8 +45,6 @@ namespace xdp {
     virtual ~AieTraceImpl() {};
 
     virtual void updateDevice() = 0;
-    virtual void flushDevice() = 0;
-    virtual void finishFlushDevice() = 0;
     virtual uint64_t checkTraceBufSize(uint64_t size) = 0;
   };
 

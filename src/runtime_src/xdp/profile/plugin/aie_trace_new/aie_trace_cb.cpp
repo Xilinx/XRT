@@ -14,8 +14,11 @@
  * under the License.
  */
 
+#define XDP_SOURCE
+
 #include "aie_trace_cb.h"
 #include "aie_trace_plugin.h"
+
 
 namespace xdp {
 
@@ -25,23 +28,20 @@ namespace xdp {
 
   static void updateAIEDevice(void* handle)
   {
-    if (AieTracePluginUnified::alive()) {
+    if (AieTracePluginUnified::alive())
       aieTracePluginInstance.updateAIEDevice(handle);
-    }
   }
 
   static void flushAIEDevice(void* handle)
   {
-    if (AieTracePluginUnified::alive()) {
+    if (AieTracePluginUnified::alive())
       aieTracePluginInstance.flushAIEDevice(handle);
-    }
   }
 
   static void finishFlushAIEDevice(void* handle)
   {
-    if (AieTracePluginUnified::alive()) {
+    if (AieTracePluginUnified::alive())
       aieTracePluginInstance.finishFlushAIEDevice(handle);
-    }
   }
 
 } // end namespace xdp
@@ -58,7 +58,7 @@ void flushAIEDevice(void* handle)
   xdp::flushAIEDevice(handle);
 }
 
-extern "C" 
+extern "C"
 void finishFlushAIEDevice(void* handle)
 {
   xdp::finishFlushAIEDevice(handle);

@@ -35,7 +35,7 @@
  * 2. For GMIO offload, ps kernel needs to be used to initialize and read data
  */
 
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
 #include "core/edge/user/aie/aie.h"
 #endif
 
@@ -71,7 +71,7 @@ struct AIETraceBufferInfo
  * XRT_NATIVE_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
 struct AIETraceGmioDMAInst
 {
   // C_RTS Shim DMA to where this GMIO object is mapped
@@ -146,7 +146,7 @@ private:
  * XRT_NATIVE_BUILD is set only for x86 builds
  * Only compile this on edge+versal build
  */
-#if defined (XRT_ENABLE_AIE) && ! defined (XRT_NATIVE_BUILD)
+#if defined (XRT_ENABLE_AIE) && ! defined (XRT_X86_BUILD)
     std::vector<AIETraceGmioDMAInst> gmioDMAInsts;
 #endif
 

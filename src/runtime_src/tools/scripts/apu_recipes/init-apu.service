@@ -1,0 +1,9 @@
+[Unit]
+Description=APU init Daemon
+
+[Service]
+ExecStart=/usr/bin/init-apu
+StandardOutput=journal+console
+
+[Install]
+WantedBy=multi-user.target

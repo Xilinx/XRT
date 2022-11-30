@@ -413,7 +413,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	mutex_unlock(&kds->scu_mgmt.lock);
 }
 
-static void notify_execbuf(struct kds_command *xcmd, int status)
+static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 {
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
@@ -426,7 +426,6 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		if (scmd->state < ERT_CMD_STATE_COMPLETED)
 			/* It is old shell, return code is missing */
 			ert_write_return_code(scmd, -ENODATA);
-		status = scmd->state;
 	} else {
 		if (xcmd->opcode == OP_GET_STAT)
 			read_ert_stat(xcmd);
@@ -454,7 +453,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
-		int error = (status == ERT_CMD_STATE_COMPLETED)?0:-EFAULT;
+		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
 		xcmd->inkern_cb->func((unsigned long)xcmd->inkern_cb->data, error);
 		kfree(xcmd->inkern_cb);
 	} else {
@@ -463,7 +462,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	}
 }
 
-static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
+static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 {
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
@@ -502,7 +501,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
-		int error = (status == ERT_CMD_STATE_COMPLETED)?0:-EFAULT;
+		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
 		xcmd->inkern_cb->func((unsigned long)xcmd->inkern_cb->data, error);
 		kfree(xcmd->inkern_cb);
 	} else {
@@ -1137,7 +1136,7 @@ done:
 	return ret;
 }
 
-static void xocl_cfg_notify(struct kds_command *xcmd, int status)
+static void xocl_cfg_notify(struct kds_command *xcmd, enum kds_status status)
 {
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
@@ -1543,7 +1542,7 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 	return ret;
 }
 
-static void xocl_kds_xgq_notify(struct kds_command *xcmd, int status)
+static void xocl_kds_xgq_notify(struct kds_command *xcmd, enum kds_status status)
 {
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
 	struct xgq_com_queue_entry *resp = xcmd->response;

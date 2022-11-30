@@ -455,7 +455,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	xocl_xdev_dbg(xdev, "alloc bo from bank%u, flag %x, host bank %d",
 		memidx, xobj->flags, drm_p->cma_bank_idx);
 
-	err = xocl_mm_insert_node(drm_p, memidx, slotidx, xobj->mm_node,
+	err = xocl_mm_insert_node(drm_p, memidx, slotidx, xobj,
 		xobj->base.size);
 	if (err)
 		goto failed;
@@ -464,8 +464,6 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);
 	xocl_bo_update_usage_stat(drm_p, xobj->flags, xobj->base.size, 1);
-	/* Record the DDR we allocated the buffer on */
-	xobj->mem_idx = memidx;
 
 done:
 	mutex_unlock(&drm_p->mm_lock);

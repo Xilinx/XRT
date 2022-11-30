@@ -1,32 +1,26 @@
-/*
+/**
+ * SPDX-License-Identifier: Apache-2.0
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
-#include <linux/pci.h>
-#include <linux/kernel.h>
 #include <linux/aer.h>
-#include <linux/version.h>
-#include <linux/module.h>
-#include <linux/pci.h>
 #include <linux/crc32c.h>
-#include <linux/random.h>
 #include <linux/iommu.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/pagemap.h>
-#include "../xocl_drv.h"
-#include "xocl_errors.h"
+#include <linux/pci.h>
+#include <linux/random.h>
+#include <linux/version.h>
+
 #include "common.h"
-#include "version.h"
+#include "version.h" /* Generated file. The XRT version the driver works with */
+#include "xocl_errors.h"
+#include "../xocl_drv.h"
+
 
 #ifndef PCI_EXT_CAP_ID_REBAR
 #define PCI_EXT_CAP_ID_REBAR 0x15
@@ -579,6 +573,7 @@ static void xocl_work_cb(struct work_struct *work)
 		xocl_reset_notify(xdev->core.pdev, false);
 		xocl_drvinst_set_offline(xdev->core.drm, false);
 		XDEV(xdev)->shutdown = false;
+		(void) xocl_refresh_subdevs(xdev);
 		break;
 	case XOCL_WORK_PROGRAM_SHELL:
 		/* program shell */
@@ -832,9 +827,10 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	struct xcl_subdev	*resp = NULL;
 	size_t resp_len = sizeof(*resp) + XOCL_MSG_SUBDEV_DATA_LEN;
-	char *blob = NULL, *tmp;
-	u32 blob_len;
-	uint64_t checksum;
+	char *blob = NULL;
+	char *tmp = NULL;
+	u32 blob_len = 0;
+	uint64_t checksum = 0;
 	size_t offset = 0;
 	bool offline = false;
 	int ret = 0;
