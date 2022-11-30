@@ -29,8 +29,9 @@ ifneq ($(cflags_zocl),)
 	ccflags-y += $(cflags_zocl)
 endif
 
+# XRT driver version used in apu reporting
 # Version is specific to release
-XRT_DRIVER_VERSION ?= 2.15.0
+XRT_DRIVER_VERSION ?= 2.14.0
 
 # Add patch number in version if 'XRT_VERSION_PATCH' env variable is defined
 ifneq ($(XRT_VERSION_PATCH),)
