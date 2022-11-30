@@ -244,9 +244,12 @@ struct xgq_cmd_vmr_control_payload {
  * @aid: Clock scaling API ID which decides API in VMC.
  *          0x1 - READ_CLOCK_THROTTLING_CONFIGURATION
  *          0x2 - SET_CLOCK_THROTTLING_CONFIGURATION
- * @scaling_enable: enable or disable flag
- * @pwr_ovrd: power override value
- * @temp_ovrd: temperature override value
+ * @scaling_en: enable or disable flag
+ * @pwr_scaling_ovrd_limit: set power override value
+ * @temp_scaling_ovrd_limit: set temperature override value
+ * @reset: reset the clock scaling configs to defaults
+ * @pwr_scaling_ovrd_en: power override enable/disable flag
+ * @temp_scaling_ovrd_en: temperature override enable/disable flag
  *
  * This payload is used for clock scaling configuration report.
  */
@@ -340,7 +343,15 @@ struct xgq_cmd_cq_data_payload {
 /**
  * struct xgq_cmd_cq_clk_scaling_payload: clock scaling status payload
  *
- * clock scaling status
+ * @has_clk scaling: shows if the platform support clock scaling feature
+ * @clk_scaling_mode: which clock scaling mode enabled currently
+ * @clk_scaling_en: shows if clock scaling is enabled (1) or disabled (0)
+ * @pwr_scaling_ovrd_en: power scaling override is enabled or not
+ * @temp_scaling_ovrd_en: temperature scaling override is enabled or not
+ * @temp_shutdown_limit: temperature shutdown limit
+ * @temp_scaling_limit: temperature scaling override value set
+ * @pwr_shutdown_limit: power shutdown limit
+ * @pwr_scaling_limit: power scaling override value set
  */
 struct xgq_cmd_cq_clk_scaling_payload {
 	uint8_t has_clk_scaling:1;
