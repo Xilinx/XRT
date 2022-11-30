@@ -241,6 +241,14 @@ struct ishim
   {
     return alloc_bo(userptr, size, flags);
   }
+
+  // Execute a command bo within a ctx.  This is opt-in,  if not supported, then
+  // just call legacy exec_buf without the hardware context.
+  virtual void
+  exec_buf(xrt_buffer_handle boh, xcl_hwctx_handle /*ctxhdl*/)
+  {
+    exec_buf(boh);
+  }
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////

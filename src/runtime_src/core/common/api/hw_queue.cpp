@@ -25,8 +25,6 @@
 #include <mutex>
 #include <thread>
 
-#include <iostream>
-
 using namespace std::chrono_literals;
 
 ////////////////////////////////////////////////////////////////
@@ -207,8 +205,14 @@ public:
   ~command_manager()
   {
     XRT_DEBUGF("command_manager::~command_manager() executor(0x%x)\n", m_impl);
-    stop = true;
-    work_cond.notify_one();
+    {
+      // Modify stop while keeping the lock so that the multi
+      // conditional wait in monitor_loop is atomic.  E.g., a
+      // std::atomic stop is not sufficient.
+      std::lock_guard lk(work_mutex);
+      stop = true;
+      work_cond.notify_one();
+    }
     monitor_thread.join();
   }
 
@@ -275,6 +279,19 @@ public:
 // Statically allocated command managers to handle thread exit
 static std::vector<std::unique_ptr<command_manager>> s_command_manager_pool;
 static std::mutex s_pool_mutex;
+
+// At program exit, the command manager threads (monitor threads) must
+// be stopped and joined.  Normally this is done during static global
+// destruction, but in the OpenCL case a 'bad' program can exit before
+// all monitor threads have completed their work.  This function
+// handles that case and is used only by OpenCL.
+static void
+stop_monitor_threads()
+{
+    std::lock_guard lk(s_pool_mutex);
+    XRT_DEBUGF("stop_monitor_threads() pool(%d)\n", s_command_manager_pool.size());
+    s_command_manager_pool.clear();
+}
 
 } // namespace
 
@@ -560,7 +577,7 @@ public:
   void
   submit(xrt_core::command* cmd) override
   {
-    m_device->exec_buf(cmd->get_exec_bo());
+    m_device->exec_buf(cmd->get_exec_bo(), cmd->get_hwctx_handle());
   }
 };
 
@@ -573,8 +590,9 @@ namespace {
 // Use static map with weak pointers to implementation.
 using hwc2hwq_type = std::map<xcl_hwctx_handle, std::weak_ptr<xrt_core::hw_queue_impl>>;
 using queue_ptr = std::shared_ptr<xrt_core::hw_queue_impl>;
-static std::mutex mutex;
 static std::map<const xrt_core::device*, hwc2hwq_type> dev2hwc;  // per device
+static std::mutex mutex;
+static std::condition_variable device_erased;
 
 // This function ensures that only one kds_device is created per
 // xrt_core::device regardless of hwctx.  It allocates (if necessary)
@@ -624,7 +642,39 @@ get_hw_queue_impl(const xrt::hw_context& hwctx)
   return hwqimpl;
 }
 
+// This function removes a device entry from the static map managed in
+// this compilation unit.  While it is not wrong to keep stale device
+// pointers in the map, they can accumulate and burn 8 bytes of memory
+// if application constructs device after device. This function is
+// called when an xrt_core::device is destructed.
+static void
+remove_device(const xrt_core::device* device)
+{
+  std::lock_guard lk(mutex);
+  XRT_DEBUGF("remove_device(0x%x) devices(%d)\n", device, dev2hwc.size());
+  dev2hwc.erase(device);
+  device_erased.notify_all();
 }
+
+// This function is used exclusively by OpenCL prior to stopping
+// command manager monitor threads.  It is possible that during exit
+// of an OpenCL application (see also stop_monitor_threads()) the
+// devices are still busy executing commands.  This function waits for
+// devices to be removed properly, or after a timeout, it simply uses
+// the big hammer to cleanup, which implies that the OpenCL application
+// did not properly clean up its resources.
+static void
+wait_while_devices()
+{
+  std::unique_lock lk(mutex);
+  XRT_DEBUGF("wait_while_devices() wait for %d devices to clear\n", dev2hwc.size());
+  if (!device_erased.wait_for(lk, 200ms, [] { return dev2hwc.empty(); }))
+    // timeout, force stop the devices if application didn't free all
+    // resources and relies on static destr where order is undefined.
+    dev2hwc.clear();
+}
+
+} // namespace
 
 namespace xrt_core {
 
@@ -684,14 +734,29 @@ exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeo
 
 void
 hw_queue::
+finish(const xrt_core::device* device)
+{
+  remove_device(device);
+}
+
+void
+hw_queue::
 stop()
 {
+  XRT_DEBUGF("-> xrt_core::hw_queue::stop()\n");
+
   // Ensure all threads are joined prior to other cleanup
   // This is used by OpenCL code path before it deletes the
   // global platform and takes care of completing outstanding
   // event synchronization for commands.
-  std::lock_guard lk(s_pool_mutex);
-  s_command_manager_pool.clear();
+
+  // Wait for all devices to become idle, or force stop them
+  // if application relies on static destruction where order is
+  // undefined
+  wait_while_devices();   // all devices must be done
+  stop_monitor_threads(); // stop all idle threads
+
+  XRT_DEBUGF("<- xrt_core::kds::stop()\n");
 }
 
 } // namespace xrt_core
