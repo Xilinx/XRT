@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef PCIE_DEVICE_LINUX_H
 #define PCIE_DEVICE_LINUX_H
@@ -38,6 +26,8 @@ public:
   virtual void close(int dev_handle) const override;
   virtual void reset(query::reset_type&) const override;
   virtual void xclmgmt_load_xclbin(const char* buffer) const override;
+  virtual void device_shutdown() const override;
+  virtual void device_online() const override;
 
 public:
   ////////////////////////////////////////////////////////////////
@@ -45,6 +35,9 @@ public:
   // Redefined from xrt_core::ishim for functions that are not
   // universally implemented by all shims
   ////////////////////////////////////////////////////////////////
+  void
+  set_cu_read_range(cuidx_type ip_index, uint32_t start, uint32_t size) override;
+
   xclInterruptNotifyHandle
   open_ip_interrupt_notify(unsigned int ip_index) override;
 
@@ -63,13 +56,15 @@ public:
   std::cv_status
   wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout) override;
 
-  xclBufferHandle
+  xrt_buffer_handle
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
 
   uint32_t // ctx handle aka slotidx
-  create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos) const override
+  create_hw_context(const xrt::uuid& xclbin_uuid,
+                    const xrt::hw_context::qos_type& qos,
+                    xrt::hw_context::access_mode mode) const override
   {
-    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos);
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos, mode);
   }
 
   void

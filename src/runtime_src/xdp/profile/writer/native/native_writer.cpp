@@ -61,7 +61,7 @@ namespace xdp {
   void NativeTraceWriter::writeTraceEvents()
   {
     std::vector<VTFEvent*> APIEvents =
-      (db->getDynamicInfo()).filterEraseUnsortedHostEvents(
+      (db->getDynamicInfo()).moveUnsortedHostEvents(
         [](VTFEvent* e)
         {
           return e->isNativeHostEvent() ;

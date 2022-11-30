@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2021-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -96,11 +83,20 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
   child.put("cache_xclbin", xrt_core::device_query<xrt_core::query::cache_xclbin>(_dev));
 
   if (is_supported(_dev)) {
-    try {
-      child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_dev));
-      child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_dev));
-      child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_dev));
-    } catch(const xrt_core::query::exception&) {}
+    bool is_versal = xrt_core::device_query<xrt_core::query::is_versal>(_dev);
+    if (is_versal) {
+      try {
+        child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xgq_scaling_enabled>(_dev));
+        child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xgq_scaling_power_override>(_dev));
+        child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xgq_scaling_temp_override>(_dev));
+      } catch(const xrt_core::query::exception&) {}
+    } else {
+      try {
+        child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_dev));
+        child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_dev));
+        child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_dev));
+      } catch(const xrt_core::query::exception&) {}
+    }
   }
 
   ptRoot.put_child("Device", child);
@@ -128,7 +124,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: dump");
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::vector<std::string> devices;
+  std::string device_str;
   std::string output = "";
   bool flash = false;
   bool config = false;
@@ -136,7 +132,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration, requires a .ini output file by -o option")
     ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image, requires a .bin output file by -o option")
     ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
@@ -160,37 +156,19 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   // -- process "device" option -----------------------------------------------
   XBU::verbose("Option: device");
-  for (auto & str : devices)
+  for (auto & str : device_str)
     XBU::verbose(std::string(" ") + str);
 
-  if(devices.empty()) {
-    std::cerr << "ERROR: Please specify a single device using --device option" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // Collect all of the devices of interest
-  std::set<std::string> deviceNames;
-  xrt_core::device_collection deviceCollection;  // The collection of devices to examine
-  for (const auto & deviceName : devices)
-    deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
+  // Find device of interest
+  std::shared_ptr<xrt_core::device> device;
 
   try {
-    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+    device = XBU::get_device(device_str, false /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-
-  // enforce 1 device specification
-  if(deviceCollection.size() != 1) {
-    std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
-    printHelp(commonOptions, hiddenOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  std::shared_ptr<xrt_core::device>& workingDevice = deviceCollection[0];
 
   // -- process "output" option -----------------------------------------------
   // Output file
@@ -208,11 +186,11 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   //decide the contents of the dump file
   if(flash) {
-    flash_dump(workingDevice, output);
+    flash_dump(device, output);
     return;
   }
   if (config) {
-    config_dump(workingDevice, output);
+    config_dump(device, output);
     return;
   }
 

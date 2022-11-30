@@ -1,0 +1,48 @@
+#!/bin/sh
+# This script is used for probing and removing vdu modules
+
+log_file="/var/log/vdu_daemon_logs"
+vdu_init_dir="/etc/"
+vdu_init_file=$vdu_init_dir/vdu_init
+ 
+function write_log() {
+        now_time='['$(date +"%Y-%m-%d %H:%M:%S")']'
+        echo $now_time $1 | tee -a "$log_file"
+}
+ 
+function vdu_probe() {
+                
+        write_log 'modprobing vdu modules ...'
+
+        modprobe allegro ; modprobe al5d ;
+        if [ $? == 0 ]
+        then
+                write_log 'modprobe successful'
+                write_log 'chmod 777 /dev/allegroDecodeIP*'
+                chmod 777 /dev/allegroDecodeIP*
+                chmod 444 /sys/kernel/debug/cma/cma-vdu_dma_mem/used
+                chown softkernel:softkernel /sys/kernel/debug/cma/cma-vdu_dma_mem/used
+        else
+                write_log 'modprobe failed'
+        fi
+        echo 0 > $vdu_init_file
+}
+
+write_log 'Daemon script started. this script is used for probing/removing vdu modules'
+ 
+mkdir -p $vdu_init_dir
+touch $vdu_init_file
+chmod 666 $vdu_init_file
+while true
+do
+        action=$(cat $vdu_init_file)
+        #action :0 -> dont do anything
+        #action :1 -> modprobe the modules
+ 
+        if [ "$action" == 1 ]
+        then
+                vdu_probe
+        fi
+ 
+        sleep 5
+done

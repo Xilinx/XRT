@@ -4,7 +4,7 @@ setlocal
 REM SPDX-License-Identifier: Apache-2.0
 REM Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 
-REM Working Variables 
+REM Working Variables
 set XRT_EXEC=""
 set XRT_UNWRAPPED_DIR=%~dp0
 
@@ -17,12 +17,12 @@ set XRT_LOADER_ARGS=
       goto argsParsed
     ) else (
       REM exec option
-      if [%1] == [-exec] ( 
+      if [%1] == [-exec] (
         set XRT_EXEC=%2
         shift
         shift
       ) else (
-      if [%1] == [--exec] ( 
+      if [%1] == [--exec] (
         set XRT_EXEC=%2
         shift
         shift
@@ -49,7 +49,7 @@ if not exist %XRT_PROG_UNWRAPPED% (
 )
 
 REM -- Find the setup script and configure environment
-set XRT_SETUP_SCRIPT=%XRT_UNWRAPPED_DIR%..\..\setup.bat
+set XRT_SETUP_SCRIPT=%XRT_UNWRAPPED_DIR%..\setup.bat
 
 if not exist %XRT_SETUP_SCRIPT% (
   echo ERROR: Could not find XRT setup script.

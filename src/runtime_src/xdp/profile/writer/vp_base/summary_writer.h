@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -70,6 +71,20 @@ namespace xdp {
     void writeDataTransferGlobalMemoryToGlobalMemory() ;
     void writeComputeUnitUtilization() ;
 
+    // Helper function for the kernel data transfer table
+    void writeSingleDataTransfer(const std::string& deviceName,
+                                 const std::string& computeUnitName,
+                                 const std::string& portName,
+                                 const std::string& args,
+                                 const std::string& memoryName,
+                                 bool isRead,
+                                 uint64_t numTransactions,
+                                 double totalTransferTime,
+                                 double bytes,
+                                 double maxAchievableBW,
+                                 double maxTheoreticalBW,
+                                 double latency);
+
     // User event tables
     void writeUserLevelEvents() ;
     void writeUserLevelRanges() ;
@@ -86,11 +101,11 @@ namespace xdp {
     void writeHALTransfers() ;
 
     // Handy values used for conversion
-    const double zero         = 0.0 ;
-    const double one_hundred  = 100.0 ;
-    const double one_thousand = 1000.0 ;
-    const double one_million  = 1.0e06 ;
-    const double one_billion  = 1.0e09 ;
+    static constexpr double zero         = 0.0 ;
+    static constexpr double one_hundred  = 100.0 ;
+    static constexpr double one_thousand = 1000.0 ;
+    static constexpr double one_million  = 1.0e06 ;
+    static constexpr double one_billion  = 1.0e09 ;
 
   public:
     XDP_EXPORT SummaryWriter(const char* filename) ;

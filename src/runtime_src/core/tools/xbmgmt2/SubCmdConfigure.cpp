@@ -1,19 +1,6 @@
-/**
- * Copyright (C) 2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
@@ -130,17 +117,37 @@ static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
       xrt_core::device_update<xrt_core::query::cache_xclbin>(_dev.get(), key.second.get_value<std::string>());
       continue;
     }
-    if (!key.first.compare("scaling_enabled")) {
-      xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(_dev.get(), key.second.get_value<std::string>());
-      continue;
-    }
-    if (!key.first.compare("scaling_power_override")) {
-      xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(_dev.get(), key.second.get_value<std::string>());
-      continue;
-    }
-    if (!key.first.compare("scaling_temp_override")) {
-      xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(_dev.get(), key.second.get_value<std::string>());
-      continue;
+    bool is_versal = xrt_core::device_query<xrt_core::query::is_versal>(_dev);
+    if (is_versal) {
+      try {
+        if (!key.first.compare("scaling_enabled")) {
+          xrt_core::device_update<xrt_core::query::xgq_scaling_enabled>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+        if (!key.first.compare("scaling_power_override")) {
+          xrt_core::device_update<xrt_core::query::xgq_scaling_power_override>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+        if (!key.first.compare("scaling_temp_override")) {
+          xrt_core::device_update<xrt_core::query::xgq_scaling_temp_override>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+      } catch(const xrt_core::query::exception&) {}
+    } else {
+      try {
+        if (!key.first.compare("scaling_enabled")) {
+          xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+        if (!key.first.compare("scaling_power_override")) {
+          xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+        if (!key.first.compare("scaling_temp_override")) {
+          xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(_dev.get(), key.second.get_value<std::string>());
+          continue;
+        }
+      } catch(const xrt_core::query::exception&) {}
     }
     throw std::runtime_error(boost::str(boost::format("'%s' is not a supported config entry") % key.first));
   }
@@ -362,7 +369,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     XBU::verbose("SubCommand: configure");
     // -- Retrieve and parse the subcommand options -----------------------------
     // Common options
-    std::vector<std::string> devices;
+    std::string device_str;
     std::string path;
     std::string retention;
     bool help = false;
@@ -391,7 +398,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     po::options_description commonOptions("Common Options");
     commonOptions.add_options()
-        ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+        ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
         ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     ;
 
@@ -452,38 +459,19 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         return;
     }
 
-    // -- process "device" option -----------------------------------------------
-    if(devices.empty()) {
-        std::cerr << "ERROR: Please specify a single device using --device option" << "\n";
-        printHelp(commonOptions, configHiddenOptions);
-        throw xrt_core::error(std::errc::operation_canceled);
-    }
-
-    // Collect all of the devices of interest
-    std::set<std::string> deviceNames;
-    xrt_core::device_collection deviceCollection;
-    for (const auto & deviceName : devices) 
-        deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
+    // Find device of interest
+    std::shared_ptr<xrt_core::device> device;
 
     try {
-        XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
+        device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), false /*inUserDomain*/);
     } catch (const std::runtime_error& e) {
         // Catch only the exceptions that we have generated earlier
         std::cerr << boost::format("ERROR: %s\n") % e.what();
         throw xrt_core::error(std::errc::operation_canceled);
     }
 
-    // enforce 1 device specification
-    if(deviceCollection.size() != 1) {
-        std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
-        printHelp(commonOptions, configHiddenOptions);
-        throw xrt_core::error(std::errc::operation_canceled);
-    }
-
-    std::shared_ptr<xrt_core::device>& workingDevice = deviceCollection[0];
-
     // If in factory mode the device is not ready for use
-    if (xrt_core::device_query<xrt_core::query::is_mfg>(workingDevice.get())) {
+    if (xrt_core::device_query<xrt_core::query::is_mfg>(device.get())) {
       std::cout << boost::format("ERROR: Device is in factory mode and cannot be configured\n");
       throw xrt_core::error(std::errc::operation_canceled);
     }
@@ -502,7 +490,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         }
 
         try {
-            load_config(workingDevice, path);
+            load_config(device, path);
             std::cout << "Config has been successfully loaded" << std::endl;
             return;
         } catch (const std::runtime_error& e) {
@@ -519,7 +507,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         if(daemon)
             show_daemon_conf();
 
-        show_device_conf(workingDevice.get());
+        show_device_conf(device.get());
         return;
     }
 
@@ -528,23 +516,23 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     // Update security
     if (!security.empty())
-        is_something_updated = update_device_conf(workingDevice.get(), security, config_type::security);
+        is_something_updated = update_device_conf(device.get(), security, config_type::security);
 
     // Clock scaling
     if (!clk_scale.empty())
-        is_something_updated = update_device_conf(workingDevice.get(), clk_scale, config_type::clk_scaling);
+        is_something_updated = update_device_conf(device.get(), clk_scale, config_type::clk_scaling);
     
     // Update threshold power override
     if (!power_override.empty())
-        is_something_updated = update_device_conf(workingDevice.get(), power_override, config_type::threshold_power_override);
+        is_something_updated = update_device_conf(device.get(), power_override, config_type::threshold_power_override);
 
     // Update threshold temp override
     if (!temp_override.empty())
-        is_something_updated = update_device_conf(workingDevice.get(), temp_override, config_type::threshold_temp_override);
+        is_something_updated = update_device_conf(device.get(), temp_override, config_type::threshold_temp_override);
 
     // cs_reset?? TODO needs better comment
     if (!cs_reset.empty())
-        is_something_updated = update_device_conf(workingDevice.get(), cs_reset, config_type::reset);
+        is_something_updated = update_device_conf(device.get(), cs_reset, config_type::reset);
 
     // Enable/Disable Retention
     if (!retention.empty()) {
@@ -558,7 +546,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
             throw xrt_core::error(std::errc::operation_canceled);
         }
 
-        memory_retention(workingDevice.get(), enableRetention);
+        memory_retention(device.get(), enableRetention);
         // Memory retention was updated!
         is_something_updated = true;
     }

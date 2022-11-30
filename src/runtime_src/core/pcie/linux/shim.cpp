@@ -1,26 +1,11 @@
-/**
- * Copyright (C) 2016-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * XRT PCIe library layered on top of xocl kernel driver
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "shim.h"  // This file implements shim.h
 #include "xrt.h"   // This file implements xrt.h
 
 #include "ert.h"
-#include "scan.h"
+#include "pcidev.h"
 #include "system_linux.h"
 #include "xclbin.h"
 
@@ -547,7 +532,7 @@ public:
  */
 shim::
 shim(unsigned index)
-  : mCoreDevice(xrt_core::pcie_linux::get_userpf_device(this, index))
+  : mCoreDevice(xrt_core::pci::get_userpf_device(this, index))
   , mUserHandle(-1)
   , mStreamHandle(-1)
   , mBoardNumber(index)
@@ -564,7 +549,7 @@ shim(unsigned index)
 
 int shim::dev_init()
 {
-    auto dev = pcidev::get_dev(mBoardNumber);
+    auto dev = xrt_core::pci::get_dev(mBoardNumber);
     if(dev == nullptr) {
         xrt_logmsg(XRT_ERROR, "%s: Card [%d] not found", __func__, mBoardNumber);
         return -ENOENT;
@@ -637,7 +622,7 @@ init(unsigned int index)
 
     // Profiling - defaults
     // Class-level defaults: mIsDebugIpLayoutRead = mIsDeviceProfiling = false
-    mDevUserName = mDev->sysfs_name;
+    mDevUserName = mDev->m_sysfs_name;
     mMemoryProfilingNumberSlots = 0;
 }
 
@@ -647,6 +632,8 @@ init(unsigned int index)
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
+    // flush aie trace and write outputs
+    xdp::aie::finish_flush_device(this) ;
 
     // The BO cache unmaps and releases all execbo, but this must
     // be done before the device is closed.
@@ -866,7 +853,7 @@ int shim::execbufCopyBO(unsigned int dst_bo_handle,
     ert_fill_copybo_cmd(bo.second, src_bo_handle, dst_bo_handle,
                         src_offset, dst_offset, size);
 
-    int ret = xclExecBuf(bo.first);
+    int ret = xclExecBuf(to_xclBufferHandle(bo.first));
     if (ret) {
         mCmdBOCache->release<ert_start_copybo_cmd>(bo);
         return ret;
@@ -920,7 +907,7 @@ int shim::xclUpdateSchedulerStat()
     bo.second->opcode = ERT_CU_STAT;
     bo.second->type = ERT_CTRL;
 
-    int ret = xclExecBuf(bo.first);
+    int ret = xclExecBuf(to_xclBufferHandle(bo.first));
     if (ret) {
         mCmdBOCache->release(bo);
         return ret;
@@ -999,7 +986,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get<unsigned long long>("rom", "timestamp", errmsg, info->mTimeStamp, static_cast<unsigned long long>(-1));
     mDev->sysfs_get<unsigned short>("rom", "ddr_bank_count_max", errmsg, info->mDDRBankCount, static_cast<unsigned short>(-1));
     info->mDDRSize *= info->mDDRBankCount;
-    info->mPciSlot = (mDev->domain<<16) + (mDev->bus<<8) + (mDev->dev<<3) + mDev->func;
+    info->mPciSlot = (mDev->m_domain<<16) + (mDev->m_bus<<8) + (mDev->m_dev<<3) + mDev->m_func;
     info->mNumClocks = numClocks(info->mName);
     info->mNumCDMA = xrt_core::device_query<xrt_core::query::kds_numcdmas>(mCoreDevice);
 
@@ -1009,7 +996,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax, static_cast<unsigned short>(-1));
 
     //dont try to get any information which needs mailbox communication when device is not ready.
-    if(!mDev->is_mgmt() && !mDev->is_ready)
+    if (!mDev->m_is_mgmt && !mDev->m_is_ready)
         return;
 
     //get sensors
@@ -1128,7 +1115,7 @@ int shim::resetDevice(xclResetKind kind)
     auto start = std::chrono::system_clock::now();
     while (dev_offline) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+	xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
             "dev_offline", err, dev_offline, -1);
         auto end = std::chrono::system_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - start;
@@ -1214,6 +1201,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
         uint64_t allocated_size = 0;
         uint32_t page_num = size >> 30;
         drm_xocl_alloc_cma_info cma_info = {0};
+        std::vector<uint64_t> user_addr(page_num, 0);
 
         /* We check the sysfs node host_mem_size first before going forward
          * If the same size of host memory chunk is allocated
@@ -1226,8 +1214,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
 
         cma_info.total_size = size;
         cma_info.entry_num = page_num;
-
-        cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
+        cma_info.user_addr = user_addr.data();
 
         for (uint32_t i = 0; i < page_num; ++i) {
             void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
@@ -1250,7 +1237,7 @@ int shim::cmaEnable(bool enable, uint64_t size)
             if (!cma_info.user_addr[i])
                 continue;
 
-             munmap((void*)cma_info.user_addr[i], page_sz);
+            munmap((void*)cma_info.user_addr[i], page_sz);
         }
 
         if (ret) {
@@ -1381,16 +1368,9 @@ xclLoadXclBin(const xclBin *buffer)
   xdp::aie::update_device(this);
   xdp::pl_deadlock::update_device(this);
 
-  // scheduler::init can not be skipped even for same_xclbin as in
-  // multiple process stress tests it fails as below init step is
-  // without a lock with above driver load xclbin step.  New KDS fixes
-  // this by ensuring that scheduler init is done by driver itself
-  // along with icap download in single command call and then below
-  // init step in user space is ignored
-  auto ret = xrt_core::scheduler::init(this, buffer);
   START_DEVICE_PROFILING_CB(this);
 
-  return ret;
+  return 0;
 }
 
 /*
@@ -1516,7 +1496,7 @@ int shim::xclLoadAxlf(const axlf *buffer)
         std::this_thread::sleep_for(std::chrono::seconds(5));
         while (!dev_hotplug_done) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+		xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
                 "dev_hotplug_done", err, dev_hotplug_done, 0);
         }
         dev_init();
@@ -1856,7 +1836,7 @@ int shim::xclGetDebugIPlayoutPath(char* layoutPath, size_t size)
 
 int shim::xclGetSubdevPath(const char* subdev, uint32_t idx, char* path, size_t size)
 {
-    auto dev = pcidev::get_dev(mBoardNumber);
+    auto dev = xrt_core::pci::get_dev(mBoardNumber);
     std::string subdev_str = std::string(subdev);
 
     if (mLogStream.is_open()) {
@@ -1989,7 +1969,7 @@ double shim::xclGetKernelWriteMaxBandwidthMBps()
 
 int shim::xclGetSysfsPath(const char* subdev, const char* entry, char* sysfsPath, size_t size)
 {
-  auto dev = pcidev::get_dev(mBoardNumber);
+  auto dev = xrt_core::pci::get_dev(mBoardNumber);
   std::string subdev_str = std::string(subdev);
   std::string entry_str = std::string(entry);
   if (mLogStream.is_open()) {
@@ -2049,7 +2029,7 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
     return -EINVAL;
   }
 
-  if (cumap.start != 0xFFFFFFFF) {
+  if (cumap.start) {
     if (!rd) {
         xrt_logmsg(XRT_ERROR, "%s: read range is set, not allow write", __func__);
         return -EINVAL;
@@ -2173,7 +2153,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // Alveo Linux PCIE does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
   auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
@@ -2181,11 +2161,22 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   return cuidx;
 }
 
+void
+shim::
+close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  // To-be-implemented
+  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+}
+
 // Assign xclbin with uuid to hardware resources and return a context id
 // The context handle is 1:1 with a slot idx
 uint32_t
 shim::
-create_hw_context(const xrt::uuid& xclbin_uuid, uint32_t qos)
+create_hw_context(const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  xrt::hw_context::access_mode mode)
 {
   // Explicit hardware contexts are not supported in Alveo.
   throw xrt_core::ishim::not_supported_error{__func__};
@@ -2218,7 +2209,7 @@ namespace xrt::shim_int {
 xclDeviceHandle
 open_by_bdf(const std::string& bdf)
 {
-  return xclOpen(xrt_core::pcie_linux::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
+  return xclOpen(xrt_core::pci::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
 }
 
 xrt_core::cuidx_type
@@ -2228,11 +2219,21 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
   return shim->open_cu_context(hwctx, cuname);
 }
 
-uint32_t // ctxhdl aka slotidx
-create_hw_context(xclDeviceHandle handle, const xrt::uuid& xclbin_uuid, uint32_t qos)
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 {
   auto shim = get_shim_object(handle);
-  return shim->create_hw_context(xclbin_uuid, qos);
+  return shim->close_cu_context(hwctx, cuidx);
+}
+
+uint32_t // ctxhdl aka slotidx
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  const xrt::hw_context::access_mode mode)
+{
+  auto shim = get_shim_object(handle);
+  return shim->create_hw_context(xclbin_uuid, qos, mode);
 }
 
 void
@@ -2261,7 +2262,7 @@ unsigned int
 xclProbe()
 {
   return xdp::hal::profiling_wrapper("xclProbe", [] {
-    return pcidev::get_dev_ready();
+    return xrt_core::pci::get_dev_ready();
   }) ;
 }
 
@@ -2270,7 +2271,7 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
   return xdp::hal::profiling_wrapper("xclOpen", [deviceIndex] {
   try {
-    if(pcidev::get_dev_total() <= deviceIndex) {
+    if(xrt_core::pci::get_dev_total() <= deviceIndex) {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
         std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
       return static_cast<xclDeviceHandle>(nullptr);

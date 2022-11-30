@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #include "xrtexec.hpp"
 #include "xrt/device/device.h"
 #include "core/common/bo_cache.h"
 #include "core/common/api/command.h"
-#include "core/common/api/exec.h"
+#include "core/common/api/hw_queue.h"
 
 #include <functional>
 
@@ -81,7 +82,6 @@ create_exec_buf(xrt_xocl::device* device)
     auto at_close = [] (const xrt_xocl::device* device) {
       s_ebocache.erase(device);
     };
-    xrt_core::exec::init(device->get_core_device().get());
     device->add_close_callback(std::bind(at_close, device));
     s_ebocache.emplace(device, std::make_unique<xrt_core::bo_cache>(device->get_xcl_handle(), 128));
   }
@@ -99,6 +99,7 @@ struct command::impl : xrt_core::command
 {
   impl(xrt_xocl::device* device, ert_cmd_opcode opcode)
     : m_device(device)
+    , m_hwqueue(device->get_core_device().get())
     , m_execbuf(create_exec_buf(m_device))
     , ert_pkt(reinterpret_cast<ert_packet*>(m_execbuf.second))
   {
@@ -112,6 +113,7 @@ struct command::impl : xrt_core::command
   }
 
   xrt_xocl::device* m_device;
+  xrt_core::hw_queue m_hwqueue;
   execbuf_type m_execbuf;      // underlying execution buffer
   mutable bool m_done = true;
 
@@ -146,13 +148,13 @@ struct command::impl : xrt_core::command
       m_done = false;
     }
 
-    xrt_core::exec::unmanaged_start(this);
+    m_hwqueue.unmanaged_start(this);
   }
 
   ert_cmd_state
   wait() const
   {
-    xrt_core::exec::unmanaged_wait(this);
+    m_hwqueue.wait(this);
     return static_cast<ert_cmd_state>(ert_pkt->state);
   }
 
@@ -181,7 +183,7 @@ struct command::impl : xrt_core::command
     return m_device->get_core_device().get();
   }
 
-  virtual xclBufferHandle
+  virtual xrt_buffer_handle
   get_exec_bo() const
   {
     return m_execbuf.first;

@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
@@ -23,7 +11,7 @@
 #include "lib/xmalimits_lib.h"
 #include "ert.h"
 #include "core/common/config_reader.h"
-#include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/pcidev.h"
 #include "core/common/utils.h"
 #include "core/common/api/bo.h"
 #include "core/common/device.h"
@@ -340,10 +328,10 @@ void get_system_info() {
     static auto verbosity = xrt_core::config::get_verbosity();
     XmaLogLevelType level = (XmaLogLevelType) std::min({(uint32_t)XMA_INFO_LOG, (uint32_t)verbosity});
     xma_logmsg(level, "XMA-System-Info", "======= START =============");
-    for (unsigned j = 0; j < pcidev::get_dev_total(); j++) {
-        auto dev = pcidev::get_dev(j);
-        xma_logmsg(level, "XMA-System-Info", "dev index = %d; %s", j, dev->sysfs_name.c_str());
-        if (dev->is_ready) {
+    for (unsigned j = 0; j < xrt_core::pci::get_dev_total(); j++) {
+        auto dev = xrt_core::pci::get_dev(j);
+        xma_logmsg(level, "XMA-System-Info", "dev index = %d; %s", j, dev->m_sysfs_name.c_str());
+        if (dev->m_is_ready) {
             /* Let's keep this function as generic
             for more detials customers should use xbutil
             uint32_t hwcfg_dev_index = 0;
@@ -583,8 +571,10 @@ int32_t check_all_execbo(XmaSession s_handle) {
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
                         priv1->num_cu_cmds--;
                     } else if (cu_state == ERT_CMD_STATE_SKERROR) {
+                        uint32_t return_code;
                         //If PS Kernel error, add cmd obj to CU_error_cmds map; Right now this is only for PS Kernels
-                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), cu_cmd_pkt->return_code);
+                        ert_read_return_code(cu_cmd_pkt, return_code);
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), return_code);
                         if (s_handle.session_type < XMA_ADMIN) {
                             priv1->kernel_complete_count++;
                             priv1->kernel_complete_total++;
@@ -595,7 +585,7 @@ int32_t check_all_execbo(XmaSession s_handle) {
                         auto itr_tmp1 = priv1->CU_error_cmds.emplace(ebo.cu_cmd_id1, std::move(priv1->CU_cmds[ebo.cu_cmd_id1]));
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
                         itr_tmp1.first->second.cmd_finished = true;
-                        itr_tmp1.first->second.return_code = cu_cmd_pkt->return_code;
+                        itr_tmp1.first->second.return_code = return_code;
                         itr_tmp1.first->second.cmd_state = xma_cmd_state::psk_error;
                         priv1->num_cu_cmds--;
                     } else if (cu_state == ERT_CMD_STATE_ERROR ||
@@ -652,8 +642,10 @@ int32_t check_all_execbo(XmaSession s_handle) {
                         //priv1->execbo_lru.emplace_back(val);Let's not reuse execbo immediately after completion
                         ebo_it = priv1->execbo_to_check.erase(ebo_it);
                     } else if (cu_state == ERT_CMD_STATE_SKERROR) {
+                        uint32_t return_code;
                         //If PS Kernel error, add cmd obj to CU_error_cmds map; Right now this is only for PS Kernels
-                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), cu_cmd_pkt->return_code);
+                        ert_read_return_code(cu_cmd_pkt, return_code);
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), return_code);
                         if (s_handle.session_type < XMA_ADMIN) {
                             priv1->kernel_complete_count++;
                             priv1->kernel_complete_total++;
@@ -665,7 +657,7 @@ int32_t check_all_execbo(XmaSession s_handle) {
                         auto itr_tmp1 = priv1->CU_error_cmds.emplace(ebo.cu_cmd_id1, std::move(priv1->CU_cmds[ebo.cu_cmd_id1]));
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
                         itr_tmp1.first->second.cmd_finished = true;
-                        itr_tmp1.first->second.return_code = cu_cmd_pkt->return_code;
+                        itr_tmp1.first->second.return_code = return_code;
                         itr_tmp1.first->second.cmd_state = xma_cmd_state::psk_error;
                         priv1->num_cu_cmds--;
                         ebo_it = priv1->execbo_to_check.erase(ebo_it);

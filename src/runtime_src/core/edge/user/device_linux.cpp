@@ -886,6 +886,8 @@ initialize_query_table()
   emplace_sysfs_get<query::memstat_raw>               ("memstat_raw");
   emplace_sysfs_get<query::error>                     ("errors");
   emplace_sysfs_get<query::xclbin_full>               ("xclbin_full");
+  emplace_sysfs_get<query::host_mem_addr>             ("host_mem_addr");
+  emplace_sysfs_get<query::host_mem_size>             ("host_mem_size");
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();
@@ -971,6 +973,19 @@ reset(query::reset_type key) const
   }
 }
 
+
+////////////////////////////////////////////////////////////////
+// Custom ishim implementation
+// Redefined from xrt_core::ishim for functions that are not
+// universally implemented by all shims
+////////////////////////////////////////////////////////////////
+void
+device_linux::
+set_cu_read_range(cuidx_type cuidx, uint32_t start, uint32_t size)
+{
+  if (auto ret = xclIPSetReadRange(get_device_handle(), cuidx.index, start, size))
+    throw xrt_core::error(ret, "failed to set cu read range");
+}
 
 ////////////////////////////////////////////////////////////////
 // Custom IP interrupt handling

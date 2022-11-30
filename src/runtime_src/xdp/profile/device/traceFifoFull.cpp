@@ -16,10 +16,7 @@
 
 #include "traceFifoFull.h"
 
-#define AXI_FIFO_RDFD_AXI_FULL          0x1000
-
-#define TRACE_WORD_WIDTH            64
-#define TRACE_NUMBER_SAMPLES        8192
+constexpr unsigned int TRACE_NUMBER_SAMPLES = 8192;
 
 #include<iomanip>
 #include<cstring>

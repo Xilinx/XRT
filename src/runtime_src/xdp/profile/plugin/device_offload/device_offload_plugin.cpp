@@ -96,8 +96,7 @@ namespace xdp {
     //  setting the available information has to be pushed down to both
     //  the HAL or HWEmu plugin
 
-    if (xrt_core::config::get_data_transfer_trace() != "off" ||
-          xrt_core::config::get_device_trace() != "off") {
+    if (xrt_core::config::get_device_trace() != "off") {
       device_trace = true;
     }
 
@@ -125,6 +124,9 @@ namespace xdp {
   {
     uint64_t deviceId = db->addDevice(sysfsPath) ;
 
+    if (!device_trace)
+        return;
+    
     // When adding a device, also add a writer to dump the information
     std::string version = "1.1" ;
     std::string creationTime = xdp::getCurrentDateTime() ;
@@ -140,7 +142,7 @@ namespace xdp {
                                              creationTime,
                                              xrtVersion,
                                              toolVersion);
-    writers.push_back(writer) ;
+    writers.push_back(writer);
     (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
 
     if (continuous_trace)
@@ -300,30 +302,35 @@ namespace xdp {
   void DeviceOffloadPlugin::configureTraceIP(DeviceIntf* devInterface)
   {
     // Collect all the profiling options from xrt.ini
-    std::string data_transfer_trace = 
-      xrt_core::config::get_data_transfer_trace() ;
-    if (data_transfer_trace == "off") {
-      data_transfer_trace = xrt_core::config::get_device_trace() ;
-    }
+    std::string data_transfer_trace = xrt_core::config::get_device_trace() ;
     std::string stall_trace = xrt_core::config::get_stall_trace() ;
 
     // Set up the hardware trace option
     uint32_t traceOption = 0 ;
     
-    // Bit 1: 1 = Coarse mode, 0 = Fine mode 
-    if (data_transfer_trace == "coarse") traceOption |= 0x1 ;
+    // Bit 1: 1 = Coarse mode, 0 = Fine mode
+    if (data_transfer_trace == "coarse") {
+      if (!devInterface->supportsCoarseModeAIM())
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", COARSE_MODE_UNSUPPORTED);
+      else
+        traceOption |= 0x1 ;
+    }
     
     // Bit 2: 1 = Device trace enabled, 0 = Device trace disabled
-    if (data_transfer_trace != "off" && data_transfer_trace != "accel")    traceOption |= 0x2 ;
+    if (data_transfer_trace != "off" && data_transfer_trace != "accel")
+      traceOption |= 0x2 ;
     
     // Bit 3: 1 = Pipe stalls enabled, 0 = Pipe stalls disabled
-    if (stall_trace == "pipe" || stall_trace == "all") traceOption |= 0x4 ;
+    if (stall_trace == "pipe" || stall_trace == "all")
+      traceOption |= 0x4 ;
     
     // Bit 4: 1 = Dataflow stalls enabled, 0 = Dataflow stalls disabled
-    if (stall_trace == "dataflow" || stall_trace == "all") traceOption |= 0x8;
+    if (stall_trace == "dataflow" || stall_trace == "all")
+      traceOption |= 0x8;
     
     // Bit 5: 1 = Memory stalls enabled, 0 = Memory stalls disabled
-    if (stall_trace == "memory" || stall_trace == "all") traceOption |= 0x10 ;
+    if (stall_trace == "memory" || stall_trace == "all")
+      traceOption |= 0x10 ;
 
     devInterface->startTrace(traceOption) ;
   }
@@ -398,7 +405,7 @@ namespace xdp {
     if (!(getFlowMode() == HW))
       return;
     if (device_trace) {
-      db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
+      db->getDynamicInfo().setPLTraceBufferFull(deviceId, offloader->trace_buffer_full());
     }
   }
 

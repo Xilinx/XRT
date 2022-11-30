@@ -209,6 +209,7 @@ enum class key_type
   firewall_status,
   firewall_time_sec,
   power_microwatts,
+  host_mem_addr,
   host_mem_size,
   kds_numcdmas,
 
@@ -224,6 +225,7 @@ enum class key_type
   is_mfg,
   mfg_ver,
   is_recovery,
+  is_versal,
   is_ready,
   is_offline,
   f_flash_type,
@@ -254,6 +256,7 @@ enum class key_type
   ert_cu_write,
   ert_cu_read,
   ert_data_integrity,
+  ert_status,
 
   aim_counter,
   am_counter,
@@ -280,11 +283,17 @@ enum class key_type
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
   hwmon_sdm_fan_presence,
+  hwmon_sdm_mfg_date,
   hotplug_offline,
 
   cu_size,
   cu_read_range,
 
+  clk_scaling_info,
+
+  xgq_scaling_enabled,
+  xgq_scaling_power_override,
+  xgq_scaling_temp_override,
   noop
 };
 
@@ -907,6 +916,9 @@ struct sdm_sensor_info : request
    *  max      : maximum value
    *  average  : average value
    *  highest  : highest value (used for temperature sensors)
+   *  status   : sensor status
+   *  units    : sensor value units
+   *  unitm    : unit modifier value used to get actual sensor value
    */
   struct sensor_data {
     std::string label;
@@ -915,6 +927,8 @@ struct sdm_sensor_info : request
     uint32_t average {};
     uint32_t highest {};
     std::string status;
+    std::string units;
+    int8_t unitm;
   };
   using result_type = std::vector<sensor_data>;
   using req_type = sdr_req_type;
@@ -1469,7 +1483,7 @@ struct p2p_config : request
   static const key_type key = key_type::p2p_config;
   static const char* name() { return "p2p_config"; }
 
-  enum class value_type { disabled, enabled, error, reboot, not_supported };
+  enum class value_type { disabled, enabled, error, no_iomem, not_supported };
 
   // parse a config result and return value and msg
   XRT_CORE_COMMON_EXPORT
@@ -2371,6 +2385,22 @@ struct power_warning : request
   }
 };
 
+struct host_mem_addr : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::host_mem_addr;
+  static const char* name() { return "host_mem_addr"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type val)
+  {
+    return std::to_string(val);
+  }
+};
+
 struct host_mem_size : request
 {
   using result_type = uint64_t;
@@ -2492,6 +2522,21 @@ struct is_recovery : request
 {
   using result_type = bool;
   static const key_type key = key_type::is_recovery;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+/*
+ * struct is_versal - check if device is versal or not
+ * A value of true means it is a versal device.
+ * This entry is needed as some of the operations are handled
+ * differently on versal devices compared to Alveo devices
+ */
+struct is_versal : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::is_versal;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -2768,6 +2813,22 @@ struct ert_data_integrity : request
   }
 };
 
+struct ert_status : request
+{
+  struct ert_status_data {
+    bool        connected;
+    // add more in the future
+  };
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::ert_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static ert_status_data
+  to_ert_status(const result_type& strs);
+};
+
 struct noop : request
 {
   using result_type = uint64_t;
@@ -3033,6 +3094,16 @@ struct hwmon_sdm_fan_presence : request
   get(const device*) const = 0;
 };
 
+// Retrieve board MFG date from xocl hwmon_sdm driver
+struct hwmon_sdm_mfg_date : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_mfg_date;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct hotplug_offline : request
 {
   using result_type = bool;
@@ -3065,6 +3136,67 @@ struct cu_read_range : request
 
   static range_data
   to_range(const std::string& str);
+};
+
+struct clk_scaling_info : request
+{
+  struct data {
+    bool support;
+    bool enable;
+    bool pwr_scaling_ovrd_enable;
+    bool temp_scaling_ovrd_enable;
+    uint8_t temp_shutdown_limit;
+    uint8_t temp_scaling_limit;
+    uint8_t temp_scaling_ovrd_limit;
+    uint16_t pwr_shutdown_limit;
+    uint16_t pwr_scaling_limit;
+    uint16_t pwr_scaling_ovrd_limit;
+  };
+  using result_type = std::vector<struct data>;
+  using data_type = struct data;
+  static const key_type key = key_type::clk_scaling_info;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xgq_scaling_enabled : request
+{
+  using result_type = bool; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_enabled;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xgq_scaling_power_override : request
+{
+  using result_type = std::string; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_power_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct xgq_scaling_temp_override : request
+{
+  using result_type = std::string; // get value type
+  using value_type = std::string; // put value type
+  static const key_type key = key_type::xgq_scaling_temp_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 } // query

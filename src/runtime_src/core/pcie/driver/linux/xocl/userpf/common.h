@@ -141,15 +141,6 @@ struct client_ctx {
 };
 #define	CLIENT_NUM_CU_CTX(client) ((client)->num_cus + (client)->virt_cu_ref)
 
-struct xocl_mm_wrapper {
-  struct drm_mm *mm;
-  struct drm_xocl_mm_stat *mm_usage_stat;
-  uint64_t start_addr;
-  uint64_t size;
-  uint32_t ddr;
-  struct hlist_node node;
-};
-
 /* ioctl functions */
 int xocl_info_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
@@ -236,7 +227,7 @@ void xocl_kds_cus_disable(struct xocl_dev *xdev);
 int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hd, xuid_t *uuid,
 			  struct ip_layout *ip_layout,
 			  struct ps_kernel_node *ps_kernel);
-void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hd);
+int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hd);
 int xocl_kds_set_cu_read_range(struct xocl_dev *xdev, u32 cu_idx,
 			       u32 start, u32 size);
 

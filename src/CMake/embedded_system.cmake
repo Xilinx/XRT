@@ -100,6 +100,9 @@ include (CMake/ccache.cmake)
 message("-- ${CMAKE_SYSTEM_INFO_FILE} (${LINUX_FLAVOR}) (Kernel ${LINUX_KERNEL_VERSION})")
 message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
 
+# --- Lint ---
+include (CMake/lint.cmake)
+
 add_subdirectory(runtime_src)
 
 message("-- XRT version: ${XRT_VERSION_STRING}")
@@ -108,7 +111,7 @@ message("-- Preparing XRT pkg-config")
 set(XRT_PKG_CONFIG_DIR "/usr/lib/pkgconfig")
 
 configure_file (
-  ${XRT_SOURCE_DIR}/CMake/config/xrt.pc.in
+  ${XRT_SOURCE_DIR}/CMake/config/xrt-edge.pc.in
   xrt.pc
   @ONLY
   )

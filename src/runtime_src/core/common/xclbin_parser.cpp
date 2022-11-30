@@ -243,6 +243,20 @@ get_functional(const pt::ptree& xml_kernel, const std::string& element)
   return 0;
 }
 
+//Get the cu kernel id from kernel xml entry
+static size_t
+get_kernel_id(const pt::ptree& xml_kernel, const std::string& element)
+{
+  for (auto& elem : xml_kernel) {
+    if (elem.first != element)
+      continue;
+
+    return convert(elem.second.get<std::string>("<xmlattr>.dpu_kernel_id"));
+  }
+
+  return 0;
+}
+
 // Determine the address range from kernel xml entry
 static size_t
 get_address_range(const pt::ptree& xml_kernel)
@@ -843,11 +857,33 @@ get_aie_partition(const axlf* top)
   if (!pSection)
     return {};
 
-  auto begin = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
-  auto aiep = reinterpret_cast<const aie_partition*>(begin);
-  auto scp = reinterpret_cast<const uint16_t*>(begin + aiep->info.mpo_auint16_start_columns);
+  auto topbase = reinterpret_cast<const char*>(top) + pSection->m_sectionOffset;
+  auto aiep = reinterpret_cast<const aie_partition*>(topbase);
+  auto scp = reinterpret_cast<const uint16_t*>(topbase + aiep->info.start_columns.offset);
 
-  return {aiep->info.column_width, {scp, scp + aiep->info.start_columns_count}, begin + aiep->mpo_name};
+  aie_partition_obj obj{aiep->info.column_width, {scp, scp + aiep->info.start_columns.size}, topbase + aiep->mpo_name, aiep->operations_per_cycle};
+
+  for (uint32_t i = 0; i < aiep->aie_pdi.size; i++) {
+    aie_pdi_obj pdiobj;
+    auto aiepdip = reinterpret_cast<const aie_pdi*>(topbase + aiep->aie_pdi.offset + i * sizeof(aie_pdi));
+
+    pdiobj.uuid = aiepdip->uuid;
+    pdiobj.pdi.resize(aiepdip->pdi_image.size);
+    memcpy(pdiobj.pdi.data(), topbase + aiepdip->pdi_image.offset, pdiobj.pdi.size());
+    for (uint32_t j = 0; j < aiepdip->cdo_groups.size; j++) {
+      std::vector<uint64_t> dpu_kernel_ids;
+      auto cdop = reinterpret_cast<const cdo_group*>(topbase + aiepdip->cdo_groups.offset + j * sizeof(cdo_group));
+      auto kernel_idp = reinterpret_cast<const uint64_t*>(topbase + cdop->dpu_kernel_ids.offset);
+      for (uint32_t k = 0; k < cdop->dpu_kernel_ids.size; ++k)
+        dpu_kernel_ids.push_back(kernel_idp[k]);
+
+      pdiobj.cdo_groups.emplace_back<aie_cdo_group_obj>({topbase + cdop->mpo_name, cdop->cdo_type, cdop->pdi_id, std::move(dpu_kernel_ids)});
+    }
+
+    obj.pdis.emplace_back(std::move(pdiobj));
+  }
+
+  return obj;
 }
 
 size_t
@@ -975,6 +1011,7 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
       sw_reset = get_sw_reset_from_ini(kname);
 
     auto functional = get_functional(xml_kernel.second, "extended-data");
+    auto kernel_id = get_kernel_id(xml_kernel.second, "extended-data");
 
     return kernel_properties
       { kname
@@ -984,6 +1021,7 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
       , get_address_range(xml_kernel.second)
       , sw_reset
       , functional
+      , kernel_id
 
       , convert(xml_kernel.second.get<std::string>("<xmlattr>.workGroupSize", "0"))
       , get_xyz(xml_kernel.second, "compileWorkGroupSize")

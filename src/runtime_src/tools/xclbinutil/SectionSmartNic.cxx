@@ -38,9 +38,9 @@ namespace XUtil = XclBinUtilities;
 // Static Variables / Classes
 SectionSmartNic::init SectionSmartNic::initializer;
 
-SectionSmartNic::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(SMARTNIC, "SMARTNIC", boost::factory<SectionSmartNic*>()); 
+SectionSmartNic::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(SMARTNIC, "SMARTNIC", boost::factory<SectionSmartNic*>());
   sectionInfo->nodeName = "smartnic";
 
   sectionInfo->supportedAddFormats.push_back(FormatType::json);
@@ -58,7 +58,8 @@ SectionSmartNic::init::init()
 void
 SectionSmartNic::marshalToJSON(char* _pDataSection,
                                unsigned int _sectionSize,
-                               boost::property_tree::ptree& _ptree) const {
+                               boost::property_tree::ptree& _ptree) const
+{
   XUtil::TRACE("");
   XUtil::TRACE("Extracting: CBOR Image");
   XUtil::TRACE_BUF("CBOR", _pDataSection, _sectionSize);
@@ -91,7 +92,8 @@ static
 void
 read_file_into_buffer(const std::string& fileName,
                       const std::string& fromRelativeDir,
-                      std::vector<char>& buffer) {
+                      std::vector<char>& buffer)
+{
   // Build the path to our file of interest
   boost::filesystem::path filePath = fileName;
 
@@ -102,7 +104,7 @@ read_file_into_buffer(const std::string& fileName,
 
   // Open the file
   std::ifstream file(filePath.string(), std::ifstream::in | std::ifstream::binary);
-  if (!file.is_open()) 
+  if (!file.is_open())
     throw std::runtime_error("ERROR: Unable to open the file for reading: " + fileName);
 
   // Get the file size
@@ -120,17 +122,17 @@ read_file_into_buffer(const std::string& fileName,
 }
 
 static
-void rename_file_node(const std::string & fileNodeName, 
-                      rapidjson::Value &value,
+void rename_file_node(const std::string& fileNodeName,
+                      rapidjson::Value& value,
                       rapidjson::Document::AllocatorType& allocator)
 {
   // Remove the subname (e.g., _file) from the existing key
   static const std::string removeSubName = "_file";
 
-  std::string newKey = fileNodeName;              
-  auto index = newKey.find(removeSubName); 
+  std::string newKey = fileNodeName;
+  auto index = newKey.find(removeSubName);
   if (index == std::string::npos)
-     return;
+    return;
 
   newKey.replace(index, removeSubName.size(), "");
 
@@ -148,7 +150,8 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
                                     rapidjson::Value::MemberIterator itrObject,
                                     const XclBinUtilities::KeyTypeCollection& keyTypeCollection,
                                     rapidjson::Document::AllocatorType& allocator,
-                                    const std::string& relativeFromDir) {
+                                    const std::string& relativeFromDir)
+{
   XUtil::TRACE(boost::format("BScope: %s") % scope);
 
   // A dictionary
@@ -158,7 +161,7 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
 
       // Look "forward" to see if this dictionary contains the node of interest
       std::string currentScope = scope + "::" + itr->name.GetString();
-      if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file) 
+      if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file)
         renameCollection.push_back(std::string(itr->name.GetString()));
 
       readAndTransposeByteFiles_recursive(scope + "::" + itr->name.GetString(), itr, keyTypeCollection, allocator, relativeFromDir);
@@ -177,14 +180,14 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
       std::vector<std::string> renameCollection;
       rapidjson::Value& attribute = *itr;
 
-      if (!attribute.IsObject()) 
+      if (!attribute.IsObject())
         continue;
 
       for (auto itr2 = attribute.MemberBegin(); itr2 != attribute.MemberEnd(); ++itr2) {
 
         // Look "forward" to see if this dictionary contains the node of interest
         std::string currentScope = scope + "[]::" + itr2->name.GetString();
-        if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file) 
+        if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file)
           renameCollection.push_back(std::string(itr2->name.GetString()));
 
         readAndTransposeByteFiles_recursive(scope + "[]::" + itr2->name.GetString(), itr2, keyTypeCollection, allocator, relativeFromDir);
@@ -195,14 +198,14 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
         rename_file_node(oldFileNodeName, attribute, allocator);
     }
 
-    return;  
+    return;
   }
 
   // End point String
   if (itrObject->value.IsString()) {
     // Do we have a match
-    if (get_expected_type(scope, keyTypeCollection) != XUtil::DType::byte_file) 
-      return;  
+    if (get_expected_type(scope, keyTypeCollection) != XUtil::DType::byte_file)
+      return;
 
     // Read file image from disk
     std::vector<char> buffer;
@@ -213,7 +216,7 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
     byteString = boost::algorithm::hex(byteString);
     itrObject->value.SetString(byteString.data(), byteString.size(), allocator);
 
-    return;  
+    return;
   }
 }
 
@@ -221,7 +224,8 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
 static void
 readAndTransposeByteFiles(rapidjson::Document& doc,
                           const XclBinUtilities::KeyTypeCollection& keyTypeCollection,
-                          const std::string& dirRelativeFrom) {
+                          const std::string& dirRelativeFrom)
+{
   if (!doc.IsObject())
     return;
 
@@ -232,7 +236,8 @@ readAndTransposeByteFiles(rapidjson::Document& doc,
 
 void
 SectionSmartNic::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
-                                 std::ostringstream& _buf) const {
+                                 std::ostringstream& _buf) const
+{
   const std::string nodeName = "smartnic";
 
   XUtil::TRACE("");
@@ -281,9 +286,10 @@ SectionSmartNic::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
  * @param primary - Primary property tree
  * @param secondary - Secondary property tree
  */
-static void 
-validateGenericTree( const boost::property_tree::ptree & primary,
-                     const boost::property_tree::ptree & secondary) {
+static void
+validateGenericTree(const boost::property_tree::ptree& primary,
+                    const boost::property_tree::ptree& secondary)
+{
   if (primary.size() != secondary.size())
     throw std::runtime_error("Error: Size mismatch.");
 
@@ -294,27 +300,27 @@ validateGenericTree( const boost::property_tree::ptree & primary,
 
     if (primary.data() != secondary.data()) {
       auto errMsg = boost::format("Error: Data mismatch: P('%s'); S('%s')") % primary.data() % secondary.data();
-      throw std::runtime_error(errMsg.str()); 
+      throw std::runtime_error(errMsg.str());
     }
 
     return;
   }
 
   // Compare the keys (order independent)
-  for (const auto &it: primary) {
-    const std::string & key = it.first;
+  for (const auto& it: primary) {
+    const std::string& key = it.first;
     XUtil::TRACE(boost::format("Examining node: '%s'") % key);
-    
-    const boost::property_tree::ptree &ptSecondary = secondary.get_child(key);
+
+    const boost::property_tree::ptree& ptSecondary = secondary.get_child(key);
     validateGenericTree(it.second, ptSecondary);
   }
 }
 
 // Call back function signature used when traversing the property trees
-using node_sig_ptr=std::function<void (boost::property_tree::ptree &, const boost::property_tree::ptree &)>;
+using node_sig_ptr = std::function<void(boost::property_tree::ptree&, const boost::property_tree::ptree&)>;
 
 // Graph node to call back function
-using NodeCallBackFuncs=std::map<std::string, node_sig_ptr>;
+using NodeCallBackFuncs = std::map<std::string, node_sig_ptr>;
 
 
 /**
@@ -327,57 +333,62 @@ using NodeCallBackFuncs=std::map<std::string, node_sig_ptr>;
  * @param nodeCallBackFuncs
  *                 Call back functions for various nodes
  */
-static void 
-merge_node_array( const std::string &nodeName, const std::string &key,boost::property_tree::ptree &ptParent,
-                  const boost::property_tree::ptree &ptAppend, const NodeCallBackFuncs &nodeCallBackFuncs);
+static void
+merge_node_array(const std::string& nodeName, const std::string& key, boost::property_tree::ptree& ptParent,
+                 const boost::property_tree::ptree& ptAppend, const NodeCallBackFuncs& nodeCallBackFuncs);
 
 static void
-info_node( boost::property_tree::ptree &ptParent, 
-           const boost::property_tree::ptree &ptAppend) {
+info_node(boost::property_tree::ptree& ptParent,
+          const boost::property_tree::ptree& ptAppend)
+{
   static const NodeCallBackFuncs emptyCallBackNodes;
   merge_node_array("info", "", ptParent, ptAppend, emptyCallBackNodes);
 }
 
 static void
-cam_instances_node( boost::property_tree::ptree &ptParent, 
-                    const boost::property_tree::ptree &ptAppend) {
+cam_instances_node(boost::property_tree::ptree& ptParent,
+                   const boost::property_tree::ptree& ptAppend)
+{
   static const NodeCallBackFuncs emptyCallBackNodes;
   merge_node_array("cam_instances", "name", ptParent, ptAppend, emptyCallBackNodes);
 }
 
-static void 
-messages_node( boost::property_tree::ptree & ptParent, 
-               const boost::property_tree::ptree &ptAppend) {
+static void
+messages_node(boost::property_tree::ptree& ptParent,
+              const boost::property_tree::ptree& ptAppend)
+{
   static const NodeCallBackFuncs emptyCallBackNodes;
   merge_node_array("messages", "name", ptParent, ptAppend, emptyCallBackNodes);
 }
 
-static void 
-resource_classes_node( boost::property_tree::ptree & ptParent, 
-                       const boost::property_tree::ptree & ptAppend) {
+static void
+resource_classes_node(boost::property_tree::ptree& ptParent,
+                      const boost::property_tree::ptree& ptAppend)
+{
   static const NodeCallBackFuncs emptyCallBackNodes;
   merge_node_array("resource_classes", "name", ptParent, ptAppend, emptyCallBackNodes);
 }
 
-static void 
-merge_node( boost::property_tree::ptree &ptParent,
-            const std::string &appendPath,
-            const boost::property_tree::ptree &ptAppend,
-            const NodeCallBackFuncs &nodeCallBackFuncs) {
+static void
+merge_node(boost::property_tree::ptree& ptParent,
+           const std::string& appendPath,
+           const boost::property_tree::ptree& ptAppend,
+           const NodeCallBackFuncs& nodeCallBackFuncs)
+{
   XUtil::TRACE(boost::format("Current append path: '%s'") % appendPath);
 
   // Are we at a graph end node
   if (!appendPath.empty() && ptAppend.empty()) {
     // Check to see if data already exists, if so validate that it isn't changing
-    const auto & parentValue = ptParent.get<std::string>(appendPath,"");
-    const auto & appendValue = ptAppend.data();
+    const auto& parentValue = ptParent.get<std::string>(appendPath, "");
+    const auto& appendValue = ptAppend.data();
 
     if (!parentValue.empty()) {
       // Check to see if the data is the same, if not produce an error
       if (parentValue.compare(appendValue) != 0) {
         auto errMsg = boost::format("Error: The JSON path's '%s' existing value is not the same as the value being merged.\n"
-                                           "Existing value    : '%s'\n"
-                                           "Value being merged: '%s'") % appendPath % parentValue % appendValue;
+                                    "Existing value    : '%s'\n"
+                                    "Value being merged: '%s'") % appendPath % parentValue % appendValue;
         throw std::runtime_error(errMsg.str());
       }
     } else {
@@ -388,15 +399,15 @@ merge_node( boost::property_tree::ptree &ptParent,
   }
 
   // Merge the node metadata
-  for(const auto &item : ptAppend) {
+  for (const auto& item : ptAppend) {
     // Encode the current path using boost's determinator (e.g., '.')
     const std::string currentPath = appendPath + (appendPath.empty() ? "" : ".") + item.first;
 
     // Check to see if this node has a callback function, if so call it.
     auto itr = nodeCallBackFuncs.find(currentPath);
-    if (itr!= nodeCallBackFuncs.end()) {
-      // Create a parent node if one doesn't exist 
-      if (!appendPath.empty() && (ptParent.count(appendPath) == 0)) {  
+    if (itr != nodeCallBackFuncs.end()) {
+      // Create a parent node if one doesn't exist
+      if (!appendPath.empty() && (ptParent.count(appendPath) == 0)) {
         boost::property_tree::ptree ptEmpty;
         ptParent.add_child(appendPath, ptEmpty);
       }
@@ -410,74 +421,76 @@ merge_node( boost::property_tree::ptree &ptParent,
     merge_node(ptParent, currentPath, item.second, nodeCallBackFuncs);
   }
 }
-  
-static void 
-merge_node_array( const std::string &nodeName, 
-                  const std::string &key,
-                  boost::property_tree::ptree &ptParent,
-                  const boost::property_tree::ptree &ptAppend,
-                  const NodeCallBackFuncs &nodeCallBackFuncs) {
-   // Extract the node array into a vector of child property trees
-   auto workingNodeArray = XUtil::as_vector<boost::property_tree::ptree>(ptParent, nodeName);
 
-   // Remove this entry.  It will be added later.
-   ptParent.erase(nodeName);
+static void
+merge_node_array(const std::string& nodeName,
+                 const std::string& key,
+                 boost::property_tree::ptree& ptParent,
+                 const boost::property_tree::ptree& ptAppend,
+                 const NodeCallBackFuncs& nodeCallBackFuncs)
+{
+  // Extract the node array into a vector of child property trees
+  auto workingNodeArray = XUtil::as_vector<boost::property_tree::ptree>(ptParent, nodeName);
 
-   // Merge the new data into the extensions node
-   for (const auto & item : ptAppend) {
-     bool entryMerged = false;
+  // Remove this entry.  It will be added later.
+  ptParent.erase(nodeName);
 
-     // Check to see if a key is needed, if so, used it to find the correct unique entry 
-     if (!key.empty()) {
-       const std::string & keyValue = item.second.get<std::string>(key, "");
-       if (keyValue.empty()) {
-         auto errMsg = boost::format("Error: Missing key '%s' entry.") % key;
-         throw std::runtime_error(errMsg.str());
-       }
+  // Merge the new data into the extensions node
+  for (const auto& item : ptAppend) {
+    bool entryMerged = false;
 
-       // Look for an existing entry that matches the key value (if used0
-       for (auto & entry : workingNodeArray) {
-         if (keyValue == entry.get<std::string>(key, "")) {
-           merge_node(entry, "", item.second, nodeCallBackFuncs);
-           entryMerged = true;
-           break;
-         }
-       }
-     }
+    // Check to see if a key is needed, if so, used it to find the correct unique entry
+    if (!key.empty()) {
+      const std::string& keyValue = item.second.get<std::string>(key, "");
+      if (keyValue.empty()) {
+        auto errMsg = boost::format("Error: Missing key '%s' entry.") % key;
+        throw std::runtime_error(errMsg.str());
+      }
 
-     // No match, add it to the array
-     if (entryMerged == false) {
-       XUtil::TRACE("New append item.  Adding it to the end of the array.");
-       workingNodeArray.push_back(item.second);
-     }
-   }
+      // Look for an existing entry that matches the key value (if used0
+      for (auto& entry : workingNodeArray) {
+        if (keyValue == entry.get<std::string>(key, "")) {
+          merge_node(entry, "", item.second, nodeCallBackFuncs);
+          entryMerged = true;
+          break;
+        }
+      }
+    }
 
-   // Rebuild the node array and add it back into the property tree
-   boost::property_tree::ptree ptArrayNode;
-   for (auto & nodeEntry : workingNodeArray) 
-     ptArrayNode.push_back({"", nodeEntry});   // Used to make an array of objects
+    // No match, add it to the array
+    if (entryMerged == false) {
+      XUtil::TRACE("New append item.  Adding it to the end of the array.");
+      workingNodeArray.push_back(item.second);
+    }
+  }
 
-   ptParent.add_child(nodeName, ptArrayNode);
+  // Rebuild the node array and add it back into the property tree
+  boost::property_tree::ptree ptArrayNode;
+  for (auto& nodeEntry : workingNodeArray)
+    ptArrayNode.push_back({ "", nodeEntry });   // Used to make an array of objects
+
+  ptParent.add_child(nodeName, ptArrayNode);
 }
 
 
 
 void
-SectionSmartNic::appendToSectionMetadata( const boost::property_tree::ptree& _ptAppendData,
-                                          boost::property_tree::ptree& _ptToAppendTo) {
+SectionSmartNic::appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData,
+                                         boost::property_tree::ptree& _ptToAppendTo)
+{
   XUtil::TRACE_PrintTree("To Append To", _ptToAppendTo);
   XUtil::TRACE_PrintTree("Append data", _ptAppendData);
 
   // Should not happen, but we should double check just in case of a future change :^)
-  if (_ptToAppendTo.count("smartnic") == 0) 
+  if (_ptToAppendTo.count("smartnic") == 0)
     throw std::runtime_error("Internal Error: SmartNic destination node not present.");
 
-  boost::property_tree::ptree & ptSmartNic = _ptToAppendTo.get_child("smartnic");
+  boost::property_tree::ptree& ptSmartNic = _ptToAppendTo.get_child("smartnic");
 
   // Examine the data to be merged
   boost::property_tree::ptree ptEmpty;           // Empty property tree
-  for (const auto & it : _ptAppendData) {
-    const std::string & sectionName = it.first;
+  for (const auto& it : _ptAppendData) {
+    const std::string& sectionName = it.first;
     XUtil::TRACE("");
     XUtil::TRACE("Found Section: '" + sectionName + "'");
 
@@ -486,15 +499,15 @@ SectionSmartNic::appendToSectionMetadata( const boost::property_tree::ptree& _pt
       try {
         // Call back functions and their nodes that they are associated with
         static NodeCallBackFuncs extensionCallBackNodes = {
-            { "info", info_node },
-            { "cam_instances", cam_instances_node },
-            { "messages", messages_node },
-            { "resource_classes", resource_classes_node }
-          };
+          { "info", info_node },
+          { "cam_instances", cam_instances_node },
+          { "messages", messages_node },
+          { "resource_classes", resource_classes_node }
+        };
 
         merge_node_array("extensions", "instance_name", ptSmartNic, it.second, extensionCallBackNodes);
 
-      } catch (std::exception &e ) {
+      } catch (std::exception& e) {
         std::string msg = e.what();
         std::cerr << e.what() << std::endl;
         throw std::runtime_error("Error: Merging of the 'extension' node failed.");
@@ -513,7 +526,7 @@ SectionSmartNic::appendToSectionMetadata( const boost::property_tree::ptree& _pt
     if (sectionName == "schema_version") {
       try {
         validateGenericTree(it.second, ptSmartNic.get_child("schema_version"));
-      } catch (std::exception &e ) {
+      } catch (std::exception& e) {
         std::string msg = e.what();
         std::cerr << e.what() << std::endl;
         throw std::runtime_error("Error: Validating node 'schema_versions'");

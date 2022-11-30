@@ -74,16 +74,17 @@ namespace xclemulation{
     mPrintErrorsInConsole = true;
     mVerbosity = 0;
     mServerPort = 0;
-    mKeepRunDir=true;
+    mKeepRunDir = true;
     mLauncherArgs = "";
     mSystemDPA = true;
     mLegacyErt = ertmode::none;
-    mCuBaseAddrForce=-1;
-    mIsSharedFmodel=true;
+    mCuBaseAddrForce = -1;
+    mIsSharedFmodel = true;
     mIsM2MEnabled = false;
-    mTimeOutScale=TIMEOUT_SCALE::NA;
+    mTimeOutScale = TIMEOUT_SCALE::NA;
     mIsPlatformDataAvailable = false;
-    mIsDisabledHostBuffer=false;
+    mIsDisabledHostBuffer = false;
+    mIsFasterNocDDRAccessEnabled = false;
   }
 
   static bool getBoolValue(std::string& value,bool defaultValue)
@@ -236,6 +237,10 @@ namespace xclemulation{
         unsigned int verbosity = strtoll(value.c_str(),NULL,0);
         if(verbosity > 0 )
           setVerbosityLevel(verbosity);
+      }
+      else if(name == "fast_nocddr_access")
+      {
+        mIsFasterNocDDRAccessEnabled = getBoolValue(value, false);
       }
       else if(name == "packet_size")
       {

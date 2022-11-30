@@ -2,6 +2,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -40,18 +41,19 @@
 #define ERT_CTRL_SQ_TAIL_OFF	0x4
 #define ERT_CTRL_CQ_TAIL_OFF	0x8
 
-#define ERT_CTRL_CMD_TIMEOUT	msecs_to_jiffies(2 * 1000)
+#define ERT_CTRL_CMD_TIMEOUT	msecs_to_jiffies(8 * 1000)
 
 #define ERT_CTRL_ADD_NUM_ERT_XGQ	4
 
 #define CQ_STATUS_ADDR 0x58
 
-#define CTRL_XGQ_SLOT_SIZE          512	
+#define CTRL_XGQ_SLOT_SIZE          512
 
 /* XGQ IP offsets */
 #define XGQ_SQ_REG		0x0
 #define XGQ_CQ_REG		0x100
 
+#define MAX_CU_XGQ		256
 #define SHELL_NOT_SUPP_LEGACY(ec) (ec->ec_xgq_ips != NULL)
 
 static uint16_t	g_ctrl_xgq_cid;
@@ -61,6 +63,7 @@ struct ert_ctrl_xgq_cu {
 	int			 ecxc_id;
 	resource_size_t		 ecxc_xgq_reg;
 	resource_size_t		 ecxc_xgq_range;
+	int			 ecxc_xgq_irq;
 
 	void __iomem		*ecxc_xgq_base;
 };
@@ -500,6 +503,9 @@ static inline int ert_ctrl_alloc_ert_xgq(struct ert_ctrl *ec, int num)
 	if (num <= ec->ec_exgq_capacity)
 		return 0;
 
+	if (num > MAX_CU_XGQ)
+		return -EINVAL;
+
 	tmp = kzalloc(sizeof(ec->ec_exgq[0]) * num, GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
@@ -553,12 +559,24 @@ static void ert_ctrl_legacy_fini(struct ert_ctrl *ec)
 static void ert_ctrl_unset_xgq(struct platform_device *pdev)
 {
 	struct ert_ctrl *ec = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int i = 0;
+
+	for (i = 0; i < ec->ec_num_xgq_ips; i++) {
+		struct ert_ctrl_xgq_cu  *xgq_ips = &ec->ec_xgq_ips[i];
+
+		xocl_user_interrupt_config(xdev, xgq_ips->ecxc_xgq_irq, false);
+		xocl_user_interrupt_reg(xdev,  xgq_ips->ecxc_xgq_irq, NULL, NULL);
+	}
 
 	for (i = 0; i < ec->ec_exgq_capacity; i++) {
 		if (ec->ec_exgq[i] == NULL)
 			continue;
 
+		if (!ec->ec_xgq_ips) {
+			xocl_intc_ert_config(xdev, i, false);
+			xocl_intc_ert_request(xdev, i, NULL, NULL);
+		}
 		xocl_xgq_fini(ec->ec_exgq[i]);
 		ec->ec_exgq[i] = NULL;
 	}
@@ -719,6 +737,15 @@ static void *ert_ctrl_setup_xgq(struct platform_device *pdev, int id, u64 offset
 		return err_ret;
 	}
 
+	/* Setup CU XGQ interrupt */
+	if (ec->ec_xgq_ips) {
+		xocl_user_interrupt_reg(xdev,  ec->ec_xgq_ips[id].ecxc_xgq_irq, xgq_isr, ec->ec_exgq[id]);
+		xocl_user_interrupt_config(xdev, ec->ec_xgq_ips[id].ecxc_xgq_irq, true);
+	} else {
+		xocl_intc_ert_request(xdev, id, xgq_isr, ec->ec_exgq[id]);
+		xocl_intc_ert_config(xdev, id, true);
+	}
+
 done:
 	return ec->ec_exgq[id];
 }
@@ -781,7 +808,7 @@ static int ert_ctrl_xgq_ip_init(struct platform_device *pdev)
 	EC_INFO(ec, "Ring buffer %pR", res);
 
 	ec->ec_cq_range = res->end - res->start + 1;
-	ec->ec_cq_base = devm_ioremap_wc(&pdev->dev, res->start, ec->ec_cq_range);
+	ec->ec_cq_base = devm_ioremap(&pdev->dev, res->start, ec->ec_cq_range);
 	if (!ec->ec_cq_base) {
 		EC_ERR(ec, "failed to map %s", RESNAME_XGQ_USER_RING);
 		return -ENOMEM;
@@ -806,6 +833,7 @@ static int ert_ctrl_xgq_ip_init(struct platform_device *pdev)
 		}
 		EC_INFO(ec, "XGQ IP %pR", res);
 
+		xgq_ip->ecxc_xgq_irq = xocl_get_irq_with_idx_byname(pdev, RESNAME_XGQ_USER_SQ, i);
 		xgq_ip->ecxc_xgq_reg = res->start;
 		xgq_ip->ecxc_xgq_range = res->end - res->start + 1;
 		xgq_ip->ecxc_xgq_base = devm_ioremap(&pdev->dev, res->start, xgq_ip->ecxc_xgq_range);
@@ -834,7 +862,7 @@ static int ert_ctrl_cq_init(struct platform_device *pdev)
 	EC_INFO(ec, "CQ %pR", res);
 
 	ec->ec_cq_range = res->end - res->start + 1;
-	ec->ec_cq_base = devm_ioremap_wc(&pdev->dev, res->start, ec->ec_cq_range);
+	ec->ec_cq_base = devm_ioremap(&pdev->dev, res->start, ec->ec_cq_range);
 	if (!ec->ec_cq_base) {
 		EC_ERR(ec, "failed to map CQ");
 		return -ENOMEM;

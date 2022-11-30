@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -11,6 +12,7 @@
 
 #include "zocl_drv.h"
 #include "xrt_cu.h"
+#include "zocl_ert_intc.h"
 
 #define IRQ_DISABLED 0
 
@@ -21,33 +23,88 @@ struct zocl_cu {
 	char			*irq_name;
 	DECLARE_BITMAP(flag, 1);
 	spinlock_t		 lock;
+	/*
+	 * This RW lock is to protect the cu sysfs nodes exported
+	 * by zocl driver.
+	 */
+	rwlock_t		 attr_rwlock;
 };
 
 static ssize_t debug_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-#if 0
 	struct platform_device *pdev = to_platform_device(dev);
 	struct zocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &cu->base;
-#endif
-	/* Place holder for now. */
-	return 0;
+
+	return sprintf(buf, "%d\n", xcu->debug);
 }
 
 static ssize_t debug_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
-#if 0
 	struct platform_device *pdev = to_platform_device(dev);
 	struct zocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &cu->base;
-#endif
+	u32 debug;
 
-	/* Place holder for now. */
+	if (kstrtou32(buf, 10, &debug) == -EINVAL)
+		return -EINVAL;
+
+	xcu->debug = debug;
+
 	return count;
 }
 static DEVICE_ATTR_RW(debug);
+
+static ssize_t
+name_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "CU[%d]\n", info->cu_idx);
+}
+static DEVICE_ATTR_RO(name);
+
+static ssize_t
+base_paddr_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "0x%llx\n", info->addr);
+}
+static DEVICE_ATTR_RO(base_paddr);
+
+static ssize_t
+size_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu_info *info = &cu->base.info;
+
+	return sprintf(buf, "%ld\n", info->size);
+}
+static DEVICE_ATTR_RO(size);
+
+static ssize_t
+read_range_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	u32 start = 0;
+	u32 end = 0;
+
+	mutex_lock(&cu->base.read_regs.xcr_lock);
+	start = cu->base.read_regs.xcr_start;
+	end = cu->base.read_regs.xcr_end;
+	mutex_unlock(&cu->base.read_regs.xcr_lock);
+	return sprintf(buf, "0x%x 0x%x\n", start, end);
+}
+static DEVICE_ATTR_RO(read_range);
 
 static ssize_t
 cu_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -70,31 +127,136 @@ cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(cu_info);
 
 static ssize_t
-stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+stats_begin_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
+	ssize_t sz = 0;
+
 	struct platform_device *pdev = to_platform_device(dev);
 	struct zocl_cu *cu = platform_get_drvdata(pdev);
 
-	return show_formatted_cu_stat(&cu->base, buf);
+	read_lock(&cu->attr_rwlock);
+	sz = show_stats_begin(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_begin);
+
+static ssize_t
+stats_end_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+
+	read_lock(&cu->attr_rwlock);
+	sz = show_stats_end(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_end);
+
+static ssize_t
+stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+
+	read_lock(&cu->attr_rwlock);
+	sz = show_formatted_cu_stat(&cu->base, buf);
+	read_unlock(&cu->attr_rwlock);
+
+	return sz;
 }
 static DEVICE_ATTR_RO(stat);
+
+static ssize_t
+crc_buf_show(struct file *filp, struct kobject *kobj,
+	     struct bin_attribute *attr, char *buf,
+	     loff_t offset, size_t count)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct zocl_cu *cu = (struct zocl_cu *)dev_get_drvdata(dev);
+	struct xrt_cu *xcu;
+
+	if (!cu)
+		return 0;
+
+	xcu = &cu->base;
+	return xrt_cu_circ_consume_all(xcu, buf, count);
+}
+
+static ssize_t poll_threshold_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &cu->base;
+
+	return sprintf(buf, "%d\n", xcu->poll_threshold);
+}
+
+static ssize_t poll_threshold_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &cu->base;
+	u32 threshold;
+
+	if (kstrtou32(buf, 10, &threshold) == -EINVAL)
+		return -EINVAL;
+
+	xcu->poll_threshold = threshold;
+
+	return count;
+}
+static DEVICE_ATTR_RW(poll_threshold);
 
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
 	&dev_attr_cu_info.attr,
+	&dev_attr_stats_begin.attr,
+	&dev_attr_stats_end.attr,
 	&dev_attr_stat.attr,
+	&dev_attr_poll_threshold.attr,
+	&dev_attr_name.attr,
+	&dev_attr_base_paddr.attr,
+	&dev_attr_size.attr,
+	&dev_attr_read_range.attr,
+	NULL,
+};
+
+static struct bin_attribute crc_buf_attr = {
+	.attr = {
+		.name = "crc_buf",
+		.mode = 0444
+	},
+	.read = crc_buf_show,
+	.write = NULL,
+	.size = 0,
+};
+
+static struct bin_attribute *cu_bin_attrs[] = {
+	&crc_buf_attr,
 	NULL,
 };
 
 static const struct attribute_group cu_attrgroup = {
 	.attrs = cu_attrs,
+	.bin_attrs = cu_bin_attrs,
 };
 
 irqreturn_t cu_isr(int irq, void *arg)
 {
 	struct zocl_cu *zcu = arg;
 
+	xrt_cu_circ_produce(&zcu->base, CU_LOG_STAGE_ISR, 0);
 	xrt_cu_clear_intr(&zcu->base);
 
 	up(&zcu->base.sem_cu);
@@ -126,16 +288,23 @@ irqreturn_t ucu_isr(int irq, void *arg)
 static int user_manage_irq(struct xrt_cu *xcu, bool user_manage)
 {
 	struct zocl_cu *zcu = (struct zocl_cu *)xcu;
-	int ret;
+	struct platform_device *intc;
+	int ret = 0;
+
+	intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
+	if (!intc) {
+		DRM_INFO("%s: finding platform device - %s failed\n", __func__, ERT_CU_INTC_DEV_NAME);
+		return -ENODEV;
+	}
 
 	if (xcu->info.intr_enable)
-		free_irq(zcu->irq, zcu);
+		zocl_ert_intc_remove(intc, xcu->info.intr_id);
 
 	/* Do not use IRQF_SHARED! */
 	if (user_manage)
-		ret = request_irq(zcu->irq, ucu_isr, 0, zcu->irq_name, zcu);
+		ret = zocl_ert_intc_add(intc, xcu->info.intr_id, ucu_isr, zcu);
 	else
-		ret = request_irq(zcu->irq, cu_isr, 0, zcu->irq_name, zcu);
+		ret = zocl_ert_intc_add(intc, xcu->info.intr_id, cu_isr, zcu);
 	if (ret) {
 		DRM_INFO("%s: request_irq() failed\n", __func__);
 		return ret;
@@ -144,7 +313,7 @@ static int user_manage_irq(struct xrt_cu *xcu, bool user_manage)
 	if (user_manage) {
 		__set_bit(IRQ_DISABLED, zcu->flag);
 		spin_lock_init(&zcu->lock);
-		disable_irq(zcu->irq);
+		zocl_ert_intc_config(intc, xcu->info.intr_id, false); // disable irq
 	}
 
 	return 0;
@@ -153,17 +322,22 @@ static int user_manage_irq(struct xrt_cu *xcu, bool user_manage)
 static int configure_irq(struct xrt_cu *xcu, bool enable)
 {
 	struct zocl_cu *zcu = (struct zocl_cu *)xcu;
+	struct platform_device *intc;
 	unsigned long flags;
 
-	spin_lock_irqsave(&zcu->lock, flags);
+	intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
+	if (!intc) {
+		DRM_INFO("%s: finding platform device - %s failed\n", __func__, ERT_CU_INTC_DEV_NAME);
+		return -ENODEV;
+	}
+
 	if (enable) {
 		if (__test_and_clear_bit(IRQ_DISABLED, zcu->flag))
-			enable_irq(zcu->irq);
+			zocl_ert_intc_config(intc, xcu->info.intr_id, true); // enable irq
 	} else {
 		if (!__test_and_set_bit(IRQ_DISABLED, zcu->flag))
-			disable_irq(zcu->irq);
+			zocl_ert_intc_config(intc, xcu->info.intr_id, false); // disable irq
 	}
-	spin_unlock_irqrestore(&zcu->lock, flags);
 
 	return 0;
 }
@@ -174,6 +348,7 @@ static int cu_probe(struct platform_device *pdev)
 	struct resource **res;
 	struct xrt_cu_info *info;
 	struct drm_zocl_dev *zdev;
+	struct platform_device *intc;
 	struct xrt_cu_arg *args = NULL;
 	int err = 0;
 	int i;
@@ -204,6 +379,11 @@ static int cu_probe(struct platform_device *pdev)
 	zcu->base.res = res;
 
 	zdev = zocl_get_zdev();
+	if (!zdev) {
+		err = -EINVAL;
+		goto err1;
+	}
+
 	err = zocl_kds_add_cu(zdev, &zcu->base);
 	if (err) {
 		DRM_ERROR("Not able to add CU %p to KDS", zcu);
@@ -217,16 +397,12 @@ static int cu_probe(struct platform_device *pdev)
 	sprintf(zcu->irq_name, "zocl_cu[%d]", info->intr_id);
 
 	if (info->intr_enable) {
-		zcu->irq = zdev->cu_subdev.irq[info->intr_id];
-		/* Currently requesting irq if it's enable in cu config.
-		 * Not disabling it further, even user wants to use 
-		 * polling.
-		 */
-		err = request_irq(zcu->irq, cu_isr, 0,
-			  zcu->irq_name, zcu);
-		if (err) {
+		intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
+		if (intc)
+			err = zocl_ert_intc_add(intc, info->intr_id, cu_isr, zcu);
+		if (!intc || err) {
 			DRM_WARN("Failed to initial CU interrupt. "
-			    "Fall back to polling\n");
+				 "Fall back to polling\n");
 			zcu->base.info.intr_enable = 0;
 		}
 	}
@@ -248,12 +424,15 @@ static int cu_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, zcu);
 
+	rwlock_init(&zcu->attr_rwlock);
 	err = sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup);
 	if (err)
 		zocl_err(&pdev->dev, "create CU attrs failed: %d", err);
 
 	zcu->base.user_manage_irq = user_manage_irq;
 	zcu->base.configure_irq = configure_irq;
+	/* This is a workaround for DPU kernel */
+	zcu->base.force_intr = 1;
 
 	zocl_info(&pdev->dev, "CU[%d] created", info->inst_idx);
 	return 0;
@@ -272,6 +451,7 @@ static int cu_remove(struct platform_device *pdev)
 	struct zocl_cu *zcu;
 	struct drm_zocl_dev *zdev;
 	struct xrt_cu_info *info;
+	struct platform_device *intc;
 
 	zcu = platform_get_drvdata(pdev);
 	if (!zcu)
@@ -287,8 +467,11 @@ static int cu_remove(struct platform_device *pdev)
 		break;
 	}
 
-	if (info->intr_enable)
-		free_irq(zcu->irq, zcu);
+	if (info->intr_enable) {
+		intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
+		if (intc)
+			zocl_ert_intc_remove(intc, info->intr_id);
+	}
 
 	zdev = zocl_get_zdev();
 	if(zdev)
@@ -297,7 +480,9 @@ static int cu_remove(struct platform_device *pdev)
 	if (zcu->base.res)
 		vfree(zcu->base.res);
 
+	write_lock(&zcu->attr_rwlock);
 	sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
+	write_unlock(&zcu->attr_rwlock);
 
 	zocl_info(&pdev->dev, "CU[%d] removed", info->inst_idx);
 	kfree(zcu->irq_name);

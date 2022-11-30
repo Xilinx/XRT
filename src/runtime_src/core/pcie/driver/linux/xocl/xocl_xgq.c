@@ -2,6 +2,7 @@
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
  * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -16,6 +17,7 @@
 
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/semaphore.h>
 #include "xocl_xgq.h"
 
 #define CLIENT_ID_BITS 7
@@ -32,6 +34,7 @@ struct xocl_xgq_client {
 	struct list_head	 xxc_completed;
 	int			 xxc_num_complete;
 	u32			 xxc_prot;
+	struct semaphore	*xxc_notify_sem;
 };
 
 struct xocl_xgq {
@@ -44,9 +47,9 @@ struct xocl_xgq {
 	void __iomem		*xx_sq_prod_int;
 };
 
-ssize_t xocl_xgq_dump_info(void *xgq_handle, char *buf, int count)
+ssize_t xocl_xgq_dump_info(struct xocl_xgq *xgq_handle, char *buf, int count)
 {
-	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
+	struct xocl_xgq *xgq = xgq_handle;
 	char *fmt = "id %d, addr 0x%llx\n";
 	ssize_t sz = 0;
 
@@ -80,10 +83,10 @@ static inline void xocl_xgq_trigger_sq_intr(struct xocl_xgq *xgq)
 	iowrite32((1 << xgq->xx_id), xgq->xx_sq_prod_int);
 }
 
-int xocl_xgq_set_command(void *xgq_handle, int id, struct kds_command *xcmd)
+int xocl_xgq_set_command(struct xocl_xgq *xgq_handle, int client_id, struct kds_command *xcmd)
 {
-	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
-	struct xocl_xgq_client *client = &xgq->xx_clients[id];
+	struct xocl_xgq *xgq = xgq_handle;
+	struct xocl_xgq_client *client = &xgq->xx_clients[client_id];
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	unsigned long flags = 0;
 	u64 addr = 0;
@@ -91,7 +94,7 @@ int xocl_xgq_set_command(void *xgq_handle, int id, struct kds_command *xcmd)
 
 	hdr = (struct xgq_cmd_sq_hdr *)xcmd->info;
 	/* Assign XGQ command CID */
-	hdr->cid = (xocl_xgq_cid++ << CLIENT_ID_BITS) + id;
+	hdr->cid = (xocl_xgq_cid++ << CLIENT_ID_BITS) + client_id;
 	spin_lock_irqsave(&xgq->xx_lock, flags);
 	ret = xgq_produce(&xgq->xx_xgq, &addr);
 	if (ret)
@@ -106,9 +109,9 @@ unlock_and_out:
 	return ret;
 }
 
-void xocl_xgq_notify(void *xgq_handle)
+void xocl_xgq_notify(struct xocl_xgq *xgq_handle)
 {
-	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
+	struct xocl_xgq *xgq = xgq_handle;
 	unsigned long flags = 0;
 
 	spin_lock_irqsave(&xgq->xx_lock, flags);
@@ -117,10 +120,10 @@ void xocl_xgq_notify(void *xgq_handle)
 	xocl_xgq_trigger_sq_intr(xgq);
 }
 
-static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int id, u64 resp_addr)
+static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int client_id, u64 resp_addr, int *status)
 {
 	struct xgq_com_queue_entry *resp = (struct xgq_com_queue_entry *)resp_addr;
-	struct xocl_xgq_client *client = &xgq->xx_clients[id];
+	struct xocl_xgq_client *client = &xgq->xx_clients[client_id];
 	struct kds_command *xcmd = NULL;
 	unsigned long flags = 0;
 
@@ -132,10 +135,12 @@ static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int id, u64 resp_addr)
 
 	xcmd = list_first_entry(&client->xxc_submitted, struct kds_command, list);
 
-	if (client->xxc_prot & XGQ_PROT_NEED_RESP)
+	if (client->xxc_prot & XGQ_PROT_NEED_RESP) {
 		xocl_xgq_read_queue((u32 *)&xcmd->rcode, (u32 __iomem *)&resp->rcode, sizeof(xcmd->rcode)/4);
-
-	xcmd->status = KDS_COMPLETED;
+		xocl_xgq_read_queue((u32 *)&xcmd->status, (u32 __iomem *)&resp->result, sizeof(xcmd->status)/4);
+	} else
+		xcmd->status = KDS_COMPLETED;
+	*status = xcmd->status;
 	list_move_tail(&xcmd->list, &client->xxc_completed);
 	client->xxc_num_submit--;
 	client->xxc_num_complete++;
@@ -144,12 +149,12 @@ static int xocl_xgq_handle_resp(struct xocl_xgq *xgq, int id, u64 resp_addr)
 	return 0;
 }
 
-int xocl_xgq_check_response(void *xgq_handle, int id)
+int xocl_xgq_check_response(struct xocl_xgq *xgq_handle, int client_id, int *status)
 {
-	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
+	struct xocl_xgq *xgq = xgq_handle;
 	struct xgq_cmd_cq_hdr hdr;
 	unsigned long flags = 0;
-	int target_id = id;
+	int target_id = client_id;
 	u64 addr = 0;
 	int ret = 0;
 
@@ -165,20 +170,22 @@ int xocl_xgq_check_response(void *xgq_handle, int id)
 		target_id = hdr.cid & CLIENT_ID_MASK;
 	}
 
-	xocl_xgq_handle_resp(xgq, target_id, addr);
+	ret = xocl_xgq_handle_resp(xgq, target_id, addr, status);
+	if (ret)
+		goto unlock_and_out;
 
 	xgq_notify_peer_consumed(&xgq->xx_xgq);
-	if (id != target_id)
+	if (client_id != target_id)
 		ret = -ENOENT;
 unlock_and_out:
 	spin_unlock_irqrestore(&xgq->xx_lock, flags);
 	return ret;
 }
 
-struct kds_command *xocl_xgq_get_command(void *xgq_handle, int id)
+struct kds_command *xocl_xgq_get_command(struct xocl_xgq *xgq_handle, int client_id)
 {
-	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
-	struct xocl_xgq_client *client = &xgq->xx_clients[id];
+	struct xocl_xgq *xgq = xgq_handle;
+	struct xocl_xgq_client *client = &xgq->xx_clients[client_id];
 	struct kds_command *xcmd = NULL;
 	unsigned long flags = 0;
 
@@ -196,11 +203,11 @@ struct kds_command *xocl_xgq_get_command(void *xgq_handle, int id)
 	return xcmd;
 }
 
-int xocl_xgq_abort(void *xgq_handle, int id, void *cond,
+int xocl_xgq_abort(struct xocl_xgq *xgq_handle, int client_id, void *cond,
 		   bool (*match)(struct kds_command *xcmd, void *cond))
 {
-	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
-	struct xocl_xgq_client *client = &xgq->xx_clients[id];
+	struct xocl_xgq *xgq = xgq_handle;
+	struct xocl_xgq_client *client = &xgq->xx_clients[client_id];
 	struct kds_command *xcmd = NULL;
 	struct kds_command *next = NULL;
 	unsigned long flags = 0;
@@ -223,9 +230,10 @@ int xocl_xgq_abort(void *xgq_handle, int id, void *cond,
 	return ret;
 }
 
-int xocl_xgq_attach(void *xgq_handle, void *client, u32 prot, int *client_id)
+int xocl_xgq_attach(struct xocl_xgq *xgq_handle, void *client, struct semaphore *sem,
+		    u32 prot, int *client_id)
 {
-	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
+	struct xocl_xgq *xgq = xgq_handle;
 	unsigned long flags = 0;
 
 	spin_lock_irqsave(&xgq->xx_lock, flags);
@@ -235,9 +243,10 @@ int xocl_xgq_attach(void *xgq_handle, void *client, u32 prot, int *client_id)
 
 	*client_id = xgq->xx_num_client++;
 	xgq->xx_clients[*client_id].xxc_client = client;
-	spin_lock_init(&xgq->xx_clients[*client_id].xxc_lock);
-
+	xgq->xx_clients[*client_id].xxc_notify_sem = sem;
 	xgq->xx_clients[*client_id].xxc_prot = prot;
+
+	spin_lock_init(&xgq->xx_clients[*client_id].xxc_lock);
 	INIT_LIST_HEAD(&xgq->xx_clients[*client_id].xxc_submitted);
 	INIT_LIST_HEAD(&xgq->xx_clients[*client_id].xxc_completed);
 	xgq->xx_clients[*client_id].xxc_num_submit = 0;
@@ -247,7 +256,22 @@ int xocl_xgq_attach(void *xgq_handle, void *client, u32 prot, int *client_id)
 	return 0;
 }
 
-void *xocl_xgq_init(struct xocl_xgq_info *info)
+irqreturn_t xgq_isr(int irq, void *arg)
+{
+	struct xocl_xgq *xgq = arg;
+	unsigned long flags = 0;
+	int i;
+
+	spin_lock_irqsave(&xgq->xx_lock, flags);
+
+	for (i = 0; i < xgq->xx_num_client; i++)
+		up(xgq->xx_clients[i].xxc_notify_sem);
+
+	spin_unlock_irqrestore(&xgq->xx_lock, flags);
+	return IRQ_HANDLED;
+}
+
+struct xocl_xgq *xocl_xgq_init(struct xocl_xgq_info *info)
 {
 	struct xocl_xgq *xgq = NULL;
 	int ret = 0;
@@ -290,9 +314,9 @@ void *xocl_xgq_init(struct xocl_xgq_info *info)
 	return xgq;
 }
 
-void xocl_xgq_fini(void *xgq_handle)
+void xocl_xgq_fini(struct xocl_xgq *xgq_handle)
 {
-	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
+	struct xocl_xgq *xgq = xgq_handle;
 
 	kfree(xgq);
 }

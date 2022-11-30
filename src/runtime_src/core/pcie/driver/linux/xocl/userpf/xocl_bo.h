@@ -69,6 +69,17 @@
  */
 #define XOCL_BO_ARE  (1 << 26)
 
+// Linux 5.18 uses iosys-map instead of dma-buf-map
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+	#define XOCL_MAP_TYPE iosys_map
+	#define XOCL_MAP_SET_VADDR iosys_map_set_vaddr
+	#define XOCL_MAP_IS_NULL iosys_map_is_null
+#else
+	#define XOCL_MAP_TYPE dma_buf_map
+	#define XOCL_MAP_SET_VADDR dma_buf_map_set_vaddr
+	#define XOCL_MAP_IS_NULL dma_buf_map_is_null
+#endif
+
 static inline bool xocl_bo_userptr(const struct drm_xocl_bo *bo)
 {
 	return (bo->flags == XOCL_BO_USERPTR);
@@ -117,7 +128,18 @@ static inline struct drm_xocl_dev *bo_xocl_dev(const struct drm_xocl_bo *bo)
 
 static inline unsigned xocl_bo_ddr_idx(unsigned user_flags)
 {
-        return user_flags & XRT_BO_FLAGS_MEMIDX_MASK;
+	struct xcl_bo_flags bo_flag = {};
+
+	bo_flag.flags = user_flags & XRT_BO_FLAGS_MEMIDX_MASK;
+	return bo_flag.bank; 
+}
+
+static inline unsigned xocl_bo_slot_idx(unsigned user_flags)
+{
+	struct xcl_bo_flags bo_flag = {};
+
+	bo_flag.flags = user_flags & XRT_BO_FLAGS_MEMIDX_MASK;
+	return bo_flag.slot; 
 }
 
 static inline unsigned xocl_bo_type(unsigned user_flags)
@@ -199,8 +221,8 @@ struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
 #else
-int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct dma_buf_map *map);
-void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct dma_buf_map *map);
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct XOCL_MAP_TYPE *map);
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct XOCL_MAP_TYPE *map);
 #endif
 
 int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);

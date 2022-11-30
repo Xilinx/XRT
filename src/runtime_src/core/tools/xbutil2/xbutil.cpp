@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 // Sub Commands
 #include "SubCmdAdvanced.h"
@@ -27,12 +15,14 @@
 #include "tools/common/SubCmd.h"
 #include "tools/common/SubCmdJSON.h"
 #include "tools/common/XBMain.h"
+#include "tools/common/XBUtilities.h"
 
 // System include files
-#include <boost/filesystem.hpp>
 #include <exception>
 #include <iostream>
 #include <string>
+
+#include <boost/filesystem.hpp>
 
 // Program entry
 int main( int argc, char** argv )
@@ -80,6 +70,8 @@ int main( int argc, char** argv )
     // If the exception is "operation_canceled" then don't print the header debug info
     if (e.code().value() != static_cast<int>(std::errc::operation_canceled))
       xrt_core::send_exception_message(e.what(), executable.c_str());
+    else // Handle the operation canceled case
+      XBUtilities::print_exception(e);
   } catch (const std::exception &e) {
     xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (...) {

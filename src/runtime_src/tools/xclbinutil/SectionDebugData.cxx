@@ -21,8 +21,8 @@
 // Static Variables / Classes
 SectionDebugData::init SectionDebugData::initializer;
 
-SectionDebugData::init::init() 
-{ 
+SectionDebugData::init::init()
+{
   auto sectionInfo = std::make_unique<SectionInfo>(DEBUG_DATA, "DEBUG_DATA", boost::factory<SectionDebugData*>());
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);

@@ -7,8 +7,8 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt_graph.h
   xrt_bo.h
   xrt_device.h
-  xrt_enqueue.h
   xrt_error.h
+  xrt_exception.h
   xrt_hw_context.h
   xrt_ini.h
   xrt_ip.h

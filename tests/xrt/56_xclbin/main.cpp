@@ -69,10 +69,29 @@ operator << (std::ostream& ostr, const xrt::xclbin::arg& arg)
 }
 
 std::ostream&
+operator << (std::ostream& ostr, xrt::xclbin::ip::ip_type ip_type)
+{
+  switch (ip_type) {
+  case xrt::xclbin::ip::ip_type::pl :
+    ostr << "pl";
+    return ostr;
+  case xrt::xclbin::ip::ip_type::ps :
+    ostr << "ps";
+    return ostr;
+  default:
+    ostr << "not defined";
+    return ostr;
+  }
+
+  return ostr;
+}
+
+std::ostream&
 operator << (std::ostream& ostr, const xrt::xclbin::ip& cu)
 {
-  ostr << "instance name:    " << cu.get_name() << "\n";
-  ostr << "base address:     0x" << std::hex << cu.get_base_address() << std::dec << "\n";
+  ostr << "instance name:  " << cu.get_name() << "\n";
+  ostr << "base address:   0x" << std::hex << cu.get_base_address() << std::dec << "\n";
+  ostr << "cu type:        " << cu.get_type() << "\n";
 
   // ip arguments
   for (const auto& arg : cu.get_args())
@@ -101,6 +120,17 @@ operator << (std::ostream& ostr, const xrt::xclbin::kernel& kernel)
   return ostr;
 }
 
+std::ostream&
+operator << (std::ostream& ostr, const xrt::xclbin::aie_partition& aiep)
+{
+  ostr << "aie_partition\n";
+  ostr << "operations_per_cycle: " << aiep.get_operations_per_cycle() << '\n';
+  ostr << "inference_fingerprint: " << aiep.get_inference_fingerprint() << '\n';
+  ostr << "pre_post_fingerprint: " << aiep.get_pre_post_fingerprint() << '\n';
+
+  return ostr;
+}
+
 void
 run_cpp(const std::string& xclbin_fnm)
 {
@@ -118,6 +148,9 @@ run_cpp(const std::string& xclbin_fnm)
 
   for (auto& mem : xclbin.get_mems())
     std::cout << mem << '\n';
+
+  for (auto& aiep : xclbin.get_aie_partitions())
+    std::cout << aiep << '\n';
 }
 
 void

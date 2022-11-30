@@ -1,20 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
 
 #include "device_linux.h"
 
@@ -29,67 +15,70 @@
 #include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
+#include "pcidev.h"
 #include "xrt.h"
-#include "scan.h"
 
 #include <array>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
-#include <string>
 #include <poll.h>
+#include <string>
 #include <sys/syscall.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
-#include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/tokenizer.hpp>
 
 namespace {
 
 namespace query = xrt_core::query;
-using pdev = std::shared_ptr<pcidev::pci_device>;
+using pdev = std::shared_ptr<xrt_core::pci::dev>;
 using key_type = query::key_type;
-const static int LEGACY_COUNT = 4;
 
 static int
-get_render_value(const std::string dir)
+get_render_value(const std::string& dir)
 {
-  static const std::string render_name = "renderD"; 
-  int instance_num = INVALID_ID;
-  std::string sub;
+  static const std::string render_name = "renderD";
+  int instance_num = INVALID_ID; // argh, what is this?
 
   boost::filesystem::path render_dirs(dir);
   if (!boost::filesystem::is_directory(render_dirs))
     return instance_num;
- 
+
   boost::filesystem::recursive_directory_iterator end_iter;
-    for(boost::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
-      if (iter->path().filename().string().compare(0,render_name.size(),render_name)== 0) {   
-        sub = iter->path().filename().string().substr(render_name.size());
-        instance_num = std::stoi(sub);
-        break;
-      }
+  for(boost::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
+    auto path = iter->path().filename().string();
+    if (!path.compare(0, render_name.size(), render_name)) {
+      auto sub = path.substr(render_name.size());
+      instance_num = std::stoi(sub);
+      break;
     }
-    return instance_num;
+  }
+  return instance_num;
 }
 
 inline pdev
 get_pcidev(const xrt_core::device* device)
 {
-  return pcidev::get_dev(device->get_device_id(), device->is_userpf());
+  auto pdev = xrt_core::pci::get_dev(device->get_device_id(), device->is_userpf());
+  if (!pdev)
+    throw xrt_core::error("Invalid device handle");
+  return pdev;
 }
 
-static std::vector<uint64_t> 
-get_counter_status_from_sysfs(const std::string &mon_name_address, 
-                              const std::string &sysfs_file_name, 
-                              size_t size, 
+static std::vector<uint64_t>
+get_counter_status_from_sysfs(const std::string &mon_name_address,
+                              const std::string &sysfs_file_name,
+                              size_t size,
                               const xrt_core::device* device)
 {
   auto pdev = get_pcidev(device);
 
-  /* Get full path to "name" sysfs file. 
-   * Then use that path to form full path to "counters"/"status" sysfs file 
+  /* Get full path to "name" sysfs file.
+   * Then use that path to form full path to "counters"/"status" sysfs file
    * which contains counter/status data for the monitor
    */
   std::string name_path = pdev->get_sysfs_path(mon_name_address, "name");
@@ -130,7 +119,7 @@ struct bdf
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
-    return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
+    return std::make_tuple(pdev->m_domain, pdev->m_bus, pdev->m_dev, pdev->m_func);
   }
 };
 
@@ -144,6 +133,45 @@ struct sdm_sensor_info
   using data_type = query::sdm_sensor_info::data_type;
   using sdr_req_type = query::sdm_sensor_info::sdr_req_type;
 
+  static result_type
+  read_sensors_raw_data(const xrt_core::device* device,
+                        std::string sname)
+  {
+    auto pdev = get_pcidev(device);
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    result_type output;
+    std::vector<std::string> stats;
+    std::string errmsg;
+
+    // The voltage_sensors_raw is printing in formatted string of each line
+    // Format: "%s,%u,%u,%u,%u"
+    // Using comma as separator.
+    pdev->sysfs_get("hwmon_sdm", sname, errmsg, stats);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    for (auto& line : stats) {
+      boost::char_separator<char> sep(",");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 6)
+        throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
+
+      data_type data { };
+      tokenizer::iterator tok_it = tokens.begin();
+
+      data.label     = std::string(*tok_it++);
+      data.input     = std::stoi(std::string(*tok_it++));
+      data.average   = std::stoi(std::string(*tok_it++));
+      data.max       = std::stoi(std::string(*tok_it++));
+      data.status    = std::stoi(std::string(*tok_it++));
+      data.unitm     = std::stoi(std::string(*tok_it++));
+      output.push_back(data);
+    }
+
+    return output;
+  }
+
   static data_type
   parse_sysfs_nodes(const xrt_core::device* device,
                     std::string tpath,
@@ -151,13 +179,14 @@ struct sdm_sensor_info
   {
     auto pdev = get_pcidev(device);
     //sensors are stored in hwmon sysfs dir with name ends with as follows.
-    std::array<std::string, 6> sname_end = {"label", "input", "max", "average", "highest", "status"};
+    std::array<std::string, 7> sname_end = {"label", "input", "max", "average", "status", "units", "unitm"};
     int max_end_types = sname_end.size();
     std::string errmsg, str_op, target_snode;
     // data_type has default constructor that initializes data members appropriately,
     // So, don't use "= {0}", it can only be used for fundamental types.
     data_type data {};
     uint32_t uint_op = 0;
+    int8_t unitm = 0;
 
     //Starting from index 0 in sname_end array, read and store all the sysfs nodes information
     for (int end_id = 0; end_id < max_end_types; end_id++)
@@ -197,16 +226,22 @@ struct sdm_sensor_info
           data.average = uint_op;
         break;
       case 4:
-        // read sysfs node <tpath>highest
-        pdev->sysfs_get<uint32_t>("", target_snode, errmsg, uint_op, EINVAL);
-        if (errmsg.empty())
-          data.highest = uint_op;
-        break;
-      case 5:
         // read sysfs node <tpath>status
         pdev->sysfs_get("", target_snode, errmsg, str_op);
         if (errmsg.empty())
           data.status = str_op;
+        break;
+      case 5:
+        // read sysfs node <tpath>units
+        pdev->sysfs_get("", target_snode, errmsg, str_op);
+        if (errmsg.empty())
+          data.units = str_op;
+        break;
+      case 6:
+        // read sysfs node <tpath>unitm
+        pdev->sysfs_get<int8_t>("", target_snode, errmsg, unitm, 0);
+        if (errmsg.empty())
+          data.unitm = unitm;
         break;
       }
     }
@@ -221,15 +256,20 @@ struct sdm_sensor_info
     result_type output;
     //sensors are stored in hwmon sysfs dir with name starts with as follows.
     std::array<std::string, 5> sname_start = {"curr", "in", "power", "temp", "fan"};
+    auto type = sname_start[static_cast<int>(req_type)];
+
+    if (type == "in")
+      return read_sensors_raw_data(device, "voltage_sensors_raw");
+
+    if (type == "curr")
+      return read_sensors_raw_data(device, "current_sensors_raw");
+
+    if (type == "temp")
+      return read_sensors_raw_data(device,"temp_sensors_raw");
+
     bool next_id = false;
     //All sensor sysfs nodes starts with 1 as starting index.
     int start_id = 1;
-    auto type = sname_start[(int)req_type];
-
-    //voltage sensor sysfs node starts with "in" with 0 as starting index.
-    if (!type.compare("in"))
-      start_id = 0;
-
     while (!next_id)
     {
       data_type data;
@@ -362,7 +402,7 @@ struct kds_cu_info
   }
 };
 
-struct instance 
+struct instance
 {
   using result_type = query::instance::result_type;
 
@@ -373,31 +413,146 @@ struct instance
     std::string errmsg;
     auto pdev = get_pcidev(device);
 
-    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->domain % pdev->bus % pdev->dev %  pdev->func);
+    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->m_domain % pdev->m_bus % pdev->m_dev % pdev->m_func);
     if(device->is_userpf())
-      pdev->instance = get_render_value(dev_root + sysfsname + "/drm");
+      pdev->m_instance = get_render_value(dev_root + sysfsname + "/drm");
     else
-      pdev->sysfs_get("", "instance", errmsg, pdev->instance,static_cast<uint32_t>(INVALID_ID));
-  
-    return pdev->instance;
+      pdev->sysfs_get("", "instance", errmsg, pdev->m_instance,static_cast<uint32_t>(INVALID_ID));
+
+    return pdev->m_instance;
   }
 
 };
 
-struct hotplug_offline 
+struct hotplug_offline
 {
   using result_type = query::hotplug_offline::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    auto mgmt_dev = pcidev::get_dev(device->get_device_id(), false);
+    auto mgmt_dev = xrt_core::pci::get_dev(device->get_device_id(), false);
 
     // Remove both user_pf and mgmt_pf
-    if (pcidev::shutdown(mgmt_dev, true, true))
+    if (xrt_core::pci::shutdown(mgmt_dev, true, true))
       throw xrt_core::query::sysfs_error("Hotplug offline failed");
 
     return true;
+  }
+};
+
+struct clk_scaling_info
+{
+  using result_type = query::clk_scaling_info::result_type;
+  using data_type = query::clk_scaling_info::data_type;
+
+  static result_type
+  get_legacy_clk_scaling_stat(const xrt_core::device* device)
+  {
+    auto pdev = get_pcidev(device);
+    result_type ctStats;
+    std::string errmsg;
+    data_type data = {};
+    uint32_t uint_op = 0;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_enabled", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.enable = uint_op ? true : false;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_support", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.support = uint_op ? true : false;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_critical_power_threshold", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.pwr_shutdown_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_critical_temp_threshold", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.temp_shutdown_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_power_limit", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.pwr_scaling_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_temp_limit", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.temp_scaling_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_temp_override", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.temp_scaling_ovrd_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_power_override", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.pwr_scaling_ovrd_limit = uint_op;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_power_override_en", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.pwr_scaling_ovrd_enable = uint_op ? true : false;
+
+    pdev->sysfs_get<uint32_t>("xmc", "scaling_threshold_temp_override_en", errmsg, uint_op, EINVAL);
+    if (errmsg.empty())
+      data.temp_scaling_ovrd_enable = uint_op ? true : false;
+
+    ctStats.push_back(data);
+    return ctStats;
+  }
+
+  static uint16_t
+  get_value(const std::string & keyValue)
+  {
+    std::vector<std::string> stat;
+    boost::split(stat, keyValue, boost::is_any_of(":"));
+    if (stat.size() != 2) {
+      const auto errMsg = boost::format("Error: KeyValue pair doesn't meet expected format '<key>:<value>': '%s'") % keyValue;
+      throw std::runtime_error(errMsg.str());
+    }
+    return std::stoi(std::string(stat.at(1)));
+  }
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto pdev = get_pcidev(device);
+    std::vector<std::string> stats;
+    result_type ctStats;
+    std::string errmsg;
+    bool is_versal = false;
+
+    pdev->sysfs_get<bool>("", "versal", errmsg, is_versal, false);
+	if (is_versal) {
+      pdev->sysfs_get("xgq_vmr", "clk_scaling_stat_raw", errmsg, stats);
+      if (!errmsg.empty())
+        return ctStats;
+	} else {
+      // Backward compatibilty check.
+      // Read XMC sysfs nodes
+      return get_legacy_clk_scaling_stat(device);
+    }
+
+    data_type data = {};
+    //parse one line at a time
+    // The clk_scaling_stat_raw is printing in formatted string of each line
+    // Format: "%s:%u"
+    // Using colon ":" as separator.
+    try {
+      data.support = get_value(stats[0]) ? true : false;
+      data.enable = get_value(stats[1]) ? true : false;
+      data.pwr_shutdown_limit = get_value(stats[2]);
+      data.temp_shutdown_limit = get_value(stats[3]);
+      data.pwr_scaling_limit = get_value(stats[4]);
+      data.temp_scaling_limit = get_value(stats[5]);
+      data.pwr_scaling_ovrd_limit = get_value(stats[6]);
+      data.temp_scaling_ovrd_limit = get_value(stats[7]);
+      data.pwr_scaling_ovrd_enable = get_value(stats[8]);
+      data.temp_scaling_ovrd_enable = get_value(stats[9]);
+    } catch (const std::exception& e) {
+      xrt_core::send_exception_message(e.what(), "Failed to receive clk_scaling_stat_raw data in specified format");
+    }
+
+    ctStats.push_back(data);
+    return ctStats;
   }
 };
 
@@ -467,7 +622,7 @@ struct qspi_status
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
-  
+
     std::string status_str, errmsg;
     pdev->sysfs_get("xmc", "xmc_qspi_status", errmsg, status_str);
     if (!errmsg.empty())
@@ -496,9 +651,9 @@ struct mac_addr_list
   {
     std::vector<std::string> list;
     auto pdev = get_pcidev(device);
-
     //legacy code exposes only 4 mac addr sysfs nodes (0-3)
-    for (int i=0; i < LEGACY_COUNT; i++) {
+    constexpr int legacy_count = 4;
+    for (int i=0; i < legacy_count; i++) {
       std::string addr, errmsg;
       pdev->sysfs_get("xmc", "mac_addr"+std::to_string(i), errmsg, addr);
       if (!addr.empty())
@@ -523,9 +678,9 @@ struct mac_addr_list
   }
 };
 
-/* AIM counter values 
+/* AIM counter values
  * In PCIe Linux, access the sysfs file for AIM to retrieve the AIM counter values
- */ 
+ */
 struct aim_counter
 {
   using result_type = query::aim_counter::result_type;
@@ -542,7 +697,7 @@ struct aim_counter
 
     result_type val_buf = get_counter_status_from_sysfs(aim_name, "counters", xdp::IP::AIM::NUM_COUNTERS, device);
 
-    /* Note that required return values are NOT in contiguous sequential order 
+    /* Note that required return values are NOT in contiguous sequential order
      * in AIM subdevice file. So, need to read only a few isolated indices in val_buf.
      */
     retval_buf[xdp::IP::AIM::report::WRITE_BYTES] = val_buf[xdp::IP::AIM::sysfs::WRITE_BYTES];
@@ -561,9 +716,9 @@ struct aim_counter
 };
 
 
-/* AM counter values 
+/* AM counter values
  * In PCIe Linux, access the sysfs file for AM to retrieve the AM counter values
- */ 
+ */
 struct am_counter
 {
   using result_type = query::am_counter::result_type;
@@ -584,9 +739,9 @@ struct am_counter
 };
 
 
-/* ASM counter values 
+/* ASM counter values
  * In PCIe Linux, access the sysfs file for ASM to retrieve the ASM counter values
- */ 
+ */
 struct asm_counter
 {
   using result_type = query::asm_counter::result_type;
@@ -606,9 +761,9 @@ struct asm_counter
 };
 
 
-/* LAPC status 
- * In PCIe Linux, access the sysfs file for LAPC to retrieve the LAPC status 
- */ 
+/* LAPC status
+ * In PCIe Linux, access the sysfs file for LAPC to retrieve the LAPC status
+ */
 struct lapc_status
 {
   using result_type = query::lapc_status::result_type;
@@ -633,9 +788,9 @@ struct lapc_status
 };
 
 
-/* SPC status 
+/* SPC status
  * In PCIe Linux, access the sysfs file for SPC to retrieve the SPC status
- */ 
+ */
 struct spc_status
 {
   using result_type = query::spc_status::result_type;
@@ -660,9 +815,9 @@ struct spc_status
 };
 
 
-/* Accelerator Deadlock Detector status 
+/* Accelerator Deadlock Detector status
  * In PCIe Linux, access the sysfs file for Accelerator Deadlock Detector to retrieve the deadlock status
- */ 
+ */
 struct accel_deadlock_status
 {
   using result_type = query::accel_deadlock_status::result_type;
@@ -754,7 +909,7 @@ struct sysfs_fcn<std::vector<VectorValueType>>
     return value;
   }
 
-  static void 
+  static void
   put(const pdev& dev, const char* subdev, const char* entry, const ValueType& value)
   {
     std::string err;
@@ -1028,6 +1183,7 @@ initialize_query_table()
   emplace_sysfs_get<query::is_mfg>                             ("", "mfg");
   emplace_sysfs_get<query::mfg_ver>                            ("", "mfg_ver");
   emplace_sysfs_get<query::is_recovery>                        ("", "recovery");
+  emplace_sysfs_get<query::is_versal>                          ("", "versal");
   emplace_sysfs_get<query::is_ready>                           ("", "ready");
   emplace_sysfs_get<query::is_offline>                         ("", "dev_offline");
   emplace_sysfs_get<query::f_flash_type>                       ("flash", "flash_type");
@@ -1048,6 +1204,7 @@ initialize_query_table()
   emplace_sysfs_get<query::ert_cu_read>                        ("ert_ctrl", "cu_read_cnt");
   emplace_sysfs_get<query::ert_cu_write>                       ("ert_ctrl", "cu_write_cnt");
   emplace_sysfs_get<query::ert_data_integrity>                 ("ert_ctrl", "data_integrity");
+  emplace_sysfs_get<query::ert_status>                         ("ert_ctrl", "status");
   emplace_sysfs_getput<query::config_mailbox_channel_disable>  ("", "config_mailbox_channel_disable");
   emplace_sysfs_getput<query::config_mailbox_channel_switch>   ("", "config_mailbox_channel_switch");
   emplace_sysfs_getput<query::config_xclbin_change>            ("", "config_xclbin_change");
@@ -1060,9 +1217,9 @@ initialize_query_table()
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
   emplace_func0_request<query::pcie_bdf,                       bdf>();
-  emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::instance,                       instance>();
   emplace_func0_request<query::hotplug_offline,                hotplug_offline>();
+  emplace_func0_request<query::clk_scaling_info,               clk_scaling_info>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_func4_request<query::am_counter,                     am_counter>();
@@ -1076,6 +1233,9 @@ initialize_query_table()
   emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
   emplace_sysfs_get<query::extended_vmr_status>                ("xgq_vmr", "vmr_verbose_info");
+  emplace_sysfs_getput<query::xgq_scaling_enabled>             ("xgq_vmr", "xgq_scaling_enable");
+  emplace_sysfs_getput<query::xgq_scaling_power_override>      ("xgq_vmr", "xgq_scaling_power_override");
+  emplace_sysfs_getput<query::xgq_scaling_temp_override>       ("xgq_vmr", "xgq_scaling_temp_override");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
   emplace_sysfs_get<query::hwmon_sdm_serial_num>               ("hwmon_sdm", "serial_num");
@@ -1086,6 +1246,7 @@ initialize_query_table()
   emplace_sysfs_get<query::hwmon_sdm_mac_addr1>                ("hwmon_sdm", "mac_addr1");
   emplace_sysfs_get<query::hwmon_sdm_fan_presence>             ("hwmon_sdm", "fan_presence");
   emplace_sysfs_get<query::hwmon_sdm_revision>                 ("hwmon_sdm", "revision");
+  emplace_sysfs_get<query::hwmon_sdm_mfg_date>                 ("hwmon_sdm", "mfg_date");
 
   emplace_sysfs_get<query::cu_size>                            ("", "size");
   emplace_sysfs_get<query::cu_read_range>                      ("", "read_range");
@@ -1143,7 +1304,7 @@ void
 device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
-  if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
+  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
     throw error(err, "read failed");
 }
 
@@ -1151,16 +1312,17 @@ void
 device_linux::
 write(uint64_t offset, const void* buf, uint64_t len) const
 {
-  if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
+  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
     throw error(err, "write failed");
 }
 
 void
 device_linux::
-reset(query::reset_type& key) const 
+reset(query::reset_type& key) const
 {
   std::string err;
-  pcidev::get_dev(get_device_id(), false)->sysfs_put(key.get_subdev(), key.get_entry(), err, key.get_value());
+  xrt_core::pci::get_dev(get_device_id(), false)->sysfs_put(
+    key.get_subdev(), key.get_entry(), err, key.get_value());
   if (!err.empty())
     throw error("reset failed");
 }
@@ -1169,14 +1331,14 @@ int
 device_linux::
 open(const std::string& subdev, int flag) const
 {
-  return pcidev::get_dev(get_device_id(), false)->open(subdev, flag);
+  return xrt_core::pci::get_dev(get_device_id(), false)->open(subdev, flag);
 }
 
 void
 device_linux::
 close(int dev_handle) const
 {
-  pcidev::get_dev(get_device_id(), false)->close(dev_handle);
+  xrt_core::pci::get_dev(get_device_id(), false)->close(dev_handle);
 }
 
 void
@@ -1192,7 +1354,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
     xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
-    ret = pcidev::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    ret = xrt_core::pci::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
   } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
   }
@@ -1202,11 +1364,54 @@ xclmgmt_load_xclbin(const char* buffer) const {
   }
 }
 
+void
+device_linux::
+device_shutdown() const {
+  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
+  // hot reset pcie device
+  if (xrt_core::pci::shutdown(mgmt_dev))
+    throw xrt_core::error("Hot resetting pci device failed.");
+}
+
+void
+device_linux::
+device_online() const {
+  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
+  auto peer_dev = mgmt_dev->lookup_peer_dev();
+  std::string errmsg;
+
+  peer_dev->sysfs_put("", "shutdown", errmsg, "0\n");
+  if (!errmsg.empty())
+    throw xrt_core::error("Userpf is not online.");
+
+  const static int dev_timeout = 60;
+  int wait = 0;
+  do {
+    auto hdl = peer_dev->open("", O_RDWR);
+    if (hdl != -1) {
+      peer_dev->close(hdl);
+      break;
+    }
+    sleep(1);
+  } while (++wait < dev_timeout);
+
+  if (wait == dev_timeout)
+    throw xrt_core::error("User function is not back online.");
+}
+
 ////////////////////////////////////////////////////////////////
 // Custom ishim implementation
 // Redefined from xrt_core::ishim for functions that are not
 // universally implemented by all shims
 ////////////////////////////////////////////////////////////////
+void
+device_linux::
+set_cu_read_range(cuidx_type cuidx, uint32_t start, uint32_t size)
+{
+  if (auto ret = xclIPSetReadRange(get_device_handle(), cuidx.index, start, size))
+    throw xrt_core::error(ret, "failed to set cu read range");
+}
+
 // User Managed IP Interrupt Handling
 xclInterruptNotifyHandle
 device_linux::
@@ -1214,7 +1419,7 @@ open_ip_interrupt_notify(unsigned int ip_index)
 {
   return xclOpenIPInterruptNotify(get_device_handle(), ip_index, 0);
 }
-  
+
 void
 device_linux::
 close_ip_interrupt_notify(xclInterruptNotifyHandle handle)
@@ -1271,7 +1476,7 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
   throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
 
-xclBufferHandle
+xrt_buffer_handle
 device_linux::
 import_bo(pid_t pid, xclBufferExportHandle ehdl)
 {

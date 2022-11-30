@@ -21,6 +21,7 @@
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+#include <iostream>
 
 
 #ifdef _WIN32
@@ -101,6 +102,8 @@ xilinx_xrt()
   if (xrt.empty()){
 #if defined (__aarch64__) || defined (__arm__)
     xrt = bfs::path("/usr");
+#elif defined (_WIN32)
+    xrt = bfs::path("C:/Windows/System32/AMD");
 #else
     throw std::runtime_error("XILINX_XRT not set");
 #endif
@@ -114,7 +117,7 @@ module_path(const std::string& module)
 {
   auto path = xilinx_xrt();
 #ifdef _WIN32
-  path /= "bin/" + module + ".dll";
+  path /= module + ".dll";
 #else
   path /= "lib/xrt/module/lib" + module + ".so";
 #endif
@@ -133,7 +136,7 @@ shim_path()
   auto name = shim_name();
 
 #ifdef _WIN32
-  path /= "bin/" + name + ".dll";
+  path /= name + ".dll";
 #else
   path /= "lib/lib" + name + ".so." + XRT_VERSION_MAJOR;
 #endif
@@ -142,6 +145,27 @@ shim_path()
     throw std::runtime_error("No such library '" + path.string() + "'");
 
   return path;
+}
+
+static std::vector<std::string>
+driver_plugin_paths()
+{
+  std::vector<std::string> ret;
+  bfs::directory_iterator p{shim_path().parent_path()};
+
+  // All driver plug-ins are in the same directory as shim .so and with below prefix and suffix.
+  const std::string pre = "libxrt_driver_";
+  const std::string suf = std::string(".so.") + XRT_VERSION_MAJOR;
+  while (p != bfs::directory_iterator{}) {
+    const auto name = p->path().filename().string();
+    if ((name.size() > (pre.size() + suf.size())) &&
+      !name.compare(0, pre.size(), pre) &&
+      !name.compare(name.size() - suf.size(), suf.size(), suf))
+      ret.push_back(p->path().string());
+    p++;
+  }
+
+  return ret;
 }
 
 static void*
@@ -189,6 +213,15 @@ shim_loader()
 {
   auto path = shim_path();
   load_library(path.string());
+}
+
+driver_loader::
+driver_loader()
+{
+  auto paths = driver_plugin_paths();
+
+  for (const auto& p : paths)
+    load_library(p);
 }
 
 } // xrt_core

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -83,6 +84,7 @@ namespace xdp {
 
   void NOCProfilingPlugin::pollNOCCounters()
   {
+    /*
     uint64_t pollnum = 0;
 
     while (mKeepPolling) {
@@ -131,7 +133,7 @@ namespace xdp {
           values.push_back(writeMaxLatency);
 
           // Add sample to dynamic database
-	        db->getDynamicInfo().addNOCSample(index, timestamp, cellName, values);
+	  //      db->getDynamicInfo().addNOCSample(index, timestamp, cellName, values);
 	        ++index;
         }
       }
@@ -139,6 +141,7 @@ namespace xdp {
       std::this_thread::sleep_for(std::chrono::milliseconds(mPollingInterval));
       ++pollnum;      
     }
+    */
   }
 
 } // end namespace xdp

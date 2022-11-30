@@ -23,28 +23,28 @@
 // --------------- C L A S S :   S e c t i o n M C S -------------------------
 class SectionMCS : public Section {
  public:
-  static MCS_TYPE getSubSectionEnum(const std::string &_sSubSectionName);
-  static const std::string & getSubSectionName(MCS_TYPE eSubSection);
+  static MCS_TYPE getSubSectionEnum(const std::string& _sSubSectionName);
+  static const std::string& getSubSectionName(MCS_TYPE eSubSection);
 
  public:
-  bool subSectionExists(const std::string &_sSubSectionName) const override;
+  bool subSectionExists(const std::string& _sSubSectionName) const override;
 
  protected:
-  void getSubPayload(char* _pDataSection, unsigned int _sectionSize, std::ostringstream &_buf, const std::string &_sSubSectionName, Section::FormatType _eFormatType) const override;
+  void getSubPayload(char* _pDataSection, unsigned int _sectionSize, std::ostringstream& _buf, const std::string& _sSubSectionName, Section::FormatType _eFormatType) const override;
   void marshalToJSON(char* _buffer, unsigned int _pDataSegment, boost::property_tree::ptree& _ptree) const override;
-  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, Section::FormatType _eFormatType, std::ostringstream &_buffer) const override;
-  void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
+  void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string& _sSubSection, Section::FormatType _eFormatType, std::ostringstream& _buffer) const override;
+  void writeSubPayload(const std::string& _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const override;
 
-  typedef std::pair<MCS_TYPE, std::ostringstream *> mcsBufferPair;
-  void extractBuffers(const char* _pDataSection, unsigned int _sectionSize, std::vector<mcsBufferPair> &_mcsBuffers) const;
-  void buildBuffer(const std::vector<mcsBufferPair> &_mcsBuffers, std::ostringstream &_buffer) const;
+  typedef std::pair<MCS_TYPE, std::ostringstream*> mcsBufferPair;
+  void extractBuffers(const char* _pDataSection, unsigned int _sectionSize, std::vector<mcsBufferPair>& _mcsBuffers) const;
+  void buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers, std::ostringstream& _buffer) const;
 
  private:
   // Static initializer helper class
   static class init {
    public:
     init();
-  } initializer; 
+  } initializer;
 };
 
 #endif

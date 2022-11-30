@@ -19,10 +19,9 @@
 #include "command.h"
 #include "context_mgr.h"
 #include "device_int.h"
-#include "enqueue.h"
-#include "exec.h"
 #include "handle.h"
 #include "hw_context_int.h"
+#include "hw_queue.h"
 #include "kernel_int.h"
 #include "native_profile.h"
 #include "xclbin_int.h"
@@ -41,10 +40,12 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <bitset>
 #include <condition_variable>
 #include <chrono>
 #include <cstdarg>
+#include <cstdint>
 #include <cstdlib>
 #include <map>
 #include <memory>
@@ -156,6 +157,29 @@ debug_cmd_packet(const std::string& msg, const ert_packet* pkt)
     ostr << "pkt->data[" << std::setw(indent3) << i << "] = 0x"
          << std::setw(indent8) << std::hex << pkt->data[i] << std::dec << "\n";
   return fnm;
+}
+
+std::string
+cmd_state_to_string(ert_cmd_state state)
+{
+  static const std::map<ert_cmd_state, const char*> ert_cmd_state_string {
+   {ERT_CMD_STATE_NEW, "ERT_CMD_STATE_NEW"},
+   {ERT_CMD_STATE_QUEUED, "ERT_CMD_STATE_QUEUED"},
+   {ERT_CMD_STATE_RUNNING, "ERT_CMD_STATE_RUNNING"},
+   {ERT_CMD_STATE_COMPLETED, "ERT_CMD_STATE_COMPLETED"},
+   {ERT_CMD_STATE_ERROR, "ERT_CMD_STATE_ERROR"},
+   {ERT_CMD_STATE_ABORT, "ERT_CMD_STATE_ABORT"},
+   {ERT_CMD_STATE_SUBMITTED, "ERT_CMD_STATE_SUBMITTED"},
+   {ERT_CMD_STATE_TIMEOUT, "ERT_CMD_STATE_TIMEOUT"},
+   {ERT_CMD_STATE_NORESPONSE, "ERT_CMD_STATE_NORESPONSE"},
+   {ERT_CMD_STATE_SKERROR, "ERT_CMD_STATE_SKERROR"},
+   {ERT_CMD_STATE_SKCRASHED, "ERT_CMD_STATE_SKCRASHED"}
+  };
+
+  auto itr = ert_cmd_state_string.find(state);
+  return itr == ert_cmd_state_string.end()
+    ? "out of range"
+    : itr->second;
 }
 
 // Helper class for representing an in-memory kernel argument.  User
@@ -277,14 +301,14 @@ value_to_uint32_vector(ValueType value)
   return value_to_uint32_vector(&value, sizeof(value));
 }
 
-static xrt::hw_context::qos
-mode_to_qos(xrt::kernel::cu_access_mode mode)
+static xrt::hw_context::access_mode
+hwctx_access_mode(xrt::kernel::cu_access_mode mode)
 {
   switch (mode) {
   case xrt::kernel::cu_access_mode::exclusive:
-    return xrt::hw_context::qos::exclusive;
+    return xrt::hw_context::access_mode::exclusive;
   case xrt::kernel::cu_access_mode::shared:
-    return xrt::hw_context::qos::shared;
+    return xrt::hw_context::access_mode::shared;
   default:
     throw std::runtime_error("unexpected access mode for kernel");
   }
@@ -292,12 +316,12 @@ mode_to_qos(xrt::kernel::cu_access_mode mode)
 
 // Transition only, to be removed
 static xrt::kernel::cu_access_mode
-qos_to_mode(xrt::hw_context::qos qos)
+cu_access_mode(xrt::hw_context::access_mode mode)
 {
-  switch (qos) {
-  case xrt::hw_context::qos::exclusive:
+  switch (mode) {
+  case xrt::hw_context::access_mode::exclusive:
     return xrt::kernel::cu_access_mode::exclusive;
-  case xrt::hw_context::qos::shared:
+  case xrt::hw_context::access_mode::shared:
     return xrt::kernel::cu_access_mode::shared;
   default:
     throw std::runtime_error("unexpected access mode for kernel");
@@ -516,13 +540,10 @@ public:
   {
     // - IP index is unique per device
     // - IP index is unique per domain
-    // - IP index is unique per slot
+    // - IP index is unique per slot (is this true for PS kernels in PL/PS xclbin?)
     // - IP index can be shared between hwctx, provided hwctx refer
     //   to same slot
-    // - A slot can contain only one domain type of CUs
-    //
-    // In 2022.2, before true support for multi-xclbin, it is assumed
-    // that hwctx referring to same xclbin also shares the same ctxhdl.
+    // - A slot can contain only one domain type of CUs (PL/PS xclbin ??)
     //
     // For cases (drivers) that support multi-xclbin and sharing it is
     // assumed that each hwctx is unique and has a unique ctx handle,
@@ -555,7 +576,7 @@ public:
   access_mode
   get_access_mode() const
   {
-    return qos_to_mode(m_hwctx.get_qos());
+    return cu_access_mode(m_hwctx.get_mode());
   }
 
   // For symmetry
@@ -573,6 +594,12 @@ public:
   get_address() const
   {
     return m_address;
+  }
+
+  xrt_core::cuidx_type
+  get_index() const
+  {
+    return m_idx;
   }
 
   unsigned int
@@ -612,6 +639,8 @@ public:
   ip_context(ip_context&&) = delete;
   ip_context& operator=(ip_context&) = delete;
   ip_context& operator=(ip_context&&) = delete;
+
+  std::pair<uint32_t, uint32_t> m_readrange = {0,0};  // start address, size
 
 private:
   // regular CU
@@ -659,8 +688,9 @@ private:
 
 public:
   explicit
-  kernel_command(std::shared_ptr<device_type> dev)
+  kernel_command(std::shared_ptr<device_type> dev, xrt_core::hw_queue hwqueue)
     : m_device(std::move(dev))
+    , m_hwqueue(std::move(hwqueue))
     , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
     , m_done(true)
   {
@@ -713,6 +743,16 @@ public:
     auto state = get_state_raw();
     notify(state);  // update command state accordingly
     return state;
+  }
+
+  // Return kernel return code from command object for PS kernels
+  uint32_t
+  get_return_code() const
+  {
+    auto pkt = get_ert_packet();
+    uint32_t ret;
+    ert_read_return_code(pkt, ret);
+    return ret;
   }
 
   // Cast underlying exec buffer to its requested type
@@ -791,23 +831,20 @@ public:
   }
 
   // Submit the command for execution.
-  // The argument event, if valid, means execution is event based
-  // which means that event must be notified upon completion.
   void
-  run(const std::shared_ptr<xrt::event_impl>& event = nullptr)
+  run()
   {
     {
       std::lock_guard<std::mutex> lk(m_mutex);
       if (!m_done)
         throw std::runtime_error("bad command state, can't launch");
-      m_event = event;
-      m_managed = ( m_event || (m_callbacks && !m_callbacks->empty()) );
+      m_managed = (m_callbacks && !m_callbacks->empty());
       m_done = false;
     }
     if (m_managed)
-      xrt_core::exec::managed_start(this);
+      m_hwqueue.managed_start(this);
     else
-      xrt_core::exec::unmanaged_start(this);
+      m_hwqueue.unmanaged_start(this);
   }
 
   // Wait for command completion
@@ -820,27 +857,27 @@ public:
         m_exec_done.wait(lk);
     }
     else {
-      xrt_core::exec::unmanaged_wait(this);
+      m_hwqueue.wait(this);
     }
 
     return get_state_raw(); // state wont change after wait
   }
 
-  ert_cmd_state
+  std::pair<ert_cmd_state, std::cv_status>
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
     if (m_managed) {
       std::unique_lock<std::mutex> lk(m_mutex);
       while (!m_done)
         if (m_exec_done.wait_for(lk, timeout_ms) == std::cv_status::timeout)
-          return ERT_CMD_STATE_TIMEOUT;
+          return {get_state_raw(), std::cv_status::timeout};
     }
     else {
-      if (xrt_core::exec::unmanaged_wait(this, timeout_ms) == std::cv_status::timeout)
-        return ERT_CMD_STATE_TIMEOUT;
+      if (m_hwqueue.wait(this, timeout_ms) == std::cv_status::timeout)
+        return {get_state_raw(), std::cv_status::timeout};
     }
 
-    return get_state_raw(); // state wont change after wait
+    return {get_state_raw(), std::cv_status::no_timeout};
   }
 
   ////////////////////////////////////////////////////////////////
@@ -858,7 +895,7 @@ public:
     return m_device->get_core_device();
   }
 
-  xclBufferHandle
+  xrt_buffer_handle
   get_exec_bo() const override
   {
     return m_execbuf.first;
@@ -881,27 +918,19 @@ public:
       XRT_DEBUGF("kernel_command::notify() m_uid(%d) m_state(%d)\n", m_uid, s);
       complete = m_done = true;
       callbacks = (m_callbacks && !m_callbacks->empty());
-      if (m_event)
-        xrt_core::enqueue::done(m_event.get());
     }
 
     if (complete) {
       m_exec_done.notify_all();
       if (callbacks)
         run_callbacks(s);
-
-      // Clear the event if any.  This must be last since if used, it
-      // holds the lifeline to this command object which could end up
-      // being deleted when the event is cleared.  (Not sure this
-      // lifeline thing is true).
-      m_event.reset();
     }
   }
 
 private:
   std::shared_ptr<device_type> m_device;
-  mutable std::shared_ptr<xrt::event_impl> m_event;
-  execbuf_type m_execbuf; // underlying execution buffer
+  xrt_core::hw_queue m_hwqueue;  // hwqueue for command submission
+  execbuf_type m_execbuf;        // underlying execution buffer
   unsigned int m_uid = 0;
   bool m_managed = false;
   mutable bool m_done = false;
@@ -1233,6 +1262,7 @@ private:
   std::shared_ptr<device_type> device; // shared ownership
   std::shared_ptr<ctxmgr_type> ctxmgr; // device context mgr ownership
   xrt::hw_context hwctx;               // context for hw resources if any (can be null)
+  xrt_core::hw_queue hwqueue;          // hwqueue for command submission (shared by all runs)
   xrt::xclbin xclbin;                  // xclbin with this kernel
   xrt::xclbin::kernel xkernel;         // kernel xclbin metadata
   std::vector<argument> args;          // kernel args sorted by argument index
@@ -1337,7 +1367,10 @@ private:
       throw std::runtime_error("Cannot read or write kernel with multiple compute units");
     auto& ipctx = ipctxs.back();
     auto mode = ipctx->get_access_mode();
-    if (!force && mode != ip_context::access_mode::exclusive && !xrt_core::config::get_rw_shared())
+    if (!force
+        && mode != ip_context::access_mode::exclusive // shared cu cannot normally be read, except
+        && !xrt_core::config::get_rw_shared()         //  - driver allows rw of shared cu
+        && !std::get<1>(ipctx->m_readrange))          //  - special case no bounds check here
       throw std::runtime_error("Cannot read or write kernel with shared access");
 
     if ((offset + sizeof(uint32_t)) > ipctx->get_size())
@@ -1430,6 +1463,7 @@ public:
     , device(std::move(dev))                                   // share ownership
     , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , hwctx(std::move(ctx))                                    // hw context
+    , hwqueue(hwctx)                                           // hw queue
     , xclbin(hwctx.get_xclbin())                               // xclbin with kernel
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
@@ -1639,6 +1673,18 @@ public:
   get_core_device() const
   {
     return device->get_core_device();
+  }
+
+  xrt::hw_context
+  get_hw_context() const
+  {
+    return hwctx;
+  }
+
+  xrt_core::hw_queue
+  get_hw_queue() const
+  {
+    return hwqueue;
   }
 
   const std::vector<argument>&
@@ -1897,7 +1943,6 @@ class run_impl
   std::bitset<max_cus> cumask;            // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
-  std::shared_ptr<xrt::event_impl> event; // event based execution, nullptr otherwise
   uint32_t* data;                         // command argument data payload @0x0
   uint32_t uid;                           // internal unique id for debug
   std::unique_ptr<arg_setter> asetter;    // helper to populate payload data
@@ -1922,21 +1967,6 @@ public:
     cmd->pop_callback();
   }
 
-  // set_event() - enqueued notifcation of event
-  //
-  // @event:  Event to notify upon completion of run
-  //
-  // Event notification is used when a kernel/run is enqueued in an
-  // event graph.  When run completes, the event must be notified.
-  //
-  // The event (stored in the event graph) participates in lifetime
-  // of the run object. (Not sure this lifetime thing is true).
-  void
-  set_event(const std::shared_ptr<event_impl>& evp)
-  {
-    event = evp;
-  }
-
   // run_type() - constructor
   //
   // @krnl:  kernel object to run
@@ -1955,7 +1985,7 @@ public:
     , ips(kernel->get_ips())
     , cumask(kernel->get_cumask())
     , core_device(kernel->get_core_device())      // cache core device
-    , cmd(std::make_shared<kernel_command>(kernel->get_device()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue()))
     , data(kernel->initialize_command(cmd.get())) // default encodes CUs
     , uid(create_uid())
   {
@@ -1970,7 +2000,7 @@ public:
     , ips(rhs->ips)
     , cumask(rhs->cumask)
     , core_device(rhs->core_device)
-    , cmd(std::make_shared<kernel_command>(kernel->get_device()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue()))
     , data(clone_command_data(rhs))
     , uid(create_uid())
     , encode_cumasks(rhs->encode_cumasks)
@@ -2149,8 +2179,7 @@ public:
 
     XRT_DEBUG_CALL(debug_cmd_packet(kernel->get_name(), pkt));
 
-    cmd->run(event);
-    event.reset();
+    cmd->run();
   }
 
   void
@@ -2182,7 +2211,7 @@ public:
     // TODO: find offset once in meta data
     uint32_t value = 0;
     set_offset_value(mailbox_auto_restart_cntr, &value, sizeof(value));
-    wait(std::chrono::milliseconds{0});
+    cmd->wait();
   }
 
   ert_cmd_state
@@ -2196,7 +2225,7 @@ public:
     }
 
     // create and populate abort command
-    auto abort_cmd = std::make_shared<kernel_command>(kernel->get_device());
+    auto abort_cmd = std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue());
     auto abort_pkt = abort_cmd->get_ert_cmd<ert_abort_cmd*>();
     abort_pkt->state = ERT_CMD_STATE_NEW;
     abort_pkt->count = sizeof(abort_pkt->exec_bo_handle) / sizeof(uint32_t);
@@ -2212,11 +2241,47 @@ public:
     return cmd->wait();
   }
 
-  // wait() - wait for execution to complete
+  // Deprecated wait() semantics.
+  // Return ERT_CMD_STATE_TIMEOUT on API timeout (bad!)
+  // Return ert cmd state otherwise
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
   {
-    return timeout_ms.count() ? cmd->wait(timeout_ms) : cmd->wait();
+    if (timeout_ms.count()) {
+      auto [ert_state, cv_status] = cmd->wait(timeout_ms);
+      return (cv_status == std::cv_status::timeout)
+        ? ERT_CMD_STATE_TIMEOUT
+        : ert_state;
+    }
+
+    return cmd->wait();
+  }
+
+
+  // wait() - wait for execution to complete
+  // Return std::cv_status::timeout on timeout
+  // Return std::cv_status::no_timeout on successful completion
+  // Throw on abnormal command termination
+  std::cv_status
+  wait_throw_on_error(const std::chrono::milliseconds& timeout_ms) const
+  {
+    ert_cmd_state state {ERT_CMD_STATE_NEW}; // initial value doesn't matter
+    if (timeout_ms.count()) {
+      auto [ert_state, cv_status] = cmd->wait(timeout_ms);
+      if (cv_status == std::cv_status::timeout)
+        return std::cv_status::timeout;
+
+      state = ert_state;
+    }
+    else {
+      state = cmd->wait();
+    }
+
+    if (state == ERT_CMD_STATE_COMPLETED)
+      return std::cv_status::no_timeout;
+
+    std::string msg = "Command failed to complete successfully (" + cmd_state_to_string(state) + ")";
+    throw xrt::run::command_error(state, msg);
   }
 
   // state() - get current execution state
@@ -2224,6 +2289,16 @@ public:
   state() const
   {
     return cmd->get_state();
+  }
+
+  // return_code() - get kernel execution return code
+  uint32_t
+  return_code() const
+  {
+    auto ktype = kernel->get_kernel_type();
+    if (ktype == kernel_type::ps)
+      return cmd->get_return_code();
+    return 0;
   }
 
   ert_packet*
@@ -2500,7 +2575,7 @@ public:
   run_update_type(run_impl* r)
     : run(r)
     , kernel(run->get_kernel())
-    , cmd(std::make_shared<kernel_command>(kernel->get_device()))
+    , cmd(std::make_shared<kernel_command>(kernel->get_device(), kernel->get_hw_queue()))
   {
     auto kcmd = cmd->get_ert_cmd<ert_init_kernel_cmd*>();
     auto rcmd = run->get_ert_cmd<ert_start_kernel_cmd*>();
@@ -2573,6 +2648,17 @@ public:
   }
 };
 
+class run::command_error_impl
+{
+public:
+  ert_cmd_state m_state;
+  std::string m_message;
+
+  command_error_impl(ert_cmd_state state, const std::string& msg)
+    : m_state(state), m_message(msg)
+  {}
+};
+
 } // namespace xrt
 
 namespace {
@@ -2607,7 +2693,6 @@ get_device(xrtDeviceHandle dhdl)
   if (!device) {
     // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
     device = std::shared_ptr<device_type>(new device_type(dhdl));
-    xrt_core::exec::init(device->get_core_device());
     devices.emplace(std::make_pair(dhdl, device));
   }
   return device;
@@ -2625,7 +2710,6 @@ get_device(const std::shared_ptr<xrt_core::device>& core_device)
   if (!device) {
     // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
     device = std::shared_ptr<device_type>(new device_type(core_device));
-    xrt_core::exec::init(device->get_core_device());
     devices.emplace(std::make_pair(dhdl, device));
   }
   return device;
@@ -2688,8 +2772,8 @@ alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     const std::string& name,
 	     xrt::kernel::cu_access_mode mode)
 {
-  auto qos = mode_to_qos(mode);  // legacy access mode to hwctx qos
-  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, qos}, name);
+  auto amode = hwctx_access_mode(mode);  // legacy access mode to hwctx qos
+  return std::make_shared<xrt::kernel_impl>(dev, xrt::hw_context{dev->get_xrt_device(), xclbin_id, amode}, name);
 }
 
 static std::shared_ptr<xrt::kernel_impl>
@@ -2719,8 +2803,8 @@ xrtKernelHandle
 xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, ip_context::access_mode am)
 {
   auto device = get_device(dhdl);
-  auto qos = mode_to_qos(am);  // legacy access mode to hwctx qos
-  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid, qos}, name);
+  auto mode = hwctx_access_mode(am);  // legacy access mode to hwctx qos
+  auto kernel = std::make_shared<xrt::kernel_impl>(device, xrt::hw_context{device->get_xrt_device(), xclbin_uuid, mode}, name);
   auto handle = kernel.get();
   kernels.add(handle, std::move(kernel));
   return handle;
@@ -2800,8 +2884,8 @@ namespace xrt_core { namespace kernel_int {
 void
 copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
                   size_t sz,
-                  xclBufferHandle dst_bo, size_t dst_offset,
-                  xclBufferHandle src_bo, size_t src_offset)
+                  xrt_buffer_handle dst_bo, size_t dst_offset,
+                  xrt_buffer_handle src_bo, size_t src_offset)
 {
 #ifndef _WIN32
   if (is_sw_emulation())
@@ -2810,11 +2894,12 @@ copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
   // Construct a kernel command to copy bo.  Kernel commands
   // must be shared ptrs
   auto dev = get_device(core_device);
-  auto cmd = std::make_shared<kernel_command>(dev);
+  auto cmd = std::make_shared<kernel_command>(dev, xrt_core::hw_queue{core_device.get()});
 
   // Get and fill the underlying packet
   auto pkt = cmd->get_ert_cmd<ert_start_copybo_cmd*>();
-  ert_fill_copybo_cmd(pkt, src_bo, dst_bo, src_offset, dst_offset, sz);
+  ert_fill_copybo_cmd(pkt, to_xclBufferHandle(src_bo), to_xclBufferHandle(dst_bo),
+    src_offset, dst_offset, sz);
 
   // Run the command and wait for completion
   cmd->run();
@@ -2961,12 +3046,31 @@ wait(const std::chrono::milliseconds& timeout_ms) const
     });
 }
 
+std::cv_status
+run::
+wait2(const std::chrono::milliseconds& timeout_ms) const
+{
+  return xdp::native::profiling_wrapper("xrt::run::wait",
+    [this, &timeout_ms] {
+      return handle->wait_throw_on_error(timeout_ms);
+    });
+}
+
 ert_cmd_state
 run::
 state() const
 {
   return xdp::native::profiling_wrapper("xrt::run::state", [this]{
     return handle->state();
+  });
+}
+
+uint32_t
+run::
+return_code() const
+{
+  return xdp::native::profiling_wrapper("xrt::run::return_code", [this]{
+    return handle->return_code();
   });
 }
 
@@ -3023,15 +3127,6 @@ add_callback(ert_cmd_state state,
   // these objects are transient.
   auto key = handle.get();
   handle->add_callback([=](ert_cmd_state state) { fcn(key, state, data); });
-}
-
-void
-run::
-set_event(const std::shared_ptr<event_impl>& event) const
-{
-  xdp::native::profiling_wrapper("xrt::run::set_event", [this, &event]{
-    handle->set_event(event);
-  });
 }
 
 ert_packet*
@@ -3111,6 +3206,37 @@ get_xclbin() const
   return handle->get_xclbin();
 }
 
+// Experimental API
+// This function defines the read-only register range on a compute unit
+// associated with a kernel if and only if (1) the kernel has exactly
+// one compute unit and (2) the compute unit is opened in shared mode.
+// The read range allows xrt::kernel::read_register to read directly
+// from compute unit registers even if the compute unit is shared between
+// this process and another or between multiple kernel objects.
+//
+// @start: the start offset of the read-only register range
+// @size: the size of the read-only register range.
+//
+// Throws on error.
+void
+set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size)
+{
+  auto handle = kernel.get_handle();
+  const auto& ips = handle->get_ips();
+  if (ips.size() != 1)
+    throw xrt_core::error("read range only supported for kernels with one compute unit");
+
+  auto ip = ips.front();
+  if (ip->get_access_mode() != xrt::kernel::cu_access_mode::shared)
+    throw xrt_core::error("read range only supported for kernels with shared compute unit");
+
+  auto core_device = handle->get_core_device();
+  core_device->set_cu_read_range(ip->get_index(), start, size);
+
+  ip->m_readrange = {start, size};
+}
+
+
 } // namespace xrt
 
 ////////////////////////////////////////////////////////////////
@@ -3168,6 +3294,33 @@ set_arg_at_index(int index, const xrt::bo& glb)
 }
 
 }
+
+////////////////////////////////////////////////////////////////
+// xrt::run::command_error
+////////////////////////////////////////////////////////////////
+namespace xrt {
+
+run::command_error::
+command_error(ert_cmd_state state, const std::string& msg)
+  : m_impl(std::make_shared<run::command_error_impl>(state, msg))
+{}
+
+ert_cmd_state
+run::command_error::
+get_command_state() const
+{
+  return m_impl->m_state;
+}
+
+const char*
+run::command_error::
+what() const noexcept
+{
+  return m_impl->m_message.c_str();
+}
+
+}
+
 ////////////////////////////////////////////////////////////////
 // xrt_kernel API implmentations (xrt_kernel.h)
 ////////////////////////////////////////////////////////////////

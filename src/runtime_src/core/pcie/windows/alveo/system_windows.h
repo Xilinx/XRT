@@ -1,7 +1,6 @@
-/*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef SYSTEM_WINDOWS_ALVEO_H
 #define SYSTEM_WINDOWS_ALVEO_H
 
@@ -21,6 +20,9 @@ public:
   std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user) const;
 
+  std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
+  get_bdf_info(device::id_type id, bool is_user) const;
+
   void
   scan_devices(bool verbose, bool json) const;
 
@@ -35,12 +37,6 @@ public:
 
   void
   program_plp(const device* dev, const std::vector<char> &buffer, bool force) const;
-
-  void
-  mem_read(const device* dev, long long addr, long long size, const std::string& output_file) const;
-
-  void
-  mem_write(const device* device, long long addr, long long size, unsigned int pattern) const;
 };
 
 } // host,xrt_core

@@ -21,9 +21,9 @@
 // Static Variables / Classes
 SectionManagementFW::init SectionManagementFW::initializer;
 
-SectionManagementFW::init::init() 
-{ 
-  auto sectionInfo = std::make_unique<SectionInfo>(FIRMWARE, "FIRMWARE", boost::factory<SectionManagementFW*>()); 
+SectionManagementFW::init::init()
+{
+  auto sectionInfo = std::make_unique<SectionInfo>(FIRMWARE, "FIRMWARE", boost::factory<SectionManagementFW*>());
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 

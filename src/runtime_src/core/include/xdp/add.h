@@ -26,7 +26,7 @@ namespace AXI_LITE {
 // These are the actual physical offsets of the 32-bit registers in
 // the ADD IP accessible over the AXI-Lite connection.  If using
 // xclRead or xclWrite, these offsets are used.
-constexpr int STATUS = 0x0;
+constexpr unsigned int STATUS = 0x0;
 
 } // end namespace AXI_LITE
 

@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2020-2022 Xilinx, Inc
  * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  */
 #ifndef XRT_KERNEL_H_
 #define XRT_KERNEL_H_
@@ -13,9 +14,10 @@
 
 
 #ifdef __cplusplus
-# include "experimental/xrt_enqueue.h"
+# include "experimental/xrt_exception.h"
 # include "experimental/xrt_hw_context.h"
 # include <chrono>
+# include <condition_variable>
 # include <cstdint>
 # include <functional>
 # include <memory>
@@ -74,7 +76,6 @@ struct autostart
 };
 
 class kernel;
-class event_impl;
 
 /*!
  * @class run
@@ -91,7 +92,35 @@ class event_impl;
 class run_impl;
 class run
 {
- public:
+public:
+  /**
+   * command_error - exception for abnormal command execution
+   *
+   * Used by ``wait2()`` when command completes unsuccessfully.
+   */
+  class command_error_impl;
+  class command_error : public detail::pimpl<command_error_impl>, public std::exception
+  {
+  public:
+    XCL_DRIVER_DLLESPEC
+    command_error(ert_cmd_state state, const std::string& what);
+
+    /**
+     * get_command_state() - command state upon completion
+     */
+    XCL_DRIVER_DLLESPEC
+    ert_cmd_state
+    get_command_state() const;
+
+    XCL_DRIVER_DLLESPEC
+    const char*
+    what() const noexcept;
+
+  private:
+    std::shared_ptr<command_error_impl> m_impl;
+  };
+
+public:
   /**
    * run() - Construct empty run object
    *
@@ -243,6 +272,59 @@ class run
   }
 
   /**
+   * wait2() - Wait for specified milliseconds for run to complete
+   *
+   * @param timeout
+   *  Timeout for wait (default block until run completes)
+   * @return
+   *  std::cv_status::no_timeout when command completes successfully.
+   *  std::cv_status::timeout when wait timed out without command
+   *  completing.
+   *
+   * Successful command completion means that the command state is
+   * ERT_CMD_STATE_COMPLETED.  All other command states result in this
+   * function throwing ``command_error`` exception with the command
+   * state embedded in the exception.
+   *
+   * Throws ``xrt::run::command_error`` on abnormal command termination.
+   *
+   * The current thread blocks until the run successfully completes or
+   * timeout expires. A return code of std::cv_state::no_timeout
+   * guarantees that the command completed successfully.
+   *
+   * If specified time out is exceeded, the function returns with
+   * std::cv_status::timeout, it is the callers responsibility to abort
+   * the run if it continues to time out.
+   *
+   * The current implementation of this API can mask out the timeout
+   * of this run so that the call either never returns or doesn't
+   * return until the run completes by itself. This can happen if
+   * other runs are continuosly completing within the specified
+   * timeout for this run.  If the device is otherwise idle, or if the
+   * time between run completion exceeds the specified timeout, then
+   * this function will identify the timeout.
+   */
+  XCL_DRIVER_DLLESPEC
+  std::cv_status
+  wait2(const std::chrono::milliseconds& timeout) const;
+
+  /**
+   * wait2() - Wait for successful command completion
+   *
+   * Successful command completion means that the command state is
+   * ERT_CMD_STATE_COMPLETED.  All other command states result in this
+   * function throwing ``command_error`` exception with the command
+   * state embedded in the exception.
+   *
+   * Throws ``xrt::run::command_error`` on abnormal command termination.
+   */
+  void
+  wait2() const
+  {
+    wait2(std::chrono::milliseconds{0});
+  }
+
+  /**
    * state() - Check the current state of a run object
    *
    * @return
@@ -253,6 +335,16 @@ class run
   XCL_DRIVER_DLLESPEC
   ert_cmd_state
   state() const;
+
+  /**
+   * return_code() - Get the return code from PS kernel
+   *
+   * @return
+   *  Return code from PS kernel run
+   */
+  XCL_DRIVER_DLLESPEC
+  uint32_t
+  return_code() const;
 
   /**
    * add_callback() - Add a callback function for run state
@@ -278,23 +370,6 @@ class run
   add_callback(ert_cmd_state state,
                std::function<void(const void*, ert_cmd_state, void*)> callback,
                void* data);
-
-  /// @cond
-  /**
-   * set_event() - Add event for enqueued operations
-   *
-   * @param event
-   *   Opaque implementation object
-   *
-   * This function is used when a run object is enqueued in an event
-   * graph.  The event must be notified upon completion of the run.
-   *
-   * This is an experimental API using a WIP feature.
-   */
-  XCL_DRIVER_DLLESPEC
-  void
-  set_event(const std::shared_ptr<event_impl>& event) const;
-  /// @endcond
 
   /**
    * operator bool() - Check if run handle is valid
@@ -737,14 +812,12 @@ private:
 };
 
 /// @cond
-// Specialization from xrt_enqueue.h for run objects, which
-// are asynchronous waitable objects.
-template <>
-struct callable_traits<run>
-{
-  enum { is_async = true };
-};
+// Undocumented experimental API subject to be replaced
+XCL_DRIVER_DLLESPEC
+void
+set_read_range(const xrt::kernel& kernel, uint32_t start, uint32_t size);
 /// @endcond
+
 
 } // namespace xrt
 

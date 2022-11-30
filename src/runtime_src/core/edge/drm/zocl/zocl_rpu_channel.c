@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
  * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Author(s):
  *        Lizhi Hou <lizhih@xilinx.com>
@@ -34,6 +35,9 @@
 #define ZRPU_CHANNEL_XGQ_BUFFER		4096
 #define ZRPU_CHANNEL_XGQ_BUFFER_SIZE	4096
 #define ZRPU_CHANNEL_XGQ_SLOT_SIZE	1024
+
+#define MAX_LOG_LEN 80
+static char info_buf[MAX_LOG_LEN] = { 0 };
 
 struct zocl_rpu_data_entry {
 	struct list_head	entry_list;
@@ -118,6 +122,61 @@ static void zchan_cmd_identify(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 	r->minor = ZCHAN_CMD_HANDLER_VER_MINOR;
 }
 
+static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_hdr *cmd,
+	struct xgq_com_queue_entry *resp)
+{
+	struct xgq_cmd_sq *sq = (struct xgq_cmd_sq *)cmd;
+	struct xgq_cmd_cq *cq = (struct xgq_cmd_cq *)resp;
+	u32 add_off = sq->log_payload.address;
+	u32 size = sq->log_payload.size;
+	u32 count = 0;
+	u32 total_count = 0;
+	int ret = 0;
+
+	zchan_info(chan, "addr_off 0x%x, size %d", add_off, size);
+
+	count = snprintf(info_buf, sizeof(info_buf), "ZOCL Version:");
+	if (count > size) {
+		zchan_err(chan, "message is trunked to %d len", total_count);
+		ret = -EINVAL;
+		goto done;
+	}
+	memcpy_toio(chan->mem_base + add_off, info_buf, count);
+	total_count += count;
+
+	count = snprintf(info_buf, sizeof(info_buf), "%s%s%s\n", XRT_DRIVER_VERSION, ", ", XRT_HASH);
+	if (total_count + count > size) {
+		zchan_err(chan, "message is trunked to %d len", total_count);
+		ret = -EINVAL;
+		goto done;
+	}
+	memcpy_toio(chan->mem_base + add_off + total_count, info_buf, count);
+	total_count += count;
+
+	count = snprintf(info_buf, sizeof(info_buf), "ZOCL Build Date:");
+	if (total_count + count > size) {
+		zchan_err(chan, "message is trunked to %d len", total_count);
+		ret = -EINVAL;
+		goto done;
+	}
+	memcpy_toio(chan->mem_base + add_off + total_count, info_buf, count);
+	total_count += count;
+
+	count = snprintf(info_buf, sizeof(info_buf), "%s\n", XRT_HASH_DATE);
+	if (total_count + count > size) {
+		zchan_err(chan, "message is trunked to %d len", total_count);
+		ret = -EINVAL;
+		goto done;
+	}
+	memcpy_toio(chan->mem_base + add_off + total_count, info_buf, count);
+	total_count += count;
+
+done:
+	init_resp(resp, cmd->cid, ret);
+	cq->cq_log_payload.count = total_count;
+	return;
+}
+
 static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_hdr *cmd,
 	struct xgq_com_queue_entry *resp)
 {
@@ -189,7 +248,7 @@ static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_
 			   total_size, list_empty(&chan->data_list));
 		INIT_LIST_HEAD(&chan->data_list);
 
-		ret = zocl_xclbin_load_pskernel(zocl_get_zdev(),total_data);
+		ret = zocl_xclbin_load_pskernel(zocl_get_zdev(), total_data);
 		if (ret)
 			zchan_err(chan, "failed to cache xclbin: %d", ret);
 
@@ -213,9 +272,9 @@ fail:
 		}
 		INIT_LIST_HEAD(&chan->data_list);
 	}
+
 	init_resp(resp, cmd->cid, ret);
 	return;
-
 }
 
 static void zchan_cmd_default_handler(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_hdr *cmd,
@@ -232,6 +291,7 @@ struct zchan_ops {
 } zchan_op_table[] = {
 	{ XGQ_CMD_OP_IDENTIFY, "XGQ_CMD_OP_IDENTIFY", zchan_cmd_identify },
 	{ XGQ_CMD_OP_LOAD_XCLBIN, "XGQ_CMD_OP_LOAD_XCLBIN", zchan_cmd_load_xclbin },
+	{ XGQ_CMD_OP_GET_LOG_PAGE, "XGQ_CMD_OP_GET_LOG_PAGE", zchan_cmd_log_page },
 };
 
 static inline const struct zchan_ops *opcode2op(u32 op)
@@ -351,7 +411,8 @@ static int zrpu_channel_probe(struct platform_device *pdev)
 	xgq_arg.zxia_ring = chan->mem_base + ZRPU_CHANNEL_XGQ_BUFFER;
 	xgq_arg.zxia_ring_size = ZRPU_CHANNEL_XGQ_BUFFER_SIZE;
 	xgq_arg.zxia_ring_slot_size = ZRPU_CHANNEL_XGQ_SLOT_SIZE;
-	xgq_arg.zxia_irq = irq;
+	/* There is only 1 irq in intc subdev. The irq_id is 0 */
+	xgq_arg.zxia_irq = 0;
 	xgq_arg.zxia_intc_pdev = chan->intc_pdev;
 	xgq_arg.zxia_xgq_ip = chan->xgq_base;
 	xgq_arg.zxia_cmd_handler = zchan_cmd_handler;

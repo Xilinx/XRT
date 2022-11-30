@@ -59,6 +59,8 @@ namespace xdp {
   constexpr int min_trace_id_asm     = 576;
   constexpr int max_trace_id_asm     = 607;
 
+  constexpr unsigned int sysfs_max_path_length = 512;
+
 } // end namespace xdp
 
 #endif

@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -175,9 +176,7 @@ namespace {
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
           for (auto memory : xclbin->pl.memoryInfo) {
-            std::string memName = memory.second->name ;
-            if (memName.rfind("bank", 0) == 0)
-              memName = "DDR[" + memName.substr(4,4) + "]" ;
+            std::string memName = memory.second->spTag ;
 
             fout << "MEMORY_USAGE," << device->getUniqueDeviceName() << "|"
                  << memName << "," << memory.second->used << ",\n" ;
@@ -199,7 +198,7 @@ namespace {
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
           for (auto memory : xclbin->pl.memoryInfo) {
-            if (memory.second->name.find("PLRAM") != std::string::npos) {
+            if (memory.second->spTag.find("PLRAM") != std::string::npos) {
               hasPLRAM = true ;
               break ;
             }
@@ -232,7 +231,7 @@ namespace {
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
           for (auto memory : xclbin->pl.memoryInfo) {
-            if (memory.second->name.find("HBM") != std::string::npos) {
+            if (memory.second->spTag.find("HBM") != std::string::npos) {
               hasHBM = true ;
               break ;
             }
@@ -319,31 +318,38 @@ namespace {
   {
     if (xdp::getFlowMode() == xdp::SW_EMU) {
       std::vector<std::string> portBitWidths =
-        db->getStaticInfo().getSoftwareEmulationPortBitWidths() ;
-      for (auto width : portBitWidths) {
-        fout << "PORT_BIT_WIDTH," << width << ",\n" ;
-      }
+        db->getStaticInfo().getSoftwareEmulationPortBitWidths();
+      for (auto width : portBitWidths)
+        fout << "PORT_BIT_WIDTH," << width << ",\n";
+      return;
     }
-    else {
-      auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
-      for (auto device : deviceInfos) {
-        for (auto xclbin : device->loadedXclbins) {
-          for (auto cu : xclbin->pl.cus) {
-            std::vector<uint32_t>* aimIds = cu.second->getAIMs() ;
-            std::vector<uint32_t>* asmIds = cu.second->getASMs() ;
 
-            for (auto aim : (*aimIds)) {
-              xdp::Monitor* monitor =
-                db->getStaticInfo().getAIMonitor(device->deviceId, xclbin, aim);
+    // Hardware and HW-EMU
+
+    auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
+    for (auto device : deviceInfos) {
+      for (auto xclbin : device->loadedXclbins) {
+        for (auto cu : xclbin->pl.cus) {
+          std::vector<uint32_t>* aimIds = cu.second->getAIMs() ;
+          std::vector<uint32_t>* asmIds = cu.second->getASMs() ;
+
+          for (auto aim : (*aimIds)) {
+            xdp::Monitor* monitor =
+              db->getStaticInfo().getAIMonitor(device->deviceId, xclbin, aim);
+            if (monitor->cuPort) {
               fout << "PORT_BIT_WIDTH," << cu.second->getName() << "/"
-                   << monitor->port << "," << monitor->portWidth << ",\n" ;
+                   << monitor->cuPort->name << ","
+                   << monitor->cuPort->bitWidth << ",\n";
             }
+          }
 
-            for (auto asmId : (*asmIds)) {
-              xdp::Monitor* monitor =
-                db->getStaticInfo().getASMonitor(device->deviceId,xclbin,asmId);
+          for (auto asmId : (*asmIds)) {
+            xdp::Monitor* monitor =
+              db->getStaticInfo().getASMonitor(device->deviceId,xclbin,asmId);
+            if (monitor->cuPort) {
               fout << "PORT_BIT_WIDTH," << cu.second->getName() << "/"
-                   << monitor->port << "," << monitor->portWidth << ",\n" ;
+                   << monitor->cuPort->name << ","
+                   << monitor->cuPort->bitWidth << ",\n" ;
             }
           }
         }
@@ -453,7 +459,7 @@ namespace {
     for (auto device : deviceInfos) {
       for (auto xclbin : device->loadedXclbins) {
         for (auto memory : xclbin->pl.memoryInfo) {
-          if (memory.second->name.find("PLRAM") != std::string::npos) {
+          if (memory.second->spTag.find("PLRAM") != std::string::npos) {
             fout << "PLRAM_SIZE_BYTES,"
                  << device->getUniqueDeviceName()
                  << "," << memory.second->size*1024 << ",\n" ;
@@ -487,7 +493,7 @@ namespace {
   {
     auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
     for (auto device : deviceInfos) {
-      bool full = db->getDynamicInfo().isTraceBufferFull(device->deviceId);
+      bool full = db->getDynamicInfo().isPLTraceBufferFull(device->deviceId);
       fout << "TRACE_BUFFER_FULL,"
            << device->getUniqueDeviceName() << ","
            << (full ? "true" : "false")

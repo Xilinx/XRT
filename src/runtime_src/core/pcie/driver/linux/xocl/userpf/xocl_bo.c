@@ -60,7 +60,6 @@ static inline void xocl_release_pages(struct page **pages, int nr, bool cold)
 #endif
 }
 
-
 static inline void __user *to_user_ptr(u64 address)
 {
 	return (void __user *)(uintptr_t)address;
@@ -90,21 +89,25 @@ void xocl_describe(const struct drm_xocl_bo *xobj)
 void xocl_bo_get_usage_stat(struct xocl_drm *drm_p, u32 bo_idx,
 	struct drm_xocl_mm_stat *pstat)
 {
-	if (!drm_p->bo_usage_stat)
+	struct xocl_mm *xocl_mm = drm_p->xocl_mm;
+
+	if (!xocl_mm->bo_usage_stat)
 		return;
+
 	if (bo_idx >= XOCL_BO_USAGE_TOTAL)
 		return;
 
-	pstat->memory_usage = drm_p->bo_usage_stat[bo_idx].memory_usage;
-	pstat->bo_count = drm_p->bo_usage_stat[bo_idx].bo_count;
+	pstat->memory_usage = xocl_mm->bo_usage_stat[bo_idx].memory_usage;
+	pstat->bo_count = xocl_mm->bo_usage_stat[bo_idx].bo_count;
 }
 
 static int xocl_bo_update_usage_stat(struct xocl_drm *drm_p, unsigned bo_flag,
 	u64 size, int count)
 {
 	int idx = -1;
+	struct xocl_mm *xocl_mm = drm_p->xocl_mm;
 
-	if (!drm_p->bo_usage_stat)
+	if (!xocl_mm->bo_usage_stat)
 		return -EINVAL;
 
 	switch (bo_flag) {
@@ -136,8 +139,8 @@ static int xocl_bo_update_usage_stat(struct xocl_drm *drm_p, unsigned bo_flag,
 	if (idx < 0)
 		return -EINVAL;
 
-	drm_p->bo_usage_stat[idx].memory_usage += (count > 0) ? size : -size;
-	drm_p->bo_usage_stat[idx].bo_count += count;
+	xocl_mm->bo_usage_stat[idx].memory_usage += (count > 0) ? size : -size;
+	xocl_mm->bo_usage_stat[idx].bo_count += count;
 	return 0;
 }
 
@@ -146,11 +149,23 @@ static void xocl_free_mm_node(struct drm_xocl_bo *xobj)
 	struct drm_device *ddev = xobj->base.dev;
 	struct xocl_drm *drm_p = ddev->dev_private;
 	unsigned ddr = xobj->mem_idx;
+	struct xocl_mem_stat *curr_mem = NULL;
+	unsigned slotidx = xocl_bo_slot_idx(xobj->user_flags);
 
 	mutex_lock(&drm_p->mm_lock);
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
 	if (!xobj->mm_node)
 		goto end;
+
+	/* Update slot specific stats */
+	list_for_each_entry(curr_mem, &drm_p->mem_list_head, link) {
+		if ((slotidx == curr_mem->slot_idx) &&
+				(ddr == curr_mem->mem_idx)) {
+			curr_mem->mm_usage_stat.memory_usage -=
+				xobj->base.size;
+			curr_mem->mm_usage_stat.bo_count -= 1;
+		}
+	}
 
 	xocl_mm_update_usage_stat(drm_p, ddr, xobj->base.size, -1);
 	xocl_bo_update_usage_stat(drm_p, xobj->flags, xobj->base.size, -1);
@@ -189,8 +204,8 @@ static void xocl_free_bo(struct drm_gem_object *obj)
 	}
 
 	if (xobj->dma_nsg) {
-		pci_unmap_sg(xdev->core.pdev, xobj->sgt->sgl, xobj->dma_nsg,
-			PCI_DMA_BIDIRECTIONAL);
+		dma_unmap_sg(&xdev->core.pdev->dev, xobj->sgt->sgl,
+			     xobj->dma_nsg, DMA_BIDIRECTIONAL);
 	}
 
 	if (xobj->pages) {
@@ -363,6 +378,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	struct xocl_dev *xdev = drm_p->xdev;
 	struct drm_gem_object *obj;
 	unsigned memidx = xocl_bo_ddr_idx(user_flags);
+	unsigned slotidx = xocl_bo_slot_idx(user_flags);
 	bool xobj_inited = false;
 	int err = 0;
 
@@ -439,7 +455,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	xocl_xdev_dbg(xdev, "alloc bo from bank%u, flag %x, host bank %d",
 		memidx, xobj->flags, drm_p->cma_bank_idx);
 
-	err = xocl_mm_insert_node(drm_p, memidx, xobj->mm_node,
+	err = xocl_mm_insert_node(drm_p, memidx, slotidx, xobj->mm_node,
 		xobj->base.size);
 	if (err)
 		goto failed;
@@ -447,7 +463,6 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);
-	xocl_mm_update_usage_stat(drm_p, memidx, xobj->base.size, 1);
 	xocl_bo_update_usage_stat(drm_p, xobj->flags, xobj->base.size, 1);
 	/* Record the DDR we allocated the buffer on */
 	xobj->mem_idx = memidx;
@@ -879,6 +894,7 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 	ret = xocl_migrate_bo(xdev, sgt, dir, paddr, channel, args->size);
 	if (ret >= 0)
 		ret = (ret == args->size) ? 0 : -EIO;
+
 	xocl_release_channel(xdev, dir, channel);
 clear:
 	if (args->offset || (args->size != xobj->base.size)) {
@@ -918,14 +934,13 @@ int xocl_info_bo_ioctl(struct drm_device *dev,
 
 static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t paddr, size_t size, bool dir)
 {
-	int channel;
-	struct drm_xocl_unmgd unmgd;
-	int ret;
-	ssize_t migrated;
+	int channel = 0;
+	struct drm_xocl_unmgd unmgd = {0};
+	ssize_t ret = 0;
 
 	ret = xocl_init_unmgd(&unmgd, data_ptr, size, dir);
 	if (ret) {
-		userpf_err(xdev, "init unmgd failed %d", ret);
+		userpf_err(xdev, "init unmgd failed %ld", ret);
 		return ret;
 	}
 
@@ -937,10 +952,9 @@ static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t
 		goto clear;
 	}
 	/* Now perform DMA */
-	migrated = xocl_migrate_bo(xdev, unmgd.sgt, dir, paddr, channel,
-		size);
-	if (migrated >= 0)
-		ret = (migrated == size) ? 0 : -EIO;
+	ret = xocl_migrate_bo(xdev, unmgd.sgt, dir, paddr, channel, size);
+	if (ret >= 0)
+		ret = (ret == size) ? 0 : -EIO;
 
 	xocl_release_channel(xdev, dir, channel);
 clear:
@@ -1180,6 +1194,7 @@ int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 	ret = xocl_migrate_bo(xdev, sgt, dir, local_pa, channel, cp_size);
 	if (ret >= 0)
 		ret = (ret == cp_size) ? 0 : -EIO;
+
 	xocl_release_channel(xdev, dir, channel);
 
 out:
@@ -1275,17 +1290,17 @@ void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 
 }
 #else
-int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct dma_buf_map *map)
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct XOCL_MAP_TYPE *map)
 {
         struct drm_xocl_bo *xobj = to_xocl_bo(obj);
 
         BO_ENTER("xobj %p", xobj);
-        dma_buf_map_set_vaddr(map, xobj->vmapping);
+        XOCL_MAP_SET_VADDR(map, xobj->vmapping);
 
         return 0;
 }
 
-void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct dma_buf_map *map)
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct XOCL_MAP_TYPE *map)
 {
 
 }

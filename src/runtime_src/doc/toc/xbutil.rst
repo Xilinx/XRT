@@ -155,6 +155,9 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 - The ``--device`` (or ``-d``) specifies the target device to examine 
     
     - <user bdf> :  The Bus:Device.Function of the device of interest
+
+.. _xbutil_report_label:
+
 - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
           
     - ``aie``: Reports AIE kernels metadata from the .xclbin
@@ -173,7 +176,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
     - ``platform``: Platforms flashed on the device (default when ``--device`` is provided)
     - ``qspi-status``: QSPI write protection status
     - ``thermal``: Reports thermal sensors present on the device
-    - ``cmc-status``: Reports cmc status of the device
+    - ``cmc``: Reports cmc status of the device
 
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     

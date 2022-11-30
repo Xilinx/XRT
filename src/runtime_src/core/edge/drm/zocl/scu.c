@@ -32,8 +32,14 @@ struct zocl_scu {
 	 * soft cu pid and parent pid. This can be used to identify if the
 	 * soft cu is still running or not. The parent should never crash
 	 */
-	uint32_t		sc_pid;
-	uint32_t		sc_parent_pid;
+	u32		sc_pid;
+	u32		sc_parent_pid;
+	/*
+	 * This RW lock is to protect the scu sysfs nodes exported
+	 * by zocl driver.
+	 */
+	rwlock_t	attr_rwlock;
+
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -83,20 +89,81 @@ cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(cu_info);
 
 static ssize_t
+stats_begin_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_scu *scu = platform_get_drvdata(pdev);
+
+	read_lock(&scu->attr_rwlock);
+	sz = show_stats_begin(&scu->base, buf);
+	read_unlock(&scu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_begin);
+
+static ssize_t
+stats_end_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_scu *scu = platform_get_drvdata(pdev);
+
+	read_lock(&scu->attr_rwlock);
+	sz = show_stats_end(&scu->base, buf);
+	read_unlock(&scu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stats_end);
+
+static ssize_t
 stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t sz = 0;
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_scu *scu = platform_get_drvdata(pdev);
+
+	read_lock(&scu->attr_rwlock);
+	sz = show_formatted_cu_stat(&scu->base, buf);
+	read_unlock(&scu->attr_rwlock);
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stat);
+
+ssize_t show_status(struct zocl_scu *scu, char *buf)
+{
+	ssize_t sz = 0;
+
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "PID:%u\n",
+			scu->sc_pid);
+
+	return sz;
+}
+
+static ssize_t
+status_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct zocl_scu *scu = platform_get_drvdata(pdev);
 
-	return show_formatted_cu_stat(&scu->base, buf);
+	return show_status(scu, buf);
 }
-static DEVICE_ATTR_RO(stat);
+static DEVICE_ATTR_RO(status);
 
 static struct attribute *scu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
 	&dev_attr_cu_info.attr,
+	&dev_attr_stats_begin.attr,
+	&dev_attr_stats_end.attr,
 	&dev_attr_stat.attr,
+	&dev_attr_status.attr,
 	NULL,
 };
 
@@ -107,16 +174,19 @@ static const struct attribute_group scu_attrgroup = {
 static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[16])
 {
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
-	struct soft_krnl *sk = zdev->soft_kernel;
+	struct soft_krnl *sk = NULL;
 	struct soft_krnl_cmd *scmd = NULL;
 	struct config_sk_image_uuid *cp = NULL;
+
+	BUG_ON(!zdev);
 
 	cp = kmalloc(sizeof(struct config_sk_image_uuid), GFP_KERNEL);
 	cp->start_cuidx = cuidx;
 	cp->num_cus = 1;
-	strncpy((char *)cp->sk_name,kname,PS_KERNEL_NAME_LENGTH);
-	memcpy(cp->sk_uuid,uuid,sizeof(cp->sk_uuid));
+	strncpy((char *)cp->sk_name,kname, PS_KERNEL_NAME_LENGTH);
+	memcpy(cp->sk_uuid, uuid, sizeof(cp->sk_uuid));
 
+	sk = zdev->soft_kernel;
 	// Locking soft kernel data structure
 	mutex_lock(&sk->sk_lock);
 
@@ -163,6 +233,7 @@ static int scu_probe(struct platform_device *pdev)
 	memcpy(&zcu->base.info, info, sizeof(struct xrt_cu_info));
 
 	zdev = zocl_get_zdev();
+	BUG_ON(!zdev);
 	zcu->sc_bo = zocl_drm_create_bo(zdev->ddev, SOFT_KERNEL_REG_SIZE, ZOCL_BO_FLAGS_CMA);
 	if (IS_ERR(zcu->sc_bo)) {
 		return -ENOMEM;
@@ -177,11 +248,12 @@ static int scu_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, zcu);
 
+	rwlock_init(&zcu->attr_rwlock);
 	err = sysfs_create_group(&pdev->dev.kobj, &scu_attrgroup);
 	if (err)
 		zocl_err(&pdev->dev, "create SCU attrs failed: %d", err);
 
-	err = configure_soft_kernel(info->cu_idx,info->kname,info->uuid);
+	err = configure_soft_kernel(info->cu_idx, info->kname,info->uuid);
 	if (err)
 		zocl_err(&pdev->dev, "configuring SCU failed: %d", err);
 
@@ -207,7 +279,9 @@ static int scu_remove(struct platform_device *pdev)
 
 	// Free Command Buffer BO
 	zocl_drm_free_bo(zcu->sc_bo);
+	write_lock(&zcu->attr_rwlock);
 	sysfs_remove_group(&pdev->dev.kobj, &scu_attrgroup);
+	write_unlock(&zcu->attr_rwlock);
 
 	zocl_info(&pdev->dev, "SCU[%d] removed", info->cu_idx);
 	kfree(zcu);
@@ -256,9 +330,9 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 	u32 *vaddr = zcu->sc_bo->cma_base.vaddr;
 
 	/* If the CU is running, mark it as done */
-	if (*vaddr & 1)
-		/* Clear Bit 0 and set Bit 1 */
-		*vaddr = 2 | (*vaddr & ~3);
+	if (*vaddr == CU_AP_START)
+		/* Set CU to AP_DONE */
+		*vaddr = CU_AP_DONE;
 
 	if (down_interruptible(&zcu->sc_sem)) {
 		ret = -EINTR;
@@ -269,8 +343,8 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 		return ret;
 	}
 
-	/* Clear Bit 1 and set Bit 0 */
-	*vaddr = 1 | (*vaddr & ~3);
+	/* set CU AP_START */
+	*vaddr = CU_AP_START;
 
 	return 0;
 }
@@ -282,7 +356,7 @@ int zocl_scu_wait_ready(struct platform_device *pdev)
 	int ret = 0;
 
 	// Wait for PS kernel initizliation complete
-	if(down_timeout(&zcu->sc_sem,100)) {
+	if(down_timeout(&zcu->sc_sem, msecs_to_jiffies(1000))) {
 		zocl_err(&pdev->dev, "PS kernel initialization timed out!");
 		return -ETIME;
 	}
@@ -294,20 +368,22 @@ int zocl_scu_wait_ready(struct platform_device *pdev)
 	return 0;
 }
 
+// Signal SKD Ready
 void zocl_scu_sk_ready(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 
+	BUG_ON(!zcu);
 	up(&zcu->sc_sem);
 }
 
+// Signal PS kernel crashed
 void zocl_scu_sk_crash(struct platform_device *pdev)
 {
-	//struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
 
-	// TO-DO
-	// Add taks to indicate PS kernel crash
-	return; /* Place holder */
+	xrt_cu_scu_crashed(xcu);
 }
 
 void zocl_scu_sk_shutdown(struct platform_device *pdev)
@@ -344,15 +420,6 @@ void zocl_scu_sk_shutdown(struct platform_device *pdev)
 	}
 	put_pid(p);
 
-	if (down_timeout(&zcu->sc_sem,100))
-		DRM_WARN("Wait for PS kernel timeout\n");
  skip_kill:
 	return;
-}
-
-void zocl_scu_sk_fini(struct platform_device *pdev)
-{
-	struct zocl_scu *zcu = platform_get_drvdata(pdev);
-
-	up(&zcu->sc_sem);
 }

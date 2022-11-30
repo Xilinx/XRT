@@ -263,6 +263,12 @@ public:
     return m_args[argidx];
   }
 
+  xrt::xclbin::ip::ip_type
+  get_type() const
+  {
+    return static_cast<xrt::xclbin::ip::ip_type>(m_ip->m_type);
+  }
+
   xrt::xclbin::ip::control_type
   get_control_type() const
   {
@@ -359,6 +365,16 @@ public:
   }
 };
 
+class xclbin::aie_partition_impl
+{
+public: // purposely not a struct to match decl in xrt_xclbin.h
+  const ::aie_partition* m_aiep;
+
+  aie_partition_impl(const ::aie_partition* aiep)
+    : m_aiep(aiep)
+  {}
+};
+
 // class xclbin_impl - Base class for xclbin objects
 class xclbin_impl
 {
@@ -377,6 +393,7 @@ class xclbin_impl
     std::vector<xclbin::mem> m_mems;
     std::vector<xclbin::ip> m_ips;
     std::vector<xclbin::kernel> m_kernels;
+    std::vector<xclbin::aie_partition> m_aie_partitions;
 
     // encoded / compressed memory connection used by
     // xrt core to manage compute unit connectivity.
@@ -454,6 +471,18 @@ class xclbin_impl
       }
 
       return kernels;
+    }
+
+    static std::vector<xclbin::aie_partition>
+    init_aie_partitions(const xclbin_impl* ximpl)
+    {
+      auto xaiep = ximpl->get_section<const ::aie_partition*>(AIE_PARTITION);
+      if (!xaiep)
+        return {};
+
+      std::vector<xclbin::aie_partition> aie_partitions;
+      aie_partitions.emplace_back(std::make_shared<xclbin::aie_partition_impl>(xaiep));
+      return aie_partitions;
     }
 
     static std::string
@@ -553,6 +582,7 @@ class xclbin_impl
       , m_mems(init_mems(m_ximpl))
       , m_ips(init_ips(m_ximpl, m_mems))
       , m_kernels(init_kernels(m_ximpl, m_ips))
+      , m_aie_partitions(init_aie_partitions(m_ximpl))
       , m_membank_encoding(init_mem_encoding(m_mems))
     {}
   };
@@ -710,6 +740,11 @@ public:
     return get_xclbin_info()->m_fpga_device_name;
   }
 
+  const std::vector<xclbin::aie_partition>&
+  get_aie_partitions() const
+  {
+    return get_xclbin_info()->m_aie_partitions;
+  }
 };
 
 // class xclbin_full - Implementation of full xclbin
@@ -907,6 +942,13 @@ get_ips() const
   return handle ? handle->get_ips() : std::vector<xclbin::ip>{};
 }
 
+std::vector<xclbin::ip>
+xclbin::
+get_ips(const std::string& name) const
+{
+  return handle ? handle->get_ips(name) : std::vector<xclbin::ip>{};
+}
+
 xclbin::ip
 xclbin::
 get_ip(const std::string& name) const
@@ -919,6 +961,13 @@ xclbin::
 get_mems() const
 {
   return handle ? handle->get_mems() : std::vector<xclbin::mem>{};
+}
+
+std::vector<xclbin::aie_partition>
+xclbin::
+get_aie_partitions() const
+{
+  return handle ? handle->get_aie_partitions() : std::vector<xclbin::aie_partition>{};
 }
 
 std::string
@@ -1051,6 +1100,15 @@ xclbin::ip::
 get_name() const
 {
   return handle ? reinterpret_cast<const char*>(handle->m_ip->m_name) : "";
+}
+
+xclbin::ip::ip_type
+xclbin::ip::
+get_type() const
+{
+  return handle
+    ? handle->get_type()
+    : static_cast<xclbin::ip::ip_type>(std::numeric_limits<uint8_t>::max());
 }
 
 xclbin::ip::control_type
@@ -1210,6 +1268,39 @@ xclbin::mem::
 get_index() const
 {
   return handle ? handle->m_mem_data_idx : std::numeric_limits<int32_t>::max();
+}
+
+////////////////////////////////////////////////////////////////
+// xrt::xclbin::aie_partition
+////////////////////////////////////////////////////////////////
+uint64_t
+xclbin::aie_partition::
+get_inference_fingerprint() const
+{
+  if (!handle)
+    throw std::runtime_error("internal error: missing aie_partition handle");
+
+  return handle->m_aiep->inference_fingerprint;
+}
+
+uint64_t
+xclbin::aie_partition::
+get_pre_post_fingerprint() const
+{
+  if (!handle)
+    throw std::runtime_error("internal error: missing aie_partition handle");
+
+  return handle->m_aiep->pre_post_fingerprint;
+}
+
+uint32_t
+xclbin::aie_partition::
+get_operations_per_cycle() const
+{
+  if (!handle)
+    throw std::runtime_error("internal error: missing aie_partition handle");
+
+  return handle->m_aiep->operations_per_cycle;
 }
 
 } // namespace xrt

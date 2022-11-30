@@ -44,13 +44,14 @@
 #include <sys/mman.h>
 
 #include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/aie_profile.h"
+#include "plugin/xdp/aie_debug.h"
+
 #ifndef __HWEM__
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
 
 #include "plugin/xdp/aie_trace.h"
-#include "plugin/xdp/aie_profile.h"
-#include "plugin/xdp/aie_debug.h"
 #include "plugin/xdp/pl_deadlock.h"
 #else
 #include "plugin/xdp/hw_emu_device_offload.h"
@@ -141,9 +142,9 @@ shim::
 #ifndef __HWEM__
 //  xdphal::finish_flush_device(handle) ;
   xdp::aie::finish_flush_device(this) ;
+#endif
   xdp::aie::ctr::end_poll(this);
   xdp::aie::dbg::end_poll(this);
-#endif
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -471,7 +472,7 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
   ert_fill_copybo_cmd(bo.second, src_boHandle, dst_boHandle,
                       src_offset, dst_offset, size);
 
-  ret = xclExecBuf(bo.first);
+  ret = xclExecBuf(to_xclBufferHandle(bo.first));
   if (ret) {
     mCmdBOCache->release(bo);
     return ret;
@@ -735,6 +736,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_kernels = NULL,
       .za_slot_id = 0, // TODO Cleanup: Once uuid interface id available we need to remove this
       .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
+      .za_dtbo_path_len = dtbo_path.length(),
       .hw_gen = hw_gen,
     };
 
@@ -1122,12 +1124,21 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // Edge does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_qos() != xrt::hw_context::qos::exclusive);
+  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
   auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
   return cuidx;
+}
+
+void
+shim::
+close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  // To-be-implemented
+  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+    throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
 }
 
 int
@@ -1217,6 +1228,17 @@ xclIPName2Index(const char *name)
 
   xclLog(XRT_ERROR, "%s not found", name);
   return -ENOENT;
+}
+
+int
+shim::
+xclIPSetReadRange(uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    int ret = 0;
+    drm_zocl_set_cu_range range = {ipIndex, start, size};
+
+    ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SET_CU_READONLY_RANGE, &range);
+    return ret ? -errno : ret;
 }
 
 int
@@ -1820,6 +1842,13 @@ open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std:
   return shim->open_cu_context(hwctx, cuname);
 }
 
+void
+close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+{
+  auto shim = get_shim_object(handle);
+  return shim->close_cu_context(hwctx, cuidx);
+}
+
 } // xrt::shim_int
 ////////////////////////////////////////////////////////////////
 
@@ -2138,8 +2167,10 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 #ifndef __HWEM__
     xdp::hal::update_device(handle);
     xdp::aie::update_device(handle);
+#endif
     xdp::aie::ctr::update_device(handle);
     xdp::aie::dbg::update_device(handle);
+#ifndef __HWEM__
     xdp::pl_deadlock::update_device(handle);
 
     START_DEVICE_PROFILING_CB(handle);
@@ -2609,6 +2640,13 @@ xclIPName2Index(xclDeviceHandle handle, const char *name)
     xrt_core::send_exception_message(ex.what());
     return -ENOENT;
   }
+}
+
+int
+xclIPSetReadRange(xclDeviceHandle handle, uint32_t ipIndex, uint32_t start, uint32_t size)
+{
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+    return (drv) ? drv->xclIPSetReadRange(ipIndex, start, size) : -ENODEV;
 }
 
 int
