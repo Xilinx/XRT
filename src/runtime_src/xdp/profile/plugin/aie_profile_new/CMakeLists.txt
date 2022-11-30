@@ -3,8 +3,8 @@
 #
 
 # ====================================================================
-# This builds the AIE Profile plugin.  It is currently only built
-# on Edge platforms that support AIE.
+# This builds the AIE Profile plugin.  It is currently built
+# on both Edge and x86 platforms that support AIE.
 # ====================================================================
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
