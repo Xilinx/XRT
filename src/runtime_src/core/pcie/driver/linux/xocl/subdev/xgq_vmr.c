@@ -2081,18 +2081,18 @@ static int clk_scaling_get_default_configs(struct platform_device *pdev)
                                    0, 0, 0, true);
 	if (ret) {
 		XGQ_WARN(xgq, "Failed to reset clock scaling default settings, ret: %d", ret);
-		return ret;
+		goto out;
 	}
 
 	ret = clk_scaling_status_query(pdev);
 	if (ret) {
 		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
-		return ret;
+		goto out;
 	}
 
 	xgq->pwr_scaling_threshold_limit = cs_payload->pwr_scaling_limit;
 	xgq->temp_scaling_threshold_limit = cs_payload->temp_scaling_limit;
-
+out:
 	mutex_unlock(&xgq->clk_scaling_lock);
 
 	return ret;
@@ -2801,7 +2801,6 @@ static ssize_t xgq_scaling_power_override_store(struct device *dev,
 		goto out;
 	}
 
-	mutex_lock(&xgq->clk_scaling_lock);
 	ret = clk_scaling_configure_op(xgq->xgq_pdev, XGQ_CMD_CLK_THROTTLING_AID_CONFIGURE,
 				   cs_payload->clk_scaling_en, pwr, 0, 0);
 	if (ret) {
