@@ -135,8 +135,6 @@ namespace xdp {
     #endif
     auto& implementation = AIEData.implementation;
 
-    
-
     // Ensure we only read/configure once per xclbin
     if (!(db->getStaticInfo()).isAIECounterRead(deviceID)) {
 
