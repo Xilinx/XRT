@@ -8,7 +8,8 @@
 # This plugin is only available on Linux and contains the functions
 # that pass information from the debug server to the running process
 # in order to support gdb based debug of software emulation kernel
-# executions
+# executions.  This is accessed in OpenCL software emulation so it
+# has a dependency on the OpenCL library.
 # ==================================================================
 
 if (NOT WIN32)
@@ -22,8 +23,8 @@ file(GLOB DEBUG_FILES
 
 add_library(xdp_debug_plugin MODULE ${DEBUG_FILES})
 
-add_dependencies(xdp_debug_plugin xrt_coreutil)
-target_link_libraries(xdp_debug_plugin PRIVATE xrt_coreutil)
+add_dependencies(xdp_debug_plugin xrt_coreutil xilinxopencl)
+target_link_libraries(xdp_debug_plugin PRIVATE xrt_coreutil xilinxopencl)
 
 set_target_properties(xdp_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
