@@ -137,7 +137,7 @@ name_show(struct device *dev, struct device_attribute *attr, char *buf)
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu_info *info = &cu->base.info;
 
-	return sprintf(buf, "SCU[%d]\n", info->cu_idx);
+	return sprintf(buf, "CU[%d]\n", info->cu_idx);
 }
 static DEVICE_ATTR_RO(name);
 

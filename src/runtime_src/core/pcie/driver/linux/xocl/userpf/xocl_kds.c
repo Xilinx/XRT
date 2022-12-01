@@ -1467,69 +1467,86 @@ done:
 }
 
 static void
-xocl_kds_create_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info)
-{
-    struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
-
-    subdev_info.res[0].start = cu_info->addr;
-    subdev_info.res[0].end = cu_info->addr + cu_info->size - 1;
-    subdev_info.priv_data = cu_info;
-    subdev_info.data_len = sizeof(struct xrt_cu_info);
-    subdev_info.override_idx = cu_info->inst_idx;
-    if (xocl_subdev_create(xdev, &subdev_info))
-        userpf_info(xdev, "Create CU %s failed. Skip", cu_info->iname);
-
-    /* This is a sanity check. We already communicated the SCUs instance
-     * id with ERT. Hence mis-match of this index will lead to an error
-     * state.
-     */
-    if (cu_info->inst_idx != subdev_info.dev_idx)	
-        userpf_info(xdev, "Create CU %s failed. Skip", cu_info->iname);
-}
-
-static void
-xocl_kds_create_scu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info)
-{
-    struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SCU;
-
-    subdev_info.priv_data = cu_info;
-    subdev_info.data_len = sizeof(struct xrt_cu_info);
-    subdev_info.override_idx = cu_info->inst_idx;
-    if (xocl_subdev_create(xdev, &subdev_info))
-        userpf_info(xdev, "Create SCU %s failed. Skip", cu_info->iname);
-
-    /* This is a sanity check. We already communicated the SCUs instance
-     * id with ERT. Hence mis-match of this index will lead to an error
-     * state.
-     */
-    if (cu_info->inst_idx != subdev_info.dev_idx)	
-        userpf_info(xdev, "Create SCU %s failed. Skip", cu_info->iname);
-}
-
-static void
-xocl_kds_destroy_cus(struct xocl_dev *xdev, uint32_t slot_hdl, u32 domain)
+xocl_kds_create_cus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
+		    int num_cus)
 {
 	int i = 0;
-	struct xrt_cu *xcu = NULL;
-	struct kds_cu_mgmt *cu_mgmt = NULL;
-	uint32_t xocl_subdev_type = 0 ;
 
-	if (domain == DOMAIN_PL) {
-	       cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
-	       xocl_subdev_type = XOCL_SUBDEV_CU;
-	} else {
-	       cu_mgmt = &XDEV(xdev)->kds.scu_mgmt;
-	       xocl_subdev_type = XOCL_SUBDEV_SCU;
+	for (i = 0; i < num_cus; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
+
+		subdev_info.res[0].start = cu_info[i].addr;
+		subdev_info.res[0].end = cu_info[i].addr + cu_info[i].size - 1;
+		subdev_info.priv_data = &cu_info[i];
+		subdev_info.data_len = sizeof(struct xrt_cu_info);
+		subdev_info.override_idx = cu_info[i].inst_idx;
+	
+		/* Update slot information to the subdevice. This will help to remove
+		 * subdevice based on slot.
+		 */
+		subdev_info.slot_idx = cu_info[i].slot_idx;
+		if (xocl_subdev_create(xdev, &subdev_info))
+			userpf_info(xdev, "Create CU %s failed. Skip", cu_info[i].iname);
 	}
+}
 
-	for (i = 0; i < MAX_CUS; i++) {
-		xcu = cu_mgmt->xcus[i];
-		if ((!xcu) && (xcu->info.slot_idx != slot_hdl))
-			continue;
+static void
+xocl_kds_create_scus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
+		    int num_cus)
+{
+	int i = 0;
 
-		/* Destroy subdev of  the CUs/SCUs as per slot */
-		xocl_subdev_destroy_by_id_and_inst(xdev, xocl_subdev_type,
-						   xcu->info.inst_idx);
+	for (i = 0; i < num_cus; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SCU;
+
+		subdev_info.priv_data = &cu_info[i];
+		subdev_info.data_len = sizeof(struct xrt_cu_info);
+		subdev_info.override_idx = cu_info[i].inst_idx;
+
+		/* Update slot information to the subdevice. This will help to remove
+		 * subdevice based on slot.
+		 */
+		subdev_info.slot_idx = cu_info[i].slot_idx;
+		if (xocl_subdev_create(xdev, &subdev_info))
+			userpf_info(xdev, "Create SCU %s failed. Skip", cu_info[i].iname);
+	}
+}
+
+static void
+xocl_kds_reserve_cu_subdevices(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
+		    int num_cus)
+{
+	int i = 0;
+	int retval = 0;
+
+	for (i = 0; i < num_cus; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
+
+		retval = xocl_subdev_reserve(xdev, &subdev_info);
+		if (retval < 0)
+			userpf_info(xdev, "Reserve CU %s failed. Skip",
+				    cu_info[i].iname);
+
+		cu_info[i].inst_idx = retval;
+	}
+}
+
+static void
+xocl_kds_reserve_scu_subdevices(struct xocl_dev *xdev, struct xrt_cu_info *scu_info,
+		    int num_scus)
+{
+	int i = 0;
+	int retval = 0;
+
+	for (i = 0; i < num_scus; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SCU;
+
+		retval = xocl_subdev_reserve(xdev, &subdev_info);
+		if (retval < 0)
+			userpf_info(xdev, "Reserve SCU %s failed. Skip",
+				    scu_info[i].iname);
+
+		scu_info[i].inst_idx = retval;
 	}
 }
 
@@ -1541,16 +1558,13 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 	struct ert_cu_bulletin brd = {0};
 	int num_cus = 0;
 	int ret = 0;
-	int i = 0;
 
 	cu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
 	if (!cu_info)
 		return -ENOMEM;
 
 	num_cus = xocl_kds_fill_cu_info(xdev, 0, ip_layout, cu_info, MAX_CUS);
-	for (i = 0; i < num_cus; i++) {
-		xocl_kds_create_cu(xdev, &cu_info[i]);
-	}
+	xocl_kds_create_cus(xdev, cu_info, num_cus);
 
 	ret = xocl_ert_user_bulletin(xdev, &brd);
 	/* Detect if ERT subsystem is able to support CU to host interrupt
@@ -1733,85 +1747,156 @@ xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 }
 
 static int
-xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info *cu_info)
+xocl_kds_xgq_cfg_cus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info *cu_info, int num_cus)
 {
 	struct xgq_cmd_config_cu *cfg_cu = NULL;
 	struct xgq_com_queue_entry resp = {0};
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct kds_client *client = NULL;
-    struct kds_command *xcmd = NULL;
-    int ret = 0;
-    int j = 0;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
+	int i = 0, j = 0;
 
-    int max_off_idx = 0;
-    int max_off = 0;
-    int max_off_arg_size = 0;
+	for (i = 0; i < num_cus; i++) {
+		int max_off_idx = 0;
+		int max_off = 0;
+		int max_off_arg_size = 0;
 
-    if (cu_info->protocol == CTRL_NONE)
-        return 0;
+		if (cu_info[i].protocol == CTRL_NONE)
+			continue;
 
-    client = kds->anon_client;
-    xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
-    if (!xcmd) {
-        return -ENOMEM;
-    }
+		client = kds->anon_client;
+		xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
+		if (!xcmd) {
+			return -ENOMEM;
+		}
 
-    cfg_cu = xcmd->info;
-    cfg_cu->hdr.opcode = XGQ_CMD_OP_CFG_CU;
-    cfg_cu->hdr.count = sizeof(*cfg_cu) - sizeof(cfg_cu->hdr);
-    cfg_cu->hdr.state = 1;
+		cfg_cu = xcmd->info;
+		cfg_cu->hdr.opcode = XGQ_CMD_OP_CFG_CU;
+		cfg_cu->hdr.count = sizeof(*cfg_cu) - sizeof(cfg_cu->hdr);
+		cfg_cu->hdr.state = 1;
 
-    cfg_cu->cu_idx = cu_info->inst_idx;
-    cfg_cu->cu_domain = DOMAIN_PL;
-    cfg_cu->ip_ctrl = cu_info->protocol;
-    cfg_cu->intr_id = cu_info->intr_id;
-    cfg_cu->intr_enable = cu_info->intr_enable;
-    cfg_cu->map_size = cu_info->size;
-    cfg_cu->laddr = cu_info->addr;
-    cfg_cu->haddr = cu_info->addr >> 32;
-    for (j = 0; j < cu_info->num_args; j++) {
-        if (max_off < cu_info->args[j].offset) {
-            max_off = cu_info->args[j].offset;
-            max_off_idx = j;
-        }
-    }
-    /* This determines the XGQ slot size for CU/SCU etc. */
-    if (cu_info->num_args)
-        max_off_arg_size = cu_info->args[max_off_idx].size;
-    cfg_cu->payload_size = max_off + max_off_arg_size + sizeof(struct xgq_cmd_sq_hdr);
-    /*
+		cfg_cu->cu_idx = i;
+		cfg_cu->cu_domain = DOMAIN_PL;
+		cfg_cu->ip_ctrl = cu_info[i].protocol;
+		cfg_cu->intr_id = cu_info[i].intr_id;
+		cfg_cu->intr_enable = cu_info[i].intr_enable;
+		cfg_cu->map_size = cu_info[i].size;
+		cfg_cu->laddr = cu_info[i].addr;
+		cfg_cu->haddr = cu_info[i].addr >> 32;
+		for (j = 0; j < cu_info[i].num_args; j++) {
+			if (max_off < cu_info[i].args[j].offset) {
+				max_off = cu_info[i].args[j].offset;
+				max_off_idx = j;
+			}
+		}
+		/* This determines the XGQ slot size for CU/SCU etc. */
+		if (cu_info[i].num_args)
+			max_off_arg_size = cu_info[i].args[max_off_idx].size;
+		cfg_cu->payload_size = max_off + max_off_arg_size + sizeof(struct xgq_cmd_sq_hdr);
+		/*
 		 * Times 2 to make sure XGQ slot size is bigger than the size of
-     * key-value pair commands, eg. ERT_START_KEY_VAL.
-     *
-     * TODO: XOCL XGQ should be able to splict a big command into
-     * small sub commands. Before it is done, use this simple
-     * approach.
-     */
-    cfg_cu->payload_size = cfg_cu->payload_size * 2;
+		 * key-value pair commands, eg. ERT_START_KEY_VAL.
+		 *
+		 * TODO: XOCL XGQ should be able to splict a big command into
+		 * small sub commands. Before it is done, use this simple
+		 * approach.
+		 */
+		cfg_cu->payload_size = cfg_cu->payload_size * 2;
 
-    scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
-            cu_info->kname, cu_info->iname);
+		scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
+			  cu_info[i].kname, cu_info[i].iname);
 
-    memcpy(cfg_cu->uuid, xclbin_id, sizeof(cfg_cu->uuid));
+		memcpy(cfg_cu->uuid, xclbin_id, sizeof(cfg_cu->uuid));
 
-    xcmd->cb.notify_host = xocl_kds_xgq_notify;
-    xcmd->cb.free = kds_free_command;
-    xcmd->priv = kds;
+		xcmd->cb.notify_host = xocl_kds_xgq_notify;
+		xcmd->cb.free = kds_free_command;
+		xcmd->priv = kds;
 		xcmd->type = KDS_ERT;
-    xcmd->opcode = OP_CONFIG;
-    xcmd->response = &resp;
-    xcmd->response_size = sizeof(resp);
+		xcmd->opcode = OP_CONFIG;
+		xcmd->response = &resp;
+		xcmd->response_size = sizeof(resp);
 
-    ret = kds_submit_cmd_and_wait(kds, xcmd);
-    if (ret)
-        return ret;
+		ret = kds_submit_cmd_and_wait(kds, xcmd);
+		if (ret)
+			break;
 
-    if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-        userpf_err(xdev, "Config CU failed cstate(%d) rcode(%d)",
-                resp.hdr.cstate, resp.rcode);
-        return -EINVAL;
-    }
-    userpf_info(xdev, "Config CU(%d) completed\n", cfg_cu->cu_idx);
+		if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+			userpf_err(xdev, "Config CU failed cstate(%d) rcode(%d)",
+				   resp.hdr.cstate, resp.rcode);
+			ret = -EINVAL;
+			break;
+		}
+		userpf_info(xdev, "Config CU(%d) completed\n", cfg_cu->cu_idx);
+	}
+
+	return ret;
+}
+
+static int
+xocl_kds_xgq_cfg_scus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info *cu_info, int num_cus)
+{
+	struct xgq_cmd_config_cu *cfg_cu = NULL;
+	struct xgq_com_queue_entry resp = {0};
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
+	int i = 0, j = 0;
+
+	for (i = 0; i < num_cus; i++) {
+		int max_off_idx = 0;
+		int max_off = 0;
+
+		client = kds->anon_client;
+		xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
+		if (!xcmd) {
+			return -ENOMEM;
+		}
+
+		cfg_cu = xcmd->info;
+		cfg_cu->hdr.opcode = XGQ_CMD_OP_CFG_CU;
+		cfg_cu->hdr.count = sizeof(*cfg_cu) - sizeof(cfg_cu->hdr);
+		cfg_cu->hdr.state = 1;
+
+		cfg_cu->cu_idx = i;
+		cfg_cu->cu_domain = DOMAIN_PS;
+		cfg_cu->ip_ctrl = cu_info[i].protocol;
+		cfg_cu->map_size = cu_info[i].size;
+		cfg_cu->laddr = cu_info[i].addr;
+		cfg_cu->haddr = cu_info[i].addr >> 32;
+		for (j = 0; j < cu_info[i].num_args; j++) {
+			if (max_off < cu_info[i].args[j].offset) {
+				max_off = cu_info[i].args[j].offset;
+				max_off_idx = j;
+			}
+		}
+		cfg_cu->payload_size = max_off + cu_info[i].args[max_off_idx].size;
+		scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
+			  cu_info[i].kname, cu_info[i].iname);
+
+		memcpy(cfg_cu->uuid, xclbin_id, sizeof(cfg_cu->uuid));
+
+		xcmd->cb.notify_host = xocl_kds_xgq_notify;
+		xcmd->cb.free = kds_free_command;
+		xcmd->priv = kds;
+		xcmd->type = KDS_ERT;
+		xcmd->opcode = OP_CONFIG;
+		xcmd->response = &resp;
+		xcmd->response_size = sizeof(resp);
+
+		ret = kds_submit_cmd_and_wait(kds, xcmd);
+		if (ret)
+			break;
+
+		if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+			userpf_err(xdev, "Config SCU failed cstate(%d) rcode(%d)",
+				   resp.hdr.cstate, resp.rcode);
+			ret = -EINVAL;
+			break;
+		}
+		userpf_info(xdev, "Config SCU(%d) completed\n", cfg_cu->cu_idx);
+	}
 
 	return ret;
 }
@@ -1853,77 +1938,12 @@ static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domai
 	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
 		userpf_err(xdev, "Unconfigure CU(%d) failed cstate(%d) rcode(%d)",
 			   cu_idx, resp.hdr.cstate, resp.rcode);
-		return -EINVAL;
-	}
-
-	userpf_info(xdev, "Unconfig CU(%d) of DOMAIN(%d) completed\n",
-		    uncfg_cu->cu_idx, uncfg_cu->cu_domain);
-	return 0;
-}
-
-static int
-xocl_kds_xgq_cfg_scu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info *cu_info)
-{
-    struct xgq_cmd_config_cu *cfg_cu = NULL;
-    struct xgq_com_queue_entry resp = {0};
-    struct kds_sched *kds = &XDEV(xdev)->kds;
-    struct kds_client *client = NULL;
-    struct kds_command *xcmd = NULL;
-    int ret = 0;
-    int j = 0;
-
-    int max_off_idx = 0;
-    int max_off = 0;
-
-    client = kds->anon_client;
-    xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
-    if (!xcmd) {
-			return -ENOMEM;
-		}
-
-    cfg_cu = xcmd->info;
-    cfg_cu->hdr.opcode = XGQ_CMD_OP_CFG_CU;
-    cfg_cu->hdr.count = sizeof(*cfg_cu) - sizeof(cfg_cu->hdr);
-    cfg_cu->hdr.state = 1;
-
-    cfg_cu->cu_idx = cu_info->inst_idx;
-    cfg_cu->cu_domain = DOMAIN_PS;
-    cfg_cu->ip_ctrl = cu_info->protocol;
-    cfg_cu->map_size = cu_info->size;
-    cfg_cu->laddr = cu_info->addr;
-    cfg_cu->haddr = cu_info->addr >> 32;
-    for (j = 0; j < cu_info->num_args; j++) {
-        if (max_off < cu_info->args[j].offset) {
-            max_off = cu_info->args[j].offset;
-            max_off_idx = j;
+                return -EINVAL;
         }
-    }
-    cfg_cu->payload_size = max_off + cu_info->args[max_off_idx].size;
-    scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
-            cu_info->kname, cu_info->iname);
 
-    memcpy(cfg_cu->uuid, xclbin_id, sizeof(cfg_cu->uuid));
-
-    xcmd->cb.notify_host = xocl_kds_xgq_notify;
-    xcmd->cb.free = kds_free_command;
-    xcmd->priv = kds;
-		xcmd->type = KDS_ERT;
-    xcmd->opcode = OP_CONFIG;
-    xcmd->response = &resp;
-    xcmd->response_size = sizeof(resp);
-
-    ret = kds_submit_cmd_and_wait(kds, xcmd);
-    if (ret)
-        return ret;
-
-    if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-        userpf_err(xdev, "Config SCU failed cstate(%d) rcode(%d)",
-                resp.hdr.cstate, resp.rcode);
-        return -EINVAL;
-    }
-    userpf_info(xdev, "Config SCU(%d) completed\n", cfg_cu->cu_idx);
-
-	return ret;
+        userpf_info(xdev, "Unconfig CU(%d) of DOMAIN(%d) completed\n",
+                    uncfg_cu->cu_idx, uncfg_cu->cu_domain);
+        return 0;
 }
 
 static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domain,
@@ -1984,8 +2004,6 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	int num_cus = 0;
 	int num_ooc_cus = 0;
 	struct xrt_cu_info *scu_info = NULL;
-	struct xgq_cmd_resp_query_cu resp;
-	void *xgq;
 	int num_scus = 0;
 	int ret = 0;
 	int i = 0;
@@ -2046,22 +2064,34 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	if (ret)
 		goto create_regular_cu;
 
-	// Configure and create subdevices for all the CUs
+	/* Reserve the sundevices for all the CUs. We need to share the CU index
+	 * with ZOCL here.
+	 */
+	xocl_kds_reserve_cu_subdevices(xdev, cu_info, num_cus);
+	ret = xocl_kds_xgq_cfg_cus(xdev, uuid, cu_info, num_cus);
+	if (ret)
+		goto create_regular_cu;
+
+	/* Reserve the sundevices for all the CUs. We need to share the SCU index
+	 * with ZOCL here.
+	 */
+	xocl_kds_reserve_scu_subdevices(xdev, scu_info, num_scus);
+	ret = xocl_kds_xgq_cfg_scus(xdev, uuid, scu_info, num_scus);
+	if (ret)
+		goto out;
+
+	ret = xocl_kds_xgq_cfg_end(xdev);
+	if (ret)
+		goto out;
+
+	/*
+	 * Configure XGQ ERT looks good.
+	 * XGQs are allocated by device, hence query information.
+	 */
 	for (i = 0; i < num_cus; i++) {
-		ret = xocl_get_free_subdev_instance(&xdev->core, XOCL_SUBDEV_CU);
-		if (ret == -ENOSPC)
-			goto create_regular_cu;
+		struct xgq_cmd_resp_query_cu resp;
+		void *xgq;
 
-		cu_info[i].inst_idx = ret;
-		/* Configure CUs and Create corresponding subdevice for it */
-		ret = xocl_kds_xgq_cfg_cu(xdev, uuid, &cu_info[i]);
-		if (ret)
-			goto create_regular_cu;
-
-		/*
-		 * Configure XGQ ERT looks good.
-		 * XGQs are allocated by device, hence query information.
-		 */
 		ret = xocl_kds_xgq_query_cu(xdev, i, 0, &resp);
 		if (ret)
 			goto create_regular_cu;
@@ -2072,53 +2102,37 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 			ret = PTR_ERR(xgq);
 			goto create_regular_cu;
 		}
-
 		cu_info[i].model = XCU_XGQ;
 		cu_info[i].xgq = xgq;
-		xocl_kds_create_cu(xdev, &cu_info[i]);
 	}
+	xocl_kds_create_cus(xdev, cu_info, num_cus);
 
 	// User Soft Kernels
 	for (i = 0; i < num_scus; i++) {
-		ret = xocl_get_free_subdev_instance(&xdev->core, XOCL_SUBDEV_SCU);
-		if (ret == -ENOSPC)
-			goto out;
-
-		cu_info[i].inst_idx = ret;
-
-		ret = xocl_kds_xgq_cfg_scu(xdev, uuid, &scu_info[i]);
-		if (ret)
-			goto out;
+		struct xgq_cmd_resp_query_cu resp;
+		void *xgq;
 
 		ret = xocl_kds_xgq_query_cu(xdev, i, DOMAIN_PS, &resp);
 		if (ret)
-			goto out;
+			goto create_regular_cu;
 
 		xgq = xocl_ert_ctrl_setup_xgq(xdev, resp.xgq_id, resp.offset);
 		if (IS_ERR(xgq)) {
 			userpf_err(xdev, "Setup XGQ failed\n");
 			ret = PTR_ERR(xgq);
-			goto out;
+			goto create_regular_cu;
 		}
 		scu_info[i].model = XCU_XGQ;
 		scu_info[i].xgq = xgq;
-
-		xocl_kds_create_scu(xdev, &scu_info[i]);
 	}
-
-	ret = xocl_kds_xgq_cfg_end(xdev);
-	if (ret)
-		goto out;
+	xocl_kds_create_scus(xdev, scu_info, num_scus);
 
 	XDEV(xdev)->kds.xgq_enable = (cfg.ert)? true : false;
 	goto out;
 
 create_regular_cu:
-	for (i = 0; i < num_cus; i++) {
-		/* Regular CU directly talks to CU, without XGQ */
-		xocl_kds_create_cu(xdev, &cu_info[i]);
-	}
-
+	/* Regular CU directly talks to CU, without XGQ */
+	xocl_kds_create_cus(xdev, cu_info, num_cus);
 	XDEV(xdev)->kds.xgq_enable = false;
 
 out:
@@ -2272,18 +2286,14 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	ret = xocl_kds_xgq_cfg_end(xdev);
 	if (ret)
 		goto out;
-
+	
 	xocl_ert_ctrl_unset_xgq(xdev);
-
-	/* Destroy the CUs based on slot */
-	xocl_kds_destroy_cus(xdev, slot_hdl, DOMAIN_PL);
-
-	/* Destroy the SCUs based on slot */
-	xocl_kds_destroy_cus(xdev, slot_hdl, DOMAIN_PS);
 
 out:
 	if (ret)
 		XDEV(xdev)->kds.bad_state = 1;
+	else
+		kds_reset(&XDEV(xdev)->kds);
 
 	return ret;
 }
