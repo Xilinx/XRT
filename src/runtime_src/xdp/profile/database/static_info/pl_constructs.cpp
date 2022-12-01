@@ -24,6 +24,18 @@
 // Anonymous namespace for local static helper functions
 namespace {
 
+  static std::string convertBankToDDR(const std::string& memory)
+  {
+    auto loc = memory.find("bank");
+    if (loc == std::string::npos)
+      return memory;
+
+    std::string ddr = "DDR[";
+    ddr += memory.substr(loc + 4);
+    ddr += "]";
+    return ddr;
+  }
+
   // This function will check if the spTag a particular port or argument
   // is connected to belongs to a particular memory resource.  If the strings
   // are an exact match, or if the memory resource is a range that the
@@ -33,14 +45,24 @@ namespace {
     if (spTag == memory)
       return true;
 
+    // On some platforms, the memory name is still formatted as "bank0"
+    // and needs to be changed to DDR[0].
+    std::string mem = convertBankToDDR(memory);
+
+    // On Versal, MC_NOC0 and equivalent actually represent DDR connections.
+    // We do that hard coded check here
+    if (spTag.find("MC_NOC") != std::string::npos &&
+        mem.find("DDR")      != std::string::npos)
+      return true;
+
     // If it is not an exact match, check to see if there is a range
     // specification and if the spTag falls in that range.  For example,
     // PLRAM[2] should match PLRAM[0:2].
 
     auto bracePosSpTag    = spTag.find("[");
     auto endBracePosSpTag = spTag.find("]");
-    auto bracePosMem      = memory.find("[");
-    auto endBracePosMem   = memory.find("]");
+    auto bracePosMem      = mem.find("[");
+    auto endBracePosMem   = mem.find("]");
 
     // Both the spTag and memory resource must have braces in order
     if (bracePosSpTag    == std::string::npos ||
@@ -51,7 +73,7 @@ namespace {
 
     // First, make sure the memory type before the brace is the same
     std::string spResource  = spTag.substr(0, bracePosSpTag);
-    std::string memResource = memory.substr(0, bracePosMem);
+    std::string memResource = mem.substr(0, bracePosMem);
 
     if (spResource != memResource)
       return false;
@@ -61,8 +83,8 @@ namespace {
     // the range.
     std::string spRange = spTag.substr(bracePosSpTag + 1,
                                        endBracePosSpTag - bracePosSpTag - 1);
-    std::string memRange = memory.substr(bracePosMem + 1,
-                                         endBracePosMem - bracePosMem - 1);
+    std::string memRange = mem.substr(bracePosMem + 1,
+                                      endBracePosMem - bracePosMem - 1);
 
     auto colonPos = memRange.find(":");
     if (colonPos == std::string::npos)
