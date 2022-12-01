@@ -8,8 +8,8 @@
 # This plugin is only available on Linux and contains the functions
 # that pass information from the debug server to the running process
 # in order to support gdb based debug of software emulation kernel
-# executions.  This is only accessed in OpenCL flows so it has
-# a dependency on the OpenCL library.
+# executions.  This is accessed in OpenCL software emulation so it
+# has a dependency on the OpenCL library.
 # ==================================================================
 
 if (NOT WIN32)
