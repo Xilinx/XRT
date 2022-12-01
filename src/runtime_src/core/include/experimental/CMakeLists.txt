@@ -2,6 +2,7 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
 set(XRT_EXPERIMENTAL_HEADER_SRC
+  pscontext.h
   xrt-next.h
   xrt_aie.h
   xrt_graph.h
