@@ -1187,6 +1187,11 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 			return;
 		}
 
+		if (kds_free_hw_ctx(client, cu_ctx->hw_ctx)) {
+			kds_err(client, "Freeing HW Context failed");
+			return;
+		}
+
 		if (kds_free_cu_ctx(client, cu_ctx)) {
 			kds_err(client, "Freeing CU Context failed");
 			return;
