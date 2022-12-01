@@ -545,8 +545,8 @@ struct clk_scaling_info
       data.temp_scaling_limit = get_value(stats[5]);
       data.pwr_scaling_ovrd_limit = get_value(stats[6]);
       data.temp_scaling_ovrd_limit = get_value(stats[7]);
-      data.pwr_scaling_ovrd_enable = get_value(stats[8]);
-      data.temp_scaling_ovrd_enable = get_value(stats[9]);
+      data.pwr_scaling_ovrd_enable = get_value(stats[8]) ? true : false;
+      data.temp_scaling_ovrd_enable = get_value(stats[9]) ? true : false;
     } catch (const std::exception& e) {
       xrt_core::send_exception_message(e.what(), "Failed to receive clk_scaling_stat_raw data in specified format");
     }
