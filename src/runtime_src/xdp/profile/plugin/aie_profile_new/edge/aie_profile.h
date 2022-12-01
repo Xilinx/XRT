@@ -44,26 +44,6 @@ namespace xdp {
       bool checkAieDevice(uint64_t deviceId, void* handle);
 
       bool setMetricsSettings(uint64_t deviceId, void* handle);
-      std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const XAie_ModuleType mod,
-                                                        const std::string &graph,
-                                                        void* handle);
-                                                        
-      std::vector<tile_type> getAllTilesForInterfaceProfiling(void* handle,
-                              const std::string &metricStr,
-                              int16_t channelId = -1,
-                              bool useColumn = false, uint32_t minCol = 0, uint32_t maxCol = 0);
-
-     void getConfigMetricsForTiles(int moduleIdx,
-                                    const std::vector<std::string>& metricsSettings,
-                                    const std::vector<std::string>& graphmetricsSettings,
-                                    const XAie_ModuleType mod,
-                                    void* handle);
-
-      void getInterfaceConfigMetricsForTiles(int moduleIdx,
-                                              const std::vector<std::string>& metricsSettings,
-                                              /* std::vector<std::string> graphmetricsSettings, */
-                                              void* handle);
-    
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                             const tile_type& tile, 
                             const XAie_ModuleType mod);
@@ -105,7 +85,6 @@ namespace xdp {
       std::map<std::string, std::vector<std::string>> mCoreEventStrings;
       std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
       std::map<std::string, std::vector<std::string>> mShimEventStrings;
-      std::vector<std::map<tile_type, std::string>> mConfigMetrics;                  
     
   };
 
