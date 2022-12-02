@@ -1,0 +1,40 @@
+/**
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+#ifndef AIE_PROFILE_METADATA_H
+#define AIE_PROFILE_METADATA_H
+
+namespace xdp {
+
+class AieProfileMetadata{
+
+  public:
+    AieProfileMetadata(uint64_t deviceID, void* handle);
+    void parsePollingInterval();
+    
+    uint64_t getDeviceID() {return deviceID;}
+    void* getHandle() {return handle;}
+    uint32_t getPollingIntervalVal(){return mPollingInterval;}
+    
+  private:
+    uint32_t mIndex = 0;
+    uint32_t mPollingInterval;
+    uint64_t deviceID;
+    void* handle;
+  };
+}
+
+#endif
