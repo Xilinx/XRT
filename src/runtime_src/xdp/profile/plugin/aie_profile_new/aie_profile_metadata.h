@@ -90,6 +90,7 @@ class AieProfileMetadata{
 
     std::vector<std::string> get_graphs(const xrt_core::device* device);
 
+    std::vector<std::map<tile_type, std::string>> getConfigMetrics(){ return mConfigMetrics;}
   private:
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;

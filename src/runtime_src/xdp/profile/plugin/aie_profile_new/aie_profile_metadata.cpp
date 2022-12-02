@@ -26,7 +26,11 @@ namespace xdp {
     AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle)
   : deviceID(deviceID)
   , handle(handle)
-  {}
+  {
+    mConfigMetrics.resize(3);
+
+
+  }
 
   void AieProfileMetadata::parsePollingInterval()
   {

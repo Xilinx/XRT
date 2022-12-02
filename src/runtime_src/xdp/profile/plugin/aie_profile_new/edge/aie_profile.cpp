@@ -452,8 +452,6 @@ namespace xdp {
     std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
     std::vector<std::vector<std::string>> graphmetricsSettings(NUM_MODULES);
 
-    mConfigMetrics.resize(NUM_MODULES);
-
     // // Check if all the metrics are empty - We must use default metric sets.
     // bool emptyMetrics = true;
     // for (int module = 0; module < NUM_MODULES; ++module){
@@ -518,7 +516,7 @@ namespace xdp {
       XAie_ModuleType mod    = falModuleTypes[module];
 
       // Iterate over tiles and metrics to configure all desired counters
-      for (auto& tileMetric : mConfigMetrics[module]) {
+      for (auto& tileMetric : metadata->getConfigMetrics()[module]) {
         int numCounters = 0;
         auto col = tileMetric.first.col;
         auto row = tileMetric.first.row;
