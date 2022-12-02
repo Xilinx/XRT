@@ -356,10 +356,10 @@ namespace xdp {
         offTiles.push_back(tileMetric.first);
         continue;
       }
-      /* 
+       
       // Ensure requested metric set is supported (if not, use default)
-      if (((mod == module_type::core) && std::find(coreMetricStrings.begin(), coreMetricStrings.end(), tileMetric.second == coreMetricStrings.end()))
-          || ((mod == module_type::dma) && std::find(memMetricStrings.begin(), memMetricStrings.end(), tileMetric.second == memMetricStrings.end()))) {
+      if (((mod == module_type::core) && std::find(coreMetricStrings.begin(), coreMetricStrings.end(), tileMetric.second) == coreMetricStrings.end())
+          || ((mod == module_type::dma) && std::find(memMetricStrings.begin(), memMetricStrings.end(), tileMetric.second) == memMetricStrings.end())) {
         std::string defaultSet = (mod == module_type::core) ? "heat_map" : "conflicts";
         std::stringstream msg;
         msg << "Unable to find " << moduleName << " metric set " << tileMetric.second
@@ -367,7 +367,7 @@ namespace xdp {
             << " As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         tileMetric.second = defaultSet;
-      } */
+      } 
     }
 
     // remove all the "off" tiles
@@ -580,15 +580,15 @@ namespace xdp {
         offTiles.push_back(tileMetric.first);
         continue;
       }
-/*
+
       // Ensure requested metric set is supported (if not, use default)
-      if (std::find(interfaceMetricStrings.begin(), interfaceMetricStrings.end(), tileMetric.second == interfaceMetricStrings.end())) {
+      if (std::find(interfaceMetricStrings.begin(), interfaceMetricStrings.end(), tileMetric.second) == interfaceMetricStrings.end()) {
         std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
                           + ". Using default of input_bandwidths. "
                           + "As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
         tileMetric.second = "input_bandwidths" ;
-      }*/
+      }
     }
 
     // remove all the "off" tiles
