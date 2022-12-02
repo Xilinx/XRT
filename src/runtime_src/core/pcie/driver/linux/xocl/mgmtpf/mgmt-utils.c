@@ -18,6 +18,9 @@
 #define XCLMGMT_RESET_MAX_RETRY		10
 
 static void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
+static int xclmgmt_reload_fdt_blob(struct xclmgmt_dev *lro);
+static int xclmgmt_reload_fdt_blob_vmr(struct xclmgmt_dev *lro);
+
 /**
  * @returns: NULL if AER apability is not found walking up to the root port
  *         : pci_dev ptr to the port which is AER capable.
@@ -377,8 +380,17 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	xocl_clear_pci_errors(lro);
 	store_pcie_link_info(lro);
 
-	/* Update the userspace fdt with the current values in the mgmt driver */
+	/*
+	 * Update the userspace fdt with the current values in the mgmt driver
+	 *
+	 * For vmr supported versal devices, we enabled A/B boot, thus we should
+	 * reload fdt from the right boot image instead of using unchanged fdt
+	 * for other ALEVO devices.
+	 */
+	mutex_lock(&lro->busy_mutex);
+	(void) xclmgmt_reload_fdt_blob_vmr(lro);
 	(void) xclmgmt_update_userpf_blob(lro);
+	mutex_unlock(&lro->busy_mutex);
 
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
@@ -795,7 +807,9 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro)
 
 	xocl_thread_start(lro);
 
+	mutex_lock(&lro->busy_mutex);
 	xclmgmt_update_userpf_blob(lro);
+	mutex_unlock(&lro->busy_mutex);
 	xocl_drvinst_set_offline(lro, false);
 
 failed:
@@ -804,15 +818,107 @@ failed:
 
 }
 
+static int xclmgmt_refresh_fdt_blob(struct xclmgmt_dev *lro, const char *fw_buf)
+{
+	const struct axlf_section_header	*dtc_header = NULL;
+	struct axlf				*bin_axlf = NULL;
+	int					ret = 0;
+
+	bin_axlf = (struct axlf *)fw_buf;
+
+	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
+	if (!dtc_header) {
+		mgmt_err(lro, "Firmware does not contain PARTITION_METADATA");
+		return -ENOENT;
+	}
+
+	ret = xocl_fdt_blob_input(lro,
+			(char *)fw_buf + dtc_header->m_sectionOffset,
+			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD,
+			bin_axlf->m_header.m_platformVBNV);
+	if (ret)
+		mgmt_err(lro, "Invalid PARTITION_METADATA");
+
+	return ret;
+}
+
+/*
+ * load firmware, the fdt blob in the partition metadata, and
+ * refresh cached fdt_blob
+ */
+static int xclmgmt_reload_fdt_blob(struct xclmgmt_dev *lro)
+{
+	char	*fw_buf = NULL;
+	size_t	fw_size = 0;
+	int	ret = 0;
+
+	BUG_ON(!mutex_is_locked(&lro->busy_mutex));
+
+	ret = xocl_rom_load_firmware(lro, &fw_buf, &fw_size);
+	if (ret) {
+		mgmt_err(lro, "ROM firmware load failure %d", ret);
+		return ret;
+	}
+
+	ret = xclmgmt_refresh_fdt_blob(lro, fw_buf);
+
+	vfree(fw_buf);
+	return ret;
+}
+
+/*
+ * load firmware from vmr devices
+ *   - then clean up existing fdt_blob if this is a hot reset request
+ *   - after fdt_blob is refreshed, the blp_blob should be updated.
+ */
+static int xclmgmt_reload_fdt_blob_vmr(struct xclmgmt_dev *lro)
+{
+	char	*fw_buf = NULL;
+	size_t	fw_size = 0;
+	int	ret = 0;
+
+	BUG_ON(!mutex_is_locked(&lro->busy_mutex));
+
+	ret = xocl_vmr_load_firmware(lro, &fw_buf, &fw_size);
+	if (ret)
+		return ret;
+
+	/* clean up existing fdt_blob */
+	if (lro->core.fdt_blob) {
+		vfree(lro->core.fdt_blob);
+		lro->core.fdt_blob = NULL;
+	}
+
+	/* clean up blp_blob */
+	if (lro->core.blp_blob) {
+		vfree(lro->core.blp_blob);
+		lro->core.blp_blob = NULL;
+	}
+
+	ret = xclmgmt_refresh_fdt_blob(lro, fw_buf);
+	if (ret)
+		goto out;
+
+	lro->core.blp_blob = vmalloc(fdt_totalsize(lro->core.fdt_blob));
+	if (!lro->core.blp_blob) {
+		ret = -ENOMEM;
+		mgmt_err(lro, "Failed to allocate blp data region");
+		goto out;
+	}
+
+	memcpy(lro->core.blp_blob, lro->core.fdt_blob,
+		fdt_totalsize(lro->core.fdt_blob));
+
+out:
+	vfree(fw_buf);
+	return ret;
+}
+
+
 int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 {
 	struct xocl_board_private *dev_info = &lro->core.priv;
-	const struct axlf_section_header	*dtc_header;
-	struct axlf				*bin_axlf;
-	int					ret;
-	char					*fw_buf = NULL;
-	size_t					fw_size = 0;
-
+	int ret = 0;
 
 	if (xocl_subdev_is_vsec_recovery(lro)) {
 		mgmt_info(lro, "Skip load_fdt for vsec Golden image");
@@ -821,28 +927,10 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	}
 
 	mutex_lock(&lro->busy_mutex);
-	ret = xocl_rom_load_firmware(lro, &fw_buf, &fw_size);
-	if (ret) {
-		mgmt_err(lro, "ROM firmware load failure %d", ret);
-		goto failed;
-	}
-	bin_axlf = (struct axlf *)fw_buf;
 
-	dtc_header = xocl_axlf_section_header(lro, bin_axlf, PARTITION_METADATA);
-	if (!dtc_header) {
-		ret = -ENOENT;
-		mgmt_err(lro, "Firmware does not contain PARTITION_METADATA");
+	ret = xclmgmt_reload_fdt_blob(lro);
+	if (ret)
 		goto failed;
-	}
-
-	ret = xocl_fdt_blob_input(lro,
-			(char *)fw_buf + dtc_header->m_sectionOffset,
-			dtc_header->m_sectionSize, XOCL_SUBDEV_LEVEL_BLD,
-			bin_axlf->m_header.m_platformVBNV);
-	if (ret) {
-		mgmt_err(lro, "Invalid PARTITION_METADATA");
-		goto failed;
-	}
 
 	if (lro->core.priv.flags & XOCL_DSAFLAG_MFG) {
 		/* Minimum set up for golden image. */
@@ -888,7 +976,6 @@ int xclmgmt_load_fdt(struct xclmgmt_dev *lro)
 	lro->ready = true;
 
 failed:
-	vfree(fw_buf);
 	mutex_unlock(&lro->busy_mutex);
 
 	return ret;
