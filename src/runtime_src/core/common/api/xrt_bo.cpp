@@ -1280,9 +1280,34 @@ wait()
 }
 
 bo::
+bo(const xrt::device& device, void* userptr, size_t sz, bo::flags flags, memory_group grp)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+      alloc_userptr, device_type{device.get_handle()}, userptr, sz
+    , adjust_buffer_flags(device_type{device.get_handle()}, flags, grp), grp))
+{}
+
+bo::
+bo(const xrt::device& device, void* userptr, size_t sz, memory_group grp)
+  : bo(device, userptr, sz, bo::flags::normal, grp)
+{}
+
+bo::
+bo(const xrt::device& device, size_t sz, bo::flags flags, memory_group grp)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+      alloc, device_type{device.get_handle()}, sz
+    , adjust_buffer_flags(device_type{device.get_handle()}, flags, grp), grp))
+{}
+
+bo::
+bo(const xrt::device& device, size_t sz, memory_group grp)
+  : bo(device, sz, bo::flags::normal, grp)
+{}
+
+bo::
 bo(const xrt::hw_context& hwctx, void* userptr, size_t sz, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc_userptr, device_type{hwctx}, userptr, sz, adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
+      alloc_userptr, device_type{hwctx}, userptr, sz
+    , adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
 {}
 
 bo::
@@ -1293,7 +1318,8 @@ bo(const xrt::hw_context& hwctx, void* userptr, size_t sz, memory_group grp)
 bo::
 bo(const xrt::hw_context& hwctx, size_t sz, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc, device_type{hwctx}, sz, adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
+      alloc, device_type{hwctx}, sz
+    , adjust_buffer_flags(device_type{hwctx}, flags, grp), grp))
 {}
 
 bo::
@@ -1301,16 +1327,20 @@ bo(const xrt::hw_context& hwctx, size_t sz, memory_group grp)
   : bo(hwctx, sz, bo::flags::normal, grp)
 {}
 
+// Deprecated
 bo::
 bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc_userptr, xcl_to_core_device(dhdl), userptr, sz, adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
+      alloc_userptr, xcl_to_core_device(dhdl), userptr, sz
+    , adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
 {}
 
+// Deprecated
 bo::
 bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-      alloc, xcl_to_core_device(dhdl), size, adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
+      alloc, xcl_to_core_device(dhdl), size
+    , adjust_buffer_flags(xcl_to_core_device(dhdl), flags, grp), grp))
 {}
 
 bo::
