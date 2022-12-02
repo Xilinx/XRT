@@ -29,8 +29,10 @@ ifneq ($(cflags_zocl),)
 	ccflags-y += $(cflags_zocl)
 endif
 
-# Version is specific to release
-XRT_DRIVER_VERSION ?= 2.15.0
+# XRT driver version used in apu reporting
+# Version info is repeated here as Petalinux doesn't have access to 
+# user space top level CMake file. Version is specific to release
+XRT_DRIVER_VERSION ?= 2.14.0
 
 # Add patch number in version if 'XRT_VERSION_PATCH' env variable is defined
 ifneq ($(XRT_VERSION_PATCH),)
