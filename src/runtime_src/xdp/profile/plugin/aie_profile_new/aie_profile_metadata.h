@@ -17,6 +17,10 @@
 #ifndef AIE_PROFILE_METADATA_H
 #define AIE_PROFILE_METADATA_H
 
+#include <vector>
+
+#include "xdp/config.h"
+#include "core/common/device.h"
 namespace xdp {
 
   enum class module_type {
@@ -59,6 +63,18 @@ namespace xdp {
   };  
 
 class AieProfileMetadata{
+  private:
+    uint32_t mIndex = 0;
+    uint32_t mPollingInterval;
+    uint64_t deviceID;
+    void* handle;
+
+    std::vector<std::string> coreMetricStrings {"heat_map", "stalls", "execution",           
+                                                "floating_point", "stream_put_get", "write_bandwidths",     
+                                                "read_bandwidths", "aie_trace", "events"};
+    std::vector<std::string> memMetricStrings  {"conflicts", "dma_locks", "dma_stalls_s2mm", "dma_stalls_mm2s", "write_bandwidths", "read_bandwidths"};
+    std::vector<std::string> interfaceMetricStrings {"input_bandwidths", "output_bandwidths", "packets"};
+    std::vector<std::map<tile_type, std::string>> mConfigMetrics;
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
@@ -90,19 +106,9 @@ class AieProfileMetadata{
 
     std::vector<std::string> get_graphs(const xrt_core::device* device);
 
+    std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
+    std::vector<tile_type> get_event_tiles(const xrt_core::device* device, const std::string& graph_name, module_type type);
     std::vector<std::map<tile_type, std::string>> getConfigMetrics(){ return mConfigMetrics;}
-  private:
-    uint32_t mIndex = 0;
-    uint32_t mPollingInterval;
-    uint64_t deviceID;
-    void* handle;
-
-    std::vector<std::string> coreMetricStrings {"heat_map", "stalls", "execution",           
-                                                "floating_point", "stream_put_get", "write_bandwidths",     
-                                                "read_bandwidths", "aie_trace", "events"};
-    std::vector<std::string> memMetricStrings  {"conflicts", "dma_locks", "dma_stalls_s2mm", "dma_stalls_mm2s", "write_bandwidths", "read_bandwidths"};
-    std::vector<std::string> interfaceMetricStrings {"input_bandwidths", "output_bandwidths", "packets"};
-    std::vector<std::map<tile_type, std::string>> mConfigMetrics;                  
 
   };
 }

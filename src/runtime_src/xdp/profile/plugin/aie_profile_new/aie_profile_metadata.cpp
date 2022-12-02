@@ -13,16 +13,21 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+#define XDP_SOURCE
+
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 #include <boost/algorithm/string.hpp>
 
+#include "core/common/xrt_profiling.h"
+#include "core/common/device.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "aie_profile_metadata.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
-
+  namespace pt = boost::property_tree;
     AieProfileMetadata::AieProfileMetadata(uint64_t deviceID, void* handle)
   : deviceID(deviceID)
   , handle(handle)
@@ -95,7 +100,7 @@ namespace xdp {
       plioCount++;
 
       if (useColumn 
-          && !( (minCol <= shimCol) && (shimCol <= maxCol) )) {
+          && !( (minCol <= (uint32_t)shimCol) && ((uint32_t)shimCol <= maxCol) )) {
         // shimCol is not within minCol:maxCol range. So skip.
         continue;
       }
@@ -351,7 +356,7 @@ namespace xdp {
         offTiles.push_back(tileMetric.first);
         continue;
       }
-       
+      /* 
       // Ensure requested metric set is supported (if not, use default)
       if (((mod == module_type::core) && std::find(coreMetricStrings.begin(), coreMetricStrings.end(), tileMetric.second == coreMetricStrings.end()))
           || ((mod == module_type::dma) && std::find(memMetricStrings.begin(), memMetricStrings.end(), tileMetric.second == memMetricStrings.end()))) {
@@ -362,7 +367,7 @@ namespace xdp {
             << " As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         tileMetric.second = defaultSet;
-      }
+      } */
     }
 
     // remove all the "off" tiles
@@ -575,7 +580,7 @@ namespace xdp {
         offTiles.push_back(tileMetric.first);
         continue;
       }
-
+/*
       // Ensure requested metric set is supported (if not, use default)
       if (std::find(interfaceMetricStrings.begin(), interfaceMetricStrings.end(), tileMetric.second == interfaceMetricStrings.end())) {
         std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
@@ -583,7 +588,7 @@ namespace xdp {
                           + "As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
         tileMetric.second = "input_bandwidths" ;
-      }
+      }*/
     }
 
     // remove all the "off" tiles
@@ -637,10 +642,15 @@ namespace xdp {
 
     return plios;
   }
-
+ 
+  inline void throw_if_error(bool err, const char* msg)
+  {
+    if (err)
+      throw std::runtime_error(msg);
+  }
 
   std::vector<tile_type>
-  AieProfileMetadata::get_event_tiles(const xrt_core::device* device)
+  AieProfileMetadata::get_event_tiles(const xrt_core::device* device, const std::string& graph_name, module_type type)
   {
     auto data = device->get_axlf_section(AIE_METADATA);
     if (!data.first || !data.second)
