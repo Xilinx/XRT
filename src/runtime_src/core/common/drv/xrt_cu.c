@@ -551,8 +551,10 @@ int xrt_cu_intr_thread(void *data)
 	xcu->interrupt_used = 0;
 	xcu_info(xcu, "CU[%d] start", xcu->info.cu_idx);
 	mod_timer(&xcu->timer, jiffies + CU_TIMER);
-	if (xcu->force_intr)
+	if (xcu->force_intr) {
+		xcu->interrupt_used = 1;
 		xrt_cu_switch_to_interrupt(xcu);
+	}
 	while (!xcu->stop) {
 		/* Make sure to submit as many commands as possible.
 		 * This is why we call continue here. This is important to make
