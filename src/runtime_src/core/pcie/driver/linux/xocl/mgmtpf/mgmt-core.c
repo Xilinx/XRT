@@ -108,86 +108,6 @@ static int char_close(struct inode *inode, struct file *file)
 	return 0;
 }
 
-/*
- * Unmap the BAR regions that had been mapped earlier using map_bars()
- */
-static void unmap_bars(struct xclmgmt_dev *lro)
-{
-	if (lro->core.bar_addr) {
-		/* unmap BAR */
-		pci_iounmap(lro->core.pdev, lro->core.bar_addr);
-		/* mark as unmapped */
-		lro->core.bar_addr = NULL;
-	}
-	if (lro->core.intr_bar_addr) {
-		/* unmap BAR */
-		pci_iounmap(lro->core.pdev, lro->core.intr_bar_addr);
-		/* mark as unmapped */
-		lro->core.intr_bar_addr = NULL;
-	}
-}
-
-static int identify_bar(struct xocl_dev_core *core, int bar)
-{
-	void __iomem *bar_addr;
-	resource_size_t bar_len;
-
-	bar_len = pci_resource_len(core->pdev, bar);
-	bar_addr = pci_iomap(core->pdev, bar, bar_len);
-	if (!bar_addr) {
-		xocl_err(&core->pdev->dev, "Could not map BAR #%d",
-				core->bar_idx);
-		return -EIO;
-	}
-
-	/*
-	 * did not find a better way to identify BARS. Currently,
-	 * we have DSAs which rely VBNV name to differenciate them.
-	 * And reading VBNV name needs to bring up Feature ROM.
-	 * So we are not able to specify BARs in devices.h
-	 */
-	if (bar_len < 1024 * 1024) {
-		core->intr_bar_idx = bar;
-		core->intr_bar_addr = bar_addr;
-		core->intr_bar_size = bar_len;
-	} else if (bar_len < 256 * 1024 * 1024) {
-		core->bar_idx = bar;
-		core->bar_size = bar_len;
-		core->bar_addr = bar_addr;
-	}
-
-	return 0;
-}
-
-/* map_bars() -- map device regions into kernel virtual address space
- *
- * Map the device memory regions into kernel virtual address space after
- * verifying their sizes respect the minimum sizes needed, given by the
- * bar_map_sizes[] array.
- */
-static int map_bars(struct xclmgmt_dev *lro)
-{
-	struct pci_dev *pdev = lro->core.pdev;
-	resource_size_t bar_len;
-	int	i, ret = 0;
-
-	for (i = PCI_STD_RESOURCES; i <= PCI_STD_RESOURCE_END; i++) {
-		bar_len = pci_resource_len(pdev, i);
-		if (bar_len > 0) {
-			ret = identify_bar(&lro->core, i);
-			if (ret)
-				goto failed;
-		}
-	}
-
-	/* succesfully mapped all required BAR regions */
-	return 0;
-
-failed:
-	unmap_bars(lro);
-	return ret;
-}
-
 void store_pcie_link_info(struct xclmgmt_dev *lro)
 {
 	u16 stat = 0;
@@ -1464,11 +1384,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	xocl_fill_dsa_priv(lro, (struct xocl_board_private *)id->driver_data);
 	dev_info = &lro->core.priv;
 
-	/* map BARs */
-	rc = map_bars(lro);
-	if (rc)
-		goto err_map;
-
 	lro->instance = XOCL_DEV_ID(pdev);
 	rc = create_char(lro);
 	if (rc) {
@@ -1557,8 +1472,6 @@ err_init_sysfs:
 err_create_wq:
 	destroy_sg_char(&lro->user_char_dev);
 err_cdev:
-	unmap_bars(lro);
-err_map:
 	xocl_free_dev_minor(lro);
 err_alloc_minor:
 	xocl_subdev_fini(lro);
@@ -1607,9 +1520,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	/* remove user character device */
 	destroy_sg_char(&lro->user_char_dev);
-
-	/* unmap the BARs */
-	unmap_bars(lro);
 
 	pci_disable_device(pdev);
 
