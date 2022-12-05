@@ -2370,8 +2370,7 @@ int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, u32 id, u32 inst_i
 int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
-void xocl_subdev_destroy_by_level_slot(xdev_handle_t xdev_hdl, int level,
-		uint32_t slot_id);
+void xocl_subdev_destroy_by_slot(xdev_handle_t xdev_hdl, uint32_t slot_id);
 
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);

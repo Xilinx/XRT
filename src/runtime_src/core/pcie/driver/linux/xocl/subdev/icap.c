@@ -2538,7 +2538,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	if (err && (err != -ENODEV))
 		goto done;
 
-	xocl_subdev_destroy_by_level_slot(xdev, XOCL_SUBDEV_LEVEL_URP, slot_id);
+	xocl_subdev_destroy_by_slot(xdev, slot_id);
 
 	err = __icap_peer_xclbin_download(icap, xclbin, force_download, slot_id);
 
