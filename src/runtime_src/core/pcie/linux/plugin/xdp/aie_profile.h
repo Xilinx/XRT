@@ -26,6 +26,12 @@ namespace profile {
   void warning_callbacks();
 
 } // end namespace profile
+
+namespace ctr {
+  void update_device(void* handle);
+  void end_poll(void* handle);
+} // end namespace ctr
+
 } // end namespace aie
 } // end namespace xdp
 
