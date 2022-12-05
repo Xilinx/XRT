@@ -22,6 +22,7 @@
 #include <cstring>
 
 #include "aie_profile.h"
+#include "aie_profile_defs.h"
 #include "core/edge/user/shim.h"
 #include "core/common/message.h"
 #include "core/common/time.h"
@@ -33,22 +34,6 @@
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_metadata.h"
 
-constexpr unsigned int NUM_CORE_COUNTERS   = 4;
-constexpr unsigned int NUM_MEMORY_COUNTERS = 2;
-constexpr unsigned int NUM_SHIM_COUNTERS  =  2;
-constexpr unsigned int BASE_MEMORY_COUNTER = 128;
-constexpr unsigned int BASE_SHIM_COUNTER =   256;
-
-constexpr uint32_t GROUP_DMA_MASK                   = 0x0000f000;
-constexpr uint32_t GROUP_LOCK_MASK                  = 0x55555555;
-constexpr uint32_t GROUP_CONFLICT_MASK              = 0x000000ff;
-constexpr uint32_t GROUP_ERROR_MASK                 = 0x00003fff;
-constexpr uint32_t GROUP_STREAM_SWITCH_IDLE_MASK    = 0x11111111;
-constexpr uint32_t GROUP_STREAM_SWITCH_RUNNING_MASK = 0x22222222;
-constexpr uint32_t GROUP_STREAM_SWITCH_STALLED_MASK = 0x44444444;
-constexpr uint32_t GROUP_STREAM_SWITCH_TLAST_MASK   = 0x88888888;
-constexpr uint32_t GROUP_CORE_PROGRAM_FLOW_MASK     = 0x00001FE0;
-constexpr uint32_t GROUP_CORE_STALL_MASK            = 0x0000000F;
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -79,8 +64,8 @@ namespace {
 } // end anonymous namespace
 
 namespace xdp {
-  using tile_type = xrt_core::edge::aie::tile_type;
-  using module_type = xrt_core::edge::aie::module_type;
+  using tile_type = xdp::tile_type;
+  using module_type = xdp::module_type;
   using severity_level = xrt_core::message::severity_level;
 
     AieProfile_EdgeImpl::AieProfile_EdgeImpl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)

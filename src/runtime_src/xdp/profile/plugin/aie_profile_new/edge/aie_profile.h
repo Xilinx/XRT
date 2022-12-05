@@ -29,7 +29,7 @@ extern "C" {
 }
 
 namespace xdp {
-  using tile_type = xrt_core::edge::aie::tile_type;
+  using tile_type = xdp::tile_type;
   
   class AieProfile_EdgeImpl : public AieProfileImpl{
     public:
