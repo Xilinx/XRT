@@ -17,6 +17,7 @@
 #ifndef AIE_PROFILE_METADATA_H
 #define AIE_PROFILE_METADATA_H
 
+#include <boost/property_tree/ptree.hpp>
 #include <vector>
 
 #include "xdp/config.h"
@@ -108,9 +109,10 @@ class AieProfileMetadata{
 
     std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, const std::string& graph_name, module_type type);
-    std::vector<std::map<tile_type, std::string>> getConfigMetrics(){ return mConfigMetrics;}
+    std::map<tile_type, std::string> getConfigMetrics(int module){ return mConfigMetrics[module];}
 
   };
 }
 
 #endif
+ 

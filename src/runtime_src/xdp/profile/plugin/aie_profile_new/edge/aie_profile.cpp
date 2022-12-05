@@ -497,11 +497,13 @@ namespace xdp {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
 
     for(int module = 0; module < NUM_MODULES; ++module) {
+
       int numTileCounters[numCountersMod[module]+1] = {0};
-      XAie_ModuleType mod    = falModuleTypes[module];
+      XAie_ModuleType mod  = falModuleTypes[module];
 
       // Iterate over tiles and metrics to configure all desired counters
-      for (auto& tileMetric : metadata->getConfigMetrics()[module]) {
+      for (auto& tileMetric : metadata->getConfigMetrics(module)) {
+
         int numCounters = 0;
         auto col = tileMetric.first.col;
         auto row = tileMetric.first.row;
@@ -589,7 +591,7 @@ namespace xdp {
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }
-
+    
       // Report counters reserved per tile
       {
         std::stringstream msg;

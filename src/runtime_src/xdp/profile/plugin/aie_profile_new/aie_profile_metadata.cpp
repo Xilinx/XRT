@@ -18,6 +18,8 @@
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 #include "core/common/xrt_profiling.h"
 #include "core/common/device.h"
@@ -597,6 +599,12 @@ namespace xdp {
     }
   }
 
+  void AieProfileMetadata::read_aie_metadata(const char* data, size_t size, pt::ptree& aie_project)
+  {
+    std::stringstream aie_stream;
+    aie_stream.write(data,size);
+    pt::read_json(aie_stream,aie_project);
+  }
 
   std::vector<std::string> AieProfileMetadata::get_graphs(const xrt_core::device* device)
   {
