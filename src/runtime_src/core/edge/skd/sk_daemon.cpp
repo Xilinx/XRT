@@ -44,14 +44,14 @@ static void sigLog(const int sig)
     case SIGTERM:
       {
 	const auto termMsg = "Terminating PS kernel";
-	xrt_core::message::send(severity_level::info, "SKD", termMsg);
+	xrt_core::message::send(severity_level::notice, "SKD", termMsg);
 	skd_inst->set_signal(sig);
       }
       break;
     case SIGINT:
       {
 	const auto intMsg = "Process interrupted";
-	xrt_core::message::send(severity_level::info, "SKD", intMsg);
+	xrt_core::message::send(severity_level::notice, "SKD", intMsg);
 	skd_inst->set_signal(sig);
       }
       break;
@@ -67,13 +67,9 @@ static void sigLog(const int sig)
 	while (std::getline (backtrace, bt_line, '\n') )
 	  xrt_core::message::send(severity_level::error, "SKD", bt_line );
 #endif
-	struct sigaction act = {};
-	act.sa_handler = SIG_DFL;
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = 0;
-	sigaction(sig, &act, nullptr);
-	raise(sig);
-	exit(sig);
+	skd_inst->report_crash();
+	xrt_core::message::send(severity_level::error, "SKD", "SKD Reported crash!");
+	exit(128 + sig); // Linux exit code is always 128 + signal number
       }
   }
 }

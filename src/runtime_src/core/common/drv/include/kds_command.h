@@ -2,9 +2,11 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
+ *          jefflin@amd.com
  *
  * This file is dual-licensed; you may select either the GNU General Public
  * License version 2 or Apache License, Version 2.0.
@@ -40,6 +42,7 @@ enum kds_opcode {
  * KDS_ERROR:		Command is error out
  * KDS_ABORT:		Command is abort
  * KDS_TIMEOUT:		Command is timeout
+ * KDS_SKCRASHED:	Command is PS kernel crashed
  */
 enum kds_status {
 	KDS_NEW = 0,
@@ -49,13 +52,14 @@ enum kds_status {
 	KDS_ERROR,
 	KDS_ABORT,
 	KDS_TIMEOUT,
-	KDS_STAT_MAX,
+	KDS_SKCRASHED,
+	KDS_STAT_MAX,  // Always the last one
 };
 
 struct kds_command;
 
 struct kds_cmd_ops {
-	void (*notify_host)(struct kds_command *xcmd, int status);
+	void (*notify_host)(struct kds_command *xcmd, enum kds_status status);
 	void (*free)(struct kds_command *xcmd);
 };
 
@@ -74,7 +78,7 @@ struct in_kernel_cb {
  */
 struct kds_command {
 	struct kds_client	*client;
-	int			 status;
+	enum kds_status		 status;
 	u32			 rcode;
 	int			 cu_idx;
 	u32			 type;
