@@ -1188,7 +1188,7 @@ abort:
 
 static int create_hwmon_sysfs(struct platform_device *pdev)
 {
-	struct xocl_hwmon_sdm *sdm;
+	struct xocl_hwmon_sdm *sdm = NULL;
 	struct xocl_dev_core *core;
 	int err;
 
@@ -1203,29 +1203,28 @@ static int create_hwmon_sysfs(struct platform_device *pdev)
 	if (!sdm->supported)
 		return 0;
 
+	err = device_create_file(sdm->hwmon_dev, &name_attr.dev_attr);
+	if (err) {
+		xocl_err(&pdev->dev, "create attr name failed: 0x%x", err);
+		return err;
+	}
+
 	sdm->hwmon_dev = hwmon_device_register(&core->pdev->dev);
 	if (IS_ERR(sdm->hwmon_dev)) {
 		err = PTR_ERR(sdm->hwmon_dev);
 		xocl_err(&pdev->dev, "register sdm hwmon failed: 0x%x", err);
-		goto hwmon_reg_failed;
+		sdm->hwmon_dev = NULL;
+		goto failed;
 	}
 
 	dev_set_drvdata(sdm->hwmon_dev, sdm);
-
-	err = device_create_file(sdm->hwmon_dev, &name_attr.dev_attr);
-	if (err) {
-		xocl_err(&pdev->dev, "create attr name failed: 0x%x", err);
-		goto create_name_failed;
-	}
 
 	xocl_dbg(&pdev->dev, "created hwmon sysfs list");
 	sdm->sysfs_created = true;
 
 	return 0;
-
-create_name_failed:
-	hwmon_device_unregister(sdm->hwmon_dev);
-hwmon_reg_failed:
+failed:
+	device_remove_file(sdm->hwmon_dev, &name_attr.dev_attr);
 	sdm->hwmon_dev = NULL;
 	return err;
 }
@@ -1410,13 +1409,14 @@ static void destroy_hwmon_sysfs(struct platform_device *pdev)
 	if (!sdm->supported)
 		return;
 
+	sysfs_remove_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup);
+
 	if (sdm->hwmon_dev) {
-		device_remove_file(sdm->hwmon_dev, &name_attr.dev_attr);
 		hwmon_device_unregister(sdm->hwmon_dev);
+		device_remove_file(sdm->hwmon_dev, &name_attr.dev_attr);
 		sdm->hwmon_dev = NULL;
 	}
 
-	sysfs_remove_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup);
 }
 
 static int hwmon_sdm_probe(struct platform_device *pdev)
