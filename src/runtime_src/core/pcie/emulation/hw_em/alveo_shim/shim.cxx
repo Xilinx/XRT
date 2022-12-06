@@ -1095,11 +1095,11 @@ namespace xclhwemhal2 {
     std::string simulationDirectoryMsg = "INFO: [HW-EMU 05] Path of the simulation directory : " + getSimPath();
     logMessage(simulationDirectoryMsg);
      
-    try{
+    try {
        sock = std::make_shared<unix_socket>();
     }
-    catch(std::exception &e){
-       std::cout<<"\n ERROR unable to allocate memory\n";
+    catch(const std::exception &e){
+       std::cerr << "\n ERROR: [HW-EMU 28] ERROR unable to allocate memory, error is ::" << e.what();
        return -1;
     }
     
