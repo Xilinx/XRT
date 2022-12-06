@@ -1118,8 +1118,7 @@ namespace xclhwemhal2 {
     if (mLogStream.is_open())
       mLogStream << __func__ << " Created the Unix socket." << std::endl;
 
-    if (mEnvironmentNameValueMap.empty() == false)
-    {
+    if (!mEnvironmentNameValueMap.empty()) {
       //send environment information to device
       bool ack = true;
 
@@ -1127,8 +1126,7 @@ namespace xclhwemhal2 {
         mLogStream << __func__ << " Before RPC call xclSetEnvironment_RPC_CALL." << std::endl;
 
       xclSetEnvironment_RPC_CALL(xclSetEnvironment);
-      if (!ack)
-      {
+      if (!ack) {
         if (mLogStream.is_open())
           mLogStream << __func__ << "Environment is NOT set properly" << std::endl;
         //std::cout<<"environment is not set properly"<<std::endl;

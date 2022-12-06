@@ -312,7 +312,7 @@ namespace xclhwemhal2
         if (get_simulator_started() == false) 
           return;
         if (true) { // This is for limiting the scope of lock
-          std::unique_lock<std::mutex> guard(mPrintMessagesLock);
+          std::lock_guard<std::mutex> guard(mPrintMessagesLock);
           dumpDeadlockMessages();
           // Any status message found in parse log file?
           lParseLog.parseLog();
