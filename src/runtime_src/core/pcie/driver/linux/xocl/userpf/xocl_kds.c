@@ -202,19 +202,13 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 
 		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id);
 		if (ret) {
-			vfree(client->ctx);
-			client->ctx = NULL;
 			goto out;
 		}
 
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
-			vfree(client->ctx);
-			client->ctx = NULL;
-			(void) xocl_icap_unlock_bitstream(xdev,
-							  &args->xclbin_id);
-			goto out;
+			goto out1;
 		}
 
 		uuid_copy(uuid, &args->xclbin_id);
@@ -230,7 +224,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		hw_ctx = kds_alloc_hw_ctx(client, uuid, 0 /*slot id */);
 		if (!hw_ctx) {
 			ret = -EINVAL;
-			goto out1;
+			goto out_hw_ctx;
 		}
 	}
 
@@ -248,22 +242,30 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 
 	ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
 	if (ret) {
-		kds_free_cu_ctx(client, cu_ctx);
-		goto out1;
+		goto out_cu_ctx;
 	}
 
 	mutex_unlock(&client->lock);
 	return ret;
+
+out_cu_ctx:
+	kds_free_cu_ctx(client, cu_ctx);
+
+out_hw_ctx:
+	kds_free_hw_ctx(client, cu_ctx->hw_ctx);	
+
 out1:
 	/* If client still has no opened context at this point */
 	if (client->ctx->xclbin_id)
 		vfree(client->ctx->xclbin_id);
 	client->ctx->xclbin_id = NULL;
 	(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
-	vfree(client->ctx);
-	client->ctx = NULL;
 
 out:
+	if (client->ctx)
+		vfree(client->ctx);
+
+	client->ctx = NULL;
 	mutex_unlock(&client->lock);
 	return ret;
 }
@@ -460,7 +462,7 @@ xocl_cu_ctx_to_info(struct xocl_dev *xdev, struct drm_xocl_open_cu_ctx *cu_args,
         strcpy(kname, strsep(&kname_p, ":"));
         strcpy(iname, strsep(&kname_p, ":"));
 
-        /* Retrive the CU index from the given slot */
+        /* Retrieve the CU index from the given slot */
         for (i = 0; i < MAX_CUS; i++) {
                 xcu = kds->cu_mgmt.xcus[i];
                 if (!xcu)
@@ -475,7 +477,7 @@ xocl_cu_ctx_to_info(struct xocl_dev *xdev, struct drm_xocl_open_cu_ctx *cu_args,
                 }
         }
 
-        /* Retrive the SCU index from the given slot */
+        /* Retrieve the SCU index from the given slot */
         for (i = 0; i < MAX_CUS; i++) {
                 xcu = kds->scu_mgmt.xcus[i];
                 if (!xcu)

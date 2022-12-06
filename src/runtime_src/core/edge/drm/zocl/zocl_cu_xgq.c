@@ -464,7 +464,7 @@ zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 
 	xcmd->info = cmd;
 	xcmd->payload_type = XGQ_CMD;
-	/* Default he context id. This is for backward compartability */
+	/* Default hw context id. This is for backward compartability */
 	xcmd->hw_ctx_id = 0;
 
 	xcmd->cb.notify_host = zcu_xgq_cmd_notify;
