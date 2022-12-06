@@ -81,7 +81,8 @@ static ssize_t kds_create_cu_string(struct xrt_cu *xcu,
 	return cu_sz;
 }
 
-ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, uint32_t domain)
+ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, 
+				size_t buf_size, loff_t offset, uint32_t domain)
 {
 	struct kds_cu_mgmt *cu_mgmt = (domain == DOMAIN_PL) ?
 	       	&kds->cu_mgmt : &kds->scu_mgmt;
@@ -90,11 +91,15 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, uint32_t domai
 	struct kds_client *client = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_hw_ctx *curr = NULL;
+	char cu_buf[MAX_CU_STAT_LINE_LENGTH];
 	/* Each line is a CU, format:
 	 * "hwCtx,cu_idx,kernel_name:cu_name,address,status,usage"
 	 */
 	char *cu_fmt = "%d,%d,%s:%s,0x%llx,0x%x,%llu\n";
 	ssize_t sz = 0;
+	ssize_t cu_sz = 0;
+	ssize_t all_cu_sz = 0;
+	enum kds_type type = (domain == DOMAIN_PL) ? KDS_CU : KDS_SCU;
 	int i, j;
 
 	mutex_lock(&cu_mgmt->lock);
@@ -112,12 +117,24 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, uint32_t domai
 
 			j = cu_ctx->ctx->slot_idx;
 			i = cu_ctx->cu_idx;
-			sz += scnprintf(buf+sz, PAGE_SIZE - sz,
-					cu_fmt, j,
-					set_domain(domain, i),
-					xcu->info.kname, xcu->info.iname,
-					xcu->info.addr, xcu->status,
-					cu_stat_read(cu_mgmt, usage[i]));
+                        /* Generate the CU string to write into the buffer */
+                        memset(cu_buf, 0, sizeof(cu_buf));
+                        cu_sz = kds_create_cu_string(xcu, &cu_buf, j, i,
+                                        cu_stat_read(cu_mgmt, usage[i]), type);
+
+                        /* Store the CU string length with previous lengths */
+                        all_cu_sz += cu_sz;
+
+                        /**
+                         * Verify that
+                         * 1. The data starts after the requested offset
+                         * 2. The buffer can hold the data
+                         */
+                        if (all_cu_sz > offset) {
+                                if (sz + cu_sz > buf_size)
+                                        return sz;
+                                sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
+                        }
 		}
 	}
 
@@ -139,12 +156,24 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf, uint32_t domai
 
 				j = cu_ctx->hw_ctx->hw_ctx_idx;
 				i = cu_ctx->cu_idx;
-				sz += scnprintf(buf+sz, PAGE_SIZE - sz,
-						cu_fmt, j,
-						set_domain(domain, i),
-						xcu->info.kname, xcu->info.iname,
-						xcu->info.addr, xcu->status,
-						cu_stat_read(cu_mgmt, usage[i]));
+				/* Generate the CU string to write into the buffer */
+				memset(cu_buf, 0, sizeof(cu_buf));
+				cu_sz = kds_create_cu_string(xcu, &cu_buf, j, i,
+						cu_stat_read(cu_mgmt, usage[i]), type);
+
+				/* Store the CU string length with previous lengths */
+				all_cu_sz += cu_sz;
+
+				/**
+				 * Verify that
+				 * 1. The data starts after the requested offset
+				 * 2. The buffer can hold the data
+				 */
+				if (all_cu_sz > offset) {
+					if (sz + cu_sz > buf_size)
+						return sz;
+					sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
+				}
 			}
 		}
 	}
