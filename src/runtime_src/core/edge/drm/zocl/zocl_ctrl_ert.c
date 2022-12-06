@@ -128,6 +128,7 @@ struct zocl_ctrl_ert {
 	size_t			zce_cu_xgq_ring_size;
 
 	void			*zce_ctrl_xgq_hdl;
+	uint32_t		next_xgqidx;
 
 	size_t			zce_num_cu_xgqs;
 	struct zocl_ctrl_ert_cu_xgq *zce_cu_xgqs;
@@ -261,29 +262,6 @@ static void zert_init_cus(struct zocl_ctrl_ert *zert)
 	}
 }
 
-static int zert_validate_cus(struct zocl_ctrl_ert *zert)
-{
-	u32 i = 0;
-	struct zocl_ctrl_ert_cu *cu = &zert->zce_cus[0];
-
-	for (i = 0; i < MAX_CUS; i++, cu++) {
-		if (cu->zcec_pdev && (cu->zcec_xgq_idx == ZERT_INVALID_XGQ_ID)) {
-			zert_err(zert, "Some CUs are not configured properly.");
-			return -EINVAL;
-		}
-	}
-
-	cu = &zert->zce_scus[0];
-	for (i = 0; i < MAX_CUS; i++, cu++) {
-		if ((cu->zcec_pdev) && (cu->zcec_xgq_idx == ZERT_INVALID_XGQ_ID)) {
-			zert_err(zert, "Some SCUs are not configured properly.");
-			return -EINVAL;
-		}
-	}
-
-	return 0;
-}
-
 static void zert_unassign_cu_xgqs(struct zocl_ctrl_ert *zert)
 {
 	int ret = 0;
@@ -376,7 +354,6 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert, u32 cu_idx,
 	int ret = 0;
 	u32 i = 0;
 	u32 idx = 0;
-	u32 xgqidx = 0;
 	struct platform_device *xgqpdev = NULL;
 	struct zocl_ctrl_ert_cu *cu = NULL;
 
@@ -393,10 +370,8 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert, u32 cu_idx,
 		cu = &zert->zce_cus[cu_idx];
 		if (cu->zcec_pdev) {
 			/* Find next enabled XGQ, we are guaranteed to have one. */
-			while (xgqpdev == NULL) {
-				idx = xgqidx++ % zert->zce_num_cu_xgqs;
-				xgqpdev = zert->zce_cu_xgqs[idx].zcecx_pdev;
-			}
+			idx = zert->next_xgqidx++ % zert->zce_num_cu_xgqs;
+			xgqpdev = zert->zce_cu_xgqs[idx].zcecx_pdev;
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
 			ret = zcu_xgq_assign_cu(xgqpdev, cu_idx, DOMAIN_PL);
@@ -409,10 +384,8 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert, u32 cu_idx,
 		cu = &zert->zce_scus[cu_idx];
 		if (cu->zcec_pdev) {
 			/* Find next enabled XGQ, we are guaranteed to have one. */
-			while (xgqpdev == NULL) {
-				idx = xgqidx++ % zert->zce_num_cu_xgqs;
-				xgqpdev = zert->zce_cu_xgqs[idx].zcecx_pdev;
-			}
+			idx = zert->next_xgqidx++ % zert->zce_num_cu_xgqs;
+			xgqpdev = zert->zce_cu_xgqs[idx].zcecx_pdev;
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
 			ret = zcu_xgq_assign_cu(xgqpdev, cu_idx, DOMAIN_PS);
@@ -839,8 +812,6 @@ static void zert_cmd_cfg_end(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr *
 	kds_cfg_update(&zocl_get_zdev()->kds);
 
 	zert->zce_config_completed = true;
-
-	rc = zert_validate_cus(zert);
 
 	init_resp(resp, cmd->cid, rc);
 }

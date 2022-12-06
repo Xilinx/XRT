@@ -2064,7 +2064,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	if (ret)
 		goto create_regular_cu;
 
-	/* Reserve the sundevices for all the CUs. We need to share the CU index
+	/* Reserve the subdevices for all the CUs. We need to share the CU index
 	 * with ZOCL here.
 	 */
 	xocl_kds_reserve_cu_subdevices(xdev, cu_info, num_cus);
@@ -2072,7 +2072,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	if (ret)
 		goto create_regular_cu;
 
-	/* Reserve the sundevices for all the CUs. We need to share the SCU index
+	/* Reserve the subdevices for all the CUs. We need to share the SCU index
 	 * with ZOCL here.
 	 */
 	xocl_kds_reserve_scu_subdevices(xdev, scu_info, num_scus);
@@ -2248,24 +2248,10 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	xocl_kds_xgq_identify(xdev, &major, &minor);
 	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
 
-	cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
-	for (i = 0; i < MAX_CUS; i++) {
-		xcu = cu_mgmt->xcus[i];
-		if (!xcu)
-			continue;
-
-		/* Unregister the CUs as per slot order */
-		if (xcu->info.slot_idx != slot_hdl)
-			continue;
-
-		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PL);
-			if (ret)
-				goto out;
-		}
-	}
-
-	/* Unconfigure the SCUs */
+	/* Unconfigure the SCUs first. There is a case, where there is a
+	 * PS kernel which is opening a PL kernel. In that case, we need to
+	 * destroy PS kernel before destroy PL kernel.
+	 */
 	cu_mgmt = &XDEV(xdev)->kds.scu_mgmt;
 	for (i = 0; i < MAX_CUS; i++) {
 		xcu = cu_mgmt->xcus[i];
@@ -2283,10 +2269,27 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		}
 	}
 
+	cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
+	for (i = 0; i < MAX_CUS; i++) {
+		xcu = cu_mgmt->xcus[i];
+		if (!xcu)
+			continue;
+
+		/* Unregister the CUs as per slot order */
+		if (xcu->info.slot_idx != slot_hdl)
+			continue;
+
+		if (major == 2 && minor == 0) {
+			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PL);
+			if (ret)
+				goto out;
+		}
+	}
+
 	ret = xocl_kds_xgq_cfg_end(xdev);
 	if (ret)
 		goto out;
-	
+
 	xocl_ert_ctrl_unset_xgq(xdev);
 
 out:

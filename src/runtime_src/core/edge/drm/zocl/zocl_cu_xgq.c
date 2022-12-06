@@ -378,6 +378,9 @@ int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 	int rc = 0;
 	struct zocl_cu_xgq *zcu_xgq = platform_get_drvdata(pdev);
 
+	if (!zcu_xgq)
+		return -EINVAL;
+
 	mutex_lock(&zcu_xgq->zxc_lock);
 	zcu_xgq->zxc_num_cu++;
 	/* For optimization when there is only 1 CU. */
