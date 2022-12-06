@@ -226,7 +226,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		hw_ctx = kds_alloc_hw_ctx(client, uuid, 0 /*slot id */);
 		if (!hw_ctx) {
 			ret = -EINVAL;
-			goto out1;
+			goto out_hw_ctx;
 		}
 	}
 
