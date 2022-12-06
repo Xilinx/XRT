@@ -3149,9 +3149,16 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+	xocl_drvinst_release(xgq, &hdl);
+
+	sysfs_remove_group(&pdev->dev.kobj, &xgq_attr_group);
+	/* free cached data */
+	if (xgq->xgq_vmr_system_dtb)
+		vfree(xgq->xgq_vmr_system_dtb);
+	if (xgq->xgq_vmr_plm_log)
+		vfree(xgq->xgq_vmr_plm_log);
 
 	xgq_stop_services(xgq);
-
 	fini_worker(&xgq->xgq_complete_worker);
 	fini_worker(&xgq->xgq_health_worker);
 
@@ -3162,19 +3169,10 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_HWMON_SDM);
 
-	sysfs_remove_group(&pdev->dev.kobj, &xgq_attr_group);
-
-	/* free cached data */
-	if (xgq->xgq_vmr_system_dtb)
-		vfree(xgq->xgq_vmr_system_dtb);
-	if (xgq->xgq_vmr_plm_log)
-		vfree(xgq->xgq_vmr_plm_log);
-
 	mutex_destroy(&xgq->clk_scaling_lock);
 	mutex_destroy(&xgq->xgq_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	xocl_drvinst_release(xgq, &hdl);
 	xocl_drvinst_free(hdl);
 
 	XGQ_INFO(xgq, "successfully removed xgq subdev");
@@ -3212,24 +3210,76 @@ static bool vmr_wait_for_sc_ready(struct xocl_xgq_vmr *xgq)
 		// display SC status for every SC_ERR_MSG_INTERVAL_SEC i.e. 5 seconds
 		if (!(i % SC_ERR_MSG_INTERVAL_SEC))
 			XGQ_WARN(xgq, "SC is not ready in %d sec, waiting for SC to be ready", i);
+
+		/* we could block for very long time, yield to avoid linux kernel warning */
+		yield();
 	}
 
 	XGQ_ERR(xgq, "SC state is unknown, total wait time %d sec", loop_counter);
 	return false;
 }
 
-static int xgq_vmr_probe(struct platform_device *pdev)
+static int vmr_services_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_HWMON_SDM;
+	int ret = 0;
+
+	/*
+	 * First check vmr firmware version.
+	 * We don't want to send unsupported cmds to vmr.
+	 */
+	ret = vmr_identify_op(pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Unsupported vmr firmware version, only basic operations allowed. ret:%d", ret);
+		xgq_stop_services(xgq);
+		return 0;
+	}
+
+	/* try to download APU PDI, user can check APU status later */
+	ret = xgq_download_apu_firmware(pdev);
+	if (ret)
+		XGQ_WARN(xgq, "unable to download APU, ret: %d", ret);
+
+	//Retrieve clock scaling default configuration settings
+	ret = clk_scaling_get_default_configs(pdev);
+	if (ret) {
+		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
+	} else {
+		struct xgq_cmd_cq_clk_scaling_payload *cs_payload=
+			(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
+		if (cs_payload->has_clk_scaling)
+			XGQ_INFO(xgq, "clock scaling feature is supported, and enable status: %d",
+				cs_payload->clk_scaling_en);
+		else
+			XGQ_INFO(xgq, "clock scaling feature is not supported");
+	}
+
+	ret = vmr_wait_for_sc_ready(xgq);
+	if (ret) {
+		ret = xocl_subdev_create(xdev, &subdev_info);
+		if (ret)
+			XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
+	} else {
+		XGQ_ERR(xgq, "SC is not ready and inactive, some user functions may not work properly");
+	}
+
+	return 0;
+}
+
+static int xgq_vmr_probe(struct platform_device *pdev)
+{
 	struct xocl_xgq_vmr *xgq = NULL;
 	struct resource *res = NULL;
-	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_HWMON_SDM;
 	int ret = 0, i = 0;
 	void *hdl;
 
 	xgq = xocl_drvinst_alloc(&pdev->dev, sizeof (*xgq));
 	if (!xgq)
 		return -ENOMEM;
+	platform_set_drvdata(pdev, xgq);
+
 	xgq->xgq_pdev = pdev;
 	xgq->xgq_cmd_id = 0;
 	xgq->xgq_halted = true;
@@ -3242,8 +3292,6 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	mutex_init(&xgq->clk_scaling_lock);
 	sema_init(&xgq->xgq_data_sema, 1);
 	sema_init(&xgq->xgq_log_page_sema, 1); /*TODO: improve to n based on availabity */
-
-	platform_set_drvdata(pdev, xgq);
 
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
@@ -3268,7 +3316,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	xgq->xgq_sq_base = xgq->xgq_sq_base + XGQ_SQ_TAIL_POINTER;
 	xgq->xgq_cq_base = xgq->xgq_sq_base + XGQ_CQ_TAIL_POINTER;
 
-	if (xgq_start_services(xgq))
+	ret = xgq_start_services(xgq);
+	if (ret)
 		goto attach_failed;
 
 	/* init condition veriable */
@@ -3303,6 +3352,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	else
 		xrt_cu_enable_intr(&xgq->xgq_cu, CU_INTR_DONE);
 #endif
+	(void) vmr_services_probe(pdev);
+
 	ret = sysfs_create_group(&pdev->dev.kobj, &xgq_attr_group);
 	if (ret) {
 		XGQ_ERR(xgq, "create xgq attrs failed: %d", ret);
@@ -3311,56 +3362,12 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	/*
-	 * First check vmr firmware version.
-	 * We don't want to send unsupported cmds to vmr.
-	 */
-	ret = vmr_identify_op(pdev);
-	if (ret) {
-		XGQ_WARN(xgq, "Unsupported vmr firmware version, only basic operations allowed. ret:%d", ret);
-		xgq_stop_services(xgq);
-		ret = 0;
-		goto done;
-	}
-
-	ret = xgq_download_apu_firmware(pdev);
-	if (ret) {
-		XGQ_WARN(xgq, "unable to download APU, ret: %d", ret);
-		ret = 0;
-	}
-
-	//Retrieve clock scaling default configuration settings
-	ret = clk_scaling_get_default_configs(pdev);
-	if (ret) {
-		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
-		ret = 0;
-	} else {
-		struct xgq_cmd_cq_clk_scaling_payload *cs_payload=
-			(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
-		if (cs_payload->has_clk_scaling)
-			XGQ_INFO(xgq, "clock scaling feature is supported, and enable status: %d", cs_payload->clk_scaling_en);
-		else
-			XGQ_INFO(xgq, "clock scaling feature is not supported");
-	}
-
-	if (vmr_wait_for_sc_ready(xgq)) {
-		ret = xocl_subdev_create(xdev, &subdev_info);
-		if (ret) {
-			XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
-			ret = 0;
-		}
-	} else {
-		XGQ_ERR(xgq, "SC is not ready and inactive, some user functions may not work properly");
-	}
-
-done:
 	XGQ_INFO(xgq, "Initialized xgq subdev, polling (%d)", xgq->xgq_polling);
-
 	return ret;
 
 attach_failed:
-	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_release(xgq, &hdl);
+	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
 
 	return ret;
