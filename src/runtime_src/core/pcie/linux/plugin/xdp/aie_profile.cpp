@@ -26,22 +26,11 @@ namespace profile {
     static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
 						    register_callbacks,
 						    warning_callbacks);
-
-    std::function<void (void*)> update_device_cb;
-    std::function<void (void*)> end_poll_cb;
   }
 
   void register_callbacks(void* /*handle*/)
   {
-    using ftype = void (*)(void*); // Device handle
-
-    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
-    if (xrt_core::dlerror() != nullptr)
-      update_device_cb = nullptr;
-
-    end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
-    if (xrt_core::dlerror() != nullptr)
-      end_poll_cb = nullptr; 
+    // No callbacks in AIE profiling. The plugin is always active.
   }
 
   void warning_callbacks()
@@ -50,21 +39,5 @@ namespace profile {
   }
 
 } // end namespace profile
-
-namespace ctr {
-  void update_device(void* handle)
-  {
-    if (profile::update_device_cb != nullptr) {
-      profile::update_device_cb(handle) ;
-    }
-  }
-
-  void end_poll(void* handle)
-  {
-    if (profile::end_poll_cb != nullptr) {
-      profile::end_poll_cb(handle) ;
-    }
-  }
-} // end namespace ctr
 } // end namespace aie
 } // end namespace xdp

@@ -35,13 +35,7 @@ namespace xdp {
   , handle(handle)
   {
     mConfigMetrics.resize(3);
-
-
-  }
-
-  void AieProfileMetadata::parsePollingInterval()
-  {
-    // Get polling interval (in usec; minimum is 100)
+  // Get polling interval (in usec; minimum is 100)
     mPollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
     if (1000 == mPollingInterval) {
       // If set to default value, then check for old style config 
@@ -51,6 +45,7 @@ namespace xdp {
           "The xrt.ini flag \"aie_profile_interval_us\" is deprecated and will be removed in future release. Please use \"interval_us\" under \"AIE_profile_settings\" section.");
       }
     }
+
   }
 
   std::vector<tile_type>

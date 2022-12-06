@@ -634,7 +634,6 @@ shim::~shim()
     xrt_logmsg(XRT_INFO, "%s", __func__);
     // flush aie trace and write outputs
     xdp::aie::finish_flush_device(this) ;
-    xdp::aie::ctr::end_poll(this);
 
     // The BO cache unmaps and releases all execbo, but this must
     // be done before the device is closed.
@@ -1367,7 +1366,6 @@ xclLoadXclBin(const xclBin *buffer)
 
   xdp::hal::update_device(this);
   xdp::aie::update_device(this);
-  xdp::aie::ctr::update_device(this);
   xdp::pl_deadlock::update_device(this);
 
   START_DEVICE_PROFILING_CB(this);

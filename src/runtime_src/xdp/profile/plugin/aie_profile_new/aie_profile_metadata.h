@@ -21,47 +21,9 @@
 #include <vector>
 
 #include "xdp/config.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 #include "core/common/device.h"
 namespace xdp {
-
-  enum class module_type {
-    core = 0,
-    dma,
-    shim
-  };
-
-  struct tile_type
-  { 
-    uint16_t row;
-    uint16_t col;
-    uint16_t itr_mem_row;
-    uint16_t itr_mem_col;
-    uint64_t itr_mem_addr;
-    bool     is_trigger;
-    
-    bool operator==(const tile_type &tile) const {
-      return (col == tile.col) && (row == tile.row);
-    }
-    bool operator<(const tile_type &tile) const {
-      return (col < tile.col) || ((col == tile.col) && (row < tile.row));
-    }
-  };
-
-  struct plio_config
-  { 
-    /// PLIO object id
-    int id;
-    /// PLIO variable name
-    std::string name;
-    /// PLIO loginal name
-    std::string logicalName;
-    /// Shim tile column to where the GMIO is mapped
-    short shimColumn;
-    /// slave or master. 0:slave, 1:master
-    short slaveOrMaster;
-    /// Shim stream switch port id
-    short streamId;
-  };  
 
 class AieProfileMetadata{
   private:
@@ -79,7 +41,6 @@ class AieProfileMetadata{
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
-    void parsePollingInterval();
     
     uint64_t getDeviceID() {return deviceID;}
     void* getHandle() {return handle;}
