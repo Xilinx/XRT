@@ -46,13 +46,6 @@ install_recipes()
         echo "inherit externalsrc" > $XRT_BB
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
-        echo 'EXTRA_OECMAKE:append:versal += "-DXRT_LIBDFX=true"' >> $XRT_BB
-        echo 'EXTRA_OECMAKE:append:zynqmp += "-DXRT_LIBDFX=true"' >> $XRT_BB
-        echo 'DEPENDS += "rapidjson"' >> $XRT_BB
-        echo 'DEPENDS:append:versal += "libdfx"' >> $XRT_BB
-        echo 'DEPENDS:append:zynqmp += "libdfx"' >> $XRT_BB
-        echo "FILES:\${PN} += \"\${libdir}/ps_kernels_lib \ " >> $XRT_BB
-        echo "                 \${datadir}\"" >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=da5408f748bce8a9851dac18e66f4bcf \' >> $XRT_BB
@@ -70,19 +63,57 @@ install_recipes()
         if [[ ! -z $XRT_VERSION_PATCH ]]; then
             echo "EXTRA_OEMAKE += \"XRT_VERSION_PATCH=$XRT_VERSION_PATCH\"" >> $ZOCL_BB
         fi
-        echo 'pkg_postinst_ontarget_${PN}() {' >> $ZOCL_BB
-        echo '  #!/bin/sh' >> $ZOCL_BB
-        echo '  echo "Unloading old XRT Linux kernel modules"' >> $ZOCL_BB
-        echo '  ( rmmod zocl || true ) > /dev/null 2>&1' >> $ZOCL_BB
-        echo '  echo "Loading new XRT Linux kernel modules"' >> $ZOCL_BB
-        echo '  modprobe zocl' >> $ZOCL_BB
-        echo '}' >> $ZOCL_BB
     fi
     eval "$SAVED_OPTIONS_LOCAL"
 }
 
 enable_vdu()
 {
+    VERSAL_PROJECT_DIR=$1
+    APU_RECIPES_DIR=$XRT_REPO_DIR/src/runtime_src/tools/scripts/apu_recipes
+    
+    # Create daemon to modprobe/rmmod vdu modules after xclbin load
+    # This daemon probes vdu drivers on first xclbin load and exit
+    SERVICE_FILE=$APU_RECIPES_DIR/vdu-init.service
+    BB_FILE=$APU_RECIPES_DIR/vdu-init.bb
+    INIT_SCRIPT=$APU_RECIPES_DIR/vdu-init
+
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n vdu-init --enable
+    fi
+
+    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
+    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init
+    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
+    
+    # Generate vdu modules and add them to apu package
+    
+    # Enable VDU kernel module 
+    VDU_MOD_BB_FILE=$APU_RECIPES_DIR/kernel-module-vdu.bb
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n kernel-module-vdu --enable
+    fi
+    cp -rf $VDU_MOD_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu/
+    
+    # Enable VDU firmware 
+    VDU_FIRMWARE_BB_FILE=$APU_RECIPES_DIR/vdu-firmware.bb
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n vdu-firmware --enable
+    fi
+    cp -rf $VDU_FIRMWARE_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware/
+    
+    # Enable VDU control software library 
+    # This is not required as PS Kernels statically linking with control software, Enabling this to debug standalone control software 
+    VDU_LIBRARY_BB_FILE=$APU_RECIPES_DIR/libvdu-ctrlsw.bb
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n libvdu-ctrlsw --enable
+    fi
+    cp -rf $VDU_LIBRARY_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw/
+
     echo "IMAGE_INSTALL:append = \" libvdu-ctrlsw kernel-module-vdu vdu-firmware\""  >> build/conf/local.conf
 }
 
@@ -91,6 +122,7 @@ config_versal_project()
     VERSAL_PROJECT_DIR=$1
     APU_RECIPES_DIR=$XRT_REPO_DIR/src/runtime_src/tools/scripts/apu_recipes
 
+    # Remove unnecessary packages from rootfs config
     sed -i 's/^CONFIG_packagegroup-petalinux-opencv.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_xrt-dev.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
@@ -115,9 +147,7 @@ config_versal_project()
     sed -i 's/^CONFIG_valgrind.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/^CONFIG_packagegroup-core-ssh-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
-
-
-    # Add necessary rootfs configs
+    # Add necessary rootfs config
     sed -i 's/.*CONFIG_openssh-sftp-server is.*/CONFIG_openssh-sftp-server=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_strace is.*/CONFIG_strace=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_perf is.*/CONFIG_perf=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
@@ -192,48 +222,6 @@ config_versal_project()
     cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd
     cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/skd/files
     
-    # Create daemon to modprobe/rmmod vdu modules after xclbin load
-    # This daemon probes vdu drivers on first xclbin load and exit
-    SERVICE_FILE=$APU_RECIPES_DIR/vdu-init.service
-    BB_FILE=$APU_RECIPES_DIR/vdu-init.bb
-    INIT_SCRIPT=$APU_RECIPES_DIR/vdu-init
-
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n vdu-init --enable
-    fi
-
-    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
-    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init
-    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-init/files
-    
-    # Generate vdu modules and add them to apu package
-    
-    # Enable VDU kernel module 
-    VDU_MOD_BB_FILE=$APU_RECIPES_DIR/kernel-module-vdu.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n kernel-module-vdu --enable
-    fi
-    cp -rf $VDU_MOD_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/kernel-module-vdu/
-    
-    # Enable VDU firmware 
-    VDU_FIRMWARE_BB_FILE=$APU_RECIPES_DIR/vdu-firmware.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n vdu-firmware --enable
-    fi
-    cp -rf $VDU_FIRMWARE_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/vdu-firmware/
-    
-    # Enable VDU control software library 
-    # This is not required as PS Kernels statically linking with control software, Enabling this to debug standalone control software 
-    VDU_LIBRARY_BB_FILE=$APU_RECIPES_DIR/libvdu-ctrlsw.bb
-    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw ]; then
-        $PETA_BIN/petalinux-config --silentconfig
-        $PETA_BIN/petalinux-create -t apps --template install -n libvdu-ctrlsw --enable
-    fi
-    cp -rf $VDU_LIBRARY_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw/
-
 }
 
 # --- End internal functions
@@ -257,7 +245,7 @@ PROJ_NAME=""
 PLATFROM=""
 XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
-full=0
+apu_package=0
 archiver=0
 gen_sysroot=1
 SSTATE_CACHE=""
@@ -279,7 +267,7 @@ while [ $# -gt 0 ]; do
 			clean=1
 			;;
 		-full | full )
-			full=1
+			apu_package=1
 			;;
 		-archiver | archiver )
 			archiver=1
@@ -371,6 +359,7 @@ else
 fi
 
 cd $ORIGINAL_DIR/$PETALINUX_NAME
+echo "in $PWD"
 
 #cleanup existing files in incremental build
 /bin/rm -rf *.rpm
@@ -387,12 +376,12 @@ echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/co
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
-#Run a full build if -full option is provided
-if [[ $full == 1 ]]; then
+if [[ $apu_package == 1 ]]; then
+  #Run a apu package build if -full option is provided
   if [[ $AARCH = $versal_dir ]]; then
     # configure the project with appropriate options
     config_versal_project .
-    enable_vdu
+    enable_vdu .
   fi
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
@@ -405,68 +394,61 @@ if [[ $full == 1 ]]; then
         $PETA_BIN/petalinux-build --sdk
         echo "Run $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/sdk.sh to generate the syroot"
   fi
-else
-#Run just xrt build if -full option is not provided
-  echo "[CMD]: petalinux-build -c zocl"
-  $PETA_BIN/petalinux-build -c zocl
-  echo "[CMD]: petalinux-build -c xrt"
-  $PETA_BIN/petalinux-build -c xrt
-fi
-
-if [[ $archiver == 1 ]]; then
-  $PETA_BIN/petalinux-build --archiver
-fi
-
-if [ $? != 0 ]; then
-   error "XRT build failed"
-fi
-
-# zocl is now part of xrt depenendencies. No need to build zocl from petalinux 2021.1+
-#echo "[CMD]: petalinux-build -c zocl"
-#$PETA_BIN/petalinux-build -c zocl
-#if [ $? != 0 ]; then
-#   error "ZOCL build failed"
-#fi
-
-echo "Copying rpms in $ORIGINAL_DIR/$PETALINUX_NAME"
-if [ ! -d build/tmp/deploy/rpm ]; then
-  tmp_path=$(cat project-spec/configs/config | grep CONFIG_TMP_DIR_LOCATION \
-	| awk -F'=' '{print $2}' |  sed -e 's/^"//' -e 's/"$//')
-  cp -v ${tmp_path}/deploy/rpm/*/xrt* $ORIGINAL_DIR/$PETALINUX_NAME/.
-  cp -v ${tmp_path}/deploy/rpm/${PLATFORM_NAME}*/*zocl* $ORIGINAL_DIR/$PETALINUX_NAME/.
-else
-  cp -v build/tmp/deploy/rpm/${PLATFORM_NAME}*/*zocl* $ORIGINAL_DIR/$PETALINUX_NAME/.
-  cp -v build/tmp/deploy/rpm/*/xrt* $ORIGINAL_DIR/$PETALINUX_NAME/.
-fi
-
-#copying rpms into rpms folder
-mkdir -p $ORIGINAL_DIR/$PETALINUX_NAME/rpms
-cp -v $ORIGINAL_DIR/$PETALINUX_NAME/xrt* $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
-cp -v $ORIGINAL_DIR/$PETALINUX_NAME/zocl* $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
-cp -v $ORIGINAL_DIR/$PETALINUX_NAME/kernel* $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
-
-echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt"
-echo `ls xrt-dev*` > $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt
-echo `ls xrt-2*` >> $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt
-
-echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh"
-xrt_dbg=`ls xrt-dbg*`
-zocl_dbg=`ls zocl-dbg*`
-echo dnf --disablerepo=\"*\" install -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh
-
-echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh"
-echo dnf --disablerepo=\"*\" reinstall -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh
-
-cp $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
-cp $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
-cp $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
-
-if [[ $full == 1 ]]; then
+  
+  # Generate APU Package for versal platforms
   mkdir -p $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages
   export PATH=$PETALINUX/../../tool/petalinux-v$PETALINUX_VER-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin:$PATH
   $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x14ca8093" -package-name xrt-apu-vck5000
   $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/ -idcode "0x04cd7093" -package-name xrt-apu
   
+  # Generate archiver for petalinux project
+  if [[ $archiver == 1 ]]; then
+        $PETA_BIN/petalinux-build --archiver
+  fi
+  
+else
+  # Run just xrt build if -full option is not provided
+  echo "[CMD]: petalinux-build -c zocl"
+  $PETA_BIN/petalinux-build -c zocl
+  echo "[CMD]: petalinux-build -c xrt"
+  $PETA_BIN/petalinux-build -c xrt
+  if [ $? != 0 ]; then
+    error "XRT build failed"
+  fi
+
+  echo "Copying rpms in $ORIGINAL_DIR/$PETALINUX_NAME"
+  if [ ! -d build/tmp/deploy/rpm ]; then
+    tmp_path=$(cat project-spec/configs/config | grep CONFIG_TMP_DIR_LOCATION \
+  	| awk -F'=' '{print $2}' |  sed -e 's/^"//' -e 's/"$//')
+    cp -v ${tmp_path}/deploy/rpm/*/xrt* $ORIGINAL_DIR/$PETALINUX_NAME/.
+    cp -v ${tmp_path}/deploy/rpm/${PLATFORM_NAME}*/*zocl* $ORIGINAL_DIR/$PETALINUX_NAME/.
+  else
+    cp -v build/tmp/deploy/rpm/${PLATFORM_NAME}*/*zocl* $ORIGINAL_DIR/$PETALINUX_NAME/.
+    cp -v build/tmp/deploy/rpm/*/xrt* $ORIGINAL_DIR/$PETALINUX_NAME/.
+  fi
+  
+  #copying rpms into rpms folder
+  mkdir -p $ORIGINAL_DIR/$PETALINUX_NAME/rpms
+  cp -v $ORIGINAL_DIR/$PETALINUX_NAME/xrt* $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
+  cp -v $ORIGINAL_DIR/$PETALINUX_NAME/zocl* $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
+  cp -v $ORIGINAL_DIR/$PETALINUX_NAME/kernel* $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
+  
+  echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt"
+  echo `ls xrt-dev*` > $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt
+  echo `ls xrt-2*` >> $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt
+  
+  echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh"
+  xrt_dbg=`ls xrt-dbg*`
+  zocl_dbg=`ls zocl-dbg*`
+  echo dnf --disablerepo=\"*\" install -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh
+  
+  echo "Creating $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh"
+  echo dnf --disablerepo=\"*\" reinstall -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | sed -e "s/\<$zocl_dbg\>//g" > $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh
+  
+  cp $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
+  cp $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
+  cp $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
+
 fi
 
 cd $ORIGINAL_DIR
