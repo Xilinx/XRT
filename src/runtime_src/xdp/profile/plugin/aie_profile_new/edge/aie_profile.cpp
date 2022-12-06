@@ -149,45 +149,6 @@ namespace xdp {
         {"output_bandwidths",     {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_STALLED_0_PL}},
         {"packets",               {XAIE_EVENT_PORT_TLAST_0_PL,   XAIE_EVENT_PORT_TLAST_1_PL}}
       };
-
-      // String event values for guidance and output
-      mCoreEventStrings = {
-        {"heat_map",              {"ACTIVE_CORE",               "GROUP_CORE_STALL_CORE",
-                                  "INSTR_VECTOR_CORE",         "GROUP_CORE_PROGRAM_FLOW"}},
-        {"stalls",                {"MEMORY_STALL_CORE",         "STREAM_STALL_CORE",
-                                  "LOCK_STALL_CORE",           "CASCADE_STALL_CORE"}},
-        {"execution",             {"INSTR_VECTOR_CORE",         "INSTR_LOAD_CORE",
-                                  "INSTR_STORE_CORE",          "GROUP_CORE_PROGRAM_FLOW"}},
-        {"floating_point",        {"FP_OVERFLOW_CORE",          "FP_UNDERFLOW_CORE",
-                                  "FP_INVALID_CORE",           "FP_DIV_BY_ZERO_CORE"}},
-        {"stream_put_get",        {"INSTR_CASCADE_GET_CORE",    "INSTR_CASCADE_PUT_CORE",
-                                  "INSTR_STREAM_GET_CORE",     "INSTR_STREAM_PUT_CORE"}},
-        {"write_bandwidths",      {"ACTIVE_CORE",               "INSTR_STREAM_PUT_CORE",
-                                  "INSTR_CASCADE_PUT_CORE",    "EVENT_TRUE_CORE"}},
-        {"read_bandwidths",       {"ACTIVE_CORE",               "INSTR_STREAM_GET_CORE",
-                                  "INSTR_CASCADE_GET_CORE",    "EVENT_TRUE_CORE"}},
-        {"aie_trace",             {"CORE_TRACE_RUNNING",        "CORE_TRACE_STALLED",
-                                  "MEMORY_TRACE_RUNNING",      "MEMORY_TRACE_STALLED"}},
-        {"events",                {"INSTR_EVENT_0_CORE",        "INSTR_EVENT_1_CORE",
-                                  "USER_EVENT_0_CORE",         "USER_EVENT_1_CORE"}}
-      };
-      mMemoryEventStrings = {
-        {"conflicts",             {"GROUP_MEMORY_CONFLICT_MEM", "GROUP_ERRORS_MEM"}},
-        {"dma_locks",             {"GROUP_DMA_ACTIVITY_MEM",    "GROUP_LOCK_MEM"}},
-        {"dma_stalls_s2mm",       {"DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM",
-                                  "DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM"}},
-        {"dma_stalls_mm2s",       {"DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM",
-                                  "DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM"}},
-        {"write_bandwidths",      {"DMA_MM2S_0_FINISHED_BD_MEM",
-                                  "DMA_MM2S_1_FINISHED_BD_MEM"}},
-        {"read_bandwidths",       {"DMA_S2MM_0_FINISHED_BD_MEM",
-                                  "DMA_S2MM_1_FINISHED_BD_MEM"}}
-      };
-      mShimEventStrings = {
-        {"input_bandwidths",      {"PORT_RUNNING_0_PL", "PORT_STALLED_0_PL"}},
-        {"output_bandwidths",     {"PORT_RUNNING_0_PL", "PORT_STALLED_0_PL"}},
-        {"packets",               {"PORT_TLAST_0_PL",   "PORT_TLAST_1_PL"}}
-      };
     }
 
   bool AieProfile_EdgeImpl::checkAieDevice(uint64_t deviceId, void* handle)

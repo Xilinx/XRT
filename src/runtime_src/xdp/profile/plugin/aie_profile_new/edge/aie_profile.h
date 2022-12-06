@@ -80,12 +80,7 @@ namespace xdp {
 
       std::set<std::string> mShimMetricSets;
       std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
-
-      std::map<std::string, std::vector<std::string>> mCoreEventStrings;
-      std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
-      std::map<std::string, std::vector<std::string>> mShimEventStrings;
-    
+      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;    
   };
 
 }   
