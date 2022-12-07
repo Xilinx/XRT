@@ -26,7 +26,6 @@ namespace profile {
   void warning_callbacks();
 
 } // end namespace profile
-
 } // end namespace aie
 } // end namespace xdp
 
