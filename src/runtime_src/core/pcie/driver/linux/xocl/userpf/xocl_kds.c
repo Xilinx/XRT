@@ -205,6 +205,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			goto out;
 		}
 
+		client->ctx->bitstream_locked = true;
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
@@ -256,15 +257,13 @@ out_hw_ctx:
 
 out1:
 	/* If client still has no opened context at this point */
-	if (client->ctx->xclbin_id)
-		vfree(client->ctx->xclbin_id);
+	vfree(client->ctx->xclbin_id);
 	client->ctx->xclbin_id = NULL;
-	(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
+	if (client->ctx->bitstream_locked)
+		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
 
 out:
-	if (client->ctx)
-		vfree(client->ctx);
-
+	vfree(client->ctx);
 	client->ctx = NULL;
 	mutex_unlock(&client->lock);
 	return ret;
