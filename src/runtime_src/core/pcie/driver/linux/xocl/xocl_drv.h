@@ -2355,6 +2355,8 @@ int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 void xocl_subdev_fini(xdev_handle_t xdev_hdl);
 int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
+int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
+                struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl);
@@ -2368,9 +2370,8 @@ int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, u32 id, u32 inst_i
 int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
-void xocl_subdev_destroy_by_id_and_inst(xdev_handle_t xdev_hdl, u32 id, u32 inst_id);
-void xocl_subdev_destroy_by_level_skip_cus(xdev_handle_t xdev_hdl, int level);
-int xocl_get_free_subdev_instance(xdev_handle_t xdev_hdl, uint32_t subdev_id);
+void xocl_subdev_destroy_by_level_slot(xdev_handle_t xdev_hdl, int level,
+		uint32_t slot_id);
 
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);

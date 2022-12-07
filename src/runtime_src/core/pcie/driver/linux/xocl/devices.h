@@ -106,6 +106,7 @@ struct xocl_subdev_info {
 	const char		*override_name;
 	int			override_idx;
 	int 			dev_idx;
+	uint32_t 		slot_idx;
 };
 
 struct xocl_board_private {

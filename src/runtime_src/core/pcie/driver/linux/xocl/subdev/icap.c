@@ -1475,6 +1475,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MM_MONITOR subdev");
@@ -1487,6 +1488,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create ACCEL_MONITOR subdev");
@@ -1499,6 +1501,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_STREAM_MONITOR subdev");
@@ -1511,6 +1514,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_LITE subdev");
@@ -1520,6 +1524,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_TRACE_FIFO_FULL;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_FIFO_FULL subdev");
@@ -1532,6 +1537,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_FUNNEL subdev");
@@ -1544,6 +1550,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create AXI_MONITOR_TRACE_S2MM subdev");
@@ -1556,6 +1563,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create LAPC subdev");
@@ -1568,6 +1576,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create SPC subdev");
@@ -1580,6 +1589,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev,
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.priv_data = ip;
 			subdev_info.data_len = sizeof(struct debug_ip_data);
+			subdev_info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create ACCEL_DEADLOCK_DETECTOR subdev");
@@ -1666,6 +1676,7 @@ static int icap_create_subdev_ip_layout(struct platform_device *pdev,
 			subdev_info.priv_data = &mig_label;
 			subdev_info.data_len =
 				sizeof(struct xocl_mig_label);
+			subdev_info.slot_idx = slot_id;
 
 			if (!ICAP_PRIVILEGED(icap))
 				subdev_info.num_res = 0;
@@ -1704,6 +1715,7 @@ static int icap_create_subdev_ip_layout(struct platform_device *pdev,
 			subdev_info.priv_data = &mig_label;
 			subdev_info.data_len =
 				sizeof(struct xocl_mig_label);
+			subdev_info.slot_idx = slot_id;
 
 			if (!ICAP_PRIVILEGED(icap))
 				subdev_info.num_res = 0;
@@ -1719,6 +1731,7 @@ static int icap_create_subdev_ip_layout(struct platform_device *pdev,
 
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.slot_idx = slot_id;
 
 			if (!ICAP_PRIVILEGED(icap))
 				subdev_info.num_res = 0;
@@ -1783,6 +1796,7 @@ static int icap_create_post_download_subdevs(struct platform_device *pdev,
 			subdev_info.res[0].start += ip->m_base_address;
 			subdev_info.res[0].end += ip->m_base_address;
 			subdev_info.override_idx = memidx;
+			subdev_info.slot_idx = slot_id;
 
 			if (!ICAP_PRIVILEGED(icap))
 				subdev_info.num_res = 0;
@@ -2267,6 +2281,7 @@ static void icap_probe_urpdev_all(struct platform_device *pdev,
 	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs, slot_id);
 	if (num_dev > 0) {
 		for (i = 0; i < num_dev; i++) {
+			subdevs[i].info.slot_idx = slot_id;
 			(void) xocl_subdev_create(xdev, &subdevs[i].info);
 			xocl_subdev_dyn_free(subdevs + i);
 		}
@@ -2291,6 +2306,8 @@ static int icap_probe_urpdev_by_id(struct platform_device *pdev,
 		for (i = 0; i < num_dev; i++) {
 			if (subdevs[i].info.id != devid)
 				continue;
+
+			subdevs[i].info.slot_idx = slot_id;
 			err = xocl_subdev_create(xdev, &subdevs[i].info);
 			found = true;
 			break;
@@ -2516,12 +2533,12 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int err = 0;
 
-	/* Use slot handle to unregister CUs. CU subdev will be destroyed */
+	/* TODO: Use slot handle to unregister CUs. CU subdev will be destroyed */
 	err = xocl_unregister_cus(xdev, slot_id);
 	if (err && (err != -ENODEV))
 		goto done;
 
-	xocl_subdev_destroy_by_level_skip_cus(xdev, XOCL_SUBDEV_LEVEL_URP);
+	xocl_subdev_destroy_by_level_slot(xdev, XOCL_SUBDEV_LEVEL_URP, slot_id);
 
 	err = __icap_peer_xclbin_download(icap, xclbin, force_download, slot_id);
 
