@@ -1236,7 +1236,7 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 
 		if (kds_free_hw_ctx(client, cu_ctx->hw_ctx)) {
 			kds_err(client, "Freeing HW Context failed");
-			return;
+			goto out;
 		}
 
 		if (kds_free_cu_ctx(client, cu_ctx)) {
