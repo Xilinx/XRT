@@ -259,8 +259,10 @@ out1:
 	/* If client still has no opened context at this point */
 	vfree(client->ctx->xclbin_id);
 	client->ctx->xclbin_id = NULL;
-	if (client->ctx->bitstream_locked)
+	if (client->ctx->bitstream_locked) {
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
+		client->ctx->bitstream_locked = false;
+	}
 
 out:
 	vfree(client->ctx);
