@@ -31,13 +31,15 @@ namespace xrt {
   /**
    * skd() - Constructor from uuid and soft kernel section
    *
-   * @param kernel metadata buffer handle
+   * @param PS kernel metadata buffer handle
    *
-   * @param soft kernel image buffer handle
+   * @param PS kernel image buffer handle
    *
-   * @param soft kernel name
+   * @param PS kernel name
    *
-   * @param soft kernel CU index
+   * @param PS kernel CU index
+   *
+   * @param Xclbin UUID
    *
    */
   skd::skd(const xclDeviceHandle handle, const int sk_meta_bohdl, const int sk_bohdl, const std::string &kname, const uint32_t cu_index,
@@ -117,10 +119,10 @@ namespace xrt {
       xrt_core::message::send(severity_level::error, "SKD", msg);
       return -EINVAL;
     }
-    const auto msg3 = boost::format("host_mem_size = %s, host_mem_paddr = 0x%s, host_mem_vaddr = 0x%s")
+    const auto msg3 = boost::format("host_mem_size = %s, host_mem_paddr = 0x%s, host_mem_vaddr = 0x%p")
        % std::to_string(m_mem_size)
        % std::to_string(m_mem_start_paddr)
-       % std::to_string(&m_mem_start_vaddr);
+       % m_mem_start_vaddr;
     xrt_core::message::send(severity_level::debug, "SKD", msg3.str());
 #endif
     
@@ -199,17 +201,17 @@ namespace xrt {
     ffi_arg kernel_return = 0;
     std::vector<void*> ffi_arg_values(m_kernel_args.size());
     std::vector<ps_arg> bo_args;
-    clockc::time_point start;
-    clockc::time_point end;
-    clockc::time_point cmd_start;
-    clockc::time_point cmd_end;
+    clockc::time_point start = clockc::now();
+    clockc::time_point end = clockc::now();
+    clockc::time_point cmd_start = clockc::now();
+    clockc::time_point cmd_end = clockc::now();
 
     while (true) {
       int ret = wait_next_cmd();
       if (ret && (signal==SIGTERM)) {
-	// We are told to exit the soft kernel loop
-	const auto msg = boost::format("Exit soft kernel %s") % m_sk_name;
-	xrt_core::message::send(severity_level::info, "SKD", msg.str());
+	// We are told to exit the PS kernel loop
+	const auto msg = boost::format("Exit PS kernel %s") % m_sk_name;
+	xrt_core::message::send(severity_level::notice, "SKD", msg.str());
 	break;
       }
 
@@ -289,49 +291,43 @@ namespace xrt {
   skd::~skd() {
     int ret = 0;
 
-    // Check if SCU is still in running state
-    // If it is, that means it has crashed
-    if((m_args_from_host[0] & 0x1) == 1) {
-      report_crash();  // Function to report crash to kernel - not implemented yet in kernel space
-    }
 #ifdef SKD_MAP_BIG_BO
     // Unmap mem BO
     ret = xclUnmapBO(m_parent_devhdl, m_parent_bo_handle, m_mem_start_vaddr);
     if (ret) {
-        const auto errMsg = boost::format("Cannot munmap mem BO %s, at %s")
+        const auto errMsg = boost::format("Cannot munmap mem BO %s, at %p")
 	  % std::to_string(m_parent_bo_handle)
-	  % std::to_string(m_mem_start_vaddr);
+	  % m_mem_start_vaddr;
 	xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
     }
 #endif
-    // Unmap command BO
-    if(m_cmd_boh >= 0) {
-	xclBOProperties prop = {};
-	ret = xclGetBOProperties(m_devhdl, m_cmd_boh, &prop);
-	if (ret) {
-	    const auto errMsg = boost::format("Cannot get BO property of %s") % std::to_string(m_cmd_boh);
-	    xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-	}
-	ret = xclUnmapBO(m_devhdl, m_cmd_boh, m_args_from_host);
-	if (ret) {
-	    const auto errMsg = boost::format("Cannot munmap BO %s") % std::to_string(m_cmd_boh);
-	    xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
-	}
+    ret = xclUnmapBO(m_devhdl, m_cmd_boh, m_args_from_host);
+    if (ret) {
+        const auto errMsg = boost::format("Cannot munmap command BO %s, at %p")
+	  % std::to_string(m_cmd_boh)
+	  % m_args_from_host;
+	xrt_core::message::send(severity_level::error, "SKD", errMsg.str());
     }
+    xclFreeBO(m_devhdl, m_cmd_boh);
 
-    // Call soft kernel fini if available
+    // Call PS kernel fini if available
     kernel_fini_t kernel_fini;
     auto sk_fini = m_sk_name + "_fini";
     kernel_fini = reinterpret_cast<kernel_fini_t>(dlsym(m_sk_handle, sk_fini.c_str()));
-    if (kernel_fini)
+    if (kernel_fini) {
+      const auto msg = boost::format("Calling PS Kernel %s fini") % m_sk_name;
+      xrt_core::message::send(severity_level::notice, "SKD", msg.str());
       ret = kernel_fini(m_xrtHandle);
+    }
 
     dlclose(m_sk_handle);
     ret = delete_softkernelfile();
     if (ret) {
-        const auto errMsg = boost::format("Cannot remove soft kernel file %s") % m_sk_path.string();
+        const auto errMsg = boost::format("Cannot remove PS kernel file %s") % m_sk_path.string();
 	xrt_core::message::send(severity_level::info, "SKD", errMsg.str());
     }
+    const auto lastmsg = boost::format("PS Kernel %s finished") % m_sk_name;
+    xrt_core::message::send(severity_level::notice, "SKD", lastmsg.str());
     xclClose(m_devhdl);
   }
 
@@ -347,7 +343,7 @@ namespace xrt {
   }
 
   /*
-   * This function create a soft kernel file.
+   * This function create a PS kernel file.
    */
   int skd::create_softkernelfile(const xclDeviceHandle handle, const int bohdl) const
   {
@@ -372,7 +368,7 @@ namespace xrt {
       // Create / overwrite file if either file do not exist or is not the same size
       auto buf = reinterpret_cast<char *>(xclMapBO(handle, bohdl, false));
       if(buf == MAP_FAILED) {
-	  const auto errMsg = "Cannot map soft kernel BO!";
+	  const auto errMsg = "Cannot map PS kernel BO!";
 	  xrt_core::message::send(severity_level::error, "SKD", errMsg);
 	  return -errno;
       }
@@ -385,7 +381,7 @@ namespace xrt {
 	return -EPERM;
       }
 	  
-      // copy the soft kernel to file
+      // copy the PS kernel to file
       fptr.write(buf, prop.size);
       if (fptr.fail()) {
 	const auto errMsg = boost::format("Fail to write to file ") % m_sk_path.string();
@@ -404,7 +400,7 @@ namespace xrt {
   }
 
   /*
-   * This function delete the soft kernel file.
+   * This function delete the PS kernel file.
    */
   int skd::delete_softkernelfile() const
   {

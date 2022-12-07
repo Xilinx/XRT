@@ -138,7 +138,7 @@ void configSoftKernel(const xclDeviceHandle handle, xclSKCmd *cmd, const int par
     skd_inst->run();
 err:
     const auto msg = boost::format("Kernel %s was terminated") % cmd->krnl_name;
-    xrt_core::message::send(severity_level::info, "SKD", msg.str());
+    xrt_core::message::send(severity_level::notice, "SKD", msg.str());
     exit(EXIT_SUCCESS);
   }
 }
