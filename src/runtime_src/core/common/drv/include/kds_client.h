@@ -50,6 +50,8 @@ struct kds_client_cu_info {
  */
 struct kds_client_ctx {
 	void				*xclbin_id;
+	bool				bitstream_locked;
+
 	/* To support multiple CU context */
 	struct list_head		cu_ctx_list;
 
