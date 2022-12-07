@@ -423,7 +423,7 @@ static int cu_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	/* Store sunbdevice instance index with this CU info.
+	/* Store subdevice instance index with this CU info.
 	 * This will be required to destroy this subdevice.
 	 */
 	info->inst_idx = subdev_inst_idx;
