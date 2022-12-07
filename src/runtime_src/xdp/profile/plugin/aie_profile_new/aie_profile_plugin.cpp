@@ -121,7 +121,6 @@ namespace xdp {
 
     AIEData.deviceID = deviceID;
     AIEData.metadata = std::make_shared<AieProfileMetadata>(deviceID, handle);
-    auto& metadata = AIEData.metadata;
 
     #ifdef XRT_X86_BUILD
         AIEData.implementation = std::make_unique<AieProfile_x86Impl>(db, AIEData.metadata);
