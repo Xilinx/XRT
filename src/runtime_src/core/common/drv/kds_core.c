@@ -92,15 +92,11 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_hw_ctx *curr = NULL;
 	char cu_buf[MAX_CU_STAT_LINE_LENGTH];
-	/* Each line is a CU, format:
-	 * "hwCtx,cu_idx,kernel_name:cu_name,address,status,usage"
-	 */
-	char *cu_fmt = "%d,%d,%s:%s,0x%llx,0x%x,%llu\n";
 	ssize_t sz = 0;
 	ssize_t cu_sz = 0;
 	ssize_t all_cu_sz = 0;
 	enum kds_type type = (domain == DOMAIN_PL) ? KDS_CU : KDS_SCU;
-	int i, j;
+	int i = 0, j = 0;
 
 	mutex_lock(&cu_mgmt->lock);
 	/* For legacy context */
@@ -132,8 +128,9 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
                          */
                         if (all_cu_sz > offset) {
                                 if (sz + cu_sz > buf_size)
-                                        return sz;
-                                sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
+					goto out;
+                                
+				sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
                         }
 		}
 	}
@@ -171,12 +168,15 @@ ssize_t show_kds_cuctx_stat_raw(struct kds_sched *kds, char *buf,
 				 */
 				if (all_cu_sz > offset) {
 					if (sz + cu_sz > buf_size)
-						return sz;
+						goto out;
+			
 					sz += scnprintf(buf+sz, buf_size - sz, "%s", cu_buf);
 				}
 			}
 		}
 	}
+
+out:
 	mutex_unlock(&cu_mgmt->lock);
 
 	return sz;
@@ -968,7 +968,7 @@ static const struct file_operations ucu_fops = {
 
 int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx)
 {
-	int fd;
+	int fd = 0;
 	struct kds_cu_mgmt *cu_mgmt;
 	struct xrt_cu *xcu;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
@@ -1213,20 +1213,21 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 				cu_ctx->cu_idx);
 		if (kds_del_context(kds, client, cu_ctx)) {
 			kds_err(client, "Deleting KDS Context failed");
-			return;
+			goto out;
 		}
 
 		if (kds_free_hw_ctx(client, cu_ctx->hw_ctx)) {
 			kds_err(client, "Freeing HW Context failed");
-			return;
+			goto out;
 		}
 
 		if (kds_free_cu_ctx(client, cu_ctx)) {
 			kds_err(client, "Freeing CU Context failed");
-			return;
+			goto out;
 		}
 	}
-	
+
+out:	
 	mutex_unlock(&client->lock);
 }
 
@@ -1252,15 +1253,16 @@ _kds_fini_hw_ctx_client(struct kds_sched *kds, struct kds_client *client,
 				cu_ctx->cu_idx);
 		if (kds_del_context(kds, client, cu_ctx)) {
 			kds_err(client, "Deleting KDS Context failed");
-			return;
+			goto out;
 		}
 
 		if (kds_free_cu_ctx(client, cu_ctx)) {
 			kds_err(client, "Freeing CU Context failed");
-			return;
+			goto out;
 		}
 	}
-	
+
+out:	
 	mutex_unlock(&client->lock);
 }
 

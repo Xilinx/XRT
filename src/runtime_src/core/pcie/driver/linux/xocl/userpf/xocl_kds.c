@@ -187,7 +187,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	xuid_t *uuid;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-	struct kds_client_cu_info cu_info = { };
+	struct kds_client_cu_info cu_info = {};
 	bool bitstream_locked = false;
 	int ret;
 
@@ -277,7 +277,7 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-	struct kds_client_cu_info cu_info = { };
+	struct kds_client_cu_info cu_info = {};
 	xuid_t *uuid;
 	int ret = 0;
 
@@ -436,8 +436,8 @@ int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
         hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_args->hw_context);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
-		mutex_unlock(&client->lock);
-                return -EINVAL;
+                ret = -EINVAL;
+		goto out;
         }
 
 	/* Unlock the bitstream for this HW context if no reference is there */
@@ -445,6 +445,7 @@ int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 
 	ret = kds_free_hw_ctx(client, hw_ctx);
 
+out:
 	mutex_unlock(&client->lock);
 
         return ret;
@@ -522,7 +523,7 @@ int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
 	struct kds_client *client = filp->driver_priv;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-	struct kds_client_cu_info cu_info = { };
+	struct kds_client_cu_info cu_info = {};
 	int ret = 0;
 
         mutex_lock(&client->lock);
@@ -530,8 +531,8 @@ int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
         hw_ctx = kds_get_hw_ctx_by_id(client, drm_cu_args->hw_context);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
-		mutex_unlock(&client->lock);
-                return -EINVAL;
+                ret = -EINVAL;
+		goto out;
         }
 
 	/* Bitstream is locked. No one could load a new one
@@ -540,28 +541,27 @@ int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
 	ret = xocl_cu_ctx_to_info(xdev, drm_cu_args, hw_ctx, &cu_info);
 	if (ret) {
 		userpf_err(xdev, "No valid CU ctx found for this HW context");
-		mutex_unlock(&client->lock);
-		return -EINVAL;
+		goto out;
 	}
 
 	/* Allocate a free CU context for the given CU index */
 	cu_ctx = kds_alloc_cu_hw_ctx(client, hw_ctx, &cu_info);
 	if (!cu_ctx) {
 		userpf_err(xdev, "Allocation of CU context failed");
-		mutex_unlock(&client->lock);
-		return -EINVAL;
+                ret = -EINVAL;
+		goto out;
 	}
 
         ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
         if (ret) {
                 kds_free_cu_ctx(client, cu_ctx);
-		mutex_unlock(&client->lock);
-		return ret;
+		goto out;
 	}
 
 	// Return the encoded cu index along with cu domain
 	drm_cu_args->cu_index = set_domain(cu_ctx->cu_domain,
 					   cu_ctx->cu_idx);
+out:
 	mutex_unlock(&client->lock);
         return ret;
 }
@@ -572,7 +572,7 @@ int xocl_close_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
 	struct kds_client *client = filp->driver_priv;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-        struct kds_client_cu_info cu_info = { }; 
+        struct kds_client_cu_info cu_info = {}; 
         int ret = 0;
 
         mutex_lock(&client->lock);
@@ -1129,7 +1129,7 @@ int xocl_hw_ctx_command(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp)
 {
 	struct drm_xocl_hw_ctx_execbuf *args = data;
-	struct drm_xocl_execbuf legacy_args = { 0 };
+	struct drm_xocl_execbuf legacy_args = {};
 
 	/* Update the legacy structure with the appropiate value */
 	legacy_args.ctx_id = args->hw_ctx_id;

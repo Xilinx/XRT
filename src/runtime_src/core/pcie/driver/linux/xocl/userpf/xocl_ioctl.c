@@ -119,7 +119,7 @@ int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
 	       	(struct drm_xocl_create_hw_ctx *)data;
         struct xocl_drm *drm_p = dev->dev_private;
         struct xocl_dev *xdev = drm_p->xdev;
-        struct drm_xocl_axlf axlf_obj_ptr = { };
+        struct drm_xocl_axlf axlf_obj_ptr = {};
 	uint32_t slot_id = 0;
         int ret = 0;
 
@@ -129,11 +129,9 @@ int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
 	/* Download the XCLBIN to the device first */
         mutex_lock(&xdev->dev_lock);
         ret = xocl_read_axlf_helper(drm_p, &axlf_obj_ptr, drm_hw_ctx->qos, &slot_id);
-	if (ret) {
-		mutex_unlock(&xdev->dev_lock);
-		return ret;
-	}
 	mutex_unlock(&xdev->dev_lock);
+	if (ret)
+		return ret;
 	
 	/* Create the HW Context and lock the bitstream */
 	/* Slot id is 0 for now */
