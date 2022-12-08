@@ -218,6 +218,8 @@ enum drm_xocl_sync_bo_dir {
 #define DRM_XOCL_NUM_SUPPORTED_CLOCKS	4
 
 #define DRM_XOCL_CMA_CHUNK_MAX		4
+
+#define CU_NAME_MAX_LEN 		64
 /**
  * struct drm_xocl_create_bo - Create buffer object
  * used with DRM_IOCTL_XOCL_CREATE_BO ioctl
@@ -586,7 +588,7 @@ struct drm_xocl_destroy_hw_ctx {
 struct drm_xocl_open_cu_ctx {
 	// Under this hw context id
 	uint32_t	hw_context;
-	char		cu_name[64];
+	char		cu_name[CU_NAME_MAX_LEN];
 	uint32_t	flags;
 
 	// Return the acquired CU index.
