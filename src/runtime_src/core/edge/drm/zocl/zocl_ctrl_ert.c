@@ -128,7 +128,6 @@ struct zocl_ctrl_ert {
 	size_t			zce_cu_xgq_ring_size;
 
 	void			*zce_ctrl_xgq_hdl;
-	uint32_t		next_xgqidx;
 
 	size_t			zce_num_cu_xgqs;
 	struct zocl_ctrl_ert_cu_xgq *zce_cu_xgqs;
@@ -370,7 +369,7 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert, u32 cu_idx,
 		cu = &zert->zce_cus[cu_idx];
 		if (cu->zcec_pdev) {
 			/* Find next enabled XGQ, we are guaranteed to have one. */
-			idx = zert->next_xgqidx++ % zert->zce_num_cu_xgqs;
+			idx = cu_idx % zert->zce_num_cu_xgqs;
 			xgqpdev = zert->zce_cu_xgqs[idx].zcecx_pdev;
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
@@ -384,7 +383,7 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert, u32 cu_idx,
 		cu = &zert->zce_scus[cu_idx];
 		if (cu->zcec_pdev) {
 			/* Find next enabled XGQ, we are guaranteed to have one. */
-			idx = zert->next_xgqidx++ % zert->zce_num_cu_xgqs;
+			idx = cu_idx % zert->zce_num_cu_xgqs;
 			xgqpdev = zert->zce_cu_xgqs[idx].zcecx_pdev;
 
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
