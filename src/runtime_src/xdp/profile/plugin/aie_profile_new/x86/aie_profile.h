@@ -33,7 +33,7 @@ namespace xdp {
 
       void updateDevice();
       void poll(uint32_t index, void* handle);
-      bool checkAieDevice(uint64_t deviceId, void* handle);
+      bool setMetricsSettings(uint64_t deviceId, void* handle);
   };
 
 }   

@@ -238,7 +238,7 @@ namespace xdp {
 
 
   void AieTrace_x86Impl::parseMessages(uint8_t* messageStruct) {
-      xdp::built_in::MessageConfiguration* messages = reinterpret_cast<xdp::built_in::MessageConfiguration*>(messageStruct);
+    xdp::built_in::MessageConfiguration* messages = reinterpret_cast<xdp::built_in::MessageConfiguration*>(messageStruct);
     for (uint32_t i = 0; i < messages->numMessages; i++) {
       auto packet = messages->packets[i];
       auto messageCode = static_cast<xdp::built_in::Messages>(packet.messageCode);

@@ -209,7 +209,7 @@ namespace xdp {
     else if (event == XAIE_EVENT_GROUP_LOCK_MEM)
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
     else if (event == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
+      XAie_EventG-roupControl(aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
     else if (event == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE)
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
     else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
@@ -397,13 +397,6 @@ namespace xdp {
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
     std::vector<std::vector<std::string>> graphmetricsSettings(NUM_MODULES);
-
-    // // Check if all the metrics are empty - We must use default metric sets.
-    // bool emptyMetrics = true;
-    // for (int module = 0; module < NUM_MODULES; ++module){
-    //   if (!metricsConfig[module].empty())
-    //     emptyMetrics  = false;
-    // }
 
     bool newConfigUsed = false;
     for(int module = 0; module < NUM_MODULES; ++module) {
