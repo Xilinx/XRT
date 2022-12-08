@@ -459,8 +459,8 @@ xocl_cu_ctx_to_info(struct xocl_dev *xdev, struct drm_xocl_open_cu_ctx *cu_args,
         struct kds_sched *kds = &XDEV(xdev)->kds;
         char *kname_p = cu_args->cu_name;
         struct xrt_cu *xcu = NULL;
-        char iname[64];
-        char kname[64];
+        char iname[CU_NAME_MAX_LEN];
+        char kname[CU_NAME_MAX_LEN];
         int i = 0;
 
         strcpy(kname, strsep(&kname_p, ":"));
