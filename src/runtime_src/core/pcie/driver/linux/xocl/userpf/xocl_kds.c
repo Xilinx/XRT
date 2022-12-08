@@ -1450,6 +1450,7 @@ xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip
 			continue;
 		}
 
+		cu_info[i].slot_idx = slot_hdl;
 		cu_info[i].cu_domain = 1;
 		cu_info[i].size = krnl_info->range;
 		cu_info[i].sw_reset = false;
@@ -1478,7 +1479,12 @@ xocl_kds_create_cus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		subdev_info.res[0].end = cu_info[i].addr + cu_info[i].size - 1;
 		subdev_info.priv_data = &cu_info[i];
 		subdev_info.data_len = sizeof(struct xrt_cu_info);
-		subdev_info.override_idx = i;
+		subdev_info.override_idx = cu_info[i].inst_idx;
+	
+		/* Update slot information to the subdevice. This will help to remove
+		 * subdevice based on slot.
+		 */
+		subdev_info.slot_idx = cu_info[i].slot_idx;
 		if (xocl_subdev_create(xdev, &subdev_info))
 			userpf_info(xdev, "Create CU %s failed. Skip", cu_info[i].iname);
 	}
@@ -1495,9 +1501,52 @@ xocl_kds_create_scus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 
 		subdev_info.priv_data = &cu_info[i];
 		subdev_info.data_len = sizeof(struct xrt_cu_info);
-		subdev_info.override_idx = i;
+		subdev_info.override_idx = cu_info[i].inst_idx;
+
+		/* Update slot information to the subdevice. This will help to remove
+		 * subdevice based on slot.
+		 */
+		subdev_info.slot_idx = cu_info[i].slot_idx;
 		if (xocl_subdev_create(xdev, &subdev_info))
 			userpf_info(xdev, "Create SCU %s failed. Skip", cu_info[i].iname);
+	}
+}
+
+static void
+xocl_kds_reserve_cu_subdevices(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
+		    int num_cus)
+{
+	int i = 0;
+	int retval = 0;
+
+	for (i = 0; i < num_cus; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
+
+		retval = xocl_subdev_reserve(xdev, &subdev_info);
+		if (retval < 0)
+			userpf_info(xdev, "Reserve CU %s failed. Skip",
+				    cu_info[i].iname);
+
+		cu_info[i].inst_idx = retval;
+	}
+}
+
+static void
+xocl_kds_reserve_scu_subdevices(struct xocl_dev *xdev, struct xrt_cu_info *scu_info,
+		    int num_scus)
+{
+	int i = 0;
+	int retval = 0;
+
+	for (i = 0; i < num_scus; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SCU;
+
+		retval = xocl_subdev_reserve(xdev, &subdev_info);
+		if (retval < 0)
+			userpf_info(xdev, "Reserve SCU %s failed. Skip",
+				    scu_info[i].iname);
+
+		scu_info[i].inst_idx = retval;
 	}
 }
 
@@ -1698,7 +1747,7 @@ xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 }
 
 static int
-xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info *cu_info, int num_cus)
+xocl_kds_xgq_cfg_cus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info *cu_info, int num_cus)
 {
 	struct xgq_cmd_config_cu *cfg_cu = NULL;
 	struct xgq_com_queue_entry resp = {0};
@@ -1785,7 +1834,7 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info
 }
 
 static int
-xocl_kds_xgq_cfg_scu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info *cu_info, int num_cus)
+xocl_kds_xgq_cfg_scus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info *cu_info, int num_cus)
 {
 	struct xgq_cmd_config_cu *cfg_cu = NULL;
 	struct xgq_com_queue_entry resp = {0};
@@ -1850,6 +1899,51 @@ xocl_kds_xgq_cfg_scu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 	}
 
 	return ret;
+}
+
+static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domain)
+{
+	struct xgq_com_queue_entry resp = {};
+	struct xgq_cmd_uncfg_cu *uncfg_cu = NULL;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
+
+	client = kds->anon_client;
+	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_uncfg_cu));
+	if (!xcmd)
+		return -ENOMEM;
+
+	uncfg_cu = xcmd->info;
+
+	uncfg_cu->hdr.opcode = XGQ_CMD_OP_UNCFG_CU;
+	uncfg_cu->hdr.count = sizeof(*uncfg_cu) - sizeof(uncfg_cu->hdr);
+	uncfg_cu->hdr.state = 1;
+	uncfg_cu->cu_idx = cu_idx;
+	uncfg_cu->cu_domain = cu_domain;
+
+	xcmd->cb.notify_host = xocl_kds_xgq_notify;
+	xcmd->cb.free = kds_free_command;
+	xcmd->priv = kds;
+	xcmd->type = KDS_ERT;
+	xcmd->opcode = OP_CONFIG;
+	xcmd->response = &resp;
+	xcmd->response_size = sizeof(resp);
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		return ret;
+
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Unconfigure CU(%d) failed cstate(%d) rcode(%d)",
+			   cu_idx, resp.hdr.cstate, resp.rcode);
+                return -EINVAL;
+        }
+
+        userpf_info(xdev, "Unconfig CU(%d) of DOMAIN(%d) completed\n",
+                    uncfg_cu->cu_idx, uncfg_cu->cu_domain);
+        return 0;
 }
 
 static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domain,
@@ -1920,9 +2014,9 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 
 	num_cus = xocl_kds_fill_cu_info(xdev, slot_hdl, ip_layout, cu_info, MAX_CUS);
 
-	 /* The XGQ ERT doesn't support more than 64 CUs. Let this hardcoding.
-	  * We will re-looking at this once at supporting multiple xclbins.
-	  */
+	/* The XGQ ERT doesn't support more than 64 CUs. Let this hardcoding.
+	 * We will re-looking at this once at supporting multiple xclbins.
+	 */
 	if (num_cus > 64) {
 		userpf_err(xdev, "More than 64 CUs found\n");
 		ret = -EINVAL;
@@ -1959,8 +2053,8 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	 */
 	xocl_kds_xgq_identify(xdev, &major, &minor);
 	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
-	if (major != 1 && minor != 0) {
-		userpf_err(xdev, "Only support ERT XGQ command 1.0\n");
+	if ((major != 1 || major != 2) && minor != 0) {
+		userpf_err(xdev, "Only support ERT XGQ command 1.0 & 2.0\n");
 		ret = -ENOTSUPP;
 		xocl_ert_ctrl_dump(xdev);	/* TODO: remove this line before 2022.2 release */
 		goto out;
@@ -1970,11 +2064,19 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	if (ret)
 		goto create_regular_cu;
 
-	ret = xocl_kds_xgq_cfg_cu(xdev, uuid, cu_info, num_cus);
+	/* Reserve the subdevices for all the CUs. We need to share the CU index
+	 * with ZOCL here.
+	 */
+	xocl_kds_reserve_cu_subdevices(xdev, cu_info, num_cus);
+	ret = xocl_kds_xgq_cfg_cus(xdev, uuid, cu_info, num_cus);
 	if (ret)
 		goto create_regular_cu;
 
-	ret = xocl_kds_xgq_cfg_scu(xdev, uuid, scu_info, num_scus);
+	/* Reserve the subdevices for all the CUs. We need to share the SCU index
+	 * with ZOCL here.
+	 */
+	xocl_kds_reserve_scu_subdevices(xdev, scu_info, num_scus);
+	ret = xocl_kds_xgq_cfg_scus(xdev, uuid, scu_info, num_scus);
 	if (ret)
 		goto out;
 
@@ -2119,6 +2221,10 @@ out:
 int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 {
 	int ret = 0;
+	int major = 0, minor = 0;
+	int i = 0;
+	struct xrt_cu *xcu = NULL;
+	struct kds_cu_mgmt *cu_mgmt = NULL;
 
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
@@ -2131,11 +2237,64 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
 		return ret;
 
-	// Work-around to unconfigure PS kernel
-	// Will be removed once unconfigure command is there
 	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, 0, 0);
+	if (ret)
+		goto out;
+
+	/*
+	 * The XGQ Identify command is used to identify the version of firmware which
+	 * can help host to know the different behaviors of the firmware.
+	 */
+	xocl_kds_xgq_identify(xdev, &major, &minor);
+	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
+
+	/* Unconfigure the SCUs first. There is a case, where there is a
+	 * PS kernel which is opening a PL kernel. In that case, we need to
+	 * destroy PS kernel before destroy PL kernel.
+	 */
+	cu_mgmt = &XDEV(xdev)->kds.scu_mgmt;
+	for (i = 0; i < MAX_CUS; i++) {
+		xcu = cu_mgmt->xcus[i];
+		if (!xcu)
+			continue;
+
+		/* Unregister the SCUs as per slot order */
+		if (xcu->info.slot_idx != slot_hdl)
+			continue;
+
+		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
+		if (major == 2 && minor == 0) {
+			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PS);
+			if (ret)
+				goto out;
+		}
+	}
+
+	cu_mgmt = &XDEV(xdev)->kds.cu_mgmt;
+	for (i = 0; i < MAX_CUS; i++) {
+		xcu = cu_mgmt->xcus[i];
+		if (!xcu)
+			continue;
+
+		/* Unregister the CUs as per slot order */
+		if (xcu->info.slot_idx != slot_hdl)
+			continue;
+
+		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
+		if (major == 2 && minor == 0) {
+			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PL);
+			if (ret)
+				goto out;
+		}
+	}
+
 	ret = xocl_kds_xgq_cfg_end(xdev);
+	if (ret)
+		goto out;
+
 	xocl_ert_ctrl_unset_xgq(xdev);
+
+out:
 	if (ret)
 		XDEV(xdev)->kds.bad_state = 1;
 	else

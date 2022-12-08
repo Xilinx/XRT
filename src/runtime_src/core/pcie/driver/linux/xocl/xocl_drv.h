@@ -423,13 +423,17 @@ struct xocl_drv_private {
 
 struct xocl_subdev_priv {
 	unsigned long		debug_hdl;
+	u32			inst_idx;
 	u32			data_sz;
 	u64			data[1];
 };
 
+#define INVALID_INST_INDEX	0xFFFF
 #define _PRIV(dev)	((struct xocl_subdev_priv *)dev_get_platdata(dev))
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
 	(void *)((_PRIV(dev) && _PRIV(dev)->data_sz) ? _PRIV(dev)->data : NULL)
+#define XOCL_SUBDEV_INST_IDX(dev)				\
+	((_PRIV(dev)) ? (_PRIV(dev))->inst_idx : INVALID_INST_INDEX)
 
 #define XOCL_SUBDEV_DBG_HDL(dev)				\
 	(((dev)->bus == &platform_bus_type && dev_get_platdata(dev)) ?	\
@@ -2351,6 +2355,8 @@ int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 void xocl_subdev_fini(xdev_handle_t xdev_hdl);
 int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
+int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
+                struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl);
@@ -2364,6 +2370,7 @@ int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, u32 id, u32 inst_i
 int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
+void xocl_subdev_destroy_by_slot(xdev_handle_t xdev_hdl, uint32_t slot_id);
 
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);
