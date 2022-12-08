@@ -115,6 +115,9 @@ enable_vdu()
     cp -rf $VDU_LIBRARY_BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/libvdu-ctrlsw/
 
     echo "IMAGE_INSTALL:append = \" libvdu-ctrlsw kernel-module-vdu vdu-firmware\""  >> build/conf/local.conf
+    echo "MACHINE_FEATURES = \"vdu\""  >> build/conf/local.conf
+    #sed -i '1iMACHINE = \" versal-ai-core-generic \"' build/conf/local.conf
+
 }
 
 config_versal_project()
