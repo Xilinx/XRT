@@ -67,7 +67,7 @@
  */
 #define ZERT_CQ_FMT_VER			0x10000
 #define CTRL_XGQ_SLOT_SIZE		512
-#define CTRL_XGQ_CU_SLOT_SIZE		4 * 1024 // Hard coded cu slot size to 4K
+#define CTRL_XGQ_CU_SLOT_SIZE		(4 * 1024) // Hard coded cu slot size to 4K
 #define MAX_CTRL_XGQ_SIZE		(1024 + 512)
 struct zocl_ert_cq_header {
 	u32			zcx_ver;
@@ -183,7 +183,7 @@ static void cu_conf2info(struct xgq_cmd_config_cu *conf, struct xrt_cu_info *inf
 static int zert_create_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu *conf)
 {
 	int ret = 0;
-	struct xrt_cu_info info = {0};
+	struct xrt_cu_info info = {};
 	u32 cuidx = conf->cu_idx;
 
 	if (cuidx >= MAX_CUS) {
@@ -212,7 +212,7 @@ static int zert_create_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu *
 static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu *conf)
 {
 	int ret = 0;
-	struct xrt_cu_info info = {0};
+	struct xrt_cu_info info = {};
 	u32 cuidx = conf->cu_idx;
 
 	if (cuidx >= MAX_CUS) {

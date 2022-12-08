@@ -189,7 +189,7 @@ int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
 
 	xocl_lock_xdev(xdev_hdl);
 	retval = __xocl_subdev_reserve(xdev_hdl, sdev_info, &subdev);
-	if ((!retval && retval != -EEXIST) ||
+	if ((retval && retval != -EEXIST) ||
 	    subdev->state != XOCL_SUBDEV_STATE_INIT) {
 		xocl_unlock_xdev(xdev_hdl);
 		return retval;
@@ -583,7 +583,7 @@ static int __xocl_subdev_create(xdev_handle_t xdev_hdl,
 	uint32_t dev_idx = 0;
 
 	retval = __xocl_subdev_reserve(xdev_hdl, sdev_info, &subdev);
-	if ((!retval && retval != -EEXIST) ||
+	if ((retval && retval != -EEXIST) ||
 	    subdev->state != XOCL_SUBDEV_STATE_INIT)
 		goto error;
 
@@ -1026,18 +1026,18 @@ void xocl_subdev_destroy_by_slot(xdev_handle_t xdev_hdl,
 				 uint32_t slot_id)
 {
 	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev_hdl;
-	int i, j;
+	int i = 0, j = 0;
+	int level = XOCL_SUBDEV_LEVEL_URP; // Slot is only valid for URP level
 
 	xocl_lock_xdev(xdev_hdl);
 	for (i = ARRAY_SIZE(core->subdevs) - 1; i >= 0; i--)
 		for (j = 0; j < XOCL_SUBDEV_MAX_INST; j++)
 			if (core->subdevs[i][j] &&
-				(core->subdevs[i][j]->info.level ==
-				XOCL_SUBDEV_LEVEL_URP) &&
-				(core->subdevs[i][j]->info.slot_idx == slot_id))
-				// Slot is only valid for URP level
+				(core->subdevs[i][j]->info.level == level) &&
+				(core->subdevs[i][j]->info.slot_idx == slot_id)){
 					__xocl_subdev_destroy(xdev_hdl,
 						core->subdevs[i][j]);
+			}
 
 	xocl_unlock_xdev(xdev_hdl);
 }

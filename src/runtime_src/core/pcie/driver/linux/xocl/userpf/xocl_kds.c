@@ -1903,7 +1903,7 @@ xocl_kds_xgq_cfg_scus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_in
 
 static int xocl_kds_xgq_uncfg_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domain)
 {
-	struct xgq_com_queue_entry resp = { 0 };
+	struct xgq_com_queue_entry resp = {};
 	struct xgq_cmd_uncfg_cu *uncfg_cu = NULL;
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct kds_client *client = NULL;
@@ -2262,6 +2262,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		if (xcu->info.slot_idx != slot_hdl)
 			continue;
 
+		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
 			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PS);
 			if (ret)
@@ -2279,6 +2280,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		if (xcu->info.slot_idx != slot_hdl)
 			continue;
 
+		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
 			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PL);
 			if (ret)
