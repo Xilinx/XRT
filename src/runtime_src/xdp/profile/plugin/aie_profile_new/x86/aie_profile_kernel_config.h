@@ -1,0 +1,113 @@
+/**
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+#ifndef AIE_PROFILE_CONFIG_DOT_H
+#define AIE_PROFILE_CONFIG_DOT_H
+
+namespace xdp {
+namespace built_in {
+
+
+  enum class CoreMetrics : uint8_t 
+  {
+    EMPTY = 0,
+    HEAT_MAP = 1,
+    STALLS = 2,
+    EXECUTION = 3,
+    FLOATING_POINT = 4,
+    STREAM_PUT_GET = 5,
+    WRITE_BANDWIDTHS = 6,
+    READ_BANDWIDTHS = 7,
+    AIE_TRACE = 8,
+    EVENTS = 9
+  };
+
+  enum class MemoryMetrics : uint8_t 
+  {
+    EMPTY = 0,
+    CONFLICTS = 1,
+    DMA_LOCKS = 2,
+    DMA_STALLS_S2MM = 3,
+    DMA_STALLS_MM2S = 4,
+    WRITE_BANDWIDTHS = 5,
+    READ_BANDWIDTHS = 6
+  };
+
+  enum class InterfaceMetrics : uint8_t 
+  {
+    EMPTY = 0,
+    INPUT_BANDWIDTHS = 1,
+    OUTPUT_BANDWIDTHS = 2,
+    INPUT_STALLS_IDLE = 3,
+    OUTPUT_STALLS_IDLE = 4,
+    PACKETS = 5
+  };
+
+  // This struct is used for input for the PS kernel.  It contains all of
+  // the information gathered from the user controls in the xrt.ini file
+  // and the information we can infer from the debug ip layout file.
+  // The struct should be constructed and then transferred via a buffer object.
+  //
+  // Since this is transferred from host to device, it should have
+  // a C-Style interface.
+
+  struct ProfileTileType {
+    uint16_t row;
+    uint16_t col;
+    uint16_t itr_mem_row;
+    uint16_t itr_mem_col;
+    uint64_t itr_mem_addr;
+    bool     is_trigger;
+    uint8_t metricSet;
+  };
+
+  struct ProfileInputConfiguration
+  {
+    static constexpr auto NUM_CORE_COUNTERS = 4;
+    static constexpr auto NUM_MEMORY_COUNTERS = 2;
+    static constexpr auto NUM_SHIM_COUNTERS = 2;
+    static constexpr int NUM_MODULES = 3;
+
+    uint16_t numTiles[NUM_MODULES];
+    ProfileTileType tiles[1]; //flexible array member
+  };
+
+  struct PSCounterInfo
+  {
+    uint8_t moduleName;
+    uint16_t col;
+    uint16_t row;
+    uint16_t startEvent;
+    uint16_t endEvent;
+    uint32_t counterValue;
+    uint32_t payload;
+    uint32_t counterNum;
+    uint32_t counterId;
+    uint64_t resetEvent;
+    uint64_t timerValue;
+    double timestamp;
+  };
+
+  struct ProfileOutputConfiguration
+  {
+    uint32_t numCounters;
+    PSCounterInfo counters[1];
+  };
+
+} // end namespace built_in
+} // end namespace xdp
+
+#endif
