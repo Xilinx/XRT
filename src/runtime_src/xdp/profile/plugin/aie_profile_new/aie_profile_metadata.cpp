@@ -102,7 +102,7 @@ namespace xdp {
         continue;
       }
 
-      tile_type tile;
+      tile_type tile = {0};
       tile.col = shimCol;
       tile.row = 0;
       // Grab stream ID and slave/master (used in configStreamSwitchPorts())
@@ -281,7 +281,7 @@ namespace xdp {
 
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         for (uint32_t row = minRow; row <= maxRow; ++row) {
-          tile_type tile;
+          tile_type tile = {0};
           tile.col = col;
           tile.row = row;
           tiles.push_back(tile);
@@ -302,7 +302,7 @@ namespace xdp {
       if (0 == metrics[i][0].compare("all")) {
         continue;
       }
-      tile_type tile;
+      tile_type tile = {0};
       std::vector<std::string> tilePos;
 
       try {

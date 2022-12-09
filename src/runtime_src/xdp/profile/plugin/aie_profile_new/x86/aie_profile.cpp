@@ -163,17 +163,15 @@ namespace xdp {
     using ProfileTileType = xdp::built_in::ProfileTileType;
 
     // Calculate number of tiles per module
-    uint16_t tileCounts[NUM_MODULES];
     int numTiles = 0;
     for(int module = 0; module < NUM_MODULES; ++module) {
-      auto size = metadata->getConfigMetrics(module).size();
-      tileCounts[module] = size;
-      numTiles += size;
+      numTiles += metadata->getConfigMetrics(module).size();
     }
 
     std::size_t total_size = sizeof(ProfileInputConfiguration) + sizeof(ProfileTileType[numTiles-1]);
     ProfileInputConfiguration* input_params = (ProfileInputConfiguration*)malloc(total_size);
 
+    input_params->numTiles = numTiles;
     //Create the Profile Tile Struct with All Tiles
     xdp::built_in::ProfileTileType profileTiles[numTiles];
     int tile_idx = 0;
@@ -187,11 +185,10 @@ namespace xdp {
         profileTiles[tile_idx].itr_mem_addr = tileMetric.first.itr_mem_addr;
         profileTiles[tile_idx].is_trigger = tileMetric.first.is_trigger;
         profileTiles[tile_idx].metricSet = tileMetric.second;
+        profileTiles[tile_idx].tile_mod = module;
         input_params->tiles[tile_idx] = profileTiles[tile_idx];
         tile_idx++;
       }
-
-      input_params->numTiles[module] = tileCounts[module];
     }
 
     uint8_t* input = reinterpret_cast<uint8_t*>(input_params);
@@ -233,5 +230,7 @@ namespace xdp {
   void AieProfile_x86Impl::poll(uint32_t index, void* handle)
   {
     //TODO
+    auto run = aie_profile_kernel(inbo, outbo, 1 /*iteration*/);
+    
   }
 }

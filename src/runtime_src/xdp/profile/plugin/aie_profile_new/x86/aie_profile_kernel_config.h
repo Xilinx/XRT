@@ -72,6 +72,7 @@ namespace built_in {
     uint64_t itr_mem_addr;
     bool     is_trigger;
     uint8_t metricSet;
+    uint8_t tile_mod;
   };
 
   struct ProfileInputConfiguration
@@ -81,7 +82,8 @@ namespace built_in {
     static constexpr auto NUM_SHIM_COUNTERS = 2;
     static constexpr int NUM_MODULES = 3;
 
-    uint16_t numTiles[NUM_MODULES];
+    uint16_t numTiles;
+    // uint16_t numTiles[NUM_MODULES]; // Make unique variab
     ProfileTileType tiles[1]; //flexible array member
   };
 
