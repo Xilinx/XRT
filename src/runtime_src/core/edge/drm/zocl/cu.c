@@ -432,7 +432,8 @@ static int cu_probe(struct platform_device *pdev)
 	zcu->base.user_manage_irq = user_manage_irq;
 	zcu->base.configure_irq = configure_irq;
 	/* This is a workaround for DPU kernel */
-	zcu->base.force_intr = 1;
+	if (!zocl_find_pdev("ert_hw"))
+		zcu->base.force_intr = 1;
 
 	zocl_info(&pdev->dev, "CU[%d] created", info->inst_idx);
 	return 0;

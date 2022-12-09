@@ -25,6 +25,57 @@
 
 namespace xdp {
 
+enum class module_type {
+    core = 0,
+    dma,
+    shim
+  };
+
+  struct tile_type
+  { 
+    uint16_t row;
+    uint16_t col;
+    uint16_t itr_mem_row;
+    uint16_t itr_mem_col;
+    uint64_t itr_mem_addr;
+    bool     is_trigger;
+    
+    bool operator==(const tile_type &tile) const {
+      return (col == tile.col) && (row == tile.row);
+    }
+    bool operator<(const tile_type &tile) const {
+      return (col < tile.col) || ((col == tile.col) && (row < tile.row));
+    }
+  };
+
+  struct plio_config
+  { 
+    /// PLIO object id
+    int id;
+    /// PLIO variable name
+    std::string name;
+    /// PLIO loginal name
+    std::string logicalName;
+    /// Shim tile column to where the GMIO is mapped
+    short shimColumn;
+    /// slave or master. 0:slave, 1:master
+    short slaveOrMaster;
+    /// Shim stream switch port id
+    short streamId;
+  };  
+
+  struct gmio_type
+  {
+    std::string     name;
+    uint32_t        id;
+    uint16_t        type;
+    uint16_t        shimColumn;
+    uint16_t        channelNum;
+    uint16_t        streamId;
+    uint16_t        burstLength;
+  };
+
+
   /*
    * Represents AIE counter configuration for a single counter
    * Used to keep track of runtime configuration in aie profile and trace.

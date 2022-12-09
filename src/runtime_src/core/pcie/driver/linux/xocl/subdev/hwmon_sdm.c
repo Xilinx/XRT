@@ -70,7 +70,7 @@ struct xocl_sdr_bdinfo {
 	char revision[SDR_BDINFO_ENTRY_LEN_MAX];
 	uint64_t mfg_date;
 	uint64_t pcie_info;
-	uint64_t uuid;
+	char uuid[UUID_STRING_LEN + 1];
 	char mac_addr0[SDR_BDINFO_ENTRY_LEN_MAX];
 	char mac_addr1[SDR_BDINFO_ENTRY_LEN_MAX];
 	char active_msp_ver[SDR_BDINFO_ENTRY_LEN_MAX];
@@ -675,7 +675,7 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 	else if (!strcmp(sensor_name, "PCIE Info"))
 		memcpy(&sdm->bdinfo.pcie_info, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "UUID"))
-		memcpy(&sdm->bdinfo.uuid, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(sdm->bdinfo.uuid, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "MAC 0"))
 		memcpy(sdm->bdinfo.mac_addr0, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "MAC 1"))
@@ -1233,6 +1233,7 @@ hwmon_reg_failed:
 static int hwmon_sdm_remove(struct platform_device *pdev)
 {
 	struct xocl_hwmon_sdm *sdm;
+	void *hdl;
 
 	sdm = platform_get_drvdata(pdev);
 	if (!sdm) {
@@ -1240,11 +1241,14 @@ static int hwmon_sdm_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	xocl_drvinst_release(sdm, &hdl);
+
 	if (sdm->sysfs_created)
 		destroy_hwmon_sysfs(pdev);
 
 	mutex_destroy(&sdm->sdm_lock);
 	platform_set_drvdata(pdev, NULL);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }
@@ -1308,7 +1312,7 @@ uuid_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo.uuid);
+	return sprintf(buf, "%pUB", sdm->bdinfo.uuid);
 };
 static DEVICE_ATTR_RO(uuid);
 
