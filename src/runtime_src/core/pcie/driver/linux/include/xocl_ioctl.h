@@ -729,13 +729,13 @@ struct drm_xocl_hw_ctx_execbuf {
  *
  * @hw_ctx_id:	    Pass the HW Context id
  * @exec_bo_handle: BO handle of command buffer formatted as ERT command
- * @deps:	    Upto 8 dependency command BO handles this command is dependent on
+ * @deps:	    Upto MAX_DEPENT_CMD_BO dependency command BO handles this command is dependent on
  *                  for automatic event dependency handling by ERT
  */
 struct drm_xocl_hw_ctx_execbuf {
 	uint32_t hw_ctx_id;
 	uint32_t exec_bo_handle;
-	uint32_t deps[8];
+	uint32_t deps[MAX_DEPENT_CMD_BO];
 };
 
 /**
