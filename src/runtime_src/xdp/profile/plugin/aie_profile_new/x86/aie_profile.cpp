@@ -33,6 +33,9 @@
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_metadata.h"
 #include "xdp/profile/plugin/aie_profile_new/x86/aie_profile_kernel_config.h"
 
+
+constexpr uint32_t ALIGNMENT_SIZE = 4096;
+
 namespace xdp {
 
   using severity_level = xrt_core::message::severity_level;
@@ -73,7 +76,6 @@ namespace xdp {
   }
 
   bool AieProfile_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle){
-    int counterId = 0;
     bool runtimeCounters = false;
 
     // Get AIE clock frequency
@@ -110,7 +112,6 @@ namespace xdp {
     std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
     std::vector<std::vector<std::string>> graphmetricsSettings(NUM_MODULES);
 
-    bool newConfigUsed = false;
     for(int module = 0; module < NUM_MODULES; ++module) {
       bool findTileMetric = false;
       if (!metricsConfig[module].empty()) {
@@ -138,7 +139,6 @@ namespace xdp {
       }
 
       if(findTileMetric) {
-        newConfigUsed = true;
 
         if (module_type::shim == moduleTypes[module]) {
           metadata->getInterfaceConfigMetricsForTiles(module, 
@@ -156,8 +156,10 @@ namespace xdp {
     }
 
     //Create the PS kernel 
+    constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
+    constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE; // input/output must be aligned to 4096
     using ProfileInputConfiguration = xdp::built_in::ProfileInputConfiguration;
-    using ProfileOutputConfiguration = xdp::built_in::ProfileOutputConfiguration;
+    //using ProfileOutputConfiguration = xdp::built_in::ProfileOutputConfiguration;
     using ProfileTileType = xdp::built_in::ProfileTileType;
 
     // Calculate number of tiles per module
@@ -182,7 +184,7 @@ namespace xdp {
         profileTiles[tile_idx].itr_mem_col = tileMetric.first.itr_mem_col;
         profileTiles[tile_idx].itr_mem_addr = tileMetric.first.itr_mem_addr;
         profileTiles[tile_idx].is_trigger = tileMetric.first.is_trigger;
-        profileTiles[tile_idx].metricSet = getMetricSetIndex(tileMetric.second, moduleTypes[module]);
+        profileTiles[tile_idx].metricSet = metadata->getMetricSetIndex(tileMetric.second, moduleTypes[module]);
         profileTiles[tile_idx].tile_mod = module;
         input_params->tiles[tile_idx] = profileTiles[tile_idx];
         tile_idx++;
@@ -232,7 +234,7 @@ namespace xdp {
   void AieProfile_x86Impl::poll(uint32_t index, void* handle)
   {
     //TODO
-    auto run = aie_profile_kernel(inbo, outbo, 1 /*iteration*/);
+    //auto run = aie_profile_kernel(inbo, outbo, 1 /*iteration*/);
     
   }
 }

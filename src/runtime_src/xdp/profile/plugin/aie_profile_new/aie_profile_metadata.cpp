@@ -693,7 +693,7 @@ namespace xdp {
   uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricString, module_type mod){
     auto stringVector = metricStrings[mod];
     
-    auto itr = std::find(stringVector.begin(), stringVector.end(), metricString)
+    auto itr = std::find(stringVector.begin(), stringVector.end(), metricString);
     if (itr != stringVector.cend()){
       return 0;
     } else {
