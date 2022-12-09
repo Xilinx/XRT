@@ -173,18 +173,17 @@ namespace hwemu {
         // copy pkt cus to command object cu bitmap
         //if (type() == ERT_CU) 
         {
-            #define  MAX_CUS_LOCAL 4
-            uint32_t cumasks[MAX_CUS_LOCAL] = {0};
+            constexpr uint32_t max_cu_masks = 4;
+            uint32_t cumasks[max_cu_masks] = {0};
 
             cumasks[0] = ert_cu->cu_mask;
             auto j = num_cumasks();
-            for (uint32_t i = 0; i < num_cumasks() -1 ; ++i) {
-                cumasks[i+1] = ert_cu->data[i];
-            }
-            if (j >= MAX_CUS_LOCAL)
+            if (j >= max_cu_masks)
                 std::runtime_error("invalid CU index");
+            std::copy(ert_cu->data, (ert_cu->data)+num_cumasks()-1, cumasks+1 );
+
             //! Set cu_bitmap from cumasks
-            for (int i =  num_cumasks() ; (i >= 0) && (i<MAX_CUS_LOCAL);  --i) {
+            for (uint32_t i =  num_cumasks() ; (i >= 0) && (i<max_cu_masks);  --i) {
                 cu_bitmap <<= 32;
                 cu_bitmap |= cumasks[i];
             }
