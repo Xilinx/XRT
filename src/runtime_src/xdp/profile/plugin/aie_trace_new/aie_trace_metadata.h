@@ -23,45 +23,12 @@
 #include <vector>
 
 #include "xdp/config.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 #include "core/common/device.h"
 
 namespace xdp {
 
 typedef std::vector<uint32_t>  ValueVector;
-
-  enum class module_type {
-      core = 0,
-      dma,
-      shim
-    };
-
-    struct tile_type
-    { 
-      uint16_t row;
-      uint16_t col;
-      uint16_t itr_mem_row;
-      uint16_t itr_mem_col;
-      uint64_t itr_mem_addr;
-      bool     is_trigger;
-      
-      bool operator==(const tile_type &tile) const {
-        return (col == tile.col) && (row == tile.row);
-      }
-      bool operator<(const tile_type &tile) const {
-        return (col < tile.col) || ((col == tile.col) && (row < tile.row));
-      }
-    };
-
-    struct gmio_type
-    {
-      std::string     name;
-      uint32_t        id;
-      uint16_t        type;
-      uint16_t        shimColumn;
-      uint16_t        channelNum;
-      uint16_t        streamId;
-      uint16_t        burstLength;
-    };
 
 class AieTraceMetadata{
   private:

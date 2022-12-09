@@ -109,6 +109,7 @@ EOF
 }
 
 SYSTEM_DTB_ADDR="0x40000"
+BT_SCR_ADDR="0x20000000"
 KERNEL_ADDR="0x20100000"
 ROOTFS_ADDR="0x21000000"
 
@@ -176,8 +177,7 @@ if [[ ! -d $IMAGES_DIR ]]; then
 	error "Please specify the valid path of APU images by -images"
 fi
 IMAGES_DIR=`realpath $IMAGES_DIR`
-#hack to fix pipeline. Need to file a CR on xclnbinutil
-source /proj/xbuilds/2022.2_1004_1/installs/lin64/Vitis/2022.2/settings64.sh
+source /proj/xbuilds/2022.2_released/installs/lin64/Vitis/2022.2/settings64.sh
 
 
 if [[ ! (`which mkimage` && `which bootgen` && `which xclbinutil`) ]]; then
@@ -225,7 +225,7 @@ all:
         { core=a72-0, exception_level=el-2, file=$IMAGES_DIR/u-boot.elf }
         { load=$ROOTFS_ADDR, file=$IMAGES_DIR/rootfs.cpio.gz.u-boot }
         { load=$KERNEL_ADDR, file=$IMAGE_UB }
-        { load=0x20000000, file=$BUILD_DIR/boot.scr }
+        { load=$BT_SCR_ADDR, file=$BUILD_DIR/boot.scr }
         { load=$METADATA_ADDR file=$BUILD_DIR/metadata.dat }
     }
 }

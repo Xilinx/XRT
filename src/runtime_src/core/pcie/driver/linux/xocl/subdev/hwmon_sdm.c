@@ -1233,6 +1233,7 @@ hwmon_reg_failed:
 static int hwmon_sdm_remove(struct platform_device *pdev)
 {
 	struct xocl_hwmon_sdm *sdm;
+	void *hdl;
 
 	sdm = platform_get_drvdata(pdev);
 	if (!sdm) {
@@ -1240,11 +1241,14 @@ static int hwmon_sdm_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	xocl_drvinst_release(sdm, &hdl);
+
 	if (sdm->sysfs_created)
 		destroy_hwmon_sysfs(pdev);
 
 	mutex_destroy(&sdm->sdm_lock);
 	platform_set_drvdata(pdev, NULL);
+	xocl_drvinst_free(hdl);
 
 	return 0;
 }

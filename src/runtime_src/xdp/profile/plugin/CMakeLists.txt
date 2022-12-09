@@ -21,7 +21,7 @@ if (NOT WIN32)
 # The plugins to be built on Linux only
 # =========================================================
 add_subdirectory(aie_debug)
-add_subdirectory(aie_profile)
+add_subdirectory(aie_profile_new)
 add_subdirectory(aie_trace_new)
 add_subdirectory(device_offload/hw_emu)
 add_subdirectory(noc)

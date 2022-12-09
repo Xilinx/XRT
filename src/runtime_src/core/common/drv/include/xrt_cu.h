@@ -248,7 +248,7 @@ struct xrt_cu_info {
 	u32			 slot_idx;
 	/* CU Index respected to a slot */
 	int			 cu_idx;
-	/* Global CU Index respected to a device */
+	/* CU Index respected to a subdevice instance index */
 	int			 inst_idx;
 	u64			 addr;
 	size_t			 size;
