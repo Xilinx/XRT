@@ -182,7 +182,7 @@ namespace xdp {
         profileTiles[tile_idx].itr_mem_col = tileMetric.first.itr_mem_col;
         profileTiles[tile_idx].itr_mem_addr = tileMetric.first.itr_mem_addr;
         profileTiles[tile_idx].is_trigger = tileMetric.first.is_trigger;
-        profileTiles[tile_idx].metricSet = tileMetric.second;
+        profileTiles[tile_idx].metricSet = getMetricSetIndex(tileMetric.second, moduleTypes[module]);
         profileTiles[tile_idx].tile_mod = module;
         input_params->tiles[tile_idx] = profileTiles[tile_idx];
         tile_idx++;

@@ -32,11 +32,21 @@ class AieProfileMetadata{
     uint64_t deviceID;
     void* handle;
 
-    std::vector<std::string> coreMetricStrings {"heat_map", "stalls", "execution",           
-                                                "floating_point", "stream_put_get", "write_bandwidths",     
-                                                "read_bandwidths", "aie_trace", "events"};
-    std::vector<std::string> memMetricStrings  {"conflicts", "dma_locks", "dma_stalls_s2mm", "dma_stalls_mm2s", "write_bandwidths", "read_bandwidths"};
-    std::vector<std::string> interfaceMetricStrings {"input_bandwidths", "output_bandwidths", "packets"};
+    // std::vector<std::string> coreMetricStrings {"heat_map", "stalls", "execution",           
+    //                                             "floating_point", "stream_put_get", "write_bandwidths",     
+    //                                             "read_bandwidths", "aie_trace", "events"};
+    // std::vector<std::string> memMetricStrings  {"conflicts", "dma_locks", "dma_stalls_s2mm", "dma_stalls_mm2s", "write_bandwidths", "read_bandwidths"};
+    // std::vector<std::string> interfaceMetricStrings {"input_bandwidths", "output_bandwidths", "packets"};
+
+    std::map <module_type, std::vector<std::string>> metricStrings {
+      { module_type::core, {"heat_map", "stalls", "execution",           
+                            "floating_point", "stream_put_get", "write_bandwidths",     
+                            "read_bandwidths", "aie_trace", "events"} },
+      { module_type::dma, {"conflicts", "dma_locks", "dma_stalls_s2mm",
+                           "dma_stalls_mm2s", "write_bandwidths", "read_bandwidths"} },
+      { module_type::shim, {"input_bandwidths", "output_bandwidths", "packets"} },
+    }
+
     std::vector<std::map<tile_type, std::string>> mConfigMetrics;
 
   public:
@@ -71,7 +81,7 @@ class AieProfileMetadata{
     std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, const std::string& graph_name, module_type type);
     std::map<tile_type, std::string> getConfigMetrics(int module){ return mConfigMetrics[module];}
-    int getMetricSetIndex(std::string metricSet, int module);
+    int getMetricSetIndex(std::string metricSet, module_type mod);
   };
 }
 

@@ -355,8 +355,8 @@ namespace xdp {
       }
        
       // Ensure requested metric set is supported (if not, use default)
-      if (((mod == module_type::core) && std::find(coreMetricStrings.begin(), coreMetricStrings.end(), tileMetric.second) == coreMetricStrings.end())
-          || ((mod == module_type::dma) && std::find(memMetricStrings.begin(), memMetricStrings.end(), tileMetric.second) == memMetricStrings.end())) {
+      if (((mod == module_type::core) && std::find(metricStrings[mod].begin(), metricStrings[mod].end(), tileMetric.second) == metricStrings[mod].end())
+          || ((mod == module_type::dma) && std::find(metricStrings[mod].begin(), metricStrings[mod].end(), tileMetric.second) == metricStrings[mod].end())) {
         std::string defaultSet = (mod == module_type::core) ? "heat_map" : "conflicts";
         std::stringstream msg;
         msg << "Unable to find " << moduleName << " metric set " << tileMetric.second
@@ -385,7 +385,6 @@ namespace xdp {
 
 #if 0
     // graph_based_interface_tile_metrics is not supported in XRT in 2022.2
-
     bool allGraphsDone = false;
 
     // STEP 1 : Parse per-graph settings
@@ -579,7 +578,7 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      if (std::find(interfaceMetricStrings.begin(), interfaceMetricStrings.end(), tileMetric.second) == interfaceMetricStrings.end()) {
+      if (std::find(metricStrings[module_type::shim].begin(), metricStrings[module_type::shim].end(), tileMetric.second) == metricStrings[module_type::shim].end()) {
         std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
                           + ". Using default of input_bandwidths. "
                           + "As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
@@ -691,19 +690,15 @@ namespace xdp {
     return tiles;
   }
 
-  int AieProfileMetadata::getMetricSetIndex(std::string metricSet, int module){
-    if (module == 0) {
-      a5uto itr = std::find(coreMetricStrings.begin(), coreMetricStrings.end(), metricSet)
-      if (itr != coreMetricStrings.cend()){
-        return 0;
-      } else {
-        return std::distance(coreMetricStrings.begin(), itr);
-      }
-    } else if (module == 1){
+  uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricString, module_type mod){
+    auto stringVector = metricStrings[mod];
     
+    auto itr = std::find(stringVector.begin(), stringVector.end(), metricString)
+    if (itr != stringVector.cend()){
+      return 0;
     } else {
-    
-    }  
-  }
+      return std::distance(stringVector.begin(), itr);
+    }
 
+  }
 }
