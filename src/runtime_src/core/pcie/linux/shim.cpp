@@ -1561,23 +1561,23 @@ int shim::xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx)
     hw_ctx->axlf_ptr = &axlf_obj;
     ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_HW_CTX, hw_ctx);
     if (ret && errno == EAGAIN) {
-	    //special case for aws
-	    //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
-	    //wait and reload 2nd time -- this time the there will be no device id
-	    //change, hence no pcie removal&rescan, anymore
-	    //we need to close the device otherwise the removal&rescan (unload driver) will hang
-	    //we also need to reopen the device once removal&rescan completes
-	    int dev_hotplug_done = 0;
-	    std::string err;
-	    dev_fini();
-	    std::this_thread::sleep_for(std::chrono::seconds(5));
-	    while (!dev_hotplug_done) {
-		    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		    xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
-				    "dev_hotplug_done", err, dev_hotplug_done, 0);
-	    }
-	    dev_init();
-	    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_HW_CTX, hw_ctx);
+        //special case for aws
+        //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
+        //wait and reload 2nd time -- this time the there will be no device id
+        //change, hence no pcie removal&rescan, anymore
+        //we need to close the device otherwise the removal&rescan (unload driver) will hang
+        //we also need to reopen the device once removal&rescan completes
+        int dev_hotplug_done = 0;
+        std::string err;
+        dev_fini();
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        while (!dev_hotplug_done) {
+	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	    xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
+			    "dev_hotplug_done", err, dev_hotplug_done, 0);
+    }
+    dev_init();
+    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CREATE_HW_CTX, hw_ctx);
     }
 
     if (ret)
@@ -1619,27 +1619,27 @@ int shim::xclLoadAxlf(const axlf *buffer)
 
     auto ret = xclPrepareAxlf(buffer, &axlf_obj);
     if (ret)
-	    return -errno;
+        return -errno;
 
     ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     if (ret && errno == EAGAIN) {
-	    //special case for aws
-	    //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
-	    //wait and reload 2nd time -- this time the there will be no device id
-	    //change, hence no pcie removal&rescan, anymore
-	    //we need to close the device otherwise the removal&rescan (unload driver) will hang
-	    //we also need to reopen the device once removal&rescan completes
-	    int dev_hotplug_done = 0;
-	    std::string err;
-	    dev_fini();
-	    std::this_thread::sleep_for(std::chrono::seconds(5));
-	    while (!dev_hotplug_done) {
-		    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-		    xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
-				    "dev_hotplug_done", err, dev_hotplug_done, 0);
-	    }
-	    dev_init();
-	    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+        //special case for aws
+        //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
+        //wait and reload 2nd time -- this time the there will be no device id
+        //change, hence no pcie removal&rescan, anymore
+        //we need to close the device otherwise the removal&rescan (unload driver) will hang
+        //we also need to reopen the device once removal&rescan completes
+        int dev_hotplug_done = 0;
+        std::string err;
+        dev_fini();
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        while (!dev_hotplug_done) {
+    	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    	    xrt_core::pci::get_dev(mBoardNumber)->sysfs_get<int>("",
+    			    "dev_hotplug_done", err, dev_hotplug_done, 0);
+        }
+        dev_init();
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     }
 
     if (ret)
@@ -2356,6 +2356,8 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
                   xrt::hw_context::access_mode mode)
 {
+  const static int qos_val = 0; // TBD qos;
+
   if (!hw_context_enable) {
     // Nothing to be done here for legacy flow. Return from here
     return 0;
@@ -2369,7 +2371,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
     auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
     auto top = reinterpret_cast<const axlf*>(buffer);
     drm_xocl_create_hw_ctx hw_ctx = {};
-    hw_ctx.qos = 0; // TBD qos;
+    hw_ctx.qos = qos_val;
 
     xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
     if (auto ret = xclLoadHwAxlf(top, &hw_ctx)) {
