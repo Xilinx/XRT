@@ -43,7 +43,7 @@ namespace xdp {
   void AieProfile_x86Impl::updateDevice()
   {
     bool runtimeCounters = setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
-
+    std::cout << "runtimeCounters: " << runtimeCounters << std::endl;
     // @ TODO CHECK COMPILE TIME COUNTERS!
     // if (!runtimeCounters) {
     //     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(metadata->getHandle());
@@ -86,8 +86,6 @@ namespace xdp {
     std::string moduleNames[NUM_MODULES] = {"aie", "aie_memory", "interface_tile"};
     std::string defaultSets[NUM_MODULES] = {"all:heat_map", "all:conflicts", "all:input_bandwidths"};
 
-    int numCountersMod[NUM_MODULES] =
-        {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
     module_type moduleTypes[NUM_MODULES] = 
         {module_type::core, module_type::dma, module_type::shim};
 
@@ -130,7 +128,7 @@ namespace xdp {
           findTileMetric = true;
 
       }
-      if ((module < graphmetricsConfig.size()) && !graphmetricsConfig[module].empty()) {
+      if ((module < static_cast<int>(graphmetricsConfig.size())) && !graphmetricsConfig[module].empty()) {
         /* interface_tile metrics is not supported for Graph based metrics.
          * Only aie and aie_memory are supported.
          */
@@ -221,7 +219,11 @@ namespace xdp {
 
       auto run = aie_profile_kernel(inbo, outbo, 0 /*iteration*/);
       run.wait();
+    } catch (...) {
+      std::cout << "PS Kernel Scheduling Failed!" << std::endl;
+      return false;
     }
+    
     runtimeCounters = true;
 
     return runtimeCounters;

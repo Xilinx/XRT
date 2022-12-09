@@ -691,4 +691,19 @@ namespace xdp {
     return tiles;
   }
 
+  int AieProfileMetadata::getMetricSetIndex(std::string metricSet, int module){
+    if (module == 0) {
+      a5uto itr = std::find(coreMetricStrings.begin(), coreMetricStrings.end(), metricSet)
+      if (itr != coreMetricStrings.cend()){
+        return 0;
+      } else {
+        return std::distance(coreMetricStrings.begin(), itr);
+      }
+    } else if (module == 1){
+    
+    } else {
+    
+    }  
+  }
+
 }
