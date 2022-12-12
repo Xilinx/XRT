@@ -320,10 +320,6 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret)
 		goto out;
 
-	ret = kds_free_cu_ctx(client, cu_ctx);
-	if (ret)
-		goto out;
-
 	if (cu_ctx->hw_ctx) {
 		ret = kds_free_hw_ctx(client, cu_ctx->hw_ctx);
 		if (ret)
@@ -331,6 +327,10 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 
 		cu_ctx->hw_ctx = NULL;
 	}
+
+	ret = kds_free_cu_ctx(client, cu_ctx);
+	if (ret)
+		goto out;
 
 	/* unlock bitstream if there is no opening context */
 	if (list_empty(&client->ctx->cu_ctx_list)) {
