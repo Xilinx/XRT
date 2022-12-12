@@ -374,6 +374,10 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 		cu_ctx->hw_ctx = NULL;
 	}
 
+	ret = kds_free_cu_ctx(client, cu_ctx);
+	if (ret)
+		goto out;
+
 	/* unlock bitstream if there is no opening context */
 	if (list_empty(&client->ctx->cu_ctx_list)) {
 		vfree(client->ctx->xclbin_id);
