@@ -173,15 +173,17 @@ namespace hwemu {
         // copy pkt cus to command object cu bitmap
         //if (type() == ERT_CU) 
         {
-            uint32_t cumasks[4] = {0};
+            constexpr uint32_t max_cu_masks = 4;
+            uint32_t cumasks[max_cu_masks] = {0};
 
             cumasks[0] = ert_cu->cu_mask;
-            for (uint32_t i = 0; i < num_cumasks() -1 ; ++i) {
-                cumasks[i+1] = ert_cu->data[i];
-            }
+            auto j = num_cumasks();
+            if (j >= max_cu_masks)
+                std::runtime_error("invalid CU index");
+            std::copy(ert_cu->data, (ert_cu->data)+num_cumasks()-1, cumasks+1 );
 
             //! Set cu_bitmap from cumasks
-            for (int i =  num_cumasks(); i >= 0;  --i) {
+            for (uint32_t i =  num_cumasks() ; (i >= 0) && (i<max_cu_masks);  --i) {
                 cu_bitmap <<= 32;
                 cu_bitmap |= cumasks[i];
             }
@@ -1813,7 +1815,7 @@ namespace hwemu {
         uint32_t cuidx = MAX_CUS;
         uint32_t bit;
         SCHED_DEBUGF("-> %s exec(%d) cmd(%lu)\n", __func__, this->uid, xcmd->uid);
-        for (bit = xcmd->first_cu(); bit < this->num_cus; bit = xcmd->next_cu(bit)) {
+        for (bit = xcmd->first_cu(); (bit < this->num_cus) && (bit < 128); bit = xcmd->next_cu(bit)) {
             uint32_t load_count = this->cu_load_count[bit];
             SCHED_DEBUGF(" bit(%d) num_cus(%d) load_count(%d) min_load_count(%d)\n", bit, num_cus, load_count, min_load_count);
             if (load_count >= min_load_count)

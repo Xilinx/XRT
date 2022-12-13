@@ -298,7 +298,7 @@ namespace xclhwemhal2
       // My wait time > 300 seconds, Let's fetch the exact details behind late connection with Simulator.
       if (std::chrono::duration_cast<std::chrono::seconds>(l_time_end - l_time).count() > kMaxTimeToConnectSimulator) {
        
-        std::lock_guard<std::mutex> guard(mPrintMessagesLock);
+        std::lock_guard guard{mPrintMessagesLock};
         if (get_simulator_started() == false)
           return;
         // Possibility of deadlock detection?
@@ -309,14 +309,14 @@ namespace xclhwemhal2
       auto end_time = std::chrono::high_resolution_clock::now();
       if (std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count() <= kMaxTimeToConnectSimulator) {
         
-        std::lock_guard<std::mutex> guard(mPrintMessagesLock);
         if (get_simulator_started() == false) 
           return;
-
-        dumpDeadlockMessages();
-        // Any status message found in parse log file?
-        lParseLog.parseLog();
-
+        { // This is for limiting the scope of lock
+          std::lock_guard<std::mutex> guard(mPrintMessagesLock);
+          dumpDeadlockMessages();
+          // Any status message found in parse log file?
+          lParseLog.parseLog();
+        }
         parseCount++;
         if (parseCount%5 == 0) {
           std::this_thread::sleep_for(5s);

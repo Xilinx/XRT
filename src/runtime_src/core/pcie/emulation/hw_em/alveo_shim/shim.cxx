@@ -32,8 +32,10 @@
         auto raw_response_header    = std::make_unique<char[]>(ri_len); \
         auto raw_response_payload   = std::make_unique<char[]>(r_len);\
         response_header->set_size(r_len);\
-        response_header->SerializeToArray((void*)raw_response_header.get(),ri_len);\
-        response_payload.SerializeToArray((void*)raw_response_payload.get(),r_len);\
+        if(!response_header->SerializeToArray((void*)raw_response_header.get(),ri_len))\
+        { std::cerr << "ERROR: SerializeToArray() failed." << std::endl; return -1; }\
+        if(!response_payload.SerializeToArray((void*)raw_response_payload.get(),r_len))\
+        { std::cerr << "ERROR: SerializeToArray() failed." << std::endl; return -1; }\
         Q2h_sock->sk_write((void*)raw_response_header.get(),ri_len);\
         Q2h_sock->sk_write((void*)raw_response_payload.get(),r_len);\
     }
@@ -560,7 +562,7 @@ namespace xclhwemhal2 {
         }
       }
 
-      for (auto it : mDDRMemoryManager)
+      for (auto &it : mDDRMemoryManager)
       {
         std::string tag = it->tag();
 
@@ -1092,11 +1094,18 @@ namespace xclhwemhal2 {
 
     std::string simulationDirectoryMsg = "INFO: [HW-EMU 05] Path of the simulation directory : " + getSimPath();
     logMessage(simulationDirectoryMsg);
-
-    sock = std::make_shared<unix_socket>();
+     
+    try {
+       sock = std::make_shared<unix_socket>();
+    }
+    catch(const std::exception &e){
+       std::cerr << "\n ERROR: [HW-EMU 28] ERROR unable to allocate memory, error is ::" << e.what();
+       return -1;
+    }
+    
     set_simulator_started(true);
     sock->monitor_socket();
-    
+   
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
       mMessengerThread = std::thread([this]() { messagesThread(); } );
@@ -1109,8 +1118,7 @@ namespace xclhwemhal2 {
     if (mLogStream.is_open())
       mLogStream << __func__ << " Created the Unix socket." << std::endl;
 
-    if (sock && mEnvironmentNameValueMap.empty() == false)
-    {
+    if (!mEnvironmentNameValueMap.empty()) {
       //send environment information to device
       bool ack = true;
 
@@ -1118,8 +1126,7 @@ namespace xclhwemhal2 {
         mLogStream << __func__ << " Before RPC call xclSetEnvironment_RPC_CALL." << std::endl;
 
       xclSetEnvironment_RPC_CALL(xclSetEnvironment);
-      if (!ack)
-      {
+      if (!ack) {
         if (mLogStream.is_open())
           mLogStream << __func__ << "Environment is NOT set properly" << std::endl;
         //std::cout<<"environment is not set properly"<<std::endl;
@@ -1675,7 +1682,7 @@ namespace xclhwemhal2 {
       } else {
 	      if(chunks.size())
 	      {
-		      for (auto it:chunks)
+		      for (auto &it:chunks)
 		      {
 			      xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, it.first, it.second, noHostMemory);
 		      }
@@ -2093,7 +2100,7 @@ namespace xclhwemhal2 {
       mGlobalInMemStream.close();
       mGlobalOutMemStream.close();
     }
-    for(auto controlStreamItr : mOffsetInstanceStreamMap)
+    for(auto &controlStreamItr : mOffsetInstanceStreamMap)
     {
       std::ofstream* os = controlStreamItr.second;
       if(os)
@@ -2251,12 +2258,13 @@ namespace xclhwemhal2 {
     mPlatformData = platformData;
     constructQueryTable();
 
+    std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
+    std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
+
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(&mDeviceInfo,&info);
     initMemoryManager(DDRBankList);
 
-    std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
-    std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
 
     last_clk_time = clock();
     mCloseAll = false;
@@ -2990,7 +2998,10 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   else if((sBO->fd >=0) && (dBO->fd >= 0)) {  //Both source & destination P2P buffer
     // CR-1113695 Copy data from source P2P to Dest P2P
     std::vector<char> temp_buffer(size);
-    lseek(sBO->fd, src_offset, SEEK_SET);
+    if(lseek(sBO->fd, src_offset, SEEK_SET) == -1){
+      std::cerr << "ERROR: lseek() failed. " << std::endl;
+      return -1;
+    }
     int bytes_read = read(sBO->fd, temp_buffer.data(), size);
     if (bytes_read) {
       if (mLogStream.is_open())
@@ -2999,7 +3010,10 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       }
     }
 
-    lseek(dBO->fd, dst_offset, SEEK_SET);
+    if(lseek(dBO->fd, dst_offset, SEEK_SET) == -1){
+      std::cerr << "ERROR: lseek() failed. " << std::endl;
+      return -1;
+    }
     int bytes_write = write(dBO->fd, temp_buffer.data(), size);
     if (bytes_write) {
       if (mLogStream.is_open())
@@ -3015,7 +3029,10 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
       return -1;
     }
-    lseek(dBO->fd, dst_offset, SEEK_SET);
+    if(lseek(dBO->fd, dst_offset, SEEK_SET) == -1){
+      std::cerr << "ERROR: lseek() failed. " << std::endl;
+      return -1;
+    }
     int bytes_write = write(dBO->fd, temp_buffer.data(), size);
 
     if (bytes_write) {
@@ -3028,7 +3045,10 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   else if (sBO->fd >= 0) {  //source p2p buffer
     // CR-1112934 Copy data from exported fd to temp buffer using read API
     std::vector<char> temp_buffer(size);
-    lseek(sBO->fd, src_offset, SEEK_SET);
+    if(lseek(sBO->fd, src_offset, SEEK_SET) == -1){
+      std::cerr << "ERROR: lseek() failed. " << std::endl;
+      return -1;
+    }
     int bytes_read = read(sBO->fd, temp_buffer.data(), size);
 
     if (bytes_read) {
@@ -3185,7 +3205,7 @@ void HwEmShim::xclFreeBO(unsigned int boHandle)
 
     if(bo->chunks.size())
     {
-	    for(auto it: bo->chunks)
+	    for(auto &it: bo->chunks)
 		    xclFreeDeviceBuffer(it.first,bSendToSim);
 
     }
@@ -3300,7 +3320,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigne
 
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
 
-  xcl_LogMsg(XRT_INFO, "", "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
+  xcl_LogMsg(XRT_INFO, "", "%s, cmdBO: %d, num_bo_in_wait_list: %lu, bo_wait_list: %u",
             __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
 
   if (num_bo_in_wait_list > MAX_DEPS) {
@@ -3328,6 +3348,11 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigne
       ret = m_scheduler->add_exec_buffer(bo);
       PRINTENDFUNC;
   } else {
+    if(!mMBSch || !bo)
+    {
+      PRINTENDFUNC;
+      return ret;
+    }
     ret = mMBSch->add_exec_buffer(mCore, bo);
     PRINTENDFUNC;
   }
