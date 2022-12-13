@@ -37,7 +37,9 @@
 constexpr uint32_t ALIGNMENT_SIZE = 4096;
 
 namespace xdp {
-
+  using ProfileInputConfiguration = xdp::built_in::ProfileInputConfiguration;
+  using ProfileOutputConfiguration = xdp::built_in::ProfileOutputConfiguration;
+  using ProfileTileType = xdp::built_in::ProfileTileType;
   using severity_level = xrt_core::message::severity_level;
 
   AieProfile_x86Impl::AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
@@ -156,11 +158,8 @@ namespace xdp {
     }
 
     //Create the PS kernel 
-    constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
-    constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE; // input/output must be aligned to 4096
-    using ProfileInputConfiguration = xdp::built_in::ProfileInputConfiguration;
-    //using ProfileOutputConfiguration = xdp::built_in::ProfileOutputConfiguration;
-    using ProfileTileType = xdp::built_in::ProfileTileType;
+    constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 22; //Calculated maximum output size for all 400 tiles
+    constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE * 2; // input/output must be aligned to 4096
 
     // Calculate number of tiles per module
     int numTiles = 0;
@@ -219,13 +218,14 @@ namespace xdp {
       std::memcpy(inbo_map, input, total_size);
       inbo.sync(XCL_BO_SYNC_BO_TO_DEVICE, INPUT_SIZE, 0);
 
-      auto run = aie_profile_kernel(inbo, outbo, 0 /*iteration*/);
+      auto run = aie_profile_kernel(inbo, outbo, 0 /*setup iteration*/);
       run.wait();
     } catch (...) {
       std::cout << "PS Kernel Scheduling Failed!" << std::endl;
       return false;
     }
-    
+
+    free(input_params);
     runtimeCounters = true;
 
     return runtimeCounters;
@@ -235,6 +235,49 @@ namespace xdp {
   {
     //TODO
     //auto run = aie_profile_kernel(inbo, outbo, 1 /*iteration*/);
+    try {
+      
+      auto spdevice = xrt_core::get_userpf_device(handle);
+      auto device = xrt::device(spdevice);
     
+      auto uuid = device.get_xclbin_uuid();
+      auto aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie_profile_config");
+
+      //input bo  
+      // Don't need to pass data for polling
+      // The counters are stored locally in PS memory after setup
+      auto inbo = xrt::bo(device, INPUT_SIZE, 2);
+      auto inbo_map = inbo.map<uint8_t*>();
+      memset(inbo_map, 0, INPUT_SIZE); 
+   
+      //output bo
+      auto outbo = xrt::bo(device, OUTPUT_SIZE, 2);
+      auto outbo_map = outbo.map<uint8_t*>();
+      memset(outbo_map, 0, OUTPUT_SIZE);
+
+      // //message_output_bo
+      // auto messagebo = xrt::bo(device, MSG_OUTPUT_SIZE, 2);
+      // auto messagebomapped = messagebo.map<uint8_t*>();
+      // memset(messagebomapped, 0, MSG_OUTPUT_SIZE);
+
+      std::memcpy(inbo_map, input, total_size);
+      inbo.sync(XCL_BO_SYNC_BO_TO_DEVICE, INPUT_SIZE, 0);
+
+      auto run = aie_profile_kernel(inbo, outbo, 1 /*poll iteration*/);
+      run.wait();
+      outbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
+      ProfileOutputConfiguration* cfg = reinterpret_cast<ProfileOutputConfiguration*>(outbo_map);
+
+      std::cout << "Num Counters: " << cfg->numCounters << std::endl;
+      for (int i = 0; i < cfg->numCounters << std::endl){
+        std::cout << "CounterID: " << cfg->counters[i].counterId << std::endl;
+        std::cout << "CounterValue: " << cfg->counters[i].counterValue << std::endl;
+      } 
+
+    } catch (...) {
+      std::cout << "PS Kernel Polling Failed!" << std::endl;
+      return false;
+    }
+
   }
 }
