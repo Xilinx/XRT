@@ -39,27 +39,23 @@ pretty_label(std::string label)
 
 } //unnamed namespace
 
-namespace xrt_core { 
-namespace vmr {
+namespace xrt_core::vmr {
 
 ptree_type
 vmr_info(const xrt_core::device* device)
 {
   ptree_type pt_vmr_status_array;
   ptree_type pt_vmr_stats;
-  std::vector<std::string> vmr_status_raw;
-  try {
-    vmr_status_raw = xrt_core::device_query<xq::vmr_status>(device);
-    auto vmr_version = xrt_core::device_query<xq::extended_vmr_status>(device);
-    vmr_status_raw.insert(vmr_status_raw.begin(), vmr_version.begin(), vmr_version.end());
-  }
-  catch (const xq::exception&) {
-    // only available for versal
+  auto vmr_status = xrt_core::device_query_default<xq::vmr_status>(device, {});
+  auto vmr_version = xrt_core::device_query_default<xq::extended_vmr_status>(device, {});
+  vmr_status.insert(vmr_status.begin(), vmr_version.begin(), vmr_version.end());
+
+  // only available for versal
+  if (vmr_status.empty())
     return pt_vmr_status_array;
-  }
 
   //parse one line at a time
-  for (auto& stat_raw : vmr_status_raw) {
+  for (const auto& stat_raw : vmr_status) {
     ptree_type pt_stat;
     const auto idx = stat_raw.find_first_of(':');
     if (idx != std::string::npos) {
@@ -75,4 +71,21 @@ vmr_info(const xrt_core::device* device)
   return pt_vmr_status_array;
 }
 
-}} // vmr, xrt
+bool
+is_default_boot(const xrt_core::device* device)
+{
+  const auto pt = vmr_info(device);
+  boost::property_tree::ptree pt_empty;
+  const boost::property_tree::ptree& ptree = pt.get_child("vmr", pt_empty);
+  for (const auto& ks : ptree) {
+    const boost::property_tree::ptree& vmr_stat = ks.second;
+    const auto val = vmr_stat.get<std::string>("label");
+    const auto nval = vmr_stat.get<std::string>("value");
+    if (boost::iequals(val, "Boot on default"))
+      return boost::iequals(vmr_stat.get<std::string>("value"), "1");
+  }
+
+  throw std::runtime_error("Missing 'Boot on default' data in VMR status");
+}
+
+} // vmr, xrt
