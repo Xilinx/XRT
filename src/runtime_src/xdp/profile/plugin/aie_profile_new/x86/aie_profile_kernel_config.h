@@ -23,37 +23,34 @@ namespace built_in {
 
   enum class CoreMetrics : uint8_t 
   {
-    EMPTY = 0,
-    HEAT_MAP = 1,
-    STALLS = 2,
-    EXECUTION = 3,
-    FLOATING_POINT = 4,
-    STREAM_PUT_GET = 5,
-    WRITE_BANDWIDTHS = 6,
-    READ_BANDWIDTHS = 7,
-    AIE_TRACE = 8,
-    EVENTS = 9
+    HEAT_MAP = 0,
+    STALLS = 1,
+    EXECUTION = 2,
+    FLOATING_POINT = 3,
+    STREAM_PUT_GET = 4,
+    WRITE_BANDWIDTHS = 5,
+    READ_BANDWIDTHS = 6,
+    AIE_TRACE = 7,
+    EVENTS = 8
   };
 
   enum class MemoryMetrics : uint8_t 
   {
-    EMPTY = 0,
-    CONFLICTS = 1,
-    DMA_LOCKS = 2,
-    DMA_STALLS_S2MM = 3,
-    DMA_STALLS_MM2S = 4,
-    WRITE_BANDWIDTHS = 5,
-    READ_BANDWIDTHS = 6
+    CONFLICTS = 0,
+    DMA_LOCKS = 1,
+    DMA_STALLS_S2MM = 2,
+    DMA_STALLS_MM2S = 3,
+    WRITE_BANDWIDTHS = 4,
+    READ_BANDWIDTHS = 5
   };
 
   enum class InterfaceMetrics : uint8_t 
   {
-    EMPTY = 0,
-    INPUT_BANDWIDTHS = 1,
-    OUTPUT_BANDWIDTHS = 2,
-    INPUT_STALLS_IDLE = 3,
-    OUTPUT_STALLS_IDLE = 4,
-    PACKETS = 5
+    INPUT_BANDWIDTHS = 0,
+    OUTPUT_BANDWIDTHS = 1,
+    // INPUT_STALLS_IDLE = 3,
+    // OUTPUT_STALLS_IDLE = 4,
+    PACKETS = 2
   };
 
   // This struct is used for input for the PS kernel.  It contains all of
