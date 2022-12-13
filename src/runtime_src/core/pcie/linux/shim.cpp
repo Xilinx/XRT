@@ -24,6 +24,7 @@
 #include "core/common/api/hw_context_int.h"
 
 #include "plugin/xdp/aie_trace.h"
+#include "plugin/xdp/aie_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
 #include "plugin/xdp/hal_profile.h"

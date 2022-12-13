@@ -16,6 +16,7 @@
 
 #include "plugin/xdp/aie_profile.h"
 #include "core/common/module_loader.h"
+#include "core/common/dlfcn.h"
 
 namespace xdp {
 namespace aie {
@@ -26,13 +27,12 @@ namespace profile {
     static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
 						    register_callbacks,
 						    warning_callbacks);
-
-  
-    std::function<void (void*)> update_device_cb;
-    std::function<void (void*)> end_poll_cb;
   }
 
-  void register_callbacks(void* /*handle*/)
+  std::function<void (void*)> update_device_cb;
+  std::function<void (void*)> end_poll_cb;
+
+  void register_callbacks(void* handle)
   {
     using ftype = void (*)(void*); // Device handle
 
