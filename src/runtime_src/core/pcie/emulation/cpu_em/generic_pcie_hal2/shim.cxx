@@ -808,7 +808,7 @@ namespace xclcpuemhal2
         aiesim_sock = nullptr;
       else
         aiesim_sock = new unix_socket("AIESIM_SOCKETID");
-        
+
     }
 
     return 0;
@@ -2534,7 +2534,7 @@ namespace xclcpuemhal2
     // regular flow.  Default access mode to shared unless explicitly
     // exclusive.
     auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+    auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
     auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
     xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 

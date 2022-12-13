@@ -59,7 +59,7 @@ public:
   xrt_buffer_handle
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
 
-  uint32_t // ctx handle aka slotidx
+  xrt_hwctx_handle
   create_hw_context(const xrt::uuid& xclbin_uuid,
                     const xrt::hw_context::qos_type& qos,
                     xrt::hw_context::access_mode mode) const override
@@ -68,7 +68,7 @@ public:
   }
 
   void
-  destroy_hw_context(uint32_t ctxhdl) const override
+  destroy_hw_context(xrt_hwctx_handle ctxhdl) const override
   {
     xrt::shim_int::destroy_hw_context(get_device_handle(), ctxhdl);
   }
@@ -81,7 +81,7 @@ public:
 
   // Exec Buf with hw ctx handle.
   void
-  exec_buf(xrt_buffer_handle boh, xcl_hwctx_handle ctxhdl) override
+  exec_buf(xrt_buffer_handle boh, xrt_hwctx_handle ctxhdl) override
   {
       xrt::shim_int::exec_buf(get_device_handle(), boh, ctxhdl);
   }

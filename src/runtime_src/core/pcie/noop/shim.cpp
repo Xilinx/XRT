@@ -118,7 +118,7 @@ class device
 {
   // model multiple partitions, but for simplicity slot is
   // used for context handle also.
-  using slot_id = xcl_hwctx_handle;
+  using slot_id = xrt_hwctx_handle;
 
   // registered xclbins
   std::map<xrt::uuid, xrt::xclbin> m_xclbins;
@@ -129,7 +129,7 @@ class device
   // capture cu data based on which slot it is associated with
   struct cu_data {
     std::string name;  // cu name
-    slot_id slot = 0;  // slot in which this cu is opened
+    slot_id slot = 0u; // slot in which this cu is opened
     uint32_t ctx = 0;  // how many contexts are opened on the cu
   };
   std::map<uint32_t, cu_data> m_idx2cu;  // idx -> cu_data
@@ -141,7 +141,7 @@ class device
   std::vector<uint32_t> m_free_cu_indices;  // push, back, pop
 
   // slot index for xclbin is a running incremented index
-  slot_id m_slot_index = 0; // running index
+  uint32_t m_slot_index = 0; // running index
 
   // exclusive locking to prevent race
   std::mutex m_mutex;
@@ -149,7 +149,7 @@ class device
   static slot_id
   get_slot(const xrt::hw_context& hwctx)
   {
-    return static_cast<xcl_hwctx_handle>(hwctx);
+    return static_cast<xrt_hwctx_handle>(hwctx);
   }
 
 public:
@@ -168,7 +168,7 @@ public:
     m_xclbins[xclbin.get_uuid()] = xclbin;
   }
 
-  xcl_hwctx_handle
+  xrt_hwctx_handle
   create_hw_context(const xrt::uuid& xid)
   {
     std::lock_guard lk(m_mutex);
@@ -180,7 +180,7 @@ public:
   }
 
   void
-  destroy_hw_context(xcl_hwctx_handle ctxhdl)
+  destroy_hw_context(xrt_hwctx_handle ctxhdl)
   {
     std::lock_guard lk(m_mutex);
     m_slots.erase(ctxhdl);   // for simplicity context handle is same as slot
@@ -213,7 +213,7 @@ public:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
     for (const auto& [idx, cud] : m_idx2cu)
-      if (cud.name == cuname && cud.slot == slot)
+      if (cud.name == cuname && cud.slot == static_cast<void*>(slot))
         throw xrt_core::error("Context already opened on cu: " + cuname);
 #pragma GCC diagnostic pop
 
@@ -269,10 +269,13 @@ public:
   xclbin_slots()
   {
     xrt_core::query::xclbin_slots::result_type vec;
-    for (const auto& [slot, xclbin] : m_xclbins) {
+    uint32_t slotidx = 0;
+    for (const auto& [uuid, xclbin] : m_xclbins) {
+      if (uuid != xclbin.get_uuid())
+        throw xrt_core::error("mismatched xclbin");
       xrt_core::query::xclbin_slots::slot_info data;
-      data.slot = slot;
-      data.uuid = xclbin.get_uuid().to_string();
+      data.slot = slotidx++;
+      data.uuid = uuid.to_string();
       vec.push_back(std::move(data));
     }
     return vec;
@@ -620,7 +623,7 @@ close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core:
   return shim->close_cu_context(hwctx, cuidx);
 }
 
-uint32_t // ctxhdl aka slotidx
+xrt_hwctx_handle
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type&,
@@ -631,7 +634,7 @@ create_hw_context(xclDeviceHandle handle,
 }
 
 void
-destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+destroy_hw_context(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl)
 {
   auto shim = get_shim_object(handle);
   shim->destroy_hw_context(ctxhdl);

@@ -2154,7 +2154,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
   auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
@@ -2202,7 +2202,7 @@ register_xclbin(const xrt::xclbin&)
 // Exec Buf with hw ctx handle.
 void
 shim::
-exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl)
+exec_buf(xclBufferHandle boh, xrt_hwctx_handle ctxhdl)
 {
   // TODO: Implement new function, for now just call legacy xclExecBuf().
   if (auto ret = xclExecBuf(boh))
@@ -2236,7 +2236,7 @@ close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core:
   return shim->close_cu_context(hwctx, cuidx);
 }
 
-uint32_t // ctxhdl aka slotidx
+xrt_hwctx_handle
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
@@ -2247,7 +2247,7 @@ create_hw_context(xclDeviceHandle handle,
 }
 
 void
-destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+destroy_hw_context(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl)
 {
   auto shim = get_shim_object(handle);
   shim->destroy_hw_context(ctxhdl);
@@ -2262,7 +2262,7 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
 
 // Exec Buf with hw ctx handle.
 void
-exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xcl_hwctx_handle ctxhdl)
+exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xrt_hwctx_handle ctxhdl)
 {
     auto shim = get_shim_object(handle);
     return shim->exec_buf(to_xclBufferHandle(bohdl), ctxhdl);
