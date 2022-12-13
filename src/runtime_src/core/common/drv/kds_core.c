@@ -1192,7 +1192,7 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 }
 
 /* Legacy Context. Need to cleanup once hw context fully functional */
-static void
+static inline void
 _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		 struct kds_client_ctx *cctx)
 {
@@ -1203,8 +1203,8 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	if (!cctx)
 		return;
 
-	kds_info(client, "Client pid(%d) has open context",
-			pid_nr(client->pid));
+	kds_info(client, "Client pid(%d) has open context for %d slot",
+			pid_nr(client->pid), cctx->slot_idx);
 
 	mutex_lock(&client->lock);
 	/* Traverse through all the context and free them up */
