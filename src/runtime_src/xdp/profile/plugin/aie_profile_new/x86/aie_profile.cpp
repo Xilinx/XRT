@@ -36,6 +36,9 @@
 
 constexpr uint32_t ALIGNMENT_SIZE = 4096;
 
+constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 22; //Calculated maximum output size for all 400 tiles
+constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE * 2; // input/output must be aligned to 4096
+
 namespace xdp {
   using ProfileInputConfiguration = xdp::built_in::ProfileInputConfiguration;
   using ProfileOutputConfiguration = xdp::built_in::ProfileOutputConfiguration;
@@ -158,8 +161,8 @@ namespace xdp {
     }
 
     //Create the PS kernel 
-    constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 22; //Calculated maximum output size for all 400 tiles
-    constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE * 2; // input/output must be aligned to 4096
+    //constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 22; //Calculated maximum output size for all 400 tiles
+    //constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE * 2; // input/output must be aligned to 4096
 
     // Calculate number of tiles per module
     int numTiles = 0;
@@ -260,8 +263,8 @@ namespace xdp {
       // auto messagebomapped = messagebo.map<uint8_t*>();
       // memset(messagebomapped, 0, MSG_OUTPUT_SIZE);
 
-      std::memcpy(inbo_map, input, total_size);
-      inbo.sync(XCL_BO_SYNC_BO_TO_DEVICE, INPUT_SIZE, 0);
+      //std::memcpy(inbo_map, input, total_size);
+      //inbo.sync(XCL_BO_SYNC_BO_TO_DEVICE, INPUT_SIZE, 0);
 
       auto run = aie_profile_kernel(inbo, outbo, 1 /*poll iteration*/);
       run.wait();
@@ -269,14 +272,17 @@ namespace xdp {
       ProfileOutputConfiguration* cfg = reinterpret_cast<ProfileOutputConfiguration*>(outbo_map);
 
       std::cout << "Num Counters: " << cfg->numCounters << std::endl;
-      for (int i = 0; i < cfg->numCounters << std::endl){
+      for (uint32_t i = 0; i < cfg->numCounters; i++){
         std::cout << "CounterID: " << cfg->counters[i].counterId << std::endl;
+        std::cout << "Col: " << cfg->counters[i].col << std::endl;
+        std::cout << "Row: " << cfg->counters[i].row << std::endl;
+        std::cout << "TimerValue: " << cfg->counters[i].timerValue << std::endl;
         std::cout << "CounterValue: " << cfg->counters[i].counterValue << std::endl;
       } 
 
     } catch (...) {
       std::cout << "PS Kernel Polling Failed!" << std::endl;
-      return false;
+      return;
     }
 
   }
