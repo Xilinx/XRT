@@ -23,11 +23,9 @@
 #include "core/common/AlignedAllocator.h"
 #include "core/common/api/hw_context_int.h"
 
-#include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_api_interface.h"
-#include "plugin/xdp/hal_device_offload.h"
 #include "plugin/xdp/hal_profile.h"
-#include "plugin/xdp/pl_deadlock.h"
+#include "plugin/xdp/shim_callbacks.h"
 
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 
@@ -632,8 +630,10 @@ init(unsigned int index)
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
-    // flush aie trace and write outputs
-    xdp::aie::finish_flush_device(this) ;
+
+    // Flush all of the profiling information from the device to the profiling
+    // library before the device is closed (when profiling is enabled).
+    xdp::finish_flush_device(this);
 
     // The BO cache unmaps and releases all execbo, but this must
     // be done before the device is closed.
@@ -1321,9 +1321,10 @@ int
 shim::
 xclLoadXclBin(const xclBin *buffer)
 {
-  xdp::hal::flush_device(this);
-  xdp::aie::flush_device(this);
-  xdp::pl_deadlock::flush_device(this);
+  // Retrieve any profiling information still on this device from any previous
+  // configuration before the device is reconfigured with the new xclbin (when
+  // profiling is enabled).
+  xdp::flush_device(this);
 
   auto top = reinterpret_cast<const axlf*>(buffer);
   if (auto ret = xclLoadAxlf(top)) {
@@ -1364,10 +1365,13 @@ xclLoadXclBin(const xclBin *buffer)
   // Success
   mCoreDevice->register_axlf(buffer);
 
-  xdp::hal::update_device(this);
-  xdp::aie::update_device(this);
-  xdp::pl_deadlock::update_device(this);
+  // Update the profiling library with the information on this new xclbin
+  // configuration on this device as appropriate (when profiling is enabled).
+  xdp::update_device(this);
 
+  // Setup the user-accessible HAL API profiling interface so user host
+  // code can call functions to directly read counter values on profiling IP
+  // (if enabled in the xrt.ini).
   START_DEVICE_PROFILING_CB(this);
 
   return 0;
