@@ -115,6 +115,9 @@ static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_VMR_LOG_ADDR_OFF 	0x0
 #define XOCL_VMR_DATA_ADDR_OFF  (LOG_PAGE_SIZE * LOG_PAGE_NUM)
 
+/* align the data start to the (next) page boundry */
+#define XOCL_VMR_ALIGNED_DATA_START PAGE_ALIGN(xgq->xgq_vmr_shared_mem.vmr_data_start)
+
 typedef void (*xocl_vmr_complete_cb)(void *arg, struct xgq_com_queue_entry *ccmd);
 
 struct xocl_xgq_vmr;
@@ -494,22 +497,18 @@ static inline bool xgq_device_is_ready(struct xocl_xgq_vmr *xgq)
 		 */
 		iounmap(xgq->xgq_payload_base);
 		xgq->xgq_payload_base = ioremap_nocache(
-			xgq->xgq_payload_base_start,
-			xgq->xgq_vmr_shared_mem.vmr_data_start);
+			xgq->xgq_payload_base_start, XOCL_VMR_ALIGNED_DATA_START);	
 		XGQ_INFO(xgq, "remap nocache from 0x%llx, size 0x%x",
-			xgq->xgq_payload_base_start,
-			xgq->xgq_vmr_shared_mem.vmr_data_start);
+			xgq->xgq_payload_base_start, XOCL_VMR_ALIGNED_DATA_START);
 
 		xgq->xgq_payload_data_base = ioremap_wc(
-			xgq->xgq_payload_base_start +
-			xgq->xgq_vmr_shared_mem.vmr_data_start,
+			xgq->xgq_payload_base_start + XOCL_VMR_ALIGNED_DATA_START,
 			xgq->xgq_vmr_shared_mem.vmr_data_end -
-			xgq->xgq_vmr_shared_mem.vmr_data_start + 1);
+			XOCL_VMR_ALIGNED_DATA_START + 1);
 		XGQ_INFO(xgq, "remap wc from 0x%llx, size 0x%x",
-			xgq->xgq_payload_base_start +
-			xgq->xgq_vmr_shared_mem.vmr_data_start,
+			xgq->xgq_payload_base_start + XOCL_VMR_ALIGNED_DATA_START,
 			xgq->xgq_vmr_shared_mem.vmr_data_end -
-			xgq->xgq_vmr_shared_mem.vmr_data_start + 1);
+			XOCL_VMR_ALIGNED_DATA_START + 1);
 
 		XGQ_INFO(xgq, "ready after %d s", interval * i);
 		return true;
@@ -792,7 +791,7 @@ static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 static size_t inline vmr_shared_mem_size(struct xocl_xgq_vmr *xgq)
 {
 	return xgq->xgq_vmr_shared_mem.vmr_data_end -
-		xgq->xgq_vmr_shared_mem.vmr_data_start + 1;
+		XOCL_VMR_ALIGNED_DATA_START + 1;
 }
 
 static size_t inline shm_size_log_page(struct xocl_xgq_vmr *xgq)
@@ -807,14 +806,12 @@ static size_t inline shm_size_data(struct xocl_xgq_vmr *xgq)
 
 static u32 inline shm_addr_log_page(struct xocl_xgq_vmr *xgq)
 {
-	return xgq->xgq_vmr_shared_mem.vmr_data_start +
-		XOCL_VMR_LOG_ADDR_OFF;
+	return XOCL_VMR_ALIGNED_DATA_START + XOCL_VMR_LOG_ADDR_OFF;
 }
 
 static u32 inline shm_addr_data(struct xocl_xgq_vmr *xgq)
 {
-	return xgq->xgq_vmr_shared_mem.vmr_data_start +
-		XOCL_VMR_DATA_ADDR_OFF;
+	return XOCL_VMR_ALIGNED_DATA_START + XOCL_VMR_DATA_ADDR_OFF;
 }
 
 /*TODO: enhance to n resources by atomic test_and_clear_bit/set_bit */
@@ -857,7 +854,7 @@ static void memcpy_to_device_wc(struct xocl_xgq_vmr *xgq, u32 offset, const void
 	size_t len)
 {
 	void __iomem *dst = xgq->xgq_payload_data_base +
-		offset - xgq->xgq_vmr_shared_mem.vmr_data_start;
+		offset - XOCL_VMR_ALIGNED_DATA_START;
 
 	memcpy_toio(dst, data, len);
 	/* issue a read to trigger write combined data to be synced */
@@ -868,7 +865,7 @@ static void memcpy_from_device_wc(struct xocl_xgq_vmr *xgq, u32 offset, void *ds
 	size_t len)
 {
 	void __iomem *src = xgq->xgq_payload_data_base +
-		offset - xgq->xgq_vmr_shared_mem.vmr_data_start;
+		offset - XOCL_VMR_ALIGNED_DATA_START;
 
 	memcpy_fromio(dst, src, len);
 }
