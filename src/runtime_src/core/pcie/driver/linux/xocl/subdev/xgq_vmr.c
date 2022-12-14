@@ -1275,12 +1275,14 @@ static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_t
 	}
 
 	if (log_size != 0) {
-		char *log_msg = vmalloc(log_size);
+		char *log_msg = vmalloc(log_size + 1);
 		if (log_msg == NULL) {
-			XGQ_ERR(xgq, "vmalloc failed, no msg");
+			XGQ_ERR(xgq, "vmalloc failed, no memory");
 			goto done;
 		}
 		memcpy_from_device(xgq, address, log_msg, log_size);
+		log_msg[log_size] = '\0';
+
 		XGQ_ERR(xgq, "%s", log_msg);
 		vfree(log_msg);
 	}
