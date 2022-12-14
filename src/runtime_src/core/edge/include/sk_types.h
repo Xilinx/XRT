@@ -20,7 +20,7 @@
 #ifndef __SK_TYPES_H_
 #define __SK_TYPES_H_
 
-#include "experimental/pscontext.h"
+#include "pscontext.h"
 #include "xclhal2_mpsoc.h"
 #include <memory>
 

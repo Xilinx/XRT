@@ -1,6 +1,5 @@
 /**
- * Copyright (C) 2022 Xilinx, Inc
- * Author(s): Jeff Lin	<jefflin@amd.com>
+ * Copyright (C) 2022 Advanced Micro Devices, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,33 +14,16 @@
  * under the License.
  */
 
-#ifndef __PSCONTEXT_H_
-#define __PSCONTEXT_H_
+#include "core/edge/include/pscontext.h"
 
-#include "xrt.h"
-#include <memory>
-
-/*
- * PS Context Data Structure included by user PS kernel code
- */
-
-class pscontext {
-public:
- pscontext()
-   : pimpl{std::make_shared<pscontext::impl>()} {}
-  virtual ~pscontext() {}
- 
-protected:
-  struct impl;
-  std::shared_ptr<impl> pimpl;
-};
-
-struct pscontext::impl {
+class pscontext_impl {
 private:
   bool aie_profile_en;
 };
 
-typedef pscontext* (* kernel_init_t)(xclDeviceHandle device, const uuid_t &uuid);
-typedef int (* kernel_fini_t)(pscontext *xrtHandles);
+pscontext::pscontext()
+  : pimpl(std::make_unique<pscontext_impl>()) {};
 
-#endif
+pscontext::~pscontext() = default;
+pscontext::pscontext(pscontext&& rhs) = default;
+pscontext& pscontext::operator=(pscontext&& rhs) = default;
