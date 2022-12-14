@@ -223,6 +223,20 @@ namespace xdp {
 
       auto run = aie_profile_kernel(inbo, outbo, 0 /*setup iteration*/);
       run.wait();
+
+      outbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
+      ProfileOutputConfiguration* cfg = reinterpret_cast<ProfileOutputConfiguration*>(outbo_map);
+    
+      std::cout << "Setup Num Counters: " << cfg->numCounters << std::endl;
+      for (uint32_t i = 0; i < cfg->numCounters; i++){
+        // Store counter info in database
+        auto& counter = cfg->counters[i];
+        std::string counterName = "AIE Counter " + std::to_string(counterId);
+        (db->getStaticInfo()).addAIECounter(deviceId, counter.counterId, counter.col, counter.row, counter.counterNum,
+        counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload, 1.25 /*TODO insert clockfreq*/, 
+        moduleNames[counter.moduleName], counterName);
+        std::cout << "Finished Adding tile to db!" << std::endl;
+      }
     } catch (...) {
       std::cout << "PS Kernel Scheduling Failed!" << std::endl;
       return false;
@@ -263,22 +277,33 @@ namespace xdp {
       // auto messagebomapped = messagebo.map<uint8_t*>();
       // memset(messagebomapped, 0, MSG_OUTPUT_SIZE);
 
-      //std::memcpy(inbo_map, input, total_size);
-      //inbo.sync(XCL_BO_SYNC_BO_TO_DEVICE, INPUT_SIZE, 0);
-
       auto run = aie_profile_kernel(inbo, outbo, 1 /*poll iteration*/);
       run.wait();
       outbo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, OUTPUT_SIZE, 0);
       ProfileOutputConfiguration* cfg = reinterpret_cast<ProfileOutputConfiguration*>(outbo_map);
 
+      std::vector<uint64_t> values;
       std::cout << "Num Counters: " << cfg->numCounters << std::endl;
       for (uint32_t i = 0; i < cfg->numCounters; i++){
+        auto& counter = cfg->counters[i];
         std::cout << "CounterID: " << cfg->counters[i].counterId << std::endl;
         std::cout << "Col: " << cfg->counters[i].col << std::endl;
         std::cout << "Row: " << cfg->counters[i].row << std::endl;
         std::cout << "TimerValue: " << cfg->counters[i].timerValue << std::endl;
         std::cout << "CounterValue: " << cfg->counters[i].counterValue << std::endl;
+        values.push_back(counter.col);
+        values.push_back(counter.row);
+        values.push_back(counter.startEvent);
+        values.push_back(counter.endEvent);
+        values.push_back(counter.resetEvent);
+        values.push_back(counter.counterValue);
+        values.push_back(counter.timerValue);
+        values.push_back(counter.payload);
       } 
+
+      double timestamp = xrt_core::time_ns() / 1.0e6;
+      db->getDynamicInfo().addAIESample(index, timestamp, values);
+      std::cout << "Added poll to DB successfully!" << std::endl;
 
     } catch (...) {
       std::cout << "PS Kernel Polling Failed!" << std::endl;

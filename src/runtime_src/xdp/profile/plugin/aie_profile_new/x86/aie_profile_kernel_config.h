@@ -93,8 +93,8 @@ namespace built_in {
     uint16_t endEvent;
     uint32_t counterValue;
     uint32_t payload;
-    uint32_t counterNum;
-    uint32_t counterId;
+    uint32_t counterNum; //.Counter number in the tile
+    uint32_t counterId; // Counter ID in list of all possible counters
     uint64_t resetEvent;
     uint64_t timerValue;
     double timestamp;
