@@ -142,6 +142,16 @@ static inline unsigned xocl_bo_slot_idx(unsigned user_flags)
 	return bo_flag.slot; 
 }
 
+static inline uint32_t xocl_bo_set_slot_idx(unsigned user_flags, uint32_t slot_id)
+{
+	struct xcl_bo_flags bo_flag = {};
+
+	bo_flag.flags = user_flags & XRT_BO_FLAGS_MEMIDX_MASK;
+	bo_flag.slot = slot_id;
+
+	return bo_flag.flags; 
+}
+
 static inline unsigned xocl_bo_type(unsigned user_flags)
 {
 	unsigned type = (user_flags & ~XRT_BO_FLAGS_MEMIDX_MASK);

@@ -135,6 +135,22 @@ public:
   access_mode
   get_mode() const;
 
+  /**
+   * get_memory_group_id() - Get the memory group id for this context
+   *
+   * @return
+   *  The memory group id to be used when allocating buffers
+   *  (see xrt::bo) that are not used as kernel arguments.
+   *
+   * The group_id can be used when allocating a buffer specific to
+   * this hw context.  If buffers are allocated as kernel arguments,
+   * then the group id should be obtained specific to the kernel
+   * argument for which the buffer is used (see xrt::kernel::group_id())
+   */
+  XRT_API_EXPORT
+  uint32_t
+  get_memory_group_id() const;
+
 public:
   /// @cond
   // Undocumented internal access to low level context handle
