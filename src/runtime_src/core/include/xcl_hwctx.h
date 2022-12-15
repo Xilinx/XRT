@@ -32,10 +32,11 @@ struct xrt_hwctx_handle
   xrt_hwctx_handle(uint32_t slotidx) : slot(slotidx) {}
   operator void* () const { return handle; }
   operator uint32_t () const { return static_cast<uint32_t>(slot); }
-  bool operator < (const xrt_hwctx_handle& rhs) const { return handle < rhs.handle; }
+  bool operator<  (const xrt_hwctx_handle& rhs) const { return handle < rhs.handle; }
+  bool operator== (const xrt_hwctx_handle& rhs) const { return handle == rhs.handle; }
 };
 
-const xrt_hwctx_handle XRT_NULL_HWCTX {nullptr};
+const xrt_hwctx_handle XRT_NULL_HWCTX {0xffffffff};
 
 #ifdef _WIN32
 # pragma warning( pop )
