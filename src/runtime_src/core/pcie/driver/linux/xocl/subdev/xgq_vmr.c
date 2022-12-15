@@ -174,6 +174,10 @@ struct xocl_xgq_vmr {
 	size_t			xgq_vmr_plm_log_size;
 	u16			pwr_scaling_threshold_limit;
 	u8			temp_scaling_threshold_limit;
+	u16			pwr_scaling_limit;
+	u8			temp_scaling_limit;
+	bool			pwr_scaling_ovrd_en;
+	bool			temp_scaling_ovrd_en;
 	bool			xgq_vmr_program;
 };
 
@@ -2092,6 +2096,10 @@ static int clk_scaling_get_default_configs(struct platform_device *pdev)
 
 	xgq->pwr_scaling_threshold_limit = cs_payload->pwr_scaling_limit;
 	xgq->temp_scaling_threshold_limit = cs_payload->temp_scaling_limit;
+	xgq->pwr_scaling_ovrd_en = false;
+	xgq->temp_scaling_ovrd_en = false;
+	xgq->pwr_scaling_limit = 0;
+	xgq->temp_scaling_limit = 0;
 out:
 	mutex_unlock(&xgq->clk_scaling_lock);
 
@@ -2543,10 +2551,10 @@ static ssize_t clk_scaling_stat_raw_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "TEMP_SHUTDOWN_LIMIT:%u\n", cs_payload->temp_shutdown_limit);
 	cnt += sprintf(buf + cnt, "POWER_THROTTLING_LIMIT:%u\n", xgq->pwr_scaling_threshold_limit);
 	cnt += sprintf(buf + cnt, "TEMP_THROTTLING_LIMIT:%u\n", xgq->temp_scaling_threshold_limit);
-	cnt += sprintf(buf + cnt, "POWER_THROTTLING_OVRD_LIMIT:%u\n", cs_payload->pwr_scaling_limit);
-	cnt += sprintf(buf + cnt, "TEMP_THROTTLING_OVRD_LIMIT:%u\n", cs_payload->temp_scaling_limit);
-	cnt += sprintf(buf + cnt, "POWER_THROTTLING_OVRD_ENABLE:%u\n", cs_payload->pwr_scaling_ovrd_en);
-	cnt += sprintf(buf + cnt, "TEMP_THROTTLING_OVRD_ENABLE:%u\n", cs_payload->temp_scaling_ovrd_en);
+	cnt += sprintf(buf + cnt, "POWER_THROTTLING_OVRD_LIMIT:%u\n", xgq->pwr_scaling_limit);
+	cnt += sprintf(buf + cnt, "TEMP_THROTTLING_OVRD_LIMIT:%u\n", xgq->temp_scaling_limit);
+	cnt += sprintf(buf + cnt, "POWER_THROTTLING_OVRD_ENABLE:%u\n", xgq->pwr_scaling_ovrd_en);
+	cnt += sprintf(buf + cnt, "TEMP_THROTTLING_OVRD_ENABLE:%u\n", xgq->temp_scaling_ovrd_en);
 	cnt += sprintf(buf + cnt, "CLOCK_THROTTLING_MODE:%u\n", cs_payload->clk_scaling_mode);
 	mutex_unlock(&xgq->clk_scaling_lock);
 
@@ -2572,8 +2580,8 @@ static ssize_t clk_scaling_configure_show(struct device *dev,
 	}
 
 	cnt += sprintf(buf + cnt, "%d,%u,%u\n", cs_payload->clk_scaling_en,
-				   cs_payload->pwr_scaling_limit,
-				   cs_payload->temp_scaling_limit);
+				   xgq->pwr_scaling_limit,
+				   xgq->temp_scaling_limit);
 	mutex_unlock(&xgq->clk_scaling_lock);
 
 	return cnt;
@@ -2687,14 +2695,7 @@ static ssize_t xgq_scaling_temp_override_show(struct device *dev,
 	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
-	ret = clk_scaling_status_query(xgq->xgq_pdev);
-	if (ret) {
-		XGQ_WARN(xgq, "Failed to receive temperature override data, ret: %d", ret);
-		mutex_unlock(&xgq->clk_scaling_lock);
-		return ret;
-	}
-
-	cnt += sprintf(buf + cnt, "%u\n", cs_payload->temp_scaling_limit);
+	cnt += sprintf(buf + cnt, "%u\n", xgq->temp_scaling_limit);
 	mutex_unlock(&xgq->clk_scaling_lock);
 	return cnt;
 }
@@ -2736,6 +2737,8 @@ static ssize_t xgq_scaling_temp_override_store(struct device *dev,
 		XGQ_WARN(xgq, "Failed to configure temperature override data, ret: %d", ret);
 		goto out;
 	}
+	xgq->temp_scaling_limit = temp;
+	xgq->temp_scaling_ovrd_en = temp ? true : false;
 
 	mutex_unlock(&xgq->clk_scaling_lock);
 
@@ -2757,14 +2760,7 @@ static ssize_t xgq_scaling_power_override_show(struct device *dev,
 	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
-	ret = clk_scaling_status_query(xgq->xgq_pdev);
-	if (ret) {
-		XGQ_WARN(xgq, "Failed to receive clock scaling default settings, ret: %d", ret);
-		mutex_unlock(&xgq->clk_scaling_lock);
-		return ret;
-	}
-
-	cnt += sprintf(buf + cnt, "%u\n", cs_payload->pwr_scaling_limit);
+	cnt += sprintf(buf + cnt, "%u\n", xgq->pwr_scaling_limit);
 	mutex_unlock(&xgq->clk_scaling_lock);
 
 	return cnt;
@@ -2807,6 +2803,8 @@ static ssize_t xgq_scaling_power_override_store(struct device *dev,
 		XGQ_WARN(xgq, "Failed to configure power override settings, ret: %d", ret);
 		goto out;
 	}
+	xgq->pwr_scaling_limit = pwr;
+	xgq->pwr_scaling_ovrd_en = pwr ? true : false;
 
 	mutex_unlock(&xgq->clk_scaling_lock);
 
