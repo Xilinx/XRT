@@ -361,7 +361,7 @@ struct xclbin_slots
       if (std::distance(tokens.begin(), tokens.end()) != 2)
         throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
 
-      slot_info data = { 0 };
+      slot_info data {};
       tokenizer::iterator tok_it = tokens.begin();
       data.slot = std::stoi(std::string(*tok_it++));
       data.uuid = std::string(*tok_it++);

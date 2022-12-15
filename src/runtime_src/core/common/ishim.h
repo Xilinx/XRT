@@ -139,11 +139,11 @@ struct ishim
   user_reset(xclResetKind kind) = 0;
 
   virtual cuidx_type
-  open_cu_context(xcl_hwctx_handle, const std::string& /*cuname*/)
+  open_cu_context(xrt_hwctx_handle, const std::string& /*cuname*/)
   { throw not_supported_error{__func__}; }
 
   virtual void
-  close_cu_context(xcl_hwctx_handle, cuidx_type /*ip_index*/)
+  close_cu_context(xrt_hwctx_handle, cuidx_type /*ip_index*/)
   { throw not_supported_error{__func__}; }
 
   // Deprecated API to be removed when all shims manage a hwctx handle
@@ -163,7 +163,7 @@ struct ishim
   open_cu_context_wrap(const xrt::hw_context& hwctx, const std::string& cuname)
   {
     try {
-      return open_cu_context(static_cast<xcl_hwctx_handle>(hwctx), cuname);
+      return open_cu_context(static_cast<xrt_hwctx_handle>(hwctx), cuname);
     }
     catch (const not_supported_error&) {
       return open_cu_context(hwctx, cuname);
@@ -174,7 +174,7 @@ struct ishim
   close_cu_context_wrap(const xrt::hw_context& hwctx, cuidx_type ip_index)
   {
     try {
-      close_cu_context(static_cast<xcl_hwctx_handle>(hwctx), ip_index);
+      close_cu_context(static_cast<xrt_hwctx_handle>(hwctx), ip_index);
     }
     catch (const not_supported_error&) {
       close_cu_context(hwctx, ip_index);
@@ -189,17 +189,17 @@ struct ishim
   // cannot be created for that xclbin.  This function throws
   // not_supported_error, if either not implemented or an xclbin
   // was explicitly loaded using load_xclbin
-  virtual xcl_hwctx_handle
+  virtual xrt_hwctx_handle
   create_hw_context(const xrt::uuid& /*xclbin_uuid*/, const xrt::hw_context::qos_type& /*qos*/, xrt::hw_context::access_mode /*mode*/) const
   { throw not_supported_error{__func__}; }
 
   virtual void
-  destroy_hw_context(xcl_hwctx_handle /*ctxhdl*/) const
+  destroy_hw_context(xrt_hwctx_handle /*ctxhdl*/) const
   { throw not_supported_error{__func__}; }
 
   // Return default sentinel for legacy platforms without hw_queue support
   virtual xcl_hwqueue_handle
-  create_hw_queue(xcl_hwctx_handle) const
+  create_hw_queue(xrt_hwctx_handle) const
   { return XRT_NULL_HWQUEUE; }
 
   // Default noop for legacy platforms without hw_queue support
@@ -229,7 +229,7 @@ struct ishim
   // Allocate a bo within ctx.  This is opt-in, currently reverts to
   // legacy alloc_bo
   virtual xrt_buffer_handle
-  alloc_bo(xcl_hwctx_handle, size_t size, unsigned int flags)
+  alloc_bo(xrt_hwctx_handle, size_t size, unsigned int flags)
   {
     return alloc_bo(size, flags);
   }
@@ -237,7 +237,7 @@ struct ishim
   // Allocate a userptr bo within ctx.  This is opt-in, currently
   // reverts to legacy alloc_bo
   virtual xrt_buffer_handle
-  alloc_bo(xcl_hwctx_handle, void* userptr, size_t size, unsigned int flags)
+  alloc_bo(xrt_hwctx_handle, void* userptr, size_t size, unsigned int flags)
   {
     return alloc_bo(userptr, size, flags);
   }
@@ -245,7 +245,7 @@ struct ishim
   // Execute a command bo within a ctx.  This is opt-in,  if not supported, then
   // just call legacy exec_buf without the hardware context.
   virtual void
-  exec_buf(xrt_buffer_handle boh, xcl_hwctx_handle /*ctxhdl*/)
+  exec_buf(xrt_buffer_handle boh, xrt_hwctx_handle /*ctxhdl*/)
   {
     exec_buf(boh);
   }

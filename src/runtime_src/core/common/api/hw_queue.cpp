@@ -588,7 +588,7 @@ namespace {
 // Manage hw_queue implementations.
 // For time being there is only one hw_queue per hw_context
 // Use static map with weak pointers to implementation.
-using hwc2hwq_type = std::map<xcl_hwctx_handle, std::weak_ptr<xrt_core::hw_queue_impl>>;
+using hwc2hwq_type = std::map<xrt_hwctx_handle, std::weak_ptr<xrt_core::hw_queue_impl>>;
 using queue_ptr = std::shared_ptr<xrt_core::hw_queue_impl>;
 static std::map<const xrt_core::device*, hwc2hwq_type> dev2hwc;  // per device
 static std::mutex mutex;
@@ -629,12 +629,12 @@ static std::shared_ptr<xrt_core::hw_queue_impl>
 get_hw_queue_impl(const xrt::hw_context& hwctx)
 {
   auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
-  auto hwctx_hdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto hwctx_hdl = static_cast<xrt_hwctx_handle>(hwctx);
   std::lock_guard lk(mutex);
   auto& queues = dev2hwc[device];
   auto hwqimpl = queues[hwctx_hdl].lock();
   if (!hwqimpl) {
-    auto hwqueue_hdl = device->create_hw_queue(static_cast<xcl_hwctx_handle>(hwctx));
+    auto hwqueue_hdl = device->create_hw_queue(static_cast<xrt_hwctx_handle>(hwctx));
     queues[hwctx_hdl] = hwqimpl = (hwqueue_hdl == XRT_NULL_HWQUEUE)
       ? get_kds_device_nolock(queues, device)
       : queue_ptr{new xrt_core::qds_device(device, hwqueue_hdl)};

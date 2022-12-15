@@ -161,7 +161,7 @@ public:
 
   // Exec Buf with hw ctx handle.
   void
-  exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl);
+  exec_buf(xclBufferHandle boh, xrt_hwctx_handle ctxhdl);
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;
   std::shared_ptr<xrt_core::pci::dev> mDev;
