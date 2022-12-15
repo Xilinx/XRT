@@ -9,6 +9,7 @@
 #include "uuid.h"
 
 #include "core/include/xclerr_int.h"
+#include "core/include/xcl_hwctx.h"
 
 #include <iomanip>
 #include <map>
@@ -2936,7 +2937,7 @@ struct extended_vmr_status : request
 // from xclbin uuid to the slot index created by the driver
 struct xclbin_slots : request
 {
-  using slot_id = uint32_t;
+  using slot_id = xrt_hwctx_handle;
 
   struct slot_info {
     slot_id slot;

@@ -1388,7 +1388,7 @@ done:
     // regular flow.  Default access mode to shared unless explicitly
     // exclusive.
     auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+    auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
     auto cuidx = m_core_device->get_cuidx(ctxhdl, cuname);
     open_cu_context(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 

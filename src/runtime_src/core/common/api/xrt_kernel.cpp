@@ -557,11 +557,11 @@ public:
     // hwctx handle, implying that even for same handle index, the CU
     // should be opened again if the device is different
     using ctx_ips = std::map<std::string, std::weak_ptr<ip_context>>;
-    using ctx_to_ips = std::map<xcl_hwctx_handle, ctx_ips>;
+    using ctx_to_ips = std::map<xrt_hwctx_handle, ctx_ips>;
     static std::mutex mutex;
     static std::map<xrt_core::device*, ctx_to_ips> dev2ips;
     auto device = xrt_core::hw_context_int::get_core_device_raw(hwctx);
-    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+    auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
     std::lock_guard<std::mutex> lk(mutex);
     auto& ctx2ips = dev2ips[device]; // hwctx handle -> [ip_context]*
     auto& ips = ctx2ips[ctxhdl];     // ipname -> ip_context
@@ -611,7 +611,7 @@ public:
   slot_id
   get_slot() const
   {
-    return static_cast<xcl_hwctx_handle>(m_hwctx);
+    return static_cast<xrt_hwctx_handle>(m_hwctx);
   }
 
   // Check if arg is connected to specified memory bank
@@ -902,11 +902,11 @@ public:
     return m_execbuf.first;
   }
 
-  xcl_hwctx_handle
+  xrt_hwctx_handle
   get_hwctx_handle() const override
   {
     return (m_hwctx)
-       ? static_cast<xcl_hwctx_handle>(m_hwctx)
+       ? static_cast<xrt_hwctx_handle>(m_hwctx)
        : XRT_NULL_HWCTX;
   }
 

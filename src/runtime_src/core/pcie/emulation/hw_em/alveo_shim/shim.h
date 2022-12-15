@@ -144,12 +144,12 @@ using addr_type = uint64_t;
       close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
 
       // aka xclCreateHWContext, internal shim API for native C++ applications only
-      uint32_t // ctx handle aka slot idx
+      xrt_hwctx_handle
       create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode);
 
       // aka xclDestroyHWContext, internal shim API for native C++ applications only
       void
-      destroy_hw_context(uint32_t ctxhdl);
+      destroy_hw_context(xrt_hwctx_handle ctxhdl);
 
       // aka xclRegisterXclbin, internal shim API for native C++ applications only
       void

@@ -205,8 +205,8 @@ namespace xclhwemhal2 {
       std::string line;
       while (std::getline(ifs, line)) {
         // If xsim is terminated by logging in simulate.log then call xclClose to properly clean all instances, threads.
-        if ( (std::string::npos != line.find("Exiting xsim")) || 
-             (std::string::npos != line.find("ERROR")) 
+        if ( (std::string::npos != line.find("Exiting xsim")) ||
+             (std::string::npos != line.find("ERROR"))
            ) {
                   std::cout << "SIMULATION EXITED" << std::endl;
                   lstatus = -1;
@@ -215,12 +215,12 @@ namespace xclhwemhal2 {
         }
         for (auto& matchString : myvector) {
           std::string::size_type index = line.find(matchString);
-          if (index == std::string::npos) 
+          if (index == std::string::npos)
             continue;
-          
+
           if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) != parsedMsgs.end())
             continue;
-          
+
           logMessage(line);
           parsedMsgs.push_back(line);
         }
@@ -763,7 +763,7 @@ namespace xclhwemhal2 {
           logMessage(dMsg, 0);
           throw std::runtime_error(" Simulator did not start/exited, please simulate.log in .run directory!");
         }
-        
+
       }
 
       if (lWaveform == xclemulation::debug_mode::batch)
@@ -1020,7 +1020,7 @@ namespace xclhwemhal2 {
 
           if (!qemu_dtb.empty())
             launcherArgs += " -qemu-dtb " + qemu_dtb;
-        
+
           if (!pmc_dtb.empty())
             launcherArgs += " -pmc-dtb  " + pmc_dtb;
 
@@ -1057,15 +1057,15 @@ namespace xclhwemhal2 {
         //if (!xclemulation::file_exists(sim_file))
         if (!boost::filesystem::exists(sim_file))
           sim_file = "simulate.sh";
-          
+
         if (mLogStream.is_open() )
             mLogStream << __TIME__ <<"\t"<< __func__ << " The simulate script is "  <<sim_file  << std::endl;
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
         if (r == -1) {
-          std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl; 
+          std::cerr << "FATAL ERROR : Simulation process did not launch" << std::endl;
           exit(1);
-        } 
+        }
         exit(0);
       }
 #endif
@@ -1084,7 +1084,7 @@ namespace xclhwemhal2 {
     if (parseLog() != 0) {
       if (mLogStream.is_open())
         mLogStream << __func__ << " ERROR: [HW-EMU 26] Simulator is NOT started so exiting the application! " << std::endl;
-        
+
       // If no simulator running then no need to try a connection, hence exit with a failure now.
       //throw std::runtime_error(" Simulator did not start/exited, please refer simulate.log in .run directory!");
       exit(EXIT_FAILURE);
@@ -1096,7 +1096,7 @@ namespace xclhwemhal2 {
     sock = std::make_shared<unix_socket>();
     set_simulator_started(true);
     sock->monitor_socket();
-    
+
     //Thread to fetch messages from Device to display on host
     if (mMessengerThreadStarted == false) {
       mMessengerThread = std::thread([this]() { messagesThread(); } );
@@ -1216,7 +1216,7 @@ namespace xclhwemhal2 {
     }
   }
 
-  void HwEmShim::getDtbs(const std::string& emu_data_path, std::string& qemu_dtb, std::string& pmc_dtb) 
+  void HwEmShim::getDtbs(const std::string& emu_data_path, std::string& qemu_dtb, std::string& pmc_dtb)
   {
     boost::filesystem::path dts_dir = emu_data_path;
     boost::filesystem::directory_iterator end_itr;
@@ -1866,8 +1866,8 @@ namespace xclhwemhal2 {
       return;
     }
     // RPC calls will not be made in resetprogram
-    // resetProgram has to be called in xclclose because all running threads will be exited gracefully 
-    // which results clean exit of driver code.  
+    // resetProgram has to be called in xclclose because all running threads will be exited gracefully
+    // which results clean exit of driver code.
       resetProgram(false);
 
 
@@ -3394,7 +3394,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
   auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
@@ -3411,7 +3411,7 @@ close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 
 // aka xclCreateHWContext, internal shim API for native C++ applications only
 // Once properly implemented, this API should throw on error
-uint32_t // ctx handle aka slot idx
+xrt_hwctx_handle
 HwEmShim::
 create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode)
 {
@@ -3423,7 +3423,7 @@ create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_co
 // Once properly implemented, this API should throw on error
 void
 HwEmShim::
-destroy_hw_context(uint32_t ctxhdl)
+destroy_hw_context(xrt_hwctx_handle ctxhdl)
 {
   // Explicit hardware contexts are not yet supported
   throw xrt_core::ishim::not_supported_error{__func__};

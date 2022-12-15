@@ -143,11 +143,11 @@ public:
     return m_device;
   }
 
-  xcl_hwctx_handle
+  xrt_hwctx_handle
   get_hwctx_handle() const
   {
     return (m_hwctx)
-      ? static_cast<xcl_hwctx_handle>(m_hwctx)
+      ? static_cast<xrt_hwctx_handle>(m_hwctx)
       : XRT_NULL_HWCTX;
   }
 
