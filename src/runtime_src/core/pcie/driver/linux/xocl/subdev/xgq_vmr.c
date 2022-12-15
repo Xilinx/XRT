@@ -1460,6 +1460,56 @@ acquire_failed:
 	return ret;
 }
 
+static int vmr_log_dump_op(struct xocl_xgq_vmr *xgq, char *buf, size_t *cnt,int num_recs)
+{
+	struct vmr_log log = { 0 };
+	uint32_t count = 0;
+	//char *start_ptr = buf_ptr;
+
+	if (num_recs > VMR_LOG_MAX_RECS)
+		num_recs = VMR_LOG_MAX_RECS;
+
+	xocl_memcpy_fromio(&xgq->xgq_vmr_shared_mem, xgq->xgq_payload_base,
+		sizeof(xgq->xgq_vmr_shared_mem));
+
+	/*
+	 * log_msg_index which is the oldest log in a ring buffer.
+	 * if we want to only dump num_recs, we start from
+	 * (log_msg_index + VMR_LOG_MAX_RECS - num_recs) % VMR_LOG_MAX_RECS.
+	 */
+	if (xgq->xgq_vmr_shared_mem.vmr_magic_no == VMR_MAGIC_NO) {
+		u32 idx, log_idx = xgq->xgq_vmr_shared_mem.log_msg_index;
+
+		log_idx = (log_idx + VMR_LOG_MAX_RECS - num_recs) % VMR_LOG_MAX_RECS;
+
+		XGQ_WARN(xgq, "=== start dumping vmr log sysfs node===");
+
+		for (idx = 0; idx < num_recs; idx++) {
+			xocl_memcpy_fromio(&log.log_buf, xgq->xgq_payload_base +
+				xgq->xgq_vmr_shared_mem.log_msg_buf_off +
+				sizeof(log) * log_idx,
+				sizeof(log));
+			log_idx = (log_idx + 1) % VMR_LOG_MAX_RECS;
+
+			if(count >= PAGE_SIZE){
+				XGQ_WARN(xgq,"VMR Messages size exceeds Page Size");
+				goto done;
+			}
+			count += snprintf(buf + count, PAGE_SIZE, "%s\n", log.log_buf);
+		}
+	} 
+	else {
+		XGQ_WARN(xgq, "vmr payload partition table is not available");
+	}
+	if(count == 0){
+		XGQ_DBG(xgq, "VMR Log Empty");
+		return -EINVAL;
+	}
+done:
+	*cnt = min(count, PAGE_SIZE);
+	return 0;
+}
+
 static int vmr_verbose_info_query(struct platform_device *pdev,
 	char *buf, size_t *cnt)
 {
@@ -1481,6 +1531,13 @@ static int vmr_memory_info_query(struct platform_device *pdev,
 	char *buf, size_t *cnt)
 {
 	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_MEM_STATS);
+}
+
+static int vmr_log_dump_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	return vmr_log_dump_op(xgq, buf, cnt, VMR_LOG_MAX_RECS);
 }
 
 /* On versal, verify is enforced. */
@@ -2547,6 +2604,19 @@ static ssize_t vmr_mem_stats_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(vmr_mem_stats);
 
+static ssize_t vmr_log_dump_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	if (vmr_log_dump_query(xgq->xgq_pdev, buf, &cnt))
+		return -EINVAL;
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(vmr_log_dump);
+
 static ssize_t vmr_debug_type_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -3065,6 +3135,7 @@ static struct attribute *vmr_attrs[] = {
 	&dev_attr_xgq_scaling_enable.attr,
 	&dev_attr_xgq_scaling_power_override.attr,
 	&dev_attr_xgq_scaling_temp_override.attr,
+	&dev_attr_vmr_log_dump.attr,
 	NULL,
 };
 
