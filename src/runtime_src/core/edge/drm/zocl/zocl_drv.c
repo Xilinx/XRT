@@ -170,6 +170,26 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 
 		zocl_slot->partial_overlay_id = -1;
 		zocl_slot->slot_idx = i;
+		zocl_slot->slot_type = DOMAIN_PL;
+
+		zdev->pr_slot[i] = zocl_slot;
+	}
+
+	for (i = zdev->num_pr_slot; i < MAX_PR_SLOT_NUM; i++) {
+		zocl_slot = (struct drm_zocl_slot *)
+			kzalloc(sizeof(struct drm_zocl_slot), GFP_KERNEL);
+		if (!zocl_slot)
+			return -ENOMEM;
+
+		/* Initial xclbin */
+		ret = zocl_xclbin_init(zocl_slot);
+		if (ret)
+			return ret;
+
+		mutex_init(&zocl_slot->slot_xclbin_lock);
+
+		zocl_slot->slot_idx = i;
+		zocl_slot->slot_type = DOMAIN_PS;
 
 		zdev->pr_slot[i] = zocl_slot;
 	}
@@ -190,7 +210,7 @@ static void zocl_pr_slot_fini(struct drm_zocl_dev *zdev)
 	struct drm_zocl_slot *zocl_slot = NULL;
 	int i = 0;
 
-	for (i = 0; i < zdev->num_pr_slot; i++) {
+	for (i = 0; i < MAX_PR_SLOT_NUM; i++) {
 		zocl_slot = zdev->pr_slot[i];
 		if (zocl_slot) {
 			zocl_free_sections(zdev, zocl_slot);

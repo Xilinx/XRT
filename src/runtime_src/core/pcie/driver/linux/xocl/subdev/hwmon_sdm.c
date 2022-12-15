@@ -1188,7 +1188,7 @@ abort:
 
 static int create_hwmon_sysfs(struct platform_device *pdev)
 {
-	struct xocl_hwmon_sdm *sdm = NULL;
+	struct xocl_hwmon_sdm *sdm;
 	struct xocl_dev_core *core;
 	int err;
 

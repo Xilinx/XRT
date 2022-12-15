@@ -871,6 +871,9 @@ int zocl_create_client(struct device *dev, void **client_hdl)
 	/* Multiple context can be active. Initializing context list */
 	INIT_LIST_HEAD(&client->ctx_list);
 
+	/* Initializing hw context list */
+	INIT_LIST_HEAD(&client->hw_ctx_list);
+
 	INIT_LIST_HEAD(&client->graph_list);
 	spin_lock_init(&client->graph_list_lock);
 	*client_hdl = client;
