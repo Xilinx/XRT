@@ -213,7 +213,7 @@ public:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-variable"
     for (const auto& [idx, cud] : m_idx2cu)
-      if (cud.name == cuname && cud.slot == static_cast<void*>(slot))
+      if (cud.name == cuname && cud.slot == slot)
         throw xrt_core::error("Context already opened on cu: " + cuname);
 #pragma GCC diagnostic pop
 
