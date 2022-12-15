@@ -102,14 +102,23 @@ bool nocddr_fastaccess_hwemu::init(std::string filename, std::string simdir)
     ss1 >> foffset;
     ss2 >> fsize;
     fname = simdir + "/" + fname;
-    std::cerr << "Creating fname=" << fname << std::hex << ", offset=0x" << foffset << ", size=0x" << fsize << std::endl;
     //mmap the file create a tuple and add to the array
     int fd = open(fname.c_str(), (O_CREAT | O_RDWR), 0666);
-    int rf = ftruncate(fd, fsize);
-    if (rf == -1)
+    if(fd >= 0)
     {
+      int rf = ftruncate(fd, fsize);
+      if (rf == -1)
+      {
+        close(fd);      // ftruncate failed, close fd
+        return false;
+      }
+    }
+    else
+    {
+      close(fd);         // open failed, close fd
       return false;
     }
+    // fd is open if and only ftruncate successful
     unsigned char *memP = (unsigned char *)mmap(NULL, fsize, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_SHARED, fd, 0);
     if (memP != NULL)
     {
