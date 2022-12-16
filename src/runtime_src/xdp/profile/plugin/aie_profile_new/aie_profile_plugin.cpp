@@ -180,6 +180,8 @@ namespace xdp {
       handleToAIEData[handle].implementation->poll(index, handle);
       std::this_thread::sleep_for(std::chrono::microseconds(handleToAIEData[handle].metadata->getPollingIntervalVal()));     
     }
+    //Final Polling Operation  
+    handleToAIEData[handle].implementation->poll(index, handle);
   }
 
   void AieProfilePlugin::endPollforDevice(void* handle)
@@ -190,7 +192,6 @@ namespace xdp {
 
     AIEData.thread.join();
     handleToAIEData.erase(handle);
-
 
   }
 
