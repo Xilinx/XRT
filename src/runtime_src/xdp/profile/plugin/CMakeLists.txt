@@ -2,7 +2,7 @@
 # Copyright (C) 2022 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
-if (MINIMAL_BUILD STREQUAL "yes")
+if (XDP_MINIMAL_BUILD STREQUAL "yes")
 
   add_subdirectory(native)
   add_subdirectory(user)
@@ -43,5 +43,5 @@ else()
 
 endif()
 
-# Matches MINIMAL_BUILD
+# Matches XDP_MINIMAL_BUILD
 endif()

@@ -29,7 +29,7 @@ else()
 
 endif()
 
-if (MINIMAL_BUILD STREQUAL "yes")
+if (XDP_MINIMAL_BUILD STREQUAL "yes")
 
  add_compile_options("-DSKIP_IOCTL")
  add_compile_options("-DSKIP_AIE_INI")
