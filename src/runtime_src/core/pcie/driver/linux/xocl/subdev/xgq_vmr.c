@@ -1278,7 +1278,8 @@ static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_t
 		log_size = len;
 	}
 
-	if (log_size != 0) {
+	/* avoid overflow value, will hanlde this better in the future */
+	if (log_size != 0 && log_size != 0x100000) {
 		char *log_msg = vmalloc(log_size + 1);
 		if (log_msg == NULL) {
 			XGQ_ERR(xgq, "vmalloc failed, no memory");
