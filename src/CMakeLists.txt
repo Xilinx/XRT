@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.5.0)
 project(XRT)
 set(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
+# Include utility functions
+include(CMake/utilities.cmake)
+
 # Include supporting CMake functions
 include(CMake/unitTestSupport.cmake)
 
