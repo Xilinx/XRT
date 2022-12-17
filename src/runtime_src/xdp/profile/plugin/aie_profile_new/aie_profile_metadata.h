@@ -25,18 +25,26 @@
 #include "core/common/device.h"
 namespace xdp {
 
+constexpr unsigned int NUM_CORE_COUNTERS   = 4;
+constexpr unsigned int NUM_MEMORY_COUNTERS = 2;
+constexpr unsigned int NUM_SHIM_COUNTERS  =  2;
+
 class AieProfileMetadata{
   private:
-    uint32_t mIndex = 0;
+    // Currently supporting Core, Memory, Interface Tile metrics only. Need to add Memory Tile metrics
+    static constexpr int NUM_MODULES = 3;
+
+    const std::string moduleNames[NUM_MODULES] = {"aie", "aie_memory", "interface_tile"};
+    const std::string defaultSets[NUM_MODULES] = {"all:heat_map", "all:conflicts", "all:input_bandwidths"};
+    const int numCountersMod[NUM_MODULES] =
+        {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
+    const module_type moduleTypes[NUM_MODULES] = 
+        {module_type::core, module_type::dma, module_type::shim};
+
     uint32_t mPollingInterval;
     uint64_t deviceID;
+    double clockFreqMhz;
     void* handle;
-
-    // std::vector<std::string> coreMetricStrings {"heat_map", "stalls", "execution",           
-    //                                             "floating_point", "stream_put_get", "write_bandwidths",     
-    //                                             "read_bandwidths", "aie_trace", "events"};
-    // std::vector<std::string> memMetricStrings  {"conflicts", "dma_locks", "dma_stalls_s2mm", "dma_stalls_mm2s", "write_bandwidths", "read_bandwidths"};
-    // std::vector<std::string> interfaceMetricStrings {"input_bandwidths", "output_bandwidths", "packets"};
 
     std::map <module_type, std::vector<std::string>> metricStrings {
       { module_type::core, {"heat_map", "stalls", "execution",           
@@ -73,6 +81,7 @@ class AieProfileMetadata{
                                               const std::vector<std::string>& metricsSettings,
                                               /* std::vector<std::string> graphmetricsSettings, */
                                               void* handle);
+    uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
 
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
@@ -80,8 +89,13 @@ class AieProfileMetadata{
 
     std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, const std::string& graph_name, module_type type);
+    
     std::map<tile_type, std::string> getConfigMetrics(int module){ return mConfigMetrics[module];}
-    uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
+    double getClockFreqMhz(){return clockFreqMhz;}
+    std::string getModuleName(int module){return moduleNames[module];}
+    int getNumCountersMod(int module){return numCountersMod[module];}
+    // module_type getModuleType(int module){return moduleTypes[module];}
+    int getNumModules(){return NUM_MODULES;}
   };
 }
 

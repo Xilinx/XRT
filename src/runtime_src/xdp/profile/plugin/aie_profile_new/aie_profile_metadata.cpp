@@ -21,11 +21,12 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include "core/common/xrt_profiling.h"
-#include "core/common/device.h"
-#include "core/common/config_reader.h"
-#include "core/common/message.h"
 #include "aie_profile_metadata.h"
+#include "core/common/config_reader.h"
+#include "core/common/device.h"
+#include "core/common/message.h"
+#include "core/common/xrt_profiling.h"
+#include "xdp/profile/database/database.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -34,7 +35,7 @@ namespace xdp {
   : deviceID(deviceID)
   , handle(handle)
   {
-    mConfigMetrics.resize(3);
+    mConfigMetrics.resize(NUM_MODULES);
   // Get polling interval (in usec; minimum is 100)
     mPollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
     if (1000 == mPollingInterval) {
@@ -46,6 +47,73 @@ namespace xdp {
       }
     }
 
+    //Setup Config Metrics
+    // Get AIE clock frequency
+    VPDatabase* db = VPDatabase::Instance();
+    clockFreqMhz = (db->getStaticInfo()).getClockRateMHz(deviceID,false);
+
+    // Get the metrics settings
+    std::vector<std::string> metricsConfig;
+
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
+    //metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics());
+
+    // Get the graph metrics settings
+    std::vector<std::string> graphmetricsConfig;
+
+    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_metrics());
+    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics());
+//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
+//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
+
+    // Process AIE_profile_settings metrics
+    // Each of the metrics can have ; separated multiple values. Process and save all
+    std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
+    std::vector<std::vector<std::string>> graphmetricsSettings(NUM_MODULES);
+
+    for(int module = 0; module < NUM_MODULES; ++module) {
+      bool findTileMetric = false;
+      if (!metricsConfig[module].empty()) {
+        boost::replace_all(metricsConfig[module], " ", "");
+        boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
+        findTileMetric = true;        
+      } else {
+          std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
+          std::string metricMsg = "No metric set specified for " + modName + " module. " +
+                                  "Please specify the AIE_profile_settings." + modName + "_metrics setting in your xrt.ini. A default set of " + defaultSets[module] + " has been specified.";
+          xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
+
+          metricsConfig[module] = defaultSets[module];
+          boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
+          findTileMetric = true;
+
+      }
+      if ((module < graphmetricsConfig.size()) && !graphmetricsConfig[module].empty()) {
+        /* interface_tile metrics is not supported for Graph based metrics.
+        * Only aie and aie_memory are supported.
+        */
+        boost::replace_all(graphmetricsConfig[module], " ", "");
+        boost::split(graphmetricsSettings[module], graphmetricsConfig[module], boost::is_any_of(";"));
+        findTileMetric = true;        
+      }
+
+      if(findTileMetric) {
+        if (module_type::shim == moduleTypes[module]) {
+          getInterfaceConfigMetricsForTiles(module, 
+                                      metricsSettings[module], 
+                                      /* graphmetricsSettings[module], */
+                                      handle);
+        } else {
+          getConfigMetricsForTiles(module, 
+                                  metricsSettings[module], 
+                                  graphmetricsSettings[module], 
+                                  moduleTypes[module],
+                                  handle);
+        }
+      }
+    }
   }
 
   std::vector<tile_type>

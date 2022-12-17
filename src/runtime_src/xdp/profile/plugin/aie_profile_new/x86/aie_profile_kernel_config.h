@@ -97,7 +97,6 @@ namespace built_in {
     uint32_t counterId; // Counter ID in list of all possible counters
     uint64_t resetEvent;
     uint64_t timerValue;
-    double timestamp;
   };
 
   struct ProfileOutputConfiguration

@@ -17,9 +17,6 @@
 #ifndef AIE_PROFILE_DEFS_H
 #define AIE_PROFILE_DEFS_H
 
-constexpr unsigned int NUM_CORE_COUNTERS   = 4;
-constexpr unsigned int NUM_MEMORY_COUNTERS = 2;
-constexpr unsigned int NUM_SHIM_COUNTERS  =  2;
 constexpr unsigned int BASE_MEMORY_COUNTER = 128;
 constexpr unsigned int BASE_SHIM_COUNTER =   256;
 

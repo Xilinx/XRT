@@ -224,7 +224,7 @@ namespace xdp {
       } 
 
     } catch (...) {
-      std::string msg = "The aie_trace_config PS kernel was not found.";
+        std::string msg = "The aie_trace_config PS kernel was not found.";
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return false;
     } 
