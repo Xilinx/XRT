@@ -20,9 +20,10 @@
 #include <boost/property_tree/ptree.hpp>
 #include <vector>
 
+#include "core/common/device.h"
 #include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
-#include "core/common/device.h"
+
 namespace xdp {
 
 constexpr unsigned int NUM_CORE_COUNTERS   = 4;
@@ -41,7 +42,7 @@ class AieProfileMetadata{
     const module_type moduleTypes[NUM_MODULES] = 
         {module_type::core, module_type::dma, module_type::shim};
 
-    uint32_t mPollingInterval;
+    uint32_t pollingInterval;
     uint64_t deviceID;
     double clockFreqMhz;
     void* handle;
@@ -55,14 +56,14 @@ class AieProfileMetadata{
       { module_type::shim, {"input_bandwidths", "output_bandwidths", "packets"} },
     };
 
-    std::vector<std::map<tile_type, std::string>> mConfigMetrics;
+    std::vector<std::map<tile_type, std::string>> configMetrics;
 
   public:
     AieProfileMetadata(uint64_t deviceID, void* handle);
     
     uint64_t getDeviceID() {return deviceID;}
     void* getHandle() {return handle;}
-    uint32_t getPollingIntervalVal(){return mPollingInterval;}
+    uint32_t getPollingIntervalVal(){return pollingInterval;}
 
     std::vector<tile_type> getAllTilesForCoreMemoryProfiling(const module_type mod,
                                                       const std::string &graph,
@@ -91,7 +92,7 @@ class AieProfileMetadata{
     std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, const std::string& graph_name, module_type type);
     
-    std::map<tile_type, std::string> getConfigMetrics(int module){ return mConfigMetrics[module];}
+    std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
     double getClockFreqMhz(){return clockFreqMhz;}
     std::string getModuleName(int module){return moduleNames[module];}
     int getNumCountersMod(int module){return numCountersMod[module];}

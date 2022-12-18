@@ -25,14 +25,14 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
-#include "xdp/profile/device/hal_device/xdp_hal_device.h"
 #include "core/include/experimental/xrt-next.h"
-#include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/device/hal_device/xdp_hal_device.h"
+#include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
-#include "xdp/profile/device/utility.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
 #ifdef XRT_X86_BUILD
@@ -136,7 +136,6 @@ namespace xdp {
       //Sets up and the hardware on the edge implementation
       implementation->updateDevice();
 
-
       (db->getStaticInfo()).setIsAIECounterRead(deviceID, true);
     }
 
@@ -192,7 +191,6 @@ namespace xdp {
 
     AIEData.thread.join();
     handleToAIEData.erase(handle);
-
   }
 
   void AieProfilePlugin::endPoll()

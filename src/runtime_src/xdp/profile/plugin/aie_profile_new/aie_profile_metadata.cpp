@@ -15,8 +15,6 @@
  */
 #define XDP_SOURCE
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
-
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -27,6 +25,7 @@
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -35,13 +34,13 @@ namespace xdp {
   : deviceID(deviceID)
   , handle(handle)
   {
-    mConfigMetrics.resize(NUM_MODULES);
+    configMetrics.resize(NUM_MODULES);
   // Get polling interval (in usec; minimum is 100)
-    mPollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
-    if (1000 == mPollingInterval) {
+    pollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
+    if (1000 == pollingInterval) {
       // If set to default value, then check for old style config 
-      mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
-      if (1000 != mPollingInterval) {
+      pollingInterval = xrt_core::config::get_aie_profile_interval_us();
+      if (1000 != pollingInterval) {
         xrt_core::message::send(severity_level::warning, "XRT", 
           "The xrt.ini flag \"aie_profile_interval_us\" is deprecated and will be removed in future release. Please use \"interval_us\" under \"AIE_profile_settings\" section.");
       }
@@ -65,8 +64,8 @@ namespace xdp {
 
     graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_metrics());
     graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics());
-//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
-//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
+    //graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
+    //graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
 
     // Process AIE_profile_settings metrics
     // Each of the metrics can have ; separated multiple values. Process and save all
@@ -247,7 +246,7 @@ namespace xdp {
         } // "all" 
       }
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+        configMetrics[moduleIdx][e] = graphmetrics[i][2];
       }
     }  // Graph Pass 1
 
@@ -274,7 +273,7 @@ namespace xdp {
         }
       }
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+        configMetrics[moduleIdx][e] = graphmetrics[i][2];
       }
     }  // Graph Pass 2
 
@@ -309,7 +308,7 @@ namespace xdp {
           }
         } // allGraphsDone
         for (auto &e : tiles) {
-          mConfigMetrics[moduleIdx][e] = metrics[i][1];
+          configMetrics[moduleIdx][e] = metrics[i][1];
         }
       }
     } // Pass 1 
@@ -356,7 +355,7 @@ namespace xdp {
         }
       }
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = metrics[i][2];
+        configMetrics[moduleIdx][e] = metrics[i][2];
       }
     } // Pass 2 
 
@@ -389,7 +388,7 @@ namespace xdp {
       }
 
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = metrics[i][1];
+        configMetrics[moduleIdx][e] = metrics[i][1];
       }
     } // Pass 3 
 
@@ -408,13 +407,13 @@ namespace xdp {
     } 
 
     for (auto &e : totalTiles) {
-      if (mConfigMetrics[moduleIdx].find(e) == mConfigMetrics[moduleIdx].end()) {
+      if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end()) {
         std::string defaultSet = (mod == module_type::core) ? "heat_map" : "conflicts";
-        mConfigMetrics[moduleIdx][e] = defaultSet;
+        configMetrics[moduleIdx][e] = defaultSet;
       }
     }
 
-    for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+    for (auto &tileMetric : configMetrics[moduleIdx]) {
     
       // save list of "off" tiles
       if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
@@ -437,7 +436,7 @@ namespace xdp {
 
     // remove all the "off" tiles
     for (auto &t : offTiles) {
-      mConfigMetrics[moduleIdx].erase(t);
+      configMetrics[moduleIdx].erase(t);
     }
   }
 
@@ -488,7 +487,7 @@ namespace xdp {
       allGraphsDone = true;
 
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+        configMetrics[moduleIdx][e] = graphmetrics[i][2];
       }
     }  // Graph Pass 1
 
@@ -523,7 +522,7 @@ namespace xdp {
         tiles = getAllTilesForInterfaceProfiling(handle, metrics[i][1], channelId);
 
         for (auto &e : tiles) {
-          mConfigMetrics[moduleIdx][e] = metrics[i][1];
+          configMetrics[moduleIdx][e] = metrics[i][1];
         }
       }
     } // Pass 1 
@@ -574,7 +573,7 @@ namespace xdp {
                                           true, minCol, maxCol);
 
       for (auto &t : tiles) {
-        mConfigMetrics[moduleIdx][t] = metrics[i][2];
+        configMetrics[moduleIdx][t] = metrics[i][2];
       }
     } // Pass 2 
 
@@ -619,7 +618,7 @@ namespace xdp {
                                             true, col, col);
 
         for (auto &t : tiles) {
-          mConfigMetrics[moduleIdx][t] = metrics[i][1];
+          configMetrics[moduleIdx][t] = metrics[i][1];
         }
       }
     } // Pass 3 
@@ -632,12 +631,12 @@ namespace xdp {
     totalTiles = getAllTilesForInterfaceProfiling(handle, "input_bandwidths", -1);
 
     for (auto &e : totalTiles) {
-      if (mConfigMetrics[moduleIdx].find(e) == mConfigMetrics[moduleIdx].end()) {
-        mConfigMetrics[moduleIdx][e] = "input_bandwidths";
+      if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end()) {
+        configMetrics[moduleIdx][e] = "input_bandwidths";
       }
     }
 
-    for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+    for (auto &tileMetric : configMetrics[moduleIdx]) {
 
       // save list of "off" tiles
       if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
@@ -657,7 +656,7 @@ namespace xdp {
 
     // remove all the "off" tiles
     for (auto &t : offTiles) {
-      mConfigMetrics[moduleIdx].erase(t);
+      configMetrics[moduleIdx].erase(t);
     }
   }
 

@@ -21,8 +21,8 @@
 #include <memory>
 #include <cstring>
 
+#include "../aie_profile_defs.h"
 #include "aie_profile.h"
-#include "aie_profile_defs.h"
 #include "core/edge/user/shim.h"
 #include "core/common/message.h"
 #include "core/common/time.h"
@@ -33,7 +33,6 @@
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_metadata.h"
-
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)

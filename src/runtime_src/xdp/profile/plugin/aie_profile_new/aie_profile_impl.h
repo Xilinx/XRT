@@ -17,8 +17,8 @@
 #ifndef AIE_PROFILE_IMPL_H
 #define AIE_PROFILE_IMPL_H
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "aie_profile_metadata.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
 

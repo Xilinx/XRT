@@ -47,7 +47,14 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
   AieProfile_x86Impl::AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
-      : AieProfileImpl(database, metadata) {}
+      : AieProfileImpl(database, metadata) 
+  {
+    auto spdevice = xrt_core::get_userpf_device(handle);
+    auto device = xrt::device(spdevice);
+  
+    auto uuid = device.get_xclbin_uuid();
+    aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie_profile_config");
+  }
 
   void AieProfile_x86Impl::updateDevice()
   {
@@ -101,12 +108,6 @@ namespace xdp {
 
     try {
       
-      auto spdevice = xrt_core::get_userpf_device(handle);
-      auto device = xrt::device(spdevice);
-    
-      auto uuid = device.get_xclbin_uuid();
-      auto aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie_profile_config");
-
       //input bo  
       auto inbo = xrt::bo(device, INPUT_SIZE, 2);
       auto inbo_map = inbo.map<uint8_t*>();
@@ -153,12 +154,6 @@ namespace xdp {
   {
 
     try {
-      auto spdevice = xrt_core::get_userpf_device(handle);
-      auto device = xrt::device(spdevice);
-    
-      auto uuid = device.get_xclbin_uuid();
-      auto aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie_profile_config");
-
       //input bo  
       // We Don't need to pass data from the db for polling since
       // the counters are stored locally in PS memory after setup
@@ -223,12 +218,6 @@ namespace xdp {
     
     //Create PS kernel to pass counter data to PS
     try {
-      auto spdevice = xrt_core::get_userpf_device(handle);
-      auto device = xrt::device(spdevice);
-    
-      auto uuid = device.get_xclbin_uuid();
-      auto aie_profile_kernel = xrt::kernel(device, uuid.get(), "aie_profile_config");
-
       //input bo  
       auto inbo = xrt::bo(device, INPUT_SIZE, 2);
       auto inbo_map = inbo.map<uint8_t*>();
@@ -266,5 +255,4 @@ namespace xdp {
     free(input_params);
 
   }
-
 }

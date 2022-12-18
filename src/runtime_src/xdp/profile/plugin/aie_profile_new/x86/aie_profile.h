@@ -19,22 +19,23 @@
 
 #include <cstdint>
 
+#include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
 
 namespace xdp {
   
   class AieProfile_x86Impl : public AieProfileImpl{
     public:
-      // AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
-      //   : AieProfileImpl(database, metadata){}
       AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
-
       ~AieProfile_x86Impl() = default;
 
       void updateDevice();
       void poll(uint32_t index, void* handle);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       void setCompileTimeCounters(uint64_t deviceId, void* handle, std::vector<counter_type> counters);
+
+    private:
+      xrt::kernel aie_profile_kernel;
   };
 
 }   
