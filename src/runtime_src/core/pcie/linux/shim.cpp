@@ -1354,6 +1354,7 @@ int shim::getAxlfObjSize(const axlf *buffer)
       xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
       xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
     }
+  }
 
   // Update the profiling library with the information on this new xclbin
   // configuration on this device as appropriate (when profiling is enabled).
@@ -1874,7 +1875,7 @@ int shim::xclExecBuf(unsigned int cmdBO)
 /*
  * xclExecBuf()
  */
-int shim::xclExecBuf(unsigned int cmdBO, xcl_hwctx_handle ctxhdl)
+int shim::xclExecBuf(unsigned int cmdBO, xrt_hwctx_handle ctxhdl)
 {
     int ret;
     xrt_logmsg(XRT_INFO, "%s, cmdBO: %d", __func__, cmdBO);
@@ -2306,7 +2307,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
     // Alveo Linux PCIE does not yet support multiple xclbins.  Call
     // regular flow.  Default access mode to shared unless explicitly
     // exclusive.
-    auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+    auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
     auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
     xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
@@ -2318,7 +2319,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
     // Pass Input
     drm_xocl_open_cu_ctx cu_ctx = {};
     cu_ctx.flags = flags;
-    cu_ctx.hw_context = static_cast<xcl_hwctx_handle>(hwctx);
+    cu_ctx.hw_context = static_cast<xrt_hwctx_handle>(hwctx);
     std::strcpy(cu_ctx.cu_name, cuname.c_str());
 
     if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_OPEN_CU_CTX, &cu_ctx))
@@ -2340,7 +2341,7 @@ close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
   else {
     // Pass Input
     drm_xocl_close_cu_ctx cu_ctx = {};
-    cu_ctx.hw_context = static_cast<xcl_hwctx_handle>(hwctx);
+    cu_ctx.hw_context = static_cast<xrt_hwctx_handle>(hwctx);
     cu_ctx.cu_index = cuidx.index;
 
     if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CLOSE_CU_CTX, &cu_ctx))
