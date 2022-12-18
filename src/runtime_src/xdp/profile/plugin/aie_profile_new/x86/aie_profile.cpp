@@ -42,6 +42,7 @@ constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE * 2; // input/output must be alig
 namespace xdp {
   using ProfileInputConfiguration = xdp::built_in::ProfileInputConfiguration;
   using ProfileOutputConfiguration = xdp::built_in::ProfileOutputConfiguration;
+  using PSCounterInfo = xdp::built_in::PSCounterInfo;
   using ProfileTileType = xdp::built_in::ProfileTileType;
   using severity_level = xrt_core::message::severity_level;
 
@@ -51,12 +52,13 @@ namespace xdp {
   void AieProfile_x86Impl::updateDevice()
   {
     //Check Compile-time Counters first so we know which PS kernel iteration to run
-    auto counters = metadata->get_profile_counters(device.get());
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(metadata->getHandle());
+     auto counters = metadata->get_profile_counters(device.get());
 
     if (counters.empty()){
-      bool runtimeCounters = setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
+      setMetricsSettings(metadata->getDeviceID(), metadata->getHandle());
     } else {
-      setCompileTimeCounters(metadata->getDeviceID(), metadata->getHandle());    
+      setCompileTimeCounters(metadata->getDeviceID(), metadata->getHandle(), counters);    
     }
   }
 
@@ -192,13 +194,11 @@ namespace xdp {
     } catch (...) {
       std::string msg = "The aie_profile polling failed.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-      free(input_params);
       return;
     }
-    free(input_params);
   }
 
-  void AieProfile_x86Impl::setCompileTimeCounters(uint64_t deviceId, void* handle)
+  void AieProfile_x86Impl::setCompileTimeCounters(uint64_t deviceId, void* handle, std::vector<counter_type>)
   {
     //Since we need to pass counter information to the PS, we can just reuse the ProfileOutputConfiguration struct
     std::size_t total_size = sizeof(ProfileOutputConfiguration) + sizeof(PSCounterInfo[counters.size()-1]);
