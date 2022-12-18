@@ -34,7 +34,7 @@ class AieProfileMetadata{
     // Currently supporting Core, Memory, Interface Tile metrics only. Need to add Memory Tile metrics
     static constexpr int NUM_MODULES = 3;
 
-    const std::string moduleNames[NUM_MODULES] = {"aie", "aie_memory", "interface_tile"};
+    const std::vector<std::string> moduleNames = {"aie", "aie_memory", "interface_tile"};
     const std::string defaultSets[NUM_MODULES] = {"all:heat_map", "all:conflicts", "all:input_bandwidths"};
     const int numCountersMod[NUM_MODULES] =
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};

@@ -79,7 +79,7 @@ namespace xdp {
     input_params->numTiles = numTiles;
     
     //Create the Profile Tile Struct with All Tiles
-    xdp::built_in::ProfileTileType profileTiles[numTiles];
+    ProfileTileType profileTiles[numTiles];
     int tile_idx = 0;
     for(int module = 0; module < NUM_MODULES; ++module) {
       auto configMetrics = metadata->getConfigMetrics(module);
@@ -198,7 +198,7 @@ namespace xdp {
     }
   }
 
-  void AieProfile_x86Impl::setCompileTimeCounters(uint64_t deviceId, void* handle, std::vector<counter_type>)
+  void AieProfile_x86Impl::setCompileTimeCounters(uint64_t deviceId, void* handle, std::vector<counter_type> counters)
   {
     //Since we need to pass counter information to the PS, we can just reuse the ProfileOutputConfiguration struct
     std::size_t total_size = sizeof(ProfileOutputConfiguration) + sizeof(PSCounterInfo[counters.size()-1]);
@@ -206,19 +206,21 @@ namespace xdp {
     input_params->numCounters = counters.size();
 
     PSCounterInfo inputCounters[counters.size()];
-    for (int i = 0; i < counters.size(); i++) {
-      inputCounters.moduleName = metadata->getModuleIndex(counters[i].module);
-      inputCounters.counterId = counters[i].id;
-      inputCounters.col = counters[i].column;
-      inputCounters.row = counters[i].row;
-      inputCounters.startEvent = counters[i].startEvent;
-      inputCounters.endEvent = counters[i].endEvent;
-      inputCounters.resetEvent = counters[i].resetEvent;
-      inputCounters.counterNum = counters[i].counterNumber;
+    for (size_t i = 0; i < counters.size(); i++) {
+      inputCounters[i].moduleName = metadata->getModuleIndex(counters[i].module);
+      inputCounters[i].counterId = counters[i].id;
+      inputCounters[i].col = counters[i].column;
+      inputCounters[i].row = counters[i].row;
+      inputCounters[i].startEvent = counters[i].startEvent;
+      inputCounters[i].endEvent = counters[i].endEvent;
+      inputCounters[i].resetEvent = counters[i].resetEvent;
+      inputCounters[i].counterNum = counters[i].counterNumber;
 
       input_params->counters[i] = inputCounters[i];
     }
 
+    uint8_t* input = reinterpret_cast<uint8_t*>(input_params);
+    
     //Create PS kernel to pass counter data to PS
     try {
       auto spdevice = xrt_core::get_userpf_device(handle);
@@ -259,7 +261,7 @@ namespace xdp {
       std::string msg = "The compile-time aie_profile_config kernel failed.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       free(input_params);
-      return false;
+      return;
     }
     free(input_params);
 
