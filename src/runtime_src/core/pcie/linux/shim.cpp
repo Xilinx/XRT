@@ -23,11 +23,6 @@
 #include "core/common/AlignedAllocator.h"
 #include "core/common/api/hw_context_int.h"
 
-<<<<<<< HEAD
-#include "plugin/xdp/aie_trace.h"
-#include "plugin/xdp/aie_profile.h"
-=======
->>>>>>> upstream/master
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/shim_callbacks.h"
