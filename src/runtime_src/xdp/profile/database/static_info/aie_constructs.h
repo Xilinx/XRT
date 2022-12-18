@@ -75,6 +75,19 @@ enum class module_type {
     uint16_t        burstLength;
   };
 
+struct counter_type
+{
+  uint32_t        id;
+  uint16_t        column;
+  uint16_t        row;
+  uint8_t         counterNumber;
+  uint8_t         startEvent;
+  uint8_t         endEvent;
+  uint8_t         resetEvent;
+  double          clockFreqMhz;
+  std::string     module;
+  std::string     name;
+};
 
   /*
    * Represents AIE counter configuration for a single counter

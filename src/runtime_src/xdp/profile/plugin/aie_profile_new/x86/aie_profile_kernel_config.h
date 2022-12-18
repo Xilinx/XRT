@@ -48,8 +48,6 @@ namespace built_in {
   {
     INPUT_BANDWIDTHS = 0,
     OUTPUT_BANDWIDTHS = 1,
-    // INPUT_STALLS_IDLE = 3,
-    // OUTPUT_STALLS_IDLE = 4,
     PACKETS = 2
   };
 
