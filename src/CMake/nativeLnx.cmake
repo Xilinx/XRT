@@ -156,18 +156,18 @@ message("-- Compiler: ${CMAKE_CXX_COMPILER} ${CMAKE_C_COMPILER}")
 # --- Lint ---
 include (CMake/lint.cmake)
 
-add_subdirectory(runtime_src)
+xrt_add_subdirectory(runtime_src)
 
 #XMA settings START
 set(XMA_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(XMA_INSTALL_DIR "${XRT_INSTALL_DIR}")
 set(XMA_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})
 set(XMA_SOVERSION ${XRT_SOVERSION})
-add_subdirectory(xma)
+xrt_add_subdirectory(xma)
 #XMA settings END
 
 # --- Python bindings ---
-add_subdirectory(python)
+xrt_add_subdirectory(python)
 
 # --- Python tests ---
 set(PY_TEST_SRC
@@ -180,7 +180,7 @@ install (FILES ${PY_TEST_SRC}
   PERMISSIONS OWNER_READ OWNER_EXECUTE OWNER_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
   DESTINATION ${XRT_INSTALL_DIR}/test)
 
-add_subdirectory("../tests/validate" "${CMAKE_CURRENT_BINARY_DIR}/validate_build")
+xrt_add_subdirectory("../tests/validate" "${CMAKE_CURRENT_BINARY_DIR}/validate_build")
 message("-- XRT version: ${XRT_VERSION_STRING}")
 
 # -- CPack

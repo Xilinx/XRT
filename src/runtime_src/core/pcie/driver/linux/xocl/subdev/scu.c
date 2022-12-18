@@ -267,6 +267,7 @@ static int scu_probe(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_cu *xcu = NULL;
 	struct xrt_cu_info *info = NULL;
+	uint32_t subdev_inst_idx = 0;
 	int err = 0;
 
 	/* Not using xocl_drvinst_alloc here. Because it would quickly run out
@@ -282,6 +283,18 @@ static int scu_probe(struct platform_device *pdev)
 
 	info = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
 	BUG_ON(!info);
+
+	subdev_inst_idx = XOCL_SUBDEV_INST_IDX(&pdev->dev);
+	if (subdev_inst_idx == INVALID_INST_INDEX) {
+		XSCU_ERR(xcu, "Unknown Instance index");
+		return -EINVAL;
+	}
+
+	/* Store subdevice instance index with this SCU info.
+	 * This will be required to destroy this subdevice.
+	 */
+	info->inst_idx = subdev_inst_idx;
+
 	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
 
 	xcu->base.info.model = XCU_XGQ;

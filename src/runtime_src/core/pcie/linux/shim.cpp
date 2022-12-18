@@ -23,12 +23,14 @@
 #include "core/common/AlignedAllocator.h"
 #include "core/common/api/hw_context_int.h"
 
+<<<<<<< HEAD
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/aie_profile.h"
+=======
+>>>>>>> upstream/master
 #include "plugin/xdp/hal_api_interface.h"
-#include "plugin/xdp/hal_device_offload.h"
 #include "plugin/xdp/hal_profile.h"
-#include "plugin/xdp/pl_deadlock.h"
+#include "plugin/xdp/shim_callbacks.h"
 
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 
@@ -633,9 +635,10 @@ init(unsigned int index)
 shim::~shim()
 {
     xrt_logmsg(XRT_INFO, "%s", __func__);
-    // flush aie trace and write outputs
-    xdp::aie::finish_flush_device(this) ;
-    xdp::aie::ctr::end_poll(this);
+
+    // Flush all of the profiling information from the device to the profiling
+    // library before the device is closed (when profiling is enabled).
+    xdp::finish_flush_device(this);
 
     // The BO cache unmaps and releases all execbo, but this must
     // be done before the device is closed.
@@ -1323,9 +1326,10 @@ int
 shim::
 xclLoadXclBin(const xclBin *buffer)
 {
-  xdp::hal::flush_device(this);
-  xdp::aie::flush_device(this);
-  xdp::pl_deadlock::flush_device(this);
+  // Retrieve any profiling information still on this device from any previous
+  // configuration before the device is reconfigured with the new xclbin (when
+  // profiling is enabled).
+  xdp::flush_device(this);
 
   auto top = reinterpret_cast<const axlf*>(buffer);
   if (auto ret = xclLoadAxlf(top)) {
@@ -1366,11 +1370,13 @@ xclLoadXclBin(const xclBin *buffer)
   // Success
   mCoreDevice->register_axlf(buffer);
 
-  xdp::hal::update_device(this);
-  xdp::aie::update_device(this);
-  xdp::aie::ctr::update_device(this);
-  xdp::pl_deadlock::update_device(this);
+  // Update the profiling library with the information on this new xclbin
+  // configuration on this device as appropriate (when profiling is enabled).
+  xdp::update_device(this);
 
+  // Setup the user-accessible HAL API profiling interface so user host
+  // code can call functions to directly read counter values on profiling IP
+  // (if enabled in the xrt.ini).
   START_DEVICE_PROFILING_CB(this);
 
   return 0;
@@ -2157,7 +2163,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
   auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-  auto ctxhdl = static_cast<xcl_hwctx_handle>(hwctx);
+  auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
   auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
   xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
 
@@ -2205,7 +2211,7 @@ register_xclbin(const xrt::xclbin&)
 // Exec Buf with hw ctx handle.
 void
 shim::
-exec_buf(xclBufferHandle boh, xcl_hwctx_handle ctxhdl)
+exec_buf(xclBufferHandle boh, xrt_hwctx_handle ctxhdl)
 {
   // TODO: Implement new function, for now just call legacy xclExecBuf().
   if (auto ret = xclExecBuf(boh))
@@ -2239,7 +2245,7 @@ close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core:
   return shim->close_cu_context(hwctx, cuidx);
 }
 
-uint32_t // ctxhdl aka slotidx
+xrt_hwctx_handle
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
@@ -2250,7 +2256,7 @@ create_hw_context(xclDeviceHandle handle,
 }
 
 void
-destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+destroy_hw_context(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl)
 {
   auto shim = get_shim_object(handle);
   shim->destroy_hw_context(ctxhdl);
@@ -2265,7 +2271,7 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
 
 // Exec Buf with hw ctx handle.
 void
-exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xcl_hwctx_handle ctxhdl)
+exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xrt_hwctx_handle ctxhdl)
 {
     auto shim = get_shim_object(handle);
     return shim->exec_buf(to_xclBufferHandle(bohdl), ctxhdl);
