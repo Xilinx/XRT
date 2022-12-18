@@ -85,86 +85,9 @@ namespace xdp {
 
   bool AieProfile_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle){
 
-    // Get AIE clock frequency
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    auto clockFreqMhz = (db->getStaticInfo()).getClockRateMHz(deviceId,false);
+    int NUM_MODULES = metadata->getNumModules();
 
-
-    // Currently supporting Core, Memory, Interface Tile metrics only. Need to add Memory Tile metrics
-    constexpr int NUM_MODULES = 3;
-
-    std::string moduleNames[NUM_MODULES] = {"aie", "aie_memory", "interface_tile"};
-    std::string defaultSets[NUM_MODULES] = {"all:heat_map", "all:conflicts", "all:input_bandwidths"};
-
-    module_type moduleTypes[NUM_MODULES] = 
-        {module_type::core, module_type::dma, module_type::shim};
-
-    // Get the metrics settings
-    std::vector<std::string> metricsConfig;
-
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
-    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
-    //metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics());
-
-    // Get the graph metrics settings
-    std::vector<std::string> graphmetricsConfig;
-
-    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_metrics());
-    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics());
-//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
-//    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
-
-    // Process AIE_profile_settings metrics
-    // Each of the metrics can have ; separated multiple values. Process and save all
-    std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
-    std::vector<std::vector<std::string>> graphmetricsSettings(NUM_MODULES);
-
-    for(int module = 0; module < NUM_MODULES; ++module) {
-      bool findTileMetric = false;
-      if (!metricsConfig[module].empty()) {
-        boost::replace_all(metricsConfig[module], " ", "");
-        boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
-        findTileMetric = true;        
-      } else {
-          std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
-          std::string metricMsg = "No metric set specified for " + modName + " module. " +
-                                  "Please specify the AIE_profile_settings." + modName + "_metrics setting in your xrt.ini. A default set of " + defaultSets[module] + " has been specified.";
-          xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
-
-          metricsConfig[module] = defaultSets[module];
-          boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
-          findTileMetric = true;
-
-      }
-      if ((module < static_cast<int>(graphmetricsConfig.size())) && !graphmetricsConfig[module].empty()) {
-        /* interface_tile metrics is not supported for Graph based metrics.
-         * Only aie and aie_memory are supported.
-         */
-        boost::replace_all(graphmetricsConfig[module], " ", "");
-        boost::split(graphmetricsSettings[module], graphmetricsConfig[module], boost::is_any_of(";"));
-        findTileMetric = true;        
-      }
-
-      if(findTileMetric) {
-
-        if (module_type::shim == moduleTypes[module]) {
-          metadata->getInterfaceConfigMetricsForTiles(module, 
-                                       metricsSettings[module], 
-                                       /* graphmetricsSettings[module], */
-                                       handle);
-        } else {
-          metadata->getConfigMetricsForTiles(module, 
-                                   metricsSettings[module], 
-                                   graphmetricsSettings[module], 
-                                   moduleTypes[module],
-                                   handle);
-        }
-      }
-    }
-
-    //Create the PS kernel 
-
+    //Create the Configuration PS kernel 
     // Calculate number of tiles per module
     int numTiles = 0;
     for(int module = 0; module < NUM_MODULES; ++module) {
@@ -187,7 +110,7 @@ namespace xdp {
         profileTiles[tile_idx].itr_mem_col = tileMetric.first.itr_mem_col;
         profileTiles[tile_idx].itr_mem_addr = tileMetric.first.itr_mem_addr;
         profileTiles[tile_idx].is_trigger = tileMetric.first.is_trigger;
-        profileTiles[tile_idx].metricSet = metadata->getMetricSetIndex(tileMetric.second, moduleTypes[module]);
+        profileTiles[tile_idx].metricSet = metadata->getMetricSetIndex(tileMetric.second, metadata->getModuleType(module));
         profileTiles[tile_idx].tile_mod = module;
         input_params->tiles[tile_idx] = profileTiles[tile_idx];
         tile_idx++;
@@ -228,8 +151,8 @@ namespace xdp {
         auto& counter = cfg->counters[i];
         std::string counterName = "AIE Counter " + std::to_string(counter.counterId);
         (db->getStaticInfo()).addAIECounter(deviceId, counter.counterId, counter.col, counter.row, counter.counterNum,
-        counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload, clockFreqMhz , 
-        moduleNames[counter.moduleName], counterName);
+        counter.startEvent, counter.endEvent, counter.resetEvent, counter.payload, metadata->getClockFreqMhz() , 
+        metadata->getModuleName(counter.moduleName), counterName);
       }
     } catch (...) {
       std::string msg = "The aie_profile_config PS kernel was not found.";

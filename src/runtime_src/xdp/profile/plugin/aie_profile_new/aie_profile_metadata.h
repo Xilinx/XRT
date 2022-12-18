@@ -94,7 +94,7 @@ class AieProfileMetadata{
     double getClockFreqMhz(){return clockFreqMhz;}
     std::string getModuleName(int module){return moduleNames[module];}
     int getNumCountersMod(int module){return numCountersMod[module];}
-    // module_type getModuleType(int module){return moduleTypes[module];}
+    module_type getModuleType(int module){return moduleTypes[module];}
     int getNumModules(){return NUM_MODULES;}
   };
 }
