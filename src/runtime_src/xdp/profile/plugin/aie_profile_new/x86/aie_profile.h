@@ -35,6 +35,7 @@ namespace xdp {
       void setCompileTimeCounters(uint64_t deviceId, void* handle, std::vector<counter_type> counters);
 
     private:
+      xrt::device device;
       xrt::kernel aie_profile_kernel;
   };
 
