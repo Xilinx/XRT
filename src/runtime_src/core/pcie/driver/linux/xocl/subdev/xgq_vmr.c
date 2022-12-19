@@ -446,9 +446,9 @@ static size_t xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, char *buf
 
 static void xgq_vmr_log_dump_all(struct xocl_xgq_vmr *xgq)
 {
-	XGQ_WARN(xgq, "=== start ===");
+	XGQ_WARN(xgq, "=== start dumping vmr log===");
 	xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, NULL, vmr_log_dump_to_dmesg);
-	XGQ_WARN(xgq, "=== end ===");
+	XGQ_WARN(xgq, "=== end dumping vmr log===");
 }
 
 static struct opcode_name {
