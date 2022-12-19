@@ -2206,7 +2206,7 @@ xocl_kds_xgq_cfg_cus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 		cfg_cu->hdr.count = sizeof(*cfg_cu) - sizeof(cfg_cu->hdr);
 		cfg_cu->hdr.state = 1;
 
-		cfg_cu->cu_idx = i;
+		cfg_cu->cu_idx = cu_info[i].inst_idx;
 		cfg_cu->cu_domain = DOMAIN_PL;
 		cfg_cu->ip_ctrl = cu_info[i].protocol;
 		cfg_cu->intr_id = cu_info[i].intr_id;
@@ -2289,7 +2289,7 @@ xocl_kds_xgq_cfg_scus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_in
 		cfg_cu->hdr.count = sizeof(*cfg_cu) - sizeof(cfg_cu->hdr);
 		cfg_cu->hdr.state = 1;
 
-		cfg_cu->cu_idx = i;
+		cfg_cu->cu_idx = cu_info[i].inst_idx;
 		cfg_cu->cu_domain = DOMAIN_PS;
 		cfg_cu->ip_ctrl = cu_info[i].protocol;
 		cfg_cu->map_size = cu_info[i].size;
@@ -2696,7 +2696,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PS);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PS);
 			if (ret)
 				goto out;
 		}
@@ -2714,7 +2714,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PL);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL);
 			if (ret)
 				goto out;
 		}
