@@ -1317,55 +1317,14 @@ bool shim::zeroOutDDR()
 
 int shim::getAxlfObjSize(const axlf *buffer)
 {
-  // Retrieve any profiling information still on this device from any previous
-  // configuration before the device is reconfigured with the new xclbin (when
-  // profiling is enabled).
-  xdp::flush_device(this);
+    int ksize = 0;
+    auto kernels = xrt_core::xclbin::get_kernels(buffer);
+    /* Calculate size of kernels */
+    for (auto& kernel : kernels) {
+        ksize += sizeof(kernel_info) + (sizeof(argument_info) * kernel.args.size());
+    }
 
-  auto top = reinterpret_cast<const axlf*>(buffer);
-  if (auto ret = xclLoadAxlf(top)) {
-    // Something wrong, determine what
-    if (ret == -EOPNOTSUPP) {
-      xrt_logmsg(XRT_ERROR, "Xclbin does not match shell on card.");
-      auto xclbin_vbnv = xrt_core::xclbin::get_vbnv(top);
-      auto shell_vbnv = xrt_core::device_query<xrt_core::query::rom_vbnv>(mCoreDevice);
-      if (xclbin_vbnv != shell_vbnv) {
-        xrt_logmsg(XRT_ERROR, "Shell VBNV is '%s'", shell_vbnv.c_str());
-        xrt_logmsg(XRT_ERROR, "Xclbin VBNV is '%s'", xclbin_vbnv.c_str());
-      }
-      xrt_logmsg(XRT_ERROR, "Use 'xbmgmt flash' to update shell.");
-    }
-    else if (ret == -EBUSY) {
-      xrt_logmsg(XRT_ERROR, "Xclbin on card is in use, can't change.");
-    }
-    else if (ret == -EKEYREJECTED) {
-      xrt_logmsg(XRT_ERROR, "Xclbin isn't signed properly");
-    }
-    else if (ret == -E2BIG) {
-      xrt_logmsg(XRT_ERROR, "Not enough host_mem for xclbin");
-    }
-    else if (ret == -ETIMEDOUT) {
-      xrt_logmsg(XRT_ERROR,
-                 "Can't reach out to mgmt for xclbin downloading");
-      xrt_logmsg(XRT_ERROR,
-                 "Is xclmgmt driver loaded? Or is MSD/MPD running?");
-    }
-    else if (ret == -EDEADLK) {
-      xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
-      xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
-    }
-  }
-
-  // Update the profiling library with the information on this new xclbin
-  // configuration on this device as appropriate (when profiling is enabled).
-  xdp::update_device(this);
-
-  // Setup the user-accessible HAL API profiling interface so user host
-  // code can call functions to directly read counter values on profiling IP
-  // (if enabled in the xrt.ini).
-  START_DEVICE_PROFILING_CB(this);
-
-  return 0;
+    return ksize;
 }
 
 /*
