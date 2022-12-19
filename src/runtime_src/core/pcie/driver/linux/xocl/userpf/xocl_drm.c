@@ -634,7 +634,7 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 	 * Phase 1 is done based on platform and Phase 2 is done 
 	 * based on XCLBIN. We have done phase 1 here.
 	 */
-        drm_p->xocl_mm_done = false;
+        drm_p->xocl_drm_mm_done = true;
 
 	return drm_p;
 
@@ -655,8 +655,8 @@ void xocl_drm_fini(struct xocl_drm *drm_p)
 
 	xocl_drvinst_release(drm_p, &hdl);
 
-	mutex_lock(&drm_p->mm_lock);
 	xocl_cleanup_mem_all(drm_p);
+	mutex_lock(&drm_p->mm_lock);
 	xocl_cleanup_memory_manager(drm_p);
 	mutex_unlock(&drm_p->mm_lock);
 	
@@ -1095,6 +1095,17 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	if (err) {
 		mutex_unlock(&drm_p->mm_lock);
 		return err;
+	}
+
+	if (!topo) {
+		mutex_unlock(&drm_p->mm_lock);
+		/* Before return check if drm memory manager is initialized already. 
+		 * This is done from platform metadata.
+		 */
+		if (drm_p->xocl_drm_mm_done)
+			return 0;
+		else
+			return -EINVAL;
 	}
 
 	/* Initialize with max and min possible value */
