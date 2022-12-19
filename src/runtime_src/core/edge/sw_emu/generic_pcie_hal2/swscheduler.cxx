@@ -8,25 +8,25 @@
 //#define EM_DEBUG_KDS
 #define PRINTSTARTFUNC
 //#define PRINTSTARTFUNC std::cout <<"swscheduler: " <<__func__ << " begin " << std::endl;
-namespace xclcpuemhal2 {
+namespace xclswemuhal2 {
 
   xocl_cmd::xocl_cmd()
   {
-    bo = NULL;
-    exec = NULL;
+    bo = nullptr;
+    exec = nullptr;
     cu_idx = 0;
     slot_idx = 0;
-    packet = NULL;
+    packet = nullptr;
     state = ERT_CMD_STATE_NEW;
   }
 
   xocl_cmd::~xocl_cmd()
   {
-    bo = NULL;
-    exec = NULL;
+    bo = nullptr;
+    exec = nullptr;
     cu_idx = 0;
     slot_idx = 0;
-    packet = NULL;
+    packet = nullptr;
   }
 
   xocl_sched::xocl_sched (SWScheduler* _sch)
@@ -37,8 +37,8 @@ namespace xclcpuemhal2 {
     poll = 0;
     stop = false;
     pSch = _sch ;
-    //pthread_mutex_init(&state_lock,NULL);
-    //pthread_cond_init(&state_cond,NULL);
+    //pthread_mutex_init(&state_lock,nullptr);
+    //pthread_cond_init(&state_cond,nullptr);
     //scheduler_thread = 0;
   }
 
@@ -49,9 +49,9 @@ namespace xclcpuemhal2 {
     intc = 0;
     poll = 0;
     stop = false;
-    pSch = NULL ;
-    //pthread_mutex_init(&state_lock,NULL);
-    //pthread_cond_init(&state_cond,NULL);
+    pSch = nullptr ;
+    //pthread_mutex_init(&state_lock,nullptr);
+    //pthread_cond_init(&state_cond,nullptr);
   }
 
   exec_core::exec_core()
@@ -60,7 +60,7 @@ namespace xclcpuemhal2 {
     intr_base = 0;
     intr_num = 0;
 
-    scheduler = NULL;
+    scheduler = nullptr;
 
     num_slots = 0;
     num_cus = 0;
@@ -76,7 +76,7 @@ namespace xclcpuemhal2 {
       slot_status[i] = 0;
 
     for(unsigned i=0; i <MAX_SLOTS; ++i)
-      submitted_cmds[i] = NULL;
+      submitted_cmds[i] = nullptr;
 
     for (unsigned int i=0; i<MAX_CUS; ++i)
     {
@@ -134,11 +134,11 @@ namespace xclcpuemhal2 {
       return;
 
     // acknowledge done directly to CU (xcu->addr)
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)&CpuemShim::CONTROL_AP_CONTINUE, 4);
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)&SwEmuShim::CONTROL_AP_CONTINUE,4);
 
     // in ert_poll mode acknowlegde done to ERT
     if (xcu->polladdr && xcu->run_cnt) {
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->polladdr, (void*)&CpuemShim::CONTROL_AP_CONTINUE, 4);
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->polladdr, (void*)&SwEmuShim::CONTROL_AP_CONTINUE,4);
     }
   }
 
@@ -146,7 +146,7 @@ namespace xclcpuemhal2 {
   {
     PRINTSTARTFUNC
     mParent->xclRead(XCL_ADDR_KERNEL_CTRL,xcu->base + xcu->addr,(void*)&(xcu->ctrlreg),4);
-    if (xcu->run_cnt && (xcu->ctrlreg & (CpuemShim::CONTROL_AP_DONE | CpuemShim::CONTROL_AP_IDLE)))
+    if (xcu->run_cnt && (xcu->ctrlreg & (SwEmuShim::CONTROL_AP_DONE | SwEmuShim::CONTROL_AP_IDLE)))
     {
       ++xcu->done_cnt;
       --xcu->run_cnt;
@@ -157,10 +157,10 @@ namespace xclcpuemhal2 {
   bool SWScheduler::cu_ready(struct xocl_cu *xcu)
   {
     PRINTSTARTFUNC
-    if ((xcu->ctrlreg & CpuemShim::CONTROL_AP_START) || (!xcu->dataflow && xcu->run_cnt))
+    if ((xcu->ctrlreg & SwEmuShim::CONTROL_AP_START) || (!xcu->dataflow && xcu->run_cnt))
       cu_poll(xcu);
 
-    bool bReady = xcu->dataflow ? !(xcu->ctrlreg & CpuemShim::CONTROL_AP_START) : xcu->run_cnt == 0;
+    bool bReady = xcu->dataflow ? !(xcu->ctrlreg & SwEmuShim::CONTROL_AP_START) : xcu->run_cnt == 0;
     return bReady;
   }
 
@@ -218,13 +218,13 @@ namespace xclcpuemhal2 {
     unsigned int size = regmap_size(xcmd);
     uint32_t *regmap = cmd_regmap(xcmd);
 
-    xcu->ctrlreg |= CpuemShim::CONTROL_AP_START;
-    const_cast<uint32_t*>(regmap)[0] = CpuemShim::CONTROL_AP_START;
-    //mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr,(void*)& CpuemShim::CONTROL_AP_START, 4);
+    xcu->ctrlreg |= SwEmuShim::CONTROL_AP_START;
+    const_cast<uint32_t*>(regmap)[0] = SwEmuShim::CONTROL_AP_START;
+    //mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr,(void*)& SwEmuShim::CONTROL_AP_START, 4);
     mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->addr, (void*)(regmap), size*4);
     // in ert poll mode request ERT to poll CU
     if (xcu->polladdr) {
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->polladdr, (void*)& CpuemShim::CONTROL_AP_START, 4);
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcu->base + xcu->polladdr, (void*)& SwEmuShim::CONTROL_AP_START, 4);
     }
 
     ++xcu->run_cnt;
@@ -239,7 +239,7 @@ namespace xclcpuemhal2 {
     if (!xcu->done_cnt && xcu->run_cnt)
       cu_poll(xcu);
 
-    return xcu->done_cnt ? (xcu->running_queue).front() : NULL;
+    return xcu->done_cnt ? (xcu->running_queue).front() : nullptr;
   }
 
   void SWScheduler::cu_pop_done(struct xocl_cu *xcu)
@@ -305,7 +305,7 @@ namespace xclcpuemhal2 {
   }
 
 
-  SWScheduler::SWScheduler(CpuemShim* _parent)
+  SWScheduler::SWScheduler(SwEmuShim* _parent)
   {
     PRINTSTARTFUNC
     mParent = _parent;
@@ -317,7 +317,7 @@ namespace xclcpuemhal2 {
   {
     PRINTSTARTFUNC
     delete mScheduler;
-    mScheduler = NULL;
+    mScheduler = nullptr;
     num_pending = 0;
   }
 
@@ -441,7 +441,7 @@ namespace xclcpuemhal2 {
         if(cu_start(xcu,xcmd))
         {
           xcmd->slot_idx = l_slot_idx;
-          exec->submitted_cmds[xcmd->slot_idx] = NULL;
+          exec->submitted_cmds[xcmd->slot_idx] = nullptr;
           //exec_release_slot(exec, xcmd);
           xcmd->cu_idx = cuidx;
           ++xcmd->exec->cu_usage[xcmd->cu_idx];
@@ -556,11 +556,11 @@ namespace xclcpuemhal2 {
     slot_addr = ERT_CQ_BASE_ADDR + xcmd->slot_idx*slot_size(xcmd->exec);
 
     /* TODO write packet minus header */
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data, (packet_size(xcmd)-1)*sizeof(uint32_t));
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr + 4, xcmd->packet->data,(packet_size(xcmd)-1)*sizeof(uint32_t));
     //memcpy_toio(xcmd->exec->base + slot_addr + 4,xcmd->packet->data,(packet_size(xcmd)-1)*sizeof(uint32_t));
 
     /* TODO write header */
-    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr, (void*)(&xcmd->packet->header), 4);
+    mParent->xclWrite(XCL_ADDR_KERNEL_CTRL, xcmd->exec->base + slot_addr, (void*)(&xcmd->packet->header) ,4);
     //iowrite32(xcmd->packet->header,xcmd->exec->base + slot_addr);
 
     /* trigger interrupt to embedded scheduler if feature is enabled */
@@ -568,7 +568,7 @@ namespace xclcpuemhal2 {
       uint32_t cq_int_addr = ERT_CQ_STATUS_REGISTER_ADDR + (slot_mask_idx(xcmd->slot_idx)<<2);
       uint32_t mask = 1<<slot_idx_in_mask(xcmd->slot_idx);
       //TODO
-      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcmd->exec->base + cq_int_addr, (void*)(&mask), 4);
+      mParent->xclWrite(XCL_ADDR_KERNEL_CTRL,xcmd->exec->base + cq_int_addr, (void*)(&mask) ,4);
         //iowrite32(mask,xcmd->exec->base + cq_int_addr);
     }
 #ifdef EM_DEBUG_KDS
@@ -747,7 +747,7 @@ namespace xclcpuemhal2 {
   void SWScheduler::mark_cmd_complete(xocl_cmd *xcmd)
   {
     PRINTSTARTFUNC
-    xcmd->exec->submitted_cmds[xcmd->slot_idx] = NULL;
+    xcmd->exec->submitted_cmds[xcmd->slot_idx] = nullptr;
     set_cmd_state(xcmd,ERT_CMD_STATE_COMPLETED);
     if (xcmd->exec->polling_mode)
       mScheduler->poll--;
@@ -1055,7 +1055,7 @@ namespace xclcpuemhal2 {
       scheduler_loop(xs);
       usleep(10);
     }
-    return NULL;
+    return nullptr;
   }
 
   int SWScheduler::init_scheduler_thread(void)
@@ -1068,7 +1068,7 @@ namespace xclcpuemhal2 {
     std::cout<<"SWScheduler Thread started "<< std::endl;
 #endif
 
-    //int returnStatus  =  pthread_create(&(mScheduler->scheduler_thread) , NULL, scheduler, (void *)mScheduler);
+    //int returnStatus  =  pthread_create(&(mScheduler->scheduler_thread) , nullptr, scheduler, (void *)mScheduler);
     int returnStatus = 0;
     mScheduler->scheduler_thread = std::thread(scheduler, (void *)mScheduler);
    
@@ -1096,12 +1096,9 @@ namespace xclcpuemhal2 {
     scheduler_wait_condition();
     mScheduler->bThreadCreated = false;
     
-    //int retval = pthread_join(mScheduler->scheduler_thread,NULL);
+    //int retval = pthread_join(mScheduler->scheduler_thread,nullptr);
     int retval = 0;
-    
-    if (mScheduler->scheduler_thread.joinable())
-      mScheduler->scheduler_thread.join();
-   
+    mScheduler->scheduler_thread.join();
     pending_cmds.clear();
     mScheduler->command_queue.clear();
     free_cmds.clear();
