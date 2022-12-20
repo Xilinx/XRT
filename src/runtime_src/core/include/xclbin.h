@@ -329,16 +329,16 @@ extern "C" {
         FAST_ADAPTER = 5
     };
 
-    // m_functional
-    enum FUNCTIONAL {
-        FC_DPU = 0,
-        FC_PREPOST = 1
+    // m_subtype
+    enum PS_SUBTYPE {
+        ST_PS = 0,
+        ST_DPU = 1,
     };
 
-    // m_subtype
-    enum SUBTYPE {
-        ST_PS = 0,
-        ST_DPU = 1
+    // m_functional
+    enum PS_FUNCTIONAL {
+        FC_DPU = 0,
+        FC_PREPOST = 1,
     };
 
     #define IP_CONTROL_MASK  0xFF00
@@ -357,12 +357,10 @@ extern "C" {
        
             // PS Kernels
             // m_type: IP_PS_KERNEL
-            //         m_subtype: 0 - PS, 1 - DPU
-            //         m_functional: 0 - DPU, 1 - PrePpost
             struct {
-               uint16_t m_subtype : 2;        // Bits - 0x0003
+               uint16_t m_subtype : 2;        // Bits - 0x0003 - PS_SUBTYPE enum values
                uint16_t : 2;                  // Bits - 0x000C - Future use
-               uint16_t m_functional : 2;     // Bits - 0x0030
+               uint16_t m_functional : 2;     // Bits - 0x0030 - PS_FUNCTIONAL enum values
                uint16_t : 10;                 // Bits - 0xFFC0 - Future use
                uint16_t m_kernel_id : 12;     // Bits - 0x0FFF
                uint16_t : 4;                  // Bits - 0xF000 - Future use

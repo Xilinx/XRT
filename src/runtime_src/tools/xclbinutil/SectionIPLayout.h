@@ -32,12 +32,12 @@ class SectionIPLayout : public Section {
  protected:
   const std::string getIPTypeStr(IP_TYPE _ipType) const;
   const std::string getIPControlTypeStr(IP_CONTROL _ipControlType) const;
-  const std::string getFunctionalStr(FUNCTIONAL _eFunctional) const;
-  const std::string getSubTypeStr(SUBTYPE _eSubType) const;
+  const std::string getFunctionalStr(PS_FUNCTIONAL eFunctional) const;
+  const std::string getSubTypeStr(PS_SUBTYPE eSubType) const;
   IP_TYPE getIPType(std::string& _sIPType) const;
   IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
-  FUNCTIONAL getFunctional(std::string& _sFunctional) const;
-  SUBTYPE getSubType(std::string& _sSubType) const;
+  PS_FUNCTIONAL getFunctional(std::string& sFunctional) const;
+  PS_SUBTYPE getSubType(std::string& sSubType) const;
 
  private:
   // Static initializer helper class

@@ -119,51 +119,53 @@ SectionIPLayout::getIPControlType(std::string& _sIPControlType) const
   throw std::runtime_error(errMsg);
 }
 
-// ip_layout -> ip_data -> ps_Kernel -> m_functional (xclbin.h)
 const std::string
-SectionIPLayout::getFunctionalStr(FUNCTIONAL _eFunctional) const
+SectionIPLayout::getFunctionalStr(PS_FUNCTIONAL eFunctional) const
 {
-  switch (_eFunctional) {
+  switch (eFunctional) {
     case FC_DPU:
       return "DPU";
     case FC_PREPOST:
-      return "PrePopst";
+      return "PrePost";
   }
 
-  return (boost::format("UNKNOWN (%d)") % (unsigned int)_eFunctional).str();
+  // return (boost::format("UNKNOWN (%d)") % (unsigned int)eFunctional).str();
+  return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eFunctional)).str();
 }
 
-FUNCTIONAL
-SectionIPLayout::getFunctional(std::string& _sFunctional) const
+PS_FUNCTIONAL
+SectionIPLayout::getFunctional(std::string& sFunctional) const
 {
-  if (_sFunctional == "DPU") return FC_DPU;
-  if (_sFunctional == "PrePost") return FC_PREPOST;
+  if (sFunctional == "DPU") 
+    return FC_DPU;
+  if (sFunctional == "PrePost") 
+    return FC_PREPOST;
 
-  std::string errMsg = "ERROR: Unknown Functinoal: '" + _sFunctional + "'";
+  std::string errMsg = "ERROR: Unknown Functinoal: '" + sFunctional + "'";
   throw std::runtime_error(errMsg);
 }
 
-// ip_layout -> ip_data -> ps_kernel -> m_subtype (xclbin.h)
 const std::string
-SectionIPLayout::getSubTypeStr(SUBTYPE _eSubType) const
+SectionIPLayout::getSubTypeStr(PS_SUBTYPE eSubType) const
 {
-  switch (_eSubType) {
+  switch (eSubType) {
     case ST_PS:
       return "PS";
     case ST_DPU:
       return "DPU";
   }
 
-  return (boost::format("UNKNOWN (%d)") % (unsigned int)_eSubType).str();
+  // return (boost::format("UNKNOWN (%d)") % (unsigned int)eSubType).str();
+  return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eSubType)).str();
 }
 
-SUBTYPE
-SectionIPLayout::getSubType(std::string& _sSubType) const
+PS_SUBTYPE
+SectionIPLayout::getSubType(std::string& sSubType) const
 {
-  if (_sSubType == "PS") return ST_PS;
-  if (_sSubType == "DPU") return ST_DPU;
+  if (sSubType == "PS") return ST_PS;
+  if (sSubType == "DPU") return ST_DPU;
 
-  std::string errMsg = "ERROR: Unknown SubType: '" + _sSubType + "'";
+  std::string errMsg = "ERROR: Unknown SubType: '" + sSubType + "'";
   throw std::runtime_error(errMsg);
 }
 
@@ -239,12 +241,12 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
       // IP_PS_KERNEL
       // if m_subtype is ST_DPU (i.e. fixed ps kernel), display "m_subtype", "m_functional" and "m_kernel_id"
       // else (non-fixed ps kernel), display "properties"
-      if ((SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype == ST_DPU) { 
+      if ((PS_SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype == ST_DPU) { 
       XUtil::TRACE(boost::format("[%d]: m_type: %s, m_subtype: %s, m_functional: %s, m_kernel_id: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
                    % index
                    % getIPTypeStr((IP_TYPE)pHdr->m_ip_data[index].m_type)
-                   % getSubTypeStr((SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype)
-                   % getFunctionalStr((FUNCTIONAL)pHdr->m_ip_data[index].ps_kernel.m_functional)
+                   % getSubTypeStr((PS_SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype)
+                   % getFunctionalStr((PS_FUNCTIONAL)pHdr->m_ip_data[index].ps_kernel.m_functional)
                    % (unsigned int)pHdr->m_ip_data[index].ps_kernel.m_kernel_id
                    % pHdr->m_ip_data[index].m_base_address
                    % pHdr->m_ip_data[index].m_name);
@@ -284,9 +286,9 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
       {
         // if m_subtype is ST_DPU (i.e. fixed ps kernel), display "m_subtype", "m_functional" and "m_kernel_id"
         // else (non-fixed ps kernel), display "properties"
-        if ((SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype == ST_DPU) { 
-          ptIPEntry.put("m_subtype", getSubTypeStr((SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype));
-          ptIPEntry.put("m_functional", getFunctionalStr((FUNCTIONAL)pHdr->m_ip_data[index].ps_kernel.m_functional));
+        if ((PS_SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype == ST_DPU) { 
+          ptIPEntry.put("m_subtype", getSubTypeStr((PS_SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype));
+          ptIPEntry.put("m_functional", getFunctionalStr((PS_FUNCTIONAL)pHdr->m_ip_data[index].ps_kernel.m_functional));
           ptIPEntry.put("m_kernel_id", (boost::format("0x%x") % (unsigned int)pHdr->m_ip_data[index].ps_kernel.m_kernel_id).str());
         } else {
           ptIPEntry.put("properties", (boost::format("0x%x") % pHdr->m_ip_data[index].properties).str());
@@ -318,7 +320,6 @@ void
 SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
                                  std::ostringstream& _buf) const
 {
-  XUtil::TRACE_PrintTree("_ptSection", _ptSection);
   const boost::property_tree::ptree& ptIPLayout = _ptSection.get_child("ip_layout");
 
   // Initialize the memory to zero's
@@ -362,25 +363,35 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
       }
       case IP_PS_KERNEL:
       {
-        { // m_subtype
-          auto sSubType = ptIPData.get<std::string>("m_subtype", "");
-          if (!sSubType.empty()) {
-            ipDataHdr.ps_kernel.m_subtype = (unsigned int)getSubType(sSubType);
+        // m_subtype
+        auto sSubType = ptIPData.get<std::string>("m_subtype", "");
+        if (!sSubType.empty()) {
+          // subtype and functinoal can either be string (e.g. "DPU") or numeric (e.g. "1")
+          if (isdigit(sSubType[0])) {
+            // convert sSubType from numeric to enum
+            ipDataHdr.ps_kernel.m_subtype = std::stoul(sSubType);
+          } else {
+            // convert sSubType from string to enum
+            ipDataHdr.ps_kernel.m_subtype = static_cast<unsigned int>(getSubType(sSubType));
           }
         }
   
-        { // m_functinoal
-          auto sFunctional = ptIPData.get<std::string>("m_functional", "");
-          if (!sFunctional.empty()) {
-            ipDataHdr.ps_kernel.m_functional = (unsigned int)getFunctional(sFunctional);
+        // m_functinoal
+        auto sFunctional = ptIPData.get<std::string>("m_functional", "");
+        if (!sFunctional.empty()) {
+          if (isdigit(sFunctional[0])) {
+            // convert sFunctional from numeric to enum
+            ipDataHdr.ps_kernel.m_functional = std::stoul(sFunctional);
+          } else {
+            // convert sFunctional from string to enum
+            ipDataHdr.ps_kernel.m_functional = static_cast<unsigned int>(getFunctional(sFunctional));
           }
         }
   
-        { // m_kernel_id
-          auto sKernelId = ptIPData.get<std::string>("m_kernel_id", "");
-          if (!sKernelId.empty()) {
-            ipDataHdr.ps_kernel.m_kernel_id = XUtil::stringToUInt64(sKernelId);
-          }
+        // m_kernel_id
+        auto sKernelId = ptIPData.get<std::string>("m_kernel_id", "");
+        if (!sKernelId.empty()) {
+          ipDataHdr.ps_kernel.m_kernel_id = XUtil::stringToUInt64(sKernelId);
         }
         break;
       }
@@ -388,7 +399,8 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
       {
         // Get the properties value (if one is defined)
         auto sProperties = ptIPData.get<std::string>("properties", "0");
-        ipDataHdr.properties = (uint32_t)XUtil::stringToUInt64(sProperties);
+        // ipDataHdr.properties = (uint32_t)XUtil::stringToUInt64(sProperties);
+        ipDataHdr.properties = static_cast<uint32_t>(XUtil::stringToUInt64(sProperties));
   
         // IP_KERNEL
         { // m_int_enable
@@ -458,7 +470,6 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     // We already know that there is enough room for this string
     memcpy(ipDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
-    // TODO: change if to swtich
     if ((ipDataHdr.m_type == IP_MEM_DDR4) ||
         (ipDataHdr.m_type == IP_MEM_HBM) ||
         (ipDataHdr.m_type == IP_MEM_HBM_ECC)) {
@@ -480,7 +491,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
       // IP_PS_KERNEL
       // if m_subtype is ST_DPU (i.e. fixed ps kernel), display "m_subtype", "m_functional" and "m_kernel_id"
       // else (non-fixed ps kernel), display "properties"
-      if ((SUBTYPE)ipDataHdr.ps_kernel.m_subtype == ST_DPU) { 
+      if ((PS_SUBTYPE)ipDataHdr.ps_kernel.m_subtype == ST_DPU) { 
         XUtil::TRACE(boost::format("[%d]: m_type: %d, m_subtype: %d, m_functional: %d, m_kernel_id: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
                    % count
                    % (unsigned int)ipDataHdr.m_type

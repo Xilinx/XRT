@@ -126,8 +126,30 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
 
   // -- Extended-data
   // Blindly add it.  In the future add a JSON schema to validate it
-  const boost::property_tree::ptree& ptExtendedData = ptKernel.get_child("extended-data", ptEmpty);
+  boost::property_tree::ptree ptExtendedData = ptKernel.get_child("extended-data", ptEmpty);
   if (!ptExtendedData.empty()) {
+    // the extended-data in dpu json has "subtype" and "functional" attributes
+    // these two attributes can either have string or numeric value
+    // but xml only taks numeric value
+    // for now, hard-code the conversion
+    auto sFunctional = ptExtendedData.get<std::string>("functional", "");
+    if (sFunctional == "DPU") 
+      sFunctional = "0";
+    else if (sFunctional == "PrePost") 
+      sFunctional = "1";
+    else 
+      ;   // no conversion to sFunctional
+    ptExtendedData.put("functional", sFunctional);
+
+    auto sSubType = ptExtendedData.get<std::string>("subtype", "");
+    if (sSubType == "PS") 
+      sSubType = "0";
+    else if (sSubType == "DPU") 
+      sSubType = "1";
+    else 
+      ;   // no conversion to sSubtype
+    ptExtendedData.put("subtype", sSubType);
+ 
     boost::property_tree::ptree ptEntry;
     ptEntry.add_child("<xmlattr>", ptExtendedData);
     ptKernelXML.add_child("extended-data", ptEntry);
@@ -349,7 +371,6 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
                            boost::property_tree::ptree& ptConnectivityRoot)
 {
   XUtil::TRACE_PrintTree("IP_LAYOUT ROOT", ptIPLayoutRoot);
-  // XUtil::TRACE_PrintTree("ptKernel", ptKernel);
 
   const boost::property_tree::ptree ptEmpty;
   const auto& kernelName = ptKernel.get<std::string>("name", "");
@@ -403,6 +424,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
         auto subType = ptExtendedData.get<std::string>("subtype", NOT_DEFINED);
         auto functional = ptExtendedData.get<std::string>("functional", NOT_DEFINED);
         auto dpuKernelId = ptExtendedData.get<std::string>("dpu_kernel_id", NOT_DEFINED);
+        // subType and functinoal can either be string or numeric value
         ptIPEntry.put("m_subtype", subType);
         ptIPEntry.put("m_functional", functional);
         ptIPEntry.put("m_kernel_id", dpuKernelId);
