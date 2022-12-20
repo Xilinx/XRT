@@ -395,7 +395,6 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     //   "subtype": "1"
     //   "dpu_kernel_id": "0x101"
     // }   
-    // const boost::property_tree::ptree& ptExtendedData = ptKernel.get_child("extended-data");
     boost::optional< const boost::property_tree::ptree& > boExtendedData = ptKernel.get_child_optional("extended-data");
     if (boExtendedData) {
       const boost::property_tree::ptree& ptExtendedData = boExtendedData.get();
