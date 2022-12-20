@@ -54,7 +54,7 @@ void
 close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
 
 // create_hw_context() -
-xcl_hwctx_handle // ctxhdl aka slotidx
+xrt_hwctx_handle // ctxhdl aka slotidx
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
@@ -62,7 +62,7 @@ create_hw_context(xclDeviceHandle handle,
 
 // dsstroy_hw_context() -
 void
-destroy_hw_context(xclDeviceHandle handle, xcl_hwctx_handle ctxhdl);
+destroy_hw_context(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl);
 
 // create_hw_queue() -
 xcl_hwqueue_handle
@@ -86,7 +86,7 @@ wait_command(xclDeviceHandle handle, xcl_hwqueue_handle qhdl, xclBufferHandle cm
 
 // exec_buf() - Exec Buf with hw ctx handle.
 void
-exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xcl_hwctx_handle ctxhdl);
+exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xrt_hwctx_handle ctxhdl);
 }} // shim_int, xrt
 
 #endif

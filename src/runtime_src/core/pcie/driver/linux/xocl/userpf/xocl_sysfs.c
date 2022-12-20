@@ -267,6 +267,50 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(kds_stat);
 
 static ssize_t
+kds_cuctx_stat_raw_show(struct file *filp, struct kobject *kobj,
+        struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
+	ssize_t ret = 0;
+
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_cuctx_stat_raw(&XDEV(xdev)->kds, buffer, count, offset, DOMAIN_PL);
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
+}
+static struct bin_attribute kds_cuctx_stat_raw_attr = {
+	.attr = {
+		.name = "kds_cuctx_stat_raw",
+		.mode = 0444
+	},
+	.read = kds_cuctx_stat_raw_show,
+	.write = NULL,
+	.size = 0
+};
+
+static ssize_t
+kds_scuctx_stat_raw_show(struct file *filp, struct kobject *kobj,
+        struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
+	ssize_t ret = 0;
+
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_cuctx_stat_raw(&XDEV(xdev)->kds, buffer, count, offset, DOMAIN_PS);
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
+}
+static struct bin_attribute kds_scuctx_stat_raw_attr = {
+	.attr = {
+		.name = "kds_scuctx_stat_raw",
+		.mode = 0444
+	},
+	.read = kds_scuctx_stat_raw_show,
+	.write = NULL,
+	.size = 0
+};
+
+static ssize_t
 kds_custat_raw_show(struct file *filp, struct kobject *kobj,
 	struct bin_attribute *attr, char *buffer, loff_t offset, size_t count)
 {
@@ -940,6 +984,8 @@ static struct bin_attribute  *xocl_bin_attrs[] = {
 	&fdt_blob_attr,
 	&kds_custat_raw_attr,
 	&kds_scustat_raw_attr,
+	&kds_cuctx_stat_raw_attr,
+	&kds_scuctx_stat_raw_attr,
 	NULL,
 };
 

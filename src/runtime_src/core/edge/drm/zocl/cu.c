@@ -323,7 +323,6 @@ static int configure_irq(struct xrt_cu *xcu, bool enable)
 {
 	struct zocl_cu *zcu = (struct zocl_cu *)xcu;
 	struct platform_device *intc;
-	unsigned long flags;
 
 	intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
 	if (!intc) {

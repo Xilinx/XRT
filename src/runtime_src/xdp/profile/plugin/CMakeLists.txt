@@ -2,6 +2,13 @@
 # Copyright (C) 2022 Advanced Micro Devices, Inc.  All rights reserved.
 #
 
+if (XDP_MINIMAL_BUILD STREQUAL "yes")
+
+  add_subdirectory(native)
+  add_subdirectory(user)
+
+else()
+
 # =========================================================
 # The plugins to be built on both Linux and Windows
 # =========================================================
@@ -34,4 +41,7 @@ else()
 # The plugins to be built on Windows only (currently empty)
 # =========================================================
 
+endif()
+
+# Matches XDP_MINIMAL_BUILD
 endif()

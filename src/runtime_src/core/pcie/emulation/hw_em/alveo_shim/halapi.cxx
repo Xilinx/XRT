@@ -45,7 +45,7 @@ close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core:
   return shim->close_cu_context(hwctx, cuidx);
 }
 
-uint32_t // ctxhdl aka slotidx
+xrt_hwctx_handle
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
@@ -56,7 +56,7 @@ create_hw_context(xclDeviceHandle handle,
 }
 
 void
-destroy_hw_context(xclDeviceHandle handle, uint32_t ctxhdl)
+destroy_hw_context(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl)
 {
   auto shim = get_shim_object(handle);
   shim->destroy_hw_context(ctxhdl);

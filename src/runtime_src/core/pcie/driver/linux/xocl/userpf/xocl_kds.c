@@ -185,8 +185,10 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
 	xuid_t *uuid;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-	struct kds_client_cu_info cu_info = { 0 };
+	struct kds_client_cu_info cu_info = {};
+	bool bitstream_locked = false;
 	int ret;
 
 	mutex_lock(&client->lock);
@@ -200,46 +202,82 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		}
 
 		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id);
-		if (ret)
+		if (ret) {
 			goto out;
+		}
 
+		bitstream_locked = true;
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
-			goto out1;
+			goto out;
 		}
+
 		uuid_copy(uuid, &args->xclbin_id);
 		client->ctx->xclbin_id = uuid;
 		/* Multiple CU context can be active. Initializing CU context list */
 		INIT_LIST_HEAD(&client->ctx->cu_ctx_list);
-
-		list_add_tail(&client->ctx->link, &client->ctx_list);
+		
+		/* This is required to maintain the command stats per hw context. 
+		 * For legacy context case assume there is only one hw context present
+		 * of id 0.
+		 */
+		client->next_hw_ctx_id = 0;
+		hw_ctx = kds_alloc_hw_ctx(client, uuid, 0 /*slot id */);
+		if (!hw_ctx) {
+			ret = -EINVAL;
+			goto out1;
+		}
 	}
 
 	/* Bitstream is locked. No one could load a new one
-	 * until this client close all of the contexts.
+	 * until this HW context is closed.
 	 */
 	xocl_ctx_to_info(args, &cu_info);
 	/* Get a free CU context for the given CU index */
 	cu_ctx = kds_alloc_cu_ctx(client, client->ctx, &cu_info);
 	if (!cu_ctx) {
 		ret = -EINVAL;
-		goto out1;
+		goto out_hw_ctx;
 	}
-	 
+
+	/* For legacy context case there are only one hw context possible i.e. 0 */
+	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+        if (!hw_ctx) {
+                userpf_err(xdev, "No valid HW context is open");
+                ret = -EINVAL;
+                goto out_cu_ctx;
+        }
+
+	cu_ctx->hw_ctx = hw_ctx;
+
 	ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
-	if (ret)
-		kds_free_cu_ctx(client, cu_ctx);
+	if (ret) {
+		goto out_cu_ctx;
+	}
+
+	mutex_unlock(&client->lock);
+	return ret;
+
+out_cu_ctx:
+	kds_free_cu_ctx(client, cu_ctx);
+
+out_hw_ctx:
+	kds_free_hw_ctx(client, cu_ctx->hw_ctx);	
 
 out1:
 	/* If client still has no opened context at this point */
-	if (!client->ctx) {
-		if (client->ctx->xclbin_id)
-			vfree(client->ctx->xclbin_id);
-		client->ctx->xclbin_id = NULL;
+	vfree(client->ctx->xclbin_id);
+	client->ctx->xclbin_id = NULL;
+	/* If we locked the bitstream to this function then we are going
+ 	 * to free it here.
+ 	 */	 
+	if (bitstream_locked)
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
-	}
+
 out:
+	vfree(client->ctx);
+	client->ctx = NULL;
 	mutex_unlock(&client->lock);
 	return ret;
 }
@@ -248,7 +286,7 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
 	struct kds_client_cu_ctx *cu_ctx = NULL;
-	struct kds_client_cu_info cu_info = { 0 };
+	struct kds_client_cu_info cu_info = {};
 	xuid_t *uuid;
 	int ret = 0;
 
@@ -282,6 +320,14 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret)
 		goto out;
 
+	if (cu_ctx->hw_ctx) {
+		ret = kds_free_hw_ctx(client, cu_ctx->hw_ctx);
+		if (ret)
+			goto out;
+
+		cu_ctx->hw_ctx = NULL;
+	}
+
 	ret = kds_free_cu_ctx(client, cu_ctx);
 	if (ret)
 		goto out;
@@ -291,7 +337,6 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 		vfree(client->ctx->xclbin_id);
 		client->ctx->xclbin_id = NULL;
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
-		list_del(&client->ctx->link);
 		vfree(client->ctx);
 		client->ctx = NULL;
 	}
@@ -346,6 +391,226 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 		break;
 	}
 
+	return ret;
+}
+
+int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
+		struct drm_xocl_create_hw_ctx *hw_ctx_args, uint32_t slot_id)
+{
+	struct kds_client *client = filp->driver_priv;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
+	uuid_t *xclbin_id = NULL;
+	int ret = 0;
+
+	if (!client)
+		return -EINVAL;
+
+	ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	if (ret)
+		return ret;
+
+	mutex_lock(&client->lock);
+
+	hw_ctx = kds_alloc_hw_ctx(client, xclbin_id, slot_id);
+	if (!hw_ctx) {
+		ret = -EINVAL;
+		goto error_out;
+	}
+
+	/* Lock the bitstream. Unlock the same in destroy context */
+	ret = xocl_icap_lock_bitstream(xdev, xclbin_id);
+	if (ret) {
+		kds_free_hw_ctx(client, hw_ctx);
+		ret = -EINVAL;
+		goto error_out;
+	}
+
+	hw_ctx_args->hw_context = hw_ctx->hw_ctx_idx;
+
+error_out:
+	mutex_unlock(&client->lock);
+	XOCL_PUT_XCLBIN_ID(xdev);
+	return ret;
+}
+
+int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
+		struct drm_xocl_destroy_hw_ctx *hw_ctx_args)
+{
+        struct kds_client_hw_ctx *hw_ctx = NULL;
+	struct kds_client *client = filp->driver_priv;
+        int ret = 0;
+
+        mutex_lock(&client->lock);
+
+        hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_args->hw_context);
+        if (!hw_ctx) {
+                userpf_err(xdev, "No valid HW context is open");
+                ret = -EINVAL;
+		goto out;
+        }
+
+	/* Unlock the bitstream for this HW context if no reference is there */
+	(void)xocl_icap_unlock_bitstream(xdev, hw_ctx->xclbin_id);
+
+	ret = kds_free_hw_ctx(client, hw_ctx);
+
+out:
+	mutex_unlock(&client->lock);
+
+        return ret;
+}
+
+static int
+xocl_cu_ctx_to_info(struct xocl_dev *xdev, struct drm_xocl_open_cu_ctx *cu_args,
+	struct kds_client_hw_ctx *hw_ctx, struct kds_client_cu_info *cu_info)
+{
+        uint32_t slot_hndl = hw_ctx->slot_idx;
+        struct kds_sched *kds = &XDEV(xdev)->kds;
+        char *kname_p = cu_args->cu_name;
+        struct xrt_cu *xcu = NULL;
+        char iname[CU_NAME_MAX_LEN];
+        char kname[CU_NAME_MAX_LEN];
+        int i = 0;
+
+        strcpy(kname, strsep(&kname_p, ":"));
+        strcpy(iname, strsep(&kname_p, ":"));
+
+        /* Retrieve the CU index from the given slot */
+        for (i = 0; i < MAX_CUS; i++) {
+                xcu = kds->cu_mgmt.xcus[i];
+                if (!xcu)
+                        continue;
+
+                if ((xcu->info.slot_idx == slot_hndl) &&
+                                (!strcmp(xcu->info.kname, kname)) &&
+                                (!strcmp(xcu->info.iname, iname))) {
+                        cu_info->cu_domain = DOMAIN_PL;
+                        cu_info->cu_idx = i;
+                        goto done;
+                }
+        }
+
+        /* Retrieve the SCU index from the given slot */
+        for (i = 0; i < MAX_CUS; i++) {
+                xcu = kds->scu_mgmt.xcus[i];
+                if (!xcu)
+                        continue;
+
+                if ((xcu->info.slot_idx == slot_hndl) &&
+                                (!strcmp(xcu->info.kname, kname)) &&
+                                (!strcmp(xcu->info.iname, iname))) {
+                        cu_info->cu_domain = DOMAIN_PS;
+                        cu_info->cu_idx = i;
+                        goto done;
+                }
+        }
+
+        return -EINVAL;
+
+done:
+	cu_info->ctx = (void *)hw_ctx;
+        if (cu_args->flags == XOCL_CTX_EXCLUSIVE)
+                cu_info->flags = CU_CTX_EXCLUSIVE;
+        else
+                cu_info->flags = CU_CTX_SHARED;
+
+        return 0;
+}
+
+static inline void
+xocl_close_cu_ctx_to_info(struct drm_xocl_close_cu_ctx *args,
+		   struct kds_client_cu_info *cu_info)
+{
+	/* Extract the CU information */
+	cu_info->cu_domain = get_domain(args->cu_index);
+        cu_info->cu_idx = get_domain_idx(args->cu_index);
+}
+
+int xocl_open_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
+		struct drm_xocl_open_cu_ctx *drm_cu_args)
+{
+	struct kds_client *client = filp->driver_priv;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_cu_info cu_info = {};
+	int ret = 0;
+
+        mutex_lock(&client->lock);
+
+        hw_ctx = kds_get_hw_ctx_by_id(client, drm_cu_args->hw_context);
+        if (!hw_ctx) {
+                userpf_err(xdev, "No valid HW context is open");
+                ret = -EINVAL;
+		goto out;
+        }
+
+	/* Bitstream is locked. No one could load a new one
+	 * until this HW context is closed.
+	 */
+	ret = xocl_cu_ctx_to_info(xdev, drm_cu_args, hw_ctx, &cu_info);
+	if (ret) {
+		userpf_err(xdev, "No valid CU ctx found for this HW context");
+		goto out;
+	}
+
+	/* Allocate a free CU context for the given CU index */
+	cu_ctx = kds_alloc_cu_hw_ctx(client, hw_ctx, &cu_info);
+	if (!cu_ctx) {
+		userpf_err(xdev, "Allocation of CU context failed");
+                ret = -EINVAL;
+		goto out;
+	}
+
+        ret = kds_add_context(&XDEV(xdev)->kds, client, cu_ctx);
+        if (ret) {
+                kds_free_cu_ctx(client, cu_ctx);
+		goto out;
+	}
+
+	// Return the encoded cu index along with cu domain
+	drm_cu_args->cu_index = set_domain(cu_ctx->cu_domain,
+					   cu_ctx->cu_idx);
+out:
+	mutex_unlock(&client->lock);
+        return ret;
+}
+
+int xocl_close_cu_context(struct xocl_dev *xdev, struct drm_file *filp,
+		struct drm_xocl_close_cu_ctx *drm_cu_args)
+{
+	struct kds_client *client = filp->driver_priv;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
+	struct kds_client_cu_ctx *cu_ctx = NULL;
+        struct kds_client_cu_info cu_info = {}; 
+        int ret = 0;
+
+        mutex_lock(&client->lock);
+
+        hw_ctx = kds_get_hw_ctx_by_id(client, drm_cu_args->hw_context);
+        if (!hw_ctx) {
+                userpf_err(xdev, "No valid HW context is open");
+                ret = -EINVAL;
+                goto out;
+        }
+
+	xocl_close_cu_ctx_to_info(drm_cu_args, &cu_info);
+	
+	/* Get the corresponding CU Context */ 
+        cu_ctx = kds_get_cu_hw_ctx(client, hw_ctx, &cu_info);
+        if (!cu_ctx) {
+                userpf_err(xdev, "No CU context is open");
+                ret = -EINVAL;
+                goto out;
+        }
+
+        ret = kds_del_context(&XDEV(xdev)->kds, client, cu_ctx);
+        if (ret)
+                goto out;
+
+        ret = kds_free_cu_ctx(client, cu_ctx);
+
+out:
+        mutex_unlock(&client->lock);
 	return ret;
 }
 
@@ -417,6 +682,7 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 {
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
+	uint32_t hw_ctx = xcmd->hw_ctx_id;
 
 	if (xcmd->opcode == OP_START_SK) {
 		/* For PS kernel get cmd state and return_code */
@@ -450,7 +716,7 @@ static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 	kfree(xcmd->execbuf);
 
 	if (xcmd->cu_idx >= 0)
-		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
+		client_stat_inc(client, hw_ctx, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
 		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
@@ -466,6 +732,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 {
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->u_execbuf;
+	uint32_t hw_ctx = xcmd->hw_ctx_id;
 
 	if (xcmd->opcode == OP_GET_STAT)
 		read_ert_stat(xcmd);
@@ -476,7 +743,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 		scmd = (struct ert_start_kernel_cmd *)ecmd;
 		ert_write_return_code(scmd, xcmd->rcode);
 
-		client_stat_inc(client, scu_c_cnt[xcmd->cu_idx]);
+		client_stat_inc(client, hw_ctx, scu_c_cnt[xcmd->cu_idx]);
 	}
 
 	ecmd->state = kds_ert_table[status];
@@ -498,7 +765,7 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, enum kds_status status)
 	kfree(xcmd->execbuf);
 
 	if (xcmd->opcode == OP_START)
-		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
+		client_stat_inc(client, hw_ctx, c_cnt[xcmd->cu_idx]);
 
 	if (xcmd->inkern_cb) {
 		int error = (status == KDS_COMPLETED) ? 0 : -EFAULT;
@@ -680,7 +947,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct kds_command *xcmd;
 	int ret = 0;
 
-	if (!client->ctx->xclbin_id) {
+	if ((!client->ctx) && (list_empty(&client->hw_ctx_list))) {
 		userpf_err(xdev, "The client has no opening context\n");
 		return -EINVAL;
 	}
@@ -743,6 +1010,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	xcmd->u_execbuf = xobj->vmapping;
 	xcmd->gem_obj = obj;
 	xcmd->exec_bo_handle = args->exec_bo_handle;
+	xcmd->hw_ctx_id = args->ctx_id;
 
 	print_ecmd_info(ecmd);
 
@@ -753,7 +1021,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			goto out2;
 		goto out1;
 	}
-	
+
 	xcmd->cb.notify_host = notify_execbuf;
 
 	/* xcmd->type is the only thing determine who to handle this command.
@@ -866,6 +1134,19 @@ out:
 	return ret;
 }
 
+int xocl_hw_ctx_command(struct xocl_dev *xdev, void *data,
+			      struct drm_file *filp)
+{
+	struct drm_xocl_hw_ctx_execbuf *args = data;
+	struct drm_xocl_execbuf legacy_args = {};
+
+	/* Update the legacy structure with the appropiate value */
+	legacy_args.ctx_id = args->hw_ctx_id;
+	legacy_args.exec_bo_handle = args->exec_bo_handle;
+
+	return xocl_command_ioctl(xdev, &legacy_args, filp, false);
+}
+
 int xocl_create_client(struct xocl_dev *xdev, void **priv)
 {
 	struct	kds_client	*client;
@@ -884,7 +1165,12 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv)
 		goto out;
 	}
 
-        /* Initializing context list */
+	/* Initializing hw context list */
+        INIT_LIST_HEAD(&client->hw_ctx_list);
+
+        /* Initializing legacy context lis. Need to remove.
+         * Keeping this as because ZOCL hw context changes are not
+         * in place. This is used by the ZOCL. */
         INIT_LIST_HEAD(&client->ctx_list);
 
 	*priv = client;
@@ -900,13 +1186,28 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 	struct kds_client *client = *priv;
 	struct kds_sched  *kds;
 	int pid = pid_nr(client->pid);
+	struct kds_client_hw_ctx *hw_ctx = NULL;
+	struct kds_client_hw_ctx *next = NULL;
 
 	kds = &XDEV(xdev)->kds;
 	kds_fini_client(kds, client);
+
+	mutex_lock(&client->lock);
+	/* Cleanup the Legacy context here */
 	if (client->ctx && client->ctx->xclbin_id) {
 		(void) xocl_icap_unlock_bitstream(xdev, client->ctx->xclbin_id);
 		vfree(client->ctx->xclbin_id);
 	}
+
+	/* Cleanup the new HW context here */
+        list_for_each_entry_safe(hw_ctx, next, &client->hw_ctx_list, link) {
+		/* Unlock the bitstream for this HW context if no reference is there */
+		(void)xocl_icap_unlock_bitstream(xdev, hw_ctx->xclbin_id);
+		kds_free_hw_ctx(client, hw_ctx);
+	}
+	mutex_unlock(&client->lock);
+
+	mutex_destroy(&client->lock);
 	kfree(client);
 	userpf_info(xdev, "client exits pid(%d)\n", pid);
 }
@@ -2053,7 +2354,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	 */
 	xocl_kds_xgq_identify(xdev, &major, &minor);
 	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
-	if ((major != 1 || major != 2) && minor != 0) {
+	if ((major != 1 && major != 2) && minor != 0) {
 		userpf_err(xdev, "Only support ERT XGQ command 1.0 & 2.0\n");
 		ret = -ENOTSUPP;
 		xocl_ert_ctrl_dump(xdev);	/* TODO: remove this line before 2022.2 release */

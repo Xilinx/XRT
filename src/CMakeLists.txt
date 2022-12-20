@@ -5,6 +5,9 @@ cmake_minimum_required(VERSION 3.5.0)
 project(XRT)
 set(PROJECT_DESCRIPTION "https://github.com/Xilinx/XRT")
 
+# Include utility functions
+include(CMake/utilities.cmake)
+
 # Include supporting CMake functions
 include(CMake/unitTestSupport.cmake)
 
@@ -123,7 +126,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   else()
     include(CMake/nativeLnx.cmake)
   endif()
-  include(CMake/nativeTests.cmake)
+  xrt_include(CMake/nativeTests.cmake)
 else()
   include(CMake/embedded_system.cmake)
 endif()
