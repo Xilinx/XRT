@@ -188,6 +188,33 @@ failed:
 	return ret;
 }
 
+/*
+ * Legacy code will use pci_iomap(_range) instead of pci_iomap_wc(_range)
+ * thus on linux system will not allow future ioremap_wc to be able to enable
+ * better performance.
+ *
+ * Current code is using ioremap within sub-drivers and managing by either
+ * ioremap_nocache or ioremap_wc. Thus, we should not keep the bar mapped
+ * out of the scope of sub-drivers. Aka, mgmt-core should not map bars.
+ *
+ * However, to support legacy code which is already using mapped bar, we can
+ * map the bar, read the value and unmap the bar.
+ */
+uint32_t mgmt_bar_read32(struct xclmgmt_dev *lro, uint32_t bar_off)
+{
+	int rc = 0;
+	uint32_t val = 0;
+
+	rc = map_bars(lro);
+	if (rc)
+		return val;	
+	
+	val = ioread32(lro->core.bar_addr + bar_off);	
+
+	unmap_bars(lro);
+	return val;	
+}
+
 void store_pcie_link_info(struct xclmgmt_dev *lro)
 {
 	u16 stat = 0;
@@ -1464,11 +1491,6 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	xocl_fill_dsa_priv(lro, (struct xocl_board_private *)id->driver_data);
 	dev_info = &lro->core.priv;
 
-	/* map BARs */
-	rc = map_bars(lro);
-	if (rc)
-		goto err_map;
-
 	lro->instance = XOCL_DEV_ID(pdev);
 	rc = create_char(lro);
 	if (rc) {
@@ -1557,8 +1579,6 @@ err_init_sysfs:
 err_create_wq:
 	destroy_sg_char(&lro->user_char_dev);
 err_cdev:
-	unmap_bars(lro);
-err_map:
 	xocl_free_dev_minor(lro);
 err_alloc_minor:
 	xocl_subdev_fini(lro);
@@ -1607,9 +1627,6 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 
 	/* remove user character device */
 	destroy_sg_char(&lro->user_char_dev);
-
-	/* unmap the BARs */
-	unmap_bars(lro);
 
 	pci_disable_device(pdev);
 
