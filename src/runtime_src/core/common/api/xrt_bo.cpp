@@ -194,13 +194,6 @@ private:
     addr = prop.paddr;
     grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
     flags = static_cast<bo::flags>(prop.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
-
-#if defined(_WIN32) && !defined(MCDM)
-    // All shims minus windows return proper flags
-    // Remove when driver returns the flags that were used to ctor the bo
-    auto mem_topo = device->get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
-    grpid = xrt_core::xclbin::address_to_memidx(mem_topo, addr);
-#endif
   }
 
 protected:
