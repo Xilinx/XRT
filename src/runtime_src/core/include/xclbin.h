@@ -329,6 +329,18 @@ extern "C" {
         FAST_ADAPTER = 5
     };
 
+    // m_functional
+    enum FUNCTIONAL {
+        FC_DPU = 0,
+        FC_PREPOST = 1
+    };
+
+    // m_subtype
+    enum SUBTYPE {
+        ST_PS = 0,
+        ST_DPU = 1
+    };
+
     #define IP_CONTROL_MASK  0xFF00
     #define IP_CONTROL_SHIFT 0x8
 
@@ -341,6 +353,21 @@ extern "C" {
                                  //         m_int_enable   : Bit  - 0x0000_0001;
                                  //         m_interrupt_id : Bits - 0x0000_00FE;
                                  //         m_ip_control   : Bits = 0x0000_FF00;
+                                 // proeprties is also used for ps kernel (i.e. -add-pskernel)
+       
+            // PS Kernels
+            // m_type: IP_PS_KERNEL
+            //         m_subtype: 0 - PS, 1 - DPU
+            //         m_functional: 0 - DPU, 1 - PrePpost
+            struct {
+               uint16_t m_subtype : 2;        // Bits - 0x0003
+               uint16_t : 2;                  // Bits - 0x000C - Future use
+               uint16_t m_functional : 2;     // Bits - 0x0030
+               uint16_t : 10;                 // Bits - 0xFFC0 - Future use
+               uint16_t m_kernel_id : 12;     // Bits - 0x0FFF
+               uint16_t : 4;                  // Bits - 0xF000 - Future use
+            } ps_kernel;
+
             struct {             // m_type: IP_MEM_*
                uint16_t m_index;
                uint8_t m_pc_index;

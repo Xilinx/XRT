@@ -1809,6 +1809,7 @@ XclBin::addPsKernel(const std::string& encodedString)
   // Create the same schema that is used for kernels
   boost::property_tree::ptree ptPSKernels;
   XUtil::createPSKernelMetadata(numInstances, ptFunctions, kernelLibrary, ptPSKernels);
+  // XUtil::TRACE_PrintTree("ptPSKernels", ptPSKernels);
 
   // Update the EMBEDDED_METADATA, MEM_TOPOLOGY, IP_LAYOUT, and CONNECTIVITY sections
   const boost::property_tree::ptree ptEmpty;  
@@ -1881,7 +1882,7 @@ XclBin::addKernels(const std::string& jsonFile)
   XUtil::TRACE("Adding fixed kernel");
 
   // -- Read in the Fixed Kernel Metadata
-  XUtil::TRACE("Reading given JSON file: " + jsonFile);
+  XUtil::TRACE("Reading given Fixed Kernel JSON file: " + jsonFile);
   std::fstream ifFixedKernels;
   ifFixedKernels.open(jsonFile, std::ifstream::in | std::ifstream::binary);
   if (!ifFixedKernels.is_open()) {

@@ -96,7 +96,8 @@ def main():
                      "--dump-section", "CONNECTIVITY:JSON:" + outputConnectivity,
                      "--dump-section", "MEM_TOPOLOGY:JSON:" + outputMemTopology,
                      "--output", outputXCLBIN, 
-                     "--force"
+                     "--force",
+                     "--trace"
                      ]
   execCmd(step, cmd)
 
