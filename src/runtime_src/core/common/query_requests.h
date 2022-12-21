@@ -268,6 +268,7 @@ enum class key_type
   hwmon_sdm_oem_id,
   hwmon_sdm_board_name,
   hwmon_sdm_active_msp_ver,
+  hwmon_sdm_target_msp_ver,
   hwmon_sdm_mac_addr0,
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
@@ -2986,6 +2987,15 @@ struct hwmon_sdm_active_msp_ver : request
 {
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_active_msp_ver;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_target_msp_ver : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_target_msp_ver;
 
   virtual boost::any
   get(const device*) const = 0;
