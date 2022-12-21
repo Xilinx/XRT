@@ -7,7 +7,7 @@ Type=forking
 User=softkernel
 ExecStart=/usr/bin/skd
 StandardOutput=journal+console
-MemoryLimit=1G
+MemoryLimit=2G
 
 [Install]
 WantedBy=multi-user.target
