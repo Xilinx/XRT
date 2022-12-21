@@ -39,6 +39,7 @@ class AieTraceMetadata{
     bool useUserControl = false;
     bool useGraphIterator = false;
     bool useOneDelayCtr = true;
+    bool isValidMetrics = true;   
     bool runtimeMetrics;
     bool continuousTrace;
 
@@ -49,19 +50,14 @@ class AieTraceMetadata{
     uint64_t offloadIntervalUs;
     unsigned int aie_trace_file_dump_int_s;
 
-    std::string metricSet;
-    std::set<std::string> metricSets;
+    std::string counterScheme;
+    std::vector<std::string> metricSets;
     std::map<tile_type, std::string> configMetrics;
-
     void* handle;
 
   public:
     
     AieTraceMetadata(uint64_t deviceID, void* handle);
-
-    std::string getMetricSet(const std::string& metricsStr, bool ignoreOldConfig = false);
-
-    std::vector<tile_type> getTilesForTracing();
 
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
@@ -80,6 +76,13 @@ class AieTraceMetadata{
     void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
                                   std::vector<std::string>& graphmetricsSettings);
     void setTraceStartControl();
+    uint8_t getMetricSetIndex(std::string metricString);
+   
+    std::string getMetricString(uint8_t index) {
+      if (index < metricSets.size()){
+        return metricSets[index];
+      }
+    }
 
     bool getUseDelay(){return useDelay;}
     bool getUseUserControl(){return useUserControl;}
@@ -92,11 +95,12 @@ class AieTraceMetadata{
     uint64_t getContinuousTrace() {return continuousTrace;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
     uint64_t getDeviceID() {return deviceID;}
+    bool getIsValidMetrics() {return isValidMetrics;}
 
     void* getHandle() {return handle;}
     unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
     std::map<tile_type, std::string> getConfigMetrics(){return configMetrics;}
-    std::string getMetricStr(){return metricSet;}
+    std::string getCounterScheme(){return counterScheme;}
 
     void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}
     void setDelayCycles(uint64_t newDelayCycles) {delayCycles = newDelayCycles;}

@@ -45,6 +45,9 @@ namespace xdp {
   : deviceID(deviceID)
   , handle(handle)
   {
+    //Get Counter Scheme
+    counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
+
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
     continuousTrace = xrt_core::config::get_aie_trace_periodic_offload();
@@ -77,71 +80,29 @@ namespace xdp {
     // auto compilerOptions = get_aiecompiler_options(device.get());
     // runtimeMetrics = (compilerOptions.event_trace == "runtime");
     runtimeMetrics = true;
-  }
+    
+    std::string metricsConfig = xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics();
+    std::string graphmetricsConfig = xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics();
 
-  std::string AieTraceMetadata::getMetricSet(const std::string& metricsStr, bool ignoreOldConfig)
-  {
+    if (metricsConfig.empty() && graphmetricsConfig.empty()) {
+      isValidMetrics = false;
+    } else {
+      // Process AIE_trace_settings metrics
+      // Each of the metrics can have ; separated multiple values. Process and save all
+      std::vector<std::string> metricsSettings;
+      boost::replace_all(metricsConfig, " ", "");
+      if (!metricsConfig.empty())
+        boost::split(metricsSettings, metricsConfig, boost::is_any_of(";"));
 
-    std::vector<std::string> vec;
-    boost::split(vec, metricsStr, boost::is_any_of(":"));
+      std::vector<std::string> graphmetricsSettings;
+      boost::replace_all(graphmetricsConfig, " ", "");
+      if (!graphmetricsConfig.empty())
+        boost::split(graphmetricsSettings, graphmetricsConfig,
+        boost::is_any_of(";"));
 
-    for (size_t i=0; i < vec.size(); ++i) {
-      boost::replace_all(vec.at(i), "{", "");
-      boost::replace_all(vec.at(i), "}", "");
+      getConfigMetricsForTiles(metricsSettings, graphmetricsSettings);
+      setTraceStartControl();
     }
-
-    // Determine specification type based on vector size:
-    //   * Size = 1: All tiles
-    //     * aie_trace_metrics = <functions|functions_partial_stalls|functions_all_stalls|all>
-    //   * Size = 2: Single tile or kernel name (supported in future release)
-    //     * aie_trace_metrics = {<column>,<row>}:<functions|functions_partial_stalls|functions_all_stalls|all>
-    //     * aie_trace_metrics= <kernel name>:<functions|functions_partial_stalls|functions_all_stalls|all>
-    //   * Size = 3: Range of tiles (supported in future release)
-    //     * aie_trace_metrics= {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<functions|functions_partial_stalls|functions_all_stalls|all>
-    metricSet = vec.at( vec.size()-1 );
-
-    if (metricSets.find(metricSet) == metricSets.end()) {
-      std::string defaultSet = "functions";
-      std::stringstream msg;
-      msg << "Unable to find AIE trace metric set " << metricSet 
-          << ". Using default of " << defaultSet << ".";
-      if (ignoreOldConfig)
-        msg << " As new AIE_trace_settings section is given, old style configurations, if any, are ignored.";
-
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      metricSet = defaultSet;
-    }
-
-    // If requested, turn on debug fal messages
-    // if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug))
-    //   xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
-
-    return metricSet;
-  }
-
-  std::vector<tile_type> AieTraceMetadata::getTilesForTracing()
-  {
-    std::vector<tile_type> tiles;
-    // Create superset of all tiles across all graphs
-    // NOTE: future releases will support the specification of tile subsets
-    auto device = xrt_core::get_userpf_device(handle);
-    auto graphs = get_graphs(device.get());
-    for (auto& graph : graphs) {
-      auto currTiles = get_tiles(device.get(), graph);
-      std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
-
-      // TODO: Differentiate between core and DMA-only tiles when 'all' is supported
-
-      // Core Tiles
-      //auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::core);
-      //std::unique_copy(coreTiles.begin(), coreTiles.end(), std::back_inserter(tiles), tileCompare);
-
-      // DMA-Only Tiles
-      // NOTE: These tiles are only needed when aie_trace_metrics = all
-      //auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::dma);
-      //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), std::back_inserter(tiles), tileCompare);
-    }
-    return tiles;
   }
 
   void AieTraceMetadata::setTraceStartControl()
@@ -563,7 +524,7 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      if (metricSets.find(tileMetric.second) == metricSets.end()) {
+      if (std::find(metricSets.begin(), metricSets.end(), tileMetric.second) == metricSets.end()) {
         std::string defaultSet = "functions";
         std::stringstream msg;
         msg << "Unable to find AIE trace metric set " << tileMetric.second 
@@ -579,25 +540,7 @@ namespace xdp {
       configMetrics.erase(t);
     }
 
-    // If requested, turn on debug fal messages
-    // if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug))
-    //   xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
   }
-
-/*
-  double AieTraceMetadata::get_clock_freq_mhz(const xrt_core::device* device)
-  {
-    auto data = device->get_axlf_section(AIE_METADATA);
-    if (!data.first || !data.second)
-      return AIE_DEFAULT_FREQ_MHZ;
-
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
-    auto dev_node = aie_meta.get_child("aie_metadata.DeviceData");
-    return dev_node.get<double>("AIEFrequency");
-  }
-
-*/
 
   std::vector<gmio_type> AieTraceMetadata::get_trace_gmios(const xrt_core::device* device)
   {
@@ -669,6 +612,15 @@ namespace xdp {
     }
 
     return tiles;
+  }
+
+   uint8_t AieTraceMetadata::getMetricSetIndex(std::string metricString){    
+    auto itr = std::find(metricSets.begin(), metricSets.end(), metricString);
+    if (itr != metricSets.cend()){
+      return 0;
+    } else {
+      return std::distance(metricSets.begin(), itr);
+    }
   }
   
 }

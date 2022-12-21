@@ -25,14 +25,17 @@
 #include "xaiengine.h"
 #include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
 
+constexpr uint32_t ES1_TRACE_COUNTER = 1020;
+constexpr uint32_t ES2_TRACE_COUNTER = 0x3FF00;
+
 // This struct encapsulates all of the internal configuration information
 // for a single AIE tile
 struct EventConfiguration {
-
-  std::vector<XAie_Events> coreEventsBase;
-  std::vector<XAie_Events> memoryCrossEventsBase;
   XAie_Events coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
   XAie_Events coreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
+
+  std::map<xdp::built_in::MetricSet, std::vector<XAie_Events>> coreEventsBase;
+  std::map<xdp::built_in::MetricSet, std::vector<XAie_Events>> memoryCrossEventsBase;
   std::vector<XAie_Events> coreCounterStartEvents;
   std::vector<XAie_Events> coreCounterEndEvents;
   std::vector<uint32_t> coreCounterEventValues;
@@ -43,63 +46,53 @@ struct EventConfiguration {
   std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mCoreCounters;
   std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mMemoryCounters;
   
-  void initialize(const xdp::built_in::InputConfiguration* params) {
+  void initialize(const xdp::built_in::TraceInputConfiguration* params) {
+    coreEventsBase = {
+      {xdp::built_in::MetricSet::FUNCTIONS,                {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
+      {xdp::built_in::MetricSet::PARTIAL_STALLS, {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
+      {xdp::built_in::MetricSet::ALL_STALLS,     {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
+      {xdp::built_in::MetricSet::ALL,                      {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}}
+    };
+
+    // **** Memory Module Trace ****
+    // NOTE 1: Core events listed here are broadcast by the resource manager
+    // NOTE 2: These are supplemented with counter events as those are dependent on counter #
+    // NOTE 3: For now, 'all' is the same as 'functions_all_stalls'. Combo events (required 
+    //         for all) have limited support in the resource manager.
+    memoryCrossEventsBase = {
+      {xdp::built_in::MetricSet::FUNCTIONS,                {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
+      {xdp::built_in::MetricSet::PARTIAL_STALLS, {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}},
+      {xdp::built_in::MetricSet::ALL_STALLS,     {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_MEMORY_STALL_CORE,     XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}},
+      {xdp::built_in::MetricSet::ALL,                      {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_MEMORY_STALL_CORE,     XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}}
+    };
+  
+  
     if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES1)) {
     // ES1 requires 2 performance counters to get around hardware bugs
-      coreCounterStartEvents.push_back(XAIE_EVENT_ACTIVE_CORE);
-      coreCounterStartEvents.push_back(XAIE_EVENT_ACTIVE_CORE);
 
-      coreCounterEndEvents.push_back(XAIE_EVENT_DISABLED_CORE);
-      coreCounterEndEvents.push_back(XAIE_EVENT_DISABLED_CORE);
+      coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
+      coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
+      coreCounterEventValues   = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
 
-      coreCounterEventValues.push_back(1020);
-      coreCounterEventValues.push_back(1020*1020);
+      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                XAIE_EVENT_TRUE_MEM};
+      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
+      memoryCounterEventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
 
-      memoryCounterStartEvents.push_back(XAIE_EVENT_TRUE_MEM);
-      memoryCounterStartEvents.push_back(XAIE_EVENT_TRUE_MEM);
-
-      memoryCounterEndEvents.push_back(XAIE_EVENT_NONE_MEM);
-      memoryCounterEndEvents.push_back(XAIE_EVENT_NONE_MEM);
-
-      memoryCounterEventValues.push_back(1020);
-      memoryCounterEventValues.push_back(1020*1020);
-    }
-    else if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES2)) {
+    } else if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES2)) {
       // ES2 requires only 1 performance counter
-      coreCounterStartEvents.push_back(XAIE_EVENT_ACTIVE_CORE);
-      coreCounterEndEvents.push_back(XAIE_EVENT_DISABLED_CORE);
-      coreCounterEventValues.push_back(0x3ff00);
+      coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE};
+      coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE};
+      coreCounterEventValues   = {ES2_TRACE_COUNTER};
 
       memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {0x3FF00};
-    }
-
-    // All configurations have these first events in common
-    coreEventsBase.push_back(XAIE_EVENT_INSTR_CALL_CORE);
-    coreEventsBase.push_back(XAIE_EVENT_INSTR_RETURN_CORE);
-    memoryCrossEventsBase.push_back(XAIE_EVENT_INSTR_CALL_CORE);
-    memoryCrossEventsBase.push_back(XAIE_EVENT_INSTR_RETURN_CORE);
-
-    switch (params->metricSet) {
-    case static_cast<uint8_t>(xdp::built_in::MetricSet::FUNCTIONS):
-      // No additional events 
-      break ;
-    case static_cast<uint8_t>(xdp::built_in::MetricSet::PARTIAL_STALLS):
-      memoryCrossEventsBase.push_back(XAIE_EVENT_STREAM_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_CASCADE_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_LOCK_STALL_CORE);
-      break;
-    case static_cast<uint8_t>(xdp::built_in::MetricSet::ALL_STALLS): 
-      [[fallthrough]];
-    case static_cast<uint8_t>(xdp::built_in::MetricSet::ALL):
-      memoryCrossEventsBase.push_back(XAIE_EVENT_MEMORY_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_STREAM_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_CASCADE_STALL_CORE);
-      memoryCrossEventsBase.push_back(XAIE_EVENT_LOCK_STALL_CORE);
-      break;
-    default:
-      break;
+      memoryCounterEventValues = {ES2_TRACE_COUNTER};
     }
   }
 };
