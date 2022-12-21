@@ -148,7 +148,7 @@ SectionIPLayout::getFunctional(std::string& sFunctional) const
 {
   PS_FUNCTIONAL eFunctional = getFunctionalNoError(sFunctional); 
   if (eFunctional == FC_UNKNOWN) {
-    const std::string errMsg = "ERROR: Unknown Functinoal: '" + sFunctional + "'";
+    const std::string errMsg = "ERROR: Unknown Functional: '" + sFunctional + "'";
     throw std::runtime_error(errMsg);
   }
   return eFunctional;
