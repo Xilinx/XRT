@@ -127,22 +127,31 @@ SectionIPLayout::getFunctionalStr(PS_FUNCTIONAL eFunctional) const
       return "DPU";
     case FC_PREPOST:
       return "PrePost";
+    default:
+      return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eFunctional)).str();
   }
+}
 
-  // return (boost::format("UNKNOWN (%d)") % (unsigned int)eFunctional).str();
-  return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eFunctional)).str();
+PS_FUNCTIONAL
+SectionIPLayout::getFunctionalNoError(std::string& sFunctional)
+{
+  if (sFunctional == "DPU") 
+    return FC_DPU;
+  else if (sFunctional == "PrePost") 
+    return FC_PREPOST;
+  else
+    return FC_UNKNOWN;
 }
 
 PS_FUNCTIONAL
 SectionIPLayout::getFunctional(std::string& sFunctional) const
 {
-  if (sFunctional == "DPU") 
-    return FC_DPU;
-  if (sFunctional == "PrePost") 
-    return FC_PREPOST;
-
-  std::string errMsg = "ERROR: Unknown Functinoal: '" + sFunctional + "'";
-  throw std::runtime_error(errMsg);
+  PS_FUNCTIONAL eFunctional = getFunctionalNoError(sFunctional); 
+  if (eFunctional == FC_UNKNOWN) {
+    const std::string errMsg = "ERROR: Unknown Functinoal: '" + sFunctional + "'";
+    throw std::runtime_error(errMsg);
+  }
+  return eFunctional;
 }
 
 const std::string
@@ -153,22 +162,32 @@ SectionIPLayout::getSubTypeStr(PS_SUBTYPE eSubType) const
       return "PS";
     case ST_DPU:
       return "DPU";
+    default:
+      return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eSubType)).str();
   }
+}
 
-  // return (boost::format("UNKNOWN (%d)") % (unsigned int)eSubType).str();
-  return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eSubType)).str();
+PS_SUBTYPE
+SectionIPLayout::getSubTypeNoError(std::string& sSubType)
+{
+  if (sSubType == "PS")
+    return ST_PS;
+  else if (sSubType == "DPU")
+    return ST_DPU;
+  else 
+    return ST_UNKNOWN;
 }
 
 PS_SUBTYPE
 SectionIPLayout::getSubType(std::string& sSubType) const
 {
-  if (sSubType == "PS") return ST_PS;
-  if (sSubType == "DPU") return ST_DPU;
-
-  std::string errMsg = "ERROR: Unknown SubType: '" + sSubType + "'";
-  throw std::runtime_error(errMsg);
+  PS_SUBTYPE eSubType = getSubTypeNoError(sSubType); 
+  if (eSubType == ST_UNKNOWN) {
+    const std::string errMsg = "ERROR: Unknown SubType: '" + sSubType + "'";
+    throw std::runtime_error(errMsg);
+  }
+  return eSubType;
 }
-
 
 void
 SectionIPLayout::marshalToJSON(char* _pDataSection,
@@ -408,9 +427,8 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
           bIntEnable = ptIPData.get_optional<bool>("m_int_enable");
           if (bIntEnable.is_initialized()) {
             ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t)IP_INT_ENABLE_MASK);  // Clear existing bit
-            if (bIntEnable.get()) {
+            if (bIntEnable.get()) 
               ipDataHdr.properties = ipDataHdr.properties | ((uint32_t)IP_INT_ENABLE_MASK); // Set bit
-            }
           }
         }
   
@@ -420,7 +438,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
             unsigned int interruptID = std::stoul(sInterruptID);
             unsigned int maxValue = ((unsigned int)IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
             if (interruptID > maxValue) {
-              auto errMsg = boost::format("ERROR: The m_interrupt_id (%d), exceeds maximum value (%d).") % interruptID % maxValue;
+              const auto errMsg = boost::format("ERROR: The m_interrupt_id (%d), exceeds maximum value (%d).") % interruptID % maxValue;
               throw std::runtime_error(errMsg.str());
             }
   
@@ -439,7 +457,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   
             unsigned int maxValue = ((unsigned int)IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
             if (ipControl > maxValue) {
-              auto errMsg = boost::format("ERROR: The m_ip_control (%d), exceeds maximum value (%d).") % (unsigned int)ipControl % maxValue;
+              const auto errMsg = boost::format("ERROR: The m_ip_control (%d), exceeds maximum value (%d).") % (unsigned int)ipControl % maxValue;
               throw std::runtime_error(errMsg.str());
             }
   
@@ -462,7 +480,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
     auto sm_name = ptIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(ip_data::m_name)) {
-      auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
+      const auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
           % (unsigned int)sm_name.length() % (unsigned int)sizeof(ip_data::m_name) % sm_name;
       throw std::runtime_error(errMsg.str());
     }
@@ -518,7 +536,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
   // -- The counts should match --
   if (count != (unsigned int)ipLayoutHdr.m_count) {
-    auto errMsg = boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d")
+    const auto errMsg = boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d")
         % (unsigned int)count % (unsigned int)ipLayoutHdr.m_count;
     throw std::runtime_error(errMsg.str());
   }
@@ -527,7 +545,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   unsigned int bufferSize = (unsigned int)_buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
   if (bufferSize > maxBufferSize) {
-    auto errMsg = boost::format("CRITICAL WARNING: The buffer size for the IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.")
+    const auto errMsg = boost::format("CRITICAL WARNING: The buffer size for the IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.")
         % (unsigned int)bufferSize % (unsigned int)maxBufferSize;
     std::cout << errMsg << std::endl;
     // throw std::runtime_error(errMsg);

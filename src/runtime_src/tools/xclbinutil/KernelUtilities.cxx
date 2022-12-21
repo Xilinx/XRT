@@ -18,6 +18,7 @@
 #include "KernelUtilities.h"
 
 #include "XclBinUtilities.h"
+#include "SectionIPLayout.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -131,23 +132,19 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     // the extended-data in dpu json has "subtype" and "functional" attributes
     // these two attributes can either have string or numeric value
     // but xml only taks numeric value
-    // for now, hard-code the conversion
+    // we need to conver string to correpondsing nemeric
     auto sFunctional = ptExtendedData.get<std::string>("functional", "");
-    if (sFunctional == "DPU") 
-      sFunctional = "0";
-    else if (sFunctional == "PrePost") 
-      sFunctional = "1";
-    else 
-      ;   // no conversion to sFunctional
+    PS_FUNCTIONAL eFunctional = SectionIPLayout::getFunctionalNoError(sFunctional); 
+    if (eFunctional != FC_UNKNOWN) {
+      sFunctional = (boost::format("%d") % static_cast<unsigned int>(eFunctional)).str();
+    } // else no conversion needed
     ptExtendedData.put("functional", sFunctional);
 
     auto sSubType = ptExtendedData.get<std::string>("subtype", "");
-    if (sSubType == "PS") 
-      sSubType = "0";
-    else if (sSubType == "DPU") 
-      sSubType = "1";
-    else 
-      ;   // no conversion to sSubtype
+    PS_SUBTYPE eSubType = SectionIPLayout::getSubTypeNoError(sSubType); 
+    if (eSubType != ST_UNKNOWN) {
+      sSubType = (boost::format("%d") % static_cast<unsigned int>(eSubType)).str();
+    } // else no conversion needed
     ptExtendedData.put("subtype", sSubType);
  
     boost::property_tree::ptree ptEntry;
@@ -420,7 +417,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     if (boExtendedData) {
       const boost::property_tree::ptree& ptExtendedData = boExtendedData.get();
       if (!ptExtendedData.empty()) {
-        static const std::string NOT_DEFINED = "<not defined>";
+        static const std::string NOT_DEFINED = "";
         auto subType = ptExtendedData.get<std::string>("subtype", NOT_DEFINED);
         auto functional = ptExtendedData.get<std::string>("functional", NOT_DEFINED);
         auto dpuKernelId = ptExtendedData.get<std::string>("dpu_kernel_id", NOT_DEFINED);
@@ -433,7 +430,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     ptIPEntry.put("m_base_address", "not_used");
     ptIPEntry.put("m_name", ipLayoutName);
 
-    ipData.push_back(ptIPEntry);
+    ipData.push_back(ptIPEntry); // There is at least 1 element in the ipLayout vector
     const unsigned int ipLayoutIndex = static_cast<unsigned int>(ipData.size()) - 1;
 
     // -- For each PS Kernel Instance, connect any argument to its memory
@@ -444,8 +441,6 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
   transformVectorToPtree(ipData, "ip_layout", "m_ip_data", ptIPLayoutRoot);
   transformVectorToPtree(connectivity, "connectivity", "m_connection", ptConnectivityRoot);
   transformVectorToPtree(memTopology, "mem_topology", "m_mem_data", ptMemTopologyRoot);
-
-  // XUtil::TRACE_PrintTree("IP_LAYOUT ROOT", ptIPLayoutRoot);
 }
 
 void

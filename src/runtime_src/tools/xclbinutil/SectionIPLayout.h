@@ -25,6 +25,11 @@ class SectionIPLayout : public Section {
  public:
   void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo)override;
 
+ public:
+  // static so that these two methods can be used in KernelUtilities 
+  static PS_FUNCTIONAL getFunctionalNoError(std::string& sFunctional);
+  static PS_SUBTYPE getSubTypeNoError(std::string& sSubType);
+   
  protected:
   void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;

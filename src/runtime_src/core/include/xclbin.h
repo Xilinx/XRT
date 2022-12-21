@@ -333,12 +333,14 @@ extern "C" {
     enum PS_SUBTYPE {
         ST_PS = 0,
         ST_DPU = 1,
+        ST_UNKNOWN = -1,
     };
 
     // m_functional
     enum PS_FUNCTIONAL {
         FC_DPU = 0,
         FC_PREPOST = 1,
+        FC_UNKNOWN = -1,
     };
 
     #define IP_CONTROL_MASK  0xFF00
@@ -353,7 +355,7 @@ extern "C" {
                                  //         m_int_enable   : Bit  - 0x0000_0001;
                                  //         m_interrupt_id : Bits - 0x0000_00FE;
                                  //         m_ip_control   : Bits = 0x0000_FF00;
-                                 // proeprties is also used for ps kernel (i.e. -add-pskernel)
+                                 // properties is also used for ps kernel (i.e. -add-pskernel)
        
             // PS Kernels
             // m_type: IP_PS_KERNEL
