@@ -192,6 +192,9 @@ int main(int argc, char** argv) {
                 std::fill(output_host[i].begin(), output_host[i].end(), 0);
             }
 
+	    for (uint32_t j = 0; j < 256; j+=100)
+		    std::cout << "j:" << j << "=" << (uint32_t)input_host[j] << std::endl;
+
             std::vector<cl::Buffer> input_buffer(num_kernel_ddr);
             std::vector<cl::Buffer> output_buffer(num_kernel_ddr);
 
@@ -237,8 +240,8 @@ int main(int argc, char** argv) {
             for (int i = 0; i < num_kernel_ddr; i++) {
                 for (uint32_t j = 0; j < data_size; j++) {
                     if (output_host[i][j] != input_host[j]) {
-                        std::cout << "ERROR : kernel failed to copy entry " << j << " input " << input_host[j]
-                                  << " output " << output_host[i][j] << std::endl;
+                        std::cout << "ERROR : kernel failed to copy entry " << j << " input " << (uint32_t)input_host[j]
+                                  << " output " << (uint32_t)output_host[i][j] << std::endl;
                         return EXIT_FAILURE;
                     }
                 }
@@ -313,8 +316,8 @@ int main(int argc, char** argv) {
             // check
             for (uint32_t j = 0; j < data_size; j++) {
                 if (output_host[j] != input_host[j]) {
-                    std::cout << "ERROR : kernel failed to copy entry " << j << " input " << input_host[j] << " output "
-                              << output_host[j] << std::endl;
+                    std::cout << "HBM ERROR : kernel failed to copy entry " << j << " input " << (uint32_t)input_host[j] << " output "
+                              << (uint32_t)output_host[j] << std::endl;
                     return EXIT_FAILURE;
                 }
             }
