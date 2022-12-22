@@ -13,7 +13,7 @@
 #include "scope_guard.h"
 #include "uuid.h"
 
-#include "core/include/xcl_hwctx.h"
+#include "core/include/xrt_hwctx.h"
 #include "core/include/xrt.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
