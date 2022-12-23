@@ -472,6 +472,7 @@ public:
   std::vector<uint64_t> m_cus;                // cu base addresses in expeced sort order
   xrt::xclbin m_xclbin;                       // currently loaded xclbin  (single-slot, default)
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
+  mutable std::mutex m_mutex;
 };
 
 /**
