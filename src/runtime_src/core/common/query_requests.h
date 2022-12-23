@@ -9,7 +9,7 @@
 #include "uuid.h"
 
 #include "core/include/xclerr_int.h"
-#include "core/include/xcl_hwctx.h"
+#include "core/include/xrt_hwctx.h"
 
 #include <iomanip>
 #include <map>

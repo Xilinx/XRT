@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
-#ifndef XCL_HWCTX_H_
-#define XCL_HWCTX_H_
+#ifndef XRT_HWCTX_H_
+#define XRT_HWCTX_H_
 
 #include <cstdint>
 

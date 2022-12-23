@@ -13,7 +13,7 @@
 #include "scope_guard.h"
 #include "uuid.h"
 
-#include "core/include/xcl_hwctx.h"
+#include "core/include/xrt_hwctx.h"
 #include "core/include/xrt.h"
 #include "core/include/experimental/xrt_xclbin.h"
 
@@ -472,6 +472,7 @@ public:
   std::vector<uint64_t> m_cus;                // cu base addresses in expeced sort order
   xrt::xclbin m_xclbin;                       // currently loaded xclbin  (single-slot, default)
   xclbin_map m_xclbins;                       // currently loaded xclbins (multi-slot)
+  mutable std::mutex m_mutex;
 };
 
 /**
