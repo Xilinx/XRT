@@ -14,7 +14,7 @@
 #include "core/common/thread.h"
 #include "experimental/xrt_hw_context.h"
 #include "core/include/ert.h"
-#include "core/include/xcl_hwqueue.h"
+#include "core/include/xrt_hwqueue.h"
 
 #include <algorithm>
 #include <atomic>
@@ -380,10 +380,10 @@ public:
 class qds_device : public hw_queue_impl
 {
   xrt_core::device* m_device;
-  xcl_hwqueue_handle m_qhdl;
+  xrt_hwqueue_handle m_qhdl;
 
 public:
-  qds_device(xrt_core::device* device, xcl_hwqueue_handle qhdl)
+  qds_device(xrt_core::device* device, xrt_hwqueue_handle qhdl)
     : m_device(device), m_qhdl(qhdl)
   {}
 
