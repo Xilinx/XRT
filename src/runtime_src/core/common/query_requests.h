@@ -268,6 +268,7 @@ enum class key_type
   hwmon_sdm_oem_id,
   hwmon_sdm_board_name,
   hwmon_sdm_active_msp_ver,
+  hwmon_sdm_target_msp_ver,
   hwmon_sdm_mac_addr0,
   hwmon_sdm_mac_addr1,
   hwmon_sdm_revision,
@@ -2955,6 +2956,7 @@ struct xclbin_slots : request
   get(const xrt_core::device* device) const = 0;
 };
 
+// Retrieve Board Serial number from xocl hwmon_sdm driver
 struct hwmon_sdm_serial_num : request
 {
   using result_type = std::string;
@@ -2964,6 +2966,7 @@ struct hwmon_sdm_serial_num : request
   get(const device*) const = 0;
 };
 
+// Retrieve OEM ID data from xocl hwmon_sdm driver
 struct hwmon_sdm_oem_id : request
 {
   using result_type = std::string;
@@ -2973,6 +2976,7 @@ struct hwmon_sdm_oem_id : request
   get(const device*) const = 0;
 };
 
+// Retrieve Board name from xocl hwmon_sdm driver
 struct hwmon_sdm_board_name : request
 {
   using result_type = std::string;
@@ -2982,6 +2986,7 @@ struct hwmon_sdm_board_name : request
   get(const device*) const = 0;
 };
 
+// Retrieve active SC version from xocl hwmon_sdm driver
 struct hwmon_sdm_active_msp_ver : request
 {
   using result_type = std::string;
@@ -2991,6 +2996,17 @@ struct hwmon_sdm_active_msp_ver : request
   get(const device*) const = 0;
 };
 
+// Retrieve expected SC version from xocl hwmon_sdm driver
+struct hwmon_sdm_target_msp_ver : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_target_msp_ver;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// Retrieve MAC ADDR0 from xocl hwmon_sdm driver
 struct hwmon_sdm_mac_addr0 : request
 {
   using result_type = std::string;
@@ -3000,6 +3016,7 @@ struct hwmon_sdm_mac_addr0 : request
   get(const device*) const = 0;
 };
 
+// Retrieve MAC ADDR1 from xocl hwmon_sdm driver
 struct hwmon_sdm_mac_addr1 : request
 {
   using result_type = std::string;
@@ -3009,6 +3026,7 @@ struct hwmon_sdm_mac_addr1 : request
   get(const device*) const = 0;
 };
 
+// Retrieve Revision data from xocl hwmon_sdm driver
 struct hwmon_sdm_revision : request
 {
   using result_type = std::string;
@@ -3018,6 +3036,7 @@ struct hwmon_sdm_revision : request
   get(const device*) const = 0;
 };
 
+// Retrieve FAN presence status from xocl hwmon_sdm driver
 struct hwmon_sdm_fan_presence : request
 {
   using result_type = std::string;
