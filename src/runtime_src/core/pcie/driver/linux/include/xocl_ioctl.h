@@ -724,36 +724,6 @@ struct drm_xocl_hw_ctx_execbuf {
 };
 
 /**
- * struct drm_xocl_hw_ctx_execbuf - Submit a command buffer for execution on a compute unit
- * used with DRM_IOCTL_XOCL_HW_CTX_EXECBUF ioctl with new hw context parameters
- *
- * @hw_ctx_id:	    Pass the HW Context id
- * @exec_bo_handle: BO handle of command buffer formatted as ERT command
- * @deps:	    Upto MAX_DEPENT_CMD_BO dependency command BO handles this command is dependent on
- *                  for automatic event dependency handling by ERT
- */
-struct drm_xocl_hw_ctx_execbuf {
-	uint32_t hw_ctx_id;
-	uint32_t exec_bo_handle;
-	uint32_t deps[MAX_DEPENT_CMD_BO];
-};
-
-/**
- * struct drm_xocl_hw_ctx_execbuf - Submit a command buffer for execution on a compute unit
- * used with DRM_IOCTL_XOCL_HW_CTX_EXECBUF ioctl with new hw context parameters
- *
- * @hw_ctx_id:	    Pass the HW Context id
- * @exec_bo_handle: BO handle of command buffer formatted as ERT command
- * @deps:	    Upto MAX_DEPENT_CMD_BO dependency command BO handles this command is dependent on
- *                  for automatic event dependency handling by ERT
- */
-struct drm_xocl_hw_ctx_execbuf {
-	uint32_t hw_ctx_id;
-	uint32_t exec_bo_handle;
-	uint32_t deps[MAX_DEPENT_CMD_BO];
-};
-
-/**
  * struct drm_xocl_execbuf_cb - Submit a command buffer for execution on a compute unit
  * used with DRM_IOCTL_XOCL_EXECBUF_CB ioctl with a callback (linux kernel only)
  * WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION.

@@ -194,16 +194,6 @@ get_mode() const
   return get_handle()->get_mode();
 }
 
-uint32_t
-hw_context::
-get_memory_group_id() const
-{
-  xcl_bo_flags grp = {0}; // xrt_mem.h
-  grp.bank = 0;
-  grp.slot = static_cast<uint8_t>(get_handle()->get_xcl_handle());
-  return grp.flags;
-}
-
 hw_context::
 operator xrt_hwctx_handle() const
 {

@@ -181,44 +181,14 @@ xocl_ctx_to_info(struct drm_xocl_ctx *args, struct kds_client_cu_info *cu_info)
                 cu_info->flags = CU_CTX_SHARED;
 }
 
-static int get_slot_id(struct xocl_dev *xdev, const uuid_t *id, uint32_t *slot_id)
-{
-	uuid_t *xclbin_id = NULL;
-        int i = 0;
-        int ret = -EINVAL;
-
-	/* First check whether uuid exists or not */
-	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
-		ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id, i);
-		if (ret) {
-			ret = -EINVAL;
-			goto done;
-		}
-		if (!xclbin_id)
-			continue;
-
-		if (uuid_equal(id, xclbin_id)) {
-			*slot_id = i;
-			ret = 0;
-			XOCL_PUT_XCLBIN_ID(xdev, i);
-			break;
-		}
-		XOCL_PUT_XCLBIN_ID(xdev, i);
-		xclbin_id = NULL;
-	}
-
-done:
-        return ret;
-}
-
 static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
 	xuid_t *uuid;
-	uint32_t slot_id = 0;
+	uint32_t slot_id = DEFAULT_PL_SLOT;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_info cu_info = {};
-	struct kds_client_hw_ctx *hw_ctx = NULL;
 	bool bitstream_locked = false;
 	int ret;
 
@@ -232,13 +202,6 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			goto out;
 		}
 
-		ret = get_slot_id(xdev, &args->xclbin_id, &slot_id);
-                if (ret) {
-                        userpf_err(xdev, "No slot matched for this xclbin");
-			vfree(client->ctx);
-                        goto out;
-                }
-
 		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id, slot_id);
 		if (ret) {
 			goto out;
@@ -248,12 +211,11 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		uuid = vzalloc(sizeof(*uuid));
 		if (!uuid) {
 			ret = -ENOMEM;
-			goto out1;
+			goto out;
 		}
 
 		uuid_copy(uuid, &args->xclbin_id);
 		client->ctx->xclbin_id = uuid;
-		client->ctx->slot_idx = slot_id;
 		/* Multiple CU context can be active. Initializing CU context list */
 		INIT_LIST_HEAD(&client->ctx->cu_ctx_list);
 		
@@ -265,7 +227,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		hw_ctx = kds_alloc_hw_ctx(client, uuid, slot_id);
 		if (!hw_ctx) {
 			ret = -EINVAL;
-			goto out_hw_ctx;
+			goto out1;
 		}
 	}
 
@@ -277,27 +239,8 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	cu_ctx = kds_alloc_cu_ctx(client, client->ctx, &cu_info);
 	if (!cu_ctx) {
 		ret = -EINVAL;
-		goto out1;
+		goto out_hw_ctx;
 	}
-
-	/* For legacy context there is only one active hw context possible */
-	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
-	if (!hw_ctx) {
-		userpf_err(xdev, "No valid HW context is open");
-		goto out_cu_ctx;
-	}
-
-	cu_ctx->hw_ctx = hw_ctx;
-
-	/* For legacy context case there are only one hw context possible i.e. 0 */
-	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
-        if (!hw_ctx) {
-                userpf_err(xdev, "No valid HW context is open");
-                ret = -EINVAL;
-                goto out_cu_ctx;
-        }
-
-	cu_ctx->hw_ctx = hw_ctx;
 
 	/* For legacy context case there are only one hw context possible i.e. 0 */
 	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
@@ -323,8 +266,6 @@ out_cu_ctx:
 out_hw_ctx:
 	kds_free_hw_ctx(client, cu_ctx->hw_ctx);	
 
-	mutex_unlock(&client->lock);
-	return ret;
 out1:
 	/* If client still has no opened context at this point */
 	vfree(client->ctx->xclbin_id);
@@ -378,34 +319,6 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 
 	ret = kds_del_context(&XDEV(xdev)->kds, client, cu_ctx);
-	if (ret)
-		goto out;
-
-	ret = kds_free_cu_ctx(client, cu_ctx);
-	if (ret)
-		goto out;
-
-	if (cu_ctx->hw_ctx) {
-		ret = kds_free_hw_ctx(client, cu_ctx->hw_ctx);
-		if (ret)
-			goto out;
-
-		cu_ctx->hw_ctx = NULL;
-	}
-
-	ret = kds_free_cu_ctx(client, cu_ctx);
-	if (ret)
-		goto out;
-
-	if (cu_ctx->hw_ctx) {
-		ret = kds_free_hw_ctx(client, cu_ctx->hw_ctx);
-		if (ret)
-			goto out;
-
-		cu_ctx->hw_ctx = NULL;
-	}
-
-	ret = kds_free_cu_ctx(client, cu_ctx);
 	if (ret)
 		goto out;
 

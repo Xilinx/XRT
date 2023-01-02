@@ -793,14 +793,6 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		return -EINVAL;
 	}
 
-	/* Some reference count (i.e. hw context ) is still active */
-	if (kds_get_cu_hwctx_refcnt(cu_mgmt, cu_idx) > 0)
-		goto skip;
-
-	/* Some reference count (i.e. hw context ) is still active */
-	if (kds_get_cu_hwctx_refcnt(cu_mgmt, cu_idx) > 0)
-		goto skip;
-
 	/* Before close, make sure no remain commands in CU's queue. */
 	if (domain == DOMAIN_PL) {
 		submitted = client_stat_read(client, hw_ctx, s_cnt[cu_idx]);
