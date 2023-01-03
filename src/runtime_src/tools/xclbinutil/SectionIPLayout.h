@@ -27,8 +27,13 @@ class SectionIPLayout : public Section {
 
  public:
   // static so that these two methods can be used in KernelUtilities 
-  static PS_FUNCTIONAL getFunctionalNoError(std::string& sFunctional);
-  static PS_SUBTYPE getSubTypeNoError(std::string& sSubType);
+  // static PS_FUNCTIONAL getFunctionalNoError(std::string& sFunctional);
+  // static PS_SUBTYPE getSubTypeNoError(std::string& sSubType);
+  static std::string getFunctionalEnumStr(const std::string& sFunctional);
+  static std::string getSubTypeEnumStr(const std::string& sSubType);
+
+  static PS_FUNCTIONAL getFunctional(const std::string& sFunctional);
+  static PS_SUBTYPE getSubType(const std::string& sSubType);
    
  protected:
   void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
@@ -41,8 +46,8 @@ class SectionIPLayout : public Section {
   const std::string getSubTypeStr(PS_SUBTYPE eSubType) const;
   IP_TYPE getIPType(std::string& _sIPType) const;
   IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
-  PS_FUNCTIONAL getFunctional(std::string& sFunctional) const;
-  PS_SUBTYPE getSubType(std::string& sSubType) const;
+  // PS_FUNCTIONAL getFunctional(std::string& sFunctional) const;
+  // PS_SUBTYPE getSubType(std::string& sSubType) const;
 
  private:
   // Static initializer helper class

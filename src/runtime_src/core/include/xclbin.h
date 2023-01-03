@@ -333,14 +333,14 @@ extern "C" {
     enum PS_SUBTYPE {
         ST_PS = 0,
         ST_DPU = 1,
-        ST_UNKNOWN = -1,
+        // ST_UNKNOWN = -1,
     };
 
     // m_functional
     enum PS_FUNCTIONAL {
         FC_DPU = 0,
         FC_PREPOST = 1,
-        FC_UNKNOWN = -1,
+        // FC_UNKNOWN = -1,
     };
 
     #define IP_CONTROL_MASK  0xFF00
