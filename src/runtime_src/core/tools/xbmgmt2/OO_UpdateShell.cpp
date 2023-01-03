@@ -107,7 +107,7 @@ OO_UpdateShell::execute(const SubCmdOptions& _options) const
     throw xrt_core::error("File not found. Please specify the correct path");
 
   DSAInfo dsa(m_plp);
-  // TO_DO: add a report for plp before asking permission to proceed. Replace following 2 lines
+  // TODO add a report for plp before asking permission to proceed. Replace following 2 lines
   std::cout << "Programming shell on device [" << flasher.sGetDBDF() << "]..." << std::endl;
   std::cout << "Partition file: " << dsa.file << std::endl;
 

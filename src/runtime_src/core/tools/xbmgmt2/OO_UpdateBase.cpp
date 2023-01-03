@@ -413,7 +413,7 @@ are_scs_equal(const DSAInfo& candidate, const DSAInfo& current)
   return false;
 }
 
-static bool
+static void
 update_sc(unsigned int boardIdx, DSAInfo& candidate)
 {
   Flasher flasher(boardIdx);
@@ -426,16 +426,12 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
 
   // -- Some DRCs (Design Rule Checks) --
   // Is the SC present
-  if (current.bmc_ver().empty() || candidate.bmc_ver().empty()) {
-    std::cout << "INFO: Satellite controller is not present.\n";
-    return false;
-  }
+  if (current.bmc_ver().empty() || candidate.bmc_ver().empty())
+    throw xrt_core::error("Satellite Controller (SC) is not present");
 
   // Can the SC be programmed
-  if (is_SC_fixed(boardIdx)) {
-    std::cout << "INFO: Fixed Satellite Controller.\n";
-    return false;
-  }
+  if (is_SC_fixed(boardIdx))
+    throw xrt_core::error("Fixed Satellite Controller (SC)");
 
   // Check to see if force is being used
   if ((same_bmc == true) && (XBU::getForce() == true)) {
@@ -444,24 +440,20 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
   }
 
   // Don't program the same images
-  if (same_bmc == true) {
-    std::cout << "INFO: Satellite Controller (SC) images are the same.\n";
-    return false;
-  }
+  if (same_bmc == true)
+    throw xrt_core::error("Satellite Controller (SC) images are the same");
 
   // -- Program the SC image --
   boost::format programFmt("[%s] : %s\n");
   std::cout << programFmt % flasher.sGetDBDF() % "Updating Satellite Controller (SC) firmware flash image";
   update_SC(boardIdx, candidate.file);
   std::cout << "\n";
-
-  return true;
 }
 
 // Flash shell and sc firmware
 // Helper method for auto_flash
-static bool
-update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType flash_type)
+static void
+program_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType flash_type)
 {
   Flasher flasher(boardIdx);
 
@@ -479,16 +471,14 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType f
   }
 
   // Check to see if force is being used
-  if ((same_dsa == true) && (XBU::getForce() == true)) {
+  if (same_dsa && XBU::getForce()) {
     std::cout << "INFO: Forcing flashing of the base (e.g., shell) image (Force flag is set).\n";
     same_dsa = false;
   }
 
   // Don't program the same images
-  if (same_dsa == true) {
-    std::cout << "INFO: Base (e.g., shell) flash images are the same.\n";
-    return false;
-  }
+  if (same_dsa)
+    throw xrt_core::error("Base (e.g., shell) flash images are the same");
 
   // Program the shell
   boost::format programFmt("[%s] : %s...\n");
@@ -499,7 +489,6 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType f
     validated_image["secondary"] = candidate.file;
 
   update_shell(boardIdx, validated_image, flash_type);
-  return true;
 }
 
 static void
@@ -513,9 +502,9 @@ update_default_only(xrt_core::device* device, bool value)
       const boost::property_tree::ptree& vmr_stat = ks.second;
       if (boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
         // if backup is booted, then do not proceed
-        if (std::stoi(vmr_stat.get<std::string>("value")) != 1) {
+        if (std::stoi(vmr_stat.get<std::string>("value")) != 1)
           std::cout << "Backup image booted. Action will be performed only on default image.\n";
-        }
+
         break;
       }
     }
@@ -616,37 +605,37 @@ auto_flash(std::shared_ptr<xrt_core::device>& device, Flasher::E_FlasherType fla
   // Perform DSA and BMC updating
   std::stringstream error_stream;
   for (auto& p : boardsToUpdate) {
-    try {
-      std::cout << "\n";
-      // 1) Flash the Satellite Controller image
-      if (xrt_core::device_query<xrt_core::query::is_mfg>(device.get())
-          || xrt_core::device_query<xrt_core::query::is_recovery>(device.get()))
-        report_stream << boost::format(
-                              "  [%s] : Factory or Recovery image detected. Reflash the device after the reboot to "
-                              "update the SC firmware.\n")
-                              % getBDF(p.first);
-      else {
-        if (update_sc(p.first, p.second) == true) {
-          report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n")
-                  % getBDF(p.first);
-          need_warm_reboot = true;
-        } else
-          report_stream << boost::format(
-                               "  [%s] : Satellite Controller (SC) is either up-to-date, fixed, or not installed. No "
-                               "actions taken.\n")
-                  % getBDF(p.first);
+    std::cout << "\n";
+    // 1) Flash the Satellite Controller image
+    const auto is_mfg = xrt_core::device_query_default<xrt_core::query::is_mfg>(device.get(), false);
+    const auto is_recovery = xrt_core::device_query_default<xrt_core::query::is_recovery>(device.get(), false);
+    if (is_mfg || is_recovery)
+      report_stream << boost::format( "  [%s] : Factory or Recovery image detected. Reflash the device after the"
+                                      "reboot to update the SC firmware.\n")
+                                      % getBDF(p.first);
+    else {
+      try {
+        update_sc(p.first, p.second);
+        report_stream << boost::format( "  [%s] : Successfully flashed the Satellite Controller (SC) image\n")
+                                        % getBDF(p.first);
+        need_warm_reboot = true;
+      } catch (const xrt_core::error& e) {
+        std::cerr << e.what();
+        report_stream << boost::format( "  [%s] : Satellite Controller (SC) is either up-to-date, fixed, or"
+                                        "not installed. No actions taken.\n")
+                                        % getBDF(p.first);
       }
+    }
 
-      // 2) Flash shell image
-      if (update_shell(p.first, p.second, flashType) == true) {
-        report_stream << boost::format("  [%s] : Successfully flashed the base (e.g., shell) image\n")
-                % getBDF(p.first);
-        needreboot = true;
-      } else
-        report_stream << boost::format("  [%s] : Base (e.g., shell) image is up-to-date.  No actions taken.\n")
-                % getBDF(p.first);
+    // 2) Flash shell image
+    try {
+      program_shell(p.first, p.second, flashType);
+      report_stream << boost::format( "  [%s] : Successfully flashed the base (e.g., shell) image\n")
+                                      % getBDF(p.first);
+      needreboot = true;
     } catch (const xrt_core::error& e) {
-      error_stream << boost::format("ERROR: %s\n") % e.what();
+      report_stream << boost::format( "  [%s] : Base (e.g., shell) image is up-to-date.  No actions taken.\n")
+                                      % getBDF(p.first);
     }
   }
 
@@ -744,14 +733,15 @@ OO_UpdateBase::execute(const SubCmdOptions& _options) const
 
   std::map<std::string, std::string> validated_image_map;
   switch (validated_images.size()) {
+    case 1:
+      validated_image_map["primary"] = validated_images[0];
+      break;
     case 2:
       validated_image_map["primary"] = validated_images[0];
       validated_image_map["secondary"] = validated_images[1];
       break;
-    case 1:
-      validated_image_map["primary"] = validated_images[0];
-      break;
     default:
+      XBU::throw_cancel("Only up to 2 images may be specified");
       break;
   }
 

@@ -85,5 +85,4 @@ OO_UpdateXclbin::execute(const SubCmdOptions& _options) const
     XBU::throw_cancel(e.what());
   }
   std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
-  return;
 }

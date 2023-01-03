@@ -158,7 +158,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   // -- process "device" option -----------------------------------------------
   XBU::verbose("Option: device");
   for (auto & str : m_device)
-    XBU::verbose(" " + str);
+    XBU::verbose(boost::format(" %s") % str);
 
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
