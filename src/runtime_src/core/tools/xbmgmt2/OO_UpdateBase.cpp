@@ -33,6 +33,8 @@ namespace po = boost::program_options;
 #pragma warning(disable : 4996) // disable warning caused by std::asctime
 #endif
 
+static const boost::format hyphen_line = boost::format("%s\n") % std::string(52, '-');
+
 OO_UpdateBase::OO_UpdateBase(const std::string& _longName, const std::string& _shortName, bool _isHidden)
     : OptionOptions(_longName,
                     _shortName,
@@ -74,8 +76,10 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
     if (boost::filesystem::is_regular_file(img)) {
       if (boost::filesystem::extension(img).compare(".xsabin") != 0) {
         std::cout << "Warning: Non-xsabin file detected. Development usage, this may damage the card\n";
-        if (!XBU::can_proceed(XBU::getForce()))
+        if (!XBU::can_proceed(XBU::getForce())) {
+          std::cout << "  Use --force to bypass this warning\n";
           throw xrt_core::error(std::errc::operation_canceled);
+        }
       }
       path_list.push_back(img);
     }
@@ -146,18 +150,18 @@ update_shell(unsigned int index, std::map<std::string, std::string>& image_paths
 }
 
 static std::string
-getBDF(unsigned int index)
+getBDF(unsigned int device_id)
 {
-  auto dev = xrt_core::get_mgmtpf_device(index);
+  auto dev = xrt_core::get_mgmtpf_device(device_id);
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
   return xrt_core::query::pcie_bdf::to_string(bdf);
 }
 
 static bool
-is_SC_fixed(unsigned int index)
+is_SC_fixed(unsigned int device_id)
 {
   try {
-    auto device = xrt_core::get_mgmtpf_device(index);
+    auto device = xrt_core::get_mgmtpf_device(device_id);
     return xrt_core::device_query<xrt_core::query::is_sc_fixed>(device);
   } catch (...) {
     // TODO Catching all the exceptions for now. We may need to catch specific exceptions
@@ -176,9 +180,9 @@ update_versal_SC(std::shared_ptr<xrt_core::device> dev)
   try {
     const uint32_t val = xrt_core::query::program_sc::value_type(1);
     // timeout for xgq is 300 seconds
-    const unsigned int max_duration = 300;
+    const unsigned int max_duration_sec = 300;
     progress_reporter = std::make_shared<XBU::ProgressBar>("Programming SC", 
-                                max_duration, true /*batch mode for dots*/, std::cout); 
+                                max_duration_sec, true /*batch mode for dots*/, std::cout); 
     progress_reporter.get()->setPrintPercentBatch(false);
     // Print progress while sc is flashed
     t = std::thread([&progress_reporter, &done]() {
@@ -213,8 +217,7 @@ update_SC(unsigned int index, const std::string& file)
 
   bool is_versal = xrt_core::device_query<xrt_core::query::is_versal>(dev);
   if (is_versal) {
-    update_versal_SC(dev);
-    return;
+    return update_versal_SC(dev);
   }
 
   // if factory image, update SC
@@ -226,6 +229,7 @@ update_SC(unsigned int index, const std::string& file)
 
     if (flasher.upgradeBMCFirmware(bmc.get()) != 0)
       throw xrt_core::error("Failed to update SC flash image");
+
     return;
   }
 
@@ -269,6 +273,15 @@ file_size(const std::string& _file)
   int strSize = static_cast<int>(total_size.size());
 
   // if file size is > 3 digits, insert commas after every 3 digits
+  // Example:
+  // total_size = "1234567"
+  // strSize = 7
+  //   Iteration 1:
+  //   i = 7 - 3 = 4
+  //   total_size = "1234,567"
+  //   Iteration 2:
+  //   i = 4 - 3 = 1
+  //   total_size = "1,234,567"
   static const int COMMA_SPACING = 3;
   if (strSize > COMMA_SPACING) {
     for (int i = (strSize - COMMA_SPACING); i > 0; i -= COMMA_SPACING)
@@ -317,13 +330,13 @@ static void
 pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const std::string& vbnv)
 {
   std::cout << boost::format("%s : [%s]\n") % "Device" % _ptDevice.get<std::string>("platform.bdf");
-  std::cout << std::endl;
+  std::cout << "\n";
   std::cout << "Current Configuration\n";
 
   std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.current_shell.vbnv", "N/A");
   std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.current_shell.sc_version", "N/A");
   std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % _ptDevice.get<std::string>("platform.current_shell.id", "N/A");
-  std::cout << std::endl;
+  std::cout << "\n";
   std::cout << "\nIncoming Configuration\n";
   const boost::property_tree::ptree& available_shells = _ptDevice.get_child("platform.available_shells");
 
@@ -343,19 +356,18 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const s
   std::cout << boost::format("  %-20s : %s\n") % "Platform" % platform_to_flash.get<std::string>("vbnv", "N/A");
   std::cout << boost::format("  %-20s : %s\n") % "SC Version" % platform_to_flash.get<std::string>("sc_version", "N/A");
   auto logic_uuid = platform_to_flash.get<std::string>("logic-uuid", "");
-  if (!logic_uuid.empty()) {
+  if (!logic_uuid.empty())
     std::cout << boost::format("  %-20s : %s\n") % "Platform UUID" % logic_uuid;
-  } else {
+  else
     std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % platform_to_flash.get<std::string>("id", "N/A");
-  }
 }
 
 static void
 report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device)
 {
-  std::cout << "----------------------------------------------------\n";
+  std::cout << hyphen_line;
   pretty_print_platform_info(pt_device, vbnv);
-  std::cout << "----------------------------------------------------\n";
+  std::cout << hyphen_line;
 
   std::stringstream action_list;
 
@@ -367,7 +379,7 @@ report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device)
 
   if (!action_list.str().empty()) {
     std::cout << "Actions to perform:\n" << action_list.str();
-    std::cout << "----------------------------------------------------\n";
+    std::cout << hyphen_line;
   }
 }
 
@@ -377,7 +389,13 @@ are_shells_equal(const DSAInfo& candidate, const DSAInfo& current)
   if (current.dsaname().empty())
     throw std::runtime_error("Current shell name is empty.");
 
-  return ((candidate.dsaname() == current.dsaname()) && candidate.matchId(current));
+  if (candidate.dsaname() != current.dsaname())
+    return false;
+
+  if (!candidate.matchId(current))
+    return false;
+
+  return true;
 }
 
 static bool
@@ -386,7 +404,13 @@ are_scs_equal(const DSAInfo& candidate, const DSAInfo& current)
   if (current.dsaname().empty())
     throw std::runtime_error("Current shell name is empty.");
 
-  return ((current.bmcVer.compare("INACTIVE") == 0) || (candidate.bmc_ver() == current.bmc_ver()));
+  if (current.bmcVer.compare("INACTIVE") == 0)
+    return true;
+
+  if (candidate.bmc_ver() == current.bmc_ver())
+    return true;
+
+  return false;
 }
 
 static bool
@@ -429,7 +453,7 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
   boost::format programFmt("[%s] : %s\n");
   std::cout << programFmt % flasher.sGetDBDF() % "Updating Satellite Controller (SC) firmware flash image";
   update_SC(boardIdx, candidate.file);
-  std::cout << std::endl;
+  std::cout << "\n";
 
   return true;
 }
@@ -593,14 +617,14 @@ auto_flash(std::shared_ptr<xrt_core::device>& device, Flasher::E_FlasherType fla
   std::stringstream error_stream;
   for (auto& p : boardsToUpdate) {
     try {
-      std::cout << std::endl;
+      std::cout << "\n";
       // 1) Flash the Satellite Controller image
       if (xrt_core::device_query<xrt_core::query::is_mfg>(device.get())
           || xrt_core::device_query<xrt_core::query::is_recovery>(device.get()))
         report_stream << boost::format(
-                             "  [%s] : Factory or Recovery image detected. Reflash the device after the reboot to "
-                             "update the SC firmware.\n")
-                % getBDF(p.first);
+                              "  [%s] : Factory or Recovery image detected. Reflash the device after the reboot to "
+                              "update the SC firmware.\n")
+                              % getBDF(p.first);
       else {
         if (update_sc(p.first, p.second) == true) {
           report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n")
@@ -626,7 +650,7 @@ auto_flash(std::shared_ptr<xrt_core::device>& device, Flasher::E_FlasherType fla
     }
   }
 
-  std::cout << "----------------------------------------------------\n";
+  std::cout << hyphen_line;
   std::cout << "Report\n";
   std::cout << report_stream.str();
 

@@ -20,6 +20,7 @@
 
 // Please keep eternal include file dependencies to a minimum
 #include <boost/program_options.hpp>
+#include <boost/format.hpp>
 #include <string>
 #include <vector>
 
@@ -30,7 +31,13 @@ class OptionOptions {
   virtual void execute(const SubCmdOptions& _options) const = 0;
 
  public:
-  const boost::shared_ptr<boost::program_options::option_description>& option() const { return m_selfOption.options()[0]; };
+  const boost::shared_ptr<boost::program_options::option_description>&
+  option() const
+  {
+    if (m_selfOption.options().empty())
+      throw std::runtime_error(boost::str(boost::format("%s missing self option") % longName()));
+    return m_selfOption.options()[0];
+  };
   const std::string& longName() const { return m_longName; };
   const std::string optionNameString() const { return m_shortName.empty() ? m_longName : m_longName + "," + m_shortName; };
   const std::string& description() const { return m_description; };
@@ -51,17 +58,10 @@ class OptionOptions {
   // Child class Helper methods
  protected:
   OptionOptions(const std::string& longName, bool isHidden, const std::string& description);
-  OptionOptions(const std::string& longName,
-                const std::string& shortName,
-                const std::string& optionDescription,
-                const boost::program_options::value_semantic* optionValue,
-                const std::string& valueDescription,
-                bool isHidden);
+  OptionOptions(const std::string& longName, const std::string& shortName, const std::string& optionDescription, const boost::program_options::value_semantic* optionValue, const std::string& valueDescription, bool isHidden);
   void setExtendedHelp(const std::string& extendedHelp) { m_extendedHelp = extendedHelp; };
   void printHelp() const;
-  std::vector<std::string> process_arguments(boost::program_options::variables_map& vm,
-                                             const SubCmdOptions& options,
-                                             bool validate_arguments = true) const;
+  std::vector<std::string> process_arguments(boost::program_options::variables_map& vm, const SubCmdOptions& options, bool validate_arguments = true) const;
 
  private:
   OptionOptions() = delete;

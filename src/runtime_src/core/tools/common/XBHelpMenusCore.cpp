@@ -44,6 +44,8 @@ class fgcolor {
   fgcolor(uint8_t _color) : m_color(_color){};
   std::string string() const { return "\033[38;5;" + std::to_string(m_color) + "m"; }
   static const std::string reset() { return "\033[39m"; };
+  // Friend modifier required as an operator overloading function must be made a
+  // friend function if it requires access to the private members of the class
   friend std::ostream& operator<<(std::ostream& os, const fgcolor& _obj) { return os << _obj.string(); }
 
  private:
@@ -55,6 +57,8 @@ class bgcolor {
   bgcolor(uint8_t _color) : m_color(_color){};
   std::string string() const { return "\033[48;5;" + std::to_string(m_color) + "m"; }
   static const std::string reset() { return "\033[49m"; };
+  // Friend modifier required as an operator overloading function must be made a
+  // friend function if it requires access to the private members of the class
   friend std::ostream& operator<<(std::ostream& os, const bgcolor& _obj) { return os << _obj.string(); }
 
  private:

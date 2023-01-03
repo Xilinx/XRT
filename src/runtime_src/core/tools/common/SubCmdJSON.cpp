@@ -69,18 +69,15 @@ SubCmdJSON::SubCmdJSON(bool _isHidden,
 
   m_commonOptions.add_options()("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command");
 
-  for (auto &opt : m_subCmdOptions) {
+  for (auto &opt : m_subCmdOptions)
     m_commonOptions.add_options()(opt.option.c_str(), opt.description.c_str());
-  }
 
   m_hiddenOptions.add_options()
     ("subCmd", po::value<std::string>(), "Command to execute")
-    ("subCmdArgs", po::value<std::vector<std::string> >(), "Arguments for command")
   ;
 
   m_positionals
-    .add("subCmd", 1 /* max_count */)
-    .add("subCmdArgs", -1 /* Unlimited max_count */);
+    .add("subCmd", 1 /* max_count */);
 }
 
 void

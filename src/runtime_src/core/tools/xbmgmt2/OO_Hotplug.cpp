@@ -66,7 +66,7 @@ OO_Hotplug::execute(const SubCmdOptions& _options) const
 
   XBUtilities::verbose("Option(s):");
   for (const auto & aString : _options)
-    XBUtilities::verbose(" " + aString);
+    XBUtilities::verbose(boost::format(" %s") % aString);
 
   // Honor help option first
   if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {

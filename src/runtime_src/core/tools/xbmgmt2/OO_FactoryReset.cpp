@@ -109,6 +109,4 @@ OO_FactoryReset::execute(const SubCmdOptions& _options) const
   std::cout << "****************************************************\n";
   std::cout << "Cold reboot machine to load the new image on device.\n";
   std::cout << "****************************************************\n";
-
-  return;
 }
