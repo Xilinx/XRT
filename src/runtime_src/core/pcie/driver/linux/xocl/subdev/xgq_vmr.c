@@ -1191,12 +1191,13 @@ static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_t
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
 	struct xgq_cmd_log_payload *payload = NULL;
+	struct xgq_cmd_cq_log_page_payload *log = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
 	int id = 0;
 	u32 address = 0;
 	u32 len = 0;
-
+	u32 log_size = 0;
 	/*
 	 * avoid warning messages, skip periodic firewall check
 	 * when xgq service is halted
@@ -1263,29 +1264,32 @@ static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_t
 	ret = (cmd->xgq_cmd_rcode == -ETIME || cmd->xgq_cmd_rcode == -EINVAL) ?
 		0 : cmd->xgq_cmd_rcode;
 
-	if (ret) {
-		struct xgq_cmd_cq_log_page_payload *log = NULL;
-		u32 log_size = 0;
+	/*
+	 * No matter ret is 0 or non-zero, the device might return
+	 * error messages to print into the dmesg.
+	 */
+	log = (struct xgq_cmd_cq_log_page_payload *)&cmd->xgq_cmd_cq_payload;
+	log_size = log->count;
 
-		log = (struct xgq_cmd_cq_log_page_payload *)&cmd->xgq_cmd_cq_payload;
-		log_size = log->count;
+	if (log_size > len) {
+		XGQ_WARN(xgq, "return log size %d is greater than request %d",
+			log->count, len);
+		/* reset to valid shared memory size */
+		log_size = len;
+	}
 
-		if (log_size > len) {
-			XGQ_ERR(xgq, "return log size %d is greater than request %d",
-				log->count, len);
-			log_size = len;
-		} else if (log_size  == 0) {
-			XGQ_ERR(xgq, "no error message");
-		} else {
-			char *log_msg = vmalloc(log_size);
-			if (log_msg == NULL) {
-				XGQ_ERR(xgq, "vmalloc failed, no msg");
-				goto done;
-			}
-			memcpy_from_device(xgq, address, log_msg, log_size);
-			XGQ_ERR(xgq, "%s", log_msg);
-			vfree(log_msg);
+	/* avoid overflow value, will hanlde this better in the future */
+	if (log_size != 0 && log_size != 0x100000) {
+		char *log_msg = vmalloc(log_size + 1);
+		if (log_msg == NULL) {
+			XGQ_ERR(xgq, "vmalloc failed, no memory");
+			goto done;
 		}
+		memcpy_from_device(xgq, address, log_msg, log_size);
+		log_msg[log_size] = '\0';
+
+		XGQ_ERR(xgq, "%s", log_msg);
+		vfree(log_msg);
 	}
 
 done:
