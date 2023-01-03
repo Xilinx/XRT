@@ -196,7 +196,7 @@ SectionIPLayout::getFunctionalEnumStr(const std::string& sFunctional)
   try {
     PS_FUNCTIONAL eFunctional = getFunctional(sFunctional);
     sFunctionalEnum = (boost::format("%d") % static_cast<unsigned int>(eFunctional)).str();
-  } catch (const std::runtime_error& e) {
+  } catch (const std::runtime_error&) {
     // assume the sFunctional is already the enum string
     sFunctionalEnum = sFunctional;
   }
@@ -282,7 +282,7 @@ SectionIPLayout::getSubTypeEnumStr(const std::string& sSubType)
   try {
     PS_SUBTYPE eSubType = getSubType(sSubType);
     sSubTypeEnum = (boost::format("%d") % static_cast<unsigned int>(eSubType)).str();
-  } catch (const std::runtime_error& e) {
+  } catch (const std::runtime_error&) {
     // assume the sSubType is already the enum string, ignore the exception
     sSubTypeEnum = sSubType;
   }
