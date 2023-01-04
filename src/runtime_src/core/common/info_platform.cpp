@@ -175,8 +175,20 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
         // Ignoring if not available
       }
     }
+
+    std::string exp_sc_ver = xrt_core::device_query<xq::expected_sc_version>(device);
+    if (exp_sc_ver.empty()) {
+      try {
+        exp_sc_ver = xrt_core::device_query<xq::hwmon_sdm_target_msp_ver>(device);
+      }
+      catch (const xq::exception&) {
+        // Ignoring if not available
+      }
+    }
+
     sc.add("version", sc_ver);
-    sc.add("expected_version", xrt_core::device_query<xq::expected_sc_version>(device));
+    sc.add("expected_version", exp_sc_ver);
+
     ptree_type cmc;
 
     /*
