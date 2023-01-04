@@ -378,9 +378,28 @@ static bool xgq_submitted_cmds_empty(struct xocl_xgq_vmr *xgq)
 	return false;
 }
 
-static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, bool dump_to_debug_log)
+static int vmr_log_dump_to_debug(struct xocl_xgq_vmr *xgq, char *buf, char *log_buf)
+{
+	XGQ_DBG(xgq, "%s", log_buf);
+	return 0;
+}
+
+static int vmr_log_dump_to_dmesg(struct xocl_xgq_vmr *xgq, char *buf, char *log_buf)
+{
+	XGQ_WARN(xgq, "%s", log_buf);
+	return 0;
+}
+	
+static int vmr_log_dump_to_buf(struct xocl_xgq_vmr *xgq, char *buf, char *log_buf)
+{
+	return buf == NULL ? 0 : snprintf(buf, PAGE_SIZE, "%s\n", log_buf);
+}
+
+static size_t xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, char *buf,
+	int(*dump_cb)(struct xocl_xgq_vmr *xgq, char *buf, char *log_buf))
 {
 	struct vmr_log log = { 0 };
+	size_t count = 0;
 
 	if (num_recs > VMR_LOG_MAX_RECS)
 		num_recs = VMR_LOG_MAX_RECS;
@@ -398,9 +417,6 @@ static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, bool dump_t
 
 		log_idx = (log_idx + VMR_LOG_MAX_RECS - num_recs) % VMR_LOG_MAX_RECS;
 
-		if (!dump_to_debug_log)
-			XGQ_WARN(xgq, "=== start dumping vmr log ===");
-
 		for (idx = 0; idx < num_recs; idx++) {
 			xocl_memcpy_fromio(&log.log_buf, xgq->xgq_payload_base +
 				xgq->xgq_vmr_shared_mem.log_msg_buf_off +
@@ -408,22 +424,26 @@ static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, bool dump_t
 				sizeof(log));
 			log_idx = (log_idx + 1) % VMR_LOG_MAX_RECS;
 
-			if (dump_to_debug_log)
-				XGQ_DBG(xgq, "%s", log.log_buf);
-			else
-				XGQ_WARN(xgq, "%s", log.log_buf);
+			/* calling call back function */
+			count += dump_cb(xgq, buf ? buf + count : NULL, log.log_buf);
+			if (count > PAGE_SIZE) {
+				XGQ_WARN(xgq, "message size %ld exceeds page %ld",
+					count, PAGE_SIZE);
+				break;
+			}
 		}
-
-		if (!dump_to_debug_log)
-			XGQ_WARN(xgq, "=== end dumping vmr log ===");
 	} else {
 		XGQ_WARN(xgq, "vmr payload partition table is not available");
 	}
+
+	return min(count, PAGE_SIZE);
 }
 
 static void xgq_vmr_log_dump_all(struct xocl_xgq_vmr *xgq)
 {
-	xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, false);
+	XGQ_WARN(xgq, "=== start dumping vmr log===");
+	xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, NULL, vmr_log_dump_to_dmesg);
+	XGQ_WARN(xgq, "=== end dumping vmr log===");
 }
 
 static struct opcode_name {
@@ -457,13 +477,17 @@ const char *get_opcode_name(int opcode)
 
 static void xgq_vmr_log_dump_debug(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
 {
-	XGQ_WARN(xgq, "opcode: %s(0x%x), rcode: %d, check debug trace for detailed log.",
+	XGQ_WARN(xgq, "opcode: %s(0x%x), rcode: %d, check vmr_log sysfs node and xclmgmt trace log.",
 		get_opcode_name(cmd->xgq_cmd_entry.hdr.opcode),
 		cmd->xgq_cmd_entry.hdr.opcode,
 		cmd->xgq_cmd_rcode);
 
 	/* Dump VMR logs into xclmgmt debugfs */
-	xgq_vmr_log_dump(xgq, 20, true);
+	XGQ_DBG(xgq, "log for opcode: %s(0x%x), rcode: %d",
+		get_opcode_name(cmd->xgq_cmd_entry.hdr.opcode),
+		cmd->xgq_cmd_entry.hdr.opcode,
+		cmd->xgq_cmd_rcode);
+	xgq_vmr_log_dump(xgq, 20, NULL, vmr_log_dump_to_debug);
 }
 
 /* Wait for xgq service is fully ready after a reset. */
@@ -2418,7 +2442,7 @@ static ssize_t vmr_debug_dump_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	xgq_vmr_log_dump(xgq, val, true);
+	xgq_vmr_log_dump(xgq, val, NULL, vmr_log_dump_to_debug);
 
 	return count;
 }
@@ -2508,6 +2532,18 @@ static ssize_t vmr_mem_stats_show(struct device *dev,
 	return cnt;
 }
 static DEVICE_ATTR_RO(vmr_mem_stats);
+
+static ssize_t vmr_log_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	cnt = xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, buf, vmr_log_dump_to_buf);
+
+	return cnt == 0 ? -EINVAL : cnt;
+}
+static DEVICE_ATTR_RO(vmr_log);
 
 static ssize_t vmr_debug_type_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -3027,6 +3063,7 @@ static struct attribute *vmr_attrs[] = {
 	&dev_attr_xgq_scaling_enable.attr,
 	&dev_attr_xgq_scaling_power_override.attr,
 	&dev_attr_xgq_scaling_temp_override.attr,
+	&dev_attr_vmr_log.attr,
 	NULL,
 };
 
