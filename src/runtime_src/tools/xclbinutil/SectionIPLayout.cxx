@@ -119,6 +119,93 @@ SectionIPLayout::getIPControlType(std::string& _sIPControlType) const
   throw std::runtime_error(errMsg);
 }
 
+const std::string
+SectionIPLayout::getFunctionalStr(PS_FUNCTIONAL eFunctional) const
+{
+  switch (eFunctional) {
+    case FC_DPU:
+      return "DPU";
+    case FC_PREPOST:
+      return "PrePost";
+  }
+
+  return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eFunctional)).str();
+}
+
+PS_FUNCTIONAL
+SectionIPLayout::getFunctional(const std::string& sFunctional)
+{
+  if (sFunctional == "DPU") 
+    return FC_DPU;
+  if (sFunctional == "PrePost") 
+    return FC_PREPOST;
+
+  const std::string errMsg = "ERROR: Unknown Functional: '" + sFunctional + "'";
+  throw std::runtime_error(errMsg);
+}
+
+std::string
+SectionIPLayout::getFunctionalEnumStr(const std::string& sFunctional) 
+{
+  // sFunctional can either have string or numeric value
+  // for string value (e.g. "DPU"), convert it to enum string (e.g. "0")
+  // for numeric value, getFunctional() would throw exception, and in
+  //   this case no conversion needed
+  std::string sFunctionalEnum;
+  try {
+    PS_FUNCTIONAL eFunctional = getFunctional(sFunctional);
+    sFunctionalEnum = (boost::format("%d") % static_cast<unsigned int>(eFunctional)).str();
+  } catch (const std::runtime_error&) {
+    // assume the sFunctional is already the enum string, ignore the exeception
+    sFunctionalEnum = sFunctional;
+  }
+  return sFunctionalEnum;
+}
+
+
+const std::string
+SectionIPLayout::getSubTypeStr(PS_SUBTYPE eSubType) const
+{
+  switch (eSubType) {
+    case ST_PS:
+      return "PS";
+    case ST_DPU:
+      return "DPU";
+  }
+
+  return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eSubType)).str();
+}
+
+PS_SUBTYPE
+SectionIPLayout::getSubType(const std::string& sSubType)
+{
+  if (sSubType == "PS")
+    return ST_PS;
+  if (sSubType == "DPU")
+    return ST_DPU;
+
+  const std::string errMsg = "ERROR: Unknown SubType: '" + sSubType + "'";
+  throw std::runtime_error(errMsg);
+}
+
+std::string
+SectionIPLayout::getSubTypeEnumStr(const std::string& sSubType)
+{
+  // sSubType can either have string or numeric value
+  // for string value (e.g. "DPU"), convert it to enum string (e.g. "1")
+  // for numeric value, getSubType() would throw exception, and in this
+  //   case no conversion needed
+  std::string sSubTypeEnum;
+  try {
+    PS_SUBTYPE eSubType = getSubType(sSubType);
+    sSubTypeEnum = (boost::format("%d") % static_cast<unsigned int>(eSubType)).str();
+  } catch (const std::runtime_error&) {
+    // assume the sSubType is already the enum string, ignore the exception
+    sSubTypeEnum = sSubType;
+  }
+  return sSubTypeEnum;
+}
+
 
 void
 SectionIPLayout::marshalToJSON(char* _pDataSection,
@@ -146,13 +233,13 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
   }
 
   ip_layout* pHdr = (ip_layout*)_pDataSection;
-  boost::property_tree::ptree ip_layout;
+  boost::property_tree::ptree ptIPLayout;
 
   XUtil::TRACE(boost::format("m_count: %d") % pHdr->m_count);
 
   // Write out the entire structure except for the array structure
   XUtil::TRACE_BUF("ip_layout", reinterpret_cast<const char*>(pHdr), ((uint64_t)&(pHdr->m_ip_data[0]) - (uint64_t)pHdr));
-  ip_layout.put("m_count", (boost::format("%d") % (unsigned int)pHdr->m_count).str());
+  ptIPLayout.put("m_count", (boost::format("%d") % (unsigned int)pHdr->m_count).str());
 
   uint64_t expectedSize = ((uint64_t)&(pHdr->m_ip_data[0]) - (uint64_t)pHdr) + (sizeof(ip_data) * pHdr->m_count);
 
@@ -161,9 +248,9 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     throw std::runtime_error(errMsg.str());
   }
 
-  boost::property_tree::ptree m_ip_data;
+  boost::property_tree::ptree ptIPData;
   for (int index = 0; index < pHdr->m_count; ++index) {
-    boost::property_tree::ptree ip_data;
+    boost::property_tree::ptree ptIPEntry;
 
     if (((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
         ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM) ||
@@ -188,45 +275,81 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
                    % pHdr->m_ip_data[index].m_base_address
                    % pHdr->m_ip_data[index].m_name);
     } else {
+      // IP_PS_KERNEL
+      // if m_subtype is ST_DPU (i.e. fixed ps kernel), display "m_subtype", "m_functional" and "m_kernel_id"
+      // else (non-fixed ps kernel), display "properties"
+      if ((PS_SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype == ST_DPU) { 
+      XUtil::TRACE(boost::format("[%d]: m_type: %s, m_subtype: %s, m_functional: %s, m_kernel_id: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
+                   % index
+                   % getIPTypeStr((IP_TYPE)pHdr->m_ip_data[index].m_type)
+                   % getSubTypeStr((PS_SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype)
+                   % getFunctionalStr((PS_FUNCTIONAL)pHdr->m_ip_data[index].ps_kernel.m_functional)
+                   % (unsigned int)pHdr->m_ip_data[index].ps_kernel.m_kernel_id
+                   % pHdr->m_ip_data[index].m_base_address
+                   % pHdr->m_ip_data[index].m_name);
+      } else {
       XUtil::TRACE(boost::format("[%d]: m_type: %s, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
                    % index
                    % getIPTypeStr((IP_TYPE)pHdr->m_ip_data[index].m_type)
                    % pHdr->m_ip_data[index].properties
                    % pHdr->m_ip_data[index].m_base_address
                    % pHdr->m_ip_data[index].m_name);
+      }
     }
 
     // Write out the entire structure
     XUtil::TRACE_BUF("ip_data", reinterpret_cast<const char*>(&(pHdr->m_ip_data[index])), sizeof(ip_data));
 
-    ip_data.put("m_type", getIPTypeStr((IP_TYPE)pHdr->m_ip_data[index].m_type).c_str());
+    ptIPEntry.put("m_type", getIPTypeStr((IP_TYPE)pHdr->m_ip_data[index].m_type).c_str());
 
-    if (((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
-        ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM) ||
-        ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM_ECC)) {
-      ip_data.put("m_index", (boost::format("%d") % (unsigned int)pHdr->m_ip_data[index].indices.m_index).str());
-      ip_data.put("m_pc_index", (boost::format("%d") % (unsigned int)pHdr->m_ip_data[index].indices.m_pc_index).str());
-    } else if ((IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
-      ip_data.put("m_int_enable", (boost::format("%d") % ((pHdr->m_ip_data[index].properties & ((uint32_t)IP_INT_ENABLE_MASK)))).str());
-      ip_data.put("m_interrupt_id", (boost::format("%d") % (((pHdr->m_ip_data[index].properties & ((uint32_t)IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT))).str());
-      std::string sIPControlType = getIPControlTypeStr((IP_CONTROL)((pHdr->m_ip_data[index].properties & ((uint32_t)IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
-      ip_data.put("m_ip_control", sIPControlType.c_str());
-    } else {
-      ip_data.put("properties", (boost::format("0x%x") % pHdr->m_ip_data[index].properties).str());
-    }
+    switch ((IP_TYPE)pHdr->m_ip_data[index].m_type) {
+      case IP_MEM_DDR4:
+      case IP_MEM_HBM:
+      case IP_MEM_HBM_ECC:
+      {
+        ptIPEntry.put("m_index", (boost::format("%d") % (unsigned int)pHdr->m_ip_data[index].indices.m_index).str());
+        ptIPEntry.put("m_pc_index", (boost::format("%d") % (unsigned int)pHdr->m_ip_data[index].indices.m_pc_index).str());
+        break;
+      }
+      case IP_KERNEL:
+      {
+        ptIPEntry.put("m_int_enable", (boost::format("%d") % ((pHdr->m_ip_data[index].properties & ((uint32_t)IP_INT_ENABLE_MASK)))).str());
+        ptIPEntry.put("m_interrupt_id", (boost::format("%d") % (((pHdr->m_ip_data[index].properties & ((uint32_t)IP_INTERRUPT_ID_MASK)) >> IP_INTERRUPT_ID_SHIFT))).str());
+        std::string sIPControlType = getIPControlTypeStr((IP_CONTROL)((pHdr->m_ip_data[index].properties & ((uint32_t)IP_CONTROL_MASK)) >> IP_CONTROL_SHIFT));
+        ptIPEntry.put("m_ip_control", sIPControlType.c_str());
+        break;
+      }
+      case IP_PS_KERNEL:
+      {
+        // if m_subtype is ST_DPU (i.e. fixed ps kernel), display "m_subtype", "m_functional" and "m_kernel_id"
+        // else (non-fixed ps kernel), display "properties"
+        if ((PS_SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype == ST_DPU) { 
+          ptIPEntry.put("m_subtype", getSubTypeStr((PS_SUBTYPE)pHdr->m_ip_data[index].ps_kernel.m_subtype));
+          ptIPEntry.put("m_functional", getFunctionalStr((PS_FUNCTIONAL)pHdr->m_ip_data[index].ps_kernel.m_functional));
+          ptIPEntry.put("m_kernel_id", (boost::format("0x%x") % (unsigned int)pHdr->m_ip_data[index].ps_kernel.m_kernel_id).str());
+        } else {
+          ptIPEntry.put("properties", (boost::format("0x%x") % pHdr->m_ip_data[index].properties).str());
+        }
+        break;
+      }
+      default:
+          ptIPEntry.put("properties", (boost::format("0x%x") % pHdr->m_ip_data[index].properties).str());
+    }    
+
     if (pHdr->m_ip_data[index].m_base_address != ((uint64_t)-1)) {
-      ip_data.put("m_base_address", (boost::format("0x%lx") % pHdr->m_ip_data[index].m_base_address).str());
+      ptIPEntry.put("m_base_address", (boost::format("0x%lx") % pHdr->m_ip_data[index].m_base_address).str());
     } else {
-      ip_data.put("m_base_address", "not_used");
+      ptIPEntry.put("m_base_address", "not_used");
     }
-    ip_data.put("m_name", (boost::format("%s") % pHdr->m_ip_data[index].m_name).str());
+    ptIPEntry.put("m_name", (boost::format("%s") % pHdr->m_ip_data[index].m_name).str());
 
-    m_ip_data.push_back({ "", ip_data });   // Used to make an array of objects
+    ptIPData.push_back({ "", ptIPEntry });   // Used to make an array of objects
   }
 
-  ip_layout.add_child("m_ip_data", m_ip_data);
+  ptIPLayout.add_child("m_ip_data", ptIPData);
 
-  _ptree.add_child("ip_layout", ip_layout);
+
+  _ptree.add_child("ip_layout", ptIPLayout);
   XUtil::TRACE("-----------------------------");
 }
 
@@ -266,60 +389,101 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     ipDataHdr.m_type = getIPType(sm_type);
 
     // For these IPs, the struct indices needs to be initialized
-    if ((ipDataHdr.m_type == IP_MEM_DDR4) ||
-        (ipDataHdr.m_type == IP_MEM_HBM) ||
-        (ipDataHdr.m_type == IP_MEM_HBM_ECC)) {
-      ipDataHdr.indices.m_index = ptIPData.get<uint16_t>("m_index");
-      ipDataHdr.indices.m_pc_index = ptIPData.get<uint8_t>("m_pc_index", 0);
-    } else {
-      // Get the properties value (if one is defined)
-      auto sProperties = ptIPData.get<std::string>("properties", "0");
-      ipDataHdr.properties = (uint32_t)XUtil::stringToUInt64(sProperties);
-
-      { // m_int_enable
-        boost::optional<bool> bIntEnable;
-        bIntEnable = ptIPData.get_optional<bool>("m_int_enable");
-        if (bIntEnable.is_initialized()) {
-          ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t)IP_INT_ENABLE_MASK);  // Clear existing bit
-          if (bIntEnable.get()) {
-            ipDataHdr.properties = ipDataHdr.properties | ((uint32_t)IP_INT_ENABLE_MASK); // Set bit
+    switch (ipDataHdr.m_type) {
+      case IP_MEM_DDR4:
+      case IP_MEM_HBM:
+      case IP_MEM_HBM_ECC:
+      {
+        ipDataHdr.indices.m_index = ptIPData.get<uint16_t>("m_index");
+        ipDataHdr.indices.m_pc_index = ptIPData.get<uint8_t>("m_pc_index", 0);
+        break;
+      }
+      case IP_PS_KERNEL:
+      {
+        // m_subtype
+        auto sSubType = ptIPData.get<std::string>("m_subtype", "");
+        if (!sSubType.empty()) {
+          // subtype and functinoal can either be string (e.g. "DPU") or numeric (e.g. "1")
+          if (isdigit(sSubType[0])) {
+            // convert sSubType from numeric to enum
+            ipDataHdr.ps_kernel.m_subtype = std::stoul(sSubType);
+          } else {
+            // convert sSubType from string to enum
+            ipDataHdr.ps_kernel.m_subtype = static_cast<unsigned int>(getSubType(sSubType));
           }
         }
-      }
-
-      { // m_interrupt_id
-        auto sInterruptID = ptIPData.get<std::string>("m_interrupt_id", "");
-        if (!sInterruptID.empty()) {
-          unsigned int interruptID = std::stoul(sInterruptID);
-          unsigned int maxValue = ((unsigned int)IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
-          if (interruptID > maxValue) {
-            auto errMsg = boost::format("ERROR: The m_interrupt_id (%d), exceeds maximum value (%d).") % interruptID % maxValue;
-            throw std::runtime_error(errMsg.str());
+  
+        // m_functinoal
+        auto sFunctional = ptIPData.get<std::string>("m_functional", "");
+        if (!sFunctional.empty()) {
+          if (isdigit(sFunctional[0])) {
+            // convert sFunctional from numeric to enum
+            ipDataHdr.ps_kernel.m_functional = std::stoul(sFunctional);
+          } else {
+            // convert sFunctional from string to enum
+            ipDataHdr.ps_kernel.m_functional = static_cast<unsigned int>(getFunctional(sFunctional));
           }
-
-          unsigned int shiftValue = (interruptID << IP_INTERRUPT_ID_SHIFT);
-          shiftValue = shiftValue & ((uint32_t)IP_INTERRUPT_ID_MASK);
-          ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t)IP_INTERRUPT_ID_MASK);  // Clear existing bits
-          ipDataHdr.properties = ipDataHdr.properties | shiftValue;                          // Set bits
         }
+  
+        // m_kernel_id
+        auto sKernelId = ptIPData.get<std::string>("m_kernel_id", "");
+        if (!sKernelId.empty()) {
+          ipDataHdr.ps_kernel.m_kernel_id = XUtil::stringToUInt64(sKernelId);
+        }
+        break;
       }
-
-      { // m_ip_control
-        boost::optional<std::string> bIPControl;
-        bIPControl = ptIPData.get_optional<std::string>("m_ip_control");
-        if (bIPControl.is_initialized()) {
-          unsigned int ipControl = (unsigned int)getIPControlType(bIPControl.get());
-
-          unsigned int maxValue = ((unsigned int)IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
-          if (ipControl > maxValue) {
-            auto errMsg = boost::format("ERROR: The m_ip_control (%d), exceeds maximum value (%d).") % (unsigned int)ipControl % maxValue;
-            throw std::runtime_error(errMsg.str());
+      default:
+      {
+        // Get the properties value (if one is defined)
+        auto sProperties = ptIPData.get<std::string>("properties", "0");
+        // ipDataHdr.properties = (uint32_t)XUtil::stringToUInt64(sProperties);
+        ipDataHdr.properties = static_cast<uint32_t>(XUtil::stringToUInt64(sProperties));
+  
+        // IP_KERNEL
+        { // m_int_enable
+          boost::optional<bool> bIntEnable;
+          bIntEnable = ptIPData.get_optional<bool>("m_int_enable");
+          if (bIntEnable.is_initialized()) {
+            ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t)IP_INT_ENABLE_MASK);  // Clear existing bit
+            if (bIntEnable.get()) 
+              ipDataHdr.properties = ipDataHdr.properties | ((uint32_t)IP_INT_ENABLE_MASK); // Set bit
           }
-
-          unsigned int shiftValue = ipControl << IP_CONTROL_SHIFT;
-          shiftValue = shiftValue & ((uint32_t)IP_CONTROL_MASK);
-          ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t)IP_CONTROL_MASK);  // Clear existing bits
-          ipDataHdr.properties = ipDataHdr.properties | shiftValue;                          // Set bits
+        }
+  
+        { // m_interrupt_id
+          auto sInterruptID = ptIPData.get<std::string>("m_interrupt_id", "");
+          if (!sInterruptID.empty()) {
+            unsigned int interruptID = std::stoul(sInterruptID);
+            unsigned int maxValue = ((unsigned int)IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
+            if (interruptID > maxValue) {
+              const auto errMsg = boost::format("ERROR: The m_interrupt_id (%d), exceeds maximum value (%d).") % interruptID % maxValue;
+              throw std::runtime_error(errMsg.str());
+            }
+  
+            unsigned int shiftValue = (interruptID << IP_INTERRUPT_ID_SHIFT);
+            shiftValue = shiftValue & ((uint32_t)IP_INTERRUPT_ID_MASK);
+            ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t)IP_INTERRUPT_ID_MASK);  // Clear existing bits
+            ipDataHdr.properties = ipDataHdr.properties | shiftValue;                          // Set bits
+          }
+        }
+  
+        { // m_ip_control
+          boost::optional<std::string> bIPControl;
+          bIPControl = ptIPData.get_optional<std::string>("m_ip_control");
+          if (bIPControl.is_initialized()) {
+            unsigned int ipControl = (unsigned int)getIPControlType(bIPControl.get());
+  
+            unsigned int maxValue = ((unsigned int)IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
+            if (ipControl > maxValue) {
+              const auto errMsg = boost::format("ERROR: The m_ip_control (%d), exceeds maximum value (%d).") % (unsigned int)ipControl % maxValue;
+              throw std::runtime_error(errMsg.str());
+            }
+  
+            unsigned int shiftValue = ipControl << IP_CONTROL_SHIFT;
+            shiftValue = shiftValue & ((uint32_t)IP_CONTROL_MASK);
+            ipDataHdr.properties = ipDataHdr.properties & (~(uint32_t)IP_CONTROL_MASK);  // Clear existing bits
+            ipDataHdr.properties = ipDataHdr.properties | shiftValue;                          // Set bits
+          }
         }
       }
     }
@@ -334,7 +498,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
     auto sm_name = ptIPData.get<std::string>("m_name");
     if (sm_name.length() >= sizeof(ip_data::m_name)) {
-      auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
+      const auto errMsg = boost::format("ERROR: The m_name entry length (%d), exceeds the allocated space (%d).  Name: '%s'")
           % (unsigned int)sm_name.length() % (unsigned int)sizeof(ip_data::m_name) % sm_name;
       throw std::runtime_error(errMsg.str());
     }
@@ -352,13 +516,34 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
                    % (unsigned int)ipDataHdr.indices.m_pc_index
                    % ipDataHdr.m_base_address
                    % ipDataHdr.m_name);
-    } else {
+    } else if (ipDataHdr.m_type == IP_KERNEL) {
       XUtil::TRACE(boost::format("[%d]: m_type: %d, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
                    % count
                    % (unsigned int)ipDataHdr.m_type
                    % (unsigned int)ipDataHdr.properties
                    % ipDataHdr.m_base_address
                    % ipDataHdr.m_name);
+    } else {
+      // IP_PS_KERNEL
+      // if m_subtype is ST_DPU (i.e. fixed ps kernel), display "m_subtype", "m_functional" and "m_kernel_id"
+      // else (non-fixed ps kernel), display "properties"
+      if ((PS_SUBTYPE)ipDataHdr.ps_kernel.m_subtype == ST_DPU) { 
+        XUtil::TRACE(boost::format("[%d]: m_type: %d, m_subtype: %d, m_functional: %d, m_kernel_id: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
+                   % count
+                   % (unsigned int)ipDataHdr.m_type
+                   % (unsigned int)ipDataHdr.ps_kernel.m_subtype
+                   % (unsigned int)ipDataHdr.ps_kernel.m_functional
+                   % (unsigned int)ipDataHdr.ps_kernel.m_kernel_id
+                   % ipDataHdr.m_base_address
+                   % ipDataHdr.m_name);
+       } else {
+         XUtil::TRACE(boost::format("[%d]: m_type: %d, properties: 0x%x, m_base_address: 0x%lx, m_name: '%s'")
+                   % count
+                   % (unsigned int)ipDataHdr.m_type
+                   % (unsigned int)ipDataHdr.properties
+                   % ipDataHdr.m_base_address
+                   % ipDataHdr.m_name);
+       }
     }
 
     // Write out the entire structure
@@ -369,7 +554,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
   // -- The counts should match --
   if (count != (unsigned int)ipLayoutHdr.m_count) {
-    auto errMsg = boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d")
+    const auto errMsg = boost::format("ERROR: Number of connection sections (%d) does not match expected encoded value: %d")
         % (unsigned int)count % (unsigned int)ipLayoutHdr.m_count;
     throw std::runtime_error(errMsg.str());
   }
@@ -378,7 +563,7 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
   unsigned int bufferSize = (unsigned int)_buf.str().size();
   const unsigned int maxBufferSize = 64 * 1024;
   if (bufferSize > maxBufferSize) {
-    auto errMsg = boost::format("CRITICAL WARNING: The buffer size for the IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.")
+    const auto errMsg = boost::format("CRITICAL WARNING: The buffer size for the IP_LAYOUT section (%d) exceed the maximum size of %d.\nThis can result in lose of data in the driver.")
         % (unsigned int)bufferSize % (unsigned int)maxBufferSize;
     std::cout << errMsg << std::endl;
     // throw std::runtime_error(errMsg);
