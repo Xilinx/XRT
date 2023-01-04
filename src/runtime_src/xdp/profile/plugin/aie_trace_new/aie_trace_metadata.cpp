@@ -128,9 +128,9 @@ namespace xdp {
     return hwGen;
   }
 
-  int AieTraceMetadata::getAIETileRowOffset()
+  uint16_t AieTraceMetadata::getAIETileRowOffset()
   {
-    static int rowOffset = 1;
+    static uint16_t rowOffset = 1;
     static bool gotValue = false;
     if (!gotValue) {
       auto device = xrt_core::get_userpf_device(handle);
@@ -140,7 +140,7 @@ namespace xdp {
       } else {
         pt::ptree aie_meta;
         read_aie_metadata(data.first, data.second, aie_meta);
-        rowOffset = aie_meta.get_child("aie_metadata.driver_config.aie_tile_row_start").get_value<int>();
+        rowOffset = aie_meta.get_child("aie_metadata.driver_config.aie_tile_row_start").get_value<uint16_t>();
       }
       gotValue = true;
     }
@@ -306,6 +306,7 @@ namespace xdp {
     read_aie_metadata(data.first, data.second, aie_meta);
     
     std::vector<tile_type> tiles;
+    auto rowOffset = getAIETileRowOffset();
 
     for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
       if (graph.second.get<std::string>("name") != graph_name)
@@ -321,7 +322,7 @@ namespace xdp {
       int num_tiles = count;
       count = 0;
       for (auto& node : graph.second.get_child("core_rows"))
-        tiles.at(count++).row = std::stoul(node.second.data());
+        tiles.at(count++).row = std::stoul(node.second.data()) + rowOffset;
       throw_if_error(count < num_tiles,"core_rows < num_tiles");
 
       count = 0;
@@ -369,6 +370,8 @@ namespace xdp {
 
     std::vector<tile_type> allTiles;
     std::vector<tile_type> memTiles;
+    // Always one row of interface tiles
+    uint16_t rowOffset = 1;
 
     // Now parse all shared buffers
     for (auto const &shared_buffer : sharedBufferTree.get()) {
@@ -377,7 +380,7 @@ namespace xdp {
 
       tile_type tile;
       tile.col = shared_buffer.second.get<uint16_t>("column");
-      tile.row = shared_buffer.second.get<uint16_t>("row");
+      tile.row = shared_buffer.second.get<uint16_t>("row") + rowOffset;
       allTiles.emplace_back(std::move(tile));
     }
 
@@ -409,6 +412,7 @@ namespace xdp {
       return {};
 
     std::vector<tile_type> tiles;
+    auto rowOffset = getAIETileRowOffset();
 
     for (auto const &mapping : kernelToTileMapping.get()) {
       if (mapping.second.get<std::string>("graph") != graph_name)
@@ -420,7 +424,7 @@ namespace xdp {
         if (name.compare(kernel_name) == 0) {
           tile_type tile;
           tile.col = mapping.second.get<uint16_t>("column");
-          tile.row = mapping.second.get<uint16_t>("row");
+          tile.row = mapping.second.get<uint16_t>("row") + rowOffset;
           tiles.emplace_back(std::move(tile));
           break;
         }

@@ -426,6 +426,12 @@ namespace xdp {
         memoryEvents = mMemTileEventSets[metricSet];
       }
 
+      std::stringstream infoMsg;
+      auto tileName = (type == module_type::mem_tile) ? "MEM" : "AIE";
+      infoMsg << "Configuring " << tileName << " tile (" << col << "," << row
+              << ") for trace using metric set " << metricSet;
+      xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
+
       // Check Resource Availability
       // For now only counters are checked
       if (!tileHasFreeRsc(aieDevice, loc, metricSet)) {
@@ -799,8 +805,8 @@ namespace xdp {
     return true;
   } // end setaieTileMetricsSettings
 
-  uint64_t AieTrace_EdgeImpl::checkTraceBufSize(uint64_t aieTraceBufSize) {
-
+  uint64_t AieTrace_EdgeImpl::checkTraceBufSize(uint64_t aieTraceBufSize) 
+  {
 #ifndef _WIN32
     try {
       std::string line;

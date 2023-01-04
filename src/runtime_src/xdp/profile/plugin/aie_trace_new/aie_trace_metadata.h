@@ -63,7 +63,7 @@ class AieTraceMetadata{
     std::string getMetricSet(const std::string& metricsStr);
 
     int getHardwareGen();
-    int getAIETileRowOffset();
+    uint16_t getAIETileRowOffset();
     std::vector<tile_type> getTilesForTracing();
     std::vector<tile_type> getMemTilesForTracing();
 
