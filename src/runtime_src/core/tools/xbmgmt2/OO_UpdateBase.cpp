@@ -620,7 +620,7 @@ auto_flash(std::shared_ptr<xrt_core::device>& device, Flasher::E_FlasherType fla
                                         % getBDF(p.first);
         need_warm_reboot = true;
       } catch (const xrt_core::error& e) {
-        std::cerr << e.what();
+        std::cerr << e.what() << "\n";
         report_stream << boost::format( "  [%s] : Satellite Controller (SC) is either up-to-date, fixed, or"
                                         "not installed. No actions taken.\n")
                                         % getBDF(p.first);
@@ -634,6 +634,7 @@ auto_flash(std::shared_ptr<xrt_core::device>& device, Flasher::E_FlasherType fla
                                       % getBDF(p.first);
       needreboot = true;
     } catch (const xrt_core::error& e) {
+      std::cerr << e.what() << "\n";
       report_stream << boost::format( "  [%s] : Base (e.g., shell) image is up-to-date.  No actions taken.\n")
                                       % getBDF(p.first);
     }
