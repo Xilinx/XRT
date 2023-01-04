@@ -314,37 +314,6 @@ get_aie_trace()
 }
 
 inline std::string
-get_aie_trace_metrics()
-{
-  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "functions");
-  return value;
-}
-
-inline std::string
-get_aie_trace_start_time()
-{
-  static std::string value = detail::get_string_value("Debug.aie_trace_start_time", "0");
-  return value;
-}
-
-inline bool
-get_aie_trace_periodic_offload()
-{
-  static bool value = detail::get_bool_value("Debug.aie_trace_periodic_offload", true);
-  return value;
-}
-
-/**
- * Deprecated in future. Ms is too long for aie trace
- */
-inline unsigned int
-get_aie_trace_buffer_offload_interval_ms()
-{
-  static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_ms", 10);
-  return value;
-}
-
-inline std::string
 get_aie_profile_core_metrics()
 {
   static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "");
@@ -870,6 +839,20 @@ inline std::string
 get_aie_trace_settings_tile_based_aie_tile_metrics()
 {
   static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_aie_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_graph_based_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.graph_based_mem_tile_metrics", "");
+  return value;
+}
+
+inline std::string
+get_aie_trace_settings_tile_based_mem_tile_metrics()
+{
+  static std::string value = detail::get_string_value("AIE_trace_settings.tile_based_mem_tile_metrics", "");
   return value;
 }
 

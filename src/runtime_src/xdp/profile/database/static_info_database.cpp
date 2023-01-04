@@ -903,6 +903,21 @@ namespace xdp {
     return &(xclbin->aie.aieShimEventsMap) ;
   }
 
+  std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIEMemTileEventResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieMemTileEventsMap) ;
+  }
+
   std::vector<std::unique_ptr<aie_cfg_tile>>*
   VPStaticDatabase::getAIECfgTiles(uint64_t deviceId)
   {
@@ -992,6 +1007,17 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
     deviceInfo[deviceId]->addAIEMemoryEventResources(numEvents, numTiles) ;
+  }
+
+  void VPStaticDatabase::addAIEMemTileEventResources(uint64_t deviceId,
+                                                     uint32_t numEvents,
+                                                     uint32_t numTiles)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->addAIEMemTileEventResources(numEvents, numTiles) ;
   }
 
   void VPStaticDatabase::addAIECfgTile(uint64_t deviceId, 

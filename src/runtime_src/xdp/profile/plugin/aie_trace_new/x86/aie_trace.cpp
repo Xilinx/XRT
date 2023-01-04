@@ -71,6 +71,7 @@ namespace xdp {
     uint8_t metricSetInt;
 
     auto tiles = metadata->getTilesForTracing();
+    auto memTiles = metadata->getMemTilesForTracing();
 
     metadata->setTraceStartControl();
     uint32_t delayCycles = static_cast<uint32_t>(metadata->getDelay());

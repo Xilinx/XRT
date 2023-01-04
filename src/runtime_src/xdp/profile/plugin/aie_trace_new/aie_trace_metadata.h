@@ -51,6 +51,7 @@ class AieTraceMetadata{
 
     std::string metricSet;
     std::set<std::string> metricSets;
+    std::set<std::string> memTileMetricSets;
     std::map<tile_type, std::string> configMetrics;
 
     void* handle;
@@ -59,14 +60,24 @@ class AieTraceMetadata{
     
     AieTraceMetadata(uint64_t deviceID, void* handle);
 
-    std::string getMetricSet(const std::string& metricsStr, bool ignoreOldConfig = false);
+    std::string getMetricSet(const std::string& metricsStr);
 
+    int getHardwareGen();
+    int getAIETileRowOffset();
     std::vector<tile_type> getTilesForTracing();
+    std::vector<tile_type> getMemTilesForTracing();
 
-    static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
+    static void read_aie_metadata(const char* data, size_t size, 
+                                  boost::property_tree::ptree& aie_project);
 
-    std::vector<tile_type> get_tiles(const xrt_core::device* device, const std::string& graph_name);
-
+    std::vector<tile_type> get_tiles(const xrt_core::device* device, 
+                                     const std::string& graph_name,
+                                     module_type type, 
+                                     const std::string& kernel_name = "");
+    std::vector<tile_type> get_aie_tiles(const xrt_core::device* device, 
+                                         const std::string& graph_name);
+    std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
+                                         const std::string& graph_name);
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
                                            const std::string& graph_name,
                                            module_type type);
@@ -78,7 +89,8 @@ class AieTraceMetadata{
     std::vector<gmio_type> get_trace_gmios(const xrt_core::device* device);
 
     void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
-                                  std::vector<std::string>& graphmetricsSettings);
+                                  std::vector<std::string>& graphMetricsSettings,
+                                  module_type type);
     void setTraceStartControl();
 
     bool getUseDelay(){return useDelay;}
@@ -95,7 +107,7 @@ class AieTraceMetadata{
 
     void* getHandle() {return handle;}
     unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
-    std::map<tile_type, std::string> getConfigMetrics(){return configMetrics;}
+    std::map<tile_type, std::string> getConfigMetrics() {return configMetrics;}
     std::string getMetricStr(){return metricSet;}
 
     void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}

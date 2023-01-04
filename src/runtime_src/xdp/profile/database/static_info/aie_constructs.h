@@ -28,7 +28,8 @@ namespace xdp {
 enum class module_type {
     core = 0,
     dma,
-    shim
+    shim,
+    mem_tile
   };
 
   struct tile_type

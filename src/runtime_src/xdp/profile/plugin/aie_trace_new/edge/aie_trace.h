@@ -41,8 +41,9 @@ namespace xdp {
       typedef std::vector<EventType> EventVector;
       typedef std::vector<uint32_t>  ValueVector;
 
+      module_type getTileType(uint16_t row);
+      std::vector<std::string> getSettingsVector(std::string settingsString); 
       bool setMetrics(uint64_t deviceId, void* handle);
-      bool setMetricsSettings(uint64_t deviceId, void* handle);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
       bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
@@ -51,10 +52,7 @@ namespace xdp {
      
       bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
       void setTraceStartControl(void* handle);
-      uint64_t checkTraceBufSize(uint64_t size);                                   
-      std::string getMetricSet(void* handle,
-                               const std::string& metricsStr,
-                               bool ignoreOldConfig);
+      uint64_t checkTraceBufSize(uint64_t size);
       inline uint32_t bcIdToEvent(int bcId);
 
     private:
@@ -64,6 +62,7 @@ namespace xdp {
       std::set<std::string> metricSets;
       std::map<std::string, EventVector> mCoreEventSets;
       std::map<std::string, EventVector> mMemoryEventSets;
+      std::map<std::string, EventVector> mMemTileEventSets;
 
       // AIE profile counters
       std::vector<tile_type> mCoreCounterTiles;
@@ -73,6 +72,9 @@ namespace xdp {
       // Counter metrics (same for all sets)
       EventType   mCoreTraceStartEvent;
       EventType   mCoreTraceEndEvent;
+      EventType   mMemTileTraceStartEvent;
+      EventType   mMemTileTraceEndEvent;
+
       EventVector mCoreCounterStartEvents;
       EventVector mCoreCounterEndEvents;
       ValueVector mCoreCounterEventValues;
