@@ -134,38 +134,10 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     // but xml only taks numeric value
     // we need to conver string to correponding nemeric
     auto sFunctional = ptExtendedData.get<std::string>("functional", "");
-#if 0
-#if 0
-    PS_FUNCTIONAL eFunctional = SectionIPLayout::getFunctionalNoError(sFunctional); 
-    if (eFunctional != FC_UNKNOWN) {
-      sFunctional = (boost::format("%d") % static_cast<unsigned int>(eFunctional)).str();
-    } // else no conversion needed
-#endif
-    if (sFunctional == "DPU") 
-      sFunctional = "0";
-    else if (sFunctional == "PrePost") 
-      sFunctional = "1";
-    else 
-      ;   // no conversion to sFunctional
-#endif
     sFunctional = SectionIPLayout::getFunctionalEnumStr(sFunctional); 
     ptExtendedData.put("functional", sFunctional);
 
     auto sSubType = ptExtendedData.get<std::string>("subtype", "");
-#if 0
-#if 0
-    PS_SUBTYPE eSubType = SectionIPLayout::getSubTypeNoError(sSubType); 
-    if (eSubType != ST_UNKNOWN) {
-      sSubType = (boost::format("%d") % static_cast<unsigned int>(eSubType)).str();
-    } // else no conversion needed
-#endif
-   if (sSubType == "PS") 
-      sSubType = "0";
-    else if (sSubType == "DPU") 
-      sSubType = "1";
-    else 
-      ;   // no conversion to sSubtype
-#endif
     sSubType = SectionIPLayout::getSubTypeEnumStr(sSubType); 
     ptExtendedData.put("subtype", sSubType);
  

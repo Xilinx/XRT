@@ -122,16 +122,6 @@ SectionIPLayout::getIPControlType(std::string& _sIPControlType) const
 const std::string
 SectionIPLayout::getFunctionalStr(PS_FUNCTIONAL eFunctional) const
 {
-#if 0
-  switch (eFunctional) {
-    case FC_DPU:
-      return "DPU";
-    case FC_PREPOST:
-      return "PrePost";
-    default:
-      return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eFunctional)).str();
-  }
-#endif
   switch (eFunctional) {
     case FC_DPU:
       return "DPU";
@@ -142,39 +132,6 @@ SectionIPLayout::getFunctionalStr(PS_FUNCTIONAL eFunctional) const
   return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eFunctional)).str();
 }
 
-#if 0
-PS_FUNCTIONAL
-SectionIPLayout::getFunctionalNoError(std::string& sFunctional)
-{
-  if (sFunctional == "DPU") 
-    return FC_DPU;
-  else if (sFunctional == "PrePost") 
-    return FC_PREPOST;
-  else
-  //  return FC_UNKNOWN;
-    return FC_DPU;
-}
-
-PS_FUNCTIONAL
-SectionIPLayout::getFunctional(std::string& sFunctional) const
-{
-#if 0
-  PS_FUNCTIONAL eFunctional = getFunctionalNoError(sFunctional); 
-  if (eFunctional == FC_UNKNOWN) {
-    const std::string errMsg = "ERROR: Unknown Functional: '" + sFunctional + "'";
-    throw std::runtime_error(errMsg);
-  }
-  return eFunctional;
-#endif
-  if (sFunctional == "DPU") 
-    return FC_DPU;
-  if (sFunctional == "PrePost") 
-    return FC_PREPOST;
-
-  const std::string errMsg = "ERROR: Unknown Functional: '" + sFunctional + "'";
-  throw std::runtime_error(errMsg);
-}
-#endif
 PS_FUNCTIONAL
 SectionIPLayout::getFunctional(const std::string& sFunctional)
 {
@@ -186,18 +143,20 @@ SectionIPLayout::getFunctional(const std::string& sFunctional)
   const std::string errMsg = "ERROR: Unknown Functional: '" + sFunctional + "'";
   throw std::runtime_error(errMsg);
 }
+
 std::string
 SectionIPLayout::getFunctionalEnumStr(const std::string& sFunctional) 
 {
   // sFunctional can either have string or numeric value
   // for string value (e.g. "DPU"), convert it to enum string (e.g. "0")
-  // for numeric value, no conversion needed
+  // for numeric value, getFunctional() would throw exception, and in
+  //   this case no conversion needed
   std::string sFunctionalEnum;
   try {
     PS_FUNCTIONAL eFunctional = getFunctional(sFunctional);
     sFunctionalEnum = (boost::format("%d") % static_cast<unsigned int>(eFunctional)).str();
   } catch (const std::runtime_error&) {
-    // assume the sFunctional is already the enum string
+    // assume the sFunctional is already the enum string, ignore the exeception
     sFunctionalEnum = sFunctional;
   }
   return sFunctionalEnum;
@@ -207,16 +166,6 @@ SectionIPLayout::getFunctionalEnumStr(const std::string& sFunctional)
 const std::string
 SectionIPLayout::getSubTypeStr(PS_SUBTYPE eSubType) const
 {
-#if 0
-  switch (eSubType) {
-    case ST_PS:
-      return "PS";
-    case ST_DPU:
-      return "DPU";
-    default:
-      return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eSubType)).str();
-  }
-#endif
   switch (eSubType) {
     case ST_PS:
       return "PS";
@@ -227,39 +176,6 @@ SectionIPLayout::getSubTypeStr(PS_SUBTYPE eSubType) const
   return (boost::format("UNKNOWN (%d)") % static_cast<unsigned int>(eSubType)).str();
 }
 
-#if 0
-PS_SUBTYPE
-SectionIPLayout::getSubTypeNoError(std::string& sSubType)
-{
-  if (sSubType == "PS")
-    return ST_PS;
-  else if (sSubType == "DPU")
-    return ST_DPU;
-  else 
-  //   return ST_UNKNOWN;
-    return ST_DPU;
-}
-
-PS_SUBTYPE
-SectionIPLayout::getSubType(std::string& sSubType) const
-{
-#if 0
-  PS_SUBTYPE eSubType = getSubTypeNoError(sSubType); 
-  if (eSubType == ST_UNKNOWN) {
-    const std::string errMsg = "ERROR: Unknown SubType: '" + sSubType + "'";
-    throw std::runtime_error(errMsg);
-  }
-  return eSubType;
-#endif
-  if (sSubType == "PS")
-    return ST_PS;
-  if (sSubType == "DPU")
-    return ST_DPU;
-
-  const std::string errMsg = "ERROR: Unknown SubType: '" + sSubType + "'";
-  throw std::runtime_error(errMsg);
-}
-#endif
 PS_SUBTYPE
 SectionIPLayout::getSubType(const std::string& sSubType)
 {
@@ -277,7 +193,8 @@ SectionIPLayout::getSubTypeEnumStr(const std::string& sSubType)
 {
   // sSubType can either have string or numeric value
   // for string value (e.g. "DPU"), convert it to enum string (e.g. "1")
-  // for numeric value, no conversion needed
+  // for numeric value, getSubType() would throw exception, and in this
+  //   case no conversion needed
   std::string sSubTypeEnum;
   try {
     PS_SUBTYPE eSubType = getSubType(sSubType);

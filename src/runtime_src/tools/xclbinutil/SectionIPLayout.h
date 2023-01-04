@@ -27,8 +27,6 @@ class SectionIPLayout : public Section {
 
  public:
   // static so that these two methods can be used in KernelUtilities 
-  // static PS_FUNCTIONAL getFunctionalNoError(std::string& sFunctional);
-  // static PS_SUBTYPE getSubTypeNoError(std::string& sSubType);
   static std::string getFunctionalEnumStr(const std::string& sFunctional);
   static std::string getSubTypeEnumStr(const std::string& sSubType);
 
@@ -46,8 +44,6 @@ class SectionIPLayout : public Section {
   const std::string getSubTypeStr(PS_SUBTYPE eSubType) const;
   IP_TYPE getIPType(std::string& _sIPType) const;
   IP_CONTROL getIPControlType(std::string& _sIPControlType) const;
-  // PS_FUNCTIONAL getFunctional(std::string& sFunctional) const;
-  // PS_SUBTYPE getSubType(std::string& sSubType) const;
 
  private:
   // Static initializer helper class
