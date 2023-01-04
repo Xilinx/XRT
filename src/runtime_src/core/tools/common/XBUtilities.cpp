@@ -517,7 +517,7 @@ XBUtilities::parse_oem_id(const std::string& oemid)
   }
 
   auto oemstr = oemid_map.find(oem_id_val);
-  return oemstr != oemid_map.end() ? oemstr->second : "N/A";
+  return oemstr != oemid_map.end() ? oemstr->second : data_not_available;
 }
 
 static const std::map<std::string, std::string> clock_map = {
@@ -598,17 +598,17 @@ get_xrt_pretty_version()
   xrt_core::get_xrt_info(pt_xrt);
   boost::property_tree::ptree empty_ptree;
 
-  ss << boost::format("%-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
-  ss << boost::format("%-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
-  ss << boost::format("%-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
-  ss << boost::format("%-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", data_not_available);
+  ss << boost::format("%-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", data_not_available);
+  ss << boost::format("%-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", data_not_available);
+  ss << boost::format("%-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", data_not_available);
   const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
   for(auto& drv : available_drivers) {
     const boost::property_tree::ptree& driver = drv.second;
-    std::string drv_name = driver.get<std::string>("name", "N/A");
+    std::string drv_name = driver.get<std::string>("name", data_not_available);
     boost::algorithm::to_upper(drv_name);
     ss << boost::format("%-20s : %s, %s\n") % drv_name
-        % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+        % driver.get<std::string>("version", data_not_available) % driver.get<std::string>("hash", data_not_available);
   }
   return ss.str();
 }

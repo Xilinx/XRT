@@ -333,9 +333,9 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const s
   std::cout << "\n";
   std::cout << "Current Configuration\n";
 
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.current_shell.vbnv", "N/A");
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.current_shell.sc_version", "N/A");
-  std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % _ptDevice.get<std::string>("platform.current_shell.id", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % _ptDevice.get<std::string>("platform.current_shell.vbnv", XBU::data_not_available);
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % _ptDevice.get<std::string>("platform.current_shell.sc_version", XBU::data_not_available);
+  std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % _ptDevice.get<std::string>("platform.current_shell.id", XBU::data_not_available);
   std::cout << "\n";
   std::cout << "\nIncoming Configuration\n";
   const boost::property_tree::ptree& available_shells = _ptDevice.get_child("platform.available_shells");
@@ -353,13 +353,13 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const s
   std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(platform_to_flash.get<std::string>("file").c_str());
   std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(platform_to_flash.get<std::string>("file").c_str());
 
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % platform_to_flash.get<std::string>("vbnv", "N/A");
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % platform_to_flash.get<std::string>("sc_version", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % platform_to_flash.get<std::string>("vbnv", XBU::data_not_available);
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % platform_to_flash.get<std::string>("sc_version", XBU::data_not_available);
   auto logic_uuid = platform_to_flash.get<std::string>("logic-uuid", "");
   if (!logic_uuid.empty())
     std::cout << boost::format("  %-20s : %s\n") % "Platform UUID" % logic_uuid;
   else
-    std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % platform_to_flash.get<std::string>("id", "N/A");
+    std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % platform_to_flash.get<std::string>("id", XBU::data_not_available);
 }
 
 static void

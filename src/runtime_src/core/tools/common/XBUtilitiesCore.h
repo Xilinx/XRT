@@ -29,6 +29,9 @@
 #include <boost/property_tree/ptree.hpp>
 
 namespace XBUtilities {
+
+  static const std::string data_not_available = "N/A";
+
   typedef enum {
     MT_MESSAGE,
     MT_INFO,
