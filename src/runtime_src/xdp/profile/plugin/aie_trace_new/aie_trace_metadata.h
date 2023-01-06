@@ -53,6 +53,8 @@ class AieTraceMetadata{
     std::set<std::string> metricSets;
     std::set<std::string> memTileMetricSets;
     std::map<tile_type, std::string> configMetrics;
+    std::map<tile_type, uint8_t> configChannel0;
+    std::map<tile_type, uint8_t> configChannel1;
 
     void* handle;
 
@@ -107,8 +109,10 @@ class AieTraceMetadata{
 
     void* getHandle() {return handle;}
     unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
+    std::string getMetricStr() {return metricSet;}
     std::map<tile_type, std::string> getConfigMetrics() {return configMetrics;}
-    std::string getMetricStr(){return metricSet;}
+    std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
+    std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
 
     void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}
     void setDelayCycles(uint64_t newDelayCycles) {delayCycles = newDelayCycles;}

@@ -367,6 +367,24 @@ namespace xdp {
     return settingsVector;
   }
 
+  void 
+  AieTrace_EdgeImpl::configEventSelections(XAie_DevInst* aieDevInst,
+                                           const XAie_LocType loc,
+                                           const XAie_ModuleType mod,
+                                           const module_type type,
+                                           const std::string metricSet,
+                                           const uint8_t channel0,
+                                           const uint8_t channel1) 
+  {
+    if (type != module_type::mem_tile)
+      return;
+
+    // Not supported yet in driver
+    //XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
+    //XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
+    //XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
+  }
+
   bool
   AieTrace_EdgeImpl::setMetrics(uint64_t deviceId, void* handle)
   {
@@ -395,6 +413,9 @@ namespace xdp {
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
     int numTileMemoryTraceEvents[NUM_MEMORY_TRACE_EVENTS+1] = {0};
     int numTileMemTileTraceEvents[NUM_MEM_TILE_TRACE_EVENTS+1] = {0};
+
+    auto configChannel0 = metadata->getConfigChannel0();
+    auto configChannel1 = metadata->getConfigChannel1();
 
     // Iterate over all used/specified tiles
     // NOTE: rows are stored as absolute as requred by resource manager
@@ -643,6 +664,15 @@ namespace xdp {
           // Print resources availability for this tile
           printTileStats(aieDevice, tile);
           return false;
+        }
+
+        // Specify Sel0/Sel1 for MEM tile events 21-44
+        if (type == module_type::mem_tile) {
+          auto iter0 = configChannel0.find(tile);
+          auto iter1 = configChannel1.find(tile);
+          uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
+          uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
+          configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, metricSet, channel0, channel1);
         }
 
         int numTraceEvents = 0;

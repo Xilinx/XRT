@@ -35,18 +35,29 @@ namespace xdp {
       XDP_EXPORT
       virtual void updateDevice();
 
-    private:
- 
+    private: 
       typedef XAie_Events            EventType;
       typedef std::vector<EventType> EventVector;
       typedef std::vector<uint32_t>  ValueVector;
 
       module_type getTileType(uint16_t row);
       std::vector<std::string> getSettingsVector(std::string settingsString); 
-      bool setMetrics(uint64_t deviceId, void* handle);
-      void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
-      bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
-      void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+      void configEventSelections(XAie_DevInst* aieDevInst,
+                                 const XAie_LocType loc,
+                                 const XAie_ModuleType mod,
+                                 const module_type type,
+                                 const std::string metricSet,
+                                 const uint8_t channel0,
+                                 const uint8_t channel);
+      bool setMetrics(uint64_t deviceId, 
+                      void* handle);
+      void releaseCurrentTileCounters(int numCoreCounters, 
+                                      int numMemoryCounters);
+      bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, 
+                          XAie_LocType& loc, 
+                          const std::string& metricSet);
+      void printTileStats(xaiefal::XAieDev* aieDevice, 
+                          const tile_type& tile);
       bool configureStartIteration(xaiefal::XAieMod& core);
       bool configureStartDelay(xaiefal::XAieMod& core);
      

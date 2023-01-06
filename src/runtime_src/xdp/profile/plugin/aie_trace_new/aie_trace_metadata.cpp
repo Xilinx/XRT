@@ -443,8 +443,10 @@ namespace xdp {
 
     // STEP 1 : Parse per-graph or per-kernel settings
     /* AIE_trace_settings config format ; Multiple values can be specified for a metric separated with ';'
-     * "graphMetricsSettings" contains each metric value
+     * AI Engine Tiles
      * graph_based_aie_tile_metrics = <graph name|all>:<kernel name|all>:<off|functions|functions_partial_stalls|functions_all_stalls>
+     * MEM Tiles (AIE2 and beyond)
+     * graph_based_mem_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
 
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
@@ -468,6 +470,19 @@ namespace xdp {
       auto tiles = get_tiles(device.get(), graphMetrics[i][0], type, graphMetrics[i][1]);
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
+      }
+
+      // Grab channel numbers (if specified; MEM tiles only)
+      if (graphMetrics[i].size() == 5) {
+        try {
+          for (auto &e : tiles) {
+            configChannel0[e] = std::stoi(graphMetrics[i][3]);
+            configChannel1[e] = std::stoi(graphMetrics[i][4]);
+          }
+        } catch (...) {
+          xrt_core::message::send(severity_level::warning, "XRT",
+            "Channel specifications in graph_based_mem_tile_metrics are not valid and hence ignored.");
+        }
       }
     } // Graph Pass 1
 
@@ -494,6 +509,19 @@ namespace xdp {
       for (auto &e : tiles) {
         configMetrics[e] = graphMetrics[i][2];
       }
+
+      // Grab channel numbers (if specified; MEM tiles only)
+      if (graphMetrics[i].size() == 5) {
+        try {
+          for (auto &e : tiles) {
+            configChannel0[e] = std::stoi(graphMetrics[i][3]);
+            configChannel1[e] = std::stoi(graphMetrics[i][4]);
+          }
+        } catch (...) {
+          xrt_core::message::send(severity_level::warning, "XRT",
+            "Channel specifications in graph_based_mem_tile_metrics are not valid and hence ignored.");
+        }
+      }
     } // Graph Pass 2
 
     // STEP 2 : Parse per-tile settings: all, bounding box, and/or single tiles
@@ -505,7 +533,7 @@ namespace xdp {
      * Range of tiles
      * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|functions|functions_partial_stalls|functions_all_stalls>
      *  
-     * MEM Tiles (AIE2 only)
+     * MEM Tiles (AIE2 and beyond)
      * Single or all columns
      * tile_based_mem_tile_metrics = <{<column>,<row>}|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      * Range of columns
@@ -525,11 +553,24 @@ namespace xdp {
       for (auto &e : allValidTiles) {
         configMetrics[e] = metrics[i][1];
       }
+
+      // Grab channel numbers (if specified; MEM tiles only)
+      if (metrics[i].size() == 4) {
+        try {
+          for (auto &e : allValidTiles) {
+            configChannel0[e] = std::stoi(metrics[i][2]);
+            configChannel1[e] = std::stoi(metrics[i][3]);
+          }
+        } catch (...) {
+          xrt_core::message::send(severity_level::warning, "XRT",
+            "Channel specifications in tile_based_mem_tile_metrics are not valid and hence ignored.");
+        }
+      }
     } // Pass 1 
 
     // Pass 2 : process only range of tiles metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-      if (metrics[i].size() != 3)
+      if ((metrics[i].size() != 3) && (metrics[i].size() != 5))
         continue;
       
       std::vector<std::string> minTile, maxTile;
@@ -554,6 +595,18 @@ namespace xdp {
            "Tile range specification in tile_based_aie_tile_metrics is not of valid format and hence skipped.");
       }
 
+      uint8_t channel0 = 0;
+      uint8_t channel1 = 1;
+      if (metrics[i].size() == 5) {
+        try {
+          channel0 = std::stoi(metrics[i][3]);
+          channel1 = std::stoi(metrics[i][4]);
+        } catch (...) {
+          xrt_core::message::send(severity_level::warning, "XRT",
+            "Channel specifications in tile_based_mem_tile_metrics are not valid and hence ignored.");
+        }
+      }
+
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         for (uint32_t row = minRow; row <= maxRow; ++row) {
           tile_type tile;
@@ -576,6 +629,12 @@ namespace xdp {
           } else {
             itr->second = metrics[i][2];
           }
+
+          // Grab channel numbers (if specified; MEM tiles only)
+          if (metrics[i].size() == 5) {
+            configChannel0[tile] = channel0;
+            configChannel1[tile] = channel1;
+          }
         }
       }
     } // Pass 2
@@ -583,7 +642,8 @@ namespace xdp {
     // Pass 3 : process only single tile metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Check if already processed
-      if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() != 2))
+      if ((metrics[i][0].compare("all") == 0) || (metrics[i].size() == 3)
+          || (metrics[i].size() == 5))
         continue;
 
       std::vector<std::string> tilePos;
@@ -611,7 +671,7 @@ namespace xdp {
         auto itr1 = allValidTiles.find(tile);
         if (itr1 != allValidTiles.end()) {
           // Current tile is used in current design
-          configMetrics[tile] = metrics[i][2];
+          configMetrics[tile] = metrics[i][1];
         } else {
           std::string m = "Specified Tile {" + std::to_string(tile.col) 
                                              + "," + std::to_string(tile.row)
@@ -619,7 +679,18 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", m);
         }
       } else {
-        itr->second = metrics[i][2];
+        itr->second = metrics[i][1];
+      }
+
+      // Grab channel numbers (if specified; MEM tiles only)
+      if (metrics[i].size() == 4) {
+        try {
+          configChannel0[tile] = std::stoi(metrics[i][2]);
+          configChannel1[tile] = std::stoi(metrics[i][3]);
+        } catch (...) {
+          xrt_core::message::send(severity_level::warning, "XRT",
+            "Channel specifications in tile_based_mem_tile_metrics are not valid and hence skipped.");
+        }
       }
     } // Pass 3 
 
