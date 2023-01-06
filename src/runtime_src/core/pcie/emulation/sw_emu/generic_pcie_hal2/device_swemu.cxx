@@ -35,7 +35,7 @@ struct device_query
   static uint32_t
     get(const xrt_core::device* device, key_type query_key)
   {
-    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(device->get_device_handle());
+    xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(device->get_device_handle());
     if (!drv)
       return 0;
     return drv->deviceQuery(query_key);
