@@ -62,7 +62,6 @@ rh_package_list()
      boost-program-options \
      boost-static \
      cmake \
-     compat-libtiff3 \
      cppcheck \
      curl \
      dkms \
@@ -110,14 +109,16 @@ rh_package_list()
     if [ $FLAVOR == "amzn" ]; then
         RH_LIST+=(\
         system-lsb-core \
-        )
-    else
+        compat-libtiff3 \
+	)
+    elif [ $MAJOR -le 8 ]; then
         RH_LIST+=(\
         redhat-lsb \
-        )
+        compat-libtiff3 \
+	)
     fi
 
-    if [ $MAJOR == 8 ]; then
+    if [ $MAJOR -ge 8 ]; then
 
         RH_LIST+=(\
           systemd-devel \
@@ -448,6 +449,19 @@ prep_rhel8()
     subscription-manager repos --enable "codeready-builder-for-rhel-8-x86_64-rpms"
 }
 
+prep_rhel9()
+{
+    echo "Enabling EPEL repository..."
+    rpm -q --quiet epel-release
+    if [ $? != 0 ]; then
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+        yum check-update
+    fi
+
+    echo "Enabling CodeReady-Builder repository..."
+    subscription-manager repos --enable "codeready-builder-for-rhel-9-x86_64-rpms"
+}
+
 prep_centos8()
 {
     echo "Enabling EPEL repository..."
@@ -486,14 +500,17 @@ prep_centos()
 
 prep_rhel()
 {
-   if [ $MAJOR == 8 ]; then
-        prep_rhel8
+    if [ $MAJOR -ge 9 ]; then
+        prep_rhel9
     else
-        prep_rhel7
+        if [ $MAJOR == 8 ]; then
+             prep_rhel8
+        else
+             prep_rhel7
+        fi
+        echo "Installing cmake3 from EPEL repository..."
+        yum install -y cmake3
     fi
-
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
 }
 
 prep_amzn()

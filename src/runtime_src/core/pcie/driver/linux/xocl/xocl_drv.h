@@ -169,11 +169,17 @@
 #endif
 
 #if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 1)
+#define RHEL_9_1_GE
+#endif
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)
+#define RHEL_9_0_GE
+#endif
+#if RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(8, 7)
+#define RHEL_8_7
+#endif
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 5)
 #define RHEL_8_5_GE
-#endif
-#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 7)
-#define RHEL_8_7_GE
 #endif
 #endif
 

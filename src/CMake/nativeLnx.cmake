@@ -41,15 +41,19 @@ ELSE(GIT_FOUND)
 endif(GIT_FOUND)
 
 # --- LSB Release ---
-find_program(LSB_RELEASE lsb_release)
 find_program(UNAME uname)
 
-execute_process(COMMAND ${LSB_RELEASE} -is
+execute_process(
+  COMMAND awk -F= "$1==\"ID\" {print $2}" /etc/os-release
+  COMMAND tr -d "\""
+  COMMAND awk "{print tolower($1)}"
   OUTPUT_VARIABLE LINUX_FLAVOR
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-execute_process(COMMAND ${LSB_RELEASE} -rs
+execute_process(
+  COMMAND awk -F= "$1==\"VERSION_ID\" {print $2}" /etc/os-release
+  COMMAND tr -d "\""
   OUTPUT_VARIABLE LINUX_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
