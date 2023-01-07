@@ -348,10 +348,10 @@ namespace xdp {
   AieTrace_EdgeImpl::getTileType(uint16_t absRow)
   {
     if (absRow == 0)
-      return module_type::core;
-    if (absRow < metadata->getAIETileRowOffset())
       return module_type::shim;
-    return module_type::mem_tile;
+    if (absRow < metadata->getAIETileRowOffset())
+      return module_type::mem_tile;
+    return module_type::core;
   }
 
   std::vector<std::string>
