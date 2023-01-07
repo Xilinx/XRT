@@ -1330,12 +1330,13 @@ kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
         }
 
         /* Find out if same CU context is already exists  */
-        list_for_each_entry(cu_ctx, &ctx->cu_ctx_list, link)
+        list_for_each_entry(cu_ctx, &ctx->cu_ctx_list, link) {
                 if ((cu_ctx->cu_idx == cu_idx) &&
                                 (cu_ctx->cu_domain == cu_domain)) {
                         found = true;
 			break;
 		}
+	}
 
         /* CU context exists. Return the context */
 	if (found)
