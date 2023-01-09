@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -37,12 +37,8 @@ namespace profile {
     using ftype = void (*)(void*); // Device handle
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
-    if (xrt_core::dlerror() != nullptr)
-      update_device_cb = nullptr;
-
     end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
-    if (xrt_core::dlerror() != nullptr)
-      end_poll_cb = nullptr; 
+  
   }
 
   void warning_callbacks()
@@ -55,16 +51,16 @@ namespace profile {
 namespace ctr {
   void update_device(void* handle)
   {
-    if (profile::update_device_cb != nullptr) {
-      profile::update_device_cb(handle) ;
-    }
+    if (profile::update_device_cb != nullptr)
+      profile::update_device_cb(handle);
+    
   }
 
   void end_poll(void* handle)
   {
-    if (profile::end_poll_cb != nullptr) {
-      profile::end_poll_cb(handle) ;
-    }
+    if (profile::end_poll_cb != nullptr)
+      profile::end_poll_cb(handle);
+    
   }
 } // end namespace ctr
 } // end namespace aie

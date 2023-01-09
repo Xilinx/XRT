@@ -429,6 +429,9 @@ int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHa
     // Using malloc/free instead of new/delete because the struct treats the
     // last element as a variable sized array
     int total_tiles = params->numTiles;
+    if (total_tiles == 0)
+      return 1;
+  
     std::size_t total_size = sizeof(xdp::built_in::ProfileOutputConfiguration)
      + sizeof(xdp::built_in::PSCounterInfo[total_tiles * 4 - 1]);
     xdp::built_in::ProfileOutputConfiguration* outputcfg =
@@ -442,6 +445,9 @@ int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHa
 
   // Polling Iteration
   } else if (iteration == 1) {
+    if (constructs->counterData.size() == 0)
+      return 1;
+    
     std::size_t total_size = sizeof(xdp::built_in::ProfileOutputConfiguration)
      + (sizeof(xdp::built_in::PSCounterInfo) * (constructs->counterData.size() - 1));
     xdp::built_in::ProfileOutputConfiguration* outputcfg =
