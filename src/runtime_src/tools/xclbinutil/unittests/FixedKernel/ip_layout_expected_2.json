@@ -13,7 +13,7 @@
             {
                 "m_type": "IP_PS_KERNEL",
                 "m_subtype": "DPU",
-                "m_functional": "DPU",
+                "m_functional": "PrePost",
                 "m_kernel_id": "0x101",
                 "m_base_address": "not_used",
                 "m_name": "DPU:IPUV1CNN"

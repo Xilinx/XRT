@@ -158,8 +158,9 @@ debug_show(struct device *dev, struct device_attribute *attr, char *buf)
 	sz = sprintf(buf, "zcu_xgq %p\n", zcu_xgq);
 
 	client = zcu_xgq->zxc_client_hdl;
-	sz += sprintf(buf+sz, "s_cnt %ld\n", client_stat_read(client, s_cnt[0]));
-	sz += sprintf(buf+sz, "c_cnt %ld\n", client_stat_read(client, c_cnt[0]));
+	/* Default hw context set as 0 to extract the stats */
+	sz += sprintf(buf+sz, "s_cnt %ld\n", client_stat_read(client, 0, s_cnt[0]));
+	sz += sprintf(buf+sz, "c_cnt %ld\n", client_stat_read(client, 0, c_cnt[0]));
 
 	return sz;
 }
@@ -438,9 +439,9 @@ static void zcu_xgq_cmd_notify(struct kds_command *xcmd, enum kds_status status)
 
 	if (xcmd->cu_idx >= 0) {
 		if (cmd->cu_domain != 0)
-			client_stat_inc(xcmd->client, scu_c_cnt[xcmd->cu_idx]);
+			client_stat_inc(xcmd->client, xcmd->hw_ctx_id, scu_c_cnt[xcmd->cu_idx]);
 		else
-			client_stat_inc(xcmd->client, c_cnt[xcmd->cu_idx]);
+			client_stat_inc(xcmd->client, xcmd->hw_ctx_id, c_cnt[xcmd->cu_idx]);
 	}
 }
 
@@ -463,6 +464,8 @@ zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 
 	xcmd->info = cmd;
 	xcmd->payload_type = XGQ_CMD;
+	/* Default hw context id. This is for backward compartability */
+	xcmd->hw_ctx_id = 0;
 
 	xcmd->cb.notify_host = zcu_xgq_cmd_notify;
 	xcmd->cb.free = kds_free_command;

@@ -115,9 +115,6 @@ static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_VMR_LOG_ADDR_OFF 	0x0
 #define XOCL_VMR_DATA_ADDR_OFF  (LOG_PAGE_SIZE * LOG_PAGE_NUM)
 
-/* align the data start to the (next) page boundry */
-#define XOCL_VMR_ALIGNED_DATA_START PAGE_ALIGN(xgq->xgq_vmr_shared_mem.vmr_data_start)
-
 typedef void (*xocl_vmr_complete_cb)(void *arg, struct xgq_com_queue_entry *ccmd);
 
 struct xocl_xgq_vmr;
@@ -148,8 +145,6 @@ struct xocl_xgq_vmr {
 	struct xgq	 	xgq_queue;
 	u64			xgq_io_hdl;
 	void __iomem		*xgq_payload_base;
-	resource_size_t		xgq_payload_base_start;
-	void __iomem		*xgq_payload_data_base;
 	void __iomem		*xgq_sq_base;
 	void __iomem		*xgq_ring_base;
 	void __iomem		*xgq_cq_base;
@@ -383,9 +378,28 @@ static bool xgq_submitted_cmds_empty(struct xocl_xgq_vmr *xgq)
 	return false;
 }
 
-static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, bool dump_to_debug_log)
+static int vmr_log_dump_to_debug(struct xocl_xgq_vmr *xgq, char *buf, char *log_buf)
+{
+	XGQ_DBG(xgq, "%s", log_buf);
+	return 0;
+}
+
+static int vmr_log_dump_to_dmesg(struct xocl_xgq_vmr *xgq, char *buf, char *log_buf)
+{
+	XGQ_WARN(xgq, "%s", log_buf);
+	return 0;
+}
+	
+static int vmr_log_dump_to_buf(struct xocl_xgq_vmr *xgq, char *buf, char *log_buf)
+{
+	return buf == NULL ? 0 : snprintf(buf, PAGE_SIZE, "%s\n", log_buf);
+}
+
+static size_t xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, char *buf,
+	int(*dump_cb)(struct xocl_xgq_vmr *xgq, char *buf, char *log_buf))
 {
 	struct vmr_log log = { 0 };
+	size_t count = 0;
 
 	if (num_recs > VMR_LOG_MAX_RECS)
 		num_recs = VMR_LOG_MAX_RECS;
@@ -403,9 +417,6 @@ static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, bool dump_t
 
 		log_idx = (log_idx + VMR_LOG_MAX_RECS - num_recs) % VMR_LOG_MAX_RECS;
 
-		if (!dump_to_debug_log)
-			XGQ_WARN(xgq, "=== start dumping vmr log ===");
-
 		for (idx = 0; idx < num_recs; idx++) {
 			xocl_memcpy_fromio(&log.log_buf, xgq->xgq_payload_base +
 				xgq->xgq_vmr_shared_mem.log_msg_buf_off +
@@ -413,22 +424,26 @@ static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, bool dump_t
 				sizeof(log));
 			log_idx = (log_idx + 1) % VMR_LOG_MAX_RECS;
 
-			if (dump_to_debug_log)
-				XGQ_DBG(xgq, "%s", log.log_buf);
-			else
-				XGQ_WARN(xgq, "%s", log.log_buf);
+			/* calling call back function */
+			count += dump_cb(xgq, buf ? buf + count : NULL, log.log_buf);
+			if (count > PAGE_SIZE) {
+				XGQ_WARN(xgq, "message size %ld exceeds page %ld",
+					count, PAGE_SIZE);
+				break;
+			}
 		}
-
-		if (!dump_to_debug_log)
-			XGQ_WARN(xgq, "=== end dumping vmr log ===");
 	} else {
 		XGQ_WARN(xgq, "vmr payload partition table is not available");
 	}
+
+	return min(count, PAGE_SIZE);
 }
 
 static void xgq_vmr_log_dump_all(struct xocl_xgq_vmr *xgq)
 {
-	xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, false);
+	XGQ_WARN(xgq, "=== start dumping vmr log===");
+	xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, NULL, vmr_log_dump_to_dmesg);
+	XGQ_WARN(xgq, "=== end dumping vmr log===");
 }
 
 static struct opcode_name {
@@ -462,13 +477,17 @@ const char *get_opcode_name(int opcode)
 
 static void xgq_vmr_log_dump_debug(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
 {
-	XGQ_WARN(xgq, "opcode: %s(0x%x), rcode: %d, check debug trace for detailed log.",
+	XGQ_WARN(xgq, "opcode: %s(0x%x), rcode: %d, check vmr_log sysfs node and xclmgmt trace log.",
 		get_opcode_name(cmd->xgq_cmd_entry.hdr.opcode),
 		cmd->xgq_cmd_entry.hdr.opcode,
 		cmd->xgq_cmd_rcode);
 
 	/* Dump VMR logs into xclmgmt debugfs */
-	xgq_vmr_log_dump(xgq, 20, true);
+	XGQ_DBG(xgq, "log for opcode: %s(0x%x), rcode: %d",
+		get_opcode_name(cmd->xgq_cmd_entry.hdr.opcode),
+		cmd->xgq_cmd_entry.hdr.opcode,
+		cmd->xgq_cmd_rcode);
+	xgq_vmr_log_dump(xgq, 20, NULL, vmr_log_dump_to_debug);
 }
 
 /* Wait for xgq service is fully ready after a reset. */
@@ -482,40 +501,17 @@ static inline bool xgq_device_is_ready(struct xocl_xgq_vmr *xgq)
 
 		memcpy_fromio(&xgq->xgq_vmr_shared_mem, xgq->xgq_payload_base,
 			sizeof(xgq->xgq_vmr_shared_mem));
-		if (xgq->xgq_vmr_shared_mem.vmr_magic_no != VMR_MAGIC_NO)
-			continue;
-
-		rval = ioread32(xgq->xgq_payload_base +
-			xgq->xgq_vmr_shared_mem.vmr_status_off);
-
-		if (!rval)
-			continue;
-
-		/* if service is ready, we remap the payload to
-		 * 1st segment: 0-> data, nocache
-		 * 2nd segment: data->end, wc (write combined)
-		 */
-		iounmap(xgq->xgq_payload_base);
-		xgq->xgq_payload_base = ioremap_nocache(
-			xgq->xgq_payload_base_start, XOCL_VMR_ALIGNED_DATA_START);	
-		XGQ_INFO(xgq, "remap nocache from 0x%llx, size 0x%x",
-			xgq->xgq_payload_base_start, XOCL_VMR_ALIGNED_DATA_START);
-
-		xgq->xgq_payload_data_base = ioremap_wc(
-			xgq->xgq_payload_base_start + XOCL_VMR_ALIGNED_DATA_START,
-			xgq->xgq_vmr_shared_mem.vmr_data_end -
-			XOCL_VMR_ALIGNED_DATA_START + 1);
-		XGQ_INFO(xgq, "remap wc from 0x%llx, size 0x%x",
-			xgq->xgq_payload_base_start + XOCL_VMR_ALIGNED_DATA_START,
-			xgq->xgq_vmr_shared_mem.vmr_data_end -
-			XOCL_VMR_ALIGNED_DATA_START + 1);
-
-		XGQ_INFO(xgq, "ready after %d s", interval * i);
-		return true;
+		if (xgq->xgq_vmr_shared_mem.vmr_magic_no == VMR_MAGIC_NO) {
+			rval = ioread32(xgq->xgq_payload_base +
+				xgq->xgq_vmr_shared_mem.vmr_status_off);
+			if (rval) {
+				XGQ_INFO(xgq, "ready after %d ms", interval * i);
+				return true;
+			}
+		}
 	}
 
-	XGQ_ERR(xgq, "not ready after %d ms, magic:0x%X, status:%d", interval * retry,
-		xgq->xgq_vmr_shared_mem.vmr_magic_no, rval);
+	XGQ_ERR(xgq, "not ready after %d ms", interval * retry);
 	return false;
 }
 
@@ -791,7 +787,7 @@ static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 static size_t inline vmr_shared_mem_size(struct xocl_xgq_vmr *xgq)
 {
 	return xgq->xgq_vmr_shared_mem.vmr_data_end -
-		XOCL_VMR_ALIGNED_DATA_START + 1;
+		xgq->xgq_vmr_shared_mem.vmr_data_start + 1;
 }
 
 static size_t inline shm_size_log_page(struct xocl_xgq_vmr *xgq)
@@ -806,12 +802,14 @@ static size_t inline shm_size_data(struct xocl_xgq_vmr *xgq)
 
 static u32 inline shm_addr_log_page(struct xocl_xgq_vmr *xgq)
 {
-	return XOCL_VMR_ALIGNED_DATA_START + XOCL_VMR_LOG_ADDR_OFF;
+	return xgq->xgq_vmr_shared_mem.vmr_data_start +
+		XOCL_VMR_LOG_ADDR_OFF;
 }
 
 static u32 inline shm_addr_data(struct xocl_xgq_vmr *xgq)
 {
-	return XOCL_VMR_ALIGNED_DATA_START + XOCL_VMR_DATA_ADDR_OFF;
+	return xgq->xgq_vmr_shared_mem.vmr_data_start +
+		XOCL_VMR_DATA_ADDR_OFF;
 }
 
 /*TODO: enhance to n resources by atomic test_and_clear_bit/set_bit */
@@ -850,22 +848,18 @@ static void shm_release_data(struct xocl_xgq_vmr *xgq)
 	up(&xgq->xgq_data_sema);
 }
 
-static void memcpy_to_device_wc(struct xocl_xgq_vmr *xgq, u32 offset, const void *data,
+static void memcpy_to_device(struct xocl_xgq_vmr *xgq, u32 offset, const void *data,
 	size_t len)
 {
-	void __iomem *dst = xgq->xgq_payload_data_base +
-		offset - XOCL_VMR_ALIGNED_DATA_START;
+	void __iomem *dst = xgq->xgq_payload_base + offset;
 
 	memcpy_toio(dst, data, len);
-	/* issue a read to trigger write combined data to be synced */
-	ioread32(dst);
 }
 
-static void memcpy_from_device_wc(struct xocl_xgq_vmr *xgq, u32 offset, void *dst,
+static void memcpy_from_device(struct xocl_xgq_vmr *xgq, u32 offset, void *dst,
 	size_t len)
 {
-	void __iomem *src = xgq->xgq_payload_data_base +
-		offset - XOCL_VMR_ALIGNED_DATA_START;
+	void __iomem *src = xgq->xgq_payload_base + offset;
 
 	memcpy_fromio(dst, src, len);
 }
@@ -964,7 +958,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	 * Note: if len == 0, it is PROGRAME_SCFW, no payload to copyin
 	 */
 	if (len > 0)
-		memcpy_to_device_wc(xgq, address, buf, len);
+		memcpy_to_device(xgq, address, buf, len);
 	payload->address = address;
 	payload->size = len;
 	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
@@ -1153,7 +1147,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 				ret = -ENOMEM;
 				goto done;
 			}
-			memcpy_from_device_wc(xgq, address, *fw, *fw_size);
+			memcpy_from_device(xgq, address, *fw, *fw_size);
 			ret = 0;
 			XGQ_INFO(xgq, "loading fw from vmr size %ld", *fw_size);
 		}
@@ -1315,8 +1309,7 @@ static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_t
 			XGQ_ERR(xgq, "vmalloc failed, no memory");
 			goto done;
 		}
-
-		memcpy_from_device_wc(xgq, address, log_msg, log_size);
+		memcpy_from_device(xgq, address, log_msg, log_size);
 		log_msg[log_size] = '\0';
 
 		XGQ_ERR(xgq, "%s", log_msg);
@@ -1434,7 +1427,7 @@ static int vmr_info_query_op(struct platform_device *pdev,
 				ret = -ENOMEM;
 				goto done;
 			}
-			memcpy_from_device_wc(xgq, address, info_data, info_size);
+			memcpy_from_device(xgq, address, info_data, info_size);
 			info_data[info_size] = '\0'; /* terminate the string */
 
 			/* text buffer for sysfs node should be limited to PAGE_SIZE */
@@ -1782,17 +1775,10 @@ static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
 	size_t len)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
-	struct timespec start, end;
 	int ret = 0;
 
-	getnstimeofday(&start);
 	ret = xgq_transfer_data(xgq, buf, len, 0,
 		XGQ_CMD_OP_LOAD_APUBIN, XOCL_XGQ_DOWNLOAD_TIME);
-	getnstimeofday(&end);
-
-	if (end.tv_sec - start.tv_sec > 10) {
-		XGQ_WARN(xgq, "download takes longer than 10 seconds");
-	}
 	if (ret != len) {
 		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
 		return -EIO;
@@ -2237,7 +2223,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int aid, int sid,
 	if (ret) {
 		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
 	} else {
-		memcpy_from_device_wc(xgq, address, data_buf, len);
+		memcpy_from_device(xgq, address, data_buf, len);
 	}
 
 done:
@@ -2456,7 +2442,7 @@ static ssize_t vmr_debug_dump_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	xgq_vmr_log_dump(xgq, val, true);
+	xgq_vmr_log_dump(xgq, val, NULL, vmr_log_dump_to_debug);
 
 	return count;
 }
@@ -2546,6 +2532,18 @@ static ssize_t vmr_mem_stats_show(struct device *dev,
 	return cnt;
 }
 static DEVICE_ATTR_RO(vmr_mem_stats);
+
+static ssize_t vmr_log_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	cnt = xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, buf, vmr_log_dump_to_buf);
+
+	return cnt == 0 ? -EINVAL : cnt;
+}
+static DEVICE_ATTR_RO(vmr_log);
 
 static ssize_t vmr_debug_type_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -3065,6 +3063,7 @@ static struct attribute *vmr_attrs[] = {
 	&dev_attr_xgq_scaling_enable.attr,
 	&dev_attr_xgq_scaling_power_override.attr,
 	&dev_attr_xgq_scaling_temp_override.attr,
+	&dev_attr_vmr_log.attr,
 	NULL,
 };
 
@@ -3202,18 +3201,10 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 	fini_worker(&xgq->xgq_complete_worker);
 	fini_worker(&xgq->xgq_health_worker);
 
-	if (xgq->xgq_payload_base) {
+	if (xgq->xgq_payload_base)
 		iounmap(xgq->xgq_payload_base);
-		xgq->xgq_payload_base = NULL;
-	}
-	if (xgq->xgq_payload_data_base) {
-		iounmap(xgq->xgq_payload_data_base);
-		xgq->xgq_payload_data_base = NULL;
-	}
-	if (xgq->xgq_sq_base) {
+	if (xgq->xgq_sq_base)
 		iounmap(xgq->xgq_sq_base);
-		xgq->xgq_sq_base = NULL;
-	}
 
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_HWMON_SDM);
 
@@ -3352,7 +3343,6 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 			strlen(NODE_XGQ_VMR_PAYLOAD_BASE))) {
 			xgq->xgq_payload_base = ioremap_nocache(res->start,
 				res->end - res->start + 1);
-			xgq->xgq_payload_base_start = res->start;
 		}
 	}
 
@@ -3366,13 +3356,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 	xgq->xgq_cq_base = xgq->xgq_sq_base + XGQ_CQ_TAIL_POINTER;
 
 	ret = xgq_start_services(xgq);
-	if (ret) {
-		iounmap(xgq->xgq_sq_base);
-		xgq->xgq_sq_base = NULL;
-		iounmap(xgq->xgq_payload_base);
-		xgq->xgq_payload_base = NULL;
+	if (ret)
 		goto attach_failed;
-	}
 
 	/* init condition veriable */
 	init_completion(&xgq->xgq_irq_complete);

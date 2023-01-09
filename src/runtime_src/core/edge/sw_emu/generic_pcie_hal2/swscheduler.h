@@ -22,8 +22,8 @@
 #define MAX_U32_SLOT_MASKS (((MAX_SLOTS-1)>>5) + 1)
 #define MAX_U32_CU_MASKS (((MAX_CUS-1)>>5) + 1)
 
-namespace xclcpuemhal2 {
-  class CpuemShim;
+namespace xclswemuhal2 {
+  class SwEmuShim;
   class xocl_cmd;
   class SWScheduler;
   class exec_core;
@@ -197,9 +197,9 @@ namespace xclcpuemhal2 {
     int convert_execbuf(exec_core *exec, xclemulation::drm_xocl_bo *xobj, xocl_cmd* xcmd);
 
     xocl_sched* mScheduler;
-    SWScheduler(CpuemShim* _parent);
+    SWScheduler(SwEmuShim* _parent);
     ~SWScheduler();
-    CpuemShim* mParent;
+    SwEmuShim* mParent;
     private:
     std::list<xocl_cmd*> free_cmds;
     std::mutex free_cmds_mutex;

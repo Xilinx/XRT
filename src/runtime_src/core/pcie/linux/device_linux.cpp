@@ -346,6 +346,54 @@ struct sdm_sensor_info
   } //get()
 };
 
+struct xclbin_slots
+{
+  using result_type = query::xclbin_slots::result_type;
+  using slot_info = query::xclbin_slots::slot_info;
+  using slot_id = query::xclbin_slots::slot_id;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> xclbin_info;
+    std::string errmsg;
+    auto pdev = get_pcidev(device);
+    pdev->sysfs_get("", "xclbinuuid", errmsg, xclbin_info);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    result_type xclbin_data;
+    // xclbin_uuid e.g.
+    // 0 <uuid_slot_0>
+    // 1 <uuid_slot_1>
+    for (auto& line : xclbin_info) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+      slot_info data = { };
+
+      if (std::distance(tokens.begin(), tokens.end()) == 1) {
+        tokenizer::iterator tok_it = tokens.begin();
+        data.slot.slot = 0;
+        data.uuid = std::string(*tok_it++);
+        xclbin_data.push_back(std::move(data));
+	break;
+      }
+      else if (std::distance(tokens.begin(), tokens.end()) == 2) {
+        tokenizer::iterator tok_it = tokens.begin();
+        data.slot.slot = std::stoi(std::string(*tok_it++));
+        data.uuid = std::string(*tok_it++);
+
+        xclbin_data.push_back(std::move(data));
+      }
+      else
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+    }
+
+    return xclbin_data;
+  }
+};
+
 struct kds_cu_info
 {
   using result_type = query::kds_cu_info::result_type;
@@ -1230,6 +1278,7 @@ initialize_query_table()
   emplace_sysfs_get<query::kds_numcdmas>                       ("", "kds_numcdmas");
   emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::kds_scu_info,                   kds_scu_info>();
+  emplace_func0_request<query::xclbin_slots, 		       xclbin_slots>();
   emplace_sysfs_get<query::ps_kernel>                          ("icap", "ps_kernel");
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
@@ -1259,6 +1308,7 @@ initialize_query_table()
   emplace_sysfs_get<query::hwmon_sdm_oem_id>                   ("hwmon_sdm", "oem_id");
   emplace_sysfs_get<query::hwmon_sdm_board_name>               ("hwmon_sdm", "bd_name");
   emplace_sysfs_get<query::hwmon_sdm_active_msp_ver>           ("hwmon_sdm", "active_msp_ver");
+  emplace_sysfs_get<query::hwmon_sdm_target_msp_ver>           ("hwmon_sdm", "target_msp_ver");
   emplace_sysfs_get<query::hwmon_sdm_mac_addr0>                ("hwmon_sdm", "mac_addr0");
   emplace_sysfs_get<query::hwmon_sdm_mac_addr1>                ("hwmon_sdm", "mac_addr1");
   emplace_sysfs_get<query::hwmon_sdm_fan_presence>             ("hwmon_sdm", "fan_presence");

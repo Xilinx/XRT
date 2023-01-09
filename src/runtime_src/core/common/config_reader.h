@@ -524,6 +524,19 @@ get_ert_polling()
   return value;
 }
 
+/**
+ * Use new hw context for multi slot application 
+ */
+inline bool
+get_hw_context_flag()
+{
+  /**
+   * Temporary flag to backward compatibility for legacy context over
+   * new hw context. Remove once hw context is fully functional.
+   */
+  static bool value = detail::get_bool_value("Runtime.hw_context",true);
+  return value;
+}
 
 /**
  * Enable embedded scheduler CUDMA module

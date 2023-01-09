@@ -188,9 +188,9 @@ mem_model::mem_model(std::string deviceName):
    }
    std::string file_path("");
    if(mDeviceName.empty() == false)
-     file_path = "/tmp/" + user + "/" + std::to_string(getpid()) + "/hw_em/" + mDeviceName + "/" + module_name + "/";
+     file_path = "/tmp/" + user + "/" + std::to_string(getpid()) + "/hw_emu/" + mDeviceName + "/" + module_name + "/";
     else
-     file_path = "/tmp/" + user + "/hw_em/" + module_name + "/";
+     file_path = "/tmp/" + user + "/hw_emu/" + module_name + "/";
    std::stringstream mkdirCommand;
    mkdirCommand<<"mkdir -p "<<file_path;;
    struct stat statBuf;

@@ -74,6 +74,7 @@ struct in_kernel_cb {
 /**
  * struct kds_command: KDS command struct
  * @client: the client that the command belongs to
+ * @hw_ctx_id: This command specific to this hw context
  * @type:   type of the command. Use this to determin controller
  */
 struct kds_command {
@@ -81,6 +82,7 @@ struct kds_command {
 	enum kds_status		 status;
 	u32			 rcode;
 	int			 cu_idx;
+	u32			 hw_ctx_id;
 	u32			 type;
 	u32			 opcode;
 	struct list_head	 list;
