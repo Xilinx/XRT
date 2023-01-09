@@ -9,7 +9,7 @@ include_directories(
   ${XRT_SOURCE_DIR}/runtime_src/core/edge/include
   )
 
-add_library(aie_trace_gmio SHARED "${XRT_SOURCE_DIR}/runtime_src/core/edge/ps_kernels/profiling/aie_trace_gmio/gmio_config_kernel.cpp")
+add_library(aie_trace_gmio SHARED "gmio_config_kernel.cpp")
 
 set_target_properties(aie_trace_gmio PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})

@@ -9,7 +9,7 @@ include_directories(
   ${XRT_SOURCE_DIR}/runtime_src/core/edge/include
   )
 
-add_library(aie_profile_config SHARED "${XRT_SOURCE_DIR}/runtime_src/core/edge/ps_kernels/profiling/aie_profile_config/aie_profile_config.cpp")
+add_library(aie_profile_config SHARED "aie_profile_config.cpp")
 
 set_target_properties(aie_profile_config PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
