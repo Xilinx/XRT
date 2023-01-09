@@ -757,45 +757,6 @@ namespace xdp {
     return tiles;
   }
 
-  std::vector<counter_type>
-  AieProfileMetadata::get_profile_counters(const xrt_core::device* device){
-  
-  auto data = device->get_axlf_section(AIE_METADATA);
-    if (!data.first || !data.second)
-      return {};
-
-    pt::ptree aie_meta;
-    read_aie_metadata(data.first, data.second, aie_meta);
-  
-  // If counters not found, then return empty vector
-  auto counterTree = aie_meta.get_child_optional("aie_metadata.PerformanceCounter");
-  if (!counterTree)
-    return {};
-
-  std::vector<counter_type> counters;
-
-  // Now parse all counters
-  for (auto const &counter_node : counterTree.get()) {
-    counter_type counter;
-
-    counter.id = counter_node.second.get<uint32_t>("id");
-    counter.column = counter_node.second.get<uint16_t>("core_column");
-    counter.row = counter_node.second.get<uint16_t>("core_row");
-    counter.counterNumber = counter_node.second.get<uint8_t>("counterId");
-    counter.startEvent = counter_node.second.get<uint8_t>("start");
-    counter.endEvent = counter_node.second.get<uint8_t>("stop");
-    counter.resetEvent = counter_node.second.get<uint8_t>("reset");
-    // Assume common clock frequency for all AIE tiles
-    counter.clockFreqMhz = clockFreqMhz;
-    counter.module = counter_node.second.get<std::string>("module");
-    counter.name = counter_node.second.get<std::string>("name");
-
-    counters.emplace_back(std::move(counter));
-  }
-
-  return counters;
-  }
-
   uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricString, module_type mod){
     auto stringVector = metricStrings[mod];
     
@@ -807,15 +768,4 @@ namespace xdp {
     }
 
   }
-
-  uint8_t AieProfileMetadata::getModuleIndex(std::string moduleName){
-    
-    auto itr = std::find(moduleNames.begin(), moduleNames.end(), moduleName);
-    if (itr != moduleNames.cend()){
-      return 0;
-    } else {
-      return std::distance(moduleNames.begin(), itr);
-    }
-  }
-
 }

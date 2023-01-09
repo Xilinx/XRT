@@ -379,38 +379,6 @@ namespace {
 
   }
 
-void setupCompileTimeCounters(XAie_DevInst* aieDevInst,
-                        const xdp::built_in::ProfileOutputConfiguration* params,
-                        xdp::built_in::ProfileOutputConfiguration* outputcfg,
-                        std::vector<xdp::built_in::PSCounterInfo>& counterData)
-    {
-
-      for (int i = 0; i < params->numCounters; i ++ ){
-        tile_type tile;
-        auto& counter = params->counters[i];
-        auto payload = getCounterPayload(aieDevInst, tile, counter.col, counter.row, counter.startEvent);
-
-        xdp::built_in::PSCounterInfo outputCounter;
-        outputCounter.counterId = counter.counterId;
-        outputCounter.col = counter.col;
-        outputCounter.row = counter.row;
-        outputCounter.counterNum = counter.counterNum;
-        outputCounter.startEvent = counter.startEvent;
-        outputCounter.endEvent = counter.endEvent;
-        outputCounter.resetEvent = counter.resetEvent;
-        outputCounter.payload = payload;
-        outputCounter.moduleName = counter.moduleName;
-        
-        outputcfg->counters[i] = outputCounter;
-        counterData.push_back(outputCounter);
-      }
-
-    }
-
-} // end anonymous namespace
-
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -481,22 +449,7 @@ int aie_profile_config(uint8_t* input, uint8_t* output, uint8_t iteration, xrtHa
     uint8_t* out = reinterpret_cast<uint8_t*>(outputcfg);
     std::memcpy(output, out, total_size);   
     free (outputcfg);
-
-  //Compile-time Counters iteration  
-  } else if (iteration == 2) {
-    xdp::built_in::ProfileOutputConfiguration* params =
-    reinterpret_cast<xdp::built_in::ProfileOutputConfiguration*>(input);
-
-    std::size_t total_size = sizeof(xdp::built_in::ProfileOutputConfiguration)
-     + (sizeof(xdp::built_in::PSCounterInfo) * (params->numCounters - 1));
-    xdp::built_in::ProfileOutputConfiguration* outputcfg =
-      (xdp::built_in::ProfileOutputConfiguration*)malloc(total_size);   
-
-    setupCompileTimeCounters(constructs->aieDevInst, params, outputcfg, constructs->counterData);
-    uint8_t* out = reinterpret_cast<uint8_t*>(outputcfg);
-    std::memcpy(output, out, total_size);   
-    free (outputcfg);
-  }
+  } 
 
   return 0;
 }

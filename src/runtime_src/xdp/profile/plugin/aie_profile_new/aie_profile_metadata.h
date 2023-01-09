@@ -83,12 +83,9 @@ class AieProfileMetadata{
                                               /* std::vector<std::string> graphmetricsSettings, */
                                               void* handle);
     uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
-    uint8_t getModuleIndex(std::string moduleName);
-
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
     std::vector<std::string> get_graphs(const xrt_core::device* device);
-    std::vector<counter_type> get_profile_counters(const xrt_core::device* device);
     std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, const std::string& graph_name, module_type type);
     
