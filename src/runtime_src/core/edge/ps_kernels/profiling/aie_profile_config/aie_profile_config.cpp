@@ -376,8 +376,10 @@ namespace {
 
       countercfg->counters[c] = pscfg;
     }
-
   }
+} // end anonymous namespace
+
+
 
 #ifdef __cplusplus
 extern "C" {
