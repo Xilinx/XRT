@@ -72,7 +72,7 @@ vmr_info(const xrt_core::device* device)
 }
 
 bool
-is_default_boot(const xrt_core::device* device)
+is_vmr_status_true(const xrt_core::device* device, std::string status)
 {
   const auto pt = vmr_info(device);
   boost::property_tree::ptree pt_empty;
@@ -81,11 +81,11 @@ is_default_boot(const xrt_core::device* device)
     const boost::property_tree::ptree& vmr_stat = ks.second;
     const auto val = vmr_stat.get<std::string>("label");
     const auto nval = vmr_stat.get<std::string>("value");
-    if (boost::iequals(val, "Boot on default"))
+    if (boost::iequals(val, status))
       return boost::iequals(vmr_stat.get<std::string>("value"), "1");
   }
 
-  throw std::runtime_error("Missing 'Boot on default' data in VMR status");
+  return false;
 }
 
 } // vmr, xrt

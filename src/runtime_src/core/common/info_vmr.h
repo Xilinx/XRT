@@ -17,7 +17,7 @@ vmr_info(const xrt_core::device * device);
 
 XRT_CORE_COMMON_EXPORT
 bool
-is_default_boot(const xrt_core::device* device);
+is_vmr_status_true(const xrt_core::device* device, std::string status);
 
 }} // vmr, xrt
 
