@@ -421,8 +421,6 @@ if [[ $apu_package == 1 ]]; then
   
 else
   # Run just xrt build if -full option is not provided
-  echo "[CMD]: petalinux-build -c zocl"
-  $PETA_BIN/petalinux-build -c zocl
   echo "[CMD]: petalinux-build -c xrt"
   $PETA_BIN/petalinux-build -c xrt
   if [ $? != 0 ]; then
