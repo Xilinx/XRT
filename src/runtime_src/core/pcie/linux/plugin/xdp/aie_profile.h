@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ *  Copyright (C) 2020 Xilinx, Inc
+ *  Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,6 +27,12 @@ namespace profile {
   void warning_callbacks();
 
 } // end namespace profile
+
+namespace ctr {
+  void update_device(void* handle);
+  void end_poll(void* handle);
+} // end namespace ctr
+
 } // end namespace aie
 } // end namespace xdp
 

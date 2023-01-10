@@ -90,7 +90,7 @@ unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned fl
 
 int xclCloseExportHandle(int ehdl)
 {
-  // Implement per hw_em requirements
+  // Implement per hw_emu requirements
   return 0;
 }
 

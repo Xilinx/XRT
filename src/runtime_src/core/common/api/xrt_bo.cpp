@@ -182,7 +182,8 @@ public:
   static constexpr uint64_t no_addr = std::numeric_limits<uint64_t>::max();
   static constexpr uint32_t no_group = std::numeric_limits<uint32_t>::max();
   static constexpr bo::flags no_flags = static_cast<bo::flags>(std::numeric_limits<uint32_t>::max());
-  static constexpr xrt_buffer_handle null_bo = XRT_INVALID_BUFFER_HANDLE;
+  // ptr cannot be const expor
+  //static constexpr xrt_buffer_handle null_bo = XRT_INVALID_BUFFER_HANDLE;
   static constexpr xclBufferExportHandle null_export = XRT_NULL_BO_EXPORT;
 
 private:
@@ -200,7 +201,7 @@ protected:
   // deliberately made protected, this is a file-scoped controlled API
   device_type device;                           // NOLINT device where bo is allocated
   std::vector<std::shared_ptr<bo_impl>> clones; // NOLINT local m2m clones if any
-  xrt_buffer_handle handle = null_bo;           // NOLINT driver bo handle
+  xrt_buffer_handle handle = XRT_INVALID_BUFFER_HANDLE; // NOLINT driver bo handle
   size_t size = 0;                              // NOLINT size of buffer
   mutable uint64_t addr = no_addr;              // NOLINT bo device address
   mutable uint32_t grpid = no_group;            // NOLINT memory group index

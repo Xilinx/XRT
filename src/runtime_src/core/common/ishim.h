@@ -198,18 +198,18 @@ struct ishim
   { throw not_supported_error{__func__}; }
 
   // Return default sentinel for legacy platforms without hw_queue support
-  virtual xcl_hwqueue_handle
+  virtual xrt_hwqueue_handle
   create_hw_queue(xrt_hwctx_handle) const
   { return XRT_NULL_HWQUEUE; }
 
   // Default noop for legacy platforms without hw_queue support
   virtual void
-  destroy_hw_queue(xcl_hwqueue_handle) const
+  destroy_hw_queue(xrt_hwqueue_handle) const
   {}
 
   // Submits command for execution through hw queue
   virtual void
-  submit_command(xcl_hwqueue_handle, xrt_buffer_handle /*cmdbo*/) const
+  submit_command(xrt_hwqueue_handle, xrt_buffer_handle /*cmdbo*/) const
   { throw not_supported_error{__func__}; }
 
   // Wait for command completion through hw queue
@@ -217,7 +217,7 @@ struct ishim
   // cmdbo completed.  If cmdbo is XRT_NULL_BO then function must
   // returns when some previously submitted command completes.
   virtual int
-  wait_command(xcl_hwqueue_handle, xrt_buffer_handle /*cmdbo*/, int /*timeout_ms*/) const
+  wait_command(xrt_hwqueue_handle, xrt_buffer_handle /*cmdbo*/, int /*timeout_ms*/) const
   { throw not_supported_error{__func__}; }
 
   // Registers an xclbin with shim, but does not load it.

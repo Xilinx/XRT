@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -225,7 +225,7 @@ namespace xdp {
       } 
 
     } catch (...) {
-      std::string msg = "The aie_trace_config PS kernel was not found.";
+        std::string msg = "The aie_trace_config PS kernel was not found.";
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return false;
     } 
@@ -239,7 +239,7 @@ namespace xdp {
 
 
   void AieTrace_x86Impl::parseMessages(uint8_t* messageStruct) {
-      xdp::built_in::MessageConfiguration* messages = reinterpret_cast<xdp::built_in::MessageConfiguration*>(messageStruct);
+    xdp::built_in::MessageConfiguration* messages = reinterpret_cast<xdp::built_in::MessageConfiguration*>(messageStruct);
     for (uint32_t i = 0; i < messages->numMessages; i++) {
       auto packet = messages->packets[i];
       auto messageCode = static_cast<xdp::built_in::Messages>(packet.messageCode);
