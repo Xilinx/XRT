@@ -34,7 +34,7 @@ endif
 
 set OSDIST=`cat /etc/os-release | grep -i "^ID=" | awk -F= '{print $2}'`
 if [[ $OSDIST == "centos" ]]; then
-    OSREL=`cat /etc/redhat-release | awk '{print $4}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
+    set OSREL=`cat /etc/redhat-release | awk '{print $4}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
 else    
     set OSREL=`cat /etc/os-release | grep -i "^VERSION_ID=" | awk -F= '{print $2}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
 
