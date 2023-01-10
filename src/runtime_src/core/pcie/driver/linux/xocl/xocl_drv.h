@@ -1,18 +1,10 @@
-/*
+/**
+ * SPDX-License-Identifier: Apache-2.0
  * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  * Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  */
 
 #ifndef	_XOCL_DRV_H_
@@ -51,8 +43,10 @@
 #include <linux/types.h>
 #include <linux/moduleparam.h>
 #include <linux/cdev.h>
+
 #include "xocl_types.h"
 #include "xclbin.h"
+#include "xclfeatures.h"
 #include "xrt_xclbin.h"
 #include "xocl_xclbin.h"
 #include "xrt_mem.h"
@@ -175,6 +169,15 @@
 #endif
 
 #if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 1)
+#define RHEL_9_1_GE
+#endif
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(9, 0)
+#define RHEL_9_0_GE
+#endif
+#if RHEL_RELEASE_CODE == RHEL_RELEASE_VERSION(8, 7)
+#define RHEL_8_7
+#endif
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 5)
 #define RHEL_8_5_GE
 #endif
@@ -429,13 +432,17 @@ struct xocl_drv_private {
 
 struct xocl_subdev_priv {
 	unsigned long		debug_hdl;
+	u32			inst_idx;
 	u32			data_sz;
 	u64			data[1];
 };
 
+#define INVALID_INST_INDEX	0xFFFF
 #define _PRIV(dev)	((struct xocl_subdev_priv *)dev_get_platdata(dev))
 #define	XOCL_GET_SUBDEV_PRIV(dev)				\
 	(void *)((_PRIV(dev) && _PRIV(dev)->data_sz) ? _PRIV(dev)->data : NULL)
+#define XOCL_SUBDEV_INST_IDX(dev)				\
+	((_PRIV(dev)) ? (_PRIV(dev))->inst_idx : INVALID_INST_INDEX)
 
 #define XOCL_SUBDEV_DBG_HDL(dev)				\
 	(((dev)->bus == &platform_bus_type && dev_get_platdata(dev)) ?	\
@@ -2132,6 +2139,8 @@ struct xocl_xgq_vmr_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
+	int (*xgq_load_xclbin_slot)(struct platform_device *pdev,
+		const void __user *arg, uint64_t slot);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
 	int (*xgq_clear_firewall)(struct platform_device *pdev);
 	int (*xgq_freq_scaling)(struct platform_device *pdev,
@@ -2149,6 +2158,7 @@ struct xocl_xgq_vmr_funcs {
 	int (*xgq_collect_all_inst_sensors)(struct platform_device *pdev, char *buf,
                                      uint8_t id, uint32_t len);
 	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
+	int (*vmr_status)(struct platform_device *pdev, struct VmrStatus *vmr_status_ptr);
 };
 #define	XGQ_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR) ? 			\
@@ -2194,6 +2204,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_vmr_load_firmware(xdev, fw, fw_size)		\
 	(XGQ_CB(xdev, vmr_load_firmware) ?			\
 	XGQ_OPS(xdev)->vmr_load_firmware(XGQ_DEV(xdev), fw, fw_size) : -ENODEV)
+#define	xocl_vmr_status(xdev, vmr_status_ptr)		\
+	(XGQ_CB(xdev, vmr_load_firmware) ?			\
+	XGQ_OPS(xdev)->vmr_status(XGQ_DEV(xdev), vmr_status_ptr) : -ENODEV)
 
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -2351,6 +2364,8 @@ int xocl_subdev_init(xdev_handle_t xdev_hdl, struct pci_dev *pdev,
 void xocl_subdev_fini(xdev_handle_t xdev_hdl);
 int xocl_subdev_create(xdev_handle_t xdev_hdl,
 	struct xocl_subdev_info *sdev_info);
+int xocl_subdev_reserve(xdev_handle_t xdev_hdl,
+                struct xocl_subdev_info *sdev_info);
 int xocl_subdev_create_by_id(xdev_handle_t xdev_hdl, int id);
 int xocl_subdev_create_by_level(xdev_handle_t xdev_hdl, int level);
 int xocl_subdev_create_all(xdev_handle_t xdev_hdl);
@@ -2364,6 +2379,7 @@ int xocl_subdev_online_by_id_and_inst(xdev_handle_t xdev_hdl, u32 id, u32 inst_i
 int xocl_subdev_online_by_level(xdev_handle_t xdev_hdl, int level);
 void xocl_subdev_destroy_by_id(xdev_handle_t xdev_hdl, u32 id);
 void xocl_subdev_destroy_by_level(xdev_handle_t xdev_hdl, int level);
+void xocl_subdev_destroy_by_slot(xdev_handle_t xdev_hdl, uint32_t slot_id);
 
 int xocl_subdev_create_by_name(xdev_handle_t xdev_hdl, char *name);
 int xocl_subdev_destroy_by_name(xdev_handle_t xdev_hdl, char *name);

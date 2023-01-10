@@ -5,21 +5,17 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   )
 
-add_subdirectory(common)
-add_subdirectory(tools)
+xrt_add_subdirectory(common)
+xrt_add_subdirectory(tools)
 
 if(NOT WIN32)
-  if (NOT DEFINED EXTERNAL_SHIM)
-    add_subdirectory(linux)
-  endif()
-  add_subdirectory(driver)
+  xrt_add_subdirectory(linux)
+  xrt_add_subdirectory(driver)
   if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     # Emulation flow only works on x86_64
-    add_subdirectory(emulation)
-    add_subdirectory(noop)
+    xrt_add_subdirectory(emulation)
+    xrt_add_subdirectory(noop)
   endif()
 else()
-  if (NOT DEFINED EXTERNAL_SHIM)
-    add_subdirectory(windows)
-  endif()
+  xrt_add_subdirectory(windows)
 endif(NOT WIN32)

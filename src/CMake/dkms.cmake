@@ -216,7 +216,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/pcie_firewall.c
   xocl/subdev/command_queue.c
   xocl/subdev/cfg_gpio.c
-  xocl/subdev/xgq.c
+  xocl/subdev/xgq_vmr.c
   xocl/subdev/hwmon_sdm.c
   xocl/subdev/ert_ctrl.c
   xocl/subdev/cu_xgq.c
@@ -262,16 +262,17 @@ SET (XRT_DKMS_COMMON_XRT_DRV
   )
 
 SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
-  common/drv/include/xrt_drv.h
-  common/drv/include/kds_core.h
-  common/drv/include/kds_command.h
-  common/drv/include/kds_client.h
-  common/drv/include/xrt_cu.h
-  common/drv/include/xrt_xclbin.h
-  common/drv/include/kds_stat.h
-  common/drv/include/xrt_ert.h
   common/drv/include/cu_xgq.h
+  common/drv/include/kds_client.h
+  common/drv/include/kds_command.h
+  common/drv/include/kds_core.h
+  common/drv/include/kds_ert_table.h
+  common/drv/include/kds_stat.h
   common/drv/include/xgq_execbuf.h
+  common/drv/include/xrt_cu.h
+  common/drv/include/xrt_drv.h
+  common/drv/include/xrt_xclbin.h
+  common/drv/include/xrt_ert.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)

@@ -92,6 +92,7 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_VMR_CONTROL		= 0xe,
 	XGQ_CMD_OP_PROGRAM_SCFW		= 0xf,
 	XGQ_CMD_OP_CLK_THROTTLING	= 0x10,
+	XGQ_CMD_OP_PROGRAM_VMR		= 0x11,
 
 	/* User command type */
 	XGQ_CMD_OP_START_CUIDX	        = 0x100,
@@ -110,6 +111,7 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_ACCESS_VALID     	= 0x10d,
 	XGQ_CMD_OP_DATA_INTEGRITY   	= 0x10e,
 	XGQ_CMD_OP_EXIT             	= 0x10f,
+	XGQ_CMD_OP_UNCFG_CU	        = 0x110,
 
 	/* Common command type */
 	XGQ_CMD_OP_BARRIER		= 0x200,

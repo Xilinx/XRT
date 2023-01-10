@@ -15,6 +15,7 @@
 #include "zocl_util.h"
 #include "zocl_xclbin.h"
 #include "kds_core.h"
+#include "kds_ert_table.h"
 #include "xclbin.h"
 
 #define print_ecmd_info(ecmd) \
@@ -577,19 +578,12 @@ int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 	return ret;
 }
 
-static void notify_execbuf(struct kds_command *xcmd, int status)
+static void notify_execbuf(struct kds_command *xcmd, enum kds_status status)
 {
 	struct kds_client *client = xcmd->client;
 	struct ert_packet *ecmd = (struct ert_packet *)xcmd->execbuf;
 
-	if (status == KDS_COMPLETED)
-		ecmd->state = ERT_CMD_STATE_COMPLETED;
-	else if (status == KDS_ERROR)
-		ecmd->state = ERT_CMD_STATE_ERROR;
-	else if (status == KDS_TIMEOUT)
-		ecmd->state = ERT_CMD_STATE_TIMEOUT;
-	else if (status == KDS_ABORT)
-		ecmd->state = ERT_CMD_STATE_ABORT;
+	ecmd->state = kds_ert_table[status];
 
 	if (xcmd->timestamp_enabled) {
 		/* Only start kernel command supports timestamps */
@@ -607,7 +601,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	if (xcmd->cu_idx >= 0)
-		client_stat_inc(client, c_cnt[xcmd->cu_idx]);
+		client_stat_inc(client, xcmd->hw_ctx_id, c_cnt[xcmd->cu_idx]);
 
 	atomic_inc(&client->event);
 	wake_up_interruptible(&client->waitq);
@@ -768,6 +762,8 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	xcmd->execbuf = (u32 *)ecmd;
 	xcmd->gem_obj = gem_obj;
 	xcmd->exec_bo_handle = args->exec_bo_handle;
+	/* Default hw context. For backward compartability */
+	xcmd->hw_ctx_id = 0;
 
 	//print_ecmd_info(ecmd);
 
@@ -996,10 +992,14 @@ static void zocl_detect_fa_cmdmem(struct drm_zocl_dev *zdev,
 	if (IS_ERR(bo))
 		return;
 
-	
-	bar_paddr = (uint64_t)bo->cma_base.paddr;	
-	base_addr = (uint64_t)bo->cma_base.paddr;	
-	vaddr = bo->cma_base.vaddr;	
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+	bar_paddr = (uint64_t)bo->cma_base.dma_addr;
+	base_addr = (uint64_t)bo->cma_base.dma_addr;
+#else
+	bar_paddr = (uint64_t)bo->cma_base.paddr;
+	base_addr = (uint64_t)bo->cma_base.paddr;
+#endif
+	vaddr = bo->cma_base.vaddr;
 
 	zdev->kds.cmdmem.bo = bo;
 	zdev->kds.cmdmem.bar_paddr = bar_paddr;

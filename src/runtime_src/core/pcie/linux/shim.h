@@ -4,7 +4,7 @@
 #ifndef PCIE_LINUX_SHIM_H_
 #define PCIE_LINUX_SHIM_H_
 
-#include "scan.h"
+#include "pcidev.h"
 #include "xclhal2.h"
 
 #include "core/common/device.h"
@@ -125,6 +125,7 @@ public:
 
   // Execute and interrupt abstraction
   int xclExecBuf(unsigned int cmdBO);
+  int xclExecBuf(unsigned int cmdBO, xrt_hwctx_handle ctxhdl);
   int xclExecBuf(unsigned int cmdBO,size_t numdeps, unsigned int* bo_wait_list);
   int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
   int xclExecWait(int timeoutMilliSec);
@@ -159,13 +160,17 @@ public:
   void
   register_xclbin(const xrt::xclbin&);
 
+  // Exec Buf with hw ctx handle.
+  void
+  exec_buf(xclBufferHandle boh, xrt_hwctx_handle ctxhdl);
 private:
   std::shared_ptr<xrt_core::device> mCoreDevice;
-  std::shared_ptr<pcidev::pci_device> mDev;
+  std::shared_ptr<xrt_core::pci::dev> mDev;
   std::ofstream mLogStream;
   int mUserHandle;
   int mStreamHandle;
   int mBoardNumber;
+  bool hw_context_enable;
   uint64_t mOffsets[XCL_ADDR_SPACE_MAX];
   xclDeviceInfo2 mDeviceInfo;
   uint32_t mMemoryProfilingNumberSlots;
@@ -197,6 +202,9 @@ private:
   void dev_fini();
 
   int xclLoadAxlf(const axlf *buffer);
+  int xclLoadHwAxlf(const axlf *buffer, drm_xocl_create_hw_ctx *hw_ctx);
+  int xclPrepareAxlf(const axlf *buffer, struct drm_xocl_axlf *axlf_obj);
+  int getAxlfObjSize(const axlf *buffer);
   void xclSysfsGetDeviceInfo(xclDeviceInfo2 *info);
   void xclSysfsGetUsageInfo(drm_xocl_usage_stat& stat);
   void xclSysfsGetErrorStatus(xclErrorStatus& stat);

@@ -67,7 +67,7 @@ private:
   bool aie_profile_en;
 };
 
-typedef pscontext* (* kernel_init_t)(xclDeviceHandle device, unsigned char *uuid);
+typedef pscontext* (* kernel_init_t)(xclDeviceHandle device, const uuid_t &uuid);
 typedef int (* kernel_fini_t)(pscontext *xrtHandles);
 
 #endif

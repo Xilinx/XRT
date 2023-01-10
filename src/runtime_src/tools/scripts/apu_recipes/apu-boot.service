@@ -1,5 +1,6 @@
 [Unit]
 Description=apu-boot
+After=skd.service
  
 [Service]
 ExecStart=/usr/bin/apu-boot

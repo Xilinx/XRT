@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 #ifndef xrt_core_command_h_
 #define xrt_core_command_h_
 
@@ -54,7 +55,7 @@ public:
   /**
    * get_exec_bo() - get BO handle of command buffer
    */
-  virtual xclBufferHandle
+  virtual xrt_buffer_handle
   get_exec_bo() const = 0;
 
   /**
@@ -62,6 +63,16 @@ public:
    */
   virtual void
   notify(ert_cmd_state) const = 0;
+
+  /**
+  * get_hwctx_handle() - get submission hw context of command buffer
+  *
+  * The submission hw context is the hardware context used for command execution.
+  * This context is used in multi-xclbin / slot support when submitting a command with
+  * execbuf when the core implementation does not support hardware queue.
+  */
+  virtual xrt_hwctx_handle
+  get_hwctx_handle() const = 0;
 
 private:
   unsigned long m_uid;

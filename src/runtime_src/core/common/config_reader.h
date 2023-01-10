@@ -313,20 +313,6 @@ get_aie_trace()
   return value;
 }
 
-inline bool
-get_aie_trace_flush()
-{
-  static bool value = detail::get_bool_value("Debug.aie_trace_flush", false);
-  return value;
-}
-
-inline std::string
-get_aie_trace_counter_scheme()
-{
-  static std::string value = detail::get_string_value("Debug.aie_trace_counter_scheme", "es2");
-  return value;
-}
-
 inline std::string
 get_aie_trace_metrics()
 {
@@ -355,13 +341,6 @@ inline unsigned int
 get_aie_trace_buffer_offload_interval_ms()
 {
   static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_ms", 10);
-  return value;
-}
-
-inline unsigned int
-get_aie_trace_file_dump_interval_s()
-{
-  static unsigned int value = detail::get_uint_value("Debug.aie_trace_file_dump_interval_s", 5);
   return value;
 }
 
@@ -546,8 +525,8 @@ get_ert_polling()
 }
 
 /**
- * Poll for XGQ command completion
- */
+  * Poll for XGQ command completion
+  */
 inline bool
 get_xgq_polling()
 {
@@ -556,6 +535,20 @@ get_xgq_polling()
    * This is added for XRT team interrupt debugging purpose and will not be documented.
    */
   static bool value = get_enable_flat() || detail::get_bool_value("Runtime.xgq_polling",false);
+  return value;
+}
+
+/**
+ * Use new hw context for multi slot application 
+ */
+inline bool
+get_hw_context_flag()
+{
+  /**
+   * Temporary flag to backward compatibility for legacy context over
+   * new hw context. Remove once hw context is fully functional.
+   */
+  static bool value = detail::get_bool_value("Runtime.hw_context",true);
   return value;
 }
 
@@ -806,11 +799,11 @@ get_flag_sw_emu_kernel_debug()
 }
 
 // This flag is added to exit device offline status check loop forcibly.
-// By default, device offline status loop runs for 120 seconds.
+// By default, device offline status loop runs for 320 seconds.
 inline unsigned int
 get_device_offline_timer()
 {
-  static unsigned int value = detail::get_uint_value("Runtime.dev_offline_timer", 120);
+  static unsigned int value = detail::get_uint_value("Runtime.dev_offline_timer", 320);
   return value;
 }
 

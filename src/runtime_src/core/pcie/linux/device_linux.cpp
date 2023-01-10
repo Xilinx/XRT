@@ -15,7 +15,7 @@
 #include "core/include/xdp/spc.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
-#include "scan.h"
+#include "pcidev.h"
 #include "xrt.h"
 
 #include <array>
@@ -35,7 +35,7 @@
 namespace {
 
 namespace query = xrt_core::query;
-using pdev = std::shared_ptr<pcidev::pci_device>;
+using pdev = std::shared_ptr<xrt_core::pci::dev>;
 using key_type = query::key_type;
 
 static int
@@ -63,7 +63,7 @@ get_render_value(const std::string& dir)
 inline pdev
 get_pcidev(const xrt_core::device* device)
 {
-  auto pdev = pcidev::get_dev(device->get_device_id(), device->is_userpf());
+  auto pdev = xrt_core::pci::get_dev(device->get_device_id(), device->is_userpf());
   if (!pdev)
     throw xrt_core::error("Invalid device handle");
   return pdev;
@@ -119,7 +119,7 @@ struct bdf
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
-    return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
+    return std::make_tuple(pdev->m_domain, pdev->m_bus, pdev->m_dev, pdev->m_func);
   }
 };
 
@@ -346,6 +346,54 @@ struct sdm_sensor_info
   } //get()
 };
 
+struct xclbin_slots
+{
+  using result_type = query::xclbin_slots::result_type;
+  using slot_info = query::xclbin_slots::slot_info;
+  using slot_id = query::xclbin_slots::slot_id;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> xclbin_info;
+    std::string errmsg;
+    auto pdev = get_pcidev(device);
+    pdev->sysfs_get("", "xclbinuuid", errmsg, xclbin_info);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    result_type xclbin_data;
+    // xclbin_uuid e.g.
+    // 0 <uuid_slot_0>
+    // 1 <uuid_slot_1>
+    for (auto& line : xclbin_info) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+      slot_info data = { };
+
+      if (std::distance(tokens.begin(), tokens.end()) == 1) {
+        tokenizer::iterator tok_it = tokens.begin();
+        data.slot.slot = 0;
+        data.uuid = std::string(*tok_it++);
+        xclbin_data.push_back(std::move(data));
+	break;
+      }
+      else if (std::distance(tokens.begin(), tokens.end()) == 2) {
+        tokenizer::iterator tok_it = tokens.begin();
+        data.slot.slot = std::stoi(std::string(*tok_it++));
+        data.uuid = std::string(*tok_it++);
+
+        xclbin_data.push_back(std::move(data));
+      }
+      else
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+    }
+
+    return xclbin_data;
+  }
+};
+
 struct kds_cu_info
 {
   using result_type = query::kds_cu_info::result_type;
@@ -413,13 +461,13 @@ struct instance
     std::string errmsg;
     auto pdev = get_pcidev(device);
 
-    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->domain % pdev->bus % pdev->dev %  pdev->func);
+    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->m_domain % pdev->m_bus % pdev->m_dev % pdev->m_func);
     if(device->is_userpf())
-      pdev->instance = get_render_value(dev_root + sysfsname + "/drm");
+      pdev->m_instance = get_render_value(dev_root + sysfsname + "/drm");
     else
-      pdev->sysfs_get("", "instance", errmsg, pdev->instance,static_cast<uint32_t>(INVALID_ID));
+      pdev->sysfs_get("", "instance", errmsg, pdev->m_instance,static_cast<uint32_t>(INVALID_ID));
 
-    return pdev->instance;
+    return pdev->m_instance;
   }
 
 };
@@ -431,10 +479,10 @@ struct hotplug_offline
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    auto mgmt_dev = pcidev::get_dev(device->get_device_id(), false);
+    auto mgmt_dev = xrt_core::pci::get_dev(device->get_device_id(), false);
 
     // Remove both user_pf and mgmt_pf
-    if (pcidev::shutdown(mgmt_dev, true, true))
+    if (xrt_core::pci::shutdown(mgmt_dev, true, true))
       throw xrt_core::query::sysfs_error("Hotplug offline failed");
 
     return true;
@@ -545,8 +593,8 @@ struct clk_scaling_info
       data.temp_scaling_limit = get_value(stats[5]);
       data.pwr_scaling_ovrd_limit = get_value(stats[6]);
       data.temp_scaling_ovrd_limit = get_value(stats[7]);
-      data.pwr_scaling_ovrd_enable = get_value(stats[8]);
-      data.temp_scaling_ovrd_enable = get_value(stats[9]);
+      data.pwr_scaling_ovrd_enable = get_value(stats[8]) ? true : false;
+      data.temp_scaling_ovrd_enable = get_value(stats[9]) ? true : false;
     } catch (const std::exception& e) {
       xrt_core::send_exception_message(e.what(), "Failed to receive clk_scaling_stat_raw data in specified format");
     }
@@ -919,6 +967,23 @@ struct sysfs_fcn<std::vector<VectorValueType>>
   }
 };
 
+/* Accelerator Deadlock Detector status
+ * In PCIe Linux, access the sysfs file for Accelerator Deadlock Detector to retrieve the deadlock status
+ */
+struct vmr_status
+{
+  using result_type = query::vmr_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    if (device->is_userpf())
+      return sysfs_fcn<result_type>::get(get_pcidev(device), "", "vmr_status");
+    else
+      return sysfs_fcn<result_type>::get(get_pcidev(device), "xgq_vmr", "vmr_status");
+  }
+};
+
 template <typename QueryRequestType>
 struct sysfs_get : virtual QueryRequestType
 {
@@ -1213,6 +1278,7 @@ initialize_query_table()
   emplace_sysfs_get<query::kds_numcdmas>                       ("", "kds_numcdmas");
   emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::kds_scu_info,                   kds_scu_info>();
+  emplace_func0_request<query::xclbin_slots, 		       xclbin_slots>();
   emplace_sysfs_get<query::ps_kernel>                          ("icap", "ps_kernel");
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
@@ -1231,7 +1297,7 @@ initialize_query_table()
   emplace_sysfs_getput<query::boot_partition>                  ("xgq_vmr", "boot_from_backup");
   emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
   emplace_sysfs_getput<query::program_sc>                      ("xgq_vmr", "program_sc");
-  emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
+  emplace_func0_request<query::vmr_status,                     vmr_status>();
   emplace_sysfs_get<query::extended_vmr_status>                ("xgq_vmr", "vmr_verbose_info");
   emplace_sysfs_getput<query::xgq_scaling_enabled>             ("xgq_vmr", "xgq_scaling_enable");
   emplace_sysfs_getput<query::xgq_scaling_power_override>      ("xgq_vmr", "xgq_scaling_power_override");
@@ -1242,6 +1308,7 @@ initialize_query_table()
   emplace_sysfs_get<query::hwmon_sdm_oem_id>                   ("hwmon_sdm", "oem_id");
   emplace_sysfs_get<query::hwmon_sdm_board_name>               ("hwmon_sdm", "bd_name");
   emplace_sysfs_get<query::hwmon_sdm_active_msp_ver>           ("hwmon_sdm", "active_msp_ver");
+  emplace_sysfs_get<query::hwmon_sdm_target_msp_ver>           ("hwmon_sdm", "target_msp_ver");
   emplace_sysfs_get<query::hwmon_sdm_mac_addr0>                ("hwmon_sdm", "mac_addr0");
   emplace_sysfs_get<query::hwmon_sdm_mac_addr1>                ("hwmon_sdm", "mac_addr1");
   emplace_sysfs_get<query::hwmon_sdm_fan_presence>             ("hwmon_sdm", "fan_presence");
@@ -1304,7 +1371,7 @@ void
 device_linux::
 read(uint64_t offset, void* buf, uint64_t len) const
 {
-  if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
+  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarRead(offset, buf, len))
     throw error(err, "read failed");
 }
 
@@ -1312,7 +1379,7 @@ void
 device_linux::
 write(uint64_t offset, const void* buf, uint64_t len) const
 {
-  if (auto err = pcidev::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
+  if (auto err = xrt_core::pci::get_dev(get_device_id(), false)->pcieBarWrite(offset, buf, len))
     throw error(err, "write failed");
 }
 
@@ -1321,7 +1388,8 @@ device_linux::
 reset(query::reset_type& key) const
 {
   std::string err;
-  pcidev::get_dev(get_device_id(), false)->sysfs_put(key.get_subdev(), key.get_entry(), err, key.get_value());
+  xrt_core::pci::get_dev(get_device_id(), false)->sysfs_put(
+    key.get_subdev(), key.get_entry(), err, key.get_value());
   if (!err.empty())
     throw error("reset failed");
 }
@@ -1330,14 +1398,14 @@ int
 device_linux::
 open(const std::string& subdev, int flag) const
 {
-  return pcidev::get_dev(get_device_id(), false)->open(subdev, flag);
+  return xrt_core::pci::get_dev(get_device_id(), false)->open(subdev, flag);
 }
 
 void
 device_linux::
 close(int dev_handle) const
 {
-  pcidev::get_dev(get_device_id(), false)->close(dev_handle);
+  xrt_core::pci::get_dev(get_device_id(), false)->close(dev_handle);
 }
 
 void
@@ -1353,7 +1421,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = file_open("", O_RDWR);
     xclmgmt_ioc_bitstream_axlf obj = { reinterpret_cast<axlf *>( const_cast<char*>(buffer) ) };
-    ret = pcidev::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
+    ret = xrt_core::pci::get_dev(get_device_id(), false)->ioctl(fd.get(), XCLMGMT_IOCICAPDOWNLOAD_AXLF, &obj);
   } catch (const std::exception& e) {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
   }
@@ -1366,16 +1434,16 @@ xclmgmt_load_xclbin(const char* buffer) const {
 void
 device_linux::
 device_shutdown() const {
-  auto mgmt_dev = pcidev::get_dev(get_device_id(), false);
+  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
   // hot reset pcie device
-  if (pcidev::shutdown(mgmt_dev))
+  if (xrt_core::pci::shutdown(mgmt_dev))
     throw xrt_core::error("Hot resetting pci device failed.");
 }
 
 void
 device_linux::
 device_online() const {
-  auto mgmt_dev = pcidev::get_dev(get_device_id(), false);
+  auto mgmt_dev = xrt_core::pci::get_dev(get_device_id(), false);
   auto peer_dev = mgmt_dev->lookup_peer_dev();
   std::string errmsg;
 
@@ -1475,7 +1543,7 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
   throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
 
-xclBufferHandle
+xrt_buffer_handle
 device_linux::
 import_bo(pid_t pid, xclBufferExportHandle ehdl)
 {

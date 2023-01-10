@@ -1,15 +1,13 @@
 [Unit]
 Description=Soft Kernel Daemon
-After=apu-boot
+After=init-apu.service
 
 [Service]
-StartLimitIntervalSec=0
-Restart=always
-RestartSec=1
+Type=forking
 User=softkernel
 ExecStart=/usr/bin/skd
-RemainAfterExit=on
 StandardOutput=journal+console
- 
+MemoryLimit=1G
+
 [Install]
 WantedBy=multi-user.target

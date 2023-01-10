@@ -108,17 +108,6 @@ struct board_name
   }
 };
 
-struct is_ready
-{
-  using result_type = query::is_ready::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type)
-  {
-    return true;
-  }
-};
-
 static xclDeviceInfo2
 init_device_info(const xrt_core::device* device)
 {
@@ -372,7 +361,7 @@ struct xclbin_slots
       if (std::distance(tokens.begin(), tokens.end()) != 2)
         throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
 
-      slot_info data = { 0 };
+      slot_info data {};
       tokenizer::iterator tok_it = tokens.begin();
       data.slot = std::stoi(std::string(*tok_it++));
       data.uuid = std::string(*tok_it++);
@@ -886,9 +875,10 @@ initialize_query_table()
   emplace_sysfs_get<query::memstat_raw>               ("memstat_raw");
   emplace_sysfs_get<query::error>                     ("errors");
   emplace_sysfs_get<query::xclbin_full>               ("xclbin_full");
+  emplace_sysfs_get<query::host_mem_addr>             ("host_mem_addr");
+  emplace_sysfs_get<query::host_mem_size>             ("host_mem_size");
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
-  emplace_func0_request<query::is_ready,                is_ready>();
   emplace_func0_request<query::xclbin_uuid ,            xclbin_uuid>();
 
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();

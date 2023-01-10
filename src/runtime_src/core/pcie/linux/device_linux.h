@@ -1,18 +1,6 @@
-/**
- * Copyright (C) 2019-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 #ifndef PCIE_DEVICE_LINUX_H
 #define PCIE_DEVICE_LINUX_H
@@ -68,10 +56,10 @@ public:
   std::cv_status
   wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout) override;
 
-  xclBufferHandle
+  xrt_buffer_handle
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
 
-  uint32_t // ctx handle aka slotidx
+  xrt_hwctx_handle
   create_hw_context(const xrt::uuid& xclbin_uuid,
                     const xrt::hw_context::qos_type& qos,
                     xrt::hw_context::access_mode mode) const override
@@ -80,7 +68,7 @@ public:
   }
 
   void
-  destroy_hw_context(uint32_t ctxhdl) const override
+  destroy_hw_context(xrt_hwctx_handle ctxhdl) const override
   {
     xrt::shim_int::destroy_hw_context(get_device_handle(), ctxhdl);
   }
@@ -89,6 +77,13 @@ public:
   register_xclbin(const xrt::xclbin& xclbin) const override
   {
     xrt::shim_int::register_xclbin(get_device_handle(), xclbin);
+  }
+
+  // Exec Buf with hw ctx handle.
+  void
+  exec_buf(xrt_buffer_handle boh, xrt_hwctx_handle ctxhdl) override
+  {
+      xrt::shim_int::exec_buf(get_device_handle(), boh, ctxhdl);
   }
   ////////////////////////////////////////////////////////////////
 

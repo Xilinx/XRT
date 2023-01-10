@@ -144,7 +144,25 @@ static void zchan_cmd_log_page(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 	memcpy_toio(chan->mem_base + add_off, info_buf, count);
 	total_count += count;
 
-	count = snprintf(info_buf, sizeof(info_buf), "put zocl version here\n");
+	count = snprintf(info_buf, sizeof(info_buf), "%s%s%s\n", XRT_DRIVER_VERSION, ", ", XRT_HASH);
+	if (total_count + count > size) {
+		zchan_err(chan, "message is trunked to %d len", total_count);
+		ret = -EINVAL;
+		goto done;
+	}
+	memcpy_toio(chan->mem_base + add_off + total_count, info_buf, count);
+	total_count += count;
+
+	count = snprintf(info_buf, sizeof(info_buf), "ZOCL Build Date:");
+	if (total_count + count > size) {
+		zchan_err(chan, "message is trunked to %d len", total_count);
+		ret = -EINVAL;
+		goto done;
+	}
+	memcpy_toio(chan->mem_base + add_off + total_count, info_buf, count);
+	total_count += count;
+
+	count = snprintf(info_buf, sizeof(info_buf), "%s\n", XRT_HASH_DATE);
 	if (total_count + count > size) {
 		zchan_err(chan, "message is trunked to %d len", total_count);
 		ret = -EINVAL;

@@ -22,6 +22,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/device/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 
 #include "core/common/message.h"
@@ -317,21 +318,25 @@ namespace xdp {
 
         std::stringstream warningMessage;
         if (graphStallCounter == graphTilesVec.size()) {
-          // We have a stuck graph
-          warningMessage
-          << "Potential deadlock/hang found in AI Engines. Graph : " << graphName;
-          xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+          if (xdp::HW_EMU != xdp::getFlowMode()) {
+            // We have a stuck graph
+            warningMessage
+            << "Potential deadlock/hang found in AI Engines. Graph : " << graphName;
+            xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+          }
           // Send next warning if all tiles come out of hang & reach threshold again
           graphStallCounter = 0;
         } else if (foundStuckCores) {
-          // We have a stuck core within this graph
-          warningMessage
-          << "Potential stuck cores found in AI Engines. Graph : " << graphName << " "
-          << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row + 1 << ") "
-          << "Status 0x" << std::hex << stuckCoreStatus << std::dec
-          << " : " << getCoreStatusString(stuckCoreStatus);
+          if (xdp::HW_EMU != xdp::getFlowMode()) {
+            // We have a stuck core within this graph
+            warningMessage
+            << "Potential stuck cores found in AI Engines. Graph : " << graphName << " "
+            << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row + 1 << ") "
+            << "Status 0x" << std::hex << stuckCoreStatus << std::dec
+            << " : " << getCoreStatusString(stuckCoreStatus);
 
-          xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+            xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+          }
           foundStuckCores = false;
         }
 

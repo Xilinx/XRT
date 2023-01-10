@@ -17,67 +17,97 @@
 #ifndef AIE_TRACE_METADATA_H
 #define AIE_TRACE_METADATA_H
 
-#include <iostream>
-#include <memory>
-#include "core/edge/common/aie_parser.h"
-//#include "xaiefal/xaiefal.hpp"
 #include <boost/property_tree/ptree.hpp>
+#include <set>
+#include <map>
+#include <vector>
 
-//extern "C" {
-//#include <xaiengine.h>
-//}
+#include "xdp/config.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "core/common/device.h"
 
 namespace xdp {
-
-using tile_type = xrt_core::edge::aie::tile_type;
-using gmio_type = xrt_core::edge::aie::gmio_type;
 
 typedef std::vector<uint32_t>  ValueVector;
 
 class AieTraceMetadata{
   private:
-    uint64_t deviceID;
-    void* handle;
+    
+  //using module_type = xrt_core::edge::aie::module_type;
 
-    uint64_t numAIETraceOutput;
-    // Runtime or compile-time specified trace metrics?
+    bool useDelay = false;
+    bool useUserControl = false;
+    bool useGraphIterator = false;
+    bool useOneDelayCtr = true;
     bool runtimeMetrics;
-     // Trace metrics
-    std::string metricSet;
-    std::set<std::string> metricSets;
-    // These flags are used to decide configuration at various points
-    bool mUseDelay = false;
-    uint32_t mDelayCycles = 0;
-
     bool continuousTrace;
+
+    uint32_t iterationCount = 0;
+    uint64_t delayCycles = 0;
+    uint64_t deviceID;
+    uint64_t numAIETraceOutput;
     uint64_t offloadIntervalUs;
     unsigned int aie_trace_file_dump_int_s;
 
+    std::string metricSet;
+    std::set<std::string> metricSets;
+    std::map<tile_type, std::string> configMetrics;
+
+    void* handle;
+
   public:
+    
     AieTraceMetadata(uint64_t deviceID, void* handle);
-    std::string getMetricSet();
+
+    std::string getMetricSet(const std::string& metricsStr, bool ignoreOldConfig = false);
+
     std::vector<tile_type> getTilesForTracing();
-    uint64_t getTraceStartDelayCycles();
-    adf::aiecompiler_options get_aiecompiler_options(const xrt_core::device* device);
+
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
+
     std::vector<tile_type> get_tiles(const xrt_core::device* device, const std::string& graph_name);
+
+    std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
+                                           const std::string& graph_name,
+                                           module_type type);
+
     std::vector<std::string> get_graphs(const xrt_core::device* device);
+
     double get_clock_freq_mhz(const xrt_core::device* device);
+
     std::vector<gmio_type> get_trace_gmios(const xrt_core::device* device);
 
+    void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
+                                  std::vector<std::string>& graphmetricsSettings);
+    void setTraceStartControl();
+
+    bool getUseDelay(){return useDelay;}
+    bool getUseUserControl(){return useUserControl;}
+    bool getUseGraphIterator(){return useGraphIterator;}
+    bool getUseOneDelayCounter(){return useOneDelayCtr;}
     bool getRuntimeMetrics() {return runtimeMetrics;}
-    uint64_t getDeviceID() {return deviceID;}
-    void* getHandle() {return handle;}
-    void setNumStreams(uint64_t value) {numAIETraceOutput = value;}
+
+    uint32_t getIterationCount(){return iterationCount;}
     uint64_t getNumStreams() {return numAIETraceOutput;}
     uint64_t getContinuousTrace() {return continuousTrace;}
-    unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
-    uint32_t getDelay() {
-      if (mUseDelay)
-        return mDelayCycles;
+    uint64_t getDeviceID() {return deviceID;}
+
+    void* getHandle() {return handle;}
+    unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
+    std::map<tile_type, std::string> getConfigMetrics(){return configMetrics;}
+    std::string getMetricStr(){return metricSet;}
+
+    void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}
+    void setDelayCycles(uint64_t newDelayCycles) {delayCycles = newDelayCycles;}
+    void setRuntimeMetrics(bool metrics) {runtimeMetrics = metrics;}
+
+    uint64_t getDelay() {
+      if (useDelay)
+        return delayCycles;
       return 0;
     }
+    
   };
 
 }

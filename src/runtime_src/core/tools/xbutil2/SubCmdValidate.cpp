@@ -1510,6 +1510,12 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
   std::cout << "-------------------------------------------------------------------------------" << std::endl;
 
   int test_idx = 0;
+  int black_box_tests_skipped = 0;
+  int black_box_tests_counter = 0;
+
+  if (testObjectsToRun.size() == 1)
+    XBU::setVerbose(true);// setting verbose true for single_case.
+  
   for (TestCollection * testPtr : testObjectsToRun) {
     boost::property_tree::ptree ptTest = testPtr->ptTest; // Create a copy of our entry
 
@@ -1523,8 +1529,10 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
 
-    if (is_black_box_test())
-      pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
+    if (is_black_box_test()) {
+        black_box_tests_counter++;
+        pretty_print_test_desc(ptTest, test_idx, std::cout, xrt_core::query::pcie_bdf::to_string(bdf));
+    }
 
     testPtr->testHandle(device, ptTest);
     ptDeviceTestSuite.push_back( std::make_pair("", ptTest) );
@@ -1534,11 +1542,18 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
     pretty_print_test_run(ptTest, status, std::cout);
 
+    // consider only when testcase is part of black_box_tests.
+    if (is_black_box_test() && boost::equals(ptTest.get<std::string>("status", ""), test_token_skipped))
+      black_box_tests_skipped++;
+
     // If a test fails, don't test the remaining ones
     if (status == test_status::failed) {
       break;
     }
   }
+
+  if (black_box_tests_counter !=0 && black_box_tests_skipped == black_box_tests_counter)
+    status = test_status::failed;
 
   print_status(status, std::cout);
 

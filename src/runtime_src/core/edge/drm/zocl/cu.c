@@ -323,7 +323,6 @@ static int configure_irq(struct xrt_cu *xcu, bool enable)
 {
 	struct zocl_cu *zcu = (struct zocl_cu *)xcu;
 	struct platform_device *intc;
-	unsigned long flags;
 
 	intc = zocl_find_pdev(ERT_CU_INTC_DEV_NAME);
 	if (!intc) {
@@ -431,6 +430,9 @@ static int cu_probe(struct platform_device *pdev)
 
 	zcu->base.user_manage_irq = user_manage_irq;
 	zcu->base.configure_irq = configure_irq;
+	/* This is a workaround for DPU kernel */
+	if (!zocl_find_pdev("ert_hw"))
+		zcu->base.force_intr = 1;
 
 	zocl_info(&pdev->dev, "CU[%d] created", info->inst_idx);
 	return 0;

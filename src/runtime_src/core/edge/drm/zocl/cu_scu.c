@@ -34,12 +34,17 @@ struct xrt_cu_scu {
 	int			 run_cnts;
 	void			*vaddr;
 	int			 num_reg;
+	/* sk_crashed - Flag to indicate PS kernel has crashed
+	 * Will be set through IOCTL and never be reset
+	 * as there is no support currently to relaunch PS kernel
+	 */
+	bool			 sk_crashed;
 	struct semaphore	*sc_sem;
 	struct list_head	 submitted;
 	struct list_head	 completed;
 };
 
-static inline void cu_move_to_complete(struct xrt_cu_scu *cu, int status)
+static inline void cu_move_to_complete(struct xrt_cu_scu *cu, int status, u32 rcode)
 {
 	struct kds_command *xcmd = NULL;
 
@@ -48,6 +53,7 @@ static inline void cu_move_to_complete(struct xrt_cu_scu *cu, int status)
 
 	xcmd = list_first_entry(&cu->submitted, struct kds_command, list);
 	xcmd->status = status;
+	xcmd->rcode = rcode;
 	list_move_tail(&xcmd->list, &cu->completed);
 }
 
@@ -136,6 +142,7 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 	u32 done_reg = 0;
 	u32 ready_reg = 0;
 	u32 *cu_regfile = scu->vaddr;
+	u32 rcode = 0;
 
 	/* Avoid access CU register unless we do have running commands.
 	 * This has a huge impact on performance.
@@ -144,18 +151,24 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 		return;
 
 	ctrl_reg = *cu_regfile;
-	/* ap_ready and ap_done would assert at the same cycle */
-	if (ctrl_reg & CU_AP_DONE) {
+	if ((ctrl_reg == CU_AP_DONE) || scu->sk_crashed) {
 		done_reg  = 1;
 		ready_reg = 1;
 		scu->run_cnts--;
-		cu_move_to_complete(scu, KDS_COMPLETED);
+		if (scu->sk_crashed) {
+			rcode = EIO;
+			ctrl_reg = CU_AP_CRASHED;
+			cu_move_to_complete(scu, KDS_SKCRASHED, rcode);
+		} else {
+			rcode = cu_regfile[scu->num_reg+1];
+			cu_move_to_complete(scu, KDS_COMPLETED, rcode);
+		}
 	}
 
 	status->num_done  = done_reg;
 	status->num_ready = ready_reg;
 	status->new_status = ctrl_reg;
-	status->rcode = cu_regfile[scu->num_reg+1];
+	status->rcode = rcode;
 }
 
 static void scu_check(void *core, struct xcu_status *status, bool force)
@@ -213,10 +226,18 @@ static int scu_abort(void *core, void *cond,
 			continue;
 
 		xcmd->status = KDS_TIMEOUT;
+		xcmd->rcode = ETIMEDOUT;
 		list_move_tail(&xcmd->list, &scu->completed);
 	}
 
 	return ret;
+}
+
+void xrt_cu_scu_crashed(struct xrt_cu *xcu)
+{
+	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)xcu->core;
+
+	scu->sk_crashed = 1;
 }
 
 static struct xcu_funcs xrt_scu_funcs = {
@@ -245,6 +266,7 @@ int xrt_cu_scu_init(struct xrt_cu *xcu, void *vaddr, struct semaphore *sem)
 	core->max_credits = 1;
 	core->credits = core->max_credits;
 	core->run_cnts = 0;
+	core->sk_crashed = false;
 	core->sc_sem = sem;
 	core->vaddr = vaddr;
 	INIT_LIST_HEAD(&core->submitted);

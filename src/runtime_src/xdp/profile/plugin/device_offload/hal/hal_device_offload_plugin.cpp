@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -162,29 +163,14 @@ namespace xdp {
     {
       struct xclDeviceInfo2 info ;
       if (xclGetDeviceInfo2(userHandle, &info) == 0)
-      {
         (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
-      }
     }
 
     // For the HAL level, we must create a device interface using 
     //  the xdp::HalDevice to communicate with the physical device
     DeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    if(nullptr == devInterface) {
-      // If DeviceIntf is not already created, create a new one to communicate with physical device
-      devInterface = new DeviceIntf() ;
-      try {
-        devInterface->setDevice(new HalDevice(ownedHandle)) ;
-        devInterface->readDebugIPlayout() ;      
-      }
-      catch(std::exception& /*e*/)
-      {
-        // Read debug IP layout could throw an exception
-        delete devInterface ;
-        return;
-      }
-      (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
-    }
+    if (devInterface == nullptr)
+      devInterface = db->getStaticInfo().createDeviceIntf(deviceId, new HalDevice(ownedHandle));
 
     configureDataflow(deviceId, devInterface) ;
     addOffloader(deviceId, devInterface) ;

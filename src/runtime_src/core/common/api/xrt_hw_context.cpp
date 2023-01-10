@@ -14,10 +14,6 @@
 
 #include <limits>
 
-#ifdef _WIN32
-//# pragma warning( disable : 4244 )
-#endif
-
 namespace xrt {
 
 // class hw_context_impl - insulated implemention of an xrt::hw_context
@@ -32,7 +28,7 @@ class hw_context_impl
   struct ctx_handle
   {
     const xrt_core::device* m_device;
-    xcl_hwctx_handle m_hdl;
+    xrt_hwctx_handle m_hdl;
     bool m_destroy_context = true;
 
     ctx_handle(const xrt_core::device* device, const xrt::uuid& uuid, const qos_type& qos, access_mode mode)
@@ -120,8 +116,8 @@ void
     return m_mode;
   }
 
-  xcl_hwctx_handle
-  get_xcl_handle() const
+  xrt_hwctx_handle
+  get_xrt_handle() const
   {
     return m_ctx_handle.m_hdl;
   }
@@ -198,20 +194,10 @@ get_mode() const
   return get_handle()->get_mode();
 }
 
-uint32_t
 hw_context::
-get_memory_group_id() const
+operator xrt_hwctx_handle() const
 {
-  xcl_bo_flags grp = {0}; // xrt_mem.h
-  grp.bank = 0;
-  grp.slot = static_cast<uint8_t>(get_handle()->get_xcl_handle());
-  return grp.flags;
-}
-
-hw_context::
-operator xcl_hwctx_handle() const
-{
-  return get_handle()->get_xcl_handle();
+  return get_handle()->get_xrt_handle();
 }
 
 } // xrt

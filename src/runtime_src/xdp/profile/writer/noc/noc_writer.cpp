@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,6 +42,7 @@ namespace xdp {
 
   bool NOCProfilingWriter::write(bool openNewFile)
   {
+    /*
     // Write header #1
     fout << "Target device: " << mDeviceName << std::endl;
     fout << "Sample period: " << mSamplePeriod << std::endl;
@@ -96,7 +98,7 @@ namespace xdp {
          << std::endl;
 
     // Write all data elements
-    std::vector<VPDynamicDatabase::CounterSample> samples =
+    std::vector<counters::Sample> samples =
       (db->getDynamicInfo()).getNOCSamples(mDeviceIndex);
     VPDynamicDatabase::CounterNames names =
       (db->getDynamicInfo()).getNOCNames(mDeviceIndex);
@@ -115,6 +117,7 @@ namespace xdp {
       }
       fout << std::endl;
     }
+    */
     return true;
   }
 

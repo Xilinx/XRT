@@ -69,12 +69,12 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
       runtime_tree.add_child("override_threshold_limits", threshold_data);
 
       boost::property_tree::ptree temp_override_data;
-      temp_override_data.put("enabled", "true");
+      temp_override_data.put("enabled", pt.temp_scaling_ovrd_enable);
       temp_override_data.put("temp_celsius", pt.temp_scaling_ovrd_limit);
       runtime_tree.add_child("temp_threshold_override", temp_override_data);
 
       boost::property_tree::ptree pwr_override_data;
-      pwr_override_data.put("enabled", "true");
+      pwr_override_data.put("enabled", pt.pwr_scaling_ovrd_enable);
       pwr_override_data.put("power_watts", pt.pwr_scaling_ovrd_limit);
       runtime_tree.add_child("power_threshold_override", pwr_override_data);
 
@@ -123,6 +123,8 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     }
     if (!cmc_scale.get<bool>("enabled")) {
       _output << "    Not enabled\n";
+    } else {
+      _output << "    Enabled\n";
     }
 
     cmc_scale = cmc.get_child("scaling").get_child("shutdown_threshold_limits");

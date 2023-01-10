@@ -77,9 +77,6 @@ namespace xdp {
     addParameter("aie_trace_buffer_offload_interval_ms",
                  xrt_core::config::get_aie_trace_buffer_offload_interval_ms(),
                  "Interval for reading of device aie trace data to host (in ms)");
-    addParameter("aie_trace_file_dump_interval_s",
-                 xrt_core::config::get_aie_trace_file_dump_interval_s(),
-                 "Interval for dumping aie trace files to host (in s)");  
     addParameter("aie_profile", xrt_core::config::get_aie_profile(),
                  "Generation of AI Engine profiling");
     addParameter("aie_profile_interval_us",

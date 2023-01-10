@@ -26,7 +26,7 @@ If kernel argument 'hang' is non-zero, the kernel will enter an
 infinite loop that can be broken only with a reset.
 
 The test harness allows the user to specify if the kernel should
-hang in a infinite loop and be abort after some time.
+hang in an infinite loop and be aborted after some time.
 % reset -k <xclbin> --hang 1
 
 The test also illustrates how to wait for kernel completion with a
@@ -42,7 +42,7 @@ will be observed.
 To validate that the kernel runs without hang, simply call as
 % reset -k <xclbin>
 
-XRT supports to execution modes, one is unmanged execution, which by
+XRT supports two execution modes, one is unmanaged execution, which by
 far is the fastest and one is managed execution where XRT under the
 hood is managing all running kernels and asynchronously completes the
 kernels.  This mode is what OpenCL is using.  The test in this file
@@ -57,11 +57,12 @@ This example illustrates sw reset using xrt::run::abort.
 // % g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o reset.exe main.cpp -lxrt_coreutil -luuid -pthread
 // % reset.exe -k <xclbin> [--hang]
 
-#include <iostream>
-#include <cstring>
-#include <cstdlib>
+#include <chrono>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <future>
+#include <iostream>
 #include <thread>
 #include <vector>
 #include "xrt/xrt_kernel.h"
@@ -71,12 +72,15 @@ This example illustrates sw reset using xrt::run::abort.
 # pragma warning( disable : 4996 )
 #endif
 
+using namespace std::literals::chrono_literals;
+
 using value_type = std::uint32_t;
 
 static size_t data_size = 8 * 1024 * 1024;
 static size_t data_size_bytes = sizeof(int) * data_size;
 
-static void usage()
+static void
+usage()
 {
   std::cout << "usage: %s [options] \n\n"
             << "  -k <bitstream>\n"
@@ -84,9 +88,18 @@ static void usage()
             << ""
             << "  [--hang <val>]: specify to value != 0 to make kernel hang and test sw reset\n"
             << "  [--timeout <ms>]: specify a timeout in millisecond to wait for completion\n"
-            << "  [--managed]: use managed (monitored) kernel execution\n";
-
+            << "  [--managed]: use managed (monitored) kernel execution\n"
+            << "  [--wait2]: use xrt::run::wait2 when waiting for completion\n";
 }
+
+static const char*
+cv_status_to_string(std::cv_status status)
+{
+  return status == std::cv_status::no_timeout
+    ? "no_timeout"
+    : "timeout";
+}
+
 
 static bool
 is_hw_emulation()
@@ -160,8 +173,34 @@ timeout(xrt::run run, int hang, int timeout_ms)
   }
 }
 
+// Test wait with timeout with or without hanging kernel using run::wait2()
 static void
-run(const xrt::device& device, const xrt::uuid& uuid, int hang, int timeout_ms, bool managed)
+timeout2(xrt::run run, int hang, int timeout_ms)
+{
+  auto status = run.wait2(timeout_ms * 1ms);
+  std::cout << "timeout: wait2 completed with status (" << cv_status_to_string(status) << ")\n";
+
+  // A timed-out wait may have left the command running, it is the
+  // responsibility of the caller to either continue to wait or abort
+  // the run.  In this test, abort if kernel is hanging, or continue
+  // waiting until kernel completes
+  if (status == std::cv_status::timeout && hang) {
+    auto state = run.abort();
+    std::cout << "timeout: kernel aborted with state (" << state << ")\n";
+  }
+  else {
+    int waits = 1;
+    while (run.wait2(timeout_ms * 1ms) == std::cv_status::timeout)
+      ++waits;
+
+    std::cout << "timeout (" << waits << "): kernel completed with state (" << run.state() << ")\n";
+  }
+}
+
+
+
+static void
+run(const xrt::device& device, const xrt::uuid& uuid, int hang, int timeout_ms, bool managed, bool wait2)
 {
   // add(in1, in2, nullptr, data_size)
   xrt::kernel add(device, uuid, "loop_vadd");
@@ -200,8 +239,12 @@ run(const xrt::device& device, const xrt::uuid& uuid, int hang, int timeout_ms, 
   // call proper test
   if (!timeout_ms && hang)
     abort(run);
-  else if (timeout_ms)
+  else if (timeout_ms && !wait2)
     timeout(run, hang, timeout_ms);
+  else if (timeout_ms && wait2)
+    timeout2(run, hang, timeout_ms);
+  else if (wait2)
+    run.wait2();
   else
     run.wait();
 
@@ -228,6 +271,7 @@ run(int argc, char** argv)
   std::string xclbin_fnm;
   std::string device_id = "0";
   bool managed = false;
+  bool wait2 = false;
   int hang = 0;
   int timeout_ms = 0;
 
@@ -244,6 +288,8 @@ run(int argc, char** argv)
       // No argument switches
       if (cur == "--managed")
         managed = true;
+      else if (cur == "--wait2")
+        wait2 = true;
 
       continue;
     }
@@ -271,7 +317,7 @@ run(int argc, char** argv)
   xrt::device device{device_id};
   auto uuid = device.load_xclbin(xclbin);
 
-  run(device, uuid, hang, timeout_ms, managed);
+  run(device, uuid, hang, timeout_ms, managed, wait2);
 }
 
 

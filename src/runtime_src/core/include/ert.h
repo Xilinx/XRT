@@ -468,7 +468,7 @@ struct ert_access_valid_cmd {
  * @ERT_CMD_STATE_QUEUED:      Internal scheduler state
  * @ERT_CMD_STATE_SUBMITTED:   Internal scheduler state
  * @ERT_CMD_STATE_RUNNING:     Internal scheduler state
- * @ERT_CMD_STATE_COMPLETE:    Set by scheduler when command completes
+ * @ERT_CMD_STATE_COMPLETED:   Set by scheduler when command completes 
  * @ERT_CMD_STATE_ERROR:       Set by scheduler if command failed
  * @ERT_CMD_STATE_ABORT:       Set by scheduler if command abort
  * @ERT_CMD_STATE_TIMEOUT:     Set by scheduler if command timeout and reset

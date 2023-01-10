@@ -22,8 +22,12 @@
 #include <drm/drm_drv.h>
 #include <drm/drm_gem.h>
 #include <drm/drm_mm.h>
-#include <drm/drm_gem_cma_helper.h>
 #include <linux/version.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+#include <drm/drm_gem_dma_helper.h>
+#else
+#include <drm/drm_gem_cma_helper.h>
+#endif
 #include <linux/poll.h>
 #include "zocl_util.h"
 #include "zocl_ioctl.h"
@@ -38,6 +42,18 @@
 #define ZOCL_PLATFORM_ARM64   1
 #else
 #define ZOCL_PLATFORM_ARM64   0
+#endif
+
+#ifndef XRT_DRIVER_VERSION
+#define XRT_DRIVER_VERSION ""
+#endif
+
+#ifndef XRT_HASH
+#define XRT_HASH ""
+#endif
+
+#ifndef XRT_HASH_DATE
+#define XRT_HASH_DATE ""
 #endif
 
 /* Ensure compatibility with newer kernels and backported Red Hat kernels. */
@@ -117,7 +133,11 @@ struct zocl_drv_private {
 
 struct drm_zocl_bo {
 	union {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+		struct drm_gem_dma_object       cma_base;
+#else
 		struct drm_gem_cma_object       cma_base;
+#endif
 		struct {
 			struct drm_gem_object         gem_base;
 			struct page                 **pages;

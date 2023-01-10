@@ -76,7 +76,7 @@ class device_context_mgr
   };
 
   std::mutex m_mutex;
-  std::map<xcl_hwctx_handle, ctx> m_ctx;
+  std::map<xrt_hwctx_handle, ctx> m_ctx;
   std::condition_variable m_cv;
   xrt_core::device* m_device;
 
@@ -94,12 +94,13 @@ public:
   open(const xrt::hw_context& hwctx, const std::string& ipname)
   {
     std::unique_lock<std::mutex> ul(m_mutex);
-    auto& ctx = m_ctx[static_cast<xcl_hwctx_handle>(hwctx)];
+    auto& ctx = m_ctx[static_cast<xrt_hwctx_handle>(hwctx)];
     while (ctx.get(ipname)) {
       if (m_cv.wait_for(ul, 100ms) == std::cv_status::timeout)
         throw std::runtime_error("aquiring cu context timed out");
     }
-    auto ipidx = m_device->open_cu_context(hwctx, ipname);
+
+    auto ipidx = m_device->open_cu_context_wrap(hwctx, ipname);
     ctx.add(ipname, ipidx);
     return ipidx;
   }
@@ -110,10 +111,11 @@ public:
   close(const xrt::hw_context& hwctx, cuidx_type ipidx)
   {
     std::lock_guard<std::mutex> lk(m_mutex);
-    auto& ctx = m_ctx[static_cast<xcl_hwctx_handle>(hwctx)];
+    auto& ctx = m_ctx[static_cast<xrt_hwctx_handle>(hwctx)];
     if (!ctx.get(ipidx))
       throw std::runtime_error("ctx " + std::to_string(ipidx.index) + " not open");
-    m_device->close_cu_context(hwctx, ipidx);
+
+    m_device->close_cu_context_wrap(hwctx, ipidx);
     ctx.erase(ipidx);
     m_cv.notify_all();
   }

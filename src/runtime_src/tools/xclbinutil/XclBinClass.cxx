@@ -786,7 +786,7 @@ XclBin::removeSection(const std::string& _sSectionToRemove)
   Section::translateSectionKindStrToKind(sectionName, _eKind);
 
   if ((Section::supportsSectionIndex(_eKind) == true) &&
-      (sectionIndexName.empty())) {
+      (sectionIndexName.empty() && !Section::supportsSubSectionName(_eKind, ""))) {
     auto errMsg = boost::format("ERROR: Section '%s' can only be deleted with indexes.") % sectionName;
     throw std::runtime_error(errMsg.str());
   }
@@ -1881,7 +1881,7 @@ XclBin::addKernels(const std::string& jsonFile)
   XUtil::TRACE("Adding fixed kernel");
 
   // -- Read in the Fixed Kernel Metadata
-  XUtil::TRACE("Reading given JSON file: " + jsonFile);
+  XUtil::TRACE("Reading given Fixed Kernel JSON file: " + jsonFile);
   std::fstream ifFixedKernels;
   ifFixedKernels.open(jsonFile, std::ifstream::in | std::ifstream::binary);
   if (!ifFixedKernels.is_open()) {

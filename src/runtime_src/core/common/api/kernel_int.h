@@ -1,19 +1,8 @@
-/*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020 Xilinx, Inc
+// Copyright (C) 2022 Advanced Micro Devices, Inc. All rights reserved.
+//
+// Xilinx Runtime (XRT) Experimental APIs
 
 #ifndef _XRT_COMMON_KERNEL_INT_H_
 #define _XRT_COMMON_KERNEL_INT_H_
@@ -37,8 +26,8 @@ namespace xrt_core { namespace kernel_int {
 void
 copy_bo_with_kdma(const std::shared_ptr<xrt_core::device>& core_device,
                   size_t sz,
-                  xclBufferHandle dst_bo, size_t dst_offset,
-                  xclBufferHandle src_bo, size_t src_offset);
+                  xrt_buffer_handle dst_bo, size_t dst_offset,
+                  xrt_buffer_handle src_bo, size_t src_offset);
 
 XRT_CORE_COMMON_EXPORT
 std::vector<const xclbin::kernel_argument*>
