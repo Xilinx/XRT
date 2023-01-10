@@ -66,17 +66,6 @@ namespace xdp {
 #ifndef SKIP_AIE_INI
     addParameter("aie_trace", xrt_core::config::get_aie_trace(),
                  "Generation of AI Engine trace");
-    addParameter("aie_trace_buffer_size",
-                 xrt_core::config::get_aie_trace_buffer_size(),
-                 "Size of buffer to allocate for AI Engine trace");
-    addParameter("aie_trace_metrics",
-                 xrt_core::config::get_aie_trace_metrics(),
-                 "Configuration level used for AI Engine trace");
-    addParameter("aie_trace_periodic_offload", xrt_core::config::get_aie_trace_periodic_offload(),
-                 "Periodic offloading of aie trace from memory to host");
-    addParameter("aie_trace_buffer_offload_interval_ms",
-                 xrt_core::config::get_aie_trace_buffer_offload_interval_ms(),
-                 "Interval for reading of device aie trace data to host (in ms)");
     addParameter("aie_profile", xrt_core::config::get_aie_profile(),
                  "Generation of AI Engine profiling");
     addParameter("aie_profile_interval_us",
