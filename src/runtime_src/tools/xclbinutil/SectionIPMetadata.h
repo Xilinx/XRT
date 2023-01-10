@@ -14,14 +14,14 @@
  * under the License.
  */
 
-#ifndef __SectionHlsMetadata_h_
-#define __SectionHlsMetadata_h_
+#ifndef __SectionIPMetadata_h_
+#define __SectionIPMetadata_h_
 
 // ----------------------- I N C L U D E S -----------------------------------
 #include "Section.h"
 
-// ------ C L A S S :   S e c t i o n H l s M e t a d a t a ------------
-class SectionHlsMetadata : public Section {
+// ------ C L A S S :   S e c t i o n I P M e t a d a t a ------------
+class SectionIPMetadata : public Section {
  protected:
   void marshalToJSON(char* _DataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
   void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;

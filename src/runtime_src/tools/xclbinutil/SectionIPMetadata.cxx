@@ -14,7 +14,7 @@
  * under the License.
  */
 
-#include "SectionHlsMetadata.h"
+#include "SectionIPMetadata.h"
 
 #include "XclBinUtilities.h"
 #include <boost/format.hpp>
@@ -24,11 +24,11 @@
 namespace XUtil = XclBinUtilities;
 
 // Static Variables / Classes
-SectionHlsMetadata::init SectionHlsMetadata::initializer;
+SectionIPMetadata::init SectionIPMetadata::initializer;
 
-SectionHlsMetadata::init::init()
+SectionIPMetadata::init::init()
 {
-  auto sectionInfo = std::make_unique<SectionInfo>(HLS_METADATA, "HLS_METADATA", boost::factory<SectionHlsMetadata*>());
+  auto sectionInfo = std::make_unique<SectionInfo>(IP_METADATA, "IP_METADATA", boost::factory<SectionIPMetadata*>());
 
   sectionInfo->supportedAddFormats.push_back(FormatType::raw);
 
@@ -38,13 +38,13 @@ SectionHlsMetadata::init::init()
 }
 
 void
-SectionHlsMetadata::marshalToJSON(char* _pDataSection,
-                                  unsigned int _sectionSize,
-                                  boost::property_tree::ptree& _ptree) const
+SectionIPMetadata::marshalToJSON(char* _pDataSection,
+                                 unsigned int _sectionSize,
+                                 boost::property_tree::ptree& _ptree) const
 {
   XUtil::TRACE("");
-  XUtil::TRACE("Extracting: HLS_METADATA");
-  XUtil::TRACE_BUF("HLS_METADATA Section Buffer", reinterpret_cast<const char*>(_pDataSection), _sectionSize);
+  XUtil::TRACE("Extracting: IP_METADATA");
+  XUtil::TRACE_BUF("IP_METADATA Section Buffer", reinterpret_cast<const char*>(_pDataSection), _sectionSize);
 
   // Determine if there is something to do, if not then leave
   if (_sectionSize == 0)
@@ -56,17 +56,17 @@ SectionHlsMetadata::marshalToJSON(char* _pDataSection,
   try {
     boost::property_tree::read_json(ss, _ptree);
   } catch (const std::exception& e) {
-    const std::string errMsg = (boost::format("ERROR: Bad JSON format detected while marshaling HLS_METADATA (%s).") % e.what()).str();
+    const std::string errMsg = (boost::format("ERROR: Bad JSON format detected while marshaling IP_METADATA (%s).") % e.what()).str();
     throw std::runtime_error(errMsg);
   }
 }
 
 void
-SectionHlsMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
-                                    std::ostringstream& _buf) const
+SectionIPMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
+                                   std::ostringstream& _buf) const
 {
 
-  XUtil::TRACE("HLS_METADATA");
+  XUtil::TRACE("IP_METADATA");
   // write the property tree to _buf
   boost::property_tree::write_json(_buf, _ptSection, false);
 }

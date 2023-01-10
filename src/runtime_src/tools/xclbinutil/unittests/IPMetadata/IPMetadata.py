@@ -36,20 +36,20 @@ def main():
 
   step = "0) Create working xclbin container"
 
-  inputHlsMetadata = os.path.join(args.resource_dir, "hls_metadata.json")
-  outputHlsMetadata = "output_hls_metadata.json"
-  expectedHlsMetadata = os.path.join(args.resource_dir, "hls_metadata_expected.json")
+  inputIpMetadata = os.path.join(args.resource_dir, "ip_metadata.json")
+  outputIpMetadata = "output_ip_metadata.json"
+  expectedIpMetadata = os.path.join(args.resource_dir, "ip_metadata_expected.json")
 
   workingXCLBIN = "working.xclbin"
 
-  cmd = [xclbinutil, "--add-section", "HLS_METADATA:RAW:" + inputHlsMetadata, 
-                     "--dump-section", "HLS_METADATA:RAW:" + outputHlsMetadata,
+  cmd = [xclbinutil, "--add-section", "IP_METADATA:RAW:" + inputIpMetadata, 
+                     "--dump-section", "IP_METADATA:RAW:" + outputIpMetadata,
                      "--output", workingXCLBIN, 
                      "--force"]
   execCmd(step, cmd)
 
   # Validate the contents of the various sections
-  jsonFileCompare(outputHlsMetadata, expectedHlsMetadata)
+  jsonFileCompare(outputIpMetadata, expectedIpMetadata)
 
   # ---------------------------------------------------------------------------
 
