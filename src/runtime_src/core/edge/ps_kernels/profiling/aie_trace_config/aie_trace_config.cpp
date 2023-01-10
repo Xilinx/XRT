@@ -253,8 +253,6 @@ namespace {
       auto tile = xrt_core::edge::aie::tile_type();
       tile.row = params->tiles[i].row;
       tile.col = params->tiles[i].col;
-      std::cout << "Added new tile with: row, col: " << tile.row << " " << tile.col << std::endl;
-      std::cout << "MetricSet: " << (uint64_t) params->tiles[i].metricSet << std::endl;
       configMetrics.insert({tile, static_cast<xdp::built_in::MetricSet>(params->tiles[i].metricSet)});
     }
 

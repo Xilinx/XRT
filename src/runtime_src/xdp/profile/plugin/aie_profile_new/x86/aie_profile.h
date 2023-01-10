@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,21 +19,23 @@
 
 #include <cstdint>
 
+#include "core/include/xrt/xrt_kernel.h"
 #include "xdp/profile/plugin/aie_profile_new/aie_profile_impl.h"
 
 namespace xdp {
   
   class AieProfile_x86Impl : public AieProfileImpl{
     public:
-      // AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata)
-      //   : AieProfileImpl(database, metadata){}
       AieProfile_x86Impl(VPDatabase* database, std::shared_ptr<AieProfileMetadata> metadata);
-
       ~AieProfile_x86Impl() = default;
 
       void updateDevice();
       void poll(uint32_t index, void* handle);
-      bool checkAieDevice(uint64_t deviceId, void* handle);
+      bool setMetricsSettings(uint64_t deviceId, void* handle);
+
+    private:
+      xrt::device device;
+      xrt::kernel aie_profile_kernel;
   };
 
 }   

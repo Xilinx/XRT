@@ -9,11 +9,12 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_uuid.h"
 
-#include "xcl_hwctx.h"
-
 #ifdef __cplusplus
 
 #include <map>
+
+// Opaque handle for internal use
+struct xrt_hwctx_handle;
 
 namespace xrt {
 

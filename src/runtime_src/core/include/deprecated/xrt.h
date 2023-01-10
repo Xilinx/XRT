@@ -88,7 +88,7 @@ typedef unsigned int xclBufferHandle;
  * that operate on on buffer objects.
  */
 typedef void * xrt_buffer_handle;
-#define XRT_INVALID_BUFFER_HANDLE	NULL
+#define XRT_INVALID_BUFFER_HANDLE ((xrt_buffer_handle)(uintptr_t)-1)
 
 static inline xclBufferHandle
 to_xclBufferHandle(xrt_buffer_handle hdl)

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,19 +13,20 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#define XDP_SOURCE
 
-#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#define XDP_SOURCE
 
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-#include "core/common/xrt_profiling.h"
-#include "core/common/device.h"
-#include "core/common/config_reader.h"
-#include "core/common/message.h"
 #include "aie_profile_metadata.h"
+#include "core/common/config_reader.h"
+#include "core/common/device.h"
+#include "core/common/message.h"
+#include "core/common/xrt_profiling.h"
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
@@ -34,18 +35,88 @@ namespace xdp {
   : deviceID(deviceID)
   , handle(handle)
   {
-    mConfigMetrics.resize(3);
+    configMetrics.resize(NUM_MODULES);
   // Get polling interval (in usec; minimum is 100)
-    mPollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
-    if (1000 == mPollingInterval) {
+    pollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
+    if (1000 == pollingInterval) {
       // If set to default value, then check for old style config 
-      mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
-      if (1000 != mPollingInterval) {
+      pollingInterval = xrt_core::config::get_aie_profile_interval_us();
+      if (1000 != pollingInterval) {
         xrt_core::message::send(severity_level::warning, "XRT", 
           "The xrt.ini flag \"aie_profile_interval_us\" is deprecated and will be removed in future release. Please use \"interval_us\" under \"AIE_profile_settings\" section.");
       }
     }
 
+    //Setup Config Metrics
+    // Get AIE clock frequency
+    VPDatabase* db = VPDatabase::Instance();
+    clockFreqMhz = (db->getStaticInfo()).getClockRateMHz(deviceID,false);
+
+    // Get the metrics settings
+    std::vector<std::string> metricsConfig;
+
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
+    metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
+    //Uncomment in the future to support tile-based metrics for Mem tiles
+    //metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics());
+
+    // Get the graph metrics settings
+    std::vector<std::string> graphmetricsConfig;
+
+    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_metrics());
+    graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics());
+
+    //Uncomment in the future to support graph-based metrics for Interface and Mem Tiles
+    //graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
+    //graphmetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
+
+    // Process AIE_profile_settings metrics
+    // Each of the metrics can have ; separated multiple values. Process and save all
+    std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
+    std::vector<std::vector<std::string>> graphmetricsSettings(NUM_MODULES);
+
+    for(int module = 0; module < NUM_MODULES; ++module) {
+      bool findTileMetric = false;
+      if (!metricsConfig[module].empty()) {
+        boost::replace_all(metricsConfig[module], " ", "");
+        boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
+        findTileMetric = true;        
+      } else {
+          std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
+          std::string metricMsg = "No metric set specified for " + modName + " module. " +
+                                  "Please specify the AIE_profile_settings." + modName + "_metrics setting in your xrt.ini. A default set of " + defaultSets[module] + " has been specified.";
+          xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
+
+          metricsConfig[module] = defaultSets[module];
+          boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
+          findTileMetric = true;
+
+      }
+      if (((size_t)module < graphmetricsConfig.size()) && !graphmetricsConfig[module].empty()) {
+        /* interface_tile metrics is not supported for Graph based metrics.
+        * Only aie and aie_memory are supported.
+        */
+        boost::replace_all(graphmetricsConfig[module], " ", "");
+        boost::split(graphmetricsSettings[module], graphmetricsConfig[module], boost::is_any_of(";"));
+        findTileMetric = true;        
+      }
+
+      if(findTileMetric) {
+        if (module_type::shim == moduleTypes[module]) {
+          getInterfaceConfigMetricsForTiles(module, 
+                                      metricsSettings[module], 
+                                      /* graphmetricsSettings[module], */
+                                      handle);
+        } else {
+          getConfigMetricsForTiles(module, 
+                                  metricsSettings[module], 
+                                  graphmetricsSettings[module], 
+                                  moduleTypes[module],
+                                  handle);
+        }
+      }
+    }
   }
 
   std::vector<tile_type>
@@ -102,7 +173,7 @@ namespace xdp {
         continue;
       }
 
-      tile_type tile;
+      tile_type tile = {0};
       tile.col = shimCol;
       tile.row = 0;
       // Grab stream ID and slave/master (used in configStreamSwitchPorts())
@@ -179,7 +250,7 @@ namespace xdp {
         } // "all" 
       }
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+        configMetrics[moduleIdx][e] = graphmetrics[i][2];
       }
     }  // Graph Pass 1
 
@@ -206,7 +277,7 @@ namespace xdp {
         }
       }
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+        configMetrics[moduleIdx][e] = graphmetrics[i][2];
       }
     }  // Graph Pass 2
 
@@ -241,7 +312,7 @@ namespace xdp {
           }
         } // allGraphsDone
         for (auto &e : tiles) {
-          mConfigMetrics[moduleIdx][e] = metrics[i][1];
+          configMetrics[moduleIdx][e] = metrics[i][1];
         }
       }
     } // Pass 1 
@@ -281,14 +352,14 @@ namespace xdp {
 
       for (uint32_t col = minCol; col <= maxCol; ++col) {
         for (uint32_t row = minRow; row <= maxRow; ++row) {
-          tile_type tile;
+          tile_type tile = {0};
           tile.col = col;
           tile.row = row;
           tiles.push_back(tile);
         }
       }
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = metrics[i][2];
+        configMetrics[moduleIdx][e] = metrics[i][2];
       }
     } // Pass 2 
 
@@ -302,7 +373,7 @@ namespace xdp {
       if (0 == metrics[i][0].compare("all")) {
         continue;
       }
-      tile_type tile;
+      tile_type tile = {0};
       std::vector<std::string> tilePos;
 
       try {
@@ -321,7 +392,7 @@ namespace xdp {
       }
 
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = metrics[i][1];
+        configMetrics[moduleIdx][e] = metrics[i][1];
       }
     } // Pass 3 
 
@@ -340,13 +411,13 @@ namespace xdp {
     } 
 
     for (auto &e : totalTiles) {
-      if (mConfigMetrics[moduleIdx].find(e) == mConfigMetrics[moduleIdx].end()) {
+      if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end()) {
         std::string defaultSet = (mod == module_type::core) ? "heat_map" : "conflicts";
-        mConfigMetrics[moduleIdx][e] = defaultSet;
+        configMetrics[moduleIdx][e] = defaultSet;
       }
     }
 
-    for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+    for (auto &tileMetric : configMetrics[moduleIdx]) {
     
       // save list of "off" tiles
       if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
@@ -355,8 +426,8 @@ namespace xdp {
       }
        
       // Ensure requested metric set is supported (if not, use default)
-      if (((mod == module_type::core) && std::find(coreMetricStrings.begin(), coreMetricStrings.end(), tileMetric.second) == coreMetricStrings.end())
-          || ((mod == module_type::dma) && std::find(memMetricStrings.begin(), memMetricStrings.end(), tileMetric.second) == memMetricStrings.end())) {
+      if (((mod == module_type::core) && std::find(metricStrings[mod].begin(), metricStrings[mod].end(), tileMetric.second) == metricStrings[mod].end())
+          || ((mod == module_type::dma) && std::find(metricStrings[mod].begin(), metricStrings[mod].end(), tileMetric.second) == metricStrings[mod].end())) {
         std::string defaultSet = (mod == module_type::core) ? "heat_map" : "conflicts";
         std::stringstream msg;
         msg << "Unable to find " << moduleName << " metric set " << tileMetric.second
@@ -369,7 +440,7 @@ namespace xdp {
 
     // remove all the "off" tiles
     for (auto &t : offTiles) {
-      mConfigMetrics[moduleIdx].erase(t);
+      configMetrics[moduleIdx].erase(t);
     }
   }
 
@@ -385,7 +456,6 @@ namespace xdp {
 
 #if 0
     // graph_based_interface_tile_metrics is not supported in XRT in 2022.2
-
     bool allGraphsDone = false;
 
     // STEP 1 : Parse per-graph settings
@@ -421,7 +491,7 @@ namespace xdp {
       allGraphsDone = true;
 
       for (auto &e : tiles) {
-        mConfigMetrics[moduleIdx][e] = graphmetrics[i][2];
+        configMetrics[moduleIdx][e] = graphmetrics[i][2];
       }
     }  // Graph Pass 1
 
@@ -456,7 +526,7 @@ namespace xdp {
         tiles = getAllTilesForInterfaceProfiling(handle, metrics[i][1], channelId);
 
         for (auto &e : tiles) {
-          mConfigMetrics[moduleIdx][e] = metrics[i][1];
+          configMetrics[moduleIdx][e] = metrics[i][1];
         }
       }
     } // Pass 1 
@@ -507,7 +577,7 @@ namespace xdp {
                                           true, minCol, maxCol);
 
       for (auto &t : tiles) {
-        mConfigMetrics[moduleIdx][t] = metrics[i][2];
+        configMetrics[moduleIdx][t] = metrics[i][2];
       }
     } // Pass 2 
 
@@ -552,7 +622,7 @@ namespace xdp {
                                             true, col, col);
 
         for (auto &t : tiles) {
-          mConfigMetrics[moduleIdx][t] = metrics[i][1];
+          configMetrics[moduleIdx][t] = metrics[i][1];
         }
       }
     } // Pass 3 
@@ -565,12 +635,12 @@ namespace xdp {
     totalTiles = getAllTilesForInterfaceProfiling(handle, "input_bandwidths", -1);
 
     for (auto &e : totalTiles) {
-      if (mConfigMetrics[moduleIdx].find(e) == mConfigMetrics[moduleIdx].end()) {
-        mConfigMetrics[moduleIdx][e] = "input_bandwidths";
+      if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end()) {
+        configMetrics[moduleIdx][e] = "input_bandwidths";
       }
     }
 
-    for (auto &tileMetric : mConfigMetrics[moduleIdx]) {
+    for (auto &tileMetric : configMetrics[moduleIdx]) {
 
       // save list of "off" tiles
       if (tileMetric.second.empty() || 0 == tileMetric.second.compare("off")) {
@@ -579,7 +649,7 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      if (std::find(interfaceMetricStrings.begin(), interfaceMetricStrings.end(), tileMetric.second) == interfaceMetricStrings.end()) {
+      if (std::find(metricStrings[module_type::shim].begin(), metricStrings[module_type::shim].end(), tileMetric.second) == metricStrings[module_type::shim].end()) {
         std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
                           + ". Using default of input_bandwidths. "
                           + "As new AIE_profile_settings section is given, old style metric configurations, if any, are ignored.";
@@ -590,7 +660,7 @@ namespace xdp {
 
     // remove all the "off" tiles
     for (auto &t : offTiles) {
-      mConfigMetrics[moduleIdx].erase(t);
+      configMetrics[moduleIdx].erase(t);
     }
   }
 
@@ -691,4 +761,15 @@ namespace xdp {
     return tiles;
   }
 
+  uint8_t AieProfileMetadata::getMetricSetIndex(std::string metricString, module_type mod){
+    auto stringVector = metricStrings[mod];
+    
+    auto itr = std::find(stringVector.begin(), stringVector.end(), metricString);
+    if (itr != stringVector.cend()){
+      return 0;
+    } else {
+      return std::distance(stringVector.begin(), itr);
+    }
+
+  }
 }

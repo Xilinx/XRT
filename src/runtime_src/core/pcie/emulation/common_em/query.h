@@ -31,7 +31,7 @@ namespace xclemulation { namespace query {
 using key_type = xrt_core::query::key_type;
 using qtype = std::underlying_type<key_type>::type;
 
-// Code shared between hw_emu and cpu_em to retrieve
+// Code shared between hw_emu and sw_emu to retrieve
 // query requests contained within xclDeviceInfo2
 struct device_info
 {

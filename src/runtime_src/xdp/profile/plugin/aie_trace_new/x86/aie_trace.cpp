@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -217,7 +217,7 @@ namespace xdp {
       } 
 
     } catch (...) {
-      std::string msg = "The aie_trace_config PS kernel was not found.";
+        std::string msg = "The aie_trace_config PS kernel was not found.";
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return false;
     } 

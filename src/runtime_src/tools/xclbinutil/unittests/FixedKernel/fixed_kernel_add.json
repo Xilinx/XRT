@@ -5,7 +5,8 @@
         "name" : "DPU",   
         "type" : "dpu",
         "extended-data" : {
-            "functional" : "0",
+            "subtype" : "DPU",
+            "functional" : "DPU",
             "dpu_kernel_id" : "0x101"
         },
         "arguments" : [         

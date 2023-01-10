@@ -2250,7 +2250,7 @@ namespace xclhwemhal2 {
     mCURangeMap.clear();
 
     deviceName = "device"+std::to_string(deviceIndex);
-    deviceDirectory = xclemulation::getRunDirectory() +"/" + std::to_string(getpid())+"/hw_em/"+deviceName;
+    deviceDirectory = xclemulation::getRunDirectory() +"/" + std::to_string(getpid())+"/hw_emu/"+deviceName;
 
     systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE, "", std::to_string(__LINE__));
     systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));

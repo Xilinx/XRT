@@ -11,19 +11,19 @@
 #include <unistd.h>
 #include <boost/property_tree/xml_parser.hpp>
 
-namespace xclcpuemhal2 {
+namespace xclswemuhal2 {
 
-  std::map<unsigned int, CpuemShim*> devices;
-  unsigned int CpuemShim::mBufferCount = 0;
+  std::map<unsigned int, SwEmuShim*> devices;
+  unsigned int SwEmuShim::mBufferCount = 0;
   unsigned int GraphType::mGraphHandle = 0;
-  std::map<int, std::tuple<std::string,int,void*> > CpuemShim::mFdToFileNameMap;
-  bool CpuemShim::mFirstBinary = true;
-  const unsigned CpuemShim::TAG = 0X586C0C6C; // XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII);
-  const unsigned CpuemShim::CONTROL_AP_START = 1;
-  const unsigned CpuemShim::CONTROL_AP_DONE  = 2;
-  const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
-  const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
-  std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
+  std::map<int, std::tuple<std::string,int,void*> > SwEmuShim::mFdToFileNameMap;
+  bool SwEmuShim::mFirstBinary = true;
+  const unsigned SwEmuShim::TAG = 0X586C0C6C; // XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII);
+  const unsigned SwEmuShim::CONTROL_AP_START = 1;
+  const unsigned SwEmuShim::CONTROL_AP_DONE  = 2;
+  const unsigned SwEmuShim::CONTROL_AP_IDLE  = 4;
+  const unsigned SwEmuShim::CONTROL_AP_CONTINUE = 0x10;
+  std::map<std::string, std::string> SwEmuShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
   bool isRemotePortMapped = false;
@@ -59,7 +59,7 @@ namespace xclcpuemhal2 {
       std::cout << "Remote Port mapping to address " << addr << " Failed" << std::endl;
       exit(-1);
     }
-    xclcpuemhal2::isRemotePortMapped = true;
+    xclswemuhal2::isRemotePortMapped = true;
     return true;
   }
 
@@ -146,7 +146,7 @@ namespace xclcpuemhal2 {
     return true;
   }
 
-  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader)
+  SwEmuShim::SwEmuShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader)
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
@@ -205,7 +205,7 @@ namespace xclcpuemhal2 {
     mFpgaDevice = "";
   }
 
-  size_t CpuemShim::alloc_void(size_t new_size)
+  size_t SwEmuShim::alloc_void(size_t new_size)
   {
     if (buf_size == 0)
     {
@@ -229,7 +229,7 @@ namespace xclcpuemhal2 {
   }
 
 
-  void CpuemShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
+  void SwEmuShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
   {
     std::list<xclemulation::DDRBank>::iterator start = DDRBankList.begin();
     std::list<xclemulation::DDRBank>::iterator end = DDRBankList.end();
@@ -245,32 +245,32 @@ namespace xclcpuemhal2 {
   }
 
 //private
-  bool CpuemShim::isGood() const
+  bool SwEmuShim::isGood() const
   {
     // TODO: Add sanity check for card state
     return true;
   }
 
-  CpuemShim *CpuemShim::handleCheck(void *handle)
+  SwEmuShim *SwEmuShim::handleCheck(void *handle)
   {
     // Sanity checks
     if (!handle)
       return 0;
     if (*(unsigned *)handle != TAG)
       return 0;
-    if (!((CpuemShim *)handle)->isGood()) {
+    if (!((SwEmuShim *)handle)->isGood()) {
       return 0;
     }
-    return (CpuemShim *)handle;
+    return (SwEmuShim *)handle;
   }
 
   static void saveDeviceProcessOutputs()
   {
-    std::map<unsigned int, CpuemShim*>::iterator start = devices.begin();
-    std::map<unsigned int, CpuemShim*>::iterator end = devices.end();
+    std::map<unsigned int, SwEmuShim*>::iterator start = devices.begin();
+    std::map<unsigned int, SwEmuShim*>::iterator end = devices.end();
     for(; start != end; start++)
     {
-      CpuemShim* handle = (*start).second;
+      SwEmuShim* handle = (*start).second;
       if(!handle)
         continue;
       handle->saveDeviceProcessOutput();
@@ -313,7 +313,7 @@ namespace xclcpuemhal2 {
     }
   }
 
-  int CpuemShim::dumpXML(const xclBin* header, std::string& fileLocation)
+  int SwEmuShim::dumpXML(const xclBin* header, std::string& fileLocation)
   {
     if (!header) return 0 ; // We didn't dump it, but this isn't an error
 
@@ -417,7 +417,7 @@ namespace xclcpuemhal2 {
     return 0 ;
   }
 
-  bool CpuemShim::parseIni(unsigned int& debugPort)
+  bool SwEmuShim::parseIni(unsigned int& debugPort)
   {
     debugPort = xclemulation::config::getInstance()->getServerPort() ;
     if (debugPort == 0)
@@ -427,7 +427,7 @@ namespace xclcpuemhal2 {
     return true ;
   }
 
-  void CpuemShim::launchDeviceProcess(bool debuggable, std::string& binaryDirectory)
+  void SwEmuShim::launchDeviceProcess(bool debuggable, std::string& binaryDirectory)
   {
     std::lock_guard lk(mProcessLaunchMtx);
     systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE);
@@ -543,12 +543,21 @@ namespace xclcpuemhal2 {
         }
 
         std::string modelDirectory("");
-        modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
+        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel"))
+          modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel";
+        else
+          modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
 
 #if defined(__aarch64__)
-  modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
+        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel"))
+          modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/zynqu/model/genericpciemodel";
+        else
+          modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynqu/model/genericpciemodel";
 #elif defined(__arm__)
-  modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
+        if (boost::filesystem::exists(xilinxInstall + "/data/emulation/unified/sw_emu/zynq/model/genericpciemodel"))
+          modelDirectory = xilinxInstall + "/data/emulation/unified/sw_emu/zynq/model/genericpciemodel";
+        else
+          modelDirectory = xilinxInstall + "/data/emulation/unified/cpu_em/zynq/model/genericpciemodel";
 #endif
 
         FILE *filep;
@@ -593,7 +602,7 @@ namespace xclcpuemhal2 {
     sock = new unix_socket;
   }
 
-  void CpuemShim::getCuRangeIdx() {
+  void SwEmuShim::getCuRangeIdx() {
     for (const auto& kernel : m_xclbin.get_kernels()) {
       // get properties of each kernel object
       const auto& props = xrt_core::xclbin_int::get_properties(kernel);
@@ -608,7 +617,7 @@ namespace xclcpuemhal2 {
     }
   }
 
-  void CpuemShim::setDriverVersion(const std::string& version)
+  void SwEmuShim::setDriverVersion(const std::string& version)
   {
     bool success = false;
     swemuDriverVersion_RPC_CALL(swemuDriverVersion, version);
@@ -617,11 +626,11 @@ namespace xclcpuemhal2 {
       mLogStream << __func__ << " success " << success << std::endl;
   }
 
-  int CpuemShim::xclLoadXclBin(const xclBin *header)
+  int SwEmuShim::xclLoadXclBin(const xclBin *header)
   {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
     std::string xclBinName = "";
-    if (!xclcpuemhal2::validateXclBin(header, xclBinName, mDeviceProcessInQemu, mFpgaDevice)) {
+    if (!xclswemuhal2::validateXclBin(header, xclBinName, mDeviceProcessInQemu, mFpgaDevice)) {
       printf("ERROR:Xclbin validation failed\n");
       return 1;
     }
@@ -844,7 +853,7 @@ namespace xclcpuemhal2 {
     return 0;
   }
 
-   bool CpuemShim::isValidCu(uint32_t cu_index) {
+   bool SwEmuShim::isValidCu(uint32_t cu_index) {
     // get sorted cu addresses to match up with cu_index
     const auto& cuidx2addr = mCoreDevice->get_cus();
     if (cu_index >= cuidx2addr.size()) {
@@ -855,7 +864,7 @@ namespace xclcpuemhal2 {
     return true;
   }
 
-  uint64_t CpuemShim::getCuAddRange(uint32_t cu_index) {
+  uint64_t SwEmuShim::getCuAddRange(uint32_t cu_index) {
     uint64_t cuAddRange = 64 * 1024;
     for (const auto& cuInfo : mCURangeMap) {
       std::string instName = cuInfo.first;
@@ -870,7 +879,7 @@ namespace xclcpuemhal2 {
     return cuAddRange;
   }
 
-  bool CpuemShim::isValidOffset(uint32_t offset, uint64_t cuAddRange) {
+  bool SwEmuShim::isValidOffset(uint32_t offset, uint64_t cuAddRange) {
     if (offset >= cuAddRange || (offset & (sizeof(uint32_t) - 1)) != 0) {
       std::string strMsg = "ERROR: [SW-EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
       mLogStream << __func__ << strMsg << std::endl;
@@ -879,7 +888,7 @@ namespace xclcpuemhal2 {
     return true;
   }
 
-  int CpuemShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
+  int SwEmuShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
   {
     if (mLogStream.is_open())
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << (*datap) << std::endl;
@@ -904,7 +913,7 @@ namespace xclcpuemhal2 {
     return 0;
   }
 
-  int CpuemShim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
+  int SwEmuShim::xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << (*datap)  << std::endl;
@@ -912,7 +921,7 @@ namespace xclcpuemhal2 {
     return xclRegRW(true, cu_index, offset, datap);
   }
 
-  int CpuemShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
+  int SwEmuShim::xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << data << std::endl;
@@ -920,7 +929,7 @@ namespace xclcpuemhal2 {
     return xclRegRW(false, cu_index, offset, &data);
   }
 
-  bool CpuemShim::isAieEnabled(const xclBin* header)
+  bool SwEmuShim::isAieEnabled(const xclBin* header)
   {
     bool aieFlag = false;
     if (!header) return false; // We didn't dump it, but this isn't an error
@@ -957,14 +966,14 @@ namespace xclcpuemhal2 {
     return aieFlag;
   }
 
-  void CpuemShim::socketConnection(bool isTCPSocket) {
+  void SwEmuShim::socketConnection(bool isTCPSocket) {
     if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection started" << std::endl;
     if (!sock)
       sock = new unix_socket(isTCPSocket);
     if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection established" << std::endl;
   }
 
-  int CpuemShim::xclLoadXclBinNewFlow(const xclBin *header)
+  int SwEmuShim::xclLoadXclBinNewFlow(const xclBin *header)
   {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
 
@@ -991,12 +1000,12 @@ namespace xclcpuemhal2 {
       }
     }
     //Create thread for TCP socket connection
-    std::thread tcpSockThread = std::thread(&CpuemShim::socketConnection, this, true);
+    std::thread tcpSockThread = std::thread(&SwEmuShim::socketConnection, this, true);
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if (!simDontRun) {
-      if (!xclcpuemhal2::isRemotePortMapped) {
-        xclcpuemhal2::initRemotePortMap(mFpgaDevice);
+      if (!xclswemuhal2::isRemotePortMapped) {
+        xclswemuhal2::initRemotePortMap(mFpgaDevice);
       }
       //Send the LoadXclBin
       PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
@@ -1006,11 +1015,11 @@ namespace xclcpuemhal2 {
       uint8_t* buff = cmd->generateBuffer(&length);
       for (unsigned int i = 0; i < length; i += 4) {
         uint32_t copySize = (length - i) > 4 ? 4 : length - i;
-        memcpy(((char*)(xclcpuemhal2::remotePortMappedPointer)) + i, buff + i, copySize);
+        memcpy(((char*)(xclswemuhal2::remotePortMappedPointer)) + i, buff + i, copySize);
       }
       //Send the end of packet
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
-      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
+      memcpy((char*)(xclswemuhal2::remotePortMappedPointer), &cPacketEndChar, 1);
     }
 
     std::string xmlFile = "";
@@ -1191,7 +1200,7 @@ namespace xclcpuemhal2 {
     return 0;
   }
 
-  int CpuemShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
+  int SwEmuShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
   {
     std::memset(info, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(info,&mDeviceInfo);
@@ -1202,7 +1211,7 @@ namespace xclcpuemhal2 {
     return 0;
   }
 
-  void CpuemShim::launchTempProcess()
+  void SwEmuShim::launchTempProcess()
   {
     std::string binaryDirectory("");
     launchDeviceProcess(false,binaryDirectory);
@@ -1215,7 +1224,7 @@ namespace xclcpuemhal2 {
     xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
   }
 
-  uint64_t CpuemShim::xclAllocDeviceBuffer(size_t size)
+  uint64_t SwEmuShim::xclAllocDeviceBuffer(size_t size)
   {
 
     size_t requestedSize =  size;
@@ -1252,7 +1261,7 @@ namespace xclcpuemhal2 {
     return result;
   }
 
-  uint64_t CpuemShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool noHostMemory,std::string &sFileName)
+  uint64_t SwEmuShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool noHostMemory,std::string &sFileName)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ <<" , "<<std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -1301,7 +1310,7 @@ namespace xclcpuemhal2 {
     return result;
   }
 
-  void CpuemShim::xclFreeDeviceBuffer(uint64_t offset)
+  void SwEmuShim::xclFreeDeviceBuffer(uint64_t offset)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << offset << std::endl;
@@ -1326,7 +1335,7 @@ namespace xclcpuemhal2 {
     return;
   }
 
-  size_t CpuemShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  size_t SwEmuShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
   {
     std::lock_guard lk(mApiMtx);
     if (mLogStream.is_open()) {
@@ -1354,7 +1363,7 @@ namespace xclcpuemhal2 {
     return size;
   }
 
-  size_t CpuemShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  size_t SwEmuShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
   {
     std::lock_guard lk(mApiMtx);
     if (mLogStream.is_open()) {
@@ -1388,7 +1397,7 @@ namespace xclcpuemhal2 {
 
 
 
-  size_t CpuemShim::xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek)
+  size_t SwEmuShim::xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
@@ -1426,7 +1435,7 @@ namespace xclcpuemhal2 {
   }
 
 
-  size_t CpuemShim::xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip)
+  size_t SwEmuShim::xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
@@ -1465,7 +1474,7 @@ namespace xclcpuemhal2 {
 
   }
 
-  void CpuemShim::xclOpen(const char* logfileName)
+  void SwEmuShim::xclOpen(const char* logfileName)
   {
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
 
@@ -1481,7 +1490,7 @@ namespace xclcpuemhal2 {
     mCoreDevice = xrt_core::swemu::get_userpf_device(this, mDeviceIndex);
   }
 
-  void CpuemShim::fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src)
+  void SwEmuShim::fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src)
   {
     std::strcpy(dest->mName, src->mName);
     dest->mMagic               =    src->mMagic ;
@@ -1498,7 +1507,7 @@ namespace xclcpuemhal2 {
       dest->mOCLFrequency[i]       =    src->mOCLFrequency[i];
   }
 
-  void CpuemShim::saveDeviceProcessOutput()
+  void SwEmuShim::saveDeviceProcessOutput()
   {
     if(!sock)
       return;
@@ -1518,7 +1527,7 @@ namespace xclcpuemhal2 {
       }
     }
   }
-  void CpuemShim::resetProgram(bool callingFromClose)
+  void SwEmuShim::resetProgram(bool callingFromClose)
   {
     for (auto& it: mFdToFileNameMap)
     {
@@ -1556,7 +1565,7 @@ namespace xclcpuemhal2 {
    saveDeviceProcessOutput();
   }
 
-  void CpuemShim::xclClose()
+  void SwEmuShim::xclClose()
   {
     std::lock_guard lk(mApiMtx);
     if (mLogStream.is_open()) {
@@ -1628,7 +1637,7 @@ namespace xclcpuemhal2 {
     google::protobuf::ShutdownProtobufLibrary();
   }
 
-  CpuemShim::~CpuemShim()
+  SwEmuShim::~SwEmuShim()
   {
     if (mIsKdsSwEmu && mSWSch && mCore)
     {
@@ -1652,14 +1661,14 @@ namespace xclcpuemhal2 {
       mLogStream.close();
     }
     //Tell the Pllauncher to close
-    if (xclcpuemhal2::isRemotePortMapped) {
+    if (xclswemuhal2::isRemotePortMapped) {
       auto cmd = std::make_unique<PLLAUNCHER::OclCommand>();
       cmd->setCommand(PLLAUNCHER::PL_OCL_XRESET_ID);
       uint32_t iLength;
-      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), (char*)cmd->generateBuffer(&iLength), iLength);
+      memcpy((char*)(xclswemuhal2::remotePortMappedPointer), (char*)cmd->generateBuffer(&iLength), iLength);
       //Send the end of packet
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
-      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
+      memcpy((char*)(xclswemuhal2::remotePortMappedPointer), &cPacketEndChar, 1);
     }
   }
 
@@ -1667,7 +1676,7 @@ namespace xclcpuemhal2 {
 
 /*********************************** Utility ******************************************/
 
-xclemulation::drm_xocl_bo* CpuemShim::xclGetBoByHandle(unsigned int boHandle)
+xclemulation::drm_xocl_bo* SwEmuShim::xclGetBoByHandle(unsigned int boHandle)
 {
   auto it = mXoclObjMap.find(boHandle);
   if(it == mXoclObjMap.end())
@@ -1677,17 +1686,17 @@ xclemulation::drm_xocl_bo* CpuemShim::xclGetBoByHandle(unsigned int boHandle)
   return bo;
 }
 
-inline unsigned short CpuemShim::xocl_ddr_channel_count()
+inline unsigned short SwEmuShim::xocl_ddr_channel_count()
 {
   return mDeviceInfo.mDDRBankCount;
 }
 
-inline unsigned long long CpuemShim::xocl_ddr_channel_size()
+inline unsigned long long SwEmuShim::xocl_ddr_channel_size()
 {
   return 0;
 }
 
-int CpuemShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
+int SwEmuShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
 {
   std::lock_guard lk(mApiMtx);
   if (mLogStream.is_open())
@@ -1709,7 +1718,7 @@ int CpuemShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *proper
 /*****************************************************************************************/
 
 /******************************** xclAllocBO *********************************************/
-uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
+uint64_t SwEmuShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 {
   size_t size = info->size;
   unsigned ddr = xclemulation::xocl_bo_ddr_idx(info->flags);
@@ -1747,7 +1756,7 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   return 0;
 }
 
-unsigned int CpuemShim::xclAllocBO(size_t size, int unused, unsigned flags)
+unsigned int SwEmuShim::xclAllocBO(size_t size, int unused, unsigned flags)
 {
   std::lock_guard lk(mApiMtx);
   if (mLogStream.is_open())
@@ -1762,7 +1771,7 @@ unsigned int CpuemShim::xclAllocBO(size_t size, int unused, unsigned flags)
 /***************************************************************************************/
 
 /******************************** xclAllocUserPtrBO ************************************/
-unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
+unsigned int SwEmuShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
   std::lock_guard lk(mApiMtx);
   if (mLogStream.is_open())
@@ -1781,7 +1790,7 @@ unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned f
 /***************************************************************************************/
 
 /******************************** xclExportBO *******************************************/
-int CpuemShim::xclExportBO(unsigned int boHandle)
+int SwEmuShim::xclExportBO(unsigned int boHandle)
 {
   if (mLogStream.is_open())
   {
@@ -1829,7 +1838,7 @@ int CpuemShim::xclExportBO(unsigned int boHandle)
 /***************************************************************************************/
 
 /******************************** xclImportBO *******************************************/
-unsigned int CpuemShim::xclImportBO(int boGlobalHandle, unsigned flags)
+unsigned int SwEmuShim::xclImportBO(int boGlobalHandle, unsigned flags)
 {
   //TODO
   if (mLogStream.is_open())
@@ -1862,7 +1871,7 @@ unsigned int CpuemShim::xclImportBO(int boGlobalHandle, unsigned flags)
 /***************************************************************************************/
 
 /******************************** xclCopyBO *******************************************/
-int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
+int SwEmuShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
   std::lock_guard lk(mApiMtx);
   //TODO
@@ -1905,7 +1914,7 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
 /***************************************************************************************/
 
 /******************************** xclMapBO *********************************************/
-void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
+void *SwEmuShim::xclMapBO(unsigned int boHandle, bool write)
 {
   std::lock_guard lk(mApiMtx);
   if (mLogStream.is_open())
@@ -1956,7 +1965,7 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
   return pBuf;
 }
 
-int CpuemShim::xclUnmapBO(unsigned int boHandle, void* addr)
+int SwEmuShim::xclUnmapBO(unsigned int boHandle, void* addr)
 {
   std::lock_guard lk(mApiMtx);
   auto bo = xclGetBoByHandle(boHandle);
@@ -1966,7 +1975,7 @@ int CpuemShim::xclUnmapBO(unsigned int boHandle, void* addr)
 /**************************************************************************************/
 
 /******************************** xclSyncBO *******************************************/
-int CpuemShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
+int SwEmuShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   std::lock_guard lk(mApiMtx);
   if (mLogStream.is_open())
@@ -2001,7 +2010,7 @@ int CpuemShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t s
 /***************************************************************************************/
 
 /******************************** xclFreeBO *******************************************/
-void CpuemShim::xclFreeBO(unsigned int boHandle)
+void SwEmuShim::xclFreeBO(unsigned int boHandle)
 {
   std::lock_guard lk(mApiMtx);
   if (mLogStream.is_open())
@@ -2025,7 +2034,7 @@ void CpuemShim::xclFreeBO(unsigned int boHandle)
 /***************************************************************************************/
 
 /******************************** xclWriteBO *******************************************/
-size_t CpuemShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
+size_t SwEmuShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
   std::lock_guard lk(mApiMtx);
   if (mLogStream.is_open())
@@ -2048,7 +2057,7 @@ size_t CpuemShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size
 /***************************************************************************************/
 
 /******************************** xclReadBO *******************************************/
-size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
+size_t SwEmuShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
   std::lock_guard lk(mApiMtx);
   if (mLogStream.is_open())
@@ -2072,7 +2081,7 @@ size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_
 /*
  * xclLogMsg()
  */
-int CpuemShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1)
+int SwEmuShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, va_list args1)
 {
     int len = std::vsnprintf(nullptr, 0, format, args1);
 
@@ -2104,7 +2113,7 @@ int CpuemShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const cha
 /*
 * xclOpenContext
 */
-int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
+int SwEmuShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
   // When properly implemented this function must throw on error
   // and any exception must be caught by global xclOpenContext and
@@ -2115,7 +2124,7 @@ int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool 
 /*
 * xclExecWait
 */
-int CpuemShim::xclExecWait(int timeoutMilliSec)
+int SwEmuShim::xclExecWait(int timeoutMilliSec)
 {
   //unsigned int tSec = 0;
   //static bool bConfig = true;
@@ -2133,7 +2142,7 @@ int CpuemShim::xclExecWait(int timeoutMilliSec)
 /*
 * xclExecBuf
 */
-int CpuemShim::xclExecBuf(unsigned int cmdBO)
+int SwEmuShim::xclExecBuf(unsigned int cmdBO)
 {
   if (mLogStream.is_open())
   {
@@ -2157,13 +2166,13 @@ int CpuemShim::xclExecBuf(unsigned int cmdBO)
 /*
 * xclCloseContext
 */
-int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
+int SwEmuShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 {
   return 0;
 }
 
 //Get CU index from IP_LAYOUT section for corresponding kernel name
-int CpuemShim::xclIPName2Index(const char *name)
+int SwEmuShim::xclIPName2Index(const char *name)
 {
   //Get IP_LAYOUT buffer from xclbin
   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
@@ -2172,7 +2181,7 @@ int CpuemShim::xclIPName2Index(const char *name)
 
 // open_context() - aka xclOpenContextByName
 xrt_core::cuidx_type
-CpuemShim::
+SwEmuShim::
 open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 {
   // Edge does not yet support multiple xclbins.  Call
@@ -2187,7 +2196,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 }
 
 void
-CpuemShim::
+SwEmuShim::
 close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 {
   // To-be-implemented
@@ -2199,11 +2208,11 @@ close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 /**
 * xrtGraphInit() - Initialize  graph
 */
-int CpuemShim::xrtGraphInit(void * gh) {
+int SwEmuShim::xrtGraphInit(void * gh) {
 
   std::lock_guard lk(mApiMtx);
   bool ack = false;
-  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  auto ghPtr = (xclswemuhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
@@ -2220,11 +2229,11 @@ int CpuemShim::xrtGraphInit(void * gh) {
 /**
 * xrtGraphRun() - Start a graph execution
 */
-int CpuemShim::xrtGraphRun(void * gh, uint32_t iterations) {
+int SwEmuShim::xrtGraphRun(void * gh, uint32_t iterations) {
 
   std::lock_guard lk(mApiMtx);
   bool ack = false;
-  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  auto ghPtr = (xclswemuhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
@@ -2243,11 +2252,11 @@ int CpuemShim::xrtGraphRun(void * gh, uint32_t iterations) {
 *                   is done. If graph already run more than the given
 *                   cycle, stop the graph immediateley.
 */
-int CpuemShim::xrtGraphWait(void * gh) {
+int SwEmuShim::xrtGraphWait(void * gh) {
 
   std::lock_guard lk(mApiMtx);
   bool ack = false;
-  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  auto ghPtr = (xclswemuhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
@@ -2266,11 +2275,11 @@ int CpuemShim::xrtGraphWait(void * gh) {
 *                   is done. If graph already run more than the given
 *                   cycle, stop the graph immediateley.
 */
-int CpuemShim::xrtGraphTimedWait(void * gh, uint64_t cycle) {
+int SwEmuShim::xrtGraphTimedWait(void * gh, uint64_t cycle) {
 
   std::lock_guard lk(mApiMtx);
   bool ack = false;
-  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  auto ghPtr = (xclswemuhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
@@ -2298,11 +2307,11 @@ int CpuemShim::xrtGraphTimedWait(void * gh, uint64_t cycle) {
 * Note: This API with non-zero AIE cycle is for graph that is running
 * forever or graph that has multi-rate core(s).
 */
-int CpuemShim::xrtGraphEnd(void * gh) {
+int SwEmuShim::xrtGraphEnd(void * gh) {
 
   uint32_t ack = false;
 
-  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  auto ghPtr = (xclswemuhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
 
@@ -2344,10 +2353,10 @@ int CpuemShim::xrtGraphEnd(void * gh) {
 * Note: This API with non-zero AIE cycle is for graph that is running
 * forever or graph that has multi-rate core(s).
 */
-int CpuemShim::xrtGraphTimedEnd(void * gh , uint64_t cycle) {
+int SwEmuShim::xrtGraphTimedEnd(void * gh , uint64_t cycle) {
   std::lock_guard lk(mApiMtx);
   bool ack = false;
-  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  auto ghPtr = (xclswemuhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
@@ -2365,10 +2374,10 @@ int CpuemShim::xrtGraphTimedEnd(void * gh , uint64_t cycle) {
 *
 * Resume graph execution which was paused by suspend() or wait(cycles) APIs
 */
-int CpuemShim::xrtGraphResume(void * gh) {
+int SwEmuShim::xrtGraphResume(void * gh) {
   std::lock_guard lk(mApiMtx);
   bool ack = false;
-  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  auto ghPtr = (xclswemuhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
@@ -2391,9 +2400,9 @@ int CpuemShim::xrtGraphResume(void * gh) {
 *
 * Return:          0 on success, -1 on error.
 */
-int CpuemShim::xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char *buffer, size_t size) {
+int SwEmuShim::xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char *buffer, size_t size) {
   std::lock_guard lk(mApiMtx);
-  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  auto ghPtr = (xclswemuhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
@@ -2415,9 +2424,9 @@ int CpuemShim::xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char
 * Note: Caller is reponsible for allocating enough memory for RTP value
 *       being copied to.
 */
-int CpuemShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size) {
+int SwEmuShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size) {
   std::lock_guard lk(mApiMtx);
-  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  auto ghPtr = (xclswemuhal2::GraphType*)gh;
   if (!ghPtr)
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
@@ -2442,7 +2451,7 @@ int CpuemShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer
 * Note: Upon return, the synchronization is submitted or error out
 */
 
-int CpuemShim::xrtSyncBOAIENB(xrt::bo& bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset)
+int SwEmuShim::xrtSyncBOAIENB(xrt::bo& bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   bool ack = false;
   if (!gmioname)
@@ -2468,7 +2477,7 @@ int CpuemShim::xrtSyncBOAIENB(xrt::bo& bo, const char *gmioname, enum xclBOSyncD
 *
 * Return:          0 on success, or appropriate error number.
 */
-int CpuemShim::xrtGMIOWait(const char *gmioname)
+int SwEmuShim::xrtGMIOWait(const char *gmioname)
 {
   bool ack = false;
   if (!gmioname)
