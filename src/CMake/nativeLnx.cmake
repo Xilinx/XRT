@@ -51,12 +51,21 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-execute_process(
-  COMMAND awk -F= "$1==\"VERSION_ID\" {print $2}" /etc/os-release
-  COMMAND tr -d "\""
-  OUTPUT_VARIABLE LINUX_VERSION
-  OUTPUT_STRIP_TRAILING_WHITESPACE
+if (${LINUX_FLAVOR} MATCHES "^centos")
+  execute_process(
+    COMMAND awk "{print $4}" /etc/redhat-release
+    COMMAND tr -d "\""
+    OUTPUT_VARIABLE LINUX_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+else()
+  execute_process(
+    COMMAND awk -F= "$1==\"VERSION_ID\" {print $2}" /etc/os-release
+    COMMAND tr -d "\""
+    OUTPUT_VARIABLE LINUX_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+endif()
 
 execute_process(COMMAND ${UNAME} -r
   OUTPUT_VARIABLE LINUX_KERNEL_VERSION

@@ -9,7 +9,7 @@
 
 # Check OS version requirement
 OSDIST=`cat /etc/os-release | grep -i "^ID=" | awk -F= '{print $2}'`
-OSREL=`cat /etc/os-release | grep -i "^VERSION_ID=" | awk -F= '{print $2}' | tr -d '".'`
+OSREL=`cat /etc/os-release | grep -i "^VERSION_ID=" | awk -F= '{print $2}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
 
 if [[ $OSDIST == "ubuntu" ]]; then
     if (( $OSREL < 1604 )); then
