@@ -176,6 +176,7 @@ extern "C" {
         OVERLAY                = 30,
         VENDER_METADATA        = 31,
         AIE_PARTITION          = 32,
+        HLS_METADATA           = 33,
     };
 
     enum MEM_TYPE {

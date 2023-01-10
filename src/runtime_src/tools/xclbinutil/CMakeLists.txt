@@ -147,6 +147,9 @@ if(NOT WIN32)
   set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/MCS")
   xrt_add_test("mcs" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/MCS/MCSSection.py ${TEST_OPTIONS}")
 
+  # -- HLS_MEDATADA Section
+  set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/HlsMetadata")
+  xrt_add_test("hls-metadata" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/HlsMetadata/HlsMetadata.py ${TEST_OPTIONS}")
 endif()
 
 

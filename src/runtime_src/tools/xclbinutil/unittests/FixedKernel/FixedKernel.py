@@ -126,7 +126,7 @@ def main():
   
   step = '''3) Read in fixed ps kernel, updated and validate the sections
    fixed ps kernel file: fixed_kernel_add_2.json
-   this file set the funcitonal to 1 (i.e. "PrePost")'''
+   this file set the functional to 1 (i.e. "PrePost")'''
 
   inputJSON = os.path.join(args.resource_dir, "fixed_kernel_add_2.json")
 
