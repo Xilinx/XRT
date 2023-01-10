@@ -79,9 +79,10 @@ class AieTraceMetadata{
     uint8_t getMetricSetIndex(std::string metricString);
    
     std::string getMetricString(uint8_t index) {
-      if (index < metricSets.size()){
+      if (index < metricSets.size())
         return metricSets[index];
-      }
+      else
+        return metricSets[0];
     }
 
     bool getUseDelay(){return useDelay;}

@@ -77,7 +77,7 @@ namespace xdp {
 
     uint64_t delayCycles = metadata->getDelay();
     uint32_t iterationCount = metadata->getIterationCount();
-    bool userControl = metadata->getUseUserControl();
+    bool useUserControl = metadata->getUseUserControl();
     bool useDelay = metadata->getUseDelay();
     bool useGraphIterator = metadata->getUseGraphIterator();
     bool useOneDelayCounter = metadata->getUseOneDelayCounter();
@@ -98,7 +98,7 @@ namespace xdp {
     input_params->numTiles = numTiles;
     input_params->delayCycles = delayCycles;
     input_params->iterationCount = iterationCount;
-    input_params->userControl = userControl;
+    input_params->useUserControl = useUserControl;
     input_params->useDelay = useDelay;
     input_params->useGraphIterator = useGraphIterator;
     input_params->useOneDelayCounter = useOneDelayCounter;
@@ -112,7 +112,7 @@ namespace xdp {
       traceTiles[tile_idx].col = tileMetric.first.col;
       traceTiles[tile_idx].row = tileMetric.first.row;
       traceTiles[tile_idx].metricSet = metadata->getMetricSetIndex(tileMetric.second);
-      input_params->tiles[tile_idx] = traceTiles;
+      input_params->tiles[tile_idx] = traceTiles[tile_idx];
       tile_idx++;
     }
     
@@ -127,6 +127,7 @@ namespace xdp {
     
       auto uuid = device.get_xclbin_uuid();
       auto aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie_trace_config");
+
 
       //input bo  
       auto bo0 = xrt::bo(device, INPUT_SIZE, 2);
