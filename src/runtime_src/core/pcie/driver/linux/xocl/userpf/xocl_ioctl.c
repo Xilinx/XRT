@@ -480,24 +480,22 @@ static bool xocl_xclbin_in_use(struct xocl_dev *xdev)
 	return false;
 }
 
-/* SAIF TODO : Move this to a new file and implement this resolver */
 static int
 xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
-		 uint32_t qos,	uint32_t *slot_id)
+		uint32_t qos,	uint32_t *slot_id)
 {
-	bool force_download = false;
 	uint32_t s_id = DEFAULT_PL_SLOT;
 	int ret = 0;
 	//
+
 	if (!xocl_axlf_section_header(xdev, axlf, SOFT_KERNEL)) {
-	    s_id = DEFAULT_PL_SLOT;
-		printk("**************** %s %d This is a PL XCLBIN ********\n", __func__, __LINE__);
+		s_id = DEFAULT_PL_SLOT;
 		if (xclbin_downloaded(xdev, xclbin_id, s_id)) {
 			if (qos & XOCL_AXLF_FORCE_PROGRAM) {
 				// We come here if user sets force_xclbin_program
 				// option "true" in xrt.ini under [Runtime] section
 				DRM_WARN("%s Force xclbin download", __func__);
-				force_download = true;
+				*slot_id = s_id;
 			} else {
 				*slot_id = s_id;
 				ret = -EEXIST;
@@ -507,24 +505,27 @@ xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 	}
 	else {
 		static int ps_slot_id = 0;
-        uint32_t existing_slot_id = 0;
-		
+		uint32_t existing_slot_id = 0;
+
 		if (ps_xclbin_downloaded(xdev, xclbin_id, &existing_slot_id)) {
 			if (qos & XOCL_AXLF_FORCE_PROGRAM) {
-                s_id = existing_slot_id; 
+				if (++ps_slot_id == DEFAULT_PL_SLOT)
+					++ps_slot_id;
+
+				s_id = ps_slot_id;
 				DRM_WARN("%s Force xclbin download to slot %d", __func__, s_id);
 			} else {
 				*slot_id = existing_slot_id;
 				ret = -EEXIST;
 				goto done;
-            }
-        }
-        else {
-            if (++ps_slot_id == DEFAULT_PL_SLOT)
-                ++ps_slot_id;
+			}
+		}
+		else {
+			if (++ps_slot_id == DEFAULT_PL_SLOT)
+				++ps_slot_id;
 
-            s_id = ps_slot_id;
-        }
+			s_id = ps_slot_id;
+		}
 	}	
 
 	*slot_id = s_id;
