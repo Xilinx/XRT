@@ -72,8 +72,18 @@ vmr_info(const xrt_core::device* device)
 }
 
 bool
-get_vmr_status(const xrt_core::device* device, const std::string& status)
+get_vmr_status(const xrt_core::device* device, const vmr_status_type& status)
 {
+  std::string status_string;
+  switch (status) {
+    case vmr_status_type::boot_on_default:
+      status_string = "Boot on default";
+      break;
+    default:
+      throw xrt_core::error(boost::str(boost::format("Unexpected key for VMR Status type %u") % static_cast<uint32_t>(status)));
+  }
+
+
   const auto pt = vmr_info(device);
   boost::property_tree::ptree pt_empty;
   const boost::property_tree::ptree& ptree = pt.get_child("vmr", pt_empty);
@@ -81,11 +91,11 @@ get_vmr_status(const xrt_core::device* device, const std::string& status)
     const boost::property_tree::ptree& vmr_stat = ks.second;
     const auto val = vmr_stat.get<std::string>("label");
     const auto nval = vmr_stat.get<std::string>("value");
-    if (boost::iequals(val, status))
+    if (boost::iequals(val, status_string))
       return boost::iequals(vmr_stat.get<std::string>("value"), "1");
   }
 
-  throw xrt_core::error(boost::str(boost::format("Did not find %s label within VMR status") % status));
+  throw xrt_core::error(boost::str(boost::format("Did not find %s label within VMR status") % status_string));
 }
 
 } // vmr, xrt

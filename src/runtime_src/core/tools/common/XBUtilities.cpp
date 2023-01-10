@@ -324,7 +324,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     std::vector<std::string> warnings;
 
     try {
-      const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), "Boot on default");
+      const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), xrt_core::vmr::vmr_status_type::boot_on_default);
       if (!is_default)
         warnings.push_back("Versal Platform is NOT in default boot");
     } catch (const xrt_core::error& e) {
