@@ -344,12 +344,20 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
       // Subtract the:
       // 1. Side stars
       // 2. Single space next to the side star
-      // 3. The warning message
-      const size_t side_spaces = star_line.size() - 2 - 2 - warning.size();
-      // The left side should be larger than the right if there is an imbalance
-      const size_t left_spaces = (side_spaces % 2 == 0) ? side_spaces / 2 : (side_spaces / 2) + 1;
-      const size_t right_spaces = side_spaces / 2;
-      std::cout << "* " << std::string(left_spaces, ' ') << warning << std::string(right_spaces, ' ') << " *\n";
+      const size_t available_space = star_line.size() - 2 - 2;
+      // Account for strings who are larger than the star line
+      size_t warning_index = 0;
+      while (warning_index < warning.size()) {
+        // Extract the largest possible string from the warning
+        const auto warning_msg = warning.substr(warning_index, available_space);
+        // Update the index so the next substring is valid
+        warning_index += warning_msg.size();
+        const auto side_spaces = available_space - warning_msg.size();
+        // The left side should be larger than the right if there is an imbalance
+        const size_t left_spaces = (side_spaces % 2 == 0) ? side_spaces / 2 : (side_spaces / 2) + 1;
+        const size_t right_spaces = side_spaces / 2;
+        std::cout << "* " << std::string(left_spaces, ' ') << warning_msg << std::string(right_spaces, ' ') << " *\n";
+      }
     }
 
     std::cout << star_line << "\n";
