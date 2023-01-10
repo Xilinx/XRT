@@ -13,6 +13,7 @@ if [[ $OSDIST == "centos" ]]; then
     OSREL=`cat /etc/redhat-release | awk '{print $4}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
 else
     OSREL=`cat /etc/os-release | grep -i "^VERSION_ID=" | awk -F= '{print $2}' | tr -d '"' | awk -F. '{print $1*100+$2}'`
+fi
 
 if [[ $OSDIST == "ubuntu" ]]; then
     if (( $OSREL < 1604 )); then
