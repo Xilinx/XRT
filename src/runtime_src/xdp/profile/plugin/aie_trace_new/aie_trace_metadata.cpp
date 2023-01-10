@@ -438,6 +438,16 @@ namespace xdp {
                                              std::vector<std::string>& graphMetricsSettings,
                                              module_type type)
   {
+    // Make sure settings are available and appropriate
+    if (metricsSettings.empty() && graphMetricsSettings.empty()) {
+      return;
+    }
+    if ((getHardwareGen() == 1) && (type == module_type::mem_tile)) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+        "MEM tiles are not available in AIE1. Trace settings will be ignored.");
+      return;
+    }
+      
     auto tileName = (type == module_type::mem_tile) ? "mem" : "aie";
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
@@ -480,8 +490,10 @@ namespace xdp {
             configChannel1[e] = std::stoi(graphMetrics[i][4]);
           }
         } catch (...) {
-          xrt_core::message::send(severity_level::warning, "XRT",
-            "Channel specifications in graph_based_mem_tile_metrics are not valid and hence ignored.");
+          std::stringstream msg;
+          msg << "Channel specifications in graph_based_" << tileName 
+              << "_tile_metrics are not valid and hence ignored.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
     } // Graph Pass 1
@@ -495,13 +507,15 @@ namespace xdp {
       // Check if specified graph exists
       auto graphs = get_graphs(device.get());
       if (!graphs.empty() && (std::find(graphs.begin(), graphs.end(), graphMetrics[i][0]) == graphs.end())) {
-        std::string msg = "Could not find graph named " + graphMetrics[i][0] + ", as specified in graph_based_aie_tile_metrics configuration."
-                          + " Following graphs are present in the design : " + graphs[0] ;
+        std::stringstream msg;
+        msg << "Could not find graph named " << graphMetrics[i][0] 
+            << ", as specified in graph_based_" << tileName << "_tile_metrics configuration."
+            << " Following graphs are present in the design : " << graphs[0];
         for (size_t j = 1; j < graphs.size(); j++) {
-          msg += ", " + graphs[j];
+          msg << ", " + graphs[j];
         }
-        msg += ".";
-        xrt_core::message::send(severity_level::warning, "XRT", msg);
+        msg << ".";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
 
@@ -518,8 +532,10 @@ namespace xdp {
             configChannel1[e] = std::stoi(graphMetrics[i][4]);
           }
         } catch (...) {
-          xrt_core::message::send(severity_level::warning, "XRT",
-            "Channel specifications in graph_based_mem_tile_metrics are not valid and hence ignored.");
+          std::stringstream msg;
+          msg << "Channel specifications in graph_based_" << tileName
+              << "_tile_metrics are not valid and hence ignored.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
     } // Graph Pass 2
@@ -562,8 +578,10 @@ namespace xdp {
             configChannel1[e] = std::stoi(metrics[i][3]);
           }
         } catch (...) {
-          xrt_core::message::send(severity_level::warning, "XRT",
-            "Channel specifications in tile_based_mem_tile_metrics are not valid and hence ignored.");
+          std::stringstream msg;
+          msg << "Channel specifications in tile_based_" << tileName
+              << "_tile_metrics are not valid and hence ignored.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
     } // Pass 1 
@@ -591,8 +609,19 @@ namespace xdp {
         maxCol = std::stoi(maxTile[0]);
         maxRow = std::stoi(maxTile[1]);
       } catch (...) {
-        xrt_core::message::send(severity_level::warning, "XRT",
-           "Tile range specification in tile_based_aie_tile_metrics is not of valid format and hence skipped.");
+        std::stringstream msg;
+        msg << "Tile range specification in tile_based_" << tileName
+            << "_tile_metrics is not of valid format and hence skipped.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());           
+      }
+
+      // Ensure range is valid 
+      if ((minCol > maxCol) || (minRow > maxRow)) {
+        std::stringstream msg;
+        msg << "Tile range specification in tile_based_" << tileName 
+            << "_tile_metrics is not of valid format and hence skipped.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
       }
 
       uint8_t channel0 = 0;
@@ -602,8 +631,10 @@ namespace xdp {
           channel0 = std::stoi(metrics[i][3]);
           channel1 = std::stoi(metrics[i][4]);
         } catch (...) {
-          xrt_core::message::send(severity_level::warning, "XRT",
-            "Channel specifications in tile_based_mem_tile_metrics are not valid and hence ignored.");
+          std::stringstream msg;
+          msg << "Channel specifications in tile_based_" << tileName
+              << "_tile_metrics are not valid and hence ignored.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
 
@@ -621,10 +652,10 @@ namespace xdp {
               // Current tile is used in current design
               configMetrics[tile] = metrics[i][2];
             } else {
-              std::string m = "Specified Tile {" + std::to_string(tile.col) 
-                                                 + "," + std::to_string(tile.row)
-                              + "} is not active. Hence skipped.";
-              xrt_core::message::send(severity_level::warning, "XRT", m);
+              std::stringstream msg;
+              msg << "Specified Tile {" << std::to_string(tile.col) << ","
+                  << std::to_string(tile.row) << "} is not active. Hence skipped.";
+              xrt_core::message::send(severity_level::warning, "XRT", msg.str());
             }
           } else {
             itr->second = metrics[i][2];
@@ -657,8 +688,10 @@ namespace xdp {
         col = std::stoi(tilePos[0]);
         row = std::stoi(tilePos[1]);
       } catch (...) {
-        xrt_core::message::send(severity_level::warning, "XRT",
-           "Tile specification in tile_based_aie_tile_metrics is not of valid format and hence skipped.");
+        std::stringstream msg;
+        msg << "Tile specification in tile_based_" << tileName
+            << "_tile_metrics is not valid format and hence skipped.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
       }
 
       tile_type tile;
@@ -673,10 +706,10 @@ namespace xdp {
           // Current tile is used in current design
           configMetrics[tile] = metrics[i][1];
         } else {
-          std::string m = "Specified Tile {" + std::to_string(tile.col) 
-                                             + "," + std::to_string(tile.row)
-                          + "} is not active. Hence skipped.";
-          xrt_core::message::send(severity_level::warning, "XRT", m);
+          std::stringstream msg;
+          msg << "Specified Tile {" << std::to_string(tile.col) << ","
+              << std::to_string(tile.row) << "} is not active. Hence skipped.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       } else {
         itr->second = metrics[i][1];
@@ -688,8 +721,10 @@ namespace xdp {
           configChannel0[tile] = std::stoi(metrics[i][2]);
           configChannel1[tile] = std::stoi(metrics[i][3]);
         } catch (...) {
-          xrt_core::message::send(severity_level::warning, "XRT",
-            "Channel specifications in tile_based_mem_tile_metrics are not valid and hence skipped.");
+          std::stringstream msg;
+          msg << "Channel specifications in tile_based_" << tileName
+              << "_tile_metrics are not valid and hence ignored.";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
     } // Pass 3 
@@ -706,11 +741,10 @@ namespace xdp {
 
       // Ensure requested metric set is supported (if not, use default)
       if (metricSets.find(tileMetric.second) == metricSets.end()) {
-        std::string defaultSet = "functions";
+        std::string defaultSet = (type == module_type::mem_tile) ? "input_channels" : "functions";
         std::stringstream msg;
         msg << "Unable to find AIE trace metric set " << tileMetric.second 
-            << ". Using default of " << defaultSet << "."
-            << " As new AIE_trace_settings section is given, old style configurations, if any, are ignored.";
+            << ". Using default of " << defaultSet << ".";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         tileMetric.second = defaultSet;
       }
@@ -721,9 +755,8 @@ namespace xdp {
       configMetrics.erase(t);
     }
 
-    // If requested, turn on debug fal messages
-    // if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug))
-    //   xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
+    // If needed, turn on debug fal messages
+    // xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
   }
 
   std::vector<gmio_type> 

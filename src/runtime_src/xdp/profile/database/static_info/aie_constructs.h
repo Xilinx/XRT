@@ -233,6 +233,22 @@ enum class module_type {
   };
 
   /*
+   * MEM tiles have 4 Performance counters
+   */
+  class aie_cfg_mem_tile : public aie_cfg_base
+  {
+  public:
+    uint8_t port_trace_ids[NUM_MEM_TILE_PORTS] = {};
+    std::string port_trace_is_master[NUM_MEM_TILE_PORTS];
+    uint8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {};
+    uint8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {};
+    aie_cfg_mem_tile() : aie_cfg_base(4) {
+      for (int i=0; i < NUM_MEM_TILE_PORTS; ++i)
+        port_trace_is_master[i] = "false";
+    };
+  };
+
+  /*
    * Abstracted AIE tile configuration for trace
    */
   class aie_cfg_tile
@@ -240,9 +256,11 @@ enum class module_type {
   public:
     uint32_t column;
     uint32_t row;
+    module_type type;
     std::string trace_metric_set;
     aie_cfg_core core_trace_config;
     aie_cfg_memory memory_trace_config;
+    aie_cfg_mem_tile mem_tile_trace_config;
     aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}
   };
 

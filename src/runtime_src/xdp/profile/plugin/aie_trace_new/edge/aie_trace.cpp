@@ -432,6 +432,7 @@ namespace xdp {
 
       // AIE config object for this tile
       auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row);
+      cfgTile->type = type;
       cfgTile->trace_metric_set = metricSet;
 
       // Get vector of pre-defined metrics for this set
@@ -447,11 +448,13 @@ namespace xdp {
         memoryEvents = mMemTileEventSets[metricSet];
       }
 
-      std::stringstream infoMsg;
-      auto tileName = (type == module_type::mem_tile) ? "MEM" : "AIE";
-      infoMsg << "Configuring " << tileName << " tile (" << col << "," << row
-              << ") for trace using metric set " << metricSet;
-      xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
+      if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::info)) {
+        std::stringstream infoMsg;
+        auto tileName = (type == module_type::mem_tile) ? "MEM" : "AIE";
+        infoMsg << "Configuring " << tileName << " tile (" << col << "," << row
+                << ") for trace using metric set " << metricSet;
+        xrt_core::message::send(severity_level::info, "XRT", infoMsg.str());
+      }
 
       // Check Resource Availability
       // For now only counters are checked
@@ -673,6 +676,22 @@ namespace xdp {
           uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
           uint8_t channel1 = (iter1 == configChannel1.end()) ? 1 : iter1->second;
           configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, metricSet, channel0, channel1);
+
+          // Record for runtime config file
+          cfgTile->mem_tile_trace_config.port_trace_ids[0] = channel0;
+          cfgTile->mem_tile_trace_config.port_trace_ids[1] = channel1;
+          if (metricSet.find("input") != std::string::npos) {
+            cfgTile->mem_tile_trace_config.port_trace_is_master[0] = "true";
+            cfgTile->mem_tile_trace_config.port_trace_is_master[1] = "true";
+            cfgTile->mem_tile_trace_config.s2mm_channels[0] = channel0;
+            cfgTile->mem_tile_trace_config.s2mm_channels[1] = channel1;
+          }
+          else {
+            cfgTile->mem_tile_trace_config.port_trace_is_master[0] = "false";
+            cfgTile->mem_tile_trace_config.port_trace_is_master[1] = "false";
+            cfgTile->mem_tile_trace_config.mm2s_channels[0] = channel0;
+            cfgTile->mem_tile_trace_config.mm2s_channels[1] = channel1;
+          }
         }
 
         int numTraceEvents = 0;
@@ -725,7 +744,11 @@ namespace xdp {
           auto mod = XAIE_MEM_MOD;
           uint8_t phyEvent = 0;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryEvents[i], &phyEvent);
-          cfgTile->memory_trace_config.traced_events[S] = phyEvent;
+
+          if (type == module_type::mem_tile)
+            cfgTile->mem_tile_trace_config.traced_events[S] = phyEvent;
+          else
+            cfgTile->memory_trace_config.traced_events[S] = phyEvent;
         }
 
         // Update config file
@@ -763,7 +786,8 @@ namespace xdp {
           numTileMemTileTraceEvents[numTraceEvents]++;
 
         std::stringstream msg;
-        msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" << col << "," << row << ").";
+        msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" 
+            << col << "," << row << ").";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
