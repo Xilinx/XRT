@@ -1413,7 +1413,6 @@ int shim::xclPrepareAxlf(const axlf *buffer, struct drm_xocl_axlf *axlf_obj)
     }
 
     /* To make download xclbin and configure KDS/ERT as an atomic operation. */
-
     axlf_obj.kds_cfg.ert = xrt_core::config::get_ert();
     axlf_obj.kds_cfg.polling = xrt_core::config::get_xgq_polling();
     axlf_obj.kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
