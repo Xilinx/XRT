@@ -321,13 +321,38 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
   static void 
   check_versal_boot(const std::shared_ptr<xrt_core::device> &device)
   {
-    if (xrt_core::vmr::is_vmr_status_true(device.get(), "Boot on default"))
+    std::vector<std::string> warnings;
+
+    try {
+      const auto is_default = xrt_core::vmr::get_vmr_status(device.get(), "Boot on default");
+      if (!is_default)
+        warnings.push_back("Versal Platform is NOT in default boot");
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
+    if (warnings.empty())
       return;
 
-    std::cout << "***********************************************************\n";
+    const std::string star_line = "***********************************************************";
+
+    std::cout << star_line << "\n";
     std::cout << "*        WARNING          WARNING          WARNING        *\n";
-    std::cout << "*         Versal Platform is NOT in default boot          *\n";
-    std::cout << "***********************************************************\n";
+
+    // Print all warnings
+    for (const auto& warning : warnings) {
+      // Subtract the:
+      // 1. Side stars
+      // 2. Single space next to the side star
+      // 3. The warning message
+      const size_t side_spaces = star_line.size() - 2 - 2 - warning.size();
+      // The left side should be larger than the right if there is an imbalance
+      const size_t left_spaces = (side_spaces % 2 == 0) ? side_spaces / 2 : (side_spaces / 2) + 1;
+      const size_t right_spaces = side_spaces / 2;
+      std::cout << "* " << std::string(left_spaces, ' ') << warning << std::string(right_spaces, ' ') << " *\n";
+    }
+
+    std::cout << star_line << "\n";
   }
 
   std::shared_ptr<xrt_core::device>

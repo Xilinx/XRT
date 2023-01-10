@@ -17,7 +17,7 @@ vmr_info(const xrt_core::device * device);
 
 XRT_CORE_COMMON_EXPORT
 bool
-is_vmr_status_true(const xrt_core::device* device, std::string status);
+get_vmr_status(const xrt_core::device* device, const std::string& status);
 
 }} // vmr, xrt
 

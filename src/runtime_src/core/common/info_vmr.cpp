@@ -72,7 +72,7 @@ vmr_info(const xrt_core::device* device)
 }
 
 bool
-is_vmr_status_true(const xrt_core::device* device, std::string status)
+get_vmr_status(const xrt_core::device* device, const std::string& status)
 {
   const auto pt = vmr_info(device);
   boost::property_tree::ptree pt_empty;
@@ -85,7 +85,7 @@ is_vmr_status_true(const xrt_core::device* device, std::string status)
       return boost::iequals(vmr_stat.get<std::string>("value"), "1");
   }
 
-  return false;
+  throw xrt_core::error(boost::str(boost::format("Did not find %s label within VMR status") % status));
 }
 
 } // vmr, xrt
