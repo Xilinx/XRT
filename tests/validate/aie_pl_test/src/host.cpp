@@ -39,11 +39,13 @@ namespace po = boost::program_options;
 bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, std::string aie_control, std::string dma_lock) {
     xf::plctrl::plController m_pl_ctrl(aie_control.c_str(), dma_lock.c_str());
 
-    int num_iter = 2;
-    int num_sample = 16;
+    unsigned int num_iter = 2;
+    unsigned int num_sample = 16;
+    const int input_buffer_idx = 1;
+    const int output_buffer_idx = 2;
 
     m_pl_ctrl.enqueue_update_aie_rtp("mygraph.first.in[1]", num_sample);
-    m_pl_ctrl.enqueue_sleep(128);
+    m_pl_ctrl.enqueue_sleep(SLEEP_COUNT);
     m_pl_ctrl.enqueue_set_aie_iteration("mygraph", num_iter);
     m_pl_ctrl.enqueue_enable_aie_cores();
 
@@ -67,7 +69,7 @@ bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, std::string aie_
     }
     m_pl_ctrl.enqueue_loop_end();
     
-    m_pl_ctrl.enqueue_sleep(128);
+    m_pl_ctrl.enqueue_sleep(SLEEP_COUNT);
     m_pl_ctrl.enqueue_disable_aie_cores();
     m_pl_ctrl.enqueue_halt();
 
@@ -79,18 +81,18 @@ bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, std::string aie_
         xrt::kernel(device, uuid, "pl_controller_kernel:{controller_1}");
 
     // output memory
-    mem_size = num_sample * num_iter * sizeof(int);
-    auto out_bo1 = xrt::bo(device, mem_size, sender_receiver_k1.group_id(2));
+    mem_size = num_sample * num_iter * sizeof(unsigned int);
+    auto out_bo1 = xrt::bo(device, mem_size, sender_receiver_k1.group_id(output_buffer_idx));
     auto host_out1 = out_bo1.map<int*>();
 
     // input memory
-    auto in_bo1 = xrt::bo(device, mem_size, sender_receiver_k1.group_id(1));
+    auto in_bo1 = xrt::bo(device, mem_size, sender_receiver_k1.group_id(input_buffer_idx));
     auto host_in1 = in_bo1.map<int*>();
 
     std::cout << " memory allocation complete" << std::endl;
 
     // initialize input memory
-    for (unsigned int i = 0; i < mem_size / sizeof(int); i++)
+    for (unsigned int i = 0; i < mem_size / sizeof(unsigned int); i++)
         *(host_in1 + i) = i;
 
     in_bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE, mem_size, /*OFFSET=*/0);
@@ -135,7 +137,7 @@ bool run_pl_controller_aie1(xrt::device device, xrt::uuid uuid, std::string aie_
 
     // post-processing data;
     bool match = false;
-    for (unsigned int i = 0; i < mem_size / sizeof(int); i++) {
+    for (unsigned int i = 0; i < mem_size / sizeof(unsigned int); i++) {
         if (*(host_out1 + i) != *(host_in1 + i) + 1) {
             match = true;
             std::cout << boost::format("host_out1[%u]=%d\n") % i % host_out1[i];
@@ -148,9 +150,11 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, std::string aie_
     // instance of plController
     xf::plctrl::plController_aie2 m_pl_ctrl(aie_control.c_str(), dma_lock.c_str());
 
-    int num_iter = 1;
-    int num_sample = 32;
-
+    unsigned int num_iter = 1;
+    unsigned int num_sample = 32;
+    const int input_buffer_idx = 2;
+    const int output_buffer_idx = 3;
+    
     m_pl_ctrl.enqueue_set_aie_iteration("mygraph", num_iter);
     m_pl_ctrl.enqueue_enable_aie_cores();
 
@@ -158,13 +162,13 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, std::string aie_
         m_pl_ctrl.enqueue_sync();
     }
 
-    m_pl_ctrl.enqueue_sleep(128);
+    m_pl_ctrl.enqueue_sleep(SLEEP_COUNT);
     m_pl_ctrl.enqueue_disable_aie_cores();
 
     m_pl_ctrl.enqueue_halt();
     m_pl_ctrl.print_micro_codes();
 
-    int ret;
+    int ret = 0;
     bool match = false;
     int mem_size = 0;
 
@@ -175,17 +179,17 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, std::string aie_
         xrt::kernel(device, uuid, "pl_controller_top:{controller_1}");
 
     // output memory
-    mem_size = num_sample * num_iter * sizeof(int);
-    auto out_bo1 = xrt::bo(device, mem_size, sender_receiver_k1.group_id(3));
+    mem_size = num_sample * num_iter * sizeof(unsigned int);
+    auto out_bo1 = xrt::bo(device, mem_size, sender_receiver_k1.group_id(output_buffer_idx));
     auto host_out1 = out_bo1.map<int*>();
 
     // input memory
-    auto in_bo1 = xrt::bo(device, mem_size, sender_receiver_k1.group_id(2));
+    auto in_bo1 = xrt::bo(device, mem_size, sender_receiver_k1.group_id(input_buffer_idx));
     auto host_in1 = in_bo1.map<int*>();
     std::cout << " memory allocation complete" << std::endl;
 
     // initialize input memory
-    for (int i = 0; i < mem_size / sizeof(int); i++) {
+    for (unsigned int i = 0; i < mem_size / sizeof(unsigned int); i++) {
         *(host_in1 + i) = i;
     }
 
@@ -226,8 +230,7 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, std::string aie_
     // sync output memory
     out_bo1.sync(XCL_BO_SYNC_BO_FROM_DEVICE, mem_size, /*OFFSET=*/0);
     // post-processing data;
-    int i;
-    for (i = 0; i < mem_size / sizeof(int); i++) {
+    for (unsigned int i = 0; i < mem_size / sizeof(unsigned int); i++) {
       if (*(host_out1 + i) != *(host_in1 + i) + 1) {
 	match = true;
 	std::cout << "host_out1[" << i << "]=" << host_out1[i] << std::endl;
@@ -245,7 +248,7 @@ main(int argc, char* argv[])
     // Option Variables
     std::string test_path;
     std::string dev_id = "0";
-    bool flag_s = false;
+    bool bSupported = false;
 
     // -- Retrieve and parse the subcommand options
     // -----------------------------
@@ -257,7 +260,7 @@ main(int argc, char* argv[])
         "Platform test path")(
         "device,d", boost::program_options::value<decltype(dev_id)>(&dev_id),
         "Device ID")("supported,s",
-                     boost::program_options::bool_switch(&flag_s),
+                     boost::program_options::bool_switch(&bSupported),
                      "Supported")("help,h", "Prints this help menu.");
 
     po::positional_options_description positionals;
@@ -298,11 +301,10 @@ main(int argc, char* argv[])
     auto hw_gen_node = driver_info_node.get_child("hw_gen");
     auto hw_gen = std::stoul(hw_gen_node.data());
 
-    if(hw_gen == 2) {
-      b_file  = "/v70_pl_controller.xclbin";
-    } else {
+    if(hw_gen == 2)
+      b_file  = "/pl_controller_aie.xclbin";
+    else
       b_file  = "/vck5000_pcie_pl_controller.xclbin";
-    }
     
     std::string binaryfile = test_path + b_file;
     std::ifstream infile(binaryfile);
@@ -312,7 +314,7 @@ main(int argc, char* argv[])
         return EOPNOTSUPP;
     }
 
-    if (flag_s) {
+    if (bSupported) {
         std::cout << "\nSUPPORTED" << std::endl;
         return EXIT_SUCCESS;
     }
@@ -326,11 +328,10 @@ main(int argc, char* argv[])
     std::string dma_lock = test_path + dma_lock_file;
 
     bool match = false;
-    if (hw_gen == 2) {
+    if (hw_gen == 2)
       match = run_pl_controller_aie2(device, uuid, aie_control, dma_lock);
-    } else {
+    else
       match = run_pl_controller_aie1(device, uuid, aie_control, dma_lock);
-    }
 
     // report and return PASS / FAIL status
     std::cout << "TEST " << (match ? "FAILED" : "PASSED") << std::endl;

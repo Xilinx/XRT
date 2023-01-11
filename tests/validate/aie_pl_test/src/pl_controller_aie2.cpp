@@ -16,11 +16,47 @@
 #include "pl_controller_aie2.hpp"
 namespace xf {
 namespace plctrl {
+
+    dynBuffer::dynBuffer() {
+	data = nullptr;
+	size = 0;
+	usedSize = 0;
+    }
+    dynBuffer::~dynBuffer() { free(data); }
+    uint32_t dynBuffer::get(int i) {
+	assert(i < usedSize);
+	return data[i];
+    }
+    void dynBuffer::add(uint32_t m_data) {
+        if (size == 0) {
+            size = 128;
+            data = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * size));
+            memset(data, 0, sizeof(uint32_t) * size);
+        }
+        if (size == usedSize) {
+            size += 128;
+            data = static_cast<uint32_t*>(realloc(data, size * sizeof(uint32_t)));
+        }
+        data[usedSize] = m_data;
+        usedSize++;
+    }
+    void dynBuffer::add(uint32_t* m_data, int blk_size) {
+        if (size == 0) {
+            size = std::max(blk_size + (128 - blk_size % 128), 128);
+            data = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * size));
+            memset(data, 0, sizeof(uint32_t) * size);
+        }
+        if (size == usedSize) {
+            size += std::max(blk_size + (128 - blk_size % 128), 128);
+            data = static_cast<uint32_t*>(realloc(data, size * sizeof(uint32_t)));
+        }
+        memcpy(data + usedSize, m_data, sizeof(uint32_t) * blk_size);
+        usedSize += blk_size;
+    }
+
 plController_aie2::plController_aie2(const std::string& xclbin_path) {
     dma_info_path = "dma_lock_report.json";
     aie_info_path = "aie_control_config.json";
-    // m_axlf = read_xclbin(xclbin_path);
-    // init_axlf();
     // read rtp from metadata
     get_rtp();
     // instialize two buffer
@@ -33,8 +69,6 @@ plController_aie2::plController_aie2(const std::string& xclbin_path) {
 plController_aie2::plController_aie2(const std::string& _aie_info_path, const std::string& _dma_info_path) {
     aie_info_path = _aie_info_path;
     dma_info_path = _dma_info_path;
-    // m_axlf = read_xclbin(xclbin_path);
-    // init_axlf();
     //// read rtp from metadata
     get_rtp();
     // instialize two buffer

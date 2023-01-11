@@ -23,5 +23,6 @@
 #define NUM_ITERATIONS2 8
 #define AIE_CORE_COL 25
 #define AIE_CORE_ROW 0
+#define SLEEP_COUNT 128
 
 #endif

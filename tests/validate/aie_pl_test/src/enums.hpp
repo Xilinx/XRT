@@ -85,7 +85,7 @@ enum {
   LOOP_END = 15,
   SET_DMA_BD = 16,
   UPDATE_AIE_RTP = 17,
-  WRITE
+  WRITE = 18
 };
 } // end of namespace enums
 using namespace enums;
