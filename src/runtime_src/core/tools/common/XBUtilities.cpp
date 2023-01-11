@@ -345,7 +345,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     else
       device = xrt_core::get_mgmtpf_device(index);
 
-    if (xrt_core::device_query<xq::is_versal>(device))
+    if (xrt_core::device_query_default<xq::is_versal>(device, false))
       check_versal_boot(device);
 
     return device;
