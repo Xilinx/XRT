@@ -28,6 +28,7 @@
 #include <boost/program_options.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
@@ -288,15 +289,15 @@ main(int argc, char* argv[])
     }
 
     std::string aie_control_file = "/aie_control_config.json";
-    std::string aie_control = test_path + aie_control_file;
-    std::ifstream aiefile(aie_control);
+    auto aie_control = boost::filesystem::path(test_path) / aie_control_file;
+    std::ifstream aiefile(aie_control.string());
     if (!aiefile.good()) {
         std::cout << "\nNOT SUPPORTED" << std::endl;
         return EOPNOTSUPP;
     }
 
     ptree aie_meta;
-    read_json(aie_control, aie_meta);
+    read_json(aie_control.string(), aie_meta);
     auto driver_info_node = aie_meta.get_child("aie_metadata.driver_config");
     auto hw_gen_node = driver_info_node.get_child("hw_gen");
     auto hw_gen = std::stoul(hw_gen_node.data());
@@ -306,8 +307,8 @@ main(int argc, char* argv[])
     else
       b_file  = "/vck5000_pcie_pl_controller.xclbin";
     
-    std::string binaryfile = test_path + b_file;
-    std::ifstream infile(binaryfile);
+    auto binaryFile = boost::filesystem::path(test_path) / b_file;
+    std::ifstream infile(binaryFile.string());
 
     if (!infile.good()) {
         std::cout << "\nNOT SUPPORTED" << std::endl;
@@ -321,17 +322,17 @@ main(int argc, char* argv[])
 
     auto num_devices = xrt::system::enumerate_devices();
     auto device = xrt::device{ dev_id };
-    auto uuid = device.load_xclbin(binaryfile);
+    auto uuid = device.load_xclbin(binaryFile.string());
 
     // instance of plController
     std::string dma_lock_file = "/dma_lock_report.json";
-    std::string dma_lock = test_path + dma_lock_file;
+    auto dma_lock = boost::filesystem::path(test_path) / dma_lock_file;
 
     bool match = false;
     if (hw_gen == 2)
-      match = run_pl_controller_aie2(device, uuid, aie_control, dma_lock);
+      match = run_pl_controller_aie2(device, uuid, aie_control.string(), dma_lock.string());
     else
-      match = run_pl_controller_aie1(device, uuid, aie_control, dma_lock);
+      match = run_pl_controller_aie1(device, uuid, aie_control.string(), dma_lock.string());
 
     // report and return PASS / FAIL status
     std::cout << "TEST " << (match ? "FAILED" : "PASSED") << std::endl;
