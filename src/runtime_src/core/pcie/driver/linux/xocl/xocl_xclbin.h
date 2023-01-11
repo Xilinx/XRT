@@ -32,7 +32,8 @@ init xocl_xclbin_init(xdev_handle_t xdev);
 void xocl_xclbin_fini(xdev_handle_t xdev);
 #endif
 
-int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin);
+int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin,
+		unsigned int slot_id);
 
 enum MEM_TAG {
 	MEM_TAG_DDR = 0,

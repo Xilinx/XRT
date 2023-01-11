@@ -185,6 +185,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
 	xuid_t *uuid;
+	uint32_t slot_id = DEFAULT_PL_SLOT;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_info cu_info = {};
@@ -201,7 +202,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			goto out;
 		}
 
-		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id);
+		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id, slot_id);
 		if (ret) {
 			goto out;
 		}
@@ -223,7 +224,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 		 * of id 0.
 		 */
 		client->next_hw_ctx_id = 0;
-		hw_ctx = kds_alloc_hw_ctx(client, uuid, 0 /*slot id */);
+		hw_ctx = kds_alloc_hw_ctx(client, uuid, slot_id);
 		if (!hw_ctx) {
 			ret = -EINVAL;
 			goto out1;
@@ -273,7 +274,7 @@ out1:
  	 * to free it here.
  	 */	 
 	if (bitstream_locked)
-		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
+		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id, slot_id);
 
 out:
 	vfree(client->ctx);
@@ -286,8 +287,10 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
 	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_info cu_info = {};
 	xuid_t *uuid;
+	uint32_t slot_id = 0;
 	int ret = 0;
 
 	mutex_lock(&client->lock);
@@ -320,23 +323,22 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret)
 		goto out;
 
-	if (cu_ctx->hw_ctx) {
-		ret = kds_free_hw_ctx(client, cu_ctx->hw_ctx);
-		if (ret)
-			goto out;
-
-		cu_ctx->hw_ctx = NULL;
-	}
-
 	ret = kds_free_cu_ctx(client, cu_ctx);
 	if (ret)
 		goto out;
 
 	/* unlock bitstream if there is no opening context */
 	if (list_empty(&client->ctx->cu_ctx_list)) {
+		/* For legacy context case there are only one hw context
+		 * possible i.e. 0 */
+		hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+		kds_free_hw_ctx(client, hw_ctx);
+
 		vfree(client->ctx->xclbin_id);
 		client->ctx->xclbin_id = NULL;
-		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
+		slot_id = client->ctx->slot_idx;
+		(void) xocl_icap_unlock_bitstream(xdev,
+				&args->xclbin_id, slot_id);
 		vfree(client->ctx);
 		client->ctx = NULL;
 	}
@@ -394,6 +396,31 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 	return ret;
 }
 
+
+/*
+ * Get the slot id for this hw context.
+ */
+int xocl_get_slot_id_by_hw_ctx_id(struct xocl_dev *xdev,
+		struct drm_file *filp, uint32_t hw_ctx_id)
+{
+        struct kds_client_hw_ctx *hw_ctx = NULL;
+        struct kds_client *client = filp->driver_priv;
+
+		if (xdev->is_legacy_ctx)
+			return DEFAULT_PL_SLOT;
+
+        mutex_lock(&client->lock);
+        hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_id);
+        if (!hw_ctx) {
+                userpf_err(xdev, "No valid HW context is open");
+                mutex_unlock(&client->lock);
+                return -EINVAL;
+        }
+	mutex_unlock(&client->lock);
+
+	return hw_ctx->slot_idx;
+}
+
 int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 		struct drm_xocl_create_hw_ctx *hw_ctx_args, uint32_t slot_id)
 {
@@ -405,7 +432,7 @@ int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 	if (!client)
 		return -EINVAL;
 
-	ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id, slot_id);
 	if (ret)
 		return ret;
 
@@ -418,7 +445,7 @@ int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 	}
 
 	/* Lock the bitstream. Unlock the same in destroy context */
-	ret = xocl_icap_lock_bitstream(xdev, xclbin_id);
+	ret = xocl_icap_lock_bitstream(xdev, xclbin_id, slot_id);
 	if (ret) {
 		kds_free_hw_ctx(client, hw_ctx);
 		ret = -EINVAL;
@@ -429,7 +456,7 @@ int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
 
 error_out:
 	mutex_unlock(&client->lock);
-	XOCL_PUT_XCLBIN_ID(xdev);
+	XOCL_PUT_XCLBIN_ID(xdev, slot_id);
 	return ret;
 }
 
@@ -445,16 +472,15 @@ int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
         hw_ctx = kds_get_hw_ctx_by_id(client, hw_ctx_args->hw_context);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
-                ret = -EINVAL;
-		goto out;
+		mutex_unlock(&client->lock);
+                return -EINVAL;
         }
 
 	/* Unlock the bitstream for this HW context if no reference is there */
-	(void)xocl_icap_unlock_bitstream(xdev, hw_ctx->xclbin_id);
+	(void)xocl_icap_unlock_bitstream(xdev, hw_ctx->xclbin_id, hw_ctx->slot_idx);
 
 	ret = kds_free_hw_ctx(client, hw_ctx);
 
-out:
 	mutex_unlock(&client->lock);
 
         return ret;
@@ -1195,14 +1221,18 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 	mutex_lock(&client->lock);
 	/* Cleanup the Legacy context here */
 	if (client->ctx && client->ctx->xclbin_id) {
-		(void) xocl_icap_unlock_bitstream(xdev, client->ctx->xclbin_id);
+		(void) xocl_icap_unlock_bitstream(xdev, client->ctx->xclbin_id,
+				client->ctx->slot_idx);
 		vfree(client->ctx->xclbin_id);
 	}
 
 	/* Cleanup the new HW context here */
         list_for_each_entry_safe(hw_ctx, next, &client->hw_ctx_list, link) {
-		/* Unlock the bitstream for this HW context if no reference is there */
-		(void)xocl_icap_unlock_bitstream(xdev, hw_ctx->xclbin_id);
+		/* Unlock the bitstream for this HW context if no
+		 * reference is there.
+		 */
+		(void)xocl_icap_unlock_bitstream(xdev, hw_ctx->xclbin_id,
+			       hw_ctx->slot_idx);
 		kds_free_hw_ctx(client, hw_ctx);
 	}
 	mutex_unlock(&client->lock);
@@ -1288,7 +1318,7 @@ int xocl_kds_stop(struct xocl_dev *xdev)
 	return 0;
 }
 
-int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
+int xocl_kds_reset(struct xocl_dev *xdev)
 {
 	xocl_kds_fa_clear(xdev);
 
@@ -1320,14 +1350,15 @@ u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist)
 	return kds_live_clients(&XDEV(xdev)->kds, plist);
 }
 
-static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
+static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index,
+		uint32_t slot_id)
 {
 	struct connectivity *conn = NULL;
 	int max_arg_idx = -1;
 	int mem_data_idx = 0;
 	int i;
 
-	XOCL_GET_CONNECTIVITY(xdev, conn);
+	XOCL_GET_CONNECTIVITY(xdev, conn, slot_id);
 
 	if (conn) {
 		/* The "last" argument of fast adapter would connect to cmdmem */
@@ -1343,7 +1374,7 @@ static int xocl_kds_get_mem_idx(struct xocl_dev *xdev, int ip_index)
 		}
 	}
 
-	XOCL_PUT_CONNECTIVITY(xdev);
+	XOCL_PUT_CONNECTIVITY(xdev, slot_id);
 
 	return mem_data_idx;
 }
@@ -1355,6 +1386,7 @@ static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 	struct drm_xocl_bo *bo = NULL;
 	struct drm_xocl_create_bo args;
 	int i, mem_idx = 0;
+	uint32_t slot_id = 0;
 	uint64_t size;
 	uint64_t base_addr;
 	void __iomem *vaddr;
@@ -1364,8 +1396,14 @@ static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 	/* Detect Fast adapter and descriptor cmdmem
 	 * Assume only one PLRAM would be used for descriptor
 	 */
-	XOCL_GET_IP_LAYOUT(xdev, ip_layout);
-	XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo);
+	ret = xocl_get_pl_slot(xdev, &slot_id); 
+	if (ret) {
+		userpf_err(xdev, "Xclbin is not present");
+		return ret;
+	}
+
+	XOCL_GET_IP_LAYOUT(xdev, ip_layout, slot_id);
+	XOCL_GET_MEM_TOPOLOGY(xdev, mem_topo, slot_id);
 
 	if (!ip_layout || !mem_topo)
 		goto done;
@@ -1382,7 +1420,7 @@ static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 			continue;
 
 		/* TODO: consider if we could support multiple cmdmem */
-		mem_idx = xocl_kds_get_mem_idx(xdev, i);
+		mem_idx = xocl_kds_get_mem_idx(xdev, i, slot_id);
 		break;
 	}
 
@@ -1408,6 +1446,7 @@ static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 	 */
 	args.size = size;
 	args.flags = XCL_BO_FLAGS_P2P | mem_idx;
+	args.flags = xocl_bo_set_slot_idx(args.flags, slot_id); 
 	bo = xocl_drm_create_bo(XOCL_DRM(xdev), size, args.flags);
 	if (IS_ERR(bo)) {
 		userpf_err(xdev, "Cannot create bo for fast adapter");
@@ -1432,8 +1471,8 @@ static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 	XDEV(xdev)->kds.cmdmem.size = size;
 
 done:
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
-	XOCL_PUT_IP_LAYOUT(xdev);
+	XOCL_PUT_MEM_TOPOLOGY(xdev, slot_id);
+	XOCL_PUT_IP_LAYOUT(xdev, slot_id);
 	return ret;
 }
 
@@ -1684,7 +1723,7 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
 	 * - misc: software, number of resourse ...
 	 */
 	for (i = 0; i < num_cus; i++) {
-		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname);
+		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname, slot_hdl);
 		if (!krnl_info) {
 			userpf_info(xdev, "%s has no metadata. Ignore", cu_info[i].kname);
 			continue;
@@ -1743,8 +1782,9 @@ xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip
 		cu_info[i].num_res = 0;
 		cu_info[i].num_args = 0;
 		cu_info[i].args = NULL;
+		cu_info[i].slot_idx = slot_hdl;
 
-		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname);
+		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname, slot_hdl);
 		if (!krnl_info) {
 			/* Workaround for U30, maybe we can remove this in the future */
 			userpf_info(xdev, "%s has no metadata. Use default", cu_info[i].kname);
@@ -2077,7 +2117,7 @@ xocl_kds_xgq_cfg_cus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 		cfg_cu->hdr.count = sizeof(*cfg_cu) - sizeof(cfg_cu->hdr);
 		cfg_cu->hdr.state = 1;
 
-		cfg_cu->cu_idx = i;
+		cfg_cu->cu_idx = cu_info[i].inst_idx;
 		cfg_cu->cu_domain = DOMAIN_PL;
 		cfg_cu->ip_ctrl = cu_info[i].protocol;
 		cfg_cu->intr_id = cu_info[i].intr_id;
@@ -2160,7 +2200,7 @@ xocl_kds_xgq_cfg_scus(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_in
 		cfg_cu->hdr.count = sizeof(*cfg_cu) - sizeof(cfg_cu->hdr);
 		cfg_cu->hdr.state = 1;
 
-		cfg_cu->cu_idx = i;
+		cfg_cu->cu_idx = cu_info[i].inst_idx;
 		cfg_cu->cu_domain = DOMAIN_PS;
 		cfg_cu->ip_ctrl = cu_info[i].protocol;
 		cfg_cu->map_size = cu_info[i].size;
@@ -2507,11 +2547,13 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
 			ret = -EINVAL;
 			goto out;
 		}
-		ret = xocl_kds_update_legacy(xdev, XDEV(xdev)->kds_cfg, ip_layout, ps_kernel);
+		ret = xocl_kds_update_legacy(xdev, XDEV(xdev)->axlf_obj[slot_hdl]->kds_cfg,
+			       ip_layout, ps_kernel);
 		goto out;
 	}
 
-	ret = xocl_kds_update_xgq(xdev, slot_hdl, uuid, XDEV(xdev)->kds_cfg, ip_layout, ps_kernel);
+	ret = xocl_kds_update_xgq(xdev, slot_hdl, uuid,
+			XDEV(xdev)->axlf_obj[slot_hdl]->kds_cfg, ip_layout, ps_kernel);
 out:
 	if (ret)
 		XDEV(xdev)->kds.bad_state = 1;
@@ -2538,7 +2580,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0))
 		return ret;
 
-	ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->kds_cfg, 0, 0);
+    ret = xocl_kds_xgq_cfg_start(xdev, XDEV(xdev)->axlf_obj[slot_hdl]->kds_cfg, 0, 0);
 	if (ret)
 		goto out;
 
@@ -2565,7 +2607,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PS);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PS);
 			if (ret)
 				goto out;
 		}
@@ -2583,7 +2625,7 @@ int xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 
 		/* ERT XGQ version 2.0 onward supports unconfigure CUs/SCUs */
 		if (major == 2 && minor == 0) {
-			ret = xocl_kds_xgq_uncfg_cu(xdev, i, DOMAIN_PL);
+			ret = xocl_kds_xgq_uncfg_cu(xdev, xcu->info.inst_idx, DOMAIN_PL);
 			if (ret)
 				goto out;
 		}

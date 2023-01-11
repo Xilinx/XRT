@@ -891,7 +891,7 @@ out:
  * @return      0 on success, Error code on failure.
  */
 int
-zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
+zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_id)
 {
         struct axlf *axlf = (struct axlf *)data;
         struct axlf *axlf_head = axlf;
@@ -911,18 +911,17 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
         }
 
 	BUG_ON(!zdev);
-	// Currently only 1 slot - TODO: Support multi-slot in the future
-	slot = zdev->pr_slot[0];
+	slot = zdev->pr_slot[slot_id];
 
         mutex_lock(&slot->slot_xclbin_lock);
 	/* Check unique ID */
-	if (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid)) {
+	if ((slot->slot_type == DOMAIN_PL) &&
+	    (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid))) {
 		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
 			 __func__, &axlf_head->m_header.uuid);
 		mutex_unlock(&slot->slot_xclbin_lock);
 		return ret;
 	}
-
 
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);

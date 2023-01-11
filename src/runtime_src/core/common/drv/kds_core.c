@@ -280,6 +280,25 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 	}
 	mutex_unlock(&cu_mgmt->lock);
 
+	/* Populate the SCUs information */
+	cu_mgmt = &kds->scu_mgmt;
+	cu_fmt = "  SCU[%d] usage(%llu) shared(%d) refcnt(%d) intr(%s)\n";
+	mutex_unlock(&cu_mgmt->lock);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Number of SCUs: %d\n",
+			cu_mgmt->num_cus);
+	for (i = 0; i < MAX_CUS; ++i) {
+		if (!cu_mgmt->xcus[i])
+			continue;
+
+		shared = !(cu_mgmt->cu_refs[i] & CU_EXCLU_MASK);
+		ref = cu_mgmt->cu_refs[i] & ~CU_EXCLU_MASK;
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
+				cu_stat_read(cu_mgmt, usage[i]), shared, ref,
+				(cu_mgmt->cu_intr[i])? "enable" : "disable");
+	}
+
+	mutex_unlock(&cu_mgmt->lock);
+
 	return sz;
 }
 /* sysfs end */
@@ -877,12 +896,12 @@ skip:
 	mutex_lock(&cu_mgmt->lock);
 	if (cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK)
 		cu_mgmt->cu_refs[cu_idx] = 0;
-	else
+	else {
 		if (cu_set == 1) {
 			/* it means that the context number of the client is set to 0 */
 			--cu_mgmt->cu_refs[cu_idx];
 		}
-
+	}
 	mutex_unlock(&cu_mgmt->lock);
 
 	return 0;
@@ -1221,6 +1240,16 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 			goto out;
 		}
 
+		if (kds_free_hw_ctx(client, cu_ctx->hw_ctx)) {
+			kds_err(client, "Freeing HW Context failed");
+			goto out;
+		}
+
+		if (kds_free_hw_ctx(client, cu_ctx->hw_ctx)) {
+			kds_err(client, "Freeing HW Context failed");
+			goto out;
+		}
+
 		if (kds_free_cu_ctx(client, cu_ctx)) {
 			kds_err(client, "Freeing CU Context failed");
 			goto out;
@@ -1320,12 +1349,13 @@ kds_get_cu_ctx(struct kds_client *client, struct kds_client_ctx *ctx,
         }
 
         /* Find out if same CU context is already exists  */
-        list_for_each_entry(cu_ctx, &ctx->cu_ctx_list, link)
+        list_for_each_entry(cu_ctx, &ctx->cu_ctx_list, link) {
                 if ((cu_ctx->cu_idx == cu_idx) &&
                                 (cu_ctx->cu_domain == cu_domain)) {
                         found = true;
 			break;
 		}
+	}
 
         /* CU context exists. Return the context */
 	if (found)
