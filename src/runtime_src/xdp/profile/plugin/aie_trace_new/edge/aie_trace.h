@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,7 +41,6 @@ namespace xdp {
       typedef std::vector<uint32_t>  ValueVector;
 
       module_type getTileType(uint16_t row);
-      std::vector<std::string> getSettingsVector(std::string settingsString); 
       void configEventSelections(XAie_DevInst* aieDevInst,
                                  const XAie_LocType loc,
                                  const XAie_ModuleType mod,
@@ -49,7 +48,7 @@ namespace xdp {
                                  const std::string metricSet,
                                  const uint8_t channel0,
                                  const uint8_t channel);
-      bool setMetrics(uint64_t deviceId, 
+      bool setMetricsSettings(uint64_t deviceId, 
                       void* handle);
       void releaseCurrentTileCounters(int numCoreCounters, 
                                       int numMemoryCounters);

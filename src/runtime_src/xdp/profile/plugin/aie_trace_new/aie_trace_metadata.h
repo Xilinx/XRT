@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,6 +39,7 @@ class AieTraceMetadata{
     bool useUserControl = false;
     bool useGraphIterator = false;
     bool useOneDelayCtr = true;
+    bool isValidMetrics = true;   
     bool runtimeMetrics;
     bool continuousTrace;
 
@@ -66,7 +67,7 @@ class AieTraceMetadata{
 
     int getHardwareGen();
     uint16_t getAIETileRowOffset();
-    std::vector<tile_type> getTilesForTracing();
+    std::vector<std::string> getSettingsVector(std::string settingsString); 
     std::vector<tile_type> getMemTilesForTracing();
 
     static void read_aie_metadata(const char* data, size_t size, 
@@ -94,6 +95,14 @@ class AieTraceMetadata{
                                   std::vector<std::string>& graphMetricsSettings,
                                   module_type type);
     void setTraceStartControl();
+    uint8_t getMetricSetIndex(std::string metricString);
+   
+    std::string getMetricString(uint8_t index) {
+      if (index < metricSets.size())
+        return metricSets[index];
+      else
+        return metricSets[0];
+    }
 
     bool getUseDelay(){return useDelay;}
     bool getUseUserControl(){return useUserControl;}
@@ -106,6 +115,7 @@ class AieTraceMetadata{
     uint64_t getContinuousTrace() {return continuousTrace;}
     uint64_t getOffloadIntervalUs() {return offloadIntervalUs;}
     uint64_t getDeviceID() {return deviceID;}
+    bool getIsValidMetrics() {return isValidMetrics;}
 
     void* getHandle() {return handle;}
     unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
