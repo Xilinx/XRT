@@ -131,10 +131,16 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
 			struct kds_client *client, struct kds_client_ctx *cctx)
 {
 	struct drm_zocl_slot *slot = NULL;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	uuid_t *id = (uuid_t *)cctx->xclbin_id;
 
 	if (!list_empty(&cctx->cu_ctx_list))
 		return;
+
+	/* For legacy context case there are only one hw context possible i.e. 0
+	*/
+	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+	kds_free_hw_ctx(client, hw_ctx);
 
 	/* Get the corresponding slot for this xclbin */
 	slot = zocl_get_slot(zdev, id);
@@ -168,6 +174,7 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 {
 	struct drm_zocl_slot *slot = NULL;
 	struct kds_client_ctx *cctx = NULL;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	int ret = 0;
 
 	/* Get the corresponding slot for this xclbin */
@@ -194,6 +201,20 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 		return NULL;
 	}
 	uuid_copy(cctx->xclbin_id, id);
+
+	/* This is required to maintain the command stats per hw context.
+	 * for this case zocl hw context is not required. This is only for
+	 * backward compartability.
+	 */
+	client->next_hw_ctx_id = 0;
+	hw_ctx = kds_alloc_hw_ctx(client, cctx->xclbin_id, 0 /*slot id */);
+	if (!hw_ctx) {
+		vfree(cctx->xclbin_id);
+		vfree(cctx);
+		(void) zocl_unlock_bitstream(slot, id);
+		return NULL;
+	}
+
 	/* Multiple CU context can be active. Initializing CU context list */
 	INIT_LIST_HEAD(&cctx->cu_ctx_list);
 	list_add_tail(&cctx->link, &client->ctx_list);
@@ -254,6 +275,7 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	struct kds_client_ctx *cctx = NULL;
 	struct kds_client_cu_info cu_info = { 0 };
 	struct kds_client_cu_ctx *cu_ctx = NULL;
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	uuid_t *id = NULL;
 	int ret = 0;
 
@@ -288,6 +310,17 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 		ret = -EINVAL;
 		goto out;
 	}
+
+        /* For legacy context case there are only one hw context possible i.e. 0
+         */
+        hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+        if (!hw_ctx) {
+                DRM_ERROR("No valid HW context is open");
+		zocl_remove_client_context(zdev, client, cctx);
+                return -EINVAL;
+        }
+
+        cu_ctx->hw_ctx = hw_ctx;
 
 	ret = kds_add_context(&zdev->kds, client, cu_ctx);
 	if (ret) {
