@@ -21,7 +21,7 @@ enum class vmr_status_type {
 
 XRT_CORE_COMMON_EXPORT
 bool
-get_vmr_status(const xrt_core::device* device, const vmr_status_type& status);
+get_vmr_status(const xrt_core::device* device, vmr_status_type status);
 
 }} // vmr, xrt
 

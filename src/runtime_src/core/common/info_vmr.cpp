@@ -72,7 +72,7 @@ vmr_info(const xrt_core::device* device)
 }
 
 bool
-get_vmr_status(const xrt_core::device* device, const vmr_status_type& status)
+get_vmr_status(const xrt_core::device* device, vmr_status_type status)
 {
   std::string status_string;
   switch (status) {
