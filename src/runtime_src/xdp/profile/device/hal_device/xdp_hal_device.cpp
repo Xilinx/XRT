@@ -79,6 +79,17 @@ int HalDevice::read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_
 #endif
 }
 
+// This uses mmap and is recommended way to access an XRT IP
+int HalDevice::readXrtIP(const char *name, uint32_t offset, uint64_t /*base*/, uint32_t *data)
+{
+  // We cannot always get index from ip_layout
+  // For some cases, this is determined by the driver
+  int index = xclIPName2Index(mHalDevice, name);
+  if (index < 0)
+    return index;
+  return xclRegRead(mHalDevice, static_cast<uint32_t>(index), offset, data);
+}
+
 int HalDevice::unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset)
 {
   return xclUnmgdPread(mHalDevice, flags, buf, count, offset);

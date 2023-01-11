@@ -42,6 +42,9 @@ public:
   virtual int read(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) = 0;
   virtual int unmgdRead(unsigned flags, void *buf, size_t count, uint64_t offset) = 0;
 
+  // Access to IP in IP_LAYOUT
+  virtual int readXrtIP(const char *name, uint32_t offset, uint64_t base, uint32_t *data) = 0;
+
   virtual void getDebugIpLayout(char* buffer, size_t size, size_t* size_ret) = 0;
 
   // Only device RAM

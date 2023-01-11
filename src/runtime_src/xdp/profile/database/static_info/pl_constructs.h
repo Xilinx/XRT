@@ -21,7 +21,10 @@
 // This file collects all of the data structures used in the static info
 //  database for constructs that exist in the PL portion of the design.
 
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <cstdint>
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
@@ -174,6 +177,9 @@ namespace xdp {
     // The index of the Compute Unit in the IP_LAYOUT section of the xclbin
     int32_t index ;
 
+    // The base address of the CU in the IP_LAYOUT
+    uint64_t baseAddress;
+
     // The name of the compute unit, parsed out of the portion of the
     //  name in the IP_LAYOUT section after the ':'
     std::string name ;
@@ -211,6 +217,11 @@ namespace xdp {
     // resource
     std::vector<Port> masterPorts;
 
+    // Deadlock Diagnosis registers
+    // Each entry in map looks like:
+    // Register Offset -> {message[0], message[1]...message[31]}
+    std::map<uint32_t, std::vector<std::string>> dlDiagRegInfo;
+
     // If this compute unit has any AIMs or ASMs attached to its ports,
     //  then these vectors will keep track of the slot IDs inside the
     //  xdp::CounterResults structure for all of the attached monitors.
@@ -236,6 +247,7 @@ namespace xdp {
     inline bool getStreamTraceEnabled() const { return asmIdsWithTrace.size() > 0 ; }
     inline bool getDataflowEnabled() const    { return dataflow ; }
     inline bool getHasFA() const              { return hasFA ; }
+    inline bool getBaseAddress() const        { return baseAddress ; }
     inline bool getDataTransferTraceEnabled() const 
       { return aimIdsWithTrace.size() > 0 ; }
 
@@ -265,7 +277,7 @@ namespace xdp {
                                        Memory* mem);
     XDP_EXPORT Port* getPort(const std::string& portName);
 
-    XDP_EXPORT explicit ComputeUnitInstance(int32_t i, const std::string& n) ;
+    XDP_EXPORT explicit ComputeUnitInstance(int32_t i, uint64_t addr, const std::string& n) ;
     XDP_EXPORT ~ComputeUnitInstance() = default ;
   } ;
 
@@ -325,6 +337,33 @@ namespace xdp {
   private:
     void convertBankToDDR();
   } ;
+
+
+constexpr uint32_t num_bits_deadlock_diagnosis = 32;
+using kernel_reginfo = std::map<uint32_t, std::array<std::string, num_bits_deadlock_diagnosis>>;
+/* Class to handle parsing of IP_METADATA section in xclbin*/
+class ip_metadata {
+private:
+  uint32_t s_major;
+  uint32_t s_minor;
+
+public:
+  std::vector<std::pair<std::string, kernel_reginfo>> kernel_infos;
+
+public:
+  ip_metadata() = delete;
+  ip_metadata(const boost::property_tree::ptree& pt);
+  void print();
+  inline uint32_t get_offset_from_string(const std::string& str)
+  {
+    uint32_t offset = 0;
+    std::stringstream ss;
+    // Remove the 0x
+    ss << std::hex << str.substr(2);
+    ss >> offset;
+    return offset;
+  }
+};
   
 } // end namespace xdp
 

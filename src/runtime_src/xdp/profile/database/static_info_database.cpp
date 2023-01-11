@@ -432,6 +432,9 @@ namespace xdp {
     xclbin->deviceIntf->setDevice(dev);
     try {
       xclbin->deviceIntf->readDebugIPlayout();
+      // XRT IP are needed for deadlock diagnosis
+      // Metadata for these come from multiple xclbin sections
+      //createXrtIP(xclbin->deviceIntf);
     }
     catch (std::exception& /* e */) {
       // If reading the debug ip layout fails, we shouldn't have
@@ -1654,7 +1657,7 @@ namespace xdp {
          */
         continue;
       }
-      cu = new ComputeUnitInstance(i, cuName);
+      cu = new ComputeUnitInstance(i, ipData->m_base_address, cuName);
       currentXclbin->pl.cus[i] = cu ;
       if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
         cu->setDataflowEnabled(true);
@@ -1709,7 +1712,7 @@ namespace xdp {
            */
           continue;
         }
-        cu = new ComputeUnitInstance(connctn->m_ip_layout_index, cuName);
+        cu = new ComputeUnitInstance(connctn->m_ip_layout_index, ipData->m_base_address, cuName);
         currentXclbin->pl.cus[connctn->m_ip_layout_index] = cu;
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);

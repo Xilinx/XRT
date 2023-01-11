@@ -146,8 +146,9 @@ namespace xdp {
     return argList;
   }
 
-  ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string& n)
+  ComputeUnitInstance::ComputeUnitInstance(int32_t i, uint64_t addr, const std::string& n)
     : index(i)
+    , baseAddress(addr)
   {
     std::string fullName(n) ;
     size_t pos = fullName.find(':') ;
@@ -234,6 +235,53 @@ namespace xdp {
     ddr += tag.substr(loc + 4);
     ddr += "]";
     spTag = ddr;
+  }
+
+  ip_metadata::ip_metadata(const boost::property_tree::ptree& pt)
+  : s_major(0)
+  , s_minor(0)
+  {
+    auto& v = pt.get_child("version");
+    s_major = v.get<uint32_t>("major");
+    s_minor = v.get<uint32_t>("minor");
+    auto& kernels = pt.get_child("kernels");
+    for (const auto& k : kernels) {
+      auto kname = k.second.get<std::string>("name");
+      auto reglist = k.second.get_child("deadlock_register_list");
+      kernel_reginfo kinfo;
+      for (const auto& reg : reglist) {
+        std::array<std::string, num_bits_deadlock_diagnosis> reginfo;
+        auto offset_str = reg.second.get<std::string>("register_word_offset");
+        uint32_t reg_offset = get_offset_from_string(offset_str);
+        auto bitinfo = reg.second.get_child("register_bit_info");
+        for (const auto& bits : bitinfo) {
+          auto bit_offset = bits.second.get<uint32_t>("bit");
+          auto bit_msg = bits.second.get<std::string>("message");
+          reginfo[bit_offset] = bit_msg;
+        }
+        kinfo[reg_offset] = reginfo;
+      }
+      kernel_infos.push_back(std::make_pair(kname, kinfo));
+    }
+  }
+
+  /*
+   * Useful for debug
+   */
+  void ip_metadata::print()
+  {
+    std::cout << "Major : " << s_major << std::endl;
+    std::cout << "Minor : " << s_minor << std::endl;
+    for (const auto& kernel_info : kernel_infos) {
+      std::cout << kernel_info.first << " : \n";
+      for (const auto& reginfo : kernel_info.second) {
+        std::cout <<std::hex << "0x" << reginfo.first << " :\n" << std::dec;
+        for (const auto& bitstring : reginfo.second)
+          if (!bitstring.empty())
+            std::cout << " " << bitstring << "\n";
+      }
+      std::cout << std::endl;
+    }
   }
 
 } // end namespace xdp
