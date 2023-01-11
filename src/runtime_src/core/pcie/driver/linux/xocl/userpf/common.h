@@ -88,6 +88,7 @@ enum {
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
+	bool				is_legacy_ctx;
 	struct list_head	ctx_list;
 
 	/*
@@ -103,16 +104,14 @@ struct xocl_dev	{
 	struct xocl_subdev	*dyn_subdev_store;
 	int			dyn_subdev_num;
 
-	void			*ulp_blob;
-
 	unsigned int		mbx_offset;
 
 	uint64_t		mig_cache_expire_secs;
 	ktime_t			mig_cache_expires;
 
 	u32			flags;
-	struct xocl_cma_bank  *cma_bank;
-	struct xocl_pci_info pci_stat;
+	struct xocl_cma_bank	*cma_bank;
+	struct xocl_pci_info	pci_stat;
 	atomic_t		dev_hotplug_done;
 };
 
@@ -227,6 +226,8 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv);
 int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 		      struct drm_file *filp);
 /* New hw context support functions */
+int xocl_get_slot_id_by_hw_ctx_id(struct xocl_dev *xdev,
+		struct drm_file *filp, uint32_t hw_ctx_id);
 int xocl_create_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
                 struct drm_xocl_create_hw_ctx *hw_ctx_args, uint32_t slot_id);
 int xocl_destroy_hw_context(struct xocl_dev *xdev, struct drm_file *filp,
