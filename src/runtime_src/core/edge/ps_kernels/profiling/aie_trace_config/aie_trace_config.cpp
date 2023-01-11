@@ -383,7 +383,7 @@ namespace {
       // Catch when counters cannot be reserved: report, release, and return
       if ((numCoreCounters < config.coreCounterStartEvents.size())
           || (numMemoryCounters < config.memoryCounterStartEvents.size())) {
-        std::vector<uint32_t> src = {config.coreCounterStartEvents.size(), config.memoryCounterStartEvents.size(), col , row + 1}; 
+        std::vector<uint32_t> src = {static_cast<uint32_t>(config.coreCounterStartEvents.size()), static_cast<uint32_t>(config.memoryCounterStartEvents.size()), col , static_cast<uint32_t>(row + 1)}; 
         addMessage(msgcfg, Messages::COUNTERS_NOT_RESERVED, src);
         releaseCurrentTileCounters(config);
         return 1;
@@ -414,7 +414,7 @@ namespace {
 
         auto ret = coreTrace->reserve();
         if (ret != XAIE_OK) {
-          std::vector<uint32_t> src = {col, row + 1, 0, 0};
+          std::vector<uint32_t> src = {col, static_cast<uint32_t>(row + 1), 0, 0};
           addMessage(msgcfg, Messages::CORE_MODULE_TRACE_NOT_RESERVED, src);
           releaseCurrentTileCounters(config);
           return 1;
@@ -442,7 +442,7 @@ namespace {
         coreEvents.clear();
         numTileCoreTraceEvents[numTraceEvents]++;
 
-        std::vector<uint32_t> src = {numTraceEvents, col, row, 0};
+        std::vector<uint32_t> src = {static_cast<uint32_t>(numTraceEvents), col, row, 0};
         addMessage(msgcfg, Messages::CORE_TRACE_EVENTS_RESERVED, src);
 
         if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
@@ -468,7 +468,7 @@ namespace {
 
         auto ret = memoryTrace->reserve();
         if (ret != XAIE_OK) {
-          std::vector<uint32_t> src = {col, row + 1, 0, 0};
+          std::vector<uint32_t> src = {col, static_cast<uint32_t>(row + 1), 0, 0};
           addMessage(msgcfg, Messages::MEMORY_MODULE_TRACE_NOT_RESERVED, src);
           releaseCurrentTileCounters(config);
           return 1;
@@ -557,7 +557,7 @@ namespace {
         memoryEvents.clear();
         numTileMemoryTraceEvents[numTraceEvents]++;
 
-        std::vector<uint32_t> src = {numTraceEvents, col, row, 0};
+        std::vector<uint32_t> src = {static_cast<uint32_t>(numTraceEvents), col, row, 0};
         addMessage(msgcfg, Messages::MEMORY_TRACE_EVENTS_RESERVED, src);
 
         if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
