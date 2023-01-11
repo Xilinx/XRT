@@ -2475,6 +2475,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	size_t size = 0;
 	int ret = 0;
 	u32 i;
+    uint32_t slot_id = DEFAULT_PL_SLOT;
 	struct mem_topology *memtopo = NULL;
 	struct xocl_xmc *xmc =
 		dev_get_drvdata(container_of(kobj, struct device, kobj));
@@ -2485,7 +2486,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
         if (!drm)
                 return 0;
 
-	ret  = XOCL_GET_MEM_TOPOLOGY(xdev, memtopo, DEFAULT_PL_SLOT);
+	ret  = XOCL_GET_MEM_TOPOLOGY(xdev, memtopo, slot_id);
 	if (ret)
 		return ret;
 
@@ -2511,7 +2512,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 
 	memcpy(buffer, temp, nread);
 done:
-	XOCL_PUT_MEM_TOPOLOGY(xdev, DEFAULT_PL_SLOT);
+	XOCL_PUT_MEM_TOPOLOGY(xdev, slot_id);
 	vfree(temp);
 	/* xocl_icap_unlock_bitstream */
 	return nread;

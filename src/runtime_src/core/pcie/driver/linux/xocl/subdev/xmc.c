@@ -2629,11 +2629,12 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 	uint32_t *temp = NULL;
 	xdev_handle_t xdev = xocl_get_xdev(xmc->pdev);
 	struct xocl_drm *drm = XDEV(xdev)->drm;
+    uint32_t slot_id = DEFAULT_PL_SLOT;
 
         if (!drm)
                 return 0;
 
-	ret  = XOCL_GET_MEM_TOPOLOGY(xdev, memtopo, DEFAULT_PL_SLOT);
+	ret  = XOCL_GET_MEM_TOPOLOGY(xdev, memtopo, slot_id);
 	if (ret)
                 return ret;
 
@@ -2659,7 +2660,7 @@ static ssize_t read_temp_by_mem_topology(struct file *filp,
 
 	memcpy(buffer, temp, nread);
 done:
-	XOCL_PUT_MEM_TOPOLOGY(xdev, DEFAULT_PL_SLOT);
+	XOCL_PUT_MEM_TOPOLOGY(xdev, slot_id);
 	vfree(temp);
 	return nread;
 }

@@ -1315,7 +1315,7 @@ int xocl_kds_stop(struct xocl_dev *xdev)
 	return 0;
 }
 
-int xocl_kds_reset(struct xocl_dev *xdev)
+int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
 	xocl_kds_fa_clear(xdev);
 

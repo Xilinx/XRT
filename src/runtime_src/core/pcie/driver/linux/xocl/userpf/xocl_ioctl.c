@@ -352,7 +352,7 @@ static bool ps_xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id, uint3
 	int err = 0;
     int i = 0;
 	xuid_t *downloaded_xclbin =  NULL;
-
+    
     for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
         if (i == DEFAULT_PL_SLOT)
             continue; 
@@ -440,13 +440,14 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 	int ret = 0;
 	struct mem_topology *topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;
+    uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
 
-	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology, DEFAULT_PL_SLOT);
+	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology, legacy_slot_id);
 	if (ret)
 		return ret;
 
 	if (!topology) {
-		XOCL_PUT_MEM_TOPOLOGY(xdev, DEFAULT_PL_SLOT);
+		XOCL_PUT_MEM_TOPOLOGY(xdev, legacy_slot_id);
 		return 0;
 	}
 
@@ -465,7 +466,7 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 		}
 	}
 
-	XOCL_PUT_MEM_TOPOLOGY(xdev, DEFAULT_PL_SLOT);
+	XOCL_PUT_MEM_TOPOLOGY(xdev, legacy_slot_id);
 	return ret;
 }
 

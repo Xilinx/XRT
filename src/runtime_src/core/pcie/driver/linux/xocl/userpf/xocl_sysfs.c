@@ -147,10 +147,11 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	struct drm_xocl_mm_stat stat;
 	const char *bo_txt_fmt = "[%s] %lluKB %dBOs\n";
 	const char *bo_types[XOCL_BO_USAGE_TOTAL];
+    uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
 
 	mutex_lock(&xdev->dev_lock);
 
-	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo, DEFAULT_PL_SLOT);
+	err = XOCL_GET_MEM_TOPOLOGY(xdev, topo, legacy_slot_id);
 	if (err) {
 		mutex_unlock(&xdev->dev_lock);
 		return err;
@@ -222,7 +223,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	}
 
 done:
-	XOCL_PUT_MEM_TOPOLOGY(xdev, DEFAULT_PL_SLOT);
+	XOCL_PUT_MEM_TOPOLOGY(xdev, legacy_slot_id);
 	mutex_unlock(&xdev->dev_lock);
 	return size;
 }

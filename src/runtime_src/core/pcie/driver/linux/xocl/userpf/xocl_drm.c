@@ -1085,9 +1085,10 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	size_t ddr_bank_size = 0;
 	int err = 0;
 	int i = 0;
+    uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
 
 	mutex_lock(&drm_p->mm_lock);
-	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo, DEFAULT_PL_SLOT);
+	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo, legacy_slot_id);
 	if (err) {
 		mutex_unlock(&drm_p->mm_lock);
 		return err;
@@ -1170,7 +1171,7 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 			goto error;
 	}
 
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, DEFAULT_PL_SLOT);
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
 
 	err = xocl_p2p_mem_init(drm_p->xdev);
 	if (err && err != -ENODEV) {
@@ -1185,7 +1186,7 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	return 0;
 
 error:
-	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, DEFAULT_PL_SLOT);
+	XOCL_PUT_MEM_TOPOLOGY(drm_p->xdev, legacy_slot_id);
 	if (err)
 	       xocl_cleanup_memory_manager(drm_p);	
 	

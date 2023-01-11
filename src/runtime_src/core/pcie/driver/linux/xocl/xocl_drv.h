@@ -575,7 +575,6 @@ struct xocl_axlf_obj_cache {
 	/* Xclbin specific fileds */	
 	void                    *ulp_blob;
 
-	// SAIF TODO : Not required struct axlf             *xclbin;
 	/*
 	 * To cache user space pass down kernel metadata when load xclbin.
 	 * Maybe we would have a better place, like fdt. Before that, keep this.

@@ -2146,7 +2146,6 @@ static void icap_save_calib(struct icap *icap, uint32_t slot_id)
 	if (icap->slot_info[slot_id] == NULL)
 		return;
 
-	/* SAIF TODO : Do we need to do for all slots ? */
 	mem_topo = icap->slot_info[slot_id]->mem_topo;
 	if (!mem_topo)
 		return;
