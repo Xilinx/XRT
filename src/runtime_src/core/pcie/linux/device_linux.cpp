@@ -142,7 +142,7 @@ struct sdm_sensor_info
     result_type output;
     std::vector<std::string> stats;
     std::string errmsg;
-    const std::string SD_PRESENT_CHECK = "1";
+    constexpr const char* sd_present_check = "1";
 
     // The voltage_sensors_raw is printing in formatted string of each line
     // Format: "%s,%u,%u,%u,%u"
@@ -167,7 +167,7 @@ struct sdm_sensor_info
       data.max       = std::stoi(std::string(*tok_it++));
       data.status    = std::string(*tok_it++);
       data.unitm     = std::stoi(std::string(*tok_it++));
-      if (data.status == SD_PRESENT_CHECK)
+      if (data.status == sd_present_check)
 	 output.push_back(data);
     }
 
