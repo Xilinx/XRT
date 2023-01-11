@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,7 +41,6 @@ namespace xdp {
       typedef std::vector<EventType> EventVector;
       typedef std::vector<uint32_t>  ValueVector;
 
-      bool setMetrics(uint64_t deviceId, void* handle);
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
       bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
@@ -52,9 +51,6 @@ namespace xdp {
       bool checkAieDeviceAndRuntimeMetrics(uint64_t deviceId, void* handle);
       void setTraceStartControl(void* handle);
       uint64_t checkTraceBufSize(uint64_t size);                                   
-      std::string getMetricSet(void* handle,
-                               const std::string& metricsStr,
-                               bool ignoreOldConfig);
       inline uint32_t bcIdToEvent(int bcId);
 
     private:

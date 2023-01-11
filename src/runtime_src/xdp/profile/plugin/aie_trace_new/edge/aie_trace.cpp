@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -124,7 +124,7 @@ namespace xdp {
     // NOTE 2: These counters are required HW workarounds with thresholds chosen 
     //         to produce events before hitting the bug. For example, sync packets 
     //         occur after 1024 cycles and with no events, is incorrectly repeated.
-    auto counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
+    auto counterScheme = metadata->getCounterScheme();
 
 
     if (counterScheme == "es1") {
@@ -188,11 +188,9 @@ namespace xdp {
     
     // Set metrics for counters and trace events 
     if (!setMetricsSettings(metadata->getDeviceID(), metadata->getHandle())) {
-      if (!setMetrics(metadata->getDeviceID(), metadata->getHandle())) {
         std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");
         xrt_core::message::send(severity_level::warning, "XRT", msg);
         return;
-      }
     }
   }
 
@@ -212,6 +210,7 @@ namespace xdp {
         ++required;
     } else if (metadata->getUseGraphIterator())
       ++required;
+      
     if (available < required) {
       msg << "Available core module performance counters for aie trace : " << available << std::endl
           << "Required core module performance counters for aie trace : "  << required;
@@ -323,38 +322,9 @@ namespace xdp {
   bool
   AieTrace_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
-    std::string metricsConfig = xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics();
-    std::string graphmetricsConfig = xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics();
-
-    if (metricsConfig.empty() && graphmetricsConfig.empty()) {
-#if 0
-// No need to add the warning message here, as all the tests are using configs under Debug
-      std::string msg("AIE_trace_settings.aie_tile_metrics and mem_tile_metrics were not specified in xrt.ini. AIE event trace will not be available.");
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
-#endif
-#if 0
-      // Need to check whether Debug configs are present
-      if (!metadata->getRuntimeMetrics())
-        return true;
-#endif
+    if (!metadata->getIsValidMetrics()) {
       return false;
     }
-
-    // Process AIE_trace_settings metrics
-    // Each of the metrics can have ; separated multiple values. Process and save all
-    std::vector<std::string> metricsSettings;
-    boost::replace_all(metricsConfig, " ", "");
-    if (!metricsConfig.empty())
-      boost::split(metricsSettings, metricsConfig, boost::is_any_of(";"));
-
-    std::vector<std::string> graphmetricsSettings;
-    boost::replace_all(graphmetricsConfig, " ", "");
-    if (!graphmetricsConfig.empty())
-      boost::split(graphmetricsSettings, graphmetricsConfig,
-      boost::is_any_of(";"));
-
-    metadata->getConfigMetricsForTiles(metricsSettings, graphmetricsSettings);
-    metadata->setTraceStartControl();
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -389,7 +359,6 @@ namespace xdp {
         printTileStats(aieDevice, tile);
         return false;
       }
-
 
       //
       // 1. Reserve and start core module counters (as needed)
@@ -479,7 +448,7 @@ namespace xdp {
           cfg.stop_event = phyEvent;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
-          cfg.event_value = mMemoryCounterEndEvents[i];
+          cfg.event_value = mMemoryCounterEventValues[i];
         }
       }
 
@@ -894,407 +863,5 @@ namespace xdp {
 
     return true;
   }
-
-
-  bool AieTrace_EdgeImpl::setMetrics(uint64_t deviceId, void* handle) {
-  
-    std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
-    if (metricsStr.empty()) {
-      xrt_core::message::send(severity_level::warning, "XRT",
-        "No runtime trace metrics was specified in xrt.ini. So, AIE event trace will not be available. Please use \"[graph|tile]_based_aie_tile_metrics\" under \"AIE_trace_settings\" section.");
-      if (!metadata->getRuntimeMetrics())
-        return true;
-      return false;
-    }
-
-    auto metricSet = metadata->getMetricSet(metricsStr);
-    if (metricSet.empty()) {
-      if (!metadata->getRuntimeMetrics())
-        return true;
-      return false;
-    }
-
-    auto tiles = metadata->getTilesForTracing();
-    metadata->setTraceStartControl();
-
-    // Keep track of number of events reserved per tile
-    int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
-    int numTileMemoryTraceEvents[NUM_MEMORY_TRACE_EVENTS+1] = {0};
-
-    // Iterate over all used/specified tiles
-    for (auto& tile : tiles) {
-
-      auto  col    = tile.col;
-      auto  row    = tile.row;
-
-      // NOTE: resource manager requires absolute row number
-      auto& core   = aieDevice->tile(col, row + 1).core();
-      auto& memory = aieDevice->tile(col, row + 1).mem();
-      auto loc = XAie_TileLoc(col, row + 1);
-
-      // AIE config object for this tile
-      auto cfgTile  = std::make_unique<aie_cfg_tile>(col, row + 1);
-      cfgTile->trace_metric_set = metricSet;
-
-      // Get vector of pre-defined metrics for this set
-      // NOTE: these are local copies as we are adding tile/counter-specific events
-      EventVector coreEvents = mCoreEventSets[metricSet];
-      EventVector memoryCrossEvents = mMemoryEventSets[metricSet];
-      EventVector memoryEvents;
-
-      // Check Resource Availability
-      // For now only counters are checked
-      if (!tileHasFreeRsc(aieDevice, loc, metricSet)) {
-        xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
-        printTileStats(aieDevice, tile);
-        return false;
-      }
-
-      //
-      // 1. Reserve and start core module counters (as needed)
-      //
-      int numCoreCounters = 0;
-      {
-        XAie_ModuleType mod = XAIE_CORE_MOD;
-
-        for (int i=0; i < mCoreCounterStartEvents.size(); ++i) {
-          auto perfCounter = core.perfCounter();
-          if (perfCounter->initialize(mod, mCoreCounterStartEvents.at(i),
-                                      mod, mCoreCounterEndEvents.at(i)) != XAIE_OK)
-            break;
-          if (perfCounter->reserve() != XAIE_OK) 
-            break;
-
-          // NOTE: store events for later use in trace
-          XAie_Events counterEvent;
-          perfCounter->getCounterEvent(mod, counterEvent);
-          int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
-          perfCounter->changeThreshold(mCoreCounterEventValues.at(i));
-
-          // Set reset event based on counter number
-          perfCounter->changeRstEvent(mod, counterEvent);
-          coreEvents.push_back(counterEvent);
-
-          // If no memory counters are used, then we need to broadcast the core counter
-          if (mMemoryCounterStartEvents.empty())
-            memoryCrossEvents.push_back(counterEvent);
-
-          if (perfCounter->start() != XAIE_OK) 
-            break;
-
-          mCoreCounterTiles.push_back(tile);
-          mCoreCounters.push_back(perfCounter);
-          numCoreCounters++;
-
-          // Update config file
-          uint8_t phyEvent = 0;
-          auto& cfg = cfgTile->core_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreCounterStartEvents[i], &phyEvent);
-          cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreCounterEndEvents[i], &phyEvent);
-          cfg.stop_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
-          cfg.reset_event = phyEvent;
-          cfg.event_value = mCoreCounterEventValues[i];
-        }
-      }
-
-      //
-      // 2. Reserve and start memory module counters (as needed)
-      //
-      int numMemoryCounters = 0;
-      {
-        XAie_ModuleType mod = XAIE_MEM_MOD;
-
-        for (int i=0; i < mMemoryCounterStartEvents.size(); ++i) {
-          auto perfCounter = memory.perfCounter();
-          if (perfCounter->initialize(mod, mMemoryCounterStartEvents.at(i),
-                                      mod, mMemoryCounterEndEvents.at(i)) != XAIE_OK) 
-            break;
-          if (perfCounter->reserve() != XAIE_OK) 
-            break;
-
-          // Set reset event based on counter number
-          XAie_Events counterEvent;
-          perfCounter->getCounterEvent(mod, counterEvent);
-          int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
-          perfCounter->changeThreshold(mMemoryCounterEventValues.at(i));
-
-          perfCounter->changeRstEvent(mod, counterEvent);
-          memoryEvents.push_back(counterEvent);
-
-          if (perfCounter->start() != XAIE_OK) 
-            break;
-
-          mMemoryCounters.push_back(perfCounter);
-          numMemoryCounters++;
-
-          // Update config file
-          uint8_t phyEvent = 0;
-          auto& cfg = cfgTile->memory_trace_config.pc[idx];
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mMemoryCounterStartEvents[i], &phyEvent);
-          cfg.start_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mMemoryCounterEndEvents[i], &phyEvent);
-          cfg.stop_event = phyEvent;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
-          cfg.reset_event = phyEvent;
-          cfg.event_value = mMemoryCounterEventValues[i];
-        }
-      }
-
-      // Catch when counters cannot be reserved: report, release, and return
-      if ((numCoreCounters < mCoreCounterStartEvents.size())
-          || (numMemoryCounters < mMemoryCounterStartEvents.size())) {
-        std::stringstream msg;
-        msg << "Unable to reserve " << mCoreCounterStartEvents.size() << " core counters"
-            << " and " << mMemoryCounterStartEvents.size() << " memory counters"
-            << " for AIE tile (" << col << "," << row + 1 << ") required for trace.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-
-        releaseCurrentTileCounters(numCoreCounters, numMemoryCounters);
-        // Print resources availability for this tile
-        printTileStats(aieDevice, tile);
-        return false;
-      }
-
-      //
-      // 3. Configure Core Tracing Events
-      //
-
-      {
-        XAie_ModuleType mod = XAIE_CORE_MOD;
-        uint8_t phyEvent = 0;
-        auto coreTrace = core.traceControl();
-
-        // Delay cycles and user control are not compatible with each other
-        if (metadata->getUseUserControl()) {
-          mCoreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
-          mCoreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
-        } else if (metadata->getUseGraphIterator() && !configureStartIteration(core)) {
-          break;
-        } else if (metadata->getUseDelay() && !configureStartDelay(core)) {
-          break;
-        }
-
-        // Set overall start/end for trace capture
-        // Wendy said this should be done first
-        if (coreTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK) 
-          break;
-
-        auto ret = coreTrace->reserve();
-        if (ret != XAIE_OK) {
-          std::stringstream msg;
-          msg << "Unable to reserve core module trace control for AIE tile (" 
-              << col << "," << row + 1 << ").";
-          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-
-          releaseCurrentTileCounters(numCoreCounters, numMemoryCounters);
-          // Print resources availability for this tile
-          printTileStats(aieDevice, tile);
-          return false;
-        }
-
-        int numTraceEvents = 0;
-        for (int i=0; i < coreEvents.size(); i++) {
-          uint8_t slot;
-          if (coreTrace->reserveTraceSlot(slot) != XAIE_OK) 
-            break;
-          if (coreTrace->setTraceEvent(slot, coreEvents[i]) != XAIE_OK) 
-            break;
-          numTraceEvents++;
-
-          // Update config file
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreEvents[i], &phyEvent);
-          cfgTile->core_trace_config.traced_events[slot] = phyEvent;
-        }
-        // Update config file
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceStartEvent, &phyEvent);
-        cfgTile->core_trace_config.start_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceEndEvent, &phyEvent);
-        cfgTile->core_trace_config.stop_event = phyEvent;
-        
-        coreEvents.clear();
-        numTileCoreTraceEvents[numTraceEvents]++;
-
-        std::stringstream msg;
-        msg << "Reserved " << numTraceEvents << " core trace events for AIE tile (" << col << "," << row << ").";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-
-        if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
-          break;
-        XAie_Packet pkt = {0, 0};
-        if (coreTrace->setPkt(pkt) != XAIE_OK) 
-          break;
-        if (coreTrace->start() != XAIE_OK) 
-          break;
-      }
-
-      //
-      // 4. Configure Memory Tracing Events
-      //
-      // TODO: Configure group or combo events where applicable
-      uint32_t coreToMemBcMask = 0;
-      {
-        auto memoryTrace = memory.traceControl();
-        // Set overall start/end for trace capture
-        // Wendy said this should be done first
-        if (memoryTrace->setCntrEvent(mCoreTraceStartEvent, mCoreTraceEndEvent) != XAIE_OK) 
-          break;
-
-        auto ret = memoryTrace->reserve();
-        if (ret != XAIE_OK) {
-          std::stringstream msg;
-          msg << "Unable to reserve memory module trace control for AIE tile (" 
-              << col << "," << row + 1 << ").";
-          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-
-          releaseCurrentTileCounters(numCoreCounters, numMemoryCounters);
-          // Print resources availability for this tile
-          printTileStats(aieDevice, tile);
-          return false;
-        }
-
-        int numTraceEvents = 0;
-        
-        // Configure cross module events
-        for (int i=0; i < memoryCrossEvents.size(); i++) {
-          uint32_t bcBit = 0x1;
-          auto TraceE = memory.traceEvent();
-          TraceE->setEvent(XAIE_CORE_MOD, memoryCrossEvents[i]);
-          if (TraceE->reserve() != XAIE_OK) 
-            break;
-
-          int bcId = TraceE->getBc();
-          coreToMemBcMask |= (bcBit << bcId);
-
-          if (TraceE->start() != XAIE_OK) 
-            break;
-          numTraceEvents++;
-
-          // Update config file
-          uint32_t S = 0;
-          XAie_LocType L;
-          XAie_ModuleType M;
-          TraceE->getRscId(L, M, S);
-          cfgTile->memory_trace_config.traced_events[S] = bcIdToEvent(bcId);
-          auto mod = XAIE_CORE_MOD;
-          uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCrossEvents[i], &phyEvent);
-          cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
-        }
-
-        // Configure same module events
-        for (int i=0; i < memoryEvents.size(); i++) {
-          auto TraceE = memory.traceEvent();
-          TraceE->setEvent(XAIE_MEM_MOD, memoryEvents[i]);
-          if (TraceE->reserve() != XAIE_OK) 
-            break;
-          if (TraceE->start() != XAIE_OK) 
-            break;
-          numTraceEvents++;
-
-          // Update config file
-          // Get Trace slot
-          uint32_t S = 0;
-          XAie_LocType L;
-          XAie_ModuleType M;
-          TraceE->getRscId(L, M, S);
-          // Get Physical event
-          auto mod = XAIE_MEM_MOD;
-          uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryEvents[i], &phyEvent);
-          cfgTile->memory_trace_config.traced_events[S] = phyEvent;
-        }
-
-        // Update config file
-        {
-          // Add Memory module trace control events
-          uint32_t bcBit = 0x1;
-          auto bcId = memoryTrace->getStartBc();
-          coreToMemBcMask |= (bcBit << bcId);
-          auto mod = XAIE_CORE_MOD;
-          uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceStartEvent, &phyEvent);
-          cfgTile->memory_trace_config.start_event = bcIdToEvent(bcId);
-          cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
-
-          bcBit = 0x1;
-          bcId = memoryTrace->getStopBc();
-          coreToMemBcMask |= (bcBit << bcId);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, mCoreTraceEndEvent, &phyEvent);
-          cfgTile->memory_trace_config.stop_event = bcIdToEvent(bcId);
-          cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
-        }
-
-        // Odd absolute rows change east mask end even row change west mask
-        if ((row + 1) % 2) {
-          cfgTile->core_trace_config.broadcast_mask_east = coreToMemBcMask;
-        } else {
-          cfgTile->core_trace_config.broadcast_mask_west = coreToMemBcMask;
-        }
-        // Done update config file
-
-        memoryEvents.clear();
-        numTileMemoryTraceEvents[numTraceEvents]++;
-
-        std::stringstream msg;
-        msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" << col << "," << row << ").";
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-
-        if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
-          break;
-        XAie_Packet pkt = {0, 1};
-        if (memoryTrace->setPkt(pkt) != XAIE_OK) 
-          break;
-        if (memoryTrace->start() != XAIE_OK) 
-          break;
-
-        // Update memory packet type in config file
-        // NOTE: Use time packets for memory module (type 1)
-        cfgTile->memory_trace_config.packet_type = 1;
-      }
-
-      std::stringstream msg;
-      msg << "Adding tile (" << col << "," << row << ") to static database";
-      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-
-      // Add config info to static database
-      // NOTE: Do not access cfgTile after this
-      (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile);
-    } // For tiles
-
-    // Report trace events reserved per tile
-    {
-      std::stringstream msg;
-      msg << "AIE trace events reserved in core modules - ";
-      for (int n=0; n <= NUM_CORE_TRACE_EVENTS; ++n) {
-        if (numTileCoreTraceEvents[n] == 0)
-          continue;
-        msg << n << ": " << numTileCoreTraceEvents[n] << " tiles";
-        if (n != NUM_CORE_TRACE_EVENTS)
-          msg << ", ";
-
-        (db->getStaticInfo()).addAIECoreEventResources(deviceId, n, numTileCoreTraceEvents[n]);
-      }
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
-    }
-    {
-      std::stringstream msg;
-      msg << "AIE trace events reserved in memory modules - ";
-      for (int n=0; n <= NUM_MEMORY_TRACE_EVENTS; ++n) {
-        if (numTileMemoryTraceEvents[n] == 0)
-          continue;
-        msg << n << ": " << numTileMemoryTraceEvents[n] << " tiles";
-        if (n != NUM_MEMORY_TRACE_EVENTS)
-          msg << ", ";
-
-        (db->getStaticInfo()).addAIEMemoryEventResources(deviceId, n, numTileMemoryTraceEvents[n]);
-      }
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
-    }
-
-    return true;
-  } // end setMetrics
-
-   
+     
 }

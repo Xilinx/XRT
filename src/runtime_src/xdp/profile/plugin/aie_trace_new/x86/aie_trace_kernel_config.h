@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,6 +17,7 @@
 #ifndef AIE_TRACE_CONFIG_DOT_H
 #define AIE_TRACE_CONFIG_DOT_H
 
+#include <stdint.h>
 #include "xdp/profile/device/tracedefs.h"
 
 namespace xdp {
@@ -64,6 +65,13 @@ namespace built_in {
     MessagePacket packets[MAX_NUM_MESSAGES];
   };
 
+  struct TraceTileType
+  {
+    uint16_t row;
+    uint16_t col;
+    uint8_t metricSet;
+  };
+
   // This struct is used for input for the PS kernel.  It contains all of
   // the information gathered from the user controls in the xrt.ini file
   // and the information we can infer from the debug ip layout file.
@@ -71,19 +79,21 @@ namespace built_in {
   //
   // Since this is transferred from host to device, it should have
   // a C-Style interface.
-  struct InputConfiguration
+  struct TraceInputConfiguration
   {
     static constexpr auto NUM_CORE_TRACE_EVENTS = 8;
     static constexpr auto NUM_MEMORY_TRACE_EVENTS = 8;
 
     uint32_t delayCycles;
+    uint32_t iterationCount;
     uint16_t numTiles;
     uint8_t counterScheme;
-    uint8_t metricSet; // functions, partial_stalls, all_stalls, etc. (enum above)
    
+    bool useGraphIterator;
     bool useDelay;
-    bool userControl;
-    uint16_t tiles[1]; //Flexible array member
+    bool useUserControl;
+    bool useOneDelayCounter;
+    TraceTileType tiles[1]; //Flexible array member
   };
 
   struct PCData
@@ -114,6 +124,7 @@ namespace built_in {
   struct TileData
   {
     public:
+      uint8_t trace_metric_set;
       uint32_t column;
       uint32_t row;
       TileTraceData  core_trace_config;
@@ -122,7 +133,7 @@ namespace built_in {
       TileData(uint32_t c, uint32_t r) : column(c), row(r) {}
   };
 
-  struct OutputConfiguration
+  struct TraceOutputConfiguration
   {
     public:
       uint16_t numTiles;
@@ -137,7 +148,7 @@ namespace built_in {
     uint32_t shimColumn;      // From TraceGMIo
     uint32_t channelNumber;
     uint32_t burstLength;
-	uint64_t physAddr;
+	  uint64_t physAddr;
   };
 
    
