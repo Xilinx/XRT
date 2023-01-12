@@ -550,9 +550,9 @@ namespace xdp {
      * tile_based_aie_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|functions|functions_partial_stalls|functions_all_stalls>
      *  
      * MEM Tiles (AIE2 and beyond)
-     * Single or all columns
+     * Single or all tiles
      * tile_based_mem_tile_metrics = <{<column>,<row>}|all>:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
-     * Range of columns
+     * Range of tiles
      * tile_based_mem_tile_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|input_channels|input_channels_stalls|output_channels|output_channels_stalls>[:<channel 1>][:<channel 2>]
      */
 
@@ -591,7 +591,6 @@ namespace xdp {
       if ((metrics[i].size() != 3) && (metrics[i].size() != 5))
         continue;
       
-      std::vector<std::string> minTile, maxTile;
       uint32_t minCol = 0, minRow = 0;
       uint32_t maxCol = 0, maxRow = 0;
 
@@ -600,6 +599,8 @@ namespace xdp {
           boost::replace_all(metrics[i][j], "{", "");
           boost::replace_all(metrics[i][j], "}", "");
         }
+
+        std::vector<std::string> minTile;
         boost::split(minTile, metrics[i][0], boost::is_any_of(","));
         minCol = std::stoi(minTile[0]);
         minRow = std::stoi(minTile[1]);
@@ -644,22 +645,16 @@ namespace xdp {
           tile.col = col;
           tile.row = row;
 
-          auto itr = configMetrics.find(tile);
-          if (itr == configMetrics.end()) {
-            // If current tile not encountered yet, check whether valid and then insert
-            auto itr1 = allValidTiles.find(tile);
-            if (itr1 != allValidTiles.end()) {
-              // Current tile is used in current design
-              configMetrics[tile] = metrics[i][2];
-            } else {
-              std::stringstream msg;
-              msg << "Specified Tile {" << std::to_string(tile.col) << ","
-                  << std::to_string(tile.row) << "} is not active. Hence skipped.";
-              xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-            }
-          } else {
-            itr->second = metrics[i][2];
+          // Make sure tile is used
+          if (allValidTiles.find(tile) == allValidTiles.end()) {
+            std::stringstream msg;
+            msg << "Specified Tile {" << std::to_string(tile.col) << ","
+                << std::to_string(tile.row) << "} is not active. Hence skipped.";
+            xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+            continue;
           }
+          
+          configMetrics[tile] = metrics[i][2];
 
           // Grab channel numbers (if specified; MEM tiles only)
           if (metrics[i].size() == 5) {
@@ -677,13 +672,14 @@ namespace xdp {
           || (metrics[i].size() == 5))
         continue;
 
-      std::vector<std::string> tilePos;
-      uint32_t col = 0, row = 0;
+      uint16_t col = 0;
+      uint16_t row = 0;
 
       try {
         boost::replace_all(metrics[i][0], "{", "");
         boost::replace_all(metrics[i][0], "}", "");
 
+        std::vector<std::string> tilePos;
         boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
         col = std::stoi(tilePos[0]);
         row = std::stoi(tilePos[1]);
@@ -692,29 +688,24 @@ namespace xdp {
         msg << "Tile specification in tile_based_" << tileName
             << "_tile_metrics is not valid format and hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
       }
 
       tile_type tile;
       tile.col = col;
       tile.row = row;
 
-      auto itr = configMetrics.find(tile);
-      if (itr == configMetrics.end()) {
-        // If current tile not encountered yet, check whether valid and then insert
-        auto itr1 = allValidTiles.find(tile);
-        if (itr1 != allValidTiles.end()) {
-          // Current tile is used in current design
-          configMetrics[tile] = metrics[i][1];
-        } else {
-          std::stringstream msg;
-          msg << "Specified Tile {" << std::to_string(tile.col) << ","
-              << std::to_string(tile.row) << "} is not active. Hence skipped.";
-          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        }
-      } else {
-        itr->second = metrics[i][1];
+      // Make sure tile is used
+      if (allValidTiles.find(tile) == allValidTiles.end()) {
+        std::stringstream msg;
+        msg << "Specified Tile {" << std::to_string(tile.col) << ","
+            << std::to_string(tile.row) << "} is not active. Hence skipped.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
       }
 
+      configMetrics[tile] = metrics[i][2];
+      
       // Grab channel numbers (if specified; MEM tiles only)
       if (metrics[i].size() == 4) {
         try {

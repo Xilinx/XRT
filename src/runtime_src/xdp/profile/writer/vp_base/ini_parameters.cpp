@@ -67,19 +67,7 @@ namespace xdp {
     addParameter("aie_trace", xrt_core::config::get_aie_trace(),
                  "Generation of AI Engine trace");
     addParameter("aie_profile", xrt_core::config::get_aie_profile(),
-                 "Generation of AI Engine profiling");
-    addParameter("aie_profile_interval_us",
-                 xrt_core::config::get_aie_profile_interval_us(),
-                 "Interval for reading AI Engine profile counters (in us)");
-    addParameter("aie_profile_core_metrics",
-                 xrt_core::config::get_aie_profile_core_metrics(),
-                 "Metric set for AI Engine core modules");
-    addParameter("aie_profile_memory_metrics",
-                 xrt_core::config::get_aie_profile_memory_metrics(),
-                 "Metric set for AI Engine memory modules");
-    addParameter("aie_profile_interface_metrics",
-                 xrt_core::config::get_aie_profile_interface_metrics(),
-                 "Metric set for AI Engine interface tiles");             
+                 "Generation of AI Engine profiling");            
     addParameter("aie_status", xrt_core::config::get_aie_status(),
                  "Generation of AI Engine debug/status");
     addParameter("aie_status_interval_us",

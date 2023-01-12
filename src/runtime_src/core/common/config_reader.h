@@ -178,14 +178,6 @@ get_aie_profile()
   return value;
 }
 
-inline unsigned int
-get_aie_profile_interval_us()
-{
-  // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_us", 1000) ;
-  return value ;
-}
-
 inline bool
 get_aie_status()
 {
@@ -303,27 +295,6 @@ inline bool
 get_aie_trace()
 {
   static bool value = detail::get_bool_value("Debug.aie_trace", false);
-  return value;
-}
-
-inline std::string
-get_aie_profile_core_metrics()
-{
-  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "");
-  return value;
-}
-
-inline std::string
-get_aie_profile_memory_metrics()
-{
-  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "");
-  return value;
-}
-
-inline std::string
-get_aie_profile_interface_metrics()
-{
-  static std::string value = detail::get_string_value("Debug.aie_profile_interface_metrics", "");
   return value;
 }
 

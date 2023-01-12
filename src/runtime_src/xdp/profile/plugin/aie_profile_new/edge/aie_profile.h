@@ -44,6 +44,7 @@ namespace xdp {
       bool checkAieDevice(uint64_t deviceId, void* handle);
 
       bool setMetricsSettings(uint64_t deviceId, void* handle);
+      module_type getTileType(uint16_t absRow);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                             const tile_type& tile, 
                             const XAie_ModuleType mod);
@@ -58,6 +59,13 @@ namespace xdp {
                                   const XAie_LocType loc,
                                   const XAie_Events event,
                                   const std::string metricSet);
+      void configEventSelections(XAie_DevInst* aieDevInst,
+                                 const XAie_LocType loc,
+                                 const XAie_ModuleType mod,
+                                 const module_type type,
+                                 const std::string metricSet,
+                                 const uint8_t channel0,
+                                 const uint8_t channel1);
       uint32_t getCounterPayload(XAie_DevInst* aieDevInst,
                                 const tile_type& tile,
                                 uint16_t column, 
@@ -67,20 +75,16 @@ namespace xdp {
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    
 
-      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
-
-      std::set<std::string> mCoreMetricSets;
+      std::map<module_type, uint32_t> mCounterBases;
       std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
-      std::map<std::string, std::vector<int>> broadcastCoreConfig;
-
-      std::set<std::string> mMemoryMetricSets;
       std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
       std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
-
-      std::set<std::string> mShimMetricSets;
       std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
-      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;    
+      std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemTileStartEvents;
+      std::map<std::string, std::vector<XAie_Events>> mMemTileEndEvents; 
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> mPerfCounters;
   };
 
 }   
