@@ -142,6 +142,7 @@ struct sdm_sensor_info
     result_type output;
     std::vector<std::string> stats;
     std::string errmsg;
+    constexpr const char* sd_present_check = "1";
 
     // The voltage_sensors_raw is printing in formatted string of each line
     // Format: "%s,%u,%u,%u,%u"
@@ -155,7 +156,7 @@ struct sdm_sensor_info
       tokenizer tokens(line, sep);
 
       if (std::distance(tokens.begin(), tokens.end()) != 6)
-        throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
+        throw xrt_core::query::sysfs_error("Sensor sysfs node corrupted");
 
       data_type data { };
       tokenizer::iterator tok_it = tokens.begin();
@@ -164,9 +165,10 @@ struct sdm_sensor_info
       data.input     = std::stoi(std::string(*tok_it++));
       data.average   = std::stoi(std::string(*tok_it++));
       data.max       = std::stoi(std::string(*tok_it++));
-      data.status    = std::stoi(std::string(*tok_it++));
+      data.status    = std::string(*tok_it++);
       data.unitm     = std::stoi(std::string(*tok_it++));
-      output.push_back(data);
+      if (data.status == sd_present_check)
+	 output.push_back(data);
     }
 
     return output;
