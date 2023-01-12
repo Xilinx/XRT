@@ -85,7 +85,6 @@ namespace xdp {
         && memTileMetricsSettings.empty() && memGraphMetricsSettings.empty()) {
         isValidMetrics = false;
     } else {
-
       getConfigMetricsForTiles(aieTileMetricsSettings, aieGraphMetricsSettings, module_type::core);
       getConfigMetricsForTiles(memTileMetricsSettings, memGraphMetricsSettings, module_type::mem_tile);
       setTraceStartControl();
@@ -436,6 +435,7 @@ namespace xdp {
       return;
     }
       
+    uint16_t rowOffset = (type == module_type::mem_tile) ? 1 : getAIETileRowOffset();
     auto tileName = (type == module_type::mem_tile) ? "mem" : "aie";
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
@@ -554,8 +554,9 @@ namespace xdp {
       if (metrics[i][0].compare("all") != 0)
         continue;
 
-      for (auto &e : allValidTiles) {
-        configMetrics[e] = metrics[i][1];
+      auto tiles = get_tiles(device.get(), metrics[i][0], type, metrics[i][1]);
+      for (auto &e : tiles) {
+        configMetrics[e] = metrics[i][2];
       }
 
       // Grab channel numbers (if specified; MEM tiles only)
@@ -591,12 +592,12 @@ namespace xdp {
         std::vector<std::string> minTile;
         boost::split(minTile, metrics[i][0], boost::is_any_of(","));
         minCol = std::stoi(minTile[0]);
-        minRow = std::stoi(minTile[1]);
+        minRow = std::stoi(minTile[1]) + rowOffset;
 
         std::vector<std::string> maxTile;
         boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
         maxCol = std::stoi(maxTile[0]);
-        maxRow = std::stoi(maxTile[1]);
+        maxRow = std::stoi(maxTile[1]) + rowOffset;
       } catch (...) {
         std::stringstream msg;
         msg << "Tile range specification in tile_based_" << tileName
@@ -670,7 +671,7 @@ namespace xdp {
         std::vector<std::string> tilePos;
         boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
         col = std::stoi(tilePos[0]);
-        row = std::stoi(tilePos[1]);
+        row = std::stoi(tilePos[1]) + rowOffset;
       } catch (...) {
         std::stringstream msg;
         msg << "Tile specification in tile_based_" << tileName

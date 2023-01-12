@@ -368,7 +368,6 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    // Not supported yet in driver
     //XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
     //XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
     //XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);

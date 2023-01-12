@@ -59,7 +59,7 @@ class AieProfileMetadata{
       { module_type::shim,     {"input_bandwidths", "output_bandwidths", "packets"} },
       { module_type::mem_tile, {"input_channels", "input_channels_details",
                                 "output_channels", "output_channels_details",
-                                "memory_stats", "mem_trace"} },
+                                "memory_stats", "mem_trace"} }
     };
 
     std::vector<std::map<tile_type, std::string>> configMetrics;
@@ -73,6 +73,8 @@ class AieProfileMetadata{
     void* getHandle() {return handle;}
     uint32_t getPollingIntervalVal(){return pollingInterval;}
 
+    int getHardwareGen();
+    uint16_t getAIETileRowOffset();
     void getConfigMetricsForTiles(int moduleIdx,
                                   const std::vector<std::string>& metricsSettings,
                                   const std::vector<std::string>& graphMetricsSettings,
@@ -95,13 +97,17 @@ class AieProfileMetadata{
                                      module_type type, 
                                      const std::string& kernel_name = "");
     std::vector<tile_type> get_aie_tiles(const xrt_core::device* device, 
-                                         const std::string& graph_name);
+                                         const std::string& graph_name,
+                                         module_type type);
     std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
-                                         const std::string& graph_name);
-                                         std::vector<tile_type> 
-    std::vector<tile_type> get_interface_tiles(const xrt_core::device* device, const std::string& graph_name,
-                                               int16_t channelId, bool useColumn, uint32_t minCol, uint32_t maxCol);
-    
+                                         const std::string& graph_name); 
+    std::vector<tile_type> get_interface_tiles(const xrt_core::device* device, 
+                                               const std::string &metricStr,
+                                               int16_t channelId = -1,
+                                               bool useColumn = false, 
+                                               uint32_t minCol = 0, 
+                                               uint32_t maxCol = 0);
+
     std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
     std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}

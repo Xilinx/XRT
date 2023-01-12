@@ -280,7 +280,6 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    // Not supported yet in driver
     //XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
     //XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
     //XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
@@ -374,7 +373,7 @@ namespace xdp {
   }
 
   module_type 
-  AieTrace_EdgeImpl::getTileType(uint16_t absRow)
+  AieProfile_EdgeImpl::getTileType(uint16_t absRow)
   {
     if (absRow == 0)
       return module_type::shim;
@@ -393,6 +392,8 @@ namespace xdp {
         {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD, XAIE_MEM_MOD};
 
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
+    auto configChannel0 = metadata->getConfigChannel0();
+    auto configChannel1 = metadata->getConfigChannel1();
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
       int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
@@ -401,8 +402,9 @@ namespace xdp {
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
         auto& metricSet  = tileMetric.second;
-        auto col         = tileMetric.first.col;
-        auto row         = tileMetric.first.row;
+        auto tile        = tileMetric.first;
+        auto col         = tile.col;
+        auto row         = tile.row;
         auto type        = getTileType(row);
         auto loc         = XAie_TileLoc(col, row);
         auto& xaieTile   = aieDevice->tile(col, row);

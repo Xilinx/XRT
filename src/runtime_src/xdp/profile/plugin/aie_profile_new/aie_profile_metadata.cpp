@@ -71,7 +71,8 @@ namespace xdp {
         boost::replace_all(metricsConfig[module], " ", "");
         boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
         findTileMetric = true;        
-      } else {
+      } 
+      else {
           std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
           std::string metricMsg = "No metric set specified for " + modName + " module. "
                                   + "Please specify the AIE_profile_settings." + modName 
@@ -97,6 +98,11 @@ namespace xdp {
                                  moduleTypes[module], handle);
       }
     }
+  }
+
+  bool tileCompare(tile_type tile1, tile_type tile2) 
+  {
+    return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
   }
 
   int AieProfileMetadata::getHardwareGen()
@@ -137,14 +143,15 @@ namespace xdp {
     return rowOffset;
   }
 
-  std::vector<tile_type> 
-  AieProfileMetadata::get_interface_tiles(const xrt_core::device* device, const std::string& graph_name,
-                                          int16_t channelId, bool useColumn, uint32_t minCol, uint32_t maxCol)
-.  {
+  std::vector<tile_type>
+  AieProfileMetadata::get_interface_tiles(const xrt_core::device* device, const std::string &metricStr,
+                                          int16_t channelId, bool useColumn, uint32_t minCol, 
+                                          uint32_t maxCol)
+  {
     std::vector<tile_type> tiles;
 
     int plioCount = 0;
-    auto plios = get_plios(device.get());
+    auto plios = get_plios(device);
     for (auto& plio : plios) {
       auto isMaster = plio.second.slaveOrMaster;
       auto streamId = plio.second.streamId;
@@ -157,8 +164,8 @@ namespace xdp {
       // Make sure it's desired polarity
       // NOTE: input = slave (data flowing from PLIO)
       //       output = master (data flowing to PLIO)
-      if ((isMaster && (metricsStr == "input_bandwidths"))
-          || (!isMaster && (metricsStr == "output_bandwidths")))
+      if ((isMaster && (metricStr == "input_bandwidths"))
+          || (!isMaster && (metricStr == "output_bandwidths")))
         continue;
 
       plioCount++;
@@ -229,9 +236,9 @@ namespace xdp {
                                     const std::string& graph_name, module_type type)
   {
     std::vector<tile_type> tiles;
-    tiles = get_event_tiles(device.get(), graph_name, module_type::core);
+    tiles = get_event_tiles(device, graph_name, module_type::core);
     if (type == module_type::dma) {
-      auto dmaTiles = get_event_tiles(device.get(), graph_name, module_type::dma);
+      auto dmaTiles = get_event_tiles(device, graph_name, module_type::dma);
       std::move(dmaTiles.begin(), dmaTiles.end(), back_inserter(tiles));
     }
     return tiles;
@@ -291,6 +298,8 @@ namespace xdp {
                                                void* handle)
   {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : getAIETileRowOffset();
+    auto tileName = (mod == module_type::mem_tile) ? "mem" : "aie";
 
     // STEP 1 : Parse per-graph or per-kernel settings
 
@@ -319,23 +328,9 @@ namespace xdp {
       if (graphMetrics[i][0].compare("all") != 0)
         continue;
 
-      // Capture all tiles across all graphs
-      if (graphMetrics[i][1].compare("all") == 0) {
-        for (auto &e : allValidTiles) {
-          configMetrics[moduleIdx][e] = graphMetrics[i][2];
-        }
-      }
-      else {
-        std::vector<tile_type> tiles;
-        auto graphs = get_graphs(device.get());
-        for (auto& graph : graphs) {
-          auto currTiles = get_tiles(device.get(), graph, mod, graphMetrics[i][1]);
-          tiles.insert(tiles.end(), currTiles.begin(), currTiles.end());
-        }
-
-        for (auto &e : tiles) {
-          configMetrics[moduleIdx][e] = graphMetrics[i][2];
-        }
+      auto tiles = get_tiles(device.get(), graphMetrics[i][0], mod, graphMetrics[i][1]);
+      for (auto &e : tiles) {
+        configMetrics[moduleIdx][e] = graphMetrics[i][2];
       }
 
       // Grab channel numbers (if specified; MEM tiles only)
@@ -410,15 +405,9 @@ namespace xdp {
       if (metrics[i][0].compare("all") != 0)
         continue;
 
-      // Capture all tiles across all graphs
-      auto graphs = get_graphs(device.get());
-      for (auto& graph : graphs) {
-        std::vector<tile_type> currTiles = get_tiles(device.get(), graph, mod, metrics[i][1]);
-        tiles.insert(tiles.end(), currTiles.begin(), currTiles.end());
-      }
-
+      auto tiles = get_tiles(device.get(), metrics[i][0], mod, metrics[i][1]);
       for (auto &e : tiles) {
-        configMetrics[moduleIdx][e] = metrics[i][1];
+        configMetrics[moduleIdx][e] = metrics[i][2];
       }
 
       // Grab channel numbers (if specified; MEM tiles only)
@@ -454,12 +443,12 @@ namespace xdp {
         std::vector<std::string> minTile;
         boost::split(minTile, metrics[i][0], boost::is_any_of(","));
         minCol = std::stoi(minTile[0]);
-        minRow = std::stoi(minTile[1]);
+        minRow = std::stoi(minTile[1]) + rowOffset;
 
         std::vector<std::string> maxTile;
         boost::split(maxTile, metrics[i][1], boost::is_any_of(","));
         maxCol = std::stoi(maxTile[0]);
-        maxRow = std::stoi(maxTile[1]);
+        maxRow = std::stoi(maxTile[1]) + rowOffset;
       } catch (...) {
         xrt_core::message::send(severity_level::warning, "XRT", 
            "Tile range specification in tile_based_aie_[memory}_metrics is not of valid format and hence skipped.");
@@ -532,7 +521,7 @@ namespace xdp {
         std::vector<std::string> tilePos;
         boost::split(tilePos, metrics[i][0], boost::is_any_of(","));
         col = std::stoi(tilePos[0]);
-        row = std::stoi(tilePos[1]);
+        row = std::stoi(tilePos[1]) + rowOffset;
       } catch (...) {
         std::stringstream msg;
         msg << "Tile specification in tile_based_" << tileName
@@ -586,7 +575,7 @@ namespace xdp {
       }
        
       // Ensure requested metric set is supported (if not, use default)
-      if (metricStrings[mod].find(tileMetric.second) == metricStrings[mod].end()) {
+      if (std::find(metricStrings[mod].begin(), metricStrings[mod].end(), tileMetric.second) == metricStrings[mod].end()) {
         std::stringstream msg;
         msg << "Unable to find " << moduleNames[moduleIdx] << " metric set " << tileMetric.second
             << ". Using default of " << defaultSets[moduleIdx] << "."
@@ -633,7 +622,7 @@ namespace xdp {
        continue;
 
       int16_t channelId = (metrics[i].size() < 3) ? -1 : std::stoi(metrics[i][2]);
-      auto tiles = get_interface_tiles(device, metrics[i][1], channelId);
+      auto tiles = get_interface_tiles(device.get(), metrics[i][1], channelId);
 
       for (auto &e : tiles) {
         configMetrics[moduleIdx][e] = metrics[i][1];
@@ -674,7 +663,7 @@ namespace xdp {
         }
       }
       
-      auto tiles = get_interface_tiles(device, metrics[i][2], channelId,
+      auto tiles = get_interface_tiles(device.get(), metrics[i][2], channelId,
                                        true, minCol, maxCol);
 
       for (auto &t : tiles) {
@@ -686,7 +675,7 @@ namespace xdp {
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
       // Skip range specification, invalid format, or already processed
       if ((metrics[i].size() == 4) || (metrics[i].size() < 2)
-          || (metrics[i][0].compare("all") == 0)) {
+          || (metrics[i][0].compare("all") == 0))
         continue;
       
       uint32_t col = 0;
@@ -715,7 +704,7 @@ namespace xdp {
           }
         }
 
-        auto tiles = get_interface_tiles(handle, metrics[i][1], channelId,
+        auto tiles = get_interface_tiles(device.get(), metrics[i][1], channelId,
                                          true, col, col);
 
         for (auto &t : tiles) {
@@ -728,8 +717,8 @@ namespace xdp {
     std::vector<tile_type> offTiles;
     
     // Default any unspecified to the default metric sets
-    auto defaultSet = defaultSets[2];
-    auto totalTiles = get_interface_tiles(device, defaultSet, -1);
+    auto defaultSet = defaultSets[moduleIdx];
+    auto totalTiles = get_interface_tiles(device.get(), defaultSet, -1);
     for (auto &e : totalTiles) {
       if (configMetrics[moduleIdx].find(e) == configMetrics[moduleIdx].end()) {
         configMetrics[moduleIdx][e] = defaultSet;
@@ -744,7 +733,8 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      if (metricStrings[module_type::shim].find(tileMetric.second) == metricStrings[module_type::shim].end()) {
+      auto metricVec = metricStrings[module_type::shim];
+      if (std::find(metricVec.begin(), metricVec.end(), tileMetric.second) == metricVec.end()) {
         std::string msg = "Unable to find interface_tile metric set " + tileMetric.second
                           + ". Using default of " + defaultSet + ". ";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
