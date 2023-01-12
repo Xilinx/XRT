@@ -1554,80 +1554,6 @@ cid_alloc_failed:
 	return ret;
 }
 
-static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
-	struct clock_freq_topology *topo, int verify)
-{
-	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
-	struct clock_freq *freq = NULL;
-	int data_clk_count = 0;
-	int kernel_clk_count = 0;
-	int system_clk_count = 0;
-	int clock_type_count = 0;
-	unsigned short target_freqs[4] = {0};
-	int i = 0;
-
-	if (!topo)
-		return -EINVAL;
-
-	if (topo->m_count > CLK_TYPE_MAX) {
-		XGQ_ERR(xgq, "More than 4 clocks found in clock topology");
-		return -EDOM;
-	}
-
-	/* Error checks - we support 1 data clk (reqd), 1 kernel clock(reqd) and
-	 * at most 2 system clocks (optional/reqd for aws).
-	 * Data clk needs to be the first entry, followed by kernel clock
-	 * and then system clocks
-	 */
-	for (i = 0; i < topo->m_count; i++) {
-		freq = &(topo->m_clock_freq[i]);
-		if (freq->m_type == CT_DATA)
-			data_clk_count++;
-		if (freq->m_type == CT_KERNEL)
-			kernel_clk_count++;
-		if (freq->m_type == CT_SYSTEM)
-			system_clk_count++;
-	}
-	if (data_clk_count != 1) {
-		XGQ_ERR(xgq, "Data clock not found in clock topology");
-		return -EDOM;
-	}
-	if (kernel_clk_count != 1) {
-		XGQ_ERR(xgq, "Kernel clock not found in clock topology");
-		return -EDOM;
-	}
-	if (system_clk_count > 2) {
-		XGQ_ERR(xgq, "More than 2 system clocks found in clock topology");
-		return -EDOM;
-	}
-
-	for (i = 0; i < topo->m_count; i++) {
-		freq = &(topo->m_clock_freq[i]);
-		if (freq->m_type == CT_DATA)
-			target_freqs[CLK_TYPE_DATA] = freq->m_freq_Mhz;
-	}
-
-	for (i = 0; i < topo->m_count; i++) {
-		freq = &(topo->m_clock_freq[i]);
-		if (freq->m_type == CT_KERNEL)
-			target_freqs[CLK_TYPE_KERNEL] = freq->m_freq_Mhz;
-	}
-
-	clock_type_count = CLK_TYPE_SYSTEM;
-	for (i = 0; i < topo->m_count; i++) {
-		freq = &(topo->m_clock_freq[i]);
-		if (freq->m_type == CT_SYSTEM)
-			target_freqs[clock_type_count++] = freq->m_freq_Mhz;
-	}
-
-	XGQ_INFO(xgq, "set %lu freq, data: %d, kernel: %d, sys: %d, sys1: %d",
-	    ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
-	    target_freqs[2], target_freqs[3]);
-
-	return xgq_freq_scaling(pdev, target_freqs, ARRAY_SIZE(target_freqs),
-		verify);
-}
-
 static uint32_t xgq_clock_get_data(struct xocl_xgq_vmr *xgq,
 	enum xgq_cmd_clock_req_type req_type, int req_id)
 {
@@ -1737,6 +1663,122 @@ static uint64_t xgq_get_data(struct platform_device *pdev,
 	}
 
 	return target;
+}
+
+static int set_and_verify_freqs(struct platform_device *pdev,unsigned short *target_freqs, int num_freqs, int verify)
+{
+    int ret = 0,i;
+    u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
+    struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	enum data_kind kinds[3] = {FREQ_COUNTER_0,FREQ_COUNTER_1,FREQ_COUNTER_2};
+
+    ret = xgq_freq_scaling(pdev, target_freqs, num_freqs,
+		verify);
+    if (ret) {
+		XGQ_ERR(xgq, "ret %d", ret);
+        return ret;
+	}
+
+    for (i = 0; i < min(XGQ_CLOCK_WIZ_MAX_RES, num_freqs); ++i) {
+		if (!target_freqs[i])
+			continue;
+
+		if (xocl_clock_get_freq_counter(pdev, &clock_freq_counter, i) ==
+			-ENODEV)
+			continue;
+
+		lookup_freq = target_freqs[i];
+		request_in_khz = lookup_freq*1000;
+		tolerance = lookup_freq*50;
+		//XGQ_WARN(xgq,"i = %d, lookup_freq = %lu,request_in_khz = %lu, tolerance = %lu",i,lookup_freq,request_in_khz, tolerance);
+		if (tolerance < abs(clock_freq_counter-request_in_khz)) {
+			XGQ_ERR(xgq, "Frequency is higher than tolerance value, request %u"
+					"khz, actual %u khz", request_in_khz, clock_freq_counter);
+			ret = -EDOM;
+			break;
+		}
+	}
+    return ret;
+}
+
+static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
+	struct clock_freq_topology *topo, int verify)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct clock_freq *freq = NULL;
+	int data_clk_count = 0;
+	int kernel_clk_count = 0;
+	int system_clk_count = 0;
+	int clock_type_count = 0;
+	unsigned short target_freqs[4] = {0};
+	int i = 0,ret = 0;
+
+	if (!topo)
+		return -EINVAL;
+
+	if (topo->m_count > CLK_TYPE_MAX) {
+		XGQ_ERR(xgq, "More than 4 clocks found in clock topology");
+		return -EDOM;
+	}
+
+	/* Error checks - we support 1 data clk (reqd), 1 kernel clock(reqd) and
+	 * at most 2 system clocks (optional/reqd for aws).
+	 * Data clk needs to be the first entry, followed by kernel clock
+	 * and then system clocks
+	 */
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_DATA)
+			data_clk_count++;
+		if (freq->m_type == CT_KERNEL)
+			kernel_clk_count++;
+		if (freq->m_type == CT_SYSTEM)
+			system_clk_count++;
+	}
+	if (data_clk_count != 1) {
+		XGQ_ERR(xgq, "Data clock not found in clock topology");
+		return -EDOM;
+	}
+	if (kernel_clk_count != 1) {
+		XGQ_ERR(xgq, "Kernel clock not found in clock topology");
+		return -EDOM;
+	}
+	if (system_clk_count > 2) {
+		XGQ_ERR(xgq, "More than 2 system clocks found in clock topology");
+		return -EDOM;
+	}
+
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_DATA)
+			target_freqs[CLK_TYPE_DATA] = freq->m_freq_Mhz;
+	}
+
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_KERNEL)
+			target_freqs[CLK_TYPE_KERNEL] = freq->m_freq_Mhz;
+	}
+
+	clock_type_count = CLK_TYPE_SYSTEM;
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_SYSTEM)
+			target_freqs[clock_type_count++] = freq->m_freq_Mhz;
+	}
+
+	XGQ_INFO(xgq, "set %lu freq, data: %d, kernel: %d, sys: %d, sys1: %d",
+	    ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
+	    target_freqs[2], target_freqs[3]);
+
+    ret = set_and_verify_freqs(pdev, target_freqs, ARRAY_SIZE(target_freqs),
+		verify);
+    if (ret) {
+		XGQ_ERR(xgq, "ret %d", ret);
+        goto done;
+	}
+done:
+    return ret;
 }
 
 static bool vmr_check_apu_is_ready(struct xocl_xgq_vmr *xgq)
