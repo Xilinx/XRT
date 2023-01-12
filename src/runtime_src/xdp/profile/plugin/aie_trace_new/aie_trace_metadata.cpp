@@ -44,6 +44,8 @@ namespace xdp {
   , handle(handle)
   {
 
+    counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
+    
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
     continuousTrace = xrt_core::config::get_aie_trace_settings_periodic_offload();
@@ -725,7 +727,7 @@ namespace xdp {
       }
 
       // Ensure requested metric set is supported (if not, use default)
-      if (metricSets.find(tileMetric.second) == metricSets.end()) {
+      if (std::find(metricSets.begin(), metricSets.end(), tileMetric.second) == metricSets.end()) {
         std::string defaultSet = (type == module_type::mem_tile) ? "input_channels" : "functions";
         std::stringstream msg;
         msg << "Unable to find AIE trace metric set " << tileMetric.second 

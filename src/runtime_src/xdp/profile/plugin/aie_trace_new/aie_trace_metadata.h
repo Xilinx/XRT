@@ -50,8 +50,9 @@ class AieTraceMetadata{
     uint64_t offloadIntervalUs;
     unsigned int aie_trace_file_dump_int_s;
 
+    std::string counterScheme;
     std::string metricSet;
-    std::set<std::string> metricSets;
+    std::vector<std::string> metricSets;
     std::set<std::string> memTileMetricSets;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
@@ -109,6 +110,7 @@ class AieTraceMetadata{
     bool getUseGraphIterator(){return useGraphIterator;}
     bool getUseOneDelayCounter(){return useOneDelayCtr;}
     bool getRuntimeMetrics() {return runtimeMetrics;}
+    std::string getCounterScheme(){return counterScheme;}
 
     uint32_t getIterationCount(){return iterationCount;}
     uint64_t getNumStreams() {return numAIETraceOutput;}
