@@ -406,7 +406,8 @@ namespace xdp {
         continue;
 
       std::vector<std::string> names;
-      boost::split(names, mapping.second.get<std::string>("function"), boost::is_any_of("."));
+      std::string functionStr = mapping.second.get<std::string>("function");
+      boost::split(names, functionStr, boost::is_any_of("."));
       for (auto &name: names) {
         if (name.compare(kernel_name) == 0) {
           tile_type tile;
