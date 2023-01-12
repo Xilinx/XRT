@@ -121,6 +121,7 @@ namespace xdp {
     void setXclbinName(XclbinInfo*, const char*, size_t);
     void updateSystemDiagram(const char*, size_t);
     void addPortInfo(XclbinInfo*, const char*, size_t);
+    void parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Functions that initialize the structure of the debug/profiling IP
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
@@ -135,6 +136,7 @@ namespace xdp {
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
     double findClockRate(std::shared_ptr<xrt_core::device> device) ;
+    void initializeXrtIP(XclbinInfo* xclbin);
 
   public:
     VPStaticDatabase(VPDatabase* d) ;

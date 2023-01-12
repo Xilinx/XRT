@@ -433,8 +433,7 @@ namespace xdp {
     try {
       xclbin->deviceIntf->readDebugIPlayout();
       // XRT IP are needed for deadlock diagnosis
-      // Metadata for these come from multiple xclbin sections
-      //createXrtIP(xclbin->deviceIntf);
+      initializeXrtIP(xclbin);
     }
     catch (std::exception& /* e */) {
       // If reading the debug ip layout fails, we shouldn't have
@@ -443,7 +442,7 @@ namespace xdp {
       xclbin->deviceIntf = nullptr;
     }
     return xclbin->deviceIntf;
-  } 
+  }
 
   void VPStaticDatabase::setKDMACount(uint64_t deviceId, uint64_t num)
   {
@@ -1422,6 +1421,12 @@ namespace xdp {
 
     devInfo->addXclbin(currentXclbin);
     initializeProfileMonitors(devInfo, device);
+
+    /*
+     * Initialize xrt IP for deadlock diagnosis
+     */
+    parseXrtIPMetadata(deviceId, device);
+
     devInfo->isReady = true;
   }
 
@@ -1584,6 +1589,33 @@ namespace xdp {
     } catch(...) {
       // If we catch an exception, leave the rest of the port info as is.
     }
+  }
+
+  void VPStaticDatabase::parseXrtIPMetadata(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return;
+
+    // temp until new section is supported
+    auto data = device->get_axlf_section(VENDER_METADATA);
+    if (!data.first || !data.second)
+      return;
+
+    boost::property_tree::ptree pt;
+
+    std::stringstream ss;
+    ss.write(data.first, data.second);
+    boost::property_tree::read_json(ss,pt);
+
+    xclbin->pl.ip_metadata_section = std::make_shared<ip_metadata>(pt);
+    // Debug
+    xclbin->pl.ip_metadata_section->print();
   }
 
   bool VPStaticDatabase::initializeStructure(XclbinInfo* currentXclbin,
@@ -2033,6 +2065,17 @@ namespace xdp {
       xclbin->aie.numTracePLIO++ ;
     else
       xclbin->pl.usesTs2mm = true ;
+  }
+
+  void VPStaticDatabase::initializeXrtIP(XclbinInfo* xclbin)
+  {
+    auto& ip_metadata = xclbin->pl.ip_metadata_section;
+    if (!ip_metadata)
+      return;
+
+    for (const auto& cu : xclbin->pl.cus) {
+      xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getName(), cu.second->getBaseAddress());
+    }
   }
 
   bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)

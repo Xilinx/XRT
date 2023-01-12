@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2019 Xilinx Inc - All rights reserved
- * Xilinx Debug & Profile (XDP) APIs
+ * Copyright (C) 2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Xilinx Runtime IP Access for debug
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,6 +22,7 @@
 #include <map>
 #include <vector>
 
+#include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp_base_device.h"
 
 namespace xdp {
@@ -34,32 +35,29 @@ namespace xdp {
  * This class represents the high level access to an XRT IP on the device.
  * An XRT IP is one which is defined in IP_LAYOUT
  * We can't do exclusive access or inherit from profile IP as we don't own this IP
- * 
+ * For now, the only functionality that it needs to support is read registers
+ * specifically for deadlock information.
  */
 class XrtIP {
 public:
 
-  /**
-   * The constructor takes a device handle and a ip index
-   * means that the instance of this class has a one-to-one
-   * association with one specific IP on one specific device.
-   * During the construction, the exclusive access to this
-   * IP will be requested, otherwise exception will be thrown.
-   */
   XrtIP(
     Device* handle       /** < xrt or hal device handle */,
-    std::string fullname /** < fullname of the IP in IP_LAYOUT */,
+    std::shared_ptr<ip_metadata> ip_metadata_section,
+    const std::string& fullname /** < fullname of the IP in IP_LAYOUT */,
     uint64_t baseAddress /** < base Address of the IP in IP_LAYOUT */
   );
   ~XrtIP() {}
 
   // For now, this is all we need
-  void printDeadlockDiagnosis(const std::map<uint32_t, std::vector<std::string>>& config);
+  std::string& getDeadlockDiagnosis(bool print=true);
 
 private:
   Device* xdpDevice;
+  std::shared_ptr<ip_metadata> ip_metadata_section;
   std::string fullname;
   uint64_t baseAddress;
+  std::string deadlockDiagnosis;
 
 private:
   int read(uint32_t offset, uint32_t* data);

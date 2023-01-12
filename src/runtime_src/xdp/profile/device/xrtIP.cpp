@@ -22,34 +22,50 @@ namespace xdp {
 
 XrtIP::XrtIP(
   Device* handle,
-  std::string fullname,
+  std::shared_ptr<ip_metadata> ip_metadata_section,
+  const std::string& fullname,
   uint64_t baseAddress
 ) : xdpDevice(handle)
+  , ip_metadata_section(ip_metadata_section)
   , fullname(fullname)
   , baseAddress(baseAddress)
+  , deadlockDiagnosis(std::string())
 {}
 
 int XrtIP::read(uint32_t offset, uint32_t* data) {
-  return -1;
-//  return xdpDevice->readXrtIP(fullname.c_str(), offset, data);
+  return xdpDevice->readXrtIP(fullname.c_str(), offset, baseAddress, data);
 }
 
-void XrtIP::printDeadlockDiagnosis(const std::map<uint32_t, std::vector<std::string>>& config)
+std::string& XrtIP::getDeadlockDiagnosis(bool print)
 {
-  std::string output;
-  for (const auto& e: config) {
+  // Find register info for our kernel
+  kernel_reginfo info;
+  for (auto& pair : ip_metadata_section->kernel_infos) {
+    auto& kname = pair.first;
+    if (fullname.find(kname) != std::string ::npos)
+      info = pair.second;
+  }
+
+  if (!info.empty())
+    return deadlockDiagnosis;
+
+  // Query this IP
+  for (const auto& e: info) {
     uint32_t reg = 0;
     auto offset = e.first;
     auto& messages = e.second;
 
     read(offset, &reg);
-    for (unsigned int i=0; i<32; i++) {
+    for (unsigned int i=0; i < num_bits_deadlock_diagnosis; i++) {
       uint32_t bit_i = ((reg >> i) & 0x1);
       if (bit_i)
-        output += messages[bit_i] + "\n";
+        deadlockDiagnosis += messages[bit_i] + "\n";
     }
-    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", output);
+
+    if (print)
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", deadlockDiagnosis);
   }
+  return deadlockDiagnosis;
 }
 
 }   // namespace xdp
