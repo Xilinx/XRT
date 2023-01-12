@@ -30,7 +30,7 @@ namespace xdp {
         : AieTraceImpl(database, metadata){}
       ~AieTrace_x86Impl() = default;
       virtual void updateDevice();
-      bool setMetrics(uint64_t deviceId, void* handle);
+      bool setMetricsSettings(uint64_t deviceId, void* handle);
       uint64_t checkTraceBufSize(uint64_t size);
       void parseMessages(uint8_t* messages);
   };

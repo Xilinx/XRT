@@ -31,6 +31,13 @@ SET(CPACK_RPM_SPEC_MORE_DEFINE "%define __python python3")
 
 if (DEFINED CROSS_COMPILE)
   set(CPACK_REL_VER ${LINUX_VERSION})
+elseif (${LINUX_FLAVOR} MATCHES "^centos")
+  execute_process(
+    COMMAND awk "{print $4}" /etc/redhat-release
+    COMMAND tr -d "\""
+    OUTPUT_VARIABLE CPACK_REL_VER
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
 else()
   execute_process(
       COMMAND awk -F= "$1==\"VERSION_ID\" {print $2}" /etc/os-release

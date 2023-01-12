@@ -266,7 +266,7 @@ namespace xdp {
             bpt::ptree port_trace_ids;
             bpt::ptree port_trace_is_master;
 
-            for (int i=0; i < NUM_MEM_TILE_PORTS; ++i) {
+            for (uint32_t i=0; i < NUM_MEM_TILE_PORTS; ++i) {
               bpt::ptree port1;
               bpt::ptree port2;
               port1.put("", tile->mem_tile_trace_config.port_trace_ids[i]);
@@ -285,7 +285,7 @@ namespace xdp {
             bpt::ptree s2mm_channels;
             bpt::ptree mm2s_channels;
 
-            for (int i=0; i < NUM_MEM_TILE_CHAN_SEL; ++i) {
+            for (uint32_t i=0; i < NUM_MEM_TILE_CHAN_SEL; ++i) {
               bpt::ptree chan1;
               bpt::ptree chan2;
               chan1.put("", tile->mem_tile_trace_config.s2mm_channels[i]);

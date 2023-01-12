@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -127,7 +127,7 @@ namespace xdp {
     //         to produce events before hitting the bug. For example, sync packets 
     //         occur after 1024 cycles and with no events, is incorrectly repeated.
     if (metadata->getHardwareGen() == 1) {
-      auto counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
+      auto counterScheme = metadata->getCounterScheme();
 
       if (counterScheme == "es1") {
         mCoreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
@@ -212,11 +212,11 @@ namespace xdp {
      if (!checkAieDeviceAndRuntimeMetrics(metadata->getDeviceID(), metadata->getHandle()))
       return;
     
-    // Set metrics for counters and trace events
-    if (!setMetrics(metadata->getDeviceID(), metadata->getHandle())) {
-      std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
-      return;
+    // Set metrics for counters and trace events 
+    if (!setMetricsSettings(metadata->getDeviceID(), metadata->getHandle())) {
+        std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+        return;
     }
   }
 
@@ -236,6 +236,7 @@ namespace xdp {
         ++required;
     } else if (metadata->getUseGraphIterator())
       ++required;
+      
     if (available < required) {
       msg << "Available core module performance counters for aie trace : " << available << std::endl
           << "Required core module performance counters for aie trace : "  << required;
@@ -354,18 +355,6 @@ namespace xdp {
     return module_type::core;
   }
 
-  std::vector<std::string>
-  AieTrace_EdgeImpl::getSettingsVector(std::string settingsString) 
-  {
-    if (settingsString.empty())
-      return {};
-
-    // Each of the metrics can have ; separated multiple values. Process and save all
-    std::vector<std::string> settingsVector;
-    boost::replace_all(settingsString, " ", "");
-    boost::split(settingsVector, settingsString, boost::is_any_of(";"));
-    return settingsVector;
-  }
 
   void 
   AieTrace_EdgeImpl::configEventSelections(XAie_DevInst* aieDevInst,
@@ -386,29 +375,14 @@ namespace xdp {
   }
 
   bool
-  AieTrace_EdgeImpl::setMetrics(uint64_t deviceId, void* handle)
+  AieTrace_EdgeImpl::setMetricsSettings(uint64_t deviceId, void* handle)
   {
-    // Process AIE_trace_settings metrics
-    auto aieTileMetricsSettings = 
-        getSettingsVector(xrt_core::config::get_aie_trace_settings_tile_based_aie_tile_metrics());
-    auto aieGraphMetricsSettings = 
-        getSettingsVector(xrt_core::config::get_aie_trace_settings_graph_based_aie_tile_metrics());
-    auto memTileMetricsSettings = 
-        getSettingsVector(xrt_core::config::get_aie_trace_settings_tile_based_mem_tile_metrics());
-    auto memGraphMetricsSettings = 
-        getSettingsVector(xrt_core::config::get_aie_trace_settings_graph_based_mem_tile_metrics());
-
-    if (aieTileMetricsSettings.empty() && aieGraphMetricsSettings.empty()
-        && memTileMetricsSettings.empty() && memGraphMetricsSettings.empty()) {
+     if (!metadata->getIsValidMetrics()) {
       std::string msg("AIE trace metrics were not specified in xrt.ini. AIE event trace will not be available.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       return false;
     }
-
-    metadata->getConfigMetricsForTiles(aieTileMetricsSettings, aieGraphMetricsSettings, module_type::core);
-    metadata->getConfigMetricsForTiles(memTileMetricsSettings, memGraphMetricsSettings, module_type::mem_tile);
-    metadata->setTraceStartControl();
-    
+ 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
     int numTileMemoryTraceEvents[NUM_MEMORY_TRACE_EVENTS+1] = {0};
@@ -552,7 +526,7 @@ namespace xdp {
           cfg.stop_event = phyEvent;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
-          cfg.event_value = mMemoryCounterEndEvents[i];
+          cfg.event_value = mMemoryCounterEventValues[i];
         }
       }
 

@@ -243,7 +243,7 @@ enum class module_type {
     uint8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {};
     uint8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {};
     aie_cfg_mem_tile() : aie_cfg_base(4) {
-      for (int i=0; i < NUM_MEM_TILE_PORTS; ++i)
+      for (uint32_t i=0; i < NUM_MEM_TILE_PORTS; ++i)
         port_trace_is_master[i] = "false";
     };
   };
