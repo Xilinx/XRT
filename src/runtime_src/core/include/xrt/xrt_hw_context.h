@@ -14,7 +14,7 @@
 #include <map>
 
 // Opaque handle for internal use
-struct xrt_hwctx_handle;
+class xrt_hwctx_handle;
 
 namespace xrt {
 

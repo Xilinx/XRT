@@ -143,6 +143,12 @@ public:
     return m_device;
   }
 
+  bool
+  valid_hwctx() const
+  {
+    return (m_hwctx) ? true : false;
+  }
+
   xrt_hwctx_handle
   get_hwctx_handle() const
   {
@@ -984,15 +990,19 @@ static xrt_buffer_handle
 alloc_bo(const device_type& device, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
   flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
-  return device->alloc_bo(device.get_hwctx_handle(), userptr, sz, flags);
+  return device.valid_hwctx()
+    ? device->alloc_bo(device.get_hwctx_handle(), userptr, sz, flags)
+    : device->alloc_bo(userptr, sz, flags);
 }
 
 static xrt_buffer_handle
 alloc_bo(const device_type& device, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  auto xflags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
+  flags = (flags & ~XRT_BO_FLAGS_MEMIDX_MASK) | grp;
   try {
-    return device->alloc_bo(device.get_hwctx_handle(), sz, xflags);
+    return device.valid_hwctx()
+      ? device->alloc_bo(device.get_hwctx_handle(), sz, flags)
+      : device->alloc_bo(sz, flags);
   }
   catch (const std::exception& ex) {
     if (flags == XRT_BO_FLAGS_HOST_ONLY) {

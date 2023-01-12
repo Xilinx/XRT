@@ -376,14 +376,14 @@ struct xclbin_slots
 
       if (std::distance(tokens.begin(), tokens.end()) == 1) {
         tokenizer::iterator tok_it = tokens.begin();
-        data.slot.slot = 0;
+        data.slot = static_cast<uint32_t>(0);
         data.uuid = std::string(*tok_it++);
         xclbin_data.push_back(std::move(data));
 	break;
       }
       else if (std::distance(tokens.begin(), tokens.end()) == 2) {
         tokenizer::iterator tok_it = tokens.begin();
-        data.slot.slot = std::stoi(std::string(*tok_it++));
+        data.slot = static_cast<uint32_t>(std::stoi(std::string(*tok_it++)));
         data.uuid = std::string(*tok_it++);
 
         xclbin_data.push_back(std::move(data));
