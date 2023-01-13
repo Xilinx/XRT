@@ -209,6 +209,8 @@ class DeviceIntf {
       const std::string& fullname,
       uint64_t baseAddress
     );
+    XDP_EXPORT
+    std::string getDeadlockDiagnosis(bool print);
     bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
   private:

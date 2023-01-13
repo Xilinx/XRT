@@ -1603,15 +1603,16 @@ namespace xdp {
       return;
 
     // temp until new section is supported
-    auto data = device->get_axlf_section(VENDER_METADATA);
-    if (!data.first || !data.second)
-      return;
+    //auto data = device->get_axlf_section(IP_METADATA);
+    //if (!data.first || !data.second)
+    //  return;
 
     boost::property_tree::ptree pt;
+    boost::property_tree::read_json("dlinfo", pt);
 
-    std::stringstream ss;
-    ss.write(data.first, data.second);
-    boost::property_tree::read_json(ss,pt);
+    //std::stringstream ss;
+    //ss.write(data.first, data.second);
+    //boost::property_tree::read_json(ss,pt);
 
     xclbin->pl.ip_metadata_section = std::make_shared<ip_metadata>(pt);
     // Debug
@@ -2073,9 +2074,8 @@ namespace xdp {
     if (!ip_metadata)
       return;
 
-    for (const auto& cu : xclbin->pl.cus) {
-      xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getName(), cu.second->getBaseAddress());
-    }
+    for (const auto& cu : xclbin->pl.cus)
+      xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getFullname(), cu.second->getBaseAddress());
   }
 
   bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)

@@ -1032,4 +1032,16 @@ DeviceIntf::~DeviceIntf()
     mXrtIPList.emplace_back(std::make_unique<XrtIP>(mDevice, ip_metadata_section, fullname, baseAddress));
   }
 
+  std::string DeviceIntf::getDeadlockDiagnosis(bool print)
+  {
+    std::string status;
+    if (!mDeadlockDetector)
+      return status;
+
+    for (auto& ip : mXrtIPList)
+      status += ip->getDeadlockDiagnosis(print);
+
+    return status;
+  }
+
 } // namespace xdp

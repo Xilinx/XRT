@@ -30,7 +30,11 @@ XrtIP::XrtIP(
   , fullname(fullname)
   , baseAddress(baseAddress)
   , deadlockDiagnosis(std::string())
-{}
+{
+  size_t pos = fullname.find(':') ;
+  kernelName = fullname.substr(0, pos) ;
+  std::cout << "Initialize CU " << fullname << std::endl;
+}
 
 int XrtIP::read(uint32_t offset, uint32_t* data) {
   return xdpDevice->readXrtIP(fullname.c_str(), offset, baseAddress, data);
@@ -42,11 +46,13 @@ std::string& XrtIP::getDeadlockDiagnosis(bool print)
   kernel_reginfo info;
   for (auto& pair : ip_metadata_section->kernel_infos) {
     auto& kname = pair.first;
-    if (fullname.find(kname) != std::string ::npos)
+    if (kname.find(kernelName) != std::string ::npos) {
       info = pair.second;
+      break;
+    }
   }
 
-  if (!info.empty())
+  if (info.empty())
     return deadlockDiagnosis;
 
   // Query this IP

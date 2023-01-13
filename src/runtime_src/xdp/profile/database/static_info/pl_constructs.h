@@ -177,8 +177,9 @@ namespace xdp {
     // The index of the Compute Unit in the IP_LAYOUT section of the xclbin
     int32_t index ;
 
-    // The base address of the CU in the IP_LAYOUT
+    // The base address and name of the CU in the IP_LAYOUT
     uint64_t baseAddress;
+    std::string fullname ;
 
     // The name of the compute unit, parsed out of the portion of the
     //  name in the IP_LAYOUT section after the ':'
@@ -235,6 +236,7 @@ namespace xdp {
 
     // Inlined Getters
     inline const std::string& getName()       { return name ; }
+    inline const std::string& getFullname()       { return fullname ; }
     inline const std::string& getKernelName() { return kernelName ; }
     inline const int32_t getIndex() const     { return index ; }
     inline auto getConnections()              { return &connections ; }

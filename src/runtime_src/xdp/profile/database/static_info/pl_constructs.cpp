@@ -149,11 +149,11 @@ namespace xdp {
   ComputeUnitInstance::ComputeUnitInstance(int32_t i, uint64_t addr, const std::string& n)
     : index(i)
     , baseAddress(addr)
+    , fullname(n)
   {
-    std::string fullName(n) ;
-    size_t pos = fullName.find(':') ;
-    kernelName = fullName.substr(0, pos) ;
-    name = fullName.substr(pos + 1) ;
+    size_t pos = fullname.find(':') ;
+    kernelName = fullname.substr(0, pos) ;
+    name = fullname.substr(pos + 1) ;
   }
 
   std::string ComputeUnitInstance::getDim()

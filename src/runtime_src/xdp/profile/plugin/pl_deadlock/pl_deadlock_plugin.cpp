@@ -90,6 +90,8 @@ namespace xdp {
         std::string msg = "System Deadlock detected on device " + deviceName +
         ". Please manually terminate and debug the application.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
+
+        deviceIntf->getDeadlockDiagnosis(true);
         return;
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(mPollingIntervalMs));

@@ -58,6 +58,7 @@ private:
   std::string fullname;
   uint64_t baseAddress;
   std::string deadlockDiagnosis;
+  std::string kernelName;
 
 private:
   int read(uint32_t offset, uint32_t* data);
