@@ -323,8 +323,16 @@ report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device)
   if (!pt_device.get<bool>("platform.status.shell"))
     action_list << boost::format("  [%s] : Program base (FLASH) image\n") % pt_device.get<std::string>("platform.bdf");
 
-  if (!pt_device.get<bool>("platform.status.sc") && !pt_device.get<bool>("platform.status.is_factory") && !pt_device.get<bool>("platform.status.is_recovery"))
-    action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt_device.get<std::string>("platform.bdf");
+  if (!pt_device.get<bool>("platform.status.sc")) {
+    // Versal devices cannot flash the SC in the same cycle as the base
+    if (pt_device.get<bool>("platform.status.versal")) {
+      if (pt_device.get<bool>("platform.status.shell"))
+        action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt_device.get<std::string>("platform.bdf");
+    }
+    // Non-versal devices cannot flash the SC in the same cycle as moving from a golden image
+    else if(!pt_device.get<bool>("platform.status.is_factory") && !pt_device.get<bool>("platform.status.is_recovery"))
+       action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt_device.get<std::string>("platform.bdf");
+  }
 
   if (!action_list.str().empty()) {
     std::cout << "Actions to perform:\n" << action_list.str();
@@ -541,6 +549,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & device, Flasher::E_FlasherType fl
   // Update the ptree with the status
   pt_dev.put("platform.status.shell", same_shell);
   pt_dev.put("platform.status.sc", same_sc);
+  pt_dev.put("platform.status.versal", xrt_core::device_query<xrt_core::query::is_versal>(device.get()));
 
   //report status of the device
   report_status(dsa.name, pt_dev);
@@ -562,6 +571,9 @@ auto_flash(std::shared_ptr<xrt_core::device> & device, Flasher::E_FlasherType fl
       // 1) Flash the Satellite Controller image
       if (xrt_core::device_query<xrt_core::query::is_mfg>(device.get()) || xrt_core::device_query<xrt_core::query::is_recovery>(device.get()))
         report_stream << boost::format("  [%s] : Factory or Recovery image detected. Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
+      // Versal devices cannot flash the SC in the same cycle as the base
+      else if (xrt_core::device_query<xrt_core::query::is_versal>(device.get()) && !same_shell)
+        report_stream << boost::format("  [%s] : Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
       else {
         if (update_sc(p.first, p.second) == true)  {
           report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n") % getBDF(p.first);
