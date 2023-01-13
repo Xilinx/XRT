@@ -44,7 +44,7 @@ namespace xdp {
       bool checkAieDevice(uint64_t deviceId, void* handle);
 
       bool setMetricsSettings(uint64_t deviceId, void* handle);
-      module_type getTileType(uint16_t absRow);
+      module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
                             const tile_type& tile, 
                             const XAie_ModuleType mod);

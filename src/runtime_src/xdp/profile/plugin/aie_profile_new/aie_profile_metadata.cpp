@@ -394,7 +394,7 @@ namespace xdp {
 
     // Pass 1 : process only "all" metric setting 
     for (size_t i = 0; i < metricsSettings.size(); ++i) {
-      // split done only in Pass 1
+      // Split done only in Pass 1
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
 
       if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
@@ -594,7 +594,7 @@ namespace xdp {
   {
     if ((metricsSettings.empty()) && (graphMetricsSettings.empty())) 
       return;
-      
+
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
     // TODO: Add support for graph metrics
@@ -812,7 +812,7 @@ namespace xdp {
 
     pt::ptree aie_meta;
     read_aie_metadata(data.first, data.second, aie_meta);
-    // Not supported yet
+    // Interface tiles use different method
     if (type == module_type::shim)
       return {};
 
@@ -820,23 +820,24 @@ namespace xdp {
     const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
 
     std::vector<tile_type> tiles;
-  
+    auto rowOffset = getAIETileRowOffset();
+
     for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
       if (graph.second.get<std::string>("name") != graph_name)
         continue;
 
       int count = 0;
-        for (auto& node : graph.second.get_child(col_name)) {
-          tiles.push_back(tile_type());
-          auto& t = tiles.at(count++);
-          t.col = std::stoul(node.second.data());
-        }
+      for (auto& node : graph.second.get_child(col_name)) {
+        tiles.push_back(tile_type());
+        auto& t = tiles.at(count++);
+        t.col = std::stoul(node.second.data());
+      }
 
-        int num_tiles = count;
-        count = 0;
-        for (auto& node : graph.second.get_child(row_name))
-          tiles.at(count++).row = std::stoul(node.second.data());
-        throw_if_error(count < num_tiles,"rows < num_tiles");
+      int num_tiles = count;
+      count = 0;
+      for (auto& node : graph.second.get_child(row_name))
+        tiles.at(count++).row = std::stoul(node.second.data()) + rowOffset;
+      throw_if_error(count < num_tiles, "rows < num_tiles");
     }
 
     return tiles;

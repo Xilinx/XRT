@@ -373,13 +373,13 @@ namespace xdp {
   }
 
   module_type 
-  AieProfile_EdgeImpl::getTileType(uint16_t absRow)
+  AieProfile_EdgeImpl::getModuleType(uint16_t absRow, XAie_ModuleType mod)
   {
     if (absRow == 0)
       return module_type::shim;
     if (absRow < metadata->getAIETileRowOffset())
       return module_type::mem_tile;
-    return module_type::core;
+    return ((mod == XAIE_CORE_MOD) ? module_type::core : module_type::dma);
   }
 
   // Set metrics for all specified AIE counters on this device with configs given in AIE_profile_settings
@@ -397,7 +397,7 @@ namespace xdp {
 
     for (int module = 0; module < metadata->getNumModules(); ++module) {
       int numTileCounters[metadata->getNumCountersMod(module)+1] = {0};
-      XAie_ModuleType mod  = falModuleTypes[module];
+      XAie_ModuleType mod = falModuleTypes[module];
 
       // Iterate over tiles and metrics to configure all desired counters
       for (auto& tileMetric : metadata->getConfigMetrics(module)) {
@@ -405,7 +405,7 @@ namespace xdp {
         auto tile        = tileMetric.first;
         auto col         = tile.col;
         auto row         = tile.row;
-        auto type        = getTileType(row);
+        auto type        = getModuleType(row, mod);
         auto loc         = XAie_TileLoc(col, row);
         auto& xaieTile   = aieDevice->tile(col, row);
         auto xaieModule  = (mod == XAIE_CORE_MOD) ? xaieTile.core()
