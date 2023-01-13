@@ -39,64 +39,37 @@ namespace xdp {
     // Get polling interval (in usec)
     pollingInterval = xrt_core::config::get_aie_profile_settings_interval_us();
 
-    //Setup Config Metrics
+    // Setup Config Metrics
     // Get AIE clock frequency
     VPDatabase* db = VPDatabase::Instance();
     clockFreqMhz = (db->getStaticInfo()).getClockRateMHz(deviceID,false);
 
-    // Get the metrics settings
+    // Tile-based metrics settings
     std::vector<std::string> metricsConfig;
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_aie_memory_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_interface_tile_metrics());
     metricsConfig.push_back(xrt_core::config::get_aie_profile_settings_tile_based_mem_tile_metrics());
 
-    // Get the graph metrics settings
+    // Graph-based metrics settings
     std::vector<std::string> graphMetricsConfig;
     graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_metrics());
     graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_aie_memory_metrics());
-    //Uncomment in the future to support graph-based metrics for Interface Tiles
+    // Uncomment to support graph-based metrics for Interface Tiles
     //graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_interface_tile_metrics());
     graphMetricsConfig.push_back("");
     graphMetricsConfig.push_back(xrt_core::config::get_aie_profile_settings_graph_based_mem_tile_metrics());
 
-    // Process AIE_profile_settings metrics
-    // Each of the metrics can have ; separated multiple values. Process and save all
-    std::vector<std::vector<std::string>> metricsSettings(NUM_MODULES);
-    std::vector<std::vector<std::string>> graphMetricsSettings(NUM_MODULES);
-
+    // Process all module types
     for (int module = 0; module < NUM_MODULES; ++module) {
-      bool findTileMetric = false;
-      if (!metricsConfig[module].empty()) {
-        boost::replace_all(metricsConfig[module], " ", "");
-        boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
-        findTileMetric = true;        
-      } 
-      else {
-          std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
-          std::string metricMsg = "No metric set specified for " + modName + " module. "
-                                  + "Please specify the AIE_profile_settings." + modName 
-                                  + "_metrics setting in your xrt.ini. A default set of " 
-                                  + defaultSets[module] + " has been specified.";
-          xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
-
-          metricsConfig[module] = defaultSets[module];
-          boost::split(metricsSettings[module], metricsConfig[module], boost::is_any_of(";"));
-          findTileMetric = true;
-      }
-
-      boost::replace_all(graphMetricsConfig[module], " ", "");
-      boost::split(graphMetricsSettings[module], graphMetricsConfig[module], boost::is_any_of(";"));
+      auto type = moduleTypes[module];
+      auto metricsSettings = getSettingsVector(metricsConfig[module]);
+      auto graphMetricsSettings = getSettingsVector(graphMetricsConfig[module]);
       
-      if (moduleTypes[module] == module_type::shim) {
-        getConfigMetricsForInterfaceTiles(module, metricsSettings[module], 
-                                          graphMetricsSettings[module], handle);
-      }
-      else {
-        getConfigMetricsForTiles(module, metricsSettings[module], 
-                                 graphMetricsSettings[module], 
-                                 moduleTypes[module], handle);
-      }
+      if (type == module_type::shim)
+        getConfigMetricsForInterfaceTiles(module, metricsSettings, graphMetricsSettings);
+      else
+        getConfigMetricsForTiles(module, metricsSettings, graphMetricsSettings, type);
     }
   }
 
@@ -141,6 +114,19 @@ namespace xdp {
       gotValue = true;
     }
     return rowOffset;
+  }
+
+  std::vector<std::string>
+  AieProfileMetadata::getSettingsVector(std::string settingsString) 
+  {
+    if (settingsString.empty())
+      return {};
+
+    // Each of the metrics can have ; separated multiple values. Process and save all
+    std::vector<std::string> settingsVector;
+    boost::replace_all(settingsString, " ", "");
+    boost::split(settingsVector, settingsString, boost::is_any_of(";"));
+    return settingsVector;
   }
 
   std::vector<tile_type>
@@ -294,12 +280,21 @@ namespace xdp {
   AieProfileMetadata::getConfigMetricsForTiles(int moduleIdx,
                                                const std::vector<std::string>& metricsSettings,
                                                const std::vector<std::string>& graphMetricsSettings,
-                                               const module_type mod,
-                                               void* handle)
+                                               const module_type mod)
   {
+    if ((metricsSettings.empty()) && (graphMetricsSettings.empty())) 
+      return;
+    if ((getHardwareGen() == 1) && (mod == module_type::mem_tile)) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+        "MEM tiles are not available in AIE1. Profile settings will be ignored.");
+      return;
+    }
+
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     uint16_t rowOffset = (mod == module_type::mem_tile) ? 1 : getAIETileRowOffset();
-    auto tileName = (mod == module_type::mem_tile) ? "mem" : "aie";
+    auto modName = (mod == module_type::core) ? "aie" 
+                 : ((mod == module_type::dma) ? "aie_memory"
+                 : "mem_tile");
 
     // STEP 1 : Parse per-graph or per-kernel settings
 
@@ -342,8 +337,8 @@ namespace xdp {
           }
         } catch (...) {
           std::stringstream msg;
-          msg << "Channel specifications in graph_based_" << tileName 
-              << "_tile_metrics are not valid and hence ignored.";
+          msg << "Channel specifications in graph_based_" << modName 
+              << "_metrics are not valid and hence ignored.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
@@ -370,8 +365,8 @@ namespace xdp {
           }
         } catch (...) {
           std::stringstream msg;
-          msg << "Channel specifications in graph_based_" << tileName
-              << "_tile_metrics are not valid and hence ignored.";
+          msg << "Channel specifications in graph_based_" << modName
+              << "_metrics are not valid and hence ignored.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
@@ -402,12 +397,12 @@ namespace xdp {
       // split done only in Pass 1
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
 
-      if (metrics[i][0].compare("all") != 0)
+      if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
-      auto tiles = get_tiles(device.get(), metrics[i][0], mod, metrics[i][1]);
+      auto tiles = get_tiles(device.get(), metrics[i][0], mod);
       for (auto &e : tiles) {
-        configMetrics[moduleIdx][e] = metrics[i][2];
+        configMetrics[moduleIdx][e] = metrics[i][1];
       }
 
       // Grab channel numbers (if specified; MEM tiles only)
@@ -419,8 +414,8 @@ namespace xdp {
           }
         } catch (...) {
           std::stringstream msg;
-          msg << "Channel specifications in tile_based_" << tileName
-              << "_tile_metrics are not valid and hence ignored.";
+          msg << "Channel specifications in tile_based_" << modName
+              << "_metrics are not valid and hence ignored.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
@@ -458,8 +453,8 @@ namespace xdp {
       // Ensure range is valid 
       if ((minCol > maxCol) || (minRow > maxRow)) {
         std::stringstream msg;
-        msg << "Tile range specification in tile_based_" << tileName 
-            << "_tile_metrics is not of valid format and hence skipped.";
+        msg << "Tile range specification in tile_based_" << modName 
+            << "_metrics is not of valid format and hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -472,8 +467,8 @@ namespace xdp {
           channel1 = std::stoi(metrics[i][4]);
         } catch (...) {
           std::stringstream msg;
-          msg << "Channel specifications in tile_based_" << tileName
-              << "_tile_metrics are not valid and hence ignored.";
+          msg << "Channel specifications in tile_based_" << modName
+              << "_metrics are not valid and hence ignored.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
@@ -524,8 +519,8 @@ namespace xdp {
         row = std::stoi(tilePos[1]) + rowOffset;
       } catch (...) {
         std::stringstream msg;
-        msg << "Tile specification in tile_based_" << tileName
-            << "_tile_metrics is not valid format and hence skipped.";
+        msg << "Tile specification in tile_based_" << modName
+            << "_metrics is not valid format and hence skipped.";
         xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
@@ -552,8 +547,8 @@ namespace xdp {
           configChannel1[tile] = std::stoi(metrics[i][3]);
         } catch (...) {
           std::stringstream msg;
-          msg << "Channel specifications in tile_based_" << tileName
-              << "_tile_metrics are not valid and hence ignored.";
+          msg << "Channel specifications in tile_based_" << modName
+              << "_metrics are not valid and hence ignored.";
           xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         }
       }
@@ -595,9 +590,11 @@ namespace xdp {
   void
   AieProfileMetadata::getConfigMetricsForInterfaceTiles(int moduleIdx,
                                                         const std::vector<std::string>& metricsSettings,
-                                                        const std::vector<std::string> graphMetricsSettings,
-                                                        void* handle)
+                                                        const std::vector<std::string> graphMetricsSettings)
   {
+    if ((metricsSettings.empty()) && (graphMetricsSettings.empty())) 
+      return;
+      
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
     // TODO: Add support for graph metrics

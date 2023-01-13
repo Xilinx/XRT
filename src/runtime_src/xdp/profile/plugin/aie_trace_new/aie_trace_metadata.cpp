@@ -43,7 +43,6 @@ namespace xdp {
   : deviceID(deviceID)
   , handle(handle)
   {
-
     counterScheme = xrt_core::config::get_aie_trace_settings_counter_scheme();
     
     // Check whether continuous trace is enabled in xrt.ini
@@ -79,7 +78,6 @@ namespace xdp {
         getSettingsVector(xrt_core::config::get_aie_trace_settings_tile_based_mem_tile_metrics());
     auto memGraphMetricsSettings = 
         getSettingsVector(xrt_core::config::get_aie_trace_settings_graph_based_mem_tile_metrics());
-
 
     if (aieTileMetricsSettings.empty() && aieGraphMetricsSettings.empty()
         && memTileMetricsSettings.empty() && memGraphMetricsSettings.empty()) {
@@ -551,12 +549,12 @@ namespace xdp {
       // Split done only in Pass 1
       boost::split(metrics[i], metricsSettings[i], boost::is_any_of(":"));
 
-      if (metrics[i][0].compare("all") != 0)
+      if ((metrics[i][0].compare("all") != 0) || (metrics[i].size() < 2))
         continue;
 
-      auto tiles = get_tiles(device.get(), metrics[i][0], type, metrics[i][1]);
+      auto tiles = get_tiles(device.get(), metrics[i][0], type);
       for (auto &e : tiles) {
-        configMetrics[e] = metrics[i][2];
+        configMetrics[e] = metrics[i][1];
       }
 
       // Grab channel numbers (if specified; MEM tiles only)

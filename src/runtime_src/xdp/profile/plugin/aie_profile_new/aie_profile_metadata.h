@@ -75,15 +75,15 @@ class AieProfileMetadata{
 
     int getHardwareGen();
     uint16_t getAIETileRowOffset();
+    std::vector<std::string> getSettingsVector(std::string settingsString);
+
     void getConfigMetricsForTiles(int moduleIdx,
                                   const std::vector<std::string>& metricsSettings,
                                   const std::vector<std::string>& graphMetricsSettings,
-                                  const module_type mod,
-                                  void* handle);
+                                  const module_type mod);
     void getConfigMetricsForInterfaceTiles(int moduleIdx,
                                            const std::vector<std::string>& metricsSettings,
-                                           const std::vector<std::string> graphMetricsSettings,
-                                           void* handle);
+                                           const std::vector<std::string> graphMetricsSettings);
     uint8_t getMetricSetIndex(std::string metricSet, module_type mod);
     static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
 
