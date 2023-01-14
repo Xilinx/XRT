@@ -2433,6 +2433,8 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 
 create_regular_cu:
 	/* Regular CU directly talks to CU, without XGQ */
+	/* Reserve the subdevices for all the CUs before create them */
+	xocl_kds_reserve_cu_subdevices(xdev, cu_info, num_cus);
 	xocl_kds_create_cus(xdev, cu_info, num_cus);
 	XDEV(xdev)->kds.xgq_enable = false;
 
