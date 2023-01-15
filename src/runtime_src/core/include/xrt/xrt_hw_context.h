@@ -14,7 +14,9 @@
 #include <map>
 
 // Opaque handle for internal use
-struct xrt_hwctx_handle;
+namespace xrt_core {
+class hwctx_handle;
+}
 
 namespace xrt {
 
@@ -141,7 +143,7 @@ public:
   // Undocumented internal access to low level context handle
   // Subject to change without warning
   XRT_API_EXPORT
-  explicit operator xrt_hwctx_handle () const;
+  explicit operator xrt_core::hwctx_handle* () const;
   /// @endcond
 };
 

@@ -5,10 +5,11 @@
 #define SHIM_INT_H_
 
 #include "core/include/xrt.h"
-#include "core/include/xrt_hwctx.h"
 #include "core/include/xrt_hwqueue.h"
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/include/xrt/xrt_hw_context.h"
 #include "core/common/cuidx_type.h"
+#include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/hwqueue_handle.h"
 
 #include <string>
 
@@ -54,23 +55,15 @@ void
 close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
 
 // create_hw_context() -
-xrt_hwctx_handle // ctxhdl aka slotidx
+std::unique_ptr<xrt_core::hwctx_handle>
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
                   xrt::hw_context::access_mode mode);
 
-// dsstroy_hw_context() -
-void
-destroy_hw_context(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl);
-
 // create_hw_queue() -
-xrt_hwqueue_handle
-create_hw_queue(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl);
-
-// create_hw_queue() -
-void
-destroy_hw_queue(xclDeviceHandle handle, xrt_hwqueue_handle qhdl);
+std::unique_ptr<xrt_core::hwqueue_handle>
+create_hw_queue(xclDeviceHandle handle, xrt_core::hwctx_handle* ctxhdl);
 
 // register_xclbin() -
 void
@@ -78,15 +71,15 @@ register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin);
 
 // submit_command() -
 void
-submit_command(xclDeviceHandle handle, xrt_hwqueue_handle qhdl, xclBufferHandle cmdbo);
+submit_command(xclDeviceHandle handle, xrt_core::hwqueue_handle* qhdl, xrt_buffer_handle cmdbo);
 
 // wait_command() -
 int
-wait_command(xclDeviceHandle handle, xrt_hwqueue_handle qhdl, xclBufferHandle cmdbo, int timeout_ms);
+wait_command(xclDeviceHandle handle, xrt_core::hwqueue_handle* qhdl, xrt_buffer_handle cmdbo, int timeout_ms);
 
 // exec_buf() - Exec Buf with hw ctx handle.
 void
-exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xrt_hwctx_handle ctxhdl);
+exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xrt_core::hwctx_handle* ctxhdl);
 }} // shim_int, xrt
 
 #endif
