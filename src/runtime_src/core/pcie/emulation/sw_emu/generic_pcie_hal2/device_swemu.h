@@ -29,6 +29,14 @@ class device : public shim<device_pcie>
 public:
   device(handle_type device_handle, id_type device_id, bool user);
 
+  std::unique_ptr<hwctx_handle>
+  create_hw_context(const xrt::uuid& xclbin_uuid,
+                    const xrt::hw_context::qos_type& qos,
+                    xrt::hw_context::access_mode mode) const override
+  {
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos, mode);
+  }
+
 private:
   // Private look up function for concrete query::request
   virtual const query::request&
