@@ -14,7 +14,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xrt_profiling.h"
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/experimental/xrt_xclbin.h"
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/counters.h"
@@ -97,12 +97,94 @@ using addr_type = uint64_t;
  } KernelArg;
 
 
-  class HwEmShim {
+  class HwEmShim
+  {
+    // Shim handle for hardware context Even as hw_emu does not
+    // support hardware context, it still must implement a shim
+    // hardware context handle representing the default slot
+    class hwcontext : public xrt_core::hwctx_handle
+    {
+      HwEmShim* m_shim;
+      xrt::uuid m_uuid;
+      slot_id m_slotidx;
+      xrt::hw_context::access_mode m_mode;
 
     public:
+      hwcontext(HwEmShim* shim, slot_id slotidx, xrt::uuid uuid, xrt::hw_context::access_mode mode)
+        : m_shim(shim)
+        , m_uuid(std::move(uuid))
+        , m_slotidx(slotidx)
+        , m_mode(mode)
+      {}
 
+      slot_id
+      get_slotidx() const override
+      {
+        return m_slotidx;
+      }
+
+      xrt::hw_context::access_mode
+      get_mode() const
+      {
+        return m_mode;
+      }
+
+      xrt::uuid
+      get_xclbin_uuid() const
+      {
+        return m_uuid;
+      }
+
+      std::unique_ptr<xrt_core::hwqueue_handle>
+      create_hw_queue() override
+      {
+        return nullptr;
+      }
+
+      xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+      alloc_bo(void* userptr, size_t size, unsigned int flags) override
+      {
+        // The hwctx is embedded in the flags, use regular shim path
+        auto bo = m_shim->xclAllocUserPtrBO(userptr, size, flags);
+        if (bo == XRT_NULL_BO)
+          throw std::bad_alloc();
+
+        return to_xrt_buffer_handle(bo);
+      }
+
+      xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+      alloc_bo(size_t size, unsigned int flags) override
+      {
+        // The hwctx is embedded in the flags, use regular shim path
+        auto bo = m_shim->xclAllocBO(size, flags);
+        if (bo == XRT_NULL_BO)
+          throw std::bad_alloc();
+
+        return to_xrt_buffer_handle(bo);
+      }
+
+      xrt_core::cuidx_type
+      open_cu_context(const std::string& cuname) override
+      {
+        return m_shim->open_cu_context(this, cuname);
+      }
+
+      void
+      close_cu_context(xrt_core::cuidx_type cuidx) override
+      {
+        m_shim->close_cu_context(this, cuidx);
+      }
+
+      void
+      exec_buf(xrt_buffer_handle cmd) override
+      {
+        m_shim->xclExecBuf(to_xclBufferHandle(cmd));
+      }
+    }; // class hwcontext
+
+    public:
       // HAL2 RELATED member functions start
-      unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
+      unsigned int xclAllocBO(size_t size, unsigned flags);
       uint64_t xoclCreateBo(xclemulation::xocl_create_bo *info);
       void* xclMapBO(unsigned int boHandle, bool write);
       int xclUnmapBO(unsigned int boHandle, void* addr);
@@ -138,18 +220,14 @@ using addr_type = uint64_t;
 
       // aka xclOpenContextByName, internal shim API for native C++ applications only
       xrt_core::cuidx_type
-      open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
+      open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuname);
 
       void
-      close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
+      close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx);
 
       // aka xclCreateHWContext, internal shim API for native C++ applications only
-      xrt_hwctx_handle
+      std::unique_ptr<xrt_core::hwctx_handle>
       create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode);
-
-      // aka xclDestroyHWContext, internal shim API for native C++ applications only
-      void
-      destroy_hw_context(xrt_hwctx_handle ctxhdl);
 
       // aka xclRegisterXclbin, internal shim API for native C++ applications only
       void

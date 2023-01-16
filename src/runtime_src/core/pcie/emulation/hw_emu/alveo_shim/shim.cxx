@@ -1094,7 +1094,7 @@ namespace xclhwemhal2 {
 
     std::string simulationDirectoryMsg = "INFO: [HW-EMU 05] Path of the simulation directory : " + getSimPath();
     logMessage(simulationDirectoryMsg);
-     
+
     try {
        sock = std::make_shared<unix_socket>();
     }
@@ -1102,7 +1102,7 @@ namespace xclhwemhal2 {
        std::cerr << "\n ERROR: [HW-EMU 28] ERROR unable to allocate memory, error is ::" << e.what();
        return -1;
     }
-    
+
     set_simulator_started(true);
     sock->monitor_socket();
 
@@ -2796,12 +2796,12 @@ uint64_t HwEmShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   return 0;
 }
 
-unsigned int HwEmShim::xclAllocBO(size_t size, int unused, unsigned flags)
+unsigned int HwEmShim::xclAllocBO(size_t size, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
   if (mLogStream.is_open())
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<< unused <<" , "<< flags << std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<< flags << std::endl;
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   uint64_t result = xoclCreateBo(&info);
@@ -2892,7 +2892,7 @@ unsigned int HwEmShim::xclImportBO(int boGlobalHandle, unsigned flags)
     int size = std::get<1>((*itr).second);
     unsigned boFlags = std::get<3>((*itr).second);
 
-    unsigned int importedBo = xclAllocBO(size, 0, boFlags);
+    unsigned int importedBo = xclAllocBO(size, boFlags);
     xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
     if(!bo)
     {
@@ -3413,45 +3413,37 @@ xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex)
 // Once properly implemented, this API should throw on error
 xrt_core::cuidx_type
 HwEmShim::
-open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuname)
 {
   // Emulation does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-  auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
-  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
-  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
+  auto cuidx = mCoreDevice->get_cuidx(hwctx->get_slotidx(), cuname);
+  xclOpenContext(hwctx->get_xclbin_uuid().get(), cuidx.index, shared);
 
   return cuidx;
 }
 
 void
 HwEmShim::
-close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx)
 {
-  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  if (xclCloseContext(hwctx->get_xclbin_uuid().get(), cuidx.index))
     throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
 }
 
 // aka xclCreateHWContext, internal shim API for native C++ applications only
 // Once properly implemented, this API should throw on error
-xrt_hwctx_handle
+std::unique_ptr<xrt_core::hwctx_handle>
 HwEmShim::
-create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode)
+create_hw_context(const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type&,
+                  xrt::hw_context::access_mode mode)
 {
-  // Explicit hardware contexts are not yet supported
-  throw xrt_core::ishim::not_supported_error{__func__};
-}
-
-// aka xclDestroyHWContext, internal shim API for native C++ applications only
-// Once properly implemented, this API should throw on error
-void
-HwEmShim::
-destroy_hw_context(xrt_hwctx_handle ctxhdl)
-{
-  // Explicit hardware contexts are not yet supported
-  throw xrt_core::ishim::not_supported_error{__func__};
+  return std::make_unique<hwcontext>(this, 0, xclbin_uuid, mode);
 }
 
 // aka xclRegisterXclbin, internal shim API for native C++ applications only

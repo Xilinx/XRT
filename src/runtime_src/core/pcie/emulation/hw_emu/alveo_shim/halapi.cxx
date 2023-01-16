@@ -30,22 +30,7 @@ get_shim_object(xclDeviceHandle handle)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
-// open_context - aka xclOpenContextByName
-xrt_core::cuidx_type
-open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
-{
-  auto shim = get_shim_object(handle);
-  return shim->open_cu_context(hwctx, cuname);
-}
-
-void
-close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
-{
-  auto shim = get_shim_object(handle);
-  return shim->close_cu_context(hwctx, cuidx);
-}
-
-xrt_hwctx_handle
+std::unique_ptr<xrt_core::hwctx_handle>
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
@@ -53,13 +38,6 @@ create_hw_context(xclDeviceHandle handle,
 {
   auto shim = get_shim_object(handle);
   return shim->create_hw_context(xclbin_uuid, qos, mode);
-}
-
-void
-destroy_hw_context(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl)
-{
-  auto shim = get_shim_object(handle);
-  shim->destroy_hw_context(ctxhdl);
 }
 
 void
@@ -143,13 +121,13 @@ size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
   }) ;
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
 {
   return xdp::hw_emu::trace::profiling_wrapper("xclAllocBO", [=]{
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return static_cast<unsigned int>(-EINVAL);
-  return drv->xclAllocBO(size, unused, flags);
+  return drv->xclAllocBO(size, flags);
   }) ;
 }
 
