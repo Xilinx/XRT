@@ -3435,8 +3435,6 @@ close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type c
     throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
 }
 
-// aka xclCreateHWContext, internal shim API for native C++ applications only
-// Once properly implemented, this API should throw on error
 std::unique_ptr<xrt_core::hwctx_handle>
 HwEmShim::
 create_hw_context(const xrt::uuid& xclbin_uuid,
