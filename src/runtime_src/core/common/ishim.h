@@ -149,28 +149,15 @@ struct ishim
   // not_supported_error, if either not implemented or an xclbin
   // was explicitly loaded using load_xclbin
   virtual std::unique_ptr<hwctx_handle>
-  create_hw_context(const xrt::uuid& /*xclbin_uuid*/, const xrt::hw_context::qos_type& /*qos*/, xrt::hw_context::access_mode /*mode*/) const
-  { throw not_supported_error{__func__}; }
-
-  // Submits command for execution through hw queue
-  virtual void
-  submit_command(xrt_hwqueue_handle, xrt_buffer_handle /*cmdbo*/) const
-  { throw not_supported_error{__func__}; }
-
-  // Wait for command completion through hw queue
-  // Returns 0 on timeout else a value that indicates specified
-  // cmdbo completed.  If cmdbo is XRT_NULL_BO then function must
-  // returns when some previously submitted command completes.
-  virtual int
-  wait_command(xrt_hwqueue_handle, xrt_buffer_handle /*cmdbo*/, int /*timeout_ms*/) const
-  { throw not_supported_error{__func__}; }
+  create_hw_context(const xrt::uuid& /*xclbin_uuid*/,
+                    const xrt::hw_context::qos_type& /*qos*/,
+                    xrt::hw_context::access_mode /*mode*/) const = 0;
 
   // Registers an xclbin with shim, but does not load it.
   // This is no-op for most platform shims
   virtual void
   register_xclbin(const xrt::xclbin&) const
   { throw not_supported_error{__func__}; }
-
   ////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////
