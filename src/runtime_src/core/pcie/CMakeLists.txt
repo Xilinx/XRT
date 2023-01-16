@@ -14,7 +14,7 @@ if(NOT WIN32)
   if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     # Emulation flow only works on x86_64
 #    xrt_add_subdirectory(emulation)
-#    xrt_add_subdirectory(noop)
+    xrt_add_subdirectory(noop)
   endif()
 else()
   xrt_add_subdirectory(windows)
