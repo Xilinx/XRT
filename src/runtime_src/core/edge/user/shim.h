@@ -34,6 +34,90 @@ class shim {
 
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
 public:
+
+  // Shim handle for hardware context Even as hw_emu does not
+  // support hardware context, it still must implement a shim
+  // hardware context handle representing the default slot
+  class hwcontext : public xrt_core::hwctx_handle
+  {
+    shim* m_shim;
+    xrt::uuid m_uuid;
+    slot_id m_slotidx;
+    xrt::hw_context::access_mode m_mode;
+
+  public:
+    hwcontext(shim* shim, slot_id slotidx, xrt::uuid uuid, xrt::hw_context::access_mode mode)
+      : m_shim(shim)
+      , m_uuid(std::move(uuid))
+      , m_slotidx(slotidx)
+      , m_mode(mode)
+    {}
+
+    slot_id
+    get_slotidx() const override
+    {
+      return m_slotidx;
+    }
+
+    xrt::hw_context::access_mode
+    get_mode() const
+    {
+      return m_mode;
+    }
+
+    xrt::uuid
+    get_xclbin_uuid() const
+    {
+      return m_uuid;
+    }
+
+    std::unique_ptr<xrt_core::hwqueue_handle>
+    create_hw_queue() override
+    {
+      return nullptr;
+    }
+
+    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    alloc_bo(void* userptr, size_t size, unsigned int flags) override
+    {
+      // The hwctx is embedded in the flags, use regular shim path
+      auto bo = m_shim->xclAllocUserPtrBO(userptr, size, flags);
+      if (bo == XRT_NULL_BO)
+        throw std::bad_alloc();
+
+      return to_xrt_buffer_handle(bo);
+    }
+
+    xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+    alloc_bo(size_t size, unsigned int flags) override
+    {
+      // The hwctx is embedded in the flags, use regular shim path
+      auto bo = m_shim->xclAllocBO(size, flags);
+      if (bo == XRT_NULL_BO)
+        throw std::bad_alloc();
+
+      return to_xrt_buffer_handle(bo);
+    }
+
+    xrt_core::cuidx_type
+    open_cu_context(const std::string& cuname) override
+    {
+      return m_shim->open_cu_context(this, cuname);
+    }
+
+    void
+    close_cu_context(xrt_core::cuidx_type cuidx) override
+    {
+      m_shim->close_cu_context(this, cuidx);
+    }
+
+    void
+    exec_buf(xrt_buffer_handle cmd) override
+    {
+      m_shim->xclExecBuf(to_xclBufferHandle(cmd));
+    }
+  }; // class hwcontext
+
   ~shim();
   shim(unsigned index);
 
@@ -49,7 +133,7 @@ public:
   int xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data);
   int xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap);
 
-  unsigned int xclAllocBO(size_t size, int unused, unsigned flags);
+  unsigned int xclAllocBO(size_t size, unsigned flags);
   unsigned int xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags);
   unsigned int xclGetHostBO(uint64_t paddr, size_t size);
   void xclFreeBO(unsigned int boHandle);
@@ -65,10 +149,20 @@ public:
   int xclExecBuf(unsigned int cmdBO);
   int xclExecWait(int timeoutMilliSec);
 
+  ////////////////////////////////////////////////////////////////
+  // Context handling
+  ////////////////////////////////////////////////////////////////
+  xrt_core::cuidx_type
+  open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuname);
+
+  void
+  close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx);
+
+  std::unique_ptr<xrt_core::hwctx_handle>
+  create_hw_context(const xrt::uuid&, const xrt::hw_context::qos_type&, xrt::hw_context::access_mode);
+////////////////////////////////////////////////////////////////
+
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
-  // aka xclOpenContextByName()
-  xrt_core::cuidx_type open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname);
-  void close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx);
   int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
   int xclSKGetCmd(xclSKCmd *cmd);
