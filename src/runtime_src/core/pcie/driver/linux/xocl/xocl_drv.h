@@ -1577,24 +1577,24 @@ static inline void xocl_icap_clean_bitstream_all(xdev_handle_t xdev_hdl)
                 xocl_icap_clean_bitstream(xdev_hdl, slot_id);
 }
 
-static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
+static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl,
+					 uint32_t slot_id)
 {
-	struct xocl_drm *drm = XDEV(xdev_hdl)->drm;
-	struct xocl_mm *xocl_mm = NULL;
+	struct mem_topology *topo = NULL;
+	uint32_t ret = 0;
+	int err = XOCL_GET_GROUP_TOPOLOGY(xdev_hdl, topo, slot_id);
 
-	if (!drm)
+	if (err)
 		return 0;
+	ret = topo ? topo->m_count : 0;
+	XOCL_PUT_GROUP_TOPOLOGY(xdev_hdl, slot_id);
 
-	xocl_mm = drm->xocl_mm;
-	if (!xocl_mm)
-		return 0;
-
-	return xocl_mm->m_count;
+	return ret;
 }
 
 #define XOCL_MAX_DDR_SUPPORT 8
-#define	XOCL_DDR_COUNT(xdev)			\
-	(xocl_is_unified(xdev) ? xocl_ddr_count_unified(xdev) :	\
+#define	XOCL_DDR_COUNT(xdev, slot)			\
+	(xocl_is_unified(xdev) ? xocl_ddr_count_unified(xdev, slot) :	\
 	xocl_get_ddr_channel_count(xdev))
 #define XOCL_IS_STREAM(topo, idx)					\
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \

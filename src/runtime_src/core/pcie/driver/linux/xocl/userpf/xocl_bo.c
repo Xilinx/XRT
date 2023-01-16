@@ -288,16 +288,16 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		return 0;
 	//From "mem_topology" or "feature rom" depending on
 	//unified or non-unified dsa
-	
+
 	err = XOCL_GET_GROUP_TOPOLOGY(xdev, topo, slot_id);
 	if (err)
 		return err;
-    
-    if (topo) {
-        if (XOCL_IS_PS_KERNEL_MEM(topo, ddr)) {
+
+	if (topo) {
+		if (XOCL_IS_PS_KERNEL_MEM(topo, ddr)) {
 			err = 0;
 			goto done;
-        }
+		}
 
 		if (XOCL_IS_STREAM(topo, ddr)) {
 			userpf_err(xdev, "Bank %d is Stream", ddr);
@@ -306,19 +306,19 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 		}
 		if (!XOCL_IS_DDR_USED(topo, ddr)) {
 			userpf_err(xdev,
-				"Bank %d is marked as unused in axlf", ddr);
+				   "Bank %d is marked as unused in axlf", ddr);
 			err = -EINVAL;
 			goto done;
 		}
 	}
 
-    ddr_count = XOCL_DDR_COUNT(xdev);
+	ddr_count = XOCL_DDR_COUNT(xdev, slot_id);
 	if (ddr_count == 0)
 		return -EINVAL;
 
 	if (ddr >= ddr_count)
 		return -EINVAL;
-	
+
 done:
 	XOCL_PUT_GROUP_TOPOLOGY(xdev, slot_id);
 	return err;
@@ -1531,7 +1531,8 @@ int xocl_usage_stat_ioctl(struct drm_device *dev, void *data,
 	struct drm_xocl_usage_stat *args = data;
 	int	i;
 
-	args->mm_channel_count = XOCL_DDR_COUNT(xdev);
+	/* Use default slot id for DMA information */
+	args->mm_channel_count = XOCL_DDR_COUNT(xdev, DEFAULT_PL_SLOT);
 	if (args->mm_channel_count > 8)
 		args->mm_channel_count = 8;
 	for (i = 0; i < args->mm_channel_count; i++)
