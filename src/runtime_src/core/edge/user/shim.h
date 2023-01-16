@@ -13,8 +13,8 @@
 #include "core/common/device.h"
 #include "core/common/bo_cache.h"
 #include "core/common/xrt_profiling.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/xdp/app_debug.h"
-#include "core/include/experimental/xrt_hw_context.h"
 
 #include <cstdint>
 #include <fstream>

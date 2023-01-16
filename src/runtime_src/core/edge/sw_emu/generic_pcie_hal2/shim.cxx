@@ -6,7 +6,6 @@
 #include "pllauncher_defines.h"
 #include "core/include/xclbin.h"
 #include "core/common/xclbin_parser.h"
-#include "core/common/api/hw_context_int.h"
 #include <errno.h>
 #include <unistd.h>
 #include <boost/property_tree/xml_parser.hpp>

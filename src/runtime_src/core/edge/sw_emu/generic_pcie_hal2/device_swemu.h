@@ -18,7 +18,9 @@
 #define PCIE_SWEMU_DEVICE_LINUX_H
 
 #include "core/common/ishim.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "core/edge/common/device_edge.h"
+
 
 namespace xrt_core { namespace swemu {
 

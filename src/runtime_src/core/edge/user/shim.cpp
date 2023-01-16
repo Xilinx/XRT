@@ -22,7 +22,6 @@
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"
-#include "core/common/api/hw_context_int.h"
 
 #include <cassert>
 #include <cerrno>

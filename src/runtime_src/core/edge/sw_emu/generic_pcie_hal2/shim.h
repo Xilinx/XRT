@@ -18,7 +18,7 @@
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
 #include "core/common/api/xclbin_int.h"
-#include "core/include/experimental/xrt_hw_context.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/experimental/xrt_xclbin.h"
 #include "core/include/xdp/common.h"
 #include "core/include/xdp/counters.h"
