@@ -1756,12 +1756,12 @@ uint64_t SwEmuShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   return 0;
 }
 
-unsigned int SwEmuShim::xclAllocBO(size_t size, int unused, unsigned flags)
+unsigned int SwEmuShim::xclAllocBO(size_t size, unsigned flags)
 {
   std::lock_guard lk(mApiMtx);
   if (mLogStream.is_open())
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<< unused <<" , "<< flags << std::endl;
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<< flags << std::endl;
   }
   xclemulation::xocl_create_bo info = {size, mNullBO, flags};
   uint64_t result = xoclCreateBo(&info);
@@ -1850,7 +1850,7 @@ unsigned int SwEmuShim::xclImportBO(int boGlobalHandle, unsigned flags)
   {
     const std::string& fileName = std::get<0>((*itr).second);
     int size = std::get<1>((*itr).second);
-    unsigned int importedBo = xclAllocBO(size, 0,flags);
+    unsigned int importedBo = xclAllocBO(size, flags);
     xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(importedBo);
     if(!bo)
     {
@@ -2182,26 +2182,36 @@ int SwEmuShim::xclIPName2Index(const char *name)
 // open_context() - aka xclOpenContextByName
 xrt_core::cuidx_type
 SwEmuShim::
-open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuname)
 {
   // Edge does not yet support multiple xclbins.  Call
   // regular flow.  Default access mode to shared unless explicitly
   // exclusive.
-  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-  auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
-  auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
-  xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
+  auto cuidx = mCoreDevice->get_cuidx(hwctx->get_slotidx(), cuname);
+  xclOpenContext(hwctx->get_xclbin_uuid().get(), cuidx.index, shared);
 
   return cuidx;
 }
 
 void
 SwEmuShim::
-close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx)
 {
   // To-be-implemented
-  if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+  auto hwctx = static_cast<const hwcontext*>(hwctx_hdl);
+  if (xclCloseContext(hwctx->get_xclbin_uuid().get(), cuidx.index))
     throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
+}
+
+std::unique_ptr<xrt_core::hwctx_handle>
+SwEmuShim::
+create_hw_context(const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type&,
+                  xrt::hw_context::access_mode mode)
+{
+  return std::make_unique<hwcontext>(this, 0, xclbin_uuid, mode);
 }
 
 /******************************* XRT Graph API's **************************************************/
