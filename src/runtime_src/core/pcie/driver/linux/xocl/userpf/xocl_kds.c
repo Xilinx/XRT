@@ -2026,6 +2026,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	xocl_kds_create_scus(xdev, scu_info, num_scus);
 
 	XDEV(xdev)->kds.xgq_enable = (cfg.ert)? true : false;
+	XDEV(xdev)->kds.force_polling = (cfg.polling)? true : false;
 	goto out;
 
 create_regular_cu:
