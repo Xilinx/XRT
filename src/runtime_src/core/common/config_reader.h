@@ -525,6 +525,20 @@ get_ert_polling()
 }
 
 /**
+  * Poll for XGQ command completion
+  */
+inline bool
+get_xgq_polling()
+{
+  /**
+   * xgq_polling flag will force KDS to poll XGQ commands regardless of interrupt config.
+   * This is added for XRT team interrupt debugging purpose and will not be documented.
+   */
+  static bool value = get_enable_flat() || detail::get_bool_value("Runtime.xgq_polling",false);
+  return value;
+}
+
+/**
  * Use new hw context for multi slot application 
  */
 inline bool

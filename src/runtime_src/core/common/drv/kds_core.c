@@ -2105,6 +2105,9 @@ static int kds_cfg_xgq_update(struct kds_sched *kds)
 	int ret = 0;
 	int i = 0;
 
+        if (kds->force_polling)
+		goto run_polling;
+
 	for (i = 0; i < MAX_CUS; i++) {
 		xcu = cu_mgmt->xcus[i];
 		if (!xcu)
