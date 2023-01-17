@@ -189,6 +189,8 @@ struct xocl_xgq_vmr {
 static int vmr_status_query(struct platform_device *pdev);
 static void xgq_offline_service(struct xocl_xgq_vmr *xgq);
 static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq);
+static uint64_t xgq_get_data(struct platform_device *pdev,
+	enum data_kind kind);
 
 /*
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
@@ -1559,6 +1561,40 @@ cid_alloc_failed:
 	return ret;
 }
 
+static int set_and_verify_freqs(struct platform_device *pdev,unsigned short *target_freqs, int num_freqs, int verify)
+{
+    int ret = 0,i;
+    u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
+    struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	enum data_kind kinds[3] = {FREQ_COUNTER_0,FREQ_COUNTER_1,FREQ_COUNTER_2};
+
+    ret = xgq_freq_scaling(pdev, target_freqs, num_freqs,
+		verify);
+    if (ret) {
+		XGQ_ERR(xgq, "ret %d", ret);
+        return ret;
+	}
+
+    for (i = 0; i < min(XGQ_CLOCK_WIZ_MAX_RES, num_freqs); ++i) {
+		if (!target_freqs[i])
+			continue;
+
+		clock_freq_counter = (u32)xgq_get_data(pdev, kinds[i]);
+
+		lookup_freq = target_freqs[i];
+		request_in_khz = lookup_freq*1000;
+		tolerance = lookup_freq*50;
+		//XGQ_WARN(xgq,"i = %d, lookup_freq = %lu,request_in_khz = %lu, tolerance = %lu",i,lookup_freq,request_in_khz, tolerance);
+		if (tolerance < abs(clock_freq_counter-request_in_khz)) {
+			XGQ_ERR(xgq, "Frequency is higher than tolerance value, request %u"
+					"khz, actual %u khz", request_in_khz, clock_freq_counter);
+			ret = -EDOM;
+			break;
+		}
+	}
+    return ret;
+}
+
 static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
 	struct clock_freq_topology *topo, int verify)
 {
@@ -1748,42 +1784,6 @@ static uint64_t xgq_get_data(struct platform_device *pdev,
 	}
 
 	return target;
-}
-
-static int set_and_verify_freqs(struct platform_device *pdev,unsigned short *target_freqs, int num_freqs, int verify)
-{
-    int ret = 0,i;
-    u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
-    struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
-	enum data_kind kinds[3] = {FREQ_COUNTER_0,FREQ_COUNTER_1,FREQ_COUNTER_2};
-
-    ret = xgq_freq_scaling(pdev, target_freqs, num_freqs,
-		verify);
-    if (ret) {
-		XGQ_ERR(xgq, "ret %d", ret);
-        return ret;
-	}
-
-    for (i = 0; i < min(XGQ_CLOCK_WIZ_MAX_RES, num_freqs); ++i) {
-		if (!target_freqs[i])
-			continue;
-
-		if (xocl_clock_get_freq_counter(pdev, &clock_freq_counter, i) ==
-			-ENODEV)
-			continue;
-
-		lookup_freq = target_freqs[i];
-		request_in_khz = lookup_freq*1000;
-		tolerance = lookup_freq*50;
-		//XGQ_WARN(xgq,"i = %d, lookup_freq = %lu,request_in_khz = %lu, tolerance = %lu",i,lookup_freq,request_in_khz, tolerance);
-		if (tolerance < abs(clock_freq_counter-request_in_khz)) {
-			XGQ_ERR(xgq, "Frequency is higher than tolerance value, request %u"
-					"khz, actual %u khz", request_in_khz, clock_freq_counter);
-			ret = -EDOM;
-			break;
-		}
-	}
-    return ret;
 }
 
 static bool vmr_check_apu_is_ready(struct xocl_xgq_vmr *xgq)
