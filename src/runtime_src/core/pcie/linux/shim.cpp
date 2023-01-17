@@ -1477,7 +1477,7 @@ int shim::xclLoadAxlf(const axlf *buffer)
 
     /* To make download xclbin and configure KDS/ERT as an atomic operation. */
     axlf_obj.kds_cfg.ert = xrt_core::config::get_ert();
-    axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
+    axlf_obj.kds_cfg.polling = xrt_core::config::get_xgq_polling();
     axlf_obj.kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
     axlf_obj.kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(buffer);
     axlf_obj.kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
