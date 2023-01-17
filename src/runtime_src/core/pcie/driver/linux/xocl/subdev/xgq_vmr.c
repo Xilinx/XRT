@@ -1210,7 +1210,7 @@ static int xgq_status(struct platform_device *pdev, struct VmrStatus *vmr_status
 	return 0;
 }
 
-static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
+static int xgq_vmr_healthy_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -1330,12 +1330,12 @@ acquire_failed:
 
 static int xgq_check_firewall(struct platform_device *pdev)
 {
-	return xgq_firewall_op(pdev, XGQ_CMD_LOG_AF_CHECK);
+	return xgq_vmr_healthy_op(pdev, XGQ_CMD_LOG_AF_CHECK);
 }
 
 static int xgq_clear_firewall(struct platform_device *pdev)
 {
-	return xgq_firewall_op(pdev, XGQ_CMD_LOG_AF_CLEAR);
+	return xgq_vmr_healthy_op(pdev, XGQ_CMD_LOG_AF_CLEAR);
 }
 
 static int vmr_info_query_op(struct platform_device *pdev,
