@@ -19,6 +19,7 @@
 
 #include "xrt.h"
 #include "core/common/ishim.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "core/edge/common/device_edge.h"
 
 namespace xrt_core {
@@ -54,7 +55,7 @@ public:
   {
     return xclOpenIPInterruptNotify(get_device_handle(), ip_index, 0);
   }
-  
+
   virtual void
   close_ip_interrupt_notify(xclInterruptNotifyHandle handle)
   {
@@ -69,6 +70,14 @@ public:
 
   virtual void
   wait_ip_interrupt(xclInterruptNotifyHandle);
+
+  virtual std::unique_ptr<hwctx_handle>
+  create_hw_context(const xrt::uuid& xclbin_uuid,
+                    const xrt::hw_context::qos_type& qos,
+                    xrt::hw_context::access_mode mode) const override
+  {
+    return xrt::shim_int::create_hw_context(get_device_handle(), xclbin_uuid, qos, mode);
+  }
   ////////////////////////////////////////////////////////////////
 
 private:

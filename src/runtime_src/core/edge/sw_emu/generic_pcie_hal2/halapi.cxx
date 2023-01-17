@@ -27,19 +27,14 @@ get_shim_object(xclDeviceHandle handle)
 ////////////////////////////////////////////////////////////////
 namespace xrt::shim_int {
 
-// open_context - aka xclOpenContextByName
-xrt_core::cuidx_type
-open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
+std::unique_ptr<xrt_core::hwctx_handle>
+create_hw_context(xclDeviceHandle handle,
+                  const xrt::uuid& xclbin_uuid,
+                  const xrt::hw_context::qos_type& qos,
+                  xrt::hw_context::access_mode mode)
 {
   auto shim = get_shim_object(handle);
-  return shim->open_cu_context(hwctx, cuname);
-}
-
-void
-close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
-{
-  auto shim = get_shim_object(handle);
-  return shim->close_cu_context(hwctx, cuidx);
+  return shim->create_hw_context(xclbin_uuid, qos, mode);
 }
 
 } // xrt::shim_int
@@ -500,7 +495,7 @@ unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigne
   xclswemuhal2::SwEmuShim *drv = xclswemuhal2::SwEmuShim::handleCheck(handle);
   if (!drv)
     return -EINVAL;
-  return drv->xclAllocBO(size, unused, flags);
+  return drv->xclAllocBO(size, flags);
 }
 
 

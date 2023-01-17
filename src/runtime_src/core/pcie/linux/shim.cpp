@@ -10,6 +10,8 @@
 #include "system_linux.h"
 #include "xclbin.h"
 
+#include "core/common/shim/hwctx_handle.h"
+#include "core/common/shim/hwqueue_handle.h"
 #include "core/include/shim_int.h"
 #include "core/include/xdp/fifo.h"
 #include "core/include/xdp/trace.h"
@@ -115,6 +117,108 @@ get_shim_object(xclDeviceHandle handle)
 }
 
 } // namespace
+
+namespace xrt_shim {
+
+class hwcontext : public xrt_core::hwctx_handle
+{
+  xocl::shim* m_shim;
+  xrt::uuid m_uuid;
+  slot_id m_slotidx;
+  xrt::hw_context::access_mode m_mode;
+  bool m_null = false;
+
+public:
+  hwcontext(xocl::shim* shim, slot_id slotidx, xrt::uuid uuid, xrt::hw_context::access_mode mode)
+    : m_shim(shim)
+    , m_uuid(std::move(uuid))
+    , m_slotidx(slotidx)
+    , m_mode(mode)
+  {}
+
+  hwcontext(xocl::shim* shim, const xrt::uuid& uuid, xrt::hw_context::access_mode mode)
+    : hwcontext(shim, 0, uuid, mode)
+  {
+    m_null = true;
+  }
+
+  ~hwcontext()
+  {
+    m_shim->destroy_hw_context(m_slotidx);
+  }
+
+  slot_id
+  get_slotidx() const override
+  {
+    return m_slotidx;
+  }
+
+  xrt::hw_context::access_mode
+  get_mode() const
+  {
+    return m_mode;
+  }
+
+  xrt::uuid
+  get_xclbin_uuid() const
+  {
+    return m_uuid;
+  }
+
+  std::unique_ptr<xrt_core::hwqueue_handle>
+  create_hw_queue() override
+  {
+    return nullptr;
+  }
+
+  xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+  alloc_bo(void* userptr, size_t size, unsigned int flags) override
+  {
+    // The hwctx is embedded in the flags, use regular shim path
+    auto bo = m_shim->xclAllocUserPtrBO(userptr, size, flags);
+    if (bo == XRT_NULL_BO)
+      throw std::bad_alloc();
+
+    return to_xrt_buffer_handle(bo);
+  }
+
+  xrt_buffer_handle // tobe: std::unique_ptr<buffer_handle>
+  alloc_bo(size_t size, unsigned int flags) override
+  {
+    // The hwctx is embedded in the flags, use regular shim path
+    auto bo = m_shim->xclAllocBO(size, flags);
+    if (bo == XRT_NULL_BO)
+      throw std::bad_alloc();
+
+    return to_xrt_buffer_handle(bo);
+  }
+
+  xrt_core::cuidx_type
+  open_cu_context(const std::string& cuname) override
+  {
+    return m_shim->open_cu_context(this, cuname);
+  }
+
+  void
+  close_cu_context(xrt_core::cuidx_type cuidx) override
+  {
+    m_shim->close_cu_context(this, cuidx);
+  }
+
+  void
+  exec_buf(xrt_buffer_handle cmd) override
+  {
+    m_shim->exec_buf(to_xclBufferHandle(cmd), this);
+  }
+
+  bool
+  is_null() const
+  {
+    return m_null;
+  }
+};
+
+}
 
 namespace xocl {
 
@@ -736,7 +840,7 @@ size_t shim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size
  *
  * Assume that the memory is always created for the device ddr for now. Ignoring the flags as well.
  */
-unsigned int shim::xclAllocBO(size_t size, int unused, unsigned flags)
+unsigned int shim::xclAllocBO(size_t size, unsigned flags)
 {
     drm_xocl_create_bo info = {size, mNullBO, flags};
     unsigned int bo = mNullBO;
@@ -1835,11 +1939,11 @@ int shim::xclExecBuf(unsigned int cmdBO)
 /*
  * xclExecBuf()
  */
-int shim::xclExecBuf(unsigned int cmdBO, xrt_hwctx_handle ctxhdl)
+int shim::xclExecBuf(unsigned int cmdBO, xrt_core::hwctx_handle* hwctx_hdl)
 {
     int ret;
     xrt_logmsg(XRT_INFO, "%s, cmdBO: %d", __func__, cmdBO);
-    drm_xocl_hw_ctx_execbuf exec = {ctxhdl, cmdBO, 0,0,0,0,0,0,0,0};
+    drm_xocl_hw_ctx_execbuf exec = {hwctx_hdl->get_slotidx(), cmdBO, 0,0,0,0,0,0,0,0};
     ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_HW_CTX_EXECBUF, &exec);
     return ret ? -errno : ret;
 }
@@ -2260,16 +2364,16 @@ int shim::xclCloseIPInterruptNotify(int fd)
 // open_context() - aka xclOpenContextByName
 xrt_core::cuidx_type
 shim::
-open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
+open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuname)
 {
-  auto shared = (hwctx.get_mode() != xrt::hw_context::access_mode::exclusive);
-  if (!hw_context_enable) {
+  auto hwctx = static_cast<const xrt_shim::hwcontext*>(hwctx_hdl);
+  auto shared = (hwctx->get_mode() != xrt::hw_context::access_mode::exclusive);
+  if (hwctx->is_null()) {
     // Alveo Linux PCIE does not yet support multiple xclbins.  Call
     // regular flow.  Default access mode to shared unless explicitly
     // exclusive.
-    auto ctxhdl = static_cast<xrt_hwctx_handle>(hwctx);
-    auto cuidx = mCoreDevice->get_cuidx(ctxhdl, cuname);
-    xclOpenContext(hwctx.get_xclbin_uuid().get(), cuidx.index, shared);
+    auto cuidx = mCoreDevice->get_cuidx(0, cuname);
+    xclOpenContext(hwctx->get_xclbin_uuid().get(), cuidx.index, shared);
 
     return cuidx;
   }
@@ -2279,7 +2383,7 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
     // Pass Input
     drm_xocl_open_cu_ctx cu_ctx = {};
     cu_ctx.flags = flags;
-    cu_ctx.hw_context = static_cast<xrt_hwctx_handle>(hwctx);
+    cu_ctx.hw_context = hwctx_hdl->get_slotidx();
     std::strcpy(cu_ctx.cu_name, cuname.c_str());
 
     if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_OPEN_CU_CTX, &cu_ctx))
@@ -2292,16 +2396,17 @@ open_cu_context(const xrt::hw_context& hwctx, const std::string& cuname)
 
 void
 shim::
-close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
+close_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, xrt_core::cuidx_type cuidx)
 {
-  if (!hw_context_enable) {
-    if (xclCloseContext(hwctx.get_xclbin_uuid().get(), cuidx.index))
+  auto hwctx = static_cast<const xrt_shim::hwcontext*>(hwctx_hdl);
+  if (hwctx->is_null()) {
+    if (xclCloseContext(hwctx->get_xclbin_uuid().get(), cuidx.index))
       throw xrt_core::system_error(errno, "failed to close cu context (" + std::to_string(cuidx.index) + ")");
   }
   else {
     // Pass Input
     drm_xocl_close_cu_ctx cu_ctx = {};
-    cu_ctx.hw_context = static_cast<xrt_hwctx_handle>(hwctx);
+    cu_ctx.hw_context = hwctx_hdl->get_slotidx();
     cu_ctx.cu_index = cuidx.index;
 
     if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_CLOSE_CU_CTX, &cu_ctx))
@@ -2311,7 +2416,7 @@ close_cu_context(const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
 
 // Assign xclbin with uuid to hardware resources and return a context id
 // The context handle is 1:1 with a slot idx
-uint32_t
+std::unique_ptr<xrt_core::hwctx_handle>
 shim::
 create_hw_context(const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
@@ -2320,8 +2425,9 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
   const static int qos_val = 0; // TBD qos;
 
   if (!hw_context_enable) {
-    // Nothing to be done here for legacy flow. Return from here
-    return 0;
+    // Nothing to be done here for legacy flow
+    // Just create a hwcontext for default slot 0
+    return std::make_unique<xrt_shim::hwcontext>(this, 0, xclbin_uuid, mode);
   }
   else {
     xdp::hal::flush_device(this);
@@ -2368,7 +2474,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
       }
       xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
 
-      return ret;
+      throw xrt_core::error("Failed to create hardware context");
     }
 
     // Success
@@ -2380,7 +2486,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
 
     START_DEVICE_PROFILING_CB(this);
 
-    return hw_ctx.hw_context;
+    return std::make_unique<xrt_shim::hwcontext>(this, hw_ctx.hw_context, xclbin_uuid, mode);
   }
 
   return 0;
@@ -2388,7 +2494,7 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
 
 void
 shim::
-destroy_hw_context(uint32_t ctxhdl)
+destroy_hw_context(xrt_core::hwctx_handle::slot_id slot)
 {
   if (!hw_context_enable) {
     // Nothing to be done here for legacy flow. Return from here
@@ -2396,7 +2502,7 @@ destroy_hw_context(uint32_t ctxhdl)
   }
   else {
     drm_xocl_destroy_hw_ctx hw_ctx = {};
-    hw_ctx.hw_context = ctxhdl;
+    hw_ctx.hw_context = slot;
 
     auto ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_DESTROY_HW_CTX, &hw_ctx);
     if (ret)
@@ -2416,14 +2522,16 @@ register_xclbin(const xrt::xclbin&)
 // Exec Buf with hw ctx handle.
 void
 shim::
-exec_buf(xclBufferHandle boh, xrt_hwctx_handle ctxhdl)
+exec_buf(xclBufferHandle boh, xrt_core::hwctx_handle* hwctx_hdl)
 {
   // TODO: Implement new function, for now just call legacy xclExecBuf().
-  if (ctxhdl == XRT_NULL_HWCTX) {
+  auto hwctx = static_cast<const xrt_shim::hwcontext*>(hwctx_hdl);
+  if (hwctx->is_null()) {
     if (auto ret = xclExecBuf(boh))
       throw xrt_core::system_error(ret, "failed to launch execution buffer");
-  } else {
-    if (auto ret = xclExecBuf(boh, ctxhdl))
+  }
+  else {
+    if (auto ret = xclExecBuf(boh, hwctx_hdl))
       throw xrt_core::system_error(ret, "failed to launch hw ctx execution buffer");
   }
 }
@@ -2441,21 +2549,7 @@ open_by_bdf(const std::string& bdf)
   return xclOpen(xrt_core::pci::get_device_id_from_bdf(bdf), nullptr, XCL_QUIET);
 }
 
-xrt_core::cuidx_type
-open_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, const std::string& cuname)
-{
-  auto shim = get_shim_object(handle);
-  return shim->open_cu_context(hwctx, cuname);
-}
-
-void
-close_cu_context(xclDeviceHandle handle, const xrt::hw_context& hwctx, xrt_core::cuidx_type cuidx)
-{
-  auto shim = get_shim_object(handle);
-  return shim->close_cu_context(hwctx, cuidx);
-}
-
-xrt_hwctx_handle
+std::unique_ptr<xrt_core::hwctx_handle>
 create_hw_context(xclDeviceHandle handle,
                   const xrt::uuid& xclbin_uuid,
                   const xrt::hw_context::qos_type& qos,
@@ -2466,25 +2560,10 @@ create_hw_context(xclDeviceHandle handle,
 }
 
 void
-destroy_hw_context(xclDeviceHandle handle, xrt_hwctx_handle ctxhdl)
-{
-  auto shim = get_shim_object(handle);
-  shim->destroy_hw_context(ctxhdl);
-}
-
-void
 register_xclbin(xclDeviceHandle handle, const xrt::xclbin& xclbin)
 {
   auto shim = get_shim_object(handle);
   shim->register_xclbin(xclbin);
-}
-
-// Exec Buf with hw ctx handle.
-void
-exec_buf(xclDeviceHandle handle, xrt_buffer_handle bohdl, xrt_hwctx_handle ctxhdl)
-{
-    auto shim = get_shim_object(handle);
-    return shim->exec_buf(to_xclBufferHandle(bohdl), ctxhdl);
 }
 
 } // xrt::shim_int
@@ -2635,14 +2714,13 @@ unsigned int xclVersion ()
     return 2;
 }
 
-unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
+unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int, unsigned flags)
 {
   return xdp::hal::profiling_wrapper("xclAllocBO",
-                              [handle, size, unused, flags]
-                              {
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
-                              } ) ;
+    [handle, size, flags] {
+      xocl::shim *drv = xocl::shim::handleCheck(handle);
+      return drv ? drv->xclAllocBO(size, flags) : -ENODEV;
+    } ) ;
 
 
 }

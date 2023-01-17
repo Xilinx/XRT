@@ -5,6 +5,7 @@
 #define xrt_core_command_h_
 
 #include "core/common/device.h"
+#include "core/common/shim/hwctx_handle.h"
 #include "xrt.h"
 #include "ert.h"
 
@@ -64,14 +65,13 @@ public:
   virtual void
   notify(ert_cmd_state) const = 0;
 
-  /**
-  * get_hwctx_handle() - get submission hw context of command buffer
-  *
-  * The submission hw context is the hardware context used for command execution.
-  * This context is used in multi-xclbin / slot support when submitting a command with
-  * execbuf when the core implementation does not support hardware queue.
-  */
-  virtual xrt_hwctx_handle
+  // get_hwctx_handle() - get submission hw context of command buffer
+  //
+  // The submission hw context is the hardware context used for
+  // command execution.  This context is used in multi-xclbin / slot
+  // support when submitting a command with execbuf when the core
+  // implementation does not support hardware queue.
+  virtual hwctx_handle*
   get_hwctx_handle() const = 0;
 
 private:

@@ -8,8 +8,8 @@
 #include "query.h"
 #include "uuid.h"
 
+#include "core/common/shim/hwctx_handle.h"
 #include "core/include/xclerr_int.h"
-#include "core/include/xrt_hwctx.h"
 
 #include <iomanip>
 #include <map>
@@ -2938,7 +2938,7 @@ struct extended_vmr_status : request
 // from xclbin uuid to the slot index created by the driver
 struct xclbin_slots : request
 {
-  using slot_id = xrt_hwctx_handle;
+  using slot_id = hwctx_handle::slot_id;
 
   struct slot_info {
     slot_id slot;
