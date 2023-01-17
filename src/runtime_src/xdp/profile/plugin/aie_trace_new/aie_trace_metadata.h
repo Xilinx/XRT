@@ -77,11 +77,12 @@ class AieTraceMetadata{
     std::vector<tile_type> get_tiles(const xrt_core::device* device, 
                                      const std::string& graph_name,
                                      module_type type, 
-                                     const std::string& kernel_name = "");
-    std::vector<tile_type> get_aie_tiles(const xrt_core::device* device, 
+                                     const std::string& kernel_name = "all");
+    std::vector<tile_type> get_aie_tiles(const xrt_core::device* device,
                                          const std::string& graph_name);
     std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
-                                         const std::string& graph_name);
+                                         const std::string& graph_name,
+                                         const std::string& kernel_name = "all");
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
                                            const std::string& graph_name,
                                            module_type type);

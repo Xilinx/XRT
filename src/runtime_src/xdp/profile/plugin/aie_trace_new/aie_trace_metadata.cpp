@@ -279,6 +279,7 @@ namespace xdp {
       throw std::runtime_error(msg);
   }
 
+  // Find all AIE tiles associated with a graph (kernel_name = all)
   std::vector<tile_type> 
   AieTraceMetadata::get_aie_tiles(const xrt_core::device* device, const std::string& graph_name)
   {
@@ -293,7 +294,8 @@ namespace xdp {
     auto rowOffset = getAIETileRowOffset();
 
     for (auto& graph : aie_meta.get_child("aie_metadata.graphs")) {
-      if (graph.second.get<std::string>("name") != graph_name)
+      if ((graph.second.get<std::string>("name") != graph_name)
+           && (graph_name.compare("all") != 0))
         continue;
 
       int count = 0;
@@ -334,8 +336,12 @@ namespace xdp {
     return tiles;    
   }
 
+  // Find all MEM tiles associated with a graph and kernel
+  //   kernel_name = all      : all tiles in graph
+  //   kernel_name = <kernel> : only tiles used by that specific kernel
   std::vector<tile_type> 
-  AieTraceMetadata::get_mem_tiles(const xrt_core::device* device, const std::string& graph_name)
+  AieTraceMetadata::get_mem_tiles(const xrt_core::device* device, const std::string& graph_name,
+                                  const std::string& kernel_name)
   {
     if (getHardwareGen() == 1) 
       return {};
@@ -359,8 +365,16 @@ namespace xdp {
 
     // Now parse all shared buffers
     for (auto const &shared_buffer : sharedBufferTree.get()) {
-      if (shared_buffer.second.get<std::string>("graph") != graph_name)
+      if ((shared_buffer.second.get<std::string>("graph") != graph_name)
+           && (graph_name.compare("all") != 0))
         continue;
+      if (kernel_name.compare("all") != 0) {
+        std::vector<std::string> names;
+        std::string functionStr = shared_buffer.second.get<std::string>("function");
+        boost::split(names, functionStr, boost::is_any_of("."));
+        if (std::find(names.begin(), names.end(), kernel_name) == names.end())
+          continue;
+      }
 
       tile_type tile;
       tile.col = shared_buffer.second.get<uint16_t>("column");
@@ -372,15 +386,17 @@ namespace xdp {
     return memTiles;
   }
 
+  // Find all AIE or MEM tiles associated with a graph and kernel
+  //   kernel_name = all      : all tiles in graph
+  //   kernel_name = <kernel> : only tiles used by that specific kernel
   std::vector<tile_type> 
   AieTraceMetadata::get_tiles(const xrt_core::device* device, const std::string& graph_name,
                               module_type type, const std::string& kernel_name)
   {
-    if (kernel_name.empty() || (kernel_name.compare("all") == 0)) {
-      if (type == module_type::mem_tile)
-        return get_mem_tiles(device, graph_name);
+    if (type == module_type::mem_tile)
+      return get_mem_tiles(device, graph_name, kernel_name);
+    if (kernel_name.compare("all") == 0)
       return get_aie_tiles(device, graph_name);
-    }
 
     // Now search by graph-kernel pairs
     auto data = device->get_axlf_section(AIE_METADATA);
@@ -399,21 +415,21 @@ namespace xdp {
     auto rowOffset = getAIETileRowOffset();
 
     for (auto const &mapping : kernelToTileMapping.get()) {
-      if (mapping.second.get<std::string>("graph") != graph_name)
+      if ((mapping.second.get<std::string>("graph") != graph_name)
+           && (graph_name.compare("all") != 0))
         continue;
-
-      std::vector<std::string> names;
-      std::string functionStr = mapping.second.get<std::string>("function");
-      boost::split(names, functionStr, boost::is_any_of("."));
-      for (auto &name: names) {
-        if (name.compare(kernel_name) == 0) {
-          tile_type tile;
-          tile.col = mapping.second.get<uint16_t>("column");
-          tile.row = mapping.second.get<uint16_t>("row") + rowOffset;
-          tiles.emplace_back(std::move(tile));
-          break;
-        }
+      if (kernel_name.compare("all") != 0) {
+        std::vector<std::string> names;
+        std::string functionStr = mapping.second.get<std::string>("function");
+        boost::split(names, functionStr, boost::is_any_of("."));
+        if (std::find(names.begin(), names.end(), kernel_name) == names.end())
+            continue;
       }
+
+      tile_type tile;
+      tile.col = mapping.second.get<uint16_t>("column");
+      tile.row = mapping.second.get<uint16_t>("row") + rowOffset;
+      tiles.emplace_back(std::move(tile));
     }
     return tiles;
   }

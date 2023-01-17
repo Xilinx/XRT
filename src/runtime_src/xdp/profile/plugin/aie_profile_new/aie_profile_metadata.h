@@ -89,24 +89,25 @@ class AieProfileMetadata{
 
     std::vector<std::string> get_graphs(const xrt_core::device* device);
     std::unordered_map<std::string, plio_config> get_plios(const xrt_core::device* device);
-    std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
-                                           const std::string& graph_name, 
-                                           module_type type);
-    std::vector<tile_type> get_tiles(const xrt_core::device* device, 
-                                     const std::string& graph_name,
-                                     module_type type, 
-                                     const std::string& kernel_name = "");
-    std::vector<tile_type> get_aie_tiles(const xrt_core::device* device, 
-                                         const std::string& graph_name,
-                                         module_type type);
-    std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
-                                         const std::string& graph_name); 
     std::vector<tile_type> get_interface_tiles(const xrt_core::device* device, 
                                                const std::string &metricStr,
                                                int16_t channelId = -1,
                                                bool useColumn = false, 
                                                uint32_t minCol = 0, 
                                                uint32_t maxCol = 0);
+    std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
+                                         const std::string& graph_name,
+                                         const std::string& kernel_name = "");
+    std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
+                                           const std::string& graph_name, 
+                                           module_type type);
+    std::vector<tile_type> get_aie_tiles(const xrt_core::device* device, 
+                                         const std::string& graph_name,
+                                         module_type type);
+    std::vector<tile_type> get_tiles(const xrt_core::device* device, 
+                                     const std::string& graph_name,
+                                     module_type type, 
+                                     const std::string& kernel_name = "");
 
     std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
