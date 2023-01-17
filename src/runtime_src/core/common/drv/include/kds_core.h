@@ -168,6 +168,7 @@ struct kds_sched {
 	/* Settings */
 	bool			ini_disable;
 	bool			ert_disable;
+	bool                    force_polling;
 	u32			cu_intr;
 
 	/* KDS polling thread */
