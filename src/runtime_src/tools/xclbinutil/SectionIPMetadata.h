@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2022 Xilinx, Inc
+ * Copyright (C) 2023 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,8 +23,8 @@
 // ------ C L A S S :   S e c t i o n I P M e t a d a t a ------------
 class SectionIPMetadata : public Section {
  protected:
-  void marshalToJSON(char* _DataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const override;
-  void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const override;
+  void marshalToJSON(char* pDataSection, unsigned int sectionSize, boost::property_tree::ptree& ptree) const override;
+  void marshalFromJSON(const boost::property_tree::ptree& ptSection, std::ostringstream& buf) const override;
 
  private:
   // Static initializer helper class
