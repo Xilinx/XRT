@@ -324,7 +324,7 @@ report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device)
     action_list << boost::format("  [%s] : Program base (FLASH) image\n") % pt_device.get<std::string>("platform.bdf");
 
   if (!pt_device.get<bool>("platform.status.sc")) {
-    // Versal devices cannot flash the SC in the same cycle as the base
+    // Versal devices cannot flash the SC in the same cycle as the shell
     if (pt_device.get<bool>("platform.status.versal")) {
       if (pt_device.get<bool>("platform.status.shell"))
         action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt_device.get<std::string>("platform.bdf");
@@ -555,8 +555,9 @@ auto_flash(std::shared_ptr<xrt_core::device> & device, Flasher::E_FlasherType fl
   report_status(dsa.name, pt_dev);
 
   // Continue to flash whatever we have collected in boardsToUpdate.
-  bool needreboot = false;
-  bool need_warm_reboot = false;
+  enum class reboot_type {COLD_REBOOT, WARM_REBOOT, NOT_REQUIRED};
+  enum reboot_type reboot = reboot_type::NOT_REQUIRED;
+  const auto is_versal = xrt_core::device_query<xrt_core::query::is_versal>(device.get());
   std::stringstream report_stream;
 
   // Prompt user about what boards will be updated and ask for permission.
@@ -571,13 +572,14 @@ auto_flash(std::shared_ptr<xrt_core::device> & device, Flasher::E_FlasherType fl
       // 1) Flash the Satellite Controller image
       if (xrt_core::device_query<xrt_core::query::is_mfg>(device.get()) || xrt_core::device_query<xrt_core::query::is_recovery>(device.get()))
         report_stream << boost::format("  [%s] : Factory or Recovery image detected. Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
-      // Versal devices cannot flash the SC in the same cycle as the base
-      else if (xrt_core::device_query<xrt_core::query::is_versal>(device.get()) && !same_shell)
+      // Versal devices cannot flash the SC in the same cycle as the shell
+      else if (is_versal && !same_shell)
         report_stream << boost::format("  [%s] : Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
       else {
         if (update_sc(p.first, p.second) == true)  {
-          report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n") % getBDF(p.first);
-          need_warm_reboot = true;
+          report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n") % getBDF(p.first);\
+          // Versal devices require a cold reboot to initialize the SC firmware
+          reboot = is_versal ? reboot_type::COLD_REBOOT : reboot_type::WARM_REBOOT;
         } else
           report_stream << boost::format("  [%s] : Satellite Controller (SC) is either up-to-date, fixed, or not installed. No actions taken.\n") % getBDF(p.first);
       }
@@ -585,7 +587,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & device, Flasher::E_FlasherType fl
       // 2) Flash shell image
       if (update_shell(p.first, p.second, flashType) == true)  {
         report_stream << boost::format("  [%s] : Successfully flashed the base (e.g., shell) image\n") % getBDF(p.first);
-        needreboot = true;
+        reboot = reboot_type::COLD_REBOOT;
       } else
         report_stream << boost::format("  [%s] : Base (e.g., shell) image is up-to-date.  No actions taken.\n") % getBDF(p.first);
       } catch (const xrt_core::error& e) {
@@ -606,14 +608,23 @@ auto_flash(std::shared_ptr<xrt_core::device> & device, Flasher::E_FlasherType fl
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  if (needreboot) {
+  switch (reboot) {
+  case reboot_type::COLD_REBOOT:
+  {
     std::cout << "****************************************************\n";
     std::cout << "Cold reboot machine to load the new image on device.\n";
     std::cout << "****************************************************\n";
-  } else if (need_warm_reboot) {
+    break;
+  }
+  case reboot_type::WARM_REBOOT:
+  {
     std::cout << "******************************************************************\n";
     std::cout << "Warm reboot is required to recognize new SC image on the device.\n";
     std::cout << "******************************************************************\n";
+    break;
+  }
+  case reboot_type::NOT_REQUIRED:
+    break;
   }
 }
 
