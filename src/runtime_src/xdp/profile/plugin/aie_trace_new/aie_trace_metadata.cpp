@@ -273,6 +273,31 @@ namespace xdp {
     return graphs;
   }
 
+  std::vector<std::string> 
+  AieTraceMetadata::get_kernels(const xrt_core::device* device)
+  {
+    auto data = device->get_axlf_section(AIE_METADATA);
+    if (!data.first || !data.second)
+      return {};
+
+    pt::ptree aie_meta;
+    read_aie_metadata(data.first, data.second, aie_meta);
+    std::vector<std::string> kernels;
+
+    // Grab all kernel to tile mappings
+    auto kernelToTileMapping = aie_meta.get_child_optional("aie_metadata.TileMapping.AIEKernelToTileMapping");
+    if (!kernelToTileMapping)
+      return {};
+
+    for (auto const &mapping : kernelToTileMapping.get()) {
+      std::vector<std::string> names;
+      boost::split(names, mapping.second.get<std::string>("function"), boost::is_any_of("."));
+      std::unique_copy(names.begin(), names.end(), std::back_inserter(kernels));
+    }
+
+    return kernels;
+  }
+
   inline void throw_if_error(bool err, const char* msg)
   {
     if (err)
@@ -464,8 +489,9 @@ namespace xdp {
     std::vector<std::vector<std::string>> graphMetrics(graphMetricsSettings.size());
 
     std::set<tile_type> allValidTiles;
-    auto graphs = get_graphs(device.get());
-    for (auto& graph : graphs) {
+    auto allValidKernels = get_kernels(device.get());
+    auto allValidGraphs = get_graphs(device.get());
+    for (auto& graph : allValidGraphs) {
       std::vector<tile_type> currTiles = get_tiles(device.get(), graph, type);
       std::copy(currTiles.begin(), currTiles.end(), std::inserter(allValidTiles, allValidTiles.end()));
     }
@@ -475,7 +501,22 @@ namespace xdp {
       // Split done only in Pass 1
       boost::split(graphMetrics[i], graphMetricsSettings[i], boost::is_any_of(":"));
 
-      if (graphMetrics[i][0].compare("all") != 0) {
+      // Check if not all or if invalid graph or kernel
+      if (graphMetrics[i][0].compare("all") != 0)
+        continue;
+      if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
+        std::stringstream msg;
+        msg << "Graph " << graphMetrics[i][0] << " not found. The graph_based_" << tileName
+            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
+      }
+      if ((graphMetrics[i][1].compare("all") != 0)
+          && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+        std::stringstream msg;
+        msg << "Kernel " << graphMetrics[i][1] << " not found. The graph_based_" << tileName
+            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         continue;
       }
 
@@ -502,9 +543,24 @@ namespace xdp {
 
     // Graph Pass 2 : process per graph metric setting
     for (size_t i = 0; i < graphMetricsSettings.size(); ++i) {
-      // Check if already processed
+      // Check if already processed or if invalid
       if (graphMetrics[i][0].compare("all") == 0)
         continue;
+      if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
+        std::stringstream msg;
+        msg << "Graph " << graphMetrics[i][0] << " not found. The graph_based_" << tileName
+            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
+      }
+      if ((graphMetrics[i][1].compare("all") != 0)
+          && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
+        std::stringstream msg;
+        msg << "Kernel " << graphMetrics[i][1] << " not found. The graph_based_" << tileName
+            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        continue;
+      }
 
       // Check if specified graph exists
       auto graphs = get_graphs(device.get());

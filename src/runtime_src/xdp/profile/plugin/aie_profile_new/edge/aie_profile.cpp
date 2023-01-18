@@ -470,9 +470,9 @@ namespace xdp {
           if (ret != XAIE_OK) break;
         
           auto channel = (i == 0) ? channel0 : channel1;
-          configGroupEvents(aieDevInst, loc, mod, startEvent, tileMetric.second);
+          configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
           configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type,
-                                  startEvent, i, tileMetric.second, channel);
+                                  startEvent, i, metricSet, channel);
         
           // Start the counters after group events have been configured
           ret = perfCounter->start();
@@ -498,7 +498,8 @@ namespace xdp {
         }
 
         std::stringstream msg;
-        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
+        msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," 
+            << row << ") using metric set " << metricSet << ".";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }
