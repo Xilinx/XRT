@@ -2034,7 +2034,8 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	}
 
 	// Set APU Timestamp
-	xocl_kds_xgq_set_timestamp(xdev);
+	if (major != 1)
+		xocl_kds_xgq_set_timestamp(xdev);
 
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus, num_scus);
 	if (ret)
