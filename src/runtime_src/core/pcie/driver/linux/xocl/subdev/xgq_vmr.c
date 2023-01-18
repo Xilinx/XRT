@@ -1584,7 +1584,7 @@ static int set_and_verify_freqs(struct platform_device *pdev,unsigned short *tar
 		lookup_freq = target_freqs[i];
 		request_in_khz = lookup_freq*1000;
 		tolerance = lookup_freq*50;
-		//XGQ_WARN(xgq,"i = %d, lookup_freq = %lu,request_in_khz = %lu, tolerance = %lu",i,lookup_freq,request_in_khz, tolerance);
+		XGQ_WARN(xgq,"i = %d, lookup_freq = %lu,clock_freq_counter = %lu, tolerance = %lu",i,lookup_freq,clock_freq_counter, tolerance);
 		if (tolerance < abs(clock_freq_counter-request_in_khz)) {
 			XGQ_ERR(xgq, "Frequency is higher than tolerance value, request %u"
 					"khz, actual %u khz", request_in_khz, clock_freq_counter);
