@@ -45,20 +45,24 @@ namespace xdp {
 
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
+      bool isStreamSwitchPortEvent(const XAie_Events event);
       void printTileModStats(xaiefal::XAieDev* aieDevice, 
-                            const tile_type& tile, 
-                            const XAie_ModuleType mod);
+                             const tile_type& tile, 
+                             const XAie_ModuleType mod);
       void configGroupEvents(XAie_DevInst* aieDevInst,
-                            const XAie_LocType loc,
-                            const XAie_ModuleType mod,
-                            const XAie_Events event,
-                            const std::string metricSet);
+                             const XAie_LocType loc,
+                             const XAie_ModuleType mod,
+                             const XAie_Events event,
+                             const std::string metricSet);
       void configStreamSwitchPorts(XAie_DevInst* aieDevInst,
-                                  const tile_type& tile,
-                                  xaiefal::XAieTile& xaieTile,
-                                  const XAie_LocType loc,
-                                  const XAie_Events event,
-                                  const std::string metricSet);
+                                   const tile_type& tile,
+                                   xaiefal::XAieTile& xaieTile,
+                                   const XAie_LocType loc,
+                                   const module_type type,
+                                   const XAie_Events event,
+                                   const int countnum,
+                                   const std::string metricSet,
+                                   const uint8_t channel);
       void configEventSelections(XAie_DevInst* aieDevInst,
                                  const XAie_LocType loc,
                                  const XAie_ModuleType mod,
@@ -67,10 +71,10 @@ namespace xdp {
                                  const uint8_t channel0,
                                  const uint8_t channel1);
       uint32_t getCounterPayload(XAie_DevInst* aieDevInst,
-                                const tile_type& tile,
-                                uint16_t column, 
-                                uint16_t row, 
-                                uint16_t startEvent);
+                                 const tile_type& tile,
+                                 uint16_t column, 
+                                 uint16_t row, 
+                                 uint16_t startEvent);
     private:
       XAie_DevInst*     aieDevInst = nullptr;
       xaiefal::XAieDev* aieDevice  = nullptr;    
