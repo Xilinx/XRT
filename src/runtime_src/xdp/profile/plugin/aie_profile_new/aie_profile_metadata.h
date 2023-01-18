@@ -98,7 +98,7 @@ class AieProfileMetadata{
                                                uint32_t maxCol = 0);
     std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
                                          const std::string& graph_name,
-                                         const std::string& kernel_name = "");
+                                         const std::string& kernel_name = "all");
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
                                            const std::string& graph_name, 
                                            module_type type);
@@ -108,7 +108,7 @@ class AieProfileMetadata{
     std::vector<tile_type> get_tiles(const xrt_core::device* device, 
                                      const std::string& graph_name,
                                      module_type type, 
-                                     const std::string& kernel_name = "");
+                                     const std::string& kernel_name = "all");
 
     std::map<tile_type, std::string> getConfigMetrics(int module){ return configMetrics[module];}
     std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
