@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021-2023 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Max Zhen <maxz@xilinx.com>
@@ -25,7 +25,7 @@
 #define zcu_xgq_info(zcu_xgq, fmt, args...)	zocl_info(ZCU_XGQ2DEV(zcu_xgq), fmt"\n", ##args)
 #define zcu_xgq_dbg(zcu_xgq, fmt, args...)	zocl_dbg(ZCU_XGQ2DEV(zcu_xgq), fmt"\n", ##args)
 
-#define ZCU_XGQ_MAX_SLOT_SIZE	1024
+#define ZCU_XGQ_MAX_SLOT_SIZE	4096
 
 /* We can't support FAST PATH with multislot. As we are initializing the CU XGQs
  * at the probe time and there could be a chance that in future multiple
