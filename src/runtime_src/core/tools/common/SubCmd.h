@@ -64,14 +64,7 @@ public:
   void setIsPreliminary(bool _isPreliminary) { m_isPreliminary = _isPreliminary; };
   void setIsDefaultDevValid(bool _defaultDeviceValid) { m_defaultDeviceValid = _defaultDeviceValid; };
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
-  void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
-  void printHelp(const boost::program_options::options_description & _optionDescription,
-                 const boost::program_options::options_description & _optionHidden,
-                 bool removeLongOptDashes = false,
-                 const std::string& customHelpSection = "") const;
-  void printHelp( const boost::program_options::options_description & _optionDescription,
-                  const boost::program_options::options_description & _optionHidden,
-                  const SubOptionOptions & _subOptionOptions) const;
+  void printHelp(bool removeLongOptDashes = false, const std::string& customHelpSection = "") const;
   std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
                            const SubCmdOptions& _options,
                            const boost::program_options::options_description& common_options,
@@ -79,8 +72,19 @@ public:
                            const boost::program_options::positional_options_description& positionals = boost::program_options::positional_options_description(),
                            const SubOptionOptions& suboptions = SubOptionOptions(),
                            bool validate_arguments = true) const;
+  std::vector<std::string> process_arguments(boost::program_options::variables_map& vm,
+                                             const SubCmdOptions& _options,
+                                             bool validate_arguments = true) const;
   void conflictingOptions( const boost::program_options::variables_map& _vm, 
                            const std::string &_opt1, const std::string &_opt2) const;
+  void addSubOption(std::shared_ptr<OptionOptions> option);
+  std::shared_ptr<OptionOptions> checkForSubOption(const boost::program_options::variables_map& vm) const;
+
+ protected:
+  SubOptionOptions m_subOptionOptions;
+  boost::program_options::options_description m_commonOptions;
+  boost::program_options::options_description m_hiddenOptions;
+  boost::program_options::positional_options_description m_positionals;
 
  private:
   SubCmd() = delete;
