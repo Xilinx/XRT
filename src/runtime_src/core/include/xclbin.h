@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2015-2022, Xilinx Inc
+ *  Copyright (C) 2015-2023, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -176,6 +176,7 @@ extern "C" {
         OVERLAY                = 30,
         VENDER_METADATA        = 31,
         AIE_PARTITION          = 32,
+        IP_METADATA           = 33,
     };
 
     enum MEM_TYPE {
