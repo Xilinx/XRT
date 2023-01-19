@@ -1261,30 +1261,33 @@ out:
 	mutex_unlock(&client->lock);
 }
 
+static int kds_free_default_hw_ctx(struct kds_client *client)
+{
+	struct kds_client_hw_ctx *curr = NULL;
+
+	mutex_lock(&client->lock);
+	curr = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
+	if (curr)
+		kds_free_hw_ctx(client, curr);
+	mutex_unlock(&client->lock);
+
+	return 0;
+}
+
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
 	struct kds_client_hw_ctx *curr = NULL;
 	struct kds_client_ctx *c_curr = NULL;
 
-	/* Release legacy client's resources for XOCL */
-	if (client->ctx) {
+	/* Release legacy client's resources */
+	if ((client->ctx) || !list_empty(&client->ctx_list)) {
 		_kds_fini_client(kds, client, client->ctx);
-		mutex_lock(&client->lock);
-		curr = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
-		if (curr)
-			kds_free_hw_ctx(client, curr);
-		mutex_unlock(&client->lock);
-	}
-	/* this is for ZOCL legacy client */
-	if(!list_empty(&client->ctx_list)) {
-		list_for_each_entry(c_curr, &client->ctx_list, link) {
-			_kds_fini_client(kds, client, c_curr);
-		}
-		mutex_lock(&client->lock);
-		curr = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
-		if (curr)
-			kds_free_hw_ctx(client, curr);
-		mutex_unlock(&client->lock);
+
+		if(!list_empty(&client->ctx_list))
+			list_for_each_entry(c_curr, &client->ctx_list, link)
+				_kds_fini_client(kds, client, c_curr);
+
+		kds_free_default_hw_ctx(client);
 	}
 
 	if(!list_empty(&client->hw_ctx_list)) {

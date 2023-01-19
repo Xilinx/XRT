@@ -242,7 +242,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 
 	/* For legacy context case there are only one hw context possible i.e. 0 */
-	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+	hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
                 ret = -EINVAL;
@@ -327,7 +327,7 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 
 	/* unlock bitstream if there is no opening context */
 	if (list_empty(&client->ctx->cu_ctx_list)) {
-		hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+		hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
 		if (hw_ctx)
 			kds_free_hw_ctx(client, hw_ctx);
 
