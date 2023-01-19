@@ -460,7 +460,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     std::shared_ptr<xrt_core::device> device;
 
     try {
-        device = XBU::get_device(boost::algorithm::to_lower_copy(m_device_str), false /*inUserDomain*/);
+        device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), false /*inUserDomain*/);
     } catch (const std::runtime_error& e) {
         // Catch only the exceptions that we have generated earlier
         std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -534,9 +534,9 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // Enable/Disable Retention
     if (!m_retention.empty()) {
         // Validate the given retention string
-        boost::algorithm::to_upper(m_retention);
-        bool enableRetention = boost::iequals(m_retention, "ENABLE");
-        bool disableRetention = boost::iequals(m_retention, "DISABLE");
+        const auto upper_retention = boost::algorithm::to_upper_copy(m_retention);
+        bool enableRetention = boost::iequals(upper_retention, "ENABLE");
+        bool disableRetention = boost::iequals(upper_retention, "DISABLE");
         if (!enableRetention && !disableRetention) {
             std::cerr << "ERROR: Invalidate '--retention' option: " << m_retention << std::endl;
             printHelp();

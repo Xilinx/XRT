@@ -114,7 +114,7 @@ SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("dump",
              "Dump out the contents of the specified option")
     , m_device("")
-    , m_m_output("")
+    , m_output("")
     , m_flash(false)
     , m_config(false)
     , m_help(false)
@@ -148,7 +148,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   // Check to see if help was requested or no command was found
   if (m_help)  {
-    printHelp(commonOptions, hiddenOptions);
+    printHelp();
     return;
   }
 
