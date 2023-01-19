@@ -723,6 +723,16 @@ switch_partition(xrt_core::device* device, int boot)
 SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("program",
              "Update image(s) for a given device")
+    , m_device("")
+    , m_plp("")
+    , m_update("")
+    , m_xclbin("")
+    , m_flashType("")
+    , m_boot("")
+    , m_image()
+    , m_revertToGolden(false)
+    , m_help(false)
+
 {
   const std::string longDescription = "Updates the image(s) for a given device.";
   setLongDescription(longDescription);
@@ -730,6 +740,35 @@ SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPrelimi
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("shell,s", boost::program_options::value<decltype(m_plp)>(&m_plp), "The partition to be loaded.  Valid values:\n"
+                                                                      "  Name (and path) of the partition.")
+    ("base,b", boost::program_options::value<decltype(m_update)>(&m_update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Valid values:\n"
+                                                                         "  ALL   - All images will be updated\n"
+                                                                         "  SHELL - Platform image\n"
+                                                                         "  SC    - Satellite controller (Warning: Damage could occur to the device)\n"
+                                                                         "  NO-BACKUP   - Backup boot remains unchanged")
+    ("user,u", boost::program_options::value<decltype(m_xclbin)>(&m_xclbin), "The xclbin to be loaded.  Valid values:\n"
+                                                                      "  Name (and path) of the xclbin.")
+    ("image", boost::program_options::value<decltype(m_image)>(&m_image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Valid values:\n"
+                                                                    "  Name (and path) to the mcs image on disk\n"
+                                                                    "  Name (and path) to the xsabin image on disk")
+    ("revert-to-golden", boost::program_options::bool_switch(&m_revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+
+  m_hiddenOptions.add_options()
+    ("flash-type", boost::program_options::value<decltype(m_flashType)>(&m_flashType),
+      "Overrides the flash mode. Use with caution.  Valid values:\n"
+      "  ospi\n"
+      "  ospi_versal")
+    ("boot", boost::program_options::value<decltype(m_boot)>(&m_boot)->implicit_value("default"),
+    "RPU and/or APU will be booted to either partition A or partition B.  Valid values:\n"
+    "  DEFAULT - Reboot RPU to partition A\n"
+    "  BACKUP  - Reboot RPU to partition B\n")
+  ;
 }
 
 void
