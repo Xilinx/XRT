@@ -50,10 +50,19 @@ static const ReportCollection fullReportCollection = {
 };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
+// -- Build up the report & format options
+static const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'all' option*/);
+static const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 
 SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("examine", 
              "Returns detail information for the specified device.")
+    , m_device("")
+    , m_reportNames()
+    , m_elementsFilter()
+    , m_format("")
+    , m_output("")
+    , m_help(false)
 {
   const std::string longDescription = "This command will 'examine' the state of the system/device and will"
                                       " generate a report of interest in a text or JSON format.";
@@ -62,6 +71,14 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("report,r", boost::program_options::value<decltype(m_reportNames)>(&m_reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
+    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
 }
 
 void
