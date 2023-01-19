@@ -144,7 +144,12 @@ public:
 
   ~hwcontext()
   {
-    m_shim->destroy_hw_context(m_slotidx);
+    try {
+      m_shim->destroy_hw_context(m_slotidx);
+    }
+    catch (const std::exception& ex) {
+      xrt_core::send_exception_message(ex.what());
+    }
   }
 
   slot_id
@@ -2384,7 +2389,8 @@ open_cu_context(const xrt_core::hwctx_handle* hwctx_hdl, const std::string& cuna
     drm_xocl_open_cu_ctx cu_ctx = {};
     cu_ctx.flags = flags;
     cu_ctx.hw_context = hwctx_hdl->get_slotidx();
-    std::strcpy(cu_ctx.cu_name, cuname.c_str());
+    std::strncpy(cu_ctx.cu_name, cuname.c_str(), sizeof(cu_ctx.cu_name));
+    cu_ctx.cu_name[sizeof(cu_ctx.cu_name) - 1] = 0;
 
     if (mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_OPEN_CU_CTX, &cu_ctx))
       throw xrt_core::system_error(errno, "failed to open cu context");
