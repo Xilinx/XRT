@@ -159,9 +159,8 @@ bool run_pl_controller_aie2(xrt::device device, xrt::uuid uuid, std::string aie_
     m_pl_ctrl.enqueue_set_aie_iteration("mygraph", num_iter);
     m_pl_ctrl.enqueue_enable_aie_cores();
 
-    for (int i = 0; i < num_iter; ++i) {
+    for (int i = 0; i < num_iter; ++i)
         m_pl_ctrl.enqueue_sync();
-    }
 
     m_pl_ctrl.enqueue_sleep(SLEEP_COUNT);
     m_pl_ctrl.enqueue_disable_aie_cores();
@@ -302,7 +301,8 @@ main(int argc, char* argv[])
     auto hw_gen_node = driver_info_node.get_child("hw_gen");
     auto hw_gen = std::stoul(hw_gen_node.data());
 
-    if(hw_gen == 2)
+    // Check if hardware is AIE-ML or newer
+    if(hw_gen > 1)
       b_file  = "/pl_controller_aie.xclbin";
     else
       b_file  = "/vck5000_pcie_pl_controller.xclbin";
@@ -329,7 +329,8 @@ main(int argc, char* argv[])
     auto dma_lock = boost::filesystem::path(test_path) / dma_lock_file;
 
     bool match = false;
-    if (hw_gen == 2)
+    // Check if hardware is AIE-ML or newer
+    if (hw_gen > 1)
       match = run_pl_controller_aie2(device, uuid, aie_control.string(), dma_lock.string());
     else
       match = run_pl_controller_aie1(device, uuid, aie_control.string(), dma_lock.string());
