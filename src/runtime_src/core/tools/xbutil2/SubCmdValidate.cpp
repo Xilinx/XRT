@@ -1621,24 +1621,7 @@ run_tests_on_devices( std::shared_ptr<xrt_core::device> &device,
   return has_failures;
 }
 
-}
-//end anonymous namespace
-
-// ----- C L A S S   M E T H O D S -------------------------------------------
-
-SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("validate",
-             "Validates the basic shell acceleration functionality")
-{
-  const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
-  setLongDescription(longDescription);
-  setExampleSyntax("");
-  setIsHidden(_isHidden);
-  setIsDeprecated(_isDepricated);
-  setIsPreliminary(_isPreliminary);
-}
-
-XBU::VectorPairStrings
+static XBU::VectorPairStrings
 getTestNameDescriptions(bool addAdditionOptions)
 {
   XBU::VectorPairStrings reportDescriptionCollection;
@@ -1656,6 +1639,45 @@ getTestNameDescriptions(bool addAdditionOptions)
   }
 
   return reportDescriptionCollection;
+}
+
+}
+//end anonymous namespace
+
+// ----- C L A S S   M E T H O D S -------------------------------------------
+  // -- Build up the format options
+static const auto formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
+static const auto testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
+static const auto formatRunValues = XBU::create_suboption_list_string(testNameDescription);
+
+SubCmdValidate::SubCmdValidate(bool _isHidden, bool _isDepricated, bool _isPreliminary)
+    : SubCmd("validate",
+             "Validates the basic shell acceleration functionality")
+    , m_device("")
+    , m_tests_to_run({"all"})
+    , m_format("JSON")
+    , m_output("")
+    , m_param("")
+    , m_xclbin_location("")
+    , m_help(false)
+{
+  const std::string longDescription = "Validates the given device by executing the platform's validate executable.";
+  setLongDescription(longDescription);
+  setExampleSyntax("");
+  setIsHidden(_isHidden);
+  setIsDeprecated(_isDepricated);
+  setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The device of interest. This is specified as follows:\n"
+                                                                           "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)")
+    ("format,f", boost::program_options::value<decltype(m_format)>(&m_format), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("run,r", boost::program_options::value<decltype(m_tests_to_run)>(&m_tests_to_run)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the output to the given file")
+    ("param", boost::program_options::value<decltype(m_param)>(&m_param), "Extended parameter for a given test. Format: <test-name>:<key>:<value>")
+    ("path,p", boost::program_options::value<decltype(m_xclbin_location)>(&m_xclbin_location), "Path to the directory containing validate xclbins")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
 }
 
 /*
@@ -1701,96 +1723,69 @@ extendedKeysOptions()
 
 void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
-
 {
-  // -- Build up the format options
-  const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
-
-  const XBU::VectorPairStrings testNameDescription = getTestNameDescriptions(true /* Add "all" and "quick" options*/);
-  const std::string formatRunValues = XBU::create_suboption_list_string(testNameDescription);
-
-  // -- Retrieve and parse the subcommand options -----------------------------
-  std::string device_str;
-  std::vector<std::string> testsToRun = {"all"};
-  std::string sFormat = "JSON";
-  std::string sOutput;
-  std::string sParam;
-  std::string xclbin_location;
-  bool help = false;
-
-  po::options_description commonOptions("Commmon Options");
-  commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device_str)>(&device_str), "The device of interest. This is specified as follows:\n"
-                                                                           "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)")
-    ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
-    ("run,r", boost::program_options::value<decltype(testsToRun)>(&testsToRun)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
-    ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
-    ("param", boost::program_options::value<decltype(sParam)>(&sParam), "Extended parameter for a given test. Format: <test-name>:<key>:<value>")
-    ("path,p", boost::program_options::value<decltype(xclbin_location)>(&xclbin_location), "Path to the directory containing validate xclbins")
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options");
-
   // Parse sub-command ...
   po::variables_map vm;
-  process_arguments(vm, _options, commonOptions, hiddenOptions);
+  process_arguments(vm, _options);
 
   // Check to see if help was requested or no command was found
-  if (help) {
-    printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
+  if (m_help) {
+    printHelp(false, extendedKeysOptions());
     return;
   }
 
   // -- Process the options --------------------------------------------
   Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
   std::vector<std::string> param;
+  std::vector<std::string> validatedTests;
+  std::string validateXclbinPath = m_xclbin_location;
   try {
     // Output Format
-    schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
+    schemaVersion = Report::getSchemaDescription(m_format).schemaVersion;
     if (schemaVersion == Report::SchemaVersion::unknown)
-      throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
+      throw xrt_core::error((boost::format("Unknown output format: '%s'") % m_format).str());
 
     // Output file
-    if (!sOutput.empty() && !XBU::getForce() && boost::filesystem::exists(sOutput))
-        throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
+    if (!m_output.empty() && !XBU::getForce() && boost::filesystem::exists(m_output))
+        throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_output).str());
 
-    if (testsToRun.empty())
+    if (m_tests_to_run.empty())
       throw std::runtime_error("No test given to validate against.");
 
     // Validate the user test requests
-    for (auto &userTestName : testsToRun) {
-      userTestName = get_test_name(userTestName);
+    for (auto &userTestName : m_tests_to_run) {
+      const auto validateTestName = get_test_name(userTestName);
 
-      if ((userTestName == "all") && (testsToRun.size() > 1))
+      if ((validateTestName == "all") && (m_tests_to_run.size() > 1))
         throw xrt_core::error("The 'all' value for the tests to run cannot be used with any other named tests.");
 
-      if ((userTestName == "quick") && (testsToRun.size() > 1))
+      if ((validateTestName == "quick") && (m_tests_to_run.size() > 1))
         throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
 
       // Verify the current user test request exists in the test suite
-      doesTestExist(userTestName, testNameDescription);
+      doesTestExist(validateTestName, testNameDescription);
+      validatedTests.push_back(validateTestName);
     }
 
     // check if xclbin folder path is provided
-    if (!xclbin_location.empty()) {
+    if (!validateXclbinPath.empty()) {
       XBU::verbose("Sub command: --path");
-      if (!boost::filesystem::exists(xclbin_location) || !boost::filesystem::is_directory(xclbin_location))
-        throw xrt_core::error((boost::format("Invalid directory path : '%s'") % xclbin_location).str());
-      if (xclbin_location.compare(".") == 0 || xclbin_location.compare("./") == 0)
-        xclbin_location = boost::filesystem::current_path().string();
-      if (xclbin_location.back() != '/')
-        xclbin_location.append("/");
+      if (!boost::filesystem::exists(validateXclbinPath) || !boost::filesystem::is_directory(validateXclbinPath))
+        throw xrt_core::error((boost::format("Invalid directory path : '%s'") % validateXclbinPath).str());
+      if (validateXclbinPath.compare(".") == 0 || validateXclbinPath.compare("./") == 0)
+        validateXclbinPath = boost::filesystem::current_path().string();
+      if (validateXclbinPath.back() != '/')
+        validateXclbinPath.append("/");
     }
 
     //check if param option is provided
-    if (!sParam.empty()) {
+    if (!m_param.empty()) {
       XBU::verbose("Sub command: --param");
-      boost::split(param, sParam, boost::is_any_of(":")); // eg: dma:block-size:1024
+      boost::split(param, m_param, boost::is_any_of(":")); // eg: dma:block-size:1024
 
       //check parameter format
       if (param.size() != 3)
-        throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % sParam).str());
+        throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % m_param).str());
 
       //check test case name
       doesTestExist(param[0], testNameDescription);
@@ -1805,7 +1800,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    printHelp(commonOptions, hiddenOptions, false, extendedKeysOptions());
+    printHelp(false, extendedKeysOptions());
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
@@ -1813,7 +1808,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   // Find device of interest
   std::shared_ptr<xrt_core::device> device;
   try {
-    device = XBU::get_device(boost::algorithm::to_lower_copy(device_str), true /*inUserDomain*/);
+    device = XBU::get_device(boost::algorithm::to_lower_copy(m_device), true /*inUserDomain*/);
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -1828,7 +1823,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   for (size_t index = 0; index < testSuite.size(); ++index) {
     std::string testSuiteName = get_test_name(testSuite[index].ptTest.get("name","<unknown>"));
     // The all option enqueues all test suites not marked explicit
-    if (testsToRun[0] == "all") {
+    if (validatedTests[0] == "all") {
       // Do not queue test suites that must be explicitly passed in
       if (testSuite[index].ptTest.get<bool>("explicit"))
         continue;
@@ -1837,31 +1832,31 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       if (!param.empty() && boost::equals(param[0], testSuiteName)) {
         testSuite[index].ptTest.put(param[1], param[2]);
       }
-      if (!xclbin_location.empty())
-        testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
+      if (!validateXclbinPath.empty())
+        testSuite[index].ptTest.put("xclbin_directory", validateXclbinPath);
       continue;
     }
 
     // The quick test option enqueues only the first three test suites
-    if (testsToRun[0] == "quick") {
+    if (validatedTests[0] == "quick") {
       testObjectsToRun.push_back(&testSuite[index]);
-      if (!xclbin_location.empty())
-        testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
+      if (!validateXclbinPath.empty())
+        testSuite[index].ptTest.put("xclbin_directory", validateXclbinPath);
       if (index == 3)
         break;
     }
 
     // Logic for individually defined tests
     // Enqueue the matching test suites to be executed
-    for (const auto & testName : testsToRun) {
+    for (const auto & testName : validatedTests) {
       if (boost::equals(testName, testSuiteName)) {
         testObjectsToRun.push_back(&testSuite[index]);
         // add custom param to the ptree if available
         if (!param.empty() && boost::equals(param[0], testSuiteName)) {
           testSuite[index].ptTest.put(param[1], param[2]);
         }
-        if (!xclbin_location.empty())
-          testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
+        if (!validateXclbinPath.empty())
+          testSuite[index].ptTest.put("xclbin_directory", validateXclbinPath);
         break;
       }
     }
@@ -1872,15 +1867,15 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   bool has_failures = run_tests_on_devices(device, schemaVersion, testObjectsToRun, oSchemaOutput);
 
   // -- Write output file ----------------------------------------------
-  if (!sOutput.empty()) {
+  if (!m_output.empty()) {
     std::ofstream fOutput;
-    fOutput.open(sOutput, std::ios::out | std::ios::binary);
+    fOutput.open(m_output, std::ios::out | std::ios::binary);
     if (!fOutput.is_open())
-      throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % sOutput).str());
+      throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % m_output).str());
 
     fOutput << oSchemaOutput.str();
 
-    std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
+    std::cout << boost::format("Successfully wrote the %s file: %s") % m_format % m_output << std::endl;
   }
 
   if (has_failures == true)
