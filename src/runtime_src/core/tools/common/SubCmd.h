@@ -64,6 +64,7 @@ public:
   void setIsPreliminary(bool _isPreliminary) { m_isPreliminary = _isPreliminary; };
   void setIsDefaultDevValid(bool _defaultDeviceValid) { m_defaultDeviceValid = _defaultDeviceValid; };
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
+  void setExampleSyntax(const std::string& _exampleSyntax) { m_exampleSyntax = _exampleSyntax; };
   void printHelp(bool removeLongOptDashes = false, const std::string& customHelpSection = "") const;
   std::vector<std::string> process_arguments( boost::program_options::variables_map& vm,
                            const SubCmdOptions& _options,
