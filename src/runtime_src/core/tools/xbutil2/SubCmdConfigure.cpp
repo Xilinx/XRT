@@ -41,6 +41,7 @@ namespace po = boost::program_options;
 SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("configure", 
              "Device and host configuration")
+    , m_help(false)
 {
   const std::string longDescription = "Device and host configuration.";
   setLongDescription(longDescription);
@@ -48,77 +49,42 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+
+  m_commonOptions.add_options()
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+  ;
+
+  addSubOption(std::make_shared<OO_HostMem>("host-mem"));
+  addSubOption(std::make_shared<OO_P2P>("p2p"));
 }
 
 
 void
 SubCmdConfigure::execute(const SubCmdOptions& _options) const
 {
-  // -- Common top level options ---
-  bool help = false;
-
-  po::options_description commonOptions("Common Options"); 
-  commonOptions.add_options()
-    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
-  ;
-
-  po::options_description hiddenOptions("Hidden Options"); 
-
-  // -- Define the supporting option options ----
-  SubOptionOptions subOptionOptions;
-  subOptionOptions.emplace_back(std::make_shared<OO_HostMem>("host-mem"));
-  subOptionOptions.emplace_back(std::make_shared<OO_P2P>("p2p"));
-
-  for (auto & subOO : subOptionOptions) {
-    if (subOO->isHidden()) 
-      hiddenOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
-    else
-      commonOptions.add_options()(subOO->longName().c_str(), subOO->description().c_str());
-    subOO->setExecutable(getExecutableName());
-    subOO->setCommand(getName());
-  }
-
-  po::options_description allOptions("All Options");
-  allOptions.add(commonOptions);
-  allOptions.add(hiddenOptions);
-
-  po::positional_options_description positionals;
-
   // =========== Process the options ========================================
   po::variables_map vm;
   // Used for the suboption arguments
-  auto topOptions = process_arguments(vm, _options, commonOptions, hiddenOptions, positionals, subOptionOptions, false);
-
-  // Mutual DRC
-  for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1)
-    for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2)
-      conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
-
+  auto topOptions = process_arguments(vm, _options, false);
 
   // Find the subOption;
-  std::shared_ptr<OptionOptions> optionOption;
-  for (auto& subOO : subOptionOptions) {
-    if (vm.count(subOO->longName().c_str()) != 0) {
-      optionOption = subOO;
-      break;
-    }
-  }
+  auto optionOption = checkForSubOption(vm);
 
   // No suboption print help
   if (!optionOption) {
-    if (help) {
-      printHelp(commonOptions, hiddenOptions, subOptionOptions);
+    if (m_help) {
+      printHelp();
       return;
     }
     // If help was not requested and additional options dont match we must throw to prevent
     // invalid positional arguments from passing through without warnings
     std::cerr << "ERROR: Suboption missing" << std::endl;
-    printHelp(commonOptions, hiddenOptions, subOptionOptions);
+    printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // 2) Process the top level options
-  if (help)
+  if (m_help)
     topOptions.push_back("--help");
 
   optionOption->setGlobalOptions(getGlobalOptions());
