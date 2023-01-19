@@ -130,7 +130,7 @@ SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     ("device,d", boost::program_options::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("config,c", boost::program_options::bool_switch(&m_config), "Dumps the m_output of system configuration, requires a .ini m_output file by -o option")
     ("flash,f", boost::program_options::bool_switch(&m_flash), "Dumps the m_output of programmed system image, requires a .bin m_output file by -o option")
-    ("m_output,o", boost::program_options::value<decltype(m_m_output)>(&m_m_output), "Direct the m_output to the given file")
+    ("output,o", boost::program_options::value<decltype(m_output)>(&m_output), "Direct the m_output to the given file")
     ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 }
@@ -171,12 +171,12 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // -- process "m_output" option -----------------------------------------------
-  // m_output file
-  XBU::verbose("Option: m_output: " + m_output);
+  // -- process "output" option -----------------------------------------------
+  // output file
+  XBU::verbose("Option: output: " + m_output);
 
   if (m_output.empty()) {
-    std::cerr << "ERROR: Please specify an m_output file using --m_output option" << "\n\n";
+    std::cerr << "ERROR: Please specify an output file using --output option" << "\n\n";
     printHelp();
     throw xrt_core::error(std::errc::operation_canceled);
   }
