@@ -59,7 +59,7 @@ namespace xdp {
     : db(d)
     , runSummary(nullptr)
     , systemDiagram("")
-    , softwareEmulationDeviceName("")
+    , softwareEmulationDeviceName("default_sw_emu_device")
     , aieDevInst(nullptr)
     , aieDevice(nullptr)
     , deallocateAieDevice(nullptr)
