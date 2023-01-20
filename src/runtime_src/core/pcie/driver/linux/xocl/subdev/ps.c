@@ -1,7 +1,7 @@
 /*
  * Processor System manager for Alveo board.
  *
- * Copyright (C) 2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019, 2023 Xilinx, Inc. All rights reserved.
  *
  * Authors: Min.Ma@xilinx.com
  *
@@ -228,6 +228,9 @@ static void ps_check_healthy(struct platform_device *pdev)
 
 	if (!(reg & (1 << SCHED_THD_BIT_SHIFT)))
 		xocl_warn(&pdev->dev, "ps: sched thread is not running");
+
+	if ((reg0 & COUNTER_MASK) == (reg & COUNTER_MASK))
+		xocl_warn(&pdev->dev, "ps: counter is not changing. PS system panic?");
 }
 
 static struct xocl_ps_funcs ps_ops = {
