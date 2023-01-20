@@ -1309,6 +1309,7 @@ static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd)
 	struct ert_user_command *ecmd = ert_user_alloc_cmd(xcmd);
 
 	if (!ecmd) {
+		ERTUSER_WARN(ert_user, "%s allocate ert user command failed\n", __func__);
 		xcmd->cb.notify_host(xcmd, KDS_ERROR);
 		xcmd->cb.free(xcmd);
 		return;
