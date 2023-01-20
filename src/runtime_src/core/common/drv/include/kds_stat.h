@@ -28,9 +28,8 @@ struct client_stats {
 	unsigned long		c_cnt[MAX_CUS];
 
 	/* For counting START_SK and control commands to ERT */
-	u32 __percpu		s_ert_cnt;
-	u32 __percpu		c_ert_cnt;
-
+	unsigned long		s_ert_cnt;
+	unsigned long		c_ert_cnt;
 };
 
 struct cu_stats {
