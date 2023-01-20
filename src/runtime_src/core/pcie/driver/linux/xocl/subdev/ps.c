@@ -202,7 +202,10 @@ static void ps_check_healthy(struct platform_device *pdev)
 
 	mutex_lock(&ps->ps_lock);
 	reg0 = READ_REG32(ps, RESET_REG_C);
-	msleep_interruptible(ZOCL_WATCHDOG_FREQ);
+	/* Times 2 to make sure counter is changed. Otherwise, something must
+	 * be wrong on device.
+	 */
+	msleep_interruptible(ZOCL_WATCHDOG_FREQ * 2);
 	reg = READ_REG32(ps, RESET_REG_C);
 	mutex_unlock(&ps->ps_lock);
 
