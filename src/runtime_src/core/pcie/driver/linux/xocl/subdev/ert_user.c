@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020, 2023 Xilinx, Inc. All rights reserved.
  *
  * Authors: Chien-Wei Lan <chienwei@xilinx.com>
  *
@@ -1308,8 +1308,11 @@ static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd)
 	struct xocl_ert_user *ert_user = container_of(ert, struct xocl_ert_user, ert);
 	struct ert_user_command *ecmd = ert_user_alloc_cmd(xcmd);
 
-	if (!ecmd)
+	if (!ecmd) {
+		xcmd->cb.notify_host(xcmd, KDS_ERROR);
+		xcmd->cb.free(xcmd);
 		return;
+	}
 
 	ERTUSER_DBG(ert_user, "->%s ecmd %llx\n", __func__, (u64)ecmd);
 	spin_lock_irqsave(&ert_user->pq_lock, flags);
