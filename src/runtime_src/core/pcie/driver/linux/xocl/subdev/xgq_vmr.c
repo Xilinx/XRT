@@ -1563,19 +1563,20 @@ cid_alloc_failed:
 
 static int set_and_verify_freqs(struct platform_device *pdev,unsigned short *target_freqs, int num_freqs, int verify)
 {
-    int ret = 0,i;
-    u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
-    struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	int ret = 0,i;
+	u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	enum data_kind kinds[3] = {FREQ_COUNTER_0,FREQ_COUNTER_1,FREQ_COUNTER_2};
 
-    ret = xgq_freq_scaling(pdev, target_freqs, num_freqs,
-		verify);
-    if (ret) {
+	ret = xgq_freq_scaling(pdev, target_freqs, num_freqs,verify);
+	if (ret)
+	{
 		XGQ_ERR(xgq, "ret %d", ret);
-        return ret;
+		return ret;
 	}
 
-    for (i = 0; i < min(XGQ_CLOCK_WIZ_MAX_RES, num_freqs); ++i) {
+	for (i = 0; i < min(XGQ_CLOCK_WIZ_MAX_RES, num_freqs); ++i) 
+	{
 		if (!target_freqs[i])
 			continue;
 
@@ -1584,7 +1585,8 @@ static int set_and_verify_freqs(struct platform_device *pdev,unsigned short *tar
 		lookup_freq = target_freqs[i];
 		request_in_khz = lookup_freq*1000;
 		tolerance = lookup_freq*50;
-		if (tolerance < abs(clock_freq_counter-request_in_khz)) {
+		if (tolerance < abs(clock_freq_counter-request_in_khz)) 
+		{
 			XGQ_ERR(xgq, "Frequency is higher than tolerance value, request %u"
 					"khz, actual %u khz", request_in_khz, clock_freq_counter);
 			ret = -EDOM;
@@ -1604,7 +1606,7 @@ static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
 	int system_clk_count = 0;
 	int clock_type_count = 0;
 	unsigned short target_freqs[4] = {0};
-	int i = 0,ret = 0;
+	int i = 0, ret = 0;
 
 	if (!topo)
 		return -EINVAL;
@@ -1664,14 +1666,13 @@ static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
 	    ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
 	    target_freqs[2], target_freqs[3]);
 
-    ret = set_and_verify_freqs(pdev, target_freqs, ARRAY_SIZE(target_freqs),
-		verify);
-    if (ret) {
+	ret = set_and_verify_freqs(pdev, target_freqs, ARRAY_SIZE(target_freqs),verify);
+	if (ret) {
 		XGQ_ERR(xgq, "ret %d", ret);
-        goto done;
+		goto done;
 	}
 done:
-    return ret;
+	return ret;
 }
 
 static uint32_t xgq_clock_get_data(struct xocl_xgq_vmr *xgq,
