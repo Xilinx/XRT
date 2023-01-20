@@ -243,7 +243,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 
 	/* For legacy context case there are only one hw context possible i.e. 0 */
-	hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
+	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
                 ret = -EINVAL;
@@ -286,7 +286,6 @@ out:
 static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
-	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_info cu_info = {};
@@ -330,9 +329,10 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 
 	/* unlock bitstream if there is no opening context */
 	if (list_empty(&client->ctx->cu_ctx_list)) {
-		hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
-		if (hw_ctx)
-			kds_free_hw_ctx(client, hw_ctx);
+		/* For legacy context case there are only one hw context
+		 * possible i.e. 0 */
+		hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+		kds_free_hw_ctx(client, hw_ctx);
 
 		vfree(client->ctx->xclbin_id);
 		client->ctx->xclbin_id = NULL;
@@ -2490,25 +2490,30 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
 
+	printk("********* %s %d ********\n", __func__, __LINE__);
 	xocl_kds_fa_clear(xdev);
 
+	printk("********* %s %d ********\n", __func__, __LINE__);
 	ret = xocl_detect_fa_cmdmem(xdev);
 	if (ret) {
 		userpf_info(xdev, "Detect FA cmdmem failed, ret %d", ret);
 		goto out;
 	}
 
+	printk("********* %s %d ********\n", __func__, __LINE__);
 	if (CFG_GPIO_OPS(xdev))
 		XDEV(xdev)->kds.cu_intr_cap = 1;
 
 	if (!KDS_SYSFS_SETTING(XDEV(xdev)->kds.cu_intr))
 		XDEV(xdev)->kds.cu_intr = 0;
 
+	printk("********* %s %d ********\n", __func__, __LINE__);
 	XDEV(xdev)->kds.force_polling = cfg.polling;
 	ret = kds_cfg_update(&XDEV(xdev)->kds);
 	if (ret)
 		userpf_err(xdev, "KDS configure update failed, ret %d", ret);
 
+	printk("********* %s %d ********\n", __func__, __LINE__);
 out:
 	return ret;
 }

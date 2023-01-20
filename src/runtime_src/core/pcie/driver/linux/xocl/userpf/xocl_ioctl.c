@@ -647,7 +647,6 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 		goto done;
 	}
 
-	XDEV(xdev)->axlf_obj[slot_id] = axlf_obj;
 	axlf_obj->idx = slot_id;
 	axlf_obj->flags = axlf_ptr->flags;
 	dtbHeader = xocl_axlf_section_header(xdev, axlf,
@@ -726,8 +725,9 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 		axlf_obj->kernels = kernels;
 	}
 
-	memcpy(&axlf_obj->kds_cfg, &axlf_ptr->kds_cfg, sizeof(axlf_ptr->kds_cfg));
+	memcpy(&axlf_obj->kds_cfg, &axlf_ptr->kds_cfg, sizeof(struct drm_xocl_kds));
 
+	XDEV(xdev)->axlf_obj[slot_id] = axlf_obj;
 	err = xocl_icap_download_axlf(xdev, axlf, slot_id);
 	/*
 	 * Don't just bail out here, always recreate drm mem
@@ -746,13 +746,20 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	if (!err &&  size >=0)
 		xocl_p2p_refresh_rbar(xdev);
 
-	/* The finial step is to update KDS configuration */
+	printk("********* %s %d ********\n", __func__, __LINE__);
+	/* The final step is to update KDS configuration */
 	if (!err) {
-		err = xocl_kds_update(xdev, axlf_obj->kds_cfg);
+		printk("********* %s %d : KDS update ********\n", __func__, __LINE__);
+		err = xocl_kds_update(xdev, XDEV(xdev)->axlf_obj[slot_id]->kds_cfg);
+		printk("********* %s %d ********\n", __func__, __LINE__);
 		if (err) {
+			printk("********* %s %d ********\n", __func__, __LINE__);
 			xocl_icap_clean_bitstream(xdev, slot_id);
+			printk("********* %s %d ********\n", __func__, __LINE__);
 		}
+		printk("********* %s %d ********\n", __func__, __LINE__);
 	}
+	printk("********* %s %d ********\n", __func__, __LINE__);
 
 done:
 	/* Update the slot */
