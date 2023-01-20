@@ -772,7 +772,7 @@ namespace xdp {
         continue;
       }
 
-      configMetrics[tile] = metrics[i][2];
+      configMetrics[tile] = metrics[i][1];
       
       // Grab channel numbers (if specified; MEM tiles only)
       if (metrics[i].size() == 4) {
