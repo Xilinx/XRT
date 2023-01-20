@@ -368,9 +368,10 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
-    XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
-    XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
+    // Uncomment once these are available and supported on all platforms
+    //XAie_DmaDirection dmaDir = (metricSet.find("input") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
+    //XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
+    //XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
   }
 
   bool
@@ -690,11 +691,17 @@ namespace xdp {
           XAie_LocType L;
           XAie_ModuleType M;
           TraceE->getRscId(L, M, S);
-          cfgTile->memory_trace_config.traced_events[S] = bcIdToEvent(bcId);
-          auto mod = XAIE_CORE_MOD;
+          // Get physical event
           uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCrossEvents[i], &phyEvent);
-          cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, memoryCrossEvents[i], &phyEvent);
+
+          if (type == module_type::mem_tile) {
+            cfgTile->mem_tile_trace_config.traced_events[S] = phyEvent;
+          }
+          else {
+            cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+            cfgTile->memory_trace_config.traced_events[S] = bcIdToEvent(bcId);
+          }
         }
 
         // Configure memory trace events
@@ -714,9 +721,8 @@ namespace xdp {
           XAie_ModuleType M;
           TraceE->getRscId(L, M, S);
           // Get Physical event
-          auto mod = XAIE_MEM_MOD;
           uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryEvents[i], &phyEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, memoryEvents[i], &phyEvent);
 
           if (type == module_type::mem_tile)
             cfgTile->mem_tile_trace_config.traced_events[S] = phyEvent;
@@ -726,31 +732,41 @@ namespace xdp {
 
         // Update config file
         {
-          // Add Memory module trace control events
+          // Add Memory trace control events
+          // Start
           uint32_t bcBit = 0x1;
           auto bcId = memoryTrace->getStartBc();
           coreToMemBcMask |= (bcBit << bcId);
-          auto mod = XAIE_CORE_MOD;
           uint8_t phyEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, traceStartEvent, &phyEvent);
-          cfgTile->memory_trace_config.start_event = bcIdToEvent(bcId);
-          cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
-
+          if (type == module_type::mem_tile) {
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceStartEvent, &phyEvent);
+            cfgTile->mem_tile_trace_config.start_event = phyEvent;
+          }
+          else {
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceStartEvent, &phyEvent);
+            cfgTile->memory_trace_config.start_event = bcIdToEvent(bcId);
+            cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
+          }
+          // Stop
           bcBit = 0x1;
           bcId = memoryTrace->getStopBc();
           coreToMemBcMask |= (bcBit << bcId);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, traceEndEvent, &phyEvent);
-          cfgTile->memory_trace_config.stop_event = bcIdToEvent(bcId);
-          cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
-        }
+          if (type == module_type::mem_tile) {
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_MEM_MOD, traceEndEvent, &phyEvent);
+            cfgTile->mem_tile_trace_config.stop_event = phyEvent;
+          }
+          else {
+            XAie_EventLogicalToPhysicalConv(aieDevInst, loc, XAIE_CORE_MOD, traceEndEvent, &phyEvent);
+            cfgTile->memory_trace_config.stop_event = bcIdToEvent(bcId);
+            cfgTile->core_trace_config.internal_events_broadcast[bcId] = phyEvent;
 
-        // Odd absolute rows change east mask end even row change west mask
-        if (row % 2) {
-          cfgTile->core_trace_config.broadcast_mask_east = coreToMemBcMask;
-        } else {
-          cfgTile->core_trace_config.broadcast_mask_west = coreToMemBcMask;
+            // Odd absolute rows change east mask end even row change west mask
+            if (row % 2)
+              cfgTile->core_trace_config.broadcast_mask_east = coreToMemBcMask;
+            else
+              cfgTile->core_trace_config.broadcast_mask_west = coreToMemBcMask;
+          }
         }
-        // Done update config file
 
         memoryEvents.clear();
         if (type == module_type::core)
@@ -773,7 +789,10 @@ namespace xdp {
 
         // Update memory packet type in config file
         // NOTE: Use time packets for memory module (type 1)
-        cfgTile->memory_trace_config.packet_type = 1;
+        if (type == module_type::mem_tile)
+          cfgTile->mem_tile_trace_config.packet_type = 1;
+        else
+          cfgTile->memory_trace_config.packet_type = 1;
       }
 
       std::stringstream msg;

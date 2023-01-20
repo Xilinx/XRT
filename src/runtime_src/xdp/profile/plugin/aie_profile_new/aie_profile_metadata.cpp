@@ -122,6 +122,13 @@ namespace xdp {
     if (settingsString.empty())
       return {};
 
+    // For 2023.1 only: support both *_bandwidths and *_throughputs
+    if (settingsString.find("bandwidths") != std::string::npos) {
+      xrt_core::message::send(severity_level::warning, "XRT",
+        "All metric sets named *_bandwidths will be renamed *_throughputs in 2023.2. Please use the new settings.");
+      boost::replace_all(settingsString, "bandwidths", "throughputs");
+    }
+
     // Each of the metrics can have ; separated multiple values. Process and save all
     std::vector<std::string> settingsVector;
     boost::replace_all(settingsString, " ", "");
@@ -177,8 +184,8 @@ namespace xdp {
       // Make sure it's desired polarity
       // NOTE: input = slave (data flowing from PLIO)
       //       output = master (data flowing to PLIO)
-      if ((isMaster && (metricStr == "input_bandwidths"))
-          || (!isMaster && (metricStr == "output_bandwidths")))
+      if ((isMaster && (metricStr == "input_throughputs"))
+          || (!isMaster && (metricStr == "output_throughputs")))
         continue;
 
       plioCount++;
@@ -235,7 +242,8 @@ namespace xdp {
 
     // Now parse all shared buffers
     for (auto const &shared_buffer : sharedBufferTree.get()) {
-      if ((shared_buffer.second.get<std::string>("graph") != graph_name)
+      auto currGraph = shared_buffer.second.get<std::string>("graph");
+      if ((currGraph.find(graph_name) == std::string::npos)
            && (graph_name.compare("all") != 0))
         continue;
       if (kernel_name.compare("all") != 0) {
@@ -283,7 +291,8 @@ namespace xdp {
     auto rowOffset = getAIETileRowOffset();
 
     for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
-      if ((graph.second.get<std::string>("name") != graph_name)
+      auto currGraph = graph.second.get<std::string>("name");
+      if ((currGraph.find(graph_name) == std::string::npos)
            && (graph_name.compare("all") != 0))
         continue;
 
@@ -344,7 +353,8 @@ namespace xdp {
     auto rowOffset = getAIETileRowOffset();
 
     for (auto const &mapping : kernelToTileMapping.get()) {
-      if ((mapping.second.get<std::string>("graph") != graph_name)
+      auto currGraph = mapping.second.get<std::string>("graph");
+      if ((currGraph.find(graph_name) == std::string::npos)
            && (graph_name.compare("all") != 0))
         continue;
       if (kernel_name.compare("all") != 0) {
@@ -387,8 +397,8 @@ namespace xdp {
 
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * AI Engine Tiles
-     * graph_based_aie_metrics = <graph name|all>:<kernel name|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>
-     * graph_based_aie_memory_metrics = <graph name|all>:<kernel name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths>
+     * graph_based_aie_metrics = <graph name|all>:<kernel name|all>:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>
+     * graph_based_aie_memory_metrics = <graph name|all>:<kernel name|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>
      * MEM Tiles
      * graph_based_mem_tile_metrics = <graph name|all>:<kernel name|all>:<off|input_channels|output_channels|memory_stats>[:<channel>]
      */
@@ -496,11 +506,11 @@ namespace xdp {
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * AI Engine Tiles
      * Single or all tiles
-     * tile_based_aie_metrics = [[{<column>,<row>}|all>:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]
-     * tile_based_aie_memory_metrics = [[<{<column>,<row>}|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths>]
+     * tile_based_aie_metrics = [[{<column>,<row>}|all>:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]
+     * tile_based_aie_memory_metrics = [[<{<column>,<row>}|all>:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]
      * Range of tiles
-     * tile_based_aie_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|heat_map|stalls|execution|floating_point|write_bandwidths|read_bandwidths|aie_trace>]]
-     * tile_based_aie_memory_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_bandwidths|read_bandwidths>]]
+     * tile_based_aie_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|heat_map|stalls|execution|floating_point|write_throughputs|read_throughputs|aie_trace>]]
+     * tile_based_aie_memory_metrics = [{<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<off|conflicts|dma_locks|dma_stalls_s2mm|dma_stalls_mm2s|write_throughputs|read_throughputs>]]
      * 
      * MEM Tiles (AIE2 and beyond)
      * Single or all tiles
@@ -606,7 +616,7 @@ namespace xdp {
             xrt_core::message::send(severity_level::warning, "XRT", msg.str());
             continue;
           }
-          
+      
           configMetrics[moduleIdx][tile] = metrics[i][2];
 
           // Grab channel numbers (if specified; MEM tiles only)
@@ -657,7 +667,7 @@ namespace xdp {
         continue;
       }
 
-      configMetrics[moduleIdx][tile] = metrics[i][2];
+      configMetrics[moduleIdx][tile] = metrics[i][1];
       
       // Grab channel numbers (if specified; MEM tiles only)
       if (metrics[i].size() == 4) {
@@ -722,9 +732,9 @@ namespace xdp {
 
     /* AIE_profile_settings config format ; Multiple values can be specified for a metric separated with ';'
      * Single or all tiles
-     * tile_based_interface_tile_metrics = [[<column|all>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]]
+     * tile_based_interface_tile_metrics = [[<column|all>:<off|input_throughputs|output_throughputs|packets>[:<channel>]]
      * Range of tiles
-     * tile_based_interface_tile_metrics = [<mincolumn>:<maxcolumn>:<off|input_bandwidths|output_bandwidths|packets>[:<channel>]]]
+     * tile_based_interface_tile_metrics = [<mincolumn>:<maxcolumn>:<off|input_throughputs|output_throughputs|packets>[:<channel>]]]
      */
 
     std::vector<std::vector<std::string>> metrics(metricsSettings.size());
