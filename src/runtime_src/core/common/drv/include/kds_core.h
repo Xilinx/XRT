@@ -74,6 +74,7 @@ enum kds_cu_domain {
  */
 #define MAX_SLOT 32
 #define MAX_CU_STAT_LINE_LENGTH  128
+#define DEFAULT_HW_CTX_ID	0
 
 enum kds_type {
 	KDS_CU		= 0,

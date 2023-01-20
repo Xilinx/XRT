@@ -242,7 +242,7 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 
 	/* For legacy context case there are only one hw context possible i.e. 0 */
-	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+	hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
         if (!hw_ctx) {
                 userpf_err(xdev, "No valid HW context is open");
                 ret = -EINVAL;
@@ -285,6 +285,7 @@ out:
 static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 			    struct drm_xocl_ctx *args)
 {
+	struct kds_client_hw_ctx *hw_ctx = NULL;
 	struct kds_client_cu_ctx *cu_ctx = NULL;
 	struct kds_client_cu_info cu_info = {};
 	xuid_t *uuid;
@@ -320,20 +321,16 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret)
 		goto out;
 
-	if (cu_ctx->hw_ctx) {
-		ret = kds_free_hw_ctx(client, cu_ctx->hw_ctx);
-		if (ret)
-			goto out;
-
-		cu_ctx->hw_ctx = NULL;
-	}
-
 	ret = kds_free_cu_ctx(client, cu_ctx);
 	if (ret)
 		goto out;
 
 	/* unlock bitstream if there is no opening context */
 	if (list_empty(&client->ctx->cu_ctx_list)) {
+		hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
+		if (hw_ctx)
+			kds_free_hw_ctx(client, hw_ctx);
+
 		vfree(client->ctx->xclbin_id);
 		client->ctx->xclbin_id = NULL;
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);

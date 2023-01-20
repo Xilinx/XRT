@@ -139,7 +139,7 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
 
 	/* For legacy context case there are only one hw context possible i.e. 0
 	*/
-	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+	hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
 	kds_free_hw_ctx(client, hw_ctx);
 
 	/* Get the corresponding slot for this xclbin */
@@ -313,7 +313,7 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 
         /* For legacy context case there are only one hw context possible i.e. 0
          */
-        hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+        hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
         if (!hw_ctx) {
                 DRM_ERROR("No valid HW context is open");
 		zocl_remove_client_context(zdev, client, cctx);
@@ -395,7 +395,7 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl,
 
 	/* For legacy context case there are only one hw context possible i.e. 0
 	 */
-	hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+	hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
 	if (!hw_ctx) {
 		DRM_ERROR("No valid HW context is open");
 		mutex_unlock(&client->lock);
@@ -450,7 +450,7 @@ int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl,
 	if (list_empty(&cctx->cu_ctx_list)) {
 		/* For legacy context case there are only one hw context possible i.e. 0
 		*/
-		hw_ctx = kds_get_hw_ctx_by_id(client, 0 /* default hw cx id */);
+		hw_ctx = kds_get_hw_ctx_by_id(client, DEFAULT_HW_CTX_ID);
 		kds_free_hw_ctx(client, hw_ctx);
 
 		list_del(&cctx->link);
