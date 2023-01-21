@@ -298,7 +298,8 @@ namespace xdp {
 
     for (auto const &mapping : kernelToTileMapping.get()) {
       std::vector<std::string> names;
-      boost::split(names, mapping.second.get<std::string>("function"), boost::is_any_of("."));
+      std::string functionStr = mapping.second.get<std::string>("function");
+      boost::split(names, functionStr, boost::is_any_of("."));
       std::unique_copy(names.begin(), names.end(), std::back_inserter(kernels));
     }
 
