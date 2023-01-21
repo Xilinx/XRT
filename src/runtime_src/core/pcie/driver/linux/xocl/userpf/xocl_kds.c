@@ -2504,6 +2504,7 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	if (CFG_GPIO_OPS(xdev))
 		XDEV(xdev)->kds.cu_intr_cap = 1;
 
+	printk("********* %s %d ********\n", __func__, __LINE__);
 	if (!KDS_SYSFS_SETTING(XDEV(xdev)->kds.cu_intr))
 		XDEV(xdev)->kds.cu_intr = 0;
 
