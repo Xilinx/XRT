@@ -287,7 +287,7 @@ main(int argc, char* argv[])
 
     std::ifstream aiefile(aie_control.string());
     if (!aiefile.good()) {
-        std::cerr << "\nNOT SUPPORTED" << std::endl;
+        std::cerr << "\nError: The given file could not be found: " << aie_control.string() << std::endl;
         return EOPNOTSUPP;
     }
 
@@ -306,7 +306,7 @@ main(int argc, char* argv[])
     std::ifstream infile(binaryFile.string());
 
     if (!infile.good()) {
-        std::cerr << "\nNOT SUPPORTED" << std::endl;
+        std::cerr << "\nError: The given file could not be found: " << binaryFile.string() << std::endl;
         return EOPNOTSUPP;
     }
 
