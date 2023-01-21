@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022-2023 Xilinx, Inc. All rights reserved.
 #
 set(TESTNAME "aie_pl.exe")
 

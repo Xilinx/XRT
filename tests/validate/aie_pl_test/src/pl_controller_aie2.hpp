@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Xilinx, Inc.
+ * Copyright 2023 Xilinx, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,46 +17,41 @@
 #ifndef _XF_PLCTRL_PL_CONTROLLER_AIE2_HPP_
 #define _XF_PLCTRL_PL_CONTROLLER_AIE2_HPP_
 
-//#include "xclbin.h"
 #include <algorithm>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
-
-#include <stdexcept>
-
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-using boost::property_tree::ptree;
 #include "enums.hpp"
+
+#define LINE_SIZE_BYTES 128
 
 namespace xf {
 namespace plctrl {
 
 class dynBuffer {
    public:
-    uint32_t* data;
-    uint32_t size;
-    uint32_t usedSize;
+    uint32_t* m_data;
+    uint32_t m_size;
+    uint32_t m_usedSize;
 
     dynBuffer();
     ~dynBuffer();
     uint32_t get(int i);
-    void add(uint32_t m_data);
-    void add(uint32_t* m_data, int blk_size);
+    void add(uint32_t data);
+    void add(uint32_t* data, int blk_size);
 };
 
 class plController_aie2 {
    public:
     /* Constructor
     */
-    plController_aie2(const std::string& xclbin_path);
+    plController_aie2() = delete;
     plController_aie2(const std::string& aie_info_path, const std::string& dma_info_path);
-    /* De-constructor
-     */
-    ~plController_aie2();
 
     void enqueue_set_aie_iteration(const std::string& graphName, int num_iter, int ctrl_nm = 1);
 
@@ -78,34 +73,20 @@ class plController_aie2 {
 
     void enqueue_update_aie_rtp(const std::string& rtpPort, int rtpVal, int ctrl_nm = 1);
 
-    /* return local metadata buffer size, user use allocate device buffer based on
-     * this size.
-     */
-    unsigned int get_metadata_size() const { return metadata->usedSize; };
-
     /* return local microcode buffer size, user use allocate device buffer based
      * on this size.
      */
-    unsigned int get_microcode_size() const { return opcodeBuffer->usedSize; };
+    unsigned int get_microcode_size() const { return m_opcodeBuffer.m_usedSize; };
 
     /* copy local buffer to device buffer
      */
     void copy_to_device_buff(uint32_t* dst_op) const {
-        memcpy(dst_op, opcodeBuffer->data, opcodeBuffer->usedSize * sizeof(uint32_t));
+        memcpy(dst_op, m_opcodeBuffer.m_data, m_opcodeBuffer.m_usedSize * sizeof(uint32_t));
     }
 
     void print_micro_codes();
 
    private:
-    std::vector<char> read_xclbin(const std::string& fnm);
-
-    void init_axlf();
-
-    std::pair<const char*, size_t> get_aie_section();
-
-    void read_aie_metadata(const char* data, size_t size, ptree& aie_project);
-
-    int read_elf_to_mem(std::string file_name, dynBuffer* m_buff);
     // re-use this code from "core/edge/common/aie_parser.cpp"
     void get_rtp();
 
@@ -113,17 +94,14 @@ class plController_aie2 {
 
     std::vector<buffer_type> get_buffers(const std::string& port_name);
 
-    std::vector<char> m_axlf;
-    // const axlf* m_top;
-    std::unordered_map<std::string, rtp_type> rtps;
-    dynBuffer* opcodeBuffer;
-    dynBuffer* metadata;
-    uint32_t outputSize;
+    std::unordered_map<std::string, rtp_type> m_rtps;
+    dynBuffer m_opcodeBuffer;
+    uint32_t m_outputSize = 0;
 
-    std::string dma_info_path;
-    std::string aie_info_path;
+    std::string m_dma_info_path = "dma_lock_report.json";
+    std::string m_aie_info_path = "aie_control_config.json";
 
-    bool set_num_iter;
+    bool m_set_num_iter = false;
 };
 
 } // end of namespace plctrl

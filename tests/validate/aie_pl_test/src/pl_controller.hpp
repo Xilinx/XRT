@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2019-2022 Xilinx, Inc
+* Copyright (C) 2019-2023 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -18,7 +18,6 @@
 #ifndef _XF_PLCTRL_PL_CONTROLLER_HPP_
 #define _XF_PLCTRL_PL_CONTROLLER_HPP_
 
-//#include "xclbin.h"
 #include <algorithm>
 #include <iostream>
 #include <sstream>
@@ -40,12 +39,8 @@ class plController
   public:
     /* Constructor
     */
-    plController(const std::string& xclbin_path);
-    plController(const std::string& xclbin_path,
-                 const std::string& dma_info_path);
-    /* De-constructor
-     */
-    ~plController();
+    plController() = delete;
+    plController(const std::string& aie_info_path, const std::string& dma_info_path);
 
     void enqueue_set_aie_iteration(const std::string& graphName, int num_iter);
 
@@ -71,19 +66,19 @@ class plController
      * on
      * this size.
      */
-    unsigned int get_metadata_size() const { return metadata.size(); };
+    unsigned int get_metadata_size() const { return m_metadata.size(); };
 
     /* return local microcode buffer size, user use allocate device buffer based
      * on this size.
      */
-    unsigned int get_microcode_size() const { return opcodeBuffer.size(); };
+    unsigned int get_microcode_size() const { return m_opcodeBuffer.size(); };
 
     /* copy local buffer to device buffer
      */
     void copy_to_device_buff(uint32_t* dst_op) const
     {
-        memcpy(dst_op, opcodeBuffer.data(),
-               opcodeBuffer.size() * sizeof(uint32_t));
+        memcpy(dst_op, m_opcodeBuffer.data(),
+               m_opcodeBuffer.size() * sizeof(uint32_t));
     }
 
   private:
@@ -95,15 +90,14 @@ class plController
 
     std::vector<buffer_type> get_buffers(const std::string& port_name);
 
-    std::vector<char> m_axlf;
-    std::unordered_map<std::string, rtp_type> rtps;
-    std::vector<uint32_t> opcodeBuffer;
-    std::vector<uint32_t> metadata;
-    uint32_t outputSize;
+    std::unordered_map<std::string, rtp_type> m_rtps;
+    std::vector<uint32_t> m_opcodeBuffer;
+    std::vector<uint32_t> m_metadata;
+    uint32_t m_outputSize;
 
-    std::string dma_info_path;
-    std::string aie_info_path;
-    bool ping_pong;
+    std::string m_dma_info_path;
+    std::string m_aie_info_path;
+    bool m_ping_pong;
 };
 
 } // end of namespace plctrl

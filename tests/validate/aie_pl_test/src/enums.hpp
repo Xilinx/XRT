@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Xilinx, Inc.
+ * Copyright 2022-2023 Xilinx, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,9 +64,7 @@ struct buffer_type
     bool s2mm;
 };
 
-namespace enums {
-enum { SYNC_REQ = 0, SYNC_ACK = 1 };
-enum {
+enum CMD_TYPE {
   ADF_GRAPH_RUN = 0,
   ADF_GRAPH_WAIT = 1,
   ADF_GRAPH_RTP_UPDATE = 2,
@@ -85,10 +83,8 @@ enum {
   LOOP_END = 15,
   SET_DMA_BD = 16,
   UPDATE_AIE_RTP = 17,
-  WRITE = 18
+  WRITE = 18,
 };
-} // end of namespace enums
-using namespace enums;
 
 } // end of namespace plctrl
 
