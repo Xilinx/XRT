@@ -510,16 +510,9 @@ namespace xdp {
       // Split done only in Pass 1
       boost::split(graphMetrics[i], graphMetricsSettings[i], boost::is_any_of(":"));
 
-      // Check if not all or if invalid graph or kernel
+      // Check if graph is not all or if invalid kernel
       if (graphMetrics[i][0].compare("all") != 0)
         continue;
-      if (std::find(allValidGraphs.begin(), allValidGraphs.end(), graphMetrics[i][0]) == allValidGraphs.end()) {
-        std::stringstream msg;
-        msg << "Graph " << graphMetrics[i][0] << " not found. The graph_based_" << tileName
-            << "_metrics setting " << graphMetricsSettings[i] << " will be ignored.";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        continue;
-      }
       if ((graphMetrics[i][1].compare("all") != 0)
           && (std::find(allValidKernels.begin(), allValidKernels.end(), graphMetrics[i][1]) == allValidKernels.end())) {
         std::stringstream msg;
@@ -791,6 +784,7 @@ namespace xdp {
     // Check validity and remove "off" tiles
     std::vector<tile_type> offTiles;
 
+    bool showWarning = true;
     for (auto &tileMetric : configMetrics) {
       // Save list of "off" tiles
       if (tileMetric.second.empty() || (tileMetric.second.compare("off") == 0)) {
@@ -801,10 +795,13 @@ namespace xdp {
       // Ensure requested metric set is supported (if not, use default)
       if (std::find(metricSets.begin(), metricSets.end(), tileMetric.second) == metricSets.end()) {
         std::string defaultSet = (type == module_type::mem_tile) ? "input_channels" : "functions";
-        std::stringstream msg;
-        msg << "Unable to find AIE trace metric set " << tileMetric.second 
-            << ". Using default of " << defaultSet << ".";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+        if (showWarning) {
+          std::stringstream msg;
+          msg << "Unable to find AIE trace metric set " << tileMetric.second 
+              << ". Using default of " << defaultSet << ".";
+          xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+          showWarning = false;
+        }
         tileMetric.second = defaultSet;
       }
     }
