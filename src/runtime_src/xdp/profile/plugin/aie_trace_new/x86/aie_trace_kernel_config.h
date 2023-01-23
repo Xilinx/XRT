@@ -92,11 +92,15 @@ namespace built_in {
   {
     static constexpr auto NUM_CORE_TRACE_EVENTS = 8;
     static constexpr auto NUM_MEMORY_TRACE_EVENTS = 8;
+    static constexpr auto NUM_MEM_TILE_TRACE_EVENTS = 8;
+
 
     uint32_t delayCycles;
     uint32_t iterationCount;
     uint16_t numTiles;
     uint8_t counterScheme;
+    uint8_t hwGen;
+    uint8_t offset;
    
     bool useGraphIterator;
     bool useDelay;
@@ -129,16 +133,34 @@ namespace built_in {
       PCData pc[NUM_TRACE_PCS];
   };  
 
+  struct MemTileTraceData 
+  {
+    uint8_t port_trace_ids[NUM_MEM_TILE_PORTS] = {};
+    bool port_trace_is_master[NUM_MEM_TILE_PORTS];
+    uint8_t s2mm_channels[NUM_MEM_TILE_CHAN_SEL] = {};
+    uint8_t mm2s_channels[NUM_MEM_TILE_CHAN_SEL] = {};
+
+    uint32_t packet_type = 0;
+    uint32_t start_event = EVENT_CORE_ACTIVE; 
+    uint32_t stop_event = EVENT_CORE_DISABLED; 
+    uint32_t traced_events[NUM_TRACE_EVENTS] = {};
+    uint32_t internal_events_broadcast[NUM_BROADCAST_EVENTS] = {};
+    uint32_t broadcast_mask_west = BROADCAST_MASK_DEFAULT;
+    uint32_t broadcast_mask_east = BROADCAST_MASK_DEFAULT;
+    PCData pc[NUM_TRACE_PCS];
+  };
+
 
   struct TileData
   {
     public:
+      uint8_t type;
       uint8_t trace_metric_set;
       uint32_t column;
       uint32_t row;
       TileTraceData  core_trace_config;
       TileTraceData  memory_trace_config;
-   
+      MemTileTraceData mem_tile_trace_config;
       TileData(uint32_t c, uint32_t r) : column(c), row(r) {}
   };
 
@@ -148,6 +170,7 @@ namespace built_in {
       uint16_t numTiles;
       uint32_t numTileCoreTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
       uint32_t numTileMemoryTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
+      uint32_t numMemTileTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
       TileData tiles[1]; 
   };
 
