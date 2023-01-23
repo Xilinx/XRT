@@ -1302,7 +1302,7 @@ int xocl_init_mem(struct xocl_drm *drm_p, uint32_t slot_id)
 		}
 
 		mem_stat->mem_idx = i;
-		mem_stat->slot_idx = 0; // Default slot id
+		mem_stat->slot_idx = slot_id;
 		list_add_tail(&mem_stat->link, &drm_p->mem_list_head);
 		drm_p->mm_usage_stat[i].is_used = true;
 	}

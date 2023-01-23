@@ -2490,31 +2490,25 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
 
-	printk("********* %s %d ********\n", __func__, __LINE__);
 	xocl_kds_fa_clear(xdev);
 
-	printk("********* %s %d ********\n", __func__, __LINE__);
 	ret = xocl_detect_fa_cmdmem(xdev);
 	if (ret) {
 		userpf_info(xdev, "Detect FA cmdmem failed, ret %d", ret);
 		goto out;
 	}
 
-	printk("********* %s %d ********\n", __func__, __LINE__);
 	if (CFG_GPIO_OPS(xdev))
 		XDEV(xdev)->kds.cu_intr_cap = 1;
 
-	printk("********* %s %d ********\n", __func__, __LINE__);
 	if (!KDS_SYSFS_SETTING(XDEV(xdev)->kds.cu_intr))
 		XDEV(xdev)->kds.cu_intr = 0;
 
-	printk("********* %s %d ********\n", __func__, __LINE__);
 	XDEV(xdev)->kds.force_polling = cfg.polling;
 	ret = kds_cfg_update(&XDEV(xdev)->kds);
 	if (ret)
 		userpf_err(xdev, "KDS configure update failed, ret %d", ret);
 
-	printk("********* %s %d ********\n", __func__, __LINE__);
 out:
 	return ret;
 }

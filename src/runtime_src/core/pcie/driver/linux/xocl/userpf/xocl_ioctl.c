@@ -132,7 +132,7 @@ int xocl_create_hw_ctx_ioctl(struct drm_device *dev, void *data,
 	mutex_unlock(&xdev->dev_lock);
 	if (ret)
 		return ret;
-	mutex_unlock(&xdev->dev_lock);
+	
 	xdev->is_legacy_ctx = false;
 	
 	/* Create the HW Context and lock the bitstream */
@@ -622,9 +622,8 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 		err = -EBUSY;
 		goto done;
 	}
+	
 	/* All contexts are closed. No outstanding commands */
-
-
 	axlf_obj = XDEV(xdev)->axlf_obj[slot_id];
 	if (axlf_obj != NULL) {
 		if (axlf_obj->ulp_blob)
@@ -734,11 +733,8 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	 * since we have cleaned it up before download.
 	 */
 
-	if (!err && !preserve_mem) {
-		rc = xocl_init_mem(drm_p, slot_id);
-		if (err == 0)
-			err = rc;
-	}
+	if (!err && !preserve_mem)
+		err = xocl_init_mem(drm_p, slot_id);
 
 	/*
 	 * This is a workaround for u280 only
@@ -746,20 +742,13 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr,
 	if (!err &&  size >=0)
 		xocl_p2p_refresh_rbar(xdev);
 
-	printk("********* %s %d ********\n", __func__, __LINE__);
 	/* The final step is to update KDS configuration */
 	if (!err) {
-		printk("********* %s %d : KDS update ********\n", __func__, __LINE__);
 		err = xocl_kds_update(xdev, XDEV(xdev)->axlf_obj[slot_id]->kds_cfg);
-		printk("********* %s %d ********\n", __func__, __LINE__);
 		if (err) {
-			printk("********* %s %d ********\n", __func__, __LINE__);
 			xocl_icap_clean_bitstream(xdev, slot_id);
-			printk("********* %s %d ********\n", __func__, __LINE__);
 		}
-		printk("********* %s %d ********\n", __func__, __LINE__);
 	}
-	printk("********* %s %d ********\n", __func__, __LINE__);
 
 done:
 	/* Update the slot */
