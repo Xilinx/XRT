@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 20222-2023 Advanced Micro Devices, Inc. - All rights reserved
+ * Copyright (C) 2022-2023 Advanced Micro Devices, Inc. - All rights reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -51,30 +51,50 @@ class AieTraceMetadata{
     unsigned int aie_trace_file_dump_int_s;
 
     std::string counterScheme;
+    std::string metricSet;
     std::vector<std::string> metricSets;
+    std::set<std::string> memTileMetricSets;
     std::map<tile_type, std::string> configMetrics;
+    std::map<tile_type, uint8_t> configChannel0;
+    std::map<tile_type, uint8_t> configChannel1;
+
     void* handle;
 
   public:
     
     AieTraceMetadata(uint64_t deviceID, void* handle);
 
-    static void read_aie_metadata(const char* data, size_t size, boost::property_tree::ptree& aie_project);
+    std::string getMetricSet(const std::string& metricsStr);
 
-    std::vector<tile_type> get_tiles(const xrt_core::device* device, const std::string& graph_name);
+    int getHardwareGen();
+    uint16_t getAIETileRowOffset();
+    std::vector<std::string> getSettingsVector(std::string settingsString); 
+    std::vector<tile_type> getMemTilesForTracing();
 
+    static void read_aie_metadata(const char* data, size_t size, 
+                                  boost::property_tree::ptree& aie_project);
+
+    std::vector<tile_type> get_tiles(const xrt_core::device* device, 
+                                     const std::string& graph_name,
+                                     module_type type, 
+                                     const std::string& kernel_name = "all");
+    std::vector<tile_type> get_aie_tiles(const xrt_core::device* device,
+                                         const std::string& graph_name);
+    std::vector<tile_type> get_mem_tiles(const xrt_core::device* device, 
+                                         const std::string& graph_name,
+                                         const std::string& kernel_name = "all");
     std::vector<tile_type> get_event_tiles(const xrt_core::device* device, 
                                            const std::string& graph_name,
                                            module_type type);
 
     std::vector<std::string> get_graphs(const xrt_core::device* device);
-
+    std::vector<std::string> get_kernels(const xrt_core::device* device);
     double get_clock_freq_mhz(const xrt_core::device* device);
-
     std::vector<gmio_type> get_trace_gmios(const xrt_core::device* device);
 
     void getConfigMetricsForTiles(std::vector<std::string>& metricsSettings,
-                                  std::vector<std::string>& graphmetricsSettings);
+                                  std::vector<std::string>& graphMetricsSettings,
+                                  module_type type);
     void setTraceStartControl();
     uint8_t getMetricSetIndex(std::string metricString);
    
@@ -90,6 +110,7 @@ class AieTraceMetadata{
     bool getUseGraphIterator(){return useGraphIterator;}
     bool getUseOneDelayCounter(){return useOneDelayCtr;}
     bool getRuntimeMetrics() {return runtimeMetrics;}
+    std::string getCounterScheme(){return counterScheme;}
 
     uint32_t getIterationCount(){return iterationCount;}
     uint64_t getNumStreams() {return numAIETraceOutput;}
@@ -100,8 +121,10 @@ class AieTraceMetadata{
 
     void* getHandle() {return handle;}
     unsigned int getFileDumpIntS() {return aie_trace_file_dump_int_s;}
-    std::map<tile_type, std::string> getConfigMetrics(){return configMetrics;}
-    std::string getCounterScheme(){return counterScheme;}
+    std::string getMetricStr() {return metricSet;}
+    std::map<tile_type, std::string> getConfigMetrics() {return configMetrics;}
+    std::map<tile_type, uint8_t> getConfigChannel0() {return configChannel0;}
+    std::map<tile_type, uint8_t> getConfigChannel1() {return configChannel1;}
 
     void setNumStreams(uint64_t newNumTraceStreams) {numAIETraceOutput = newNumTraceStreams;}
     void setDelayCycles(uint64_t newDelayCycles) {delayCycles = newDelayCycles;}

@@ -17,8 +17,9 @@
 #ifndef AIE_PROFILE_DEFS_H
 #define AIE_PROFILE_DEFS_H
 
-constexpr unsigned int BASE_MEMORY_COUNTER = 128;
-constexpr unsigned int BASE_SHIM_COUNTER =   256;
+constexpr unsigned int BASE_MEMORY_COUNTER   = 128;
+constexpr unsigned int BASE_SHIM_COUNTER     = 256;
+constexpr unsigned int BASE_MEM_TILE_COUNTER = 384;
 
 constexpr uint32_t GROUP_DMA_MASK                   = 0x0000f000;
 constexpr uint32_t GROUP_LOCK_MASK                  = 0x55555555;
@@ -30,6 +31,5 @@ constexpr uint32_t GROUP_STREAM_SWITCH_STALLED_MASK = 0x44444444;
 constexpr uint32_t GROUP_STREAM_SWITCH_TLAST_MASK   = 0x88888888;
 constexpr uint32_t GROUP_CORE_PROGRAM_FLOW_MASK     = 0x00001FE0;
 constexpr uint32_t GROUP_CORE_STALL_MASK            = 0x0000000F;
-
 
 #endif

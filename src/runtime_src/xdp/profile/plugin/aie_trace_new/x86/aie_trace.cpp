@@ -50,7 +50,7 @@ namespace xdp {
 
   void AieTrace_x86Impl::updateDevice() {
     // Set metrics for counters and trace events 
-    if (!setMetrics(metadata->getDeviceID(), metadata->getHandle())) {
+    if (!setMetricsSettings(metadata->getDeviceID(), metadata->getHandle())) {
       std::string msg("Unable to configure AIE trace control and events. No trace will be generated.");
       xrt_core::message::send(severity_level::warning, "XRT", msg);
       return;
@@ -62,14 +62,13 @@ namespace xdp {
     return size;
   }
 
-  bool AieTrace_x86Impl::setMetrics(uint64_t deviceId, void* handle) {
+  bool AieTrace_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle) {
       
     constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
     constexpr uint64_t INPUT_SIZE = ALIGNMENT_SIZE; // input/output must be aligned to 4096
     constexpr uint64_t MSG_OUTPUT_SIZE = ALIGNMENT_SIZE * ((sizeof(MessageConfiguration)%ALIGNMENT_SIZE) > 0 ? (sizeof(MessageConfiguration)/ALIGNMENT_SIZE) + 1 : (sizeof(MessageConfiguration)%ALIGNMENT_SIZE));
 
     //Gather data to send to PS Kernel
-
 
     if (!metadata->getIsValidMetrics()) {
       return false;

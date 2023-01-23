@@ -31,10 +31,19 @@ namespace built_in {
     ALL = 3
   };
 
+  enum class MemTileMetricSet : uint8_t 
+  {
+    INPUT_CHANNELS = 0,
+    INPUT_CHANNELS_STALLS = 1,
+    OUTPUT_CHANNELS = 2,
+    OUTPUT_CHANNELS_STALLS = 3
+  };
+
   enum class CounterScheme : uint8_t 
   {
     ES1 = 0,
-    ES2 = 1
+    ES2 = 1,
+    AIE2 = 2
   };
 
   enum class Messages : uint8_t
