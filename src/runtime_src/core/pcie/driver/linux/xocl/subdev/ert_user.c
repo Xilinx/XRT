@@ -760,6 +760,12 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 			if (xcmd->client != ev_client)
 				continue;
 
+			if (!xcmd->abort_printed) {
+				ERTUSER_WARN(ert_user, "%s found client(%d) command op(%d) to abort\n",
+					     __func__, pid_nr(xcmd->client->pid), xcmd->opcode);
+				xcmd->abort_printed = 1;
+			}
+
 			tick = atomic_read(&ert_user->tick);
 			/* Record command tick to start timeout counting */
 			if (!xcmd->tick) {
@@ -771,6 +777,8 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 			if (tick - xcmd->tick < ERT_EXEC_DEFAULT_TTL)
 				continue;
 
+			ERTUSER_WARN(ert_user, "%s abort client(%d) command op(%d)\n",
+				     __func__, pid_nr(xcmd->client->pid), xcmd->opcode);
 			ecmd->status = KDS_TIMEOUT;
 			/* Mark ERT as bad state */
 			ert_user->bad_state = true;
@@ -1188,7 +1196,8 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user
 		struct kds_command *xcmd = ecmd->xcmd;
 
 		if (unlikely(ert_user->bad_state || (ev_client == xcmd->client))) {
-			ERTUSER_ERR(ert_user, "%s abort\n", __func__);
+			ERTUSER_WARN(ert_user, "%s abort client(%d) command op(%d)\n",
+				     __func__, pid_nr(xcmd->client->pid), xcmd->opcode);
 			ecmd->status = KDS_ERROR;
 			list_move_tail(&ecmd->list, &ert_user->cq.head);
 			--rq->num;

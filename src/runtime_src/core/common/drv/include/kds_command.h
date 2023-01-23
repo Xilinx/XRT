@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020, 2023 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -101,6 +101,9 @@ struct kds_command {
 	void			*gem_obj;
 	/* to notify inkernel exec completion */
 	struct in_kernel_cb	*inkern_cb;
+
+	/* Use this flag to stop printing message when abort */
+	u32			abort_printed;
 };
 
 void set_xcmd_timestamp(struct kds_command *xcmd, enum kds_status s);
