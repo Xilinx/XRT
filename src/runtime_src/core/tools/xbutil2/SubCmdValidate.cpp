@@ -305,7 +305,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     std::vector<std::string> args = { "-p", test_dir,
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     try {
-      int exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
+      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", MAX_TEST_DURATION, os_stdout, os_stderr);
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", test_token_skipped);
       }
@@ -1319,7 +1319,7 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest },
-  { create_init_test("aie-pl", "Run AIE PL test", "verify.xclbin"), aiePlTest }
+  { create_init_test("aie-pl", "Run AIE PL test", "aie_control_config.json"), aiePlTest }
 };
 
 
