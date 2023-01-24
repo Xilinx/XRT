@@ -755,7 +755,7 @@ static int icap_ocl_update_clock_freq_topology(struct platform_device *pdev,
 			continue;
 
 		if (islot->pl_slot) {
-	err = icap_calib_and_check(pdev, slot_id);
+			err = icap_calib_and_check(pdev, slot_id);
 			if (err)
 				goto done;
 		}

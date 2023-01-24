@@ -1085,7 +1085,7 @@ static int xocl_init_memory_manager(struct xocl_drm *drm_p)
 	size_t ddr_bank_size = 0;
 	int err = 0;
 	int i = 0;
-    uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
+	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
 
 	mutex_lock(&drm_p->mm_lock);
 	err = XOCL_GET_MEM_TOPOLOGY(drm_p->xdev, topo, legacy_slot_id);

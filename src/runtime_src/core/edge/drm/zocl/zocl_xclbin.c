@@ -911,10 +911,11 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data, uint32_t slot_i
         }
 
 	BUG_ON(!zdev);
+	/* Get the corresponding slot DS */
 	slot = zdev->pr_slot[slot_id];
 
         mutex_lock(&slot->slot_xclbin_lock);
-	/* Check unique ID */
+	/* Check unique ID. Avoid duplicate PL xclbin */
 	if ((slot->slot_type == DOMAIN_PL) &&
 	    (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid))) {
 		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",

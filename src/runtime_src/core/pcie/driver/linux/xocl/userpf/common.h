@@ -88,7 +88,7 @@ enum {
 struct xocl_dev	{
 	struct xocl_dev_core	core;
 
-	bool				is_legacy_ctx;
+	bool			is_legacy_ctx;
 	struct list_head	ctx_list;
 
 	/*

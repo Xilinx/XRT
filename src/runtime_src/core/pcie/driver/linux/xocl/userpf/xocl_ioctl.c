@@ -350,30 +350,29 @@ static bool ps_xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id, uint3
 {
 	bool ret = false;
 	int err = 0;
-    int i = 0;
+	int i = 0;
 	xuid_t *downloaded_xclbin =  NULL;
-    
-    for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
-        if (i == DEFAULT_PL_SLOT)
-            continue; 
 
-        err = XOCL_GET_XCLBIN_ID(xdev, downloaded_xclbin, i);
-        if (err)
-            return ret;
+	for (i = 0; i < MAX_SLOT_SUPPORT; i++) {
+		if (i == DEFAULT_PL_SLOT)
+			continue; 
 
-        if (downloaded_xclbin && uuid_equal(downloaded_xclbin, xclbin_id)) {
-            ret = true;
-            *slot_id = i;
-            userpf_info(xdev, "xclbin is already downloaded to slot %d\n", i);
-            break;
-        }
+		err = XOCL_GET_XCLBIN_ID(xdev, downloaded_xclbin, i);
+		if (err)
+			return ret;
 
-        XOCL_PUT_XCLBIN_ID(xdev, i);
-    }
+		if (downloaded_xclbin && uuid_equal(downloaded_xclbin, xclbin_id)) {
+			ret = true;
+			*slot_id = i;
+			userpf_info(xdev, "xclbin is already downloaded to slot %d\n", i);
+			break;
+		}
+
+		XOCL_PUT_XCLBIN_ID(xdev, i);
+	}
 
 	return ret;
 }
-
 
 static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id,
 		uint32_t slot_id)
@@ -432,7 +431,6 @@ static int xocl_preserve_memcmp(struct mem_topology *new_topo, struct mem_topolo
 	}
 
 	return ret;
-
 }
 
 static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_topology, size_t size)
@@ -440,7 +438,7 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 	int ret = 0;
 	struct mem_topology *topology = NULL;
 	struct xocl_dev *xdev = drm_p->xdev;
-    uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
+	uint32_t legacy_slot_id = DEFAULT_PL_SLOT;
 
 	ret = XOCL_GET_MEM_TOPOLOGY(xdev, topology, legacy_slot_id);
 	if (ret)
@@ -487,7 +485,6 @@ xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 {
 	uint32_t s_id = DEFAULT_PL_SLOT;
 	int ret = 0;
-	//
 
 	if (!xocl_axlf_section_header(xdev, axlf, SOFT_KERNEL)) {
 		s_id = DEFAULT_PL_SLOT;
