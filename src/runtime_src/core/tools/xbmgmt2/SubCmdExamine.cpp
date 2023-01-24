@@ -86,10 +86,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 {
   XBU::verbose("SubCommand: examine");
 
-  // -- Build up the report & format options
-  const std::string reportOptionValues = XBU::create_suboption_list_string(fullReportCollection, true /*add 'all' option*/);
-  const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
-
   // Parse sub-command ...
   po::variables_map vm;
   process_arguments(vm, _options);
