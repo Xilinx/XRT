@@ -891,7 +891,7 @@ namespace xdp {
 
    uint8_t AieTraceMetadata::getMetricSetIndex(std::string metricString){    
     auto itr = std::find(metricSets.begin(), metricSets.end(), metricString);
-    if (itr != metricSets.cend()){
+    if (itr == metricSets.cend()){
       return 0;
     } else {
       return std::distance(metricSets.begin(), itr);

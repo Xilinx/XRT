@@ -62,6 +62,14 @@ namespace xdp {
     return size;
   }
 
+  module_type AieTrace_x86Impl::getTileType(uint16_t absRow) {
+    if (absRow == 0)
+      return module_type::shim;
+    if (absRow < metadata->getAIETileRowOffset())
+      return module_type::mem_tile;
+    return module_type::core;
+  }
+
   bool AieTrace_x86Impl::setMetricsSettings(uint64_t deviceId, void* handle) {
       
     constexpr uint64_t OUTPUT_SIZE = ALIGNMENT_SIZE * 38; //Calculated maximum output size for all 400 tiles
@@ -118,13 +126,11 @@ namespace xdp {
 
     //Attempt to schedule the kernel and parse the tile configuration output
     try {
-      
       auto spdevice = xrt_core::get_userpf_device(handle);
       auto device = xrt::device(spdevice);
     
       auto uuid = device.get_xclbin_uuid();
-      auto aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie_trace_config");
-
+      auto aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie_trace_config_t");
 
       //input bo  
       auto bo0 = xrt::bo(device, INPUT_SIZE, 2);
@@ -158,7 +164,8 @@ namespace xdp {
       for (uint32_t i = 0; i < cfg->numTiles; ++i) {
         auto cfgTile = std::make_unique<aie_cfg_tile>(cfg->tiles[i].column, cfg->tiles[i].row);
         cfgTile->trace_metric_set = metadata->getMetricString(cfg->tiles[i].trace_metric_set);
-    
+        cfgTile->type = getTileType(cfg->tiles[i].row);
+ 
         for (uint32_t corePC = 0; corePC < NUM_TRACE_PCS; ++corePC) {
           auto& cfgData = cfgTile->core_trace_config.pc[corePC];
           cfgData.start_event = cfg->tiles[i].core_trace_config.pc[corePC].start_event;

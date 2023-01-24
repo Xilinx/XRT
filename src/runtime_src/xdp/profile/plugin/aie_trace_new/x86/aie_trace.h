@@ -33,6 +33,7 @@ namespace xdp {
       bool setMetricsSettings(uint64_t deviceId, void* handle);
       uint64_t checkTraceBufSize(uint64_t size);
       void parseMessages(uint8_t* messages);
+      module_type getTileType(uint16_t absRow);
   };
 
 }   
