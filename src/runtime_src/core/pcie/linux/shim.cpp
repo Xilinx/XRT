@@ -150,6 +150,9 @@ public:
     catch (const std::exception& ex) {
       xrt_core::send_exception_message(ex.what());
     }
+    catch (...) {
+      xrt_core::send_exception_message("Unexpected error destructing hwcontext");
+    }
   }
 
   slot_id
@@ -1555,9 +1558,10 @@ int
 shim::
 xclLoadXclBin(const xclBin *buffer)
 {
-  xdp::hal::flush_device(this);
-  xdp::aie::flush_device(this);
-  xdp::pl_deadlock::flush_device(this);
+  // Retrieve any profiling information still on this device from any previous
+  // configuration before the device is reconfigured with the new xclbin (when
+  // profiling is enabled).
+  xdp::flush_device(this);
 
   auto top = reinterpret_cast<const axlf*>(buffer);
   if (auto ret = xclLoadAxlf(top)) {
@@ -1598,10 +1602,13 @@ xclLoadXclBin(const xclBin *buffer)
   // Success
   mCoreDevice->register_axlf(buffer);
 
-  xdp::hal::update_device(this);
-  xdp::aie::update_device(this);
-  xdp::pl_deadlock::update_device(this);
+  // Update the profiling library with the information on this new xclbin
+  // configuration on this device as appropriate (when profiling is enabled).
+  xdp::update_device(this);
 
+  // Setup the user-accessible HAL API profiling interface so user host
+  // code can call functions to directly read counter values on profiling IP
+  // (if enabled in the xrt.ini).
   START_DEVICE_PROFILING_CB(this);
 
   return 0;
@@ -2436,10 +2443,6 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
     return std::make_unique<xrt_shim::hwcontext>(this, 0, xclbin_uuid, mode);
   }
   else {
-    xdp::hal::flush_device(this);
-    xdp::aie::flush_device(this);
-    xdp::pl_deadlock::flush_device(this);
-
     auto xclbin = mCoreDevice->get_xclbin(xclbin_uuid);
     auto buffer = reinterpret_cast<const axlf*>(xclbin.get_axlf());
     auto top = reinterpret_cast<const axlf*>(buffer);
@@ -2485,12 +2488,6 @@ create_hw_context(const xrt::uuid& xclbin_uuid,
 
     // Success
     mCoreDevice->register_axlf(buffer);
-
-    xdp::hal::update_device(this);
-    xdp::aie::update_device(this);
-    xdp::pl_deadlock::update_device(this);
-
-    START_DEVICE_PROFILING_CB(this);
 
     return std::make_unique<xrt_shim::hwcontext>(this, hw_ctx.hw_context, xclbin_uuid, mode);
   }
