@@ -362,15 +362,6 @@ are_scs_equal(const DSAInfo& candidate, const DSAInfo& current)
 }
 
 static bool
-is_sc_inactive(const DSAInfo& current)
-{
-  if (current.dsaname().empty())
-    throw std::runtime_error("Current shell name is empty.");
-
-  return (current.bmcVer.compare("INACTIVE") == 0);
-}
-
-static bool
 update_sc(unsigned int boardIdx, DSAInfo& candidate)
 {
   Flasher flasher(boardIdx);
@@ -398,12 +389,6 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
   if ((same_bmc == true) && (XBU::getForce() == true)) {
     std::cout << "INFO: Forcing flashing of the Satellite Controller (SC) image (Force flag is set).\n";
     same_bmc = false;
-  }
-
-  auto dev = xrt_core::get_mgmtpf_device(boardIdx);
-  if (xrt_core::device_query<xrt_core::query::is_versal>(dev) && is_sc_inactive(current)) {
-    std::cout << "WARNING: Current SC is incompatible with the current shell. Use `xbmgmt program -b SC --image` to specify the desired SC package\n";
-    return false;
   }
 
   // Don't program the same images
