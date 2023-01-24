@@ -76,7 +76,6 @@ struct EventConfiguration {
     };
   
     if (params->hwGen == 1){
-      std::cout << "Counters initialized!" << std::endl;
       if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES1)) {
       // ES1 requires 2 performance counters to get around hardware bugs
 

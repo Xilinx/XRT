@@ -160,7 +160,6 @@ namespace built_in {
       uint32_t row;
       TileTraceData  core_trace_config;
       TileTraceData  memory_trace_config;
-      //MemTileTraceData mem_tile_trace_config;
       TileData(uint32_t c, uint32_t r) : column(c), row(r) {}
   };
 
@@ -170,7 +169,6 @@ namespace built_in {
       uint16_t numTiles;
       uint32_t numTileCoreTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
       uint32_t numTileMemoryTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
-      //uint32_t numMemTileTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
       TileData tiles[1]; 
   };
 
