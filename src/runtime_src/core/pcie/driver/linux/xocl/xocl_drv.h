@@ -52,7 +52,6 @@
 #include "xrt_mem.h"
 #include "devices.h"
 #include "xocl_ioctl.h"
-#include "xocl_drm.h"
 #include "mgmt-ioctl.h"
 #include "mailbox_proto.h"
 #include <linux/libfdt_env.h>
