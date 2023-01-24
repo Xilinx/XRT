@@ -150,6 +150,9 @@ public:
     catch (const std::exception& ex) {
       xrt_core::send_exception_message(ex.what());
     }
+    catch (...) {
+      xrt_core::send_exception_message("Unexpected error destructing hwcontext");
+    }
   }
 
   slot_id
