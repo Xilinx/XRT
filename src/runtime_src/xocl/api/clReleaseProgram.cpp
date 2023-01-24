@@ -37,7 +37,7 @@ clReleaseProgram(cl_program program)
 {
   validOrError(program);
 
-  if (xocl::xocl(program)->release())
+  if (xocl_or_error(program)->release())
     delete xocl::xocl(program);
 
   return CL_SUCCESS;
@@ -61,7 +61,4 @@ clReleaseProgram(cl_program program)
     xocl::send_exception_message(ex.what());
     return CL_OUT_OF_HOST_MEMORY;
   }
-}  
-
-
-
+}

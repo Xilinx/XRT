@@ -37,7 +37,7 @@ static cl_int
 clReleaseCommandQueue(cl_command_queue command_queue)
 {
   validOrError(command_queue);
-  if (xocl(command_queue)->release())
+  if (xocl_or_error(command_queue)->release())
     delete xocl(command_queue);
   return CL_SUCCESS;
 }
