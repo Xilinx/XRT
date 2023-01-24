@@ -50,6 +50,7 @@
 #define ERT_TICKS_PER_SEC	2
 #define ERT_TIMER		(HZ / ERT_TICKS_PER_SEC) /* in jiffies */
 #define ERT_EXEC_DEFAULT_TTL	(5UL * ERT_TICKS_PER_SEC)
+#define ERT_NO_SLEEP_MASK	0x0F
 
 #ifdef SCHED_VERBOSE
 #define	ERTUSER_ERR(ert_user, fmt, arg...)	\
@@ -171,6 +172,8 @@ struct xocl_ert_user {
 
 	/* ert validate result cache*/
 	struct ert_validate_cmd ert_valid;
+
+	u32			no_sleep_cnt;
 };
 
 static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd);
@@ -793,6 +796,37 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 
 	}
 	ERTUSER_DBG(ert_user, "<- %s\n", __func__);
+}
+
+static void ert_user_dump_queue(struct xocl_ert_user *ert_user, struct ert_user_queue *q)
+{
+	struct ert_user_command *ecmd, *next;
+	struct kds_command *xcmd;
+
+	list_for_each_entry_safe(ecmd, next, &q->head, list) {
+		xcmd = ecmd->xcmd;
+		ERTUSER_WARN(ert_user, "client(%d) command op(%d)\n",
+			     pid_nr(xcmd->client->pid), xcmd->opcode);
+	}
+}
+
+static void ert_user_debug_dump(struct xocl_ert_user *ert_user)
+{
+
+	if (ert_user->rq.num) {
+		ERTUSER_WARN(ert_user, "rq has %d commands", ert_user->rq.num);
+		ert_user_dump_queue(ert_user, &ert_user->rq);
+	}
+
+	if (ert_user->rq_ctrl.num) {
+		ERTUSER_WARN(ert_user, "rq_ctrl has %d commands", ert_user->rq_ctrl.num);
+		ert_user_dump_queue(ert_user, &ert_user->rq_ctrl);
+	}
+
+	if (ert_user->sq.num) {
+		ERTUSER_WARN(ert_user, "sq has %d commands", ert_user->sq.num);
+		ert_user_dump_queue(ert_user, &ert_user->sq);
+	}
 }
 
 /**
@@ -1431,14 +1465,29 @@ int ert_user_thread(void *data)
 		 * It only goes to sleep if there is no event
 		 */
 		if (ert_user_thread_sleep_condition(ert_user)) {
+			ert_user->no_sleep_cnt = 0;
 			if (down_interruptible(&ert_user->sem))
 				ret = -ERESTARTSYS;
+		} else {
+			ert_user->no_sleep_cnt++;
 		}
+
+		if (ert_user->no_sleep_cnt && !(ert_user->no_sleep_cnt & ERT_NO_SLEEP_MASK))
+			schedule();
 
 		process_ert_pq(ert_user, &ert_user->pq, &ert_user->rq);
 		process_ert_pq(ert_user, &ert_user->pq_ctrl, &ert_user->rq_ctrl);
+
+		if (ert_user->no_sleep_cnt >= 0x1000000) {
+			ert_user_debug_dump(ert_user);
+			ert_user->no_sleep_cnt = 0;
+		}
 	}
 	del_timer_sync(&ert_user->timer);
+
+	if (ert_user->rq.num || ert_user->rq_ctrl.num || ert_user->sq.num)
+		ERTUSER_WARN(ert_user, "ert thread exit, but rq %d, rq_ctrl %d, sq %d\n",
+			     ert_user->rq.num, ert_user->rq_ctrl.num, ert_user->sq.num);
 
 	if (!ert_user->bad_state)
 		ret = -EBUSY;
@@ -1637,6 +1686,9 @@ static int ert_user_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "create ert_user sysfs attrs failed: %d", err);
 		goto done;
 	}
+
+	ert_user->no_sleep_cnt = 0;
+
 	ert_user->ert.submit = ert_user_submit;
 	ert_user->ert.abort = xocl_ert_user_abort;
 	ert_user->ert.abort_done = xocl_ert_user_abort_done;

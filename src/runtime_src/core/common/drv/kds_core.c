@@ -494,8 +494,8 @@ kds_del_ert_context(struct kds_sched *kds, struct kds_client *client)
 
 	/* sub-device that handle command should do abort with a timeout */
 	do {
-		kds_warn(client, "%ld outstanding command(s) on CU(%d)",
-			 submitted - completed, cu_idx);
+		kds_warn(client, "client(%d) %ld outstanding command(s) on CU(%d)",
+			 pid_nr(client->pid), submitted - completed, cu_idx);
 		msleep(500);
 			submitted = client_stat_read(client, s_ert_cnt);
 			completed = client_stat_read(client, c_ert_cnt);
