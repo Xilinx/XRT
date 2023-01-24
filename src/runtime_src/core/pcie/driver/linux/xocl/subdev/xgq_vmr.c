@@ -17,6 +17,18 @@
 #include "xclfeatures.h"
 
 /*
+ * Retry is set to 200 seconds for SC to be active/ready On the SC firmware
+ * side there is a HW watchdog timer, which will automatically recover the SC
+ * when SC got hung during the bootup.
+ * If SC get hung during bootup, it would take 180 secs to recover and another
+ * ~20 secs window as a buffer time to fetch and get ready with all the sensor
+ * data.
+ */
+static int vmr_sc_ready_timeout = 200;
+module_param(vmr_sc_ready_timeout, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(vmr_sc_ready_timeout,
+	"max wait time for sc becomes ready");
+/*
  * XGQ Host management driver design.
  * XGQ resources:
  *	XGQ submission queue (SQ)
@@ -81,14 +93,7 @@
 static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_VMR_INVALID_CID	0xFFFF
 
-/* Retry is set to 200 seconds for SC to be active/ready
- * On the SC firmware side there is a HW watchdog timer, which will automatically recover the SC
- * when SC got hung during the bootup.
- * If SC get hung during bootup, it would take 180 secs to recover and another ~20 secs window
- * as a buffer time to fetch and get ready with all the sensor data.
- */
-#define MAX_SC_WAIT_TIMEOUT_SEC     200
-#define SC_WAIT_INTERVAL_MSEC  1000
+#define SC_WAIT_INTERVAL_MSEC       1000
 #define SC_ERR_MSG_INTERVAL_SEC     5
 
 /* cmd timeout in seconds */
@@ -2729,10 +2734,7 @@ static ssize_t xgq_scaling_temp_override_show(struct device *dev,
                                               char *buf)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
-	struct xgq_cmd_cq_clk_scaling_payload *cs_payload =
-		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
 	ssize_t cnt = 0;
-	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
 	cnt += sprintf(buf + cnt, "%u\n", xgq->temp_scaling_limit);
@@ -2794,10 +2796,7 @@ static ssize_t xgq_scaling_power_override_show(struct device *dev,
                                                char *buf)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
-	struct xgq_cmd_cq_clk_scaling_payload *cs_payload =
-		(struct xgq_cmd_cq_clk_scaling_payload *)&xgq->xgq_cq_payload;
 	ssize_t cnt = 0;
-	int ret = 0;
 
 	mutex_lock(&xgq->clk_scaling_lock);
 	cnt += sprintf(buf + cnt, "%u\n", xgq->pwr_scaling_limit);
@@ -3236,7 +3235,8 @@ static bool vmr_check_sc_is_ready(struct xocl_xgq_vmr *xgq)
 /* Wait for SC is fully ready during driver init (in reset) */
 static bool vmr_wait_for_sc_ready(struct xocl_xgq_vmr *xgq)
 {
-	const unsigned int loop_counter = MAX_SC_WAIT_TIMEOUT_SEC * (1000 / SC_WAIT_INTERVAL_MSEC);
+	const unsigned int loop_counter = vmr_sc_ready_timeout *
+		(1000 / SC_WAIT_INTERVAL_MSEC);
 	unsigned int i = 0;
 
 	for (i = 1; i <= loop_counter; i++) {
@@ -3249,9 +3249,6 @@ static bool vmr_wait_for_sc_ready(struct xocl_xgq_vmr *xgq)
 		// display SC status for every SC_ERR_MSG_INTERVAL_SEC i.e. 5 seconds
 		if (!(i % SC_ERR_MSG_INTERVAL_SEC))
 			XGQ_WARN(xgq, "SC is not ready in %d sec, waiting for SC to be ready", i);
-
-		/* we could block for very long time, yield to avoid linux kernel warning */
-		yield();
 	}
 
 	XGQ_ERR(xgq, "SC state is unknown, total wait time %d sec", loop_counter);
