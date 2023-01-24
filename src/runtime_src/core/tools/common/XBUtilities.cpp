@@ -331,6 +331,15 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
       warnings.push_back(e.what());
     }
 
+    try {
+      const auto current_sc_ver = xrt_core::device_query<xrt_core::query::hwmon_sdm_active_msp_ver>(device);
+      const auto expected_sc_ver = xrt_core::device_query<xrt_core::query::hwmon_sdm_target_msp_ver>(device);
+      if (!boost::equals(current_sc_ver, expected_sc_ver))
+        warnings.push_back(boost::str(boost::format("Invalid SC version. Expected: %s Current %s") % expected_sc_ver % current_sc_ver));
+    } catch (const xrt_core::error& e) {
+      warnings.push_back(e.what());
+    }
+
     if (warnings.empty())
       return;
 
