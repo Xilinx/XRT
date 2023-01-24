@@ -130,7 +130,7 @@ namespace xdp {
       auto device = xrt::device(spdevice);
     
       auto uuid = device.get_xclbin_uuid();
-      auto aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie_trace_config_t");
+      auto aie_trace_kernel = xrt::kernel(device, uuid.get(), "aie_trace_config");
 
       //input bo  
       auto bo0 = xrt::bo(device, INPUT_SIZE, 2);

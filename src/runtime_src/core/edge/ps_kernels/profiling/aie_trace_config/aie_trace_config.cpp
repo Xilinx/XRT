@@ -23,6 +23,7 @@
 #include "xaiengine.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/aie_trace_new/x86/aie_trace_kernel_config.h"
+// #include "trace_functions.h"
 
 // User private data structure container (context object) definition
 class xrtHandles : public pscontext
@@ -65,7 +66,9 @@ namespace {
     return static_cast<uint32_t>(bcId + core_broadcast_event_base);
   }
 
-  bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
+
+
+bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc,
    EventConfiguration& config, const xdp::built_in::TraceInputConfiguration* params,
    xdp::built_in::MessageConfiguration* msgcfg, const xdp::built_in::MetricSet metricSet)
   {
@@ -173,7 +176,7 @@ namespace {
     return true;
   }
 
-  bool configureStartDelay(xaiefal::XAieMod& core, EventConfiguration& config,
+   bool configureStartDelay(xaiefal::XAieMod& core, EventConfiguration& config,
                const xdp::built_in::TraceInputConfiguration* params)
   {
     if (!params->useDelay)
@@ -234,13 +237,21 @@ namespace {
     return true;
   }
 
+  xdp::module_type getTileType(uint16_t absRow, uint16_t offset)
+  {
+    if (absRow == 0)
+      return xdp::module_type::shim;
+    if (absRow < offset)
+      return xdp::module_type::mem_tile;
+    return xdp::module_type::core;
+  }
+
   bool setMetricsSettings(XAie_DevInst* aieDevInst, xaiefal::XAieDev* aieDevice,
                           EventConfiguration& config,
                           const xdp::built_in::TraceInputConfiguration* params,
                           xdp::built_in::TraceOutputConfiguration* tilecfg,
                           xdp::built_in::MessageConfiguration* msgcfg)
   {
-   
     xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
 
     // Keep track of number of events reserved per tile
@@ -262,16 +273,19 @@ namespace {
       auto  tile   = tileMetric.first;
       auto  col    = tile.col;
       auto  row    = tile.row;
+      auto type    = getTileType(row, params->offset);
 
       auto& metricSet = tileMetric.second;
       // NOTE: resource manager requires absolute row number
-      auto& core   = aieDevice->tile(col, row + 1).core();
-      auto& memory = aieDevice->tile(col, row + 1).mem();
-      auto loc = XAie_TileLoc(col, row + 1);
+      auto& core   = aieDevice->tile(col, row).core();
+      auto& memory = aieDevice->tile(col, row).mem();
+      auto loc = XAie_TileLoc(col, row);
 
       // AIE config object for this tile
-      auto cfgTile  = xdp::built_in::TileData(col, row+1);
+      auto cfgTile  = xdp::built_in::TileData(col, row);
       cfgTile.trace_metric_set = static_cast<uint8_t>(metricSet);
+      cfgTile.type = static_cast<uint8_t>(type);
+      
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
@@ -282,12 +296,10 @@ namespace {
       // Check Resource Availability
       // For now only counters are checked
       if (!tileHasFreeRsc(aieDevice, loc, config, params, msgcfg, metricSet)) {
-        std::cout << "Tile has no Free RSC block hit!" << std::endl;
         std::vector<uint32_t> src = {0, 0, 0, 0};
         addMessage(msgcfg, Messages::NO_RESOURCES, src);
         return 1;
       }
-
       //
       // 1. Reserve and start core module counters (as needed)
       //
@@ -383,7 +395,7 @@ namespace {
       // Catch when counters cannot be reserved: report, release, and return
       if ((numCoreCounters < config.coreCounterStartEvents.size())
           || (numMemoryCounters < config.memoryCounterStartEvents.size())) {
-        std::vector<uint32_t> src = {static_cast<uint32_t>(config.coreCounterStartEvents.size()), static_cast<uint32_t>(config.memoryCounterStartEvents.size()), col , static_cast<uint32_t>(row + 1)}; 
+        std::vector<uint32_t> src = {static_cast<uint32_t>(config.coreCounterStartEvents.size()), static_cast<uint32_t>(config.memoryCounterStartEvents.size()), col , static_cast<uint32_t>(row)}; 
         addMessage(msgcfg, Messages::COUNTERS_NOT_RESERVED, src);
         releaseCurrentTileCounters(config);
         return 1;
@@ -414,7 +426,7 @@ namespace {
 
         auto ret = coreTrace->reserve();
         if (ret != XAIE_OK) {
-          std::vector<uint32_t> src = {col, static_cast<uint32_t>(row + 1), 0, 0};
+          std::vector<uint32_t> src = {col, static_cast<uint32_t>(row), 0, 0};
           addMessage(msgcfg, Messages::CORE_MODULE_TRACE_NOT_RESERVED, src);
           releaseCurrentTileCounters(config);
           return 1;
@@ -468,7 +480,7 @@ namespace {
 
         auto ret = memoryTrace->reserve();
         if (ret != XAIE_OK) {
-          std::vector<uint32_t> src = {col, static_cast<uint32_t>(row + 1), 0, 0};
+          std::vector<uint32_t> src = {col, static_cast<uint32_t>(row), 0, 0};
           addMessage(msgcfg, Messages::MEMORY_MODULE_TRACE_NOT_RESERVED, src);
           releaseCurrentTileCounters(config);
           return 1;
@@ -547,7 +559,7 @@ namespace {
         }
 
         // Odd absolute rows change east mask end even row change west mask
-        if ((row + 1) % 2) {
+        if (row % 2) {
           cfgTile.core_trace_config.broadcast_mask_east = coreToMemBcMask;
         } else {
           cfgTile.core_trace_config.broadcast_mask_west = coreToMemBcMask;
@@ -653,9 +665,9 @@ int aie_trace_config(uint8_t* input, uint8_t* output, uint8_t* messageOutput, xr
     (xdp::built_in::TraceOutputConfiguration*)malloc(total_size);
 
   tilecfg->numTiles = params->numTiles;
-
   setMetricsSettings(constructs->aieDevInst, constructs->aieDev,
                            config, params, tilecfg, messageStruct);
+
   uint8_t* out = reinterpret_cast<uint8_t*>(tilecfg);
   std::memcpy(output, out, total_size);   
 
@@ -676,5 +688,3 @@ int aie_trace_config_fini(xrtHandles* handles)
 #ifdef __cplusplus
 }
 #endif
-
-

@@ -32,10 +32,13 @@ constexpr uint32_t ES2_TRACE_COUNTER = 0x3FF00;
 // for a single AIE tile
 struct EventConfiguration {
   XAie_Events coreTraceStartEvent = XAIE_EVENT_ACTIVE_CORE;
-  XAie_Events coreTraceEndEvent = XAIE_EVENT_DISABLED_CORE;
+  XAie_Events coreTraceEndEvent = XAIE_EVENT_DISABLED_CORE; 
+
 
   std::map<xdp::built_in::MetricSet, std::vector<XAie_Events>> coreEventsBase;
   std::map<xdp::built_in::MetricSet, std::vector<XAie_Events>> memoryCrossEventsBase;
+  std::map<xdp::built_in::MemTileMetricSet, std::vector<XAie_Events>> memTileEventSets; 
+
   std::vector<XAie_Events> coreCounterStartEvents;
   std::vector<XAie_Events> coreCounterEndEvents;
   std::vector<uint32_t> coreCounterEventValues;
@@ -72,28 +75,64 @@ struct EventConfiguration {
                                     XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}}
     };
   
-  
-    if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES1)) {
-    // ES1 requires 2 performance counters to get around hardware bugs
+    if (params->hwGen == 1){
+      std::cout << "Counters initialized!" << std::endl;
+      if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES1)) {
+      // ES1 requires 2 performance counters to get around hardware bugs
 
-      coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
-      coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
-      coreCounterEventValues   = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
+        coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
+        coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
+        coreCounterEventValues   = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
 
-      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                XAIE_EVENT_TRUE_MEM};
-      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
+        memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                XAIE_EVENT_TRUE_MEM};
+        memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
+        memoryCounterEventValues = {ES1_TRACE_COUNTER, ES1_TRACE_COUNTER * ES1_TRACE_COUNTER};
 
-    } else if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES2)) {
-      // ES2 requires only 1 performance counter
-      coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE};
-      coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE};
-      coreCounterEventValues   = {ES2_TRACE_COUNTER};
+      } else if (params->counterScheme == static_cast<uint8_t>(xdp::built_in::CounterScheme::ES2)) {
+        // ES2 requires only 1 performance counter
+        coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE};
+        coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE};
+        coreCounterEventValues   = {ES2_TRACE_COUNTER};
 
-      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
-      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {ES2_TRACE_COUNTER};
+        memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
+        memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
+        memoryCounterEventValues = {ES2_TRACE_COUNTER};
+      }
     }
+  
+
+  // **** Memory Tile Trace ****
+  memTileEventSets = {
+    {xdp::built_in::MemTileMetricSet::INPUT_CHANNELS,           {XAIE_EVENT_DMA_S2MM_SEL0_START_TASK_MEM_TILE,    
+                                  XAIE_EVENT_DMA_S2MM_SEL1_START_TASK_MEM_TILE,
+                                  XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE,
+                                  XAIE_EVENT_DMA_S2MM_SEL1_FINISHED_BD_MEM_TILE,
+                                  XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_TASK_MEM_TILE, 
+                                  XAIE_EVENT_DMA_S2MM_SEL1_FINISHED_TASK_MEM_TILE}},
+    {xdp::built_in::MemTileMetricSet::INPUT_CHANNELS_STALLS,    {XAIE_EVENT_DMA_S2MM_SEL0_START_TASK_MEM_TILE,    
+                                  XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_BD_MEM_TILE,
+                                  XAIE_EVENT_DMA_S2MM_SEL0_FINISHED_TASK_MEM_TILE, 
+                                  XAIE_EVENT_DMA_S2MM_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
+                                  XAIE_EVENT_DMA_S2MM_SEL0_STREAM_STARVATION_MEM_TILE, 
+                                  XAIE_EVENT_DMA_S2MM_SEL0_MEMORY_BACKPRESSURE_MEM_TILE}},
+    {xdp::built_in::MemTileMetricSet::OUTPUT_CHANNELS,          {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE,    
+                                  XAIE_EVENT_DMA_MM2S_SEL1_START_TASK_MEM_TILE,
+                                  XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE,
+                                  XAIE_EVENT_DMA_MM2S_SEL1_FINISHED_BD_MEM_TILE,
+                                  XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_TASK_MEM_TILE, 
+                                  XAIE_EVENT_DMA_MM2S_SEL1_FINISHED_TASK_MEM_TILE}},
+    {xdp::built_in::MemTileMetricSet::OUTPUT_CHANNELS_STALLS,   {XAIE_EVENT_DMA_MM2S_SEL0_START_TASK_MEM_TILE,    
+                                  XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_BD_MEM_TILE,
+                                  XAIE_EVENT_DMA_MM2S_SEL0_FINISHED_TASK_MEM_TILE, 
+                                  XAIE_EVENT_DMA_MM2S_SEL0_STALLED_LOCK_ACQUIRE_MEM_TILE,
+                                  XAIE_EVENT_DMA_MM2S_SEL0_STREAM_BACKPRESSURE_MEM_TILE, 
+                                  XAIE_EVENT_DMA_MM2S_SEL0_MEMORY_STARVATION_MEM_TILE}}
+  };
+
+  // MEM tile trace is always on
+  XAie_Events memTileTraceStartEvent = XAIE_EVENT_TRUE_MEM_TILE;
+  XAie_Events memTileTraceEndEvent   = XAIE_EVENT_NONE_MEM_TILE;
+
   }
 };
 
