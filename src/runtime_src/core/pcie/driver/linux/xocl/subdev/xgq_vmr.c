@@ -1485,10 +1485,11 @@ static int vmr_memory_info_query(struct platform_device *pdev,
 
 static int xgq_freq_verify(struct platform_device *pdev,unsigned short *target_freqs, int num_freqs)
 {
-	int ret = 0,i;
+	int ret = 0, i = 0;
 	u32 clock_freq_counter, request_in_khz, tolerance, lookup_freq;
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
-	enum data_kind kinds[3] = {FREQ_COUNTER_0,FREQ_COUNTER_1,FREQ_COUNTER_2};
+	//TO DO:- Need to enhance the following Hard Coded Part by creating new Interface using Call Backs.
+	enum data_kind kinds[3] = {FREQ_COUNTER_0, FREQ_COUNTER_1, FREQ_COUNTER_2};
 
 	for (i = 0; i < min(XGQ_CLOCK_WIZ_MAX_RES, num_freqs); ++i)
 	{
@@ -1500,6 +1501,7 @@ static int xgq_freq_verify(struct platform_device *pdev,unsigned short *target_f
 		lookup_freq = target_freqs[i];
 		request_in_khz = lookup_freq*1000;
 		tolerance = lookup_freq*50;
+		XGQ_WARN(xgq,"Idx = %d, tolerance = %ul, request_in_khz = %ul",i, tolerance, request_in_khz);
 		if (tolerance < abs(clock_freq_counter-request_in_khz))
 		{
 			XGQ_ERR(xgq, "Frequency is higher than tolerance value, request %u"
@@ -1508,7 +1510,7 @@ static int xgq_freq_verify(struct platform_device *pdev,unsigned short *target_f
 			break;
 		}
 	}
-    return ret;
+	return ret;
 }
 
 /* On versal, verify is enforced. */
@@ -1595,12 +1597,11 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 	int ret = 0;
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	ret = xgq_freq_scaling_impl(pdev, freqs, num_freqs);
-	if (ret)
-	{
+	if (ret) {
 		XGQ_ERR(xgq, "ret %d", ret);
 		return ret;
 	}
-	if(verify){
+	if (verify) {
 		ret = xgq_freq_verify(pdev, freqs, num_freqs);
 	}
 	return ret;
@@ -1616,7 +1617,7 @@ static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
 	int system_clk_count = 0;
 	int clock_type_count = 0;
 	unsigned short target_freqs[4] = {0};
-	int i = 0, ret = 0;
+	int i = 0;
 
 	if (!topo)
 		return -EINVAL;
