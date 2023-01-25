@@ -27,11 +27,9 @@ XrtIP
   ( Device* handle
   , std::shared_ptr<ip_metadata> ip_metadata_section
   , const std::string& fullname
-  , uint64_t baseAddress
   )
   : xdpDevice(handle)
   , fullname(fullname)
-  , baseAddress(baseAddress)
   , deadlockDiagnosis(std::string())
   , initialized(false)
   , index(0)

@@ -146,9 +146,8 @@ namespace xdp {
     return argList;
   }
 
-  ComputeUnitInstance::ComputeUnitInstance(int32_t i, uint64_t addr, const std::string& n)
+  ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string& n)
     : index(i)
-    , baseAddress(addr)
     , fullname(n)
   {
     size_t pos = fullname.find(':') ;

@@ -1026,10 +1026,9 @@ DeviceIntf::~DeviceIntf()
   void DeviceIntf::createXrtIP
   ( std::shared_ptr<ip_metadata> ip_metadata_section
   ,  const std::string& fullname
-  ,  uint64_t baseAddress
   )
   {
-    mXrtIPList.emplace_back(std::make_unique<XrtIP>(mDevice, ip_metadata_section, fullname, baseAddress));
+    mXrtIPList.emplace_back(std::make_unique<XrtIP>(mDevice, ip_metadata_section, fullname));
   }
 
   std::string DeviceIntf::getDeadlockDiagnosis(bool print)

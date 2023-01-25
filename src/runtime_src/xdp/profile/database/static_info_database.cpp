@@ -1687,7 +1687,7 @@ namespace xdp {
          */
         continue;
       }
-      cu = new ComputeUnitInstance(i, ipData->m_base_address, cuName);
+      cu = new ComputeUnitInstance(i, cuName);
       currentXclbin->pl.cus[i] = cu ;
       if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
         cu->setDataflowEnabled(true);
@@ -1742,7 +1742,7 @@ namespace xdp {
            */
           continue;
         }
-        cu = new ComputeUnitInstance(connctn->m_ip_layout_index, ipData->m_base_address, cuName);
+        cu = new ComputeUnitInstance(connctn->m_ip_layout_index, cuName);
         currentXclbin->pl.cus[connctn->m_ip_layout_index] = cu;
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);
@@ -2072,7 +2072,7 @@ namespace xdp {
       return;
 
     for (const auto& cu : xclbin->pl.cus)
-      xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getFullname(), cu.second->getBaseAddress());
+      xclbin->deviceIntf->createXrtIP(ip_metadata, cu.second->getFullname());
   }
 
   bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)

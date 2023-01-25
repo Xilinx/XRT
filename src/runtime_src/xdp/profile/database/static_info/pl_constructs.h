@@ -178,7 +178,6 @@ namespace xdp {
     int32_t index ;
 
     // The base address and name of the CU in the IP_LAYOUT
-    uint64_t baseAddress;
     std::string fullname ;
 
     // The name of the compute unit, parsed out of the portion of the
@@ -249,7 +248,6 @@ namespace xdp {
     inline bool getStreamTraceEnabled() const { return asmIdsWithTrace.size() > 0 ; }
     inline bool getDataflowEnabled() const    { return dataflow ; }
     inline bool getHasFA() const              { return hasFA ; }
-    inline bool getBaseAddress() const        { return baseAddress ; }
     inline bool getDataTransferTraceEnabled() const 
       { return aimIdsWithTrace.size() > 0 ; }
 
@@ -279,7 +277,7 @@ namespace xdp {
                                        Memory* mem);
     XDP_EXPORT Port* getPort(const std::string& portName);
 
-    XDP_EXPORT explicit ComputeUnitInstance(int32_t i, uint64_t addr, const std::string& n) ;
+    XDP_EXPORT explicit ComputeUnitInstance(int32_t i, const std::string& n) ;
     XDP_EXPORT ~ComputeUnitInstance() = default ;
   } ;
 

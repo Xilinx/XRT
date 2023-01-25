@@ -15,8 +15,8 @@
  * under the License.
  */
 
-#ifndef XDP_PROFILE_COMPUTE_UNIT_IP_H
-#define XDP_PROFILE_COMPUTE_UNIT_IP_H
+#ifndef XDP_XRT_IP_H
+#define XDP_XRT_IP_H
 
 #include <iostream>
 #include <map>
@@ -44,8 +44,7 @@ public:
   XrtIP(
     Device* handle       /** < xrt or hal device handle */,
     std::shared_ptr<ip_metadata> ip_metadata_section,
-    const std::string& fullname /** < fullname of the IP in IP_LAYOUT */,
-    uint64_t baseAddress /** < base Address of the IP in IP_LAYOUT */
+    const std::string& fullname /** < fullname of the IP in IP_LAYOUT */
   );
   ~XrtIP() {}
 
@@ -55,7 +54,6 @@ public:
 private:
   Device* xdpDevice;
   std::string fullname;
-  uint64_t baseAddress;
   std::string deadlockDiagnosis;
   std::string kernelName;
   bool initialized;
