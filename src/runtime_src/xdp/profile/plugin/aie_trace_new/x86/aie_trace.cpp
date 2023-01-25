@@ -125,7 +125,7 @@ namespace xdp {
       if (configChannel0.count(tileMetric.first))
         traceTiles[tile_idx].channel0 = configChannel0[tileMetric.first];
       if (configChannel1.count(tileMetric.first))
-        traceTiles[tile_idx].channel1 = configChannel1[tileMetric.second];
+        traceTiles[tile_idx].channel1 = configChannel1[tileMetric.first];
 
       input_params->tiles[tile_idx] = traceTiles[tile_idx];
       tile_idx++;
@@ -230,7 +230,7 @@ namespace xdp {
           cfgTile->mem_tile_trace_config.s2mm_channels[channel] = cfg->tiles[i].mem_tile_trace_config.s2mm_channels[channel];
           cfgTile->mem_tile_trace_config.mm2s_channels[channel] = cfg->tiles[i].mem_tile_trace_config.mm2s_channels[channel];
         }
-        
+
         (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile); 
         //Send Success Message
         std::stringstream msg;
