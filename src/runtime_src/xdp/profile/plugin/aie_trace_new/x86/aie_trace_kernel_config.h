@@ -63,8 +63,8 @@ namespace built_in {
 
   struct MessagePacket
   {
-    uint8_t messageCode;
-    uint32_t params[4] = {}; 
+    uint8_t messageCode; 
+    uint32_t params[4] = {}; // Tile information to display to user based on message type
   };
 
   struct MessageConfiguration
@@ -76,9 +76,11 @@ namespace built_in {
 
   struct TraceTileType
   {
-    uint16_t row;
     uint16_t col;
+    uint16_t row;
     uint8_t metricSet;
+    uint8_t channel0 = -1; // Only relevant for MemTiles
+    uint8_t channel1 = -1; // Only relevant for MemTiles
   };
 
   // This struct is used for input for the PS kernel.  It contains all of
@@ -160,6 +162,7 @@ namespace built_in {
       uint32_t row;
       TileTraceData  core_trace_config;
       TileTraceData  memory_trace_config;
+      MemTileTraceData mem_tile_trace_config;
       TileData(uint32_t c, uint32_t r) : column(c), row(r) {}
   };
 
@@ -169,6 +172,7 @@ namespace built_in {
       uint16_t numTiles;
       uint32_t numTileCoreTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
       uint32_t numTileMemoryTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
+      uint32_t numTileMemTileTraceEvents[NUM_OUTPUT_TRACE_EVENTS] = {};
       TileData tiles[1]; 
   };
 

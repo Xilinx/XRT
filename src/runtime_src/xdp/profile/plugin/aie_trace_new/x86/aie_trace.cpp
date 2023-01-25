@@ -113,10 +113,20 @@ namespace xdp {
     
     // Copy ConfigMetrics to inputConfiguration Struct
     int tile_idx = 0;
+    auto configChannel0 = metadata->getConfigChannel0();
+    auto configChannel1 = metadata->getConfigChannel1();
+
     for (auto& tileMetric : configMetrics ){
       traceTiles[tile_idx].col = tileMetric.first.col;
       traceTiles[tile_idx].row = tileMetric.first.row;
       traceTiles[tile_idx].metricSet = metadata->getMetricSetIndex(tileMetric.second);
+
+      //If the tile is a memtile, check if any channel specification is present
+      if (configChannel0.count(tileMetric.first))
+        traceTiles[tile_idx].channel0 = configChannel0[tileMetric.first];
+      if (configChannel1.count(tileMetric.first))
+        traceTiles[tile_idx].channel1 = configChannel1[tileMetric.second];
+
       input_params->tiles[tile_idx] = traceTiles[tile_idx];
       tile_idx++;
     }
@@ -182,28 +192,45 @@ namespace xdp {
           cfgData.event_value = cfg->tiles[i].memory_trace_config.pc[memPC].event_value;
         } 
         
+        //Updated Traced Events for all Tiles
         for (uint32_t tracedEvent = 0; tracedEvent < NUM_TRACE_EVENTS; tracedEvent++) {
           cfgTile->core_trace_config.traced_events[tracedEvent] = cfg->tiles[i].core_trace_config.traced_events[tracedEvent];
-        }
-
-        cfgTile->core_trace_config.start_event = cfg->tiles[i].core_trace_config.start_event;
-        cfgTile->core_trace_config.stop_event = cfg->tiles[i].core_trace_config.stop_event;
-      
-      
-        for (uint32_t tracedEvent = 0; tracedEvent < NUM_TRACE_EVENTS; tracedEvent++) {
           cfgTile->memory_trace_config.traced_events[tracedEvent] = cfg->tiles[i].memory_trace_config.traced_events[tracedEvent];
+          cfgTile->mem_tile_trace_config.traced_events[tracedEvent] = cfg->tiles[i].mem_tile_trace_config.traced_events[tracedEvent];
         }
-
+      
+        //Update the broadcast events for the core module
         for (uint32_t bcEvent = 0; bcEvent < NUM_BROADCAST_EVENTS; bcEvent++) {
           cfgTile->core_trace_config.internal_events_broadcast[bcEvent] = cfg->tiles[i].core_trace_config.internal_events_broadcast[bcEvent];
         }
-        
+
+        //Update Start and Stop Events for Each Tile
+        cfgTile->core_trace_config.start_event = cfg->tiles[i].core_trace_config.start_event;
+        cfgTile->core_trace_config.stop_event = cfg->tiles[i].core_trace_config.stop_event;
+
         cfgTile->memory_trace_config.start_event = cfg->tiles[i].memory_trace_config.start_event;
         cfgTile->memory_trace_config.stop_event = cfg->tiles[i].memory_trace_config.stop_event;
+        
+        cfgTile->mem_tile_trace_config.start_event = cfg->tiles[i].mem_tile_trace_config.start_event;
+        cfgTile->mem_tile_trace_config.stop_event = cfg->tiles[i].mem_tile_trace_config.stop_event;
+
+        //Update broadcast Masks for core 
         cfgTile->core_trace_config.broadcast_mask_east = cfg->tiles[i].core_trace_config.broadcast_mask_east;   
         cfgTile->core_trace_config.broadcast_mask_west = cfg->tiles[i].core_trace_config.broadcast_mask_west; 
-        cfgTile->memory_trace_config.packet_type = cfg->tiles[i].memory_trace_config.packet_type;
 
+        //Update Packet type for memory modules or memtiles 
+        cfgTile->memory_trace_config.packet_type = cfg->tiles[i].memory_trace_config.packet_type;
+        cfgTile->mem_tile_trace_config.packet_type = cfg->tiles[i].mem_tile_trace_config.packet_type;
+
+        //Add Mem-tile specific metrics
+        for (uint32_t channel = 0; channel < NUM_MEM_TILE_CHAN_SEL; channel++){
+          cfgTile->mem_tile_trace_config.port_trace_ids[channel] = cfg->tiles[i].mem_tile_trace_config.port_trace_ids[channel];
+          cfgTile->mem_tile_trace_config.port_trace_is_master[channel] = cfg->tiles[i].mem_tile_trace_config.port_trace_is_master[channel] == 1 ? "true" : "false";
+
+          cfgTile->mem_tile_trace_config.s2mm_channels[channel] = cfg->tiles[i].mem_tile_trace_config.s2mm_channels[channel];
+          cfgTile->mem_tile_trace_config.mm2s_channels[channel] = cfg->tiles[i].mem_tile_trace_config.mm2s_channels[channel];
+        }
+        
         (db->getStaticInfo()).addAIECfgTile(deviceId, cfgTile); 
         //Send Success Message
         std::stringstream msg;
@@ -212,12 +239,14 @@ namespace xdp {
     
       }
     
+      //Add Event Resources for Each module 
       for (uint32_t event = 0; event < NUM_OUTPUT_TRACE_EVENTS; event ++) {
         if (cfg->numTileCoreTraceEvents[event] != 0)
           (db->getStaticInfo()).addAIECoreEventResources(deviceId, event, cfg->numTileCoreTraceEvents[event]);
-
         if (cfg->numTileMemoryTraceEvents[event] != 0)
           (db->getStaticInfo()).addAIEMemoryEventResources(deviceId, event, cfg->numTileMemoryTraceEvents[event]);
+        if (cfg->numTileMemoryTraceEvents[event] != 0)
+          (db->getStaticInfo()).addAIEMemTileEventResources(deviceId, event, cfg->numTileMemTileTraceEvents[event]);
       } 
 
     } catch (...) {

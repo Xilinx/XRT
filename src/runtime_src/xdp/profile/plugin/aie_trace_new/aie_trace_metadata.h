@@ -53,7 +53,7 @@ class AieTraceMetadata{
     std::string counterScheme;
     std::string metricSet;
     std::vector<std::string> metricSets;
-    std::set<std::string> memTileMetricSets;
+    std::vector<std::string> memTileMetricSets;
     std::map<tile_type, std::string> configMetrics;
     std::map<tile_type, uint8_t> configChannel0;
     std::map<tile_type, uint8_t> configChannel1;
