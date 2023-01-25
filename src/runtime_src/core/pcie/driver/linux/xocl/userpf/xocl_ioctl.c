@@ -502,7 +502,7 @@ xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 		}
 	}
 	else {
-		static int ps_slot_id = 0;
+		int ps_slot_id = xdev->ps_slot_id;
 		uint32_t existing_slot_id = 0;
 
 		if (ps_xclbin_downloaded(xdev, xclbin_id, &existing_slot_id)) {
@@ -524,6 +524,8 @@ xocl_resolver(struct xocl_dev *xdev, struct axlf *axlf, xuid_t *xclbin_id,
 
 			s_id = ps_slot_id;
 		}
+    
+        xdev->ps_slot_id = ps_slot_id;
 	}	
 
 	*slot_id = s_id;
