@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020, 2023 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -343,9 +343,12 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 			xcmd->cb.free(xcmd);
 			return 0;
 		}
+		client_stat_inc(xcmd->client, s_ert_cnt);
+		break;
+	case OP_START_SK:
+		client_stat_inc(xcmd->client, s_ert_cnt);
 		break;
 	case OP_CONFIG:
-	case OP_START_SK:
 	case OP_CLK_CALIB:
 	case OP_VALIDATE:
 		break;
@@ -472,6 +475,40 @@ skip:
 	mutex_unlock(&cu_mgmt->lock);
 
 	return 0;
+}
+
+static void
+kds_del_ert_context(struct kds_sched *kds, struct kds_client *client)
+{
+	int cu_idx = NO_INDEX;
+	unsigned long submitted;
+	unsigned long completed;
+	bool bad_state = false;
+
+	submitted = client_stat_read(client, s_ert_cnt);
+	completed = client_stat_read(client, c_ert_cnt);
+	if (submitted == completed)
+		return;
+
+	kds->ert->abort(kds->ert, client, cu_idx);
+
+	/* sub-device that handle command should do abort with a timeout */
+	do {
+		kds_warn(client, "client(%d) %p %ld outstanding command(s) on CU(%d)",
+			 pid_nr(client->pid), client, submitted - completed, cu_idx);
+		msleep(500);
+			submitted = client_stat_read(client, s_ert_cnt);
+			completed = client_stat_read(client, c_ert_cnt);
+	} while (submitted != completed);
+
+	bad_state = kds->ert->abort_done(kds->ert, client, cu_idx);
+
+	if (bad_state) {
+		kds->bad_state = 1;
+		kds_info(client, "CU(%d) hangs, please reset device", cu_idx);
+	}
+
+	return;
 }
 
 int kds_init_sched(struct kds_sched *kds)
@@ -620,6 +657,11 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 	while (client->virt_cu_ref) {
 		info.cu_idx = CU_CTX_VIRT_CU;
 		kds_del_context(kds, client, &info);
+	}
+
+	if (client_stat_read(client, s_ert_cnt) !=
+	    client_stat_read(client, c_ert_cnt)) {
+		kds_del_ert_context(kds, client);
 	}
 
 	bit = find_first_bit(client->cu_bitmap, MAX_CUS);

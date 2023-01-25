@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020, 2023 Xilinx, Inc. All rights reserved.
  *
  * Authors: Chien-Wei Lan <chienwei@xilinx.com>
  *
@@ -50,6 +50,7 @@
 #define ERT_TICKS_PER_SEC	2
 #define ERT_TIMER		(HZ / ERT_TICKS_PER_SEC) /* in jiffies */
 #define ERT_EXEC_DEFAULT_TTL	(5UL * ERT_TICKS_PER_SEC)
+#define ERT_NO_SLEEP_MASK	0x0F
 
 #ifdef SCHED_VERBOSE
 #define	ERTUSER_ERR(ert_user, fmt, arg...)	\
@@ -171,6 +172,8 @@ struct xocl_ert_user {
 
 	/* ert validate result cache*/
 	struct ert_validate_cmd ert_valid;
+
+	u32			no_sleep_cnt;
 };
 
 static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd);
@@ -760,17 +763,27 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 			if (xcmd->client != ev_client)
 				continue;
 
-			tick = atomic_read(&ert_user->tick);
-			/* Record command tick to start timeout counting */
-			if (!xcmd->tick) {
-				xcmd->tick = tick;
-				continue;
+			if (!xcmd->abort_printed) {
+				ERTUSER_WARN(ert_user, "found client(%d) command op(%d) to abort\n",
+					     pid_nr(xcmd->client->pid), xcmd->opcode);
+				xcmd->abort_printed = 1;
 			}
 
-			/* If xcmd haven't timeout */
-			if (tick - xcmd->tick < ERT_EXEC_DEFAULT_TTL)
-				continue;
+			if (!ert_user->bad_state) {
+				tick = atomic_read(&ert_user->tick);
+				/* Record command tick to start timeout counting */
+				if (!xcmd->tick) {
+					xcmd->tick = tick;
+					continue;
+				}
 
+				/* If xcmd haven't timeout */
+				if (tick - xcmd->tick < ERT_EXEC_DEFAULT_TTL)
+					continue;
+			}
+
+			ERTUSER_WARN(ert_user, "abort client(%d) command op(%d)\n",
+				     pid_nr(xcmd->client->pid), xcmd->opcode);
 			ecmd->status = KDS_TIMEOUT;
 			/* Mark ERT as bad state */
 			ert_user->bad_state = true;
@@ -785,6 +798,47 @@ static inline void process_ert_sq(struct xocl_ert_user *ert_user)
 
 	}
 	ERTUSER_DBG(ert_user, "<- %s\n", __func__);
+}
+
+static void ert_user_dump_queue(struct xocl_ert_user *ert_user, struct ert_user_queue *q)
+{
+	struct ert_user_command *ecmd, *next;
+	struct kds_command *xcmd;
+
+	list_for_each_entry_safe(ecmd, next, &q->head, list) {
+		xcmd = ecmd->xcmd;
+		ERTUSER_WARN(ert_user, "client(%d) %p command op(%d)\n",
+			     pid_nr(xcmd->client->pid), xcmd->client, xcmd->opcode);
+	}
+}
+
+static void ert_user_debug_dump(struct xocl_ert_user *ert_user)
+{
+	struct kds_client *ev_client = NULL;
+
+	ev_client = first_event_client_or_null(ert_user);
+	if (ev_client) {
+		ERTUSER_WARN(ert_user, "client(%d) %p asking for abort",
+			     pid_nr(ev_client->pid), ev_client);
+	}
+
+	if (ert_user->bad_state)
+		ERTUSER_WARN(ert_user, "bad state %d", ert_user->bad_state);
+
+	if (ert_user->rq.num) {
+		ERTUSER_WARN(ert_user, "rq has %d commands", ert_user->rq.num);
+		ert_user_dump_queue(ert_user, &ert_user->rq);
+	}
+
+	if (ert_user->rq_ctrl.num) {
+		ERTUSER_WARN(ert_user, "rq_ctrl has %d commands", ert_user->rq_ctrl.num);
+		ert_user_dump_queue(ert_user, &ert_user->rq_ctrl);
+	}
+
+	if (ert_user->sq.num) {
+		ERTUSER_WARN(ert_user, "sq has %d commands", ert_user->sq.num);
+		ert_user_dump_queue(ert_user, &ert_user->sq);
+	}
 }
 
 /**
@@ -1184,17 +1238,25 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user
 		return 0;
 
 	ev_client = first_event_client_or_null(ert_user);
-	list_for_each_entry_safe(ecmd, next, &rq->head, list) {
-		struct kds_command *xcmd = ecmd->xcmd;
 
-		if (unlikely(ert_user->bad_state || (ev_client == xcmd->client))) {
-			ERTUSER_ERR(ert_user, "%s abort\n", __func__);
+	if (unlikely(ert_user->bad_state || ev_client)) {
+		list_for_each_entry_safe(ecmd, next, &rq->head, list) {
+			struct kds_command *xcmd = ecmd->xcmd;
+
+			if (!ert_user->bad_state && ev_client != xcmd->client)
+				continue;
+
+			ERTUSER_WARN(ert_user, "%s abort client(%d) command op(%d)\n",
+				     __func__, pid_nr(xcmd->client->pid), xcmd->opcode);
 			ecmd->status = KDS_ERROR;
 			list_move_tail(&ecmd->list, &ert_user->cq.head);
 			--rq->num;
 			++ert_user->cq.num;
-			continue;
 		}
+	}
+
+	list_for_each_entry_safe(ecmd, next, &rq->head, list) {
+		struct kds_command *xcmd = ecmd->xcmd;
 
 		if (ert_pre_process(ert_user, ecmd)) {
 			ERTUSER_ERR(ert_user, "%s bad cmd, opcode: %d\n", __func__, cmd_opcode(ecmd));
@@ -1308,8 +1370,12 @@ static void ert_user_submit(struct kds_ert *ert, struct kds_command *xcmd)
 	struct xocl_ert_user *ert_user = container_of(ert, struct xocl_ert_user, ert);
 	struct ert_user_command *ecmd = ert_user_alloc_cmd(xcmd);
 
-	if (!ecmd)
+	if (!ecmd) {
+		ERTUSER_WARN(ert_user, "%s allocate ert user command failed\n", __func__);
+		xcmd->cb.notify_host(xcmd, KDS_ERROR);
+		xcmd->cb.free(xcmd);
 		return;
+	}
 
 	ERTUSER_DBG(ert_user, "->%s ecmd %llx\n", __func__, (u64)ecmd);
 	spin_lock_irqsave(&ert_user->pq_lock, flags);
@@ -1418,14 +1484,29 @@ int ert_user_thread(void *data)
 		 * It only goes to sleep if there is no event
 		 */
 		if (ert_user_thread_sleep_condition(ert_user)) {
+			ert_user->no_sleep_cnt = 0;
 			if (down_interruptible(&ert_user->sem))
 				ret = -ERESTARTSYS;
+		} else {
+			ert_user->no_sleep_cnt++;
 		}
+
+		if (ert_user->no_sleep_cnt && !(ert_user->no_sleep_cnt & ERT_NO_SLEEP_MASK))
+			schedule();
 
 		process_ert_pq(ert_user, &ert_user->pq, &ert_user->rq);
 		process_ert_pq(ert_user, &ert_user->pq_ctrl, &ert_user->rq_ctrl);
+
+		if (ert_user->no_sleep_cnt >= 0x40000000) {
+			ert_user_debug_dump(ert_user);
+			ert_user->no_sleep_cnt = 0;
+		}
 	}
 	del_timer_sync(&ert_user->timer);
+
+	if (ert_user->rq.num || ert_user->rq_ctrl.num || ert_user->sq.num)
+		ERTUSER_WARN(ert_user, "ert thread exit, but rq %d, rq_ctrl %d, sq %d\n",
+			     ert_user->rq.num, ert_user->rq_ctrl.num, ert_user->sq.num);
 
 	if (!ert_user->bad_state)
 		ret = -EBUSY;
@@ -1624,6 +1705,9 @@ static int ert_user_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "create ert_user sysfs attrs failed: %d", err);
 		goto done;
 	}
+
+	ert_user->no_sleep_cnt = 0;
+
 	ert_user->ert.submit = ert_user_submit;
 	ert_user->ert.abort = xocl_ert_user_abort;
 	ert_user->ert.abort_done = xocl_ert_user_abort_done;

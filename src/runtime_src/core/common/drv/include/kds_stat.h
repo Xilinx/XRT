@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021, 2023 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -26,6 +26,10 @@ struct client_stats {
 	unsigned long		s_cnt[MAX_CUS];
 	/* Per CU counter that counts when a command is completed or error */
 	unsigned long		c_cnt[MAX_CUS];
+
+	/* For counting START_SK and control commands to ERT */
+	unsigned long		s_ert_cnt;
+	unsigned long		c_ert_cnt;
 };
 
 struct cu_stats {

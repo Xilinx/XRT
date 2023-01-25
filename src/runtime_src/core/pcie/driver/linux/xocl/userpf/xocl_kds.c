@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo User Function Driver
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2020, 2023 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -393,9 +393,13 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 			/* It is old shell, return code is missing */
 			scmd->return_code = -ENODATA;
 		status = scmd->state;
+		client_stat_inc(client, c_ert_cnt);
 	} else {
-		if (xcmd->opcode == OP_GET_STAT)
+		if (xcmd->opcode == OP_GET_STAT) {
 			read_ert_stat(xcmd);
+			if (xcmd->type == KDS_ERT)
+				client_stat_inc(client, c_ert_cnt);
+		}
 
 		if (status == KDS_COMPLETED)
 			ecmd->state = ERT_CMD_STATE_COMPLETED;
